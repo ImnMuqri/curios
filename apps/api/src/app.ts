@@ -10,6 +10,7 @@ import {
 import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
+import { requireSession, sessionPlugin } from './plugins/session.js';
 import {
   chatPerIpLimit,
   chatPerPageLimit,
@@ -56,6 +57,7 @@ export async function buildApp() {
   });
   await app.register(errorsPlugin);
   await app.register(prismaPlugin);
+  await app.register(sessionPlugin);
   await app.register(queuePlugin);
   await app.register(rateLimitPlugin);
 
@@ -63,6 +65,10 @@ export async function buildApp() {
   // polling this from one address would otherwise exhaust the per-IP budget
   // and take the API out of rotation for being healthy.
   app.get('/health', async () => ({ ok: true }));
+
+  app.get('/auth/me', { preHandler: requireSession }, async (request) => ({
+    accountId: request.account?.id,
+  }));
 
   // The limiters are registered inside a scope holding only the routes they
   // guard. Fastify's encapsulation keeps them off every other route, so no
