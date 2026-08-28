@@ -36,19 +36,23 @@ export async function runExtraction(
 ): Promise<{ extractedCount: number }> {
   const { prisma, gateway, adapter } = deps;
 
-  await prisma.ingestion.update({
-    where: { id: job.ingestionId },
-    data: { status: 'RUNNING' },
-  });
-
   // Invariant: every exit from this function, however it fails, must leave the
   // Ingestion row in a terminal state. The onboarding screen polls it, and
   // BullMQ exhausting its retries after a thrown error does not reconcile
   // anything on its own -- an update left unhandled anywhere below strands the
   // row at RUNNING forever. One outer catch marks FAILED for every path. The
   // gateway's own inner catch below exists only to record its ModelCall
-  // before rethrowing for this one to catch and mark the row FAILED.
+  // before rethrowing for this one to catch and mark the row FAILED. The try
+  // opens here, before the RUNNING update itself, so even that first write
+  // is covered -- if it throws, the FAILED write below will usually also
+  // fail (same unreachable database), which is expected: the point is that
+  // the attempt is no longer skipped.
   try {
+    await prisma.ingestion.update({
+      where: { id: job.ingestionId },
+      data: { status: 'RUNNING' },
+    });
+
     // The crawl runs before any model call. A failure here reaches the outer
     // catch directly, with no recordModelCall in between -- a zero-token row
     // would pollute the margin data that table exists to provide. The
@@ -118,9 +122,10 @@ export async function runExtraction(
 
     return { extractedCount: created.count };
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     await prisma.ingestion.update({
       where: { id: job.ingestionId },
-      data: { status: 'FAILED', error: (error as Error).message.slice(0, 500) },
+      data: { status: 'FAILED', error: message.slice(0, 500) },
     });
     throw error;
   }
