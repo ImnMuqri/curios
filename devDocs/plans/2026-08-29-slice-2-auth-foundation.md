@@ -385,8 +385,12 @@ describe('validateSession', () => {
     const { value } = await createSession(prisma, accountId);
     const id = hashToken(value);
 
-    // Wind the clock back so this session looks a fortnight old.
-    const stale = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    // Ten days: past the seven-day refresh threshold, comfortably short of the
+    // fourteen-day idle limit. Not fourteen -- that sits exactly on the idle
+    // boundary, so the few milliseconds between this update and the call below
+    // tip the session into idle-expiry and `validateSession` returns null
+    // before the refresh branch can run.
+    const stale = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
     await prisma.session.update({ where: { id }, data: { lastSeenAt: stale } });
 
     await validateSession(prisma, value);
