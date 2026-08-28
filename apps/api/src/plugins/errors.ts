@@ -10,7 +10,12 @@ interface DomainError extends Error {
 // else -- a raw Prisma code (P2002, P2003, ...), a Node system error code, or
 // anything unanticipated -- is not client-facing and must not be echoed back
 // as-is, even on a 4xx.
-const DOMAIN_ERROR_CODES = new Set(['PAGE_NOT_FOUND', 'INVALID_SOURCE_URL', 'EMAIL_NOT_VERIFIED']);
+const DOMAIN_ERROR_CODES = new Set([
+  'PAGE_NOT_FOUND',
+  'INVALID_SOURCE_URL',
+  'EMAIL_NOT_VERIFIED',
+  'RATE_LIMITED',
+]);
 
 /**
  * Domain errors are mapped once, here. Messages are user-facing and follow the
