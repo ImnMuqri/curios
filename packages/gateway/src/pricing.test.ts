@@ -57,4 +57,13 @@ describe('costFor', () => {
   it('throws on an unknown model rather than silently pricing at zero', () => {
     expect(() => costFor('gpt-4', zero)).toThrow(/unknown model/i);
   });
+
+  // RATES is a plain object literal; a model string that collides with an
+  // Object.prototype key resolves through the prototype chain instead of
+  // missing outright, bypassing the unknown-model throw above.
+  it('throws on a model string colliding with an Object.prototype key', () => {
+    expect(() => costFor('constructor', { ...zero, inputTokens: 1000 })).toThrow(/unknown model/i);
+    expect(() => costFor('toString', { ...zero, inputTokens: 1000 })).toThrow(/unknown model/i);
+    expect(() => costFor('hasOwnProperty', zero)).toThrow(/unknown model/i);
+  });
 });

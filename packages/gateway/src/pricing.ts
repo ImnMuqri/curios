@@ -26,8 +26,13 @@ export function costFor(
   model: string,
   usage: TokenUsage,
 ): { costMilliCents: number; priceVersion: string } {
-  const rates = RATES[model];
-  if (!rates) throw new Error(`Unknown model for pricing: ${model}`);
+  // RATES is a plain object literal: looking a model up with a bare index
+  // access falls through to Object.prototype for a name like "constructor"
+  // or "toString", returning a truthy non-Rates value instead of missing --
+  // which bypasses the throw below and prices the call as NaN. hasOwn checks
+  // only RATES's own keys.
+  if (!Object.hasOwn(RATES, model)) throw new Error(`Unknown model for pricing: ${model}`);
+  const rates = RATES[model]!;
 
   const total =
     usage.inputTokens * rates.input +
