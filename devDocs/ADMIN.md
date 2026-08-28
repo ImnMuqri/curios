@@ -30,12 +30,12 @@ it is a bug, not a shortcut.
 
 Named accounts with roles, not a shared token.
 
-This diverges from the post generator deliberately, so do not "simplify" it
-back. That product's admin guards cost metrics and job replay, where one
-operator and an env var is proportionate. This one opens documents carrying an
-IC number and a home address. *Who looked at this* stops being a nicety the
-moment that is true, and retrofitting attribution after an incident is not
-possible — the rows you needed were never written.
+Do not "simplify" this to a shared bearer token in an env var. That is a
+reasonable design for an admin surface guarding cost metrics and job replay,
+where the worst case is someone reading a number. This one opens documents
+carrying an IC number and a home address. *Who looked at this* stops being a
+nicety the moment that is true, and retrofitting attribution after an incident is
+not possible — the rows you needed were never written.
 
 ```prisma
 model AdminUser {
@@ -74,9 +74,10 @@ own cookie, their own TTL (8 hours, no refresh), and 2FA is not optional.
 Owners sign in with Google. Admins do not, and that is the point: admin shares
 no identity provider, no cookie, and no code path with the customer flow, so a
 failure or compromise in either one cannot reach the other. Admin login is email
-and password with argon2id (the post generator's OWASP parameters, copied not
-reinvented) plus TOTP, and one message for both a wrong password and an unknown
-address so the form cannot be used to discover who has an account.
+and password with argon2id at the OWASP-recommended parameters — `memoryCost
+19456, timeCost 2, parallelism 1`, deliberately slow — plus TOTP, and one message
+for both a wrong password and an unknown address so the form cannot be used to
+discover who has an account.
 
 Routes stay unregistered when admin is not configured, so a deployment that
 forgets its env exposes nothing rather than everything.

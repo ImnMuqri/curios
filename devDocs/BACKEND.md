@@ -59,9 +59,10 @@ and never leaves the page. It also means development needs no email provider
 configured before anyone can log in, so the dev and production login paths are
 the same path.
 
-This is not the post generator's argon2 password, and the divergence is
-deliberate. That product's non-goal list rules out building an identity
-provider; delegating to Google is the cheapest way to honour it.
+Building an identity provider is an explicit non-goal, and delegating to Google
+is the cheapest way to honour it: no password hashing, no reset flow, no
+credential of ours to leak. The one place we do own credentials is admin, which
+is a separate system for exactly that reason. See ADMIN.md.
 
 ```prisma
 model AuthIdentity {

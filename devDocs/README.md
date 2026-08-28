@@ -37,7 +37,8 @@ curios/
 └── DESIGN.md         Tokens, direction, and the banned list
 ```
 
-pnpm workspaces. Same shape as the post generator, deliberately, so the muscle memory carries.
+pnpm workspaces, turbo, Node 22. Three apps and three packages. `api` and `workers` are
+separate processes sharing `db` and `core`, and they never import each other.
 
 ---
 

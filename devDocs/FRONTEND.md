@@ -66,8 +66,8 @@ States: `idle` (cycling a real question from this page's facts) → `focused` �
 `sheet-open` → `thinking` → `answering` (streamed) → `capture` (conditional).
 
 Rules:
-- It never presents an empty prompt with no suggestion. Same founding constraint as
-  the post generator: the visitor should never have to invent the question.
+- It never presents an empty prompt with no suggestion. This is the founding
+  constraint: the visitor should never have to invent the question.
 - Chips come from the knowledge base at build time, not from a model call on page load.
 - The sheet covers roughly 74% of the viewport. Links stay visible behind it. The AI
   pushes people back to links, it does not replace them.
@@ -113,7 +113,8 @@ editable cards, each with its source line. The owner accepts, edits, or deletes.
 Never auto-publish an unreviewed price. Getting a price wrong in public is the single
 failure that loses a customer permanently.
 
-Poll the job with the 202-and-poll pattern from the post generator.
+Poll the job: the ingest request returns 202 with a job id, and the review screen
+polls that id until the job resolves. Nothing generative ever blocks an HTTP request.
 
 ---
 
