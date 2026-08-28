@@ -1069,7 +1069,7 @@ The only package permitted to import the Anthropic SDK. Cost arithmetic is TDD'd
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit", "test": "vitest run" },
-  "dependencies": { "@anthropic-ai/sdk": "^0.65.0", "@curios/core": "workspace:*" },
+  "dependencies": { "@anthropic-ai/sdk": "^0.122.0", "@curios/core": "workspace:*" },
   "devDependencies": { "typescript": "^5.7.3", "vitest": "^2.1.8" }
 }
 ```
@@ -1247,7 +1247,14 @@ Create `packages/gateway/src/anthropic.gateway.ts`:
 
 ```ts
 import Anthropic from '@anthropic-ai/sdk';
-import type { ChatEvent, ExtractInput, ExtractOutput, Gateway, TokenUsage } from './types.js';
+import type {
+  ChatEvent,
+  ChatInput,
+  ExtractInput,
+  ExtractOutput,
+  Gateway,
+  TokenUsage,
+} from './types.js';
 
 export const CHAT_MODEL = 'claude-haiku-4-5';
 export const EXTRACT_MODEL = 'claude-opus-5';
