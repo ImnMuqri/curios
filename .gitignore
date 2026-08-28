@@ -1,0 +1,43 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+
+# turbo
+.turbo/
+
+# env — never commit. .env.example is tracked.
+.env
+.env.*
+!.env.example
+
+# prisma
+packages/db/prisma/*.db
+packages/db/prisma/*.db-journal
+
+# local storage stand-in for R2
+.storage/
+
+# test + coverage
+coverage/
+.vitest/
+playwright-report/
+test-results/
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# editor / os
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
