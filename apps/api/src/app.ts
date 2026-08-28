@@ -18,7 +18,10 @@ export async function buildApp() {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
 
-  await app.register(cookie, { secret: process.env.SESSION_SECRET ?? 'dev-secret' });
+  const sessionSecret = process.env.SESSION_SECRET;
+  if (!sessionSecret) throw new Error('SESSION_SECRET is not set');
+
+  await app.register(cookie, { secret: sessionSecret });
   await app.register(cors, {
     origin: process.env.APP_URL ?? 'http://localhost:3000',
     credentials: true,
