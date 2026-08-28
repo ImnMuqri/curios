@@ -5,7 +5,7 @@ import {
   type SourceDocument,
 } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
-import type { Gateway } from '@curios/gateway';
+import { EXTRACT_MODEL, type Gateway } from '@curios/gateway';
 import type { SourceAdapter } from '../sources/types.js';
 
 export interface ExtractDeps {
@@ -41,15 +41,82 @@ export async function runExtraction(
     data: { status: 'RUNNING' },
   });
 
-  // The crawl gets its own failure path. It runs before any model call, so a
-  // failure here writes no ModelCall — a zero-token row would pollute the
-  // margin data this table exists to provide. But the Ingestion row must still
-  // reach a terminal state: the onboarding screen polls it, and the Instagram
-  // adapter throws NOT_CONFIGURED by design, so "crawl threw" is a guaranteed
-  // path rather than a hypothetical one. Left unhandled it spins forever.
-  let documents: SourceDocument[];
+  // Invariant: every exit from this function, however it fails, must leave the
+  // Ingestion row in a terminal state. The onboarding screen polls it, and
+  // BullMQ exhausting its retries after a thrown error does not reconcile
+  // anything on its own -- an update left unhandled anywhere below strands the
+  // row at RUNNING forever. One outer catch marks FAILED for every path. The
+  // gateway's own inner catch below exists only to record its ModelCall
+  // before rethrowing for this one to catch and mark the row FAILED.
   try {
-    documents = await adapter.fetch(job.sourceUrl);
+    // The crawl runs before any model call. A failure here reaches the outer
+    // catch directly, with no recordModelCall in between -- a zero-token row
+    // would pollute the margin data that table exists to provide. The
+    // Instagram adapter throws NOT_CONFIGURED by design, so "crawl threw" is a
+    // guaranteed path rather than a hypothetical one.
+    const documents: SourceDocument[] = await adapter.fetch(job.sourceUrl);
+
+    let raw: string;
+    try {
+      const result = await gateway.extract({ documents });
+      raw = result.raw;
+      await recordModelCall(prisma, {
+        pageId: job.pageId,
+        ingestionId: job.ingestionId,
+        model: result.model,
+        usage: result.usage,
+        latencyMs: result.latencyMs,
+        ok: true,
+      });
+    } catch (error) {
+      // A call that fails here has already consumed tokens (or the attempt to
+      // make it failed outright); either way it must be visible in the one
+      // table that tracks margin, not silently absent like the crawl case.
+      await recordModelCall(prisma, {
+        pageId: job.pageId,
+        ingestionId: job.ingestionId,
+        model: EXTRACT_MODEL,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        latencyMs: 0,
+        ok: false,
+        errorCode: 'PROVIDER_UNAVAILABLE',
+      });
+      throw error;
+    }
+
+    const { facts } = parseFactBlocks(raw);
+
+    // Facts are hostile input until reviewed. An injected instruction is flagged
+    // and confidence-penalised, never silently dropped -- dropping it hides the
+    // attack from the owner and teaches us nothing.
+    const rows = facts.map((fact) => {
+      const flagged = isImperative(fact.claim);
+      return {
+        pageId: job.pageId,
+        category: fact.category,
+        claim: fact.claim,
+        normalizedClaim: normalizeClaim(fact.claim),
+        sourceUrl: job.sourceUrl,
+        sourceText: fact.sourceText,
+        confidence: flagged ? Math.min(fact.confidence, 0.2) : fact.confidence,
+        flagged,
+        verified: false,
+      };
+    });
+
+    // skipDuplicates against @@unique([pageId, normalizedClaim]) is what makes
+    // re-running this job produce one set of facts rather than two. A failure
+    // here (or in the ingestion.update just below) previously escaped every
+    // try/catch in this function and left the row RUNNING forever -- it is
+    // now covered by the outer catch like everything else.
+    const created = await prisma.fact.createMany({ data: rows, skipDuplicates: true });
+
+    await prisma.ingestion.update({
+      where: { id: job.ingestionId },
+      data: { status: 'SUCCEEDED', extractedCount: rows.length },
+    });
+
+    return { extractedCount: created.count };
   } catch (error) {
     await prisma.ingestion.update({
       where: { id: job.ingestionId },
@@ -57,64 +124,4 @@ export async function runExtraction(
     });
     throw error;
   }
-
-  let raw: string;
-  try {
-    const result = await gateway.extract({ documents });
-    raw = result.raw;
-    await recordModelCall(prisma, {
-      pageId: job.pageId,
-      ingestionId: job.ingestionId,
-      model: result.model,
-      usage: result.usage,
-      latencyMs: result.latencyMs,
-      ok: true,
-    });
-  } catch (error) {
-    await recordModelCall(prisma, {
-      pageId: job.pageId,
-      ingestionId: job.ingestionId,
-      model: 'claude-opus-5',
-      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      latencyMs: 0,
-      ok: false,
-      errorCode: 'PROVIDER_UNAVAILABLE',
-    });
-    await prisma.ingestion.update({
-      where: { id: job.ingestionId },
-      data: { status: 'FAILED', error: (error as Error).message.slice(0, 500) },
-    });
-    throw error;
-  }
-
-  const { facts } = parseFactBlocks(raw);
-
-  // Facts are hostile input until reviewed. An injected instruction is flagged
-  // and confidence-penalised, never silently dropped -- dropping it hides the
-  // attack from the owner and teaches us nothing.
-  const rows = facts.map((fact) => {
-    const flagged = isImperative(fact.claim);
-    return {
-      pageId: job.pageId,
-      category: fact.category,
-      claim: fact.claim,
-      normalizedClaim: normalizeClaim(fact.claim),
-      sourceUrl: job.sourceUrl,
-      sourceText: fact.sourceText,
-      confidence: flagged ? Math.min(fact.confidence, 0.2) : fact.confidence,
-      flagged,
-      verified: false,
-    };
-  });
-
-  // skipDuplicates against @@unique([pageId, normalizedClaim]) is what makes
-  // re-running this job produce one set of facts rather than two.
-  const created = await prisma.fact.createMany({ data: rows, skipDuplicates: true });
-
-  await prisma.ingestion.update({
-    where: { id: job.ingestionId },
-    data: { status: 'SUCCEEDED', extractedCount: rows.length },
-  });
-
-  return { extractedCount: created.count };
 }
