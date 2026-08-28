@@ -71,6 +71,13 @@ business approving a badge.
 runs through the same login every visitor's owner uses. Admin sessions are their
 own cookie, their own TTL (8 hours, no refresh), and 2FA is not optional.
 
+Owners sign in with Google. Admins do not, and that is the point: admin shares
+no identity provider, no cookie, and no code path with the customer flow, so a
+failure or compromise in either one cannot reach the other. Admin login is email
+and password with argon2id (the post generator's OWASP parameters, copied not
+reinvented) plus TOTP, and one message for both a wrong password and an unknown
+address so the form cannot be used to discover who has an account.
+
 Routes stay unregistered when admin is not configured, so a deployment that
 forgets its env exposes nothing rather than everything.
 
