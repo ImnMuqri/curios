@@ -27,6 +27,11 @@
 - Docker host ports: Postgres `5452`, test Postgres `5453`, Redis `6399`. Non-default deliberately — a native service otherwise shadows the container and fails with `P1010`.
 - Conventional commits: `feat(api):`, `fix(worker):`, `chore(db):`.
 - Never log full phone numbers, prompts containing user data, or provider tokens.
+- **Every package with tests has its own `vitest.config.ts` carrying
+  `setupFiles: ['../../vitest.setup.ts']`.** Without it `process.env.DATABASE_URL_TEST`
+  is undefined and every integration test connects to nothing.
+- Test databases are reached via `DATABASE_URL_TEST` / `DATABASE_URL_TEST_READONLY`,
+  never `DATABASE_URL`. A test that truncates the dev database is a defect.
 
 ---
 
@@ -59,13 +64,19 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\""
   },
   "devDependencies": {
+    "dotenv": "^16.4.7",
     "prettier": "^3.4.2",
+    "tsx": "^4.19.2",
     "turbo": "^2.3.3",
     "typescript": "^5.7.3",
     "vitest": "^2.1.8"
   }
 }
 ```
+
+`dotenv` and `tsx` are root devDependencies, not per-package: every package's
+tests read `DATABASE_URL_TEST` from `.env`, and `scripts/seed-dev.ts` runs from
+the root with `pnpm exec tsx`.
 
 - [ ] **Step 2: Create `pnpm-workspace.yaml`**
 
@@ -182,6 +193,44 @@ GOOGLE_REDIRECT_URI=http://localhost:3001/auth/google/callback
 SESSION_SECRET=
 APP_URL=http://localhost:3000
 API_URL=http://localhost:3001
+```
+
+- [ ] **Step 6b: Create the shared test setup**
+
+Vitest does not put `.env` values on `process.env` by itself, and every
+integration test in this plan reads `DATABASE_URL_TEST`. Without this file they
+all connect to `undefined`.
+
+Create `vitest.setup.ts` at the repo root:
+
+```ts
+import { join } from 'node:path';
+import { config } from 'dotenv';
+
+// Loaded by every package's vitest.config.ts. The path is resolved from this
+// file's own location, not the cwd, because each package runs vitest from its
+// own directory.
+config({ path: join(import.meta.dirname, '.env') });
+```
+
+Create `vitest.config.ts` at the repo root, for tests run from the root:
+
+```ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: { setupFiles: ['./vitest.setup.ts'] },
+});
+```
+
+**Every package that has tests must have its own `vitest.config.ts`:**
+
+```ts
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: { setupFiles: ['../../vitest.setup.ts'] },
+});
 ```
 
 - [ ] **Step 7: Bring up Docker and verify health**
