@@ -1,0 +1,199 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PageMode {
+  PERSONAL
+  BUSINESS
+}
+
+enum AuthProvider {
+  GOOGLE
+}
+
+enum FactCategory {
+  PRICE
+  HOURS
+  LOCATION
+  POLICY
+  PRODUCT
+  PERSON
+  MISC
+}
+
+enum IngestionStatus {
+  QUEUED
+  RUNNING
+  SUCCEEDED
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+}
+
+model Account {
+  id         String         @id @default(cuid())
+  email      String         @unique
+  name       String?
+  createdAt  DateTime       @default(now())
+  identities AuthIdentity[]
+  pages      Page[]
+}
+
+model AuthIdentity {
+  id             String       @id @default(cuid())
+  accountId      String
+  account        Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  provider       AuthProvider
+  providerUserId String
+  email          String
+  createdAt      DateTime     @default(now())
+
+  @@unique([provider, providerUserId])
+  @@index([accountId])
+}
+
+model Page {
+  id            String         @id @default(cuid())
+  accountId     String
+  account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  handle        String         @unique
+  mode          PageMode       @default(BUSINESS)
+  displayName   String
+  bio           String?
+  language      String         @default("en")
+  published     Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  links         Link[]
+  facts         Fact[]
+  pinnedAnswers PinnedAnswer[]
+  neverSay      NeverSay[]
+  conversations Conversation[]
+  ingestions    Ingestion[]
+  usageCounters UsageCounter[]
+}
+
+model Link {
+  id       String @id @default(cuid())
+  pageId   String
+  page     Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  label    String
+  url      String
+  icon     String?
+  position Int
+
+  @@index([pageId, position])
+}
+
+model Fact {
+  id              String       @id @default(cuid())
+  pageId          String
+  page            Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  category        FactCategory
+  claim           String
+  normalizedClaim String
+  sourceUrl       String?
+  sourceText      String?
+  confidence      Float
+  verified        Boolean      @default(false)
+  volatile        Boolean      @default(false)
+  flagged         Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+
+  @@unique([pageId, normalizedClaim])
+  @@index([pageId, category])
+}
+
+model PinnedAnswer {
+  id                 String @id @default(cuid())
+  pageId             String
+  page               Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  question           String
+  normalizedQuestion String
+  answer             String
+
+  @@unique([pageId, normalizedQuestion])
+}
+
+model NeverSay {
+  id      String @id @default(cuid())
+  pageId  String
+  page    Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  phrase  String
+
+  @@index([pageId])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  pageId    String
+  page      Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  referrer  String?
+  createdAt DateTime  @default(now())
+  messages  Message[]
+
+  @@index([pageId, createdAt])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  citedFactIds   String[]
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
+
+model UsageCounter {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  period String
+  count  Int    @default(0)
+
+  @@unique([pageId, period])
+}
+
+model Ingestion {
+  id             String          @id @default(cuid())
+  pageId         String
+  page           Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  sourceUrl      String
+  status         IngestionStatus @default(QUEUED)
+  extractedCount Int             @default(0)
+  error          String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  @@index([pageId, createdAt])
+}
+
+model ModelCall {
+  id               String   @id @default(cuid())
+  pageId           String?
+  conversationId   String?
+  ingestionId      String?
+  model            String
+  inputTokens      Int
+  outputTokens     Int
+  cacheReadTokens  Int      @default(0)
+  cacheWriteTokens Int      @default(0)
+  costMilliCents   Int
+  priceVersion     String
+  latencyMs        Int
+  ok               Boolean
+  errorCode        String?
+  createdAt        DateTime @default(now())
+
+  @@index([pageId, createdAt])
+}
