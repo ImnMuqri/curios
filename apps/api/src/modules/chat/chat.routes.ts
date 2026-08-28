@@ -17,7 +17,23 @@ export const chatRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
+      // hijack() takes the raw response out of Fastify's own reply lifecycle --
+      // required for a manual writeHead()/write()/end() sequence like this one.
+      // Without it, Fastify's own reply handling (which never runs, because we
+      // never call reply.send()) leaves the socket in an inconsistent state.
+      //
+      // getHeaders() is spread in deliberately: @fastify/cors sets
+      // Access-Control-Allow-Origin (and friends) via reply.header() in an
+      // onRequest hook, which writes into Fastify's internal header store
+      // (kReplyHeaders). That store is normally flushed onto the socket by
+      // reply.send(), which this handler never calls. Writing the response
+      // headers directly with reply.raw.writeHead(200, {...}) -- without this
+      // spread -- silently drops every header the cors hook set, so the
+      // browser rejects the response with no CORS header. Do not "simplify"
+      // this away.
+      reply.hijack();
       reply.raw.writeHead(200, {
+        ...reply.getHeaders(),
         'content-type': 'text/event-stream',
         'cache-control': 'no-cache, no-transform',
         connection: 'keep-alive',
