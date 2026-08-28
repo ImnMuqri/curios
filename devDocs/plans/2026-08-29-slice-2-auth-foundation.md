@@ -1296,6 +1296,20 @@ git commit -m "feat(api): single-use verification and reset tokens"
 
 Create `apps/api/src/modules/auth/auth.routes.test.ts`:
 
+**Every `app.inject` in this file passes its own `remoteAddress`.** These routes
+sit behind a 20-per-15-minutes per-IP limiter, and one package run makes far more
+than twenty auth requests. Without this the suite starts returning 429 partway
+through and the failures look like anything but a rate limit. Put this at the top
+of the file and use it on every request, following the pattern
+`rate-limit.test.ts` already establishes:
+
+```ts
+let nth = 0;
+/** A fresh source address per request, so the limiter never sees a flood. */
+const from = () => `203.0.113.${(nth++ % 200) + 1}`;
+```
+
+
 ```ts
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -1308,8 +1322,18 @@ let app: FastifyInstance;
 
 const GOOD_PASSWORD = 'a-long-enough-passphrase';
 
+/** Records what was sent instead of reaching a real SMTP server. */
+const sent: Array<{ to: string; subject: string; text: string }> = [];
+
 beforeAll(async () => {
-  app = await buildApp();
+  app = await buildApp({
+    auth: {
+      mailer: { async send(message) { sent.push(message); } },
+      // No request leaves the suite: HIBP is a third party, and a test that
+      // depends on its uptime is a test that fails on a train.
+      fetcher: async () => ({ ok: true, text: async () => '' }),
+    },
+  });
   await app.ready();
 });
 
@@ -1466,7 +1490,15 @@ Append to `apps/api/src/modules/auth/auth.service.ts`:
 
 ```ts
 import type { Mailer } from '../../lib/mailer.js';
-import { hashPassword, isBreached, MIN_PASSWORD_LENGTH, verifyPassword, burnTime, WeakPasswordError } from './password.service.js';
+import {
+  burnTime,
+  hashPassword,
+  isBreached,
+  MIN_PASSWORD_LENGTH,
+  verifyPassword,
+  WeakPasswordError,
+  type Fetcher,
+} from './password.service.js';
 import { issueToken } from './token.service.js';
 
 export class InvalidCredentialsError extends Error {
@@ -1493,7 +1525,7 @@ const normaliseEmail = (email: string): string => email.trim().toLowerCase();
  * producing a duplicate account the owner could never explain.
  */
 export async function signUpWithPassword(
-  deps: { prisma: PrismaClient; mailer: Mailer },
+  deps: { prisma: PrismaClient; mailer: Mailer; fetcher?: Fetcher },
   input: { email: string; password: string },
 ): Promise<void> {
   const email = normaliseEmail(input.email);
@@ -1501,13 +1533,39 @@ export async function signUpWithPassword(
   if (input.password.length < MIN_PASSWORD_LENGTH) {
     throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
   }
-  if (await isBreached(input.password)) {
+  if (await isBreached(input.password, deps.fetcher)) {
     throw new WeakPasswordError('That password has appeared in a public breach. Pick another.');
   }
 
-  const existing = await deps.prisma.account.findUnique({ where: { email }, select: { id: true } });
+  const existing = await deps.prisma.account.findUnique({
+    where: { email },
+    select: { id: true, emailVerifiedAt: true, password: { select: { id: true } } },
+  });
 
   if (existing) {
+    // Two different existing-account cases, one identical HTTP response.
+    //
+    // An account that is unverified and has a password is almost always the
+    // same person retrying -- often because the first attempt 500'd when mail
+    // failed *after* the account was written. Telling them to sign in would
+    // trap them: they cannot, because they are unverified, and the address is
+    // taken so they cannot start over either. Re-send the link instead.
+    //
+    // Only the mail differs. The response is byte-identical either way, so the
+    // form still cannot be used to discover who has an account, and the only
+    // person who learns anything is whoever can read that inbox.
+    if (!existing.emailVerifiedAt && existing.password) {
+      const retry = await issueToken(deps.prisma, existing.id, 'EMAIL_VERIFICATION');
+      await deps.mailer.send({
+        to: email,
+        subject: 'Confirm your email',
+        text: `Confirm your address to finish setting up Curios:
+
+${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
+      });
+      return;
+    }
+
     await deps.mailer.send({
       to: email,
       subject: 'You already have a Curios account',
@@ -1613,7 +1671,8 @@ Create `apps/api/src/modules/auth/auth.routes.ts`:
 ```ts
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createMailer } from '../../lib/mailer.js';
+import { createMailer, type Mailer } from '../../lib/mailer.js';
+import type { Fetcher } from './password.service.js';
 import { requireSession } from '../../plugins/session.js';
 import { signInWithPassword, signUpWithPassword } from './auth.service.js';
 import {
@@ -1628,11 +1687,19 @@ const credentials = z.object({
   password: z.string().min(1).max(200),
 });
 
-export const authRoutes: FastifyPluginAsyncZod = async (app) => {
-  const mailer = createMailer();
+export interface AuthRouteOptions {
+  /** Tests pass a recording mailer; production leaves it undefined. */
+  mailer?: Mailer;
+  /** Tests pass a stub so no request reaches Have I Been Pwned. */
+  fetcher?: Fetcher;
+}
+
+export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
+  const mailer = options.mailer ?? createMailer();
+  const fetcher = options.fetcher;
 
   app.post('/auth/signup', { schema: { body: credentials } }, async (request, reply) => {
-    await signUpWithPassword({ prisma: app.prisma, mailer }, request.body);
+    await signUpWithPassword({ prisma: app.prisma, mailer, fetcher }, request.body);
     // 202, not 200: the account is not usable until the address is confirmed.
     return reply.status(202).send({ status: 'check_your_email' });
   });
@@ -1676,9 +1743,24 @@ In `apps/api/src/app.ts`, delete the temporary `/auth/me` added in Task 4 and re
   await app.register(async (scope) => {
     await scope.register(rateLimit, authPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, authPerEmailLimit(app.rateLimitRedis));
-    await scope.register(authRoutes);
+    await scope.register(authRoutes, overrides.auth ?? {});
   });
 ```
+
+Change `buildApp`'s signature to accept them, defaulting to none so every
+existing caller is unaffected:
+
+```ts
+export interface AppOverrides {
+  auth?: AuthRouteOptions;
+}
+
+export async function buildApp(overrides: AppOverrides = {}) {
+```
+
+This is the seam the tests use, and the only one. Production calls
+`buildApp()` with no argument and gets the real mailer and the real
+breach-screening fetcher.
 
 - [ ] **Step 7: Run the test to verify it passes**
 
@@ -1710,6 +1792,20 @@ git commit -m "feat(api): password signup, login and logout"
 - [ ] **Step 1: Write the failing test**
 
 Create `apps/api/src/modules/auth/auth.reset.test.ts`:
+
+**Every `app.inject` in this file passes its own `remoteAddress`.** These routes
+sit behind a 20-per-15-minutes per-IP limiter, and one package run makes far more
+than twenty auth requests. Without this the suite starts returning 429 partway
+through and the failures look like anything but a rate limit. Put this at the top
+of the file and use it on every request, following the pattern
+`rate-limit.test.ts` already establishes:
+
+```ts
+let nth = 0;
+/** A fresh source address per request, so the limiter never sees a flood. */
+const from = () => `203.0.113.${(nth++ % 200) + 1}`;
+```
+
 
 ```ts
 import { randomUUID } from 'node:crypto';
@@ -1905,11 +2001,12 @@ export async function requestPasswordReset(
 export async function resetPassword(
   prisma: PrismaClient,
   input: { token: string; password: string },
+  fetcher?: Fetcher,
 ): Promise<void> {
   if (input.password.length < MIN_PASSWORD_LENGTH) {
     throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
   }
-  if (await isBreached(input.password)) {
+  if (await isBreached(input.password, fetcher)) {
     throw new WeakPasswordError('That password has appeared in a public breach. Pick another.');
   }
 
@@ -1964,7 +2061,7 @@ In `apps/api/src/modules/auth/auth.routes.ts`, add inside `authRoutes`:
       },
     },
     async (request, reply) => {
-      await resetPassword(app.prisma, request.body);
+      await resetPassword(app.prisma, request.body, fetcher);
       return reply.send({ status: 'password_changed' });
     },
   );
@@ -2249,6 +2346,20 @@ git commit -m "feat(api): google oauth with state and pkce"
 - [ ] **Step 1: Write the failing test**
 
 Create `apps/api/src/modules/ingest/ingest.authz.test.ts`:
+
+**Every `app.inject` in this file passes its own `remoteAddress`.** These routes
+sit behind a 20-per-15-minutes per-IP limiter, and one package run makes far more
+than twenty auth requests. Without this the suite starts returning 429 partway
+through and the failures look like anything but a rate limit. Put this at the top
+of the file and use it on every request, following the pattern
+`rate-limit.test.ts` already establishes:
+
+```ts
+let nth = 0;
+/** A fresh source address per request, so the limiter never sees a flood. */
+const from = () => `203.0.113.${(nth++ % 200) + 1}`;
+```
+
 
 ```ts
 import { randomUUID } from 'node:crypto';
