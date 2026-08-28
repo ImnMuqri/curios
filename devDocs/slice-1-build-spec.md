@@ -295,7 +295,7 @@ Pipeline per BACKEND.md, with slice 1 status:
 | 1 | `UsageCounter` check, over cap → FAQ | increments; **over-cap branch stubbed** |
 | 2 | rate limit by ip + page, leaky bucket in Redis | full |
 | 3 | `PinnedAnswer` exact match → return, zero tokens | full |
-| 4 | select facts: category + text match, always HOURS and LOCATION | full |
+| 4 | load every verified fact for the page (no per-question subset) | full |
 | 5 | one Haiku call | full |
 | 6 | stream, persist `Message` after close | full |
 | 7 | intent block | **deferred to slice 4** |

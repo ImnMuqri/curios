@@ -169,11 +169,30 @@ visitor watching a blank bubble for four seconds leaves.
 1  check UsageCounter. over cap → return the static FAQ payload, HTTP 200, no model call.
 2  rate limit by ip + page. leaky bucket in Redis.
 3  exact match against PinnedAnswer. hit → return it. zero tokens, zero risk.
-4  select facts: category filter + full text match + always include HOURS, LOCATION.
+4  load every verified fact for the page. not a per-question subset, see below.
 5  one Haiku call. system prompt carries facts, NeverSay, language rule, refusal rule.
 6  stream. persist Message after the stream closes.
 7  same response returns an intent block (below). no second classifier call.
 ```
+
+### Send every fact, do not select
+
+An earlier version of step 4 filtered facts by the visitor's question. That is
+wrong twice over and the reasons are worth keeping.
+
+It breaks caching. Prompt caching is a prefix match, so a question-dependent
+fact block changes the prefix on every distinct question and cross-visitor reuse
+never happens. Cross-visitor reuse is the only reuse worth having: a cache read
+costs a tenth of an input token and the block is stable between owner edits.
+
+It breaks the flagship question. Bag-of-words matching on "berapa harga" shares
+no token with "Kek 1kg butter starts at RM95", so the single most common
+question in the product returns no prices. The page a shop owner bought to stop
+answering "berapa harga" forty times a day would answer it with opening hours.
+
+Sending everything is affordable on the same argument that rules out a vector
+database: 30 to 120 facts fit with room to spare. Revisit above ~400 facts per
+page, the same threshold set above.
 
 ### The refusal rule
 
