@@ -30,11 +30,13 @@ export interface PublicPage {
  * Everything the public page renders, in one query.
  *
  * Only verified facts are ever exposed. An unreviewed price reaching a customer
- * is the single failure this product cannot recover from.
+ * is the single failure this product cannot recover from. Unpublished pages
+ * are excluded outright: a draft is not reviewed yet, so nothing on it --
+ * facts included -- is safe to show a visitor.
  */
 export async function getPublicPage(handle: string): Promise<PublicPage | null> {
   const page = await prismaRead.page.findUnique({
-    where: { handle: handle.toLowerCase() },
+    where: { handle: handle.toLowerCase(), published: true },
     select: {
       id: true,
       handle: true,

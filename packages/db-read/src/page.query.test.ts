@@ -37,6 +37,18 @@ beforeAll(async () => {
       },
     },
   });
+  await write.account.create({
+    data: {
+      email: 'unpublished@example.com',
+      pages: {
+        create: {
+          handle: 'draft',
+          displayName: 'Not Live Yet',
+          published: false,
+        },
+      },
+    },
+  });
 });
 
 afterAll(async () => {
@@ -59,6 +71,10 @@ describe('getPublicPage', () => {
 
   it('returns null for an unknown handle', async () => {
     expect(await getPublicPage('nobody')).toBeNull();
+  });
+
+  it('returns null for an unpublished page', async () => {
+    expect(await getPublicPage('draft')).toBeNull();
   });
 
   it('cannot write through the read-only connection', async () => {

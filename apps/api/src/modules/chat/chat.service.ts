@@ -32,7 +32,10 @@ export async function* answer(
   const { prisma, gateway } = deps;
 
   const page = await prisma.page.findUnique({
-    where: { handle: input.handle.toLowerCase() },
+    // An unpublished page is a draft: it has not been reviewed, so it must not
+    // answer visitor questions -- doing so both shows unreviewed facts and
+    // spends tokens on a page nobody was supposed to be able to reach yet.
+    where: { handle: input.handle.toLowerCase(), published: true },
     select: {
       id: true,
       displayName: true,

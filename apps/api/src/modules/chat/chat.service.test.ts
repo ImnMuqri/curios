@@ -65,6 +65,27 @@ beforeEach(async () => {
       },
     },
   });
+  await prisma.account.create({
+    data: {
+      email: 'unpublished@example.com',
+      pages: {
+        create: {
+          handle: 'draft',
+          displayName: 'Not Live Yet',
+          published: false,
+          facts: {
+            create: {
+              category: 'PRICE',
+              claim: 'Draft price RM1',
+              normalizedClaim: 'draft price rm1',
+              confidence: 0.9,
+              verified: true,
+            },
+          },
+        },
+      },
+    },
+  });
 });
 
 describe('answer', () => {
@@ -143,5 +164,17 @@ describe('answer', () => {
     await expect(
       collect(answer({ prisma, gateway }, { handle: 'nobody', question: 'hi' })),
     ).rejects.toThrow(PageNotFoundError);
+  });
+
+  it('treats an unpublished page the same as a missing one: no answer, no tokens spent', async () => {
+    const gateway = gatewaySaying('should not be used');
+    const chatSpy = vi.spyOn(gateway, 'chat');
+
+    await expect(
+      collect(answer({ prisma, gateway }, { handle: 'draft', question: 'harga?' })),
+    ).rejects.toThrow(PageNotFoundError);
+
+    expect(chatSpy).not.toHaveBeenCalled();
+    expect(await prisma.conversation.count()).toBe(0);
   });
 });
