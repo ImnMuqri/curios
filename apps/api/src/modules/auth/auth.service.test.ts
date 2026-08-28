@@ -57,4 +57,16 @@ describe('findOrCreateAccountForGoogle', () => {
       findOrCreateAccountForGoogle(prisma, { ...profile, emailVerified: false }),
     ).rejects.toThrow(/verified/i);
   });
+
+  it('resolves two concurrent sign-ins for the same profile to one account', async () => {
+    // The mundane trigger: a double-clicked "Sign in with Google" button
+    // fires two identical requests before either has committed.
+    const [first, second] = await Promise.all([
+      findOrCreateAccountForGoogle(prisma, profile),
+      findOrCreateAccountForGoogle(prisma, profile),
+    ]);
+
+    expect(second.accountId).toBe(first.accountId);
+    expect(await prisma.account.count()).toBe(1);
+  });
 });
