@@ -1,4 +1,9 @@
-import { normalizeClaim, parseFactBlocks, type IngestJobData } from '@curios/core';
+import {
+  normalizeClaim,
+  parseFactBlocks,
+  type IngestJobData,
+  type SourceDocument,
+} from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import type { Gateway } from '@curios/gateway';
 import type { SourceAdapter } from '../sources/types.js';
@@ -36,7 +41,22 @@ export async function runExtraction(
     data: { status: 'RUNNING' },
   });
 
-  const documents = await adapter.fetch(job.sourceUrl);
+  // The crawl gets its own failure path. It runs before any model call, so a
+  // failure here writes no ModelCall — a zero-token row would pollute the
+  // margin data this table exists to provide. But the Ingestion row must still
+  // reach a terminal state: the onboarding screen polls it, and the Instagram
+  // adapter throws NOT_CONFIGURED by design, so "crawl threw" is a guaranteed
+  // path rather than a hypothetical one. Left unhandled it spins forever.
+  let documents: SourceDocument[];
+  try {
+    documents = await adapter.fetch(job.sourceUrl);
+  } catch (error) {
+    await prisma.ingestion.update({
+      where: { id: job.ingestionId },
+      data: { status: 'FAILED', error: (error as Error).message.slice(0, 500) },
+    });
+    throw error;
+  }
 
   let raw: string;
   try {
