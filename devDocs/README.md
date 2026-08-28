@@ -85,6 +85,8 @@ around personality and then rewrite it for catalogs, hours, and prices.
 | Sources | Static facts vs live connectors, kept separate. See BACKEND.md. |
 | Namespace | One flat `/handle` for both modes. Mode is a column, URLs never change shape. |
 | Personal privacy | `noindex` by default on personal pages, opt-in only. |
+| Owner auth | Google only. No passwords, no magic links. Phone OTP still gates publishing. |
+| Admin auth | Its own table, its own login, its own cookie. Shares nothing with owner auth. See ADMIN.md. |
 
 ---
 

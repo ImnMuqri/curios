@@ -12,6 +12,7 @@ route, never inside a Fastify request that is also holding a transaction.
 
 ```
 Account        owner, plan, billing ref
+AuthIdentity   provider + subject id, one row per sign-in method
 Page           handle, mode (PERSONAL | BUSINESS), theme, language, published
 Link           label, url, icon, position
 Fact           the knowledge base. one atomic claim per row.
@@ -23,6 +24,7 @@ Lead           phone, extracted slots, score, status, conversationId
 Question       clustered text, ask count, answered flag, faqSlug
 UsageCounter   pageId + period, conversation count. the meter.
 Ingestion      source url, status, extracted count, error
+ModelCall      one row per provider call. tokens, cost, cache hits. the margin.
 ```
 
 ### Fact is the whole product
@@ -45,6 +47,56 @@ model Fact {
 room to spare. Retrieval is a Postgres query filtered by category and recency.
 Adding pgvector before you have a page that breaks this is premature and you will
 spend a week on chunking instead of on leads. Revisit above ~400 facts per page.
+
+---
+
+## Auth
+
+**Google only.** No passwords, no magic links, no email sending on the login
+path at all. The buyer is a shop owner on a phone, and a magic link costs them
+four app switches and fails silently when it lands in spam. Google is one tap
+and never leaves the page. It also means development needs no email provider
+configured before anyone can log in, so the dev and production login paths are
+the same path.
+
+This is not the post generator's argon2 password, and the divergence is
+deliberate. That product's non-goal list rules out building an identity
+provider; delegating to Google is the cheapest way to honour it.
+
+```prisma
+model AuthIdentity {
+  id             String   @id @default(cuid())
+  accountId      String
+  provider       AuthProvider   // GOOGLE. later EMAIL, APPLE, TIKTOK.
+  providerUserId String         // Google's `sub`. never the email.
+  email          String         // as asserted at link time
+  createdAt      DateTime @default(now())
+
+  @@unique([provider, providerUserId])
+}
+```
+
+Two rules, both of which are how this goes wrong in other products:
+
+**Key on `sub`, never on email.** A Google account's email can change. Key on
+email and a rename silently creates a second account, orphaning the first — and
+in a link-in-bio product that means the URL on their printed card now points at
+a page they cannot log into. `sub` is stable for the life of the account.
+
+**Never auto-link a new identity to an existing account by matching email.**
+That is a known takeover path: someone registers with your address through a
+provider that does not verify it, then your sign-in merges you into their
+account. Trust `email_verified` only when true, and link a second identity only
+while the owner is already signed in.
+
+Identity is a row, not a column, so adding Apple or TikTok later is a callback
+and a row rather than a migration.
+
+Publishing is still gated on **phone OTP**, unchanged. That gate exists to prove
+a reachable phone before a page goes public, which is a different question from
+who owns the account.
+
+Admin does not use any of this. See ADMIN.md.
 
 ---
 
@@ -309,6 +361,17 @@ dark.** A broken-looking page punishes the owner for being popular.
 
 Cost control: Haiku for chat, prompt caching on the fact block (it is stable per page
 between edits), cap tokens per answer, hard cap conversations per IP per day.
+
+Every provider call writes a `ModelCall`: model, token counts, cache read and
+write tokens, cost in milli-cents, latency, and whether it succeeded. Failures
+included. This is not optional instrumentation — "the asymmetry is the margin"
+is an unverifiable claim without it, and the admin margin screen has no history
+to show if it starts late.
+
+Note the trap it exists to catch. Prompt caching has a ~1024 token minimum
+prefix, so a page with only 30 facts can fall under it, silently cache nothing,
+and cost several times a comparable page per conversation.
+`cacheReadTokens / inputTokens` is the only place that becomes visible.
 
 ---
 
