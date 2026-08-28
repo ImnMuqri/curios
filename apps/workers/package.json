@@ -12,6 +12,7 @@
     "@curios/core": "workspace:*",
     "@curios/db": "workspace:*",
     "@curios/gateway": "workspace:*",
+    "@prisma/client": "^6.1.0",
     "bullmq": "^5.34.0",
     "cheerio": "^1.0.0",
     "ioredis": "^5.4.2",
