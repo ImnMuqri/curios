@@ -7,6 +7,10 @@ settings:
 importers:
 
   .:
+    dependencies:
+      '@curios/db':
+        specifier: workspace:*
+        version: link:packages/db
     devDependencies:
       dotenv:
         specifier: ^16.4.7
