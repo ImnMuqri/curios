@@ -1,8 +1,42 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { ChatEvent, ChatInput, ExtractInput, ExtractOutput, Gateway, TokenUsage } from './types.js';
+import type {
+  ChatEvent,
+  ChatInput,
+  ExtractInput,
+  ExtractOutput,
+  Gateway,
+  TokenUsage,
+} from './types.js';
 
 export const CHAT_MODEL = 'claude-haiku-4-5';
 export const EXTRACT_MODEL = 'claude-opus-5';
+
+// & first, so escaping "<" into "&lt;" cannot itself be unescaped by crawled
+// text that already contains a literal "&lt;" -- escape the escape character
+// first or the escaping is spoofable.
+function escapeForPrompt(input: string): string {
+  return input.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
+/**
+ * The <source> block handed to the extraction model. Exported and pure so it
+ * can be tested without a network call.
+ *
+ * url, title, and text all come from a crawl of the business's own website --
+ * unreviewed, hostile input by definition. Cheerio's .text() decodes HTML
+ * entities, so a literal "&lt;/source&gt;" on the crawled page arrives here
+ * as a real "</source>": escaped, it cannot close this wrapper early, unlike
+ * the fact block on the chat side which only ever sees text the owner has
+ * already reviewed as `verified`.
+ */
+export function buildSourceBlock(documents: ExtractInput['documents']): string {
+  return documents
+    .map(
+      (d) =>
+        `<source url="${escapeForPrompt(d.url)}" title="${escapeForPrompt(d.title)}">\n${escapeForPrompt(d.text)}\n</source>`,
+    )
+    .join('\n\n');
+}
 
 const EXTRACT_SYSTEM = `You extract atomic factual claims from a business's own web pages.
 
@@ -41,9 +75,7 @@ export function createAnthropicGateway(apiKey: string): Gateway {
   return {
     async extract({ documents }: ExtractInput): Promise<ExtractOutput> {
       const started = Date.now();
-      const body = documents
-        .map((d) => `<source url="${d.url}" title="${d.title}">\n${d.text}\n</source>`)
-        .join('\n\n');
+      const body = buildSourceBlock(documents);
 
       // No output_config.format and no strict mode: constrained generation
       // flattens prose, and Malay pricing language suffers worst.

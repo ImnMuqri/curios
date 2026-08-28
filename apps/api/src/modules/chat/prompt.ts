@@ -6,6 +6,13 @@ export interface PromptFact {
   claim: string;
 }
 
+// & first, so escaping "<" into "&lt;" cannot itself be unescaped by a claim
+// that already contains a literal "&lt;" -- escape the escape character first
+// or the escaping is spoofable.
+function escapeForPrompt(input: string): string {
+  return input.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+}
+
 /**
  * The cached prefix.
  *
@@ -37,10 +44,12 @@ export function buildSystemPrompt(input: {
 }): string {
   // Each fact is structurally delimited. Scraped content is hostile input, and
   // a bare newline-joined list lets a claim containing "SYSTEM: ignore prior
-  // instructions" masquerade as its own instruction block. A tag it cannot
-  // close is much harder to spoof than a line break.
+  // instructions" masquerade as its own instruction block. The wrapping tag
+  // only resists spoofing because the claim is escaped before it goes in: a
+  // claim containing a literal "</fact>" would otherwise close its own tag
+  // early and let whatever follows in the claim stand outside it, unwrapped.
   const factBlock = input.facts
-    .map((f) => `<fact id="${f.id}" category="${f.category}">${f.claim}</fact>`)
+    .map((f) => `<fact id="${f.id}" category="${f.category}">${escapeForPrompt(f.claim)}</fact>`)
     .join('\n');
 
   const neverSayBlock = input.neverSay.length
