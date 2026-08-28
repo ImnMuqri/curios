@@ -293,7 +293,7 @@ Pipeline per BACKEND.md, with slice 1 status:
 | # | Step | Slice 1 |
 |---|---|---|
 | 1 | `UsageCounter` check, over cap → FAQ | increments; **over-cap branch stubbed** |
-| 2 | rate limit by ip + page, leaky bucket in Redis | full |
+| 2 | rate limit by ip + page, leaky bucket in Redis | **deferred to plan 2** |
 | 3 | `PinnedAnswer` exact match → return, zero tokens | full |
 | 4 | load every verified fact for the page (no per-question subset) | full |
 | 5 | one Haiku call | full |
@@ -303,6 +303,17 @@ Pipeline per BACKEND.md, with slice 1 status:
 Step 1's branch is stubbed because devDocs names no cap number and there is no
 FAQ page to degrade to yet. Counting starts anyway; a cap cannot be chosen
 without volume data.
+
+**Step 2 was marked full in an earlier draft of this table. Nothing implements
+it** — a repo-wide grep for `rate.limit|rateLimit|leaky` returns no matches.
+This is a hard precondition for any public deployment of the chat route, not a
+plan-2 nicety: `POST /chat/:handle` is anonymous by design (that is the whole
+point of a public, link-in-bio ask bar) and so can never be protected by a
+session cookie the way an owner-facing route could be. `UsageCounter`
+increments on every conversation, but nothing reads it and the over-cap branch
+above is stubbed, so today an anonymous visitor — or a script — looping the
+endpoint burns Haiku tokens against the page owner's bill with no limit at
+all. Plan 2 must not treat this as optional polish.
 
 ### Prompt layout
 
@@ -325,9 +336,15 @@ before it re-warms. Correct trade, and cheap.
 
 Two things to know about the cache:
 
-- The minimum cacheable prefix is ~1024 tokens. A page with 30 facts may fall
-  under it and cache nothing at all. This is acceptable — those pages are cheap —
-  but it must not read as a bug later.
+- The minimum cacheable prefix for `claude-haiku-4-5` — the chat model this
+  slice uses — is **4096 tokens**, per the Claude API reference. A page with
+  30 facts may fall well under it and cache nothing at all. This is
+  acceptable — those pages are cheap — but it must not read as a bug later.
+  This minimum is **not monotonic across model generations**: 512 tokens on
+  Opus 5 / Fable 5 / Mythos 5, 1024 on Opus 4.8 / Sonnet 5, 4096 on Opus 4.6 /
+  4.5 and on Haiku 4.5. Do not assume a smaller or newer-sounding model has a
+  smaller minimum — check the reference for the model actually in use rather
+  than re-deriving this number from an older or unrelated model's figure.
 - Verify with `usage.cache_read_input_tokens`. If it is zero across repeated
   requests, something in the prefix is varying.
 
