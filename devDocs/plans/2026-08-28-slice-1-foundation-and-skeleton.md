@@ -777,7 +777,10 @@ The spec holds this boundary two ways, neither of which is a lint rule: a separa
 - Test: `packages/db-read/src/page.query.test.ts`
 
 **Interfaces:**
-- Consumes: `@curios/db` (Prisma types only).
+- Consumes: `@prisma/client` directly, and `@curios/core` for `FactCategory`.
+  **Not `@curios/db`** — `apps/web` depends on this package, and a dependency
+  on `@curios/db` would drag the read-write client across the boundary this
+  package exists to enforce.
 - Produces:
   - `getPublicPage(handle: string): Promise<PublicPage | null>`
   - `interface PublicPage { id, handle, displayName, bio, language, mode, links: PublicLink[], facts: PublicFact[] }`
