@@ -2368,7 +2368,7 @@ git commit -m "feat(worker): extraction service, model call accounting, ingestio
 ### Task 9: Fastify app, Google OAuth, and the ingest endpoint
 
 **Files:**
-- Create: `apps/api/package.json`, `apps/api/tsconfig.json`, `apps/api/src/app.ts`, `apps/api/src/server.ts`, `apps/api/src/plugins/errors.ts`, `apps/api/src/plugins/prisma.ts`, `apps/api/src/plugins/redis.ts`, `apps/api/src/plugins/queue.ts`, `apps/api/src/modules/auth/auth.service.ts`, `apps/api/src/modules/auth/auth.routes.ts`, `apps/api/src/modules/ingest/ingest.service.ts`, `apps/api/src/modules/ingest/ingest.routes.ts`
+- Create: `apps/api/package.json`, `apps/api/tsconfig.json`, `apps/api/src/app.ts`, `apps/api/src/server.ts`, `apps/api/src/plugins/errors.ts`, `apps/api/src/plugins/prisma.ts`, `apps/api/src/plugins/queue.ts`, `apps/api/src/modules/auth/auth.service.ts`, `apps/api/src/modules/auth/auth.routes.ts`, `apps/api/src/modules/ingest/ingest.service.ts`, `apps/api/src/modules/ingest/ingest.routes.ts`
 - Test: `apps/api/src/modules/auth/auth.service.test.ts`, `apps/api/src/modules/ingest/ingest.service.test.ts`
 
 **Interfaces:**
@@ -2533,6 +2533,42 @@ export async function findOrCreateAccountForGoogle(
   const emailTaken = await prisma.account.findUnique({ where: { email: profile.email } });
   const email = emailTaken ? `${profile.sub}+${profile.email}` : profile.email;
 
+  try {
+    return await createAccount(prisma, profile, email);
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+
+    // Someone else won a race between our lookup and our write. The mundane
+    // case is a double-clicked sign-in button firing two identical requests.
+    // Re-read first: if a concurrent request already created this identity,
+    // that is our account.
+    const raced = await prisma.authIdentity.findUnique({
+      where: { provider_providerUserId: { provider: 'GOOGLE', providerUserId: profile.sub } },
+      select: { accountId: true },
+    });
+    if (raced) return { accountId: raced.accountId };
+
+    // Otherwise a different subject claimed the address in the meantime.
+    // Disambiguate and try once more.
+    return createAccount(prisma, profile, `${profile.sub}+${profile.email}`);
+  }
+}
+
+/** Prisma's unique-constraint violation. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'code' in error &&
+    (error as { code: unknown }).code === 'P2002'
+  );
+}
+
+async function createAccount(
+  prisma: PrismaClient,
+  profile: GoogleProfile,
+  email: string,
+): Promise<{ accountId: string }> {
   const account = await prisma.account.create({
     data: {
       email,
