@@ -27,15 +27,7 @@ async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
 }
 
 beforeEach(async () => {
-  // UsageCounter carries no foreign key to Page/Account in the schema (no
-  // relation field, no FK constraint in the migration), so TRUNCATE ... CASCADE
-  // from Account never reaches it. Without truncating it explicitly here, rows
-  // accumulate across every test in this file -- and across every previous test
-  // run against the same test database -- which is exactly what broke the
-  // "increments once per conversation" assertion (found 6, then 7, accumulated
-  // rows instead of the 1 the test expects). This is a test-isolation fix only;
-  // it does not change chat.service.ts or the schema.
-  await prisma.$executeRawUnsafe('TRUNCATE "Account", "ModelCall", "UsageCounter" CASCADE');
+  await prisma.$executeRawUnsafe('TRUNCATE "Account", "ModelCall" CASCADE');
   await prisma.account.create({
     data: {
       email: 'n@example.com',
