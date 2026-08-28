@@ -119,4 +119,22 @@ describe('AskBar ask()', () => {
       expect(screen.getByText(text)).toBeDefined();
     });
   });
+
+  it('replaces a partial answer with the error message when the stream fails mid-generation', async () => {
+    const encoder = new TextEncoder();
+    const textEvent = sseEvent({ type: 'text', text: 'Kek 1kg butter starts at ' });
+    const errorEvent = sseEvent({ type: 'error', message: 'That answer failed. Try again.' });
+
+    vi.mocked(fetch).mockResolvedValue(
+      mockOkResponse([encoder.encode(textEvent), encoder.encode(errorEvent)]),
+    );
+
+    render(<AskBar handle="nadia" questions={['a', 'b']} />);
+    submit();
+
+    await waitFor(() => {
+      expect(screen.getByText('That answer failed. Try again.')).toBeDefined();
+    });
+    expect(screen.queryByText(/Kek 1kg butter starts at/)).toBeNull();
+  });
 });

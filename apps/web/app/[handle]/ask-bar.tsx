@@ -58,8 +58,18 @@ export function AskBar({ handle, questions }: { handle: string; questions: strin
       for (const segment of segments) {
         if (!segment.startsWith('data: ')) continue;
         try {
-          const parsed = JSON.parse(segment.slice(6)) as { type: string; text?: string };
+          const parsed = JSON.parse(segment.slice(6)) as {
+            type: string;
+            text?: string;
+            message?: string;
+          };
           if (parsed.type === 'text' && parsed.text) setAnswer((a) => a + parsed.text);
+          if (parsed.type === 'error') {
+            // Replaces, not appends: a half-answer followed by an apology
+            // reads worse than the apology alone.
+            setAnswer(parsed.message ?? 'That answer failed. Try again.');
+            return;
+          }
           if (parsed.type === 'done') return;
         } catch {
           // A malformed or truncated payload is dropped; the stream continues.
