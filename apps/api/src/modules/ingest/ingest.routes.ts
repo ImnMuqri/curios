@@ -9,7 +9,9 @@ export const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
     '/ingest',
     {
       schema: {
-        body: z.object({ pageId: z.string().min(1), sourceUrl: z.string().min(1) }),
+        // pageId is capped because it becomes a Redis key with a day-long TTL in
+        // the per-page rate limiter; a cuid is 25 characters.
+        body: z.object({ pageId: z.string().min(1).max(64), sourceUrl: z.string().min(1).max(2048) }),
         response: { 202: z.object({ ingestionId: z.string() }), 400: errorSchema },
       },
     },
@@ -25,6 +27,11 @@ export const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/ingest/:id',
     {
+      // Polling a status costs nothing -- no crawl, no model call -- so it is
+      // exempt from the limiters guarding this scope. Sharing them would let an
+      // owner watching their own ingestion exhaust the budget for starting the
+      // next one, and a GET has no body for the per-page limiter to key on.
+      config: { rateLimit: false },
       schema: {
         params: z.object({ id: z.string() }),
         response: {

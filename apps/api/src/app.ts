@@ -39,8 +39,7 @@ export async function buildApp() {
   // is told to trust a proxy. Behind a load balancer or CDN every request
   // would otherwise carry the proxy's address, and the limiters would throttle
   // all visitors as though they were one caller. Off by default so local
-  // development is unaffected and nothing can spoof its own address; set it
-  // per deployment, to the number of proxy hops in front of this app.
+  // development is unaffected and nothing can spoof its own address.
   const options: FastifyServerOptions = { logger: true, trustProxy: resolveTrustProxy() };
   const app = Fastify(options).withTypeProvider<ZodTypeProvider>();
 
