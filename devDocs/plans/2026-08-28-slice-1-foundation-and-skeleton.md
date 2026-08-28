@@ -532,6 +532,7 @@ model Page {
   neverSay      NeverSay[]
   conversations Conversation[]
   ingestions    Ingestion[]
+  usageCounters UsageCounter[]
 }
 
 model Link {
@@ -609,10 +610,11 @@ model Message {
 }
 
 model UsageCounter {
-  id        String @id @default(cuid())
-  pageId    String
-  period    String
-  count     Int    @default(0)
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  period String
+  count  Int    @default(0)
 
   @@unique([pageId, period])
 }
