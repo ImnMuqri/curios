@@ -51,11 +51,16 @@ const account = await prisma.account.upsert({
 const pageId = account.pages[0]?.id;
 
 // Realistic, directly owner-verified facts (as if reviewed by hand, not
-// crawled) — enough volume to clear Haiku's ~2048-token prompt-caching
-// minimum, so the cached system-prompt prefix can actually be exercised in
-// dev instead of only in theory. Not exhaustive, not deduplicated against
-// whatever a real crawl of the seeded sourceUrl produced; createMany with
-// skipDuplicates makes re-running this script safe.
+// crawled). The first 42 were sized for a ~2048-token caching minimum, which
+// turned out to be wrong for this model: the Claude API reference puts
+// claude-haiku-4-5's minimum cacheable prefix at 4096 tokens (the minimum is
+// not monotonic across model generations — 512 on the newest models, 1024 on
+// Opus 4.8 and Sonnet 5, 4096 on Haiku 4.5). The second batch below exists
+// purely to push the system prompt comfortably past that real minimum, so
+// the cached prefix can actually be exercised in dev instead of only in
+// theory. Not exhaustive, not deduplicated against whatever a real crawl of
+// the seeded sourceUrl produced; createMany with skipDuplicates makes
+// re-running this script safe.
 type SeedCategory = 'PRICE' | 'HOURS' | 'LOCATION' | 'POLICY' | 'PRODUCT' | 'PERSON' | 'MISC';
 
 const seedFacts: Array<{ category: SeedCategory; claim: string }> = [
@@ -101,6 +106,79 @@ const seedFacts: Array<{ category: SeedCategory; claim: string }> = [
   { category: 'PERSON', claim: 'Semua tempahan diuruskan terus oleh Nadia melalui WhatsApp.' },
   { category: 'MISC', claim: 'Nadia Bakes bermula sebagai perniagaan rumah pada tahun 2018.' },
   { category: 'MISC', claim: 'Susu pekat dan mentega yang digunakan adalah jenama tempatan berkualiti.' },
+
+  // --- Second batch: pushes the system prompt past the real 4096-token
+  // caching minimum for claude-haiku-4-5 (see comment above). ---
+  { category: 'PRICE', claim: 'Kek marble 1kg harganya RM90.' },
+  { category: 'PRICE', claim: 'Kek marble 2kg harganya RM150.' },
+  { category: 'PRICE', claim: 'Kek oreo cheesecake 1kg harganya RM130.' },
+  { category: 'PRICE', claim: 'Kek nutella 1kg harganya RM125.' },
+  { category: 'PRICE', claim: 'Mini cupcake sekotak 24 biji harganya RM70.' },
+  { category: 'PRICE', claim: 'Cookies jar 500 gram harganya RM35.' },
+  { category: 'PRICE', claim: 'Kek lapis Sarawak 1kg harganya RM140.' },
+  { category: 'PRICE', claim: 'Kek tart durian 8 inci harganya RM150.' },
+  { category: 'PRICE', claim: 'Kek tart durian 10 inci harganya RM190.' },
+  { category: 'PRICE', claim: 'Bijirin granola bar sekotak 10 keping harganya RM40.' },
+  { category: 'PRICE', claim: 'Muffin pandan sedozen harganya RM55.' },
+  { category: 'PRICE', claim: 'Caj hiasan fondant figure tambahan bermula RM20.' },
+  { category: 'PRICE', claim: 'Caj penghantaran ekspres pada hari yang sama ialah RM25 tambahan.' },
+  { category: 'PRICE', claim: 'Pakej hampers raya bermula RM120.' },
+  { category: 'PRICE', claim: 'Pakej hampers krismas bermula RM130.' },
+  { category: 'HOURS', claim: 'Waktu operasi semasa bulan Ramadan ialah 10 pagi hingga 4 petang.' },
+  { category: 'HOURS', claim: 'Tempahan untuk acara korporat perlu dibuat sekurang-kurangnya seminggu lebih awal.' },
+  { category: 'HOURS', claim: 'Talian WhatsApp dibalas dalam masa 24 jam pada waktu bekerja.' },
+  { category: 'HOURS', claim: 'Kedai bercuti sepenuhnya semasa cuti tahunan pertengahan tahun selama seminggu.' },
+  { category: 'HOURS', claim: 'Pesanan yang dibuat sebelum 2 petang diproses pada hari yang sama.' },
+  { category: 'LOCATION', claim: 'Titik pertemuan self pick-up ialah di lobi kondominium berhampiran kedai.' },
+  { category: 'LOCATION', claim: 'Kawasan penghantaran percuma ialah dalam radius 5 kilometer dari kedai.' },
+  { category: 'LOCATION', claim: 'Tiada perkhidmatan penghantaran ke Pulau Pinang atau negeri utara.' },
+  { category: 'LOCATION', claim: 'Tempat letak kereta tersedia berhampiran lokasi pick-up.' },
+  { category: 'LOCATION', claim: 'Semua pesanan penghantaran menggunakan Lalamove atau Grab Express.' },
+  { category: 'POLICY', claim: 'Pembatalan tempahan selepas bayaran disahkan dikenakan caj pemprosesan 20 peratus.' },
+  { category: 'POLICY', claim: 'Kek dengan design custom memerlukan deposit 50 peratus semasa tempahan.' },
+  { category: 'POLICY', claim: 'Aduan mengenai kualiti produk perlu dilaporkan dalam masa 24 jam selepas penerimaan.' },
+  { category: 'POLICY', claim: 'Gambar rujukan design custom perlu dihantar sekurang-kurangnya 3 hari sebelum tarikh siap.' },
+  { category: 'POLICY', claim: 'Tempahan pukal melebihi 10 kek layak untuk diskaun 10 peratus.' },
+  { category: 'POLICY', claim: 'Bayaran ansuran tidak ditawarkan buat masa ini.' },
+  { category: 'POLICY', claim: 'Resit rasmi disediakan atas permintaan untuk tempahan korporat.' },
+  { category: 'POLICY', claim: 'Produk tidak sesuai disimpan lebih daripada 3 hari tanpa peti sejuk.' },
+  { category: 'POLICY', claim: 'Setiap kek disertakan arahan penyimpanan bertulis.' },
+  { category: 'POLICY', claim: 'Perubahan kuantiti pesanan selepas disahkan tertakluk kepada ketersediaan bahan.' },
+  { category: 'POLICY', claim: 'Tiada caj tambahan untuk lilin hari jadi standard.' },
+  { category: 'POLICY', claim: 'Susu, telur, dan gluten digunakan dalam kebanyakan produk melainkan dinyatakan sebaliknya.' },
+  { category: 'POLICY', claim: 'Senarai bahan penuh boleh diminta melalui WhatsApp sebelum tempahan.' },
+  { category: 'POLICY', claim: 'Kupon promosi tidak boleh digabungkan dengan diskaun pukal.' },
+  { category: 'POLICY', claim: 'Deposit tidak dikembalikan jika pembatalan dibuat kurang daripada 2 hari sebelum penghantaran.' },
+  { category: 'PRODUCT', claim: 'Kek marble tersedia dalam versi original dan pandan.' },
+  { category: 'PRODUCT', claim: 'Kek oreo cheesecake dibuat tanpa bake dan disimpan sejuk.' },
+  { category: 'PRODUCT', claim: 'Kek nutella menggunakan lapisan ganache coklat hazelnut.' },
+  { category: 'PRODUCT', claim: 'Mini cupcake sesuai untuk goodie bag dan pesta kanak-kanak.' },
+  { category: 'PRODUCT', claim: 'Cookies jar tersedia dalam perisa chocolate chip dan double choc.' },
+  { category: 'PRODUCT', claim: 'Kek lapis Sarawak tersedia dalam corak pelangi dan corak klasik.' },
+  { category: 'PRODUCT', claim: 'Kek tart durian menggunakan durian Musang King mengikut musim.' },
+  { category: 'PRODUCT', claim: 'Muffin pandan menggunakan santan segar.' },
+  { category: 'PRODUCT', claim: 'Semua kek boleh ditambah writing text percuma untuk ucapan ringkas.' },
+  { category: 'PRODUCT', claim: 'Design fondant custom dikenakan caj berasingan mengikut tahap kerumitan.' },
+  { category: 'PRODUCT', claim: 'Kek vegan tersedia atas tempahan khas dengan tempoh siap lebih lama.' },
+  { category: 'PRODUCT', claim: 'Pilihan less-sugar tersedia untuk kebanyakan kek butter.' },
+  { category: 'PRODUCT', claim: 'Hampers raya termasuk kombinasi kuih kering dan brownies mini.' },
+  { category: 'PRODUCT', claim: 'Hampers krismas termasuk kek buah dan cookies jar.' },
+  { category: 'PRODUCT', claim: 'Kek kecil dibungkus dalam kotak mika telus.' },
+  { category: 'PRODUCT', claim: 'Kek besar dibungkus dalam kotak kadbod berlogo.' },
+  { category: 'PRODUCT', claim: 'Topping segar seperti strawberi dan blueberi tersedia mengikut musim.' },
+  { category: 'PRODUCT', claim: 'Kek boleh dipesan tanpa lapisan fondant untuk tampilan naked cake.' },
+  { category: 'PRODUCT', claim: 'Saiz kek 4 inci tersedia untuk hantaran individu atau smash cake.' },
+  { category: 'PRODUCT', claim: 'Kek saiz 4 inci sesuai untuk 2 hingga 4 orang.' },
+  { category: 'PERSON', claim: 'Nadia mendapat latihan asas daripada kelas baking di Kuala Lumpur.' },
+  { category: 'PERSON', claim: 'Nadia dibantu oleh seorang pembantu sambilan semasa musim perayaan.' },
+  { category: 'PERSON', claim: 'Semua kerja hiasan fondant dilakukan sendiri oleh Nadia.' },
+  { category: 'PERSON', claim: 'Nadia turut aktif menjawab soalan pelanggan melalui Instagram DM.' },
+  { category: 'PERSON', claim: 'Operasi pernah ditangguhkan sementara semasa cuti bersalin Nadia pada 2021.' },
+  { category: 'MISC', claim: 'Nadia Bakes memenangi anugerah peniaga rumah terbaik daerah pada 2022.' },
+  { category: 'MISC', claim: 'Bahan pembungkusan sebahagian besarnya boleh dikitar semula.' },
+  { category: 'MISC', claim: 'Nadia Bakes menyertai bazar Ramadan tempatan setiap tahun.' },
+  { category: 'MISC', claim: 'Ulasan pelanggan dikumpul melalui borang Google Form selepas penghantaran.' },
+  { category: 'MISC', claim: 'Logo Nadia Bakes direka oleh rakan sekolah Nadia pada tahun 2018.' },
 ];
 
 if (pageId) {
