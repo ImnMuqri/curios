@@ -120,6 +120,17 @@ describe('AskBar ask()', () => {
     });
   });
 
+  it('shows the failure copy instead of throwing when fetch itself rejects', async () => {
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<AskBar handle="nadia" questions={['a', 'b']} />);
+    submit();
+
+    await waitFor(() => {
+      expect(screen.getByText('That answer failed. Try again.')).toBeDefined();
+    });
+  });
+
   it('replaces a partial answer with the error message when the stream fails mid-generation', async () => {
     const encoder = new TextEncoder();
     const textEvent = sseEvent({ type: 'text', text: 'Kek 1kg butter starts at ' });
