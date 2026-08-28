@@ -33,17 +33,37 @@ export function AskBar({ handle, questions }: { handle: string; questions: strin
       },
     );
 
+    if (!response.ok) {
+      setAnswer('That answer failed. Try again.');
+      return;
+    }
+
     const reader = response.body?.getReader();
     if (!reader) return;
     const decoder = new TextDecoder();
+    // SSE events routinely straddle chunk boundaries, so the tail of one read
+    // is carried over and prefixed onto the next rather than parsed as-is.
+    let buffer = '';
 
     for (;;) {
       const { done, value } = await reader.read();
       if (done) break;
-      for (const line of decoder.decode(value).split('\n\n')) {
-        if (!line.startsWith('data: ')) continue;
-        const event_ = JSON.parse(line.slice(6)) as { type: string; text?: string };
-        if (event_.type === 'text' && event_.text) setAnswer((a) => a + event_.text);
+
+      // { stream: true } holds back any multi-byte UTF-8 sequence cut in half
+      // by this chunk boundary until the bytes that complete it arrive.
+      buffer += decoder.decode(value, { stream: true });
+      const segments = buffer.split('\n\n');
+      buffer = segments.pop() ?? '';
+
+      for (const segment of segments) {
+        if (!segment.startsWith('data: ')) continue;
+        try {
+          const parsed = JSON.parse(segment.slice(6)) as { type: string; text?: string };
+          if (parsed.type === 'text' && parsed.text) setAnswer((a) => a + parsed.text);
+          if (parsed.type === 'done') return;
+        } catch {
+          // A malformed or truncated payload is dropped; the stream continues.
+        }
       }
     }
   }
