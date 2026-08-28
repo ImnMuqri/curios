@@ -29,6 +29,25 @@ function gatewayThatFails(): Gateway {
   };
 }
 
+/** Records the exact systemPrompt the gateway received, for asserting on it directly. */
+function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
+  let captured = '';
+  const gateway: Gateway = {
+    extract: vi.fn(),
+    chat: async function* ({ systemPrompt }) {
+      captured = systemPrompt;
+      yield { type: 'text' as const, text: 'ok' };
+      yield {
+        type: 'done' as const,
+        usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        model: 'claude-haiku-4-5',
+        latencyMs: 700,
+      };
+    },
+  };
+  return { gateway, prompt: () => captured };
+}
+
 async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
   const events = [];
   for await (const event of stream) events.push(event);
@@ -46,13 +65,27 @@ beforeEach(async () => {
           displayName: 'Nadia Bakes',
           published: true,
           facts: {
-            create: {
-              category: 'PRICE',
-              claim: 'Kek 1kg butter starts at RM95',
-              normalizedClaim: 'kek 1kg butter starts at rm95',
-              confidence: 0.9,
-              verified: true,
-            },
+            create: [
+              {
+                category: 'PRICE',
+                claim: 'Kek 1kg butter starts at RM95',
+                normalizedClaim: 'kek 1kg butter starts at rm95',
+                confidence: 0.9,
+                verified: true,
+              },
+              // Unverified: never reviewed by the owner. This is the fixture
+              // the most dangerous line in the product (`verified: true` in
+              // the facts query above) exists to guard -- deleting that
+              // filter must make this fact reach the gateway, and every test
+              // in this file must still be green if it does not.
+              {
+                category: 'PRICE',
+                claim: 'Unverified secret price RM1',
+                normalizedClaim: 'unverified secret price rm1',
+                confidence: 0.5,
+                verified: false,
+              },
+            ],
           },
           pinnedAnswers: {
             create: {
@@ -164,6 +197,15 @@ describe('answer', () => {
     await expect(
       collect(answer({ prisma, gateway }, { handle: 'nobody', question: 'hi' })),
     ).rejects.toThrow(PageNotFoundError);
+  });
+
+  it('never sends an unverified fact\'s claim to the gateway', async () => {
+    const { gateway, prompt } = gatewayCapturingPrompt();
+    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' }));
+
+    // Assert on the prompt the gateway actually received, not a rebuilt string.
+    expect(prompt()).not.toContain('Unverified secret price RM1');
+    expect(prompt()).toContain('Kek 1kg butter starts at RM95');
   });
 
   it('treats an unpublished page the same as a missing one: no answer, no tokens spent', async () => {
