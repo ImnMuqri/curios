@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@curios/core':
+        specifier: workspace:*
+        version: link:packages/core
       '@curios/db':
         specifier: workspace:*
         version: link:packages/db

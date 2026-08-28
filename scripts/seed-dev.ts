@@ -1,5 +1,6 @@
 import { config } from 'dotenv';
 import { join } from 'node:path';
+import { normalizeClaim } from '@curios/core';
 import { prisma } from '@curios/db';
 
 // Resolved from this file's own location, not the cwd, so `pnpm exec tsx
@@ -8,16 +9,10 @@ import { prisma } from '@curios/db';
 // trap vitest.setup.ts documents for the test suite.
 config({ path: join(import.meta.dirname, '..', '.env') });
 
-// Mirrors packages/core/src/normalize.ts's normalizeClaim without adding
-// another workspace dependency to this script.
-function normalizeClaim(input: string): string {
-  return input
-    .normalize('NFKC')
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .replace(/\s+/gu, ' ')
-    .trim();
-}
+// normalizeClaim is both the fact dedupe key and the pinned-answer match key
+// -- a copy of it that drifts from packages/core/src/normalize.ts is exactly
+// the divergence that package exists to prevent, so it is imported from
+// there rather than reimplemented locally.
 
 const account = await prisma.account.upsert({
   where: { email: 'nadia@example.com' },

@@ -15,6 +15,7 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\""
   },
   "dependencies": {
+    "@curios/core": "workspace:*",
     "@curios/db": "workspace:*"
   },
   "devDependencies": {
