@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 
@@ -56,5 +57,40 @@ describe('schema', () => {
         },
       }),
     ).rejects.toThrow();
+  });
+
+  it('cascades sessions, credentials and tokens when an account is deleted', async () => {
+    const account = await prisma.account.create({
+      data: {
+        email: `cascade-${randomUUID()}@example.com`,
+        sessions: { create: { id: `s-${randomUUID()}`, expiresAt: new Date(Date.now() + 60_000) } },
+        password: { create: { hash: 'not-a-real-hash' } },
+        authTokens: {
+          create: {
+            id: `t-${randomUUID()}`,
+            kind: 'EMAIL_VERIFICATION',
+            expiresAt: new Date(Date.now() + 60_000),
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    await prisma.account.delete({ where: { id: account.id } });
+
+    expect(await prisma.session.count({ where: { accountId: account.id } })).toBe(0);
+    expect(await prisma.passwordCredential.count({ where: { accountId: account.id } })).toBe(0);
+    expect(await prisma.authToken.count({ where: { accountId: account.id } })).toBe(0);
+  });
+
+  it('allows at most one password credential per account', async () => {
+    const account = await prisma.account.create({
+      data: { email: `onepw-${randomUUID()}@example.com`, password: { create: { hash: 'a' } } },
+      select: { id: true },
+    });
+
+    await expect(
+      prisma.passwordCredential.create({ data: { accountId: account.id, hash: 'b' } }),
+    ).rejects.toMatchObject({ code: 'P2002' });
   });
 });

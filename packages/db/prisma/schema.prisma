@@ -38,13 +38,22 @@ enum MessageRole {
   ASSISTANT
 }
 
+enum AuthTokenKind {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+}
+
 model Account {
-  id         String         @id @default(cuid())
-  email      String         @unique
-  name       String?
-  createdAt  DateTime       @default(now())
-  identities AuthIdentity[]
-  pages      Page[]
+  id              String               @id @default(cuid())
+  email           String               @unique
+  name            String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime             @default(now())
+  identities      AuthIdentity[]
+  pages           Page[]
+  sessions        Session[]
+  password        PasswordCredential?
+  authTokens      AuthToken[]
 }
 
 model AuthIdentity {
@@ -196,4 +205,45 @@ model ModelCall {
   createdAt        DateTime @default(now())
 
   @@index([pageId, createdAt])
+}
+
+/// The id is a SHA-256 of the cookie value, never the value itself. A database
+/// leak therefore yields no usable session, for the same reason a password is
+/// never stored in the clear.
+model Session {
+  id         String   @id
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@index([accountId])
+  @@index([expiresAt])
+}
+
+/// Its own table rather than a column on AuthIdentity, which is read on every
+/// Google sign-in. A secret in a routinely-selected row is a leak waiting for a
+/// careless select or a logged object.
+model PasswordCredential {
+  id        String   @id @default(cuid())
+  accountId String   @unique
+  account   Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  hash      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+/// Single-use, hashed at rest exactly as sessions are.
+model AuthToken {
+  id        String        @id
+  accountId String
+  account   Account       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  kind      AuthTokenKind
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([accountId, kind])
+  @@index([expiresAt])
 }
