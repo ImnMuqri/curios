@@ -20,6 +20,15 @@ function gatewaySaying(text: string): Gateway {
   };
 }
 
+function gatewayThatFails(): Gateway {
+  return {
+    extract: vi.fn(),
+    chat: async function* () {
+      throw new Error('provider unavailable');
+    },
+  };
+}
+
 async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
   const events = [];
   for await (const event of stream) events.push(event);
@@ -113,6 +122,20 @@ describe('answer', () => {
     const counters = await prisma.usageCounter.findMany();
     expect(counters).toHaveLength(1);
     expect(counters[0]?.count).toBe(2);
+  });
+
+  it('records a failed ModelCall and keeps the user message when the gateway throws mid-stream', async () => {
+    const gateway = gatewayThatFails();
+
+    await expect(
+      collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' })),
+    ).rejects.toThrow('provider unavailable');
+
+    const call = await prisma.modelCall.findFirstOrThrow();
+    expect(call.ok).toBe(false);
+
+    const messages = await prisma.message.findMany();
+    expect(messages.map((m) => m.role)).toEqual(['USER']);
   });
 
   it('throws for an unknown handle', async () => {

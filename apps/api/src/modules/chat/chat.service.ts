@@ -1,6 +1,6 @@
 import { normalizeClaim } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
-import type { Gateway } from '@curios/gateway';
+import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import { buildSystemPrompt } from './prompt.js';
 
 export type AnswerEvent =
@@ -95,23 +95,42 @@ export async function* answer(
   });
 
   let text = '';
-  for await (const event of gateway.chat({ systemPrompt, question: input.question })) {
-    if (event.type === 'text') {
-      text += event.text;
-      yield { type: 'text', text: event.text };
-    } else {
-      // Persisted after the stream closes, never before the first token.
-      // Same helper the worker uses -- one place computes cost, so the margin
-      // numbers cannot drift between the two processes that produce them.
-      await recordModelCall(prisma, {
-        pageId: page.id,
-        conversationId: conversation.id,
-        model: event.model,
-        usage: event.usage,
-        latencyMs: event.latencyMs,
-        ok: true,
-      });
+  try {
+    for await (const event of gateway.chat({ systemPrompt, question: input.question })) {
+      if (event.type === 'text') {
+        text += event.text;
+        yield { type: 'text', text: event.text };
+      } else {
+        // Persisted after the stream closes, never before the first token.
+        // Same helper the worker uses -- one place computes cost, so the margin
+        // numbers cannot drift between the two processes that produce them.
+        await recordModelCall(prisma, {
+          pageId: page.id,
+          conversationId: conversation.id,
+          model: event.model,
+          usage: event.usage,
+          latencyMs: event.latencyMs,
+          ok: true,
+        });
+      }
     }
+  } catch (error) {
+    // A call that fails mid-stream has already consumed tokens; recording
+    // nothing would lose both the cost and the fact that the failure
+    // happened, leaving the failure rate invisible in the one table meant to
+    // show it. The zeros are a known-unknown, not a lie: unlike a crawl
+    // failure where no model was ever called, a call genuinely happened here
+    // and we simply do not know its usage.
+    await recordModelCall(prisma, {
+      pageId: page.id,
+      conversationId: conversation.id,
+      model: CHAT_MODEL,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      latencyMs: 0,
+      ok: false,
+      errorCode: 'PROVIDER_UNAVAILABLE',
+    });
+    throw error;
   }
 
   await prisma.message.create({
