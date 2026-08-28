@@ -932,7 +932,11 @@ describe('getPublicPage', () => {
 });
 ```
 
-- [ ] **Step 6: Add the test read-only URL to `.env.example` and `.env`**
+- [ ] **Step 6: Verify the test read-only URL is present**
+
+Task 1 declares this variable; this task is the first to actually connect with
+it, now that Step 2 has created the role. Confirm both `.env.example` and `.env`
+carry it, and add it only if missing:
 
 ```
 DATABASE_URL_TEST_READONLY=postgresql://curios_readonly:curios_readonly@localhost:5453/curios_test
