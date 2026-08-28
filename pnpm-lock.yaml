@@ -38,6 +38,9 @@ importers:
       '@curios/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway
+      '@prisma/client':
+        specifier: ^6.1.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       bullmq:
         specifier: ^5.34.0
         version: 5.81.4
@@ -76,6 +79,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@curios/gateway':
+        specifier: workspace:*
+        version: link:../gateway
       '@prisma/client':
         specifier: ^6.1.0
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
