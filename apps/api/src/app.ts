@@ -1,5 +1,6 @@
 import Fastify from 'fastify';
 import cookie from '@fastify/cookie';
+import cors from '@fastify/cors';
 import {
   serializerCompiler,
   validatorCompiler,
@@ -18,6 +19,10 @@ export async function buildApp() {
   app.setSerializerCompiler(serializerCompiler);
 
   await app.register(cookie, { secret: process.env.SESSION_SECRET ?? 'dev-secret' });
+  await app.register(cors, {
+    origin: process.env.APP_URL ?? 'http://localhost:3000',
+    credentials: true,
+  });
   await app.register(errorsPlugin);
   await app.register(prismaPlugin);
   await app.register(queuePlugin);
