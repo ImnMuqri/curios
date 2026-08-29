@@ -839,6 +839,12 @@ export class WeakPasswordError extends Error {
 /** NIST 800-63B: length, screened against known breaches, and nothing else. */
 export const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ * A stalled Have I Been Pwned must not hold a signup open. Failing open only
+ * helps if it fails fast, and undici's default header timeout is minutes.
+ */
+export const BREACH_TIMEOUT_MS = 3000;
+
 /** OWASP, and the parameters ADMIN.md already specifies for the admin system. */
 const OPTIONS = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 
@@ -876,7 +882,7 @@ export async function burnTime(): Promise<void> {
  */
 export async function isBreached(
   plain: string,
-  fetcher: Fetcher = (url) => fetch(url),
+  fetcher: Fetcher = (url) => fetch(url, { signal: AbortSignal.timeout(BREACH_TIMEOUT_MS) }),
 ): Promise<boolean> {
   const sha1 = createHash('sha1').update(plain).digest('hex').toUpperCase();
   const prefix = sha1.slice(0, 5);
@@ -931,7 +937,7 @@ Add beside the other services, bound to localhost only as they are:
 
 ```yaml
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31
     container_name: curios-mailpit
     restart: unless-stopped
     ports:
@@ -961,8 +967,8 @@ MAIL_FROM=Curios <hello@curios.my>
 Create `apps/api/src/lib/mailer.test.ts`:
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import { createMailer } from './mailer.js';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { createMailer, smtpOptions } from './mailer.js';
 
 function recordingTransport() {
   const sent: Array<Record<string, string>> = [];
@@ -977,9 +983,28 @@ function recordingTransport() {
   };
 }
 
+const MAIL_KEYS = ['MAIL_FROM', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD'] as const;
+let saved: Partial<Record<(typeof MAIL_KEYS)[number], string | undefined>> = {};
+
+beforeEach(() => {
+  saved = Object.fromEntries(MAIL_KEYS.map((k) => [k, process.env[k]]));
+  for (const k of MAIL_KEYS) delete process.env[k];
+});
+
+afterEach(() => {
+  // fileParallelism is off, so a leaked value would follow us into every later
+  // test file in this package.
+  for (const k of MAIL_KEYS) {
+    if (saved[k] === undefined) delete process.env[k];
+    else process.env[k] = saved[k];
+  }
+});
+
 describe('createMailer', () => {
   it('sends the message with the configured sender', async () => {
-    process.env.MAIL_FROM = 'Curios <hello@curios.my>';
+    // Deliberately NOT the fallback in mailer.ts: if the two agree, the
+    // assertion passes whether or not MAIL_FROM is ever read.
+    process.env.MAIL_FROM = 'Curios Test <test@curios.test>';
     const { sent, transport } = recordingTransport();
 
     await createMailer(transport).send({
@@ -990,7 +1015,7 @@ describe('createMailer', () => {
 
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({
-      from: 'Curios <hello@curios.my>',
+      from: 'Curios Test <test@curios.test>',
       to: 'nadia@example.com',
       subject: 'Confirm your email',
       text: 'https://curios.my/verify?token=abc',
@@ -1008,6 +1033,54 @@ describe('createMailer', () => {
     await expect(
       createMailer(transport).send({ to: 'a@b.c', subject: 's', text: 't' }),
     ).rejects.toThrow('connection refused');
+  });
+});
+
+describe('smtpOptions', () => {
+  it('reaches Mailpit in cleartext, because local Mailpit offers no TLS', () => {
+    process.env.SMTP_HOST = 'localhost';
+    process.env.SMTP_PORT = '1075';
+
+    expect(smtpOptions()).toMatchObject({
+      host: 'localhost',
+      port: 1075,
+      secure: false,
+      requireTLS: false,
+      auth: undefined,
+    });
+  });
+
+  it('uses implicit TLS on 465', () => {
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_PORT = '465';
+    process.env.SMTP_USER = 'apikey';
+    process.env.SMTP_PASSWORD = 'secret';
+
+    expect(smtpOptions()).toMatchObject({ port: 465, secure: true });
+  });
+
+  it('demands STARTTLS on 587 whenever credentials are in play', () => {
+    process.env.SMTP_HOST = 'smtp.example.com';
+    process.env.SMTP_PORT = '587';
+    process.env.SMTP_USER = 'apikey';
+    process.env.SMTP_PASSWORD = 'secret';
+
+    // Without requireTLS, a server that does not advertise STARTTLS gets the
+    // username and password in cleartext.
+    expect(smtpOptions()).toMatchObject({
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      auth: { user: 'apikey', pass: 'secret' },
+    });
+  });
+
+  it('falls back to the Mailpit port when SMTP_PORT is set but empty', () => {
+    process.env.SMTP_HOST = 'localhost';
+    process.env.SMTP_PORT = '';
+
+    // Number('') is 0, and nodemailer treats a falsy port as "use 587".
+    expect(smtpOptions().port).toBe(1075);
   });
 });
 ```
@@ -1038,6 +1111,49 @@ export type Transport = {
   sendMail(options: { from: string; to: string; subject: string; text: string }): Promise<unknown>;
 };
 
+/** Mailpit's SMTP port in docker-compose.yml, offset from the default for the
+ *  same reason Postgres and Redis are. */
+const MAILPIT_PORT = 1075;
+
+export interface SmtpOptions {
+  host: string;
+  port: number;
+  secure: boolean;
+  requireTLS: boolean;
+  auth: { user: string; pass: string } | undefined;
+}
+
+/**
+ * How this process connects to an SMTP server, resolved from the environment.
+ *
+ * Split out from `createMailer` so the TLS decision is testable without opening
+ * a socket. It is the part worth testing: the same variables point at a
+ * credential-free Mailpit locally and at a hosted sender in production, and
+ * those two want opposite transport settings.
+ */
+export function smtpOptions(): SmtpOptions {
+  // Number('') is 0 and nodemailer reads a falsy port as "use 587", so an
+  // SMTP_PORT that is present but empty would silently reach the wrong port.
+  const parsed = Number.parseInt(process.env.SMTP_PORT ?? '', 10);
+  const port = Number.isInteger(parsed) && parsed > 0 ? parsed : MAILPIT_PORT;
+
+  const user = process.env.SMTP_USER;
+  const auth = user ? { user, pass: process.env.SMTP_PASSWORD ?? '' } : undefined;
+
+  return {
+    host: process.env.SMTP_HOST ?? 'localhost',
+    port,
+    // 465 is implicit TLS; every other port negotiates upward or stays plain.
+    secure: port === 465,
+    // Only ever cleartext where there is nothing to protect. Once credentials
+    // are configured, a server that does not offer STARTTLS must fail the
+    // connection rather than receive the password in the clear. Local Mailpit
+    // has no credentials and no TLS, so it stays reachable.
+    requireTLS: Boolean(auth) && port !== 465,
+    auth,
+  };
+}
+
 /**
  * The only module that knows how mail leaves this system.
  *
@@ -1052,16 +1168,7 @@ export type Transport = {
  * for no gain.
  */
 export function createMailer(transport?: Transport): Mailer {
-  const resolved: Transport =
-    transport ??
-    createTransport({
-      host: process.env.SMTP_HOST ?? 'localhost',
-      port: Number(process.env.SMTP_PORT ?? 1075),
-      secure: false,
-      auth: process.env.SMTP_USER
-        ? { user: process.env.SMTP_USER, pass: process.env.SMTP_PASSWORD ?? '' }
-        : undefined,
-    });
+  const resolved: Transport = transport ?? createTransport(smtpOptions());
 
   return {
     async send(message: MailMessage): Promise<void> {
@@ -1079,7 +1186,7 @@ export function createMailer(transport?: Transport): Mailer {
 - [ ] **Step 7: Run the test to verify it passes**
 
 Run: `pnpm --filter @curios/api test src/lib/mailer.test.ts`
-Expected: PASS, 2 tests.
+Expected: PASS, 6 tests.
 
 - [ ] **Step 8: Verify against real Mailpit by hand**
 
