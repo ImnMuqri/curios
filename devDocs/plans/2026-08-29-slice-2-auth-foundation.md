@@ -794,7 +794,10 @@ describe('breach screening', () => {
     await isBreached('password', fetcher);
 
     expect(requested).toBe('https://api.pwnedpasswords.com/range/5BAA6');
-    expect(requested).not.toContain('password');
+    // The path, not the whole URL: the HIBP hostname api.pwnedpasswords.com
+    // itself contains the substring, so asserting on the whole URL can never
+    // pass. What must not leak is the part we build, which is the path.
+    expect(new URL(requested).pathname).not.toContain('password');
   });
 
   it('fails open when the service is unreachable', async () => {
