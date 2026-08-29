@@ -1,4 +1,15 @@
 import type { PrismaClient } from '@curios/db';
+import type { Mailer } from '../../lib/mailer.js';
+import {
+  burnTime,
+  hashPassword,
+  isBreached,
+  MIN_PASSWORD_LENGTH,
+  verifyPassword,
+  WeakPasswordError,
+  type Fetcher,
+} from './password.service.js';
+import { issueToken } from './token.service.js';
 
 export interface GoogleProfile {
   sub: string;
@@ -90,6 +101,123 @@ async function createAccount(
     },
     select: { id: true },
   });
+
+  return { accountId: account.id };
+}
+
+export class InvalidCredentialsError extends Error {
+  readonly statusCode = 401;
+  readonly code = 'INVALID_CREDENTIALS';
+
+  constructor() {
+    super('Check your email and password. If you just signed up, confirm your address first.');
+    this.name = 'InvalidCredentialsError';
+  }
+}
+
+const normaliseEmail = (email: string): string => email.trim().toLowerCase();
+
+/**
+ * Always resolves, whether or not the address was already taken.
+ *
+ * The HTTP response cannot distinguish the two cases, so the signup form cannot
+ * be used to discover who has an account. The email carries the truth instead,
+ * and only the person who can read that inbox learns anything.
+ *
+ * An existing address writes NO row. `Account.email` is unique, so a second
+ * insert would either fail or force the disambiguation the Google path uses,
+ * producing a duplicate account the owner could never explain.
+ */
+export async function signUpWithPassword(
+  deps: { prisma: PrismaClient; mailer: Mailer; fetcher?: Fetcher },
+  input: { email: string; password: string },
+): Promise<void> {
+  const email = normaliseEmail(input.email);
+
+  if (input.password.length < MIN_PASSWORD_LENGTH) {
+    throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+  if (await isBreached(input.password, deps.fetcher)) {
+    throw new WeakPasswordError('That password has appeared in a public breach. Pick another.');
+  }
+
+  const existing = await deps.prisma.account.findUnique({
+    where: { email },
+    select: { id: true, emailVerifiedAt: true, password: { select: { id: true } } },
+  });
+
+  if (existing) {
+    // Two different existing-account cases, one identical HTTP response.
+    //
+    // An account that is unverified and has a password is almost always the
+    // same person retrying -- often because the first attempt 500'd when mail
+    // failed *after* the account was written. Telling them to sign in would
+    // trap them: they cannot, because they are unverified, and the address is
+    // taken so they cannot start over either. Re-send the link instead.
+    //
+    // Only the mail differs. The response is byte-identical either way, so the
+    // form still cannot be used to discover who has an account, and the only
+    // person who learns anything is whoever can read that inbox.
+    if (!existing.emailVerifiedAt && existing.password) {
+      const retry = await issueToken(deps.prisma, existing.id, 'EMAIL_VERIFICATION');
+      await deps.mailer.send({
+        to: email,
+        subject: 'Confirm your email',
+        text: `Confirm your address to finish setting up Curios:
+
+${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
+      });
+      return;
+    }
+
+    await deps.mailer.send({
+      to: email,
+      subject: 'You already have a Curios account',
+      text: 'Someone tried to sign up with this address. You already have an account -- sign in instead. If that was not you, you can ignore this message.',
+    });
+    return;
+  }
+
+  const account = await deps.prisma.account.create({
+    data: { email, password: { create: { hash: await hashPassword(input.password) } } },
+    select: { id: true },
+  });
+
+  const token = await issueToken(deps.prisma, account.id, 'EMAIL_VERIFICATION');
+  await deps.mailer.send({
+    to: email,
+    subject: 'Confirm your email',
+    text: `Confirm your address to finish setting up Curios:\n\n${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${token}`,
+  });
+}
+
+/**
+ * One failure for every cause, including an unverified address.
+ *
+ * Distinguishing "no such account" from "wrong password" hands an attacker a
+ * list of real addresses. Distinguishing "not verified" does the same, which is
+ * why the single message tells everyone to check verification too.
+ */
+export async function signInWithPassword(
+  prisma: PrismaClient,
+  input: { email: string; password: string },
+): Promise<{ accountId: string }> {
+  const email = normaliseEmail(input.email);
+
+  const account = await prisma.account.findUnique({
+    where: { email },
+    select: { id: true, emailVerifiedAt: true, password: { select: { hash: true } } },
+  });
+
+  if (!account?.password) {
+    // Spend the time a real verification would have spent, or the response time
+    // is an oracle and the identical message above is decoration.
+    await burnTime();
+    throw new InvalidCredentialsError();
+  }
+
+  const ok = await verifyPassword(account.password.hash, input.password);
+  if (!ok || !account.emailVerifiedAt) throw new InvalidCredentialsError();
 
   return { accountId: account.id };
 }

@@ -10,8 +10,10 @@ import {
 import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
-import { requireSession, sessionPlugin } from './plugins/session.js';
+import { sessionPlugin } from './plugins/session.js';
 import {
+  authPerEmailLimit,
+  authPerIpLimit,
   chatPerIpLimit,
   chatPerPageLimit,
   ingestPerIpLimit,
@@ -20,6 +22,7 @@ import {
 } from './plugins/rate-limit.js';
 import { ingestRoutes } from './modules/ingest/ingest.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
+import { authRoutes, type AuthRouteOptions } from './modules/auth/auth.routes.js';
 
 /**
  * Blank or unset trusts nothing. `true` trusts whatever sits in front, which
@@ -35,7 +38,11 @@ function resolveTrustProxy(): FastifyServerOptions['trustProxy'] {
   return raw;
 }
 
-export async function buildApp() {
+export interface AppOverrides {
+  auth?: AuthRouteOptions;
+}
+
+export async function buildApp(overrides: AppOverrides = {}) {
   // Rate limits key off `request.ip`, which is the socket peer unless Fastify
   // is told to trust a proxy. Behind a load balancer or CDN every request
   // would otherwise carry the proxy's address, and the limiters would throttle
@@ -66,10 +73,6 @@ export async function buildApp() {
   // and take the API out of rotation for being healthy.
   app.get('/health', async () => ({ ok: true }));
 
-  app.get('/auth/me', { preHandler: requireSession }, async (request) => ({
-    accountId: request.account?.id,
-  }));
-
   // The limiters are registered inside a scope holding only the routes they
   // guard. Fastify's encapsulation keeps them off every other route, so no
   // route needs to opt out and /health above cannot be throttled by accident.
@@ -83,6 +86,12 @@ export async function buildApp() {
     await scope.register(rateLimit, chatPerPageLimit(app.rateLimitRedis));
     await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
     await scope.register(chatRoutes);
+  });
+
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, authPerIpLimit(app.rateLimitRedis));
+    await scope.register(rateLimit, authPerEmailLimit(app.rateLimitRedis));
+    await scope.register(authRoutes, overrides.auth ?? {});
   });
 
   return app;

@@ -203,3 +203,38 @@ export function ingestPerPageLimit(redis: IORedis): RateLimitPluginOptions {
     ),
   };
 }
+
+/**
+ * Credential stuffing is the case this exists for: many addresses, one source.
+ */
+export function authPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('auth-ip:'),
+    max: limit('RATE_LIMIT_AUTH_PER_IP', 20),
+    timeWindow: '15 minutes',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many attempts. Try again in ${after}.`),
+  };
+}
+
+/**
+ * And the other shape: one address, many sources. Runs at preHandler because
+ * the address is in the body, which onRequest has not parsed yet.
+ */
+export function authPerEmailLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('auth-email:'),
+    max: limit('RATE_LIMIT_AUTH_PER_EMAIL', 10),
+    timeWindow: '15 minutes',
+    keyGenerator: (request) =>
+      ((request.body as { email?: string } | undefined)?.email ?? caller(request)).toLowerCase(),
+    errorResponseBuilder: tooMany((after) => `Too many attempts. Try again in ${after}.`),
+  };
+}
