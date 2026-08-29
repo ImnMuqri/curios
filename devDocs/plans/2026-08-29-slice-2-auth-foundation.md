@@ -528,7 +528,7 @@ export async function revokeAllSessions(
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm --filter @curios/api test src/modules/auth/session.service.test.ts`
-Expected: PASS, 8 tests.
+Expected: PASS, 9 tests.
 
 - [ ] **Step 6: Commit**
 
@@ -1436,13 +1436,21 @@ let app: FastifyInstance;
 
 const GOOD_PASSWORD = 'a-long-enough-passphrase';
 
+let nth = 0;
+/** A fresh source address per request, so the limiter never sees a flood. */
+const from = () => `203.0.113.${(nth++ % 200) + 1}`;
+
 /** Records what was sent instead of reaching a real SMTP server. */
 const sent: Array<{ to: string; subject: string; text: string }> = [];
 
 beforeAll(async () => {
   app = await buildApp({
     auth: {
-      mailer: { async send(message) { sent.push(message); } },
+      mailer: {
+        async send(message: { to: string; subject: string; text: string }) {
+          sent.push(message);
+        },
+      },
       // No request leaves the suite: HIBP is a third party, and a test that
       // depends on its uptime is a test that fails on a train.
       fetcher: async () => ({ ok: true, text: async () => '' }),
@@ -1472,6 +1480,7 @@ describe('POST /auth/signup', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/signup',
+      remoteAddress: from(),
       payload: { email: `new-${randomUUID()}@example.com`, password: GOOD_PASSWORD },
     });
 
@@ -1487,11 +1496,13 @@ describe('POST /auth/signup', () => {
     const taken = await app.inject({
       method: 'POST',
       url: '/auth/signup',
+      remoteAddress: from(),
       payload: { email, password: GOOD_PASSWORD },
     });
     const fresh = await app.inject({
       method: 'POST',
       url: '/auth/signup',
+      remoteAddress: from(),
       payload: { email: `other-${randomUUID()}@example.com`, password: GOOD_PASSWORD },
     });
 
@@ -1503,15 +1514,46 @@ describe('POST /auth/signup', () => {
   it('writes no second account for an address that already has one', async () => {
     const email = await aVerifiedAccountWithPassword();
 
-    await app.inject({ method: 'POST', url: '/auth/signup', payload: { email, password: GOOD_PASSWORD } });
+    await app.inject({
+      method: 'POST',
+      url: '/auth/signup',
+      remoteAddress: from(),
+      payload: { email, password: GOOD_PASSWORD },
+    });
 
     expect(await app.prisma.account.count({ where: { email } })).toBe(1);
+  });
+
+  it('re-sends the verification link to an unverified address, rather than telling it to sign in', async () => {
+    // The F2 trap: a signup whose mail failed after the account was written
+    // leaves someone who cannot sign in (unverified) and cannot start over
+    // (address taken). Telling them to sign in strands them, so the retry has
+    // to re-send the link. Only the mail differs -- the HTTP response is
+    // identical either way, which the enumeration test above pins down.
+    const email = `retry-${randomUUID()}@example.com`;
+    await app.prisma.account.create({
+      data: { email, password: { create: { hash: await hashPassword(GOOD_PASSWORD) } } },
+    });
+    sent.length = 0;
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/signup',
+      remoteAddress: from(),
+      payload: { email, password: GOOD_PASSWORD },
+    });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.to).toBe(email);
+    expect(sent[0]?.subject).toBe('Confirm your email');
+    expect(sent[0]?.text).toContain('/verify?token=');
   });
 
   it('rejects a password shorter than the minimum', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/signup',
+      remoteAddress: from(),
       payload: { email: `short-${randomUUID()}@example.com`, password: 'sh0rt' },
     });
 
@@ -1526,6 +1568,7 @@ describe('POST /auth/login', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/login',
+      remoteAddress: from(),
       payload: { email, password: GOOD_PASSWORD },
     });
 
@@ -1542,11 +1585,13 @@ describe('POST /auth/login', () => {
     const wrong = await app.inject({
       method: 'POST',
       url: '/auth/login',
+      remoteAddress: from(),
       payload: { email, password: 'not-the-right-password' },
     });
     const unknown = await app.inject({
       method: 'POST',
       url: '/auth/login',
+      remoteAddress: from(),
       payload: { email: `ghost-${randomUUID()}@example.com`, password: 'not-the-right-password' },
     });
 
@@ -1564,6 +1609,7 @@ describe('POST /auth/login', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/login',
+      remoteAddress: from(),
       payload: { email, password: GOOD_PASSWORD },
     });
 
@@ -1577,15 +1623,22 @@ describe('POST /auth/logout', () => {
     const login = await app.inject({
       method: 'POST',
       url: '/auth/login',
+      remoteAddress: from(),
       payload: { email, password: GOOD_PASSWORD },
     });
     const value = login.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '';
 
-    await app.inject({ method: 'POST', url: '/auth/logout', cookies: { [SESSION_COOKIE]: value } });
+    await app.inject({
+      method: 'POST',
+      url: '/auth/logout',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: value },
+    });
 
     const after = await app.inject({
       method: 'GET',
       url: '/auth/me',
+      remoteAddress: from(),
       cookies: { [SESSION_COOKIE]: value },
     });
     expect(after.statusCode).toBe(401);
