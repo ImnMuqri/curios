@@ -16,6 +16,12 @@ export class WeakPasswordError extends Error {
 /** NIST 800-63B: length, screened against known breaches, and nothing else. */
 export const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ * A stalled Have I Been Pwned must not hold a signup open. Failing open only
+ * helps if it fails fast, and undici's default header timeout is minutes.
+ */
+export const BREACH_TIMEOUT_MS = 3000;
+
 /** OWASP, and the parameters ADMIN.md already specifies for the admin system. */
 const OPTIONS = { memoryCost: 19456, timeCost: 2, parallelism: 1 } as const;
 
@@ -53,7 +59,7 @@ export async function burnTime(): Promise<void> {
  */
 export async function isBreached(
   plain: string,
-  fetcher: Fetcher = (url) => fetch(url),
+  fetcher: Fetcher = (url) => fetch(url, { signal: AbortSignal.timeout(BREACH_TIMEOUT_MS) }),
 ): Promise<boolean> {
   const sha1 = createHash('sha1').update(plain).digest('hex').toUpperCase();
   const prefix = sha1.slice(0, 5);

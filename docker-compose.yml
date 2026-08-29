@@ -45,7 +45,7 @@ services:
       retries: 10
 
   mailpit:
-    image: axllent/mailpit:latest
+    image: axllent/mailpit:v1.31
     container_name: curios-mailpit
     restart: unless-stopped
     ports:
