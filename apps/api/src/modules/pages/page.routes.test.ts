@@ -115,3 +115,50 @@ describe('POST /pages', () => {
     expect(res.statusCode).toBe(201);
   });
 });
+
+describe('POST /publish', () => {
+  it('publishes the caller own page', async () => {
+    const cookie = await anOwner();
+    await claim(cookie, `pub${randomUUID().slice(0, 8)}`);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/publish',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('takes no page id at all', () => {
+    const routes = app.printRoutes({ commonPrefix: false });
+
+    // One page per account is a database constraint, so the caller's page is
+    // never ambiguous. Taking an id would create an IDOR surface to defend for
+    // no benefit -- the same class of hole plan 1 closed on /ingest.
+    const publishRoutes = routes.split('\n').filter((line) => line.includes('publish'));
+    expect(publishRoutes.length).toBeGreaterThan(0);
+    for (const line of publishRoutes) expect(line).not.toMatch(/:/);
+  });
+
+  it('refuses an owner with no page yet', async () => {
+    const cookie = await anOwner();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/publish',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: cookie },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('NO_PAGE');
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await app.inject({ method: 'POST', url: '/publish', remoteAddress: from() });
+
+    expect(res.statusCode).toBe(401);
+  });
+});

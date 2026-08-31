@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { claimHandle } from './page.service.js';
+import { claimHandle, publishPage } from './page.service.js';
 
 export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -32,4 +32,11 @@ export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.status(201).send(result);
     },
   );
+
+  app.post('/publish', async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+
+    await publishPage(app.prisma, request.account.id);
+    return reply.send({ status: 'published' });
+  });
 };

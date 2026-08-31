@@ -97,3 +97,32 @@ export async function claimHandle(
     throw error;
   }
 }
+
+export class NoPageError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NO_PAGE';
+  constructor() {
+    super('Claim a handle first.');
+    this.name = 'NoPageError';
+  }
+}
+
+/**
+ * The deliberate owner action that makes a page visible.
+ *
+ * Takes no page id. One page per account is a database constraint, so the
+ * caller's page is unambiguous, and an id parameter would only add an
+ * authorization surface to get wrong.
+ *
+ * Slice 1 already filters both read paths on `published`, which is why this
+ * had to exist in this slice at all: without it nothing an owner does can ever
+ * be seen.
+ */
+export async function publishPage(prisma: PrismaClient, accountId: string): Promise<void> {
+  const published = await prisma.page.updateMany({
+    where: { accountId },
+    data: { published: true },
+  });
+
+  if (published.count !== 1) throw new NoPageError();
+}
