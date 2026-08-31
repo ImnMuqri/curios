@@ -486,6 +486,7 @@ Add to `packages/core/src/index.ts`:
 export { HANDLE_MIN, HANDLE_MAX, handleSkeleton, checkHandle } from './handle.js';
 export type { HandleCheck } from './handle.js';
 export { hashSessionValue } from './session-hash.js';
+export { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from './session.js';
 ```
 
 In `apps/api/src/lib/tokens.ts`, delete the local `createHash` implementation of `hashToken` and re-export instead, so every plan 1 call site keeps working unchanged:
@@ -902,8 +903,25 @@ describe('getOwnerSession', () => {
     expect(await getOwnerSession(value)).toEqual({ accountId });
   });
 
-  it('refuses an expired session', async () => {
+  it('refuses a session past its absolute expiry', async () => {
     const value = await aSession(new Date(Date.now() - 1000));
+
+    expect(await getOwnerSession(value)).toBeNull();
+  });
+
+  it('refuses a session that has gone idle, exactly as the API does', async () => {
+    const value = randomUUID();
+    await write.session.create({
+      data: {
+        id: hashSessionValue(value),
+        accountId,
+        // Well inside the 30-day absolute window, well outside the 14-day idle
+        // one. This is the gap where the API and this function would disagree
+        // if only expiresAt were checked.
+        expiresAt: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000),
+        lastSeenAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+    });
 
     expect(await getOwnerSession(value)).toBeNull();
   });
@@ -1030,7 +1048,7 @@ Expected: FAIL — cannot resolve `./session.query.js` and `./review.query.js`.
 Create `packages/db-read/src/session.query.ts`:
 
 ```ts
-import { hashSessionValue } from '@curios/core';
+import { hashSessionValue, SESSION_IDLE_TTL_MS } from '@curios/core';
 import { prismaRead } from './client.js';
 
 /**
@@ -1042,12 +1060,24 @@ import { prismaRead } from './client.js';
  * the trap FRONTEND.md fell into when it said the cookie was "refreshed by
  * middleware". Refreshing stays in the API, where a write is legal.
  *
- * Expiry is checked in the WHERE clause rather than after the read, so an
- * expired row can never be returned by a caller that forgets to look.
+ * BOTH clocks are checked, and both in the WHERE clause rather than after the
+ * read, so an invalid row can never be returned to a caller that forgets to
+ * look. The absolute one is `expiresAt`, fixed at creation. The idle one is
+ * `lastSeenAt`, which the API moves on its sliding refresh.
+ *
+ * Checking only `expiresAt` here would let this disagree with the API: between
+ * fourteen and thirty days of inactivity the API treats a session as dead while
+ * this would still call it live, so the layout would render a dashboard whose
+ * every request then 401s. Two components disagreeing about who is signed in is
+ * worse than either answer.
  */
 export async function getOwnerSession(value: string): Promise<{ accountId: string } | null> {
   const session = await prismaRead.session.findFirst({
-    where: { id: hashSessionValue(value), expiresAt: { gt: new Date() } },
+    where: {
+      id: hashSessionValue(value),
+      expiresAt: { gt: new Date() },
+      lastSeenAt: { gt: new Date(Date.now() - SESSION_IDLE_TTL_MS) },
+    },
     select: { accountId: true },
   });
 
@@ -1100,6 +1130,42 @@ export async function getReviewQueue(
   });
 }
 ```
+
+- [ ] **Step 4b: Move the session TTLs into `packages/core`**
+
+`getOwnerSession` needs the idle window, and it lives in
+`apps/api/src/modules/auth/session.service.ts`, which `packages/db-read` cannot import. This
+is the same problem F1 ruled on for the hash, and it gets the same answer: one definition,
+imported by both, rather than the number copied into a second package where it will drift.
+
+Create `packages/core/src/session.ts`:
+
+```ts
+/**
+ * How long a session lives, in two clocks.
+ *
+ * Here rather than in `apps/api` because `packages/db-read` enforces the same
+ * two clocks for the authenticated layout, and cannot import from an app. A
+ * copy in each package is how the API and the web layout end up disagreeing
+ * about who is signed in.
+ */
+export const SESSION_ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const SESSION_IDLE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+```
+
+Then in `apps/api/src/modules/auth/session.service.ts`, replace the two local constant
+declarations with a re-export, so every existing call site keeps working unchanged:
+
+```ts
+import { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from '@curios/core';
+
+export const ABSOLUTE_TTL_MS = SESSION_ABSOLUTE_TTL_MS;
+export const IDLE_TTL_MS = SESSION_IDLE_TTL_MS;
+```
+
+`REFRESH_AFTER_MS` still derives from `IDLE_TTL_MS` and does not change. `auth.routes.ts`
+imports `ABSOLUTE_TTL_MS` and does not change either. The API's own session tests passing
+unmodified is the evidence this moved nothing.
 
 - [ ] **Step 5: Export them**
 
