@@ -299,11 +299,19 @@ import { describe, expect, it } from 'vitest';
 import { checkHandle, handleSkeleton } from './handle.js';
 
 describe('handleSkeleton', () => {
-  it('folds an accented letter onto its plain form', () => {
-    // The case that matters: a dotless i is not a lookalike to a machine
-    // unless the marks come off first.
-    expect(handleSkeleton('nadıa')).toBe(handleSkeleton('nadia'));
+  it('folds accented letters onto their plain forms', () => {
+    // What NFKD plus mark-stripping actually buys: every accented variant of a
+    // Malay name collapses onto one shape.
     expect(handleSkeleton('nádiá')).toBe('nadia');
+    expect(handleSkeleton('nàdîâ')).toBe('nadia');
+  });
+
+  it('does not fold a dotless i, and does not need to', () => {
+    // U+0131 is an atomic letter, not a decomposition, so NFKD leaves it
+    // alone. That is fine: the character class rejects it outright, which is a
+    // stronger guarantee than folding would be. Asserted rather than left
+    // implicit, so nobody "fixes" the skeleton to chase it.
+    expect(handleSkeleton('nadıa')).not.toBe(handleSkeleton('nadia'));
   });
 
   it('folds zero to o and one to i', () => {
@@ -352,11 +360,17 @@ describe('checkHandle', () => {
     }
   });
 
-  it('rejects a reserved handle disguised with a lookalike', () => {
-    // The reserved check runs against the skeleton. Against the raw handle,
-    // admın walks straight past a list containing admin.
-    expect(checkHandle('admın')).toEqual({ ok: false, reason: 'RESERVED' });
+  it('rejects a reserved handle disguised with leetspeak', () => {
+    // This is where the skeleton earns its place: the reserved check runs
+    // against the folded form, so adm1n cannot walk past a list containing
+    // admin.
     expect(checkHandle('adm1n')).toEqual({ ok: false, reason: 'RESERVED' });
+  });
+
+  it('rejects a non-ASCII lookalike on format, before the reserved list', () => {
+    // admın never reaches the reserved check, because the character class does
+    // not admit U+0131 at all. Two rules, and the blunter one fires first.
+    expect(checkHandle('admın')).toEqual({ ok: false, reason: 'FORMAT' });
   });
 });
 ```
@@ -381,7 +395,9 @@ export const HANDLE_MAX = 30;
  * the rest are the ordinary reservations BACKEND.md calls day-one work,
  * because retrofitting this once people own handles is miserable.
  *
- * Checked against the SKELETON, not the raw handle, or `admın` walks past it.
+ * Checked against the SKELETON, not the raw handle, so `adm1n` cannot walk
+ * past an entry for `admin`. Non-ASCII lookalikes are stopped earlier and
+ * harder, by the character class in `checkHandle`.
  */
 const RESERVED = new Set([
   'app', 'api', 'faq', 'admin', 'about', 'pricing', 'help', 'support', 'blog',
@@ -393,7 +409,11 @@ const RESERVED = new Set([
  * The shape of a handle, for deciding whether two of them are confusable.
  *
  * NFKD and not NFKC, deliberately: decomposition is what puts the combining
- * marks somewhere they can be stripped. `normalizeClaim` in this same package
+ * marks somewhere they can be stripped, which collapses every accented variant
+ * of a name onto one shape. It does NOT touch atomic lookalike letters such as
+ * U+0131 -- those are rejected by the character class instead, which is a
+ * stronger guarantee. Kept anyway, because it is what keeps this function
+ * meaningful if the character class is ever widened for Unicode handles. `normalizeClaim` in this same package
  * uses NFKC for the opposite reason, and the two must not be unified.
  *
  * Only digits fold to letters. Folding letters onto each other — {1, l, i} —

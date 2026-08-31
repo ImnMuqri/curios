@@ -295,8 +295,15 @@ A `skeleton` column on `Page`, uniquely indexed, computed at claim time:
 1. NFKD normalise, strip combining marks, lowercase.
 2. Fold `0 → o` and `1 → i`.
 
-Step 1 is the case that matters: it kills `nadıa` against `nadia` and every accented
-variant of a Malay name. Step 2 stops leetspeak impersonation with effectively no false
+Step 1 collapses every accented variant of a Malay name onto one shape.
+
+**A correction to this section, found while implementing it:** step 1 does *not* kill
+`nadıa` against `nadia`, as this spec originally claimed. U+0131 is an atomic letter with no
+decomposition, so NFKD leaves it untouched. Nothing is lost: the character class admits only
+`[a-z0-9_-]`, so a handle containing it is rejected outright, before the skeleton is computed
+or the reserved list is consulted. The blunter rule fires first and harder. Step 1 still
+earns its place on accents, and it keeps the algorithm meaningful if the character class is
+ever widened for Unicode handles. Step 2 stops leetspeak impersonation with effectively no false
 collisions, because those two digits do not appear meaningfully inside word-shaped
 handles.
 
