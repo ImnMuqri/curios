@@ -5,6 +5,7 @@ import { getIngestion, startIngestion, type QueueLike } from './ingest.service.j
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 let pageId = '';
+let accountId = '';
 
 beforeEach(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
@@ -16,6 +17,7 @@ beforeEach(async () => {
     include: { pages: true },
   });
   pageId = account.pages[0]!.id;
+  accountId = account.id;
 });
 
 describe('startIngestion', () => {
@@ -23,6 +25,7 @@ describe('startIngestion', () => {
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     const { ingestionId } = await startIngestion(
       { prisma, queue: { add } },
+      accountId,
       { pageId, sourceUrl: 'https://nadia.example/' },
     );
 
@@ -35,6 +38,7 @@ describe('startIngestion', () => {
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     const { ingestionId } = await startIngestion(
       { prisma, queue: { add } },
+      accountId,
       { pageId, sourceUrl: 'https://nadia.example/' },
     );
     expect(add.mock.calls[0]?.[1]).toMatchObject({ idempotencyKey: ingestionId });
@@ -43,7 +47,11 @@ describe('startIngestion', () => {
   it('rejects a non-http source url before touching the queue', async () => {
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     await expect(
-      startIngestion({ prisma, queue: { add } }, { pageId, sourceUrl: 'file:///etc/passwd' }),
+      startIngestion(
+        { prisma, queue: { add } },
+        accountId,
+        { pageId, sourceUrl: 'file:///etc/passwd' },
+      ),
     ).rejects.toThrow(/http/i);
     expect(add).not.toHaveBeenCalled();
   });
@@ -54,11 +62,11 @@ describe('getIngestion', () => {
     const row = await prisma.ingestion.create({
       data: { pageId, sourceUrl: 'https://nadia.example/', status: 'SUCCEEDED', extractedCount: 7 },
     });
-    const result = await getIngestion(prisma, row.id);
+    const result = await getIngestion(prisma, accountId, row.id);
     expect(result).toMatchObject({ status: 'SUCCEEDED', extractedCount: 7 });
   });
 
   it('returns null for an unknown id', async () => {
-    expect(await getIngestion(prisma, 'nope')).toBeNull();
+    expect(await getIngestion(prisma, accountId, 'nope')).toBeNull();
   });
 });

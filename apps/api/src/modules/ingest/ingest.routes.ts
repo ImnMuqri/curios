@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { UnauthenticatedError } from '../../plugins/session.js';
 import { getIngestion, startIngestion } from './ingest.service.js';
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -16,8 +17,14 @@ export const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
+      // The session is required on the scope, in app.ts, so this cannot be
+      // reached without one. Narrowed rather than asserted: a non-null
+      // assertion here would survive someone moving that hook.
+      if (!request.account) throw new UnauthenticatedError();
+
       const result = await startIngestion(
         { prisma: app.prisma, queue: app.ingestQueue },
+        request.account.id,
         request.body,
       );
       return reply.status(202).send(result);
@@ -47,7 +54,9 @@ export const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
       },
     },
     async (request, reply) => {
-      const result = await getIngestion(app.prisma, request.params.id);
+      if (!request.account) throw new UnauthenticatedError();
+
+      const result = await getIngestion(app.prisma, request.account.id, request.params.id);
       if (!result) {
         return reply
           .status(404)

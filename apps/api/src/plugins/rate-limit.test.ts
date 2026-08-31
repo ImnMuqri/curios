@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { createSession, SESSION_COOKIE } from '../modules/auth/session.service.js';
 
 // A handle that can never exist. Requests to it still reach the route and
 // consume a rate-limit token, but PageNotFoundError fires before the gateway
@@ -13,6 +14,11 @@ const MISSING_HANDLE = 'this-handle-is-not-a-real-page-zzz';
 const NAMESPACE = `curios-rl-test-${randomUUID()}:`;
 
 let app: FastifyInstance;
+
+// The ingest scope requires a session ahead of its limiters, so these requests
+// need one to reach the limiters at all. The assertions below are unchanged:
+// what they measure is the budget, not the gate in front of it.
+let owner = '';
 
 const TUNED = [
   'RATE_LIMIT_NAMESPACE',
@@ -38,6 +44,12 @@ beforeAll(async () => {
   const { buildApp } = await import('../app.js');
   app = await buildApp();
   await app.ready();
+
+  const account = await app.prisma.account.create({
+    data: { email: `rl-${randomUUID()}@example.com` },
+    select: { id: true },
+  });
+  owner = (await createSession(app.prisma, account.id)).value;
 });
 
 afterAll(async () => {
@@ -118,6 +130,7 @@ const ingest = (ip: string, pageId: string) =>
     method: 'POST',
     url: '/ingest',
     remoteAddress: ip,
+    cookies: { [SESSION_COOKIE]: owner },
     headers: { 'content-type': 'application/json' },
     payload: { pageId, sourceUrl: 'not-a-url' },
   });
@@ -188,6 +201,7 @@ describe('reading ingestion status', () => {
             method: 'GET',
             url: `/ingest/does-not-exist-${i}`,
             remoteAddress: '198.51.100.90',
+            cookies: { [SESSION_COOKIE]: owner },
           })
         ).statusCode,
       );
@@ -199,7 +213,12 @@ describe('reading ingestion status', () => {
   it('does not consume the budget for starting one', async () => {
     const ip = '198.51.100.91';
     for (let i = 0; i < 8; i++) {
-      await app.inject({ method: 'GET', url: `/ingest/nope-${i}`, remoteAddress: ip });
+      await app.inject({
+        method: 'GET',
+        url: `/ingest/nope-${i}`,
+        remoteAddress: ip,
+        cookies: { [SESSION_COOKIE]: owner },
+      });
     }
 
     // The per-IP ingest budget is 3. If polling had spent it, this would 429.

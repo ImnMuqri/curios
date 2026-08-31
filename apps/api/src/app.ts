@@ -10,7 +10,7 @@ import {
 import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
-import { sessionPlugin } from './plugins/session.js';
+import { requireSession, sessionPlugin } from './plugins/session.js';
 import {
   authPerEmailLimit,
   authPerIpLimit,
@@ -82,6 +82,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // guard. Fastify's encapsulation keeps them off every other route, so no
   // route needs to opt out and /health above cannot be throttled by accident.
   await app.register(async (scope) => {
+    // Before the limiters, deliberately. Route-level preHandlers run after
+    // instance-level hooks, so a per-route check would let the limiters count a
+    // request that is about to be rejected as unauthenticated -- and the
+    // per-page limiter keys on body.pageId, so anyone who learned a page id
+    // could burn that owner's daily ingest budget without ever signing in.
+    scope.addHook('onRequest', requireSession);
     await scope.register(rateLimit, ingestPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, ingestPerPageLimit(app.rateLimitRedis));
     await scope.register(ingestRoutes);
