@@ -52,7 +52,9 @@ export class PageAlreadyExistsError extends Error {
 /** Which unique index a P2002 came from. Prisma reports the field names. */
 function violatedFields(error: unknown): string[] {
   if (typeof error !== 'object' || error === null) return [];
-  if (!('code' in error) || (error as { code: unknown }).code !== 'P2002') return [];
+  // Narrowed by the `in` check above, so no assertion is needed on `code`.
+  // The one on `meta` below IS needed -- nothing narrows that.
+  if (!('code' in error) || error.code !== 'P2002') return [];
   const target = (error as { meta?: { target?: unknown } }).meta?.target;
   return Array.isArray(target) ? target.map(String) : [];
 }
