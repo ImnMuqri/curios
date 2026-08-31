@@ -37,6 +37,24 @@ describe('getOwnerSession', () => {
     expect(await getOwnerSession(value)).toBeNull();
   });
 
+  it('refuses a session idle past the fortnight, even days from its absolute expiry', async () => {
+    const value = randomUUID();
+    await write.session.create({
+      data: {
+        id: hashSessionValue(value),
+        accountId,
+        expiresAt: new Date(Date.now() + 16 * 24 * 60 * 60 * 1000),
+        lastSeenAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    // 15 days idle exceeds the 14-day idle window even though expiresAt is
+    // still 16 days out. This is the exact window where the API's
+    // validateSession and a check of expiresAt alone would disagree about
+    // whether the session is still live.
+    expect(await getOwnerSession(value)).toBeNull();
+  });
+
   it('refuses a value that was never issued', async () => {
     expect(await getOwnerSession('invented')).toBeNull();
   });

@@ -1,12 +1,17 @@
 import type { PrismaClient } from '@curios/db';
+import { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from '@curios/core';
 import { createToken, hashToken } from '../../lib/tokens.js';
 
 export const SESSION_COOKIE = 'curios_session';
 
+// Re-exported under these names rather than imported directly at each call
+// site below: this file is the historical home of both, and `auth.routes.ts`
+// already imports `ABSOLUTE_TTL_MS` from here. The values themselves live in
+// @curios/core so packages/db-read can enforce the same two clocks.
 /** However active the owner, a session dies 30 days after it was issued. */
-export const ABSOLUTE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+export const ABSOLUTE_TTL_MS = SESSION_ABSOLUTE_TTL_MS;
 /** An untouched session dies after a fortnight. */
-export const IDLE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
+export const IDLE_TTL_MS = SESSION_IDLE_TTL_MS;
 
 /**
  * Refreshing on every request would make this the most-written table in the
