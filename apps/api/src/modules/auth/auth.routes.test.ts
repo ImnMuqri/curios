@@ -271,6 +271,26 @@ describe('the credential limiters cover credentials, and only credentials', () =
     expect(res.statusCode).toBe(200);
   });
 
+  it('still throttles one address attacked from many addresses', async () => {
+    const email = await aVerifiedAccountWithPassword();
+
+    // The shape the per-email limiter exists for, and the one that must keep
+    // working after it stops applying to bodyless routes: a distributed guess
+    // against a single account.
+    const codes: number[] = [];
+    for (let i = 0; i < 12; i += 1) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        remoteAddress: from(),
+        payload: { email, password: 'not-the-right-password' },
+      });
+      codes.push(res.statusCode);
+    }
+
+    expect(codes).toContain(429);
+  });
+
   it('clears the session cookie on the domain it was set on', async () => {
     process.env.COOKIE_DOMAIN = '.curios.test';
     try {

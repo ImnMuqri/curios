@@ -109,3 +109,25 @@ describe('GET /auth/google/callback', () => {
     expect(me.statusCode).toBe(200);
   });
 });
+
+describe('the credential limiters and the OAuth start', () => {
+  it('does not halve the per-IP budget on a route that carries no email', async () => {
+    // The per-email limiter keys on the body's email and falls back to the
+    // caller's address when there is none. On a bodyless route that makes it a
+    // second, stricter per-IP limiter: 10 instead of the intended 20. Behind
+    // one office NAT or a carrier's CGNAT that is ten sign-in attempts for
+    // everybody, which is a lockout dressed as abuse protection.
+    const shared = '198.51.100.90';
+    const codes: number[] = [];
+    for (let i = 0; i < 14; i += 1) {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/auth/google',
+        remoteAddress: shared,
+      });
+      codes.push(res.statusCode);
+    }
+
+    expect(codes.filter((c) => c === 429)).toHaveLength(0);
+  });
+});

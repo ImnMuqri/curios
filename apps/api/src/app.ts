@@ -23,6 +23,7 @@ import {
 import { ingestRoutes } from './modules/ingest/ingest.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
 import {
+  authFlowRoutes,
   authRoutes,
   sessionRoutes,
   type AuthRouteOptions,
@@ -92,10 +93,21 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(chatRoutes);
   });
 
+  // Both limiters, because every route in here carries an email address to
+  // key the second one on.
   await app.register(async (scope) => {
     await scope.register(rateLimit, authPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, authPerEmailLimit(app.rateLimitRedis));
     await scope.register(authRoutes, overrides.auth ?? {});
+  });
+
+  // Per-IP only. These routes carry a one-time secret rather than an address,
+  // so the per-email limiter would key on the caller's IP instead and halve
+  // the budget it already has -- ten sign-in attempts for everyone behind one
+  // NAT, which is a lockout rather than abuse protection.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, authPerIpLimit(app.rateLimitRedis));
+    await scope.register(authFlowRoutes, overrides.auth ?? {});
   });
 
   // Outside that scope on purpose: these two carry no credential to stuff, and

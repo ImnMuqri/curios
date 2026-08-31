@@ -30,6 +30,8 @@ const credentials = z.object({
   password: z.string().min(1).max(200),
 });
 
+const token = z.string().min(1).max(200);
+
 export interface AuthRouteOptions {
   /** Tests pass a recording mailer; production leaves it undefined. */
   mailer?: Mailer;
@@ -39,10 +41,30 @@ export interface AuthRouteOptions {
   exchange?: CodeExchange;
 }
 
+const sessionCookie = (value: string) =>
+  ({
+    httpOnly: true,
+    sameSite: 'lax' as const,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    maxAge: ABSOLUTE_TTL_MS / 1000,
+    domain: process.env.COOKIE_DOMAIN,
+    value,
+  }) as const;
+
+/**
+ * The routes that carry an email address in their body.
+ *
+ * Kept separate from `authFlowRoutes` because only these can be limited per
+ * address. The per-email limiter falls back to the caller's address when the
+ * body has no email, which on a bodyless route silently becomes a second and
+ * stricter per-IP limiter -- half the intended budget, shared by everyone
+ * behind one NAT. So the limiter is registered over these routes only, and
+ * app.ts is where that split is applied.
+ */
 export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
   const mailer = options.mailer ?? createQueueMailer(app.mailQueue);
   const fetcher = options.fetcher;
-  const exchange = options.exchange;
 
   app.post('/auth/signup', { schema: { body: credentials } }, async (request, reply) => {
     await signUpWithPassword({ prisma: app.prisma, mailer, fetcher }, request.body);
@@ -52,28 +74,10 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
 
   app.post('/auth/login', { schema: { body: credentials } }, async (request, reply) => {
     const { accountId } = await signInWithPassword(app.prisma, request.body);
-    const { value } = await createSession(app.prisma, accountId);
+    const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
 
-    return reply
-      .setCookie(SESSION_COOKIE, value, {
-        httpOnly: true,
-        sameSite: 'lax',
-        secure: process.env.NODE_ENV === 'production',
-        path: '/',
-        maxAge: ABSOLUTE_TTL_MS / 1000,
-        domain: process.env.COOKIE_DOMAIN,
-      })
-      .send({ accountId });
+    return reply.setCookie(SESSION_COOKIE, value, cookie).send({ accountId });
   });
-
-  app.post(
-    '/auth/verify-email',
-    { schema: { body: z.object({ token: z.string().min(1).max(200) }) } },
-    async (request, reply) => {
-      await verifyEmail(app.prisma, request.body.token);
-      return reply.send({ status: 'verified' });
-    },
-  );
 
   app.post(
     '/auth/forgot-password',
@@ -83,14 +87,34 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
       return reply.send({ status: 'check_your_email' });
     },
   );
+};
+
+/**
+ * The routes reached by following something rather than by submitting an
+ * address: a link from an inbox, or a redirect from Google.
+ *
+ * None of them carries an email, so the per-email limiter has nothing to key
+ * on and is deliberately not registered over them -- see `authRoutes` above.
+ * The per-IP limiter still applies, and it is the right one here: what these
+ * routes accept is a one-time secret, and guessing a 43-character token or an
+ * unguessable state value is not the attack a per-address budget defends.
+ */
+export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
+  const fetcher = options.fetcher;
+  const exchange = options.exchange;
+
+  app.post(
+    '/auth/verify-email',
+    { schema: { body: z.object({ token }) } },
+    async (request, reply) => {
+      await verifyEmail(app.prisma, request.body.token);
+      return reply.send({ status: 'verified' });
+    },
+  );
 
   app.post(
     '/auth/reset-password',
-    {
-      schema: {
-        body: z.object({ token: z.string().min(1).max(200), password: z.string().min(1).max(200) }),
-      },
-    },
+    { schema: { body: z.object({ token, password: z.string().min(1).max(200) }) } },
     async (request, reply) => {
       await resetPassword(app.prisma, request.body, fetcher);
       return reply.send({ status: 'password_changed' });
@@ -128,19 +152,12 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
       );
 
       const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
-      const { value } = await createSession(app.prisma, accountId);
+      const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
 
       return reply
         .clearCookie(OAUTH_STATE_COOKIE, { path: '/' })
         .clearCookie(OAUTH_VERIFIER_COOKIE, { path: '/' })
-        .setCookie(SESSION_COOKIE, value, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          path: '/',
-          maxAge: ABSOLUTE_TTL_MS / 1000,
-          domain: process.env.COOKIE_DOMAIN,
-        })
+        .setCookie(SESSION_COOKIE, value, cookie)
         .redirect(`${process.env.APP_URL ?? 'http://localhost:3000'}/app`);
     },
   );
