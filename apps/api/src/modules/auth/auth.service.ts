@@ -9,7 +9,7 @@ import {
   WeakPasswordError,
   type Fetcher,
 } from './password.service.js';
-import { consumeToken, issueToken } from './token.service.js';
+import { consumeToken, issueToken, tokenIsClaimable } from './token.service.js';
 
 export interface GoogleProfile {
   sub: string;
@@ -314,20 +314,41 @@ export async function resetPassword(
   if (input.password.length < MIN_PASSWORD_LENGTH) {
     throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
   }
+
+  // Cheapest decisive check first. Screening the password calls a third party,
+  // and doing that before the token is known to be usable lets anyone make this
+  // server open outbound requests with nothing but an invented token. This does
+  // not authorise anything -- consumeToken below re-checks it atomically and is
+  // still the only thing that grants the claim.
+  if (!(await tokenIsClaimable(prisma, input.token, 'PASSWORD_RESET'))) {
+    throw new InvalidTokenError();
+  }
+
   if (await isBreached(input.password, fetcher)) {
     throw new WeakPasswordError('That password has appeared in a public breach. Pick another.');
   }
 
+  // Hashed before the token is spent, so the slowest step cannot fail after the
+  // link has already been burned. The token is only claimed once everything
+  // that can reasonably fail has succeeded.
+  const hash = await hashPassword(input.password);
+
   const consumed = await consumeToken(prisma, input.token, 'PASSWORD_RESET');
   if (!consumed) throw new InvalidTokenError();
-
-  const hash = await hashPassword(input.password);
 
   await prisma.$transaction([
     prisma.passwordCredential.upsert({
       where: { accountId: consumed.accountId },
       create: { accountId: consumed.accountId, hash },
       update: { hash },
+    }),
+    // Completing a reset proves control of the inbox, which is exactly what
+    // verification proves. Without this an unverified account can reset its
+    // password, be told 200, and still be refused at login with nothing left
+    // to try. Only ever fills a blank, so a real verification date is kept.
+    prisma.account.updateMany({
+      where: { id: consumed.accountId, emailVerifiedAt: null },
+      data: { emailVerifiedAt: new Date() },
     }),
     // Every session dies. A reset that leaves the intruder signed in is not a
     // recovery, and this is the one place revocation is not optional.

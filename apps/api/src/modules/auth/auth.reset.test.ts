@@ -14,6 +14,9 @@ let nth = 0;
 /** A fresh source address per request, so the limiter never sees a flood. */
 const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
+/** How many times the breach screening reached for the network. */
+let breachChecks = 0;
+
 /** Records what was sent instead of reaching a real SMTP server. */
 const sent: Array<{ to: string; subject: string; text: string }> = [];
 
@@ -28,7 +31,10 @@ beforeAll(async () => {
       // resetPassword screens the new password against Have I Been Pwned. Left
       // to the default fetcher this file would make a real outbound request per
       // reset, which is slow, fails offline, and shows a third party the suite.
-      fetcher: async () => ({ ok: true, text: async () => '' }),
+      fetcher: async () => {
+        breachChecks += 1;
+        return { ok: true, text: async () => '' };
+      },
     },
   });
   await app.ready();
@@ -216,5 +222,47 @@ describe('POST /auth/reset-password', () => {
 
     // Otherwise a verification link in an inbox is a password reset.
     expect(res.statusCode).toBe(400);
+  });
+});
+
+describe('reset as a recovery path', () => {
+  it('lets an unverified account sign in once it completes a reset', async () => {
+    const account = await anAccount(false);
+    const token = await issueToken(app.prisma, account.id, 'PASSWORD_RESET');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/reset-password',
+      remoteAddress: from(),
+      payload: { token, password: NEW_PASSWORD },
+    });
+    expect(res.statusCode).toBe(200);
+
+    // Completing a reset proves control of the inbox, which is the same thing
+    // verification proves. Answering 200 and then refusing the login is a dead
+    // end with nothing left to try.
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      remoteAddress: from(),
+      payload: { email: account.email, password: NEW_PASSWORD },
+    });
+    expect(login.statusCode).toBe(200);
+  });
+
+  it('rejects an unusable token without calling out to the breach service', async () => {
+    breachChecks = 0;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/reset-password',
+      remoteAddress: from(),
+      payload: { token: 'never-issued', password: NEW_PASSWORD },
+    });
+
+    expect(res.statusCode).toBe(400);
+    // Otherwise anyone can make this server open a request to a third party,
+    // as often as the limiter allows, using nothing but an invented token.
+    expect(breachChecks).toBe(0);
   });
 });

@@ -50,3 +50,25 @@ export async function consumeToken(
   const token = await prisma.authToken.findUnique({ where: { id }, select: { accountId: true } });
   return token ? { accountId: token.accountId } : null;
 }
+
+/**
+ * Whether a token could be claimed right now, WITHOUT claiming it.
+ *
+ * Exists so a caller can reject an unusable link before doing anything
+ * expensive on its behalf -- screening a password against a third party, say.
+ * It decides nothing: `consumeToken` is still the only thing that grants a
+ * claim, and it re-checks all of this atomically. Treat a true here as "worth
+ * continuing", never as "authorised".
+ */
+export async function tokenIsClaimable(
+  prisma: PrismaClient,
+  value: string,
+  kind: AuthTokenKind,
+): Promise<boolean> {
+  const token = await prisma.authToken.findUnique({
+    where: { id: hashToken(value) },
+    select: { kind: true, usedAt: true, expiresAt: true },
+  });
+
+  return Boolean(token && token.kind === kind && !token.usedAt && token.expiresAt > new Date());
+}
