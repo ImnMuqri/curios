@@ -20,12 +20,14 @@ afterAll(async () => {
 });
 
 async function anOwnerWithAPage(): Promise<{ cookie: string; pageId: string }> {
+  const handle = `h-${randomUUID().slice(0, 8)}`;
   const account = await app.prisma.account.create({
     data: {
       email: `owner-${randomUUID()}@example.com`,
       pages: {
         create: {
-          handle: `h-${randomUUID().slice(0, 8)}`,
+          handle,
+          skeleton: handle,
           displayName: 'A Page',
         },
       },

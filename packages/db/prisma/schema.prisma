@@ -74,6 +74,7 @@ model Page {
   accountId     String
   account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
   handle        String         @unique
+  skeleton      String         @unique
   mode          PageMode       @default(BUSINESS)
   displayName   String
   bio           String?
@@ -87,6 +88,8 @@ model Page {
   conversations Conversation[]
   ingestions    Ingestion[]
   usageCounters UsageCounter[]
+
+  @@unique([accountId])
 }
 
 model Link {
@@ -114,6 +117,7 @@ model Fact {
   verified        Boolean      @default(false)
   volatile        Boolean      @default(false)
   flagged         Boolean      @default(false)
+  rejectedAt      DateTime?
   createdAt       DateTime     @default(now())
 
   @@unique([pageId, normalizedClaim])

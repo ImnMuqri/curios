@@ -40,7 +40,7 @@ beforeEach(async () => {
   const account = await prisma.account.create({
     data: {
       email: 'n@example.com',
-      pages: { create: { handle: 'nadia', displayName: 'Nadia Bakes' } },
+      pages: { create: { handle: 'nadia', skeleton: 'nadia', displayName: 'Nadia Bakes' } },
     },
     include: { pages: true },
   });

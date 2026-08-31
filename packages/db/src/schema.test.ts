@@ -21,7 +21,7 @@ describe('schema', () => {
         identities: {
           create: { provider: 'GOOGLE', providerUserId: 'google-sub-1', email: 'nadia@example.com' },
         },
-        pages: { create: { handle: 'nadia', displayName: 'Nadia Bakes' } },
+        pages: { create: { handle: 'nadia', skeleton: 'nadia', displayName: 'Nadia Bakes' } },
       },
       include: { identities: true, pages: true },
     });
@@ -92,5 +92,92 @@ describe('schema', () => {
     await expect(
       prisma.passwordCredential.create({ data: { accountId: account.id, hash: 'b' } }),
     ).rejects.toMatchObject({ code: 'P2002' });
+  });
+});
+
+describe('the owner surface columns', () => {
+  it('refuses a second page for one account', async () => {
+    const account = await prisma.account.create({
+      data: { email: `one-page-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    await prisma.page.create({
+      data: {
+        accountId: account.id,
+        handle: `first-${randomUUID().slice(0, 8)}`,
+        skeleton: `first-${randomUUID().slice(0, 8)}`,
+        displayName: 'First',
+      },
+    });
+
+    // One page per account was a slice 1 convention enforced nowhere. The
+    // database is the only place it can be enforced against a code path that
+    // forgets to check.
+    await expect(
+      prisma.page.create({
+        data: {
+          accountId: account.id,
+          handle: `second-${randomUUID().slice(0, 8)}`,
+          skeleton: `second-${randomUUID().slice(0, 8)}`,
+          displayName: 'Second',
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+  });
+
+  it('refuses two handles that share a skeleton', async () => {
+    const one = await prisma.account.create({
+      data: { email: `sk-a-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const two = await prisma.account.create({
+      data: { email: `sk-b-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const skeleton = `shape-${randomUUID().slice(0, 8)}`;
+
+    await prisma.page.create({
+      data: { accountId: one.id, handle: `${skeleton}-a`, skeleton, displayName: 'A' },
+    });
+
+    // Distinct handles, one skeleton. This is the constraint that makes the
+    // confusables check atomic instead of a read-then-write race.
+    await expect(
+      prisma.page.create({
+        data: { accountId: two.id, handle: `${skeleton}-b`, skeleton, displayName: 'B' },
+      }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+  });
+
+  it('keeps a rejected fact as a row', async () => {
+    const account = await prisma.account.create({
+      data: { email: `rej-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const page = await prisma.page.create({
+      data: {
+        accountId: account.id,
+        handle: `rej-${randomUUID().slice(0, 8)}`,
+        skeleton: `rej-${randomUUID().slice(0, 8)}`,
+        displayName: 'R',
+      },
+      select: { id: true },
+    });
+    const fact = await prisma.fact.create({
+      data: {
+        pageId: page.id,
+        category: 'PRICE',
+        claim: 'we are halal certified',
+        normalizedClaim: 'we are halal certified',
+        confidence: 0.9,
+        rejectedAt: new Date(),
+      },
+      select: { id: true, rejectedAt: true },
+    });
+
+    // A hard delete would be undone by the next crawl: extraction writes with
+    // skipDuplicates against @@unique([pageId, normalizedClaim]), so the row
+    // is what suppresses the re-ask.
+    expect(fact.rejectedAt).not.toBeNull();
   });
 });

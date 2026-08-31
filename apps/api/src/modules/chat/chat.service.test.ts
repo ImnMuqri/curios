@@ -62,6 +62,7 @@ beforeEach(async () => {
       pages: {
         create: {
           handle: 'nadia',
+          skeleton: 'nadia',
           displayName: 'Nadia Bakes',
           published: true,
           facts: {
@@ -104,6 +105,7 @@ beforeEach(async () => {
       pages: {
         create: {
           handle: 'draft',
+          skeleton: 'draft',
           displayName: 'Not Live Yet',
           published: false,
           facts: {

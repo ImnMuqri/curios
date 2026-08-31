@@ -12,6 +12,7 @@ beforeAll(async () => {
       pages: {
         create: {
           handle: 'nadia',
+          skeleton: 'nadia',
           displayName: 'Nadia Bakes',
           published: true,
           links: { create: { label: 'WhatsApp', url: 'https://wa.me/60123456789', position: 0 } },
@@ -43,6 +44,7 @@ beforeAll(async () => {
       pages: {
         create: {
           handle: 'draft',
+          skeleton: 'draft',
           displayName: 'Not Live Yet',
           published: false,
         },

@@ -26,6 +26,7 @@ const account = await prisma.account.upsert({
     pages: {
       create: {
         handle: 'nadia',
+        skeleton: 'nadia',
         displayName: 'Nadia Bakes',
         bio: 'Kek butter dan brownies, Shah Alam',
         language: 'ms',
