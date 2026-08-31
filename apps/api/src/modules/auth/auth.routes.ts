@@ -4,12 +4,20 @@ import { createQueueMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
 import { requireSession } from '../../plugins/session.js';
 import {
+  findOrCreateAccountForGoogle,
   requestPasswordReset,
   resetPassword,
   signInWithPassword,
   signUpWithPassword,
   verifyEmail,
 } from './auth.service.js';
+import {
+  beginGoogleSignIn,
+  exchangeGoogleCode,
+  OAUTH_STATE_COOKIE,
+  OAUTH_VERIFIER_COOKIE,
+  type CodeExchange,
+} from './oauth.service.js';
 import {
   ABSOLUTE_TTL_MS,
   createSession,
@@ -27,11 +35,14 @@ export interface AuthRouteOptions {
   mailer?: Mailer;
   /** Tests pass a stub so no request reaches Have I Been Pwned. */
   fetcher?: Fetcher;
+  /** Tests pass a stub so no request reaches Google's token endpoint. */
+  exchange?: CodeExchange;
 }
 
 export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
   const mailer = options.mailer ?? createQueueMailer(app.mailQueue);
   const fetcher = options.fetcher;
+  const exchange = options.exchange;
 
   app.post('/auth/signup', { schema: { body: credentials } }, async (request, reply) => {
     await signUpWithPassword({ prisma: app.prisma, mailer, fetcher }, request.body);
@@ -83,6 +94,54 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
     async (request, reply) => {
       await resetPassword(app.prisma, request.body, fetcher);
       return reply.send({ status: 'password_changed' });
+    },
+  );
+
+  app.get('/auth/google', async (_request, reply) => {
+    const { url, state, verifier } = beginGoogleSignIn();
+    const options = {
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 600,
+    };
+
+    return reply
+      .setCookie(OAUTH_STATE_COOKIE, state, options)
+      .setCookie(OAUTH_VERIFIER_COOKIE, verifier, options)
+      .redirect(url);
+  });
+
+  app.get(
+    '/auth/google/callback',
+    { schema: { querystring: z.object({ code: z.string().min(1), state: z.string().min(1) }) } },
+    async (request, reply) => {
+      const profile = await exchangeGoogleCode(
+        {
+          code: request.query.code,
+          state: request.query.state,
+          cookieState: request.cookies[OAUTH_STATE_COOKIE],
+          verifier: request.cookies[OAUTH_VERIFIER_COOKIE] ?? '',
+        },
+        exchange,
+      );
+
+      const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
+      const { value } = await createSession(app.prisma, accountId);
+
+      return reply
+        .clearCookie(OAUTH_STATE_COOKIE, { path: '/' })
+        .clearCookie(OAUTH_VERIFIER_COOKIE, { path: '/' })
+        .setCookie(SESSION_COOKIE, value, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          path: '/',
+          maxAge: ABSOLUTE_TTL_MS / 1000,
+          domain: process.env.COOKIE_DOMAIN,
+        })
+        .redirect(`${process.env.APP_URL ?? 'http://localhost:3000'}/app`);
     },
   );
 };

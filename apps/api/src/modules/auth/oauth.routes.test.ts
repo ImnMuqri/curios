@@ -1,0 +1,111 @@
+import { randomUUID } from 'node:crypto';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import type { FastifyInstance } from 'fastify';
+import { buildApp } from '../../app.js';
+import { SESSION_COOKIE } from './session.service.js';
+import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE } from './oauth.service.js';
+
+let app: FastifyInstance;
+
+let nth = 0;
+/** A fresh source address per request, so the limiter never sees a flood. */
+const from = () => `203.0.113.${(nth++ % 200) + 1}`;
+
+const SUB = `g-${randomUUID()}`;
+const EMAIL = `oauth-${randomUUID()}@example.com`;
+
+beforeAll(async () => {
+  app = await buildApp({
+    auth: {
+      // Injected for the same reason the breach fetcher is: the real exchange
+      // posts to Google's token endpoint, and a test that reaches a third party
+      // is a test that fails offline and shows them our suite.
+      exchange: async () => ({ sub: SUB, email: EMAIL, emailVerified: true, name: 'Nadia' }),
+    },
+  });
+  await app.ready();
+});
+
+afterAll(async () => {
+  await app.close();
+});
+
+describe('GET /auth/google', () => {
+  it('sends the browser to Google and keeps the verifier in a cookie', async () => {
+    const res = await app.inject({ method: 'GET', url: '/auth/google', remoteAddress: from() });
+
+    expect(res.statusCode).toBe(302);
+    const target = new URL(res.headers.location as string);
+    expect(target.origin + target.pathname).toBe('https://accounts.google.com/o/oauth2/v2/auth');
+    expect(target.searchParams.get('code_challenge_method')).toBe('S256');
+
+    const state = res.cookies.find((c) => c.name === OAUTH_STATE_COOKIE);
+    const verifier = res.cookies.find((c) => c.name === OAUTH_VERIFIER_COOKIE);
+    expect(state?.httpOnly).toBe(true);
+    expect(verifier?.httpOnly).toBe(true);
+
+    // The verifier stays with the browser; only its hash goes to Google. If
+    // these two ever match, PKCE is doing nothing.
+    expect(target.searchParams.get('code_challenge')).not.toBe(verifier?.value);
+  });
+});
+
+describe('GET /auth/google/callback', () => {
+  it('refuses a callback whose state does not match the cookie', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/auth/google/callback?code=abc&state=from-the-url',
+      remoteAddress: from(),
+      cookies: { [OAUTH_STATE_COOKIE]: 'a-different-state', [OAUTH_VERIFIER_COOKIE]: 'v' },
+    });
+
+    // This is the whole reason state exists: an attacker feeding the victim a
+    // code obtained for the attacker's own Google account. A session issued
+    // here signs the victim in as someone else.
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('OAUTH_STATE_MISMATCH');
+    expect(res.cookies.find((c) => c.name === SESSION_COOKIE)).toBeUndefined();
+  });
+
+  it('refuses a callback carrying no state cookie at all', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/auth/google/callback?code=abc&state=anything',
+      remoteAddress: from(),
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.cookies.find((c) => c.name === SESSION_COOKIE)).toBeUndefined();
+  });
+
+  it('signs in and issues a session when the state matches', async () => {
+    const state = 'a-state-this-browser-started-with';
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/auth/google/callback?code=abc&state=${state}`,
+      remoteAddress: from(),
+      cookies: { [OAUTH_STATE_COOKIE]: state, [OAUTH_VERIFIER_COOKIE]: 'the-verifier' },
+    });
+
+    expect(res.statusCode).toBe(302);
+    const session = res.cookies.find((c) => c.name === SESSION_COOKIE);
+    expect(session?.httpOnly).toBe(true);
+
+    // The one-time cookies are spent, not left behind for a replay.
+    expect(res.cookies.find((c) => c.name === OAUTH_STATE_COOKIE)?.value).toBe('');
+    expect(res.cookies.find((c) => c.name === OAUTH_VERIFIER_COOKIE)?.value).toBe('');
+
+    const account = await app.prisma.account.findUnique({ where: { email: EMAIL } });
+    expect(account).not.toBeNull();
+
+    // And the session is real: it resolves on a subsequent request.
+    const me = await app.inject({
+      method: 'GET',
+      url: '/auth/me',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: session?.value ?? '' },
+    });
+    expect(me.statusCode).toBe(200);
+  });
+});
