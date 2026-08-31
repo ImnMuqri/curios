@@ -1457,11 +1457,10 @@ export class DuplicateFactError extends Error {
 }
 
 function isUniqueViolation(error: unknown): boolean {
+  // No assertion on `code`: the `in` check narrows it. Matches the identical
+  // helper in auth.service.ts, and the linter rejects the cast anyway.
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code: unknown }).code === 'P2002'
+    typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
   );
 }
 
