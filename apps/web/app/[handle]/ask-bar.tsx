@@ -88,7 +88,10 @@ export function AskBar({ handle, questions }: { handle: string; questions: strin
   }
 
   return (
-    <form onSubmit={ask} style={{ position: 'sticky', bottom: 16, marginTop: 24 }}>
+    // `void`, not a bare reference: ask() returns a promise and onSubmit wants
+    // nothing back. It handles its own failures, so this says the promise is
+    // dropped on purpose rather than by oversight.
+    <form onSubmit={(event) => void ask(event)} style={{ position: 'sticky', bottom: 16, marginTop: 24 }}>
       {answer ? (
         <p style={{ background: 'var(--mint)', padding: 12, borderRadius: 10 }}>{answer}</p>
       ) : null}
