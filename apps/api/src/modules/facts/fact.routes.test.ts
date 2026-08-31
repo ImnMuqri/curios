@@ -178,10 +178,13 @@ describe('the one hard rule', () => {
     const routes = app.printRoutes({ commonPrefix: false });
 
     // A negative requirement, so it needs a test that fails when someone adds
-    // the thing rather than one that passes because they have not yet. Nothing
-    // sets verified: true except an explicit human action on one specific
-    // fact; a bulk-accept control is precisely how an unreviewed price ships,
-    // and that is the single failure this product cannot recover from.
+    // the thing rather than one that passes because they have not yet.
+    //
+    // What this catches: a bulk route with no id in its path. What it does NOT
+    // catch: a bulk accept smuggled through the body of a route that still has
+    // an :id. That case is covered behaviourally by the test below, and the
+    // real backstop for both is that `verifyFact` takes one id and has no
+    // plural form. This test is the cheap outer guard, not the guarantee.
     const mutating = routes
       .split('\n')
       .filter((line) => line.includes('/facts') && /POST|PATCH|PUT|DELETE/.test(line));
@@ -190,5 +193,84 @@ describe('the one hard rule', () => {
     for (const line of mutating) {
       expect(line).toMatch(/:id/);
     }
+  });
+
+  it('verifies only the fact in the path, whatever the body asks for', async () => {
+    const mine = await anOwnerWithAFact('the first claim');
+    const second = await app.prisma.fact.create({
+      data: {
+        pageId: mine.pageId,
+        category: 'PRICE',
+        claim: 'the second claim',
+        normalizedClaim: 'the second claim',
+        confidence: 0.9,
+      },
+      select: { id: true },
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: `/facts/${mine.factId}/verify`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      // The shape the route-table test cannot see: a bulk accept asked for
+      // through the body of a route that does have an :id.
+      payload: { alsoVerify: [second.id], all: true },
+    });
+
+    expect((await app.prisma.fact.findUnique({ where: { id: second.id } }))?.verified).toBe(false);
+  });
+});
+
+describe('the other two routes are scoped and guarded too', () => {
+  it('refuses to edit another owner fact', async () => {
+    const mine = await anOwnerWithAFact();
+    const theirs = await anOwnerWithAFact('their claim');
+
+    const res = await app.inject({
+      method: 'PATCH',
+      url: `/facts/${theirs.factId}`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { claim: 'rewritten by a stranger' },
+    });
+
+    expect(res.statusCode).toBe(404);
+    const fact = await app.prisma.fact.findUnique({ where: { id: theirs.factId } });
+    expect(fact?.claim).toBe('their claim');
+  });
+
+  it('refuses to reject another owner fact', async () => {
+    const mine = await anOwnerWithAFact();
+    const theirs = await anOwnerWithAFact('their other claim');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/facts/${theirs.factId}/reject`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect((await app.prisma.fact.findUnique({ where: { id: theirs.factId } }))?.rejectedAt).toBeNull();
+  });
+
+  it('refuses an unauthenticated caller on both', async () => {
+    const mine = await anOwnerWithAFact();
+
+    const edit = await app.inject({
+      method: 'PATCH',
+      url: `/facts/${mine.factId}`,
+      remoteAddress: from(),
+      payload: { claim: 'anything' },
+    });
+    const reject = await app.inject({
+      method: 'POST',
+      url: `/facts/${mine.factId}/reject`,
+      remoteAddress: from(),
+    });
+
+    expect(edit.statusCode).toBe(401);
+    expect(reject.statusCode).toBe(401);
   });
 });

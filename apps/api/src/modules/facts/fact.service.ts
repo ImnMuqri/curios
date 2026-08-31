@@ -22,6 +22,8 @@ export class DuplicateFactError extends Error {
 }
 
 function isUniqueViolation(error: unknown): boolean {
+  // No assertion on `code`: the `in` check narrows it. Matches the identical
+  // helper in auth.service.ts, and the linter rejects the cast anyway.
   return (
     typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
   );
@@ -63,16 +65,22 @@ export async function editFact(
   factId: string,
   claim: string,
 ): Promise<void> {
+  let updated;
   try {
-    const updated = await prisma.fact.updateMany({
+    updated = await prisma.fact.updateMany({
       where: { id: factId, page: { accountId } },
       data: { claim, normalizedClaim: normalizeClaim(claim) },
     });
-    if (updated.count !== 1) throw new FactNotFoundError();
   } catch (error) {
     if (isUniqueViolation(error)) throw new DuplicateFactError();
     throw error;
   }
+
+  // Thrown OUTSIDE the catch above, deliberately. Inside it, a not-found we
+  // raised ourselves would be handed to `isUniqueViolation` to classify, and
+  // the two would only stay distinct for as long as their `code` values happen
+  // to differ.
+  if (updated.count !== 1) throw new FactNotFoundError();
 }
 
 /**
