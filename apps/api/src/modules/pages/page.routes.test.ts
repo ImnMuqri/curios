@@ -119,7 +119,8 @@ describe('POST /pages', () => {
 describe('POST /publish', () => {
   it('publishes the caller own page', async () => {
     const cookie = await anOwner();
-    await claim(cookie, `pub${randomUUID().slice(0, 8)}`);
+    const handle = `pub${randomUUID().slice(0, 8)}`;
+    await claim(cookie, handle);
 
     const res = await app.inject({
       method: 'POST',
@@ -129,6 +130,40 @@ describe('POST /publish', () => {
     });
 
     expect(res.statusCode).toBe(200);
+    // The status alone proves only that a row was matched -- publishPage
+    // throws when the count is not 1. It would pass just as well if the
+    // update wrote `published: false`, which is the one thing this whole
+    // task exists to do. So read it back.
+    const page = await app.prisma.page.findUnique({ where: { handle } });
+    expect(page?.published).toBe(true);
+  });
+
+  it('is harmless to publish twice', async () => {
+    const cookie = await anOwner();
+    const handle = `twice${randomUUID().slice(0, 8)}`;
+    await claim(cookie, handle);
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/publish',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: cookie },
+    });
+    const second = await app.inject({
+      method: 'POST',
+      url: '/publish',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: cookie },
+    });
+
+    // A double-clicked button is the ordinary way this happens. updateMany
+    // matches an already-published row just as well, so the count stays 1 and
+    // the second call succeeds -- but that is worth pinning rather than
+    // inferring.
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    const page = await app.prisma.page.findUnique({ where: { handle } });
+    expect(page?.published).toBe(true);
   });
 
   it('takes no page id at all', () => {
@@ -137,6 +172,12 @@ describe('POST /publish', () => {
     // One page per account is a database constraint, so the caller's page is
     // never ambiguous. Taking an id would create an IDOR surface to defend for
     // no benefit -- the same class of hole plan 1 closed on /ingest.
+    //
+    // What this catches: a `:param` segment, which is the only parametric
+    // idiom used anywhere in this codebase. What it does NOT catch: a wildcard
+    // segment such as /publish/*, which carries no colon. Same caveat as the
+    // route-table test in fact.routes.test.ts, and stated for the same reason
+    // -- a syntactic guard should say what it cannot see.
     const publishRoutes = routes.split('\n').filter((line) => line.includes('publish'));
     expect(publishRoutes.length).toBeGreaterThan(0);
     for (const line of publishRoutes) expect(line).not.toMatch(/:/);
