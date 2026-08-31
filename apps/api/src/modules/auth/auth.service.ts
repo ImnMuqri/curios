@@ -285,7 +285,14 @@ export async function requestPasswordReset(
   });
 
   // No account, or a Google-only account with no password to reset: send
-  // nothing and say nothing. The caller cannot tell which happened.
+  // nothing and say nothing.
+  //
+  // The two paths now cost the same to within a few local database writes,
+  // because neither waits for SMTP -- mail is queued, not sent, here. Before
+  // that they differed by a whole mail round trip, which made the response
+  // time answer exactly the question this identical response body refuses to.
+  // Not constant-time, and not claimed to be; the remaining difference is
+  // well under the noise of a network hop.
   if (!account?.password) return;
 
   // Supersede any reset link already outstanding. Asking again is what someone

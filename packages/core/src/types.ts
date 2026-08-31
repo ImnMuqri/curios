@@ -40,3 +40,24 @@ export interface IngestJobData {
   sourceUrl: string;
   idempotencyKey: string;
 }
+
+/**
+ * Transactional mail. Same rule as the ingest queue, and here for the same
+ * reason: `apps/api` enqueues, `apps/workers` sends, and neither imports the
+ * other.
+ *
+ * Mail leaves the request on purpose. The build spec requires it -- nothing
+ * slow runs inside a request -- and two security properties depend on it. A
+ * send that fails no longer fails the HTTP call that triggered it, so a signup
+ * can never leave an account written but unreachable. And an address that has
+ * no account costs the same as one that does, because neither waits for SMTP,
+ * which is what stops the response time answering a question the response body
+ * refuses to.
+ */
+export const MAIL_QUEUE = 'mail';
+
+export interface MailJobData {
+  to: string;
+  subject: string;
+  text: string;
+}

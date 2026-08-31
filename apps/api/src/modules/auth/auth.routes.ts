@@ -1,6 +1,6 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createMailer, type Mailer } from '../../lib/mailer.js';
+import { createQueueMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
 import { requireSession } from '../../plugins/session.js';
 import {
@@ -30,7 +30,7 @@ export interface AuthRouteOptions {
 }
 
 export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
-  const mailer = options.mailer ?? createMailer();
+  const mailer = options.mailer ?? createQueueMailer(app.mailQueue);
   const fetcher = options.fetcher;
 
   app.post('/auth/signup', { schema: { body: credentials } }, async (request, reply) => {
