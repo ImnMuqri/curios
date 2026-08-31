@@ -1202,6 +1202,23 @@ docker compose up -d mailpit
 
 Then send one message through the real transport and confirm it arrives at `http://localhost:8075`. The unit tests prove the message is composed correctly; this proves the SMTP wiring reaches a real server, which no double can. Record what you saw in your report.
 
+- [ ] **Step 8b: `rate-limit.test.ts` needs a session too**
+
+Step 8 names `ingest.service.test.ts` and misses this one. `rate-limit.test.ts` injects
+`POST /ingest` and `GET /ingest/:id` unauthenticated, so once the session hook guards the
+scope all four of its ingest assertions fail on 401 before any limiter is reached.
+
+Give its fixture an account and a session cookie. Do not relax the assertions: they still
+hold unchanged, because the invalid `sourceUrl` is rejected with a 400 before the
+ownership check, and a missing ingestion id is still a 404. What they measure is the
+budget, not the gate in front of it.
+
+**Also:** every `app.inject` in `ingest.authz.test.ts` passes its own `remoteAddress`,
+including the twenty-five in Step 6. That makes Step 6 sharper rather than weaker — with
+one address per request the per-IP budget can never be the reason anything is refused,
+which leaves the per-page budget as the only possible explanation, and that is precisely
+what the step is about.
+
 - [ ] **Step 9: Commit**
 
 ```bash
