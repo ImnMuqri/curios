@@ -202,11 +202,17 @@ Do not run `prisma format`. It reformats unrelated models and turns a three-file
 
 `prisma migrate dev` will offer to add `skeleton` as a bare NOT NULL unique column, which fails against existing rows. Write the migration instead:
 
+`prisma migrate dev --create-only` does not work here: Prisma refuses to run when the
+environment is non-interactive and any step is unexecutable, which it always is in this
+setup. Create the directory and file by hand instead, following the existing naming
+convention (`packages/db/prisma/migrations/` holds `YYYYMMDDHHMMSS_description/`), and do
+not touch `migration_lock.toml`:
+
 ```bash
-cd packages/db && pnpm exec prisma migrate dev --create-only --name owner_surface && cd ../..
+mkdir -p "packages/db/prisma/migrations/$(date +%Y%m%d%H%M%S)_owner_surface"
 ```
 
-Then replace the generated `migration.sql` with:
+Write this as its `migration.sql`:
 
 ```sql
 -- Nullable first: Page already holds rows, so a bare NOT NULL column fails here.
@@ -251,7 +257,18 @@ Expected: PASS.
 - [ ] **Step 7: Confirm nothing else broke**
 
 Run: `pnpm test`
-Expected: all 7 packages pass. `apps/api`'s ingest tests create pages; if any fixture creates two pages for one account it fails here, and the fixture is what changes, not the constraint.
+Expected: all 7 packages pass — but not on the first run. `skeleton` is required, so every
+fixture that creates a `Page` needs one. There are six, and they span five packages:
+`packages/db/src/schema.test.ts` (a pre-existing test in the same file you appended to),
+`packages/db-read/src/page.query.test.ts`, `apps/api/src/modules/chat/chat.service.test.ts`,
+`apps/api/src/modules/ingest/ingest.authz.test.ts`,
+`apps/api/src/modules/ingest/ingest.service.test.ts`,
+`apps/workers/src/ingestion/extract.service.test.ts`, and also `scripts/seed-dev.ts`.
+
+Fix each the same mechanical way — `skeleton` equal to the handle that fixture already
+uses — and commit them with this task. They are one consequence of one schema change, and
+splitting them would leave the tree red in between. Do NOT weaken an assertion to make a
+test pass; if one fails for any reason other than the missing column, stop and report it.
 
 - [ ] **Step 8: Commit**
 
