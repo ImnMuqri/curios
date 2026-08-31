@@ -20,6 +20,7 @@ const DOMAIN_ERROR_CODES = new Set([
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
   'OAUTH_STATE_MISMATCH',
+  'NOT_FOUND',
 ]);
 
 /**

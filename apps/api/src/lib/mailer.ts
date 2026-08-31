@@ -38,6 +38,12 @@ export function createQueueMailer(queue: MailQueue): Mailer {
         attempts: 5,
         backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: true,
+        // Bounded, not kept. A job that exhausts its attempts still holds the
+        // recipient's address and a working verification or reset URL, and a
+        // reset link is only valid for an hour anyway -- so an unbounded failed
+        // set is a growing pile of live credentials in Redis. An hour is long
+        // enough to read the failure off the worker's log and go looking.
+        removeOnFail: { age: 3600 },
       });
     },
   };

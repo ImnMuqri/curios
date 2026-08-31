@@ -65,6 +65,10 @@ describe('POST /ingest', () => {
     // Facts land unverified, so a successful cross-owner ingest plants claims
     // in a stranger's review queue.
     expect(res.statusCode).toBe(404);
+    // The code, not just the status. errorsPlugin whitelists client-facing
+    // codes and rewrites anything else to INTERNAL_ERROR, so a 404 saying
+    // INTERNAL_ERROR is what an unlisted code looks like from outside.
+    expect(res.json().error.code).toBe('NOT_FOUND');
     expect(await app.prisma.ingestion.count({ where: { pageId: theirs.pageId } })).toBe(0);
   });
 });
@@ -96,6 +100,35 @@ describe('GET /ingest/:id', () => {
 });
 
 describe('the order of the session check and the limiters', () => {
+  it('does not let a signed-in stranger burn an owner daily budget', async () => {
+    const mine = await anOwnerWithAPage();
+    const stranger = await anOwnerWithAPage();
+
+    // Signed in as themselves, naming someone else's page. The session hook
+    // lets these through -- they ARE authenticated -- and the per-page limiter
+    // counts at preHandler, before the handler checks ownership. So the 404 is
+    // returned only after the owner's budget has already been spent.
+    for (let i = 0; i < 25; i += 1) {
+      await app.inject({
+        method: 'POST',
+        url: '/ingest',
+        remoteAddress: from(),
+        cookies: { [SESSION_COOKIE]: stranger.cookie },
+        payload: { pageId: mine.pageId, sourceUrl: 'https://example.com/' },
+      });
+    }
+
+    const owner = await app.inject({
+      method: 'POST',
+      url: '/ingest',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { pageId: mine.pageId, sourceUrl: 'https://example.com/' },
+    });
+
+    expect(owner.statusCode).not.toBe(429);
+  });
+
   it('does not let an unauthenticated caller burn an owner daily budget', async () => {
     const mine = await anOwnerWithAPage();
 

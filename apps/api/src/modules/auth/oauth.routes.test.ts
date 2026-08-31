@@ -47,6 +47,15 @@ describe('GET /auth/google', () => {
     // The verifier stays with the browser; only its hash goes to Google. If
     // these two ever match, PKCE is doing nothing.
     expect(target.searchParams.get('code_challenge')).not.toBe(verifier?.value);
+
+    // And what goes out is signed. The state in the URL is the bare value,
+    // so a cookie carrying that same bare value never came from here.
+    const stateInUrl = target.searchParams.get('state');
+    expect(state?.value).not.toBe(stateInUrl);
+    expect(app.unsignCookie(state?.value ?? '')).toMatchObject({
+      valid: true,
+      value: stateInUrl,
+    });
   });
 });
 
@@ -85,7 +94,10 @@ describe('GET /auth/google/callback', () => {
       method: 'GET',
       url: `/auth/google/callback?code=abc&state=${state}`,
       remoteAddress: from(),
-      cookies: { [OAUTH_STATE_COOKIE]: state, [OAUTH_VERIFIER_COOKIE]: 'the-verifier' },
+      cookies: {
+        [OAUTH_STATE_COOKIE]: app.signCookie(state),
+        [OAUTH_VERIFIER_COOKIE]: app.signCookie('the-verifier'),
+      },
     });
 
     expect(res.statusCode).toBe(302);
@@ -107,6 +119,60 @@ describe('GET /auth/google/callback', () => {
       cookies: { [SESSION_COOKIE]: session?.value ?? '' },
     });
     expect(me.statusCode).toBe(200);
+  });
+});
+
+describe('the callback under conditions that are not the happy path', () => {
+  it('refuses a state cookie that this server did not sign', async () => {
+    const planted = 'a-state-an-attacker-chose';
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/auth/google/callback?code=abc&state=${planted}`,
+      remoteAddress: from(),
+      // Unsigned, which is all a cookie-injection foothold can produce: a
+      // subdomain XSS or takeover can set cookies on the parent domain but
+      // cannot forge this server's signature. Without signing, planting a
+      // cookie that matches a state of one's own choosing is enough to log a
+      // victim in as the attacker.
+      cookies: { [OAUTH_STATE_COOKIE]: planted, [OAUTH_VERIFIER_COOKIE]: 'v' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.cookies.find((c) => c.name === SESSION_COOKIE)).toBeUndefined();
+  });
+
+  it('sends someone who cancelled at Google back to the app, not to raw JSON', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/auth/google/callback?error=access_denied&state=whatever',
+      remoteAddress: from(),
+      cookies: { [OAUTH_STATE_COOKIE]: app.signCookie('whatever') },
+    });
+
+    // Clicking Cancel is an ordinary thing to do. Answering it with a 400 and
+    // a validation message on the API origin is a dead end with no way back.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toContain('/');
+    expect(res.json).toBeDefined();
+  });
+
+  it('spends the one-time cookies even when the callback fails', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/auth/google/callback?code=abc&state=does-not-match',
+      remoteAddress: from(),
+      cookies: {
+        [OAUTH_STATE_COOKIE]: app.signCookie('something-else'),
+        [OAUTH_VERIFIER_COOKIE]: app.signCookie('v'),
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    // Otherwise a failed attempt leaves a usable state and verifier sitting in
+    // the browser for the rest of their ten minutes.
+    expect(res.cookies.find((c) => c.name === OAUTH_STATE_COOKIE)?.value).toBe('');
+    expect(res.cookies.find((c) => c.name === OAUTH_VERIFIER_COOKIE)?.value).toBe('');
   });
 });
 

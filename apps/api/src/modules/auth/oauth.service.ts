@@ -15,6 +15,23 @@ export class OAuthStateError extends Error {
   }
 }
 
+/**
+ * Google answered, but not with a token, and not because the code was bad.
+ *
+ * A wrong client secret or redirect URI lands here. Kept apart from
+ * OAuthStateError so it surfaces as a 5xx and is logged, instead of telling
+ * every user their link expired while leaving nothing behind to diagnose.
+ */
+export class OAuthExchangeError extends Error {
+  readonly statusCode = 502;
+  readonly code = 'OAUTH_EXCHANGE_FAILED';
+
+  constructor(status: number) {
+    super(`Google's token endpoint answered ${status}.`);
+    this.name = 'OAuthExchangeError';
+  }
+}
+
 export type CodeExchange = (input: { code: string; verifier: string }) => Promise<GoogleProfile>;
 
 /** Google's response, parsed at the boundary rather than trusted. */
@@ -73,7 +90,12 @@ async function redeemWithGoogle(input: { code: string; verifier: string }): Prom
     }),
   });
 
-  if (!response.ok) throw new OAuthStateError();
+  // A 400 is Google rejecting the code itself -- expired, replayed, or not
+  // ours -- which is the caller's problem and reads correctly as an invalid
+  // link. Anything else is our configuration or Google's availability, and
+  // must not present to every user as an expired link.
+  if (response.status === 400) throw new OAuthStateError();
+  if (!response.ok) throw new OAuthExchangeError(response.status);
 
   const body = z.object({ id_token: z.string().min(1) }).parse(await response.json());
   const [, payload] = body.id_token.split('.');

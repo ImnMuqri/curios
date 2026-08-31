@@ -193,11 +193,24 @@ export function ingestPerPageLimit(redis: IORedis): RateLimitPluginOptions {
     nameSpace: namespace('ingest-page:'),
     max: limit('RATE_LIMIT_INGEST_PER_PAGE', 20),
     timeWindow: '1 day',
+    // Keyed on the OWNER and the page, not the page alone.
+    //
+    // This limiter counts at preHandler, and ownership is checked in the
+    // handler after it. Keyed on the page alone, any signed-in caller who
+    // knew a page id could spend that page's whole daily budget and be told
+    // 404 only afterwards -- locking the real owner out of their own page.
+    // Including the account means a stranger can only ever exhaust their own
+    // bucket. It costs the owner nothing, because a page has exactly one
+    // owner and nobody else can complete an ingestion into it anyway.
+    //
     // Falls back to the caller, never to a constant: a shared constant key
     // would put every request that reached here without a page into one
     // bucket and break the route for everyone once it filled.
-    keyGenerator: (request) =>
-      (request.body as { pageId?: string } | undefined)?.pageId ?? caller(request),
+    keyGenerator: (request) => {
+      const pageId = (request.body as { pageId?: string } | undefined)?.pageId;
+      const owner = request.account?.id ?? caller(request);
+      return pageId ? `${owner}:${pageId}` : owner;
+    },
     errorResponseBuilder: tooMany(
       (after) => `That page has been refreshed recently. Try again in ${after}.`,
     ),

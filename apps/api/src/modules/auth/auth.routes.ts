@@ -129,6 +129,11 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
       secure: process.env.NODE_ENV === 'production',
       path: '/',
       maxAge: 600,
+      // Signed, so that planting a cookie is not enough to forge one. A
+      // subdomain XSS or takeover can write cookies on the parent domain but
+      // cannot produce this server's signature, and without that a chosen
+      // state plus a matching cookie logs a victim in as the attacker.
+      signed: true,
     };
 
     return reply
@@ -139,14 +144,45 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
 
   app.get(
     '/auth/google/callback',
-    { schema: { querystring: z.object({ code: z.string().min(1), state: z.string().min(1) }) } },
+    {
+      schema: {
+        querystring: z.object({
+          // All optional, because this endpoint is a redirect target rather
+          // than a form post: Google sends `error` instead of `code` when
+          // someone clicks Cancel, and answering that with a validation error
+          // on the API origin is a dead end with no way back.
+          code: z.string().min(1).max(2048).optional(),
+          state: z.string().min(1).max(512).optional(),
+          error: z.string().min(1).max(200).optional(),
+        }),
+      },
+    },
     async (request, reply) => {
+      // Spent up front, so they are gone on every path out of here rather than
+      // only the one that succeeds. A failed attempt otherwise leaves a usable
+      // state and verifier in the browser for the rest of their ten minutes.
+      reply
+        .clearCookie(OAUTH_STATE_COOKIE, { path: '/' })
+        .clearCookie(OAUTH_VERIFIER_COOKIE, { path: '/' });
+
+      const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+      if (request.query.error || !request.query.code || !request.query.state) {
+        return reply.redirect(`${appUrl}/?signin=cancelled`);
+      }
+
+      // Only a value this server signed counts as one this browser was given.
+      const unsigned = (raw: string | undefined): string | undefined => {
+        if (!raw) return undefined;
+        const result = request.unsignCookie(raw);
+        return result.valid ? (result.value ?? undefined) : undefined;
+      };
+
       const profile = await exchangeGoogleCode(
         {
           code: request.query.code,
           state: request.query.state,
-          cookieState: request.cookies[OAUTH_STATE_COOKIE],
-          verifier: request.cookies[OAUTH_VERIFIER_COOKIE] ?? '',
+          cookieState: unsigned(request.cookies[OAUTH_STATE_COOKIE]),
+          verifier: unsigned(request.cookies[OAUTH_VERIFIER_COOKIE]) ?? '',
         },
         exchange,
       );
@@ -154,11 +190,7 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
       const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
       const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
 
-      return reply
-        .clearCookie(OAUTH_STATE_COOKIE, { path: '/' })
-        .clearCookie(OAUTH_VERIFIER_COOKIE, { path: '/' })
-        .setCookie(SESSION_COOKIE, value, cookie)
-        .redirect(`${process.env.APP_URL ?? 'http://localhost:3000'}/app`);
+      return reply.setCookie(SESSION_COOKIE, value, cookie).redirect(`${appUrl}/app`);
     },
   );
 };
