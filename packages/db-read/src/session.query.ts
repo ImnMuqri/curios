@@ -10,20 +10,23 @@ import { prismaRead } from './client.js';
  * the trap FRONTEND.md fell into when it said the cookie was "refreshed by
  * middleware". Refreshing stays in the API, where a write is legal.
  *
- * Checks both clocks `validateSession` checks -- absolute expiry and the idle
- * window -- not just `expiresAt`. Between 14 and 30 days of inactivity the
- * API already calls a session dead; checking `expiresAt` alone here would
- * still call it live, and the layout would render a dashboard whose next
- * request 401s. Both checks live in the WHERE clause rather than after the
- * read, so a dead row can never be returned by a caller that forgets to look.
+ * BOTH clocks are checked, and both in the WHERE clause rather than after the
+ * read, so an invalid row can never be returned to a caller that forgets to
+ * look. The absolute one is `expiresAt`, fixed at creation. The idle one is
+ * `lastSeenAt`, which the API moves on its sliding refresh.
+ *
+ * Checking only `expiresAt` here would let this disagree with the API: between
+ * fourteen and thirty days of inactivity the API treats a session as dead while
+ * this would still call it live, so the layout would render a dashboard whose
+ * every request then 401s. Two components disagreeing about who is signed in is
+ * worse than either answer.
  */
 export async function getOwnerSession(value: string): Promise<{ accountId: string } | null> {
-  const now = Date.now();
   const session = await prismaRead.session.findFirst({
     where: {
       id: hashSessionValue(value),
-      expiresAt: { gt: new Date(now) },
-      lastSeenAt: { gte: new Date(now - SESSION_IDLE_TTL_MS) },
+      expiresAt: { gt: new Date() },
+      lastSeenAt: { gt: new Date(Date.now() - SESSION_IDLE_TTL_MS) },
     },
     select: { accountId: true },
   });
