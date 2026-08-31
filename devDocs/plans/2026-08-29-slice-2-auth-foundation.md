@@ -2619,6 +2619,34 @@ In `apps/api/src/modules/auth/auth.routes.ts`, add inside `authRoutes`:
   );
 ```
 
+- [ ] **Step 4b: Split the rate-limit scopes**
+
+Added during implementation. The per-email limiter keys on the body's email and falls
+back to the caller's address when there is none, so on a bodyless route it becomes a
+second and stricter per-IP limiter. Probed: `/auth/google` allowed ten requests per
+fifteen minutes per address against an intended twenty, and the same applied to
+`/auth/google/callback`, `/auth/verify-email` and `/auth/reset-password`. Behind one
+NAT that is ten sign-in attempts for everybody.
+
+`auth.routes.ts` therefore exports two plugins instead of one:
+
+- `authRoutes` — signup, login, forgot-password. All carry an address, so both limiters
+  apply, unchanged.
+- `authFlowRoutes` — verify-email, reset-password, google, google/callback. Reached by
+  following a link or a redirect, carrying a one-time secret rather than an address,
+  so only the per-IP limiter applies. Guessing a 43-character token is not the attack a
+  per-address budget defends.
+
+`app.ts` registers them in two scopes accordingly, which is the principle its own
+comment already states for the chat and ingest scopes.
+
+**Also added:** `exchange?: CodeExchange` on `AuthRouteOptions`, and a route-level test
+file `oauth.routes.test.ts`. The brief tests only the service, which proves the state
+check in isolation while leaving the wiring that feeds it untested — and passing the
+URL's own state as the cookie state would satisfy every service test while handing an
+attacker the takeover state exists to prevent. Without the seam the success-path test
+posts a fake code to Google's real token endpoint.
+
 - [ ] **Step 5: Run the test to verify it passes**
 
 Run: `pnpm --filter @curios/api test src/modules/auth/oauth.service.test.ts`
