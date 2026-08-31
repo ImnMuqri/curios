@@ -916,6 +916,12 @@ git commit -m "feat(api): argon2id password hashing with breach screening"
 
 ### Task 6: The mailer, and Mailpit for development
 
+> **Superseded in part by Task 9a below.** This task's `apps/api/src/lib/mailer.ts`
+> now holds only the `Mailer` port and a queue-backed implementation; the nodemailer
+> transport and `smtpOptions` moved to `apps/workers/src/mail/transport.ts`, along
+> with these tests. Mailpit, the compose service and the SMTP_* keys are unchanged.
+
+
 **Files:**
 - Create: `apps/api/src/lib/mailer.ts`
 - Modify: `apps/api/package.json`, `docker-compose.yml`, `.env.example`
@@ -2340,6 +2346,41 @@ Expected: PASS, 6 tests.
 git add apps/api
 git commit -m "feat(api): email verification and password reset"
 ```
+
+---
+
+### Task 9a: Mail leaves the request
+
+Added after Task 9's review, which found forgot-password's response time to be an
+account-enumeration oracle: an unknown address returned after one indexed lookup,
+a known one after a whole awaited SMTP round trip.
+
+This was a conformance gap rather than a design choice. `slice-2-build-spec.md` already
+rules that mail "is sent from a background job, never inside the HTTP request that
+triggered it, matching the constraint that nothing slow runs in a request". Tasks 6, 8
+and 9 implemented it inline, so the plan under-implemented its own spec. The spec wins.
+
+**Files:**
+- Modify: `packages/core/src/types.ts`, `packages/core/src/index.ts` (`MAIL_QUEUE`, `MailJobData`)
+- Modify: `apps/api/src/plugins/queue.ts` (a second Queue, decorated as `mailQueue`)
+- Modify: `apps/api/src/lib/mailer.ts` (now the port plus `createQueueMailer`)
+- Modify: `apps/api/src/modules/auth/auth.routes.ts` (the production default enqueues)
+- Create: `apps/workers/src/mail/transport.ts`, `apps/workers/src/mail/mail.worker.ts`
+- Modify: `apps/workers/src/main.ts`, `apps/workers/src/queues.ts`
+
+**What it buys, beyond conformance:**
+
+- forgot-password costs the same for an address with an account and one without, to
+  within a few local writes. Not constant-time, and the code comment says so.
+- A failed send no longer fails the request that triggered it, so a signup cannot leave
+  an account written but unreachable -- which is the trap F2's re-send branch exists to
+  dig people out of. The cause is now gone, not just the symptom.
+
+**Notes:** the transport lives in `apps/workers` because the two apps must never import
+each other, and the API no longer needs nodemailer at all. Mail takes its own Redis
+connection: BullMQ blocks on one per worker, so sharing it would let a slow extraction
+stall every outgoing verification link. Verified end to end -- enqueue, worker, real
+SMTP, Mailpit inbox -- because unit tests with an injected double cannot prove wiring.
 
 ---
 
