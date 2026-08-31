@@ -419,7 +419,18 @@ this slice at all.
 | `BACKEND.md` | Auth section: Google-only reversed, with the original reasoning preserved as the record of what was traded away |
 | `README.md` | Owner auth row in the risk table |
 | `FRONTEND.md` | "refreshed by middleware" — the API refreshes; middleware cannot write |
-| `slice-1-build-spec.md` | Phone OTP gate marked deferred rather than slice 2 |
+| `slice-1-build-spec.md` | Phone OTP gate marked deferred rather than slice 2; its Auth section annotated where slice 2 replaced the design — OAuth state is a signed cookie, not a Redis entry, and the API refreshes the session rather than Next middleware |
+
+Two of these were not caught by the verification grep this slice specified.
+`slice-1-build-spec.md` said "Refreshed by **Next** middleware", which the pattern
+`refreshed by middleware` does not match, and it described the OAuth state as living in
+Redis with a short TTL. Both were live contradictions. A grep is only as good as the
+wording it guesses, which is an argument for reading the sections rather than trusting
+the pattern.
+
+BACKEND.md's Auth section also gained the two architectural facts that arrived with the
+reversal and had nowhere else to live: mail is queued rather than sent in-request, and a
+password is a `PasswordCredential` row rather than an `AuthIdentity` one.
 
 ---
 

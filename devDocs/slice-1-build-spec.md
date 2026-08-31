@@ -17,7 +17,7 @@ Nothing about leads, dashboards, FAQ pages, billing, or admin ships here.
 | In | Out, and which slice it belongs to |
 |---|---|
 | Website crawl → Opus extraction → reviewable facts | Instagram ingestion (adapter stubbed) |
-| Google sign-in, account, one page per account | Phone OTP publishing gate (slice 2) |
+| Google sign-in, account, one page per account | Phone OTP publishing gate (deferred, not shipped in slice 2 — see slice-2-build-spec.md) |
 | Fact review screen | Knowledge screen, pinned answers UI (slice 5) |
 | Public page: links, chips, ask bar, SSR fallback | Lead capture, capture card (slice 4) |
 | Haiku chat over SSE, grounded, refusing | Intent block (slice 4) |
@@ -182,15 +182,20 @@ later is worse than deciding now.
 
 ## Auth
 
-Google only, per BACKEND.md's Auth section. Slice 1 implements:
+Google only in slice 1. BACKEND.md's Auth section now covers email and
+password too, which arrived in slice 2 and replaced parts of the design below;
+the corrections are noted inline. Slice 1 implements:
 
-1. `GET /auth/google` → redirect with a signed, single-use state parameter held
-   in Redis with a short TTL.
+1. `GET /auth/google` → redirect with a signed, single-use state parameter.
+   *(Slice 2 implemented this as a signed, httpOnly cookie rather than a Redis
+   entry, alongside a PKCE verifier held the same way. Same property, one less
+   moving part.)*
 2. `GET /auth/google/callback` → verify state, exchange the code, verify the ID
    token, find or create `Account` via `AuthIdentity` on
    `(GOOGLE, sub)`.
-3. httpOnly, secure, sameSite=lax session cookie. Signed. Refreshed by Next
-   middleware, per FRONTEND.md.
+3. httpOnly, secure, sameSite=lax session cookie. *(Slice 2: the API
+   refreshes it, not Next middleware — `apps/web` holds a SELECT-only
+   connection and cannot write. FRONTEND.md is corrected to match.)*
 4. `POST /auth/logout`.
 
 Never match an existing account by email to link an identity. Trust
@@ -198,8 +203,9 @@ Never match an existing account by email to link an identity. Trust
 here because they are the two things that get implemented wrong under time
 pressure.
 
-Publishing is not gated in slice 1 — the phone OTP gate arrives in slice 2. Until
-then a page publishes on the owner's say-so and the seed data is fictional.
+Publishing is not gated in slice 1, and the phone OTP gate did not arrive in
+slice 2 either — it is deferred, per slice-2-build-spec.md. Until it ships a page
+publishes on the owner's say-so and the seed data is fictional.
 
 ---
 

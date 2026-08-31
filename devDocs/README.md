@@ -86,7 +86,7 @@ around personality and then rewrite it for catalogs, hours, and prices.
 | Sources | Static facts vs live connectors, kept separate. See BACKEND.md. |
 | Namespace | One flat `/handle` for both modes. Mode is a column, URLs never change shape. |
 | Personal privacy | `noindex` by default on personal pages, opt-in only. |
-| Owner auth | Google only. No passwords, no magic links. Phone OTP still gates publishing. |
+| Owner auth | Google, or email and password — both since slice 2. Phone OTP publishing gate deferred, not shipped. See slice-2-build-spec.md. |
 | Admin auth | Its own table, its own login, its own cookie. Shares nothing with owner auth. See ADMIN.md. |
 
 ---

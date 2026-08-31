@@ -52,17 +52,44 @@ spend a week on chunking instead of on leads. Revisit above ~400 facts per page.
 
 ## Auth
 
-**Google only.** No passwords, no magic links, no email sending on the login
-path at all. The buyer is a shop owner on a phone, and a magic link costs them
-four app switches and fails silently when it lands in spam. Google is one tap
-and never leaves the page. It also means development needs no email provider
-configured before anyone can log in, so the dev and production login paths are
-the same path.
+**Google, or email and password.** Both, since slice 2. The full argument is in
+`slice-2-build-spec.md`; the short version is that Google-only turns away anyone
+without a Google account, which in this market is a real population, and the
+cost of that exclusion outweighs the cost of owning a credential.
 
-Building an identity provider is an explicit non-goal, and delegating to Google
-is the cheapest way to honour it: no password hashing, no reset flow, no
-credential of ours to leak. The one place we do own credentials is admin, which
-is a separate system for exactly that reason. See ADMIN.md.
+This reverses the position this document used to hold. It is quoted rather than
+deleted, because what it traded away is still real and is the price of the
+reversal:
+
+> **Google only.** No passwords, no magic links, no email sending on the login
+> path at all. The buyer is a shop owner on a phone, and a magic link costs them
+> four app switches and fails silently when it lands in spam. Google is one tap
+> and never leaves the page. It also means development needs no email provider
+> configured before anyone can log in, so the dev and production login paths are
+> the same path.
+
+Two of those properties are kept rather than lost. Magic links are still not
+used — a password is one form, not four app switches. And dev and production are
+still the same path: `docker-compose.yml` runs Mailpit beside Postgres and Redis,
+so a fresh clone completes a signup with no external account and no
+configuration.
+
+What is genuinely accepted: an email provider is a dependency of the login path,
+we own a password hash and its compromise is our incident, and a reset flow
+exists and is itself an attack surface. So passwords are argon2id and screened
+against Have I Been Pwned on the way in; session, verification and reset tokens
+are opaque values stored only as SHA-256, so a database leak yields nothing that
+can be replayed; and verification and reset links are single-use and
+short-lived.
+
+Mail never runs inside a request. The API enqueues and `apps/workers` sends,
+which keeps the "nothing slow in a request" rule and means a send that fails
+cannot fail the signup that triggered it.
+
+Building an identity provider is still an explicit non-goal, and admin is still a
+separate system for that reason. See ADMIN.md. What changed is narrower than it
+sounds: we own one password hash per owner who chooses to have one, not an
+identity service.
 
 ```prisma
 model AuthIdentity {
@@ -76,6 +103,10 @@ model AuthIdentity {
   @@unique([provider, providerUserId])
 }
 ```
+
+A password is **not** an `AuthIdentity` row. It lives in `PasswordCredential`,
+keyed one-to-one to the account, because no external provider asserts it and
+there is no `providerUserId` to key on. `AuthProvider` stays Google in practice.
 
 Two rules, both of which are how this goes wrong in other products:
 

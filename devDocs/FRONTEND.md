@@ -122,7 +122,9 @@ polls that id until the job resolves. Nothing generative ever blocks an HTTP req
 
 - Server state: TanStack Query. No global store for it.
 - Chat session: local reducer, one `useReducer` per sheet instance.
-- Auth: httpOnly cookie, refreshed by middleware.
+- Auth: httpOnly cookie. The API issues and refreshes it; middleware only
+  redirects. `apps/web` holds a SELECT-only connection and cannot write, so it
+  cannot extend a session even if it wanted to.
 - No client state library. If you reach for one, the dashboard has gotten too clever.
 
 ---
