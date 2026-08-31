@@ -630,7 +630,11 @@ describe('POST /pages', () => {
   it('refuses a malformed handle and a reserved one, distinguishably', async () => {
     const cookie = await anOwner();
 
+    // Both length boundaries, and both must come back as domain errors. If the
+    // route schema ever restates the length rule, these arrive as
+    // INTERNAL_ERROR instead and the caller cannot tell a typo from an outage.
     expect((await claim(cookie, 'ab')).json().error.code).toBe('HANDLE_INVALID');
+    expect((await claim(cookie, 'a'.repeat(31))).json().error.code).toBe('HANDLE_INVALID');
     expect((await claim(cookie, 'admin')).json().error.code).toBe('HANDLE_RESERVED');
     expect((await claim(cookie, 'adm1n')).json().error.code).toBe('HANDLE_RESERVED');
   });
@@ -767,7 +771,6 @@ Create `apps/api/src/modules/pages/page.routes.ts`:
 ```ts
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { HANDLE_MAX, HANDLE_MIN } from '@curios/core';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { claimHandle } from './page.service.js';
 
@@ -777,7 +780,16 @@ export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         body: z.object({
-          handle: z.string().min(HANDLE_MIN).max(HANDLE_MAX),
+          // Deliberately NOT HANDLE_MIN/HANDLE_MAX. Schema validation runs
+          // before the handler, so bounding the handle here means a too-short
+          // handle never reaches `checkHandle` and comes back as a Fastify
+          // validation error -- which `errorsPlugin` does not whitelist, so the
+          // caller is told INTERNAL_ERROR for typing two characters.
+          //
+          // The 200 is an abuse bound on the payload, nothing more. Every real
+          // decision about what a handle may be belongs to `checkHandle`, which
+          // has a code and a message that say what the rule is.
+          handle: z.string().min(1).max(200),
           displayName: z.string().min(1).max(80),
         }),
       },
