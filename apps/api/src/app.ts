@@ -23,6 +23,7 @@ import {
 import { ingestRoutes } from './modules/ingest/ingest.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
+import { factRoutes } from './modules/facts/fact.routes.js';
 import {
   authFlowRoutes,
   authRoutes,
@@ -124,6 +125,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     scope.addHook('onRequest', requireSession);
     await scope.register(pageRoutes);
+    await scope.register(factRoutes);
   });
 
   return app;

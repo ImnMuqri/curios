@@ -26,6 +26,7 @@ const DOMAIN_ERROR_CODES = new Set([
   'HANDLE_TAKEN',
   'HANDLE_TOO_SIMILAR',
   'PAGE_EXISTS',
+  'FACT_DUPLICATE',
 ]);
 
 /**
