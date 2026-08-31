@@ -9,3 +9,6 @@ export type {
 } from './types.js';
 export { parseFactBlocks } from './parse-facts.js';
 export type { ParseResult } from './parse-facts.js';
+export { HANDLE_MIN, HANDLE_MAX, handleSkeleton, checkHandle } from './handle.js';
+export type { HandleCheck } from './handle.js';
+export { hashSessionValue } from './session-hash.js';

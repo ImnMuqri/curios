@@ -1,4 +1,5 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { randomBytes } from 'node:crypto';
+import { hashSessionValue } from '@curios/core';
 
 /**
  * Opaque bearer tokens: session cookies, email verification links, password
@@ -17,6 +18,7 @@ export function createToken(): { value: string; hash: string } {
   return { value, hash: hashToken(value) };
 }
 
-export function hashToken(value: string): string {
-  return createHash('sha256').update(value).digest('hex');
-}
+/** Kept as a name because sessions and auth tokens both hash their value the
+ *  same way; the implementation moved to @curios/core so packages/db-read can
+ *  use it too. */
+export const hashToken = hashSessionValue;
