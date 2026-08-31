@@ -48,12 +48,33 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
       })
       .send({ accountId });
   });
+};
 
+/**
+ * The two routes that carry no credential, kept out of the credential
+ * limiters deliberately.
+ *
+ * Those limiters exist for credential stuffing -- many addresses from one
+ * source, or one address from many. Neither shape applies here: /auth/me
+ * proves nothing but a cookie the caller already holds, and /auth/logout
+ * only destroys one. Sitting them behind a 20-per-15-minutes budget spends
+ * it on ordinary browsing, because a dashboard checks the session on every
+ * navigation, and signs people out for using the product.
+ */
+export const sessionRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/auth/logout', async (request, reply) => {
     const value = request.cookies[SESSION_COOKIE];
     if (value) await revokeSession(app.prisma, value);
 
-    return reply.clearCookie(SESSION_COOKIE, { path: '/' }).send({ status: 'signed_out' });
+    return reply
+      .clearCookie(SESSION_COOKIE, {
+        path: '/',
+        // Must match the attributes the cookie was set with. A clear with no
+        // Domain does not replace one scoped to a domain, so in production the
+        // browser would keep sending the old value.
+        domain: process.env.COOKIE_DOMAIN,
+      })
+      .send({ status: 'signed_out' });
   });
 
   app.get('/auth/me', { preHandler: requireSession }, async (request) => ({

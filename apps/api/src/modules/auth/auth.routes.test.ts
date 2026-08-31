@@ -217,3 +217,85 @@ describe('POST /auth/logout', () => {
     expect(after.statusCode).toBe(401);
   });
 });
+
+describe('the credential limiters cover credentials, and only credentials', () => {
+  it('does not spend the credential budget on session checks', async () => {
+    const email = await aVerifiedAccountWithPassword();
+    const login = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      remoteAddress: from(),
+      payload: { email, password: GOOD_PASSWORD },
+    });
+    const value = login.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '';
+
+    // One address, as a real browser is. The dashboard checks the session on
+    // every navigation, so putting /auth/me on a 20-per-15-minutes credential
+    // budget signs people out for browsing.
+    const polling = '198.51.100.7';
+    const codes = new Set<number>();
+    for (let i = 0; i < 25; i += 1) {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/auth/me',
+        remoteAddress: polling,
+        cookies: { [SESSION_COOKIE]: value },
+      });
+      codes.add(res.statusCode);
+    }
+
+    expect([...codes]).toEqual([200]);
+  });
+
+  it('does not let signup attempts lock an address out of login', async () => {
+    const email = await aVerifiedAccountWithPassword();
+
+    // Unauthenticated, and from anywhere. If these share a bucket with login,
+    // anyone can lock anyone out of their own account by posting signups.
+    for (let i = 0; i < 12; i += 1) {
+      await app.inject({
+        method: 'POST',
+        url: '/auth/signup',
+        remoteAddress: from(),
+        payload: { email, password: GOOD_PASSWORD },
+      });
+    }
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/login',
+      remoteAddress: from(),
+      payload: { email, password: GOOD_PASSWORD },
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('clears the session cookie on the domain it was set on', async () => {
+    process.env.COOKIE_DOMAIN = '.curios.test';
+    try {
+      const email = await aVerifiedAccountWithPassword();
+      const login = await app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        remoteAddress: from(),
+        payload: { email, password: GOOD_PASSWORD },
+      });
+      const value = login.cookies.find((c) => c.name === SESSION_COOKIE)?.value ?? '';
+      expect(login.cookies.find((c) => c.name === SESSION_COOKIE)?.domain).toBe('.curios.test');
+
+      const out = await app.inject({
+        method: 'POST',
+        url: '/auth/logout',
+        remoteAddress: from(),
+        cookies: { [SESSION_COOKIE]: value },
+      });
+
+      // A clear with no Domain does not replace a cookie scoped to one, so the
+      // browser keeps sending the old value at every subdomain.
+      expect(out.cookies.find((c) => c.name === SESSION_COOKIE)?.domain).toBe('.curios.test');
+    } finally {
+      delete process.env.COOKIE_DOMAIN;
+    }
+  });
+});

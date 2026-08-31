@@ -147,6 +147,12 @@ export async function signUpWithPassword(
   });
 
   if (existing) {
+    // Spend what the new-account path spends on argon2 below, or the response
+    // time answers the question the identical 202 refuses to. Hashing is the
+    // only expensive step on that path, so it is the one that has to be
+    // matched to equalise the response time.
+    await burnTime();
+
     // Two different existing-account cases, one identical HTTP response.
     //
     // An account that is unverified and has a password is almost always the
@@ -178,10 +184,24 @@ ${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
     return;
   }
 
-  const account = await deps.prisma.account.create({
-    data: { email, password: { create: { hash: await hashPassword(input.password) } } },
-    select: { id: true },
-  });
+  const hash = await hashPassword(input.password);
+
+  let account: { id: string };
+  try {
+    account = await deps.prisma.account.create({
+      data: { email, password: { create: { hash } } },
+      select: { id: true },
+    });
+  } catch (error) {
+    if (!isUniqueViolation(error)) throw error;
+
+    // Someone else took the address between the lookup above and this write --
+    // the mundane case being a double-clicked submit firing twice. That is the
+    // existing-account case, and it must answer the way that case answers, or
+    // a duplicate submit returns a 500 that tells the caller the address is
+    // taken. The Google path handles this same race for the same reason.
+    return;
+  }
 
   const token = await issueToken(deps.prisma, account.id, 'EMAIL_VERIFICATION');
   await deps.mailer.send({

@@ -22,7 +22,11 @@ import {
 } from './plugins/rate-limit.js';
 import { ingestRoutes } from './modules/ingest/ingest.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
-import { authRoutes, type AuthRouteOptions } from './modules/auth/auth.routes.js';
+import {
+  authRoutes,
+  sessionRoutes,
+  type AuthRouteOptions,
+} from './modules/auth/auth.routes.js';
 
 /**
  * Blank or unset trusts nothing. `true` trusts whatever sits in front, which
@@ -93,6 +97,10 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, authPerEmailLimit(app.rateLimitRedis));
     await scope.register(authRoutes, overrides.auth ?? {});
   });
+
+  // Outside that scope on purpose: these two carry no credential to stuff, and
+  // a session check is the most-called route the dashboard has.
+  await app.register(sessionRoutes);
 
   return app;
 }

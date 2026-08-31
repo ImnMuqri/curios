@@ -221,6 +221,25 @@ export function authPerIpLimit(redis: IORedis): RateLimitPluginOptions {
 }
 
 /**
+ * One bucket per address PER ROUTE, not per address across all of them.
+ *
+ * Sharing one bucket lets an unauthenticated caller spend it: a dozen signup
+ * posts for someone else's address would exhaust the budget that their login
+ * needs, which is an account lockout anyone can trigger for free.
+ *
+ * The email is whatever the body carries, so it is only trusted to be a string
+ * after validation has run. On a route with no body schema it will not be one,
+ * and coercing it is how an unauthenticated 500 gets in.
+ */
+function perRouteEmailKey(request: FastifyRequest): string {
+  const body = request.body as { email?: unknown } | undefined;
+  const subject =
+    typeof body?.email === 'string' ? body.email.toLowerCase() : caller(request);
+
+  return `${request.routeOptions?.url ?? request.url}:${subject}`;
+}
+
+/**
  * And the other shape: one address, many sources. Runs at preHandler because
  * the address is in the body, which onRequest has not parsed yet.
  */
@@ -233,8 +252,7 @@ export function authPerEmailLimit(redis: IORedis): RateLimitPluginOptions {
     nameSpace: namespace('auth-email:'),
     max: limit('RATE_LIMIT_AUTH_PER_EMAIL', 10),
     timeWindow: '15 minutes',
-    keyGenerator: (request) =>
-      ((request.body as { email?: string } | undefined)?.email ?? caller(request)).toLowerCase(),
+    keyGenerator: perRouteEmailKey,
     errorResponseBuilder: tooMany((after) => `Too many attempts. Try again in ${after}.`),
   };
 }
