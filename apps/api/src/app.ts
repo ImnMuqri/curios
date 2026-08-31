@@ -22,6 +22,7 @@ import {
 } from './plugins/rate-limit.js';
 import { ingestRoutes } from './modules/ingest/ingest.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
+import { pageRoutes } from './modules/pages/page.routes.js';
 import {
   authFlowRoutes,
   authRoutes,
@@ -119,6 +120,11 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // Outside that scope on purpose: these two carry no credential to stuff, and
   // a session check is the most-called route the dashboard has.
   await app.register(sessionRoutes);
+
+  await app.register(async (scope) => {
+    scope.addHook('onRequest', requireSession);
+    await scope.register(pageRoutes);
+  });
 
   return app;
 }
