@@ -850,13 +850,19 @@ git commit -m "feat(api): claim a handle, with the three collisions told apart"
 - Consumes: `hashSessionValue` (Task 2); `Fact.rejectedAt` (Task 1).
 - Produces: `getOwnerSession(value): Promise<{ accountId: string } | null>`, `getReviewQueue(accountId, options): Promise<ReviewFact[]>`, `type ReviewFact`.
 
-- [ ] **Step 1: Add the dependency**
+- [ ] **Step 1: Check the dependency, which is probably already there**
 
-`packages/db-read` needs `@curios/core` for the hash:
+`packages/db-read` needs `@curios/core` for the hash. It already declares it — slice 1's
+commit 3943eef added it — so confirm rather than add:
 
 ```bash
-pnpm --filter @curios/db-read add @curios/core@workspace:*
+grep -n '@curios/core' packages/db-read/package.json
 ```
+
+If for some reason it is absent, `pnpm --filter @curios/db-read add @curios/core@workspace:*`
+adds it. That file keeps `scripts`, `dependencies` and `devDependencies` on single lines, and
+a careless edit has broken it before, so afterwards confirm it still parses:
+`node -e "JSON.parse(require('fs').readFileSync('packages/db-read/package.json','utf8'))"`
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -1105,10 +1111,29 @@ export { getReviewQueue } from './review.query.js';
 export type { ReviewFact } from './review.query.js';
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [ ] **Step 6: Turn off file parallelism in this package**
+
+`page.query.test.ts` already truncates the shared `Account` table in `beforeAll`. Vitest runs
+files within a package in parallel by default, so that truncate races the inserts the two new
+test files make in their own `beforeAll` and occasionally deletes a row out from under them,
+surfacing as an `Fact_pageId_fkey` violation. It is intermittent, which is the worst kind.
+
+`apps/api/vitest.config.ts` already carries this exact fix for this exact reason. Add the same
+line to `packages/db-read/vitest.config.ts`:
+
+```ts
+export default defineConfig({
+  test: {
+    setupFiles: ['../../vitest.setup.ts', './vitest.setup.ts'],
+    fileParallelism: false,
+  },
+});
+```
+
+- [ ] **Step 7: Run the tests to verify they pass**
 
 Run: `pnpm --filter @curios/db-read test`
-Expected: PASS, 8 tests.
+Expected: PASS. Run it three times — an intermittent race is not disproved by one green run.
 
 These run as the read-only role, which is the point: if either query ever gains a write, it fails here with SQLSTATE 42501 rather than in review.
 
