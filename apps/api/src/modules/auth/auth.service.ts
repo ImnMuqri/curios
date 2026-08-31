@@ -164,6 +164,17 @@ export async function signUpWithPassword(
     // Only the mail differs. The response is byte-identical either way, so the
     // form still cannot be used to discover who has an account, and the only
     // person who learns anything is whoever can read that inbox.
+    // This branch deliberately does NOT install the password just submitted,
+    // though the retry that reaches it may carry a different one.
+    //
+    // Installing it looks like the kinder behaviour and is the more dangerous
+    // one: anyone who knows a pending address could post a signup for it and
+    // have THEIR password waiting on the account the moment its owner clicks
+    // verify. Keeping the first password means a verified account can only
+    // ever be opened by whoever started it.
+    // The cost is a retry whose new password is silently ignored; that person
+    // verifies and then uses password reset, which is a recoverable dead end
+    // rather than a takeover.
     if (!existing.emailVerifiedAt && existing.password) {
       const retry = await issueToken(deps.prisma, existing.id, 'EMAIL_VERIFICATION');
       await deps.mailer.send({
