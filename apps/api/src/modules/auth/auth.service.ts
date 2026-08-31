@@ -9,7 +9,7 @@ import {
   WeakPasswordError,
   type Fetcher,
 } from './password.service.js';
-import { issueToken } from './token.service.js';
+import { consumeToken, issueToken } from './token.service.js';
 
 export interface GoogleProfile {
   sub: string;
@@ -251,4 +251,86 @@ export async function signInWithPassword(
   if (!ok || !account.emailVerifiedAt) throw new InvalidCredentialsError();
 
   return { accountId: account.id };
+}
+
+export class InvalidTokenError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_TOKEN';
+
+  constructor() {
+    super('That link has expired or has already been used. Request a new one.');
+    this.name = 'InvalidTokenError';
+  }
+}
+
+export async function verifyEmail(prisma: PrismaClient, token: string): Promise<void> {
+  const consumed = await consumeToken(prisma, token, 'EMAIL_VERIFICATION');
+  if (!consumed) throw new InvalidTokenError();
+
+  await prisma.account.update({
+    where: { id: consumed.accountId },
+    data: { emailVerifiedAt: new Date() },
+  });
+}
+
+/** Always resolves, for the same enumeration reason signup does. */
+export async function requestPasswordReset(
+  deps: { prisma: PrismaClient; mailer: Mailer },
+  email: string,
+): Promise<void> {
+  const normalised = normaliseEmail(email);
+  const account = await deps.prisma.account.findUnique({
+    where: { email: normalised },
+    select: { id: true, password: { select: { id: true } } },
+  });
+
+  // No account, or a Google-only account with no password to reset: send
+  // nothing and say nothing. The caller cannot tell which happened.
+  if (!account?.password) return;
+
+  // Supersede any reset link already outstanding. Asking again is what someone
+  // does when the first did not arrive, or when they suspect the first request
+  // was not theirs -- and in that second case the earlier link is exactly what
+  // must stop working. Leaving it live for its full hour keeps a working key to
+  // the account sitting in an inbox.
+  await deps.prisma.authToken.updateMany({
+    where: { accountId: account.id, kind: 'PASSWORD_RESET', usedAt: null },
+    data: { usedAt: new Date() },
+  });
+
+  const token = await issueToken(deps.prisma, account.id, 'PASSWORD_RESET');
+  await deps.mailer.send({
+    to: normalised,
+    subject: 'Reset your password',
+    text: `Choose a new password:\n\n${process.env.APP_URL ?? 'http://localhost:3000'}/reset?token=${token}\n\nThis link works once and expires in an hour. If you did not ask for it, ignore this message.`,
+  });
+}
+
+export async function resetPassword(
+  prisma: PrismaClient,
+  input: { token: string; password: string },
+  fetcher?: Fetcher,
+): Promise<void> {
+  if (input.password.length < MIN_PASSWORD_LENGTH) {
+    throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+  if (await isBreached(input.password, fetcher)) {
+    throw new WeakPasswordError('That password has appeared in a public breach. Pick another.');
+  }
+
+  const consumed = await consumeToken(prisma, input.token, 'PASSWORD_RESET');
+  if (!consumed) throw new InvalidTokenError();
+
+  const hash = await hashPassword(input.password);
+
+  await prisma.$transaction([
+    prisma.passwordCredential.upsert({
+      where: { accountId: consumed.accountId },
+      create: { accountId: consumed.accountId, hash },
+      update: { hash },
+    }),
+    // Every session dies. A reset that leaves the intruder signed in is not a
+    // recovery, and this is the one place revocation is not optional.
+    prisma.session.deleteMany({ where: { accountId: consumed.accountId } }),
+  ]);
 }

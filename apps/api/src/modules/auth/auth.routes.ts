@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { createMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
 import { requireSession } from '../../plugins/session.js';
-import { signInWithPassword, signUpWithPassword } from './auth.service.js';
+import {
+  requestPasswordReset,
+  resetPassword,
+  signInWithPassword,
+  signUpWithPassword,
+  verifyEmail,
+} from './auth.service.js';
 import {
   ABSOLUTE_TTL_MS,
   createSession,
@@ -48,6 +54,37 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
       })
       .send({ accountId });
   });
+
+  app.post(
+    '/auth/verify-email',
+    { schema: { body: z.object({ token: z.string().min(1).max(200) }) } },
+    async (request, reply) => {
+      await verifyEmail(app.prisma, request.body.token);
+      return reply.send({ status: 'verified' });
+    },
+  );
+
+  app.post(
+    '/auth/forgot-password',
+    { schema: { body: z.object({ email: z.string().email().max(320) }) } },
+    async (request, reply) => {
+      await requestPasswordReset({ prisma: app.prisma, mailer }, request.body.email);
+      return reply.send({ status: 'check_your_email' });
+    },
+  );
+
+  app.post(
+    '/auth/reset-password',
+    {
+      schema: {
+        body: z.object({ token: z.string().min(1).max(200), password: z.string().min(1).max(200) }),
+      },
+    },
+    async (request, reply) => {
+      await resetPassword(app.prisma, request.body, fetcher);
+      return reply.send({ status: 'password_changed' });
+    },
+  );
 };
 
 /**
