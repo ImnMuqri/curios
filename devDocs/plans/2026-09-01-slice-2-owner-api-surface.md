@@ -2341,6 +2341,178 @@ git commit -m "feat(api): add a password or connect google, explicitly and authe
 
 ---
 
+### Task 8: The read that tells an owner whether they have a page
+
+Added after the whole-branch review, which found that nothing in this plan can answer the
+question the spec's onboarding flow opens with: *"Sign in → no page yet → claim a handle."*
+
+Branching on "no page yet" requires reading whether the signed-in account has a page, and
+none of the three existing queries can. `getPublicPage(handle)` needs a handle the owner does
+not have yet AND filters `published: true`, so it cannot see an unpublished page at all.
+`getReviewQueue(accountId)` returns facts. `getOwnerSession(value)` returns an accountId and
+nothing else.
+
+Every task in this plan matched its own brief, which is why seven per-task reviews passed. The
+gap is between the tasks, in what the set of them adds up to.
+
+**Files:**
+- Create: `packages/db-read/src/owner-page.query.ts`
+- Modify: `packages/db-read/src/index.ts`
+- Test: `packages/db-read/src/owner-page.query.test.ts`
+
+**Interfaces:**
+- Produces: `getOwnerPage(accountId): Promise<OwnerPage | null>`, `type OwnerPage`.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `packages/db-read/src/owner-page.query.test.ts`:
+
+```ts
+import { randomUUID } from 'node:crypto';
+import { describe, expect, it } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { getOwnerPage } from './owner-page.query.js';
+
+const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+
+async function anAccount(page?: { published: boolean }): Promise<string> {
+  const slug = randomUUID().slice(0, 8);
+  const account = await write.account.create({
+    data: {
+      email: `owner-page-${randomUUID()}@example.com`,
+      ...(page
+        ? {
+            pages: {
+              create: {
+                handle: `op-${slug}`,
+                skeleton: `op-${slug}`,
+                displayName: 'A Shop',
+                published: page.published,
+              },
+            },
+          }
+        : {}),
+    },
+    select: { id: true },
+  });
+  return account.id;
+}
+
+describe('getOwnerPage', () => {
+  it('returns null for an account that has not claimed a handle yet', async () => {
+    // The branch the onboarding flow opens with. Without this the web app
+    // cannot tell a new owner from a returning one.
+    expect(await getOwnerPage(await anAccount())).toBeNull();
+  });
+
+  it('returns an UNPUBLISHED page', async () => {
+    const accountId = await anAccount({ published: false });
+
+    // The property that makes this a separate query rather than a reuse of
+    // getPublicPage, which filters published: true and would therefore report
+    // "no page" for every owner who has not published yet -- which is all of
+    // them, at exactly the moment the dashboard needs to know.
+    const page = await getOwnerPage(accountId);
+
+    expect(page).not.toBeNull();
+    expect(page?.published).toBe(false);
+    expect(page?.displayName).toBe('A Shop');
+    expect(page?.handle).toMatch(/^op-/);
+  });
+
+  it('returns a published page too', async () => {
+    const page = await getOwnerPage(await anAccount({ published: true }));
+
+    expect(page?.published).toBe(true);
+  });
+
+  it('does not return another owner page', async () => {
+    await anAccount({ published: true });
+    const stranger = await anAccount();
+
+    // Scoped by accountId in the query. The same rule every other query in
+    // this plan follows, on a read that carries a handle and a display name.
+    expect(await getOwnerPage(stranger)).toBeNull();
+  });
+
+  it('does not write, so the read-only role can run it', async () => {
+    const accountId = await anAccount({ published: false });
+    const before = await write.page.findFirst({ where: { accountId }, select: { published: true } });
+
+    await getOwnerPage(accountId);
+
+    // Runs as curios_readonly. A write here fails in Postgres with SQLSTATE
+    // 42501 rather than in review -- the property the whole db-read boundary
+    // exists to hold.
+    const after = await write.page.findFirst({ where: { accountId }, select: { published: true } });
+    expect(after?.published).toBe(before?.published);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+Run: `pnpm --filter @curios/db-read test src/owner-page.query.test.ts`
+Expected: FAIL — cannot resolve `./owner-page.query.js`.
+
+- [ ] **Step 3: Write the query**
+
+Create `packages/db-read/src/owner-page.query.ts`:
+
+```ts
+import { prismaRead } from './client.js';
+
+export interface OwnerPage {
+  id: string;
+  handle: string;
+  displayName: string;
+  published: boolean;
+}
+
+/**
+ * The signed-in owner's own page, published or not.
+ *
+ * Deliberately not a reuse of `getPublicPage`. That one takes a handle and
+ * filters `published: true`, which is right for a visitor and useless here: an
+ * owner who has not published yet would look to the dashboard exactly like an
+ * owner who has no page, which is the one distinction onboarding turns on.
+ *
+ * `findFirst` rather than `findUnique`: `Page.accountId` carries a unique
+ * index, so this can only ever match 0 or 1 rows, and `findFirst` states that
+ * without depending on the generated name of the composite where-input.
+ */
+export async function getOwnerPage(accountId: string): Promise<OwnerPage | null> {
+  return prismaRead.page.findFirst({
+    where: { accountId },
+    select: { id: true, handle: true, displayName: true, published: true },
+  });
+}
+```
+
+- [ ] **Step 4: Export it**
+
+Add to `packages/db-read/src/index.ts`:
+
+```ts
+export { getOwnerPage } from './owner-page.query.js';
+export type { OwnerPage } from './owner-page.query.js';
+```
+
+- [ ] **Step 5: Run the test to verify it passes**
+
+Run: `pnpm --filter @curios/db-read test`
+Expected: PASS. `fileParallelism: false` is already set in this package, so the new file runs
+after the others rather than racing their fixtures.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add packages/db-read
+git commit -m "feat(db-read): the owner's own page, published or not"
+```
+
+---
+
 ## Self-review
 
 Run after the plan is written, before dispatching Task 1.
