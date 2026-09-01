@@ -2427,11 +2427,14 @@ describe('getOwnerPage', () => {
   });
 
   it('does not return another owner page', async () => {
-    await anAccount({ published: true });
+    const owner = await anAccount({ published: true });
     const stranger = await anAccount();
 
-    // Scoped by accountId in the query. The same rule every other query in
-    // this plan follows, on a read that carries a handle and a display name.
+    // Both halves, deliberately. Asserting only that the stranger gets null
+    // would pass just as well against an empty table, or against a query that
+    // returns null for everyone. Proving the decoy IS findable by its owner is
+    // what makes the stranger's null mean the filter worked.
+    expect(await getOwnerPage(owner)).not.toBeNull();
     expect(await getOwnerPage(stranger)).toBeNull();
   });
 
@@ -2477,12 +2480,14 @@ export interface OwnerPage {
  * owner who has not published yet would look to the dashboard exactly like an
  * owner who has no page, which is the one distinction onboarding turns on.
  *
- * `findFirst` rather than `findUnique`: `Page.accountId` carries a unique
- * index, so this can only ever match 0 or 1 rows, and `findFirst` states that
- * without depending on the generated name of the composite where-input.
+ * `findUnique`, not `findFirst`. `Page.accountId` carries a unique index, so
+ * at most one row can ever match, and saying so in the call is the difference
+ * between a query that happens to return one row and one that cannot return
+ * two. Prisma exposes `accountId` directly on the unique-where input for a
+ * single-field `@@unique`, so there is no composite key name to work around.
  */
 export async function getOwnerPage(accountId: string): Promise<OwnerPage | null> {
-  return prismaRead.page.findFirst({
+  return prismaRead.page.findUnique({
     where: { accountId },
     select: { id: true, handle: true, displayName: true, published: true },
   });
