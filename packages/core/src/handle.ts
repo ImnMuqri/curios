@@ -12,10 +12,80 @@ export const HANDLE_MAX = 30;
  * past an entry for `admin`. Non-ASCII lookalikes are stopped earlier and
  * harder, by the character class in `checkHandle`.
  */
-const RESERVED = new Set([
+const RESERVED_ROUTES = new Set([
   'app', 'api', 'faq', 'admin', 'about', 'pricing', 'help', 'support', 'blog',
   'login', 'signup', 'settings', 'static', 'next', '_next', 'www', 'auth',
   'terms', 'privacy', 'security', 'curios', 'root', 'system',
+]);
+
+/**
+ * The profanity seed the spec calls for.
+ *
+ * Deliberately narrow. Only unambiguous vulgarities are here: mild expletives
+ * that are also ordinary words -- `sial`, `bodoh`, `babi` -- are left out,
+ * because a handle namespace that rejects ordinary words is a worse product
+ * than one that lets a rude handle through to the takedown path.
+ *
+ * Matched exactly against the skeleton, like every other entry, so `fuckshop`
+ * is NOT blocked. Substring matching is the obvious next thought and the wrong
+ * one: it fails on innocent handles that happen to contain a short term, and
+ * the false positives are invisible to us and infuriating to the person who
+ * hit one. The residual gap goes where the spec already sends this class of
+ * problem -- the takedown path in BACKEND.md, not the namespace.
+ */
+const RESERVED_PROFANITY = new Set([
+  // English
+  'fuck', 'shit', 'cunt', 'bitch', 'bastard', 'whore', 'slut', 'rape',
+  'nigger', 'faggot', 'retard',
+  // Malay
+  'pukimak', 'puki', 'kimak', 'cibai', 'lancau', 'pantat', 'kanina', 'lanjiao',
+]);
+
+/**
+ * The Malaysian trademark seed the spec calls for.
+ *
+ * A seed, in the spec's own word, not a register: it holds the names whose
+ * impersonation would be most immediately costly -- banks, telcos, airlines,
+ * payment rails, and the government services people are asked to log into.
+ * It is not legal advice and has not had legal review.
+ *
+ * Short and ambiguous names are deliberately absent. `mas`, `tng`, `tm` and
+ * `ioi` are all real Malaysian marks and all plausible personal handles, and a
+ * namespace that refuses someone called Mas to protect an airline abbreviation
+ * has the trade backwards.
+ *
+ * Expansion is expected, and cheap: add a string. What this list misses is
+ * handled the same way the confusables gap is -- by takedown, after the fact.
+ */
+const RESERVED_TRADEMARKS = new Set([
+  // Banks and payments
+  'maybank', 'cimb', 'publicbank', 'ambank', 'hongleong', 'bankislam', 'rhbbank',
+  'touchngo', 'boost', 'bigpay', 'duitnow', 'fpx',
+  // Telcos and utilities
+  'celcom', 'maxis', 'umobile', 'unifi', 'telekom', 'tenaga', 'petronas', 'petron',
+  // Airlines
+  'airasia', 'malaysiaairlines', 'firefly', 'batikair',
+  // Platforms and retail
+  'shopee', 'lazada', 'foodpanda', 'mydin', 'aeon', 'lotuss', 'speedmart',
+  // Automotive
+  'proton', 'perodua',
+  // Conglomerates
+  'genting', 'sunway', 'simedarby', 'gamuda',
+  // Government services people are asked to sign in to
+  'mysejahtera', 'jpj', 'lhdn', 'kwsp', 'perkeso', 'myeg', 'imigresen',
+]);
+
+/**
+ * Everything unclaimable, in one set.
+ *
+ * Kept as three named sets rather than one flat list so each entry's reason for
+ * being here is visible. A future reader deleting `_next` because it looks like
+ * a typo should be able to see which group it belongs to and why.
+ */
+const RESERVED = new Set([
+  ...RESERVED_ROUTES,
+  ...RESERVED_PROFANITY,
+  ...RESERVED_TRADEMARKS,
 ]);
 
 /**

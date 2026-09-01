@@ -57,9 +57,34 @@ describe('checkHandle', () => {
     }
   });
 
-  it('rejects a reserved handle', () => {
+  it('rejects a reserved route name', () => {
     for (const bad of ['admin', 'api', 'app', 'auth', 'www', 'settings', 'privacy']) {
       expect(checkHandle(bad)).toEqual({ ok: false, reason: 'RESERVED' });
+    }
+  });
+
+  it('rejects profanity and a Malaysian trademark', () => {
+    // The spec asks for both alongside the route names. They were missing for
+    // eight tasks because the requirement never reached a task brief.
+    expect(checkHandle('cunt')).toEqual({ ok: false, reason: 'RESERVED' });
+    expect(checkHandle('pukimak')).toEqual({ ok: false, reason: 'RESERVED' });
+    expect(checkHandle('maybank')).toEqual({ ok: false, reason: 'RESERVED' });
+    expect(checkHandle('mysejahtera')).toEqual({ ok: false, reason: 'RESERVED' });
+  });
+
+  it('catches a trademark disguised with the same fold the routes use', () => {
+    // The reserved check runs against the skeleton, so every entry gets the
+    // digit folds for free -- including the two lists added last.
+    expect(checkHandle('petr0nas')).toEqual({ ok: false, reason: 'RESERVED' });
+    expect(checkHandle('a1rasia')).toEqual({ ok: false, reason: 'RESERVED' });
+  });
+
+  it('still accepts ordinary words that are merely near a blocked one', () => {
+    // Exact match, not substring. A namespace that rejects ordinary handles to
+    // catch rude ones is the worse product, and the residual gap goes to the
+    // takedown path BACKEND.md specifies.
+    for (const fine of ['maybankers', 'shipping', 'grabfood', 'bassist']) {
+      expect(checkHandle(fine)).toMatchObject({ ok: true });
     }
   });
 
