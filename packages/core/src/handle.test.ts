@@ -79,11 +79,14 @@ describe('checkHandle', () => {
     expect(checkHandle('a1rasia')).toEqual({ ok: false, reason: 'RESERVED' });
   });
 
-  it('still accepts ordinary words that are merely near a blocked one', () => {
-    // Exact match, not substring. A namespace that rejects ordinary handles to
-    // catch rude ones is the worse product, and the residual gap goes to the
-    // takedown path BACKEND.md specifies.
-    for (const fine of ['maybankers', 'shipping', 'grabfood', 'bassist']) {
+  it('still accepts ordinary words that CONTAIN a blocked one', () => {
+    // Every fixture here genuinely contains a reserved entry as a substring,
+    // so a substring implementation would reject all four. That is the point:
+    // `rapeseed` is a cooking oil, `grapevine` is a plant, `maybankers` and
+    // `shopeeholic` are ordinary coinages. A namespace that refuses them to
+    // catch rude or impersonating handles is the worse product, and the
+    // residual goes to the takedown path BACKEND.md specifies.
+    for (const fine of ['maybankers', 'shopeeholic', 'rapeseed', 'grapevine']) {
       expect(checkHandle(fine)).toMatchObject({ ok: true });
     }
   });

@@ -66,7 +66,7 @@ const RESERVED_TRADEMARKS = new Set([
   // Airlines
   'airasia', 'malaysiaairlines', 'firefly', 'batikair',
   // Platforms and retail
-  'shopee', 'lazada', 'foodpanda', 'mydin', 'aeon', 'lotuss', 'speedmart',
+  'grab', 'shopee', 'lazada', 'foodpanda', 'mydin', 'aeon', 'lotuss', 'speedmart',
   // Automotive
   'proton', 'perodua',
   // Conglomerates
