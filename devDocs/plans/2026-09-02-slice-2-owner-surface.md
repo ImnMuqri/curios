@@ -98,11 +98,33 @@ Create `packages/core/src/cookie.ts`:
 export const SESSION_COOKIE = 'curios_session';
 ```
 
-Add to `packages/core/src/index.ts`:
+Add to `packages/core/src/index.ts`, for the Node-side consumers:
 
 ```ts
 export { SESSION_COOKIE } from './cookie.js';
 ```
+
+**And give it a subpath export, which middleware needs and the barrel cannot provide.**
+`middleware.ts` is bundled for the Edge runtime. Importing from the `@curios/core` barrel drags
+in `session-hash.ts`, which imports `node:crypto`, which the Edge runtime does not have — the
+build fails with `UnhandledSchemeError: node:crypto`. This has not bitten before because
+`apps/web` only ever imported TYPES from core, and types vanish at build time. This is the first
+module to pull a runtime value from core into an Edge bundle.
+
+In `packages/core/package.json`, add the subpath beside the existing root export:
+
+```json
+  "exports": {
+    ".": "./src/index.ts",
+    "./cookie": "./src/cookie.ts"
+  },
+```
+
+Rejected `sideEffects: false` on the package, which would instead let webpack tree-shake the
+unused re-export: that makes the build depend on the bundler proving `hashSessionValue` is
+unreachable, and the day that proof fails the error is the same baffling `UnhandledSchemeError`
+with no visible cause. The subpath puts the Edge constraint at the import site, which is where
+the next person needs to see it.
 
 In `apps/api/src/modules/auth/session.service.ts`, replace the local declaration with a re-export so no plan 1 or 2a call site changes:
 
@@ -121,7 +143,7 @@ Create `apps/web/middleware.test.ts`:
 ```ts
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { SESSION_COOKIE } from '@curios/core';
+import { SESSION_COOKIE } from '@curios/core/cookie';
 import { middleware } from './middleware.js';
 
 const request = (path: string, cookie?: string) => {
@@ -205,7 +227,11 @@ Create `apps/web/middleware.ts`:
 
 ```ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { SESSION_COOKIE } from '@curios/core';
+// The subpath, NOT the '@curios/core' barrel. This file is bundled for the
+// Edge runtime, and the barrel re-exports a module importing node:crypto,
+// which the Edge runtime does not have. Importing the barrel here fails the
+// build with UnhandledSchemeError.
+import { SESSION_COOKIE } from '@curios/core/cookie';
 
 /**
  * Checks the cookie is PRESENT. Nothing more, and deliberately.
