@@ -72,7 +72,7 @@
 **Files:**
 - Create: `apps/web/middleware.ts`, `apps/web/app/app/layout.tsx`, `apps/web/app/app/session.ts`
 - Create: `packages/core/src/cookie.ts`
-- Modify: `packages/core/src/index.ts`, `apps/api/src/modules/auth/session.service.ts`
+- Modify: `packages/core/src/index.ts`, `packages/core/package.json`, `apps/api/src/modules/auth/session.service.ts`
 - Test: `apps/web/middleware.test.ts`, `apps/web/app/app/session.test.ts`
 
 **Interfaces:**
@@ -197,6 +197,11 @@ describe('resolveOwner', () => {
     getOwnerSession.mockResolvedValueOnce({ accountId: 'acc-1' });
 
     expect(await resolveOwner('a-real-value')).toEqual({ accountId: 'acc-1' });
+    // Asserting the ARGUMENT, not just the return. Without this a version that
+    // validated some other value -- a stale closure, a hardcoded literal --
+    // passes, and that version either locks everyone out or, far worse, hands
+    // everyone whichever account that value happens to belong to.
+    expect(getOwnerSession).toHaveBeenCalledWith('a-real-value');
   });
 
   it('refuses a cookie the database does not recognise', async () => {
@@ -205,6 +210,7 @@ describe('resolveOwner', () => {
     getOwnerSession.mockResolvedValueOnce(null);
 
     expect(await resolveOwner('forged')).toBeNull();
+    expect(getOwnerSession).toHaveBeenCalledWith('forged');
   });
 
   it('does not go to the database when there is no cookie at all', async () => {
@@ -285,6 +291,9 @@ Create `apps/web/app/app/layout.tsx`:
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+// The barrel here, unlike middleware.ts. This file runs on Node, so the
+// barrel's transitive node:crypto import is fine. The split between the two
+// is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
 import { resolveOwner } from './session.js';
 
