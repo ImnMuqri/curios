@@ -362,3 +362,99 @@ export async function resetPassword(
     prisma.session.deleteMany({ where: { accountId: consumed.accountId } }),
   ]);
 }
+
+export class PasswordAlreadySetError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'PASSWORD_ALREADY_SET';
+  constructor() {
+    super('This account already has a password. Use the reset link to change it.');
+    this.name = 'PasswordAlreadySetError';
+  }
+}
+
+export class IdentityTakenError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'IDENTITY_TAKEN';
+  constructor() {
+    super('That Google account is already connected to another Curios account.');
+    this.name = 'IdentityTakenError';
+  }
+}
+
+/**
+ * Adds a password to an account that has none.
+ *
+ * Add, never change. Changing a password is the reset flow, which proves
+ * control of the inbox first; letting a session rewrite the credential means a
+ * stolen session becomes permanent ownership of the account.
+ *
+ * Screened exactly as signup screens, because a password added here is the
+ * same credential with the same consequences.
+ */
+export async function addPassword(
+  deps: { prisma: PrismaClient; fetcher?: Fetcher },
+  accountId: string,
+  password: string,
+): Promise<void> {
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+  }
+  if (await isBreached(password, deps.fetcher)) {
+    throw new WeakPasswordError('That password has appeared in a public breach. Pick another.');
+  }
+
+  const existing = await deps.prisma.passwordCredential.findUnique({
+    where: { accountId },
+    select: { id: true },
+  });
+  if (existing) throw new PasswordAlreadySetError();
+
+  try {
+    await deps.prisma.passwordCredential.create({
+      data: { accountId, hash: await hashPassword(password) },
+    });
+  } catch (error) {
+    // Two simultaneous adds: the unique constraint on accountId decides, and
+    // the loser is told the same thing it would have been told a moment later.
+    if (isUniqueViolation(error)) throw new PasswordAlreadySetError();
+    throw error;
+  }
+}
+
+/**
+ * Attaches a Google identity to an account that is already signed in.
+ *
+ * This is the only linking path, and it is authenticated by construction: the
+ * account comes from the session, never from the profile's email address.
+ * Linking by matching address is the takeover the spec forbids -- someone
+ * registers your address with a provider that does not verify it, and their
+ * sign-in merges into your account.
+ */
+export async function linkGoogleIdentity(
+  prisma: PrismaClient,
+  accountId: string,
+  profile: GoogleProfile,
+): Promise<void> {
+  if (!profile.emailVerified) throw new UnverifiedEmailError();
+
+  const existing = await prisma.authIdentity.findUnique({
+    where: { provider_providerUserId: { provider: 'GOOGLE', providerUserId: profile.sub } },
+    select: { accountId: true },
+  });
+
+  if (existing) {
+    // Idempotent for the owner who clicks twice; refused for everyone else,
+    // because moving an identity between accounts is a takeover.
+    if (existing.accountId === accountId) return;
+    throw new IdentityTakenError();
+  }
+
+  try {
+    await prisma.authIdentity.create({
+      data: { accountId, provider: 'GOOGLE', providerUserId: profile.sub, email: profile.email },
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) throw new IdentityTakenError();
+    throw error;
+  }
+}

@@ -2,9 +2,11 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { createQueueMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
-import { requireSession } from '../../plugins/session.js';
+import { requireSession, UnauthenticatedError } from '../../plugins/session.js';
 import {
+  addPassword,
   findOrCreateAccountForGoogle,
+  linkGoogleIdentity,
   requestPasswordReset,
   resetPassword,
   signInWithPassword,
@@ -14,6 +16,7 @@ import {
 import {
   beginGoogleSignIn,
   exchangeGoogleCode,
+  OAUTH_LINK_COOKIE,
   OAUTH_STATE_COOKIE,
   OAUTH_VERIFIER_COOKIE,
   type CodeExchange,
@@ -121,6 +124,17 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
     },
   );
 
+  app.post(
+    '/auth/password',
+    { schema: { body: z.object({ password: z.string().min(1).max(200) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await addPassword({ prisma: app.prisma, fetcher }, request.account.id, request.body.password);
+      return reply.send({ status: 'password_set' });
+    },
+  );
+
   app.get('/auth/google', async (_request, reply) => {
     const { url, state, verifier } = beginGoogleSignIn();
     const options = {
@@ -139,6 +153,29 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
     return reply
       .setCookie(OAUTH_STATE_COOKIE, state, options)
       .setCookie(OAUTH_VERIFIER_COOKIE, verifier, options)
+      .redirect(url);
+  });
+
+  app.get('/auth/google/link', async (request, reply) => {
+    // Requires a session here as well as at the callback. Beginning a link
+    // while signed out would set an intent cookie that outlives the reason
+    // for it.
+    if (!request.account) throw new UnauthenticatedError();
+
+    const { url, state, verifier } = beginGoogleSignIn();
+    const options = {
+      httpOnly: true,
+      sameSite: 'lax' as const,
+      secure: process.env.NODE_ENV === 'production',
+      path: '/',
+      maxAge: 600,
+      signed: true,
+    };
+
+    return reply
+      .setCookie(OAUTH_STATE_COOKIE, state, options)
+      .setCookie(OAUTH_VERIFIER_COOKIE, verifier, options)
+      .setCookie(OAUTH_LINK_COOKIE, '1', options)
       .redirect(url);
   });
 
@@ -163,7 +200,8 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
       // state and verifier in the browser for the rest of their ten minutes.
       reply
         .clearCookie(OAUTH_STATE_COOKIE, { path: '/' })
-        .clearCookie(OAUTH_VERIFIER_COOKIE, { path: '/' });
+        .clearCookie(OAUTH_VERIFIER_COOKIE, { path: '/' })
+        .clearCookie(OAUTH_LINK_COOKIE, { path: '/' });
 
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
       if (request.query.error || !request.query.code || !request.query.state) {
@@ -186,6 +224,18 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
         },
         exchange,
       );
+
+      // One branch, stated plainly, in the one place that can see both the
+      // intent cookie and the session.
+      const linking = unsigned(request.cookies[OAUTH_LINK_COOKIE]) === '1';
+      if (linking) {
+        // A link intent with nothing to link to must not quietly become a
+        // signup -- that is where "explicit and authenticated" would be lost.
+        if (!request.account) throw new UnauthenticatedError();
+
+        await linkGoogleIdentity(app.prisma, request.account.id, profile);
+        return reply.redirect(`${appUrl}/app/settings?linked=google`);
+      }
 
       const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
       const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);

@@ -28,6 +28,8 @@ const DOMAIN_ERROR_CODES = new Set([
   'PAGE_EXISTS',
   'FACT_DUPLICATE',
   'NO_PAGE',
+  'PASSWORD_ALREADY_SET',
+  'IDENTITY_TAKEN',
 ]);
 
 /**

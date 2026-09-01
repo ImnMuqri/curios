@@ -5,6 +5,15 @@ import type { GoogleProfile } from './auth.service.js';
 export const OAUTH_STATE_COOKIE = 'curios_oauth_state';
 export const OAUTH_VERIFIER_COOKIE = 'curios_oauth_verifier';
 
+/**
+ * Set only by `GET /auth/google/link`, which requires a session. Its presence
+ * on the callback is what turns that one endpoint from a sign-in into a link.
+ *
+ * Signed, like the state and verifier, so planting it is not enough to change
+ * which branch the callback takes.
+ */
+export const OAUTH_LINK_COOKIE = 'curios_oauth_link';
+
 export class OAuthStateError extends Error {
   readonly statusCode = 400;
   readonly code = 'OAUTH_STATE_MISMATCH';
