@@ -57,11 +57,14 @@ describe('getOwnerPage', () => {
   });
 
   it('does not return another owner page', async () => {
-    await anAccount({ published: true });
+    const owner = await anAccount({ published: true });
     const stranger = await anAccount();
 
-    // Scoped by accountId in the query. The same rule every other query in
-    // this plan follows, on a read that carries a handle and a display name.
+    // Both halves, deliberately. Asserting only that the stranger gets null
+    // would pass just as well against an empty table, or against a query that
+    // returns null for everyone. Proving the decoy IS findable by its owner is
+    // what makes the stranger's null mean the filter worked.
+    expect(await getOwnerPage(owner)).not.toBeNull();
     expect(await getOwnerPage(stranger)).toBeNull();
   });
 
