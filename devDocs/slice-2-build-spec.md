@@ -318,6 +318,42 @@ meaningful to a substantial part of this market.
 Blocking it costs `mail`/`mall`. Impersonation by letter substitution is handled by the
 takedown path BACKEND.md already specifies, not by the namespace.
 
+### OPEN DECISION — ambiguous trademarks in the reserved seed
+
+Raised by the final review of plan 2a, unresolved, and live on `main` since the seed shipped.
+
+The profanity seed was built on a stated rule: **exclude a term if it is also an ordinary word
+a business might legitimately want.** That is why `sial`, `bodoh` and `babi` are absent — the
+last of these appears literally in pork-dish business names.
+
+That rule was **not applied consistently to the trademark seed.** These five entries are real
+Malaysian marks that are also ordinary words:
+
+| Entry | Also means | A business that might want it |
+|---|---|---|
+| `tenaga` | "energy" / "power" in Malay | a gym, a solar installer, an energy drink |
+| `boost` | ordinary English verb and noun | a gym, a supplement shop, a marketing agency |
+| `proton` | a subatomic particle | a physics tutor, a lab, a tech shop |
+| `firefly` | the insect | a cafe, a florist, a childcare business |
+| `aeon` | an indefinite age | a design studio, a jeweller, a bookshop |
+
+**The trade, stated so the call is easy to make.** Blocking one wrongly is a silent failure:
+a shop hits "that handle is reserved", has no way to appeal it in the product, and gives up —
+and we never hear about it. Allowing one wrongly is a loud failure with a named victim and an
+existing remedy: the brand files a takedown, which BACKEND.md already specifies. This spec
+already prefers the loud failure everywhere else it faces the same choice — see the
+`nadla`/`nadia` residual above, which is routed to takedown rather than blocked.
+
+**On that reasoning the five should probably be dropped.** It is recorded rather than acted on
+because which of them a Malaysian business would realistically claim is market knowledge, and
+the cost of guessing wrong is the invisible kind.
+
+Whoever settles this: the list is `RESERVED_TRADEMARKS` in `packages/core/src/handle.ts`, and
+removing an entry is deleting a string. `packages/core/src/handle.test.ts` asserts on
+`maybank`, `mysejahtera`, `petr0nas` and `a1rasia`, none of which are in question here.
+
+---
+
 **Cost of precomputing:** changing this algorithm later requires a backfill migration, and
 any collisions it newly surfaces must be adjudicated by hand. The alternative — computing
 on read — cannot be uniquely indexed, so this is the trade that buys atomic claiming.

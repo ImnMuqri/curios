@@ -56,6 +56,13 @@ const RESERVED_PROFANITY = new Set([
  *
  * Expansion is expected, and cheap: add a string. What this list misses is
  * handled the same way the confusables gap is -- by takedown, after the fact.
+ *
+ * OPEN DECISION: five entries below -- `tenaga`, `boost`, `proton`, `firefly`
+ * and `aeon` -- are ordinary words as well as marks, and the "exclude it if a
+ * business might legitimately want it" rule applied to the profanity list was
+ * never applied here. See "OPEN DECISION -- ambiguous trademarks in the
+ * reserved seed" in devDocs/slice-2-build-spec.md before adding to this list,
+ * so the same inconsistency is not extended.
  */
 const RESERVED_TRADEMARKS = new Set([
   // Banks and payments
