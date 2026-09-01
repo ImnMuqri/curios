@@ -12,14 +12,19 @@ let nth = 0;
 /** A fresh source address per request, so the limiter never sees a flood. */
 const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
-const SUB = `link-${randomUUID()}`;
+// One sub per test, not one per file. Sharing it silently couples the linking
+// tests: whichever runs first claims the sub, and every later test's "first"
+// link is really a collision with that one. A test can then pass for a reason
+// its own narrative never mentions.
+let currentSub = `link-${randomUUID()}`;
+const freshSub = () => (currentSub = `link-${randomUUID()}`);
 const PASSWORD = 'a-long-enough-passphrase';
 
 beforeAll(async () => {
   app = await buildApp({
     auth: {
       exchange: async () => ({
-        sub: SUB,
+        sub: currentSub,
         email: `google-${randomUUID()}@example.com`,
         emailVerified: true,
         name: 'Nadia',
@@ -119,6 +124,7 @@ describe('POST /auth/password', () => {
 
 describe('linking Google while signed in', () => {
   it('attaches the identity to the account already signed in', async () => {
+    const sub = freshSub();
     const account = await anAccount(true);
     const state = 'a-state-this-browser-started-with';
 
@@ -136,7 +142,7 @@ describe('linking Google while signed in', () => {
 
     expect(res.statusCode).toBe(302);
     const identity = await app.prisma.authIdentity.findFirst({
-      where: { provider: 'GOOGLE', providerUserId: SUB },
+      where: { provider: 'GOOGLE', providerUserId: sub },
       select: { accountId: true },
     });
     // Attached to the signed-in account, and no second account created.
@@ -164,7 +170,40 @@ describe('linking Google while signed in', () => {
     expect(await app.prisma.account.count()).toBe(before);
   });
 
+  it('is idempotent when the same owner links twice', async () => {
+    const sub = freshSub();
+    const account = await anAccount(true);
+    const state = 'a-second-click';
+
+    const link = () =>
+      app.inject({
+        method: 'GET',
+        url: `/auth/google/callback?code=abc&state=${state}`,
+        remoteAddress: from(),
+        cookies: {
+          [SESSION_COOKIE]: account.cookie,
+          [OAUTH_LINK_COOKIE]: app.signCookie('1'),
+          [OAUTH_STATE_COOKIE]: app.signCookie(state),
+          [OAUTH_VERIFIER_COOKIE]: app.signCookie('v'),
+        },
+      });
+
+    expect((await link()).statusCode).toBe(302);
+    // A second click is an ordinary thing to do, and must not be reported as
+    // "already connected to another account". Without this test the
+    // same-account early return is exercised by nothing at all, and deleting
+    // it would fail no test in the suite.
+    expect((await link()).statusCode).toBe(302);
+
+    const identities = await app.prisma.authIdentity.findMany({
+      where: { provider: 'GOOGLE', providerUserId: sub },
+    });
+    expect(identities).toHaveLength(1);
+    expect(identities[0]?.accountId).toBe(account.id);
+  });
+
   it('refuses to move an identity that already belongs to another account', async () => {
+    freshSub();
     const first = await anAccount(true);
     const second = await anAccount(true);
     const state = 'shared-state';

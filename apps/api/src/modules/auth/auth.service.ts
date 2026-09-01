@@ -454,7 +454,19 @@ export async function linkGoogleIdentity(
       data: { accountId, provider: 'GOOGLE', providerUserId: profile.sub, email: profile.email },
     });
   } catch (error) {
-    if (isUniqueViolation(error)) throw new IdentityTakenError();
-    throw error;
+    if (!isUniqueViolation(error)) throw error;
+
+    // Someone won the race between the lookup above and this write. Re-read
+    // before deciding what to say: the ordinary cause is the same owner
+    // double-clicking, and telling them their own account belongs to someone
+    // else is both wrong and alarming. Same shape as the race handler
+    // `findOrCreateAccountForGoogle` already carries.
+    const raced = await prisma.authIdentity.findUnique({
+      where: { provider_providerUserId: { provider: 'GOOGLE', providerUserId: profile.sub } },
+      select: { accountId: true },
+    });
+    if (raced?.accountId === accountId) return;
+
+    throw new IdentityTakenError();
   }
 }
