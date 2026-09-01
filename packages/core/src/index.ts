@@ -13,3 +13,4 @@ export { HANDLE_MIN, HANDLE_MAX, handleSkeleton, checkHandle } from './handle.js
 export type { HandleCheck } from './handle.js';
 export { hashSessionValue } from './session-hash.js';
 export { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from './session.js';
+export { SESSION_COOKIE } from './cookie.js';
