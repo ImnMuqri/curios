@@ -1252,8 +1252,11 @@ describe('FactCard', () => {
 });
 ```
 
-Then `apps/web/app/app/review/review-queue.test.tsx`, five tests. Mock `next/navigation` the way
-`claim-form.test.tsx` already does, so `router.refresh()` is a spy:
+Then `apps/web/app/app/review/review-queue.test.tsx`, five tests. Mock `next/navigation` so
+`router.refresh()` is a spy. NOTE: an earlier draft of this line said claim-form.test.tsx already
+does this. It does not -- it renders `ClaimForm`, which never touches `useRouter`, and no test in
+the repo mocked `next/navigation` before this task. Follow the shape of the two existing
+`vi.mock('@curios/db-read', ...)` calls instead:
 
 1. **An accepted card leaves the queue.** Two facts in, click Accept on the first, assert its
    claim is gone from the document and the second's is still there. Assert `router.refresh` was
