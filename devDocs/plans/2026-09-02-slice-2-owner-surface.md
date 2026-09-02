@@ -372,7 +372,15 @@ import { apiFetch, ApiError } from './api.js';
 afterEach(() => vi.unstubAllGlobals());
 
 function stubFetch(status: number, body: unknown) {
-  const spy = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+  // Typed with fetch's real signature, unused params and all: vi.fn() infers
+  // its mock's call-args shape from this implementation's own parameter list,
+  // and a zero-arg arrow makes spy.mock.calls[0][1] an out-of-bounds tuple
+  // index at COMPILE time -- invisible to vitest, which only transpiles, and
+  // caught only by the typecheck gate.
+  const spy = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify(body), { status }),
+  );
   vi.stubGlobal('fetch', spy);
   return spy;
 }
