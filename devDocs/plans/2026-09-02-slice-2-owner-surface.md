@@ -18,6 +18,14 @@
 - **`apps/web` must never import `packages/db`.** Reads go through `packages/db-read`.
 - **Every browser→API call passes `credentials: 'include'`** and `content-type: application/json`. Both are load-bearing: the cookie does not travel without the first, and the second is one of the three things standing in for a CSRF token.
 - **Middleware is never a security boundary.** It checks cookie presence and redirects. Nothing is authorized because middleware let a request through.
+- **A Server Component may never pass a function to a Client Component.** Functions are not
+  serializable across that boundary, and Next rejects it at REQUEST time with a 500 — which lint,
+  typecheck, tests and build all pass straight over. It was found in this plan only by clicking a
+  real link during Task 3's manual walk-through. So every screen takes the same shape: a
+  presentational client component whose handlers are required props, a thin client wrapper that
+  supplies the real ones, and a `page.tsx` Server Component that reads the query string and renders
+  the wrapper with plain data only. `SignIn` in Task 2 and `Verify` in Task 3 are the worked
+  examples.
 - **No blank prompt boxes** (FRONTEND.md). Every input is a control with a fixed set of answers, except the two places a human writes prose: a pinned answer, and a fact correction.
 - **One primary action per screen.** Everything else is secondary.
 - **Empty states are instructions, not moods.** "No facts to review yet. Paste your website address above and we will read it." Never "Nothing here!"
@@ -821,8 +829,12 @@ message, or "that link looks incomplete" when `token` is undefined. Post exactly
 because the token is single-use and a second post spends it and reports failure on a link that
 worked.
 
-`page.tsx` reads `searchParams.token` and renders `<VerifyClient token={token} verify={…} />`,
-where the default `verify` calls `apiFetch('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) })`.
+`page.tsx` is a Server Component that reads `searchParams.token` and renders
+`<Verify token={token} />` — plain data only, no function prop. `Verify` is a thin client
+wrapper beside `VerifyClient` that supplies the real `verify`, calling
+`apiFetch('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) })`. Same
+shape as `SignIn` in Task 2, and for the reason in the Global Constraints: a Server Component
+cannot hand a function to a Client Component.
 
 - [ ] **Step 4: Write `/reset` and `/forgot`**
 
