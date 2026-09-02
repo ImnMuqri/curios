@@ -46,7 +46,20 @@ export default async function ReviewPage() {
   // (B3): "Nothing left to review. Publish when you are ready." lives inside
   // `ReviewQueue` and disappears whenever facts remain, so putting the
   // button there would hide it exactly when F5 says it must stay visible --
-  // publishing is not gated on having reviewed anything.
+  // publishing is not gated on having reviewed anything. THIS LINE is where
+  // F5 is actually decided, which is why page.test.tsx renders this
+  // component and asserts the button is offered with facts present and
+  // absent alike. `PublishButton` having no verification prop closes the
+  // obvious route to a gate; it says nothing about this one.
+  //
+  // `Publish` is also the one wrapper on this screen with no `onChanged`
+  // callback, unlike `Claim`, `Ingest` and `Review`, so it does not
+  // `router.refresh()` on success. A6 stated that invariant screen-wide, so
+  // this is a deliberate exception: `page.published` has exactly one
+  // consumer, `PublishButton` itself, whose local `done` state already shows
+  // the published view. The moment anything else on this route reads
+  // `published` -- a "your page is live" badge, say -- this needs the
+  // callback like the other three.
   return (
     <>
       <Review facts={facts} />
