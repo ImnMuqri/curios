@@ -34,11 +34,16 @@ describe('JobStatus', () => {
 
   it('stops polling once the job resolves', async () => {
     const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 1, error: null });
-    wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} />);
+    // The interval is injected ONLY so this test can outlive it. At the real
+    // 2000ms a 60ms wait proves nothing: it passes identically whether the
+    // interval stops or runs forever, because neither fires in 60ms. With 20ms
+    // here and a 200ms wait, a poll that failed to stop would fire about ten
+    // times and the assertion below would catch it.
+    wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} intervalMs={20} />);
     await screen.findByText(/1/);
 
     const callsAtResolution = fetchStatus.mock.calls.length;
-    await new Promise((r) => setTimeout(r, 60));
+    await new Promise((r) => setTimeout(r, 200));
 
     // A poll that never stops is a request every two seconds forever on a
     // phone, for a job that finished.

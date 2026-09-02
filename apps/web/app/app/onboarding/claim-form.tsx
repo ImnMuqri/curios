@@ -74,8 +74,8 @@ export function Claim() {
     <ClaimForm
       onClaim={async (input) => {
         await apiFetch('/pages', { method: 'POST', body: JSON.stringify(input) });
-        // Re-runs the /app decision now that a page exists.
-        router.push('/app');
+        // Re-runs the Server Component now that a page exists.
+        router.refresh();
       }}
     />
   );

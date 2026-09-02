@@ -20,16 +20,22 @@ export type IngestionResult = {
 export function JobStatus({
   ingestionId,
   fetchStatus,
+  intervalMs = 2000,
 }: {
   ingestionId: string;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
+  /**
+   * Poll interval in ms. Injected only so tests can pass a shorter interval
+   * and verify the poll stops; production uses the 2000ms default.
+   */
+  intervalMs?: number;
 }) {
   const { data } = useQuery({
     queryKey: ['ingestion', ingestionId],
     queryFn: () => fetchStatus(ingestionId),
     refetchInterval: (query) => {
       const status = query.state.data?.status;
-      return status === 'QUEUED' || status === 'RUNNING' ? 2000 : false;
+      return status === 'QUEUED' || status === 'RUNNING' ? intervalMs : false;
     },
   });
 
