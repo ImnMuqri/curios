@@ -16,3 +16,8 @@ Object.defineProperty(window, 'matchMedia', {
     dispatchEvent: () => false,
   }),
 });
+
+// Registers toBeInTheDocument, toBeDisabled and the rest of the DOM matchers.
+// Appended rather than replacing the matchMedia stub above, which the public
+// page's tests still need.
+import '@testing-library/jest-dom/vitest';

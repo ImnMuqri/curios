@@ -205,7 +205,7 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
 
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
       if (request.query.error || !request.query.code || !request.query.state) {
-        return reply.redirect(`${appUrl}/?signin=cancelled`);
+        return reply.redirect(`${appUrl}/signin?cancelled=1`);
       }
 
       // Only a value this server signed counts as one this browser was given.

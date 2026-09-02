@@ -153,7 +153,7 @@ describe('the callback under conditions that are not the happy path', () => {
     // Clicking Cancel is an ordinary thing to do. Answering it with a 400 and
     // a validation message on the API origin is a dead end with no way back.
     expect(res.statusCode).toBe(302);
-    expect(res.headers.location).toContain('/');
+    expect(res.headers.location).toContain('/signin');
     expect(res.json).toBeDefined();
   });
 
