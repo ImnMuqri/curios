@@ -584,11 +584,51 @@ export function SignInForm({
 }
 ```
 
-Create `apps/web/app/signin/page.tsx`:
+**Why the submit handler cannot live on the server.** The session cookie arrives as
+`Set-Cookie` on the API's response, and that header only reaches the visitor's browser if the
+*browser* made the request. A Server Action or a server-side `fetch` would receive the cookie
+into the Next server process, where it is useless and invisible to the person signing in. So
+the request is made from a client component, always.
+
+That splits `signin-form.tsx` into two exports, and the split is deliberate: everything worth
+testing lives in the presentational half, and the half a unit test could only check against
+mocks of both `fetch` and the router is kept small enough to read at a glance.
+
+Add to `apps/web/app/signin/signin-form.tsx`, below `SignInForm`:
 
 ```tsx
-import { redirect } from 'next/navigation';
-import { SignInForm } from './signin-form.js';
+/**
+ * Supplies the real submit handler. Thin on purpose.
+ *
+ * A unit test of this would assert that a mocked fetch was called and a mocked
+ * router was pushed, which proves the mocks work. What it actually does is
+ * covered by Task 3's manual walk-through of the whole flow, and by the API's
+ * own tests of POST /auth/login.
+ */
+export function SignIn({ cancelled, next }: { cancelled: boolean; next: string }) {
+  const router = useRouter();
+
+  return (
+    <SignInForm
+      cancelled={cancelled}
+      onSubmit={async (input) => {
+        await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(input) });
+        router.push(next);
+      }}
+    />
+  );
+}
+```
+
+`SignInForm` keeps `onSubmit` REQUIRED rather than defaulting to the real handler. A default
+would mean the production path is the one path no test ever exercises, which is the shape this
+project has already had to correct three times.
+
+Create `apps/web/app/signin/page.tsx`, a Server Component whose only job is reading the query
+string:
+
+```tsx
+import { SignIn } from './signin-form.js';
 
 export default async function SignInPage({
   searchParams,
@@ -597,29 +637,9 @@ export default async function SignInPage({
 }) {
   const params = await searchParams;
 
-  async function signIn(input: { email: string; password: string }) {
-    'use server';
-    // Deliberately not a Server Action calling the API: the browser must make
-    // this request itself, or the Set-Cookie lands on the server rather than
-    // in the visitor's browser. See the client wrapper below.
-    void input;
-  }
-  void signIn;
-
-  return (
-    <SignInPageClient cancelled={params.cancelled === '1'} next={params.next ?? '/app'} />
-  );
+  return <SignIn cancelled={params.cancelled === '1'} next={params.next ?? '/app'} />;
 }
 ```
-
-**Stop and read this before writing `SignInPageClient`.** The session cookie is set by
-`Set-Cookie` on the API's response. That header only reaches the visitor's browser if the
-*browser* made the request. A Server Action or a server-side `fetch` would receive the cookie
-into the Next server process, where it is useless. So the submit handler lives in a client
-component and calls `apiFetch` directly. The `page.tsx` above exists only to read
-`searchParams`; put the client wrapper in `signin-form.tsx` beside the form, or inline the
-`apiFetch` call into `SignInForm`'s default `onSubmit`. Either is fine; sending the request
-from the server is not.
 
 - [ ] **Step 5: Write the sign-up screen**
 
