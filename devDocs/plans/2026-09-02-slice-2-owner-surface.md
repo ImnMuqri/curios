@@ -340,7 +340,28 @@ git commit -m "feat(web): the session boundary, and one cookie name for both app
 **Interfaces:**
 - Produces: `apiFetch(path, init)` — the single browser→API caller every later task uses; `ApiError` carrying the domain `code`.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Add the two test libraries these screens need**
+
+```bash
+pnpm --filter @curios/web add -D @testing-library/jest-dom@^6.6.3 @testing-library/user-event@^14.5.2
+```
+
+`jest-dom` is not installed anywhere in this repo yet. The two existing web tests get by
+without it because between them they make two assertions; every task from here writes
+component tests, and `toBeInTheDocument()` and `toBeDisabled()` are worth a devDependency
+across seven of them. Register it by appending to `apps/web/vitest.setup.ts`, which already
+stubs `matchMedia`:
+
+```ts
+// Registers toBeInTheDocument, toBeDisabled and the rest of the DOM matchers.
+// Appended rather than replacing the matchMedia stub above, which the public
+// page's tests still need.
+import '@testing-library/jest-dom/vitest';
+```
+
+Check `user-event` before adding it — it may already be present.
+
+- [ ] **Step 2: Write the failing tests**
 
 Create `apps/web/lib/api.test.ts`:
 
@@ -399,14 +420,14 @@ Create `apps/web/app/signin/signin-form.test.tsx`:
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../lib/api.js';
 import { SignInForm } from './signin-form.js';
 
 describe('SignInForm', () => {
   it('shows the API message when sign-in fails', async () => {
-    const submit = vi.fn().mockRejectedValueOnce({
-      code: 'INVALID_CREDENTIALS',
-      message: 'Check your email and password. If you just signed up, confirm your address first.',
-    });
+    const submit = vi.fn().mockRejectedValueOnce(
+      new ApiError(401, 'INVALID_CREDENTIALS', 'Check your email and password. If you just signed up, confirm your address first.'),
+    );
     render(<SignInForm onSubmit={submit} />);
 
     await userEvent.type(screen.getByLabelText(/email/i), 'nadia@example.com');
@@ -445,12 +466,12 @@ describe('SignInForm', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./api.js` and `./signin-form.js`.
 
-- [ ] **Step 3: Write the API caller**
+- [ ] **Step 4: Write the API caller**
 
 Create `apps/web/lib/api.ts`:
 
@@ -509,7 +530,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
 }
 ```
 
-- [ ] **Step 4: Write the sign-in screen**
+- [ ] **Step 5: Write the sign-in screen**
 
 Create `apps/web/app/signin/signin-form.tsx`:
 
@@ -641,7 +662,7 @@ export default async function SignInPage({
 }
 ```
 
-- [ ] **Step 5: Write the sign-up screen**
+- [ ] **Step 6: Write the sign-up screen**
 
 `apps/web/app/signup/signup-form.tsx` and `page.tsx` mirror sign-in, with three differences:
 
@@ -653,7 +674,7 @@ export default async function SignInPage({
   the API's response is byte-identical in both cases and the screen must not leak what the
   API refuses to.
 
-- [ ] **Step 6: Point the OAuth cancel redirect somewhere that exists**
+- [ ] **Step 7: Point the OAuth cancel redirect somewhere that exists**
 
 In `apps/api/src/modules/auth/auth.routes.ts`, the callback currently sends a cancelling user
 to the root route, which this slice does not build:
@@ -672,12 +693,12 @@ Update the assertion in `apps/api/src/modules/auth/oauth.routes.test.ts` that ch
 redirect. It currently asserts `res.headers.location` contains `'/'`, which is true of almost
 any URL; assert on `/signin` instead, which is the actual contract.
 
-- [ ] **Step 7: Run the tests**
+- [ ] **Step 8: Run the tests**
 
 Run: `pnpm --filter @curios/web test` then `pnpm test`.
 Expected: PASS. The API's OAuth tests must still pass, with the one cancel assertion updated.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 9: Commit**
 
 ```bash
 git add apps/web apps/api
@@ -707,6 +728,7 @@ Create `apps/web/app/verify/verify-client.test.tsx`:
 ```tsx
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { ApiError } from '../../lib/api.js';
 import { VerifyClient } from './verify-client.js';
 
 describe('VerifyClient', () => {
@@ -718,10 +740,9 @@ describe('VerifyClient', () => {
   });
 
   it('explains an expired link and offers the way out', async () => {
-    const verify = vi.fn().mockRejectedValue({
-      code: 'INVALID_TOKEN',
-      message: 'That link has expired or has already been used. Request a new one.',
-    });
+    const verify = vi.fn().mockRejectedValue(
+      new ApiError(400, 'INVALID_TOKEN', 'That link has expired or has already been used. Request a new one.'),
+    );
     render(<VerifyClient token="stale" verify={verify} />);
 
     // A single-use token means the second click on the same link fails, and
@@ -745,14 +766,14 @@ Create `apps/web/app/reset/reset-form.test.tsx`:
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../lib/api.js';
 import { ResetForm } from './reset-form.js';
 
 describe('ResetForm', () => {
   it('surfaces a weak password with the API reason', async () => {
-    const reset = vi.fn().mockRejectedValue({
-      code: 'WEAK_PASSWORD',
-      message: 'That password has appeared in a public breach. Pick another.',
-    });
+    const reset = vi.fn().mockRejectedValue(
+      new ApiError(400, 'WEAK_PASSWORD', 'That password has appeared in a public breach. Pick another.'),
+    );
     render(<ResetForm token="t" onReset={reset} />);
 
     await userEvent.type(screen.getByLabelText(/new password/i), 'password');
@@ -844,6 +865,7 @@ Create `apps/web/app/app/onboarding/claim-form.test.tsx`:
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../../lib/api.js';
 import { ClaimForm } from './claim-form.js';
 
 const fill = async (handle: string, name = 'Nadia Bakes') => {
@@ -854,10 +876,9 @@ const fill = async (handle: string, name = 'Nadia Bakes') => {
 
 describe('ClaimForm', () => {
   it('tells "taken" apart from "too close to one already in use"', async () => {
-    const claim = vi.fn().mockRejectedValue({
-      code: 'HANDLE_TOO_SIMILAR',
-      message: 'That handle is too close to one already in use. Pick another.',
-    });
+    const claim = vi.fn().mockRejectedValue(
+      new ApiError(409, 'HANDLE_TOO_SIMILAR', 'That handle is too close to one already in use. Pick another.'),
+    );
     render(<ClaimForm onClaim={claim} />);
 
     await fill('nadiabakes');
@@ -869,10 +890,9 @@ describe('ClaimForm', () => {
   });
 
   it('explains a reserved handle without blaming the person', async () => {
-    const claim = vi.fn().mockRejectedValue({
-      code: 'HANDLE_RESERVED',
-      message: 'That handle is reserved. Pick another.',
-    });
+    const claim = vi.fn().mockRejectedValue(
+      new ApiError(400, 'HANDLE_RESERVED', 'That handle is reserved. Pick another.'),
+    );
     render(<ClaimForm onClaim={claim} />);
 
     await fill('admin');
@@ -881,11 +901,9 @@ describe('ClaimForm', () => {
   });
 
   it('shows the rule when the format is wrong, not just that it is wrong', async () => {
-    const claim = vi.fn().mockRejectedValue({
-      code: 'HANDLE_INVALID',
-      message:
-        'Handles are 3 to 30 characters, letters, numbers, hyphens and underscores, and cannot start or end with a separator.',
-    });
+    const claim = vi.fn().mockRejectedValue(
+      new ApiError(400, 'HANDLE_INVALID', 'Handles are 3 to 30 characters, letters, numbers, hyphens and underscores, and cannot start or end with a separator.'),
+    );
     render(<ClaimForm onClaim={claim} />);
 
     await fill('ab');
