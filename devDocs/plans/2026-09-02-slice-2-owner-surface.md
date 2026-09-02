@@ -89,7 +89,7 @@
 
 **Why the cookie name moves.** `apps/web` needs to read the session cookie by name, and the name lives in `apps/api/src/modules/auth/session.service.ts`, which `apps/web` cannot import. This is the third time this exact problem has come up — plan 2a moved the session hash and both TTLs into `packages/core` for it — and it gets the same answer for the same reason: a string literal copied into a second package is a string literal that drifts, and the failure mode is a browser holding a cookie nobody reads.
 
-- [ ] **Step 1: Move the cookie name into `packages/core`**
+- [x] **Step 1: Move the cookie name into `packages/core`**
 
 Create `packages/core/src/cookie.ts`:
 
@@ -144,7 +144,7 @@ export const SESSION_COOKIE = CORE_SESSION_COOKIE;
 
 Every existing API test passing unmodified is the evidence this moved nothing.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `apps/web/middleware.test.ts`:
 
@@ -230,12 +230,12 @@ describe('resolveOwner', () => {
 });
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./middleware.js` and `./session.js`.
 
-- [ ] **Step 4: Write the middleware**
+- [x] **Step 4: Write the middleware**
 
 Create `apps/web/middleware.ts`:
 
@@ -269,7 +269,7 @@ export function middleware(request: NextRequest): NextResponse {
 export const config = { matcher: '/app/:path*' };
 ```
 
-- [ ] **Step 5: Write the layout and its extracted decision**
+- [x] **Step 5: Write the layout and its extracted decision**
 
 Create `apps/web/app/app/session.ts`:
 
@@ -322,14 +322,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm --filter @curios/web test`
 Expected: PASS, 6 new tests.
 
 Then run the whole workspace: `pnpm test`. Every `apps/api` test must pass unmodified — that is the evidence moving `SESSION_COOKIE` changed nothing.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web packages/core apps/api
@@ -348,7 +348,7 @@ git commit -m "feat(web): the session boundary, and one cookie name for both app
 **Interfaces:**
 - Produces: `apiFetch(path, init)` — the single browser→API caller every later task uses; `ApiError` carrying the domain `code`.
 
-- [ ] **Step 1: Add the two test libraries these screens need**
+- [x] **Step 1: Add the two test libraries these screens need**
 
 ```bash
 pnpm --filter @curios/web add -D @testing-library/jest-dom@^6.6.3 @testing-library/user-event@^14.5.2
@@ -369,7 +369,7 @@ import '@testing-library/jest-dom/vitest';
 
 Check `user-event` before adding it — it may already be present.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `apps/web/lib/api.test.ts`:
 
@@ -482,12 +482,12 @@ describe('SignInForm', () => {
 });
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./api.js` and `./signin-form.js`.
 
-- [ ] **Step 4: Write the API caller**
+- [x] **Step 4: Write the API caller**
 
 Create `apps/web/lib/api.ts`:
 
@@ -546,7 +546,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
 }
 ```
 
-- [ ] **Step 5: Write the sign-in screen**
+- [x] **Step 5: Write the sign-in screen**
 
 Create `apps/web/app/signin/signin-form.tsx`:
 
@@ -678,7 +678,7 @@ export default async function SignInPage({
 }
 ```
 
-- [ ] **Step 6: Write the sign-up screen**
+- [x] **Step 6: Write the sign-up screen**
 
 `apps/web/app/signup/signup-form.tsx` and `page.tsx` mirror sign-in, with three differences:
 
@@ -690,7 +690,7 @@ export default async function SignInPage({
   the API's response is byte-identical in both cases and the screen must not leak what the
   API refuses to.
 
-- [ ] **Step 7: Point the OAuth cancel redirect somewhere that exists**
+- [x] **Step 7: Point the OAuth cancel redirect somewhere that exists**
 
 In `apps/api/src/modules/auth/auth.routes.ts`, the callback currently sends a cancelling user
 to the root route, which this slice does not build:
@@ -709,12 +709,12 @@ Update the assertion in `apps/api/src/modules/auth/oauth.routes.test.ts` that ch
 redirect. It currently asserts `res.headers.location` contains `'/'`, which is true of almost
 any URL; assert on `/signin` instead, which is the actual contract.
 
-- [ ] **Step 8: Run the tests**
+- [x] **Step 8: Run the tests**
 
 Run: `pnpm --filter @curios/web test` then `pnpm test`.
 Expected: PASS. The API's OAuth tests must still pass, with the one cancel assertion updated.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/web apps/api
@@ -737,7 +737,7 @@ Everything after this task is new capability; this task is a repair.
 **Interfaces:**
 - Consumes: `apiFetch` (Task 2). Calls `POST /auth/verify-email`, `POST /auth/reset-password`, `POST /auth/forgot-password`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `apps/web/app/verify/verify-client.test.tsx`:
 
@@ -815,12 +815,12 @@ describe('ResetForm', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./verify-client.js` and `./reset-form.js`.
 
-- [ ] **Step 3: Write `/verify`**
+- [x] **Step 3: Write `/verify`**
 
 `verify-client.tsx` is a client component that takes `token` and an injected `verify` function,
 posts once on mount, and renders one of four states: working, confirmed, failed with the API's
@@ -836,7 +836,7 @@ wrapper beside `VerifyClient` that supplies the real `verify`, calling
 shape as `SignIn` in Task 2, and for the reason in the Global Constraints: a Server Component
 cannot hand a function to a Client Component.
 
-- [ ] **Step 4: Write `/reset` and `/forgot`**
+- [x] **Step 4: Write `/reset` and `/forgot`**
 
 `reset-form.tsx` takes `token` and `onReset`, renders one password field, and on success renders
 a confirmation that says the password changed **and that every other session was signed out** —
@@ -847,14 +847,14 @@ detail someone resetting under suspicion actually needs.
 identical for a known and an unknown address, because the API's response is, and the screen must
 not undo that.
 
-- [ ] **Step 5: Verify the whole flow by hand against Mailpit**
+- [x] **Step 5: Verify the whole flow by hand against Mailpit**
 
 Unit tests cannot prove the link in the email reaches a page that works. Run the stack, sign up
 with a fresh address, open `http://localhost:8075`, click the link in the message, and confirm
 the address is verified and you can then sign in. Then use `/forgot`, click that link, set a new
 password, and confirm the old one no longer works. Record what you saw.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web
@@ -877,7 +877,7 @@ have a page" — the question plan 2a added a whole task to make answerable — 
 owner with no page to `/app/onboarding` and one with a page to their review queue. It is the
 only place that decision is made.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/web/app/app/onboarding/claim-form.test.tsx`:
 
@@ -949,12 +949,12 @@ describe('ClaimForm', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/web test src/../app/app/onboarding/claim-form.test.tsx`
 Expected: FAIL — cannot resolve `./claim-form.js`.
 
-- [ ] **Step 3: Write the form**
+- [x] **Step 3: Write the form**
 
 `claim-form.tsx` is a client component taking `onClaim`. Two fields, handle and display name,
 one primary button. On failure it renders the API's message verbatim — every one of
@@ -962,7 +962,7 @@ one primary button. On failure it renders the API's message verbatim — every o
 already carries copy that says what to do. Disable the button while in flight. On success,
 `router.push('/app')`, which re-runs the decision below.
 
-- [ ] **Step 4: Write `/app`, the router**
+- [x] **Step 4: Write `/app`, the router**
 
 ```tsx
 import { cookies } from 'next/headers';
@@ -982,7 +982,7 @@ export default async function AppPage() {
 }
 ```
 
-- [ ] **Step 5: Green, then commit**
+- [x] **Step 5: Green, then commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): claim a handle, and send an owner where they belong"
@@ -1001,7 +1001,7 @@ git add apps/web && git commit -m "feat(web): claim a handle, and send an owner 
 - Consumes: `apiFetch`; `POST /ingest`, `GET /ingest/:id`.
 - Produces: the TanStack Query provider every later task's screens sit under.
 
-- [ ] **Step 1: Add TanStack Query**
+- [x] **Step 1: Add TanStack Query**
 
 ```bash
 pnpm --filter @curios/web add @tanstack/react-query@^5.62.0
@@ -1012,7 +1012,7 @@ and there is no other store. The poll wants retry, backoff and cancellation; the
 in Task 6 wants invalidation after each mutation. Everything before this task was a one-shot
 post that wanted none of it.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `apps/web/app/app/onboarding/job-status.test.tsx`:
 
@@ -1071,14 +1071,14 @@ describe('JobStatus', () => {
 });
 ```
 
-- [ ] **Step 3: Write the provider and wire it in**
+- [x] **Step 3: Write the provider and wire it in**
 
 `providers.tsx` is a client component exporting `<Providers>` that creates one `QueryClient`
 in a `useState` initialiser (never at module scope — a module-scope client is shared across
 requests on the server and leaks one visitor's data into another's render) and wraps children
 in `QueryClientProvider`. `app/layout.tsx` renders `<Providers>` around `{children}`.
 
-- [ ] **Step 4: Write the form and the status**
+- [x] **Step 4: Write the form and the status**
 
 `ingest-form.tsx`: one field, a URL, per FRONTEND.md — *"One field. A URL or an `@handle`"*, and
 the handle half is deliberately absent because the Instagram adapter throws `NOT_CONFIGURED` by
@@ -1090,7 +1090,7 @@ the status is `QUEUED` or `RUNNING` and `false` once it is `SUCCEEDED` or `FAILE
 value is what stops the poll, and the fourth test above is what proves it stops. On success,
 offer the primary action: review the facts.
 
-- [ ] **Step 5: Wire it into onboarding, or nothing reaches it**
+- [x] **Step 5: Wire it into onboarding, or nothing reaches it**
 
 Task 4 left `/app/onboarding` rendering `<Claim />` and nothing else, so without this step the
 two components above exist and no browser path can reach them.
@@ -1129,7 +1129,7 @@ Component above and swaps the claim form for the ingest form in place.
 `/app`'s own redirect stays as it is. It is right for a RETURNING owner, who has a page and
 belongs in the review queue; it is only the just-claimed case that must not bounce.
 
-- [ ] **Step 6: Green, then commit**
+- [x] **Step 6: Green, then commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): paste a url and watch the job"
@@ -1148,7 +1148,39 @@ screen where a mistake is unrecoverable: *"Never auto-publish an unreviewed pric
 price wrong in public is the single failure that loses a customer permanently."*
 
 **Interfaces:**
-- Consumes: `getReviewQueue` (2a T4) for the initial server render; `POST /facts/:id/verify`, `PATCH /facts/:id`, `POST /facts/:id/reject`.
+- Consumes: `getReviewQueue` (2a T4) for the server render — this task is its first consumer;
+  `POST /facts/:id/verify`, `PATCH /facts/:id`, `POST /facts/:id/reject`.
+- No API change. `NOT_FOUND` and `FACT_DUPLICATE` are already in `DOMAIN_ERROR_CODES`, verified.
+
+#### Three amendments, ruled before dispatch
+
+- **A1 — `toHaveBeenCalledExactlyOnceWith` does not exist in this repo's vitest.** Probed on
+  vitest 2.1.9: that matcher fails as undefined, while `toHaveBeenCalledTimes(1)` plus
+  `toHaveBeenCalledWith(...)` passes. It landed in vitest 3. **Ruling:** use the two-line pair.
+  Rejected upgrading vitest for a matcher — a major bump across seven packages, mid-plan, to
+  shorten one assertion. The property being asserted is the one that matters and must survive
+  in whatever form: accept fires **once**, not twice, because a double-fire is a double POST.
+
+- **A2 — there is no query to invalidate.** The plan said the queue "invalidates the query on
+  success". There is no `GET` review-queue endpoint in `apps/api` — the queue is read by
+  `getReviewQueue` through the SELECT-only connection, in a Server Component. So there is no
+  client-side query key to invalidate, and TanStack Query has no part in this screen.
+  **Ruling:** the Server Component reads the queue and passes plain data down. On a successful
+  mutation the client adds the id to a local `acted` set **and** calls `router.refresh()`. The
+  local set is what makes the card leave immediately — and what makes the test meaningful, since
+  `router.refresh()` is a mock in jsdom. The refresh is what keeps the server the source of
+  truth. Render `facts.filter((f) => !acted.has(f.id))` **from props**; do not copy props into
+  state, or the refresh will not show through. Rejected adding a `GET /facts/review` route just
+  to have something to invalidate: it would duplicate a read that already exists, on the wrong
+  side of the read/write split plan 1 drew.
+
+- **A3 — an edit does not remove the card, and must not.** `editFact` writes `claim` and
+  `normalizedClaim` and leaves `verified: false` — the fact is still unreviewed, so it is still
+  in the queue. The card stays, now showing the corrected claim, awaiting Accept. **This is the
+  hard rule holding, not a wart:** an edit is not an acceptance. If editing removed the card the
+  owner would believe they had approved a price they had only corrected, which is exactly the
+  "unreviewed price in public" failure arriving by a side door. Accept and Reject remove the
+  card; Edit updates it in place.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -1170,7 +1202,7 @@ const fact = {
 };
 
 describe('FactCard', () => {
-  it('shows the line it came from', async () => {
+  it('shows the line it came from', () => {
     render(<FactCard fact={fact} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} />);
 
     // sourceText exists in the schema commented "the line it came from, for
@@ -1185,7 +1217,10 @@ describe('FactCard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /accept/i }));
 
-    expect(onAccept).toHaveBeenCalledExactlyOnceWith('f-1');
+    // Two lines rather than toHaveBeenCalledExactlyOnceWith -- see A1. The
+    // count is half the assertion: a double-fire is a double POST.
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    expect(onAccept).toHaveBeenCalledWith('f-1');
   });
 
   it('offers no control that acts on more than this fact', () => {
@@ -1217,28 +1252,59 @@ describe('FactCard', () => {
 });
 ```
 
-`review-queue.test.tsx` covers the queue around the cards: that a card disappears once acted on,
-that a `FACT_DUPLICATE` from an edit renders the API's "you already have a fact that says this"
-rather than a generic failure, and that the empty state is an instruction — *"Nothing left to
-review. Publish when you are ready."* — rather than a mood.
+Then `apps/web/app/app/review/review-queue.test.tsx`, five tests. Mock `next/navigation` the way
+`claim-form.test.tsx` already does, so `router.refresh()` is a spy:
+
+1. **An accepted card leaves the queue.** Two facts in, click Accept on the first, assert its
+   claim is gone from the document and the second's is still there. Assert `router.refresh` was
+   called — the local removal alone would be a lie about the server's state.
+2. **A rejected card leaves the queue**, same shape.
+3. **An edited card stays, showing the new claim.** Per A3. This is the test that stops someone
+   "simplifying" edit into accept. Give it a comment saying so.
+4. **A `FACT_DUPLICATE` from an edit renders the API's own sentence.** Reject with
+   `new ApiError(409, 'FACT_DUPLICATE', 'You already have a fact that says this.')` — an
+   `Error` subclass, because the catch checks `instanceof Error`; a plain object silently takes
+   the generic branch, which cost six tests a fix round in Task 2. Assert the API's sentence is
+   on screen and the card is still there.
+5. **The empty state is an instruction.** Render with `facts={[]}` and assert
+   /nothing left to review/i — *"Nothing left to review. Publish when you are ready."* Never a
+   mood.
 
 - [ ] **Step 2: Run to verify RED, then write the components**
 
 `fact-card.tsx` renders the claim, the category, the source line, and three buttons: Accept,
 Edit, Reject. Accept is the primary action. Edit swaps the claim for a textarea — one of the two
 places in the whole product where a human writes prose, per FRONTEND.md's no-blank-prompt-boxes
-rule, and it is allowed here precisely because a fact correction is that exception.
+rule, and it is allowed here precisely because a fact correction is that exception. Link
+`sourceUrl` if present: FRONTEND.md's *"numbers link to their source; an unverifiable metric is
+decoration"*.
 
-`review-queue.tsx` holds the list, calls the three mutations through `apiFetch`, and invalidates
-the query on success so the acted-on card leaves. Bound the page at 50 and render oldest first —
-the query already does both; the screen must not undo it by fetching more.
+`review-queue.tsx` exports both halves, the same split as `Claim`/`ClaimForm` and
+`Ingest`/`IngestForm`:
+- `ReviewQueue` — presentational, takes `facts` plus `onAccept`/`onEdit`/`onReject` handlers.
+  Holds the `acted` set and the per-card error.
+- `Review` — the `'use client'` wrapper that builds the three `apiFetch` closures and calls
+  `router.refresh()`. Takes only plain data.
+
+`page.tsx` is a Server Component: `resolveOwner`, `redirect('/signin')` if none,
+`getOwnerPage(accountId)`, `redirect('/app/onboarding')` if there is no page (the queue is
+meaningless without one), then `getReviewQueue(accountId, { limit: 50 })` and render `<Review>`.
+Pass only plain data across that boundary — a function there is a 500 at request time that no
+gate catches, which is how Task 3 shipped broken. `ReviewFact` is all strings, nulls and a
+number, so it crosses fine.
+
+Bound at 50, oldest first. The query already clamps and orders; the screen must not undo it by
+asking for more. Per the spec's *Volume*: "a queue that empties rather than a wall that
+intimidates".
 
 - [ ] **Step 3: Prove the hard rule holds at the surface**
 
-The third test above is the negative requirement, and negative requirements decay. Before
-committing, add a select-all checkbox to `fact-card.tsx`, run that test file, confirm the test
-FAILS, then remove it. Record what you saw. A guard nobody has watched fail is a guard nobody
-knows works.
+The third card test is a negative requirement, and negative requirements decay. Before
+committing, add a select-all checkbox to `fact-card.tsx`, run that file, confirm the test
+**FAILS**, then remove it. Paste the failure into the report. A guard nobody has watched fail is
+a guard nobody knows works.
+
+Do the same for the A3 test: make edit remove the card, confirm test 3 of the queue fails, revert.
 
 - [ ] **Step 4: Commit**
 
