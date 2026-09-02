@@ -994,7 +994,7 @@ git add apps/web && git commit -m "feat(web): claim a handle, and send an owner 
 
 **Files:**
 - Create: `apps/web/app/providers.tsx`, `apps/web/app/app/onboarding/ingest-form.tsx`, `apps/web/app/app/onboarding/job-status.tsx`
-- Modify: `apps/web/app/layout.tsx`, `apps/web/package.json`
+- Modify: `apps/web/app/layout.tsx`, `apps/web/package.json`, `apps/web/app/app/onboarding/page.tsx`, `apps/web/app/app/onboarding/claim-form.tsx`
 - Test: `apps/web/app/app/onboarding/job-status.test.tsx`
 
 **Interfaces:**
@@ -1053,11 +1053,16 @@ describe('JobStatus', () => {
 
   it('stops polling once the job resolves', async () => {
     const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 1, error: null });
-    wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} />);
+    // The interval is injected ONLY so this test can outlive it. At the real
+    // 2000ms a 60ms wait proves nothing: it passes identically whether the
+    // interval stops or runs forever, because neither fires in 60ms. With 20ms
+    // here and a 200ms wait, a poll that failed to stop would fire about ten
+    // times and the assertion below would catch it.
+    wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} intervalMs={20} />);
     await screen.findByText(/1/);
 
     const callsAtResolution = fetchStatus.mock.calls.length;
-    await new Promise((r) => setTimeout(r, 60));
+    await new Promise((r) => setTimeout(r, 200));
 
     // A poll that never stops is a request every two seconds forever on a
     // phone, for a job that finished.
@@ -1085,7 +1090,46 @@ the status is `QUEUED` or `RUNNING` and `false` once it is `SUCCEEDED` or `FAILE
 value is what stops the poll, and the fourth test above is what proves it stops. On success,
 offer the primary action: review the facts.
 
-- [ ] **Step 5: Green, then commit**
+- [ ] **Step 5: Wire it into onboarding, or nothing reaches it**
+
+Task 4 left `/app/onboarding` rendering `<Claim />` and nothing else, so without this step the
+two components above exist and no browser path can reach them.
+
+Onboarding is two steps, per the spec: *"claim a handle and display name, creating the Page
+with `published: false` → paste a URL"*. So the page branches on whether the owner has a page
+yet:
+
+```tsx
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { SESSION_COOKIE } from '@curios/core';
+import { getOwnerPage } from '@curios/db-read';
+import { resolveOwner } from '../session.js';
+import { Claim } from './claim-form.js';
+import { Ingest } from './ingest-form.js';
+
+export default async function OnboardingPage() {
+  const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
+  if (!owner) redirect('/signin');
+
+  const page = await getOwnerPage(owner.accountId);
+
+  // Plain data across the boundary -- `page.id` is a string. The handler lives
+  // inside `Ingest`, which is a client component.
+  return page ? <Ingest pageId={page.id} /> : <Claim />;
+}
+```
+
+**And `claim-form.tsx`'s wrapper must stop pushing to `/app`.** It currently does
+`router.push('/app')`, which sends a just-claimed owner to `/app`, which sees a page and
+redirects to `/app/review` — skipping the paste-a-URL step entirely, and landing on a route
+that does not exist until Task 6. Change it to `router.refresh()`, which re-runs the Server
+Component above and swaps the claim form for the ingest form in place.
+
+`/app`'s own redirect stays as it is. It is right for a RETURNING owner, who has a page and
+belongs in the review queue; it is only the just-claimed case that must not bounce.
+
+- [ ] **Step 6: Green, then commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): paste a url and watch the job"
