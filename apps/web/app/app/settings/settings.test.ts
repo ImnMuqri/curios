@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { oauthErrorMessage } from '../../../lib/oauth-errors.js';
 import { decideSettingsBanner, decideSettingsView } from './settings.js';
 
 describe('decideSettingsView', () => {
@@ -36,21 +37,22 @@ describe('decideSettingsBanner', () => {
     expect(decideSettingsBanner({ linked: 'google' })).toEqual({ kind: 'linked' });
   });
 
-  it('explains an already-linked identity using the API sentence, not an invented one', () => {
+  it('explains an already-linked identity using the shared table, not an invented one', () => {
     // C2: the callback can only carry a CODE back on the redirect, not the
     // API's own message text -- that is lost the moment this became a
-    // redirect instead of a JSON body. This screen owns turning the code back
-    // into something a person can read.
+    // redirect instead of a JSON body. D2: turning the code back into
+    // something a person can read is `lib/oauth-errors.ts`'s job now, shared
+    // with `/signin`, so this asserts the delegation rather than a hardcoded
+    // copy of the sentence -- a second copy here is exactly the drift D2
+    // exists to prevent.
     const banner = decideSettingsBanner({ error: 'identity_taken' });
 
-    expect(banner).toMatchObject({ kind: 'error' });
-    expect(banner && 'message' in banner ? banner.message : '').toMatch(/already connected/i);
+    expect(banner).toEqual({ kind: 'error', message: oauthErrorMessage('identity_taken') });
   });
 
   it('falls back to a generic message for a code it does not recognise', () => {
     const banner = decideSettingsBanner({ error: 'something_new' });
 
-    expect(banner).toMatchObject({ kind: 'error' });
-    expect(banner && 'message' in banner ? banner.message : '').toMatch(/try again/i);
+    expect(banner).toEqual({ kind: 'error', message: oauthErrorMessage('something_new') });
   });
 });

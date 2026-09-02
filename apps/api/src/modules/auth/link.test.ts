@@ -4,7 +4,12 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from './session.service.js';
 import { hashPassword } from './password.service.js';
-import { OAUTH_LINK_COOKIE, OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE } from './oauth.service.js';
+import {
+  OAUTH_LINK_COOKIE,
+  OAUTH_STATE_COOKIE,
+  OAUTH_VERIFIER_COOKIE,
+  OAuthExchangeError,
+} from './oauth.service.js';
 
 let app: FastifyInstance;
 
@@ -238,5 +243,46 @@ describe('linking Google while signed in', () => {
     // reads.
     expect(res.statusCode).toBe(302);
     expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=identity_taken');
+  });
+});
+
+describe('a server fault must not read as a user-fixable problem', () => {
+  it('sends a 502 exchange failure to error=internal_error, never error=oauth_exchange_failed', async () => {
+    const account = await anAccount(true);
+    const state = 'linking-through-a-502';
+
+    // A dedicated app, not the shared one from beforeAll: this exchange must
+    // fail every time, and the shared instance's exchange is the happy-path
+    // stub every other test in this file relies on.
+    const ownApp = await buildApp({
+      auth: {
+        exchange: async () => {
+          throw new OAuthExchangeError(500);
+        },
+      },
+    });
+    await ownApp.ready();
+
+    try {
+      const res = await ownApp.inject({
+        method: 'GET',
+        url: `/auth/google/callback?code=abc&state=${state}`,
+        remoteAddress: from(),
+        cookies: {
+          [SESSION_COOKIE]: account.cookie,
+          [OAUTH_LINK_COOKIE]: ownApp.signCookie('1'),
+          [OAUTH_STATE_COOKIE]: ownApp.signCookie(state),
+          [OAUTH_VERIFIER_COOKIE]: ownApp.signCookie('v'),
+        },
+      });
+
+      // D1, linking branch: same guard as the sign-in branch in
+      // oauth.routes.test.ts -- a 502 from OAuthExchangeError must not reach
+      // the browser as its own specific code.
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=internal_error');
+    } finally {
+      await ownApp.close();
+    }
   });
 });

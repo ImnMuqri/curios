@@ -3,13 +3,24 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../lib/api.js';
+import { oauthErrorMessage } from '../../lib/oauth-errors.js';
 
 export function SignInForm({
   onSubmit,
   cancelled = false,
+  oauthError,
 }: {
   onSubmit: (input: { email: string; password: string }) => Promise<unknown>;
   cancelled?: boolean;
+  /**
+   * The `error` query param the OAuth callback redirects here with on a
+   * failed Google sign-in -- D2. Named apart from the `error`/`setError`
+   * state below, which is this form's own submit-failure message and an
+   * unrelated thing. Never both this and `cancelled` at once in practice
+   * (the callback picks one query string or the other), but neither depends
+   * on that: each renders independently, off its own prop.
+   */
+  oauthError?: string;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,6 +46,7 @@ export function SignInForm({
   return (
     <form onSubmit={(event) => void submit(event)}>
       {cancelled ? <p role="status">Sign-in was cancelled. Try again when you are ready.</p> : null}
+      {oauthError ? <p role="alert">{oauthErrorMessage(oauthError)}</p> : null}
 
       <label htmlFor="email">Email</label>
       <input
@@ -77,12 +89,21 @@ export function SignInForm({
  * covered by Task 3's manual walk-through of the whole flow, and by the API's
  * own tests of POST /auth/login.
  */
-export function SignIn({ cancelled, next }: { cancelled: boolean; next: string }) {
+export function SignIn({
+  cancelled,
+  next,
+  error,
+}: {
+  cancelled: boolean;
+  next: string;
+  error?: string;
+}) {
   const router = useRouter();
 
   return (
     <SignInForm
       cancelled={cancelled}
+      oauthError={error}
       onSubmit={async (input) => {
         await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(input) });
         router.push(next);

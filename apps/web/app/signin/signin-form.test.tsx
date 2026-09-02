@@ -30,6 +30,21 @@ describe('SignInForm', () => {
     expect(screen.getByText(/sign-in was cancelled/i)).toBeInTheDocument();
   });
 
+  it('explains a recognised OAuth failure using the shared message table', () => {
+    // D2: the callback now redirects a failed Google sign-in here as
+    // `?error=<code>`. This must render an explanation, not silently drop
+    // the code the way the screen used to.
+    render(<SignInForm onSubmit={vi.fn()} oauthError="oauth_state_mismatch" />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/no longer valid/i);
+  });
+
+  it('falls back to a generic sentence for an OAuth failure code it does not recognise', () => {
+    render(<SignInForm onSubmit={vi.fn()} oauthError="something_nobody_has_seen_before" />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent(/try again/i);
+  });
+
   it('disables the button while the request is in flight', async () => {
     let release: () => void = () => {};
     const submit = vi.fn(() => new Promise<void>((r) => (release = r)));

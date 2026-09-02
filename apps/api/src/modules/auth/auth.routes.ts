@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createQueueMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
 import { requireSession, UnauthenticatedError } from '../../plugins/session.js';
+import { DOMAIN_ERROR_CODES } from '../../plugins/errors.js';
 import {
   addPassword,
   findOrCreateAccountForGoogle,
@@ -56,26 +57,36 @@ const sessionCookie = (value: string) =>
   }) as const;
 
 /**
- * Codes the OAuth callback's own dependencies are known to throw, lower-cased
- * and underscored for the query string a redirect carries -- C2.
+ * Turns a thrown error into the lower-cased, underscored code the callback's
+ * redirect carries in its query string -- C2.
  *
- * A generic 'internal_error' covers anything else: an error none of those
- * dependencies were ever observed to raise still must not leak an unfiltered
- * code (a raw Prisma code, say) into a URL a browser is about to follow.
+ * Reuses `errorsPlugin`'s own `DOMAIN_ERROR_CODES` rather than keeping a
+ * second, hand-maintained allow-list here. There used to be one -- this
+ * function's previous body had its own `CALLBACK_ERROR_CODES` set -- and it
+ * disagreed with `errorsPlugin` about `OAUTH_EXCHANGE_FAILED`, which is how a
+ * deliberate 502 server fault ended up reading as a specific, reassuring
+ * "try again in a moment".
+ *
+ * The `statusCode < 500` check is what makes that mistake structurally
+ * harder to repeat: `OAuthExchangeError` (oauth.service.ts) is a 502 by
+ * design, precisely so a misconfigured client secret or redirect URI is
+ * logged and surfaced generically instead of dressed up as something the
+ * user can fix by trying again. `DOMAIN_ERROR_CODES` doesn't encode status
+ * codes at all, so without this check any *future* code added there with a
+ * 5xx status would leak the same way `OAUTH_EXCHANGE_FAILED` did. Everything
+ * that fails either test -- a 5xx, an unlisted code, a raw Prisma code, a
+ * thrown string -- becomes `internal_error`.
  */
-const CALLBACK_ERROR_CODES = new Set([
-  'IDENTITY_TAKEN',
-  'UNAUTHENTICATED',
-  'OAUTH_STATE_MISMATCH',
-  'OAUTH_EXCHANGE_FAILED',
-  'EMAIL_NOT_VERIFIED',
-]);
-
 function callbackErrorCode(error: unknown): string {
   const code = (error as { code?: unknown } | null)?.code;
-  return typeof code === 'string' && CALLBACK_ERROR_CODES.has(code)
-    ? code.toLowerCase()
-    : 'internal_error';
+  const statusCode = (error as { statusCode?: unknown } | null)?.statusCode;
+  const isClientFacing =
+    typeof code === 'string' &&
+    DOMAIN_ERROR_CODES.has(code) &&
+    typeof statusCode === 'number' &&
+    statusCode < 500;
+
+  return isClientFacing ? code.toLowerCase() : 'internal_error';
 }
 
 /**

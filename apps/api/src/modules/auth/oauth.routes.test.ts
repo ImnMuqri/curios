@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app.js';
 import { SESSION_COOKIE } from './session.service.js';
-import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE } from './oauth.service.js';
+import { OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE, OAuthExchangeError } from './oauth.service.js';
 
 let app: FastifyInstance;
 
@@ -185,6 +185,93 @@ describe('the callback under conditions that are not the happy path', () => {
     // the browser for the rest of their ten minutes.
     expect(res.cookies.find((c) => c.name === OAUTH_STATE_COOKIE)?.value).toBe('');
     expect(res.cookies.find((c) => c.name === OAUTH_VERIFIER_COOKIE)?.value).toBe('');
+  });
+});
+
+describe('a server fault must not read as a user-fixable problem', () => {
+  it('sends a 502 exchange failure to error=internal_error, never error=oauth_exchange_failed', async () => {
+    // A dedicated app, not the shared `app` from beforeAll: this exchange
+    // must fail every time, and the shared instance's exchange is the
+    // happy-path stub every other test in this file relies on.
+    const ownApp = await buildApp({
+      auth: {
+        exchange: async () => {
+          // The status here is Google's -- what OAuthExchangeError logs --
+          // not this error's own statusCode, which is always 502 regardless
+          // (see oauth.service.ts). Any non-2xx exercises the same path.
+          throw new OAuthExchangeError(500);
+        },
+      },
+    });
+    await ownApp.ready();
+
+    try {
+      const state = 'a-state-this-browser-started-with';
+      const res = await ownApp.inject({
+        method: 'GET',
+        url: `/auth/google/callback?code=abc&state=${state}`,
+        remoteAddress: from(),
+        cookies: {
+          [OAUTH_STATE_COOKIE]: ownApp.signCookie(state),
+          [OAUTH_VERIFIER_COOKIE]: ownApp.signCookie('the-verifier'),
+        },
+      });
+
+      // D1: OAuthExchangeError is a 502 by design -- see its comment in
+      // oauth.service.ts -- specifically so a wrong client secret or redirect
+      // URI is logged and answered with a generic server-fault message
+      // instead of a specific, reassuring "try again in a moment" that tells
+      // every affected user their problem is fixable and leaves nobody any
+      // wiser. `oauth_exchange_failed` reaching this query string would undo
+      // that.
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000/signin?error=internal_error');
+    } finally {
+      await ownApp.close();
+    }
+  });
+
+  it('does not let a listed code speak for itself when its own status is a server fault', async () => {
+    // The case the test above cannot exercise: OAUTH_EXCHANGE_FAILED is
+    // already outside DOMAIN_ERROR_CODES, so removing the `statusCode < 500`
+    // half of the guard would not change that test's outcome at all -- the
+    // code-membership check alone already sends it to internal_error. This
+    // is the scenario only the status check catches: a code that IS listed
+    // (IDENTITY_TAKEN, an ordinary 409 today) arriving with a 5xx status --
+    // the shape a future bug in some new domain error class could take.
+    // DOMAIN_ERROR_CODES has no notion of status codes at all, so nothing
+    // else stands between a mistake like that and the browser.
+    const ownApp = await buildApp({
+      auth: {
+        exchange: async () => {
+          const serverFaultWithAListedCode = new Error(
+            'a listed code carrying a server-fault status',
+          ) as Error & { code: string; statusCode: number };
+          serverFaultWithAListedCode.code = 'IDENTITY_TAKEN';
+          serverFaultWithAListedCode.statusCode = 500;
+          throw serverFaultWithAListedCode;
+        },
+      },
+    });
+    await ownApp.ready();
+
+    try {
+      const state = 'a-state-this-browser-started-with';
+      const res = await ownApp.inject({
+        method: 'GET',
+        url: `/auth/google/callback?code=abc&state=${state}`,
+        remoteAddress: from(),
+        cookies: {
+          [OAUTH_STATE_COOKIE]: ownApp.signCookie(state),
+          [OAUTH_VERIFIER_COOKIE]: ownApp.signCookie('the-verifier'),
+        },
+      });
+
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000/signin?error=internal_error');
+    } finally {
+      await ownApp.close();
+    }
   });
 });
 
