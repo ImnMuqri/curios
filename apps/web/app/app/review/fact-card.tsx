@@ -57,25 +57,59 @@ export function FactCard({
   const [draft, setDraft] = useState(fact.claim);
   const [busy, setBusy] = useState(false);
 
+  // All three catch and use `finally`, rather than a bare pair of calls.
+  // `ReviewQueue` handles its own failures, so none of these can reject
+  // today -- but this card is exported and rendered independently, and a
+  // handler that rejected would leave `busy` stuck true: every control on
+  // the card disabled, no recourse but a page reload, on the one screen
+  // where that is least affordable. See "leaves the card usable if a handler
+  // rejects".
+  //
+  // The catch is empty ON PURPOSE and is not swallowing anything a user
+  // would otherwise see. Rendering a failure is `ReviewQueue`'s single
+  // responsibility, per the class comment above; the only caller this could
+  // hide something from is one that both rejects AND renders nothing, which
+  // is the same caller this guard exists to survive. Rethrowing instead
+  // would reach `void handleAccept()` at the call site as an unhandled
+  // rejection -- and an intermittent unhandled rejection is how a mystery CI
+  // failure starts.
   async function handleAccept() {
     setBusy(true);
-    await onAccept(fact.id);
-    setBusy(false);
+    try {
+      await onAccept(fact.id);
+    } catch {
+      // See above.
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleReject() {
     setBusy(true);
-    await onReject(fact.id);
-    setBusy(false);
+    try {
+      await onReject(fact.id);
+    } catch {
+      // See above.
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function handleSave() {
     setBusy(true);
-    const saved = await onEdit(fact.id, draft);
-    setBusy(false);
+    let saved = false;
+    try {
+      saved = await onEdit(fact.id, draft);
+    } catch {
+      // See above. `saved` stays false, so the draft survives a rejection
+      // exactly as it survives a `false`.
+    } finally {
+      setBusy(false);
+    }
     // Only a successful save closes the textarea -- see the class comment
     // and A5. On `false`, `draft` (already in local state, untouched by any
-    // of this) stays exactly what the owner typed.
+    // of this) stays exactly what the owner typed. A rejection leaves
+    // `saved` false, so the draft survives that too.
     if (saved) setEditing(false);
   }
 

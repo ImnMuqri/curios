@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { FactCard } from './fact-card.js';
 
@@ -102,6 +102,24 @@ describe('FactCard', () => {
     // in review-queue.test.tsx's "keeps an edited card..." test.)
     expect(await screen.findByRole('button', { name: /^edit$/i })).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).toBeNull();
+  });
+
+  it('leaves the card usable if a handler rejects', async () => {
+    // `ReviewQueue` catches its own failures, so this cannot happen through
+    // the wrapper. But this card is exported and rendered on its own, and
+    // without a `finally` the busy flag would stick -- disabling Accept,
+    // Edit and Reject for good, with no recourse but a page reload, on the
+    // highest-leverage screen in the product.
+    const onAccept = vi.fn().mockRejectedValue(new Error('network gone'));
+    render(<FactCard fact={fact} onAccept={onAccept} onEdit={vi.fn()} onReject={vi.fn()} />);
+
+    const accept = screen.getByRole('button', { name: /accept/i });
+    await userEvent.click(accept);
+
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(accept).not.toBeDisabled());
+    expect(screen.getByRole('button', { name: /edit/i })).not.toBeDisabled();
+    expect(screen.getByRole('button', { name: /reject/i })).not.toBeDisabled();
   });
 
   it('does not fire onEdit twice on a double tap of Save', async () => {
