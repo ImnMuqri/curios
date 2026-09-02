@@ -1,21 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../../lib/api.js';
 import { ReviewQueue } from './review-queue.js';
 
-// So router.refresh() is a spy. There is no `Review` under test here -- these
-// tests render the presentational `ReviewQueue` with fake handlers, the same
-// way claim-form.test.tsx renders `ClaimForm` rather than `Claim` -- but A2's
-// "the local removal alone would be a lie about the server's state" only
-// holds if the refresh call is a structural guarantee of the component that
-// owns the `acted` set, not an accident of whichever closure happens to call
-// it. See the report for why this places the router call in `ReviewQueue`
-// rather than `Review`, departing from the plan's literal wording.
-const refresh = vi.fn();
-vi.mock('next/navigation', () => ({
-  useRouter: () => ({ refresh }),
-}));
+// No `vi.mock('next/navigation')` here anymore (F3/A6). `ReviewQueue` no
+// longer imports `useRouter` -- it takes a plain `onChanged: () => void`
+// prop, called wherever `router.refresh()` used to be called. `Review`
+// (untested here, same as `Claim`/`Ingest`/`SignIn`) supplies the real
+// `() => router.refresh()`. The guarantee this file cares about --
+// "a successful mutation always tells the server side to re-read" -- is
+// identical either way: these tests inject a spy for `onChanged` and assert
+// it fires after every success, exactly as they asserted on `router.refresh`
+// before.
 
 const facts = [
   {
@@ -37,39 +34,42 @@ const facts = [
 ];
 
 describe('ReviewQueue', () => {
-  beforeEach(() => {
-    refresh.mockClear();
-  });
-
   it('removes an accepted card from the queue', async () => {
+    const onChanged = vi.fn();
     const onAccept = vi.fn().mockResolvedValue(undefined);
-    render(<ReviewQueue facts={facts} onAccept={onAccept} onEdit={vi.fn()} onReject={vi.fn()} />);
+    render(
+      <ReviewQueue facts={facts} onAccept={onAccept} onEdit={vi.fn()} onReject={vi.fn()} onChanged={onChanged} />,
+    );
 
     await userEvent.click(screen.getAllByRole('button', { name: /^accept$/i })[0]!);
 
     // The local removal alone would be a lie about the server's state.
     expect(await screen.findByText(/open 9am to 6pm/i)).toBeInTheDocument();
     expect(screen.queryByText(/kuih lapis is rm12 a box/i)).toBeNull();
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
   it('removes a rejected card from the queue', async () => {
+    const onChanged = vi.fn();
     const onReject = vi.fn().mockResolvedValue(undefined);
-    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={onReject} />);
+    render(
+      <ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={onReject} onChanged={onChanged} />,
+    );
 
     await userEvent.click(screen.getAllByRole('button', { name: /^reject$/i })[0]!);
 
     expect(await screen.findByText(/open 9am to 6pm/i)).toBeInTheDocument();
     expect(screen.queryByText(/kuih lapis is rm12 a box/i)).toBeNull();
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
   it('keeps an edited card, showing the corrected claim -- an edit is not an acceptance', async () => {
     // Per A3: editFact leaves verified: false. If this ever starts passing
     // because edit removes the card, someone has "simplified" edit into
     // accept and reopened the side door the hard rule was built to close.
+    const onChanged = vi.fn();
     const onEdit = vi.fn().mockResolvedValue(undefined);
-    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} />);
+    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} onChanged={onChanged} />);
 
     await userEvent.click(screen.getAllByRole('button', { name: /^edit$/i })[0]!);
     const field = screen.getByRole('textbox');
@@ -80,6 +80,13 @@ describe('ReviewQueue', () => {
     expect(await screen.findByText(/kuih lapis is rm14 a box/i)).toBeInTheDocument();
     // Still in the queue, and the other card was never touched.
     expect(screen.getByText(/open 9am to 6pm/i)).toBeInTheDocument();
+    // F3/A6 says onChanged fires "after every successful mutation" -- a
+    // successful edit is one, and the pre-fix file never actually asserted
+    // this (only the accept/reject tests asserted on `refresh`, not this
+    // one), even though `handleEdit`'s success path always called it. See
+    // the report: the brief says three existing assertions on `refresh`
+    // needed updating; the file only had two.
+    expect(onChanged).toHaveBeenCalledTimes(1);
   });
 
   it('renders the API’s own sentence when an edit collides with an existing fact', async () => {
@@ -89,7 +96,7 @@ describe('ReviewQueue', () => {
     const onEdit = vi
       .fn()
       .mockRejectedValue(new ApiError(409, 'FACT_DUPLICATE', 'You already have a fact that says this.'));
-    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} />);
+    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} onChanged={vi.fn()} />);
 
     await userEvent.click(screen.getAllByRole('button', { name: /^edit$/i })[0]!);
     const field = screen.getByRole('textbox');
@@ -98,14 +105,36 @@ describe('ReviewQueue', () => {
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
     expect(await screen.findByText(/you already have a fact that says this/i)).toBeInTheDocument();
-    // The card is still there, showing the claim it had before the failed
-    // edit -- not silently swapped to a claim the API never accepted.
-    expect(screen.getByText(/kuih lapis is rm12 a box/i)).toBeInTheDocument();
+    // F2/A5: `handleEdit` resolved `false`, so `FactCard` never calls
+    // `setEditing(false)` -- the card is still in EDIT mode, not view mode,
+    // showing the owner's typed correction still in the textarea rather
+    // than reverting to (or silently swapping in) any other claim.
+    expect(screen.getByRole('textbox')).toHaveValue('Kuih lapis is RM14 a box');
   });
 
   it('tells the owner there is nothing left, as an instruction rather than a mood', () => {
-    render(<ReviewQueue facts={[]} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} />);
+    render(<ReviewQueue facts={[]} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
 
     expect(screen.getByText(/nothing left to review/i)).toBeInTheDocument();
+  });
+
+  it('offers no control that acts on more than one fact, mirrored at the container', () => {
+    // F1/A4. fact-card.test.tsx's "offers no control that acts on more than
+    // this fact" only proves FactCard itself never grows a bulk control --
+    // it renders exactly one fact and cannot see ReviewQueue's own markup.
+    // ReviewQueue is where a bulk control would actually land, because it
+    // already owns the full list and a per-id handler: a
+    // `<button onClick={() => visible.forEach((f) => void handleAccept(f.id))}>`
+    // is four lines away and would pass every other test in this file. A
+    // negative requirement guarded in only one of the two places it can be
+    // violated is half a guard -- see Task 6's fix-round-2 report for this
+    // test watched failing against a deliberately reintroduced violation.
+    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+
+    const buttons = screen.getAllByRole('button').map((b) => b.textContent ?? '');
+    for (const label of buttons) {
+      expect(label).not.toMatch(/all|remaining|rest|everything/i);
+    }
+    expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });

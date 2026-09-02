@@ -13,13 +13,32 @@ import type { ReviewFact } from '@curios/db-read';
  * confidence threshold -- and this card is the surface that would carry a
  * violation if one were ever added. See "offers no control that acts on more
  * than this fact" in fact-card.test.tsx, and Step 3 of the task, which proves
- * that test actually fails when the rule is broken.
+ * that test actually fails when the rule is broken. The same guard is
+ * mirrored one level up, in review-queue.test.tsx, because `ReviewQueue` --
+ * not this card -- is where a bulk control would actually be added (A4/F1):
+ * it already owns the full list and a per-id handler, and this card cannot
+ * see that container's own markup to catch a violation added there.
  *
- * `onAccept`/`onEdit`/`onReject` are plain, synchronous-looking callbacks
- * (`void`-returning) on purpose: this component does not know or care
- * whether the mutation behind them succeeds. `ReviewQueue` owns that --
- * whether the card leaves, stays with a corrected claim, or shows an error is
- * entirely its call, made after the fact.
+ * `onAccept`/`onReject` resolve to `Promise<void>`; `onEdit` resolves to
+ * `Promise<boolean>` -- `true` only when the claim was actually saved. This
+ * card awaits all three, for two reasons:
+ *
+ * 1. A local `busy` state, so Accept, Edit, Reject and Save are disabled
+ *    while a mutation is in flight -- matching `ClaimForm`/`IngestForm`/
+ *    `SignInForm` -- and a double-tap on Save cannot fire two overlapping
+ *    PATCHes where the later-resolving one wins the displayed claim.
+ * 2. For Edit specifically, the textarea and the owner's typed draft stay
+ *    exactly as they were until `onEdit` resolves `true`. `FACT_DUPLICATE`
+ *    is a normal outcome, not a crash, and this is the one screen in the
+ *    product where a human writes prose: closing the textarea on a failed
+ *    edit (as this used to) throws that prose away and leaves the owner to
+ *    retype it from memory (A5).
+ *
+ * This card still does not know or care *why* a mutation succeeds or fails --
+ * `ReviewQueue` is the single place that turns a failure into a rendered
+ * `error` message. A boolean outcome from `onEdit`, rather than letting a
+ * rejection propagate here, keeps that true: a rethrow would mean the same
+ * failure is both handled in `ReviewQueue` and thrown again here.
  */
 export function FactCard({
   fact,
@@ -29,13 +48,36 @@ export function FactCard({
   error,
 }: {
   fact: ReviewFact;
-  onAccept: (id: string) => void;
-  onEdit: (id: string, claim: string) => void;
-  onReject: (id: string) => void;
+  onAccept: (id: string) => Promise<void>;
+  onEdit: (id: string, claim: string) => Promise<boolean>;
+  onReject: (id: string) => Promise<void>;
   error?: string;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(fact.claim);
+  const [busy, setBusy] = useState(false);
+
+  async function handleAccept() {
+    setBusy(true);
+    await onAccept(fact.id);
+    setBusy(false);
+  }
+
+  async function handleReject() {
+    setBusy(true);
+    await onReject(fact.id);
+    setBusy(false);
+  }
+
+  async function handleSave() {
+    setBusy(true);
+    const saved = await onEdit(fact.id, draft);
+    setBusy(false);
+    // Only a successful save closes the textarea -- see the class comment
+    // and A5. On `false`, `draft` (already in local state, untouched by any
+    // of this) stays exactly what the owner typed.
+    if (saved) setEditing(false);
+  }
 
   if (editing) {
     return (
@@ -51,13 +93,7 @@ export function FactCard({
 
         {error ? <p role="alert">{error}</p> : null}
 
-        <button
-          type="button"
-          onClick={() => {
-            onEdit(fact.id, draft);
-            setEditing(false);
-          }}
-        >
+        <button type="button" disabled={busy} onClick={() => void handleSave()}>
           Save
         </button>
         <button
@@ -88,11 +124,12 @@ export function FactCard({
 
       {error ? <p role="alert">{error}</p> : null}
 
-      <button type="button" onClick={() => onAccept(fact.id)}>
+      <button type="button" disabled={busy} onClick={() => void handleAccept()}>
         Accept
       </button>
       <button
         type="button"
+        disabled={busy}
         onClick={() => {
           setDraft(fact.claim);
           setEditing(true);
@@ -100,7 +137,7 @@ export function FactCard({
       >
         Edit
       </button>
-      <button type="button" onClick={() => onReject(fact.id)}>
+      <button type="button" disabled={busy} onClick={() => void handleReject()}>
         Reject
       </button>
     </article>
