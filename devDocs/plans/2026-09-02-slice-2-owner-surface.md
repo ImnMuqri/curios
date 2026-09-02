@@ -1182,6 +1182,35 @@ price wrong in public is the single failure that loses a customer permanently."*
   "unreviewed price in public" failure arriving by a side door. Accept and Reject remove the
   card; Edit updates it in place.
 
+- **A4 — the hard rule must be guarded at the CONTAINER as well as the card.** Found by review
+  after the first implementation. `fact-card.test.tsx` asserts `FactCard` offers no control acting
+  on more than its own fact, and nothing asserts that of `ReviewQueue`. The container is where a
+  bulk control would actually be added, because it already owns the list and a per-id handler: a
+  `Verify all visible` button there is four lines and passes all eleven tests. **Ruling:** a sixth
+  test in `review-queue.test.tsx`, same two assertions, scoped to the whole rendered output with
+  two or more facts. A negative requirement guarded in one of the two places it can be violated is
+  half a guard.
+
+- **A5 — a failed edit must not destroy the owner's typed correction.** `FactCard`'s Save called
+  `onEdit(...)` and then `setEditing(false)` synchronously, so the textarea closed before the PATCH
+  resolved; on `FACT_DUPLICATE` the card returned to view mode showing the OLD claim, and the draft
+  was stranded where clicking Edit resets it. The owner is told their correction collided and must
+  retype it from memory. `FACT_DUPLICATE` is a normal outcome, and this is the one screen where a
+  human writes prose. **Ruling:** `onEdit` returns `Promise<boolean>` — true when saved — and
+  `FactCard` closes the textarea only on true. A boolean rather than a propagating rejection
+  because `ReviewQueue` is the single place that turns a failure into a rendered message, and a
+  rethrow would mean the same failure is both handled and thrown. `FactCard` also gains its own
+  busy state, matching `ClaimForm`/`IngestForm`/`SignInForm`, so Save cannot fire two overlapping
+  PATCHes where the later-resolving one wins.
+
+- **A6 — `ReviewQueue` takes an `onChanged` prop instead of importing `useRouter`.** It was the only
+  presentational half in the repo reaching for the framework and firing a page-level refetch from
+  its own local state. `Review` supplies `onChanged={() => router.refresh()}`. The guarantee is
+  identical — the tests inject a spy and assert it fires after every success, so "a success always
+  tells the server side to re-read" is still a property of the component under test — and it drops
+  the repo's only `vi.mock('next/navigation')`. Rejected leaving it: consistency across the four
+  wrapper splits is what makes them readable as one pattern.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `apps/web/app/app/review/fact-card.test.tsx`:
@@ -1238,7 +1267,9 @@ describe('FactCard', () => {
   });
 
   it('lets the claim be edited, because a wrong price is the thing to fix', async () => {
-    const onEdit = vi.fn();
+    // Resolves true = saved. A bare vi.fn() resolves undefined, which now
+    // reads as "not saved" and correctly keeps the textarea open -- see A5.
+    const onEdit = vi.fn().mockResolvedValue(true);
     render(<FactCard fact={fact} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /edit/i }));
