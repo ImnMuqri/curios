@@ -1396,7 +1396,7 @@ git add apps/web && git commit -m "feat(web): the fact review screen, one fact a
   and showing nothing — but comment it as the race it is, so nobody either deletes it as dead code
   or adds a redundant server-side guard for it.
 
-- [ ] **Step 1: The tests**
+- [x] **Step 1: The tests**
 
 `publish-button.test.tsx`, five tests against `PublishButton` (presentational — the same
 wrapper split as `Claim`/`ClaimForm`, `Ingest`/`IngestForm`, `Review`/`ReviewQueue`):
@@ -1419,7 +1419,7 @@ wrapper split as `Claim`/`ClaimForm`, `Ingest`/`IngestForm`, `Review`/`ReviewQue
 Then a sixth, in the same file, against the already-published state: given `published`, the
 component renders the live URL and **no** button at all (B1).
 
-- [ ] **Step 2: Write it**
+- [x] **Step 2: Write it**
 
 `publish-button.tsx` exports `PublishButton` (presentational: takes `publicUrl`, `published`, and
 an `onPublish: () => Promise<void>`) and `Publish` (the `'use client'` wrapper that supplies
@@ -1439,13 +1439,13 @@ const publicUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/${page.hand
 and renders `<Publish publicUrl={publicUrl} published={page.published} />` alongside `<Review>`.
 Plain strings and a boolean across the boundary — no functions (see the Task 3 defect).
 
-- [ ] **Step 3: Prove F5's guard bites**
+- [x] **Step 3: Prove F5's guard bites**
 
 Disable the button on a condition — `disabled={true}` will do — run the file, confirm test 4
 **fails**, revert. Paste the failure into the report. F5 is a negative requirement and the whole
 reason it is written down is that gating publish on a verified fact feels responsible.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): publish"
@@ -1455,38 +1455,117 @@ git add apps/web && git commit -m "feat(web): publish"
 ### Task 8: Settings, and the second way in
 
 **Files:**
+- Create: `packages/db-read/src/sign-in-methods.query.ts` and its test (see **C1**)
+- Modify: `packages/db-read/src/index.ts`, `apps/api/src/modules/auth/auth.routes.ts` (see **C2**)
 - Create: `apps/web/app/app/settings/page.tsx`, `apps/web/app/app/settings/add-password-form.tsx`, `apps/web/app/app/settings/connect-google.tsx`
-- Test: `apps/web/app/app/settings/add-password-form.test.tsx`
+- Test: `apps/web/app/app/settings/add-password-form.test.tsx`, `apps/web/app/app/settings/settings.test.ts`
 
 **This route is already a redirect target.** Plan 2a's OAuth link flow sends a successful link to
 `${APP_URL}/app/settings?linked=google`, so until this task exists that redirect lands on a 404.
 
-- [ ] **Step 1: The tests**
+**Interfaces:**
+- `POST /auth/password`, body `{ password: string }` (1–200 chars), returns `{ status: 'password_set' }`.
+  Errors: 409 `PASSWORD_ALREADY_SET` — *"This account already has a password. Use the reset link to
+  change it."* — and 400 `WEAK_PASSWORD`, whose message is either *"Use at least N characters."* or
+  *"That password has appeared in a public breach. Pick another."* Both codes already whitelisted.
+- `GET /auth/google/link` on the **API origin**. Requires a session. Sets state, verifier and an
+  intent cookie, then redirects to Google.
 
-`add-password-form.test.tsx` covers: a successful add; `PASSWORD_ALREADY_SET` rendered as the
-API's message, which explains that changing a password is the reset flow rather than this one;
-and `WEAK_PASSWORD` rendered verbatim, including the breach-list reason.
+#### Four amendments, ruled before dispatch
 
-- [ ] **Step 2: Write the screens**
+- **C1 — this is not an `apps/web`-only task, because the read it needs does not exist.** The plan
+  said the account's sign-in methods "come from `getOwnerPage`'s account". They do not:
+  `getOwnerPage` selects `{ id, handle, displayName, published }` off `Page` and never touches
+  `Account`, and there is no account read in `packages/db-read` at all. Nothing in the codebase can
+  answer "does this account have a password, and is Google connected?"
+  **Ruling:** add `getSignInMethods(accountId)` to `packages/db-read`, exported from the barrel,
+  with its own test following `owner-page.query.test.ts`. It returns
+  `{ email: string; hasPassword: boolean; providers: AuthProvider[] } | null`. Rejected an API
+  endpoint for it: this is a read, `apps/web` reads through `db-read`, and adding
+  `GET /auth/methods` would put an owner's own data on the write path for no reason. Rejected
+  widening `getOwnerPage`: a page and an account are different things, and an owner with no page
+  still has sign-in methods.
+  The `email` is included deliberately, slightly beyond the plan's letter: a settings screen that
+  does not say which account it is looking at makes "Add a password" ambiguous for anyone who has
+  two, and it is one more column on a read we are already writing.
 
-`add-password-form.tsx` posts to `POST /auth/password`. `connect-google.tsx` is a link to
-`GET /auth/google/link` on the API — a plain anchor, not a `fetch`, because the browser must
-follow the redirect to Google. On return, `?linked=google` renders a confirmation.
+- **C2 — a failed link dead-ends the browser on the API origin, and that is already shipped.**
+  `GET /auth/google/callback` throws on three paths inside the linking branch: `IdentityTakenError`
+  (409) when that Google account belongs to someone else, `UnauthenticatedError` when the session
+  expired mid-flow, and whatever `exchangeGoogleCode` raises on a state mismatch. The browser is
+  following a redirect chain, so a thrown error renders as raw JSON at
+  `localhost:3001/auth/google/callback?code=…` — the API origin, no navigation, no way back. The
+  callback's own comment says this is the exact failure it was written to avoid, for the cancel
+  case: *"answering that with a validation error on the API origin is a dead end with no way back."*
+  The same reasoning applies to every other failure and was not applied.
+  **Ruling:** read the link-intent cookie **before** the exchange, then let every failure out of the
+  callback end in a redirect back to the app — `${APP_URL}/app/settings?error=<code>` when linking,
+  `${APP_URL}/signin?error=<code>` otherwise. Never a JSON body to a browser following a redirect.
+  The error detail stays in the server log either way. This is Task 8's business for the same reason
+  **F2** made the cancel destination Task 2's: this plan owns where a linking user lands. One API
+  test asserts the new redirect for the already-linked case. Cost if wrong: a code in a query string.
 
-The screen shows which methods the account already has, so "Add a password" does not appear for
-an account that has one. That state comes from `getOwnerPage`'s account — if the read for it does
-not exist yet, add it to the settings page as a server read rather than inventing an API endpoint.
+- **C3 — `connect-google.tsx` must point at the API origin, absolutely, and must be an anchor.**
+  `GET /auth/google/link` is on `apps/api`, so a relative `/auth/google/link` href 404s on the Next
+  app. Use `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google/link`, the
+  same variable and fallback `apiFetch` uses. **And it must be a plain `<a>`, never a `fetch`** —
+  the browser has to follow the redirect to Google, and `fetch` would follow it in the background
+  and hand back Google's HTML.
 
-- [ ] **Step 3: Verify the link flow by hand**
+- **C4 — the test list covered one of the three things this task adds.** The plan listed only
+  `add-password-form.test.tsx`. **Ruling:** three more.
+  - `sign-in-methods.query.test.ts` — a password-only account, a Google-only account, an account
+    with both, and a non-existent account.
+  - The settings screen's decision — which forms appear — extracted into a plain function and
+    tested directly, the shape **F7** established in Task 1 rather than rendering a Server
+    Component.
+  - The `?linked=google` confirmation and the `?error=` message from **C2**.
+
+- [ ] **Step 1: The db-read query, test first**
+
+`packages/db-read/src/sign-in-methods.query.ts`. Scope by `accountId` inside the query. Follow
+`owner-page.query.ts` for shape and comment style, and `owner-page.query.test.ts` for the test.
+Export both the function and its type from `packages/db-read/src/index.ts`.
+
+- [ ] **Step 2: The callback fix, test first (C2)**
+
+In `apps/api/src/modules/auth/auth.routes.ts`. Add the API test first: a link attempt for a Google
+identity already attached to another account must **redirect** to
+`${APP_URL}/app/settings?error=identity_taken`, not return a 409 body. Then make it pass.
+
+Keep `OAUTH_STATE_COOKIE`, `OAUTH_VERIFIER_COOKIE` and `OAUTH_LINK_COOKIE` cleared on every path
+out — that already happens up front and must stay that way.
+
+- [ ] **Step 3: The screens, tests first**
+
+`add-password-form.test.tsx` covers: a successful add; `PASSWORD_ALREADY_SET` rendered as the API's
+message, which explains that changing a password is the reset flow rather than this one; and
+`WEAK_PASSWORD` rendered verbatim, including the breach-list reason. Reject with `ApiError`, never a
+plain object — the catch checks `instanceof Error`.
+
+`add-password-form.tsx` posts to `POST /auth/password`. Same wrapper split as the other four:
+`AddPasswordForm` presentational, `AddPassword` the `'use client'` wrapper with the `apiFetch`
+closure. A busy state on the button, per every other form here.
+
+`page.tsx` is a Server Component: `resolveOwner`, `redirect('/signin')` if none,
+`getSignInMethods(accountId)`, then show the email, and each form only where it applies — no
+"Add a password" for an account that has one, no "Connect Google" for one already connected. An
+account with both gets neither form and must still be told something useful; empty states are
+instructions, not moods. Read `searchParams` as a `Promise` and `await` it — the pattern is already
+in `signin/page.tsx`, `verify/page.tsx` and `reset/page.tsx`.
+
+- [ ] **Step 4: Verify the link flow by hand**
 
 Sign in with a password account, click Connect Google, complete the flow, and confirm you land on
 `/app/settings?linked=google` with a confirmation and that `AuthIdentity` now holds the row.
-Unit tests cannot cover a round trip through Google.
+Unit tests cannot cover a round trip through Google. **Report it honestly if you cannot** — a
+round trip needs real Google credentials, and claiming a manual step you did not run is worse than
+saying it is outstanding.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add apps/web && git commit -m "feat(web): settings, and a second way into an account"
+git add apps/web apps/api packages/db-read && git commit -m "feat(web): settings, and a second way into an account"
 ```
 
 ---
