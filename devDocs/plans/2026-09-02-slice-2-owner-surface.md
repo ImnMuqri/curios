@@ -1211,7 +1211,7 @@ price wrong in public is the single failure that loses a customer permanently."*
   the repo's only `vi.mock('next/navigation')`. Rejected leaving it: consistency across the four
   wrapper splits is what makes them readable as one pattern.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `apps/web/app/app/review/fact-card.test.tsx`:
 
@@ -1304,7 +1304,7 @@ the repo mocked `next/navigation` before this task. Follow the shape of the two 
    /nothing left to review/i — *"Nothing left to review. Publish when you are ready."* Never a
    mood.
 
-- [ ] **Step 2: Run to verify RED, then write the components**
+- [x] **Step 2: Run to verify RED, then write the components**
 
 `fact-card.tsx` renders the claim, the category, the source line, and three buttons: Accept,
 Edit, Reject. Accept is the primary action. Edit swaps the claim for a textarea — one of the two
@@ -1331,7 +1331,7 @@ Bound at 50, oldest first. The query already clamps and orders; the screen must 
 asking for more. Per the spec's *Volume*: "a queue that empties rather than a wall that
 intimidates".
 
-- [ ] **Step 3: Prove the hard rule holds at the surface**
+- [x] **Step 3: Prove the hard rule holds at the surface**
 
 The third card test is a negative requirement, and negative requirements decay. Before
 committing, add a select-all checkbox to `fact-card.tsx`, run that file, confirm the test
@@ -1340,7 +1340,7 @@ a guard nobody knows works.
 
 Do the same for the A3 test: make edit remove the card, confirm test 3 of the queue fails, revert.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): the fact review screen, one fact at a time"
@@ -1355,22 +1355,102 @@ git add apps/web && git commit -m "feat(web): the fact review screen, one fact a
 - Modify: `apps/web/app/app/review/page.tsx`
 - Test: `apps/web/app/app/review/publish-button.test.tsx`
 
+**Interfaces:**
+- Consumes: `POST /publish` — bodyless, returns `{ status: 'published' }`, or 404 `NO_PAGE` with
+  the message "Claim a handle first." `NO_PAGE` is already in `DOMAIN_ERROR_CODES`. No API change.
+- `getOwnerPage` (2a T8) already returns `handle` and `published`, so `page.tsx` knows both the
+  current state and the public address without a second read.
+
+#### Four amendments, ruled before dispatch
+
+- **B1 — publishing is a one-time switch, and the screen must stop offering it.** `OwnerPage`
+  carries `published`, and once it is true there is nothing left to do: both public read paths
+  filter `verified: true` at read time, so a fact accepted *after* publishing appears on the public
+  page immediately with no second publish. **Ruling:** when `published` is true the screen shows
+  the live URL and no button. Rejected showing a permanently-enabled button: an action that has no
+  effect is worse than no action, and an owner clicking "Publish" on an already-published page
+  cannot tell whether it worked. Rejected a "Republish" label for the same reason — it implies the
+  public page is stale, which it never is.
+
+- **B2 — the URL is built on the server, from `APP_URL`, and passed down as a string.** The owner
+  needs an address they can paste into a bio, so a relative `/handle` is not enough. `APP_URL` is
+  already in the root `.env` and `apps/web` loads it via `node --env-file` before Next starts, so
+  `page.tsx` — a Server Component — can read `process.env.APP_URL` directly. **Ruling:** compute
+  `publicUrl` there and pass it as a plain string prop. Rejected adding a `NEXT_PUBLIC_APP_URL`:
+  a second copy of a value we already have, exposed to the browser, to save one line in a
+  component that is already server-side. Rejected `window.location.origin`: it is unavailable
+  during the server render, so the link would flicker in or arrive absent.
+
+- **B3 — the button lives beside the queue, not inside its empty state.** The "Nothing left to
+  review. Publish when you are ready." copy is inside `ReviewQueue`, so putting the button there
+  would hide it whenever facts remain — which invents precisely the gate **F5** forbids. **Ruling:**
+  `page.tsx` renders `<Publish>` as a sibling of `<Review>`, visible whether the queue is empty or
+  not. F5 stands: **the button must not be disabled when nothing is verified.** Publishing is a
+  deliberate owner action and nothing more; a page with only links is a valid page, and
+  FRONTEND.md calls links "the boring part that pays the rent".
+
+- **B4 — the `NO_PAGE` branch is a race, not a path, and should be labelled as one.** `page.tsx`
+  redirects an owner with no page to `/app/onboarding`, so the screen cannot render without one.
+  `NO_PAGE` is reachable only if the page disappears between the render and the click. **Ruling:**
+  keep the test — it costs three lines and it is the difference between showing the API's sentence
+  and showing nothing — but comment it as the race it is, so nobody either deletes it as dead code
+  or adds a redundant server-side guard for it.
+
 - [ ] **Step 1: The tests**
 
-Three: that it calls `POST /publish` once and confirms; that it renders `NO_PAGE`'s message if
-the API says there is no page; and that once published it shows the public URL as a link, because
-a publish button that does not then tell you where the page is has done half the job.
+`publish-button.test.tsx`, five tests against `PublishButton` (presentational — the same
+wrapper split as `Claim`/`ClaimForm`, `Ingest`/`IngestForm`, `Review`/`ReviewQueue`):
 
-**It must not be disabled when nothing is verified.** Publishing is a deliberate owner action and
-nothing more — the API has no such gate, and a page with only links is a valid page. See F5.
+1. **It publishes once and says so.** Click, assert the handler fired exactly once
+   (`toHaveBeenCalledTimes(1)` plus `toHaveBeenCalledWith(...)` — note **A1**, this repo's vitest
+   has no `toHaveBeenCalledExactlyOnceWith`), and assert a confirmation is on screen.
+2. **It shows the public URL as a link afterwards.** Assert an anchor whose `href` is the
+   `publicUrl` prop. A publish button that does not then tell you where the page is has done half
+   the job.
+3. **It renders `NO_PAGE`'s own sentence.** Reject with
+   `new ApiError(404, 'NO_PAGE', 'Claim a handle first.')` — an `ApiError`, not a plain object,
+   because the catch checks `instanceof Error`. Comment it as the race B4 describes.
+4. **It is not disabled when nothing is verified.** Render with no verified facts in view and
+   assert the button is enabled. This is F5 as a test rather than a paragraph: it fails the day
+   someone adds the gate the spec does not have.
+5. **It does not publish twice on a double tap.** Follow `claim-form.test.tsx`'s
+   `does not submit twice on a double tap`.
 
-- [ ] **Step 2: Write it, green, commit**
+Then a sixth, in the same file, against the already-published state: given `published`, the
+component renders the live URL and **no** button at all (B1).
+
+- [ ] **Step 2: Write it**
+
+`publish-button.tsx` exports `PublishButton` (presentational: takes `publicUrl`, `published`, and
+an `onPublish: () => Promise<void>`) and `Publish` (the `'use client'` wrapper that supplies
+`onPublish` as `apiFetch('/publish', { method: 'POST' })`).
+
+`POST /publish` takes no body. `apiFetch` now sends `'{}'` for exactly this case — without that,
+Fastify answers 400 "Body cannot be empty when content-type is set to 'application/json'", which
+is the defect found in Task 6 and fixed in `apps/web/lib/api.ts`. Do not undo it, and do not add a
+body of your own.
+
+`page.tsx` gains, after the existing redirects:
+
+```tsx
+const publicUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`;
+```
+
+and renders `<Publish publicUrl={publicUrl} published={page.published} />` alongside `<Review>`.
+Plain strings and a boolean across the boundary — no functions (see the Task 3 defect).
+
+- [ ] **Step 3: Prove F5's guard bites**
+
+Disable the button on a condition — `disabled={true}` will do — run the file, confirm test 4
+**fails**, revert. Paste the failure into the report. F5 is a negative requirement and the whole
+reason it is written down is that gating publish on a verified fact feels responsible.
+
+- [ ] **Step 4: Commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): publish"
 ```
 
----
 
 ### Task 8: Settings, and the second way in
 
