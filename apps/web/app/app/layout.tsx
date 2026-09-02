@@ -1,6 +1,9 @@
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+// The barrel here, unlike middleware.ts. This file runs on Node, so the
+// barrel's transitive node:crypto import is fine. The split between the two
+// is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
 import { resolveOwner } from './session.js';
 
