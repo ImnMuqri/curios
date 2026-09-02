@@ -30,8 +30,22 @@ const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
  * that this is an assumption and what would collapse it.
  */
 export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  const method = (init.method ?? 'GET').toUpperCase();
+
+  // A bodyless mutation (verify, reject, publish -- none of them take a
+  // request payload) must still send a JSON body. Fastify's JSON parser
+  // rejects a JSON content type paired with a genuinely empty body:
+  // "Body cannot be empty when content-type is set to 'application/json'".
+  // Dropping the content type instead would fix that, but the content type
+  // is one of three stacked mechanisms standing in for a CSRF token (see the
+  // header comment above); removing it here would strip that defence from
+  // exactly the three most destructive actions in the product. Two bytes on
+  // the wire is the cheaper trade.
+  const requestBody = init.body === undefined && method !== 'GET' && method !== 'HEAD' ? '{}' : init.body;
+
   const response = await fetch(`${BASE}${path}`, {
     ...init,
+    body: requestBody,
     credentials: 'include',
     headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
   });

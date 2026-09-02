@@ -53,6 +53,28 @@ describe('POST /facts/:id/verify', () => {
     expect(fact?.verified).toBe(true);
   });
 
+  it('verifies one fact when called the way a browser actually calls it', async () => {
+    const mine = await anOwnerWithAFact();
+
+    // The other tests in this file send no content-type at all, which is
+    // what app.inject defaults to and is why a browser's actual request
+    // shape -- a JSON content type on a route that takes no payload -- went
+    // untested. This pins the contract at the API end: `apiFetch` in
+    // apps/web now sends '{}' for exactly this reason.
+    const res = await app.inject({
+      method: 'POST',
+      url: `/facts/${mine.factId}/verify`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      headers: { 'content-type': 'application/json' },
+      payload: {},
+    });
+
+    expect(res.statusCode).toBe(200);
+    const fact = await app.prisma.fact.findUnique({ where: { id: mine.factId } });
+    expect(fact?.verified).toBe(true);
+  });
+
   it('refuses another owner fact, and leaves it unverified', async () => {
     const mine = await anOwnerWithAFact();
     const theirs = await anOwnerWithAFact('their price is rm40');

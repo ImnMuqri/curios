@@ -48,4 +48,39 @@ describe('apiFetch', () => {
     // screen trying to read `error.code` off a parse failure.
     await expect(apiFetch('/pages')).rejects.toBeInstanceOf(ApiError);
   });
+
+  it('sends a JSON body on a bodyless mutation, not just the content type', async () => {
+    const spy = stubFetch(200, { status: 'verified' });
+
+    // POST /facts/:id/verify and POST /facts/:id/reject are called with no
+    // second argument at all -- exactly what Accept and Reject do. Fastify
+    // 400s a JSON content type paired with a truly empty body, so the
+    // content type alone is not enough; the body must actually be there.
+    await apiFetch('/facts/1/verify', { method: 'POST' });
+
+    const init = spy.mock.calls[0]?.[1] as RequestInit;
+    expect(init.body).toBe('{}');
+    expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
+  });
+
+  it('leaves a caller-supplied body untouched', async () => {
+    const spy = stubFetch(200, { ok: true });
+
+    await apiFetch('/pages', { method: 'POST', body: JSON.stringify({ handle: 'kuih' }) });
+
+    const init = spy.mock.calls[0]?.[1] as RequestInit;
+    // The synthetic '{}' must never clobber a real payload.
+    expect(init.body).toBe(JSON.stringify({ handle: 'kuih' }));
+  });
+
+  it('sends no body at all on a GET', async () => {
+    const spy = stubFetch(200, { ok: true });
+
+    await apiFetch('/auth/me');
+
+    // A GET with a body is a spec violation some runtimes reject outright --
+    // the bodyless-mutation fix must not turn every GET into one too.
+    const init = spy.mock.calls[0]?.[1] as RequestInit;
+    expect(init.body).toBeUndefined();
+  });
 });
