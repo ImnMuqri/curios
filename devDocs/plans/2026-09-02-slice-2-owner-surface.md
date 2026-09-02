@@ -1586,8 +1586,16 @@ published page.
 from `@curios/db-read` and is not redefined in the web app. `SESSION_COOKIE` has exactly one
 definition after T1.
 
-**What is not tested, stated plainly.** No test here renders a Server Component or exercises
-middleware inside a running Next server; T1 tests the extracted decision and the middleware
-function directly. The three end-to-end paths that unit tests cannot reach — the email link, the
+**What is not tested, stated plainly.** No test here exercises middleware inside a running Next
+server; T1 tests the extracted decision and the middleware function directly.
+
+*Corrected after T7.* This section originally also claimed that no test renders a Server Component.
+That was false when it was written: `apps/web/app/[handle]/page.test.tsx`, from slice 1, already
+does `render(await HandlePage({ params: … }))`. A Next 15 async Server Component is just an async
+function returning JSX, so it can be awaited and rendered with its reads mocked. T7's review found
+the cost of believing otherwise — **F5 was enforced in `review/page.tsx`'s composition, where
+nothing tested it** — and the fix is a Server Component test using exactly that slice-1 pattern.
+The lesson generalises: when a rule is about what a screen *offers*, the guard belongs where the
+screen is assembled, not only where the control is drawn. The three end-to-end paths that unit tests cannot reach — the email link, the
 Google round trip, and the ingest job — each carry a manual verification step, in T3, T8 and T5
 respectively. Anyone reporting this plan "fully tested" without those three has not run them.
