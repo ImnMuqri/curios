@@ -16,3 +16,21 @@ process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
 // is removed, which is the same clean-slate property the truncated test
 // database gives every other test.
 process.env.RATE_LIMIT_NAMESPACE = `curios-rl-test-${process.pid}-${Date.now()}:`;
+
+// The limiter budgets, pinned to the production defaults.
+//
+// The root setup loads .env, so without this the suite inherits whatever a
+// developer has put there -- and raising the limits locally to click through
+// the app is a reasonable thing to do. It silently breaks the tests that
+// assert a 429, which are exactly the tests proving the limiters still throttle
+// where they are supposed to. A suite whose result depends on a gitignored
+// file is not a suite.
+//
+// rate-limit.test.ts sets its own, much tighter values in beforeAll and
+// restores them after; these are the defaults everything else runs against.
+process.env.RATE_LIMIT_CHAT_PER_PAGE = '30';
+process.env.RATE_LIMIT_CHAT_PER_IP = '100';
+process.env.RATE_LIMIT_INGEST_PER_IP = '5';
+process.env.RATE_LIMIT_INGEST_PER_PAGE = '20';
+process.env.RATE_LIMIT_AUTH_PER_IP = '20';
+process.env.RATE_LIMIT_AUTH_PER_EMAIL = '10';
