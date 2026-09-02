@@ -166,7 +166,11 @@ describe('linking Google while signed in', () => {
 
     // A link intent with nothing to link to must not quietly become a signup.
     // That is the branch where "explicit and authenticated" would be lost.
-    expect(res.statusCode).toBe(401);
+    // And -- C2 -- the browser here is mid-redirect-chain back from Google,
+    // so this must redirect to the app rather than dead-end as JSON on the
+    // API origin.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=unauthenticated');
     expect(await app.prisma.account.count()).toBe(before);
   });
 
@@ -226,7 +230,13 @@ describe('linking Google while signed in', () => {
 
     // Otherwise linking is a way to take an identity off someone else's
     // account, which is the takeover the explicit-linking rule exists to stop.
-    expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('IDENTITY_TAKEN');
+    //
+    // C2: the browser here followed a redirect chain back from Google, so a
+    // thrown 409 would render as raw JSON at the API origin -- no
+    // navigation, no way back. This must redirect to the app instead, with
+    // the reason as a query code rather than a body nothing on this page
+    // reads.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=identity_taken');
   });
 });

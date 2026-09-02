@@ -71,8 +71,13 @@ describe('GET /auth/google/callback', () => {
     // This is the whole reason state exists: an attacker feeding the victim a
     // code obtained for the attacker's own Google account. A session issued
     // here signs the victim in as someone else.
-    expect(res.statusCode).toBe(400);
-    expect(res.json().error.code).toBe('OAUTH_STATE_MISMATCH');
+    //
+    // C2: no session is issued, but the browser is still mid-redirect-chain
+    // back from Google, so a 400 JSON body would dead-end at the API origin
+    // the same way the already-linked case would. This must redirect back to
+    // sign-in with the reason as a query code instead.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/signin?error=oauth_state_mismatch');
     expect(res.cookies.find((c) => c.name === SESSION_COOKIE)).toBeUndefined();
   });
 
@@ -83,7 +88,8 @@ describe('GET /auth/google/callback', () => {
       remoteAddress: from(),
     });
 
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/signin?error=oauth_state_mismatch');
     expect(res.cookies.find((c) => c.name === SESSION_COOKIE)).toBeUndefined();
   });
 
@@ -138,7 +144,10 @@ describe('the callback under conditions that are not the happy path', () => {
       cookies: { [OAUTH_STATE_COOKIE]: planted, [OAUTH_VERIFIER_COOKIE]: 'v' },
     });
 
-    expect(res.statusCode).toBe(400);
+    // C2, same as the two tests above: a redirect back to sign-in, not a
+    // JSON body on the API origin.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/signin?error=oauth_state_mismatch');
     expect(res.cookies.find((c) => c.name === SESSION_COOKIE)).toBeUndefined();
   });
 
@@ -168,7 +177,10 @@ describe('the callback under conditions that are not the happy path', () => {
       },
     });
 
-    expect(res.statusCode).toBe(400);
+    // C2: this now redirects rather than answering 400 JSON, but the
+    // property this test exists for -- the cookies are spent regardless of
+    // how the callback failed -- must still hold.
+    expect(res.statusCode).toBe(302);
     // Otherwise a failed attempt leaves a usable state and verifier sitting in
     // the browser for the rest of their ten minutes.
     expect(res.cookies.find((c) => c.name === OAUTH_STATE_COOKIE)?.value).toBe('');
