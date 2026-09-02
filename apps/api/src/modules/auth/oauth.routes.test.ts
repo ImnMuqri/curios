@@ -163,7 +163,13 @@ describe('the callback under conditions that are not the happy path', () => {
     // a validation message on the API origin is a dead end with no way back.
     expect(res.statusCode).toBe(302);
     expect(res.headers.location).toContain('/signin');
-    expect(res.json).toBeDefined();
+    // Was `expect(res.json).toBeDefined()`, which could never fail: on an
+    // injected response `res.json` is light-my-request's parsing METHOD, so
+    // it is a truthy function whatever the server sent. It read as a
+    // "not raw JSON" check and asserted nothing at all. The body being empty
+    // is the actual property -- a redirect carries no payload, and a JSON
+    // error response would.
+    expect(res.body).toBe('');
   });
 
   it('spends the one-time cookies even when the callback fails', async () => {

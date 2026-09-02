@@ -212,7 +212,7 @@ describe('linking Google while signed in', () => {
   });
 
   it('refuses to move an identity that already belongs to another account', async () => {
-    freshSub();
+    const sub = freshSub();
     const first = await anAccount(true);
     const second = await anAccount(true);
     const state = 'shared-state';
@@ -243,6 +243,24 @@ describe('linking Google while signed in', () => {
     // reads.
     expect(res.statusCode).toBe(302);
     expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=identity_taken');
+
+    // The response is not the property. THIS is: the identity still belongs
+    // to the account that linked it first. Both sibling tests above re-read
+    // the row and this one did not, which is backwards -- it is the test
+    // where ownership actually matters.
+    //
+    // Today's `linkGoogleIdentity` is correct by construction, so no
+    // one-line change defeats the two assertions above. That is incidental.
+    // A refactor that reassigns `accountId` on the existing row and still
+    // raises IdentityTakenError afterwards -- for the message, say -- passes
+    // a green 302 while quietly moving a stranger's Google account onto the
+    // caller's. Then the redirect would be telling the truth about the error
+    // and lying about the outcome.
+    const identities = await app.prisma.authIdentity.findMany({
+      where: { provider: 'GOOGLE', providerUserId: sub },
+    });
+    expect(identities).toHaveLength(1);
+    expect(identities[0]?.accountId).toBe(first.id);
   });
 });
 
