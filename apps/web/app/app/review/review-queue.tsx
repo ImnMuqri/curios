@@ -1,0 +1,141 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import type { ReviewFact } from '@curios/db-read';
+import { apiFetch } from '../../../lib/api.js';
+import { FactCard } from './fact-card.js';
+
+function toMessage(failure: unknown): string {
+  return failure instanceof Error ? failure.message : 'Something failed. Try again.';
+}
+
+/**
+ * The review queue, presentational -- the same split as `ClaimForm` and
+ * `IngestForm`. Takes `facts` plus the three mutation functions and owns
+ * everything about how a card responds to them:
+ *
+ * - `acted` is the set of ids that have been accepted or rejected. The
+ *   visible list is `facts.filter(f => !acted.has(f.id))`, computed fresh on
+ *   every render from the `facts` prop -- never copied into state -- so that
+ *   a `router.refresh()` bringing genuinely new data is not fought by stale
+ *   state (A2).
+ * - `edits` holds a per-id claim override so an edited card shows the
+ *   corrected text immediately, without waiting on a refresh to bring it
+ *   back from the server.
+ * - `errors` holds a per-id message, rendered on the card that failed.
+ *
+ * The call to `router.refresh()` lives here, not in `Review` below, even
+ * though the plan's prose attributes it to the wrapper. It has to: this
+ * component is what review-queue.test.tsx renders directly, with fake
+ * `onAccept`/`onEdit`/`onReject` functions that know nothing about routing,
+ * and "the local removal alone would be a lie about the server's state" is
+ * only a guarantee if refreshing is structurally tied to acting on a card --
+ * not an accident of whatever the injected closure happens to do. See the
+ * report for the fuller explanation.
+ */
+export function ReviewQueue({
+  facts,
+  onAccept,
+  onEdit,
+  onReject,
+}: {
+  facts: ReviewFact[];
+  onAccept: (id: string) => Promise<void>;
+  onEdit: (id: string, claim: string) => Promise<void>;
+  onReject: (id: string) => Promise<void>;
+}) {
+  const router = useRouter();
+  const [acted, setActed] = useState<Set<string>>(new Set());
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  async function handleAccept(id: string) {
+    try {
+      await onAccept(id);
+      setActed((prev) => new Set(prev).add(id));
+      router.refresh();
+    } catch (failure) {
+      setErrors((prev) => ({ ...prev, [id]: toMessage(failure) }));
+    }
+  }
+
+  async function handleReject(id: string) {
+    try {
+      await onReject(id);
+      setActed((prev) => new Set(prev).add(id));
+      router.refresh();
+    } catch (failure) {
+      setErrors((prev) => ({ ...prev, [id]: toMessage(failure) }));
+    }
+  }
+
+  async function handleEdit(id: string, claim: string) {
+    try {
+      await onEdit(id, claim);
+      // Per A3: `editFact` leaves `verified: false`. The fact is still
+      // unreviewed, so it stays in the queue -- only the claim it shows
+      // changes. Accept and Reject remove the card; Edit updates it in
+      // place. If this ever removes the card, the hard rule has a side door.
+      setEdits((prev) => ({ ...prev, [id]: claim }));
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[id];
+        return next;
+      });
+      router.refresh();
+    } catch (failure) {
+      setErrors((prev) => ({ ...prev, [id]: toMessage(failure) }));
+    }
+  }
+
+  const visible = facts.filter((fact) => !acted.has(fact.id));
+
+  if (visible.length === 0) {
+    // An instruction, not a mood.
+    return <p>Nothing left to review. Publish when you are ready.</p>;
+  }
+
+  return (
+    <div>
+      {visible.map((fact) => {
+        const editedClaim = edits[fact.id];
+        return (
+          <FactCard
+            key={fact.id}
+            fact={editedClaim === undefined ? fact : { ...fact, claim: editedClaim }}
+            onAccept={(id) => void handleAccept(id)}
+            onEdit={(id, claim) => void handleEdit(id, claim)}
+            onReject={(id) => void handleReject(id)}
+            error={errors[fact.id]}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Supplies the real `apiFetch` closures. Thin on purpose, same shape as
+ * `Claim` in `claim-form.tsx` and `Ingest` in `ingest-form.tsx`: a Server
+ * Component cannot hand a function to a Client Component, so `page.tsx`
+ * passes only `ReviewFact[]` -- strings, nulls and a number -- and the
+ * closures over `apiFetch` are built here, entirely on the client side of
+ * that boundary.
+ */
+export function Review({ facts }: { facts: ReviewFact[] }) {
+  return (
+    <ReviewQueue
+      facts={facts}
+      onAccept={async (id) => {
+        await apiFetch(`/facts/${id}/verify`, { method: 'POST' });
+      }}
+      onEdit={async (id, claim) => {
+        await apiFetch(`/facts/${id}`, { method: 'PATCH', body: JSON.stringify({ claim }) });
+      }}
+      onReject={async (id) => {
+        await apiFetch(`/facts/${id}/reject`, { method: 'POST' });
+      }}
+    />
+  );
+}
