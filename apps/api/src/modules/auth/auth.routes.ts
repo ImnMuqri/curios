@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createQueueMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
 import { requireSession, UnauthenticatedError } from '../../plugins/session.js';
+import { DOMAIN_ERROR_CODES } from '../../plugins/errors.js';
 import {
   addPassword,
   findOrCreateAccountForGoogle,
@@ -54,6 +55,39 @@ const sessionCookie = (value: string) =>
     domain: process.env.COOKIE_DOMAIN,
     value,
   }) as const;
+
+/**
+ * Turns a thrown error into the lower-cased, underscored code the callback's
+ * redirect carries in its query string -- C2.
+ *
+ * Reuses `errorsPlugin`'s own `DOMAIN_ERROR_CODES` rather than keeping a
+ * second, hand-maintained allow-list here. There used to be one -- this
+ * function's previous body had its own `CALLBACK_ERROR_CODES` set -- and it
+ * disagreed with `errorsPlugin` about `OAUTH_EXCHANGE_FAILED`, which is how a
+ * deliberate 502 server fault ended up reading as a specific, reassuring
+ * "try again in a moment".
+ *
+ * The `statusCode < 500` check is what makes that mistake structurally
+ * harder to repeat: `OAuthExchangeError` (oauth.service.ts) is a 502 by
+ * design, precisely so a misconfigured client secret or redirect URI is
+ * logged and surfaced generically instead of dressed up as something the
+ * user can fix by trying again. `DOMAIN_ERROR_CODES` doesn't encode status
+ * codes at all, so without this check any *future* code added there with a
+ * 5xx status would leak the same way `OAUTH_EXCHANGE_FAILED` did. Everything
+ * that fails either test -- a 5xx, an unlisted code, a raw Prisma code, a
+ * thrown string -- becomes `internal_error`.
+ */
+function callbackErrorCode(error: unknown): string {
+  const code = (error as { code?: unknown } | null)?.code;
+  const statusCode = (error as { statusCode?: unknown } | null)?.statusCode;
+  const isClientFacing =
+    typeof code === 'string' &&
+    DOMAIN_ERROR_CODES.has(code) &&
+    typeof statusCode === 'number' &&
+    statusCode < 500;
+
+  return isClientFacing ? code.toLowerCase() : 'internal_error';
+}
 
 /**
  * The routes that carry an email address in their body.
@@ -205,7 +239,7 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
 
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
       if (request.query.error || !request.query.code || !request.query.state) {
-        return reply.redirect(`${appUrl}/?signin=cancelled`);
+        return reply.redirect(`${appUrl}/signin?cancelled=1`);
       }
 
       // Only a value this server signed counts as one this browser was given.
@@ -215,32 +249,51 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
         return result.valid ? (result.value ?? undefined) : undefined;
       };
 
-      const profile = await exchangeGoogleCode(
-        {
-          code: request.query.code,
-          state: request.query.state,
-          cookieState: unsigned(request.cookies[OAUTH_STATE_COOKIE]),
-          verifier: unsigned(request.cookies[OAUTH_VERIFIER_COOKIE]) ?? '',
-        },
-        exchange,
-      );
-
-      // One branch, stated plainly, in the one place that can see both the
-      // intent cookie and the session.
+      // Read BEFORE the exchange, not after (C2): the exchange is the first
+      // thing that can fail, and every failure below needs to know whether
+      // this was a link attempt to pick the right place to send the browser
+      // back to.
       const linking = unsigned(request.cookies[OAUTH_LINK_COOKIE]) === '1';
-      if (linking) {
-        // A link intent with nothing to link to must not quietly become a
-        // signup -- that is where "explicit and authenticated" would be lost.
-        if (!request.account) throw new UnauthenticatedError();
+      const failureUrl = linking ? `${appUrl}/app/settings` : `${appUrl}/signin`;
 
-        await linkGoogleIdentity(app.prisma, request.account.id, profile);
-        return reply.redirect(`${appUrl}/app/settings?linked=google`);
+      try {
+        const profile = await exchangeGoogleCode(
+          {
+            code: request.query.code,
+            state: request.query.state,
+            cookieState: unsigned(request.cookies[OAUTH_STATE_COOKIE]),
+            verifier: unsigned(request.cookies[OAUTH_VERIFIER_COOKIE]) ?? '',
+          },
+          exchange,
+        );
+
+        // One branch, stated plainly, in the one place that can see both the
+        // intent cookie and the session.
+        if (linking) {
+          // A link intent with nothing to link to must not quietly become a
+          // signup -- that is where "explicit and authenticated" would be lost.
+          if (!request.account) throw new UnauthenticatedError();
+
+          await linkGoogleIdentity(app.prisma, request.account.id, profile);
+          return reply.redirect(`${appUrl}/app/settings?linked=google`);
+        }
+
+        const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
+        const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
+
+        return reply.setCookie(SESSION_COOKIE, value, cookie).redirect(`${appUrl}/app`);
+      } catch (error) {
+        // C2: the browser is mid-redirect-chain here, having just come back
+        // from Google. A thrown error would otherwise render as raw JSON on
+        // the API origin -- no navigation, no way back, the exact failure
+        // mode the cancel case above exists to avoid. That reasoning applies
+        // to every way out of this handler, not only the cancel case, so
+        // every failure ends in a redirect and never a JSON body. The real
+        // error still goes to the log; only the code reaching the browser is
+        // filtered through the allow-list above.
+        request.log.error({ err: error }, 'google oauth callback failed');
+        return reply.redirect(`${failureUrl}?error=${callbackErrorCode(error)}`);
       }
-
-      const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
-      const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
-
-      return reply.setCookie(SESSION_COOKIE, value, cookie).redirect(`${appUrl}/app`);
     },
   );
 };

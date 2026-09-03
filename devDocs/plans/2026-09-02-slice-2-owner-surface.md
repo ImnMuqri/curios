@@ -18,6 +18,14 @@
 - **`apps/web` must never import `packages/db`.** Reads go through `packages/db-read`.
 - **Every browser→API call passes `credentials: 'include'`** and `content-type: application/json`. Both are load-bearing: the cookie does not travel without the first, and the second is one of the three things standing in for a CSRF token.
 - **Middleware is never a security boundary.** It checks cookie presence and redirects. Nothing is authorized because middleware let a request through.
+- **A Server Component may never pass a function to a Client Component.** Functions are not
+  serializable across that boundary, and Next rejects it at REQUEST time with a 500 — which lint,
+  typecheck, tests and build all pass straight over. It was found in this plan only by clicking a
+  real link during Task 3's manual walk-through. So every screen takes the same shape: a
+  presentational client component whose handlers are required props, a thin client wrapper that
+  supplies the real ones, and a `page.tsx` Server Component that reads the query string and renders
+  the wrapper with plain data only. `SignIn` in Task 2 and `Verify` in Task 3 are the worked
+  examples.
 - **No blank prompt boxes** (FRONTEND.md). Every input is a control with a fixed set of answers, except the two places a human writes prose: a pinned answer, and a fact correction.
 - **One primary action per screen.** Everything else is secondary.
 - **Empty states are instructions, not moods.** "No facts to review yet. Paste your website address above and we will read it." Never "Nothing here!"
@@ -72,7 +80,7 @@
 **Files:**
 - Create: `apps/web/middleware.ts`, `apps/web/app/app/layout.tsx`, `apps/web/app/app/session.ts`
 - Create: `packages/core/src/cookie.ts`
-- Modify: `packages/core/src/index.ts`, `apps/api/src/modules/auth/session.service.ts`
+- Modify: `packages/core/src/index.ts`, `packages/core/package.json`, `apps/api/src/modules/auth/session.service.ts`
 - Test: `apps/web/middleware.test.ts`, `apps/web/app/app/session.test.ts`
 
 **Interfaces:**
@@ -81,7 +89,7 @@
 
 **Why the cookie name moves.** `apps/web` needs to read the session cookie by name, and the name lives in `apps/api/src/modules/auth/session.service.ts`, which `apps/web` cannot import. This is the third time this exact problem has come up — plan 2a moved the session hash and both TTLs into `packages/core` for it — and it gets the same answer for the same reason: a string literal copied into a second package is a string literal that drifts, and the failure mode is a browser holding a cookie nobody reads.
 
-- [ ] **Step 1: Move the cookie name into `packages/core`**
+- [x] **Step 1: Move the cookie name into `packages/core`**
 
 Create `packages/core/src/cookie.ts`:
 
@@ -98,11 +106,33 @@ Create `packages/core/src/cookie.ts`:
 export const SESSION_COOKIE = 'curios_session';
 ```
 
-Add to `packages/core/src/index.ts`:
+Add to `packages/core/src/index.ts`, for the Node-side consumers:
 
 ```ts
 export { SESSION_COOKIE } from './cookie.js';
 ```
+
+**And give it a subpath export, which middleware needs and the barrel cannot provide.**
+`middleware.ts` is bundled for the Edge runtime. Importing from the `@curios/core` barrel drags
+in `session-hash.ts`, which imports `node:crypto`, which the Edge runtime does not have — the
+build fails with `UnhandledSchemeError: node:crypto`. This has not bitten before because
+`apps/web` only ever imported TYPES from core, and types vanish at build time. This is the first
+module to pull a runtime value from core into an Edge bundle.
+
+In `packages/core/package.json`, add the subpath beside the existing root export:
+
+```json
+  "exports": {
+    ".": "./src/index.ts",
+    "./cookie": "./src/cookie.ts"
+  },
+```
+
+Rejected `sideEffects: false` on the package, which would instead let webpack tree-shake the
+unused re-export: that makes the build depend on the bundler proving `hashSessionValue` is
+unreachable, and the day that proof fails the error is the same baffling `UnhandledSchemeError`
+with no visible cause. The subpath puts the Edge constraint at the import site, which is where
+the next person needs to see it.
 
 In `apps/api/src/modules/auth/session.service.ts`, replace the local declaration with a re-export so no plan 1 or 2a call site changes:
 
@@ -114,14 +144,14 @@ export const SESSION_COOKIE = CORE_SESSION_COOKIE;
 
 Every existing API test passing unmodified is the evidence this moved nothing.
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Create `apps/web/middleware.test.ts`:
 
 ```ts
 import { describe, expect, it } from 'vitest';
 import { NextRequest } from 'next/server';
-import { SESSION_COOKIE } from '@curios/core';
+import { SESSION_COOKIE } from '@curios/core/cookie';
 import { middleware } from './middleware.js';
 
 const request = (path: string, cookie?: string) => {
@@ -175,6 +205,11 @@ describe('resolveOwner', () => {
     getOwnerSession.mockResolvedValueOnce({ accountId: 'acc-1' });
 
     expect(await resolveOwner('a-real-value')).toEqual({ accountId: 'acc-1' });
+    // Asserting the ARGUMENT, not just the return. Without this a version that
+    // validated some other value -- a stale closure, a hardcoded literal --
+    // passes, and that version either locks everyone out or, far worse, hands
+    // everyone whichever account that value happens to belong to.
+    expect(getOwnerSession).toHaveBeenCalledWith('a-real-value');
   });
 
   it('refuses a cookie the database does not recognise', async () => {
@@ -183,6 +218,7 @@ describe('resolveOwner', () => {
     getOwnerSession.mockResolvedValueOnce(null);
 
     expect(await resolveOwner('forged')).toBeNull();
+    expect(getOwnerSession).toHaveBeenCalledWith('forged');
   });
 
   it('does not go to the database when there is no cookie at all', async () => {
@@ -194,18 +230,22 @@ describe('resolveOwner', () => {
 });
 ```
 
-- [ ] **Step 3: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./middleware.js` and `./session.js`.
 
-- [ ] **Step 4: Write the middleware**
+- [x] **Step 4: Write the middleware**
 
 Create `apps/web/middleware.ts`:
 
 ```ts
 import { NextResponse, type NextRequest } from 'next/server';
-import { SESSION_COOKIE } from '@curios/core';
+// The subpath, NOT the '@curios/core' barrel. This file is bundled for the
+// Edge runtime, and the barrel re-exports a module importing node:crypto,
+// which the Edge runtime does not have. Importing the barrel here fails the
+// build with UnhandledSchemeError.
+import { SESSION_COOKIE } from '@curios/core/cookie';
 
 /**
  * Checks the cookie is PRESENT. Nothing more, and deliberately.
@@ -229,7 +269,7 @@ export function middleware(request: NextRequest): NextResponse {
 export const config = { matcher: '/app/:path*' };
 ```
 
-- [ ] **Step 5: Write the layout and its extracted decision**
+- [x] **Step 5: Write the layout and its extracted decision**
 
 Create `apps/web/app/app/session.ts`:
 
@@ -259,6 +299,9 @@ Create `apps/web/app/app/layout.tsx`:
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+// The barrel here, unlike middleware.ts. This file runs on Node, so the
+// barrel's transitive node:crypto import is fine. The split between the two
+// is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
 import { resolveOwner } from './session.js';
 
@@ -279,14 +322,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 }
 ```
 
-- [ ] **Step 6: Run the tests to verify they pass**
+- [x] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm --filter @curios/web test`
 Expected: PASS, 6 new tests.
 
 Then run the whole workspace: `pnpm test`. Every `apps/api` test must pass unmodified — that is the evidence moving `SESSION_COOKIE` changed nothing.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/web packages/core apps/api
@@ -305,7 +348,28 @@ git commit -m "feat(web): the session boundary, and one cookie name for both app
 **Interfaces:**
 - Produces: `apiFetch(path, init)` — the single browser→API caller every later task uses; `ApiError` carrying the domain `code`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Add the two test libraries these screens need**
+
+```bash
+pnpm --filter @curios/web add -D @testing-library/jest-dom@^6.6.3 @testing-library/user-event@^14.5.2
+```
+
+`jest-dom` is not installed anywhere in this repo yet. The two existing web tests get by
+without it because between them they make two assertions; every task from here writes
+component tests, and `toBeInTheDocument()` and `toBeDisabled()` are worth a devDependency
+across seven of them. Register it by appending to `apps/web/vitest.setup.ts`, which already
+stubs `matchMedia`:
+
+```ts
+// Registers toBeInTheDocument, toBeDisabled and the rest of the DOM matchers.
+// Appended rather than replacing the matchMedia stub above, which the public
+// page's tests still need.
+import '@testing-library/jest-dom/vitest';
+```
+
+Check `user-event` before adding it — it may already be present.
+
+- [x] **Step 2: Write the failing tests**
 
 Create `apps/web/lib/api.test.ts`:
 
@@ -316,7 +380,15 @@ import { apiFetch, ApiError } from './api.js';
 afterEach(() => vi.unstubAllGlobals());
 
 function stubFetch(status: number, body: unknown) {
-  const spy = vi.fn(async () => new Response(JSON.stringify(body), { status }));
+  // Typed with fetch's real signature, unused params and all: vi.fn() infers
+  // its mock's call-args shape from this implementation's own parameter list,
+  // and a zero-arg arrow makes spy.mock.calls[0][1] an out-of-bounds tuple
+  // index at COMPILE time -- invisible to vitest, which only transpiles, and
+  // caught only by the typecheck gate.
+  const spy = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify(body), { status }),
+  );
   vi.stubGlobal('fetch', spy);
   return spy;
 }
@@ -364,14 +436,14 @@ Create `apps/web/app/signin/signin-form.test.tsx`:
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../lib/api.js';
 import { SignInForm } from './signin-form.js';
 
 describe('SignInForm', () => {
   it('shows the API message when sign-in fails', async () => {
-    const submit = vi.fn().mockRejectedValueOnce({
-      code: 'INVALID_CREDENTIALS',
-      message: 'Check your email and password. If you just signed up, confirm your address first.',
-    });
+    const submit = vi.fn().mockRejectedValueOnce(
+      new ApiError(401, 'INVALID_CREDENTIALS', 'Check your email and password. If you just signed up, confirm your address first.'),
+    );
     render(<SignInForm onSubmit={submit} />);
 
     await userEvent.type(screen.getByLabelText(/email/i), 'nadia@example.com');
@@ -410,12 +482,12 @@ describe('SignInForm', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./api.js` and `./signin-form.js`.
 
-- [ ] **Step 3: Write the API caller**
+- [x] **Step 4: Write the API caller**
 
 Create `apps/web/lib/api.ts`:
 
@@ -474,7 +546,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
 }
 ```
 
-- [ ] **Step 4: Write the sign-in screen**
+- [x] **Step 5: Write the sign-in screen**
 
 Create `apps/web/app/signin/signin-form.tsx`:
 
@@ -549,11 +621,51 @@ export function SignInForm({
 }
 ```
 
-Create `apps/web/app/signin/page.tsx`:
+**Why the submit handler cannot live on the server.** The session cookie arrives as
+`Set-Cookie` on the API's response, and that header only reaches the visitor's browser if the
+*browser* made the request. A Server Action or a server-side `fetch` would receive the cookie
+into the Next server process, where it is useless and invisible to the person signing in. So
+the request is made from a client component, always.
+
+That splits `signin-form.tsx` into two exports, and the split is deliberate: everything worth
+testing lives in the presentational half, and the half a unit test could only check against
+mocks of both `fetch` and the router is kept small enough to read at a glance.
+
+Add to `apps/web/app/signin/signin-form.tsx`, below `SignInForm`:
 
 ```tsx
-import { redirect } from 'next/navigation';
-import { SignInForm } from './signin-form.js';
+/**
+ * Supplies the real submit handler. Thin on purpose.
+ *
+ * A unit test of this would assert that a mocked fetch was called and a mocked
+ * router was pushed, which proves the mocks work. What it actually does is
+ * covered by Task 3's manual walk-through of the whole flow, and by the API's
+ * own tests of POST /auth/login.
+ */
+export function SignIn({ cancelled, next }: { cancelled: boolean; next: string }) {
+  const router = useRouter();
+
+  return (
+    <SignInForm
+      cancelled={cancelled}
+      onSubmit={async (input) => {
+        await apiFetch('/auth/login', { method: 'POST', body: JSON.stringify(input) });
+        router.push(next);
+      }}
+    />
+  );
+}
+```
+
+`SignInForm` keeps `onSubmit` REQUIRED rather than defaulting to the real handler. A default
+would mean the production path is the one path no test ever exercises, which is the shape this
+project has already had to correct three times.
+
+Create `apps/web/app/signin/page.tsx`, a Server Component whose only job is reading the query
+string:
+
+```tsx
+import { SignIn } from './signin-form.js';
 
 export default async function SignInPage({
   searchParams,
@@ -562,31 +674,11 @@ export default async function SignInPage({
 }) {
   const params = await searchParams;
 
-  async function signIn(input: { email: string; password: string }) {
-    'use server';
-    // Deliberately not a Server Action calling the API: the browser must make
-    // this request itself, or the Set-Cookie lands on the server rather than
-    // in the visitor's browser. See the client wrapper below.
-    void input;
-  }
-  void signIn;
-
-  return (
-    <SignInPageClient cancelled={params.cancelled === '1'} next={params.next ?? '/app'} />
-  );
+  return <SignIn cancelled={params.cancelled === '1'} next={params.next ?? '/app'} />;
 }
 ```
 
-**Stop and read this before writing `SignInPageClient`.** The session cookie is set by
-`Set-Cookie` on the API's response. That header only reaches the visitor's browser if the
-*browser* made the request. A Server Action or a server-side `fetch` would receive the cookie
-into the Next server process, where it is useless. So the submit handler lives in a client
-component and calls `apiFetch` directly. The `page.tsx` above exists only to read
-`searchParams`; put the client wrapper in `signin-form.tsx` beside the form, or inline the
-`apiFetch` call into `SignInForm`'s default `onSubmit`. Either is fine; sending the request
-from the server is not.
-
-- [ ] **Step 5: Write the sign-up screen**
+- [x] **Step 6: Write the sign-up screen**
 
 `apps/web/app/signup/signup-form.tsx` and `page.tsx` mirror sign-in, with three differences:
 
@@ -598,7 +690,7 @@ from the server is not.
   the API's response is byte-identical in both cases and the screen must not leak what the
   API refuses to.
 
-- [ ] **Step 6: Point the OAuth cancel redirect somewhere that exists**
+- [x] **Step 7: Point the OAuth cancel redirect somewhere that exists**
 
 In `apps/api/src/modules/auth/auth.routes.ts`, the callback currently sends a cancelling user
 to the root route, which this slice does not build:
@@ -617,12 +709,12 @@ Update the assertion in `apps/api/src/modules/auth/oauth.routes.test.ts` that ch
 redirect. It currently asserts `res.headers.location` contains `'/'`, which is true of almost
 any URL; assert on `/signin` instead, which is the actual contract.
 
-- [ ] **Step 7: Run the tests**
+- [x] **Step 8: Run the tests**
 
 Run: `pnpm --filter @curios/web test` then `pnpm test`.
 Expected: PASS. The API's OAuth tests must still pass, with the one cancel assertion updated.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add apps/web apps/api
@@ -645,13 +737,14 @@ Everything after this task is new capability; this task is a repair.
 **Interfaces:**
 - Consumes: `apiFetch` (Task 2). Calls `POST /auth/verify-email`, `POST /auth/reset-password`, `POST /auth/forgot-password`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `apps/web/app/verify/verify-client.test.tsx`:
 
 ```tsx
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { ApiError } from '../../lib/api.js';
 import { VerifyClient } from './verify-client.js';
 
 describe('VerifyClient', () => {
@@ -663,10 +756,9 @@ describe('VerifyClient', () => {
   });
 
   it('explains an expired link and offers the way out', async () => {
-    const verify = vi.fn().mockRejectedValue({
-      code: 'INVALID_TOKEN',
-      message: 'That link has expired or has already been used. Request a new one.',
-    });
+    const verify = vi.fn().mockRejectedValue(
+      new ApiError(400, 'INVALID_TOKEN', 'That link has expired or has already been used. Request a new one.'),
+    );
     render(<VerifyClient token="stale" verify={verify} />);
 
     // A single-use token means the second click on the same link fails, and
@@ -690,14 +782,14 @@ Create `apps/web/app/reset/reset-form.test.tsx`:
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../lib/api.js';
 import { ResetForm } from './reset-form.js';
 
 describe('ResetForm', () => {
   it('surfaces a weak password with the API reason', async () => {
-    const reset = vi.fn().mockRejectedValue({
-      code: 'WEAK_PASSWORD',
-      message: 'That password has appeared in a public breach. Pick another.',
-    });
+    const reset = vi.fn().mockRejectedValue(
+      new ApiError(400, 'WEAK_PASSWORD', 'That password has appeared in a public breach. Pick another.'),
+    );
     render(<ResetForm token="t" onReset={reset} />);
 
     await userEvent.type(screen.getByLabelText(/new password/i), 'password');
@@ -723,12 +815,12 @@ describe('ResetForm', () => {
 });
 ```
 
-- [ ] **Step 2: Run the tests to verify they fail**
+- [x] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm --filter @curios/web test`
 Expected: FAIL — cannot resolve `./verify-client.js` and `./reset-form.js`.
 
-- [ ] **Step 3: Write `/verify`**
+- [x] **Step 3: Write `/verify`**
 
 `verify-client.tsx` is a client component that takes `token` and an injected `verify` function,
 posts once on mount, and renders one of four states: working, confirmed, failed with the API's
@@ -737,10 +829,14 @@ message, or "that link looks incomplete" when `token` is undefined. Post exactly
 because the token is single-use and a second post spends it and reports failure on a link that
 worked.
 
-`page.tsx` reads `searchParams.token` and renders `<VerifyClient token={token} verify={…} />`,
-where the default `verify` calls `apiFetch('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) })`.
+`page.tsx` is a Server Component that reads `searchParams.token` and renders
+`<Verify token={token} />` — plain data only, no function prop. `Verify` is a thin client
+wrapper beside `VerifyClient` that supplies the real `verify`, calling
+`apiFetch('/auth/verify-email', { method: 'POST', body: JSON.stringify({ token }) })`. Same
+shape as `SignIn` in Task 2, and for the reason in the Global Constraints: a Server Component
+cannot hand a function to a Client Component.
 
-- [ ] **Step 4: Write `/reset` and `/forgot`**
+- [x] **Step 4: Write `/reset` and `/forgot`**
 
 `reset-form.tsx` takes `token` and `onReset`, renders one password field, and on success renders
 a confirmation that says the password changed **and that every other session was signed out** —
@@ -751,14 +847,14 @@ detail someone resetting under suspicion actually needs.
 identical for a known and an unknown address, because the API's response is, and the screen must
 not undo that.
 
-- [ ] **Step 5: Verify the whole flow by hand against Mailpit**
+- [x] **Step 5: Verify the whole flow by hand against Mailpit**
 
 Unit tests cannot prove the link in the email reaches a page that works. Run the stack, sign up
 with a fresh address, open `http://localhost:8075`, click the link in the message, and confirm
 the address is verified and you can then sign in. Then use `/forgot`, click that link, set a new
 password, and confirm the old one no longer works. Record what you saw.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web
@@ -781,7 +877,7 @@ have a page" — the question plan 2a added a whole task to make answerable — 
 owner with no page to `/app/onboarding` and one with a page to their review queue. It is the
 only place that decision is made.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/web/app/app/onboarding/claim-form.test.tsx`:
 
@@ -789,6 +885,7 @@ Create `apps/web/app/app/onboarding/claim-form.test.tsx`:
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../../lib/api.js';
 import { ClaimForm } from './claim-form.js';
 
 const fill = async (handle: string, name = 'Nadia Bakes') => {
@@ -799,10 +896,9 @@ const fill = async (handle: string, name = 'Nadia Bakes') => {
 
 describe('ClaimForm', () => {
   it('tells "taken" apart from "too close to one already in use"', async () => {
-    const claim = vi.fn().mockRejectedValue({
-      code: 'HANDLE_TOO_SIMILAR',
-      message: 'That handle is too close to one already in use. Pick another.',
-    });
+    const claim = vi.fn().mockRejectedValue(
+      new ApiError(409, 'HANDLE_TOO_SIMILAR', 'That handle is too close to one already in use. Pick another.'),
+    );
     render(<ClaimForm onClaim={claim} />);
 
     await fill('nadiabakes');
@@ -814,10 +910,9 @@ describe('ClaimForm', () => {
   });
 
   it('explains a reserved handle without blaming the person', async () => {
-    const claim = vi.fn().mockRejectedValue({
-      code: 'HANDLE_RESERVED',
-      message: 'That handle is reserved. Pick another.',
-    });
+    const claim = vi.fn().mockRejectedValue(
+      new ApiError(400, 'HANDLE_RESERVED', 'That handle is reserved. Pick another.'),
+    );
     render(<ClaimForm onClaim={claim} />);
 
     await fill('admin');
@@ -826,11 +921,9 @@ describe('ClaimForm', () => {
   });
 
   it('shows the rule when the format is wrong, not just that it is wrong', async () => {
-    const claim = vi.fn().mockRejectedValue({
-      code: 'HANDLE_INVALID',
-      message:
-        'Handles are 3 to 30 characters, letters, numbers, hyphens and underscores, and cannot start or end with a separator.',
-    });
+    const claim = vi.fn().mockRejectedValue(
+      new ApiError(400, 'HANDLE_INVALID', 'Handles are 3 to 30 characters, letters, numbers, hyphens and underscores, and cannot start or end with a separator.'),
+    );
     render(<ClaimForm onClaim={claim} />);
 
     await fill('ab');
@@ -856,12 +949,12 @@ describe('ClaimForm', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/web test src/../app/app/onboarding/claim-form.test.tsx`
 Expected: FAIL — cannot resolve `./claim-form.js`.
 
-- [ ] **Step 3: Write the form**
+- [x] **Step 3: Write the form**
 
 `claim-form.tsx` is a client component taking `onClaim`. Two fields, handle and display name,
 one primary button. On failure it renders the API's message verbatim — every one of
@@ -869,7 +962,7 @@ one primary button. On failure it renders the API's message verbatim — every o
 already carries copy that says what to do. Disable the button while in flight. On success,
 `router.push('/app')`, which re-runs the decision below.
 
-- [ ] **Step 4: Write `/app`, the router**
+- [x] **Step 4: Write `/app`, the router**
 
 ```tsx
 import { cookies } from 'next/headers';
@@ -889,7 +982,7 @@ export default async function AppPage() {
 }
 ```
 
-- [ ] **Step 5: Green, then commit**
+- [x] **Step 5: Green, then commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): claim a handle, and send an owner where they belong"
@@ -901,14 +994,14 @@ git add apps/web && git commit -m "feat(web): claim a handle, and send an owner 
 
 **Files:**
 - Create: `apps/web/app/providers.tsx`, `apps/web/app/app/onboarding/ingest-form.tsx`, `apps/web/app/app/onboarding/job-status.tsx`
-- Modify: `apps/web/app/layout.tsx`, `apps/web/package.json`
+- Modify: `apps/web/app/layout.tsx`, `apps/web/package.json`, `apps/web/app/app/onboarding/page.tsx`, `apps/web/app/app/onboarding/claim-form.tsx`
 - Test: `apps/web/app/app/onboarding/job-status.test.tsx`
 
 **Interfaces:**
 - Consumes: `apiFetch`; `POST /ingest`, `GET /ingest/:id`.
 - Produces: the TanStack Query provider every later task's screens sit under.
 
-- [ ] **Step 1: Add TanStack Query**
+- [x] **Step 1: Add TanStack Query**
 
 ```bash
 pnpm --filter @curios/web add @tanstack/react-query@^5.62.0
@@ -919,7 +1012,7 @@ and there is no other store. The poll wants retry, backoff and cancellation; the
 in Task 6 wants invalidation after each mutation. Everything before this task was a one-shot
 post that wanted none of it.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 Create `apps/web/app/app/onboarding/job-status.test.tsx`:
 
@@ -960,11 +1053,16 @@ describe('JobStatus', () => {
 
   it('stops polling once the job resolves', async () => {
     const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 1, error: null });
-    wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} />);
+    // The interval is injected ONLY so this test can outlive it. At the real
+    // 2000ms a 60ms wait proves nothing: it passes identically whether the
+    // interval stops or runs forever, because neither fires in 60ms. With 20ms
+    // here and a 200ms wait, a poll that failed to stop would fire about ten
+    // times and the assertion below would catch it.
+    wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} intervalMs={20} />);
     await screen.findByText(/1/);
 
     const callsAtResolution = fetchStatus.mock.calls.length;
-    await new Promise((r) => setTimeout(r, 60));
+    await new Promise((r) => setTimeout(r, 200));
 
     // A poll that never stops is a request every two seconds forever on a
     // phone, for a job that finished.
@@ -973,14 +1071,14 @@ describe('JobStatus', () => {
 });
 ```
 
-- [ ] **Step 3: Write the provider and wire it in**
+- [x] **Step 3: Write the provider and wire it in**
 
 `providers.tsx` is a client component exporting `<Providers>` that creates one `QueryClient`
 in a `useState` initialiser (never at module scope — a module-scope client is shared across
 requests on the server and leaks one visitor's data into another's render) and wraps children
 in `QueryClientProvider`. `app/layout.tsx` renders `<Providers>` around `{children}`.
 
-- [ ] **Step 4: Write the form and the status**
+- [x] **Step 4: Write the form and the status**
 
 `ingest-form.tsx`: one field, a URL, per FRONTEND.md — *"One field. A URL or an `@handle`"*, and
 the handle half is deliberately absent because the Instagram adapter throws `NOT_CONFIGURED` by
@@ -992,7 +1090,46 @@ the status is `QUEUED` or `RUNNING` and `false` once it is `SUCCEEDED` or `FAILE
 value is what stops the poll, and the fourth test above is what proves it stops. On success,
 offer the primary action: review the facts.
 
-- [ ] **Step 5: Green, then commit**
+- [x] **Step 5: Wire it into onboarding, or nothing reaches it**
+
+Task 4 left `/app/onboarding` rendering `<Claim />` and nothing else, so without this step the
+two components above exist and no browser path can reach them.
+
+Onboarding is two steps, per the spec: *"claim a handle and display name, creating the Page
+with `published: false` → paste a URL"*. So the page branches on whether the owner has a page
+yet:
+
+```tsx
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { SESSION_COOKIE } from '@curios/core';
+import { getOwnerPage } from '@curios/db-read';
+import { resolveOwner } from '../session.js';
+import { Claim } from './claim-form.js';
+import { Ingest } from './ingest-form.js';
+
+export default async function OnboardingPage() {
+  const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
+  if (!owner) redirect('/signin');
+
+  const page = await getOwnerPage(owner.accountId);
+
+  // Plain data across the boundary -- `page.id` is a string. The handler lives
+  // inside `Ingest`, which is a client component.
+  return page ? <Ingest pageId={page.id} /> : <Claim />;
+}
+```
+
+**And `claim-form.tsx`'s wrapper must stop pushing to `/app`.** It currently does
+`router.push('/app')`, which sends a just-claimed owner to `/app`, which sees a page and
+redirects to `/app/review` — skipping the paste-a-URL step entirely, and landing on a route
+that does not exist until Task 6. Change it to `router.refresh()`, which re-runs the Server
+Component above and swaps the claim form for the ingest form in place.
+
+`/app`'s own redirect stays as it is. It is right for a RETURNING owner, who has a page and
+belongs in the review queue; it is only the just-claimed case that must not bounce.
+
+- [x] **Step 6: Green, then commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): paste a url and watch the job"
@@ -1011,9 +1148,70 @@ screen where a mistake is unrecoverable: *"Never auto-publish an unreviewed pric
 price wrong in public is the single failure that loses a customer permanently."*
 
 **Interfaces:**
-- Consumes: `getReviewQueue` (2a T4) for the initial server render; `POST /facts/:id/verify`, `PATCH /facts/:id`, `POST /facts/:id/reject`.
+- Consumes: `getReviewQueue` (2a T4) for the server render — this task is its first consumer;
+  `POST /facts/:id/verify`, `PATCH /facts/:id`, `POST /facts/:id/reject`.
+- No API change. `NOT_FOUND` and `FACT_DUPLICATE` are already in `DOMAIN_ERROR_CODES`, verified.
 
-- [ ] **Step 1: Write the failing tests**
+#### Three amendments, ruled before dispatch
+
+- **A1 — `toHaveBeenCalledExactlyOnceWith` does not exist in this repo's vitest.** Probed on
+  vitest 2.1.9: that matcher fails as undefined, while `toHaveBeenCalledTimes(1)` plus
+  `toHaveBeenCalledWith(...)` passes. It landed in vitest 3. **Ruling:** use the two-line pair.
+  Rejected upgrading vitest for a matcher — a major bump across seven packages, mid-plan, to
+  shorten one assertion. The property being asserted is the one that matters and must survive
+  in whatever form: accept fires **once**, not twice, because a double-fire is a double POST.
+
+- **A2 — there is no query to invalidate.** The plan said the queue "invalidates the query on
+  success". There is no `GET` review-queue endpoint in `apps/api` — the queue is read by
+  `getReviewQueue` through the SELECT-only connection, in a Server Component. So there is no
+  client-side query key to invalidate, and TanStack Query has no part in this screen.
+  **Ruling:** the Server Component reads the queue and passes plain data down. On a successful
+  mutation the client adds the id to a local `acted` set **and** calls `router.refresh()`. The
+  local set is what makes the card leave immediately — and what makes the test meaningful, since
+  `router.refresh()` is a mock in jsdom. The refresh is what keeps the server the source of
+  truth. Render `facts.filter((f) => !acted.has(f.id))` **from props**; do not copy props into
+  state, or the refresh will not show through. Rejected adding a `GET /facts/review` route just
+  to have something to invalidate: it would duplicate a read that already exists, on the wrong
+  side of the read/write split plan 1 drew.
+
+- **A3 — an edit does not remove the card, and must not.** `editFact` writes `claim` and
+  `normalizedClaim` and leaves `verified: false` — the fact is still unreviewed, so it is still
+  in the queue. The card stays, now showing the corrected claim, awaiting Accept. **This is the
+  hard rule holding, not a wart:** an edit is not an acceptance. If editing removed the card the
+  owner would believe they had approved a price they had only corrected, which is exactly the
+  "unreviewed price in public" failure arriving by a side door. Accept and Reject remove the
+  card; Edit updates it in place.
+
+- **A4 — the hard rule must be guarded at the CONTAINER as well as the card.** Found by review
+  after the first implementation. `fact-card.test.tsx` asserts `FactCard` offers no control acting
+  on more than its own fact, and nothing asserts that of `ReviewQueue`. The container is where a
+  bulk control would actually be added, because it already owns the list and a per-id handler: a
+  `Verify all visible` button there is four lines and passes all eleven tests. **Ruling:** a sixth
+  test in `review-queue.test.tsx`, same two assertions, scoped to the whole rendered output with
+  two or more facts. A negative requirement guarded in one of the two places it can be violated is
+  half a guard.
+
+- **A5 — a failed edit must not destroy the owner's typed correction.** `FactCard`'s Save called
+  `onEdit(...)` and then `setEditing(false)` synchronously, so the textarea closed before the PATCH
+  resolved; on `FACT_DUPLICATE` the card returned to view mode showing the OLD claim, and the draft
+  was stranded where clicking Edit resets it. The owner is told their correction collided and must
+  retype it from memory. `FACT_DUPLICATE` is a normal outcome, and this is the one screen where a
+  human writes prose. **Ruling:** `onEdit` returns `Promise<boolean>` — true when saved — and
+  `FactCard` closes the textarea only on true. A boolean rather than a propagating rejection
+  because `ReviewQueue` is the single place that turns a failure into a rendered message, and a
+  rethrow would mean the same failure is both handled and thrown. `FactCard` also gains its own
+  busy state, matching `ClaimForm`/`IngestForm`/`SignInForm`, so Save cannot fire two overlapping
+  PATCHes where the later-resolving one wins.
+
+- **A6 — `ReviewQueue` takes an `onChanged` prop instead of importing `useRouter`.** It was the only
+  presentational half in the repo reaching for the framework and firing a page-level refetch from
+  its own local state. `Review` supplies `onChanged={() => router.refresh()}`. The guarantee is
+  identical — the tests inject a spy and assert it fires after every success, so "a success always
+  tells the server side to re-read" is still a property of the component under test — and it drops
+  the repo's only `vi.mock('next/navigation')`. Rejected leaving it: consistency across the four
+  wrapper splits is what makes them readable as one pattern.
+
+- [x] **Step 1: Write the failing tests**
 
 Create `apps/web/app/app/review/fact-card.test.tsx`:
 
@@ -1033,7 +1231,7 @@ const fact = {
 };
 
 describe('FactCard', () => {
-  it('shows the line it came from', async () => {
+  it('shows the line it came from', () => {
     render(<FactCard fact={fact} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} />);
 
     // sourceText exists in the schema commented "the line it came from, for
@@ -1048,7 +1246,10 @@ describe('FactCard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /accept/i }));
 
-    expect(onAccept).toHaveBeenCalledExactlyOnceWith('f-1');
+    // Two lines rather than toHaveBeenCalledExactlyOnceWith -- see A1. The
+    // count is half the assertion: a double-fire is a double POST.
+    expect(onAccept).toHaveBeenCalledTimes(1);
+    expect(onAccept).toHaveBeenCalledWith('f-1');
   });
 
   it('offers no control that acts on more than this fact', () => {
@@ -1066,7 +1267,9 @@ describe('FactCard', () => {
   });
 
   it('lets the claim be edited, because a wrong price is the thing to fix', async () => {
-    const onEdit = vi.fn();
+    // Resolves true = saved. A bare vi.fn() resolves undefined, which now
+    // reads as "not saved" and correctly keeps the textarea open -- see A5.
+    const onEdit = vi.fn().mockResolvedValue(true);
     render(<FactCard fact={fact} onAccept={vi.fn()} onEdit={onEdit} onReject={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /edit/i }));
@@ -1080,30 +1283,64 @@ describe('FactCard', () => {
 });
 ```
 
-`review-queue.test.tsx` covers the queue around the cards: that a card disappears once acted on,
-that a `FACT_DUPLICATE` from an edit renders the API's "you already have a fact that says this"
-rather than a generic failure, and that the empty state is an instruction — *"Nothing left to
-review. Publish when you are ready."* — rather than a mood.
+Then `apps/web/app/app/review/review-queue.test.tsx`, five tests. Mock `next/navigation` so
+`router.refresh()` is a spy. NOTE: an earlier draft of this line said claim-form.test.tsx already
+does this. It does not -- it renders `ClaimForm`, which never touches `useRouter`, and no test in
+the repo mocked `next/navigation` before this task. Follow the shape of the two existing
+`vi.mock('@curios/db-read', ...)` calls instead:
 
-- [ ] **Step 2: Run to verify RED, then write the components**
+1. **An accepted card leaves the queue.** Two facts in, click Accept on the first, assert its
+   claim is gone from the document and the second's is still there. Assert `router.refresh` was
+   called — the local removal alone would be a lie about the server's state.
+2. **A rejected card leaves the queue**, same shape.
+3. **An edited card stays, showing the new claim.** Per A3. This is the test that stops someone
+   "simplifying" edit into accept. Give it a comment saying so.
+4. **A `FACT_DUPLICATE` from an edit renders the API's own sentence.** Reject with
+   `new ApiError(409, 'FACT_DUPLICATE', 'You already have a fact that says this.')` — an
+   `Error` subclass, because the catch checks `instanceof Error`; a plain object silently takes
+   the generic branch, which cost six tests a fix round in Task 2. Assert the API's sentence is
+   on screen and the card is still there.
+5. **The empty state is an instruction.** Render with `facts={[]}` and assert
+   /nothing left to review/i — *"Nothing left to review. Publish when you are ready."* Never a
+   mood.
+
+- [x] **Step 2: Run to verify RED, then write the components**
 
 `fact-card.tsx` renders the claim, the category, the source line, and three buttons: Accept,
 Edit, Reject. Accept is the primary action. Edit swaps the claim for a textarea — one of the two
 places in the whole product where a human writes prose, per FRONTEND.md's no-blank-prompt-boxes
-rule, and it is allowed here precisely because a fact correction is that exception.
+rule, and it is allowed here precisely because a fact correction is that exception. Link
+`sourceUrl` if present: FRONTEND.md's *"numbers link to their source; an unverifiable metric is
+decoration"*.
 
-`review-queue.tsx` holds the list, calls the three mutations through `apiFetch`, and invalidates
-the query on success so the acted-on card leaves. Bound the page at 50 and render oldest first —
-the query already does both; the screen must not undo it by fetching more.
+`review-queue.tsx` exports both halves, the same split as `Claim`/`ClaimForm` and
+`Ingest`/`IngestForm`:
+- `ReviewQueue` — presentational, takes `facts` plus `onAccept`/`onEdit`/`onReject` handlers.
+  Holds the `acted` set and the per-card error.
+- `Review` — the `'use client'` wrapper that builds the three `apiFetch` closures and calls
+  `router.refresh()`. Takes only plain data.
 
-- [ ] **Step 3: Prove the hard rule holds at the surface**
+`page.tsx` is a Server Component: `resolveOwner`, `redirect('/signin')` if none,
+`getOwnerPage(accountId)`, `redirect('/app/onboarding')` if there is no page (the queue is
+meaningless without one), then `getReviewQueue(accountId, { limit: 50 })` and render `<Review>`.
+Pass only plain data across that boundary — a function there is a 500 at request time that no
+gate catches, which is how Task 3 shipped broken. `ReviewFact` is all strings, nulls and a
+number, so it crosses fine.
 
-The third test above is the negative requirement, and negative requirements decay. Before
-committing, add a select-all checkbox to `fact-card.tsx`, run that test file, confirm the test
-FAILS, then remove it. Record what you saw. A guard nobody has watched fail is a guard nobody
-knows works.
+Bound at 50, oldest first. The query already clamps and orders; the screen must not undo it by
+asking for more. Per the spec's *Volume*: "a queue that empties rather than a wall that
+intimidates".
 
-- [ ] **Step 4: Commit**
+- [x] **Step 3: Prove the hard rule holds at the surface**
+
+The third card test is a negative requirement, and negative requirements decay. Before
+committing, add a select-all checkbox to `fact-card.tsx`, run that file, confirm the test
+**FAILS**, then remove it. Paste the failure into the report. A guard nobody has watched fail is
+a guard nobody knows works.
+
+Do the same for the A3 test: make edit remove the card, confirm test 3 of the queue fails, revert.
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): the fact review screen, one fact at a time"
@@ -1118,58 +1355,217 @@ git add apps/web && git commit -m "feat(web): the fact review screen, one fact a
 - Modify: `apps/web/app/app/review/page.tsx`
 - Test: `apps/web/app/app/review/publish-button.test.tsx`
 
-- [ ] **Step 1: The tests**
+**Interfaces:**
+- Consumes: `POST /publish` — bodyless, returns `{ status: 'published' }`, or 404 `NO_PAGE` with
+  the message "Claim a handle first." `NO_PAGE` is already in `DOMAIN_ERROR_CODES`. No API change.
+- `getOwnerPage` (2a T8) already returns `handle` and `published`, so `page.tsx` knows both the
+  current state and the public address without a second read.
 
-Three: that it calls `POST /publish` once and confirms; that it renders `NO_PAGE`'s message if
-the API says there is no page; and that once published it shows the public URL as a link, because
-a publish button that does not then tell you where the page is has done half the job.
+#### Four amendments, ruled before dispatch
 
-**It must not be disabled when nothing is verified.** Publishing is a deliberate owner action and
-nothing more — the API has no such gate, and a page with only links is a valid page. See F5.
+- **B1 — publishing is a one-time switch, and the screen must stop offering it.** `OwnerPage`
+  carries `published`, and once it is true there is nothing left to do: both public read paths
+  filter `verified: true` at read time, so a fact accepted *after* publishing appears on the public
+  page immediately with no second publish. **Ruling:** when `published` is true the screen shows
+  the live URL and no button. Rejected showing a permanently-enabled button: an action that has no
+  effect is worse than no action, and an owner clicking "Publish" on an already-published page
+  cannot tell whether it worked. Rejected a "Republish" label for the same reason — it implies the
+  public page is stale, which it never is.
 
-- [ ] **Step 2: Write it, green, commit**
+- **B2 — the URL is built on the server, from `APP_URL`, and passed down as a string.** The owner
+  needs an address they can paste into a bio, so a relative `/handle` is not enough. `APP_URL` is
+  already in the root `.env` and `apps/web` loads it via `node --env-file` before Next starts, so
+  `page.tsx` — a Server Component — can read `process.env.APP_URL` directly. **Ruling:** compute
+  `publicUrl` there and pass it as a plain string prop. Rejected adding a `NEXT_PUBLIC_APP_URL`:
+  a second copy of a value we already have, exposed to the browser, to save one line in a
+  component that is already server-side. Rejected `window.location.origin`: it is unavailable
+  during the server render, so the link would flicker in or arrive absent.
+
+- **B3 — the button lives beside the queue, not inside its empty state.** The "Nothing left to
+  review. Publish when you are ready." copy is inside `ReviewQueue`, so putting the button there
+  would hide it whenever facts remain — which invents precisely the gate **F5** forbids. **Ruling:**
+  `page.tsx` renders `<Publish>` as a sibling of `<Review>`, visible whether the queue is empty or
+  not. F5 stands: **the button must not be disabled when nothing is verified.** Publishing is a
+  deliberate owner action and nothing more; a page with only links is a valid page, and
+  FRONTEND.md calls links "the boring part that pays the rent".
+
+- **B4 — the `NO_PAGE` branch is a race, not a path, and should be labelled as one.** `page.tsx`
+  redirects an owner with no page to `/app/onboarding`, so the screen cannot render without one.
+  `NO_PAGE` is reachable only if the page disappears between the render and the click. **Ruling:**
+  keep the test — it costs three lines and it is the difference between showing the API's sentence
+  and showing nothing — but comment it as the race it is, so nobody either deletes it as dead code
+  or adds a redundant server-side guard for it.
+
+- [x] **Step 1: The tests**
+
+`publish-button.test.tsx`, five tests against `PublishButton` (presentational — the same
+wrapper split as `Claim`/`ClaimForm`, `Ingest`/`IngestForm`, `Review`/`ReviewQueue`):
+
+1. **It publishes once and says so.** Click, assert the handler fired exactly once
+   (`toHaveBeenCalledTimes(1)` plus `toHaveBeenCalledWith(...)` — note **A1**, this repo's vitest
+   has no `toHaveBeenCalledExactlyOnceWith`), and assert a confirmation is on screen.
+2. **It shows the public URL as a link afterwards.** Assert an anchor whose `href` is the
+   `publicUrl` prop. A publish button that does not then tell you where the page is has done half
+   the job.
+3. **It renders `NO_PAGE`'s own sentence.** Reject with
+   `new ApiError(404, 'NO_PAGE', 'Claim a handle first.')` — an `ApiError`, not a plain object,
+   because the catch checks `instanceof Error`. Comment it as the race B4 describes.
+4. **It is not disabled when nothing is verified.** Render with no verified facts in view and
+   assert the button is enabled. This is F5 as a test rather than a paragraph: it fails the day
+   someone adds the gate the spec does not have.
+5. **It does not publish twice on a double tap.** Follow `claim-form.test.tsx`'s
+   `does not submit twice on a double tap`.
+
+Then a sixth, in the same file, against the already-published state: given `published`, the
+component renders the live URL and **no** button at all (B1).
+
+- [x] **Step 2: Write it**
+
+`publish-button.tsx` exports `PublishButton` (presentational: takes `publicUrl`, `published`, and
+an `onPublish: () => Promise<void>`) and `Publish` (the `'use client'` wrapper that supplies
+`onPublish` as `apiFetch('/publish', { method: 'POST' })`).
+
+`POST /publish` takes no body. `apiFetch` now sends `'{}'` for exactly this case — without that,
+Fastify answers 400 "Body cannot be empty when content-type is set to 'application/json'", which
+is the defect found in Task 6 and fixed in `apps/web/lib/api.ts`. Do not undo it, and do not add a
+body of your own.
+
+`page.tsx` gains, after the existing redirects:
+
+```tsx
+const publicUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`;
+```
+
+and renders `<Publish publicUrl={publicUrl} published={page.published} />` alongside `<Review>`.
+Plain strings and a boolean across the boundary — no functions (see the Task 3 defect).
+
+- [x] **Step 3: Prove F5's guard bites**
+
+Disable the button on a condition — `disabled={true}` will do — run the file, confirm test 4
+**fails**, revert. Paste the failure into the report. F5 is a negative requirement and the whole
+reason it is written down is that gating publish on a verified fact feels responsible.
+
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web && git commit -m "feat(web): publish"
 ```
 
----
 
 ### Task 8: Settings, and the second way in
 
 **Files:**
+- Create: `packages/db-read/src/sign-in-methods.query.ts` and its test (see **C1**)
+- Modify: `packages/db-read/src/index.ts`, `apps/api/src/modules/auth/auth.routes.ts` (see **C2**)
 - Create: `apps/web/app/app/settings/page.tsx`, `apps/web/app/app/settings/add-password-form.tsx`, `apps/web/app/app/settings/connect-google.tsx`
-- Test: `apps/web/app/app/settings/add-password-form.test.tsx`
+- Test: `apps/web/app/app/settings/add-password-form.test.tsx`, `apps/web/app/app/settings/settings.test.ts`
 
 **This route is already a redirect target.** Plan 2a's OAuth link flow sends a successful link to
 `${APP_URL}/app/settings?linked=google`, so until this task exists that redirect lands on a 404.
 
-- [ ] **Step 1: The tests**
+**Interfaces:**
+- `POST /auth/password`, body `{ password: string }` (1–200 chars), returns `{ status: 'password_set' }`.
+  Errors: 409 `PASSWORD_ALREADY_SET` — *"This account already has a password. Use the reset link to
+  change it."* — and 400 `WEAK_PASSWORD`, whose message is either *"Use at least N characters."* or
+  *"That password has appeared in a public breach. Pick another."* Both codes already whitelisted.
+- `GET /auth/google/link` on the **API origin**. Requires a session. Sets state, verifier and an
+  intent cookie, then redirects to Google.
 
-`add-password-form.test.tsx` covers: a successful add; `PASSWORD_ALREADY_SET` rendered as the
-API's message, which explains that changing a password is the reset flow rather than this one;
-and `WEAK_PASSWORD` rendered verbatim, including the breach-list reason.
+#### Four amendments, ruled before dispatch
 
-- [ ] **Step 2: Write the screens**
+- **C1 — this is not an `apps/web`-only task, because the read it needs does not exist.** The plan
+  said the account's sign-in methods "come from `getOwnerPage`'s account". They do not:
+  `getOwnerPage` selects `{ id, handle, displayName, published }` off `Page` and never touches
+  `Account`, and there is no account read in `packages/db-read` at all. Nothing in the codebase can
+  answer "does this account have a password, and is Google connected?"
+  **Ruling:** add `getSignInMethods(accountId)` to `packages/db-read`, exported from the barrel,
+  with its own test following `owner-page.query.test.ts`. It returns
+  `{ email: string; hasPassword: boolean; providers: AuthProvider[] } | null`. Rejected an API
+  endpoint for it: this is a read, `apps/web` reads through `db-read`, and adding
+  `GET /auth/methods` would put an owner's own data on the write path for no reason. Rejected
+  widening `getOwnerPage`: a page and an account are different things, and an owner with no page
+  still has sign-in methods.
+  The `email` is included deliberately, slightly beyond the plan's letter: a settings screen that
+  does not say which account it is looking at makes "Add a password" ambiguous for anyone who has
+  two, and it is one more column on a read we are already writing.
 
-`add-password-form.tsx` posts to `POST /auth/password`. `connect-google.tsx` is a link to
-`GET /auth/google/link` on the API — a plain anchor, not a `fetch`, because the browser must
-follow the redirect to Google. On return, `?linked=google` renders a confirmation.
+- **C2 — a failed link dead-ends the browser on the API origin, and that is already shipped.**
+  `GET /auth/google/callback` throws on three paths inside the linking branch: `IdentityTakenError`
+  (409) when that Google account belongs to someone else, `UnauthenticatedError` when the session
+  expired mid-flow, and whatever `exchangeGoogleCode` raises on a state mismatch. The browser is
+  following a redirect chain, so a thrown error renders as raw JSON at
+  `localhost:3001/auth/google/callback?code=…` — the API origin, no navigation, no way back. The
+  callback's own comment says this is the exact failure it was written to avoid, for the cancel
+  case: *"answering that with a validation error on the API origin is a dead end with no way back."*
+  The same reasoning applies to every other failure and was not applied.
+  **Ruling:** read the link-intent cookie **before** the exchange, then let every failure out of the
+  callback end in a redirect back to the app — `${APP_URL}/app/settings?error=<code>` when linking,
+  `${APP_URL}/signin?error=<code>` otherwise. Never a JSON body to a browser following a redirect.
+  The error detail stays in the server log either way. This is Task 8's business for the same reason
+  **F2** made the cancel destination Task 2's: this plan owns where a linking user lands. One API
+  test asserts the new redirect for the already-linked case. Cost if wrong: a code in a query string.
 
-The screen shows which methods the account already has, so "Add a password" does not appear for
-an account that has one. That state comes from `getOwnerPage`'s account — if the read for it does
-not exist yet, add it to the settings page as a server read rather than inventing an API endpoint.
+- **C3 — `connect-google.tsx` must point at the API origin, absolutely, and must be an anchor.**
+  `GET /auth/google/link` is on `apps/api`, so a relative `/auth/google/link` href 404s on the Next
+  app. Use `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google/link`, the
+  same variable and fallback `apiFetch` uses. **And it must be a plain `<a>`, never a `fetch`** —
+  the browser has to follow the redirect to Google, and `fetch` would follow it in the background
+  and hand back Google's HTML.
 
-- [ ] **Step 3: Verify the link flow by hand**
+- **C4 — the test list covered one of the three things this task adds.** The plan listed only
+  `add-password-form.test.tsx`. **Ruling:** three more.
+  - `sign-in-methods.query.test.ts` — a password-only account, a Google-only account, an account
+    with both, and a non-existent account.
+  - The settings screen's decision — which forms appear — extracted into a plain function and
+    tested directly, the shape **F7** established in Task 1 rather than rendering a Server
+    Component.
+  - The `?linked=google` confirmation and the `?error=` message from **C2**.
+
+- [ ] **Step 1: The db-read query, test first**
+
+`packages/db-read/src/sign-in-methods.query.ts`. Scope by `accountId` inside the query. Follow
+`owner-page.query.ts` for shape and comment style, and `owner-page.query.test.ts` for the test.
+Export both the function and its type from `packages/db-read/src/index.ts`.
+
+- [ ] **Step 2: The callback fix, test first (C2)**
+
+In `apps/api/src/modules/auth/auth.routes.ts`. Add the API test first: a link attempt for a Google
+identity already attached to another account must **redirect** to
+`${APP_URL}/app/settings?error=identity_taken`, not return a 409 body. Then make it pass.
+
+Keep `OAUTH_STATE_COOKIE`, `OAUTH_VERIFIER_COOKIE` and `OAUTH_LINK_COOKIE` cleared on every path
+out — that already happens up front and must stay that way.
+
+- [ ] **Step 3: The screens, tests first**
+
+`add-password-form.test.tsx` covers: a successful add; `PASSWORD_ALREADY_SET` rendered as the API's
+message, which explains that changing a password is the reset flow rather than this one; and
+`WEAK_PASSWORD` rendered verbatim, including the breach-list reason. Reject with `ApiError`, never a
+plain object — the catch checks `instanceof Error`.
+
+`add-password-form.tsx` posts to `POST /auth/password`. Same wrapper split as the other four:
+`AddPasswordForm` presentational, `AddPassword` the `'use client'` wrapper with the `apiFetch`
+closure. A busy state on the button, per every other form here.
+
+`page.tsx` is a Server Component: `resolveOwner`, `redirect('/signin')` if none,
+`getSignInMethods(accountId)`, then show the email, and each form only where it applies — no
+"Add a password" for an account that has one, no "Connect Google" for one already connected. An
+account with both gets neither form and must still be told something useful; empty states are
+instructions, not moods. Read `searchParams` as a `Promise` and `await` it — the pattern is already
+in `signin/page.tsx`, `verify/page.tsx` and `reset/page.tsx`.
+
+- [ ] **Step 4: Verify the link flow by hand**
 
 Sign in with a password account, click Connect Google, complete the flow, and confirm you land on
 `/app/settings?linked=google` with a confirmation and that `AuthIdentity` now holds the row.
-Unit tests cannot cover a round trip through Google.
+Unit tests cannot cover a round trip through Google. **Report it honestly if you cannot** — a
+round trip needs real Google credentials, and claiming a manual step you did not run is worse than
+saying it is outstanding.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add apps/web && git commit -m "feat(web): settings, and a second way into an account"
+git add apps/web apps/api packages/db-read && git commit -m "feat(web): settings, and a second way into an account"
 ```
 
 ---
@@ -1190,8 +1586,16 @@ published page.
 from `@curios/db-read` and is not redefined in the web app. `SESSION_COOKIE` has exactly one
 definition after T1.
 
-**What is not tested, stated plainly.** No test here renders a Server Component or exercises
-middleware inside a running Next server; T1 tests the extracted decision and the middleware
-function directly. The three end-to-end paths that unit tests cannot reach — the email link, the
+**What is not tested, stated plainly.** No test here exercises middleware inside a running Next
+server; T1 tests the extracted decision and the middleware function directly.
+
+*Corrected after T7.* This section originally also claimed that no test renders a Server Component.
+That was false when it was written: `apps/web/app/[handle]/page.test.tsx`, from slice 1, already
+does `render(await HandlePage({ params: … }))`. A Next 15 async Server Component is just an async
+function returning JSX, so it can be awaited and rendered with its reads mocked. T7's review found
+the cost of believing otherwise — **F5 was enforced in `review/page.tsx`'s composition, where
+nothing tested it** — and the fix is a Server Component test using exactly that slice-1 pattern.
+The lesson generalises: when a rule is about what a screen *offers*, the guard belongs where the
+screen is assembled, not only where the control is drawn. The three end-to-end paths that unit tests cannot reach — the email link, the
 Google round trip, and the ingest job — each carry a manual verification step, in T3, T8 and T5
 respectively. Anyone reporting this plan "fully tested" without those three has not run them.

@@ -1,8 +1,12 @@
 import type { PrismaClient } from '@curios/db';
-import { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from '@curios/core';
+import {
+  SESSION_ABSOLUTE_TTL_MS,
+  SESSION_IDLE_TTL_MS,
+  SESSION_COOKIE as CORE_SESSION_COOKIE,
+} from '@curios/core';
 import { createToken, hashToken } from '../../lib/tokens.js';
 
-export const SESSION_COOKIE = 'curios_session';
+export const SESSION_COOKIE = CORE_SESSION_COOKIE;
 
 // Re-exported under these names rather than imported directly at each call
 // site below: this file is the historical home of both, and `auth.routes.ts`

@@ -4,7 +4,12 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from './session.service.js';
 import { hashPassword } from './password.service.js';
-import { OAUTH_LINK_COOKIE, OAUTH_STATE_COOKIE, OAUTH_VERIFIER_COOKIE } from './oauth.service.js';
+import {
+  OAUTH_LINK_COOKIE,
+  OAUTH_STATE_COOKIE,
+  OAUTH_VERIFIER_COOKIE,
+  OAuthExchangeError,
+} from './oauth.service.js';
 
 let app: FastifyInstance;
 
@@ -166,7 +171,11 @@ describe('linking Google while signed in', () => {
 
     // A link intent with nothing to link to must not quietly become a signup.
     // That is the branch where "explicit and authenticated" would be lost.
-    expect(res.statusCode).toBe(401);
+    // And -- C2 -- the browser here is mid-redirect-chain back from Google,
+    // so this must redirect to the app rather than dead-end as JSON on the
+    // API origin.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=unauthenticated');
     expect(await app.prisma.account.count()).toBe(before);
   });
 
@@ -203,7 +212,7 @@ describe('linking Google while signed in', () => {
   });
 
   it('refuses to move an identity that already belongs to another account', async () => {
-    freshSub();
+    const sub = freshSub();
     const first = await anAccount(true);
     const second = await anAccount(true);
     const state = 'shared-state';
@@ -226,7 +235,72 @@ describe('linking Google while signed in', () => {
 
     // Otherwise linking is a way to take an identity off someone else's
     // account, which is the takeover the explicit-linking rule exists to stop.
-    expect(res.statusCode).toBe(409);
-    expect(res.json().error.code).toBe('IDENTITY_TAKEN');
+    //
+    // C2: the browser here followed a redirect chain back from Google, so a
+    // thrown 409 would render as raw JSON at the API origin -- no
+    // navigation, no way back. This must redirect to the app instead, with
+    // the reason as a query code rather than a body nothing on this page
+    // reads.
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=identity_taken');
+
+    // The response is not the property. THIS is: the identity still belongs
+    // to the account that linked it first. Both sibling tests above re-read
+    // the row and this one did not, which is backwards -- it is the test
+    // where ownership actually matters.
+    //
+    // Today's `linkGoogleIdentity` is correct by construction, so no
+    // one-line change defeats the two assertions above. That is incidental.
+    // A refactor that reassigns `accountId` on the existing row and still
+    // raises IdentityTakenError afterwards -- for the message, say -- passes
+    // a green 302 while quietly moving a stranger's Google account onto the
+    // caller's. Then the redirect would be telling the truth about the error
+    // and lying about the outcome.
+    const identities = await app.prisma.authIdentity.findMany({
+      where: { provider: 'GOOGLE', providerUserId: sub },
+    });
+    expect(identities).toHaveLength(1);
+    expect(identities[0]?.accountId).toBe(first.id);
+  });
+});
+
+describe('a server fault must not read as a user-fixable problem', () => {
+  it('sends a 502 exchange failure to error=internal_error, never error=oauth_exchange_failed', async () => {
+    const account = await anAccount(true);
+    const state = 'linking-through-a-502';
+
+    // A dedicated app, not the shared one from beforeAll: this exchange must
+    // fail every time, and the shared instance's exchange is the happy-path
+    // stub every other test in this file relies on.
+    const ownApp = await buildApp({
+      auth: {
+        exchange: async () => {
+          throw new OAuthExchangeError(500);
+        },
+      },
+    });
+    await ownApp.ready();
+
+    try {
+      const res = await ownApp.inject({
+        method: 'GET',
+        url: `/auth/google/callback?code=abc&state=${state}`,
+        remoteAddress: from(),
+        cookies: {
+          [SESSION_COOKIE]: account.cookie,
+          [OAUTH_LINK_COOKIE]: ownApp.signCookie('1'),
+          [OAUTH_STATE_COOKIE]: ownApp.signCookie(state),
+          [OAUTH_VERIFIER_COOKIE]: ownApp.signCookie('v'),
+        },
+      });
+
+      // D1, linking branch: same guard as the sign-in branch in
+      // oauth.routes.test.ts -- a 502 from OAuthExchangeError must not reach
+      // the browser as its own specific code.
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000/app/settings?error=internal_error');
+    } finally {
+      await ownApp.close();
+    }
   });
 });

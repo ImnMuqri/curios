@@ -10,7 +10,14 @@ interface DomainError extends Error {
 // else -- a raw Prisma code (P2002, P2003, ...), a Node system error code, or
 // anything unanticipated -- is not client-facing and must not be echoed back
 // as-is, even on a 4xx.
-const DOMAIN_ERROR_CODES = new Set([
+//
+// Exported because the OAuth callback (`auth.routes.ts`) needs the same
+// answer to the same question -- "which codes may reach a client" -- for the
+// error code it puts on a redirect's query string. It used to keep a second,
+// hand-maintained copy of that answer; the two disagreed, which is what let
+// `OAUTH_EXCHANGE_FAILED` (deliberately absent here, see below) reach the
+// browser anyway. One list now, and this is it.
+export const DOMAIN_ERROR_CODES = new Set([
   'PAGE_NOT_FOUND',
   'INVALID_SOURCE_URL',
   'EMAIL_NOT_VERIFIED',
@@ -30,6 +37,14 @@ const DOMAIN_ERROR_CODES = new Set([
   'NO_PAGE',
   'PASSWORD_ALREADY_SET',
   'IDENTITY_TAKEN',
+  // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
+  // deliberately NOT here. It is a 502 -- Google answered, but the exchange
+  // itself failed, typically a misconfigured client secret or redirect URI --
+  // and the whole point of giving it its own class and status code was to
+  // keep it out of this allow-list, so it renders as the generic
+  // "something failed on our side" below instead of a specific, reassuring
+  // message that tells every affected user to just try again. Do not add it
+  // here as a kindness; that undoes the reason it exists.
 ]);
 
 /**
