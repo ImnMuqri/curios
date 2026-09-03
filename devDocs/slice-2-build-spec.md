@@ -354,6 +354,48 @@ removing an entry is deleting a string. `packages/core/src/handle.test.ts` asser
 
 ---
 
+### OPEN DECISION — the ingest URL is not filtered for private addresses
+
+Raised while driving the ingest job by hand at the end of plan 2b, unresolved, and live on
+`main` since slice 1. **Not introduced by plan 2b.**
+
+`startIngestion` in `apps/api/src/modules/ingest/ingest.service.ts` validates exactly one
+thing about the address an owner pastes:
+
+```ts
+if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new InvalidSourceUrlError();
+```
+
+There is no check on where that URL points. The worker then fetches it with a 10-second
+timeout and no address filtering of its own. So an authenticated owner can make the worker
+issue a GET to `http://127.0.0.1:…`, to a private range, or to a cloud metadata endpoint,
+and — because extraction feeds the response to a model and writes the claims into a review
+queue the owner can read — **can see some of what came back.**
+
+This is how the ingest job was verified end to end: the crawler was pointed at a local
+static page on `127.0.0.1:8099`, and the API accepted it without complaint.
+
+**What limits it today.** The caller must hold a verified account and a session, and must own
+the page they ingest into, so this is not reachable by an anonymous visitor. There is no
+cloud metadata service in the current deployment. Both of those are circumstances rather
+than defences, and neither is written down anywhere as a reason this is acceptable.
+
+**The trade.** A denylist of private ranges is the usual fix and is easy to get subtly wrong:
+DNS names that resolve to private addresses, redirects that leave the public internet
+mid-chain, IPv6 mapped forms, and the decimal and octal spellings of `127.0.0.1`. Doing it
+properly means resolving the host and checking the resolved address, and re-checking after
+every redirect — which is a real piece of work, not a line of validation. Doing it badly
+gives the appearance of a fix.
+
+Recorded rather than acted on because it is out of scope for the plan that found it and
+because a half-filter is worse than a documented gap. Whoever settles it: the fetch is
+`fetchPage` in `apps/workers/src/ingestion/ingestion.worker.ts`, and the validation that
+would have to agree with it is in `startIngestion`. Note that a filter in only one of those
+two places is not a filter — the API decides what to enqueue, and the worker decides what to
+request.
+
+---
+
 **Cost of precomputing:** changing this algorithm later requires a backfill migration, and
 any collisions it newly surfaces must be adjudicated by hand. The alternative — computing
 on read — cannot be uniquely indexed, so this is the trade that buys atomic claiming.
