@@ -66,9 +66,10 @@ because there is no call site — there is a socket, and the socket is guarded.
    it is confirmed by crawling an HTTPS site during manual verification, and if it is
    wrong the symptom is loud (a certificate mismatch), not silent.
 
-That undici asks for *all* addresses is convenient rather than incidental: the guard
-resolves, drops nothing silently, and returns only the addresses that passed. If none
-passed it calls back an error, and the request never reaches a socket.
+That undici asks for *all* addresses is convenient rather than incidental: the guard sees
+the entire answer, not the one entry a resolver happened to order first. It hands the whole
+answer back when every address in it is public, and calls back an error the moment one is
+not — the request then never reaches a socket.
 
 Redirects become `redirect: 'manual'` with a loop capped at **5 hops**. Each hop's target
 is re-parsed and re-checked at the URL level; its connection is guarded by the same
@@ -136,8 +137,13 @@ Two modules in `packages/core`, both pure:
 - **`address.ts`** — `isBlockedAddress(ip)`. Classifies a numeric literal against the
   special-use registries. No imports at all.
 - **`source-url.ts`** — `inspectSourceUrl(input)` for the URL-level pass, and
-  `filterPublicAddresses(entries, { allowPrivate })`, which takes what a resolver already
-  returned and hands back the addresses that passed, or throws when none did.
+  `requirePublicAddresses(entries, { allowPrivate })`, which takes what a resolver already
+  returned and hands all of them back, or throws if **any one** of them is blocked.
+
+The name matters: not *filter*. Dropping the private entries from a mixed answer and
+dialling the survivors sounds safer and is not — it means a host that answers
+`[public, 127.0.0.1]` still gets crawled, which is the exact trick this is here to stop.
+Any blocked address in the answer condemns the whole answer.
 
 Neither module resolves anything. That is the point: `node:dns` stays out of
 `@curios/core`, and every case in the table below runs without a network. The barrel is
@@ -150,15 +156,15 @@ Each app supplies its own resolution and composes the same two functions:
 
 ```
 apps/api      inspectSourceUrl → dns.promises.lookup(host, { all: true })
-                              → filterPublicAddresses → reject or enqueue
+                              → requirePublicAddresses → reject or enqueue
 
 apps/workers  connect.lookup(host, { all: true }, cb)
                               → dns.lookup(host, { all: true })
-                              → filterPublicAddresses → cb(null, vetted) or cb(err)
+                              → requirePublicAddresses → cb(null, vetted) or cb(err)
 ```
 
 Two callers, one classifier, no second opinion about what "private" means. The worker's
-composition is the guard itself — `filterPublicAddresses` returning the vetted list *is*
+composition is the guard itself — `requirePublicAddresses` returning the vetted list *is*
 what undici dials, which is why the pinning has no gap between deciding and connecting.
 
 ### Ports are not restricted, and that is a decision
