@@ -2,26 +2,33 @@ import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from '@curios/db';
 import type { Gateway } from '@curios/gateway';
-import { INGEST_QUEUE, type IngestJobData } from '@curios/core';
+import { allowsPrivateAddresses, INGEST_QUEUE, type IngestJobData } from '@curios/core';
 import { createWebsiteAdapter } from '../sources/website.adapter.js';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import { runExtraction } from './extract.service.js';
-
-async function fetchPage(url: string): Promise<string> {
-  const response = await fetch(url, {
-    headers: { 'user-agent': 'CuriosBot/0.1 (+https://curios.my/bot)' },
-    signal: AbortSignal.timeout(10_000),
-  });
-  if (!response.ok) throw new Error(`${response.status} ${url}`);
-  return response.text();
-}
+import { createGuardedAgent, fetchGuarded } from './safe-fetch.js';
 
 export function createIngestionWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   gateway: Gateway;
+  log?: { warn: (details: object, message: string) => void };
 }): Worker<IngestJobData> {
-  const adapter = createWebsiteAdapter({ fetchPage });
+  // Read once, at construction. A flag consulted per request is a flag that can
+  // change under a running crawl.
+  const allowPrivate = allowsPrivateAddresses(process.env.INGEST_ALLOW_PRIVATE_ADDRESSES);
+
+  // One Agent for the process, so connections pool across pages and across jobs.
+  const agent = createGuardedAgent({
+    allowPrivate,
+    onBlocked: (hostname, blocked) => {
+      // One owner pasting a wrong URL and someone walking a range look
+      // identical one at a time. Only the log can tell them apart.
+      deps.log?.warn({ hostname, blocked }, 'ingest fetch refused a non-public address');
+    },
+  });
+
+  const adapter = createWebsiteAdapter({ fetchPage: (url) => fetchGuarded(url, { agent }) });
 
   return new Worker<IngestJobData>(
     INGEST_QUEUE,
