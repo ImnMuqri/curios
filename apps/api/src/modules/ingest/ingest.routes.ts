@@ -2,10 +2,19 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { getIngestion, startIngestion } from './ingest.service.js';
+import { createHostGuard, type HostGuard } from './host-guard.js';
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
-export const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
+export interface IngestRouteOptions {
+  guard?: HostGuard;
+}
+
+export const ingestRoutes: FastifyPluginAsyncZod<IngestRouteOptions> = async (app, options) => {
+  // One guard for the lifetime of the app, so the env flag is read once rather
+  // than per request, where it could change under a running crawl.
+  const guard = options.guard ?? createHostGuard();
+
   app.post(
     '/ingest',
     {
@@ -23,7 +32,7 @@ export const ingestRoutes: FastifyPluginAsyncZod = async (app) => {
       if (!request.account) throw new UnauthenticatedError();
 
       const result = await startIngestion(
-        { prisma: app.prisma, queue: app.ingestQueue },
+        { prisma: app.prisma, queue: app.ingestQueue, guard },
         request.account.id,
         request.body,
       );

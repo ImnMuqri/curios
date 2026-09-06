@@ -20,6 +20,13 @@ interface DomainError extends Error {
 export const DOMAIN_ERROR_CODES = new Set([
   'PAGE_NOT_FOUND',
   'INVALID_SOURCE_URL',
+  // Distinct from INVALID_SOURCE_URL on purpose: "that is not a website" and
+  // "that website is somewhere we will not go" are different problems, and the
+  // owner can only fix one of them. Client-facing, because the alternative is
+  // a shop owner staring at "something failed on our side" for a URL they can
+  // see is fine. What it concedes -- that a caller learns whether a name
+  // resolves privately -- is argued in devDocs/ssrf-ingest-guard-design.md.
+  'BLOCKED_SOURCE_URL',
   'EMAIL_NOT_VERIFIED',
   'RATE_LIMITED',
   'UNAUTHENTICATED',

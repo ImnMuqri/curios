@@ -20,7 +20,7 @@ import {
   ingestPerPageLimit,
   rateLimitPlugin,
 } from './plugins/rate-limit.js';
-import { ingestRoutes } from './modules/ingest/ingest.routes.js';
+import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes } from './modules/chat/chat.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
 import { factRoutes } from './modules/facts/fact.routes.js';
@@ -47,6 +47,7 @@ function resolveTrustProxy(): FastifyServerOptions['trustProxy'] {
 
 export interface AppOverrides {
   auth?: AuthRouteOptions;
+  ingest?: IngestRouteOptions;
 }
 
 export async function buildApp(overrides: AppOverrides = {}) {
@@ -92,7 +93,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     scope.addHook('onRequest', requireSession);
     await scope.register(rateLimit, ingestPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, ingestPerPageLimit(app.rateLimitRedis));
-    await scope.register(ingestRoutes);
+    await scope.register(ingestRoutes, overrides.ingest ?? {});
   });
 
   await app.register(async (scope) => {
