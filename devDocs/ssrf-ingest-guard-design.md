@@ -54,6 +54,26 @@ crawler in `website.adapter.ts` fetches up to 25 same-origin pages and every one
 goes through this Agent, as does every redirect hop. There is no call site to audit,
 because there is no call site — there is a socket, and the socket is guarded.
 
+### The exception, found by running it
+
+**A literal address never reaches the connector's lookup.** `net.connect` skips DNS
+entirely when the host is already an address, so for `http://127.0.0.1/` the guard is not
+consulted — not bypassed, not overridden, simply never called.
+
+This was written into the implementation before it was known, and every unit test passed
+with it: with the flag off, `http://127.0.0.1:8099/` was fetched. What found it was running
+the guard against a real server with the real environment variable, exactly the step that
+looks skippable once the tests are green.
+
+So `fetchGuarded` judges a literal hostname itself before asking for a socket, using the
+same `isBlockedAddress` and the same flag as the connector, so the two cannot drift. The
+claim above is therefore precise rather than sweeping: **every name goes to the connector,
+and the one case that does not go there is handled one layer up.**
+
+The general lesson is worth more than the fix. "The guard is in the socket, so it cannot be
+bypassed" was a structural argument, and structural arguments are exactly the kind that
+feel too obvious to test.
+
 **Three facts established by probing undici 7.29.0 rather than by reading its docs:**
 
 1. `connect.lookup` is genuinely forwarded to the connector. It was called.
@@ -181,18 +201,27 @@ authenticated, rate-limited port prober against public hosts, distinguishable on
 error comes back. Accepted, and written down so that a later decision to restrict ports is
 a reversal rather than a discovery.
 
-### What the URL-level pass rejects before any resolution
+### What the URL-level pass rejects
 
-Protocol other than `http:`/`https:` (already there, kept), embedded credentials
-(`http://user:pw@host/` — the parser accepts them and no legitimate paste has them), and
-any hostname that is an IP literal, classified directly.
+Shape only: a protocol other than `http:`/`https:` (already there, kept) and embedded
+credentials (`http://user:pw@host/` — the parser accepts them and no legitimate paste has
+them). It also strips the brackets from an IPv6 hostname, since `url.hostname` keeps them
+and a resolver handed `[::1]` fails in a way that reads as a network fault.
 
-The literal case needs less code than it appears to. WHATWG parsing already normalizes
-`http://2130706433/`, `http://0177.0.0.1/`, `http://0x7f000001/` and `http://127.1/` all to
-hostname `127.0.0.1`, so the decimal and octal spellings the build spec worried about are
-folded before the classifier sees them. The one that does *not* fold conveniently is
-IPv4-mapped IPv6: `[::ffff:127.0.0.1]` comes out as `[::ffff:7f00:1]`. The classifier reads
-the hex-compressed form, and a test pins that exact string, because this is precisely the
+**It judges no address, including a literal one, and that is deliberate.** An earlier
+version refused `http://127.0.0.1/` right here — cheap, obvious, and it silently broke the
+escape hatch, because a literal refused before anything consults
+`INGEST_ALLOW_PRIVATE_ADDRESSES` makes that switch do nothing for the one URL the manual
+walkthrough tells you to paste. Address judgment belongs where the flag is honoured: the
+API's guard (a resolver handed `127.0.0.1` answers `127.0.0.1`, no network involved) and
+the worker's connector plus its literal check.
+
+WHATWG parsing does most of the spelling work regardless. `http://2130706433/`,
+`http://0177.0.0.1/`, `http://0x7f000001/` and `http://127.1/` all arrive as hostname
+`127.0.0.1`, so the decimal and octal spellings the build spec worried about are folded
+before any classifier sees them. The one that does *not* fold conveniently is IPv4-mapped
+IPv6: `[::ffff:127.0.0.1]` comes out as `[::ffff:7f00:1]`. The classifier reads the
+hex-compressed form, and a test pins that exact string, because it is precisely the
 spelling a half-written filter misses.
 
 ---
@@ -247,10 +276,28 @@ Beyond the table:
 - The flag denies for every non-`true` string, including `TRUE`.
 
 **What no test here covers**, stated plainly: a real DNS rebinding attack against a live
-nameserver, and TLS-to-a-vhost through the pinned connector. The first is closed by
-construction rather than by assertion — there is one resolution, so there is nothing to
-race — and the second is covered by the probe recorded above plus the ordinary crawl of an
-HTTPS site during manual verification.
+nameserver. It is closed by construction rather than by assertion — there is one
+resolution, so there is nothing to race.
+
+### What was verified by running it, not by asserting it
+
+Three things unit tests could not establish, checked against a real server, real DNS and
+the real environment variable:
+
+| Check | Result |
+|---|---|
+| `https://example.com/` through the pinned connector | **Fetched, 559 bytes.** TLS and SNI survive pinning — the design could only call this an expectation before. |
+| Flag unset: `http://127.0.0.1:8099/`, `http://localhost:8099/` | Both refused; the resolved `::1` reached the log and not the message |
+| Flag `true`: the same two | Both fetched, which is the walkthrough working |
+| Flag `TRUE`: `http://127.0.0.1:8099/` | Refused. The typo fails closed. |
+| API guard, real DNS: `localhost`, `127.0.0.1`, `169.254.169.254` | All refused; `example.com` allowed |
+
+The second row is the one that mattered: it failed the first time, and that is how the
+literal-address exception above was found.
+
+**Still outstanding, and honestly so:** none of this went through a browser. The API's 400
+reaching the onboarding screen as readable copy, rather than as a code in a JSON body, has
+not been seen by a person.
 
 ---
 

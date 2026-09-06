@@ -12,7 +12,7 @@ if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
 
 const connection = createRedis();
 const gateway = createAnthropicGateway(apiKey);
-const worker = createIngestionWorker({ connection, prisma, gateway });
+const worker = createIngestionWorker({ connection, prisma, gateway, log });
 // Its own connection: BullMQ blocks on one per worker, so sharing would let a
 // slow extraction stall every outgoing verification and reset link. Held rather
 // than discarded, so it can be closed on the way out.

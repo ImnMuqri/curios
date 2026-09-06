@@ -14,3 +14,11 @@ export type { HandleCheck } from './handle.js';
 export { hashSessionValue } from './session-hash.js';
 export { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from './session.js';
 export { SESSION_COOKIE } from './cookie.js';
+export { isAddressLiteral, isBlockedAddress } from './address.js';
+export {
+  allowsPrivateAddresses,
+  BlockedAddressError,
+  inspectSourceUrl,
+  requirePublicAddresses,
+} from './source-url.js';
+export type { ResolvedAddress, SourceUrlVerdict } from './source-url.js';

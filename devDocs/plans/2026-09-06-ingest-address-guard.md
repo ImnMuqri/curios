@@ -34,7 +34,7 @@ The pure core. It answers one question about one numeric address and knows nothi
 - Consumes: nothing.
 - Produces: `isBlockedAddress(address: string): boolean`. Accepts a bare numeric address (`'10.0.0.1'`, `'::1'`), tolerates brackets (`'[::1]'`) and an IPv6 zone suffix (`'fe80::1%eth0'`). Returns `true` for anything it cannot parse.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/src/address.test.ts`:
 
@@ -123,12 +123,12 @@ describe('isBlockedAddress, garbage', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/core test`
 Expected: FAIL — cannot resolve `./address.js`.
 
-- [ ] **Step 3: Write the classifier**
+- [x] **Step 3: Write the classifier**
 
 `packages/core/src/address.ts`:
 
@@ -269,12 +269,12 @@ function unwrapV4(high: number, low: number): number[] {
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `pnpm --filter @curios/core test`
 Expected: PASS, every case.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add packages/core/src/address.ts packages/core/src/address.test.ts
@@ -302,7 +302,7 @@ Everything else `packages/core` owns: what a pasted string must look like before
   - `class BlockedAddressError extends Error` with `readonly code = 'BLOCKED_SOURCE_URL'` and `readonly blocked: string` (the offending address, **for logs only**)
   - `allowsPrivateAddresses(raw: string | undefined): boolean`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/core/src/source-url.test.ts`:
 
@@ -422,12 +422,12 @@ describe('allowsPrivateAddresses', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/core test`
 Expected: FAIL — cannot resolve `./source-url.js`.
 
-- [ ] **Step 3: Write the module**
+- [x] **Step 3: Write the module**
 
 `packages/core/src/source-url.ts`:
 
@@ -537,7 +537,7 @@ export function allowsPrivateAddresses(raw: string | undefined): boolean {
 }
 ```
 
-- [ ] **Step 4: Export from the barrel**
+- [x] **Step 4: Export from the barrel**
 
 Append to `packages/core/src/index.ts`:
 
@@ -552,12 +552,12 @@ export {
 export type { ResolvedAddress, SourceUrlVerdict } from './source-url.js';
 ```
 
-- [ ] **Step 5: Run the tests and the typecheck**
+- [x] **Step 5: Run the tests and the typecheck**
 
 Run: `pnpm --filter @curios/core test && pnpm --filter @curios/core typecheck`
 Expected: PASS both.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/core/src/source-url.ts packages/core/src/source-url.test.ts packages/core/src/index.ts
@@ -591,7 +591,7 @@ git commit -m "feat(core): the URL pass, the answer rule, and the switch"
 
 **Why `guard` is required rather than optional:** an optional dependency with a live default is one someone forgets to pass and never notices. Making it required breaks every call site at typecheck, which is the point — each one then states what it resolves with.
 
-- [ ] **Step 1: Write the failing test for the guard**
+- [x] **Step 1: Write the failing test for the guard**
 
 `apps/api/src/modules/ingest/host-guard.test.ts`:
 
@@ -647,12 +647,12 @@ describe('createHostGuard', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/api test host-guard`
 Expected: FAIL — cannot resolve `./host-guard.js`.
 
-- [ ] **Step 3: Write the guard**
+- [x] **Step 3: Write the guard**
 
 `apps/api/src/modules/ingest/host-guard.ts`:
 
@@ -728,12 +728,12 @@ async function withTimeout<T>(work: Promise<T>, ms: number): Promise<T> {
 }
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `pnpm --filter @curios/api test host-guard`
 Expected: PASS, five tests.
 
-- [ ] **Step 5: Write the failing service test**
+- [x] **Step 5: Write the failing service test**
 
 Add to `apps/api/src/modules/ingest/ingest.service.test.ts`, inside `describe('startIngestion')`:
 
@@ -787,12 +787,12 @@ and in each existing call, change `{ prisma, queue: { add } }` to `{ prisma, que
 
 **This is required, not cosmetic:** the fixtures use `https://nadia.example/`, and `.example` is a reserved TLD that never resolves. Without an injected guard those tests would perform real DNS, fail, and fail differently depending on the network.
 
-- [ ] **Step 6: Run to verify RED**
+- [x] **Step 6: Run to verify RED**
 
 Run: `pnpm --filter @curios/api test ingest.service`
 Expected: FAIL — `guard` is not a property of `IngestDeps`, and the three new tests fail.
 
-- [ ] **Step 7: Wire the service**
+- [x] **Step 7: Wire the service**
 
 In `apps/api/src/modules/ingest/ingest.service.ts`, add the import, the error, the dep, and the two checks:
 
@@ -850,12 +850,12 @@ Replace the parse-and-protocol block at the top of `startIngestion` with:
 
 and delete the now-duplicated `page` lookup that followed it, leaving the `prisma.ingestion.create` call as the next statement.
 
-- [ ] **Step 8: Run to verify GREEN**
+- [x] **Step 8: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/api test ingest.service`
 Expected: PASS.
 
-- [ ] **Step 9: Wire the route and the app**
+- [x] **Step 9: Wire the route and the app**
 
 `apps/api/src/modules/ingest/ingest.routes.ts` — take options the way `authRoutes` does:
 
@@ -896,7 +896,7 @@ export interface AppOverrides {
     await scope.register(ingestRoutes, overrides.ingest ?? {});
 ```
 
-- [ ] **Step 10: Keep the authz tests off the network**
+- [x] **Step 10: Keep the authz tests off the network**
 
 `apps/api/src/modules/ingest/ingest.authz.test.ts` builds the whole app and posts `https://example.com/`. Give it a guard so the suite never resolves anything:
 
@@ -928,12 +928,12 @@ Then add one route-level test to the same file, proving the code reaches the cli
   });
 ```
 
-- [ ] **Step 11: Run the API suite**
+- [x] **Step 11: Run the API suite**
 
 Run: `pnpm --filter @curios/api test`
 Expected: PASS, including the previously existing tests.
 
-- [ ] **Step 12: Commit**
+- [x] **Step 12: Commit**
 
 ```bash
 git add apps/api/src/modules/ingest apps/api/src/app.ts
@@ -958,7 +958,7 @@ The defence. Everything above is a convenience; this is the thing that has to be
   - `fetchGuarded(target: string, deps: { agent: Dispatcher }): Promise<string>`
   - `MAX_RESPONSE_BYTES` (2,000,000) and `MAX_HOPS` (5), exported so the tests name the same numbers the code does.
 
-- [ ] **Step 1: Add undici**
+- [x] **Step 1: Add undici**
 
 ```bash
 pnpm --filter @curios/workers add undici@^7.29.0
@@ -966,7 +966,7 @@ pnpm --filter @curios/workers add undici@^7.29.0
 
 It is already in the tree transitively; this makes the dependency the code actually relies on a declared one.
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `apps/workers/src/ingestion/safe-fetch.test.ts`:
 
@@ -1136,12 +1136,12 @@ describe('fetchGuarded', () => {
 });
 ```
 
-- [ ] **Step 3: Run to verify RED**
+- [x] **Step 3: Run to verify RED**
 
 Run: `pnpm --filter @curios/workers test safe-fetch`
 Expected: FAIL — cannot resolve `./safe-fetch.js`.
 
-- [ ] **Step 4: Write the guarded fetch**
+- [x] **Step 4: Write the guarded fetch**
 
 `apps/workers/src/ingestion/safe-fetch.ts`:
 
@@ -1276,7 +1276,7 @@ async function readCapped(response: Awaited<ReturnType<typeof fetch>>): Promise<
 }
 ```
 
-- [ ] **Step 5: Run to verify GREEN**
+- [x] **Step 5: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/workers test safe-fetch`
 Expected: PASS, every test.
@@ -1291,7 +1291,7 @@ If the pinning test fails with `Invalid IP address: undefined`, the callback is 
 
 with `ResolvedAddress` imported from `@curios/core`, and `connect: { lookup: guardedLookup as never }` if the Agent option still refuses it. A cast at one wiring point, with the probed behaviour named in the comment above it, is honest; changing the runtime shape to satisfy a type is not.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/workers/src/ingestion/safe-fetch.ts apps/workers/src/ingestion/safe-fetch.test.ts apps/workers/package.json pnpm-lock.yaml
@@ -1315,7 +1315,7 @@ The guard is written and tested but nothing uses it yet. This task makes it live
 - Consumes: `createGuardedAgent`, `fetchGuarded` from Task 4; `allowsPrivateAddresses` from Task 2.
 - Produces: `createIngestionWorker` gains an optional `log` in its deps.
 
-- [ ] **Step 1: Wire the worker**
+- [x] **Step 1: Wire the worker**
 
 Replace the `fetchPage` function and the adapter construction in `apps/workers/src/ingestion/ingestion.worker.ts`:
 
@@ -1360,7 +1360,7 @@ export function createIngestionWorker(deps: {
 }
 ```
 
-- [ ] **Step 2: Pass the logger in**
+- [x] **Step 2: Pass the logger in**
 
 `apps/workers/src/main.ts:15`:
 
@@ -1368,7 +1368,7 @@ export function createIngestionWorker(deps: {
 const worker = createIngestionWorker({ connection, prisma, gateway, log });
 ```
 
-- [ ] **Step 3: Document the switch**
+- [x] **Step 3: Document the switch**
 
 Add to `.env.example`, near the other ingest settings:
 
@@ -1380,7 +1380,7 @@ Add to `.env.example`, near the other ingest settings:
 INGEST_ALLOW_PRIVATE_ADDRESSES=true
 ```
 
-- [ ] **Step 4: Run all four gates**
+- [x] **Step 4: Run all four gates**
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
@@ -1388,7 +1388,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
 
 Expected: all four pass. `pnpm test` should report more tests than before across `@curios/core`, `@curios/api` and `@curios/workers`.
 
-- [ ] **Step 5: Verify by hand, both ways**
+- [x] **Step 5: Verify by hand, both ways**
 
 Unit tests cannot prove the flag is wired to the real environment, only that the function reading it works.
 
@@ -1398,13 +1398,13 @@ Unit tests cannot prove the flag is wired to the real environment, only that the
 
 **Report each of these honestly, including any you did not run.** Step 3 in particular needs a real site and a network.
 
-- [ ] **Step 6: Close the OPEN DECISION**
+- [x] **Step 6: Close the OPEN DECISION**
 
 In `devDocs/slice-2-build-spec.md`, replace the section titled `### OPEN DECISION — the ingest URL is not filtered for private addresses` with a settled record: what was built, that the guard lives in the connector rather than at call sites, the port decision, the DNS-oracle cost the API check accepts, and a pointer to `devDocs/ssrf-ingest-guard-design.md`. Keep the paragraph describing how the gap was found — the walkthrough that pointed the crawler at `127.0.0.1:8099` is still how anyone verifies ingest, and the flag now exists for it.
 
 Do not delete the "what limits it today" reasoning without replacing it. A settled decision that does not say what it traded is worth less than the open one it replaced.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add apps/workers .env.example devDocs
@@ -1424,3 +1424,45 @@ git commit -m "feat(workers): put the address guard on the ingest path"
 **What no test here covers, stated plainly.** A live DNS rebinding attack, which is closed by construction rather than by assertion — one resolution means nothing to race. TLS through the pinned connector, which is Step 5.3 of Task 5 and must be reported honestly. And whether the env flag reaches the real process, which is Steps 5.1 and 5.2 for the same reason.
 
 **A note on the API test fixtures.** Task 3 Step 5 changes existing passing tests, which usually deserves suspicion. The reason is that `https://nadia.example/` never resolves — `.example` is reserved — so those tests would begin performing real DNS and failing. Injecting the guard makes them hermetic, which they should have been.
+
+
+---
+
+## What execution changed, and why
+
+The plan survived contact better than its central claim did. Three corrections, all found
+by running things rather than by reading them.
+
+**1. The connector does not cover literal addresses.** `net.connect` skips DNS when the
+host is already an address, so the Agent's lookup is never called for `http://127.0.0.1/`.
+Task 4 shipped believing otherwise and every test passed. Task 5's verification step found
+it in the first command it ran: with the flag off, 127.0.0.1 was fetched. `fetchGuarded`
+now judges literals itself with the same classifier and flag, and a test pins it.
+
+**2. `inspectSourceUrl` judges no addresses.** The plan had it refusing IP literals during
+parsing. That is cheap and looks right, and it broke the escape hatch: a literal refused
+before anything consults `INGEST_ALLOW_PRIVATE_ADDRESSES` makes the switch useless for
+`http://127.0.0.1:8099/`, the exact URL the walkthrough tells you to paste. Address
+judgment moved to where the flag is honoured.
+
+**3. The worker's resolver is injectable, which the plan did not call for.** With real DNS
+there is no way to make the vetted address differ from what the OS would say, so nothing
+can prove the socket used the guard's answer rather than resolving again — and that is the
+entire claim of pinning. Pointing a name that does not exist at loopback makes it
+falsifiable.
+
+Two smaller things the plan missed. `BLOCKED_SOURCE_URL` had to be added to
+`DOMAIN_ERROR_CODES` in `errors.ts` or the allow-list rewrites it to `INTERNAL_ERROR`. And
+undici needed no cast: its `LookupFunction` type is loose enough to accept the array form,
+so the comment now explains why one is *not* there, since expecting one is reasonable.
+
+**Two environment things, neither caused by this work.** The test Postgres is `tmpfs`, so
+a Docker restart empties it — `prisma migrate deploy` against `DATABASE_URL_TEST` and then
+`readonly-role.sql` into `curios-postgres-test`, both already documented in plan 2a. Worth
+repeating here because both failures look alarming and neither is.
+
+**Gates on completion:** lint, typecheck, build all pass; 454 tests across 7 packages
+(`core` 117, `api` 170, `web` 80, `workers` 40, `db-read` 24, `gateway` 15, `db` 8).
+
+**Not done, and not claimable:** nothing was driven through a browser. The 400 arriving on
+the onboarding screen as readable copy has not been seen by a person.

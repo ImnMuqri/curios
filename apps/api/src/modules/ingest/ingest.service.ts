@@ -1,5 +1,6 @@
-import { INGEST_QUEUE, type IngestJobData } from '@curios/core';
+import { BlockedAddressError, INGEST_QUEUE, inspectSourceUrl, type IngestJobData } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
+import type { HostGuard } from './host-guard.js';
 
 export interface QueueLike {
   add(name: string, data: IngestJobData, opts?: unknown): Promise<{ id?: string }>;
@@ -8,6 +9,8 @@ export interface QueueLike {
 export interface IngestDeps {
   prisma: PrismaClient;
   queue: QueueLike;
+  /** Required on purpose: an optional guard with a live default is one a caller forgets. */
+  guard: HostGuard;
 }
 
 export class InvalidSourceUrlError extends Error {
@@ -15,6 +18,15 @@ export class InvalidSourceUrlError extends Error {
   readonly code = 'INVALID_SOURCE_URL';
   constructor() {
     super('That address is not a website. Paste an http or https link.');
+  }
+}
+
+export class BlockedSourceUrlError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'BLOCKED_SOURCE_URL';
+  constructor() {
+    super('That address points somewhere this crawler will not go.');
+    this.name = 'BlockedSourceUrlError';
   }
 }
 
@@ -35,13 +47,12 @@ export async function startIngestion(
   accountId: string,
   input: { pageId: string; sourceUrl: string },
 ): Promise<{ ingestionId: string }> {
-  let url: URL;
-  try {
-    url = new URL(input.sourceUrl);
-  } catch {
-    throw new InvalidSourceUrlError();
-  }
-  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new InvalidSourceUrlError();
+  // Shape only. Whether the address is one we may reach -- literal or resolved
+  // -- is the guard's question below, because that is where the escape hatch
+  // is honoured.
+  const verdict = inspectSourceUrl(input.sourceUrl);
+  if (!verdict.ok) throw new InvalidSourceUrlError();
+  const url = verdict.url;
 
   // Ownership is checked here, before any row exists. Facts land unverified,
   // so an ingestion into someone else's page plants claims in a stranger's
@@ -51,6 +62,17 @@ export async function startIngestion(
     select: { id: true },
   });
   if (!page) throw new PageNotYoursError();
+
+  // After the ownership check, deliberately. Resolving first would let a
+  // stranger use this endpoint as a resolver for pages they do not own, which
+  // is a smaller leak than the one this function is here to close but a leak
+  // opened by this function all the same.
+  try {
+    await deps.guard(verdict.hostname);
+  } catch (error) {
+    if (error instanceof BlockedAddressError) throw new BlockedSourceUrlError();
+    throw error;
+  }
 
   const ingestion = await deps.prisma.ingestion.create({
     data: { pageId: input.pageId, sourceUrl: url.href },

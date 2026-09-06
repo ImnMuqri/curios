@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { BlockedAddressError } from '@curios/core';
 import { getIngestion, startIngestion, type QueueLike } from './ingest.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -24,7 +25,7 @@ describe('startIngestion', () => {
   it('creates a queued ingestion row and enqueues a job', async () => {
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     const { ingestionId } = await startIngestion(
-      { prisma, queue: { add } },
+      { prisma, queue: { add }, guard: async () => {} },
       accountId,
       { pageId, sourceUrl: 'https://nadia.example/' },
     );
@@ -37,7 +38,7 @@ describe('startIngestion', () => {
   it('passes an idempotency key so a replayed job does not duplicate work', async () => {
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     const { ingestionId } = await startIngestion(
-      { prisma, queue: { add } },
+      { prisma, queue: { add }, guard: async () => {} },
       accountId,
       { pageId, sourceUrl: 'https://nadia.example/' },
     );
@@ -48,12 +49,78 @@ describe('startIngestion', () => {
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     await expect(
       startIngestion(
-        { prisma, queue: { add } },
+        { prisma, queue: { add }, guard: async () => {} },
         accountId,
         { pageId, sourceUrl: 'file:///etc/passwd' },
       ),
     ).rejects.toThrow(/http/i);
     expect(add).not.toHaveBeenCalled();
+  });
+
+  it('refuses a url whose host resolves privately, and leaves no row behind', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    await expect(
+      startIngestion(
+        {
+          prisma,
+          queue: { add },
+          guard: async () => {
+            throw new BlockedAddressError('10.0.0.5');
+          },
+        },
+        accountId,
+        { pageId, sourceUrl: 'https://internal.example/' },
+      ),
+    ).rejects.toMatchObject({ code: 'BLOCKED_SOURCE_URL', statusCode: 400 });
+
+    // The absence of the row is the assertion that matters. A refused URL that
+    // still writes one turns the table into a log of attempts.
+    expect(await prisma.ingestion.count()).toBe(0);
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it('sends an address literal to the guard rather than judging it here', async () => {
+    // A literal is not special-cased. It goes to the same guard as a hostname,
+    // which is what lets INGEST_ALLOW_PRIVATE_ADDRESSES apply to it -- the
+    // manual walkthrough crawls http://127.0.0.1:8099/, and a literal refused
+    // before the flag is consulted makes that switch do nothing.
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    const guard = vi.fn(async () => {});
+
+    await startIngestion({ prisma, queue: { add }, guard }, accountId, {
+      pageId,
+      sourceUrl: 'http://127.0.0.1:8099/',
+    });
+
+    expect(guard).toHaveBeenCalledWith('127.0.0.1');
+  });
+
+  it('refuses a literal when the guard refuses it, and enqueues nothing', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    await expect(
+      startIngestion(
+        {
+          prisma,
+          queue: { add },
+          guard: async () => {
+            throw new BlockedAddressError('169.254.169.254');
+          },
+        },
+        accountId,
+        { pageId, sourceUrl: 'http://169.254.169.254/latest/meta-data/' },
+      ),
+    ).rejects.toMatchObject({ code: 'BLOCKED_SOURCE_URL' });
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it('refuses embedded credentials', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    await expect(
+      startIngestion({ prisma, queue: { add }, guard: async () => {} }, accountId, {
+        pageId,
+        sourceUrl: 'http://user:pw@nadia.example/',
+      }),
+    ).rejects.toMatchObject({ code: 'INVALID_SOURCE_URL' });
   });
 });
 

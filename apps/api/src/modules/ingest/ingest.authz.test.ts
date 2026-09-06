@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { BlockedAddressError } from '@curios/core';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
@@ -11,7 +12,17 @@ let nth = 0;
 const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
-  app = await buildApp();
+  // Resolution stands in rather than runs: a real lookup would make an
+  // authorization suite depend on DNS and fail offline for a reason that has
+  // nothing to do with authorization. It refuses the metadata address so one
+  // test below can watch that refusal travel out to a client.
+  app = await buildApp({
+    ingest: {
+      guard: async (hostname) => {
+        if (hostname === '169.254.169.254') throw new BlockedAddressError(hostname);
+      },
+    },
+  });
   await app.ready();
 });
 
@@ -157,5 +168,24 @@ describe('the order of the session check and the limiters', () => {
     });
 
     expect(owner.statusCode).not.toBe(429);
+  });
+
+  it('answers 400 with BLOCKED_SOURCE_URL for a private address', async () => {
+    // The stub guard above refuses this hostname, standing in for the real
+    // resolution that would. What this asserts is the trip out to the client:
+    // that the refusal arrives as BLOCKED_SOURCE_URL rather than being
+    // rewritten to INTERNAL_ERROR by the allow-list in errors.ts.
+    const mine = await anOwnerWithAPage();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/ingest',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { pageId: mine.pageId, sourceUrl: 'http://169.254.169.254/latest/meta-data/' },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('BLOCKED_SOURCE_URL');
   });
 });
