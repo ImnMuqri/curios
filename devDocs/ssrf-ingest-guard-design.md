@@ -76,6 +76,23 @@ connector regardless. Automatic redirect following is given up deliberately — 
 mechanism that would otherwise walk off the public internet in the middle of a request
 that already passed its check.
 
+**One deadline for the whole chain.** The existing `AbortSignal.timeout(10_000)` is per
+`fetch`, and a hop loop would hand each hop its own ten seconds — five hops, fifty seconds,
+one worker slot. The deadline is computed once before the first hop and the same signal
+passed to every one, so a redirect chain cannot buy time by being long.
+
+**The failure message must not name the address.** `extract.service.ts` writes a failed
+job's `error.message` into `Ingestion.error`, and `getIngestion` returns that field to the
+owner. A guard that throws *"10.0.0.5 is private"* therefore publishes the resolved address
+into a screen the owner reads, turning the poll into a resolution oracle with detail rather
+than the one bit the API already concedes. The guard throws a fixed message naming the host
+at most; the resolved address goes to the log and nowhere else.
+
+**Blocked attempts are logged.** `pino` is already in `apps/workers`. A refusal is logged
+at `warn` with the hostname and the address that failed, because the difference between one
+owner pasting a wrong URL and someone walking a range is only visible in aggregate, and an
+unlogged control cannot tell you it is working.
+
 ### The byte cap, folded in
 
 `website.adapter.ts` caps a crawl at 4,000,000 bytes total, but counts only after
@@ -144,6 +161,20 @@ Two callers, one classifier, no second opinion about what "private" means. The w
 composition is the guard itself — `filterPublicAddresses` returning the vetted list *is*
 what undici dials, which is why the pinning has no gap between deciding and connecting.
 
+### Ports are not restricted, and that is a decision
+
+The usual SSRF advice restricts the destination port to 80 and 443. This does not, and the
+reasoning is that once every private address is unreachable, a port restriction protects
+against reaching *public* services on odd ports — which is a thing anyone can already do
+from their own machine, without an account here.
+
+What it would cost is real: a shop running on `:8080` behind a cheap host is not exotic,
+and refusing to crawl it is a silent product failure of exactly the kind the reserved-handle
+discussion argued against. The residual risk is that the crawler can be used as a slow,
+authenticated, rate-limited port prober against public hosts, distinguishable only by which
+error comes back. Accepted, and written down so that a later decision to restrict ports is
+a reversal rather than a discovery.
+
 ### What the URL-level pass rejects before any resolution
 
 Protocol other than `http:`/`https:` (already there, kept), embedded credentials
@@ -204,6 +235,9 @@ Beyond the table:
   reject, and the address dialled must be the one the guard returned. If undici ever stops
   forwarding `lookup`, this test fails rather than the guard silently detaching.
 - Worker: a redirect to a private target is refused, and the hop cap holds.
+- Worker: the error thrown for a blocked address does **not** contain the resolved address,
+  asserted against the string that would reach `Ingestion.error`. This one is easy to break
+  later by improving an error message, so it is pinned.
 - The flag denies for every non-`true` string, including `TRUE`.
 
 **What no test here covers**, stated plainly: a real DNS rebinding attack against a live
