@@ -19,16 +19,17 @@ export function createIngestionWorker(deps: {
   const allowPrivate = allowsPrivateAddresses(process.env.INGEST_ALLOW_PRIVATE_ADDRESSES);
 
   // One Agent for the process, so connections pool across pages and across jobs.
-  const agent = createGuardedAgent({
-    allowPrivate,
-    onBlocked: (hostname, blocked) => {
-      // One owner pasting a wrong URL and someone walking a range look
-      // identical one at a time. Only the log can tell them apart.
-      deps.log?.warn({ hostname, blocked }, 'ingest fetch refused a non-public address');
-    },
-  });
+  // One owner pasting a wrong URL and someone walking a range look identical
+  // one at a time. Only the log can tell them apart.
+  const onBlocked = (hostname: string, blocked: string) => {
+    deps.log?.warn({ hostname, blocked }, 'ingest fetch refused a non-public address');
+  };
 
-  const adapter = createWebsiteAdapter({ fetchPage: (url) => fetchGuarded(url, { agent }) });
+  const agent = createGuardedAgent({ allowPrivate, onBlocked });
+
+  const adapter = createWebsiteAdapter({
+    fetchPage: (url) => fetchGuarded(url, { agent, allowPrivate, onBlocked }),
+  });
 
   return new Worker<IngestJobData>(
     INGEST_QUEUE,

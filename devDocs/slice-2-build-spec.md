@@ -354,45 +354,54 @@ removing an entry is deleting a string. `packages/core/src/handle.test.ts` asser
 
 ---
 
-### OPEN DECISION — the ingest URL is not filtered for private addresses
+### SETTLED — the ingest URL is now filtered for private addresses
 
-Raised while driving the ingest job by hand at the end of plan 2b, unresolved, and live on
-`main` since slice 1. **Not introduced by plan 2b.**
+*Raised while driving the ingest job by hand at the end of plan 2b. Settled 2026-09-06;
+the design and its reasoning are `devDocs/ssrf-ingest-guard-design.md`, the work is
+`devDocs/plans/2026-09-06-ingest-address-guard.md`.*
 
-`startIngestion` in `apps/api/src/modules/ingest/ingest.service.ts` validates exactly one
-thing about the address an owner pastes:
+The gap, for the record, since a settled decision that hides what it fixed is worth less
+than the open one it replaced: `startIngestion` validated only the protocol, and the worker
+fetched whatever it was given with no address filtering at all. An authenticated owner
+could make the worker GET `http://127.0.0.1:…`, a private range, or a cloud metadata
+endpoint, and read some of what came back through the review queue. That was live on `main`
+from slice 1. It was never reachable by an anonymous visitor, and there is no metadata
+service in the current deployment, but both of those were circumstances rather than
+defences and neither was written down as a reason to accept it.
 
-```ts
-if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new InvalidSourceUrlError();
-```
+**What was built.** One classifier in `packages/core`, two independent callers, exactly as
+this spec required — a filter in one place is not a filter.
 
-There is no check on where that URL points. The worker then fetches it with a 10-second
-timeout and no address filtering of its own. So an authenticated owner can make the worker
-issue a GET to `http://127.0.0.1:…`, to a private range, or to a cloud metadata endpoint,
-and — because extraction feeds the response to a model and writes the claims into a review
-queue the owner can read — **can see some of what came back.**
+- `apps/api` resolves the hostname inside the request under a 2s timeout and answers
+  `400 BLOCKED_SOURCE_URL`. This is a **fast fail, not the defence**: its answer is stale by
+  the time a job runs. Delete it and an owner gets a worse error; nothing opens.
+- `apps/workers` puts the guard in `undici`'s `connect.lookup`, so the vetted address is the
+  address dialled. There is one resolution, so DNS rebinding has no second one to race, and
+  because it lives in the connector it covers the crawler's 25 pages and every redirect hop
+  with no call site that can forget to call it.
 
-This is how the ingest job was verified end to end: the crawler was pointed at a local
-static page on `127.0.0.1:8099`, and the API accepted it without complaint.
+**Two things worth carrying forward.**
 
-**What limits it today.** The caller must hold a verified account and a session, and must own
-the page they ingest into, so this is not reachable by an anonymous visitor. There is no
-cloud metadata service in the current deployment. Both of those are circumstances rather
-than defences, and neither is written down anywhere as a reason this is acceptable.
+*A literal address never reaches the connector.* `net.connect` skips DNS when the host is
+already an address, so the guard is not called for `http://127.0.0.1/` at all. Every unit
+test passed while this was open; running it against a real server with the real environment
+variable is what found it. `fetchGuarded` now judges literals itself with the same
+classifier and flag. Structural arguments — "it is in the socket, it cannot be bypassed" —
+are the ones that feel too obvious to test.
 
-**The trade.** A denylist of private ranges is the usual fix and is easy to get subtly wrong:
-DNS names that resolve to private addresses, redirects that leave the public internet
-mid-chain, IPv6 mapped forms, and the decimal and octal spellings of `127.0.0.1`. Doing it
-properly means resolving the host and checking the resolved address, and re-checking after
-every redirect — which is a real piece of work, not a line of validation. Doing it badly
-gives the appearance of a fix.
+*The escape hatch has to reach what it exists for.* `INGEST_ALLOW_PRIVATE_ADDRESSES` is off
+unless spelled exactly `true`, so a typo fails closed. An earlier version refused IP
+literals during URL parsing, before anything consulted the flag, which made the switch
+useless for `http://127.0.0.1:8099/` — the address the ingest walkthrough tells you to
+paste, and the address that found this gap in the first place.
 
-Recorded rather than acted on because it is out of scope for the plan that found it and
-because a half-filter is worse than a documented gap. Whoever settles it: the fetch is
-`fetchPage` in `apps/workers/src/ingestion/ingestion.worker.ts`, and the validation that
-would have to agree with it is in `startIngestion`. Note that a filter in only one of those
-two places is not a filter — the API decides what to enqueue, and the worker decides what to
-request.
+**What this concedes, named rather than buried.** The API's check makes the endpoint a
+small DNS oracle: an owner can learn whether a name resolves privately from which error
+comes back. Accepted — the caller needs a verified account, a session and ownership of the
+page. And ports are not restricted to 80/443, which the usual advice recommends; with every
+private address unreachable, that would only stop reaching public services on odd ports,
+something anyone can do from their own machine, while refusing to crawl a shop running on
+`:8080`.
 
 ---
 

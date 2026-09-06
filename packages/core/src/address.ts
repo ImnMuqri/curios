@@ -27,6 +27,22 @@ export function isBlockedAddress(address: string): boolean {
   return true;
 }
 
+/**
+ * Is this hostname a numeric address rather than a name?
+ *
+ * Needed because a literal takes a different path to the socket: net.connect
+ * skips DNS when the host is already an address, so a guard that lives in a
+ * resolver is never consulted for one. Anything relying on resolution to judge
+ * addresses has to ask this first and judge literals itself.
+ *
+ * Asked separately from isBlockedAddress because that one fails closed on
+ * whatever it cannot parse -- right for an address, catastrophic for a
+ * hostname, every one of which it would block.
+ */
+export function isAddressLiteral(hostname: string): boolean {
+  return hostname.includes(':') || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+}
+
 /** Dotted quad only. Every other IPv4 spelling is folded by URL parsing before it reaches here. */
 function parseIPv4(value: string): number[] | null {
   const parts = value.split('.');

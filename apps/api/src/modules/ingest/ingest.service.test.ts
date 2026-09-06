@@ -79,16 +79,38 @@ describe('startIngestion', () => {
     expect(add).not.toHaveBeenCalled();
   });
 
-  it('refuses an address literal before it resolves anything', async () => {
+  it('sends an address literal to the guard rather than judging it here', async () => {
+    // A literal is not special-cased. It goes to the same guard as a hostname,
+    // which is what lets INGEST_ALLOW_PRIVATE_ADDRESSES apply to it -- the
+    // manual walkthrough crawls http://127.0.0.1:8099/, and a literal refused
+    // before the flag is consulted makes that switch do nothing.
     const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     const guard = vi.fn(async () => {});
+
+    await startIngestion({ prisma, queue: { add }, guard }, accountId, {
+      pageId,
+      sourceUrl: 'http://127.0.0.1:8099/',
+    });
+
+    expect(guard).toHaveBeenCalledWith('127.0.0.1');
+  });
+
+  it('refuses a literal when the guard refuses it, and enqueues nothing', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
     await expect(
-      startIngestion({ prisma, queue: { add }, guard }, accountId, {
-        pageId,
-        sourceUrl: 'http://169.254.169.254/latest/meta-data/',
-      }),
+      startIngestion(
+        {
+          prisma,
+          queue: { add },
+          guard: async () => {
+            throw new BlockedAddressError('169.254.169.254');
+          },
+        },
+        accountId,
+        { pageId, sourceUrl: 'http://169.254.169.254/latest/meta-data/' },
+      ),
     ).rejects.toMatchObject({ code: 'BLOCKED_SOURCE_URL' });
-    expect(guard).not.toHaveBeenCalled();
+    expect(add).not.toHaveBeenCalled();
   });
 
   it('refuses embedded credentials', async () => {

@@ -3,6 +3,8 @@ import { Agent, fetch, type Dispatcher } from 'undici';
 import {
   BlockedAddressError,
   inspectSourceUrl,
+  isAddressLiteral,
+  isBlockedAddress,
   requirePublicAddresses,
   type ResolvedAddress,
 } from '@curios/core';
@@ -16,13 +18,17 @@ export const MAX_RESPONSE_BYTES = 2_000_000;
 const TOTAL_TIMEOUT_MS = 10_000;
 const USER_AGENT = 'CuriosBot/0.1 (+https://curios.my/bot)';
 
+export type ResolveAll = (hostname: string) => Promise<ResolvedAddress[]>;
+
 /**
  * An Agent that resolves every connection itself and dials only what it vetted.
  *
- * This is where the guarantee lives. Not in a function someone remembers to
- * call before fetching -- in the connector, so the crawler's twenty-five pages
- * and every redirect hop are covered by construction. There is no call site to
- * audit because there is no call site.
+ * This covers every hostname the crawler touches -- the root, the twenty-five
+ * same-origin pages, every redirect hop -- with no call site to audit, because
+ * there is no call site. It does NOT cover a literal address: net.connect
+ * skips DNS when the host is already an address, so this lookup is never
+ * called for http://127.0.0.1/. fetchGuarded handles that case, and the two
+ * share a classifier and a flag so they cannot disagree.
  *
  * The signature is undici's, established by probing it rather than by reading
  * for it: the lookup is invoked with { hints: 0, all: true } and the callback
@@ -30,8 +36,6 @@ const USER_AGENT = 'CuriosBot/0.1 (+https://curios.my/bot)';
  * (null, '127.0.0.1', 4) fails the request with "Invalid IP address:
  * undefined", which looks like a network fault rather than a wiring mistake.
  */
-export type ResolveAll = (hostname: string) => Promise<ResolvedAddress[]>;
-
 export function createGuardedAgent(options: {
   allowPrivate: boolean;
   onBlocked?: (hostname: string, blocked: string) => void;
@@ -80,20 +84,46 @@ async function defaultResolve(hostname: string): Promise<ResolvedAddress[]> {
  *
  * Automatic following is given up deliberately: it is the mechanism that walks
  * off the public internet in the middle of a request whose first hop passed.
- * The connector guards every hop regardless, so this loop is about the URL
- * level -- a redirect to file:// or to a literal private address is refused
- * before a socket is asked for.
+ * Every hop is re-checked here for shape and for a literal address, and its
+ * connection is guarded by the connector for everything else.
  *
  * One deadline covers the whole chain. Per-hop timeouts would let five
  * redirects hold a worker slot for fifty seconds.
  */
-export async function fetchGuarded(target: string, deps: { agent: Dispatcher }): Promise<string> {
+export async function fetchGuarded(
+  target: string,
+  deps: {
+    agent: Dispatcher;
+    /**
+     * Needed here as well as in the Agent, and not by oversight -- see the
+     * literal check below for the reason the connector cannot cover this.
+     */
+    allowPrivate: boolean;
+    onBlocked?: (hostname: string, blocked: string) => void;
+  },
+): Promise<string> {
   const deadline = AbortSignal.timeout(TOTAL_TIMEOUT_MS);
   let current = target;
 
   for (let hop = 0; hop <= MAX_HOPS; hop += 1) {
     const verdict = inspectSourceUrl(current);
     if (!verdict.ok) throw new BlockedAddressError(verdict.reason);
+
+    // A literal address never reaches the Agent's lookup. net.connect skips
+    // DNS entirely when the host is already an address, so the connector --
+    // the thing this module claims is impossible to bypass -- is simply not
+    // consulted for http://127.0.0.1/. It has to be judged here.
+    //
+    // Found by running the guard rather than by reading it: with the flag off,
+    // 127.0.0.1 was fetched. Every name still goes to the connector, and this
+    // covers the one case that does not, using the same classifier and the
+    // same flag so the two cannot drift.
+    if (!deps.allowPrivate && isAddressLiteral(verdict.hostname)) {
+      if (isBlockedAddress(verdict.hostname)) {
+        deps.onBlocked?.(verdict.hostname, verdict.hostname);
+        throw new BlockedAddressError(verdict.hostname);
+      }
+    }
 
     const response = await fetch(current, {
       dispatcher: deps.agent,

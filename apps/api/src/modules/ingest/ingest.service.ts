@@ -47,14 +47,11 @@ export async function startIngestion(
   accountId: string,
   input: { pageId: string; sourceUrl: string },
 ): Promise<{ ingestionId: string }> {
+  // Shape only. Whether the address is one we may reach -- literal or resolved
+  // -- is the guard's question below, because that is where the escape hatch
+  // is honoured.
   const verdict = inspectSourceUrl(input.sourceUrl);
-  if (!verdict.ok) {
-    // Two errors, not one. A bad scheme is the owner mistyping; a private
-    // address is a different answer to a different question, and the codes are
-    // what the web app keys its message off.
-    if (verdict.reason === 'blocked_address') throw new BlockedSourceUrlError();
-    throw new InvalidSourceUrlError();
-  }
+  if (!verdict.ok) throw new InvalidSourceUrlError();
   const url = verdict.url;
 
   // Ownership is checked here, before any row exists. Facts land unverified,

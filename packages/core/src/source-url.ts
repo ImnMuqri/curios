@@ -22,20 +22,22 @@ export class BlockedAddressError extends Error {
 
 export type SourceUrlVerdict =
   | { ok: true; url: URL; hostname: string }
-  | { ok: false; reason: 'unparseable' | 'not_http' | 'has_credentials' | 'blocked_address' };
+  | { ok: false; reason: 'unparseable' | 'not_http' | 'has_credentials' };
 
 /**
- * Everything that can be decided about a pasted address without a network.
+ * What can be decided about a pasted address from its shape alone.
  *
- * The IP-literal case needs less work than it looks: WHATWG parsing already
- * folds 2130706433, 0177.0.0.1, 0x7f000001 and 127.1 to 127.0.0.1 before this
- * function sees any of them. What it does not fold is IPv4-mapped IPv6, which
- * arrives compressed as [::ffff:7f00:1] -- hence a classifier that reads the
- * hex form rather than a regex that looks for something readable.
+ * Shape only. No address is judged here, not even a literal one, and that is a
+ * correction rather than an omission: an earlier version rejected
+ * http://127.0.0.1/ right here, which looked like a cheap win and quietly
+ * broke the escape hatch. INGEST_ALLOW_PRIVATE_ADDRESSES exists so the manual
+ * walkthrough can crawl a page on 127.0.0.1, and a literal refused before
+ * anyone consults the flag is a switch that does not switch anything.
  *
- * A hostname is not judged here. Whether `localhost` or `shop.example` points
- * somewhere private is a question only a resolver answers, and pretending
- * otherwise would suggest this function is a defence rather than a filter.
+ * So every address question -- literal or resolved -- goes to the one place
+ * that resolves, which honours the flag and costs nothing extra: a resolver
+ * handed "127.0.0.1" answers 127.0.0.1 without touching the network. One
+ * decision, one flag, one place to get it wrong.
  */
 export function inspectSourceUrl(input: string): SourceUrlVerdict {
   let url: URL;
@@ -50,23 +52,11 @@ export function inspectSourceUrl(input: string): SourceUrlVerdict {
   }
   if (url.username !== '' || url.password !== '') return { ok: false, reason: 'has_credentials' };
 
+  // Brackets are stripped because url.hostname keeps them, and a resolver
+  // handed '[::1]' fails in a way that reads as a network problem.
   const hostname = url.hostname.replace(/^\[/, '').replace(/\]$/, '');
-  if (isLiteralAddress(hostname) && isBlockedAddress(hostname)) {
-    return { ok: false, reason: 'blocked_address' };
-  }
 
   return { ok: true, url, hostname };
-}
-
-/**
- * Does this hostname look like a numeric address rather than a name?
- *
- * Asked separately from isBlockedAddress because that function fails closed on
- * anything it cannot parse -- correct for an address, catastrophic for a
- * hostname, which it would block every one of.
- */
-function isLiteralAddress(hostname: string): boolean {
-  return hostname.includes(':') || /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
 }
 
 export interface ResolvedAddress {

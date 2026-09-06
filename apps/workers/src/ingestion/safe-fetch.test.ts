@@ -33,9 +33,10 @@ describe('createGuardedAgent', () => {
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end(`<title>ok</title><p>host was ${req.headers.host}</p>`);
     });
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate, resolve: pinnedToLoopback });
 
-    const html = await fetchGuarded(`http://shop.invalid:${port}/`, { agent });
+    const html = await fetchGuarded(`http://shop.invalid:${port}/`, { agent, allowPrivate });
 
     expect(html).toContain(`host was shop.invalid:${port}`);
     await agent.close();
@@ -45,29 +46,88 @@ describe('createGuardedAgent', () => {
     // allowPrivate is false and 127.0.0.1 is where the server is, so this must
     // fail even though the server is listening and would answer.
     const port = await serve((_req, res) => res.end('<title>reached</title>'));
-    const agent = createGuardedAgent({ allowPrivate: false });
+    const allowPrivate = false;
+    const agent = createGuardedAgent({ allowPrivate });
 
-    await expect(fetchGuarded(`http://localhost:${port}/`, { agent })).rejects.toThrow();
+    await expect(fetchGuarded(`http://localhost:${port}/`, { agent, allowPrivate })).rejects.toThrow();
     await agent.close();
   });
 
   it('reports a refusal to the caller for the log', async () => {
     const port = await serve((_req, res) => res.end('<title>reached</title>'));
     const onBlocked = vi.fn();
-    const agent = createGuardedAgent({ allowPrivate: false, onBlocked });
+    const allowPrivate = false;
+    const agent = createGuardedAgent({ allowPrivate, onBlocked });
 
-    await expect(fetchGuarded(`http://localhost:${port}/`, { agent })).rejects.toThrow();
+    await expect(fetchGuarded(`http://localhost:${port}/`, { agent, allowPrivate })).rejects.toThrow();
     expect(onBlocked).toHaveBeenCalledWith('localhost', expect.stringMatching(/127\.0\.0\.1|::1/));
     await agent.close();
   });
 });
 
 describe('fetchGuarded', () => {
-  it('refuses a blocked literal without opening a socket', async () => {
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
+  it('refuses a literal address at the connector, with real resolution', async () => {
+    // Real resolution, no stub: a resolver handed a literal answers with that
+    // literal and never touches the network, which is exactly why literals do
+    // not need judging anywhere else. The connector is the one place that
+    // decides, and the one place the escape hatch applies.
+    const allowPrivate = false;
+    const agent = createGuardedAgent({ allowPrivate });
+
     await expect(
-      fetchGuarded('http://169.254.169.254/latest/meta-data/', { agent }),
+      fetchGuarded('http://169.254.169.254/latest/meta-data/', { agent, allowPrivate }),
+    ).rejects.toThrow();
+    await agent.close();
+  });
+
+  it('refuses a literal with the flag OFF, which the connector alone does not do', async () => {
+    // THE regression. net.connect skips DNS for a literal, so the Agent's
+    // lookup -- the guard -- is never called for http://127.0.0.1/. A version
+    // of this module that trusted the connector for everything fetched this
+    // address happily with the flag off, and every unit test still passed.
+    // Caught by running it, pinned here so it cannot come back.
+    const port = await serve((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end('<title>must not be reached</title>');
+    });
+    const allowPrivate = false;
+    const agent = createGuardedAgent({ allowPrivate });
+
+    await expect(
+      fetchGuarded(`http://127.0.0.1:${port}/`, { agent, allowPrivate }),
     ).rejects.toBeInstanceOf(BlockedAddressError);
+    await agent.close();
+  });
+
+  it('lets the escape hatch reach a literal, which is the whole point of it', async () => {
+    // The regression this pins: judging literals before consulting the flag
+    // made INGEST_ALLOW_PRIVATE_ADDRESSES refuse http://127.0.0.1:8099/ -- the
+    // precise URL the manual walkthrough tells you to paste.
+    const port = await serve((_req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end('<title>local</title>');
+    });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate });
+
+    expect(await fetchGuarded(`http://127.0.0.1:${port}/`, { agent, allowPrivate })).toContain('local');
+    await agent.close();
+  });
+
+  it('refuses a redirect to a scheme it will not fetch', async () => {
+    // The URL-level half of hop checking. The address half is the connector,
+    // which every hop goes through -- so a redirect to a private address is
+    // refused by the same code path the test above exercises.
+    const port = await serve((_req, res) => {
+      res.writeHead(302, { location: 'file:///etc/passwd' });
+      res.end();
+    });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate, resolve: pinnedToLoopback });
+
+    await expect(fetchGuarded(`http://shop.invalid:${port}/`, { agent, allowPrivate })).rejects.toBeInstanceOf(
+      BlockedAddressError,
+    );
     await agent.close();
   });
 
@@ -80,24 +140,10 @@ describe('fetchGuarded', () => {
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end('<title>arrived</title>');
     });
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate, resolve: pinnedToLoopback });
 
-    expect(await fetchGuarded(`http://shop.invalid:${port}/start`, { agent })).toContain('arrived');
-    await agent.close();
-  });
-
-  it('refuses a redirect that leaves for a blocked address', async () => {
-    // The hop that walks off the public internet after a check has already
-    // passed. This is why automatic redirect following is given up.
-    const port = await serve((_req, res) => {
-      res.writeHead(302, { location: 'http://169.254.169.254/latest/meta-data/' });
-      res.end();
-    });
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
-
-    await expect(fetchGuarded(`http://shop.invalid:${port}/`, { agent })).rejects.toBeInstanceOf(
-      BlockedAddressError,
-    );
+    expect(await fetchGuarded(`http://shop.invalid:${port}/start`, { agent, allowPrivate })).toContain('arrived');
     await agent.close();
   });
 
@@ -108,9 +154,10 @@ describe('fetchGuarded', () => {
       res.writeHead(302, { location: '/again' });
       res.end();
     });
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate, resolve: pinnedToLoopback });
 
-    await expect(fetchGuarded(`http://shop.invalid:${port}/`, { agent })).rejects.toThrow(
+    await expect(fetchGuarded(`http://shop.invalid:${port}/`, { agent, allowPrivate })).rejects.toThrow(
       /redirect/i,
     );
     expect(hops).toBeLessThanOrEqual(6); // the first request plus MAX_HOPS
@@ -131,9 +178,10 @@ describe('fetchGuarded', () => {
       res.on('drain', pump);
       pump();
     });
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate, resolve: pinnedToLoopback });
 
-    await expect(fetchGuarded(`http://shop.invalid:${port}/`, { agent })).rejects.toThrow(
+    await expect(fetchGuarded(`http://shop.invalid:${port}/`, { agent, allowPrivate })).rejects.toThrow(
       /too large/i,
     );
     await agent.close();
@@ -144,9 +192,10 @@ describe('fetchGuarded', () => {
       res.writeHead(200, { 'content-type': 'text/html' });
       res.end('<title>small</title>');
     });
-    const agent = createGuardedAgent({ allowPrivate: true, resolve: pinnedToLoopback });
+    const allowPrivate = true;
+    const agent = createGuardedAgent({ allowPrivate, resolve: pinnedToLoopback });
 
-    expect(await fetchGuarded(`http://shop.invalid:${port}/`, { agent })).toBe(
+    expect(await fetchGuarded(`http://shop.invalid:${port}/`, { agent, allowPrivate })).toBe(
       '<title>small</title>',
     );
     expect(MAX_RESPONSE_BYTES).toBe(2_000_000);
@@ -158,13 +207,14 @@ describe('fetchGuarded', () => {
     // GET /ingest/:id returns it. Pinned here because improving an error
     // message is exactly how this gets broken later.
     const port = await serve((_req, res) => res.end('<title>reached</title>'));
-    const agent = createGuardedAgent({ allowPrivate: false });
+    const allowPrivate = false;
+    const agent = createGuardedAgent({ allowPrivate });
 
     // try/catch rather than a matcher: an assertion about what a message does
     // NOT contain passes trivially if nothing throws, so the unreachable guard
     // is doing real work here.
     try {
-      await fetchGuarded(`http://localhost:${port}/`, { agent });
+      await fetchGuarded(`http://localhost:${port}/`, { agent, allowPrivate });
       expect.unreachable('should have refused');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

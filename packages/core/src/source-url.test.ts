@@ -32,27 +32,25 @@ describe('inspectSourceUrl', () => {
   });
 
   it.each([
-    ['http://127.0.0.1/', 'the plain spelling'],
-    ['http://2130706433/', 'decimal'],
-    ['http://0177.0.0.1/', 'octal'],
-    ['http://0x7f000001/', 'hex'],
-    ['http://127.1/', 'short form'],
-    ['http://[::1]/', 'IPv6 loopback'],
-    ['http://[::ffff:127.0.0.1]/', 'IPv4-mapped'],
-    ['http://[fd00::1]/', 'unique local'],
-    ['http://169.254.169.254/latest/meta-data/', 'cloud metadata'],
-  ])('refuses %s (%s) without resolving anything', (input) => {
-    expect(inspectSourceUrl(input)).toEqual({ ok: false, reason: 'blocked_address' });
+    ['http://127.0.0.1/', '127.0.0.1', 'the plain spelling'],
+    ['http://2130706433/', '127.0.0.1', 'decimal'],
+    ['http://0177.0.0.1/', '127.0.0.1', 'octal'],
+    ['http://0x7f000001/', '127.0.0.1', 'hex'],
+    ['http://127.1/', '127.0.0.1', 'short form'],
+    ['http://[::1]/', '::1', 'IPv6 loopback'],
+    ['http://[::ffff:127.0.0.1]/', '::ffff:7f00:1', 'IPv4-mapped, compressed by the parser'],
+    ['http://[fd00::1]/', 'fd00::1', 'unique local'],
+    ['http://169.254.169.254/x', '169.254.169.254', 'cloud metadata'],
+  ])('passes %s through as hostname %s (%s), judging no address', (input, hostname) => {
+    // Deliberately NOT refused here. Every one of these is blocked by
+    // requirePublicAddresses once resolved -- and allowed when the escape
+    // hatch is on, which is the whole reason judgment lives there and not
+    // here. What this asserts is that the parser hands the address onward in
+    // a form the classifier can read, including the compressed mapped form.
+    expect(inspectSourceUrl(input)).toMatchObject({ ok: true, hostname });
   });
 
-  it('strips the brackets from an IPv6 hostname it accepts', () => {
-    // url.hostname keeps them, and a resolver handed '[2606:...]' will fail in
-    // a way that looks like a network problem rather than a bug here.
-    const verdict = inspectSourceUrl('http://[2606:4700:4700::1111]/');
-    expect(verdict).toMatchObject({ ok: true, hostname: '2606:4700:4700::1111' });
-  });
-
-  it('does not judge a hostname, because it cannot', () => {
+  it('does not judge a hostname either, because it cannot', () => {
     // localhost is blocked by what it resolves to, not by its spelling. A name
     // check here would imply a completeness this function cannot have.
     expect(inspectSourceUrl('http://localhost:8099/')).toMatchObject({ ok: true });

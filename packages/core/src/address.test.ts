@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isBlockedAddress } from './address.js';
+import { isAddressLiteral, isBlockedAddress } from './address.js';
 
 describe('isBlockedAddress, IPv4', () => {
   it.each([
@@ -77,6 +77,25 @@ describe('isBlockedAddress, garbage', () => {
     'blocks %s by failing closed',
     (address) => {
       expect(isBlockedAddress(address)).toBe(true);
+    },
+  );
+});
+
+describe('isAddressLiteral', () => {
+  it.each([['127.0.0.1'], ['8.8.8.8'], ['::1'], ['2606:4700:4700::1111'], ['::ffff:7f00:1']])(
+    'calls %s a literal',
+    (hostname) => {
+      expect(isAddressLiteral(hostname)).toBe(true);
+    },
+  );
+
+  it.each([['nadiabakes.com'], ['localhost'], ['shop.example'], ['xn--nadia-9na.com']])(
+    'calls %s a name',
+    (hostname) => {
+      // A name must never be treated as a literal: isBlockedAddress fails
+      // closed on anything unparseable, so misreading names as addresses would
+      // block every hostname on earth.
+      expect(isAddressLiteral(hostname)).toBe(false);
     },
   );
 });
