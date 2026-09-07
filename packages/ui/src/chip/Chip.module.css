@@ -1,0 +1,12 @@
+.chip {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: var(--text-base);
+}
+
+.lead {
+  background: var(--mint);
+}

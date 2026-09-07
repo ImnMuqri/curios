@@ -1,0 +1,41 @@
+/*
+ * DESIGN.md, implemented. This is the ONLY file in the repo that may contain a
+ * hex literal, and design-rules.test.ts enforces that.
+ *
+ * Two accents, each owning exactly one job. --kuning means a human needs to
+ * act; --merah means destructive or error. If either turns up decoratively,
+ * delete it rather than justify it.
+ */
+:root {
+  --ink: #10231f;
+  --paper: #fafbfa;
+  --surface: #eff2f0;
+  --hijau: #0c7a62;
+  --mint: #e3f5ef;
+  --kuning: #f2a33c;
+  --merah: #d8452f;
+  --muted: #6b7c7f;
+  /*
+   * --ink at 45%. It lives here rather than in the sheet because the rule is
+   * that colour has one home, and a no-hex test that would have missed this
+   * spelling is a reason to be careful, not a reason to call it fine.
+   */
+  --scrim: rgb(16 35 31 / 45%);
+
+  /* Six steps. A seventh is a smell -- see DESIGN.md, and the test. */
+  --text-xs: 11px;
+  --text-sm: 12.5px;
+  --text-base: 14px;
+  --text-body: 17px;
+  --text-lg: 22px;
+  --text-display: 32px;
+
+  /*
+   * Bound by apps/web from next/font's variable output. Declared here with a
+   * fallback so this package renders sensibly in a vitest jsdom run, where no
+   * Next font loader has run at all.
+   */
+  --font-display: var(--font-bricolage, 'Bricolage Grotesque', system-ui, sans-serif);
+  --font-body: var(--font-inter, Inter, system-ui, sans-serif);
+  --font-mono: var(--font-plex-mono, 'IBM Plex Mono', ui-monospace, monospace);
+}

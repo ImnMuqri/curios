@@ -17,6 +17,9 @@ const config: NextConfig = {
   // The public page reads Postgres directly through the SELECT-only role, which
   // the edge runtime cannot do. Node everywhere, deliberately.
   serverExternalPackages: ['@prisma/client'],
+  // packages/ui ships CSS Modules as source, which Next must compile rather
+  // than treat as a pre-built dependency.
+  transpilePackages: ['@curios/ui'],
   // Every package in this workspace (this file included) imports its sibling
   // TypeScript modules with a .js extension, per tsconfig.base.json's
   // verbatimModuleSyntax/Bundler resolution. Vitest/Vite resolve that pattern

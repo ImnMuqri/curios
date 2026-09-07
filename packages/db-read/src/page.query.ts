@@ -13,6 +13,8 @@ export interface PublicFact {
   id: string;
   category: FactCategory;
   claim: string;
+  /** What the ask bar cycles. Null for any fact written before this column existed. */
+  question: string | null;
 }
 
 export interface PublicPage {
@@ -51,7 +53,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       facts: {
         where: { verified: true },
         orderBy: { createdAt: 'asc' },
-        select: { id: true, category: true, claim: true },
+        select: { id: true, category: true, claim: true, question: true },
       },
     },
   });

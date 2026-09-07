@@ -1,0 +1,26 @@
+.bubble {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--mint);
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+
+/* The 8px rise DESIGN.md budgets for an arriving message, and nothing else. */
+@media (prefers-reduced-motion: no-preference) {
+  .bubble {
+    animation: rise 200ms ease;
+  }
+
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}

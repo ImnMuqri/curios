@@ -1,48 +1,12 @@
-/* DESIGN.md tokens. Never hardcode a hex in a component. */
-:root {
-  --ink: #10231f;
-  --paper: #fafbfa;
-  --surface: #eff2f0;
-  --hijau: #0c7a62;
-  --mint: #e3f5ef;
-  --kuning: #f2a33c;
-  --merah: #d8452f;
-  --muted: #6b7c7f;
-}
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 17px;
-  line-height: 1.5;
-}
-
-.link-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 44px;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  background: var(--surface);
-  border-radius: 10px;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.ask-bar {
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  padding: 14px 16px;
-  border: 1.5px solid var(--hijau);
-  border-radius: 12px;
-  background: var(--paper);
-  text-align: left;
-  font: inherit;
-  color: var(--muted);
-}
+/*
+ * App-level only, and currently empty.
+ *
+ * The palette, the type scale, the element reset and every component style now
+ * live in @curios/ui. This file stopped being the design system the moment
+ * there was one, and it is kept as the seam for rules that genuinely belong to
+ * this app rather than to the system -- not as a place to put a colour.
+ *
+ * Note for whoever styles the owner surface: `app/app/layout.tsx` renders
+ * className="app-shell", which nothing has ever defined, here or anywhere.
+ * It has styled nothing since it was written.
+ */

@@ -14,6 +14,7 @@ function parseBlock(block: string): ParsedFact | null {
   let category: FactCategory | null = null;
   let confidence = 0.5;
   let sourceText = '';
+  let question: string | null = null;
   const claimLines: string[] = [];
 
   for (const line of lines) {
@@ -38,13 +39,21 @@ function parseBlock(block: string): ParsedFact | null {
       continue;
     }
 
+    const question_ = /^question:\s*(.*)$/i.exec(line);
+    if (question_ && claimLines.length === 0) {
+      const value = (question_[1] ?? '').trim();
+      // An empty question line is the model saying nothing, not saying ''.
+      question = value === '' ? null : value;
+      continue;
+    }
+
     if (line.trim()) claimLines.push(line.trim());
   }
 
   const claim = claimLines.join(' ').trim();
   if (!category || !claim) return null;
 
-  return { category, confidence, sourceText, claim };
+  return { category, confidence, sourceText, claim, question };
 }
 
 /**

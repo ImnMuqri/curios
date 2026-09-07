@@ -49,10 +49,16 @@ Emit one block per claim, in exactly this shape, separated by a line of ---:
 category: PRICE|HOURS|LOCATION|POLICY|PRODUCT|PERSON|MISC
 confidence: 0.0-1.0
 source: the line you took it from, verbatim
+question: the question a customer would ask to get this claim as the answer
 <the claim, in the language the source used>
 
 Write the claim line as natural prose in the source's own language. Do not
 translate it, do not reformat prices, do not normalise Malay into English.
+
+Write the question in the same language as the claim, phrased the way a
+customer would actually type it, not the way a form would label it. "Berapa
+harga kek coklat?" rather than "Price enquiry". One short question, no more.
+
 One claim per block. No preamble, no commentary, no trailing summary.`;
 
 function usageFrom(u: {

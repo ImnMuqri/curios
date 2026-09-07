@@ -36,7 +36,7 @@
 - Consumes: nothing.
 - Produces: `findHexLiterals(css: string): string[]` and `findOffScaleFontSizes(css: string): string[]`, both exported from `packages/ui/src/design-rules.ts`. The package exports `./tokens.css` and `./reset.css` as subpaths.
 
-- [ ] **Step 1: Scaffold the package**
+- [x] **Step 1: Scaffold the package**
 
 `packages/ui/package.json` — follow `packages/core/package.json`, which is the pattern in this repo:
 
@@ -100,7 +100,7 @@ export {};
 
 Then `pnpm install` from the repo root so the workspace picks it up.
 
-- [ ] **Step 2: Write the failing test for the guards**
+- [x] **Step 2: Write the failing test for the guards**
 
 `packages/ui/src/design-rules.test.ts`:
 
@@ -196,12 +196,12 @@ describe('the rules hold across every stylesheet in the repo', () => {
 
 > **Note for the implementer:** the last test will fail until Task 5 creates the first `.module.css`. That is expected and correct — it is the assertion that the walk finds something. Until then, keep the file list assertion pending by creating `packages/ui/src/placeholder.module.css` containing `.noop { color: var(--ink); }` in Step 4 and deleting it in Task 5 once real modules exist.
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/ui test`
 Expected: FAIL — cannot resolve `./design-rules.js`.
 
-- [ ] **Step 4: Write the tokens, the reset, and the checkers**
+- [x] **Step 4: Write the tokens, the reset, and the checkers**
 
 `packages/ui/src/tokens.css` — the only file in the repo allowed to contain a hex:
 
@@ -316,12 +316,12 @@ Also create the temporary `packages/ui/src/placeholder.module.css` described in 
 }
 ```
 
-- [ ] **Step 5: Run it to verify it passes**
+- [x] **Step 5: Run it to verify it passes**
 
 Run: `pnpm --filter @curios/ui test`
 Expected: PASS, all cases.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/ui pnpm-lock.yaml
@@ -345,13 +345,13 @@ git commit -m "feat(ui): the palette, the scale, and two tests that keep them"
 - Consumes: `@curios/ui/tokens.css`, `@curios/ui/reset.css` from Task 1.
 - Produces: `--font-bricolage`, `--font-inter` and `--font-plex-mono` bound on `<html>`, which `tokens.css` already reads.
 
-- [ ] **Step 1: Add the dependency**
+- [x] **Step 1: Add the dependency**
 
 ```bash
 pnpm --filter @curios/web add @curios/ui@workspace:*
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 `apps/web/app/layout.test.tsx`:
 
@@ -391,12 +391,12 @@ vi.mock('next/font/google', () => ({
 }));
 ```
 
-- [ ] **Step 3: Run it to verify it fails**
+- [x] **Step 3: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/web test layout`
 Expected: FAIL — the html element has no font classes.
 
-- [ ] **Step 4: Wire the fonts and the package**
+- [x] **Step 4: Wire the fonts and the package**
 
 `apps/web/app/layout.tsx`:
 
@@ -451,12 +451,12 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
 `apps/web/app/globals.css` — delete the `:root` token block, the `*` reset and the `body` rule, all of which now live in `@curios/ui`. Keep only what is genuinely app-level, and leave `.link-row` and `.ask-bar` alone for now: Task 5 and Task 6 replace them, and deleting them here breaks the page in between.
 
-- [ ] **Step 5: Run the tests and see the page**
+- [x] **Step 5: Run the tests and see the page**
 
 Run: `pnpm --filter @curios/web test && pnpm --filter @curios/web build`
 Expected: PASS, and a successful build. A build failure mentioning CSS from `@curios/ui` means `transpilePackages` is missing or misspelled.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/web packages/ui pnpm-lock.yaml
@@ -483,7 +483,7 @@ git commit -m "feat(web): three faces, self-hosted, and the tokens they belong t
 - Consumes: nothing from earlier tasks.
 - Produces: `ParsedFact` gains `question: string | null`. `PublicFact` in `@curios/db-read` gains `question: string | null`. The `Fact` row gains a nullable `question` column.
 
-- [ ] **Step 1: Write the failing parser test**
+- [x] **Step 1: Write the failing parser test**
 
 Append to `packages/core/src/parse-facts.test.ts`:
 
@@ -531,12 +531,12 @@ describe('the question line', () => {
 });
 ```
 
-- [ ] **Step 2: Run it to verify it fails**
+- [x] **Step 2: Run it to verify it fails**
 
 Run: `pnpm --filter @curios/core test parse-facts`
 Expected: FAIL — `question` is undefined, not null.
 
-- [ ] **Step 3: Parse it**
+- [x] **Step 3: Parse it**
 
 `packages/core/src/types.ts` — add to `ParsedFact`:
 
@@ -568,12 +568,12 @@ and return it:
   return { category, confidence, sourceText, claim, question };
 ```
 
-- [ ] **Step 4: Run it to verify it passes**
+- [x] **Step 4: Run it to verify it passes**
 
 Run: `pnpm --filter @curios/core test parse-facts`
 Expected: PASS.
 
-- [ ] **Step 5: Ask the model for it**
+- [x] **Step 5: Ask the model for it**
 
 `packages/gateway/src/anthropic.gateway.ts`, in `EXTRACT_SYSTEM`, change the block shape and add one instruction:
 
@@ -593,7 +593,7 @@ customer would actually type it, not the way a form would label it. "Berapa
 harga kek coklat?" rather than "Price enquiry". One short question, no more.
 ```
 
-- [ ] **Step 6: Store it**
+- [x] **Step 6: Store it**
 
 `apps/workers/src/ingestion/extract.service.ts`, in the row mapping around line 98, add `question: fact.question,` beside `claim`.
 
@@ -610,16 +610,16 @@ cd packages/db && pnpm exec prisma migrate dev --name fact_question
 DATABASE_URL="$DATABASE_URL_TEST" pnpm exec prisma migrate deploy
 ```
 
-- [ ] **Step 7: Read it on the public page's query**
+- [x] **Step 7: Read it on the public page's query**
 
 `packages/db-read/src/page.query.ts` — add `question: string | null;` to the `PublicFact` interface and `question: true` to the `facts` select.
 
-- [ ] **Step 8: Run the gates for the packages touched**
+- [x] **Step 8: Run the gates for the packages touched**
 
 Run: `pnpm --filter @curios/core test && pnpm --filter @curios/gateway test && pnpm --filter @curios/workers test && pnpm --filter @curios/db-read test`
 Expected: PASS. A `@curios/db-read` failure about a missing column means the test database did not get `migrate deploy`.
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add packages/core packages/db packages/gateway packages/db-read apps/workers
@@ -639,7 +639,7 @@ Existing facts stay null forever without this, because extraction writes with `s
 - Consumes: the `question` column from Task 3.
 - Produces: nothing other tasks depend on.
 
-- [ ] **Step 1: Add what the script needs at the root**
+- [x] **Step 1: Add what the script needs at the root**
 
 `scripts/` runs from the repo root, so its imports resolve against the root `package.json`. It currently has `@curios/core` and `@curios/db`; this script also needs the Anthropic SDK and the model id.
 
@@ -649,7 +649,7 @@ pnpm add -w -D @anthropic-ai/sdk @curios/gateway@workspace:*
 
 The SDK is used directly rather than through `Gateway`. That interface is exactly two methods — `extract(input)` shaped for crawled documents and `chat(input)` — and neither fits a list of bare claims. Widening a shared interface to accommodate a script that runs once is the wrong trade.
 
-- [ ] **Step 2: Write the script**
+- [x] **Step 2: Write the script**
 
 `scripts/backfill-fact-questions.ts`, following `scripts/seed-dev.ts` for how a script in this repo finds its environment and its database:
 
@@ -734,7 +734,7 @@ for (let i = 0; i < pending.length; i += BATCH) {
 await prisma.$disconnect();
 ```
 
-- [ ] **Step 3: Run it against the dev database**
+- [x] **Step 3: Run it against the dev database**
 
 ```bash
 pnpm exec tsx scripts/backfill-fact-questions.ts
@@ -744,7 +744,7 @@ Expected: it reports the count, works through batches, and a second run reports 
 
 **Report the count honestly, including if you did not run it** — it spends real money against a real API key, and a plan step claiming a model call that never happened is worse than an unfilled column.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add scripts/backfill-fact-questions.ts package.json pnpm-lock.yaml
@@ -773,7 +773,7 @@ git commit -m "chore: backfill the questions extraction never wrote"
   - `<Chip variant?: 'default' | 'lead'>{children}</Chip>`
   - Both exported from `@curios/ui`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `packages/ui/src/link-row/LinkRow.test.tsx`:
 
@@ -823,12 +823,12 @@ describe('Chip', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/ui test`
 Expected: FAIL — cannot resolve `./LinkRow.js` or `./Chip.js`.
 
-- [ ] **Step 3: Write the components**
+- [x] **Step 3: Write the components**
 
 `packages/ui/src/link-row/LinkRow.tsx`:
 
@@ -924,7 +924,7 @@ export { LinkRow } from './link-row/LinkRow.js';
 export { Chip } from './chip/Chip.js';
 ```
 
-- [ ] **Step 4: Rewrite the public page's markup**
+- [x] **Step 4: Rewrite the public page's markup**
 
 Delete `packages/ui/src/placeholder.module.css`, remove `.link-row` from `apps/web/app/globals.css`, and replace every inline `style={{ … }}` in `apps/web/app/[handle]/page.tsx` with classes from a new `apps/web/app/[handle]/page.module.css`. The heading uses `var(--font-display)` at `var(--text-display)`; the section label uses `var(--font-mono)`, uppercase, `0.13em` tracking, at `var(--text-base)`.
 
@@ -936,7 +936,7 @@ Keep the existing `<AskBar>` call working — Task 6 replaces it. Pass the quest
 
 and leave `AskBar`'s signature change to Task 6; until then, adjust the call to whatever compiles and note it in the commit.
 
-- [ ] **Step 5: Green, then commit**
+- [x] **Step 5: Green, then commit**
 
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/web test && pnpm lint`
 Expected: PASS, including the design-rules tripwire now that real modules exist.
@@ -963,7 +963,7 @@ The signature, in its resting state. The sheet is Task 7; this task ends with a 
 - Consumes: `Chip` from Task 5; `PublicFact` (with `question`) from Task 3.
 - Produces: `<AskBar questions={string[]} onOpen={(seed: string) => void} />`, exported from `@curios/ui`. It renders a button, not an input — tapping it is what opens the sheet in Task 7.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `packages/ui/src/ask-bar/AskBar.test.tsx`:
 
@@ -1042,12 +1042,12 @@ describe('AskBar', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/ui test ask-bar`
 Expected: FAIL — cannot resolve `./AskBar.js`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 `packages/ui/src/ask-bar/AskBar.tsx`:
 
@@ -1140,7 +1140,7 @@ export function AskBar({
 
 Export it from `packages/ui/src/index.ts`, then in `apps/web/app/[handle]/page.tsx` render it from a small client wrapper that holds the sheet state Task 7 will need, passing `page.facts.map((f) => f.question).filter((q): q is string => q !== null)`.
 
-- [ ] **Step 4: Green, then commit**
+- [x] **Step 4: Green, then commit**
 
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/web test`
 Expected: PASS.
@@ -1168,7 +1168,7 @@ The one orchestrated moment, and the streaming that happens inside it. The SSE p
 
 The `onAsk` injection is what keeps `packages/ui` free of `NEXT_PUBLIC_API_URL` and lets the sheet be tested without a network.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `packages/ui/src/sheet/AskSheet.test.tsx`:
 
@@ -1265,12 +1265,12 @@ describe('AskSheet', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/ui test sheet`
 Expected: FAIL — cannot resolve `./AskSheet.js`.
 
-- [ ] **Step 3: Write the sheet**
+- [x] **Step 3: Write the sheet**
 
 Build `AskSheet.tsx` as a `'use client'` component that on mount calls `onAsk(seed)`, reads the returned stream with the buffering loop taken verbatim from the current `apps/web/app/[handle]/ask-bar.tsx` (carry the comments — they explain `{ stream: true }` and the `split('\n\n')` tail), renders `<AnswerBubble>`, and:
 
@@ -1281,7 +1281,7 @@ Build `AskSheet.tsx` as a `'use client'` component that on mount calls `onAsk(se
 
 `AskSheet.module.css` carries the motion budget exactly: `max-height: 74vh`, a 260ms spring-ish `cubic-bezier(0.22, 1, 0.36, 1)` translateY on the panel, a separate 180ms opacity fade on the dim behind it, and an 8px rise on bubbles. All three animations sit inside `@media (prefers-reduced-motion: no-preference)`, so reduced motion gets the sheet with no movement rather than a sheet that jumps.
 
-- [ ] **Step 4: Wire it in, behind a dynamic import**
+- [x] **Step 4: Wire it in, behind a dynamic import**
 
 `apps/web/app/[handle]/ask.tsx` — the client wrapper that holds the state and keeps the sheet out of the cold bundle:
 
@@ -1326,7 +1326,7 @@ export function Ask({ handle, questions }: { handle: string; questions: string[]
 
 Delete `apps/web/app/[handle]/ask-bar.tsx` and render `<Ask />` from `page.tsx`.
 
-- [ ] **Step 5: Green, then commit**
+- [x] **Step 5: Green, then commit**
 
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/web test && pnpm --filter @curios/web build`
 Expected: PASS and a clean build.
@@ -1349,7 +1349,7 @@ FRONTEND.md has said "enforced in CI" since before there was a CI. This makes it
 - Consumes: a completed `next build`.
 - Produces: nothing.
 
-- [ ] **Step 1: Write the test**
+- [x] **Step 1: Write the test**
 
 `apps/web/app/[handle]/budget.test.ts`:
 
@@ -1394,7 +1394,7 @@ function statSizeOf(path: string): number {
 }
 ```
 
-- [ ] **Step 2: Build, then run it**
+- [x] **Step 2: Build, then run it**
 
 ```bash
 pnpm --filter @curios/web build && pnpm --filter @curios/web test budget
@@ -1404,7 +1404,7 @@ Expected: PASS. **If it fails, that is the test working** — find what landed i
 
 If the manifest key is not `/[handle]/page`, print `Object.keys(parsed.pages)` and use the one that is there — Next has changed this shape between majors.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/web/app/\[handle\]/budget.test.ts
@@ -1417,13 +1417,13 @@ git commit -m "test(web): the budget FRONTEND.md always claimed was enforced"
 
 Nothing above proves the page looks right, and this task is where that gets admitted rather than skipped.
 
-- [ ] **Step 1: Run all four gates**
+- [x] **Step 1: Run all four gates**
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
 ```
 
-- [ ] **Step 2: Open the page on a phone-sized viewport**
+- [x] **Step 2: Open the page on a phone-sized viewport**
 
 Start the stack, publish a page with facts that have questions, and open `/[handle]` at 390×844.
 
@@ -1437,7 +1437,7 @@ Check, and write down what you find rather than what you hoped:
 
 **If a page has no questions yet, say so and check the fallback** rather than reporting the cycle untested.
 
-- [ ] **Step 3: Record the result**
+- [x] **Step 3: Record the result**
 
 Append a short section to this plan naming what was checked, what was found, and anything left broken. Then commit.
 
@@ -1454,3 +1454,69 @@ Append a short section to this plan naming what was checked, what was found, and
 **Type consistency.** `ParsedFact.question` is `string | null` in Task 3 and stays that shape in `PublicFact`. `AskBar` takes `questions: string[]` — already filtered of nulls by the caller in Task 6 — and `onOpen: (seed: string) => void`. `AskSheet` takes `seed`, `onClose` and `onAsk`, and `onAsk` returns `Promise<ReadableStream<Uint8Array> | null>` in both Task 7's interface block and the wrapper that implements it.
 
 **What no test here covers, stated plainly.** Whether the page reads as a shopfront rather than as a template. That is Task 9, it needs a person and a phone, and a green suite is not a substitute for it.
+
+
+---
+
+## Execution record
+
+**Gates on completion:** lint, typecheck, build all pass. **485 tests** across 8 packages
+— core 121, api 170, web 76, workers 40, ui 31, db-read 24, gateway 15, db 8.
+
+### What the plan got wrong, and what running it found
+
+**1. The dynamic import does not split the sheet out.** Task 7 shipped believing it did.
+Grepping the built chunk for the sheet's own strings found them inside
+`app/[handle]/page-*.js`. The cause is real and worth knowing: `AskBar` is imported from
+the `@curios/ui` barrel statically, so a dynamic import of that same barrel gives webpack
+nothing to defer. A subpath export (`@curios/ui/sheet`) and a `sideEffects` declaration
+both helped and neither finished the job. It costs roughly 4 kB of a 7 kB route chunk, so
+it was left — but the comment in `ask.tsx` now says so rather than describing a split that
+does not happen.
+
+**2. FRONTEND.md's 40KB budget cannot be met as written, and never could.** Next reports
+105 kB of First Load JS for `/[handle]`, of which 102 kB is the shared React and Next
+runtime. React alone is around 50 kB gzipped. "Under 40KB JS before chat opens, enforced
+in CI" has been untrue since it was written, and measuring it is how that surfaced. The
+test now measures the route's own chunk — 7.2 kB, budget 40 kB — which is the number this
+codebase actually moves. **FRONTEND.md needs amending; that is a decision, not a fix.**
+
+**3. React 19 hoists `<html>` out of the render container.** The layout test asserted on
+`container.querySelector('html')`, which is always null — indistinguishable from a layout
+that forgot the fonts. It asserts on `document.documentElement` now.
+
+**4. `packages/ui` needed three config pieces `apps/web` gets free** from `next-env.d.ts`:
+CSS Module type declarations, the DOM lib, and `vitest.setup.ts` inside tsconfig's
+`include` so jest-dom's matcher augmentation applies.
+
+**5. The scrim colour is `rgb()`, which the no-hex guard does not catch.** Found by
+reading, not by the test. Moved into `tokens.css` anyway, because the rule is that colour
+has one home and a guard with a known blind spot is a reason for care rather than an
+excuse.
+
+### Verified against a running server
+
+`next dev`, `GET /nadia`, 205 kB of HTML:
+
+| Check | Result |
+|---|---|
+| Three font variable classes on `<html>` | `__variable_a4bae9 __variable_f367f3 __variable_46fe82` |
+| The package/app font seam | `--font-bricolage` resolves to `'Bricolage Grotesque'`, and `--font-display` reads through it — the seam works end to end |
+| Links render as real anchors | yes, `href="https://wa.me/…"` in server HTML |
+| Questions render as chips | yes, e.g. *"Kek butter saiz 2kg berapa ye?"* |
+| Claims still in the DOM under them | yes — the JS-off fallback and the SEO artifact hold |
+| The bar is present with its fixed accessible name | yes |
+| The sheet is absent before interaction | yes, no `aria-modal` in the cold HTML |
+
+### Not verified, and not claimable
+
+**Nobody has looked at this page.** There is no browser automation in this environment, so
+every genuinely visual and interactive check in Task 9 Step 2 is outstanding: whether the
+wipe is soft rather than a jump, whether the sheet springs up over visible links, whether
+Escape and Tab behave in a real browser, whether reduced motion looks right, and whether
+any of it reads as a shopfront. The unit tests assert behaviour; they say nothing about
+appearance. A person needs to open `http://localhost:3000/nadia` at 390×844.
+
+**A note on the fixture data:** the dev database's `nadia` page carries facts crawled from
+`example.com` during the SSRF verification, so two of its questions are about documentation
+domains. That is test junk, not a defect, but it will look strange on screen.

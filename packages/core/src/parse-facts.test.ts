@@ -103,3 +103,50 @@ A claim`;
     expect(parseFactBlocks('')).toEqual({ facts: [], total: 0, failed: 0 });
   });
 });
+
+describe('the question line', () => {
+  it('parses a question alongside the claim', () => {
+    const raw = [
+      'category: PRICE',
+      'confidence: 0.9',
+      'source: Kek coklat 1kg - RM45',
+      'question: Berapa harga kek coklat 1kg?',
+      'Kek coklat 1kg berharga RM45.',
+    ].join('\n');
+
+    expect(parseFactBlocks(raw).facts[0]).toMatchObject({
+      claim: 'Kek coklat 1kg berharga RM45.',
+      question: 'Berapa harga kek coklat 1kg?',
+    });
+  });
+
+  it('yields a fact with a null question when the model omits the line', () => {
+    // Lenient, like every other field here. A missing question costs one entry
+    // in the ask bar's cycle; dropping the fact costs a price a customer needed.
+    const raw = ['category: PRICE', 'confidence: 0.9', 'source: x', 'Kek RM45.'].join('\n');
+
+    expect(parseFactBlocks(raw).facts[0]).toMatchObject({ claim: 'Kek RM45.', question: null });
+    expect(parseFactBlocks(raw).failed).toBe(0);
+  });
+
+  it('does not mistake a question line inside the claim for the field', () => {
+    // The field is recognised only before the claim begins, exactly like
+    // category, confidence and source. Otherwise a claim that happens to
+    // contain "question:" would eat itself.
+    const raw = [
+      'category: MISC',
+      'source: x',
+      'Our FAQ answers the question: do you deliver?',
+    ].join('\n');
+
+    expect(parseFactBlocks(raw).facts[0]).toMatchObject({
+      claim: 'Our FAQ answers the question: do you deliver?',
+      question: null,
+    });
+  });
+
+  it('treats an empty question line as no question at all', () => {
+    const raw = ['category: MISC', 'source: x', 'question:   ', 'A claim.'].join('\n');
+    expect(parseFactBlocks(raw).facts[0]).toMatchObject({ claim: 'A claim.', question: null });
+  });
+});
