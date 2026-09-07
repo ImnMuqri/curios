@@ -35,6 +35,20 @@ describe('the public page JS budget', () => {
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
       pages: Record<string, string[]>;
     };
+
+    if (Object.keys(manifest.pages).length === 0) {
+      // `next dev` overwrites this file with an empty one, so a manifest with
+      // no pages at all means the last thing to touch .next was the dev
+      // server, not a build. Skipped rather than failed: failing here would
+      // mean the suite breaks for anyone who ran `next dev` this week, and a
+      // test that cries wolf gets ignored on the day it is right.
+      console.warn('.next holds a dev-server manifest, not a build; run the build first');
+      return;
+    }
+
+    // A populated manifest that does not list this route is a different thing
+    // entirely -- the key shape changed, and the measurement is silently
+    // measuring nothing. That must fail.
     const files = manifest.pages['/[handle]/page'] ?? [];
     expect(files.length).toBeGreaterThan(0);
 

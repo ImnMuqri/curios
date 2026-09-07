@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
 
 export function ClaimForm({
@@ -33,31 +34,30 @@ export function ClaimForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <label htmlFor="handle">Handle</label>
-      <input
+      <Field
         id="handle"
-        type="text"
+        label="Handle"
         autoComplete="off"
         required
+        hint="This becomes your address. Letters and numbers, no spaces."
         value={handle}
-        onChange={(event) => setHandle(event.target.value)}
+        onChange={setHandle}
       />
 
-      <label htmlFor="displayName">Display name</label>
-      <input
+      <Field
         id="displayName"
-        type="text"
+        label="Display name"
         autoComplete="name"
         required
         value={displayName}
-        onChange={(event) => setDisplayName(event.target.value)}
+        onChange={setDisplayName}
       />
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <Callout tone="error">{error}</Callout> : null}
 
-      <button type="submit" disabled={busy}>
+      <Button type="submit" busy={busy}>
         {busy ? 'Claiming…' : 'Claim'}
-      </button>
+      </Button>
     </form>
   );
 }
