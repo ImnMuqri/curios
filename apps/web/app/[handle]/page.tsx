@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { getPublicPage } from '@curios/db-read';
+import { Chip, LinkRow } from '@curios/ui';
 import { AskBar } from './ask-bar.js';
+import styles from './page.module.css';
 
 // Node, not edge: this reads Postgres directly through the read-only role.
 export const runtime = 'nodejs';
@@ -10,36 +12,39 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
   const page = await getPublicPage(handle);
   if (!page) notFound();
 
+  // Facts written before the question column existed have none. They still
+  // render their claim -- the answer is the part a visitor came for -- they
+  // just cannot be offered as a question the bar cycles.
+  const questions = page.facts
+    .map((fact) => fact.question)
+    .filter((question): question is string => question !== null);
+
   // Server-rendered into real DOM. With JavaScript disabled this is still a
   // working link list with readable answers, which is also the SEO artifact.
   return (
-    <main style={{ maxWidth: 480, margin: '0 auto', padding: '32px 16px', minHeight: '100vh' }}>
-      <h1 style={{ fontSize: 32, margin: '0 0 4px' }}>{page.displayName}</h1>
-      {page.bio ? <p style={{ color: 'var(--muted)', marginTop: 0 }}>{page.bio}</p> : null}
+    <main className={styles.page}>
+      <h1 className={styles.name}>{page.displayName}</h1>
+      {page.bio ? <p className={styles.bio}>{page.bio}</p> : null}
 
-      <nav style={{ margin: '24px 0' }}>
+      <nav className={styles.links}>
         {page.links.map((link) => (
-          <a key={link.id} className="link-row" href={link.url}>
-            <span>{link.label}</span>
-            <span aria-hidden="true">→</span>
-          </a>
+          <LinkRow key={link.id} href={link.url} label={link.label} />
         ))}
       </nav>
 
       <section>
-        <h2 style={{ fontSize: 14, textTransform: 'uppercase', letterSpacing: '0.13em', color: 'var(--muted)' }}>
-          What people ask
-        </h2>
-        <ul style={{ listStyle: 'none', padding: 0 }}>
+        <h2 className={styles.sectionLabel}>What people ask</h2>
+        <ul className={styles.facts}>
           {page.facts.map((fact) => (
-            <li key={fact.id} style={{ padding: '8px 0', borderBottom: '1px solid var(--surface)' }}>
-              {fact.claim}
+            <li key={fact.id} className={styles.fact}>
+              {fact.question ? <Chip>{fact.question}</Chip> : null}
+              <p className={styles.claim}>{fact.claim}</p>
             </li>
           ))}
         </ul>
       </section>
 
-      <AskBar handle={page.handle} questions={page.facts.map((f) => f.claim)} />
+      <AskBar handle={page.handle} questions={questions} />
     </main>
   );
 }

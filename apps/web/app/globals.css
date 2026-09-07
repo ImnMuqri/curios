@@ -2,7 +2,7 @@
  * App-level only. The palette, the type scale and the element reset moved to
  * @curios/ui -- this file stopped being the design system when there was one.
  *
- * .link-row and .ask-bar below are on their way out too: components in
+ * .ask-bar below are on their way out too: components in
  * @curios/ui replace them, and they stay only until those land.
  */
 .link-row {

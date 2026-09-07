@@ -1,8 +1,0 @@
-/*
- * Deleted in task 5, once real modules exist. Present only so the "is actually
- * looking at files" guard in design-rules.test.ts has something to find, and
- * therefore proves it can find things.
- */
-.noop {
-  color: var(--ink);
-}
