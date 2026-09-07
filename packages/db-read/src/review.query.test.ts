@@ -42,6 +42,9 @@ beforeAll(async () => {
   theirs = b.accountId;
 
   await aFact(myPageId, 'kuih lapis is rm12');
+  // One with a question and one without, because every fact written before
+  // that column existed has none and the review screen must render both.
+  await aFact(myPageId, 'kek butter is rm95', { question: 'Berapa harga kek butter?' });
   await aFact(myPageId, 'we open at nine', { verified: true });
   await aFact(myPageId, 'we are halal certified', { rejectedAt: new Date() });
   await aFact(b.pageId, 'someone elses fact');
@@ -52,8 +55,9 @@ describe('getReviewQueue', () => {
     const queue = await getReviewQueue(mine, { limit: 50 });
 
     // Verified facts are done. Rejected facts were answered once already, and
-    // asking again is the thing the soft delete exists to prevent.
-    expect(queue.map((f) => f.claim)).toEqual(['kuih lapis is rm12']);
+    // asking again is the thing the soft delete exists to prevent. Both of
+    // these are still awaiting an answer -- oldest first, per the query.
+    expect(queue.map((f) => f.claim)).toEqual(['kuih lapis is rm12', 'kek butter is rm95']);
   });
 
   it('returns nothing for an account that owns none of them', async () => {
@@ -78,5 +82,18 @@ describe('getReviewQueue', () => {
     // A 25-page crawl yields well over a hundred facts. Review is a queue that
     // empties, not a wall that intimidates.
     expect(await getReviewQueue(mine, { limit: 3 })).toHaveLength(3);
+  });
+});
+
+describe('the question a customer would ask', () => {
+  it('comes back with the fact, and is null when the fact has none', async () => {
+    const facts = await getReviewQueue(mine, { limit: 50 });
+
+    // Both shapes present. Asserting only the happy one would let a select
+    // that quietly drops the column pass, since undefined and null both look
+    // empty on a screen.
+    expect(facts.every((fact) => 'question' in fact)).toBe(true);
+    expect(facts.some((fact) => fact.question === 'Berapa harga kek butter?')).toBe(true);
+    expect(facts.some((fact) => fact.question === null)).toBe(true);
   });
 });

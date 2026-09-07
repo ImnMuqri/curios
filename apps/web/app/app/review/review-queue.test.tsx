@@ -21,6 +21,7 @@ const facts = [
     claim: 'Kuih lapis is RM12 a box',
     sourceText: 'Our kuih lapis is RM12 per box, minimum two boxes.',
     sourceUrl: 'https://nadia.example/menu',
+    question: 'Berapa harga kuih lapis?',
     confidence: 0.91,
   },
   {
@@ -29,6 +30,9 @@ const facts = [
     claim: 'Open 9am to 6pm, Tuesday to Sunday',
     sourceText: 'We open 9-6, Tue-Sun.',
     sourceUrl: null,
+    // Null on purpose: every fact written before the question column existed
+    // looks like this, so the queue renders both shapes in one test.
+    question: null,
     confidence: 0.8,
   },
 ];

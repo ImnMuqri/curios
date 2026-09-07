@@ -9,6 +9,7 @@ const fact = {
   claim: 'Kuih lapis is RM12 a box',
   sourceText: 'Our kuih lapis is RM12 per box, minimum two boxes.',
   sourceUrl: 'https://nadia.example/menu',
+  question: 'Berapa harga kuih lapis?',
   confidence: 0.91,
 };
 

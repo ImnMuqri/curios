@@ -1,0 +1,63 @@
+.card {
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid var(--surface);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+/* The utility voice: this is metadata about the claim, not the claim. */
+.category {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+
+/*
+ * The question a customer will be shown, above the claim that answers it.
+ * The owner is verifying the pair, not the claim alone.
+ */
+.question {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  letter-spacing: -0.02em;
+}
+
+.claim {
+  margin: 0 0 12px;
+  font-size: var(--text-body);
+}
+
+.source {
+  margin: 0 0 4px;
+  padding-left: 10px;
+  border-left: 2px solid var(--surface);
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+
+.sourceLink {
+  font-size: var(--text-base);
+  color: var(--hijau);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.published {
+  padding: 12px 14px;
+  border: 1.5px solid var(--surface);
+  border-radius: 10px;
+  background: var(--surface);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  word-break: break-all;
+}

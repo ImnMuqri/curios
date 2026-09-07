@@ -5,6 +5,8 @@ export interface ReviewFact {
   id: string;
   category: FactCategory;
   claim: string;
+  /** What a customer would ask to reach this claim. Null for facts written before the column existed. */
+  question: string | null;
   sourceText: string | null;
   sourceUrl: string | null;
   confidence: number;
@@ -33,6 +35,7 @@ export async function getReviewQueue(
       id: true,
       category: true,
       claim: true,
+      question: true,
       sourceText: true,
       sourceUrl: true,
       confidence: true,
