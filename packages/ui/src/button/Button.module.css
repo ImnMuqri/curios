@@ -1,0 +1,49 @@
+.button {
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.primary {
+  background: var(--hijau);
+  color: var(--paper);
+}
+
+.primary:active:not(:disabled) {
+  background: var(--ink);
+}
+
+.secondary {
+  background: var(--paper);
+  border-color: var(--surface);
+  color: var(--ink);
+}
+
+.secondary:active:not(:disabled) {
+  background: var(--surface);
+}
+
+/* merah, and only here. It means destructive, and nothing else may borrow it. */
+.danger {
+  background: var(--paper);
+  border-color: var(--merah);
+  color: var(--merah);
+}
+
+.danger:active:not(:disabled) {
+  background: var(--merah);
+  color: var(--paper);
+}
