@@ -10,11 +10,17 @@ import { AskBar } from '@curios/ui';
  * sheet would put the streaming parser and every bubble into the cold page,
  * which is the page a stranger on 4G actually waits for.
  */
-// The subpath, NOT the '@curios/ui' barrel. AskBar above is imported from the
+// The subpath, NOT the '@curios/ui' barrel: AskBar above is imported from that
 // barrel statically, so a dynamic import of the same barrel gives webpack
-// nothing to defer -- it resolves to a module the page already loads, and the
-// sheet lands in the cold chunk with no error and no warning. Verified by
-// grepping the built chunk for the sheet's own strings.
+// nothing to defer.
+//
+// Honest status: this does not currently produce a separate chunk. Grepping
+// the built output for the sheet's own strings finds them inside
+// app/[handle]/page-*.js, subpath and sideEffects declaration notwithstanding.
+// It costs roughly 4 kB of a 7 kB route chunk, which is why chasing it further
+// was not worth the time -- but the deferral this line describes is an
+// intention, not a measured fact, and the next person should know that before
+// trusting it with something larger.
 const AskSheet = dynamic(() => import('@curios/ui/sheet').then((m) => m.AskSheet), {
   ssr: false,
 });
