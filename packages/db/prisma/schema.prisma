@@ -110,6 +110,7 @@ model Fact {
   page            Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
   category        FactCategory
   claim           String
+  question        String?
   normalizedClaim String
   sourceUrl       String?
   sourceText      String?

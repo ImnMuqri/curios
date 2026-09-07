@@ -99,6 +99,7 @@ export async function runExtraction(
         pageId: job.pageId,
         category: fact.category,
         claim: fact.claim,
+        question: fact.question,
         normalizedClaim: normalizeClaim(fact.claim),
         sourceUrl: job.sourceUrl,
         sourceText: fact.sourceText,

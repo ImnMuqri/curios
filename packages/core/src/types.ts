@@ -23,6 +23,8 @@ export interface ParsedFact {
   confidence: number;
   sourceText: string;
   claim: string;
+  /** The question a visitor would ask to reach this claim. Null when the model omitted it. */
+  question: string | null;
 }
 
 /**

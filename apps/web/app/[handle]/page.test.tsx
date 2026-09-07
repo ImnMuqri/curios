@@ -19,8 +19,15 @@ const page: PublicPage = {
     { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1 },
   ],
   facts: [
-    { id: 'f1', category: 'PRICE', claim: 'Kek 1kg butter starts at RM95' },
-    { id: 'f2', category: 'HOURS', claim: 'Open Monday to Saturday' },
+    {
+      id: 'f1',
+      category: 'PRICE',
+      claim: 'Kek 1kg butter starts at RM95',
+      question: 'Berapa harga kek butter 1kg?',
+    },
+    // Null on purpose: every fact written before the question column existed
+    // looks like this, and the page must not assume otherwise.
+    { id: 'f2', category: 'HOURS', claim: 'Open Monday to Saturday', question: null },
   ],
 };
 
