@@ -1,0 +1,17 @@
+/*
+ * Shared by the five screens outside the dashboard. They are one screen with
+ * five contents, so they get one stylesheet rather than five near-copies that
+ * drift apart.
+ */
+.alternative {
+  display: block;
+  margin-top: 20px;
+  color: var(--hijau);
+  font-size: var(--text-body);
+}
+
+.footnote {
+  margin-top: 24px;
+  font-size: var(--text-base);
+  color: var(--muted);
+}

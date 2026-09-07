@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Callout, Shell } from '@curios/ui';
 import { apiFetch } from '../../lib/api.js';
+import styles from '../auth.module.css';
 
 type Status = 'working' | 'confirmed' | 'failed';
 
@@ -41,22 +43,38 @@ export function VerifyClient({
 
   if (!token) {
     // Mail clients truncate long URLs. This is a real way to arrive here.
-    return <p role="alert">That link looks incomplete. Copy the whole link from the email, or request a new one.</p>;
+    return (
+      <Shell title="Verify your email">
+        <Callout tone="error">
+          That link looks incomplete. Copy the whole link from the email, or request a new one.
+        </Callout>
+      </Shell>
+    );
   }
 
   if (status === 'working') {
-    return <p role="status">Confirming your address…</p>;
+    return (
+      <Shell title="Verify your email">
+        <Callout tone="info">Confirming your address…</Callout>
+      </Shell>
+    );
   }
 
   if (status === 'failed') {
-    return <p role="alert">{error}</p>;
+    return (
+      <Shell title="Verify your email">
+        <Callout tone="error">{error}</Callout>
+      </Shell>
+    );
   }
 
   return (
-    <div>
-      <p role="status">Your email is confirmed.</p>
-      <a href="/signin">Sign in</a>
-    </div>
+    <Shell title="Verify your email">
+      <Callout tone="info">Your email is confirmed.</Callout>
+      <a className={styles.alternative} href="/signin">
+        Sign in
+      </a>
+    </Shell>
   );
 }
 
