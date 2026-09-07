@@ -2,7 +2,9 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { Button, Callout, Field, Shell } from '@curios/ui';
 import { apiFetch } from '../../lib/api.js';
+import styles from '../auth.module.css';
 import { oauthErrorMessage } from '../../lib/oauth-errors.js';
 
 export function SignInForm({
@@ -44,40 +46,53 @@ export function SignInForm({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
-      {cancelled ? <p role="status">Sign-in was cancelled. Try again when you are ready.</p> : null}
-      {oauthError ? <p role="alert">{oauthErrorMessage(oauthError)}</p> : null}
+    <Shell title="Sign in">
+      <form onSubmit={(event) => void submit(event)}>
+        {cancelled ? (
+          <Callout tone="info">Sign-in was cancelled. Try again when you are ready.</Callout>
+        ) : null}
+        {oauthError ? <Callout tone="error">{oauthErrorMessage(oauthError)}</Callout> : null}
 
-      <label htmlFor="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        autoComplete="email"
-        required
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-      />
+        <Field
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={setEmail}
+        />
+        <Field
+          id="password"
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+          value={password}
+          onChange={setPassword}
+        />
 
-      <label htmlFor="password">Password</label>
-      <input
-        id="password"
-        type="password"
-        autoComplete="current-password"
-        required
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-      />
+        {/* Rendered verbatim. The API returns one message for every cause on
+            purpose -- wrong password, unknown address, unverified -- and
+            rewriting it here to be more helpful would rebuild the account
+            enumeration oracle it was written to remove. */}
+        {error ? <Callout tone="error">{error}</Callout> : null}
 
-      {error ? <p role="alert">{error}</p> : null}
+        <Button type="submit" busy={busy}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </Button>
 
-      <button type="submit" disabled={busy}>
-        {busy ? 'Signing in…' : 'Sign in'}
-      </button>
-
-      <a href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google`}>
-        Continue with Google
-      </a>
-    </form>
+        {/* An anchor, never a button: this must leave the app for the API
+            origin, and a fetch would follow that redirect in the background
+            and hand back Google's HTML. */}
+        <a
+          className={styles.alternative}
+          href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google`}
+        >
+          Continue with Google
+        </a>
+      </form>
+    </Shell>
   );
 }
 

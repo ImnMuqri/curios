@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 // barrel's transitive node:crypto import is fine. The split between the two
 // is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
+import { Shell } from '@curios/ui';
 import { resolveOwner } from './session.js';
 
 /**
@@ -20,5 +21,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   if (!owner) redirect('/signin');
 
-  return <main className="app-shell">{children}</main>;
+  // Shell, not className="app-shell" -- that class was never defined in any
+  // stylesheet in this repo, so it styled nothing from the day it was written.
+  return <Shell>{children}</Shell>;
 }

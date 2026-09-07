@@ -1,5 +1,6 @@
 'use client';
 
+import { Callout } from '@curios/ui';
 import { useQuery } from '@tanstack/react-query';
 
 export type IngestionResult = {
@@ -40,19 +41,19 @@ export function JobStatus({
   });
 
   if (!data || data.status === 'QUEUED' || data.status === 'RUNNING') {
-    return <p role="status">Reading your website…</p>;
+    return <Callout tone="info">Reading your website…</Callout>;
   }
 
   if (data.status === 'FAILED') {
     // The API's own `error` string, not a generic apology -- it exists
     // precisely so this screen can say which of the many ways a crawl fails
     // actually happened.
-    return <p role="alert">{data.error}</p>;
+    return <Callout tone="error">{data.error}</Callout>;
   }
 
   return (
     <div>
-      <p role="status">Found {data.extractedCount} facts.</p>
+      <Callout tone="info">Found {data.extractedCount} facts.</Callout>
       <a href="/app/review">Review the facts</a>
     </div>
   );

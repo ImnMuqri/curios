@@ -1,5 +1,6 @@
 'use client';
 
+import { Callout } from '@curios/ui';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ReviewFact } from '@curios/db-read';
@@ -105,8 +106,11 @@ export function ReviewQueue({
   const visible = facts.filter((fact) => !acted.has(fact.id));
 
   if (visible.length === 0) {
-    // An instruction, not a mood.
-    return <p>Nothing left to review. Publish when you are ready.</p>;
+    // An instruction, not a mood. It stays inside ReviewQueue: Publish is
+    // deliberately its SIBLING in page.tsx, so publishing is offered whether
+    // or not facts remain -- moving this would hide the button exactly when
+    // F5 says it must stay visible.
+    return <Callout tone="info">Nothing left to review. Publish when you are ready.</Callout>;
   }
 
   return (

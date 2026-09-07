@@ -1,5 +1,7 @@
 'use client';
 
+import { Button, Callout } from '@curios/ui';
+import styles from './review.module.css';
 import { useState } from 'react';
 import { apiFetch } from '../../../lib/api.js';
 
@@ -58,18 +60,23 @@ export function PublishButton({
 
   if (published || done) {
     return (
-      <p>
-        Your page is live at <a href={publicUrl}>{publicUrl}</a>.
-      </p>
+      <div>
+        <Callout tone="info">Your page is live.</Callout>
+        {/* Mono and selectable: this is an address to copy into a bio, so it
+            is presented as data rather than as a sentence. */}
+        <p className={styles.published}>
+          <a href={publicUrl}>{publicUrl}</a>
+        </p>
+      </div>
     );
   }
 
   return (
     <div>
-      {error ? <p role="alert">{error}</p> : null}
-      <button type="button" disabled={busy} onClick={() => void handlePublish()}>
+      {error ? <Callout tone="error">{error}</Callout> : null}
+      <Button busy={busy} onClick={() => void handlePublish()}>
         {busy ? 'Publishing…' : 'Publish'}
-      </button>
+      </Button>
     </div>
   );
 }

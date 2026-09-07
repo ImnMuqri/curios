@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
 import { JobStatus, type IngestionResult } from './job-status.js';
 
@@ -46,21 +47,21 @@ export function IngestForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <label htmlFor="sourceUrl">Your website address</label>
-      <input
+      <Field
         id="sourceUrl"
+        label="Your website address"
         type="url"
         autoComplete="off"
         required
         value={sourceUrl}
-        onChange={(event) => setSourceUrl(event.target.value)}
+        onChange={setSourceUrl}
       />
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <Callout tone="error">{error}</Callout> : null}
 
-      <button type="submit" disabled={busy}>
+      <Button type="submit" busy={busy}>
         {busy ? 'Starting…' : 'Read my website'}
-      </button>
+      </Button>
     </form>
   );
 }

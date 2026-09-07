@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { Button, Callout, Field, Shell } from '@curios/ui';
 import { apiFetch } from '../../lib/api.js';
 
 export function ResetForm({
@@ -35,27 +36,35 @@ export function ResetForm({
     // A completed reset deletes every session for the account -- the person
     // resetting under suspicion of compromise needs to be told that
     // happened, not left guessing.
-    return <p role="status">Your password has changed, and you have been signed out everywhere.</p>;
+    return (
+      <Shell title="Password changed">
+        <Callout tone="info">
+          Your password has changed, and you have been signed out everywhere.
+        </Callout>
+      </Shell>
+    );
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
-      <label htmlFor="password">New password</label>
-      <input
-        id="password"
-        type="password"
-        autoComplete="new-password"
-        required
-        value={password}
-        onChange={(event) => setPassword(event.target.value)}
-      />
+    <Shell title="Choose a new password">
+      <form onSubmit={(event) => void submit(event)}>
+        <Field
+          id="password"
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          required
+          value={password}
+          onChange={setPassword}
+        />
 
-      {error ? <p role="alert">{error}</p> : null}
+        {error ? <Callout tone="error">{error}</Callout> : null}
 
-      <button type="submit" disabled={busy}>
-        {busy ? 'Changing…' : 'Change my password'}
-      </button>
-    </form>
+        <Button type="submit" busy={busy}>
+          {busy ? 'Changing…' : 'Change my password'}
+        </Button>
+      </form>
+    </Shell>
   );
 }
 

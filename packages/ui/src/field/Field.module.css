@@ -1,0 +1,38 @@
+.field {
+  margin-bottom: 16px;
+}
+
+/* The utility voice: mono, uppercase, tracked. It says "this is a slot". */
+.label {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+
+.control {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--surface);
+  border-radius: 10px;
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--ink);
+  transition: border-color 120ms ease;
+}
+
+.control:focus {
+  border-color: var(--hijau);
+}
+
+.hint {
+  margin: 6px 0 0;
+  font-size: var(--text-base);
+  color: var(--muted);
+}

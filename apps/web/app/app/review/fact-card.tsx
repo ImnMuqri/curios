@@ -1,5 +1,7 @@
 'use client';
 
+import { Button, Callout, Field } from '@curios/ui';
+import styles from './review.module.css';
 import { useState } from 'react';
 import type { ReviewFact } from '@curios/db-read';
 
@@ -115,65 +117,79 @@ export function FactCard({
 
   if (editing) {
     return (
-      <article>
-        <p>{fact.category}</p>
+      <article className={styles.card}>
+        <p className={styles.category}>{fact.category}</p>
 
-        <label htmlFor={`claim-${fact.id}`}>Claim</label>
-        <textarea
+        <Field
           id={`claim-${fact.id}`}
+          label="Claim"
+          multiline
           value={draft}
-          onChange={(event) => setDraft(event.target.value)}
+          onChange={setDraft}
         />
 
-        {error ? <p role="alert">{error}</p> : null}
+        {error ? <Callout tone="error">{error}</Callout> : null}
 
-        <button type="button" disabled={busy} onClick={() => void handleSave()}>
-          Save
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setDraft(fact.claim);
-            setEditing(false);
-          }}
-        >
-          Cancel
-        </button>
+        <div className={styles.actions}>
+          <Button busy={busy} onClick={() => void handleSave()}>
+            Save
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setDraft(fact.claim);
+              setEditing(false);
+            }}
+          >
+            Cancel
+          </Button>
+        </div>
       </article>
     );
   }
 
   return (
-    <article>
-      <p>{fact.category}</p>
-      <p>{fact.claim}</p>
+    <article className={styles.card}>
+      <p className={styles.category}>{fact.category}</p>
+      {/* The question above the claim that answers it: the owner is verifying
+          the pair, because the pair is what reaches a customer together. */}
+      {fact.question ? <p className={styles.question}>{fact.question}</p> : null}
+      <p className={styles.claim}>{fact.claim}</p>
 
       {/* FRONTEND.md: "the line it came from, for the review screen" --
           without it the owner is asked to approve a claim with no way to
           check it against anything. */}
-      {fact.sourceText ? <p>{fact.sourceText}</p> : null}
+      {fact.sourceText ? <p className={styles.source}>{fact.sourceText}</p> : null}
       {/* FRONTEND.md: "numbers link to their source; an unverifiable metric
           is decoration". */}
-      {fact.sourceUrl ? <a href={fact.sourceUrl}>Source</a> : null}
+      {fact.sourceUrl ? (
+        <a className={styles.sourceLink} href={fact.sourceUrl}>
+          Source
+        </a>
+      ) : null}
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <Callout tone="error">{error}</Callout> : null}
 
-      <button type="button" disabled={busy} onClick={() => void handleAccept()}>
-        Accept
-      </button>
-      <button
-        type="button"
-        disabled={busy}
-        onClick={() => {
-          setDraft(fact.claim);
-          setEditing(true);
-        }}
-      >
-        Edit
-      </button>
-      <button type="button" disabled={busy} onClick={() => void handleReject()}>
-        Reject
-      </button>
+      <div className={styles.actions}>
+        <Button busy={busy} onClick={() => void handleAccept()}>
+          Accept
+        </Button>
+        <Button
+          variant="secondary"
+          busy={busy}
+          onClick={() => {
+            setDraft(fact.claim);
+            setEditing(true);
+          }}
+        >
+          Edit
+        </Button>
+        {/* merah, because rejection is the destructive action on this screen
+            and that is the only thing merah is for. */}
+        <Button variant="danger" busy={busy} onClick={() => void handleReject()}>
+          Reject
+        </Button>
+      </div>
     </article>
   );
 }

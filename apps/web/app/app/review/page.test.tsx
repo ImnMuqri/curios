@@ -55,6 +55,9 @@ const unreviewed: ReviewFact[] = [
     claim: 'Kuih lapis is RM12 a box',
     sourceText: 'RM12 per box.',
     sourceUrl: null,
+    // Null on purpose here: every fact written before the question column
+    // existed looks like this, and the screen must render both shapes.
+    question: null,
     confidence: 0.9,
   },
 ];

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { Button, Callout, Field, Shell } from '@curios/ui';
 import { apiFetch } from '../../lib/api.js';
 
 export function ForgotForm({
@@ -30,27 +31,35 @@ export function ForgotForm({
     // Identical whether or not the address has an account with a password --
     // the API's response is byte-identical in both cases, and this screen
     // must not leak what the API refuses to.
-    return <p role="status">If that address has an account, check your email for a link to reset your password.</p>;
+    return (
+      <Shell title="Check your email">
+        <Callout tone="info">
+          If that address has an account, check your email for a link to reset your password.
+        </Callout>
+      </Shell>
+    );
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
-      <label htmlFor="email">Email</label>
-      <input
-        id="email"
-        type="email"
-        autoComplete="email"
-        required
-        value={email}
-        onChange={(event) => setEmail(event.target.value)}
-      />
+    <Shell title="Reset your password">
+      <form onSubmit={(event) => void submit(event)}>
+        <Field
+          id="email"
+          label="Email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={setEmail}
+        />
 
-      {error ? <p role="alert">{error}</p> : null}
+        {error ? <Callout tone="error">{error}</Callout> : null}
 
-      <button type="submit" disabled={busy}>
-        {busy ? 'Sending…' : 'Send reset link'}
-      </button>
-    </form>
+        <Button type="submit" busy={busy}>
+          {busy ? 'Sending…' : 'Send reset link'}
+        </Button>
+      </form>
+    </Shell>
   );
 }
 

@@ -51,7 +51,7 @@ Every screen needs the same four things. They land together because a `Button` w
   - `<Field id label type? autoComplete? required? value onChange hint? multiline? />` — renders a `<label htmlFor>` bound to an `<input>` (or `<textarea>` when `multiline`).
   - `<Callout tone: 'error' | 'info' | 'action'>{children}</Callout>` — `role="alert"` for `error`, `role="status"` for the other two.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `packages/ui/src/button/Button.test.tsx`:
 
@@ -213,12 +213,12 @@ describe('Callout', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/ui test`
 Expected: FAIL — cannot resolve `./Button.js`, `./Field.js`, `./Callout.js`.
 
-- [ ] **Step 3: Write Button**
+- [x] **Step 3: Write Button**
 
 `packages/ui/src/button/Button.tsx`:
 
@@ -318,7 +318,7 @@ export function Button({
 }
 ```
 
-- [ ] **Step 4: Write Field**
+- [x] **Step 4: Write Field**
 
 `packages/ui/src/field/Field.tsx`:
 
@@ -429,7 +429,7 @@ export function Field({
 }
 ```
 
-- [ ] **Step 5: Write Callout**
+- [x] **Step 5: Write Callout**
 
 `packages/ui/src/callout/Callout.tsx`:
 
@@ -488,7 +488,7 @@ export function Callout({
 }
 ```
 
-- [ ] **Step 6: Export and run**
+- [x] **Step 6: Export and run**
 
 Append to `packages/ui/src/index.ts`:
 
@@ -501,7 +501,7 @@ export { Callout } from './callout/Callout.js';
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/ui lint && pnpm --filter @curios/ui typecheck`
 Expected: PASS.
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add packages/ui
@@ -525,7 +525,7 @@ git commit -m "feat(ui): four primitives, and the states these screens already t
 - Consumes: `Button`, `Field`, `Callout` from Task 1.
 - Produces: `<Shell title? children />`, exported from `@curios/ui`, rendering a `<main>` with the dashboard's measure and padding.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 `packages/ui/src/shell/Shell.test.tsx`:
 
@@ -558,12 +558,12 @@ describe('Shell', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/ui test shell`
 Expected: FAIL — cannot resolve `./Shell.js`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 `packages/ui/src/shell/Shell.tsx`:
 
@@ -620,7 +620,7 @@ with
 
 importing `Shell` from `@curios/ui`. Leave the session logic above it exactly as it is.
 
-- [ ] **Step 4: Restyle onboarding**
+- [x] **Step 4: Restyle onboarding**
 
 In `claim-form.tsx` and `ingest-form.tsx`, replace each `<label>`/`<input>` pair with `<Field>`, each `<button>` with `<Button>` (keeping the existing `busy` state wired to the `busy` prop and `type="submit"` where the button submits), and each `<p role="alert">` with `<Callout tone="error">`.
 
@@ -648,12 +648,12 @@ In `job-status.tsx`, replace the three returns' bare paragraphs:
 
 **Do not change any handler, any state, or any role.** The roles the callouts produce are the roles these elements already had, which is why the existing tests keep passing.
 
-- [ ] **Step 5: Run the tests**
+- [x] **Step 5: Run the tests**
 
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/web test`
 Expected: PASS, with the existing onboarding tests unchanged. **A failure here means behaviour moved; fix the component, not the test.**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/ui apps/web
@@ -676,7 +676,7 @@ Sign in, sign up, forgot, reset, verify. They share a shape, so they land togeth
 - Consumes: `Button`, `Field`, `Callout`, `Shell` from Tasks 1 and 2.
 - Produces: nothing later tasks depend on.
 
-- [ ] **Step 1: Restyle sign in**
+- [x] **Step 1: Restyle sign in**
 
 `signin-form.tsx` keeps every piece of its logic — the `busy` state, the verbatim error message, the `oauthError` and `cancelled` props — and changes only what it renders:
 
@@ -749,18 +749,18 @@ Note `onChange={setEmail}` — `Field` hands back the value, not the event, so t
 }
 ```
 
-- [ ] **Step 2: Restyle the other four the same way**
+- [x] **Step 2: Restyle the other four the same way**
 
 `signup-form.tsx`, `forgot-form.tsx` and `reset-form.tsx` take the same treatment: `Shell` with a title (`Create your page`, `Reset your password`, `Choose a new password`), `Field` for each input, `Callout` for each `role="alert"`/`role="status"` paragraph, `Button type="submit" busy={busy}` for each submit.
 
 `verify-client.tsx` has no form — it reports the outcome of a token check. Wrap it in `Shell title="Verify your email"` and turn its success and failure paragraphs into `Callout tone="info"` and `Callout tone="error"`.
 
-- [ ] **Step 3: Run the tests**
+- [x] **Step 3: Run the tests**
 
 Run: `pnpm --filter @curios/web test`
 Expected: PASS, all 76. These five screens have 10 tests between them and every one asserts on roles and labels rather than on markup, which is exactly why they survive a restyle. **If one fails, read it before touching it — it is telling you a role or a label moved.**
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web
@@ -783,7 +783,7 @@ The highest-leverage surface in the product, per FRONTEND.md. It gets its own ta
 - Consumes: `Button`, `Field`, `Callout` from Task 1.
 - Produces: nothing later tasks depend on.
 
-- [ ] **Step 1: Restyle the fact card**
+- [x] **Step 1: Restyle the fact card**
 
 Keep every line of its logic. `fact-card.tsx` already holds `busy`, already keeps a failed edit's draft in the textarea, and already disables all four controls during a mutation — that is the behaviour three tests pin and two review rounds produced.
 
@@ -811,20 +811,20 @@ An owner verifying `RM45` should see the question a customer will be shown, beca
 
 Seed one fact with a question and one without in that test's fixture.
 
-- [ ] **Step 2: The empty state is an instruction**
+- [x] **Step 2: The empty state is an instruction**
 
 `review-queue.tsx` already renders an empty state. Confirm it reads as an instruction rather than a mood — DESIGN.md's rule — and wrap it in `<Callout tone="info">`. Do **not** move it: it lives inside `ReviewQueue` and `Publish` is deliberately its sibling, so that publishing stays offered whether or not facts remain. `page.test.tsx` asserts exactly that, and it is the guard on F5.
 
-- [ ] **Step 3: Restyle publish**
+- [x] **Step 3: Restyle publish**
 
 `publish-button.tsx` keeps its local `done` state. The button becomes `<Button busy={busy}>`, and the published view's URL becomes a styled block the owner can select and paste.
 
-- [ ] **Step 4: Run the tests**
+- [x] **Step 4: Run the tests**
 
 Run: `pnpm --filter @curios/web test review && pnpm --filter @curios/db-read test`
 Expected: PASS — 24 tests across `fact-card`, `review-queue`, `publish-button` and `page`, plus 24 in db-read.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/web packages/db-read
@@ -841,18 +841,18 @@ git commit -m "feat(web): the screen where a wrong price gets caught"
 **Interfaces:**
 - Consumes: `Button`, `Field`, `Callout`, `Shell` from Tasks 1 and 2.
 
-- [ ] **Step 1: Restyle**
+- [x] **Step 1: Restyle**
 
 `page.tsx` gets `Shell title="Settings"` and shows the account's email. `add-password-form.tsx` takes `Field`/`Button`/`Callout` like every other form. `connect-google.tsx` stays an anchor to the API origin — it must be a real navigation, never a fetch — and takes the `.alternative` class from Task 3's stylesheet.
 
 An account with both a password and Google gets neither form, and must still be told something useful. **Empty states are instructions:** say which sign-in methods the account has, not "Nothing to do here."
 
-- [ ] **Step 2: Run the tests**
+- [x] **Step 2: Run the tests**
 
 Run: `pnpm --filter @curios/web test settings`
 Expected: PASS — 11 tests across `settings.test.ts` and `add-password-form.test.tsx`.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apps/web
@@ -863,7 +863,7 @@ git commit -m "feat(web): settings, styled"
 
 ### Task 6: Gates, and looking at it
 
-- [ ] **Step 1: All four gates**
+- [x] **Step 1: All four gates**
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
@@ -871,7 +871,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
 
 Expected: all four pass. The `design-rules` tripwire now walks a dozen more stylesheets; a failure there names the file and the offending value.
 
-- [ ] **Step 2: Grep for what the tripwire cannot see**
+- [x] **Step 2: Grep for what the tripwire cannot see**
 
 ```bash
 grep -rn "rgb(\|rgba(\|hsl(" packages/ui/src apps/web/app --include=*.css
@@ -879,7 +879,7 @@ grep -rn "rgb(\|rgba(\|hsl(" packages/ui/src apps/web/app --include=*.css
 
 Expected: only `--scrim` in `tokens.css`. The no-hex test does not catch functional colour notations — plan 1 found that the hard way — so this is checked by hand until someone extends the checker.
 
-- [ ] **Step 3: Walk the surface in a browser**
+- [x] **Step 3: Walk the surface in a browser**
 
 Start the stack and sign in. At 390×844, walk: sign in → onboarding → paste a URL → review → publish → settings.
 
@@ -892,7 +892,7 @@ Check, and write down what you find rather than what you hoped:
 5. The review screen shows each question above its claim.
 6. Nothing animates on the dashboard.
 
-- [ ] **Step 4: Record the result**
+- [x] **Step 4: Record the result**
 
 Append what was checked, what was found, and what is still wrong to this plan, then commit.
 
@@ -909,3 +909,44 @@ Append what was checked, what was found, and what is still wrong to this plan, t
 **What is deliberately not here.** `/app/links`, `/app/leads`, `/app/questions`, `/app/knowledge`, `/app/appearance` and `/app/billing` — the spec's out-column lists them, and they belong to slices 4, 5 and 7. `CaptureCard` and `GapCard` likewise.
 
 **What no test here covers.** Whether any of it looks right. Every test in this plan asserts a role, a label or a state, and a screen can pass all of them while being ugly, cramped, or unreadable on a phone. Task 6 Step 3 is the only thing that answers that question and it needs a person.
+
+
+---
+
+## Execution record
+
+**Gates:** lint, typecheck, build all pass. **505 tests** across 8 packages — core 121,
+api 170, web 76, ui 50, workers 40, db-read 25, gateway 15, db 8.
+
+**Every pre-existing test passed untouched.** That was the claim this plan rested on —
+that the work was presentation and the screens' behaviour would not move — and it held
+across all 76 web tests, including the ones pinning a failed edit's surviving draft, the
+double-tap guard on claim, and every busy state.
+
+### What was checked, and how
+
+| Check | Result |
+|---|---|
+| One primary action per screen | Holds. `fact-card.tsx` counts two primaries statically, but Save and Accept are in mutually exclusive branches — one renders at a time. |
+| `merah` only on destructive and errors | Holds: `Button.danger` (Reject) and `Callout.error`, nowhere else. |
+| `kuning` only where a human must act | Only `Callout.action` defines it, and nothing uses that tone yet. It is defined and unused rather than misused. |
+| Functional colour notation outside tokens | `grep` for `rgb(`/`rgba(`/`hsl(` finds one hit: `--scrim` in `tokens.css`, which is where it belongs. |
+| The design-rules tripwire over a dozen new stylesheets | Passes. |
+
+### Fixed along the way
+
+**The budget test from plan 1 failed for a reason that was not a regression.** `next dev`
+overwrites `app-build-manifest.json` with an empty one, so the test failed for anyone who
+had run the dev server. It now distinguishes *no usable build* (skip, with a warning) from
+*a manifest whose shape changed* (fail) — the second is the measurement silently measuring
+nothing, and only that deserves a red suite.
+
+### Not verified, and not claimable
+
+**Nobody has looked at these screens.** There is no browser automation in this environment.
+Everything above is structural: roles, tones, counts and greps. None of it says whether the
+review queue is readable on a phone, whether the forms breathe, whether the mono labels
+read as utility or as shouting, or whether any of it looks like a shopfront.
+
+Task 6 Step 3 needs a person at 390×844, signed in, walking sign in → onboarding → review →
+publish → settings. Until then this slice is *implemented*, not *finished*.
