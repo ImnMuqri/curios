@@ -10,7 +10,14 @@ import { AskBar } from '@curios/ui';
  * sheet would put the streaming parser and every bubble into the cold page,
  * which is the page a stranger on 4G actually waits for.
  */
-const AskSheet = dynamic(() => import('@curios/ui').then((m) => m.AskSheet), { ssr: false });
+// The subpath, NOT the '@curios/ui' barrel. AskBar above is imported from the
+// barrel statically, so a dynamic import of the same barrel gives webpack
+// nothing to defer -- it resolves to a module the page already loads, and the
+// sheet lands in the cold chunk with no error and no warning. Verified by
+// grepping the built chunk for the sheet's own strings.
+const AskSheet = dynamic(() => import('@curios/ui/sheet').then((m) => m.AskSheet), {
+  ssr: false,
+});
 
 export function Ask({ handle, questions }: { handle: string; questions: string[] }) {
   const [seed, setSeed] = useState<string | null>(null);
