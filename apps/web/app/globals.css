@@ -1,26 +1,10 @@
-/* DESIGN.md tokens. Never hardcode a hex in a component. */
-:root {
-  --ink: #10231f;
-  --paper: #fafbfa;
-  --surface: #eff2f0;
-  --hijau: #0c7a62;
-  --mint: #e3f5ef;
-  --kuning: #f2a33c;
-  --merah: #d8452f;
-  --muted: #6b7c7f;
-}
-
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  background: var(--paper);
-  color: var(--ink);
-  font-family: Inter, system-ui, sans-serif;
-  font-size: 17px;
-  line-height: 1.5;
-}
-
+/*
+ * App-level only. The palette, the type scale and the element reset moved to
+ * @curios/ui -- this file stopped being the design system when there was one.
+ *
+ * .link-row and .ask-bar below are on their way out too: components in
+ * @curios/ui replace them, and they stay only until those land.
+ */
 .link-row {
   display: flex;
   align-items: center;

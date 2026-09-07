@@ -14,6 +14,7 @@
   "dependencies": {
     "@curios/core": "workspace:*",
     "@curios/db-read": "workspace:*",
+    "@curios/ui": "workspace:^",
     "@tanstack/react-query": "^5.62.0",
     "next": "^15.1.3",
     "react": "^19.0.0",
