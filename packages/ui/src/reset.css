@@ -1,0 +1,24 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: 1.5;
+}
+
+/*
+ * Never removed, only restyled. Deleting a focus ring is the most common way a
+ * design system quietly breaks a product for anyone using a keyboard, and it
+ * is always done for the same reason: it looked untidy on one screen.
+ */
+:focus-visible {
+  outline: 2px solid var(--hijau);
+  outline-offset: 2px;
+}
