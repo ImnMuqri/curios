@@ -1,0 +1,51 @@
+/*
+ * 1.5px, solid, never a shadow. DESIGN.md wants this to read like a stamped
+ * field on a form -- something you are meant to fill in.
+ */
+.bar {
+  position: sticky;
+  bottom: 16px;
+  display: block;
+  width: 100%;
+  padding: 14px 16px;
+  border: 1.5px solid var(--hijau);
+  border-radius: 12px;
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--muted);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: background 120ms ease;
+}
+
+.bar:active {
+  background: var(--mint);
+}
+
+.question {
+  display: block;
+}
+
+/*
+ * The soft vertical wipe, and only for people who have not asked for less
+ * motion. Declared inside no-preference rather than switched off in a reduce
+ * block, so the default for an unknown preference is stillness.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .question {
+    animation: wipe 320ms ease;
+  }
+
+  @keyframes wipe {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
