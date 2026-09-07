@@ -1,5 +1,6 @@
 'use client';
 
+import { Button, Callout, Field } from '@curios/ui';
 import { useState, type FormEvent } from 'react';
 import { apiFetch } from '../../../lib/api.js';
 
@@ -39,26 +40,30 @@ export function AddPasswordForm({
   }
 
   if (done) {
-    return <p role="status">Password added. You can now sign in with your email and this password.</p>;
+    return (
+      <Callout tone="info">
+        Password added. You can now sign in with your email and this password.
+      </Callout>
+    );
   }
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <label htmlFor="password">New password</label>
-      <input
+      <Field
         id="password"
+        label="New password"
         type="password"
         autoComplete="new-password"
         required
         value={password}
-        onChange={(event) => setPassword(event.target.value)}
+        onChange={setPassword}
       />
 
-      {error ? <p role="alert">{error}</p> : null}
+      {error ? <Callout tone="error">{error}</Callout> : null}
 
-      <button type="submit" disabled={busy}>
+      <Button type="submit" busy={busy}>
         {busy ? 'Adding…' : 'Add password'}
-      </button>
+      </Button>
     </form>
   );
 }

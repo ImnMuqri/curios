@@ -1,0 +1,19 @@
+.heading {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  letter-spacing: -0.02em;
+}
+
+.account {
+  margin: 0 0 24px;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+
+.alternative {
+  display: inline-block;
+  margin-top: 8px;
+  color: var(--hijau);
+  font-size: var(--text-body);
+}

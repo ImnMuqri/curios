@@ -1,3 +1,5 @@
+import styles from './settings.module.css';
+
 /**
  * A plain anchor to `GET /auth/google/link`, on the API origin, absolutely --
  * C3. Never a relative href: that endpoint does not exist on this Next app
@@ -12,5 +14,9 @@
 export function ConnectGoogle() {
   const href = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google/link`;
 
-  return <a href={href}>Connect Google</a>;
+  return (
+    <a className={styles.alternative} href={href}>
+      Connect Google
+    </a>
+  );
 }
