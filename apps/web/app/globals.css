@@ -1,32 +1,12 @@
 /*
- * App-level only. The palette, the type scale and the element reset moved to
- * @curios/ui -- this file stopped being the design system when there was one.
+ * App-level only, and currently empty.
  *
- * .ask-bar below are on their way out too: components in
- * @curios/ui replace them, and they stay only until those land.
+ * The palette, the type scale, the element reset and every component style now
+ * live in @curios/ui. This file stopped being the design system the moment
+ * there was one, and it is kept as the seam for rules that genuinely belong to
+ * this app rather than to the system -- not as a place to put a colour.
+ *
+ * Note for whoever styles the owner surface: `app/app/layout.tsx` renders
+ * className="app-shell", which nothing has ever defined, here or anywhere.
+ * It has styled nothing since it was written.
  */
-.link-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  min-height: 44px;
-  padding: 12px 16px;
-  margin-bottom: 8px;
-  background: var(--surface);
-  border-radius: 10px;
-  color: var(--ink);
-  text-decoration: none;
-}
-
-.ask-bar {
-  position: sticky;
-  bottom: 0;
-  width: 100%;
-  padding: 14px 16px;
-  border: 1.5px solid var(--hijau);
-  border-radius: 12px;
-  background: var(--paper);
-  text-align: left;
-  font: inherit;
-  color: var(--muted);
-}

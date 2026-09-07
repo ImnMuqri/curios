@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { getPublicPage } from '@curios/db-read';
 import { Chip, LinkRow } from '@curios/ui';
-import { AskBar } from './ask-bar.js';
+import { Ask } from './ask.js';
 import styles from './page.module.css';
 
 // Node, not edge: this reads Postgres directly through the read-only role.
@@ -44,7 +44,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         </ul>
       </section>
 
-      <AskBar handle={page.handle} questions={questions} />
+      <Ask handle={page.handle} questions={questions} />
     </main>
   );
 }

@@ -15,6 +15,12 @@
   --kuning: #f2a33c;
   --merah: #d8452f;
   --muted: #6b7c7f;
+  /*
+   * --ink at 45%. It lives here rather than in the sheet because the rule is
+   * that colour has one home, and a no-hex test that would have missed this
+   * spelling is a reason to be careful, not a reason to call it fine.
+   */
+  --scrim: rgb(16 35 31 / 45%);
 
   /* Six steps. A seventh is a smell -- see DESIGN.md, and the test. */
   --text-xs: 11px;
