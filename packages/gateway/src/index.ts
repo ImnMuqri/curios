@@ -6,5 +6,6 @@ export type {
   ExtractInput,
   ExtractOutput,
   ChatInput,
+  ChatMessage,
   ChatEvent,
 } from './types.js';

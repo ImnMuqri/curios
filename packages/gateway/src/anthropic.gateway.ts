@@ -106,17 +106,19 @@ export function createAnthropicGateway(apiKey: string): Gateway {
       };
     },
 
-    async *chat({ systemPrompt, question }: ChatInput): AsyncIterable<ChatEvent> {
+    async *chat({ systemPrompt, messages }: ChatInput): AsyncIterable<ChatEvent> {
       const started = Date.now();
 
       // Haiku 4.5 predates adaptive thinking and effort: pass neither.
       // cache_control sits at the end of the system prompt so the stable fact
-      // block is cached and the volatile question lands after the breakpoint.
+      // block is cached and the volatile conversation lands after the
+      // breakpoint -- which is exactly why history goes in `messages` and is
+      // never appended to the system prompt.
       const stream = client.messages.stream({
         model: CHAT_MODEL,
         max_tokens: 1024,
         system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
-        messages: [{ role: 'user', content: question }],
+        messages: messages.map((m) => ({ role: m.role, content: m.content })),
       });
 
       for await (const event of stream) {
