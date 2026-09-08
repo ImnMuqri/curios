@@ -44,7 +44,7 @@ The whole change in one place, with the meter invariant nailed down before anyth
   - `MAX_HISTORY_MESSAGES = 10`, exported from `chat.service.ts`.
   - A new `ConversationNotFoundError` — `statusCode = 404`, `code = 'CONVERSATION_NOT_FOUND'`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `apps/api/src/modules/chat/chat.service.test.ts`. Follow the file's existing fixture style; it already stubs `Gateway`.
 
@@ -174,12 +174,12 @@ build `deps` with this gateway and read `messages()` instead of `gateway.lastCha
 other tests keep using `gatewaySaying(...)`, which is unaffected by this change beyond its
 `chat` signature.
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/api test chat.service`
 Expected: FAIL — `conversationId` is not a property of the input, and `gatewayCapturingMessages` does not compile because `ChatInput` still has `question` rather than `messages`.
 
-- [ ] **Step 3: Widen the gateway's input**
+- [x] **Step 3: Widen the gateway's input**
 
 `packages/gateway/src/types.ts`:
 
@@ -223,7 +223,7 @@ Export `ChatMessage` from `packages/gateway/src/index.ts` beside the other types
 
 The rest of the method is unchanged.
 
-- [ ] **Step 4: Thread the service**
+- [x] **Step 4: Thread the service**
 
 In `apps/api/src/modules/chat/chat.service.ts`:
 
@@ -311,12 +311,12 @@ and pass `{ systemPrompt, messages }` to `gateway.chat`.
 
 **Leave the pinned-answer branch alone** except for the `conversationId` rename. It answers from a stored string, spends no tokens, and has no reason to see history.
 
-- [ ] **Step 5: Run to verify GREEN**
+- [x] **Step 5: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/api test chat.service && pnpm --filter @curios/gateway test`
 Expected: PASS. A gateway failure means its own test still builds a `ChatInput` with `question`.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add apps/api packages/gateway
@@ -336,7 +336,7 @@ git commit -m "feat(api): a conversation that remembers the last thing you asked
 - Consumes: `answer` and `ConversationNotFoundError` from Task 1.
 - Produces: `POST /chat/:handle` accepting `{ question: string; conversationId?: string }`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 Create `apps/api/src/modules/chat/chat.routes.test.ts`. It needs a real app and a fresh
 source address per request, both of which `ingest.authz.test.ts` already demonstrates —
@@ -451,12 +451,12 @@ function doneEventOf(payload: string): { conversationId: string } {
 }
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/api test chat.routes`
 Expected: FAIL — the body schema rejects the unknown `conversationId` key, or the second request starts a new conversation.
 
-- [ ] **Step 3: Widen the route**
+- [x] **Step 3: Widen the route**
 
 `apps/api/src/modules/chat/chat.routes.ts`:
 
@@ -500,12 +500,12 @@ Add `'CONVERSATION_NOT_FOUND'` to `DOMAIN_ERROR_CODES` in `apps/api/src/plugins/
         );
 ```
 
-- [ ] **Step 4: Run to verify GREEN**
+- [x] **Step 4: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/api test chat`
 Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api
@@ -533,7 +533,7 @@ The sheet reads the conversation id back off the `done` event it already parses,
 than from a second return value. The `done` event carries it, the parser already sees it,
 and a separate channel would be a second place for one fact to live and drift.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `packages/ui/src/sheet/AskSheet.test.tsx`:
 
@@ -621,12 +621,12 @@ Add to `packages/ui/src/sheet/AskSheet.test.tsx`:
   });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/ui test sheet`
 Expected: FAIL — `onAsk` is called with one argument and there is no composer to type into.
 
-- [ ] **Step 3: Rebuild the sheet around a thread**
+- [x] **Step 3: Rebuild the sheet around a thread**
 
 Replace `AskSheet`'s single `answer` string with a turn list, and extract the SSE reading into a helper inside the same file so the streaming loop is written once and used by both the seed question and every follow-up:
 
@@ -649,7 +649,7 @@ The composer is a labelled input and a Send button, disabled while `busy` or whi
 
 Keep the focus trap, the escape handler, `role="dialog"`, `aria-modal`, and the polite live region exactly as they are. The live region now announces the newest answer.
 
-- [ ] **Step 4: Wire the wrapper**
+- [x] **Step 4: Wire the wrapper**
 
 `apps/web/app/[handle]/ask.tsx` — `onAsk` gains the second argument and sends it:
 
@@ -673,13 +673,13 @@ Keep the focus trap, the escape handler, `role="dialog"`, `aria-modal`, and the 
   );
 ```
 
-- [ ] **Step 5: Run the tests and the budget**
+- [x] **Step 5: Run the tests and the budget**
 
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/web test && pnpm --filter @curios/web build && pnpm --filter @curios/web test budget`
 
 Expected: PASS. **The budget test is the one to watch** — the sheet just grew a thread and a composer, and it is inlined in the route chunk rather than split out. If it fails, report the number rather than raising the ceiling.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/ui apps/web
@@ -690,13 +690,13 @@ git commit -m "feat(ui): the sheet keeps the conversation"
 
 ### Task 4: Gates, and a real conversation
 
-- [ ] **Step 1: All four gates**
+- [x] **Step 1: All four gates**
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
 ```
 
-- [ ] **Step 2: Hold a conversation**
+- [x] **Step 2: Hold a conversation**
 
 Start the stack, open `/nadia`, tap the bar, and ask three questions where the third only makes sense given the first two — for example *"berapa harga kek butter?"*, then *"yang 2kg?"*, then *"boleh hantar ke Klang?"*.
 
@@ -716,7 +716,7 @@ docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT period, count
 
 **Report what you find, including anything you did not run.**
 
-- [ ] **Step 3: Record the result and commit**
+- [x] **Step 3: Record the result and commit**
 
 Append what was checked and what was found to this plan, then commit.
 
@@ -733,3 +733,67 @@ Append what was checked and what was found to this plan, then commit.
 **One thing deliberately not built.** Conversation continuity across a page reload. The id lives in React state, so closing the sheet and reopening it starts a new thread. Persisting it in `sessionStorage` is three lines and a decision about how long a stranger's conversation should follow them around, and the transcript this slice needs works without it.
 
 **What no test here covers.** Whether the model actually uses the history well — whether "yang 2kg" resolves to the right cake. That needs a real model and a person reading the answer, and it is Task 4 Step 2.
+
+
+---
+
+## Execution record
+
+**Gates:** lint, typecheck, build all pass. **520 tests** across 8 packages — core 121,
+api 180, web 76, ui 55, workers 40, db-read 25, gateway 15, db 8.
+
+### The conversation, held against the real model
+
+Three turns through `POST /chat/nadia` with Haiku answering:
+
+| Turn | Asked | Answered |
+|---|---|---|
+| 1 | *berapa harga kek butter?* | "Kek butter kami ada dua saiz: 1kg RM95, 2kg RM160…" |
+| 2 | *yang 2kg tu ada perisa pandan?* | "Saya tidak pasti sama ada **kek butter 2kg** tersedia… Biar saya tanya Nadia dulu." |
+| 3 | *boleh hantar ke Klang tak?* | "Boleh! Kami hantar ke kawasan Klang Valley…" |
+
+**Turn 2 is the whole point.** *"yang 2kg tu"* names nothing on its own; the model resolved
+it to "kek butter 2kg" from the previous turn, which it could not have done without the
+history. It then refused rather than guessing at the flavour, which is the
+tuned-towards-refusal behaviour BACKEND.md asks for, arriving for free.
+
+**The invariants, checked against the database rather than the screen:**
+
+| | Before | After three turns |
+|---|---|---|
+| `Conversation` rows | 8 | **9** |
+| `sum(UsageCounter.count)` | 8 | **9** |
+
+One conversation, one unit. Six `Message` rows in the thread, alternating.
+
+### What execution found
+
+**The route chunk grew from 7.16kB to 9.08kB** against the 40kB budget, which the sheet's
+thread and composer account for.
+
+**The conversation id had to be a ref, not state.** The streaming loop reads it after
+awaits, so a state value captured at render time is the one from before the previous answer
+finished — the second question would carry no id and silently open a third thread. Caught
+while writing the component rather than by a test, which would have shown it as a puzzling
+extra conversation row.
+
+**`chatRoutes` had no injection seam**, which is why it had never had a test file. Adding
+`ChatRouteOptions.gateway` was a prerequisite to testing the route at all, not a
+convenience.
+
+**Two things the new tests got wrong about themselves.** Every `apps/api` suite shares one
+database and `chat.service.test.ts` already owns the handle `nadia`, so the route test
+generates its own. And `recordModelCall` prices every call from a table and throws on a
+model name it does not know, so a stub calling itself `'stub'` failed the request *after*
+the answer had streamed — which looked exactly like a threading bug until the error was
+printed.
+
+### Not done
+
+Conversation continuity across a page reload: the id lives in React state, so closing the
+sheet and reopening it starts a new thread. Named in the plan as deliberately out, and
+still is.
+
+Nobody has used the sheet in a browser. The three turns above went through `curl` against
+the real API and the real model; the composer, the thread rendering and the focus behaviour
+are covered by unit tests and have not been seen by a person.
