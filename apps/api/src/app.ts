@@ -21,7 +21,7 @@ import {
   rateLimitPlugin,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
-import { chatRoutes } from './modules/chat/chat.routes.js';
+import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
 import { factRoutes } from './modules/facts/fact.routes.js';
 import {
@@ -48,6 +48,7 @@ function resolveTrustProxy(): FastifyServerOptions['trustProxy'] {
 export interface AppOverrides {
   auth?: AuthRouteOptions;
   ingest?: IngestRouteOptions;
+  chat?: ChatRouteOptions;
 }
 
 export async function buildApp(overrides: AppOverrides = {}) {
@@ -99,7 +100,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, chatPerPageLimit(app.rateLimitRedis));
     await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
-    await scope.register(chatRoutes);
+    await scope.register(chatRoutes, overrides.chat ?? {});
   });
 
   // Both limiters, because every route in here carries an email address to

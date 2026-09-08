@@ -20,6 +20,22 @@ export class PageNotFoundError extends Error {
   }
 }
 
+/**
+ * How much of a thread the model sees. Ten messages is five exchanges, which
+ * is past the point a visitor is still building on one topic and well inside
+ * what Haiku's context and this product's margin can carry.
+ */
+export const MAX_HISTORY_MESSAGES = 10;
+
+export class ConversationNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'CONVERSATION_NOT_FOUND';
+  constructor() {
+    super('That conversation has expired. Ask again to start a new one.');
+    this.name = 'ConversationNotFoundError';
+  }
+}
+
 /** Billing period. The anniversary rule arrives with billing; the shape does not change. */
 function currentPeriod(now = new Date()): string {
   return now.toISOString().slice(0, 7);
@@ -27,7 +43,7 @@ function currentPeriod(now = new Date()): string {
 
 export async function* answer(
   deps: ChatDeps,
-  input: { handle: string; question: string },
+  input: { handle: string; question: string; conversationId?: string },
 ): AsyncIterable<AnswerEvent> {
   const { prisma, gateway } = deps;
 
@@ -50,22 +66,44 @@ export async function* answer(
 
   if (!page) throw new PageNotFoundError();
 
-  const conversation = await prisma.conversation.create({
-    data: { pageId: page.id },
-    select: { id: true },
-  });
+  // Resolved before anything is written. A conversation id is a bearer token
+  // for a thread, so it is scoped to THIS page inside the query rather than
+  // checked after the read -- the same shape as every other ownership check in
+  // this codebase.
+  let conversationId: string;
+  let isNew = false;
 
-  // The meter counts conversations, not messages, so a chatty visitor costs the
-  // owner one unit. Atomic upsert: two visitors opening the sheet at once on a
-  // popular page would race a read-then-write.
-  await prisma.usageCounter.upsert({
-    where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
-    create: { pageId: page.id, period: currentPeriod(), count: 1 },
-    update: { count: { increment: 1 } },
-  });
+  if (input.conversationId === undefined) {
+    const created = await prisma.conversation.create({
+      data: { pageId: page.id },
+      select: { id: true },
+    });
+    conversationId = created.id;
+    isNew = true;
+  } else {
+    const existing = await prisma.conversation.findFirst({
+      where: { id: input.conversationId, pageId: page.id },
+      select: { id: true },
+    });
+    if (!existing) throw new ConversationNotFoundError();
+    conversationId = existing.id;
+  }
+
+  // Only on creation. The meter counts conversations, not messages, so a
+  // chatty visitor costs the owner one unit -- true by accident while every
+  // call created a conversation, and a rule now that threads are real. Atomic
+  // upsert: two visitors opening the sheet at once on a popular page would
+  // otherwise race a read-then-write.
+  if (isNew) {
+    await prisma.usageCounter.upsert({
+      where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
+      create: { pageId: page.id, period: currentPeriod(), count: 1 },
+      update: { count: { increment: 1 } },
+    });
+  }
 
   await prisma.message.create({
-    data: { conversationId: conversation.id, role: 'USER', content: input.question },
+    data: { conversationId, role: 'USER', content: input.question },
   });
 
   // A pinned answer wins over model output. Zero tokens, zero risk.
@@ -82,9 +120,9 @@ export async function* answer(
   if (pinned) {
     yield { type: 'text', text: pinned.answer };
     await prisma.message.create({
-      data: { conversationId: conversation.id, role: 'ASSISTANT', content: pinned.answer },
+      data: { conversationId, role: 'ASSISTANT', content: pinned.answer },
     });
-    yield { type: 'done', conversationId: conversation.id };
+    yield { type: 'done', conversationId };
     return;
   }
 
@@ -97,9 +135,23 @@ export async function* answer(
     neverSay: page.neverSay.map((n) => n.phrase),
   });
 
+  // Read back rather than concatenated in memory: one source of truth for what
+  // the thread contains, and slice 4's transcript reads the same rows. Oldest
+  // first, then the tail taken, so it is the oldest turns that fall off a long
+  // conversation.
+  const history = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: 'asc' },
+    select: { role: true, content: true },
+  });
+  const messages = history.slice(-MAX_HISTORY_MESSAGES).map((m) => ({
+    role: m.role === 'USER' ? ('user' as const) : ('assistant' as const),
+    content: m.content,
+  }));
+
   let text = '';
   try {
-    for await (const event of gateway.chat({ systemPrompt, question: input.question })) {
+    for await (const event of gateway.chat({ systemPrompt, messages })) {
       if (event.type === 'text') {
         text += event.text;
         yield { type: 'text', text: event.text };
@@ -109,7 +161,7 @@ export async function* answer(
         // numbers cannot drift between the two processes that produce them.
         await recordModelCall(prisma, {
           pageId: page.id,
-          conversationId: conversation.id,
+          conversationId,
           model: event.model,
           usage: event.usage,
           latencyMs: event.latencyMs,
@@ -126,7 +178,7 @@ export async function* answer(
     // and we simply do not know its usage.
     await recordModelCall(prisma, {
       pageId: page.id,
-      conversationId: conversation.id,
+      conversationId,
       model: CHAT_MODEL,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
       latencyMs: 0,
@@ -138,12 +190,12 @@ export async function* answer(
 
   await prisma.message.create({
     data: {
-      conversationId: conversation.id,
+      conversationId,
       role: 'ASSISTANT',
       content: text,
       citedFactIds: facts.map((f) => f.id),
     },
   });
 
-  yield { type: 'done', conversationId: conversation.id };
+  yield { type: 'done', conversationId };
 }

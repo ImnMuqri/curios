@@ -32,13 +32,17 @@ export function Ask({ handle, questions }: { handle: string; questions: string[]
   // this, so a fresh function every render would re-ask on every keystroke of
   // a streamed answer.
   const onAsk = useCallback(
-    async (question: string) => {
+    async (question: string, conversationId: string | null) => {
       const response = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/chat/${handle}`,
         {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ question }),
+          // Omitted rather than sent as null: the route's schema marks it
+          // optional, and null is not undefined to zod.
+          body: JSON.stringify(
+            conversationId === null ? { question } : { question, conversationId },
+          ),
         },
       );
       if (!response.ok) return null;

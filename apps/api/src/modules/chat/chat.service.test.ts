@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import type { Gateway } from '@curios/gateway';
-import { answer, PageNotFoundError } from './chat.service.js';
+import type { ChatMessage, Gateway } from '@curios/gateway';
+import { answer, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -46,6 +46,25 @@ function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
     },
   };
   return { gateway, prompt: () => captured };
+}
+
+/** Records the exact message list the gateway received, for asserting on the thread. */
+function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMessage[] } {
+  let captured: ChatMessage[] = [];
+  const gateway: Gateway = {
+    extract: vi.fn(),
+    chat: async function* ({ messages }) {
+      captured = messages;
+      yield { type: 'text' as const, text: 'an answer' };
+      yield {
+        type: 'done' as const,
+        usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        model: 'claude-haiku-4-5',
+        latencyMs: 700,
+      };
+    },
+  };
+  return { gateway, messages: () => captured };
 }
 
 async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
@@ -220,5 +239,109 @@ describe('answer', () => {
 
     expect(chatSpy).not.toHaveBeenCalled();
     expect(await prisma.conversation.count()).toBe(0);
+  });
+});
+
+describe('threading a conversation', () => {
+  function depsSaying(text = 'an answer') {
+    return { prisma, gateway: gatewaySaying(text) };
+  }
+
+  async function ask(deps: { prisma: typeof prisma; gateway: Gateway }, question: string, conversationId?: string) {
+    return collect(answer(deps, { handle: 'nadia', question, conversationId }));
+  }
+
+  function conversationIdOf(events: Array<{ type: string; conversationId?: string }>): string {
+    const done = events.find((e) => e.type === 'done');
+    if (!done?.conversationId) throw new Error('no done event with a conversation id');
+    return done.conversationId;
+  }
+
+  it('creates a conversation when given no id, and returns it', async () => {
+    const events = await ask(depsSaying(), 'harga?');
+    expect(events.find((e) => e.type === 'done')).toMatchObject({
+      type: 'done',
+      conversationId: expect.any(String),
+    });
+  });
+
+  it('appends to the conversation it is given rather than starting another', async () => {
+    const deps = depsSaying();
+    const conversationId = conversationIdOf(await ask(deps, 'harga kek?'));
+    await ask(deps, 'ada delivery?', conversationId);
+
+    // Four messages in one conversation, not two conversations of two.
+    expect(await prisma.conversation.count()).toBe(1);
+    expect(await prisma.message.count({ where: { conversationId } })).toBe(4);
+  });
+
+  it('counts one usage unit for a whole conversation, however chatty', async () => {
+    // THE invariant. chat.service.ts has always claimed "the meter counts
+    // conversations, not messages, so a chatty visitor costs the owner one
+    // unit" -- true only by accident while every call made a conversation.
+    // This is the meter the paid plan is priced against.
+    const deps = depsSaying();
+    const conversationId = conversationIdOf(await ask(deps, 'one'));
+    await ask(deps, 'two', conversationId);
+    await ask(deps, 'three', conversationId);
+
+    const counter = await prisma.usageCounter.findFirstOrThrow({});
+    expect(counter.count).toBe(1);
+  });
+
+  it('sends the earlier turns to the model, so a follow-up has context', async () => {
+    const captured = gatewayCapturingMessages();
+    const deps = { prisma, gateway: captured.gateway };
+
+    const conversationId = conversationIdOf(await ask(deps, 'harga kek?'));
+    await ask(deps, 'ada delivery?', conversationId);
+
+    // Without history the model answers "ada delivery?" with no idea what
+    // "delivery" refers to.
+    expect(captured.messages().map((m) => m.content)).toEqual([
+      'harga kek?',
+      'an answer',
+      'ada delivery?',
+    ]);
+  });
+
+  it('bounds the history it sends, so a long thread cannot grow the prompt forever', async () => {
+    const captured = gatewayCapturingMessages();
+    const deps = { prisma, gateway: captured.gateway };
+
+    const conversationId = conversationIdOf(await ask(deps, 'q0'));
+    for (let i = 1; i <= 8; i += 1) await ask(deps, `q${i}`, conversationId);
+
+    expect(captured.messages().length).toBeLessThanOrEqual(MAX_HISTORY_MESSAGES);
+    // The newest turn is always present; it is the oldest that falls off.
+    expect(captured.messages().at(-1)?.content).toBe('q8');
+  });
+
+  it('refuses a conversation belonging to another page', async () => {
+    // A conversation id is a bearer token for a thread. Without the page
+    // scope, one page's visitor could append to another page's conversation
+    // and read its answers back.
+    const other = await prisma.account.create({
+      data: {
+        email: 'other@example.com',
+        pages: {
+          create: { handle: 'someoneelse', skeleton: 'someoneelse', displayName: 'Other', published: true },
+        },
+      },
+      include: { pages: true },
+    });
+    const theirs = await prisma.conversation.create({
+      data: { pageId: other.pages[0]?.id ?? '' },
+    });
+
+    await expect(ask(depsSaying(), 'hi', theirs.id)).rejects.toMatchObject({
+      code: 'CONVERSATION_NOT_FOUND',
+    });
+  });
+
+  it('refuses a conversation id that does not exist', async () => {
+    await expect(ask(depsSaying(), 'hi', 'nope')).rejects.toMatchObject({
+      code: 'CONVERSATION_NOT_FOUND',
+    });
   });
 });

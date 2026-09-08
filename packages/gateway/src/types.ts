@@ -18,9 +18,19 @@ export interface ExtractOutput {
   latencyMs: number;
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface ChatInput {
   systemPrompt: string;
-  question: string;
+  /**
+   * The conversation so far, oldest first, ending with the question being
+   * asked now. Bounded by the caller -- this interface does not know what a
+   * sensible window is, and the caller does.
+   */
+  messages: ChatMessage[];
 }
 
 export type ChatEvent =
