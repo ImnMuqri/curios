@@ -1,19 +1,36 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { createAnthropicGateway } from '@curios/gateway';
+import { createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { answer } from './chat.service.js';
 
-export const chatRoutes: FastifyPluginAsyncZod = async (app) => {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
-  const gateway = createAnthropicGateway(apiKey);
+export interface ChatRouteOptions {
+  /**
+   * Injected only by tests. Without it this route builds its gateway from the
+   * environment at registration time, which made it the one route in the app
+   * that could not be tested without either an API key or real model spend.
+   */
+  gateway?: Gateway;
+}
+
+export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
+  let gateway = options.gateway;
+  if (!gateway) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
+    gateway = createAnthropicGateway(apiKey);
+  }
 
   app.post(
     '/chat/:handle',
     {
       schema: {
         params: z.object({ handle: z.string() }),
-        body: z.object({ question: z.string().min(1).max(500) }),
+        body: z.object({
+          question: z.string().min(1).max(500),
+          // Capped because it becomes a database lookup key. A cuid is 25
+          // characters; the ceiling is for whatever is not one.
+          conversationId: z.string().min(1).max(64).optional(),
+        }),
       },
     },
     async (request, reply) => {
@@ -43,7 +60,11 @@ export const chatRoutes: FastifyPluginAsyncZod = async (app) => {
 
       const stream = answer(
         { prisma: app.prisma, gateway },
-        { handle: request.params.handle, question: request.body.question },
+        {
+          handle: request.params.handle,
+          question: request.body.question,
+          conversationId: request.body.conversationId,
+        },
       );
 
       // Headers are already sent by the time a stream can fail, so a thrown
@@ -55,8 +76,20 @@ export const chatRoutes: FastifyPluginAsyncZod = async (app) => {
         }
       } catch (error) {
         request.log.error({ err: error }, 'chat stream failed');
+        // The code travels with the message so the client can act on one
+        // specific failure: a dead conversation id has to be dropped, or every
+        // later turn carries it and fails too. The visitor-facing text is the
+        // same either way -- only the client's own bookkeeping differs.
+        const code =
+          error instanceof Error && 'code' in error && typeof error.code === 'string'
+            ? error.code
+            : undefined;
         reply.raw.write(
-          `data: ${JSON.stringify({ type: 'error', message: 'That answer failed. Try again.' })}\n\n`,
+          `data: ${JSON.stringify({
+            type: 'error',
+            code,
+            message: 'That answer failed. Try again.',
+          })}\n\n`,
         );
       } finally {
         reply.raw.end();

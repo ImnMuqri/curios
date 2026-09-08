@@ -19,6 +19,12 @@ interface DomainError extends Error {
 // browser anyway. One list now, and this is it.
 export const DOMAIN_ERROR_CODES = new Set([
   'PAGE_NOT_FOUND',
+  // Reaches a client through the SSE error event rather than a status code:
+  // headers are already sent by the time the chat service can throw. Listed
+  // here anyway, because this set is the one answer to "which codes may reach
+  // a client", and the chat route reads it for the same reason the OAuth
+  // callback does.
+  'CONVERSATION_NOT_FOUND',
   'INVALID_SOURCE_URL',
   // Distinct from INVALID_SOURCE_URL on purpose: "that is not a website" and
   // "that website is somewhere we will not go" are different problems, and the

@@ -261,7 +261,7 @@ describe('threading a conversation', () => {
     const events = await ask(depsSaying(), 'harga?');
     expect(events.find((e) => e.type === 'done')).toMatchObject({
       type: 'done',
-      conversationId: expect.any(String) as unknown as string,
+      conversationId: expect.any(String),
     });
   });
 
