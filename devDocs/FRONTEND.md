@@ -53,8 +53,29 @@ FAQ content into real DOM. Hydrate chat on top. If JS fails, the page is still a
 working link list with readable answers. That fallback is also the SEO artifact and
 the over-cap degraded state, so it is one build serving three jobs.
 
-Budget, enforced in CI: **under 40KB JS before chat opens, LCP under 1.5s on Moto G.**
-Chat bundle loads on first interaction with the ask bar, never before.
+Budget. *Amended by slice 3, which measured this for the first time and found the
+original sentence could not be true.*
+
+**As enforced:** the public route's own chunk stays under **40KB**, asserted in
+`apps/web/app/[handle]/budget.test.ts` against the manifest Next emits after a build. It
+is 7.2KB today. That is the number this codebase moves when someone adds a dependency or
+statically imports something meant to be lazy.
+
+**Originally written:** *"under 40KB JS before chat opens"*, and it said "enforced in CI"
+from the day it was written, when nothing measured it at all. First Load JS for
+`/[handle]` is 105KB, of which 102KB is the shared React and Next runtime. React alone is
+roughly 50KB gzipped, so no amount of care in this codebase brings first load under 40KB
+while React is in the page. The budget was unmeetable, not merely unmet.
+
+**LCP under 1.5s on a Moto G** stays the target and is not machine-checked. Nothing here
+measures it, and claiming otherwise is what got the line above rewritten.
+
+Chat bundle loads on first interaction with the ask bar, never before. *Also not yet true:*
+the sheet is behind a `next/dynamic` import that does not currently produce a separate
+chunk, because `AskBar` is imported from the same `@curios/ui` barrel and webpack has
+nothing left to defer. It costs about 4KB of a 7KB chunk. See the comment in
+`apps/web/app/[handle]/ask.tsx`, which says so rather than describing a split that does
+not happen.
 
 ---
 
