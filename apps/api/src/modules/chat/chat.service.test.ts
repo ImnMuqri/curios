@@ -339,6 +339,46 @@ describe('threading a conversation', () => {
     });
   });
 
+  it('does not offer capture on the first turn', async () => {
+    const events = await ask(depsSaying(), 'nak order 2kg');
+    expect(events.find((e) => e.type === 'done')).toMatchObject({
+      intent: { qualified: false },
+    });
+  });
+
+  it('offers capture once the conversation is three specific turns deep', async () => {
+    const deps = depsSaying();
+    const conversationId = conversationIdOf(await ask(deps, 'ada kek butter?'));
+    await ask(deps, 'yang 2kg', conversationId);
+    const third = await ask(deps, 'hantar ke Klang 20 Mac boleh?', conversationId);
+
+    expect(third.find((e) => e.type === 'done')).toMatchObject({ intent: { qualified: true } });
+  });
+
+  it('never offers capture on a personal page', async () => {
+    // The mode gate, asserted through the service rather than the pure
+    // function, because this is where a page's mode is actually read.
+    await prisma.page.updateMany({ where: { handle: 'nadia' }, data: { mode: 'PERSONAL' } });
+    const deps = depsSaying();
+    const conversationId = conversationIdOf(await ask(deps, 'nak 2kg'));
+    await ask(deps, 'untuk 20 Mac', conversationId);
+    const third = await ask(deps, 'hantar ke Klang?', conversationId);
+
+    expect(third.find((e) => e.type === 'done')).toMatchObject({ intent: { qualified: false } });
+  });
+
+  it('counts only the visitor turns, not the answers', async () => {
+    // Six messages, three of them the assistant's, and the assistant is the
+    // one saying "RM160". If the answers were counted this would qualify, and
+    // so would every conversation on the page.
+    const deps = depsSaying('Kek butter 2kg RM160.');
+    const conversationId = conversationIdOf(await ask(deps, 'hai'));
+    await ask(deps, 'ada apa', conversationId);
+    const third = await ask(deps, 'ok', conversationId);
+
+    expect(third.find((e) => e.type === 'done')).toMatchObject({ intent: { qualified: false } });
+  });
+
   it('refuses a conversation id that does not exist', async () => {
     await expect(ask(depsSaying(), 'hi', 'nope')).rejects.toMatchObject({
       code: 'CONVERSATION_NOT_FOUND',
