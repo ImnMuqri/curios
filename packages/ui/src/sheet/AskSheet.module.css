@@ -30,11 +30,79 @@
   gap: 12px;
 }
 
-.question {
+.title {
   margin: 0;
   font-family: var(--font-display);
   font-size: var(--text-lg);
   letter-spacing: -0.02em;
+}
+
+.turn {
+  margin-top: 20px;
+}
+
+/* The visitor's own words, quieter than the answer to them. */
+.question {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+
+.composer {
+  margin-top: 24px;
+}
+
+.composerLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+
+.composerRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  min-height: 44px;
+  padding: 11px 14px;
+  border: 1.5px solid var(--surface);
+  border-radius: 10px;
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--ink);
+  transition: border-color 120ms ease;
+}
+
+.input:focus {
+  border-color: var(--hijau);
+}
+
+.send {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  background: var(--hijau);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--paper);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.send:disabled {
+  opacity: 0.55;
+  cursor: default;
 }
 
 .close {

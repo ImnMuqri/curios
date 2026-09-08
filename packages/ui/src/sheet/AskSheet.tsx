@@ -7,6 +7,12 @@ import styles from './AskSheet.module.css';
 /** Same copy for every failure path. The visitor never sees a raw error. */
 const FAILED = 'That answer failed. Try again.';
 
+/** One exchange. The list of these is the transcript an owner is eventually sent. */
+interface Turn {
+  question: string;
+  answer: string;
+}
+
 export interface AskSheetProps {
   /** The question the bar was showing when it was tapped. Asked immediately. */
   seed: string;
@@ -15,14 +21,30 @@ export interface AskSheetProps {
    * Injected rather than imported. It keeps NEXT_PUBLIC_API_URL and the fetch
    * out of this package, which is what lets the sheet be tested against a
    * hand-built ReadableStream instead of a network.
+   *
+   * `conversationId` is null for the first question of a thread and the id the
+   * server returned for every one after.
    */
-  onAsk: (question: string) => Promise<ReadableStream<Uint8Array> | null>;
+  onAsk: (
+    question: string,
+    conversationId: string | null,
+  ) => Promise<ReadableStream<Uint8Array> | null>;
 }
 
 export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
-  const [answer, setAnswer] = useState('');
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+
+  /**
+   * A ref, not state. The streaming loop below reads it after awaits, and a
+   * state value captured at render time would be the one from before the
+   * previous answer finished -- so the second question would carry no id and
+   * silently start a third thread.
+   */
+  const conversationId = useRef<string | null>(null);
 
   useEffect(() => {
     // The keyboard follows the eye. Without this, tab from an open sheet lands
@@ -30,14 +52,33 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
     closeButton.current?.focus();
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
+  /**
+   * One question, from the seed or from the composer. The streaming loop is the
+   * one this file has always had; its two comments are load-bearing and were
+   * paid for once already.
+   */
+  const send = useCallback(
+    async (question: string) => {
+      setBusy(true);
+      setTurns((previous) => [...previous, { question, answer: '' }]);
 
-    async function ask() {
+      const append = (text: string) =>
+        setTurns((previous) =>
+          previous.map((turn, index) =>
+            index === previous.length - 1 ? { ...turn, answer: turn.answer + text } : turn,
+          ),
+        );
+      const replace = (text: string) =>
+        setTurns((previous) =>
+          previous.map((turn, index) =>
+            index === previous.length - 1 ? { ...turn, answer: text } : turn,
+          ),
+        );
+
       try {
-        const body = await onAsk(seed);
+        const body = await onAsk(question, conversationId.current);
         if (!body) {
-          if (!cancelled) setAnswer(FAILED);
+          replace(FAILED);
           return;
         }
 
@@ -65,18 +106,24 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
                 type: string;
                 text?: string;
                 message?: string;
+                code?: string;
+                conversationId?: string;
               };
-              if (parsed.type === 'text' && parsed.text) {
-                const chunk = parsed.text;
-                if (!cancelled) setAnswer((a) => a + chunk);
-              }
+              if (parsed.type === 'text' && parsed.text) append(parsed.text);
               if (parsed.type === 'error') {
+                // The one error this acts on rather than only showing. A dead
+                // id must be dropped, or every later question carries it and
+                // fails for the same reason forever.
+                if (parsed.code === 'CONVERSATION_NOT_FOUND') conversationId.current = null;
                 // Replaces, not appends: a half-answer followed by an apology
                 // reads worse than the apology alone.
-                if (!cancelled) setAnswer(parsed.message ?? FAILED);
+                replace(parsed.message ?? FAILED);
                 return;
               }
-              if (parsed.type === 'done') return;
+              if (parsed.type === 'done') {
+                if (parsed.conversationId) conversationId.current = parsed.conversationId;
+                return;
+              }
             } catch {
               // A malformed or truncated payload is dropped; the stream continues.
             }
@@ -86,15 +133,22 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
         // A rejected fetch -- offline, DNS, a CORS regression -- throws rather
         // than resolving with response.ok === false. Uncaught, that is an
         // unhandled rejection and the visitor sees an empty sheet.
-        if (!cancelled) setAnswer(FAILED);
+        replace(FAILED);
+      } finally {
+        setBusy(false);
       }
-    }
+    },
+    [onAsk],
+  );
 
-    void ask();
-    return () => {
-      cancelled = true;
-    };
-  }, [seed, onAsk]);
+  useEffect(() => {
+    void send(seed);
+    // Empty on purpose: the seed is asked once, when the sheet opens.
+    // Depending on `send` or `seed` would re-ask the first question in the
+    // middle of a thread. (No eslint-disable here -- the react-hooks plugin
+    // is not configured in this package, so naming its rule is itself an
+    // error.)
+  }, []);
 
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -126,22 +180,59 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
     [onClose],
   );
 
+  const trimmed = draft.trim();
+
   return (
     <div className={styles.scrim} onKeyDown={onKeyDown}>
-      <div
-        ref={panel}
-        className={styles.panel}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Answer"
-      >
+      <div ref={panel} className={styles.panel} role="dialog" aria-modal="true" aria-label="Answer">
         <div className={styles.header}>
-          <p className={styles.question}>{seed}</p>
+          <p className={styles.title}>Ask about this page</p>
           <button ref={closeButton} type="button" className={styles.close} onClick={onClose}>
             Close
           </button>
         </div>
-        <AnswerBubble text={answer} />
+
+        {turns.map((turn, index) => (
+          <div key={`${index}-${turn.question}`} className={styles.turn}>
+            <p className={styles.question}>{turn.question}</p>
+            <AnswerBubble text={turn.answer} />
+          </div>
+        ))}
+
+        <form
+          className={styles.composer}
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (busy || trimmed === '') return;
+            setDraft('');
+            void send(trimmed);
+          }}
+        >
+          {/*
+            A visible label, not a placeholder. FRONTEND.md bans blank prompt
+            boxes, and a placeholder stops being a label the moment anyone
+            types into it.
+          */}
+          <label className={styles.composerLabel} htmlFor="ask-more">
+            Ask another question
+          </label>
+          <div className={styles.composerRow}>
+            <input
+              id="ask-more"
+              className={styles.input}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+            />
+            <button
+              type="submit"
+              className={styles.send}
+              disabled={busy || trimmed === ''}
+              aria-busy={busy || undefined}
+            >
+              Send
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );

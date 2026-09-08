@@ -18,7 +18,7 @@ describe('AskSheet', () => {
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
     render(<AskSheet seed="Berapa harga kek?" onClose={vi.fn()} onAsk={onAsk} />);
 
-    await waitFor(() => expect(onAsk).toHaveBeenCalledWith('Berapa harga kek?'));
+    await waitFor(() => expect(onAsk).toHaveBeenCalledWith('Berapa harga kek?', null));
   });
 
   it('renders streamed text as it arrives', async () => {
@@ -100,5 +100,100 @@ describe('AskSheet', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /close/i })).toHaveFocus(),
     );
+  });
+
+  it('sends no conversation id on the first question and the returned one after', async () => {
+    const onAsk = vi
+      .fn()
+      .mockResolvedValueOnce(
+        streamOf(
+          'data: {"type":"text","text":"RM45"}\n\n',
+          'data: {"type":"done","conversationId":"c1"}\n\n',
+        ),
+      )
+      .mockResolvedValueOnce(streamOf('data: {"type":"done","conversationId":"c1"}\n\n'));
+
+    render(<AskSheet seed="harga?" onClose={vi.fn()} onAsk={onAsk} />);
+    await waitFor(() => expect(onAsk).toHaveBeenCalledWith('harga?', null));
+
+    await userEvent.type(screen.getByLabelText(/ask/i), 'ada delivery?');
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    await waitFor(() => expect(onAsk).toHaveBeenLastCalledWith('ada delivery?', 'c1'));
+  });
+
+  it('keeps every turn on screen, because the thread is the point', async () => {
+    const onAsk = vi
+      .fn()
+      .mockResolvedValueOnce(
+        streamOf(
+          'data: {"type":"text","text":"RM45 sekilo"}\n\n',
+          'data: {"type":"done","conversationId":"c1"}\n\n',
+        ),
+      )
+      .mockResolvedValueOnce(
+        streamOf(
+          'data: {"type":"text","text":"Ya, boleh"}\n\n',
+          'data: {"type":"done","conversationId":"c1"}\n\n',
+        ),
+      );
+
+    render(<AskSheet seed="harga?" onClose={vi.fn()} onAsk={onAsk} />);
+    await waitFor(() => expect(screen.getByText(/RM45 sekilo/)).toBeInTheDocument());
+
+    await userEvent.type(screen.getByLabelText(/ask/i), 'ada delivery?');
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+
+    // The first answer is still on screen. A sheet that replaces it has no
+    // transcript to send an owner, which is the whole reason for this plan.
+    await waitFor(() => expect(screen.getByText(/Ya, boleh/)).toBeInTheDocument());
+    expect(screen.getByText(/RM45 sekilo/)).toBeInTheDocument();
+    expect(screen.getByText('harga?')).toBeInTheDocument();
+    expect(screen.getByText('ada delivery?')).toBeInTheDocument();
+  });
+
+  it('will not send an empty question', async () => {
+    const onAsk = vi
+      .fn()
+      .mockResolvedValue(streamOf('data: {"type":"done","conversationId":"c1"}\n\n'));
+    render(<AskSheet seed="q" onClose={vi.fn()} onAsk={onAsk} />);
+    await waitFor(() => expect(onAsk).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+    expect(onAsk).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not send while an answer is still streaming', async () => {
+    // Two overlapping streams would interleave their text into one bubble.
+    const onAsk = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<AskSheet seed="q" onClose={vi.fn()} onAsk={onAsk} />);
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /send/i })).toBeDisabled());
+  });
+
+  it('starts a fresh thread when the conversation has expired', async () => {
+    // CONVERSATION_NOT_FOUND is the one error the client acts on rather than
+    // only displaying: the stored id is dead, so the next question must not
+    // carry it or every later turn fails for the same reason.
+    const onAsk = vi
+      .fn()
+      .mockResolvedValueOnce(streamOf('data: {"type":"done","conversationId":"c1"}\n\n'))
+      .mockResolvedValueOnce(
+        streamOf(
+          'data: {"type":"error","code":"CONVERSATION_NOT_FOUND","message":"That answer failed. Try again."}\n\n',
+        ),
+      )
+      .mockResolvedValueOnce(streamOf('data: {"type":"done","conversationId":"c2"}\n\n'));
+
+    render(<AskSheet seed="q" onClose={vi.fn()} onAsk={onAsk} />);
+    await waitFor(() => expect(onAsk).toHaveBeenCalledTimes(1));
+
+    await userEvent.type(screen.getByLabelText(/ask/i), 'two');
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+    await waitFor(() => expect(onAsk).toHaveBeenCalledTimes(2));
+
+    await userEvent.type(screen.getByLabelText(/ask/i), 'three');
+    await userEvent.click(screen.getByRole('button', { name: /send/i }));
+    await waitFor(() => expect(onAsk).toHaveBeenLastCalledWith('three', null));
   });
 });
