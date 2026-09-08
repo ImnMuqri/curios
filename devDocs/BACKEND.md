@@ -20,6 +20,11 @@ PinnedAnswer   exact-match override, always wins over model output
 NeverSay       forbidden topics and phrases, injected as a hard constraint
 Conversation   session, visitor fingerprint, referrer, resolved
 Message        role, content, cited fact ids, intent tags
+               NOTE: citedFactIds currently stores EVERY verified fact on the
+               page, not the ones the answer used -- chat.service.ts writes
+               facts.map(f => f.id). Nothing depends on it, so nothing is
+               broken, but the column reads like data and is not. Real
+               citation tracking needs the model to name what it used.
 Lead           phone, extracted slots, score, status, conversationId
 Question       clustered text, ask count, answered flag, faqSlug
 UsageCounter   pageId + period, conversation count. the meter.
@@ -237,7 +242,19 @@ Tune towards refusal and let the Questions tab close the gaps.
 
 ### Intent block
 
-Returned alongside the answer, kept out of the answer's own generation path:
+*Amended by slice 4. The original design is kept below the ruling, because what it traded
+away is the useful part of the record.*
+
+**As built:** the API returns `{ "intent": { "qualified": true } }` on the chat stream's
+`done` event, and the server computes that boolean from signals it already has — the page
+is `BUSINESS`, the conversation has three or more visitor turns, and at least one of the
+visitor's own messages carries a specificity marker (a quantity, a number, a date-shaped
+token). No model call is involved. Slots are extracted by one model call over the whole
+transcript at the moment a lead is captured, which is rare, rather than per turn, which is
+not.
+
+**Originally specified**, and worth keeping because the shape is right if the constraints
+ever change:
 
 ```json
 { "qualified": true,
@@ -246,9 +263,24 @@ Returned alongside the answer, kept out of the answer's own generation path:
   "confidence": 0.81 }
 ```
 
+**Why it changed.** A per-turn intent block taxes every conversation to serve the rare one,
+and most conversations are somebody checking Sunday hours — the wrong side of an
+architecture whose margin is Haiku-for-chat. Getting structured JSON out of a streaming
+answer needs a sentinel and a tail buffer, whose failure mode is a visitor watching
+`<intent>{"qualified"` appear mid-sentence. And "be conservative", two paragraphs below,
+is a requirement far easier to enforce and tune in a unit-tested function than in a model's
+confidence score.
+
+**What was given up, stated plainly:** `feasibility_phrasing` and the semantic half of
+`own_specifics`. A rule reading the visitor's text for a number is cruder than a model
+reading it for intent, and it will under-capture. That is the direction this section
+already says to err in.
+
 Server decides capture, using signals plus turn count plus link taps. Anti-signals
 (hours only, single turn, obvious AI-poking) suppress it. Be conservative. An
 inflated lead count is how you lose trust in every other number you show.
+
+**Link taps are not tracked**, so that signal is unused. Recorded rather than implied.
 
 ---
 
