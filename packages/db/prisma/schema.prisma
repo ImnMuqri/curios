@@ -38,6 +38,12 @@ enum MessageRole {
   ASSISTANT
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CLOSED
+}
+
 enum AuthTokenKind {
   EMAIL_VERIFICATION
   PASSWORD_RESET
@@ -90,6 +96,7 @@ model Page {
   usageCounters UsageCounter[]
 
   @@unique([accountId])
+  leads         Lead[]
 }
 
 model Link {
@@ -152,6 +159,7 @@ model Conversation {
   referrer  String?
   createdAt DateTime  @default(now())
   messages  Message[]
+  lead      Lead?
 
   @@index([pageId, createdAt])
 }
@@ -251,4 +259,28 @@ model AuthToken {
 
   @@index([accountId, kind])
   @@index([expiresAt])
+}
+
+model Lead {
+  id             String       @id @default(cuid())
+  pageId         String
+  page           Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  // Unique, not merely indexed. BACKEND.md's "one capture attempt per
+  // conversation" is an invariant, and an invariant the database enforces
+  // cannot be skipped by a code path somebody adds later.
+  conversationId String       @unique
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  /// E.164, one stored form. normalizeMalaysianPhone in packages/core owns that form.
+  phone          String
+  /// { product, date, location }, filled by the extraction job. Null until it runs.
+  slots          Json?
+  /// How many slots are filled. A number an owner can verify by looking, not a model opinion.
+  score          Int          @default(0)
+  status         LeadStatus   @default(NEW)
+  createdAt      DateTime     @default(now())
+
+  @@index([pageId, createdAt])
+  // The 24-hour dedupe reads this. It cannot be a unique index, because the
+  // rule has a time window and an index does not.
+  @@index([pageId, phone, createdAt])
 }

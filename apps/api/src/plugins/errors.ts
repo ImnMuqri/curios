@@ -33,6 +33,13 @@ export const DOMAIN_ERROR_CODES = new Set([
   // see is fine. What it concedes -- that a caller learns whether a name
   // resolves privately -- is argued in devDocs/ssrf-ingest-guard-design.md.
   'BLOCKED_SOURCE_URL',
+  // The three a visitor can see on the capture card. Each says what to do
+  // next: fix the number, keep chatting, or stop because the shop already has
+  // it. A generic INTERNAL_ERROR on any of them would read as the product
+  // being broken at the moment it is trying to earn its keep.
+  'INVALID_PHONE',
+  'NOT_QUALIFIED',
+  'ALREADY_CAPTURED',
   'EMAIL_NOT_VERIFIED',
   'RATE_LIMITED',
   'UNAUTHENTICATED',

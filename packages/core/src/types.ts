@@ -57,6 +57,17 @@ export interface IngestJobData {
  * refuses to.
  */
 export const MAIL_QUEUE = 'mail';
+export const LEAD_QUEUE = 'lead';
+
+/**
+ * Slot extraction plus the owner's notification, in that order. Extraction is
+ * a model call, and nothing generative runs inside an HTTP request -- doing it
+ * here also means the mail is only built once the slots exist, so an owner
+ * never receives a second email correcting the first.
+ */
+export interface LeadJobData {
+  leadId: string;
+}
 
 export interface MailJobData {
   to: string;

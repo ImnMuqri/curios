@@ -1,10 +1,11 @@
 export { normalizeClaim } from './normalize.js';
-export { FACT_CATEGORIES, INGEST_QUEUE, MAIL_QUEUE } from './types.js';
+export { FACT_CATEGORIES, INGEST_QUEUE, LEAD_QUEUE, MAIL_QUEUE } from './types.js';
 export type {
   FactCategory,
   SourceDocument,
   ParsedFact,
   IngestJobData,
+  LeadJobData,
   MailJobData,
 } from './types.js';
 export { parseFactBlocks } from './parse-facts.js';
