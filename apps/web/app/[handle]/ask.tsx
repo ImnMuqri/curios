@@ -14,13 +14,13 @@ import { AskBar } from '@curios/ui';
 // barrel statically, so a dynamic import of the same barrel gives webpack
 // nothing to defer.
 //
-// Honest status: this does not currently produce a separate chunk. Grepping
-// the built output for the sheet's own strings finds them inside
-// app/[handle]/page-*.js, subpath and sideEffects declaration notwithstanding.
-// It costs roughly 4 kB of a 7 kB route chunk, which is why chasing it further
-// was not worth the time -- but the deferral this line describes is an
-// intention, not a measured fact, and the next person should know that before
-// trusting it with something larger.
+// Honest status: this still does not defer anything. It now produces a
+// separate file -- webpack hoists the sheet into a shared chunk once the
+// capture card joins it -- but that chunk is listed in the route's first load,
+// so it downloads with the page regardless. The deferral this line describes
+// remains an intention rather than a measured fact, and the route-chunk metric
+// got smaller when the code moved without getting lighter, which is why
+// budget.test.ts now also ratchets total first-load JS.
 const AskSheet = dynamic(() => import('@curios/ui/sheet').then((m) => m.AskSheet), {
   ssr: false,
 });
