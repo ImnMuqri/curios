@@ -22,6 +22,7 @@ import {
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
+import { leadRoutes } from './modules/leads/lead.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
 import { factRoutes } from './modules/facts/fact.routes.js';
 import {
@@ -101,6 +102,15 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, chatPerPageLimit(app.rateLimitRedis));
     await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
     await scope.register(chatRoutes, overrides.chat ?? {});
+  });
+
+  // Its own scope, with the per-IP limiter only. It cannot join the chat scope
+  // above: chatPerPageLimit's key generator reads the `handle` route param,
+  // which /leads does not have, so every request here would key on undefined
+  // and share one bucket across every visitor on every page.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
+    await scope.register(leadRoutes);
   });
 
   // Both limiters, because every route in here carries an email address to

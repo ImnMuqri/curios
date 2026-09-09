@@ -1,11 +1,11 @@
-import { normalizeClaim } from '@curios/core';
+import { normalizeClaim, qualifies } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import { buildSystemPrompt } from './prompt.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
-  | { type: 'done'; conversationId: string };
+  | { type: 'done'; conversationId: string; intent: { qualified: boolean } };
 
 export interface ChatDeps {
   prisma: PrismaClient;
@@ -55,6 +55,8 @@ export async function* answer(
     select: {
       id: true,
       displayName: true,
+      // Read for qualification: a personal page never offers the capture card.
+      mode: true,
       facts: {
         where: { verified: true },
         select: { id: true, category: true, claim: true },
@@ -106,6 +108,30 @@ export async function* answer(
     data: { conversationId, role: 'USER', content: input.question },
   });
 
+  // Read here, above the pinned branch, so both paths share one source of
+  // truth -- a pinned answer is still a turn in a conversation and still has
+  // to say whether the card may be offered.
+  const history = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: 'asc' },
+    select: { role: true, content: true },
+  });
+  const messages = history.slice(-MAX_HISTORY_MESSAGES).map((m) => ({
+    role: m.role === 'USER' ? ('user' as const) : ('assistant' as const),
+    content: m.content,
+  }));
+
+  // Whether the capture card may be offered, computed from the visitor's own
+  // turns. Deliberately NOT from Message.citedFactIds: that column stores
+  // every verified fact on the page rather than the ones an answer used, so a
+  // signal drawn from it would be true of every message ever sent.
+  const intent = {
+    qualified: qualifies({
+      mode: page.mode,
+      visitorMessages: history.filter((m) => m.role === 'USER').map((m) => m.content),
+    }),
+  };
+
   // A pinned answer wins over model output. Zero tokens, zero risk.
   const pinned = await prisma.pinnedAnswer.findUnique({
     where: {
@@ -122,7 +148,7 @@ export async function* answer(
     await prisma.message.create({
       data: { conversationId, role: 'ASSISTANT', content: pinned.answer },
     });
-    yield { type: 'done', conversationId };
+    yield { type: 'done', conversationId, intent };
     return;
   }
 
@@ -134,20 +160,6 @@ export async function* answer(
     facts,
     neverSay: page.neverSay.map((n) => n.phrase),
   });
-
-  // Read back rather than concatenated in memory: one source of truth for what
-  // the thread contains, and slice 4's transcript reads the same rows. Oldest
-  // first, then the tail taken, so it is the oldest turns that fall off a long
-  // conversation.
-  const history = await prisma.message.findMany({
-    where: { conversationId },
-    orderBy: { createdAt: 'asc' },
-    select: { role: true, content: true },
-  });
-  const messages = history.slice(-MAX_HISTORY_MESSAGES).map((m) => ({
-    role: m.role === 'USER' ? ('user' as const) : ('assistant' as const),
-    content: m.content,
-  }));
 
   let text = '';
   try {
@@ -197,5 +209,5 @@ export async function* answer(
     },
   });
 
-  yield { type: 'done', conversationId };
+  yield { type: 'done', conversationId, intent };
 }

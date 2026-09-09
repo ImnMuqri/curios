@@ -44,7 +44,12 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         </ul>
       </section>
 
-      <Ask handle={page.handle} questions={questions} />
+      <Ask
+        handle={page.handle}
+        questions={questions}
+        shopName={page.displayName}
+        canCapture={page.mode === 'BUSINESS'}
+      />
     </main>
   );
 }

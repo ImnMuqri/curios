@@ -27,6 +27,7 @@ const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 function stubGateway(): Gateway {
   return {
     extract: vi.fn(),
+    slots: vi.fn(),
     chat: async function* () {
       yield { type: 'text' as const, text: 'Kek butter 1kg RM95.' };
       yield {

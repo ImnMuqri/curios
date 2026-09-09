@@ -14,18 +14,29 @@ import { AskBar } from '@curios/ui';
 // barrel statically, so a dynamic import of the same barrel gives webpack
 // nothing to defer.
 //
-// Honest status: this does not currently produce a separate chunk. Grepping
-// the built output for the sheet's own strings finds them inside
-// app/[handle]/page-*.js, subpath and sideEffects declaration notwithstanding.
-// It costs roughly 4 kB of a 7 kB route chunk, which is why chasing it further
-// was not worth the time -- but the deferral this line describes is an
-// intention, not a measured fact, and the next person should know that before
-// trusting it with something larger.
+// Honest status: this still does not defer anything. It now produces a
+// separate file -- webpack hoists the sheet into a shared chunk once the
+// capture card joins it -- but that chunk is listed in the route's first load,
+// so it downloads with the page regardless. The deferral this line describes
+// remains an intention rather than a measured fact, and the route-chunk metric
+// got smaller when the code moved without getting lighter, which is why
+// budget.test.ts now also ratchets total first-load JS.
 const AskSheet = dynamic(() => import('@curios/ui/sheet').then((m) => m.AskSheet), {
   ssr: false,
 });
 
-export function Ask({ handle, questions }: { handle: string; questions: string[] }) {
+export function Ask({
+  handle,
+  questions,
+  shopName,
+  canCapture,
+}: {
+  handle: string;
+  questions: string[];
+  shopName: string;
+  /** False for a personal page. The server refuses anyway; this stops the card being offered at all. */
+  canCapture: boolean;
+}) {
   const [seed, setSeed] = useState<string | null>(null);
 
   // Stable across renders: AskSheet asks on mount and its effect depends on
@@ -51,11 +62,40 @@ export function Ask({ handle, questions }: { handle: string; questions: string[]
     [handle],
   );
 
+  const onCapture = useCallback(async (phone: string, conversationId: string) => {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/leads`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ conversationId, phone, consent: true }),
+      },
+    );
+
+    if (!response.ok) {
+      // The API's own message, verbatim: it says which number format works, or
+      // that the shop already has this one. Rewriting it here would swap
+      // instruction for apology.
+      const body = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      throw new Error(body?.error?.message ?? 'That failed. Try again.');
+    }
+  }, []);
+
   return (
     <>
       <AskBar questions={questions} onOpen={setSeed} />
       {seed === null ? null : (
-        <AskSheet seed={seed} onClose={() => setSeed(null)} onAsk={onAsk} />
+        <AskSheet
+          seed={seed}
+          shopName={shopName}
+          onClose={() => setSeed(null)}
+          onAsk={onAsk}
+          // Omitted on a personal page, so the card is never offered there.
+          // The server refuses one anyway; this stops it being asked for.
+          onCapture={canCapture ? onCapture : undefined}
+        />
       )}
     </>
   );

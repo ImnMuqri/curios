@@ -42,7 +42,7 @@ Two pure functions in `packages/core`, beside `handle.ts` — the other format r
   - `qualifies(input: { mode: 'PERSONAL' | 'BUSINESS'; visitorMessages: string[] }): boolean`
   - `MIN_VISITOR_TURNS = 3`
 
-- [ ] **Step 1: Write the failing phone test**
+- [x] **Step 1: Write the failing phone test**
 
 `packages/core/src/phone.test.ts`:
 
@@ -86,12 +86,12 @@ describe('normalizeMalaysianPhone', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/core test phone`
 Expected: FAIL — cannot resolve `./phone.js`.
 
-- [ ] **Step 3: Write it**
+- [x] **Step 3: Write it**
 
 `packages/core/src/phone.ts`:
 
@@ -129,7 +129,7 @@ export function normalizeMalaysianPhone(raw: string): string | null {
 }
 ```
 
-- [ ] **Step 4: Write the failing qualification test**
+- [x] **Step 4: Write the failing qualification test**
 
 `packages/core/src/qualify.test.ts`:
 
@@ -194,12 +194,12 @@ describe('qualifies', () => {
 });
 ```
 
-- [ ] **Step 5: Run to verify RED**
+- [x] **Step 5: Run to verify RED**
 
 Run: `pnpm --filter @curios/core test qualify`
 Expected: FAIL — cannot resolve `./qualify.js`.
 
-- [ ] **Step 6: Write it**
+- [x] **Step 6: Write it**
 
 `packages/core/src/qualify.ts`:
 
@@ -242,7 +242,7 @@ export function qualifies(input: {
 }
 ```
 
-- [ ] **Step 7: Export and run**
+- [x] **Step 7: Export and run**
 
 Append to `packages/core/src/index.ts`:
 
@@ -254,7 +254,7 @@ export { MIN_VISITOR_TURNS, qualifies } from './qualify.js';
 Run: `pnpm --filter @curios/core test`
 Expected: PASS.
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add packages/core
@@ -275,7 +275,7 @@ git commit -m "feat(core): one phone form, and a rule that errs towards missing 
 
 **Why `intent` is an object with one field:** FRONTEND.md's contract is *"the API returns `intent.qualified = true`"*, and BACKEND.md's original block had slots and signals beside it. Keeping the nesting means adding either later is a field, not a breaking change to every client.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Add to `apps/api/src/modules/chat/chat.service.test.ts`, inside the `threading a conversation` describe:
 
@@ -322,12 +322,12 @@ Add to `apps/api/src/modules/chat/chat.service.test.ts`, inside the `threading a
   });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/api test chat.service`
 Expected: FAIL — the `done` event has no `intent`.
 
-- [ ] **Step 3: Widen the event and compute it**
+- [x] **Step 3: Widen the event and compute it**
 
 In `apps/api/src/modules/chat/chat.service.ts`:
 
@@ -362,12 +362,12 @@ importing `qualifies` from `@curios/core`.
 
 **The pinned-answer branch yields `done` too**, and it must carry an `intent` as well — a pinned answer is still a turn in a conversation. It returns before `history` is read, so compute its `visitorMessages` from its own read or reuse the same helper; either way, do not leave that branch yielding a `done` without an `intent`, because the client's type says it always has one.
 
-- [ ] **Step 4: Run to verify GREEN**
+- [x] **Step 4: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/api test chat`
 Expected: PASS, including the route tests, whose `done` events now carry an extra field they do not assert on.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add apps/api
@@ -393,7 +393,7 @@ git commit -m "feat(api): the stream says whether to ask for a number"
   - `LEAD_QUEUE = 'lead'` and `LeadJobData = { leadId: string }`, from `@curios/core`.
   - Errors: `InvalidPhoneError` (400, `INVALID_PHONE`), `NotQualifiedError` (400, `NOT_QUALIFIED`), `AlreadyCapturedError` (409, `ALREADY_CAPTURED`).
 
-- [ ] **Step 1: Add the model**
+- [x] **Step 1: Add the model**
 
 `packages/db/prisma/schema.prisma`:
 
@@ -438,7 +438,7 @@ DATABASE_URL="$(grep '^DATABASE_URL=' ../../.env | head -1 | cut -d= -f2- | tr -
 DATABASE_URL="$(grep '^DATABASE_URL_TEST=' ../../.env | head -1 | cut -d= -f2- | tr -d '"')" npx prisma migrate deploy
 ```
 
-- [ ] **Step 2: Write the failing service test**
+- [x] **Step 2: Write the failing service test**
 
 `apps/api/src/modules/leads/lead.service.test.ts`. Follow `ingest.service.test.ts` for the real-Postgres fixture shape.
 
@@ -600,12 +600,12 @@ describe('captureLead', () => {
 });
 ```
 
-- [ ] **Step 3: Run to verify RED**
+- [x] **Step 3: Run to verify RED**
 
 Run: `pnpm --filter @curios/api test lead.service`
 Expected: FAIL — cannot resolve `./lead.service.js`.
 
-- [ ] **Step 4: Write the service**
+- [x] **Step 4: Write the service**
 
 `apps/api/src/modules/leads/lead.service.ts`. Add `LEAD_QUEUE = 'lead'` and `LeadJobData` to `packages/core/src/types.ts` first, exported from its index beside `INGEST_QUEUE`:
 
@@ -722,12 +722,12 @@ export async function captureLead(
 }
 ```
 
-- [ ] **Step 5: Run to verify GREEN**
+- [x] **Step 5: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/api test lead.service`
 Expected: PASS, eight tests.
 
-- [ ] **Step 6: The route**
+- [x] **Step 6: The route**
 
 `apps/api/src/modules/leads/lead.routes.ts`, following `ingest.routes.ts` for shape — including its `errorSchema`, which is defined per module rather than shared:
 
@@ -783,7 +783,7 @@ Register it in `app.ts` inside **its own** scope carrying **only** `chatPerIpLim
 
 and add `leadQueue` to `plugins/queue.ts` beside `ingestQueue` and `mailQueue`. Add `'INVALID_PHONE'`, `'NOT_QUALIFIED'` and `'ALREADY_CAPTURED'` to `DOMAIN_ERROR_CODES`, each with a one-line comment saying why a visitor may see it.
 
-- [ ] **Step 7: Run the API suite and commit**
+- [x] **Step 7: Run the API suite and commit**
 
 Run: `pnpm --filter @curios/api test`
 Expected: PASS.
@@ -810,7 +810,7 @@ git commit -m "feat(api): a lead, and the four guards that decide there is one"
   - `buildNotification(input: { displayName: string; phone: string; transcript: Array<{ role: 'USER' | 'ASSISTANT'; content: string }>; slots: … }): { subject: string; text: string }`
   - `runLeadJob(deps, data: LeadJobData): Promise<void>`
 
-- [ ] **Step 1: Write the failing notification test**
+- [x] **Step 1: Write the failing notification test**
 
 `apps/workers/src/leads/notify.test.ts`:
 
@@ -893,16 +893,16 @@ describe('buildNotification', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED**
+- [x] **Step 2: Run to verify RED**
 
 Run: `pnpm --filter @curios/workers test notify`
 Expected: FAIL — cannot resolve `./notify.js`.
 
-- [ ] **Step 3: Write the notification builder**
+- [x] **Step 3: Write the notification builder**
 
 `apps/workers/src/leads/notify.ts`. The subject names the shop, the body leads with the number and the slots, then the whole transcript, then the link. The `wa.me` number is `phone.replace('+', '')`, and the prefilled text is `encodeURIComponent` of a short reply naming the product when there is one.
 
-- [ ] **Step 4: Write the failing worker test**
+- [x] **Step 4: Write the failing worker test**
 
 `apps/workers/src/leads/lead.worker.test.ts` — a real Postgres fixture like `extract.service.test.ts`, a stub gateway whose `slots` returns a known object, and a stub mail queue:
 
@@ -934,7 +934,7 @@ Expected: FAIL — cannot resolve `./notify.js`.
   });
 ```
 
-- [ ] **Step 5: Write the worker**
+- [x] **Step 5: Write the worker**
 
 `runLeadJob` reads the lead with its conversation's messages and its page's owner email, calls `gateway.slots` inside a try/catch, writes `slots` and `score`, then enqueues the mail built by `buildNotification`. **Extraction failing must not stop the mail** — the test above pins that.
 
@@ -942,7 +942,7 @@ Add `slots` to the `Gateway` interface and implement it on the Anthropic gateway
 
 Register the worker in `apps/workers/src/main.ts` beside the ingestion and mail workers, with its own Redis connection for the reason `main.ts` already documents.
 
-- [ ] **Step 6: Run and commit**
+- [x] **Step 6: Run and commit**
 
 Run: `pnpm --filter @curios/workers test && pnpm --filter @curios/gateway test`
 
@@ -964,7 +964,7 @@ git commit -m "feat(workers): the message that tells an owner what someone wants
 - Consumes: `Button`, `Field` from slice 3; `intent.qualified` from Task 2.
 - Produces: `<CaptureCard onSubmit={(phone: string) => Promise<void>} />`, and `AskSheet` gains `onCapture?: (phone: string) => Promise<void>`.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `packages/ui/src/capture/CaptureCard.test.tsx`:
 
@@ -1029,17 +1029,17 @@ and in `AskSheet.test.tsx`:
   });
 ```
 
-- [ ] **Step 2: Run to verify RED, then write both**
+- [x] **Step 2: Run to verify RED, then write both**
 
 `CaptureCard` uses `kuning` — its border, per DESIGN.md, because this is the first thing in the product that genuinely means *a human needs to act*. One `Field`, one `Button`, a `Callout` for the error, and a confirmation that replaces the form on success.
 
 `AskSheet` renders it after the last turn when the most recent `done` carried `intent.qualified === true` and `onCapture` was provided, and hides it once submitted.
 
-- [ ] **Step 3: Wire `ask.tsx`**
+- [x] **Step 3: Wire `ask.tsx`**
 
 `onCapture` posts `{ conversationId, phone, consent: true }` to `/leads` and throws the API's message on failure, the way `apiFetch` already does for the owner surface.
 
-- [ ] **Step 4: Run everything and commit**
+- [x] **Step 4: Run everything and commit**
 
 Run: `pnpm --filter @curios/ui test && pnpm --filter @curios/web test && pnpm --filter @curios/web build && pnpm --filter @curios/web test budget`
 
@@ -1052,13 +1052,13 @@ git commit -m "feat(ui): the one field that turns a chat into a lead"
 
 ### Task 6: Gates, and a lead end to end
 
-- [ ] **Step 1: All four gates**
+- [x] **Step 1: All four gates**
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
 ```
 
-- [ ] **Step 2: Capture a lead against the running stack**
+- [x] **Step 2: Capture a lead against the running stack**
 
 `docker compose up -d && pnpm dev`, then at `http://localhost:3000/nadia`: open the sheet and hold a three-turn conversation with a quantity and a place in it. The card should appear only on the third turn. Enter `012-345 6789`.
 
@@ -1077,7 +1077,7 @@ docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT phone, score,
 
 **Report each honestly, including any you could not run.**
 
-- [ ] **Step 3: Record the result and commit**
+- [x] **Step 3: Record the result and commit**
 
 ---
 
@@ -1092,3 +1092,58 @@ docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT phone, score,
 **One thing worth flagging before execution.** Task 3's dedupe test manipulates `createdAt` directly to simulate a 25-hour-old lead. That is a test writing a column the application never writes, which is usually a smell — here it is the only way to test a time window without either waiting a day or injecting a clock, and injecting a clock into one query to serve one test is the worse trade.
 
 **What no test covers.** Whether the rule fires at a rate an owner finds useful. That needs traffic, and the spec says so: shipping something that under-captures is the intended direction, and slice 5's Questions dashboard is where the gaps get found.
+
+
+---
+
+## Execution record
+
+**Gates:** lint, typecheck, build all pass. **588 tests** across 8 packages — api 191,
+core 146, web 77, ui 65, workers 57, db-read 25, gateway 19, db 8.
+
+### A lead, end to end, against the real model
+
+Three turns through `POST /chat/nadia`, then `POST /leads`, with the workers running:
+
+| Step | Result |
+|---|---|
+| Turn 1 and 2 | `intent.qualified: false` |
+| Turn 3 (*hantar ke Klang 20 Mac boleh?*) | `intent.qualified: true` — fires exactly on the third turn |
+| `POST /leads` with `0323456789` | `INVALID_PHONE` — a landline is refused |
+| `POST /leads` with `012-345 6789` | `201`, and the row stores `+60123456789` |
+| A second capture on the same conversation | `ALREADY_CAPTURED` |
+| The job | `score: 3`, `slots: {product: "kek butter 2kg", date: "20 Mac", location: "Klang"}` |
+| Mailpit | *"New lead for Nadia Bakes"*, to the owner, with the whole transcript |
+| The link | `https://wa.me/60123456789?text=Hi!%20Saya%20dari%20Nadia%20Bakes.%20Pasal%20kek%20butter%202kg%20tadi` |
+| Phone numbers in the API or worker logs | **zero** — only `leadId` |
+
+The prefill came back Malay because the customer wrote Malay, which is the behaviour added
+mid-plan after review.
+
+### What execution found
+
+**The budget test's route-chunk metric has a hole, and it revealed itself by getting
+better.** The route chunk *dropped* from 9.08kB to 5.12kB in the commit that **added** the
+capture card: webpack hoisted the sheet into a shared chunk that is still first-load but no
+longer lives under `app/[handle]/`. Code can leave that metric simply by being shared. A
+second assertion now ratchets total first-load JS at 355kB, and `ask.tsx`'s comment says
+plainly that the dynamic import still defers nothing.
+
+**Widening `Gateway` with a third method broke five stubs** across `apps/api` and
+`apps/workers`. That is the honest price of the interface, paid once and visible in the
+diff rather than discovered later.
+
+**`apps/workers` needed `fileParallelism: false`.** Two test files there now truncate the
+same table in `beforeEach` and were wiping each other's fixtures. `apps/api` hit this first
+and its config carries the same fix and the same comment.
+
+**Two test-shape corrections.** The capture card names the shop twice — once inviting, once
+consenting — so asserting on the name alone was ambiguous; the test now asserts the consent
+sentence itself, which is the part that is an obligation. And a placeholder test written by
+mistake was deleted rather than left asserting `true`.
+
+### Not done
+
+Nobody has used the capture card in a browser. Every step above went through `curl` and the
+database. The card's appearance, its `kuning` border, and whether the consent line reads as
+reassurance rather than fine print are all unverified.

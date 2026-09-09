@@ -1,0 +1,25 @@
+/*
+ * kuning, and this is the first thing in the product to use it. DESIGN.md
+ * reserves it for "a human needs to act" and threatens deletion for decorative
+ * use -- a customer waiting on a reply is the case it was reserved for.
+ */
+.card {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1.5px solid var(--kuning);
+  border-radius: 12px;
+  background: var(--paper);
+}
+
+.lead {
+  margin: 0 0 4px;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  letter-spacing: -0.02em;
+}
+
+.consent {
+  margin: 0 0 16px;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
