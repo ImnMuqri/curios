@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSourceBlock } from './anthropic.gateway.js';
+import { buildSourceBlock , parseSlots } from './anthropic.gateway.js';
 
 describe('buildSourceBlock', () => {
   const documents = [
@@ -66,5 +66,33 @@ describe('buildSourceBlock', () => {
       { url: 'https://b.example/', title: 'B', text: 'second' },
     ];
     expect(buildSourceBlock(two)).toContain('</source>\n\n<source');
+  });
+});
+
+describe('parseSlots', () => {
+  it('reads the three lines the prompt asks for', () => {
+    const parsed = parseSlots('product: kek butter 2kg\ndate: 20 Mac\nlocation: Klang');
+    expect(parsed).toEqual({ product: 'kek butter 2kg', date: '20 Mac', location: 'Klang' });
+  });
+
+  it('reads a dash as "the conversation did not say"', () => {
+    const parsed = parseSlots('product: kek\ndate: -\nlocation: -');
+    expect(parsed).toEqual({ product: 'kek', date: null, location: null });
+  });
+
+  it('returns nulls rather than throwing when the model wanders off', () => {
+    // Lenient like parseFactBlocks, and for a stronger reason: a lead with no
+    // slots is worth far more than no lead, so nothing here may throw and
+    // cost the owner the notification.
+    expect(parseSlots('I am not sure what you want.')).toEqual({
+      product: null,
+      date: null,
+      location: null,
+    });
+  });
+
+  it('survives a preamble, because models add them', () => {
+    const parsed = parseSlots('Sure! Here you go:\n\nproduct: kek\ndate: -\nlocation: Klang');
+    expect(parsed).toMatchObject({ product: 'kek', location: 'Klang' });
   });
 });

@@ -8,4 +8,6 @@ export type {
   ChatInput,
   ChatMessage,
   ChatEvent,
+  SlotsInput,
+  SlotsOutput,
 } from './types.js';

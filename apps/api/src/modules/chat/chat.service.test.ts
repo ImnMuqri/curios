@@ -8,6 +8,7 @@ const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE
 function gatewaySaying(text: string): Gateway {
   return {
     extract: vi.fn(),
+    slots: vi.fn(),
     chat: async function* () {
       yield { type: 'text' as const, text };
       yield {
@@ -23,6 +24,7 @@ function gatewaySaying(text: string): Gateway {
 function gatewayThatFails(): Gateway {
   return {
     extract: vi.fn(),
+    slots: vi.fn(),
     chat: async function* () {
       throw new Error('provider unavailable');
     },
@@ -34,6 +36,7 @@ function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
   let captured = '';
   const gateway: Gateway = {
     extract: vi.fn(),
+    slots: vi.fn(),
     chat: async function* ({ systemPrompt }) {
       captured = systemPrompt;
       yield { type: 'text' as const, text: 'ok' };
@@ -53,6 +56,7 @@ function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMes
   let captured: ChatMessage[] = [];
   const gateway: Gateway = {
     extract: vi.fn(),
+    slots: vi.fn(),
     chat: async function* ({ messages }) {
       captured = messages;
       yield { type: 'text' as const, text: 'an answer' };
