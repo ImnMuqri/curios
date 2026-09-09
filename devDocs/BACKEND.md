@@ -26,7 +26,10 @@ Message        role, content, cited fact ids, intent tags
                broken, but the column reads like data and is not. Real
                citation tracking needs the model to name what it used.
 Lead           phone, extracted slots, score, status, conversationId
-Question       clustered text, ask count, answered flag, faqSlug
+Question       clustered text, ask count, answered flag
+               faqSlug waits for the FAQ slice. answered means the owner
+               wrote a pinned answer, not that the model coped -- see the
+               refusal rule below.
 UsageCounter   pageId + period, conversation count. the meter.
 Ingestion      source url, status, extracted count, error
 ModelCall      one row per provider call. tokens, cost, cache hits. the margin.
@@ -234,7 +237,24 @@ page, the same threshold set above.
 
 The model may only state a price, a date, or a policy that appears in a supplied
 fact. Everything else gets the honest answer plus a handoff: *"Tak pasti, biar saya
-tanya Nadia."* Then notify the owner and log it as an unanswered Question.
+tanya Nadia."*
+
+*Amended by slice 5.* That sentence originally continued: *"Then notify the owner and log
+it as an unanswered Question."* **Every** question is logged and clustered now, not only
+refused ones, and `answered` means the owner has written an answer rather than that the
+model coped.
+
+Refusal detection is deliberately absent. This prompt tells the model to answer in the
+language it was asked in, "including Malay, Manglish, or a mix", so there is nothing
+machine-readable to match on. Adding a marker token to the answer is the sentinel approach
+slice 4 rejected for the intent block, with the same failure mode -- a visitor watching a
+marker appear mid-sentence. Phrase-matching across three languages would both miss real
+refusals and flag confident answers containing "tak pasti", and a gap list that lies is
+worse than one that only counts.
+
+What survives is the ranking: a question asked nine times is a gap whether the model
+refused it or answered it badly. Refusal detection can be added later without changing the
+model -- it would set the flag at write time rather than leaving it false.
 
 A confidently invented price is the worst thing this product can do. It is worse than
 being unhelpful, because it reaches a customer who then arrives expecting that price.
