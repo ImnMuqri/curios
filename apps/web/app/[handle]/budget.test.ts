@@ -57,6 +57,19 @@ describe('the public page JS budget', () => {
     const own = files.filter((f) => f.includes('app/[handle]/') && f.endsWith('.js'));
     expect(own.length).toBeGreaterThan(0);
 
+    // A production chunk carries a content hash in its filename. Anything
+    // without one came from `next dev`, whose output is unminified and several
+    // times larger -- measuring it reports a 233kB route and fails for a
+    // reason that has nothing to do with the code.
+    //
+    // This is the second false alarm from this test, and the second is what
+    // makes it worth fixing properly: a test that cries wolf gets ignored on
+    // the day it is right.
+    if (!own.every((f) => /-[0-9a-f]{8,}\.js$/.test(f))) {
+      console.warn('.next holds dev output, not a build; run `pnpm --filter @curios/web build`');
+      return;
+    }
+
     const bytes = own.reduce((total, f) => total + statSize(join(root, '.next', f)), 0);
     expect(bytes / 1024).toBeLessThan(ROUTE_CHUNK_BUDGET_KB);
   });
