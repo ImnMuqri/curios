@@ -19,6 +19,14 @@ import { describe, expect, it } from 'vitest';
  */
 const ROUTE_CHUNK_BUDGET_KB = 40;
 
+/**
+ * Uncompressed, and a ratchet rather than a target. 355kB today, of which the
+ * React and Next runtime is the overwhelming majority -- see FRONTEND.md on
+ * why the original 40kB first-load budget was never achievable. The margin is
+ * deliberately small: this exists to catch growth, not to bless the number.
+ */
+const FIRST_LOAD_CEILING_KB = 400;
+
 describe('the public page JS budget', () => {
   const root = process.cwd();
   const manifestPath = join(root, '.next/app-build-manifest.json');
@@ -72,6 +80,29 @@ describe('the public page JS budget', () => {
 
     const bytes = own.reduce((total, f) => total + statSize(join(root, '.next', f)), 0);
     expect(bytes / 1024).toBeLessThan(ROUTE_CHUNK_BUDGET_KB);
+  });
+
+  it('keeps the whole first load from creeping', () => {
+    // The route-chunk measurement above has a hole, found by watching it drop
+    // from 9.08kB to 5.12kB in a commit that ADDED a component: webpack had
+    // hoisted the sheet into a shared chunk, which is still first-load but no
+    // longer lives under app/[handle]/. Code can escape that metric simply by
+    // being shared.
+    //
+    // So this counts every JavaScript file the route loads before anything is
+    // interacted with, framework included. It is a ratchet, not a target --
+    // 355kB uncompressed is roughly the 107kB Next reports gzipped, most of it
+    // React, and the number that matters is whether it grows.
+    if (!existsSync(manifestPath)) return;
+
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      pages: Record<string, string[]>;
+    };
+    const files = (manifest.pages['/[handle]/page'] ?? []).filter((f) => f.endsWith('.js'));
+    if (files.length === 0 || !files.every((f) => /-[0-9a-f]{8,}\.js$/.test(f))) return;
+
+    const bytes = files.reduce((total, f) => total + statSize(join(root, '.next', f)), 0);
+    expect(bytes / 1024).toBeLessThan(FIRST_LOAD_CEILING_KB);
   });
 });
 

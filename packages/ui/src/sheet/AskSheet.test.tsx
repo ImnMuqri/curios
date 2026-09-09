@@ -196,4 +196,58 @@ describe('AskSheet', () => {
     await userEvent.click(screen.getByRole('button', { name: /send/i }));
     await waitFor(() => expect(onAsk).toHaveBeenLastCalledWith('three', null));
   });
+
+  it('offers the card only when the server says the conversation qualified', async () => {
+    const onAsk = vi
+      .fn()
+      .mockResolvedValue(
+        streamOf('data: {"type":"done","conversationId":"c1","intent":{"qualified":false}}\n\n'),
+      );
+    render(
+      <AskSheet
+        seed="q"
+        shopName="Nadia Bakes"
+        onClose={vi.fn()}
+        onAsk={onAsk}
+        onCapture={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => expect(onAsk).toHaveBeenCalled());
+    // FRONTEND.md: "The client never decides this."
+    expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
+
+  it('offers the card when the server says it qualified', async () => {
+    const onAsk = vi
+      .fn()
+      .mockResolvedValue(
+        streamOf('data: {"type":"done","conversationId":"c1","intent":{"qualified":true}}\n\n'),
+      );
+    render(
+      <AskSheet
+        seed="nak 2kg"
+        shopName="Nadia Bakes"
+        onClose={vi.fn()}
+        onAsk={onAsk}
+        onCapture={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByRole('button', { name: /send my number/i })).toBeInTheDocument();
+  });
+
+  it('does not offer the card when no capture handler was given', async () => {
+    // A personal page renders the sheet without one. Offering a field that
+    // posts nowhere would be worse than not offering it.
+    const onAsk = vi
+      .fn()
+      .mockResolvedValue(
+        streamOf('data: {"type":"done","conversationId":"c1","intent":{"qualified":true}}\n\n'),
+      );
+    render(<AskSheet seed="nak 2kg" shopName="Nadia Bakes" onClose={vi.fn()} onAsk={onAsk} />);
+
+    await waitFor(() => expect(onAsk).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
 });

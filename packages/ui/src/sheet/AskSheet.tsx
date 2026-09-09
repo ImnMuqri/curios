@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { CaptureCard } from '../capture/CaptureCard.js';
 import { AnswerBubble } from './AnswerBubble.js';
 import styles from './AskSheet.module.css';
 
@@ -29,12 +30,26 @@ export interface AskSheetProps {
     question: string,
     conversationId: string | null,
   ) => Promise<ReadableStream<Uint8Array> | null>;
+  /** Named on the capture card's consent line, so the visitor knows who gets their number. */
+  shopName?: string;
+  /**
+   * Omitted on a page that cannot capture -- a personal one, per BACKEND.md's
+   * plan matrix. Without it the card is never offered, however the server
+   * answers, because a field that posts nowhere is worse than no field.
+   */
+  onCapture?: (phone: string, conversationId: string) => Promise<void>;
 }
 
-export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
+export function AskSheet({ seed, onClose, onAsk, shopName, onCapture }: AskSheetProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
+  /**
+   * Whatever the server said on the last `done`. FRONTEND.md: "the client
+   * never decides this" -- so this is stored, never computed from the turns on
+   * screen.
+   */
+  const [qualified, setQualified] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -108,6 +123,7 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
                 message?: string;
                 code?: string;
                 conversationId?: string;
+                intent?: { qualified?: boolean };
               };
               if (parsed.type === 'text' && parsed.text) append(parsed.text);
               if (parsed.type === 'error') {
@@ -122,6 +138,7 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
               }
               if (parsed.type === 'done') {
                 if (parsed.conversationId) conversationId.current = parsed.conversationId;
+                setQualified(parsed.intent?.qualified === true);
                 return;
               }
             } catch {
@@ -198,6 +215,16 @@ export function AskSheet({ seed, onClose, onAsk }: AskSheetProps) {
             <AnswerBubble text={turn.answer} />
           </div>
         ))}
+
+        {qualified && onCapture ? (
+          <CaptureCard
+            shopName={shopName ?? 'the shop'}
+            // The sheet supplies the conversation id, the same way it supplies
+            // it to onAsk: this component owns the thread, so nothing outside
+            // has to keep a second copy of which one is current.
+            onSubmit={(phone) => onCapture(phone, conversationId.current ?? '')}
+          />
+        ) : null}
 
         <form
           className={styles.composer}

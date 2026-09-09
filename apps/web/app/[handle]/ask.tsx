@@ -25,7 +25,18 @@ const AskSheet = dynamic(() => import('@curios/ui/sheet').then((m) => m.AskSheet
   ssr: false,
 });
 
-export function Ask({ handle, questions }: { handle: string; questions: string[] }) {
+export function Ask({
+  handle,
+  questions,
+  shopName,
+  canCapture,
+}: {
+  handle: string;
+  questions: string[];
+  shopName: string;
+  /** False for a personal page. The server refuses anyway; this stops the card being offered at all. */
+  canCapture: boolean;
+}) {
   const [seed, setSeed] = useState<string | null>(null);
 
   // Stable across renders: AskSheet asks on mount and its effect depends on
@@ -51,11 +62,40 @@ export function Ask({ handle, questions }: { handle: string; questions: string[]
     [handle],
   );
 
+  const onCapture = useCallback(async (phone: string, conversationId: string) => {
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/leads`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ conversationId, phone, consent: true }),
+      },
+    );
+
+    if (!response.ok) {
+      // The API's own message, verbatim: it says which number format works, or
+      // that the shop already has this one. Rewriting it here would swap
+      // instruction for apology.
+      const body = (await response.json().catch(() => null)) as {
+        error?: { message?: string };
+      } | null;
+      throw new Error(body?.error?.message ?? 'That failed. Try again.');
+    }
+  }, []);
+
   return (
     <>
       <AskBar questions={questions} onOpen={setSeed} />
       {seed === null ? null : (
-        <AskSheet seed={seed} onClose={() => setSeed(null)} onAsk={onAsk} />
+        <AskSheet
+          seed={seed}
+          shopName={shopName}
+          onClose={() => setSeed(null)}
+          onAsk={onAsk}
+          // Omitted on a personal page, so the card is never offered there.
+          // The server refuses one anyway; this stops it being asked for.
+          onCapture={canCapture ? onCapture : undefined}
+        />
       )}
     </>
   );
