@@ -29,7 +29,7 @@ curios/
 ├── apps/
 │   ├── web/          Next.js. Public pages + owner dashboard.   → FRONTEND.md
 │   └── api/          Fastify. HTTP only, never generates.       → BACKEND.md
-├── workers/          BullMQ. Ingestion, embeddings, digest emails. → BACKEND.md
+├── workers/          BullMQ. Ingestion, lead extraction, email. → BACKEND.md
 ├── packages/
 │   ├── db/           Prisma schema + client
 │   ├── core/         Shared types, zod schemas, plan limits
@@ -48,7 +48,7 @@ separate processes sharing `db` and `core`, and they never import each other.
 |---|---|---|
 | Web | Next.js (App Router) | public pages SSR, dashboard client |
 | API | Fastify + zod | returns 202 and enqueues, never blocks on a model |
-| Jobs | BullMQ + Redis | ingestion, digest emails |
+| Jobs | BullMQ + Redis | ingestion, lead extraction, email |
 | DB | Postgres + Prisma | facts are rows, not a vector store (see BACKEND.md) |
 | Files | Cloudflare R2 | avatars, OG images, scraped assets |
 | Pay | Billplz | verify recurring support before building monthly |
