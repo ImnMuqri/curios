@@ -1,0 +1,123 @@
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--surface);
+}
+
+/* The utility voice: score, status and when, not the conversation. */
+.meta {
+  margin: 0 0 4px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+
+/*
+ * The one thing this screen exists to show, so it is the loudest text on the
+ * card -- mono because a phone number is data, the way DESIGN.md treats
+ * counts and timestamps, not conversation.
+ */
+.phone {
+  margin: 0 0 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  letter-spacing: -0.01em;
+}
+
+.slots {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.slots li {
+  margin: 0 0 2px;
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/*
+ * FRONTEND.md's one primary action for this screen: "WhatsApp them". Shaped
+ * like Button's .primary so it reads as the thing to press, styled here
+ * rather than through Button because it must render as a real <a> -- an
+ * external deep link, not a client action.
+ */
+.whatsapp {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 11px 18px;
+  border: 1.5px solid transparent;
+  border-radius: 10px;
+  background: var(--hijau);
+  color: var(--paper);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 120ms ease;
+}
+
+.whatsapp:active {
+  background: var(--ink);
+}
+
+.confirm {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--merah);
+  border-radius: 10px;
+  background: var(--paper);
+}
+
+.confirmText {
+  margin: 0 0 8px;
+  font-size: var(--text-base);
+  color: var(--ink);
+}
+
+.transcript {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transcript li {
+  max-width: 80%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  font-size: var(--text-base);
+  white-space: pre-wrap;
+}
+
+/* The customer's own words, set apart on the neutral surface. */
+.fromCustomer {
+  align-self: flex-start;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* The reply the page sent back -- quiet emphasis, the same mint AnswerBubble
+   uses for an answer arriving on the public page. */
+.fromOwner {
+  align-self: flex-end;
+  background: var(--mint);
+  color: var(--ink);
+}
