@@ -126,9 +126,16 @@ agree about which question matters most — and clamps its limit like every othe
 this package.
 
 The fourth gate is the interesting one. An owner who deletes a pinned answer has withdrawn
-the answer, and the public page must stop serving it immediately rather than at the next
-revalidation. Reading through `PinnedAnswer` rather than caching the text on `Question`
-makes that automatic instead of a second thing to remember.
+the answer. **Correction:** this section originally claimed the public page stops serving
+it "immediately rather than at the next revalidation." That is only half true, and stating
+it as whole was wrong. The *query* stops returning the withdrawn row the instant it is next
+called — reading through `PinnedAnswer` rather than caching the text on `Question` makes
+that automatic instead of a second thing to remember. But the *route* is cached by Next's
+ISR for up to 24 hours (`revalidate = 86400`, and neither route calls `revalidatePath`), so
+the already-rendered public page keeps serving the withdrawn question and answer until that
+window turns over. "Immediately" describes the read function, not what a visitor or a
+search engine sees. See `devDocs/deferred-findings.md` for why that gap is a launch
+blocker, not a detail.
 
 ---
 
@@ -164,8 +171,15 @@ handle that would sit oddly beside these routes.
 
 ## `FAQPage`, and the injection it invites
 
-Both routes emit `FAQPage` structured data — the index carrying every pair, the slug page
-carrying its one.
+**Correction:** this section originally said both routes emit `FAQPage` structured data,
+the index carrying every pair. That was wrong and has been fixed in code: only the entry
+page emits `FAQPage`. Google's FAQPage requirements make `acceptedAnswer.text` mandatory,
+and the index deliberately shows questions only — it links out for the answer rather than
+inlining it. Structured data has to describe content visible on the page it sits on;
+inlining every answer into the index's markup just to satisfy the schema would trade
+invalid markup (missing `text`) for deceptive markup (text nobody sees there). The entry
+page, where the answer is visible, carries `FAQPage` — and a specific question is what
+should rank there anyway.
 
 This is the first JSON-LD in the codebase, and it arrives with a real vulnerability rather
 than a theoretical one. The payload goes inside a `application/ld+json` script element and

@@ -452,11 +452,15 @@ accuracy.
 When a Question crosses `FAQ_MIN_ASKS` asks and the owner has answered it, it earns a
 `faqSlug` and appears at `/[handle]/faq`. The page is rendered on first request and cached
 for 24 hours by Next's ISR, not built by a worker — there is no BullMQ job, and
-`generateStaticParams` is deliberately absent so `pnpm build` needs no database. This is
-the SEO layer and the over-cap fallback in one artifact. Include `FAQPage` structured data,
-serialised through `serialiseJsonLd` so an answer cannot close the script element. Do not
-generate FAQ pages for questions nobody asked, that is content farm behaviour and it will
-read as one.
+`generateStaticParams` is deliberately absent so `pnpm build` needs no database. Withdrawing
+the pinned answer behind a published question does not take effect on the public page
+instantly: the read stops returning it at once, but the cached HTML only catches up when
+that page's 24-hour ISR window turns over, since nothing calls `revalidatePath`. This is
+the SEO layer and the over-cap fallback in one artifact — the artifact exists; slice 7 is
+what wires the fallback switch to it. No code serves this payload for an over-cap
+conversation today. Include `FAQPage` structured data on the entry page, serialised through
+`serialiseJsonLd` so an answer cannot close the script element. Do not generate FAQ pages
+for questions nobody asked, that is content farm behaviour and it will read as one.
 
 ---
 
