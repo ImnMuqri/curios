@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@curios/db';
-import { assignFaqSlug } from './faq-slug.js';
+import { assignFaqSlug, type Log } from './faq-slug.js';
 
 export class QuestionNotYoursError extends Error {
   readonly statusCode = 404;
@@ -30,6 +30,11 @@ export async function answerQuestion(
   accountId: string,
   questionId: string,
   answer: string,
+  // Optional, and only for the faq-slug writeback below: without it, a
+  // qualifying question that fails to get a URL -- an exhausted collision
+  // loop, unsluggable text, a transient DB error -- leaves no trace anywhere,
+  // which is exactly what assignFaqSlug's `log` parameter exists to prevent.
+  log?: Log,
 ): Promise<void> {
   // Scoped in the query, not filtered after the read. A read-then-check leaks
   // through timing and is one careless early return away from writing into a
@@ -65,5 +70,5 @@ export async function answerQuestion(
 
   // After the transaction, not inside it. The answer is the owner's work and
   // must commit whatever happens to the URL; the slug is a consequence of it.
-  await assignFaqSlug(prisma, question.id);
+  await assignFaqSlug(prisma, question.id, log);
 }

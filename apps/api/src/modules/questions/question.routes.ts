@@ -21,7 +21,13 @@ export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
       // assertion here would survive someone moving that hook.
       if (!request.account) throw new UnauthenticatedError();
 
-      await answerQuestion(app.prisma, request.account.id, request.params.id, request.body.answer);
+      await answerQuestion(
+        app.prisma,
+        request.account.id,
+        request.params.id,
+        request.body.answer,
+        request.log,
+      );
       return reply.send({ status: 'answered' });
     },
   );

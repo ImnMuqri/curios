@@ -4,7 +4,7 @@ import type { PrismaClient } from '@curios/db';
 /** How many suffixed names to try before giving up on a slug. */
 const MAX_ATTEMPTS = 20;
 
-interface Log {
+export interface Log {
   error: (obj: unknown, msg: string) => void;
 }
 

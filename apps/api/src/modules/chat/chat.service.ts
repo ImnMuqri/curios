@@ -2,7 +2,7 @@ import { normalizeClaim, qualifies } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import { buildSystemPrompt } from './prompt.js';
-import { assignFaqSlug } from '../questions/faq-slug.js';
+import { assignFaqSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
@@ -11,6 +11,11 @@ export type AnswerEvent =
 export interface ChatDeps {
   prisma: PrismaClient;
   gateway: Gateway;
+  // Optional, and only for the faq-slug assignment below: without it, a
+  // qualifying question that fails to get a URL -- an exhausted collision
+  // loop, unsluggable text, a transient DB error -- leaves no trace anywhere,
+  // which is exactly what assignFaqSlug's `log` parameter exists to prevent.
+  log?: Log;
 }
 
 export class PageNotFoundError extends Error {
@@ -152,7 +157,7 @@ export async function* answer(
   // The other site. A question the owner answered when it had two asks
   // qualifies on its third, and that third ask happens here, with no owner
   // involved. See faq-slug.ts on why both sites exist.
-  await assignFaqSlug(prisma, logged.id);
+  await assignFaqSlug(prisma, logged.id, deps.log);
 
   // A pinned answer wins over model output. Zero tokens, zero risk.
   const pinned = await prisma.pinnedAnswer.findUnique({
