@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { captureLead } from './lead.service.js';
+import { UnauthenticatedError } from '../../plugins/session.js';
+import { captureLead, deleteLead } from './lead.service.js';
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
@@ -34,6 +35,28 @@ export const leadRoutes: FastifyPluginAsyncZod = async (app) => {
       // exactly how that gets violated without anyone deciding to.
       request.log.info({ leadId: result.leadId }, 'lead captured');
       return reply.status(201).send(result);
+    },
+  );
+};
+
+/**
+ * Owner actions on leads. A separate plugin from `leadRoutes` because that one
+ * is registered in an anonymous, rate-limited scope for the visitor's POST,
+ * and this must sit behind requireSession. Same path prefix, different method
+ * and different scope; Fastify routes on both.
+ */
+export const ownerLeadRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.delete(
+    '/leads/:id',
+    { schema: { params: z.object({ id: z.string().min(1).max(64) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await deleteLead(app.prisma, request.account.id, request.params.id);
+      // The id and nothing else. A phone number must not reach the log, and
+      // logging the deleted row on the way past is exactly how that happens.
+      request.log.info({ leadId: request.params.id }, 'lead deleted');
+      return reply.send({ status: 'deleted' });
     },
   );
 };

@@ -22,7 +22,7 @@ import {
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
-import { leadRoutes } from './modules/leads/lead.routes.js';
+import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
 import { factRoutes } from './modules/facts/fact.routes.js';
 import { questionRoutes } from './modules/questions/question.routes.js';
@@ -140,6 +140,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(pageRoutes);
     await scope.register(factRoutes);
     await scope.register(questionRoutes);
+    await scope.register(ownerLeadRoutes);
   });
 
   return app;

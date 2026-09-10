@@ -37,6 +37,17 @@ export class AlreadyCapturedError extends Error {
   }
 }
 
+export class LeadNotYoursError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+  constructor() {
+    // 404, not 403: a 403 confirms the id exists. The same shape as
+    // PageNotYoursError and QuestionNotYoursError.
+    super('No such lead.');
+    this.name = 'LeadNotYoursError';
+  }
+}
+
 const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /**
@@ -104,4 +115,30 @@ export async function captureLead(
   await deps.queue.add(LEAD_QUEUE, { leadId: lead.id }, { jobId: lead.id, attempts: 3 });
 
   return { leadId: lead.id };
+}
+
+/**
+ * BACKEND.md's owner-facing delete, per lead.
+ *
+ * Scoped in the query rather than checked after the read. Every ownership
+ * check in this codebase has that shape, and this is the one where getting it
+ * wrong destroys another owner's data rather than merely showing it.
+ *
+ * The Conversation is left alone deliberately. The lead is the personal data;
+ * the conversation is a visitor's chat with a public page, and it feeds the
+ * questions screen -- cascading into it would silently rewrite an owner's own
+ * ask counts as a side effect of clearing one phone number.
+ */
+export async function deleteLead(
+  prisma: PrismaClient,
+  accountId: string,
+  leadId: string,
+): Promise<void> {
+  const lead = await prisma.lead.findFirst({
+    where: { id: leadId, page: { accountId } },
+    select: { id: true },
+  });
+  if (!lead) throw new LeadNotYoursError();
+
+  await prisma.lead.delete({ where: { id: lead.id } });
 }
