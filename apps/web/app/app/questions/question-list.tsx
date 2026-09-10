@@ -80,7 +80,7 @@ export function QuestionList({
                 id={`answer-${question.id}`}
                 label="Answer"
                 multiline
-                hint="This exact wording is what the next person asking will see."
+                hint="Asked 3 or more times? Saving this also publishes the question and your answer at /faq, where search engines can find them."
                 value={draft}
                 onChange={setDraft}
               />

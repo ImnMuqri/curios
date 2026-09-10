@@ -132,6 +132,39 @@ has anywhere near 50 FAQ-qualifying questions — and would need either a wider
 first read (take some multiple of `limit`, then trim after the join in
 memory) or a real join to fix properly.
 
+### A published question and answer have no way to come down — launch blocker
+
+`Question.text` is, by the schema's own comment, "the first phrasing seen, kept
+verbatim so the owner reads what a customer typed." This slice renders that string,
+and the owner's `PinnedAnswer.answer` beside it, as the FAQ entry page's `<h1>`, its
+`<title>`, the index page's link text, and inside `FAQPage` JSON-LD — a URL built for
+Google. `askCount` is per page-and-normalized-question, not per visitor, so one
+person asking the same thing three times reaches the threshold. A question carrying
+a phone number, an address, or a third party's name is then publishable, and the
+owner clicking Save on the answer was never asked to consider that.
+
+**Half one: no delete path exists anywhere in the product.** Not for `Question`, not
+for `PinnedAnswer`. `question-list.tsx` renders `question.answered ? null : <Button>`,
+so once a question is answered the row carries no control at all — no UI action, and
+no API route to call even from a terminal.
+
+**Half two: even a hand-written database delete is not enough on its own.**
+`getFaqIndex`/`getFaqEntry` stop returning a deleted or withdrawn row the moment
+they are next called — that part is immediate. But the *rendered page* a search
+engine already indexed was cached by Next's ISR for up to 24 hours
+(`revalidate = 86400`, and nothing in either route calls `revalidatePath`), so the
+public HTML keeps serving the withdrawn question and answer for up to a day after
+the row is gone. A takedown request answered with "it's gone from the database" is
+not true from the visitor's side for up to a day.
+
+**This must be resolved before billing ships.** Slice 7 owns `/app/knowledge` —
+pinned answer and never-say management — and cannot be built over a product that can
+publish a customer's verbatim words with no consent step and no way to retract them.
+Closing this needs both halves: an owner-reachable delete for a published
+question/answer, and either a `revalidatePath` call wired to that delete or an
+explicit, accepted decision that "up to a day" is the takedown SLA. Neither exists
+today. **Open safety gap, not a someday.**
+
 ---
 
 ## Tests
