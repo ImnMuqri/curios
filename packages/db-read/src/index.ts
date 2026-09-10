@@ -9,3 +9,5 @@ export { getSignInMethods } from './sign-in-methods.query.js';
 export type { SignInMethods } from './sign-in-methods.query.js';
 export { getQuestions } from './questions.query.js';
 export type { OwnerQuestion } from './questions.query.js';
+export { getLeads } from './leads.query.js';
+export type { OwnerLead, LeadSlots, LeadTranscriptLine } from './leads.query.js';
