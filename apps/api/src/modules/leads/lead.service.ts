@@ -136,6 +136,17 @@ export async function captureLead(
  * the conversation is a visitor's chat with a public page, and it feeds the
  * questions screen -- cascading into it would silently rewrite an owner's own
  * ask counts as a side effect of clearing one phone number.
+ *
+ * What this actually erases: the Lead row, and nothing else -- no Message, no
+ * Question, no Conversation. That matters because a visitor's chat is free
+ * text, and a phone number typed into the chat itself ("wasap saya 012-345
+ * 6789") lands in `Message.content`, which the leads screen's transcript
+ * drawer renders back to the owner verbatim; `Question.text` keeps whatever a
+ * visitor typed just as literally. Deleting the Lead does not touch either.
+ * So an owner who deletes a lead to honour an erasure request has cleared the
+ * one row this function is scoped to and no more -- a number can still
+ * survive in Message or Question rows. This function is a targeted delete,
+ * not a right-to-erasure primitive; treat it as the former.
  */
 export async function deleteLead(
   prisma: PrismaClient,
