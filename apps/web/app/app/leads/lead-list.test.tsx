@@ -121,6 +121,30 @@ describe('LeadList', () => {
     expect(screen.getByRole('button', { name: /^cancel$/i })).toBeDisabled();
   });
 
+  it('renders the Malaysian date, not the UTC one the server ran in', () => {
+    // `LeadList` is a client component rendered first on the server (UTC in
+    // production) and again on hydration in the browser. 2026-09-05T16:30:00Z
+    // is 2026-09-06 00:30 in Malaysia -- the next calendar day. Unpinned,
+    // `toLocaleDateString` follows the runtime's own timezone, so the server
+    // pass and the browser pass would disagree: a hydration mismatch and the
+    // wrong date on screen until React corrects it. This test forces TZ to
+    // UTC -- the production server's zone -- so the assertion does not
+    // depend on whatever zone happens to run this suite; only the pin in
+    // `formatDate` can make it read the Malaysian date regardless.
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      const lateEveningInMalaysia: OwnerLead[] = [
+        { ...leads[0]!, createdAt: new Date('2026-09-05T16:30:00Z') },
+      ];
+      render(<LeadList leads={lateEveningInMalaysia} onDelete={vi.fn()} />);
+      expect(screen.getByText(/6 Sep(t)? 2026/)).toBeInTheDocument();
+      expect(screen.queryByText(/5 Sep(t)? 2026/)).not.toBeInTheDocument();
+    } finally {
+      process.env.TZ = originalTz;
+    }
+  });
+
   it('says what to do when there are none yet', () => {
     render(<LeadList leads={[]} onDelete={vi.fn()} />);
     expect(screen.getByText(/share your link/i)).toBeInTheDocument();

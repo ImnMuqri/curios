@@ -16,7 +16,21 @@ function statusLabel(status: OwnerLead['status']): string {
 }
 
 function formatDate(value: Date): string {
-  return value.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  // `LeadList` is a client component that renders once on the server -- UTC
+  // in production -- and again on hydration, in the browser's own zone. Left
+  // unpinned, those two passes read `createdAt` against different clocks: a
+  // lead captured at 00:30 in Malaysia is still 16:30 the day before in UTC,
+  // so the server would print one date and the browser another -- a
+  // hydration mismatch and a wrong date on screen until React corrects it.
+  // Curios only serves Malaysian pages, so the fix is to pin the zone rather
+  // than pick one dynamically. This is the only `toLocaleDateString`/`Intl`
+  // call in the repo, so it is setting the convention, not following one.
+  return value.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'Asia/Kuala_Lumpur',
+  });
 }
 
 /**
