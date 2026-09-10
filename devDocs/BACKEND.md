@@ -27,9 +27,9 @@ Message        role, content, cited fact ids, intent tags
                citation tracking needs the model to name what it used.
 Lead           phone, extracted slots, score, status, conversationId
 Question       clustered text, ask count, answered flag
-               faqSlug waits for the FAQ slice. answered means the owner
-               wrote a pinned answer, not that the model coped -- see the
-               refusal rule below.
+               faqSlug is nullable and unique per page, assigned by apps/api.
+               answered means the owner wrote a pinned answer, not that the
+               model coped -- see the refusal rule below.
 UsageCounter   pageId + period, conversation count. the meter.
 Ingestion      source url, status, extracted count, error
 ModelCall      one row per provider call. tokens, cost, cache hits. the margin.
@@ -449,10 +449,14 @@ accuracy.
 
 ## FAQ generation
 
-When a Question crosses an ask threshold and has a verified answer, a worker writes a
-static page and revalidates. This is the SEO layer and the over-cap fallback in one
-artifact. Include `FAQPage` structured data. Do not generate FAQ pages for questions
-nobody asked, that is content farm behaviour and it will read as one.
+When a Question crosses `FAQ_MIN_ASKS` asks and the owner has answered it, it earns a
+`faqSlug` and appears at `/[handle]/faq`. The page is rendered on first request and cached
+for 24 hours by Next's ISR, not built by a worker — there is no BullMQ job, and
+`generateStaticParams` is deliberately absent so `pnpm build` needs no database. This is
+the SEO layer and the over-cap fallback in one artifact. Include `FAQPage` structured data,
+serialised through `serialiseJsonLd` so an answer cannot close the script element. Do not
+generate FAQ pages for questions nobody asked, that is content farm behaviour and it will
+read as one.
 
 ---
 

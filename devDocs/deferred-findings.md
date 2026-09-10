@@ -9,7 +9,8 @@ Opened 2026-09-10, from the whole-branch review of `slice-5/leads`.
 
 Manual checks that no agent can run are not findings and are not listed here. They live
 in their own documents: `manual-verification-google-link.md` (slice 2, the Google round
-trip) and `manual-verification-leads.md` (slice 5, the leads screen — **not run**).
+trip), `manual-verification-leads.md` (slice 5, the leads screen — **not run**), and
+`manual-verification-faq.md` (slice 6, FAQ generation — **not run**).
 
 ---
 
@@ -106,6 +107,30 @@ conversation-retention or pruning job silently destroys leads — the thing the
 product charges for. No such job exists today; the only `deleteMany` calls in
 the codebase outside the lead delete are on `Session`. **Latent, not live** —
 recorded so whoever writes that job sees it first.
+
+---
+
+## FAQ
+
+Opened 2026-09-11, from Task 4's review of `slice-6/faq`.
+
+### `getFaqIndex` can silently return fewer entries than it should
+
+`packages/db-read/src/faq.query.ts` applies `take` to the has-a-slug set before
+filtering for has-an-answer: it reads up to `limit` questions ordered by
+`askCount desc`, then drops whichever of those turn out to have no
+`PinnedAnswer` behind them. On a page with more than 50 slugged questions,
+if one of the top ones by ask count has had its answer withdrawn, the
+returned list is shorter than it should be — a lower-ask-count question that
+does have an answer, and would otherwise have made the list, is silently
+left off rather than filling the gap.
+
+Inherent to the two-query approach the read gates chose over a join (see the
+comment above `getFaqIndex`): a join could filter before limiting, a
+`findMany` against two unrelated tables cannot. Costs nothing today — no page
+has anywhere near 50 FAQ-qualifying questions — and would need either a wider
+first read (take some multiple of `limit`, then trim after the join in
+memory) or a real join to fix properly.
 
 ---
 
