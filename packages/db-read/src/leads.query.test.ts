@@ -85,11 +85,16 @@ describe('getLeads', () => {
     expect(leads.find((l) => l.phone === '+60129999999')?.slots).toBeNull();
   });
 
-  it('returns nothing for an account that owns none of them', async () => {
+  it('sees only leads belonging to its own account', async () => {
     // Scoped in the query, not filtered after the read. This is a phone
     // number; showing the wrong owner's is the worst read bug in the product.
     const leads = await getLeads(theirs);
     expect(leads.map((l) => l.phone)).toEqual(['+60111111111']);
+  });
+
+  it('clamps the limit rather than trusting a caller', async () => {
+    const leads = await getLeads(mine, { limit: 1 });
+    expect(leads).toHaveLength(1);
   });
 
   it('does not write, so the read-only role can run it', async () => {
