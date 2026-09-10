@@ -25,6 +25,7 @@ import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js
 import { leadRoutes } from './modules/leads/lead.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
 import { factRoutes } from './modules/facts/fact.routes.js';
+import { questionRoutes } from './modules/questions/question.routes.js';
 import {
   authFlowRoutes,
   authRoutes,
@@ -138,6 +139,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     scope.addHook('onRequest', requireSession);
     await scope.register(pageRoutes);
     await scope.register(factRoutes);
+    await scope.register(questionRoutes);
   });
 
   return app;

@@ -132,12 +132,27 @@ export async function* answer(
     }),
   };
 
+  // Logged for the Questions screen, clustered on the same key the pinned
+  // answer below is looked up by. EVERY question, not only refused ones:
+  // nothing in an answer is machine-readable enough to tell a refusal from a
+  // confident one across Malay, Manglish and English, and a question asked
+  // nine times is a gap either way. See BACKEND.md's refusal rule.
+  const normalizedQuestion = normalizeClaim(input.question);
+  await prisma.question.upsert({
+    where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
+    // The first phrasing wins and is never overwritten: the owner reads what
+    // somebody actually typed, and rewriting it on every ask would churn the
+    // list for no gain.
+    create: { pageId: page.id, text: input.question, normalizedQuestion },
+    update: { askCount: { increment: 1 }, lastAskedAt: new Date() },
+  });
+
   // A pinned answer wins over model output. Zero tokens, zero risk.
   const pinned = await prisma.pinnedAnswer.findUnique({
     where: {
       pageId_normalizedQuestion: {
         pageId: page.id,
-        normalizedQuestion: normalizeClaim(input.question),
+        normalizedQuestion,
       },
     },
     select: { answer: true },

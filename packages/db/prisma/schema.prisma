@@ -97,6 +97,7 @@ model Page {
 
   @@unique([accountId])
   leads         Lead[]
+  questions     Question[]
 }
 
 model Link {
@@ -283,4 +284,24 @@ model Lead {
   // The 24-hour dedupe reads this. It cannot be a unique index, because the
   // rule has a time window and an index does not.
   @@index([pageId, phone, createdAt])
+}
+
+model Question {
+  id                 String   @id @default(cuid())
+  pageId             String
+  page               Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  /// The first phrasing seen, kept verbatim so the owner reads what a customer typed.
+  text               String
+  /// normalizeClaim(text). The cluster key, and the same key PinnedAnswer uses.
+  normalizedQuestion String
+  askCount           Int      @default(1)
+  /// True once the owner has written a pinned answer. NOT whether the model
+  /// coped -- see the refusal rule in BACKEND.md for why that is not detected.
+  answered           Boolean  @default(false)
+  firstAskedAt       DateTime @default(now())
+  lastAskedAt        DateTime @default(now())
+
+  @@unique([pageId, normalizedQuestion])
+  // The screen's only ordering: most asked first, then most recent.
+  @@index([pageId, askCount])
 }

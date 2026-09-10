@@ -321,6 +321,80 @@ describe('threading a conversation', () => {
     expect(captured.messages().at(-1)?.content).toBe('q8');
   });
 
+  it('logs the question a visitor asked', async () => {
+    await ask(depsSaying(), 'berapa harga kek butter?');
+
+    const question = await prisma.question.findFirstOrThrow({});
+    // Verbatim, not normalised: the owner should read what a customer typed.
+    expect(question.text).toBe('berapa harga kek butter?');
+    expect(question.askCount).toBe(1);
+    expect(question.answered).toBe(false);
+  });
+
+  it('counts two phrasings of one question as one question', async () => {
+    // The whole point of clustering. normalizeClaim strips punctuation and
+    // case, so these are the same row -- and the count is what tells an owner
+    // this is a real gap rather than one person being curious.
+    const deps = depsSaying();
+    await ask(deps, 'Berapa harga kek butter?');
+    await ask(deps, 'berapa harga kek butter');
+
+    const questions = await prisma.question.findMany({});
+    expect(questions).toHaveLength(1);
+    expect(questions[0]?.askCount).toBe(2);
+  });
+
+  it('keeps genuinely different questions apart', async () => {
+    const deps = depsSaying();
+    await ask(deps, 'berapa harga kek butter?');
+    await ask(deps, 'buka pukul berapa?');
+
+    expect(await prisma.question.count()).toBe(2);
+  });
+
+  it('counts across conversations, not just within one', async () => {
+    // Two visitors on different days asking the same thing is the signal.
+    // Counting only within a conversation would report every gap as askCount 1.
+    const deps = depsSaying();
+    await ask(deps, 'ada delivery?');
+    await ask(deps, 'ada delivery?');
+
+    const question = await prisma.question.findFirstOrThrow({});
+    expect(question.askCount).toBe(2);
+    expect(await prisma.conversation.count()).toBe(2);
+  });
+
+  it('logs a question the pinned answer handled, too', async () => {
+    // This file's fixture already pins "Berapa harga?", so this ask never
+    // reaches the model. The row still has to exist and still has to count, or
+    // a question would drop off the screen the moment it got popular enough to
+    // be worth pinning.
+    await ask(depsSaying(), 'berapa harga?');
+
+    const question = await prisma.question.findFirstOrThrow({});
+    expect(question.askCount).toBe(1);
+    expect(question.text).toBe('berapa harga?');
+  });
+
+  it('keeps the questions of one page out of another', async () => {
+    // Same normalised text, two pages, two rows. The unique index is on the
+    // pair; a global one would merge every shop's questions into one list.
+    const other = await prisma.account.create({
+      data: {
+        email: 'other@example.com',
+        pages: {
+          create: { handle: 'someoneelse', skeleton: 'someoneelse', displayName: 'Other', published: true },
+        },
+      },
+    });
+
+    await ask(depsSaying(), 'berapa harga?');
+    await collect(answer(depsSaying(), { handle: 'someoneelse', question: 'berapa harga?' }));
+
+    expect(await prisma.question.count()).toBe(2);
+    expect(other.id).toBeTruthy();
+  });
+
   it('refuses a conversation belonging to another page', async () => {
     // A conversation id is a bearer token for a thread. Without the page
     // scope, one page's visitor could append to another page's conversation
