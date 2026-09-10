@@ -35,8 +35,13 @@ describe('faqSlugBase', () => {
     expect(faqSlugBase('Open   on  Sunday??  ')).toBe('open-on-sunday');
   });
 
-  it('truncates a long question without leaving a trailing separator', () => {
-    const slug = faqSlugBase(`${'panjang '.repeat(30)}soalan`);
+  it('trims a trailing separator when slice lands on one', () => {
+    // SLUG_MAX = 60 is a multiple of 3, so `'xy '.repeat(20) + 'more'`
+    // (63 chars: "xy-xy-...-xy-more") slices to exactly "xy-xy-...-xy-"
+    // with a trailing dash. The post-slice trim must remove it. A word
+    // repeat like 'panjang ' doesn't land on a separator boundary (60 is
+    // not a multiple of 8), so it won't exercise this step.
+    const slug = faqSlugBase('xy '.repeat(20) + 'more');
     expect(slug!.length).toBeLessThanOrEqual(60);
     expect(slug!.endsWith('-')).toBe(false);
   });
