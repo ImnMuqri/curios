@@ -105,6 +105,22 @@ describe('LeadList', () => {
     expect(screen.getByRole('button', { name: /^delete$/i })).toBeDisabled();
   });
 
+  it('shuts Cancel too while a delete is in flight', async () => {
+    // Cancel closes the confirm panel without waiting for the request to
+    // settle. If it stays live while `busy` is true, a tap on it after "Yes,
+    // delete" hides the panel -- but the DELETE already in flight still
+    // lands, the row still disappears on refresh, and a failure has nowhere
+    // left to render its error. A cancel that does not cancel is the
+    // two-step confirm's guarantee broken.
+    const onDelete = vi.fn().mockReturnValue(new Promise(() => {}));
+    render(<LeadList leads={leads} onDelete={onDelete} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
+    await userEvent.click(screen.getByRole('button', { name: /yes, delete/i }));
+
+    expect(screen.getByRole('button', { name: /^cancel$/i })).toBeDisabled();
+  });
+
   it('says what to do when there are none yet', () => {
     render(<LeadList leads={[]} onDelete={vi.fn()} />);
     expect(screen.getByText(/share your link/i)).toBeInTheDocument();

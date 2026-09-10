@@ -162,6 +162,14 @@ export function LeadList({
                   </Button>
                   <Button
                     variant="secondary"
+                    // The two-step confirm exists because a phone number gone
+                    // is gone. If Cancel stays live while `busy` is true, a
+                    // tap on it after "Yes, delete" hides this panel while
+                    // the DELETE already in flight still lands -- the row is
+                    // still gone on refresh, and a failure has nowhere left
+                    // to render its error. A Cancel that does not cancel is
+                    // that guarantee broken.
+                    disabled={busy}
                     onClick={() => {
                       setConfirming(null);
                       setError('');
