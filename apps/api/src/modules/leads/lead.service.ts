@@ -124,6 +124,14 @@ export async function captureLead(
  * check in this codebase has that shape, and this is the one where getting it
  * wrong destroys another owner's data rather than merely showing it.
  *
+ * The scope sits on the DELETE itself rather than on a findFirst before it,
+ * which is where this differs from `answerQuestion`. One statement instead of
+ * two, and the guard cannot be separated from the thing it guards by a later
+ * edit. This is not fixing an observed race: a concurrent double delete was
+ * measured against the two-step version and it returned a clean 404 both
+ * times, because the pool serialises the pair. It is one irreversible
+ * statement carrying its own scope.
+ *
  * The Conversation is left alone deliberately. The lead is the personal data;
  * the conversation is a visitor's chat with a public page, and it feeds the
  * questions screen -- cascading into it would silently rewrite an owner's own
@@ -134,11 +142,8 @@ export async function deleteLead(
   accountId: string,
   leadId: string,
 ): Promise<void> {
-  const lead = await prisma.lead.findFirst({
+  const { count } = await prisma.lead.deleteMany({
     where: { id: leadId, page: { accountId } },
-    select: { id: true },
   });
-  if (!lead) throw new LeadNotYoursError();
-
-  await prisma.lead.delete({ where: { id: lead.id } });
+  if (count === 0) throw new LeadNotYoursError();
 }
