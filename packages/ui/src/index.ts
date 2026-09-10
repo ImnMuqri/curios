@@ -8,4 +8,5 @@ export { Button } from './button/Button.js';
 export { Field } from './field/Field.js';
 export { Callout } from './callout/Callout.js';
 export { Shell } from './shell/Shell.js';
+export { Nav } from './nav/Nav.js';
 export { CaptureCard } from './capture/CaptureCard.js';

@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 // is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
 import { Shell } from '@curios/ui';
+import { AppNav } from './app-nav.js';
 import { resolveOwner } from './session.js';
 
 /**
@@ -23,5 +24,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   // Shell, not className="app-shell" -- that class was never defined in any
   // stylesheet in this repo, so it styled nothing from the day it was written.
-  return <Shell>{children}</Shell>;
+  return (
+    <Shell>
+      <AppNav />
+      {children}
+    </Shell>
+  );
 }
