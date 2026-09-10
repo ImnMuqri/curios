@@ -2,9 +2,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PublicPage } from '@curios/db-read';
 
-vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn() }));
+vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn() }));
 
-const { getPublicPage } = await import('@curios/db-read');
+const { getFaqIndex, getPublicPage } = await import('@curios/db-read');
 const HandlePage = (await import('./page.js')).default;
 
 const page: PublicPage = {
@@ -52,6 +52,50 @@ describe('public page', () => {
   it('calls notFound for an unknown handle', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(null);
     await expect(HandlePage({ params: Promise.resolve({ handle: 'nobody' }) })).rejects.toThrow();
+  });
+});
+
+describe('the link to /[handle]/faq', () => {
+  it('appears when the page has FAQ entries', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+    vi.mocked(getFaqIndex).mockResolvedValue({
+      handle: 'nadia',
+      displayName: 'Nadia Bakes',
+      entries: [{ slug: 'berapa-harga', question: 'Berapa harga?' }],
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.getByRole('link', { name: /every question/i })).toHaveAttribute(
+      'href',
+      '/nadia/faq',
+    );
+  });
+
+  it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+    vi.mocked(getFaqIndex).mockResolvedValue({
+      handle: 'nadia',
+      displayName: 'Nadia Bakes',
+      entries: [],
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.queryByRole('link', { name: /every question/i })).toBeNull();
+  });
+
+  it('is absent, and never queried, for a personal page', async () => {
+    // Cleared rather than asserted from a fresh module, because this mock is
+    // shared across the file's tests -- this checks no NEW call happened, not
+    // that the mock has never been called at all.
+    vi.mocked(getFaqIndex).mockClear();
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, mode: 'PERSONAL' });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.queryByRole('link', { name: /every question/i })).toBeNull();
+    expect(getFaqIndex).not.toHaveBeenCalled();
   });
 });
 

@@ -45,8 +45,13 @@ function publishedBusinessPage(handle: string) {
  * key on a table the chat path writes to on every question.
  *
  * The answer is read through `PinnedAnswer` rather than cached onto `Question`
- * so that withdrawing an answer removes the page on the next render, without
- * anyone having to remember a second write.
+ * so that withdrawing an answer removes it from THIS query's result the very
+ * next time it runs, without anyone having to remember a second write. That is
+ * not the same as the public page updating immediately: `/[handle]/faq` and
+ * `/[handle]/faq/[slug]` cache the rendered HTML for up to 24 hours (Next ISR,
+ * no `revalidatePath` call anywhere), so a page a visitor or a crawler already
+ * has cached keeps showing the withdrawn answer until that window turns over.
+ * This function is immediate; the route it feeds is not.
  */
 export async function getFaqIndex(
   handle: string,
@@ -95,8 +100,12 @@ export async function getFaqEntry(handle: string, slug: string): Promise<FaqAnsw
   const page = await publishedBusinessPage(handle);
   if (!page) return null;
 
+  // Lowercased, like the handle above: faqSlugBase generates slugs lowercase,
+  // so a mixed-case inbound link (a typo, a chat client that title-cases URLs)
+  // resolves instead of 404ing. Inbound links finding the page are the point
+  // of this slice.
   const question = await prismaRead.question.findFirst({
-    where: { pageId: page.id, faqSlug: slug },
+    where: { pageId: page.id, faqSlug: slug.toLowerCase() },
     select: { text: true, normalizedQuestion: true },
   });
   if (!question) return null;

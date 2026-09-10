@@ -70,3 +70,45 @@ describe('one FAQ answer', () => {
     await expect(FaqEntryPage(params('nadia', 'berapa-harga'))).rejects.toThrow('NEXT_NOT_FOUND');
   });
 });
+
+describe('the meta description', () => {
+  it('leaves a short answer untouched', async () => {
+    getFaqEntry.mockResolvedValueOnce(entry);
+
+    const { generateMetadata } = await import('./page.js');
+    const meta = await generateMetadata(params('nadia', 'berapa-harga'));
+
+    expect(meta.description).toBe('RM12 sekotak, RM60 lima kotak.');
+  });
+
+  it('cuts before a price rather than mangling it mid-number', async () => {
+    // Built so a hard `slice(0, 155)` lands exactly inside "RM120": 150 filler
+    // characters with no space, then " RM120 sekotak." -- indices 0-149 are
+    // filler, 150 is the space, 151-154 are "RM12". A naive slice(0, 155)
+    // reproduces the review's exact failure, "RM120" truncated to "RM1". The
+    // fix must instead back up to the last space and drop the whole word.
+    const filler = 'x'.repeat(150);
+    getFaqEntry.mockResolvedValueOnce({ ...entry, answer: `${filler} RM120 sekotak.` });
+
+    const { generateMetadata } = await import('./page.js');
+    const meta = await generateMetadata(params('nadia', 'berapa-harga'));
+
+    expect(meta.description).toBe(`${filler}…`);
+    expect(meta.description).not.toContain('RM1');
+  });
+
+  it('never splits a surrogate pair', async () => {
+    // An emoji is one code point but two UTF-16 code units -- slicing a raw
+    // string by index (rather than by code point) can land inside it and
+    // leave a lone, unpaired surrogate in the output.
+    const longPrefix = 'x'.repeat(154);
+    getFaqEntry.mockResolvedValueOnce({ ...entry, answer: `${longPrefix}😀 more text after` });
+
+    const { generateMetadata } = await import('./page.js');
+    const meta = await generateMetadata(params('nadia', 'berapa-harga'));
+
+    const loneSurrogate = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/u;
+    expect(loneSurrogate.test(meta.description!)).toBe(false);
+    expect(meta.description).toBe(`${longPrefix}😀…`);
+  });
+});

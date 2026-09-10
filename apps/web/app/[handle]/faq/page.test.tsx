@@ -37,7 +37,19 @@ describe('the FAQ index', () => {
       'href',
       '/nadia/faq/berapa-harga',
     );
-    expect(screen.getAllByRole('link')).toHaveLength(2);
+    // One per entry, plus the link back to the page itself.
+    expect(screen.getAllByRole('link')).toHaveLength(3);
+  });
+
+  it('links back to the page itself, like the entry page does', async () => {
+    getFaqIndex.mockResolvedValueOnce(index);
+
+    render(await FaqIndexPage(params('nadia')));
+
+    expect(screen.getByRole('link', { name: /back to nadia bakes/i })).toHaveAttribute(
+      'href',
+      '/nadia',
+    );
   });
 
   it('404s a page with no FAQ pages rather than showing an empty index', async () => {

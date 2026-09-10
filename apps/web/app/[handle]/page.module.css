@@ -53,3 +53,15 @@
 .claim {
   margin: 8px 0 0;
 }
+
+/*
+ * The one link into /[handle]/faq. Styled like the utility voice's plainer
+ * sibling rather than a call to action -- it is a way out to more answers,
+ * not the primary action on this page.
+ */
+.faqLink {
+  display: block;
+  margin: 16px 0 24px;
+  font-size: var(--text-base);
+  color: var(--muted);
+}

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { serialiseJsonLd } from '@curios/core';
 import { getFaqIndex } from '@curios/db-read';
 import styles from './faq.module.css';
 
@@ -40,24 +39,15 @@ export default async function FaqIndexPage({
   // than publish an empty one -- a thin page indexed is worse than no page.
   if (!index || index.entries.length === 0) notFound();
 
-  const jsonLd = serialiseJsonLd({
-    '@context': 'https://schema.org',
-    '@type': 'FAQPage',
-    mainEntity: index.entries.map((entry) => ({
-      '@type': 'Question',
-      name: entry.question,
-      acceptedAnswer: {
-        '@type': 'Answer',
-        // The index links rather than inlines, so the answer text lives on the
-        // entry page. `url` is the honest representation of that.
-        url: `/${index.handle}/faq/${entry.slug}`,
-      },
-    })),
-  });
-
+  // No FAQPage JSON-LD here, deliberately. Google's FAQPage requirements make
+  // acceptedAnswer.text mandatory, and this page shows questions only -- the
+  // answer text lives on the entry page it links to. Structured data must
+  // describe content visible on the page it sits on; inlining every answer
+  // here just to satisfy the schema would trade invalid markup for deceptive
+  // markup. The entry pages, where the answer is actually visible, carry
+  // FAQPage -- and a specific question is what should rank there anyway.
   return (
     <main className={styles.page}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
       <p className={styles.shop}>{index.displayName}</p>
       <h1 className={styles.heading}>What people ask</h1>
       <ul className={styles.list}>
@@ -69,6 +59,9 @@ export default async function FaqIndexPage({
           </li>
         ))}
       </ul>
+      <a className={styles.back} href={`/${index.handle}`}>
+        Back to {index.displayName}
+      </a>
     </main>
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getPublicPage } from '@curios/db-read';
+import { getFaqIndex, getPublicPage } from '@curios/db-read';
 import { Chip, LinkRow } from '@curios/ui';
 import { Ask } from './ask.js';
 import styles from './page.module.css';
@@ -48,6 +48,18 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
     .map((fact) => fact.question)
     .filter((question): question is string => question !== null);
 
+  // One extra small indexed read, deliberate: this page is otherwise the only
+  // route in the product that never points at /[handle]/faq, which orphans it
+  // for both visitors and crawlers. The index itself 404s when a page has no
+  // qualifying questions, so linking there unconditionally would sometimes
+  // link to a 404 -- worse than not linking. `limit: 1` because only whether
+  // any entry exists matters here; skipped entirely for a personal page,
+  // which the index gates on anyway.
+  const hasFaq =
+    page.mode === 'BUSINESS'
+      ? ((await getFaqIndex(page.handle, { limit: 1 }))?.entries.length ?? 0) > 0
+      : false;
+
   // Server-rendered into real DOM. With JavaScript disabled this is still a
   // working link list with readable answers, which is also the SEO artifact.
   return (
@@ -72,6 +84,12 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
           ))}
         </ul>
       </section>
+
+      {hasFaq ? (
+        <a className={styles.faqLink} href={`/${page.handle}/faq`}>
+          See every question we&apos;ve answered
+        </a>
+      ) : null}
 
       <Ask
         handle={page.handle}
