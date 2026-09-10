@@ -28,32 +28,21 @@ const ROUTE_CHUNK_BUDGET_KB = 40;
 const FIRST_LOAD_CEILING_KB = 400;
 
 /**
- * Settled empirically (Step 14 of the slice-6 FAQ plan), against a real
- * `pnpm --filter @curios/web build`:
+ * Neither route's own chunk is ever empty -- Next always emits the CSS
+ * Modules class-name lookup object for a `.module.css` import, client
+ * component or not -- so this is a size ceiling, not an emptiness check.
+ * Three measurements, each against a real `pnpm --filter @curios/web build`:
  *
- *   node -e "const m=require('./.next/app-build-manifest.json').pages;
- *     for(const r of ['/[handle]/faq/page','/[handle]/faq/[slug]/page'])
- *     console.log(r, JSON.stringify(m[r]??'ABSENT'))"
+ *   inert (no client component, current code): 388 B
+ *   minimal ('use client' + one useState, one <button>, no other imports),
+ *     temporarily added to this route and removed after measuring: 603 B
+ *   /[handle]/page's actual `Ask`, for scale: 5346 B own + 7321 B shared chunk
  *
- *   /[handle]/faq/page       [..., "static/chunks/app/[handle]/faq/page-a53d470d8c5651d5.js"]
- *   /[handle]/faq/[slug]/page [..., "static/chunks/app/[handle]/faq/[slug]/page-a53d470d8c5651d5.js"]
- *
- * Neither the "absent" guess nor the "own is empty" guess held: both routes
- * are listed, and each carries exactly one own-path .js file, 388 bytes,
- * byte-identical content between the two routes. Its full decompiled content
- * is nothing but the CSS Modules class-name lookup object --
- *   {page:"faq_page__xr5gE",shop:"faq_shop__...", ...}
- * -- no React, no component, no client boundary. Next always emits this shim
- * for a `.module.css` import, whether or not the importing component is a
- * client component, so a page with zero interactivity still shows up here.
- *
- * For contrast, `/[handle]/page` -- which does render the interactive `Ask`
- * -- carries a 5346-byte own chunk *and* an extra 7321-byte shared chunk
- * neither FAQ route pulls in at all. So the assertion that is actually true,
- * and still does the job the guard exists for, is a size ceiling far below
- * what any real interactivity costs, not an empty array.
+ * The ceiling sits at the midpoint of the first two, comfortably clear of
+ * both: 24% above the measured inert floor, 20% below the measured cost of
+ * the smallest real client boundary that could be added.
  */
-const FAQ_OWN_CHUNK_CEILING_BYTES = 2048;
+const FAQ_OWN_CHUNK_CEILING_BYTES = 480;
 
 describe('the public page JS budget', () => {
   const root = process.cwd();
