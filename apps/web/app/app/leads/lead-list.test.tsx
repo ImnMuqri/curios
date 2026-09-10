@@ -85,6 +85,26 @@ describe('LeadList', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/try again/i);
   });
 
+  it('holds the other rows shut while a delete is in flight', async () => {
+    // `error` and `busy` are shared across rows, so a second row opened
+    // mid-request inherits the first row's outcome: its confirm panel is the
+    // one on screen when the answer lands. An owner is then told a lead they
+    // never touched failed to delete, or has their open prompt closed by a
+    // success that belonged to a different lead. Keeping the other Delete
+    // shut until the request settles is what keeps a message attached to the
+    // row it describes.
+    const onDelete = vi.fn().mockReturnValue(new Promise(() => {}));
+    const two: OwnerLead[] = [leads[0]!, { ...leads[0]!, id: 'l2', phone: '+60127654321' }];
+    render(<LeadList leads={two} onDelete={onDelete} />);
+
+    await userEvent.click(screen.getAllByRole('button', { name: /^delete$/i })[0]!);
+    await userEvent.click(screen.getByRole('button', { name: /yes, delete/i }));
+
+    // The first row's Delete is gone -- replaced by its own confirm panel --
+    // so the one left is the second row's.
+    expect(screen.getByRole('button', { name: /^delete$/i })).toBeDisabled();
+  });
+
   it('says what to do when there are none yet', () => {
     render(<LeadList leads={[]} onDelete={vi.fn()} />);
     expect(screen.getByText(/share your link/i)).toBeInTheDocument();

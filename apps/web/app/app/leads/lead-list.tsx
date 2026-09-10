@@ -135,6 +135,13 @@ export function LeadList({
               {confirming === lead.id ? null : (
                 <Button
                   variant="danger"
+                  // Shut while another row's delete is in flight. `error` and
+                  // `busy` are shared, so a second prompt opened mid-request
+                  // would be the one on screen when the answer arrives -- and
+                  // an owner would be told a lead they never touched had
+                  // failed, or watch their prompt close on someone else's
+                  // success.
+                  disabled={busy}
                   onClick={() => {
                     setConfirming(lead.id);
                     setError('');
