@@ -39,7 +39,7 @@
 - Consumes: `normalizeClaim` from `@curios/core`.
 - Produces: a `Question` row per `(pageId, normalizedQuestion)`, with `text`, `askCount`, `answered`, `lastAskedAt`.
 
-- [ ] **Step 1: Add the model**
+- [x] **Step 1: Add the model**
 
 `packages/db/prisma/schema.prisma`:
 
@@ -74,7 +74,7 @@ DATABASE_URL="$(grep '^DATABASE_URL=' ../../.env | head -1 | cut -d= -f2- | tr -
 DATABASE_URL="$(grep '^DATABASE_URL_TEST=' ../../.env | head -1 | cut -d= -f2- | tr -d '"')" npx prisma migrate deploy
 ```
 
-- [ ] **Step 2: Write the failing tests**
+- [x] **Step 2: Write the failing tests**
 
 Add to `apps/api/src/modules/chat/chat.service.test.ts`, inside the `threading a conversation` describe:
 
@@ -166,12 +166,12 @@ Add to `apps/api/src/modules/chat/chat.service.test.ts`, inside the `threading a
 
 `pageId` is already a module-level binding in this file's `beforeEach`; if it is not, read it there rather than re-querying.
 
-- [ ] **Step 3: Run to verify RED**
+- [x] **Step 3: Run to verify RED**
 
 Run: `pnpm --filter @curios/api test chat.service`
 Expected: FAIL — `prisma.question` does not exist, or no rows are written.
 
-- [ ] **Step 4: Log the question**
+- [x] **Step 4: Log the question**
 
 In `apps/api/src/modules/chat/chat.service.ts`, immediately after the user's `Message` is created and **before** the pinned-answer lookup:
 
@@ -194,12 +194,12 @@ In `apps/api/src/modules/chat/chat.service.ts`, immediately after the user's `Me
 
 `normalizeClaim` is already imported in this file for the pinned lookup.
 
-- [ ] **Step 5: Run to verify GREEN**
+- [x] **Step 5: Run to verify GREEN**
 
 Run: `pnpm --filter @curios/api test chat`
 Expected: PASS.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add packages/db apps/api
@@ -225,7 +225,7 @@ git commit -m "feat(api): every question a visitor asks, counted"
   - `POST /questions/:id/answer` with body `{ answer: string }`.
   - `QuestionNotYoursError` — 404, code `NOT_FOUND`.
 
-- [ ] **Step 1: Write the failing read test**
+- [x] **Step 1: Write the failing read test**
 
 `packages/db-read/src/questions.query.test.ts`, following `review.query.test.ts` for the fixture shape:
 
@@ -263,7 +263,7 @@ describe('getQuestions', () => {
 
 Seed three questions with ask counts 9, 4 and 1, the middle one answered.
 
-- [ ] **Step 2: Write the read**
+- [x] **Step 2: Write the read**
 
 `packages/db-read/src/questions.query.ts`:
 
@@ -305,7 +305,7 @@ export async function getQuestions(
 
 Export it and its type from `packages/db-read/src/index.ts`.
 
-- [ ] **Step 3: Write the failing writeback test**
+- [x] **Step 3: Write the failing writeback test**
 
 `apps/api/src/modules/questions/question.service.test.ts`:
 
@@ -351,7 +351,7 @@ describe('answerQuestion', () => {
 });
 ```
 
-- [ ] **Step 4: Write the writeback**
+- [x] **Step 4: Write the writeback**
 
 `apps/api/src/modules/questions/question.service.ts`:
 
@@ -415,7 +415,7 @@ export async function answerQuestion(
 }
 ```
 
-- [ ] **Step 5: The route**
+- [x] **Step 5: The route**
 
 `apps/api/src/modules/questions/question.routes.ts`, following `fact.routes.ts` exactly — it is the closest existing shape:
 
@@ -451,7 +451,7 @@ Register it in `app.ts` inside the existing session-guarded scope beside `factRo
 
 `NOT_FOUND` is already in `DOMAIN_ERROR_CODES` (`errors.ts:50`) — checked, so `errors.ts` needs no change. The session-guarded scope is `app.ts:95`, where `requireSession` is added as an `onRequest` hook before `pageRoutes` and `factRoutes`; register `questionRoutes` there.
 
-- [ ] **Step 6: Run and commit**
+- [x] **Step 6: Run and commit**
 
 Run: `pnpm --filter @curios/db-read test && pnpm --filter @curios/api test`
 
@@ -473,7 +473,7 @@ git commit -m "feat(api): answering a question pins it"
 - Consumes: `getQuestions` and `OwnerQuestion` from Task 2; `POST /questions/:id/answer`.
 - Produces: nothing later tasks depend on.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 `apps/web/app/app/questions/question-list.test.tsx`, following `review-queue.test.tsx` for the wrapper/presentational split this codebase uses:
 
@@ -543,7 +543,7 @@ describe('QuestionList', () => {
 });
 ```
 
-- [ ] **Step 2: Run to verify RED, then write the components**
+- [x] **Step 2: Run to verify RED, then write the components**
 
 `question-list.tsx` holds `QuestionList` (presentational, takes `questions` and `onAnswer`) and `Questions` (the `'use client'` wrapper closing over `apiFetch` and calling `router.refresh()` on success) — the same split `review-queue.tsx`, `claim-form.tsx` and `publish-button.tsx` all use, and for the same reason: a Server Component may not pass a function across the RSC boundary.
 
@@ -551,11 +551,11 @@ Use `Button`, `Field` (with `multiline`) and `Callout` from `@curios/ui`. The as
 
 `page.tsx` is a Server Component: `resolveOwner`, `redirect('/signin')` if none, `getQuestions(owner.accountId)`, render `<Questions questions={…} />` inside `Shell title="Questions"`.
 
-- [ ] **Step 3: Run everything**
+- [x] **Step 3: Run everything**
 
 Run: `pnpm --filter @curios/web test && pnpm lint && pnpm typecheck`
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add apps/web
@@ -566,13 +566,13 @@ git commit -m "feat(web): the questions an owner can finally see"
 
 ### Task 4: Gates, and a question answered end to end
 
-- [ ] **Step 1: All four gates**
+- [x] **Step 1: All four gates**
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build --force
 ```
 
-- [ ] **Step 2: Prove the loop closes**
+- [x] **Step 2: Prove the loop closes**
 
 `docker compose up -d && pnpm dev`, then:
 
@@ -591,7 +591,7 @@ Run it before and after step 4; a pinned hit adds no row.
 
 **Report each honestly, including any not run.**
 
-- [ ] **Step 3: Record the result and commit**
+- [x] **Step 3: Record the result and commit**
 
 ---
 
@@ -606,3 +606,53 @@ Run it before and after step 4; a pinned hit adds no row.
 **One thing worth watching in execution.** Task 1 adds a database write to the chat path, which runs on every visitor question. It is one upsert on a unique index, next to the two `Message` writes already there — but if it shows up in latency, the honest fix is to move it after the stream rather than to drop the feature, and that is a decision for whoever sees the number.
 
 **What no test covers.** Whether ask-count ranking is the right ranking. That needs a real page with real visitors, and the spec says so: it is also the only thing that will show whether refusal detection was worth skipping.
+
+
+---
+
+## Execution record
+
+**Gates:** lint, typecheck, build all pass. **611 tests** across 8 packages — api 202,
+core 146, web 84, ui 65, workers 57, db-read 30, gateway 19, db 8.
+
+### The loop closes
+
+Against the running API and the real database:
+
+| Step | Result |
+|---|---|
+| Asked *"berapa harga kek pandan?"* and *"Berapa harga kek pandan"* in two conversations | **One row**, `askCount 2`, first phrasing kept verbatim |
+| Answered it as the owner through `POST /questions/:id/answer` | `{"status":"answered"}` |
+| Asked it a third time | *"Kek pandan RM88 sekilo. Kena tempah dua hari awal."* — the owner's exact words |
+| `ModelCall` rows before and after that third ask | **28 and 28** |
+
+That last row is the whole slice. A pinned answer wins over model output at zero tokens,
+and the count proves it rather than the comment claiming it. The question ended at
+`askCount 3, answered true`, so it keeps counting after being answered — which is what
+stops a popular question vanishing from the screen the moment it gets pinned.
+
+### What execution found
+
+**The clustering is load-bearing, proven by breaking it.** Keying on the raw text instead
+of `normalizeClaim` turns two phrasings of one question into two rows, and the test catches
+it.
+
+**The chat fixture already pinned "Berapa harga?"**, so the test that checks a pinned-answer
+ask still gets logged had to use the fixture rather than create its own — it was hitting the
+unique constraint. The test is better for it: it exercises the real pinned path.
+
+**The `tmpfs` test database lost the `curios_readonly` role again**, which surfaced as
+`db-read` failing to authenticate rather than as a permissions error. Documented in plan
+2a, hit for the third time this month, and re-granting fixes it.
+
+**One unexplained flake.** A `pnpm test` run reported 6 of 8 packages successful with
+`api` showing 202 passed and then `ELIFECYCLE`. Three subsequent full runs exited 0. I could
+not reproduce it and have no diagnosis — recorded as observed rather than explained, because
+an intermittent non-zero exit on a green suite is worth someone else's suspicion if it
+returns.
+
+### Not done
+
+Nobody has opened `/app/questions` in a browser. The screen is unit-tested and the loop
+above went through `curl` and psql; whether the list reads as a to-do or as noise is a
+judgement no test here reaches.
