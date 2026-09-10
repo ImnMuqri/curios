@@ -7,3 +7,5 @@ export { getOwnerPage } from './owner-page.query.js';
 export type { OwnerPage } from './owner-page.query.js';
 export { getSignInMethods } from './sign-in-methods.query.js';
 export type { SignInMethods } from './sign-in-methods.query.js';
+export { getQuestions } from './questions.query.js';
+export type { OwnerQuestion } from './questions.query.js';
