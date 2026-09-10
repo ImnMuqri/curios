@@ -180,4 +180,62 @@ describe('the owner surface columns', () => {
     // is what suppresses the re-ask.
     expect(fact.rejectedAt).not.toBeNull();
   });
+
+  it('lets two pages use the same faq slug but not one page twice', async () => {
+    // Per page, not global. Two bakeries may both answer "berapa harga kek" and
+    // both deserve the readable URL; the same page cannot have two questions
+    // resolving to one route.
+    const [one, two] = await Promise.all([
+      prisma.account.create({ data: { email: `faq-a-${randomUUID()}@example.com` }, select: { id: true } }),
+      prisma.account.create({ data: { email: `faq-b-${randomUUID()}@example.com` }, select: { id: true } }),
+    ]);
+
+    const mk = async (accountId: string) => {
+      const skeleton = `faq-${randomUUID().slice(0, 8)}`;
+      const page = await prisma.page.create({
+        data: { accountId, handle: skeleton, skeleton, displayName: 'Nadia Bakes' },
+        select: { id: true },
+      });
+      return page.id;
+    };
+
+    const [pageOne, pageTwo] = await Promise.all([mk(one.id), mk(two.id)]);
+
+    await prisma.question.create({
+      data: { pageId: pageOne, text: 'Berapa harga?', normalizedQuestion: 'berapa harga', faqSlug: 'berapa-harga' },
+    });
+    // Same slug, different page: allowed.
+    await expect(
+      prisma.question.create({
+        data: { pageId: pageTwo, text: 'Berapa harga?', normalizedQuestion: 'berapa harga', faqSlug: 'berapa-harga' },
+      }),
+    ).resolves.toBeTruthy();
+
+    // Same slug, same page: refused.
+    await expect(
+      prisma.question.create({
+        data: { pageId: pageOne, text: 'Harga berapa?', normalizedQuestion: 'harga berapa', faqSlug: 'berapa-harga' },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('leaves faqSlug null for a question that has not earned a page', async () => {
+    // The default, and the state most questions stay in forever.
+    const account = await prisma.account.create({
+      data: { email: `faq-null-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const skeleton = `faq-${randomUUID().slice(0, 8)}`;
+    const page = await prisma.page.create({
+      data: { accountId: account.id, handle: skeleton, skeleton, displayName: 'Nadia Bakes' },
+      select: { id: true },
+    });
+
+    const question = await prisma.question.create({
+      data: { pageId: page.id, text: 'Ada kek halal?', normalizedQuestion: 'ada kek halal' },
+      select: { faqSlug: true },
+    });
+
+    expect(question.faqSlug).toBeNull();
+  });
 });
