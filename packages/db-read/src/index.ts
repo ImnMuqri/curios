@@ -11,3 +11,5 @@ export { getQuestions } from './questions.query.js';
 export type { OwnerQuestion } from './questions.query.js';
 export { getLeads } from './leads.query.js';
 export type { OwnerLead, LeadSlots, LeadTranscriptLine } from './leads.query.js';
+export { getFaqIndex, getFaqEntry } from './faq.query.js';
+export type { FaqIndex, FaqListEntry, FaqAnswer } from './faq.query.js';
