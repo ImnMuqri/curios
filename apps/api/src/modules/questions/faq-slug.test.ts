@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 // `@prisma/client`, not `@curios/db` -- every test in apps/api constructs its
 // own client this way, pointed at DATABASE_URL_TEST. Source files import the
 // type from `@curios/db`; tests import the constructor from Prisma directly.
@@ -126,7 +126,29 @@ describe('assignFaqSlug', () => {
   it('returns quietly for a question that no longer exists', async () => {
     // Best-effort by design: this runs inside a visitor's chat request, and a
     // deleted page mid-request must not turn into a 500 for them.
+    //
+    // NOTE: a bad id makes the real `findUnique` resolve to `null`, which
+    // takes the early `if (!question ...) return;` branch a few lines into
+    // the try. It never reaches the outer catch below -- that is a distinct
+    // branch, covered by the next test. Do not merge these as duplicates.
     await expect(assignFaqSlug(prisma, 'cl-does-not-exist')).resolves.toBeUndefined();
+  });
+
+  it('logs and resolves rather than throwing when the database call itself fails', async () => {
+    // The branch the test above does NOT reach: here `findUnique` rejects
+    // outright (a dropped connection, a timeout), which is what the outer
+    // `catch` in `assignFaqSlug` exists for -- "a failure logs and returns,
+    // never propagates," because this runs inside a visitor's SSE stream and
+    // an owner's answer-writeback, and neither may fail because an SEO URL
+    // could not be minted.
+    const errors: string[] = [];
+    const log = { error: (_obj: unknown, msg: string) => errors.push(msg) };
+    const failing = {
+      question: { findUnique: vi.fn().mockRejectedValue(new Error('connection lost')) },
+    } as unknown as PrismaClient;
+
+    await expect(assignFaqSlug(failing, 'any-id', log)).resolves.toBeUndefined();
+    expect(errors).toEqual(['faq slug assignment failed']);
   });
 
   it('reports an unsluggable question to the log instead of skipping it silently', async () => {

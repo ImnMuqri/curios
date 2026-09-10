@@ -31,7 +31,19 @@ async function seedPage(input: { published?: boolean; mode?: 'PERSONAL' | 'BUSIN
 
 async function seedAnswered(
   pageId: string,
-  input: { text: string; slug: string | null; askCount?: number; answer?: string | null },
+  input: {
+    text: string;
+    slug: string | null;
+    askCount?: number;
+    answer?: string | null;
+    // Real withdrawal (owner deletes the PinnedAnswer row) never tells
+    // Question about it -- `answered` stays true with no PinnedAnswer behind
+    // it. Defaulting to `input.answer !== null` keeps every existing call site
+    // that means "answered normally" working unchanged; the two withdrawal
+    // tests below pass `answered: true` explicitly so they model the real
+    // shape instead of a state the product never produces.
+    answered?: boolean;
+  },
 ) {
   const normalizedQuestion = input.text.toLowerCase();
   await write.question.create({
@@ -41,7 +53,7 @@ async function seedAnswered(
       normalizedQuestion,
       faqSlug: input.slug,
       askCount: input.askCount ?? 5,
-      answered: input.answer !== null,
+      answered: input.answered ?? input.answer !== null,
     },
   });
   if (input.answer !== null) {
@@ -77,9 +89,22 @@ describe('getFaqIndex', () => {
 
   it('omits a question whose answer the owner has withdrawn', async () => {
     // Reading through PinnedAnswer rather than caching the text means a
-    // withdrawal takes effect on the next render, not the next revalidation.
+    // withdrawal takes effect on the next call to this function, not the next
+    // revalidation (the page it feeds is a separate story -- see
+    // faq.query.ts's doc comment on getFaqIndex).
+    //
+    // `answered: true` here is the point: withdrawing an answer deletes the
+    // PinnedAnswer row but never touches Question.answered, which stays true.
+    // Without this, the seed would leave `answered: false` and this test
+    // would pass just the same against a wrong implementation that filtered
+    // on Question.answered instead of on PinnedAnswer existing.
     const page = await seedPage();
-    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga', answer: null });
+    await seedAnswered(page.id, {
+      text: 'Berapa harga?',
+      slug: 'berapa-harga',
+      answer: null,
+      answered: true,
+    });
 
     const index = await getFaqIndex(page.handle);
 
@@ -157,8 +182,16 @@ describe('getFaqEntry', () => {
   });
 
   it('returns null once the answer is withdrawn, though the slug remains', async () => {
+    // `answered: true`: a withdrawal never resets Question.answered, so a test
+    // that let it default to false would also pass a wrong implementation
+    // gated on that field rather than on PinnedAnswer existing.
     const page = await seedPage();
-    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga', answer: null });
+    await seedAnswered(page.id, {
+      text: 'Berapa harga?',
+      slug: 'berapa-harga',
+      answer: null,
+      answered: true,
+    });
 
     expect(await getFaqEntry(page.handle, 'berapa-harga')).toBeNull();
   });
@@ -175,6 +208,13 @@ describe('getFaqEntry', () => {
     await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });
 
     expect(await getFaqEntry(page.handle, 'berapa-harga')).toBeNull();
+  });
+
+  it('resolves a mixed-case slug, since faqSlugBase only ever generates lowercase ones', async () => {
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });
+
+    expect(await getFaqEntry(page.handle, 'Berapa-Harga')).not.toBeNull();
   });
 
   it('does not serve one page slug from another page', async () => {

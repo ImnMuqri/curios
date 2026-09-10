@@ -41,8 +41,16 @@ const FIRST_LOAD_CEILING_KB = 400;
  * The ceiling sits at the midpoint of the first two, comfortably clear of
  * both: 24% above the measured inert floor, 20% below the measured cost of
  * the smallest real client boundary that could be added.
+ *
+ * 550, not 480: 480 leaves only ~92 bytes of headroom over the 388 B inert
+ * floor, and a CSS Modules class name adds roughly 40 bytes to that floor, so
+ * two or three purely cosmetic classes added to either FAQ route would blow
+ * the ceiling and read as "someone added client JS" when nobody did. 550
+ * keeps the same job -- still comfortably below the 603 B minimal
+ * client-component floor, so a real client boundary still trips it -- while
+ * roughly doubling the cosmetic headroom.
  */
-const FAQ_OWN_CHUNK_CEILING_BYTES = 480;
+const FAQ_OWN_CHUNK_CEILING_BYTES = 550;
 
 describe('the public page JS budget', () => {
   const root = process.cwd();
