@@ -103,6 +103,38 @@ describe('getFaqIndex', () => {
   it('returns null for a handle nobody has claimed', async () => {
     expect(await getFaqIndex('nobody-has-this-handle-zzz')).toBeNull();
   });
+
+  it('clamps the limit rather than trusting a caller', async () => {
+    // 101 slugged, answered questions -- one more than MAX_LIMIT -- so that a
+    // caller-supplied limit above the cap can only return 100 if the cap is
+    // actually enforced. Fewer rows than the cap would pass whether or not
+    // the clamp exists, which is the illusion this test exists to rule out.
+    const page = await seedPage();
+    const rows = Array.from({ length: 101 }, (_, i) => {
+      const text = `Soalan nombor ${i}?`;
+      return {
+        pageId: page.id,
+        text,
+        normalizedQuestion: text.toLowerCase(),
+        faqSlug: `soalan-${i}`,
+        askCount: 1,
+        answered: true,
+      };
+    });
+    await write.question.createMany({ data: rows });
+    await write.pinnedAnswer.createMany({
+      data: rows.map((r) => ({
+        pageId: page.id,
+        question: r.text,
+        normalizedQuestion: r.normalizedQuestion,
+        answer: 'RM12 sekotak.',
+      })),
+    });
+
+    const index = await getFaqIndex(page.handle, { limit: 150 });
+
+    expect(index!.entries).toHaveLength(100);
+  });
 });
 
 describe('getFaqEntry', () => {

@@ -20,7 +20,7 @@ export interface FaqAnswer {
 
 /** Enough for any real page; a bound so one owner cannot make a huge document. */
 const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
+const MAX_LIMIT = 100;
 
 /**
  * Where the page's own gates live, so no route can forget one.
