@@ -70,18 +70,6 @@ Fix: lift `replyLanguage` and the greeting builder from
 `normalizeMalaysianPhone`, and use it from both. Deferred because that is a
 workers refactor, not a leads-screen edit.
 
-### The nav appears on `/app/onboarding`
-
-`AppNav` sits in the `/app` layout, which wraps onboarding. An owner who has
-not claimed a handle yet sees Review / Questions / Leads / Settings. Review
-redirects them straight back. Questions and Leads return `[]` — both scope on
-`page: { accountId }`, which matches nothing — and render "Share your link and
-they will land here", for a link that does not exist yet. Correct copy for an
-owner with a page; actively misleading for one without.
-
-Fix: render `AppNav` from a route group or the four screens rather than the
-shared layout, or gate it on `getOwnerPage`.
-
 ### The transcript fetch is unbounded
 
 `packages/db-read/src/leads.query.ts` selects `messages` with no `take`. 50
@@ -178,3 +166,29 @@ Related: an error `Callout` rendered inside `.confirm` is a merah border on
 must render as an `<a>`. The argument for the anchor is right; the copy means
 a future change to Button's shape skips this control. An `as`/`href` prop on
 `Button` would cost less long-term.
+
+---
+
+## Resolved
+
+Kept here rather than deleted, so a reader who was told about a finding can
+see what happened to it.
+
+### The nav appears on `/app/onboarding` — fixed
+
+`AppLayout` now gates `AppNav` on `getOwnerPage`, with
+`apps/web/app/app/layout.test.tsx` covering both directions.
+
+Deferring this was the wrong call, and the reason it was deferred was wrong
+too: it was filed as touching "a screen this plan does not own", but `AppNav`
+did not exist before commit a03fa2f — Task 4 of the same branch — and it was
+mounted in `apps/web/app/app/layout.tsx`, a file that task edited. Onboarding
+was the screen affected; the cause was a file the plan owned. A regression
+belongs to the branch that shipped it.
+
+The entry also offered three fixes as if they were equivalent — a route
+group, per-screen rendering, or a `getOwnerPage` gate. They are not. A route
+group excluding onboarding drops the nav there unconditionally, and
+`onboarding/page.tsx` renders `<Ingest>` once a page exists, so an owner who
+came back to add sources would be stranded with no way out. Only the gate
+satisfies both states.
