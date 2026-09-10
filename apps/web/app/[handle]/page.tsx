@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getPublicPage } from '@curios/db-read';
 import { Chip, LinkRow } from '@curios/ui';
@@ -6,6 +7,34 @@ import styles from './page.module.css';
 
 // Node, not edge: this reads Postgres directly through the read-only role.
 export const runtime = 'nodejs';
+
+/**
+ * The first metadata in this app, and it exists to honour a promise
+ * FRONTEND.md has made since slice 1: personal pages are noindex by default.
+ *
+ * A privacy decision, not an SEO one. The opt-in toggle belongs in
+ * /app/appearance, which does not exist yet -- until it does, personal means
+ * not indexed, which is the safe direction to be wrong in.
+ *
+ * This repeats the `getPublicPage` the render does, the same way every /app
+ * page repeats its layout's `resolveOwner`. Deduping is a `cache()` change
+ * across every route, not this slice's.
+ */
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ handle: string }>;
+}): Promise<Metadata> {
+  const { handle } = await params;
+  const page = await getPublicPage(handle);
+  if (!page) return {};
+
+  return {
+    title: page.displayName,
+    description: page.bio ?? undefined,
+    ...(page.mode === 'PERSONAL' ? { robots: { index: false, follow: false } } : {}),
+  };
+}
 
 export default async function HandlePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;

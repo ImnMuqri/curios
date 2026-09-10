@@ -1,0 +1,50 @@
+.page {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 32px 16px 64px;
+}
+
+.shop {
+  font-size: var(--text-base);
+  color: var(--muted);
+  margin: 0 0 4px;
+}
+
+.heading {
+  font-size: var(--text-lg);
+  line-height: 1.3;
+  margin: 0 0 24px;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.question {
+  display: block;
+  padding: 14px 0;
+  font-size: var(--text-body);
+  line-height: 1.5;
+  color: inherit;
+  text-decoration: none;
+  /* --surface, because there is no --rule token. The public page's own sheet
+     draws its dividers the same way. */
+  border-bottom: 1px solid var(--surface);
+}
+
+.answer {
+  font-size: var(--text-body);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0 0 32px;
+}
+
+.back {
+  font-size: var(--text-base);
+  color: var(--muted);
+}

@@ -54,3 +54,26 @@ describe('public page', () => {
     await expect(HandlePage({ params: Promise.resolve({ handle: 'nobody' }) })).rejects.toThrow();
   });
 });
+
+describe('indexing', () => {
+  it('asks crawlers to skip a personal page', async () => {
+    // FRONTEND.md has said this since slice 1 and nothing implemented it. A
+    // privacy default, not an SEO setting: most people do not want an AI page
+    // about themselves ranking for their own name.
+    vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, mode: 'PERSONAL' });
+
+    const { generateMetadata } = await import('./page.js');
+    const meta = await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) });
+
+    expect(meta.robots).toEqual({ index: false, follow: false });
+  });
+
+  it('leaves a business page indexable', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, mode: 'BUSINESS' });
+
+    const { generateMetadata } = await import('./page.js');
+    const meta = await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) });
+
+    expect(meta.robots).toBeUndefined();
+  });
+});

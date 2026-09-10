@@ -27,6 +27,34 @@ const ROUTE_CHUNK_BUDGET_KB = 40;
  */
 const FIRST_LOAD_CEILING_KB = 400;
 
+/**
+ * Settled empirically (Step 14 of the slice-6 FAQ plan), against a real
+ * `pnpm --filter @curios/web build`:
+ *
+ *   node -e "const m=require('./.next/app-build-manifest.json').pages;
+ *     for(const r of ['/[handle]/faq/page','/[handle]/faq/[slug]/page'])
+ *     console.log(r, JSON.stringify(m[r]??'ABSENT'))"
+ *
+ *   /[handle]/faq/page       [..., "static/chunks/app/[handle]/faq/page-a53d470d8c5651d5.js"]
+ *   /[handle]/faq/[slug]/page [..., "static/chunks/app/[handle]/faq/[slug]/page-a53d470d8c5651d5.js"]
+ *
+ * Neither the "absent" guess nor the "own is empty" guess held: both routes
+ * are listed, and each carries exactly one own-path .js file, 388 bytes,
+ * byte-identical content between the two routes. Its full decompiled content
+ * is nothing but the CSS Modules class-name lookup object --
+ *   {page:"faq_page__xr5gE",shop:"faq_shop__...", ...}
+ * -- no React, no component, no client boundary. Next always emits this shim
+ * for a `.module.css` import, whether or not the importing component is a
+ * client component, so a page with zero interactivity still shows up here.
+ *
+ * For contrast, `/[handle]/page` -- which does render the interactive `Ask`
+ * -- carries a 5346-byte own chunk *and* an extra 7321-byte shared chunk
+ * neither FAQ route pulls in at all. So the assertion that is actually true,
+ * and still does the job the guard exists for, is a size ceiling far below
+ * what any real interactivity costs, not an empty array.
+ */
+const FAQ_OWN_CHUNK_CEILING_BYTES = 2048;
+
 describe('the public page JS budget', () => {
   const root = process.cwd();
   const manifestPath = join(root, '.next/app-build-manifest.json');
@@ -103,6 +131,32 @@ describe('the public page JS budget', () => {
 
     const bytes = files.reduce((total, f) => total + statSize(join(root, '.next', f)), 0);
     expect(bytes / 1024).toBeLessThan(FIRST_LOAD_CEILING_KB);
+  });
+
+  it('ships no route JavaScript for the FAQ pages', () => {
+    // Neither FAQ route renders `Ask` or anything else interactive. The guard
+    // this exists for -- someone dropping a client component into an SEO page
+    // and quietly making it the heaviest thing on the site -- is enforced as a
+    // size ceiling rather than an empty-array check; see
+    // FAQ_OWN_CHUNK_CEILING_BYTES above for why the own file list is never
+    // actually empty.
+    if (!existsSync(manifestPath)) return;
+
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
+      pages: Record<string, string[]>;
+    };
+    if (Object.keys(manifest.pages).length === 0) return;
+
+    for (const route of ['/[handle]/faq/page', '/[handle]/faq/[slug]/page']) {
+      const files = manifest.pages[route] ?? [];
+      // A populated manifest that does not list this route at all would be
+      // measuring nothing, same reasoning as the /[handle] check above.
+      expect(files.length).toBeGreaterThan(0);
+
+      const own = files.filter((f) => f.includes('app/[handle]/faq') && f.endsWith('.js'));
+      const bytes = own.reduce((total, f) => total + statSize(join(root, '.next', f)), 0);
+      expect(bytes).toBeLessThan(FAQ_OWN_CHUNK_CEILING_BYTES);
+    }
   });
 });
 
