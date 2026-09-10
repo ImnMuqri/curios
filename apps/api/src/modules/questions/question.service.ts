@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@curios/db';
+import { assignFaqSlug } from './faq-slug.js';
 
 export class QuestionNotYoursError extends Error {
   readonly statusCode = 404;
@@ -61,4 +62,8 @@ export async function answerQuestion(
     }),
     prisma.question.update({ where: { id: question.id }, data: { answered: true } }),
   ]);
+
+  // After the transaction, not inside it. The answer is the owner's work and
+  // must commit whatever happens to the URL; the slug is a consequence of it.
+  await assignFaqSlug(prisma, question.id);
 }

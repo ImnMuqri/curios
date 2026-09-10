@@ -463,3 +463,33 @@ describe('threading a conversation', () => {
     });
   });
 });
+
+describe('faq slug assignment', () => {
+  it('assigns a faq slug when a third ask is the last condition to arrive', async () => {
+    // The site this task adds to chat.service.ts. A question already answered
+    // while it had two asks qualifies right here, on its third, with no owner
+    // involved -- see faq-slug.ts on why the writeback alone is not enough.
+    const page = await prisma.page.findFirstOrThrow({
+      where: { handle: 'nadia' },
+      select: { id: true },
+    });
+    const normalizedQuestion = 'berapa harga kek coklat';
+    await prisma.question.create({
+      data: {
+        pageId: page.id,
+        text: 'Berapa harga kek coklat?',
+        normalizedQuestion,
+        askCount: 2,
+        answered: true,
+      },
+    });
+
+    await collect(
+      answer({ prisma, gateway: gatewaySaying('RM80.') }, { handle: 'nadia', question: 'Berapa harga kek coklat?' }),
+    );
+
+    const question = await prisma.question.findFirstOrThrow({ where: { normalizedQuestion } });
+    expect(question.askCount).toBe(3);
+    expect(question.faqSlug).toBe('berapa-harga-kek-coklat');
+  });
+});

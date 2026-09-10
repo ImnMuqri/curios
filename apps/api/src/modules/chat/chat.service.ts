@@ -2,6 +2,7 @@ import { normalizeClaim, qualifies } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import { buildSystemPrompt } from './prompt.js';
+import { assignFaqSlug } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
@@ -138,14 +139,20 @@ export async function* answer(
   // confident one across Malay, Manglish and English, and a question asked
   // nine times is a gap either way. See BACKEND.md's refusal rule.
   const normalizedQuestion = normalizeClaim(input.question);
-  await prisma.question.upsert({
+  const logged = await prisma.question.upsert({
     where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
     // The first phrasing wins and is never overwritten: the owner reads what
     // somebody actually typed, and rewriting it on every ask would churn the
     // list for no gain.
     create: { pageId: page.id, text: input.question, normalizedQuestion },
     update: { askCount: { increment: 1 }, lastAskedAt: new Date() },
+    select: { id: true },
   });
+
+  // The other site. A question the owner answered when it had two asks
+  // qualifies on its third, and that third ask happens here, with no owner
+  // involved. See faq-slug.ts on why both sites exist.
+  await assignFaqSlug(prisma, logged.id);
 
   // A pinned answer wins over model output. Zero tokens, zero risk.
   const pinned = await prisma.pinnedAnswer.findUnique({
