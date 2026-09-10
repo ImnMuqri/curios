@@ -238,4 +238,39 @@ describe('the owner surface columns', () => {
 
     expect(question.faqSlug).toBeNull();
   });
+
+  it('allows multiple null faqSlugs on the same page — the dominant real-world case', async () => {
+    // Most questions on a page stay in faqSlug=null state forever: they never earn
+    // enough asks to justify a public page. The unique constraint must permit this.
+    // PostgreSQL's unique-index default is NULLS DISTINCT (each NULL is treated as
+    // distinct), which is why this works. A future migration using NULLS NOT DISTINCT
+    // or a check constraint would silently break question logging for any second
+    // distinct question asked on any page.
+    const account = await prisma.account.create({
+      data: { email: `faq-multi-null-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const skeleton = `faq-${randomUUID().slice(0, 8)}`;
+    const page = await prisma.page.create({
+      data: { accountId: account.id, handle: skeleton, skeleton, displayName: 'Multi Q Page' },
+      select: { id: true },
+    });
+
+    // Create two questions on the same page, both with faqSlug omitted.
+    // They need different normalizedQuestion values to avoid violating the other unique constraint.
+    const [q1, q2] = await Promise.all([
+      prisma.question.create({
+        data: { pageId: page.id, text: 'Question one?', normalizedQuestion: 'question one' },
+        select: { faqSlug: true },
+      }),
+      prisma.question.create({
+        data: { pageId: page.id, text: 'Question two?', normalizedQuestion: 'question two' },
+        select: { faqSlug: true },
+      }),
+    ]);
+
+    // Both must be null and both must succeed (no constraint violation).
+    expect(q1.faqSlug).toBeNull();
+    expect(q2.faqSlug).toBeNull();
+  });
 });
