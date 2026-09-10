@@ -7,6 +7,10 @@ person can rank them against new work rather than rediscovering them.
 
 Opened 2026-09-10, from the whole-branch review of `slice-5/leads`.
 
+Manual checks that no agent can run are not findings and are not listed here. They live
+in their own documents: `manual-verification-google-link.md` (slice 2, the Google round
+trip) and `manual-verification-leads.md` (slice 5, the leads screen — **not run**).
+
 ---
 
 ## Cross-cutting
