@@ -122,16 +122,6 @@ Assert `limit: 500` returns fewer than 500.
 `/app/lead` in `app-nav.tsx` and the nav 404s with every test passing.
 Importing `ITEMS` into a small `app-nav.test.tsx` closes it.
 
-### `apps/api` intermittently exits 1 on an ioredis teardown race
-
-`rate-limit.test.ts`: `Stream isn't writeable and enableOfflineQueue options
-is false`, thrown from `RedisStore.incr` after the connection closes, and
-`Connection is closed.` as an unhandled rejection. All 26 test files pass; the
-run exits 1 only when the timing lands wrong, which is why it reads as a
-random red gate. Observed across several runs during slice 5; did not
-reproduce on the last three. **This is the unexplained `pnpm test` flake** —
-localised, not yet fixed.
-
 ---
 
 ## Design
@@ -192,3 +182,23 @@ group excluding onboarding drops the nav there unconditionally, and
 `onboarding/page.tsx` renders `<Ingest>` once a page exists, so an owner who
 came back to add sources would be stranded with no way out. Only the gate
 satisfies both states.
+
+### `apps/api` intermittently exits 1 on an ioredis teardown race — fixed
+
+Root cause: the fail-closed test in `rate-limit.test.ts` calls
+`rateLimitRedis.disconnect()`, which returns before the socket is actually
+down. A limiter command issued inside that window is queued and then rejected
+by ioredis's close handler with nothing awaiting it, because the request has
+already failed. The escaping rejection is what made the suite exit 1 while all
+27 files passed.
+
+Not the two-limiter race it looked like. A probe running the outage scenario
+25 times reported 21 escapes, every one `Connection is closed.` thrown from
+ioredis's socket-close handler rather than from the request path, which is
+what ruled that explanation out.
+
+Fixed by awaiting the client's `end` event after `disconnect()`, so the outage
+state is unambiguous before the request is made: 21 escapes in 25 iterations
+became 0, and the api suite went 6 for 6. Test-only change — the production
+`skipOnError: false` is untouched, and the test was confirmed still
+load-bearing by flipping it to `true` and watching exactly that test fail.

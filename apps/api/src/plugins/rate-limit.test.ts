@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createSession, SESSION_COOKIE } from '../modules/auth/session.service.js';
@@ -266,7 +267,20 @@ describe('when Redis fails while the app is running', () => {
       // Model the realistic outage: the app booted fine and Redis went away
       // underneath it. Dropping the connection makes every limiter call fail
       // the way a real outage would.
+      //
+      // Waited on rather than fired and forgotten. `disconnect()` returns
+      // before the socket is actually down, and a limiter command issued
+      // inside that window is queued and then rejected by ioredis's close
+      // handler -- with nothing awaiting it, because the request already
+      // failed. That escaping rejection is what made this suite exit 1 about
+      // one run in five while all 27 files passed. Measured before and after:
+      // 21 escapes in 25 iterations of this scenario, then 0. Once 'end' has
+      // fired the client is unambiguously closed, the command fails
+      // synchronously, and the failure reaches Fastify's error handler --
+      // which is the path this test is about.
+      const ended = once(ownApp.rateLimitRedis, 'end');
       ownApp.rateLimitRedis.disconnect();
+      await ended;
 
       const res = await ownApp.inject({
         method: 'POST',
