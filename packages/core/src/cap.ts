@@ -1,6 +1,13 @@
 /**
- * What a page may spend on model answers in a calendar month, counted in
- * conversations rather than messages -- a chatty visitor costs one unit.
+ * How many new conversations a page may start in a calendar month before chat
+ * degrades to a fixed reply. Not a spend cap: the counter increments only
+ * when a conversation is created, so a visitor who keeps reusing one
+ * conversation id can send unlimited messages against a counter that still
+ * reads 1. Per-message spend is a separate concern, bounded by the rate
+ * limiter (`apps/api/src/plugins/rate-limit.ts`), not by this.
+ *
+ * Counted in conversations rather than messages -- a chatty visitor within
+ * one conversation still costs the owner one unit.
  *
  * 200 is roughly seven conversations a day. It is a guess, and the spec says
  * so: slice 1 was right that a cap cannot be chosen without volume data, and

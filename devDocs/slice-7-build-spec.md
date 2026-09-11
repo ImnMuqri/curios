@@ -26,8 +26,9 @@ subscriptions on an unchecked assumption about what the processor can do is how 
 build the wrong thing twice. That verification is an hour of reading and belongs before
 any billing spec, not inside this one.
 
-The cap is worth having on its own regardless: it bounds what a single page can cost,
-which is true whether or not anyone is paying yet.
+The cap is worth having on its own regardless: it bounds how many new conversations a
+single page can start each month -- per-message spend within a conversation is the rate
+limiter's job, not this cap's -- which is true whether or not anyone is paying yet.
 
 ---
 

@@ -314,16 +314,25 @@ anyway, because a cap cannot be chosen without volume data — that reasoning is
 stub was correct at the time, not an argument for leaving it stubbed any longer than it
 was.
 
-**Step 2 was marked full in an earlier draft of this table. Nothing implements
-it** — a repo-wide grep for `rate.limit|rateLimit|leaky` returns no matches.
-This is a hard precondition for any public deployment of the chat route, not a
-plan-2 nicety: `POST /chat/:handle` is anonymous by design (that is the whole
-point of a public, link-in-bio ask bar) and so can never be protected by a
-session cookie the way an owner-facing route could be. `UsageCounter`
-increments on every conversation, but nothing reads it and the over-cap branch
-above is stubbed, so today an anonymous visitor — or a script — looping the
-endpoint burns Haiku tokens against the page owner's bill with no limit at
-all. Plan 2 must not treat this as optional polish.
+**Step 2 was marked full in an earlier draft of this table, and when this document
+shipped, nothing implemented it** — a repo-wide grep for `rate.limit|rateLimit|leaky`
+returned no matches at the time. That was a hard precondition for any public
+deployment of the chat route, not a plan-2 nicety: `POST /chat/:handle` is anonymous by
+design (that is the whole point of a public, link-in-bio ask bar) and so can never be
+protected by a session cookie the way an owner-facing route could be. `UsageCounter`
+incremented on every conversation, but nothing read it and the over-cap branch above was
+stubbed, so at the time an anonymous visitor — or a script — looping the endpoint could
+burn Haiku tokens against the page owner's bill with no limit at all. Plan 2 was told not
+to treat this as optional polish.
+
+**Both gaps have since closed.** Slice 2 shipped the rate limiter at
+`apps/api/src/plugins/rate-limit.ts`, registered in `app.ts` and covering both
+`/chat/:handle` and `/ingest` — `devDocs/deferred-findings.md` cites it by path, from a
+slice-7 review written long after this paragraph. And slice 7 is the one that reads
+`UsageCounter`, per the corrected note above and `devDocs/slice-7-build-spec.md`. This
+paragraph is left as a record of what was true when this document shipped, not a
+standing claim about the code today — unlike the table row above it, whose "deferred to
+plan 2" is a historical status and stays as written.
 
 ### Prompt layout
 
