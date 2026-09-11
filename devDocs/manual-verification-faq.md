@@ -58,7 +58,7 @@ extra test questions on it rather than a real demo account.
 
 ---
 
-## The six checks
+## The seven checks
 
 ### 1. The third ask, arriving last, with no owner in the loop
 
@@ -179,6 +179,38 @@ Both routes key off `PinnedAnswer` existing, not off `Question.answered` or
 on `faqSlug` says the column is "never cleared."
 
 ---
+
+### 7. The takedown actually takes it down
+
+Added after the six above, when suppression, erasure and correction landed. This is
+the check that matters most to a person who is not the owner: it is the only way a
+customer's own words come back off a public page.
+
+With a question live at `/[handle]/faq/[slug]`, open the questions screen and:
+
+1. **Hide it.** The row should say it is hidden. Within a minute — `revalidate` is 60
+   seconds, not the 24 hours this document first described — both `/[handle]/faq` and
+   the question's own URL must 404. Check the **direct URL**, not only the index: a
+   takedown that removes the link but leaves the page resolving is not a takedown,
+   because the URL is what got indexed.
+2. **Show it again.** It should come back, at the same URL. Suppression is reversible
+   on purpose, and the slug is deliberately never reassigned.
+3. **Fix the answer.** Edit answer opens prefilled with what you wrote. Change a word,
+   save, and confirm the public page shows the new text within the minute.
+4. **Erase it.** Delete asks first. After confirming, the question and its answer are
+   both gone:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c   'SELECT q.text, q."faqSuppressed", p.answer FROM "Question" q
+     LEFT JOIN "PinnedAnswer" p ON p."normalizedQuestion" = q."normalizedQuestion"
+    WHERE q."faqSlug" IS NOT NULL;'
+```
+
+5. **Then ask it again in chat, twice more.** This is the part worth doing by hand: an
+   erased question is re-logged the next time somebody asks, because the chat path
+   upserts on the normalised text. It must come back as a *fresh* row — ask count 1,
+   unanswered, no slug — and must **not** reappear on `/faq`. If the old answer comes
+   back with it, the erasure did not erase.
 
 ## Recording the result
 
