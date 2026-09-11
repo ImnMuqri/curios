@@ -12,8 +12,8 @@ people, not operators. Build them as two different products in one codebase.
 
 ```
 /[handle]                 public page          SSR, edge, cached
-/[handle]/faq             question index       static, revalidate 24h
-/[handle]/faq/[slug]      single answer        static, revalidate 24h
+/[handle]/faq             question index       ISR, revalidate 60s
+/[handle]/faq/[slug]      single answer        ISR, revalidate 60s
 /app                      dashboard shell      client, authed
 /app/onboarding           paste a URL, wait, review facts
 /app/knowledge            facts, pinned answers, never-say list

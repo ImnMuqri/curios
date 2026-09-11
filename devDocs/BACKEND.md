@@ -451,7 +451,7 @@ accuracy.
 
 When a Question crosses `FAQ_MIN_ASKS` asks and the owner has answered it, it earns a
 `faqSlug` and appears at `/[handle]/faq`. The page is rendered on first request and cached
-for 24 hours by Next's ISR, not built by a worker — there is no BullMQ job, and
+for 60 seconds by Next's ISR, not built by a worker — there is no BullMQ job, and
 `generateStaticParams` is deliberately absent so `pnpm build` needs no database. Withdrawing
 the pinned answer behind a published question does not take effect on the public page
 instantly: the read stops returning it at once, but the cached HTML only catches up when

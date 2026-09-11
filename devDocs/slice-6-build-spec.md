@@ -131,7 +131,7 @@ it "immediately rather than at the next revalidation." That is only half true, a
 it as whole was wrong. The *query* stops returning the withdrawn row the instant it is next
 called — reading through `PinnedAnswer` rather than caching the text on `Question` makes
 that automatic instead of a second thing to remember. But the *route* is cached by Next's
-ISR for up to 24 hours (`revalidate = 86400`, and neither route calls `revalidatePath`), so
+ISR for up to 60 seconds (`revalidate = 60`, and neither route calls `revalidatePath`), so
 the already-rendered public page keeps serving the withdrawn question and answer until that
 window turns over. "Immediately" describes the read function, not what a visitor or a
 search engine sees. See `devDocs/deferred-findings.md` for why that gap is a launch
@@ -142,14 +142,14 @@ blocker, not a detail.
 ## The routes, and how static they actually are
 
 ```
-/[handle]/faq          question index    revalidate 86400
-/[handle]/faq/[slug]   single answer     revalidate 86400
+/[handle]/faq          question index    revalidate 60
+/[handle]/faq/[slug]   single answer     revalidate 60
 ```
 
 `runtime = 'nodejs'` on both, like `/[handle]` — these read Postgres through the read-only
 role.
 
-**No `generateStaticParams`.** FRONTEND.md's route table says "static, revalidate 24h" and
+**No `generateStaticParams`.** FRONTEND.md's route table says these are ISR-cached, and
 that is what this produces, but not by enumerating anything at build time. Without
 `generateStaticParams`, the first visitor to a URL triggers the render and every visitor
 after that gets cached HTML until the window expires.

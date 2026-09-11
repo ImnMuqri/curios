@@ -132,40 +132,6 @@ has anywhere near 50 FAQ-qualifying questions — and would need either a wider
 first read (take some multiple of `limit`, then trim after the join in
 memory) or a real join to fix properly.
 
-### A published question and answer have no way to come down — launch blocker
-
-`Question.text` is, by the schema's own comment, "the first phrasing seen, kept
-verbatim so the owner reads what a customer typed." This slice renders that string,
-and the owner's `PinnedAnswer.answer` beside it, as the FAQ entry page's `<h1>`, its
-`<title>`, the index page's link text, and inside `FAQPage` JSON-LD — a URL built for
-Google. `askCount` is per page-and-normalized-question, not per visitor, so one
-person asking the same thing three times reaches the threshold. A question carrying
-a phone number, an address, or a third party's name is then publishable, and the
-owner clicking Save on the answer was never asked to consider that.
-
-**Half one: no delete path exists anywhere in the product.** Not for `Question`, not
-for `PinnedAnswer`. `question-list.tsx` renders `question.answered ? null : <Button>`,
-so once a question is answered the row carries no control at all — no UI action, and
-no API route to call even from a terminal.
-
-**Half two: even a hand-written database delete is not enough on its own.**
-`getFaqIndex`/`getFaqEntry` stop returning a deleted or withdrawn row the moment
-they are next called — that part is immediate. But the *rendered page* a search
-engine already indexed was cached by Next's ISR for up to 24 hours
-(`revalidate = 86400`, and nothing in either route calls `revalidatePath`), so the
-public HTML keeps serving the withdrawn question and answer for up to a day after
-the row is gone. A takedown request answered with "it's gone from the database" is
-not true from the visitor's side for up to a day.
-
-**This must be resolved before billing ships.** Slice 7 owns `/app/knowledge` —
-pinned answer and never-say management — and cannot be built over a product that can
-publish a customer's verbatim words with no consent step and no way to retract them.
-Closing this needs both halves: an owner-reachable delete for a published
-question/answer, and either a `revalidatePath` call wired to that delete or an
-explicit, accepted decision that "up to a day" is the takedown SLA. Neither exists
-today. **Open safety gap, not a someday.**
-
----
 
 ## Tests
 
@@ -222,6 +188,37 @@ a future change to Button's shape skips this control. An `as`/`href` prop on
 ---
 
 ## Resolved
+
+### A published question and answer have no way to come down — fixed
+
+Was a launch blocker, opened and closed the same day. Both halves are now closed,
+and the fix is deliberately two mechanisms rather than one:
+
+**Suppression, for "this should not be public".** `Question.faqSuppressed` is a fifth
+gate in `getFaqIndex` and `getFaqEntry`, set through `POST /questions/:id/suppress`
+and reversible from the questions screen. A flag rather than a delete because
+`chat.service.ts` upserts questions keyed on `(pageId, normalizedQuestion)` — a
+deleted row is recreated the next time anybody asks the same thing, so a
+delete-as-hide would quietly undo itself while the owner believed it had worked.
+The slug and the answer both survive: the owner said "not public", not "not true".
+
+**Erasure, for when the words themselves are the problem.**
+`DELETE /questions/:id` removes the `Question` and its `PinnedAnswer` in one
+transaction, both statements independently scoped to the owner's account. Leaving the
+answer behind would keep the same content reachable through chat under the same
+normalised key — erasure that erases nothing.
+
+**And the latency.** `revalidate` on both FAQ routes dropped from 86400 to 60, so a
+takedown is visible within a minute rather than within a day. `revalidatePath` from
+the API was rejected: it needs a shared secret and couples two deployables, which is
+exactly what choosing ISR over a worker was meant to avoid. Two indexed reads per
+minute per page is the whole cost.
+
+**Still missing, and smaller:** an owner cannot *edit* a published answer — the same
+`question.answered` branch that carried no controls now carries suppress and delete
+but not edit, so fixing a typo in a public price still means deleting and re-answering.
+Worth doing, not a blocker.
+
 
 Kept here rather than deleted, so a reader who was told about a finding can
 see what happened to it.

@@ -67,7 +67,7 @@ around personality and then rewrite it for catalogs, hours, and prices.
 3. Chat that cites its facts and refuses to invent prices
 4. Lead capture + click-to-chat notification (email with a prefilled `wa.me` link)
 5. Questions dashboard with answer-writeback
-6. FAQ generation (Next ISR, 24h revalidation, not a static build)
+6. FAQ generation (Next ISR, 60s revalidation, not a static build)
 7. Billing and caps
 8. Free personal tier (a config flag, not a project)
 
