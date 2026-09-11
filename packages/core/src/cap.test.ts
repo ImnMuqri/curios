@@ -1,5 +1,22 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { conversationCap, FREE_CONVERSATIONS_PER_MONTH, isOverCap } from './cap.js';
+
+// Deleted, not restored, before AND after every test. This package has no
+// vitest.setup.ts of its own pinning CONVERSATION_CAP_PER_MONTH the way
+// apps/api's pins the RATE_LIMIT_* values, so the root setup's `.env` load is
+// the only source of an ambient value -- and without a `beforeEach`, the
+// FIRST test to run reads whatever that happens to be rather than the unset
+// state its assertion assumes. `afterEach` alone protects every test but the
+// first.
+//
+// Delete rather than restore: unlike rate-limit.test.ts, nothing here spins
+// up a shared server that other tests in this run depend on staying
+// correctly configured -- these are direct calls to a pure function, and
+// "unset" is the one ambient state every test in this file can assume without
+// caring what ran before or after it.
+beforeEach(() => {
+  delete process.env.CONVERSATION_CAP_PER_MONTH;
+});
 
 afterEach(() => {
   delete process.env.CONVERSATION_CAP_PER_MONTH;

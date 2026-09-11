@@ -1,9 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
 import type { ChatMessage, Gateway } from '@curios/gateway';
-import { answer, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
+import { answer, CAP_REACHED_REPLY, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+
+// ChatDeps.cap is resolved once at boot in production (see chat.routes.ts);
+// this file calls `answer()` directly, below that boundary, so every deps
+// object supplies it explicitly. The free allowance, not an arbitrary number:
+// the `the monthly cap` tests below rely on it being the same value
+// `conversationCap()` used to return with no env override set, which is what
+// every test in this file ran against before ChatDeps.cap existed.
+const cap = FREE_CONVERSATIONS_PER_MONTH;
 
 function gatewaySaying(text: string): Gateway {
   return {
@@ -149,7 +158,7 @@ beforeEach(async () => {
 describe('answer', () => {
   it('streams text and creates a conversation', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' }));
+    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toContain('RM95');
     expect(await prisma.conversation.count()).toBe(1);
@@ -160,7 +169,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     const events = await collect(
-      answer({ prisma, gateway }, { handle: 'nadia', question: 'Berapa harga?' }),
+      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'Berapa harga?' }),
     );
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Bermula RM95.');
@@ -171,14 +180,14 @@ describe('answer', () => {
   it('matches a pinned answer ignoring case and punctuation', async () => {
     const gateway = gatewaySaying('unused');
     const events = await collect(
-      answer({ prisma, gateway }, { handle: 'nadia', question: 'berapa harga' }),
+      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'berapa harga' }),
     );
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Bermula RM95.');
   });
 
   it('persists both messages after the stream closes', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
 
     const messages = await prisma.message.findMany({ orderBy: { createdAt: 'asc' } });
     expect(messages.map((m) => m.role)).toEqual(['USER', 'ASSISTANT']);
@@ -186,7 +195,7 @@ describe('answer', () => {
 
   it('records a ModelCall with a non-zero cost', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
 
     const call = await prisma.modelCall.findFirstOrThrow();
     expect(call.model).toBe('claude-haiku-4-5');
@@ -195,8 +204,8 @@ describe('answer', () => {
 
   it('increments the usage counter once per conversation, not per message', async () => {
     const gateway = gatewaySaying('answer');
-    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' }));
-    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek lagi' }));
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek lagi' }));
 
     const counters = await prisma.usageCounter.findMany();
     expect(counters).toHaveLength(1);
@@ -207,7 +216,7 @@ describe('answer', () => {
     const gateway = gatewayThatFails();
 
     await expect(
-      collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' })),
+      collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' })),
     ).rejects.toThrow('provider unavailable');
 
     const call = await prisma.modelCall.findFirstOrThrow();
@@ -220,13 +229,13 @@ describe('answer', () => {
   it('throws for an unknown handle', async () => {
     const gateway = gatewaySaying('unused');
     await expect(
-      collect(answer({ prisma, gateway }, { handle: 'nobody', question: 'hi' })),
+      collect(answer({ prisma, gateway, cap }, { handle: 'nobody', question: 'hi' })),
     ).rejects.toThrow(PageNotFoundError);
   });
 
   it('never sends an unverified fact\'s claim to the gateway', async () => {
     const { gateway, prompt } = gatewayCapturingPrompt();
-    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
 
     // Assert on the prompt the gateway actually received, not a rebuilt string.
     expect(prompt()).not.toContain('Unverified secret price RM1');
@@ -238,7 +247,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     await expect(
-      collect(answer({ prisma, gateway }, { handle: 'draft', question: 'harga?' })),
+      collect(answer({ prisma, gateway, cap }, { handle: 'draft', question: 'harga?' })),
     ).rejects.toThrow(PageNotFoundError);
 
     expect(chatSpy).not.toHaveBeenCalled();
@@ -248,10 +257,14 @@ describe('answer', () => {
 
 describe('threading a conversation', () => {
   function depsSaying(text = 'an answer') {
-    return { prisma, gateway: gatewaySaying(text) };
+    return { prisma, gateway: gatewaySaying(text), cap };
   }
 
-  async function ask(deps: { prisma: typeof prisma; gateway: Gateway }, question: string, conversationId?: string) {
+  async function ask(
+    deps: { prisma: typeof prisma; gateway: Gateway; cap: number },
+    question: string,
+    conversationId?: string,
+  ) {
     return collect(answer(deps, { handle: 'nadia', question, conversationId }));
   }
 
@@ -295,7 +308,7 @@ describe('threading a conversation', () => {
 
   it('sends the earlier turns to the model, so a follow-up has context', async () => {
     const captured = gatewayCapturingMessages();
-    const deps = { prisma, gateway: captured.gateway };
+    const deps = { prisma, gateway: captured.gateway, cap };
 
     const conversationId = conversationIdOf(await ask(deps, 'harga kek?'));
     await ask(deps, 'ada delivery?', conversationId);
@@ -311,7 +324,7 @@ describe('threading a conversation', () => {
 
   it('bounds the history it sends, so a long thread cannot grow the prompt forever', async () => {
     const captured = gatewayCapturingMessages();
-    const deps = { prisma, gateway: captured.gateway };
+    const deps = { prisma, gateway: captured.gateway, cap };
 
     const conversationId = conversationIdOf(await ask(deps, 'q0'));
     for (let i = 1; i <= 8; i += 1) await ask(deps, `q${i}`, conversationId);
@@ -485,7 +498,10 @@ describe('faq slug assignment', () => {
     });
 
     await collect(
-      answer({ prisma, gateway: gatewaySaying('RM80.') }, { handle: 'nadia', question: 'Berapa harga kek coklat?' }),
+      answer(
+        { prisma, gateway: gatewaySaying('RM80.'), cap },
+        { handle: 'nadia', question: 'Berapa harga kek coklat?' },
+      ),
     );
 
     const question = await prisma.question.findFirstOrThrow({ where: { normalizedQuestion } });
@@ -524,7 +540,7 @@ describe('the monthly cap', () => {
     await usageAt(10);
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga?' }));
+    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga?' }));
 
     expect(spy).toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text' && e.text === 'a model answer')).toBe(true);
@@ -538,7 +554,7 @@ describe('the monthly cap', () => {
     await usageAt(500);
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga?' }));
+    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga?' }));
 
     expect(spy).not.toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text')).toBe(true);
@@ -560,7 +576,7 @@ describe('the monthly cap', () => {
     });
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga' }));
+    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga' }));
 
     expect(spy).not.toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text' && e.text === 'RM95 sekilo.')).toBe(true);
@@ -573,13 +589,13 @@ describe('the monthly cap', () => {
     await usageAt(500);
     const { gateway, spy } = chatSpyGateway();
 
-    const first = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'one' }));
+    const first = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'one' }));
     const done = first.find((e) => e.type === 'done');
     const conversationId = (done as { conversationId?: string } | undefined)?.conversationId;
     expect(conversationId).toBeTruthy();
 
     await collect(
-      answer({ prisma, gateway }, { handle: 'nadia', question: 'two', conversationId }),
+      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'two', conversationId }),
     );
 
     expect(spy).not.toHaveBeenCalled();
@@ -591,9 +607,46 @@ describe('the monthly cap', () => {
     const pageId = await usageAt(500);
     const { gateway } = chatSpyGateway();
 
-    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga?' }));
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga?' }));
 
-    const counter = await prisma.usageCounter.findFirstOrThrow({ where: { pageId } });
+    // findUnique on the exact key usageAt() wrote, not findFirst: this is the
+    // only assertion in the file that reads UsageCounter back by pageId
+    // alone, and findFirst would pass or fail at random if the write key ever
+    // diverged from this read key -- two rows for the page would make it
+    // ambiguous which one "first" means.
+    const period = new Date().toISOString().slice(0, 7);
+    const counter = await prisma.usageCounter.findUniqueOrThrow({
+      where: { pageId_period: { pageId, period } },
+    });
     expect(counter.count).toBe(501);
+  });
+
+  it('answers in Malay first, then English, and persists that reply as an assistant message', async () => {
+    // #4/#5 of the fix wave: the degraded reply used to be English-only,
+    // contradicting prompt.ts's own rule that the model answers in the
+    // language it was asked in -- and it promised a most-asked-questions
+    // link that a page over cap need not have. Pinning the exact text here is
+    // what makes either regression a broken test rather than a silent one.
+    await usageAt(500);
+    const { gateway, spy } = chatSpyGateway();
+
+    const events = await collect(
+      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'Berapa harga kek?' }),
+    );
+
+    expect(spy).not.toHaveBeenCalled();
+    const text = events
+      .filter((e) => e.type === 'text')
+      .map((e) => e.text)
+      .join('');
+    expect(text).toBe(CAP_REACHED_REPLY);
+    // Malay first, then English, not the other way around.
+    expect(text.indexOf('Kami dah jawab')).toBeLessThan(text.indexOf("We've answered"));
+
+    const assistantMessage = await prisma.message.findFirstOrThrow({
+      where: { role: 'ASSISTANT' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(assistantMessage.content).toBe(CAP_REACHED_REPLY);
   });
 });

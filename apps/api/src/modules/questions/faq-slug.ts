@@ -6,6 +6,14 @@ const MAX_ATTEMPTS = 20;
 
 export interface Log {
   error: (obj: unknown, msg: string) => void;
+  /**
+   * Optional, unlike `error` above: this interface's only consumer that needs
+   * it is the conversation cap's over-cap branch in chat.service.ts, logging
+   * an expected, working-as-designed event rather than a failure. Every
+   * existing caller of `assignFaqSlug` keeps compiling with an `error`-only
+   * object; `request.log` (a Fastify/pino logger) already has both.
+   */
+  info?: (obj: unknown, msg: string) => void;
 }
 
 /**

@@ -34,3 +34,11 @@ process.env.RATE_LIMIT_INGEST_PER_IP = '5';
 process.env.RATE_LIMIT_INGEST_PER_PAGE = '20';
 process.env.RATE_LIMIT_AUTH_PER_IP = '20';
 process.env.RATE_LIMIT_AUTH_PER_EMAIL = '10';
+
+// Same reasoning, same fix, for the other wallet control chatRoutes resolves
+// at registration time: a developer with CONVERSATION_CAP_PER_MONTH set in
+// their own .env (to click through the degrade path locally, say) would
+// otherwise change what "over the cap" means for any suite that builds a real
+// app via buildApp() -- app.test.ts among them. Pinned to the production
+// default so those suites see the same number production does.
+process.env.CONVERSATION_CAP_PER_MONTH = '200';

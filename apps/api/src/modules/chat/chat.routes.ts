@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { conversationCap } from '@curios/core';
 import { createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { answer } from './chat.service.js';
 
@@ -19,6 +20,15 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
     if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
     gateway = createAnthropicGateway(apiKey);
   }
+
+  // Resolved once here, at registration -- the same moment the API key above
+  // is checked, and for the same reason: this route already builds its
+  // dependencies from the environment at boot rather than per request, which
+  // is what lets a bad value fail the deploy instead of one visitor's chat.
+  // `conversationCap()` throws on a malformed CONVERSATION_CAP_PER_MONTH; see
+  // ChatDeps.cap in chat.service.ts for what calling it per request used to
+  // cost.
+  const cap = conversationCap();
 
   app.post(
     '/chat/:handle',
@@ -59,7 +69,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       reply.raw.writeHead(200);
 
       const stream = answer(
-        { prisma: app.prisma, gateway, log: request.log },
+        { prisma: app.prisma, gateway, cap, log: request.log },
         {
           handle: request.params.handle,
           question: request.body.question,

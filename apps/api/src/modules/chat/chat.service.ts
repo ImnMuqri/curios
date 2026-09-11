@@ -1,4 +1,4 @@
-import { conversationCap, isOverCap, normalizeClaim, qualifies } from '@curios/core';
+import { isOverCap, normalizeClaim, qualifies } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import { buildSystemPrompt } from './prompt.js';
@@ -11,6 +11,25 @@ export type AnswerEvent =
 export interface ChatDeps {
   prisma: PrismaClient;
   gateway: Gateway;
+  /**
+   * The conversation cap in force, resolved ONCE by chatRoutes at process
+   * boot and threaded through here rather than read per request.
+   *
+   * `conversationCap()` (from @curios/core) throws on a malformed
+   * CONVERSATION_CAP_PER_MONTH. Calling it from inside this generator -- as
+   * this file used to -- means that throw fires on some visitor's chat
+   * request, long after boot, and lands in chat.routes.ts's catch-all as
+   * "That answer failed. Try again." on every single turn: a silent,
+   * total outage that looks like success from the operator's side, which is
+   * the exact outcome cap.ts's own docstring says failing at boot avoids.
+   * Resolving it once, at the same place `ANTHROPIC_API_KEY` is already
+   * checked, makes a bad env var fail the deploy instead.
+   *
+   * Required, not optional: a test that forgets to supply it fails to
+   * compile rather than silently never capping anything (`used > undefined`
+   * is always `false`).
+   */
+  cap: number;
   // Optional, and only for the faq-slug assignment below: without it, a
   // qualifying question that fails to get a URL -- an exhausted collision
   // loop, unsluggable text, a transient DB error -- leaves no trace anywhere,
@@ -47,11 +66,33 @@ function currentPeriod(now = new Date()): string {
   return now.toISOString().slice(0, 7);
 }
 
+/**
+ * The over-cap reply. Malay first, then English.
+ *
+ * prompt.ts's own rule for the model is "answer in the language the question
+ * was asked in, including Malay, Manglish, or a mix" -- and this is the one
+ * sentence where the product tells a Malaysian customer no on a surface that
+ * makes no model call to honour that rule automatically. Register matches
+ * this file's own pinned-answer fixtures ("Bermula RM95.", "RM95 sekilo."):
+ * short, plain, colloquial, not a formal translation.
+ *
+ * Says only that the page's own links still work, never that a
+ * most-asked-questions link exists: `/[handle]/faq` is gated on
+ * `FAQ_MIN_ASKS` asks and an owner-written `PinnedAnswer`, so a page can be
+ * over cap with zero FAQ entries. The page's other links render
+ * unconditionally, so that much is true in every case.
+ */
+export const CAP_REACHED_REPLY =
+  'Kami dah jawab banyak soalan bulan ini dan sampai had. Anda masih boleh ' +
+  'hubungi kami terus melalui pautan di atas.\n\n' +
+  "We've answered a lot of questions this month and reached the limit. " +
+  'You can still reach us directly using the links on this page.';
+
 export async function* answer(
   deps: ChatDeps,
   input: { handle: string; question: string; conversationId?: string },
 ): AsyncIterable<AnswerEvent> {
-  const { prisma, gateway } = deps;
+  const { prisma, gateway, cap } = deps;
 
   const page = await prisma.page.findUnique({
     // An unpublished page is a draft: it has not been reviewed, so it must not
@@ -198,18 +239,25 @@ export async function* answer(
     select: { count: true },
   });
 
-  if (isOverCap({ used: used?.count ?? 0, cap: conversationCap() })) {
+  if (isOverCap({ used: used?.count ?? 0, cap })) {
     // The same two events the pinned branch yields, so the sheet renders this
     // through a path it already has. `intent` is untouched: a capped page
     // still offers the capture card, because the lead is what the owner is
     // here for and it is worth more when chat has stopped answering.
-    const text =
-      'We have answered a lot of questions this month and have reached the limit. ' +
-      'The answers people ask for most are linked on this page, and you can still ' +
-      'reach us using the links above.';
-    yield { type: 'text', text };
+    //
+    // Logged at `info`, not `error`: the cap firing is this control working
+    // exactly as designed, not a failure needing attention. Without this
+    // line the only way to learn a page hit its cap is the manual SQL in
+    // manual-verification-caps.md's checks 6 and 7 -- a spend control whose
+    // stated failure mode is being indistinguishable from success should not
+    // also be invisible when it succeeds.
+    deps.log?.info?.(
+      { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
+      'conversation cap reached; chat degraded to the fixed reply',
+    );
+    yield { type: 'text', text: CAP_REACHED_REPLY };
     await prisma.message.create({
-      data: { conversationId, role: 'ASSISTANT', content: text },
+      data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },
     });
     yield { type: 'done', conversationId, intent };
     return;
