@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { canCapture } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
 import { Chip, LinkRow } from '@curios/ui';
 import { Ask } from './ask.js';
@@ -95,7 +96,12 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         handle={page.handle}
         questions={questions}
         shopName={page.displayName}
-        canCapture={page.mode === 'BUSINESS'}
+        canCapture={canCapture({
+          mode: page.mode,
+          paidUntil: page.paidUntil,
+          leadsCaptured: page.leadsCaptured,
+          now: new Date(),
+        })}
       />
     </main>
   );

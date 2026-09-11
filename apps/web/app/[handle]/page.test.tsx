@@ -14,6 +14,8 @@ const page: PublicPage = {
   bio: 'Kek butter, Shah Alam',
   language: 'ms',
   mode: 'BUSINESS',
+  paidUntil: null,
+  leadsCaptured: 0,
   links: [
     { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0 },
     { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1 },
@@ -96,6 +98,28 @@ describe('the link to /[handle]/faq', () => {
 
     expect(screen.queryByRole('link', { name: /every question/i })).toBeNull();
     expect(getFaqIndex).not.toHaveBeenCalled();
+  });
+});
+
+describe('the capture card and the plan', () => {
+  it('offers capture to a page inside its trial', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, paidUntil: null, leadsCaptured: 0 });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
+  });
+
+  it('offers capture to a paid page whose trial is spent', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({
+      ...page,
+      paidUntil: new Date(Date.now() + 86_400_000),
+      leadsCaptured: 99,
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
   });
 });
 

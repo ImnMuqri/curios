@@ -26,6 +26,10 @@ export interface PublicPage {
   mode: 'PERSONAL' | 'BUSINESS';
   links: PublicLink[];
   facts: PublicFact[];
+  /** Paid through this instant, or null. The capture gate's first input. */
+  paidUntil: Date | null;
+  /** Leads ever captured, for the free-trial half of the gate. */
+  leadsCaptured: number;
 }
 
 /**
@@ -46,6 +50,8 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       bio: true,
       language: true,
       mode: true,
+      paidUntil: true,
+      leadsCaptured: true,
       links: {
         orderBy: { position: 'asc' },
         select: { id: true, label: true, url: true, icon: true, position: true },
