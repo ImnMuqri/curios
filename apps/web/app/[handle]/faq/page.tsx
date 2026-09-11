@@ -7,11 +7,18 @@ import styles from './faq.module.css';
 // /[handle].
 export const runtime = 'nodejs';
 
-// FRONTEND.md's "static, revalidate 24h". Deliberately without
+// ISR, per FRONTEND.md's route table. Deliberately without
 // generateStaticParams -- enumerating every qualifying question at build time
 // would make `pnpm build` require a live database, which it does not today.
 // The first visitor renders; everyone after gets cached HTML.
-export const revalidate = 86400;
+// 60 seconds, not the 24 hours FRONTEND.md's route table first specified. These
+// pages carry a customer's own words, and an owner who takes one down must not
+// wait a day to see it gone -- that latency was half of the takedown gap
+// recorded in devDocs/deferred-findings.md. Both routes are two indexed reads,
+// so the cost of re-rendering more often is small and bounded; the alternative,
+// calling revalidatePath from the API, needs a shared secret and couples two
+// deployables, which is what choosing ISR was meant to avoid.
+export const revalidate = 60;
 
 export async function generateMetadata({
   params,

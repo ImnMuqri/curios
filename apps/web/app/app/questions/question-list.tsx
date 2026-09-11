@@ -29,14 +29,26 @@ function toMessage(failure: unknown): string {
 export function QuestionList({
   questions,
   onAnswer,
+  onSuppress,
+  onDelete,
 }: {
   questions: OwnerQuestion[];
   onAnswer: (id: string, answer: string) => Promise<void>;
+  onSuppress: (id: string, suppressed: boolean) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  /** The id whose delete prompt is open. At most one, like `editing`. */
+  const [confirming, setConfirming] = useState<string | null>(null);
+  /**
+   * Which row `error` belongs to. `error` is shared, and without this a
+   * failure on one row renders its message under every other row too -- two
+   * alerts for one failure, on rows the owner never touched.
+   */
+  const [errorFor, setErrorFor] = useState<string | null>(null);
 
   if (questions.length === 0) {
     // An instruction, not a mood.
@@ -65,12 +77,28 @@ export function QuestionList({
     }
   }
 
+  async function run(id: string, work: () => Promise<void>) {
+    if (busy) return;
+    setError('');
+    setErrorFor(id);
+    setBusy(true);
+    try {
+      await work();
+      setConfirming(null);
+    } catch (failure) {
+      setError(toMessage(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <ul className={styles.list}>
       {questions.map((question) => (
         <li key={question.id} className={styles.item}>
           <p className={styles.count}>
             Asked {question.askCount}×{question.answered ? ' · Answered' : ''}
+            {question.faqSlug ? (question.faqSuppressed ? ' · Hidden from /faq' : ' · Live on /faq') : ''}
           </p>
           <p className={styles.question}>{question.text}</p>
 
@@ -103,7 +131,55 @@ export function QuestionList({
                 </Button>
               </div>
             </>
-          ) : question.answered ? null : (
+          ) : confirming === question.id ? (
+            <>
+              <Callout tone="action">
+                Delete this question and your answer? A customer wrote these words, and this
+                cannot be undone.
+              </Callout>
+              {error && errorFor === question.id ? (
+                <Callout tone="error">{error}</Callout>
+              ) : null}
+              <div className={styles.actions}>
+                <Button
+                  variant="danger"
+                  busy={busy}
+                  onClick={() => void run(question.id, () => onDelete(question.id))}
+                >
+                  Delete it
+                </Button>
+                {/* Disabled while busy, not merely styled so. Slice 5 shipped
+                    exactly this bug on the leads screen: closing the prompt
+                    mid-request does not cancel the request, and the row
+                    vanishes anyway. */}
+                <Button variant="secondary" disabled={busy} onClick={() => setConfirming(null)}>
+                  Keep it
+                </Button>
+              </div>
+            </>
+          ) : question.answered ? (
+            <>
+              {error && errorFor === question.id ? (
+                <Callout tone="error">{error}</Callout>
+              ) : null}
+              <div className={styles.actions}>
+                {question.faqSlug ? (
+                  <Button
+                    variant="secondary"
+                    disabled={busy}
+                    onClick={() =>
+                      void run(question.id, () => onSuppress(question.id, !question.faqSuppressed))
+                    }
+                  >
+                    {question.faqSuppressed ? 'Show on /faq again' : 'Hide from /faq'}
+                  </Button>
+                ) : null}
+                <Button variant="secondary" disabled={busy} onClick={() => setConfirming(question.id)}>
+                  Delete
+                </Button>
+              </div>
+            </>
+          ) : (
             <div className={styles.actions}>
               <Button
                 onClick={() => {
@@ -141,6 +217,17 @@ export function Questions({ questions }: { questions: OwnerQuestion[] }) {
         });
         // Re-reads the Server Component, so the row comes back marked
         // answered rather than the screen guessing locally.
+        router.refresh();
+      }}
+      onSuppress={async (id, suppressed) => {
+        await apiFetch(`/questions/${id}/suppress`, {
+          method: 'POST',
+          body: JSON.stringify({ suppressed }),
+        });
+        router.refresh();
+      }}
+      onDelete={async (id) => {
+        await apiFetch(`/questions/${id}`, { method: 'DELETE' });
         router.refresh();
       }}
     />

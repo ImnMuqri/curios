@@ -5,7 +5,14 @@ import { getFaqEntry } from '@curios/db-read';
 import styles from '../faq.module.css';
 
 export const runtime = 'nodejs';
-export const revalidate = 86400;
+// 60 seconds, not the 24 hours FRONTEND.md's route table first specified. These
+// pages carry a customer's own words, and an owner who takes one down must not
+// wait a day to see it gone -- that latency was half of the takedown gap
+// recorded in devDocs/deferred-findings.md. Both routes are two indexed reads,
+// so the cost of re-rendering more often is small and bounded; the alternative,
+// calling revalidatePath from the API, needs a shared secret and couples two
+// deployables, which is what choosing ISR was meant to avoid.
+export const revalidate = 60;
 
 /** Google's own guidance for a meta description; not a hard technical limit. */
 const DESCRIPTION_MAX_CHARS = 155;
