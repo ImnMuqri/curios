@@ -1,4 +1,10 @@
-import { LEAD_QUEUE, normalizeMalaysianPhone, qualifies, type LeadJobData } from '@curios/core';
+import {
+  canCapture,
+  LEAD_QUEUE,
+  normalizeMalaysianPhone,
+  qualifies,
+  type LeadJobData,
+} from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 
 export interface LeadQueueLike {
@@ -71,7 +77,7 @@ export async function captureLead(
     select: {
       id: true,
       pageId: true,
-      page: { select: { mode: true } },
+      page: { select: { mode: true, paidUntil: true, leadsCaptured: true } },
       lead: { select: { id: true } },
       messages: {
         where: { role: 'USER' },
@@ -91,6 +97,18 @@ export async function captureLead(
   });
   if (!eligible) throw new NotQualifiedError();
 
+  // The plan gate, and deliberately the same error as the qualification gate
+  // above. A distinguishable "you have not paid" would tell an anonymous
+  // caller -- this endpoint takes no session -- whether this owner is paying,
+  // which is the owner's business and nobody else's.
+  const allowed = canCapture({
+    mode: conversation.page.mode,
+    paidUntil: conversation.page.paidUntil,
+    leadsCaptured: conversation.page.leadsCaptured,
+    now: new Date(),
+  });
+  if (!allowed) throw new NotQualifiedError();
+
   // Per page, per 24 hours. A window cannot be a unique index, so this is a
   // query -- and it is per page on purpose: one customer shopping two bakeries
   // is two leads, and each owner is entitled to their own.
@@ -104,10 +122,19 @@ export async function captureLead(
   });
   if (recent) throw new AlreadyCapturedError();
 
-  const lead = await deps.prisma.lead.create({
-    data: { pageId: conversation.pageId, conversationId: conversation.id, phone },
-    select: { id: true },
-  });
+  // One transaction. The counter is what the trial is measured against, so a
+  // stored lead that was never counted is a free fourth lead, and a count
+  // without a lead spends a page's trial on nothing.
+  const [lead] = await deps.prisma.$transaction([
+    deps.prisma.lead.create({
+      data: { pageId: conversation.pageId, conversationId: conversation.id, phone },
+      select: { id: true },
+    }),
+    deps.prisma.page.update({
+      where: { id: conversation.pageId },
+      data: { leadsCaptured: { increment: 1 } },
+    }),
+  ]);
 
   // Slots and the notification are the job's business. Extraction is a model
   // call and nothing generative runs inside a request -- and doing it in that
