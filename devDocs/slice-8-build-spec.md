@@ -185,5 +185,5 @@ these two slices close together.
 
 | Document | Correction |
 |---|---|
-| `README.md` | The tier table's Business column currently describes what every page gets, because `mode` defaults to `BUSINESS` and nothing else gates anything. It should distinguish Personal, Business unpaid, and Business paid — three states, not two. |
+| `README.md` | **This row was wrong.** There is no tier table in README — no root `README.md` exists at all, and `devDocs/README.md` holds Settled decisions, not tiers. The table described here is BACKEND.md's, so the correction below covers it. README instead gained a Settled-decisions row for the trial, which no document recorded. Found by Task 5's implementer, which correctly declined to invent a passage to fix. |
 | `BACKEND.md` | The capture-card rule is described as gating on mode alone. It now also gates on plan. |
