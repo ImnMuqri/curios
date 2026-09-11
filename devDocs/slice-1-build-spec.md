@@ -298,7 +298,7 @@ Pipeline per BACKEND.md, with slice 1 status:
 
 | # | Step | Slice 1 |
 |---|---|---|
-| 1 | `UsageCounter` check, over cap → FAQ | increments; **over-cap branch stubbed** |
+| 1 | `UsageCounter` check, over cap → FAQ | increments; **closed by slice 7 — see `devDocs/slice-7-build-spec.md`** |
 | 2 | rate limit by ip + page, leaky bucket in Redis | **deferred to plan 2** |
 | 3 | `PinnedAnswer` exact match → return, zero tokens | full |
 | 4 | load every verified fact for the page (no per-question subset) | full |
@@ -306,9 +306,13 @@ Pipeline per BACKEND.md, with slice 1 status:
 | 6 | stream, persist `Message` after close | full |
 | 7 | intent block | **deferred to slice 4** |
 
-Step 1's branch is stubbed because devDocs names no cap number and there is no
-FAQ page to degrade to yet. Counting starts anyway; a cap cannot be chosen
-without volume data.
+Step 1's branch was stubbed because devDocs named no cap number and there was no
+FAQ page to degrade to yet. Both are now false — slice 6 built the FAQ page and slice 7
+supplies the number and the check that reads it, at `packages/core/src/cap.ts` and the
+branch in `chat.service.ts`. See `devDocs/slice-7-build-spec.md`. Counting started
+anyway, because a cap cannot be chosen without volume data — that reasoning is why the
+stub was correct at the time, not an argument for leaving it stubbed any longer than it
+was.
 
 **Step 2 was marked full in an earlier draft of this table. Nothing implements
 it** — a repo-wide grep for `rate.limit|rateLimit|leaky` returns no matches.

@@ -205,14 +205,18 @@ This is the single exception to "the API never generates". It streams because a
 visitor watching a blank bubble for four seconds leaves.
 
 ```
-1  check UsageCounter. over cap → return the static FAQ payload, HTTP 200, no model call.
-2  rate limit by ip + page. leaky bucket in Redis.
-3  exact match against PinnedAnswer. hit → return it. zero tokens, zero risk.
+1  rate limit by ip + page. leaky bucket in Redis.
+2  exact match against PinnedAnswer. hit → return it. zero tokens, zero risk.
+3  check UsageCounter. over cap → the degraded reply, HTTP 200, no model call.
 4  load every verified fact for the page. not a per-question subset, see below.
 5  one Haiku call. system prompt carries facts, NeverSay, language rule, refusal rule.
 6  stream. persist Message after the stream closes.
 7  same response returns an intent block (below). no second classifier call.
 ```
+
+The cap sits after the pinned match, not before it. A pinned answer costs no tokens, and
+the cap exists to bound what a model call spends — refusing an answer that was already
+free would punish an owner for having answered the question well.
 
 ### Send every fact, do not select
 
@@ -467,8 +471,12 @@ for questions nobody asked, that is content farm behaviour and it will read as o
 ## Metering and billing
 
 `UsageCounter` increments on conversation start, not per message, so a chatty visitor
-costs the owner one unit. Over cap degrades to the FAQ view. **The page never goes
-dark.** A broken-looking page punishes the owner for being popular.
+costs the owner one unit. "Over cap degrades to the FAQ view. The page never goes dark"
+has been read two ways, so here is the one that is true: **the page is untouched** —
+links, facts and FAQ pages all render exactly as before — **and what degrades is one
+answer, in one sheet.** Chat gives a fixed reply instead of calling the model; a pinned
+answer keeps answering for free regardless of the counter. A broken-looking page
+punishes the owner for being popular.
 
 Cost control: Haiku for chat, prompt caching on the fact block (it is stable per page
 between edits), cap tokens per answer, hard cap conversations per IP per day.

@@ -133,6 +133,24 @@ first read (take some multiple of `limit`, then trim after the join in
 memory) or a real join to fix properly.
 
 
+## Caps
+
+Opened 2026-09-11, from Task 1's review of `slice-7/caps`.
+
+### `conversationCap()` duplicates `limit()`, and the cheap fix is unavailable
+
+`conversationCap()` in `packages/core/src/cap.ts` reproduces the body of `limit()` in
+`apps/api/src/plugins/rate-limit.ts` almost line for line — the same undefined-or-empty
+short circuit, the same `Number.isInteger || < 1` guard, the same error template —
+differing only in a hardcoded env-var name and fallback where `limit()` takes
+parameters. The cheap fix is unavailable: `packages/core` cannot import from `apps/api`
+without inverting the layering, and `limit()` is not exported anyway. The honest fix is
+to lift a generalised `envInteger(name, fallback)` into `packages/core` and have the
+rate-limit plugin import it from there — which means editing a wallet control for the
+sake of seven lines of stable parsing. Left alone deliberately; the cost is that a third
+call site copies the same seven lines before anyone unifies them.
+
+
 ## Tests
 
 ### The "clamps the limit" test tests the limit, not the clamp
