@@ -170,9 +170,18 @@ export { canCapture, FREE_LEADS } from './plan.js';
 Run: `cd packages/core && npx vitest run src/plan.test.ts`
 Expected: PASS, 8 tests.
 
-Then prove two assertions are load-bearing, restoring after each:
-1. Change `leadsCaptured < FREE_LEADS` to `<=`. Only "refuses once the trial is spent" must fail.
-2. Change the expiry comparison to `>=`. Only "treats the instant the payment expires as expired" must fail.
+Then prove both comparisons are load-bearing, restoring after each:
+
+1. Change `leadsCaptured < FREE_LEADS` to `<=`. **Three tests must fail** — every fixture
+   sitting exactly at `leadsCaptured: FREE_LEADS` and expecting `false`: "refuses once the
+   trial is spent", "refuses a lapsed page whose trial is also spent", and "treats the
+   instant the payment expires as expired". Three rather than one because they share that
+   boundary value; the check is stronger for it, not weaker.
+2. Change the expiry comparison to `>=`. **Exactly one must fail** — "treats the instant the
+   payment expires as expired" is the only fixture where `paidUntil` equals `now`.
+
+If either count differs from that, stop and report it — a mismatch means the fixtures are
+not what this step assumes.
 
 Record both outputs. A boundary test that passes under either comparison has not encoded the boundary.
 
