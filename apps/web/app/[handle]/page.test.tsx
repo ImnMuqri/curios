@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PublicPage } from '@curios/db-read';
 import { FREE_LEADS } from '@curios/core';
@@ -117,9 +117,15 @@ describe('the capture card and the plan', () => {
   // `page.leadsCaptured` and hands the result to `Ask` -- not merely that
   // `Ask` renders something when told to. `ask.test.tsx` covers the other
   // half: that `Ask` does the right thing with whatever it receives.
-  function lastAskProps() {
-    const calls = vi.mocked(Ask).mock.calls;
-    return calls[calls.length - 1]?.[0];
+  beforeEach(() => vi.mocked(Ask).mockClear());
+
+  // Cleared above rather than reading whatever call happened last, so a page
+  // that stops rendering `Ask` at all fails here instead of silently reading
+  // the previous test's props. The whole point of these three is to notice a
+  // gate that quietly stopped being consulted.
+  function askProps() {
+    expect(vi.mocked(Ask)).toHaveBeenCalledTimes(1);
+    return vi.mocked(Ask).mock.calls[0]?.[0];
   }
 
   it('offers capture to a paid page, even with its free trial already spent', async () => {
@@ -131,7 +137,7 @@ describe('the capture card and the plan', () => {
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(lastAskProps()?.canCapture).toBe(true);
+    expect(askProps()?.canCapture).toBe(true);
   });
 
   it('offers capture to a page inside its free trial', async () => {
@@ -143,7 +149,7 @@ describe('the capture card and the plan', () => {
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(lastAskProps()?.canCapture).toBe(true);
+    expect(askProps()?.canCapture).toBe(true);
   });
 
   it('withholds capture from a lapsed page -- trial spent and payment expired', async () => {
@@ -155,7 +161,7 @@ describe('the capture card and the plan', () => {
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(lastAskProps()?.canCapture).toBe(false);
+    expect(askProps()?.canCapture).toBe(false);
   });
 });
 
