@@ -86,6 +86,14 @@ model Page {
   bio           String?
   language      String         @default("en")
   published     Boolean        @default(false)
+  /// Paid through this instant. Null means never paid. A one-off Billplz bill
+  /// extends it; there is no subscription to activate, suspend or reconcile,
+  /// because a one-off bill has no lifecycle to model. Lapsed is a comparison.
+  paidUntil     DateTime?
+  /// Leads ever captured, and never decremented. A counter rather than
+  /// count(Lead) because slice 5 gave owners a lead delete -- counting rows
+  /// would let somebody delete their three trial leads and get three more.
+  leadsCaptured Int            @default(0)
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]
