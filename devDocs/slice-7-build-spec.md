@@ -124,6 +124,19 @@ export function isOverCap(input: { used: number; cap: number }): boolean {
 A normal answer event in the transcript. **No new client state**, no new panel in the ask
 sheet, and therefore no new client JavaScript on the page whose bundle is under test.
 
+Concretely, the branch mirrors the pinned-answer branch exactly — the same two events, in
+the same order:
+
+```ts
+yield { type: 'text', text: /* the degraded reply */ };
+yield { type: 'done', conversationId, intent };
+```
+
+That shape is what makes the no-new-client-state claim checkable rather than hopeful: the
+stream parser lives in `@curios/ui/sheet` and already renders precisely this pair for a
+pinned answer, so an over-cap reply reaches the visitor through a path that is already
+tested.
+
 The text says the page has reached this month's question limit and that answers to the
 most-asked questions are linked on this page. **It does not build a URL.** The public
 page already links to `/[handle]/faq`, gated on entries actually existing — slice 6 added
@@ -135,6 +148,33 @@ withdrawn.
 ambiguous and has been read both ways. The links, the facts, and the FAQ pages all render
 exactly as before when a page is over cap. What degrades is one answer in one sheet. No
 part of this slice changes what an unaided visitor sees on `/[handle]`.
+
+---
+
+## Every turn, not every conversation
+
+The counter increments only when a conversation is created. The **check runs on every
+turn**, and the difference is not an oversight.
+
+Checking only on new conversations leaves a hole. A conversation created while the page
+is over cap would get the degraded reply on its first turn, then reach the model on its
+second — the counter does not increment for a continuing turn, so nothing would stop it.
+One refusal followed by unlimited free answers is not a cap.
+
+The cost is that a conversation can be cut off at the boundary: it begins under the cap,
+somebody else's new conversation crosses it, and the next turn degrades mid-thread. That
+is rare, it is honest, and it is better than the hole.
+
+This does not contradict "the meter counts conversations, not messages." That sentence is
+about the **unit of metering** — what an owner is charged for. The check is about the
+**moment of spending**, and every turn is one of those. A chatty visitor still costs one
+unit; they simply cannot keep spending after the page has run out.
+
+**The intent block is unchanged.** A capped page still offers the capture card when the
+visitor qualifies. Cutting off lead capture at the cap would be exactly backwards: the
+lead is the thing the owner is here for, and it is worth more when chat has stopped
+answering. Lead extraction has its own queue and its own budget; it is not this cap's
+business.
 
 ---
 
@@ -157,7 +197,7 @@ nothing.
 |---|---|
 | `packages/core` | `isOverCap` at exactly the cap and one past it. The env override accepting a valid integer, and rejecting zero, a negative, and a non-numeric string — the same three the rate-limit override rejects. |
 | `apps/api` | Under cap, a normal answer. Over cap, **no gateway call at all** — asserted against the stub, not inferred from the reply text. Over cap with a pinned answer, the pinned answer, unchanged and still free. The counter still incrementing while over. |
-| Load-bearing | Moving the check above the pinned branch must fail a test. That is the whole argument of this slice, and a test suite that passes under both orders has not encoded it. |
+| Load-bearing | Two, because this slice makes two claims. Moving the check above the pinned branch must fail a test — that is the slice's whole argument, and a suite that passes under both orders has not encoded it. And gating the check on `isNew` must fail a test: a second turn in a conversation created over cap must not reach the gateway, which is the hole that ordering would open. |
 | `apps/web` | Nothing. No component changes, and the over-cap reply renders through the existing transcript path. |
 
 **What no test covers.** Whether 200 is the right number. It is a guess by construction,
@@ -176,7 +216,9 @@ to a customer, and it belongs in the manual walkthrough.
 1. **The rule** — `packages/core/src/cap.ts`: the constant, the env override, `isOverCap`,
    with tests. No consumers yet.
 2. **The check** — the cap read in `chat.service.ts`, placed below the pinned branch, and
-   the degraded reply. Includes the load-bearing test that fails if the check moves up.
+   the degraded reply. Two load-bearing tests: one that fails if the check moves above the
+   pinned branch, and one that fails if it runs only on new conversations — a second turn
+   in a conversation created over cap must not reach the gateway.
 3. **Documents and a walkthrough** — BACKEND.md's pipeline order and its "never goes
    dark" sentence, and the manual checks that need a real page at 200 conversations.
 
