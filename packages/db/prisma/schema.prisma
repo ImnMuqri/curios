@@ -298,6 +298,12 @@ model Question {
   /// True once the owner has written a pinned answer. NOT whether the model
   /// coped -- see the refusal rule in BACKEND.md for why that is not detected.
   answered           Boolean  @default(false)
+  /// Set when the owner takes a published question off /faq. A flag rather than
+  /// a delete because the chat path upserts questions by normalised text, so a
+  /// deleted row silently returns the next time somebody asks -- and a takedown
+  /// that undoes itself is worse than none. Erasure is a separate act: see
+  /// deleteQuestion, which removes the row and its answer together.
+  faqSuppressed      Boolean  @default(false)
   /// The public FAQ URL segment, once the question has earned one. Assigned by
   /// apps/api, never by apps/web, which holds a SELECT-only connection.
   /// Never overwritten and never cleared -- a URL that has begun to rank must

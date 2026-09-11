@@ -6,6 +6,10 @@ export interface OwnerQuestion {
   askCount: number;
   answered: boolean;
   lastAskedAt: Date;
+  /** Non-null once the question has earned a public URL at /[handle]/faq. */
+  faqSlug: string | null;
+  /** True when the owner has taken that public page down. */
+  faqSuppressed: boolean;
 }
 
 /**
@@ -31,6 +35,14 @@ export async function getQuestions(
     // discretion -- an unstable order makes the screen shuffle between loads.
     orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
     take: Math.min(options.limit ?? 50, 100),
-    select: { id: true, text: true, askCount: true, answered: true, lastAskedAt: true },
+    select: {
+      id: true,
+      text: true,
+      askCount: true,
+      answered: true,
+      lastAskedAt: true,
+      faqSlug: true,
+      faqSuppressed: true,
+    },
   });
 }

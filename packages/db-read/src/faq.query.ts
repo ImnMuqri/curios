@@ -61,7 +61,7 @@ export async function getFaqIndex(
   if (!page) return null;
 
   const questions = await prismaRead.question.findMany({
-    where: { pageId: page.id, faqSlug: { not: null } },
+    where: { pageId: page.id, faqSlug: { not: null }, faqSuppressed: false },
     orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
     take: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
     select: { faqSlug: true, text: true, normalizedQuestion: true },
@@ -105,7 +105,7 @@ export async function getFaqEntry(handle: string, slug: string): Promise<FaqAnsw
   // resolves instead of 404ing. Inbound links finding the page are the point
   // of this slice.
   const question = await prismaRead.question.findFirst({
-    where: { pageId: page.id, faqSlug: slug.toLowerCase() },
+    where: { pageId: page.id, faqSlug: slug.toLowerCase(), faqSuppressed: false },
     select: { text: true, normalizedQuestion: true },
   });
   if (!question) return null;

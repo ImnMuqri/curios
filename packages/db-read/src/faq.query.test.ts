@@ -31,7 +31,7 @@ async function seedPage(input: { published?: boolean; mode?: 'PERSONAL' | 'BUSIN
 
 async function seedAnswered(
   pageId: string,
-  input: {
+  input: { suppressed?: boolean;
     text: string;
     slug: string | null;
     askCount?: number;
@@ -52,6 +52,7 @@ async function seedAnswered(
       text: input.text,
       normalizedQuestion,
       faqSlug: input.slug,
+      faqSuppressed: input.suppressed ?? false,
       askCount: input.askCount ?? 5,
       answered: input.answered ?? input.answer !== null,
     },
@@ -159,6 +160,43 @@ describe('getFaqIndex', () => {
     const index = await getFaqIndex(page.handle, { limit: 150 });
 
     expect(index!.entries).toHaveLength(100);
+  });
+});
+
+describe('suppression', () => {
+  it('drops a suppressed question from the index', async () => {
+    // The takedown. The row keeps its slug and its answer -- the owner has
+    // said "not public", not "never happened" -- so only this flag stands
+    // between a customer's words and a search result.
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });
+    await seedAnswered(page.id, { text: 'Ada halal?', slug: 'ada-halal', suppressed: true });
+
+    const index = await getFaqIndex(page.handle);
+
+    expect(index!.entries.map((e) => e.slug)).toEqual(['berapa-harga']);
+  });
+
+  it('404s a suppressed question at its own URL, not just in the index', async () => {
+    // Hiding it from the index while the direct link still resolves would be
+    // no takedown at all -- the URL is the thing that got indexed.
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Ada halal?', slug: 'ada-halal', suppressed: true });
+
+    expect(await getFaqEntry(page.handle, 'ada-halal')).toBeNull();
+  });
+
+  it('serves it again once the owner unsuppresses', async () => {
+    // Reversible on purpose: an owner who hid something by mistake should not
+    // need a database console to undo it.
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Ada halal?', slug: 'ada-halal', suppressed: true });
+    await write.question.updateMany({
+      where: { pageId: page.id, faqSlug: 'ada-halal' },
+      data: { faqSuppressed: false },
+    });
+
+    expect(await getFaqEntry(page.handle, 'ada-halal')).not.toBeNull();
   });
 });
 
