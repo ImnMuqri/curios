@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { answerQuestion } from './question.service.js';
+import { answerQuestion, deleteQuestion, setFaqSuppressed } from './question.service.js';
 
 export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -29,6 +29,48 @@ export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
         request.log,
       );
       return reply.send({ status: 'answered' });
+    },
+  );
+
+  /**
+   * The takedown. Reversible, so it takes the desired state rather than being
+   * a one-way "hide" -- an owner who hid something by mistake must not need a
+   * database console to undo it.
+   */
+  app.post(
+    '/questions/:id/suppress',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1).max(64) }),
+        body: z.object({ suppressed: z.boolean() }),
+      },
+    },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await setFaqSuppressed(
+        app.prisma,
+        request.account.id,
+        request.params.id,
+        request.body.suppressed,
+      );
+      return reply.send({ status: request.body.suppressed ? 'suppressed' : 'restored' });
+    },
+  );
+
+  /**
+   * Erasure, and the reason it is separate from suppression: `Question.text` is
+   * a customer's own words, so when the words themselves are the problem,
+   * hiding the page does not answer it.
+   */
+  app.delete(
+    '/questions/:id',
+    { schema: { params: z.object({ id: z.string().min(1).max(64) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await deleteQuestion(app.prisma, request.account.id, request.params.id);
+      return reply.send({ status: 'deleted' });
     },
   );
 };

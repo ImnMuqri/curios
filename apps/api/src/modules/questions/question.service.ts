@@ -72,3 +72,72 @@ export async function answerQuestion(
   // must commit whatever happens to the URL; the slug is a consequence of it.
   await assignFaqSlug(prisma, question.id, log);
 }
+
+/**
+ * Take a published question off the public FAQ, or put it back.
+ *
+ * A flag, not a delete, and the distinction is load-bearing: `chat.service.ts`
+ * upserts questions keyed on `(pageId, normalizedQuestion)`, so a deleted row
+ * is recreated the next time anybody asks the same thing. A takedown that
+ * quietly undoes itself is worse than none, because the owner believes it
+ * worked.
+ *
+ * The slug and the answer both survive. The owner said "not public", not "not
+ * true" -- chat keeps answering from it, and the URL stays reserved so it can
+ * never be handed to a different question later.
+ *
+ * Scoped in the statement rather than after a read, the same reasoning as
+ * `deleteLead`: a read-then-write is one careless early return away from
+ * writing into a stranger's page.
+ */
+export async function setFaqSuppressed(
+  prisma: PrismaClient,
+  accountId: string,
+  questionId: string,
+  suppressed: boolean,
+): Promise<void> {
+  const { count } = await prisma.question.updateMany({
+    where: { id: questionId, page: { accountId } },
+    data: { faqSuppressed: suppressed },
+  });
+  if (count === 0) throw new QuestionNotYoursError();
+}
+
+/**
+ * Erase a question and the answer written to it.
+ *
+ * This is the right-to-erasure primitive, and it is a different act from
+ * suppression: `Question.text` is a customer's own words, so when those words
+ * are the problem -- a phone number, an address, somebody else's name -- hiding
+ * the page is not enough.
+ *
+ * The `PinnedAnswer` goes with it. Leaving it behind would keep the same
+ * content reachable through chat under the same normalised key, which is
+ * erasure that erases nothing.
+ *
+ * The read locates the answer, which has no relation to walk; but BOTH deletes
+ * carry `page: { accountId }` independently, so the scope is enforced by each
+ * statement rather than inherited from the lookup that preceded it.
+ */
+export async function deleteQuestion(
+  prisma: PrismaClient,
+  accountId: string,
+  questionId: string,
+): Promise<void> {
+  const question = await prisma.question.findFirst({
+    where: { id: questionId, page: { accountId } },
+    select: { id: true, pageId: true, normalizedQuestion: true },
+  });
+  if (!question) throw new QuestionNotYoursError();
+
+  await prisma.$transaction([
+    prisma.pinnedAnswer.deleteMany({
+      where: {
+        pageId: question.pageId,
+        normalizedQuestion: question.normalizedQuestion,
+        page: { accountId },
+      },
+    }),
+    prisma.question.deleteMany({ where: { id: question.id, page: { accountId } } }),
+  ]);
+}
