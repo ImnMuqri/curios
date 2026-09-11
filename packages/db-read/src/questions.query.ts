@@ -10,6 +10,13 @@ export interface OwnerQuestion {
   faqSlug: string | null;
   /** True when the owner has taken that public page down. */
   faqSuppressed: boolean;
+  /**
+   * What the owner wrote, or null if nobody has answered yet. Present so the
+   * editor can prefill and an owner can fix a typo -- without it the only way
+   * to correct a published price is to delete the question and wait for three
+   * more people to ask it.
+   */
+  answer: string | null;
 }
 
 /**
@@ -28,7 +35,7 @@ export async function getQuestions(
   accountId: string,
   options: { limit?: number } = {},
 ): Promise<OwnerQuestion[]> {
-  return prismaRead.question.findMany({
+  const questions = await prismaRead.question.findMany({
     where: { page: { accountId } },
     // Ask count, then recency: a tie between two questions asked twice is
     // broken by which is still being asked, and never left to the database's
@@ -43,6 +50,27 @@ export async function getQuestions(
       lastAskedAt: true,
       faqSlug: true,
       faqSuppressed: true,
+      normalizedQuestion: true,
     },
   });
+
+  // Two indexed reads joined in memory, the same shape `getFaqIndex` uses and
+  // for the same reason: `Question` and `PinnedAnswer` carry a matching unique
+  // `(pageId, normalizedQuestion)` but no Prisma relation to walk.
+  const answers = new Map(
+    (
+      await prismaRead.pinnedAnswer.findMany({
+        where: {
+          page: { accountId },
+          normalizedQuestion: { in: questions.map((q) => q.normalizedQuestion) },
+        },
+        select: { normalizedQuestion: true, answer: true },
+      })
+    ).map((row) => [row.normalizedQuestion, row.answer]),
+  );
+
+  return questions.map(({ normalizedQuestion, ...question }) => ({
+    ...question,
+    answer: answers.get(normalizedQuestion) ?? null,
+  }));
 }

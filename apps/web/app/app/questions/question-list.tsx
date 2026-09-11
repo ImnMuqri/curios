@@ -166,6 +166,21 @@ export function QuestionList({
                 <Callout tone="error">{error}</Callout>
               ) : null}
               <div className={styles.actions}>
+                {/* Prefilled from what they wrote, not blank: the likeliest
+                    reason to reopen a published answer is that a word in it is
+                    wrong, and retyping the rest from memory to fix one is how
+                    a second mistake gets made. */}
+                <Button
+                  variant="secondary"
+                  disabled={busy}
+                  onClick={() => {
+                    setEditing(question.id);
+                    setDraft(question.answer ?? '');
+                    setError('');
+                  }}
+                >
+                  Edit answer
+                </Button>
                 {question.faqSlug ? (
                   <Button
                     variant="secondary"

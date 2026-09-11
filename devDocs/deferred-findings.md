@@ -214,10 +214,12 @@ the API was rejected: it needs a shared secret and couples two deployables, whic
 exactly what choosing ISR over a worker was meant to avoid. Two indexed reads per
 minute per page is the whole cost.
 
-**Still missing, and smaller:** an owner cannot *edit* a published answer — the same
-`question.answered` branch that carried no controls now carries suppress and delete
-but not edit, so fixing a typo in a public price still means deleting and re-answering.
-Worth doing, not a blocker.
+**Edit followed immediately**, and closed the last of it: the answered branch now
+carries Edit answer alongside suppress and delete, prefilled from what the owner
+wrote. `getQuestions` gained the answer text to make that possible, joined from
+`PinnedAnswer` the same two-read way `getFaqIndex` does. No API change was needed —
+`answerQuestion` already upserts, so a correction takes the path the first answer
+took.
 
 
 Kept here rather than deleted, so a reader who was told about a finding can

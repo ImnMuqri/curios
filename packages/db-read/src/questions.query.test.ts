@@ -83,3 +83,44 @@ describe('getQuestions', () => {
     expect(questions).toHaveLength(2);
   });
 });
+
+describe('the answer an owner already wrote', () => {
+  it('comes back with the question, so the editor can prefill it', async () => {
+    // Without this the only way to fix a typo in a published price is to
+    // delete the question and wait for somebody to ask it three more times.
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const text = 'Berapa harga kek lapis?';
+    const normalizedQuestion = `berapa harga kek lapis ${randomUUID().slice(0, 6)}`;
+    await write.question.create({
+      data: { pageId, text, normalizedQuestion, askCount: 4, answered: true },
+    });
+    await write.pinnedAnswer.create({
+      data: { pageId, question: text, normalizedQuestion, answer: 'RM12 sekotak.' },
+    });
+
+    const rows = await getQuestions(accountId);
+
+    expect(rows.find((r) => r.text === text)?.answer).toBe('RM12 sekotak.');
+  });
+
+  it('is null for a question nobody has answered', async () => {
+    // Null rather than an empty string: the editor opens blank either way, but
+    // "no answer exists" and "the answer is empty" are different facts and the
+    // screen decides what to offer from this one.
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const text = 'Ada parking?';
+    await write.question.create({
+      data: {
+        pageId,
+        text,
+        normalizedQuestion: `ada parking ${randomUUID().slice(0, 6)}`,
+        askCount: 2,
+      },
+    });
+
+    const rows = await getQuestions(accountId);
+
+    expect(rows.find((r) => r.text === text)?.answer).toBeNull();
+  });
+});
+

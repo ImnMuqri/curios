@@ -13,6 +13,7 @@ const questions: OwnerQuestion[] = [
     lastAskedAt: new Date('2026-09-09T10:00:00Z'),
     faqSlug: null,
     faqSuppressed: false,
+    answer: null,
   },
   {
     id: 'q2',
@@ -22,6 +23,7 @@ const questions: OwnerQuestion[] = [
     lastAskedAt: new Date('2026-09-08T10:00:00Z'),
     faqSlug: 'ada-delivery',
     faqSuppressed: false,
+    answer: 'Yes, within Shah Alam.',
   },
 ];
 
@@ -194,5 +196,30 @@ describe('a failure on one row', () => {
 
     // Reported once, on the row that failed -- not twice, and not on the other.
     expect(screen.getAllByText('Could not hide that.')).toHaveLength(1);
+  });
+});
+
+describe('fixing an answer already published', () => {
+  it('opens the editor with what the owner wrote, rather than blank', async () => {
+    // A blank box would mean retyping from memory to correct one word, on text
+    // that is already public -- and the likeliest reason to reopen a published
+    // answer is that something in it is wrong.
+    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /edit answer/i }));
+
+    expect(screen.getByLabelText(/answer/i)).toHaveValue('Yes, within Shah Alam.');
+  });
+
+  it('saves the correction through the same writeback', async () => {
+    const onAnswer = vi.fn().mockResolvedValue(undefined);
+    render(<QuestionList questions={questions} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+
+    await userEvent.click(screen.getByRole('button', { name: /edit answer/i }));
+    await userEvent.clear(screen.getByLabelText(/answer/i));
+    await userEvent.type(screen.getByLabelText(/answer/i), 'Yes, Shah Alam and Klang.');
+    await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
+
+    expect(onAnswer).toHaveBeenCalledWith('q2', 'Yes, Shah Alam and Klang.');
   });
 });
