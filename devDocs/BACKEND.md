@@ -455,7 +455,7 @@ for 60 seconds by Next's ISR, not built by a worker — there is no BullMQ job, 
 `generateStaticParams` is deliberately absent so `pnpm build` needs no database. Withdrawing
 the pinned answer behind a published question does not take effect on the public page
 instantly: the read stops returning it at once, but the cached HTML only catches up when
-that page's 24-hour ISR window turns over, since nothing calls `revalidatePath`. This is
+that page's 60-second ISR window turns over, since nothing calls `revalidatePath`. This is
 the SEO layer and the over-cap fallback in one artifact — the artifact exists; slice 7 is
 what wires the fallback switch to it. No code serves this payload for an over-cap
 conversation today. Include `FAQPage` structured data on the entry page, serialised through

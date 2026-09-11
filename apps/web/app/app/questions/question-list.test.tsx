@@ -175,3 +175,24 @@ describe('erasing a question', () => {
     release?.();
   });
 });
+
+describe('a failure on one row', () => {
+  it('does not render its message under the open editor of another row', async () => {
+    // `error` is shared across rows, so scoping it in the new branches but not
+    // in the editing branch leaves the leak half-closed: open the editor on the
+    // unanswered row, fail a Hide on the published one, and the published row's
+    // message appears under the editor of a row the owner never touched. The
+    // mutations stay correctly targeted -- this is the display half of the same
+    // shared-state shape slice 5 shipped a real bug in.
+    const onSuppress = vi.fn().mockRejectedValue(new Error('Could not hide that.'));
+    render(
+      <QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={vi.fn()} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /answer this/i }));
+    await userEvent.click(screen.getByRole('button', { name: /hide from/i }));
+
+    // Reported once, on the row that failed -- not twice, and not on the other.
+    expect(screen.getAllByText('Could not hide that.')).toHaveLength(1);
+  });
+});

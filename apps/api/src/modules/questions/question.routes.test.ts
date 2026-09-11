@@ -21,12 +21,17 @@ afterAll(async () => {
  * routes are registered at all, and that they sit behind a session.
  *
  * That matters more here than usual. These are the two controls standing
- * between a customer's own words and a public, indexed page: if either were
- * registered into an anonymous scope, every direct-call test would still pass
- * while a stranger could unpublish -- or erase -- any owner's question by id.
- * A route that answers 401 is registered and guarded; an unregistered route
- * answers 404, which is why both cases are asserted rather than just the
- * happy path.
+ * between a customer's own words and a public, indexed page: without a guard,
+ * every direct-call test would still pass while a stranger could unpublish --
+ * or erase -- any owner's question by id.
+ *
+ * What actually enforces it is the `if (!request.account) throw` inside each
+ * handler, not the scope it is registered in: `sessionPlugin` is registered
+ * with `fp()` at the app root, so its onRequest hook resolves `request.account`
+ * for every route either way. The 401 assertions prove that guard fires. They
+ * also prove the routes exist at all, since an unregistered route answers 404
+ * -- which is why both the 401 and the 200 are asserted rather than the happy
+ * path alone.
  */
 async function anOwnerWithAPublishedQuestion() {
   const slug = randomUUID().slice(0, 8);
@@ -65,6 +70,13 @@ describe('POST /questions/:id/suppress', () => {
     // 401, not 404: 404 would mean the route is not registered at all, and
     // this assertion exists to tell those two apart.
     expect(res.statusCode).toBe(401);
+    // And it changed nothing. The DELETE case below checks the same thing; a
+    // refusal that still wrote would be the worse half of both outcomes.
+    const row = await app.prisma.question.findUniqueOrThrow({
+      where: { id: questionId },
+      select: { faqSuppressed: true },
+    });
+    expect(row.faqSuppressed).toBe(false);
   });
 
   it('suppresses for the owner, and the row shows it', async () => {

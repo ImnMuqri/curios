@@ -63,6 +63,7 @@ export function QuestionList({
     if (busy || draft.trim() === '') return;
 
     setError('');
+    setErrorFor(id);
     setBusy(true);
     try {
       await onAnswer(id, draft.trim());
@@ -113,7 +114,9 @@ export function QuestionList({
                 onChange={setDraft}
               />
 
-              {error ? <Callout tone="error">{error}</Callout> : null}
+              {error && errorFor === question.id ? (
+                <Callout tone="error">{error}</Callout>
+              ) : null}
 
               <div className={styles.actions}>
                 <Button busy={busy} onClick={() => void save(question.id)}>
