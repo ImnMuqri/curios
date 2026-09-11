@@ -483,6 +483,20 @@ answer, in one sheet.** Chat gives a fixed reply instead of calling the model; a
 answer keeps answering for free regardless of the counter. A broken-looking page
 punishes the owner for being popular.
 
+**What a conversation actually costs, estimated 2026-09-12.** Haiku 4.5 at $1/$5 per
+MTok, answers capped at 300 output tokens, three turns, the fact block cached: about
+**RM0.022 per conversation**. A page at the 200 cap therefore costs roughly **RM4.50 a
+month**, and a typical owner at thirty conversations costs under a ringgit. One ingest is
+about RM2 in Opus, mostly once.
+
+These are estimates from the prompt's shape, not measurements — `ModelCall` exists to
+replace them, and the first real numbers should overwrite this paragraph rather than sit
+beside it. But they are close enough to settle two things. Pricing cannot be derived from
+cost at this margin; RM39 is anchored on what an extra customer is worth, not on what a
+conversation costs. And the conversation cap is not really protecting margin at RM4.50 —
+it is protecting against a pathological page, which is a smaller claim than the one the
+spec originally made for it.
+
 Cost control: Haiku for chat, prompt caching on the fact block (it is stable per page
 between edits), cap tokens per answer, hard cap conversations per IP per day.
 

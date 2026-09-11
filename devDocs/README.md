@@ -90,6 +90,7 @@ around personality and then rewrite it for catalogs, hours, and prices.
 | Admin auth | Its own table, its own login, its own cookie. Shares nothing with owner auth. See ADMIN.md. |
 | Billing rails | Verified 2026-09-12, not assumed. Billplz recurring exists only as card tokenisation (`Agreements`, beta, billed as Auto-Deduct at 2% + RM0.75), and Billplz offers no FPX e-Mandate. FPX itself cannot auto-charge — every payment needs the payer to authenticate. So there is no auto-renew on the rail this market actually uses. |
 | Plans | Monthly and annual, both as a one-off FPX bill. Monthly is renewed by hand; there is no mandate to lapse and no beta to depend on. Annual is one bill a year, and at 0.75–1.25% against Auto-Deduct's flat RM0.75+ component it is several times cheaper per subscriber-year at these ticket sizes. |
+| Price | Business is RM39/month or RM390/year — two months free. Personal stays free. Anchored on one extra customer a month, not on cost: the product's own fixture prices a cake at RM95, so a single order covers RM39 even at a thin margin, and the claim survives an owner checking it. RM49 was the rounder number and needed better than ~52% margin on that order to stay true, which is a worse trade than RM10. |
 
 ---
 
