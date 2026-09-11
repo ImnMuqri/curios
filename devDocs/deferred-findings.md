@@ -9,8 +9,9 @@ Opened 2026-09-10, from the whole-branch review of `slice-5/leads`.
 
 Manual checks that no agent can run are not findings and are not listed here. They live
 in their own documents: `manual-verification-google-link.md` (slice 2, the Google round
-trip), `manual-verification-leads.md` (slice 5, the leads screen — **not run**), and
-`manual-verification-faq.md` (slice 6, FAQ generation — **not run**).
+trip), `manual-verification-leads.md` (slice 5, the leads screen — **not run**),
+`manual-verification-faq.md` (slice 6, FAQ generation — **not run**), and
+`manual-verification-caps.md` (slice 7, the conversation cap — **not run**).
 
 ---
 

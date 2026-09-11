@@ -17,10 +17,16 @@ amounts of trust in what follows.
 
 Checks 2, 4 and 5 need an actual browser rendering `@curios/ui/sheet`'s `AskSheet` and
 `CaptureCard`, and this repo has no Playwright, Puppeteer, or other browser driver to
-open one with. `apps/api/src/modules/chat/chat.service.test.ts` already proves, against
-a stubbed gateway, that the over-cap branch yields the right *events* — a `text` and a
-`done`, with `intent` untouched — and `packages/core/src/qualify.test.ts` proves the
-capture-card rule in isolation. What no test covers is what those events look like once
+open one with. `apps/api/src/modules/chat/chat.service.test.ts`'s `describe('the monthly
+cap', ...)` block already proves, against a stubbed gateway, that the over-cap branch
+yields the right *events* — a `text` and a `done`. It does not assert anything about
+`intent` for that path — the file's `intent` assertions live entirely inside an unrelated
+`describe('threading a conversation', ...)` block that never sets the page over cap. That
+the same `intent` reaches the over-cap `done` event as any other branch is true from
+reading `chat.service.ts`: `intent` is computed once, above every branch, and reused by
+all of them — an argument from the code, not a check this test file performs.
+`packages/core/src/qualify.test.ts` proves the capture-card rule itself in isolation.
+What no test covers is what those events look like once
 `AskSheet` actually renders them: whether the degraded reply lands as an ordinary answer
 bubble or trips whatever branch the sheet uses for a transport error, and whether the
 card the visitor actually sees still appears when chat has stopped answering.
@@ -68,13 +74,18 @@ real page should reach by hand.
 
 The whole point of this step is to walk the degrade path without driving 200 real
 conversations. `count = 500` is comfortably clear of the default cap
-(`FREE_CONVERSATIONS_PER_MONTH = 200`) whichever period key `currentPeriod()` computes,
-so there is no need to compute the period yourself:
+(`FREE_CONVERSATIONS_PER_MONTH = 200`):
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c \
-  "UPDATE \"UsageCounter\" SET count = 500 WHERE \"pageId\" = (SELECT id FROM \"Page\" WHERE handle = 'YOURHANDLE');"
+  "UPDATE \"UsageCounter\" SET count = 500 WHERE \"pageId\" = (SELECT id FROM \"Page\" WHERE handle = 'YOURHANDLE') AND period = to_char(now(), 'YYYY-MM');"
 ```
+
+The `period` clause is not decoration — leave it in. Without it this `UPDATE` matches
+every row for the page regardless of month, silently setting every past period's count to
+500 as well as the current one, and those historical counts are the only volume data this
+product has. `to_char(now(), 'YYYY-MM')` computes the same key `currentPeriod()` does
+(`now.toISOString().slice(0, 7)`), so there is still nothing to work out or paste by hand.
 
 If the page has never had a conversation, this updates zero rows — ask one question first
 so the row exists, then run the update.
