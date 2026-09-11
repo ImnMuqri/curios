@@ -18,8 +18,9 @@ Re-run it after any change to `packages/core/src/plan.ts`, the plan-gate check i
 combination of mode, `paidUntil`, and `leadsCaptured` the rule cares about, as a pure
 function with no server in front of it. `apps/api/src/modules/leads/lead.service.test.ts`
 proves the endpoint half — that `captureLead` calls `canCapture` with the stored page's
-real fields and throws `NotQualifiedError` when it disagrees — but does it by calling the
-service function directly against a stubbed Prisma client, never through Fastify.
+real fields and throws `NotQualifiedError` when it disagrees — against a real Prisma
+client on the test database, but calls the service function directly, with only its
+queue argument stubbed, and never goes through Fastify.
 `apps/api/src/modules/leads/lead.routes.test.ts` exercises the real HTTP route, but only
 for `DELETE /leads/:id`; nothing sends a real `POST /leads` over the network in the whole
 suite. `apps/web/app/[handle]/page.test.tsx` proves `page.tsx` reads the same two fields
@@ -160,8 +161,8 @@ unqualified conversation gets ("Keep chatting first, then we can pass your numbe
 That sameness is deliberate — `lead.service.ts`'s own comment says a distinguishable
 "you have not paid" would tell an anonymous caller whether this owner is paying, which is
 the owner's business and nobody else's. Nothing in the automated suite sends this request
-over real HTTP: `lead.service.test.ts` calls `captureLead` directly against a stubbed
-Prisma client, and `lead.routes.test.ts` only exercises `DELETE /leads/:id`.
+over real HTTP: `lead.service.test.ts` calls `captureLead` directly, function to function,
+and `lead.routes.test.ts` only exercises `DELETE /leads/:id`.
 
 ### 4. Paid makes it unconditional, even with the trial already spent
 
