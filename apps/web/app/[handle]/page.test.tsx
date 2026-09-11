@@ -1,10 +1,20 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PublicPage } from '@curios/db-read';
+import { FREE_LEADS } from '@curios/core';
 
 vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn() }));
 
+// Mocked so `HandlePage` can be inspected for what it decided, not just what
+// `Ask` does with it -- `ask.test.tsx` already proves the prop-to-DOM half of
+// this. Real `Ask` is a heavy client component (dynamic sheet import, fetch
+// wiring); a mock lets these tests exercise only `page.tsx`'s own wiring of
+// `canCapture` from real field values, without also depending on `Ask`'s
+// internals for tests that were never about `Ask`.
+vi.mock('./ask.js', () => ({ Ask: vi.fn(() => null) }));
+
 const { getFaqIndex, getPublicPage } = await import('@curios/db-read');
+const { Ask } = await import('./ask.js');
 const HandlePage = (await import('./page.js')).default;
 
 const page: PublicPage = {
@@ -102,24 +112,50 @@ describe('the link to /[handle]/faq', () => {
 });
 
 describe('the capture card and the plan', () => {
-  it('offers capture to a page inside its trial', async () => {
-    vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, paidUntil: null, leadsCaptured: 0 });
+  // Each case is built from the rule's own inputs, not a hand-set boolean, so
+  // these prove `page.tsx` actually reads `page.paidUntil` and
+  // `page.leadsCaptured` and hands the result to `Ask` -- not merely that
+  // `Ask` renders something when told to. `ask.test.tsx` covers the other
+  // half: that `Ask` does the right thing with whatever it receives.
+  function lastAskProps() {
+    const calls = vi.mocked(Ask).mock.calls;
+    return calls[calls.length - 1]?.[0];
+  }
 
-    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-
-    expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
-  });
-
-  it('offers capture to a paid page whose trial is spent', async () => {
+  it('offers capture to a paid page, even with its free trial already spent', async () => {
     vi.mocked(getPublicPage).mockResolvedValueOnce({
       ...page,
       paidUntil: new Date(Date.now() + 86_400_000),
-      leadsCaptured: 99,
+      leadsCaptured: FREE_LEADS,
     });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
+    expect(lastAskProps()?.canCapture).toBe(true);
+  });
+
+  it('offers capture to a page inside its free trial', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({
+      ...page,
+      paidUntil: null,
+      leadsCaptured: FREE_LEADS - 1,
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(lastAskProps()?.canCapture).toBe(true);
+  });
+
+  it('withholds capture from a lapsed page -- trial spent and payment expired', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({
+      ...page,
+      paidUntil: new Date(Date.now() - 86_400_000),
+      leadsCaptured: FREE_LEADS,
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(lastAskProps()?.canCapture).toBe(false);
   });
 });
 

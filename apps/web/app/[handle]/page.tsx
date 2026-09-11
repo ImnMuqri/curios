@@ -9,6 +9,13 @@ import styles from './page.module.css';
 // Node, not edge: this reads Postgres directly through the read-only role.
 export const runtime = 'nodejs';
 
+// No `revalidate` here, unlike the FAQ routes' ISR -- this route is dynamic,
+// rendered fresh on every request. Verified with `next start` + `curl -D-`:
+// every response carries `no-store` and no `x-nextjs-cache` header, and a
+// live `UPDATE` to the page's row shows up on the very next request. That is
+// what keeps `now`, `paidUntil`, and `leadsCaptured` -- the capture gate's
+// inputs -- from ever being served stale.
+
 /**
  * The first metadata in this app, and it exists to honour a promise
  * FRONTEND.md has made since slice 1: personal pages are noindex by default.

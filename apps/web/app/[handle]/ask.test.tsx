@@ -52,8 +52,17 @@ describe('Ask, once a conversation qualifies', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
 
-    // The same qualifying response as above lands either way; only the prop differs.
-    await waitFor(() => expect(fetch).toHaveBeenCalled());
+    // The same qualifying response as above lands either way; only the prop
+    // differs. Waited on the composer leaving its busy state -- set at the
+    // start of AskSheet's `send` and cleared only in its `finally`, so this is
+    // stream completion, not just dispatch -- rather than on `fetch` having
+    // been called, which proves only that a request went out. That keeps this
+    // a real regression check: it would still catch `onCapture` ever being
+    // forwarded unconditionally, instead of racing the stream and passing by
+    // accident.
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /send/i })).not.toHaveAttribute('aria-busy'),
+    );
     expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
   });
 });
