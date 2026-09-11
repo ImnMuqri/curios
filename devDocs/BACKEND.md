@@ -460,9 +460,14 @@ for 60 seconds by Next's ISR, not built by a worker — there is no BullMQ job, 
 the pinned answer behind a published question does not take effect on the public page
 instantly: the read stops returning it at once, but the cached HTML only catches up when
 that page's 60-second ISR window turns over, since nothing calls `revalidatePath`. This is
-the SEO layer and the over-cap fallback in one artifact — the artifact exists; slice 7 is
-what wires the fallback switch to it. No code serves this payload for an over-cap
-conversation today. Include `FAQPage` structured data on the entry page, serialised through
+the SEO layer — it was meant to double as the over-cap fallback too, one artifact doing
+both jobs, and slice 7 reconsidered that rather than forgot it. The over-cap reply is a
+fixed sentence pointing the visitor at the page, not the FAQ payload rendered into the
+chat. The public page already carries a `/[handle]/faq` link gated on entries actually
+existing, so the chat service building its own would duplicate that conditional and risk
+pointing at a 404 once every answer behind it has been withdrawn. See
+`devDocs/slice-7-build-spec.md` for the full argument. Include `FAQPage` structured data on
+the entry page, serialised through
 `serialiseJsonLd` so an answer cannot close the script element. Do not generate FAQ pages
 for questions nobody asked, that is content farm behaviour and it will read as one.
 
