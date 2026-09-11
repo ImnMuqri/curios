@@ -54,7 +54,7 @@ async function readyToCapture(page: { paidUntil?: Date | null; leadsCaptured?: n
 }
 
 const capture = (conversationId: string) =>
-  captureLead({ prisma, queue } as never, { conversationId, phone: '0123456789' });
+  captureLead({ prisma, queue }, { conversationId, phone: '0123456789' });
 
 describe('the capture gate', () => {
   it('captures for a page inside its trial', async () => {

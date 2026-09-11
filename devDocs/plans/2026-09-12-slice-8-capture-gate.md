@@ -451,7 +451,7 @@ describe('the capture gate', () => {
 
 Run: `cd apps/api && npx vitest run src/modules/leads/lead.plan.test.ts`
 
-Expected, and be precise — only **four** of the nine fail before the gate exists:
+Expected, and be precise — **six** of the nine fail before the gate exists, and a differing count in any row means the fixtures are not what this step assumes. Stop and report it rather than adjusting a test to match:
 
 | Test | Before |
 |---|---|
@@ -462,10 +462,12 @@ Expected, and be precise — only **four** of the nine fail before the gate exis
 | captures for a paid page whose trial is gone | **passes** |
 | refuses a lapsed page | **FAILS** |
 | counts a captured lead | **FAILS** — nothing increments |
-| does not count a refused capture | **passes** — vacuously, since nothing increments at all |
+| does not count a refused capture | **FAILS** — its first assertion is the refusal, which nothing does yet |
 | stores the lead and count together | **FAILS** |
 
-The five that pass are regression guards for behaviour this task must not break, and one — "does not count a refused capture" — passes vacuously today and only becomes meaningful once the increment exists. Do not delete any of them.
+Six fail and three pass. The three that pass are the `captures …` rows — regression guards for behaviour this task must not break. Do not delete any of them.
+
+A correction, recorded because the reasoning behind it is the interesting part. This table first said "does not count a refused capture" passed vacuously, reasoning that nothing increments yet so its count assertion could not fail. That read the test bottom-up. Its *first* line is `rejects.toBeInstanceOf(NotQualifiedError)` on a page at `leadsCaptured: FREE_LEADS`, so today the capture resolves and the row fails there — execution never reaches the count check at all. The row belongs to Step 3's gate, not Step 4's increment. It was reported by the Task 3 implementer against this table and verified.
 
 - [ ] **Step 3: Add the gate**
 
@@ -530,7 +532,7 @@ Expected: PASS, every file. The existing `lead.service.test.ts` and `lead.delete
 
 - [ ] **Step 6: Prove the gate is load-bearing**
 
-Comment out the `if (!allowed) throw new NotQualifiedError();` line and re-run. Exactly the three refusal tests must fail. Restore it.
+Comment out the `if (!allowed) throw new NotQualifiedError();` line and re-run. Exactly **four** must fail: the three `refuses …` tests and "does not count a refused capture", whose first assertion is also a refusal. Restore it.
 
 Then comment out the `page.update` from the transaction and re-run. "counts a captured lead" and "stores the lead and count together" must fail. Restore it.
 
