@@ -1,4 +1,4 @@
-import { normalizeClaim, qualifies } from '@curios/core';
+import { conversationCap, isOverCap, normalizeClaim, qualifies } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import { buildSystemPrompt } from './prompt.js';
@@ -174,6 +174,42 @@ export async function* answer(
     yield { type: 'text', text: pinned.answer };
     await prisma.message.create({
       data: { conversationId, role: 'ASSISTANT', content: pinned.answer },
+    });
+    yield { type: 'done', conversationId, intent };
+    return;
+  }
+
+  // The cap, and this is the line where it belongs.
+  //
+  // Everything above is database work that has already happened -- the
+  // conversation row, the message, the question upsert, the pinned lookup.
+  // The gateway call below is the only thing that costs money, so the boundary
+  // sits exactly where the spend starts. BACKEND.md put this at step 1, above
+  // the pinned branch; that predates pinned answers being free, and refusing a
+  // free answer because a page has spent too much punishes an owner for having
+  // answered the question well.
+  //
+  // Read on every turn, not only when the conversation is created. The counter
+  // increments on creation alone, so a check gated on `isNew` would refuse the
+  // first turn of a conversation started over cap and then hand the second to
+  // the model for nothing.
+  const used = await prisma.usageCounter.findUnique({
+    where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
+    select: { count: true },
+  });
+
+  if (isOverCap({ used: used?.count ?? 0, cap: conversationCap() })) {
+    // The same two events the pinned branch yields, so the sheet renders this
+    // through a path it already has. `intent` is untouched: a capped page
+    // still offers the capture card, because the lead is what the owner is
+    // here for and it is worth more when chat has stopped answering.
+    const text =
+      'We have answered a lot of questions this month and have reached the limit. ' +
+      'The answers people ask for most are linked on this page, and you can still ' +
+      'reach us using the links above.';
+    yield { type: 'text', text };
+    await prisma.message.create({
+      data: { conversationId, role: 'ASSISTANT', content: text },
     });
     yield { type: 'done', conversationId, intent };
     return;

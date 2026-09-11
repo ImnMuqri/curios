@@ -493,3 +493,107 @@ describe('faq slug assignment', () => {
     expect(question.faqSlug).toBe('berapa-harga-kek-coklat');
   });
 });
+
+describe('the monthly cap', () => {
+  /**
+   * Puts the page at `count` conversations for the current period, without
+   * driving that many chats. The period key is `YYYY-MM`, which is what
+   * `currentPeriod()` in chat.service.ts produces.
+   */
+  async function usageAt(count: number) {
+    const page = await prisma.page.findUniqueOrThrow({
+      where: { handle: 'nadia' },
+      select: { id: true },
+    });
+    const period = new Date().toISOString().slice(0, 7);
+    await prisma.usageCounter.upsert({
+      where: { pageId_period: { pageId: page.id, period } },
+      create: { pageId: page.id, period, count },
+      update: { count },
+    });
+    return page.id;
+  }
+
+  const chatSpyGateway = () => {
+    const gateway = gatewaySaying('a model answer');
+    const spy = vi.spyOn(gateway, 'chat');
+    return { gateway, spy };
+  };
+
+  it('answers normally below the cap', async () => {
+    await usageAt(10);
+    const { gateway, spy } = chatSpyGateway();
+
+    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga?' }));
+
+    expect(spy).toHaveBeenCalled();
+    expect(events.some((e) => e.type === 'text' && e.text === 'a model answer')).toBe(true);
+  });
+
+  it('spends nothing at all once over the cap', async () => {
+    // Asserted against the gateway, not against the reply text. A test that
+    // only checked the words would pass against an implementation that called
+    // the model and then threw the answer away -- which is the expensive
+    // version of this feature.
+    await usageAt(500);
+    const { gateway, spy } = chatSpyGateway();
+
+    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga?' }));
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(events.some((e) => e.type === 'text')).toBe(true);
+    expect(events.some((e) => e.type === 'done')).toBe(true);
+  });
+
+  it('still serves a pinned answer over the cap, because it costs nothing', async () => {
+    // The argument of this slice. BACKEND.md checked the cap above the pinned
+    // branch; a pinned answer makes no model call, so refusing it punishes an
+    // owner for having answered the question well.
+    const pageId = await usageAt(500);
+    await prisma.pinnedAnswer.create({
+      data: {
+        pageId,
+        question: 'Berapa harga?',
+        normalizedQuestion: 'harga',
+        answer: 'RM95 sekilo.',
+      },
+    });
+    const { gateway, spy } = chatSpyGateway();
+
+    const events = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga' }));
+
+    expect(spy).not.toHaveBeenCalled();
+    expect(events.some((e) => e.type === 'text' && e.text === 'RM95 sekilo.')).toBe(true);
+  });
+
+  it('refuses the second turn of a conversation that began over the cap', async () => {
+    // The hole that gating on `isNew` would open. The counter only increments
+    // when a conversation is created, so a check that ran only there would
+    // refuse turn one and then hand turn two to the model for free.
+    await usageAt(500);
+    const { gateway, spy } = chatSpyGateway();
+
+    const first = await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'one' }));
+    const done = first.find((e) => e.type === 'done');
+    const conversationId = (done as { conversationId?: string } | undefined)?.conversationId;
+    expect(conversationId).toBeTruthy();
+
+    await collect(
+      answer({ prisma, gateway }, { handle: 'nadia', question: 'two', conversationId }),
+    );
+
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('keeps counting while refusing, because refused demand is the data', async () => {
+    // A page recorded as 200 forever says nothing about what a paid tier
+    // should cost. A page sitting at 340 in a 200 cap is the argument.
+    const pageId = await usageAt(500);
+    const { gateway } = chatSpyGateway();
+
+    await collect(answer({ prisma, gateway }, { handle: 'nadia', question: 'harga?' }));
+
+    const counter = await prisma.usageCounter.findFirstOrThrow({ where: { pageId } });
+    expect(counter.count).toBe(501);
+  });
+});
