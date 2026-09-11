@@ -51,7 +51,7 @@ separate processes sharing `db` and `core`, and they never import each other.
 | Jobs | BullMQ + Redis | ingestion, lead extraction, email |
 | DB | Postgres + Prisma | facts are rows, not a vector store (see BACKEND.md) |
 | Files | Cloudflare R2 | avatars, OG images, scraped assets |
-| Pay | Billplz | verify recurring support before building monthly |
+| Pay | Billplz | one-off bills only — recurring is card-tokenised and in beta, and FPX cannot auto-charge. See Settled decisions. |
 | Models | Haiku for chat, Opus for ingestion | the asymmetry is the margin |
 
 ---
@@ -88,6 +88,8 @@ around personality and then rewrite it for catalogs, hours, and prices.
 | Personal privacy | `noindex` by default on personal pages, opt-in only. |
 | Owner auth | Google, or email and password — both since slice 2. Phone OTP publishing gate deferred, not shipped. See slice-2-build-spec.md. |
 | Admin auth | Its own table, its own login, its own cookie. Shares nothing with owner auth. See ADMIN.md. |
+| Billing rails | Verified 2026-09-12, not assumed. Billplz recurring exists only as card tokenisation (`Agreements`, beta, billed as Auto-Deduct at 2% + RM0.75), and Billplz offers no FPX e-Mandate. FPX itself cannot auto-charge — every payment needs the payer to authenticate. So there is no auto-renew on the rail this market actually uses. |
+| Plans | Monthly and annual, both as a one-off FPX bill. Monthly is renewed by hand; there is no mandate to lapse and no beta to depend on. Annual is one bill a year, and at 0.75–1.25% against Auto-Deduct's flat RM0.75+ component it is several times cheaper per subscriber-year at these ticket sizes. |
 
 ---
 
