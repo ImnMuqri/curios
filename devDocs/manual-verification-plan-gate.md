@@ -16,11 +16,13 @@ Re-run it after any change to `packages/core/src/plan.ts`, the plan-gate check i
 
 `packages/core/src/plan.test.ts` already proves `canCapture` itself against every
 combination of mode, `paidUntil`, and `leadsCaptured` the rule cares about, as a pure
-function with no server in front of it. `apps/api/src/modules/leads/lead.service.test.ts`
+function with no server in front of it. `apps/api/src/modules/leads/lead.plan.test.ts`
 proves the endpoint half — that `captureLead` calls `canCapture` with the stored page's
-real fields and throws `NotQualifiedError` when it disagrees — against a real Prisma
-client on the test database, but calls the service function directly, with only its
-queue argument stubbed, and never goes through Fastify.
+real fields, throws `NotQualifiedError` when it disagrees, and counts a stored lead but
+not a refused one — against a real Prisma client on the test database, but calls the
+service function directly, with only its queue argument stubbed, and never goes through
+Fastify. (`lead.service.test.ts` alongside it is the older qualification and dedupe
+suite; it touches neither plan column.)
 `apps/api/src/modules/leads/lead.routes.test.ts` exercises the real HTTP route, but only
 for `DELETE /leads/:id`; nothing sends a real `POST /leads` over the network in the whole
 suite. `apps/web/app/[handle]/page.test.tsx` proves `page.tsx` reads the same two fields
@@ -161,8 +163,9 @@ unqualified conversation gets ("Keep chatting first, then we can pass your numbe
 That sameness is deliberate — `lead.service.ts`'s own comment says a distinguishable
 "you have not paid" would tell an anonymous caller whether this owner is paying, which is
 the owner's business and nobody else's. Nothing in the automated suite sends this request
-over real HTTP: `lead.service.test.ts` calls `captureLead` directly, function to function,
-and `lead.routes.test.ts` only exercises `DELETE /leads/:id`.
+over real HTTP: `lead.plan.test.ts` and `lead.service.test.ts` both call `captureLead`
+directly, function to function, and `lead.routes.test.ts` only exercises
+`DELETE /leads/:id`.
 
 ### 4. Paid makes it unconditional, even with the trial already spent
 
