@@ -36,8 +36,11 @@ describe('canCapture', () => {
   });
 
   it('lets a lapsed page capture if it somehow still has trial left', () => {
-    // Not a real sequence -- a page that paid usually captured first -- but the
-    // rule is an OR and this pins that it is, rather than a hidden precedence.
+    // A real sequence, not a contrived one: paying up front is what RM390/year
+    // encourages, and a page that paid, captured twice, then lapsed lands here
+    // with three free leads still to spend. The rule is an OR and this pins
+    // that it is, rather than a hidden precedence. Whether paying ought to
+    // consume the trial is slice 9's call; today it does not.
     expect(canCapture({ ...paid, paidUntil: PAST, leadsCaptured: 0 })).toBe(true);
   });
 

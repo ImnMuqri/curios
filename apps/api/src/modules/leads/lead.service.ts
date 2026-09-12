@@ -98,9 +98,16 @@ export async function captureLead(
   if (!eligible) throw new NotQualifiedError();
 
   // The plan gate, and deliberately the same error as the qualification gate
-  // above. A distinguishable "you have not paid" would tell an anonymous
-  // caller -- this endpoint takes no session -- whether this owner is paying,
-  // which is the owner's business and nobody else's.
+  // above. A distinguishable "you have not paid" would make this endpoint an
+  // oracle for the owner's billing status, and it takes no session.
+  //
+  // It does not make that status secret, and nothing here can. The public page
+  // omits the capture card when this rule is false, so the card's absence is
+  // the signal -- readable from one anonymous GET, since `canCapture` is a
+  // client-component prop and rides in the RSC payload. Any UI that changes
+  // with payment status discloses payment status. What this line buys is that
+  // the API adds no second channel and no clearer one: it stays no more
+  // informative than the page a visitor can already load.
   const allowed = canCapture({
     mode: conversation.page.mode,
     paidUntil: conversation.page.paidUntil,

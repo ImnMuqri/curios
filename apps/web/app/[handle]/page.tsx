@@ -9,12 +9,17 @@ import styles from './page.module.css';
 // Node, not edge: this reads Postgres directly through the read-only role.
 export const runtime = 'nodejs';
 
-// No `revalidate` here, unlike the FAQ routes' ISR -- this route is dynamic,
-// rendered fresh on every request. Verified with `next start` + `curl -D-`:
-// every response carries `no-store` and no `x-nextjs-cache` header, and a
-// live `UPDATE` to the page's row shows up on the very next request. That is
-// what keeps `now`, `paidUntil`, and `leadsCaptured` -- the capture gate's
-// inputs -- from ever being served stale.
+// Declared, not merely observed. This route was already dynamic -- verified
+// with `next start` + `curl -D-`: `no-store`, no `x-nextjs-cache`, and a live
+// `UPDATE` visible on the very next request -- but it was dynamic by accident
+// of using Prisma rather than `fetch`, which nothing enforced. Adding
+// `revalidate` for performance, or a Next upgrade changing the default, would
+// have frozen `now`, `paidUntil` and `leadsCaptured` and put the capture card
+// back on a lapsed page. The endpoint would still refuse it, so the failure is
+// the silent one the two-site design exists to prevent: a card that fails on
+// submit. Unlike the FAQ routes, which opt into ISR deliberately, this one
+// says so out loud.
+export const dynamic = 'force-dynamic';
 
 /**
  * The first metadata in this app, and it exists to honour a promise
