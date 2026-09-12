@@ -313,14 +313,39 @@ only when the product has demonstrably worked, and a page that never captures
 anything never pays and never feels cheated." Three fabricated leads demonstrate
 nothing, and leave the owner paywalled in front of an empty dashboard.
 
-Amplifier: `captureLead` never checks `Page.published`, so a capture against an
-unpublished page still spends the trial. Pre-existing from slice 4, newly
-consequential.
+The review also claimed an amplifier — that `captureLead` never checks
+`Page.published`, so testing an unpublished page spends the trial. **Checked,
+and it is wrong.** `getPublicPage` (`page.query.ts:45`) and `chat.service.ts:101`
+both filter on `published: true`, so an unpublished page has no conversation to
+capture against. Reaching it needs publish → visitor chats → owner unpublishes →
+capture completes, and a lead from a real conversation is one the owner should
+keep. Dropped rather than carried forward.
 
-Slice 9 owns, at minimum: an owner-visible "N of 3 used" so the state is legible
-before it runs out, and an operator reset path. Worth considering alongside
-them — not counting captures on an unpublished page, and a per-page limit on
-`POST /leads` to match chat's.
+What makes it likelier than it first looks, in the other direction: the dedupe
+window is 24 hours per phone per page (`lead.service.ts:57`), so it does **not**
+take three phone numbers. One owner, their own number, three days of poking at
+their new page spends the whole trial.
 
-**Do not deploy slice 8 without this addressed.** Merging is fine; the two
-slices were always meant to ship together.
+### Settled
+
+No code change in slice 8. The gate is correct; what is wrong is that the state
+is invisible and unrecoverable, and both of those live on the owner-facing
+surface slice 8 deliberately does not build.
+
+**Slice 9 ships these two before any owner sees this, as requirements and not
+nice-to-haves:**
+
+1. An owner-visible "N of 3 free leads used", so nobody is ambushed by a card
+   that vanishes.
+2. A written operator reset. One column and one command, but a procedure rather
+   than something improvised while an owner waits.
+
+Worth considering there, not required: a per-page limit on `POST /leads` to
+match chat's 30/hour, and whether paying should consume the remaining trial —
+see `plan.test.ts`'s pay, capture twice, lapse case.
+
+Safe to sit on until then. Nothing is deployed — no CI, no host config, no
+deploy script anywhere in the repo — so there are no live owners to hurt, and
+recovery is one `UPDATE` regardless. Slice 8 cannot ship alone for a larger
+reason anyway: without slice 9 there is no way to pay, so every business page
+would stop capturing at three leads permanently.
