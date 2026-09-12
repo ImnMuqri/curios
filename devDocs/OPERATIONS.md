@@ -1,0 +1,117 @@
+# Operations
+
+Procedures that touch live data by hand. Each one exists because something can
+go wrong that the product cannot yet fix by itself, and improvising a `psql`
+statement while an owner waits is how the wrong row gets updated.
+
+Every procedure here is a stopgap. Each names the slice that should make it
+unnecessary, and that reference is the point: a procedure that has been here for
+three slices is a feature nobody built.
+
+---
+
+## Resetting a page's free-lead trial
+
+**Why this exists.** A business page gets three free leads
+(`FREE_LEADS`, `packages/core/src/plan.ts`), after which the capture card
+disappears until `paidUntil` is in the future. The counter only ever goes up —
+deleting a lead does not give it back, deliberately, so nobody can farm free
+leads by deleting them.
+
+The trap is that the trial can be spent without a single real customer. Lead
+dedupe is 24 hours per phone per page, so an owner testing their own page on
+three different days with their own number spends all three. They then hit a
+paywall with an empty dashboard, having seen the product work only for
+themselves.
+
+**Until slice 9 ships the owner-visible counter, assume owners will do this and
+will not know why the card vanished.**
+
+### 1. Confirm the state before changing anything
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT handle, mode, published, \"leadsCaptured\", \"paidUntil\" FROM \"Page\" WHERE handle = 'HANDLE';"
+```
+
+Read it before deciding. Three different situations look the same to an owner:
+
+| What you see | What actually happened | Action |
+|---|---|---|
+| `leadsCaptured >= 3`, `paidUntil` null | Trial spent | Reset, if the leads were tests |
+| `leadsCaptured >= 3`, `paidUntil` in the past | Paid once, lapsed | **Do not reset.** They owe a renewal |
+| `mode = PERSONAL` | Never had capture at all | Nothing to reset; explain the tier |
+
+Then look at whether the leads were real:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT l.phone, l.\"createdAt\" FROM \"Lead\" l JOIN \"Page\" p ON p.id = l.\"pageId\" WHERE p.handle = 'HANDLE' ORDER BY l.\"createdAt\";"
+```
+
+Three leads sharing one phone number, spaced roughly a day apart, is the
+signature of an owner testing their own page. Three different numbers is more
+likely real customers, and resetting would be giving away leads they should be
+paying for.
+
+### 2. Reset
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "UPDATE \"Page\" SET \"leadsCaptured\" = 0 WHERE handle = 'HANDLE';"
+```
+
+Expect `UPDATE 1`. **`UPDATE 0` means the handle was wrong** — handles are stored
+lowercase, so check the case before retrying. Anything above 1 means the `WHERE`
+was wrong and you should stop and work out what you just changed.
+
+Setting it to `0` rather than subtracting is deliberate: this is "give them their
+trial back", not arithmetic against a number you would have to trust.
+
+### 3. Do not reach for `paidUntil` instead
+
+It looks like the same fix and it is not. Writing a future `paidUntil` by hand
+creates a page that is paid with no payment behind it. Once slice 9 exists there
+will be a `Payment` table that is supposed to account for every paid page, and
+this row will not reconcile against it — by then the reason will be a year old
+and nobody will remember.
+
+If someone genuinely needs to be given paid time — a goodwill gesture, an outage
+— that is a decision with a record attached, not a `psql` statement. Wait for
+slice 9's billing surface, or write down who authorised it and why alongside the
+change.
+
+### 4. Verify
+
+Re-run the query from step 1 and confirm `leadsCaptured` is `0`. Then load the
+page and confirm the capture card is back after a qualifying conversation. The
+public page renders per request (`export const dynamic = 'force-dynamic'` in
+`apps/web/app/[handle]/page.tsx`), so there is no cache to wait out — the next
+request shows it.
+
+### Retire this when
+
+Slice 9 ships the owner-visible "N of 3 free leads used" and a supported reset.
+The reset above stays useful as an operator escape hatch; the *need* for it,
+driven by owners not knowing the trial exists, should disappear. See
+`deferred-findings.md`.
+
+---
+
+## Restoring the test database
+
+Not a live-data procedure, but the one most often needed and most often
+rediscovered from scratch.
+
+`curios-postgres-test` runs on `tmpfs`, so a container restart wipes the schema
+**and** the `curios_readonly` role. Symptoms are every database-touching test
+failing at once, across packages, usually right after a reboot.
+
+```bash
+pnpm --filter @curios/db exec prisma migrate deploy   # needs DATABASE_URL_TEST
+docker exec -i curios-postgres-test psql -U curios -d curios_test \
+  < packages/db/prisma/sql/readonly-role.sql
+```
+
+Both are required. Migrating alone leaves the role missing, and the read-only
+package's tests fail in a way that looks like a permissions bug in the code.
