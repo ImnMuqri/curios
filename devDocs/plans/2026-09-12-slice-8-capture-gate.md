@@ -170,9 +170,18 @@ export { canCapture, FREE_LEADS } from './plan.js';
 Run: `cd packages/core && npx vitest run src/plan.test.ts`
 Expected: PASS, 8 tests.
 
-Then prove two assertions are load-bearing, restoring after each:
-1. Change `leadsCaptured < FREE_LEADS` to `<=`. Only "refuses once the trial is spent" must fail.
-2. Change the expiry comparison to `>=`. Only "treats the instant the payment expires as expired" must fail.
+Then prove both comparisons are load-bearing, restoring after each:
+
+1. Change `leadsCaptured < FREE_LEADS` to `<=`. **Three tests must fail** — every fixture
+   sitting exactly at `leadsCaptured: FREE_LEADS` and expecting `false`: "refuses once the
+   trial is spent", "refuses a lapsed page whose trial is also spent", and "treats the
+   instant the payment expires as expired". Three rather than one because they share that
+   boundary value; the check is stronger for it, not weaker.
+2. Change the expiry comparison to `>=`. **Exactly one must fail** — "treats the instant the
+   payment expires as expired" is the only fixture where `paidUntil` equals `now`.
+
+If either count differs from that, stop and report it — a mismatch means the fixtures are
+not what this step assumes.
 
 Record both outputs. A boundary test that passes under either comparison has not encoded the boundary.
 
@@ -370,8 +379,9 @@ describe('the capture gate', () => {
 
   it('refuses with the same error an unqualified conversation gets', async () => {
     // Deliberate. A distinguishable billing error would tell an anonymous
-    // visitor -- anyone with curl -- whether this owner has paid, which is
-    // nobody's business but the owner's.
+    // visitor -- anyone with curl -- whether this owner has paid. (Corrected
+    // after the whole-branch review: this does not keep the status private,
+    // since the page's own RSC payload carries the bit. See the spec.)
     const { conversationId } = await readyToCapture({ leadsCaptured: FREE_LEADS });
 
     await expect(capture(conversationId)).rejects.toMatchObject({ code: 'NOT_QUALIFIED' });
@@ -442,7 +452,7 @@ describe('the capture gate', () => {
 
 Run: `cd apps/api && npx vitest run src/modules/leads/lead.plan.test.ts`
 
-Expected, and be precise — only **four** of the nine fail before the gate exists:
+Expected, and be precise — **six** of the nine fail before the gate exists, and a differing count in any row means the fixtures are not what this step assumes. Stop and report it rather than adjusting a test to match:
 
 | Test | Before |
 |---|---|
@@ -453,10 +463,12 @@ Expected, and be precise — only **four** of the nine fail before the gate exis
 | captures for a paid page whose trial is gone | **passes** |
 | refuses a lapsed page | **FAILS** |
 | counts a captured lead | **FAILS** — nothing increments |
-| does not count a refused capture | **passes** — vacuously, since nothing increments at all |
+| does not count a refused capture | **FAILS** — its first assertion is the refusal, which nothing does yet |
 | stores the lead and count together | **FAILS** |
 
-The five that pass are regression guards for behaviour this task must not break, and one — "does not count a refused capture" — passes vacuously today and only becomes meaningful once the increment exists. Do not delete any of them.
+Six fail and three pass. The three that pass are the `captures …` rows — regression guards for behaviour this task must not break. Do not delete any of them.
+
+A correction, recorded because the reasoning behind it is the interesting part. This table first said "does not count a refused capture" passed vacuously, reasoning that nothing increments yet so its count assertion could not fail. That read the test bottom-up. Its *first* line is `rejects.toBeInstanceOf(NotQualifiedError)` on a page at `leadsCaptured: FREE_LEADS`, so today the capture resolves and the row fails there — execution never reaches the count check at all. The row belongs to Step 3's gate, not Step 4's increment. It was reported by the Task 3 implementer against this table and verified.
 
 - [ ] **Step 3: Add the gate**
 
@@ -483,8 +495,9 @@ Then, immediately after the existing `if (!eligible) throw new NotQualifiedError
 ```ts
   // The plan gate, and deliberately the same error as the qualification gate
   // above. A distinguishable "you have not paid" would tell an anonymous
-  // caller -- this endpoint takes no session -- whether this owner is paying,
-  // which is the owner's business and nobody else's.
+  // caller -- this endpoint takes no session -- whether this owner is paying.
+  // (Corrected after the whole-branch review: the page discloses the same bit
+  // more cheaply, so this buys no second channel rather than privacy.)
   const allowed = canCapture({
     mode: conversation.page.mode,
     paidUntil: conversation.page.paidUntil,
@@ -521,7 +534,7 @@ Expected: PASS, every file. The existing `lead.service.test.ts` and `lead.delete
 
 - [ ] **Step 6: Prove the gate is load-bearing**
 
-Comment out the `if (!allowed) throw new NotQualifiedError();` line and re-run. Exactly the three refusal tests must fail. Restore it.
+Comment out the `if (!allowed) throw new NotQualifiedError();` line and re-run. Exactly **four** must fail: the three `refuses …` tests and "does not count a refused capture", whose first assertion is also a refusal. Restore it.
 
 Then comment out the `page.update` from the transaction and re-run. "counts a captured lead" and "stores the lead and count together" must fail. Restore it.
 

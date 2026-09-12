@@ -1,10 +1,20 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PublicPage } from '@curios/db-read';
+import { FREE_LEADS } from '@curios/core';
 
 vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn() }));
 
+// Mocked so `HandlePage` can be inspected for what it decided, not just what
+// `Ask` does with it -- `ask.test.tsx` already proves the prop-to-DOM half of
+// this. Real `Ask` is a heavy client component (dynamic sheet import, fetch
+// wiring); a mock lets these tests exercise only `page.tsx`'s own wiring of
+// `canCapture` from real field values, without also depending on `Ask`'s
+// internals for tests that were never about `Ask`.
+vi.mock('./ask.js', () => ({ Ask: vi.fn(() => null) }));
+
 const { getFaqIndex, getPublicPage } = await import('@curios/db-read');
+const { Ask } = await import('./ask.js');
 const HandlePage = (await import('./page.js')).default;
 
 const page: PublicPage = {
@@ -14,6 +24,8 @@ const page: PublicPage = {
   bio: 'Kek butter, Shah Alam',
   language: 'ms',
   mode: 'BUSINESS',
+  paidUntil: null,
+  leadsCaptured: 0,
   links: [
     { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0 },
     { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1 },
@@ -96,6 +108,60 @@ describe('the link to /[handle]/faq', () => {
 
     expect(screen.queryByRole('link', { name: /every question/i })).toBeNull();
     expect(getFaqIndex).not.toHaveBeenCalled();
+  });
+});
+
+describe('the capture card and the plan', () => {
+  // Each case is built from the rule's own inputs, not a hand-set boolean, so
+  // these prove `page.tsx` actually reads `page.paidUntil` and
+  // `page.leadsCaptured` and hands the result to `Ask` -- not merely that
+  // `Ask` renders something when told to. `ask.test.tsx` covers the other
+  // half: that `Ask` does the right thing with whatever it receives.
+  beforeEach(() => vi.mocked(Ask).mockClear());
+
+  // Cleared above rather than reading whatever call happened last, so a page
+  // that stops rendering `Ask` at all fails here instead of silently reading
+  // the previous test's props. The whole point of these three is to notice a
+  // gate that quietly stopped being consulted.
+  function askProps() {
+    expect(vi.mocked(Ask)).toHaveBeenCalledTimes(1);
+    return vi.mocked(Ask).mock.calls[0]?.[0];
+  }
+
+  it('offers capture to a paid page, even with its free trial already spent', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({
+      ...page,
+      paidUntil: new Date(Date.now() + 86_400_000),
+      leadsCaptured: FREE_LEADS,
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(askProps()?.canCapture).toBe(true);
+  });
+
+  it('offers capture to a page inside its free trial', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({
+      ...page,
+      paidUntil: null,
+      leadsCaptured: FREE_LEADS - 1,
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(askProps()?.canCapture).toBe(true);
+  });
+
+  it('withholds capture from a lapsed page -- trial spent and payment expired', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({
+      ...page,
+      paidUntil: new Date(Date.now() - 86_400_000),
+      leadsCaptured: FREE_LEADS,
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(askProps()?.canCapture).toBe(false);
   });
 });
 

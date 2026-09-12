@@ -380,11 +380,29 @@ stays fair.
 | | Personal | Business |
 |---|---|---|
 | Badge | bio code | SSM document |
-| Capture card | off | on |
+| Capture card | never | 3 free leads, then paid |
 | Hours, location under the name | hidden | shown |
 | FAQ pages | not generated | generated and indexed |
 | Indexing | **`noindex` by default** | indexed by default |
 | Connectors | none | Pro and Max |
+
+The capture-card row hides a second gate. `canCapture` (`packages/core/src/plan.ts`)
+requires **mode and plan together**, not mode alone: a Business page's first three
+leads are free -- the trial is part of the rule itself, not a marketing layer sitting
+above it -- and after that it needs `paidUntil` in the future to keep capturing. A
+Personal page never qualifies, whatever `paidUntil` holds. `apps/web/app/[handle]/page.tsx`
+runs the same check to decide whether to offer the card at all, and
+`apps/api/src/modules/leads/lead.service.ts` re-runs it against the stored page before
+any capture completes, refusing with the same `NotQualifiedError` a failed
+qualification check throws -- the endpoint is anonymous, so a distinguishable "you have
+not paid" would make it an oracle for the owner's billing status.
+
+That keeps the API from being a second channel; it does not make the status private, and
+no version of this design would. Hiding the card is itself the signal: `canCapture` is a
+client-component prop, so it travels in the page's RSC payload and one anonymous GET
+reads it, without needing the qualifying conversation the endpoint would demand. Treat
+plan state as public and the endpoint's sameness as hygiene, not as a secret being
+kept.
 
 The `noindex` default on personal pages is a privacy decision, not an SEO one. Most
 people do not want an AI page about themselves ranking for their own name, and the

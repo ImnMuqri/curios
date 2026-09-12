@@ -96,8 +96,18 @@ Two places, and both are required:
 The endpoint already gates on `qualifies({ mode, visitorMessages })` and throws
 `NotQualifiedError` — a 400 that deliberately does not confirm which conversation ids exist.
 The plan check composes with it and reuses the same error, for the same reason: a distinct
-"you have not paid" error tells an anonymous visitor about the owner's billing status, which
-is nobody's business but the owner's.
+"you have not paid" error would make the endpoint an oracle for the owner's billing status.
+
+**This does not make that status private, and this slice cannot.** Hiding the card *is* the
+signal. `canCapture` is a prop on a client component, so it rides in the page's RSC payload
+and one anonymous `GET /handle` reads it -- less work than the endpoint oracle this closes,
+which needs a three-turn qualifying conversation first. `noindex` marks personal pages, so
+its absence separates a business page from a personal one. Any UI that changes with payment
+status reveals payment status; the only alternative the spec considered -- render the card
+and fail on submit -- is worse for the visitor and rejected below.
+
+So the endpoint's discipline is worth keeping for what it actually buys: the API adds no
+second channel, and no clearer one than the page already is.
 
 This is the same discipline slice 6 needed for `faqSlug`, and it failed a review there for
 being half-wired. Both sites or neither.
@@ -185,5 +195,5 @@ these two slices close together.
 
 | Document | Correction |
 |---|---|
-| `README.md` | The tier table's Business column currently describes what every page gets, because `mode` defaults to `BUSINESS` and nothing else gates anything. It should distinguish Personal, Business unpaid, and Business paid — three states, not two. |
+| `README.md` | **This row was wrong.** There is no tier table in README — no root `README.md` exists at all, and `devDocs/README.md` holds Settled decisions, not tiers. The table described here is BACKEND.md's, so the correction below covers it. README instead gained a Settled-decisions row for the trial, which no document recorded. Found by Task 5's implementer, which correctly declined to invent a passage to fix. |
 | `BACKEND.md` | The capture-card rule is described as gating on mode alone. It now also gates on plan. |

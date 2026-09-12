@@ -282,3 +282,70 @@ state is unambiguous before the request is made: 21 escapes in 25 iterations
 became 0, and the api suite went 6 for 6. Test-only change — the production
 `skipOnError: false` is untouched, and the test was confirmed still
 load-bearing by flipping it to `true` and watching exactly that test fail.
+
+---
+
+### A page's free trial is spendable by anyone, including its owner, and nothing resets it — slice 9 owns the fix
+
+Found by slice 8's whole-branch review. Not a defect in slice 8's logic; two
+decisions that were each right alone compose into a trap once a meter exists.
+
+`POST /leads` is anonymous and carries `chatPerIpLimit` only — 100/hour per IP,
+with no per-page limit, because `chatPerPageLimit` keys on a `handle` route
+param that `/leads` does not have. Burning a page's whole trial therefore costs
+about nine chat requests and three lead POSTs from one IP: three throwaway
+conversations and three phone numbers to clear the 24-hour dedupe.
+
+The likely case is not adversarial. A new owner tests their own page the way
+`manual-verification-plan-gate.md` instructs — three visitor turns with a
+number, submit a phone, confirm the "Got it" state. That is one of three free
+leads gone. Two more checks with different numbers and the trial is over before
+a real customer arrives. The card then vanishes with no explanation.
+
+There is no way back. `deleteLead` deliberately never decrements, which is the
+anti-farming reason the counter exists rather than `count(leads)`. There is no
+page-delete endpoint, no admin app, no reset, and `@@unique([accountId])` stops
+the owner starting over with a new page. The only route is manual `psql`, which
+no document describes as an operational procedure.
+
+This falsifies the spec's own argument for the trial's shape: "a lead trial ends
+only when the product has demonstrably worked, and a page that never captures
+anything never pays and never feels cheated." Three fabricated leads demonstrate
+nothing, and leave the owner paywalled in front of an empty dashboard.
+
+The review also claimed an amplifier — that `captureLead` never checks
+`Page.published`, so testing an unpublished page spends the trial. **Checked,
+and it is wrong.** `getPublicPage` (`page.query.ts:45`) and `chat.service.ts:101`
+both filter on `published: true`, so an unpublished page has no conversation to
+capture against. Reaching it needs publish → visitor chats → owner unpublishes →
+capture completes, and a lead from a real conversation is one the owner should
+keep. Dropped rather than carried forward.
+
+What makes it likelier than it first looks, in the other direction: the dedupe
+window is 24 hours per phone per page (`lead.service.ts:57`), so it does **not**
+take three phone numbers. One owner, their own number, three days of poking at
+their new page spends the whole trial.
+
+### Settled
+
+No code change in slice 8. The gate is correct; what is wrong is that the state
+is invisible and unrecoverable, and both of those live on the owner-facing
+surface slice 8 deliberately does not build.
+
+**Slice 9 ships these two before any owner sees this, as requirements and not
+nice-to-haves:**
+
+1. An owner-visible "N of 3 free leads used", so nobody is ambushed by a card
+   that vanishes.
+2. A written operator reset. One column and one command, but a procedure rather
+   than something improvised while an owner waits.
+
+Worth considering there, not required: a per-page limit on `POST /leads` to
+match chat's 30/hour, and whether paying should consume the remaining trial —
+see `plan.test.ts`'s pay, capture twice, lapse case.
+
+Safe to sit on until then. Nothing is deployed — no CI, no host config, no
+deploy script anywhere in the repo — so there are no live owners to hurt, and
+recovery is one `UPDATE` regardless. Slice 8 cannot ship alone for a larger
+reason anyway: without slice 9 there is no way to pay, so every business page
+would stop capturing at three leads permanently.

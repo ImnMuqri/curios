@@ -79,6 +79,15 @@ describe('getPublicPage', () => {
     expect(await getPublicPage('draft')).toBeNull();
   });
 
+  it('carries what the capture gate needs', async () => {
+    // The page decides whether to render the card, so it needs the same two
+    // facts the endpoint checks. Without them the card is shown to a lapsed
+    // owner and fails only when a visitor tries to use it.
+    const page = await getPublicPage('nadia');
+
+    expect(page).toMatchObject({ paidUntil: null, leadsCaptured: 0 });
+  });
+
   it('cannot write through the read-only connection', async () => {
     const { prismaRead } = await import('./client.js');
     await expect(

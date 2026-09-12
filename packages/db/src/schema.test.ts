@@ -273,4 +273,21 @@ describe('the owner surface columns', () => {
     expect(q1.faqSlug).toBeNull();
     expect(q2.faqSlug).toBeNull();
   });
+
+  it('starts a page unpaid with no leads captured', async () => {
+    // The state every page begins in, and the one the trial is measured from.
+    const account = await prisma.account.create({
+      data: { email: `plan-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const skeleton = `plan-${randomUUID().slice(0, 8)}`;
+
+    const page = await prisma.page.create({
+      data: { accountId: account.id, handle: skeleton, skeleton, displayName: 'Nadia Bakes' },
+      select: { paidUntil: true, leadsCaptured: true },
+    });
+
+    expect(page.paidUntil).toBeNull();
+    expect(page.leadsCaptured).toBe(0);
+  });
 });
