@@ -12,6 +12,55 @@
  */
 export const FREE_LEADS = 3;
 
+export interface PlanInput {
+  mode: 'PERSONAL' | 'BUSINESS';
+  paidUntil: Date | null;
+  leadsCaptured: number;
+  now: Date;
+}
+
+/**
+ * Why a page is or is not allowed to capture.
+ *
+ * `canCapture` is the enforcement answer and this is the explanation. They are
+ * the same rule, and it matters that they cannot drift: a page hidden from the
+ * visitor for one reason while the owner is told another is worse than either
+ * message alone.
+ *
+ * `lapsed` and `trialSpent` both refuse, and they are separate because the
+ * owner needs different things said. One has never paid. The other has, and
+ * needs to renew.
+ */
+export type PlanState =
+  | { kind: 'personal' }
+  | { kind: 'paid'; paidUntil: Date }
+  | { kind: 'trial'; used: number; remaining: number }
+  | { kind: 'trialSpent' }
+  | { kind: 'lapsed'; paidUntil: Date };
+
+export function planState(input: PlanInput): PlanState {
+  if (input.mode !== 'BUSINESS') return { kind: 'personal' };
+
+  // `>` and not `>=`: the instant a payment expires, it has expired.
+  if (input.paidUntil !== null && input.paidUntil.getTime() > input.now.getTime()) {
+    return { kind: 'paid', paidUntil: input.paidUntil };
+  }
+
+  // Checked after the payment and before the lapse, because a page that paid,
+  // captured once, and lapsed still has trial left. The rule is an OR.
+  if (input.leadsCaptured < FREE_LEADS) {
+    return {
+      kind: 'trial',
+      used: input.leadsCaptured,
+      remaining: FREE_LEADS - input.leadsCaptured,
+    };
+  }
+
+  return input.paidUntil === null
+    ? { kind: 'trialSpent' }
+    : { kind: 'lapsed', paidUntil: input.paidUntil };
+}
+
 /**
  * Whether this page may take a phone number.
  *
@@ -21,18 +70,15 @@ export const FREE_LEADS = 3;
  * search, and rankings do not return the moment a bill is paid. Capture is
  * what README says a business pays for, so capture is what stops.
  *
- * `now` is a parameter and not `new Date()`, the same as every other rule in
- * this package: a function that reads the clock cannot be tested at the
- * instant its answer changes.
+ * Derived from `planState` rather than deciding for itself. Two functions
+ * expressing one rule is how a page and an endpoint end up disagreeing about
+ * the same page; a test walks every combination to prove these two do not.
+ *
+ * `now` is a parameter and not `new Date()`. A function that reads the clock
+ * cannot be tested at the instant its answer changes -- and this one has a
+ * boundary that matters, since a payment expires at a particular moment.
  */
-export function canCapture(input: {
-  mode: 'PERSONAL' | 'BUSINESS';
-  paidUntil: Date | null;
-  leadsCaptured: number;
-  now: Date;
-}): boolean {
-  if (input.mode !== 'BUSINESS') return false;
-  // `>` and not `>=`: the instant a payment expires, it has expired.
-  if (input.paidUntil !== null && input.paidUntil.getTime() > input.now.getTime()) return true;
-  return input.leadsCaptured < FREE_LEADS;
+export function canCapture(input: PlanInput): boolean {
+  const state = planState(input);
+  return state.kind === 'paid' || state.kind === 'trial';
 }
