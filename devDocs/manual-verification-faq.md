@@ -27,10 +27,14 @@ Next's actual script-tag renderer would show up.
 
 Check 1 is different: it is fully reachable over HTTP, but it is listed here rather than
 inferred from the unit tests because it is the one path with no owner action in it at all,
-and `faq-slug.test.ts` only proves it works when called directly with a crafted seed —not
-that the chat route actually calls it at the right moment for a real, unscripted sequence
-of requests. Worth the ten minutes precisely because Task 3's own history shows this path
-had no test until one was written for it on purpose.
+and it is the seam between the chat path and slug assignment.
+
+**Corrected after an audit:** this used to say `faq-slug.test.ts` "only proves it works
+when called directly with a crafted seed". That was already untrue when it was written.
+`chat.service.test.ts`'s `faq slug assignment` block drives the real `answer()` for a
+third ask and asserts the slug appears -- added in the very commit that introduced
+`faq-slug.ts`. What is actually left unproven here is the HTTP layer and two distinct
+real browser sessions, which is a much smaller claim than this section used to make.
 
 Check 3 is the one nothing here can ever automate, no matter how good the browser driver
 gets: the tests can prove the JSON is well-formed and safe, not that Google's crawler reads
@@ -202,15 +206,17 @@ With a question live at `/[handle]/faq/[slug]`, open the questions screen and:
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c   'SELECT q.text, q."faqSuppressed", p.answer FROM "Question" q
-     LEFT JOIN "PinnedAnswer" p ON p."normalizedQuestion" = q."normalizedQuestion"
+     LEFT JOIN "PinnedAnswer" p ON p."pageId" = q."pageId" AND p."normalizedQuestion" = q."normalizedQuestion"
     WHERE q."faqSlug" IS NOT NULL;'
 ```
 
-5. **Then ask it again in chat, twice more.** This is the part worth doing by hand: an
+5. **Then ask it again in chat, once.** This is the part worth doing by hand: an
    erased question is re-logged the next time somebody asks, because the chat path
    upserts on the normalised text. It must come back as a *fresh* row — ask count 1,
    unanswered, no slug — and must **not** reappear on `/faq`. If the old answer comes
-   back with it, the erasure did not erase.
+   back with it, the erasure did not erase. (This said "twice more" until an audit caught
+   the arithmetic: the upsert increments on every ask after the create, so two asks give
+   ask count 2 and a careful reader would think the erasure was broken.)
 
 ## Recording the result
 

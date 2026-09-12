@@ -66,6 +66,16 @@ FAQ entries already generated makes check 3 worth more, since it exercises
 inflated `UsageCounter` rather than a real demo account; check 1 sets it to a number no
 real page should reach by hand.
 
+**Check the page's plan columns before check 5.** Since slice 8 the capture card also
+needs `leadsCaptured < 3` or a future `paidUntil`, and a page kept around for manual QA
+has very likely spent its three. If it has, check 5 fails with the card simply absent --
+which is exactly the symptom check 5 exists to catch, for a cause that has nothing to do
+with the cap. Reset it first:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c   "UPDATE \"Page\" SET \"leadsCaptured\" = 0 WHERE handle = 'HANDLE';"
+```
+
 ---
 
 ## The seven checks
@@ -119,14 +129,19 @@ whether that separation actually holds, not whether it was intended to.
 
 ### 4. A pinned answer still answers properly over the cap
 
-Ask, in the same over-cap sheet, the exact question you have a `PinnedAnswer` for.
+Close the sheet and reopen it, then ask the exact question you have a `PinnedAnswer` for.
+Reopening matters: `AskSheet` holds one `conversationId` per open sheet, and
+`chat.service.ts` only increments `UsageCounter` for a *new* conversation. Continuing the
+same sheet from check 2 would add turns to that conversation instead, and check 6 would
+then show one increment where it says three.
 Confirm the reply is the owner's pinned text, not the degraded sentence from check 2 —
 this is the slice's central argument made visible: a pinned answer costs no tokens, so
 the cap must never intercept it.
 
 ### 5. The capture card still appears when the visitor qualifies
 
-Still over cap, hold a conversation of at least three visitor turns on the `BUSINESS`
+Still over cap, and again in a freshly reopened sheet, hold a conversation of at least
+three visitor turns on the `BUSINESS`
 page, with at least one visitor message containing a standalone number (a quantity, a
 count, a date — "2kg", "20 Mac"; see `packages/core/src/qualify.ts`). Confirm the capture
 card still offers itself. `intent` is computed from the conversation history before the

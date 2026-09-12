@@ -12,10 +12,14 @@ delete, or the dashboard nav.
 
 ## Why it can't be automated here
 
-Two of the seven checks are client-side interactions in a browser, and this repo has no
-Playwright, Puppeteer, or any other browser driver. The rest *can* be reached over HTTP
-against a real server, which no test currently does — every existing test runs against
-fixtures and mocks.
+**Corrected after an audit: most of it already is automated.** This section used to claim
+two of the seven checks needed a browser. None of them do -- the client-side ones run
+under jsdom via Testing Library, which the paragraph below already said, contradicting the
+sentence above it. Six of the seven are covered by tests that run in CI on every change.
+
+What is genuinely left is check 7, which no test covers: that a phone number never reaches
+the logs. The rest of this document is worth running against real data occasionally, but
+it is a sanity pass, not the safety net it was written as.
 
 That distinction is the point. The unit tests already cover the transcript toggle and the
 delete confirm (`apps/web/app/app/leads/lead-list.test.tsx`) and `aria-current`
@@ -42,6 +46,18 @@ You need a signed-in owner whose account has the lead captured during slice 4. I
 lead is gone from the dev database, capture a fresh one by asking a question on the
 public page and leaving a phone number, then wait for the worker to fill the slots.
 
+**Check the page's plan columns first.** Since slice 8 a page must be `BUSINESS` and
+either have `paidUntil` in the future or `leadsCaptured < 3`, or the capture card never
+renders at all -- not disabled, not an error, simply absent, which is deliberate. A dev
+page reused across slices 4, 5 and 8 has very likely spent its three:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c   "SELECT handle, mode, \"leadsCaptured\", \"paidUntil\" FROM \"Page\" WHERE handle = 'nadia';"
+docker exec -i curios-postgres psql -U curios -d curios -c   "UPDATE \"Page\" SET \"leadsCaptured\" = 0 WHERE handle = 'nadia';"
+```
+
+See `devDocs/OPERATIONS.md` for why the reset sets zero rather than subtracting.
+
 ---
 
 ## The seven checks
@@ -51,7 +67,9 @@ Take the counts in check 6 **before** you delete anything.
 1. **`/app/leads` lists the lead, newest first.** Not just that a row appears — that the
    order is newest-first with at least two leads present. One lead cannot fail an
    ordering check.
-2. **The transcript opens and closes.** Browser only.
+2. **The transcript opens and closes.** Already automated -- `lead-list.test.tsx` drives
+   it with `userEvent.click` under jsdom. Kept here only as a sanity check that it also
+   works against real data; skip it if you are short of time.
 3. **The WhatsApp link points at `60123456789` with no `+`.** `wa.me` silently fails on a
    plus. Check the real `href`, not the label.
 4. **Delete asks first, then removes the row.** Both halves: the confirm appears, and

@@ -24,7 +24,7 @@ be the **API** origin — `http://localhost:3001/auth/google/callback` — not t
 # All three, in separate terminals from the repo root.
 pnpm --filter @curios/api dev        # 3001
 pnpm --filter @curios/web dev        # 3000
-docker compose up -d                 # postgres + redis, if not already up
+docker compose up -d                 # postgres, redis and mailpit, if not already up
 ```
 
 Check nothing is already holding those ports — an orphaned dev server from an earlier session will
@@ -39,8 +39,9 @@ netstat -ano | grep -E ":(3000|3001)\s.*LISTENING"
 ## Path 1 — the happy path
 
 **Setup.** You need an account that has a password and no Google identity. Sign up at
-`http://localhost:3000/signup`, then confirm the email via Mailpit at `http://localhost:8025` and
-click through the verification link.
+`http://localhost:3000/signup`, then confirm the email via Mailpit at `http://localhost:8075` and
+click through the verification link. (8075 is the host port; `docker-compose.yml` maps it to
+Mailpit's internal 8025, and nothing listens on 8025 from outside the container.)
 
 1. Go to `http://localhost:3000/app/settings`.
 2. Confirm you see **"Signed in as \<your address\>"** and a **Connect Google** link, and **no**
