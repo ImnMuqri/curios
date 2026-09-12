@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { FREE_LEADS } from '@curios/core';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
@@ -52,6 +53,144 @@ async function anOwnerWithALead() {
   const { value } = await createSession(app.prisma, account.id);
   return { cookie: value, leadId: lead.id };
 }
+
+/**
+ * A page and a conversation on it, the conversation qualifying by default
+ * (three visitor turns, the last carrying a standalone number) -- the same
+ * shape `lead.plan.test.ts`'s `readyToCapture` and `lead.service.test.ts`'s
+ * `aQualifyingConversation` use, reused rather than reinvented. `plan` lets a
+ * test push the page across the trial boundary without touching the
+ * conversation at all, so a refusal here is pinned to `canCapture`, not to
+ * `qualifies`.
+ */
+async function aPageWithConversation(
+  plan: { paidUntil?: Date | null; leadsCaptured?: number } = {},
+) {
+  const slug = `lp-${randomUUID().slice(0, 8)}`;
+  const account = await app.prisma.account.create({
+    data: {
+      email: `lead-post-${randomUUID()}@example.com`,
+      pages: {
+        create: {
+          handle: slug,
+          skeleton: slug,
+          displayName: 'LP Bakes',
+          published: true,
+          paidUntil: plan.paidUntil ?? null,
+          leadsCaptured: plan.leadsCaptured ?? 0,
+        },
+      },
+    },
+    select: { pages: { select: { id: true } } },
+  });
+  const pageId = account.pages[0]?.id ?? '';
+  const conversation = await app.prisma.conversation.create({
+    data: {
+      pageId,
+      messages: {
+        create: [
+          { role: 'USER', content: 'ada kek butter?' },
+          { role: 'ASSISTANT', content: 'Ada, RM95 sekilo.' },
+          { role: 'USER', content: 'yang besar' },
+          { role: 'ASSISTANT', content: 'RM160 untuk 2kg.' },
+          { role: 'USER', content: 'nak 2kg untuk 20 Mac' },
+        ],
+      },
+    },
+    select: { id: true },
+  });
+  return conversation.id;
+}
+
+/**
+ * A page still inside its trial (so a refusal here cannot be `canCapture`'s
+ * doing) whose conversation never qualifies -- one visitor turn, no
+ * standalone number. The `NOT_QUALIFIED` a caller gets from this must be
+ * indistinguishable from the one `aPageWithConversation({ leadsCaptured:
+ * FREE_LEADS })` produces; see the "byte-identical" test below.
+ */
+async function aPageWithAnUnqualifiedConversation() {
+  const slug = `lu-${randomUUID().slice(0, 8)}`;
+  const account = await app.prisma.account.create({
+    data: {
+      email: `lead-post-${randomUUID()}@example.com`,
+      pages: {
+        create: { handle: slug, skeleton: slug, displayName: 'LU Bakes', published: true },
+      },
+    },
+    select: { pages: { select: { id: true } } },
+  });
+  const pageId = account.pages[0]?.id ?? '';
+  const conversation = await app.prisma.conversation.create({
+    data: { pageId, messages: { create: [{ role: 'USER', content: 'buka tak?' }] } },
+    select: { id: true },
+  });
+  return conversation.id;
+}
+
+describe('POST /leads', () => {
+  it('captures over real HTTP for a page inside its trial', async () => {
+    const conversationId = await aPageWithConversation({ leadsCaptured: 0 });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      remoteAddress: from(),
+      payload: { conversationId, phone: '0123456789', consent: true },
+    });
+
+    // { leadId: string } and nothing else -- the route's declared 201 schema.
+    // fastify-type-provider-zod's serializer would already refuse to send a
+    // response that didn't match it; asserting the exact shape here pins that
+    // contract in the test rather than only in the route's own schema.
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toEqual({ leadId: expect.any(String) });
+    expect(await app.prisma.lead.findUnique({ where: { id: res.json().leadId } })).not.toBeNull();
+  });
+
+  it('refuses a trial-spent conversation with 400 NOT_QUALIFIED', async () => {
+    const conversationId = await aPageWithConversation({ leadsCaptured: FREE_LEADS });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      remoteAddress: from(),
+      payload: { conversationId, phone: '0123456789', consent: true },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json()).toEqual({
+      error: { code: 'NOT_QUALIFIED', message: expect.any(String) },
+    });
+  });
+
+  it('refuses a trial-spent conversation identically to one that never qualified', async () => {
+    // Deliberate, and the whole reason lead.service.ts's plan gate reuses
+    // NotQualifiedError: a distinguishable billing error would make this
+    // endpoint an oracle for the owner's billing status, readable by anyone
+    // with curl. Asserting the two responses equal each other -- not each
+    // against a hard-coded literal -- keeps this test meaningful if the copy
+    // in lead.service.ts ever changes; it pins the *sameness*, not the words.
+    const spentConversationId = await aPageWithConversation({ leadsCaptured: FREE_LEADS });
+    const unqualifiedConversationId = await aPageWithAnUnqualifiedConversation();
+
+    const spentRes = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      remoteAddress: from(),
+      payload: { conversationId: spentConversationId, phone: '0123456789', consent: true },
+    });
+    const unqualifiedRes = await app.inject({
+      method: 'POST',
+      url: '/leads',
+      remoteAddress: from(),
+      payload: { conversationId: unqualifiedConversationId, phone: '0123456789', consent: true },
+    });
+
+    expect(spentRes.statusCode).toBe(unqualifiedRes.statusCode);
+    expect(spentRes.json()).toEqual(unqualifiedRes.json());
+  });
+});
 
 describe('DELETE /leads/:id', () => {
   it('deletes a lead the owner owns, called the way the browser actually calls it', async () => {
