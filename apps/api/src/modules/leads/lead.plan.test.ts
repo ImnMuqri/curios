@@ -76,9 +76,11 @@ describe('the capture gate', () => {
   });
 
   it('refuses with the same error an unqualified conversation gets', async () => {
-    // Deliberate. A distinguishable billing error would tell an anonymous
-    // visitor -- anyone with curl -- whether this owner has paid, which is
-    // nobody's business but the owner's.
+    // Deliberate. A distinguishable billing error would make this endpoint an
+    // oracle for the owner's billing status, readable by anyone with curl.
+    // It does not make that status secret -- the public page omits the card,
+    // and one anonymous GET reads that -- but it keeps the API from being a
+    // second and clearer channel than the page already is.
     const { conversationId } = await readyToCapture({ leadsCaptured: FREE_LEADS });
 
     await expect(capture(conversationId)).rejects.toMatchObject({ code: 'NOT_QUALIFIED' });

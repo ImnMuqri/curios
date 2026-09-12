@@ -161,8 +161,11 @@ curl -s -i -X POST http://localhost:3001/leads \
 Confirm the response is `400` with `"code":"NOT_QUALIFIED"` and the same message an
 unqualified conversation gets ("Keep chatting first, then we can pass your number on.").
 That sameness is deliberate — `lead.service.ts`'s own comment says a distinguishable
-"you have not paid" would tell an anonymous caller whether this owner is paying, which is
-the owner's business and nobody else's. Nothing in the automated suite sends this request
+"you have not paid" would make the endpoint an oracle for the owner's billing status.
+It does not make that status private, and nothing here could: the public page omits the
+capture card, so one anonymous `GET /nadia` reads `"canCapture":false` straight out of the
+RSC payload, without the three-turn conversation this check needs. What the sameness buys
+is that the API stays no more informative than the page. Nothing in the automated suite sends this request
 over real HTTP: `lead.plan.test.ts` and `lead.service.test.ts` both call `captureLead`
 directly, function to function, and `lead.routes.test.ts` only exercises
 `DELETE /leads/:id`.

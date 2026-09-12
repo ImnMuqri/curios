@@ -379,8 +379,9 @@ describe('the capture gate', () => {
 
   it('refuses with the same error an unqualified conversation gets', async () => {
     // Deliberate. A distinguishable billing error would tell an anonymous
-    // visitor -- anyone with curl -- whether this owner has paid, which is
-    // nobody's business but the owner's.
+    // visitor -- anyone with curl -- whether this owner has paid. (Corrected
+    // after the whole-branch review: this does not keep the status private,
+    // since the page's own RSC payload carries the bit. See the spec.)
     const { conversationId } = await readyToCapture({ leadsCaptured: FREE_LEADS });
 
     await expect(capture(conversationId)).rejects.toMatchObject({ code: 'NOT_QUALIFIED' });
@@ -494,8 +495,9 @@ Then, immediately after the existing `if (!eligible) throw new NotQualifiedError
 ```ts
   // The plan gate, and deliberately the same error as the qualification gate
   // above. A distinguishable "you have not paid" would tell an anonymous
-  // caller -- this endpoint takes no session -- whether this owner is paying,
-  // which is the owner's business and nobody else's.
+  // caller -- this endpoint takes no session -- whether this owner is paying.
+  // (Corrected after the whole-branch review: the page discloses the same bit
+  // more cheaply, so this buys no second channel rather than privacy.)
   const allowed = canCapture({
     mode: conversation.page.mode,
     paidUntil: conversation.page.paidUntil,
