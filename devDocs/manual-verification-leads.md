@@ -22,11 +22,11 @@ is proven, but not the thing a person would actually see.
 | 2 | The transcript opens and closes | `lead-list.test.tsx` — 'keeps the transcript closed until asked'; 'opens the transcript on request' | **No** |
 | 3 | The WhatsApp link points at the number with no `+` | `lead-list.test.tsx` — 'offers a WhatsApp link that opens on the right number' | **No** |
 | 4 | Delete asks first, and Cancel during a delete removes nothing | `lead-list.test.tsx` — 'asks before deleting'; 'shuts Cancel too while a delete is in flight'; `lead.routes.test.ts` — 'deletes a lead the owner owns, called the way the browser actually calls it' | **No** |
-| 5 | The nav moves between screens and marks the current one | `Nav.test.tsx` — its `aria-current` assertions; `layout.test.tsx` — 'hides the nav from an owner who has not claimed a handle yet'; 'keeps the nav for an owner revisiting onboarding to add sources' | **Partly** — `app-nav.tsx`, which feeds the real pathname to the marker, is untested |
+| 5 | The nav moves between screens and marks the current one | `app-nav.test.tsx` — 'links only to screens that exist'; 'marks exactly the link for the screen it is on, for every screen'; `Nav.test.tsx` — its `aria-current` assertions; `layout.test.tsx` — 'hides the nav from an owner who has not claimed a handle yet'; 'keeps the nav for an owner revisiting onboarding to add sources' | **No** |
 | 6 | Deleting a lead leaves its conversation | `lead.delete.test.ts` — 'leaves the conversation alone' | **No** |
 | 7 | No phone number reaches the API log | `lead.logging.test.ts` — 'does not appear in any log line around POST /leads or DELETE /leads/:id' | **No** |
 
-Six checks need no person, and the seventh has one untested component inside it.
+All seven need no person.
 
 ## What still needs a person, and why
 
@@ -37,12 +37,10 @@ Library. Check 7, that a phone number never reaches the logs, was the last one u
 emits around a real capture and a real delete, after first proving it can see those lines
 at all — an empty capture would otherwise pass.
 
-One real gap is left, inside check 5. `packages/ui/src/nav/Nav.test.tsx` proves
-`aria-current` lands on the link it is told is current, and
-`apps/web/app/app/layout.test.tsx` proves when the nav is shown. But
-`apps/web/app/app/app-nav.tsx`, the component that feeds the real pathname into that marker,
-has no test, and `layout.test.tsx` mocks `usePathname` to a constant. A change that broke the
-pathname-to-link mapping would stay green.
+Check 5 was the last with a gap inside it. `apps/web/app/app/app-nav.tsx`, the
+component that feeds the real pathname into the nav's marker, had no test, and
+`layout.test.tsx` mocks `usePathname` to a constant. `app-nav.test.tsx` now renders
+it on every screen and checks each link points at a page that exists.
 
 So this document is a sanity pass against real data — a wrong column, or a serialisation
 problem the fixtures happen not to hit — not the safety net it was written as.

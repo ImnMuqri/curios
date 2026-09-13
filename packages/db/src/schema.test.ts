@@ -290,4 +290,33 @@ describe('the owner surface columns', () => {
     expect(page.paidUntil).toBeNull();
     expect(page.leadsCaptured).toBe(0);
   });
+
+  it('refuses a null leadsCaptured, not only defaulting it to zero', async () => {
+    // The default proves a page starts at 0. It does not prove the column cannot
+    // hold a null: `Int? @default(0)` passes the test above just as well. The
+    // constraint matters because OPERATIONS.md has operators write this column
+    // by hand, and a null that reached canCapture would read as `null < 3` --
+    // true in JavaScript -- so the page would capture for ever. Written through
+    // raw SQL because the Prisma client rejects a null for a required field
+    // before it reaches the database, and the database's own constraint is the
+    // thing under test.
+    const account = await prisma.account.create({
+      data: { email: `plan-null-${randomUUID()}@example.com` },
+      select: { id: true },
+    });
+    const skeleton = `plan-${randomUUID().slice(0, 8)}`;
+    const page = await prisma.page.create({
+      data: { accountId: account.id, handle: skeleton, skeleton, displayName: 'Nadia Bakes' },
+      select: { id: true },
+    });
+
+    // 23502 is Postgres's not_null_violation. Asserted by code, not by column
+    // name: Prisma surfaces the failing row's detail rather than the message
+    // naming the column. The statement sets only leadsCaptured, so that code can
+    // only mean this column refused the null -- where a bare `toThrow()` would
+    // also pass on a parameter that failed to bind.
+    await expect(
+      prisma.$executeRawUnsafe('UPDATE "Page" SET "leadsCaptured" = NULL WHERE id = $1', page.id),
+    ).rejects.toThrow(/23502/);
+  });
 });

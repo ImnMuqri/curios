@@ -110,7 +110,7 @@ docker exec -i curios-postgres psql -U curios -d curios -c \
 ```bash
 # make it paid
 docker exec -i curios-postgres psql -U curios -d curios -c \
-  "UPDATE \"Page\" SET \"paidUntil\" = now() + interval '30 days' WHERE handle = 'YOURHANDLE';"
+  "UPDATE \"Page\" SET \"paidUntil\" = timezone('utc', now()) + interval '30 days' WHERE handle = 'YOURHANDLE';"
 ```
 
 To put a page back to a fresh trial for a repeat run:

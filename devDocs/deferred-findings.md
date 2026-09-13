@@ -162,12 +162,19 @@ returns one row. Changing `Math.min(options.limit ?? 50, 100)` to
 untested. `questions.query.test.ts` has the same shape, so this is inherited.
 Assert `limit: 500` returns fewer than 500.
 
-### `Nav.test.tsx` tests a copy of the nav, not the nav
+### `Nav.test.tsx` tests a copy of the nav, not the nav — fixed
 
-`Nav.test.tsx` declares its own `items` fixture duplicating `ITEMS` in
-`app-nav.tsx`, and `AppNav` itself has no test. Change `/app/leads` to
-`/app/lead` in `app-nav.tsx` and the nav 404s with every test passing.
-Importing `ITEMS` into a small `app-nav.test.tsx` closes it.
+`Nav.test.tsx` declared its own `items` fixture duplicating `ITEMS` in
+`app-nav.tsx`, and `AppNav` itself had no test, so changing `/app/leads` to
+`/app/lead` broke the nav with every test passing.
+
+Fixed by `apps/web/app/app/app-nav.test.tsx`, which renders the real `AppNav` and
+reads its links off the page rather than importing `ITEMS` — a second list was
+the original problem. It checks every href has a `page.tsx` on disk, then that
+exactly the matching link is marked on every screen. Proven by mutation:
+mistyping `/app/leads` fails "links only to screens that exist" with
+`/app/lead has no page.tsx`, and no longer passing the pathname fails "marks
+exactly the link for the screen it is on, for every screen".
 
 ---
 
@@ -285,7 +292,7 @@ load-bearing by flipping it to `true` and watching exactly that test fail.
 
 ---
 
-### A page's free trial is spendable by anyone, including its owner, and nothing resets it — slice 9 owns the fix
+### A page's free trial is spendable by anyone, including its owner — counter and runbook shipped, a supported reset still owed
 
 Found by slice 8's whole-branch review. Not a defect in slice 8's logic; two
 decisions that were each right alone compose into a trap once a meter exists.
@@ -332,13 +339,17 @@ No code change in slice 8. The gate is correct; what is wrong is that the state
 is invisible and unrecoverable, and both of those live on the owner-facing
 surface slice 8 deliberately does not build.
 
-**Slice 9 ships these two before any owner sees this, as requirements and not
-nice-to-haves:**
+**Both shipped in the verification sweep, ahead of slice 9:**
 
-1. An owner-visible "N of 3 free leads used", so nobody is ambushed by a card
-   that vanishes.
-2. A written operator reset. One column and one command, but a procedure rather
-   than something improvised while an owner waits.
+1. The owner-visible count. The leads screen says "2 of your 3 free leads used",
+   and names a spent trial or a lapsed payment once capture stops
+   (`apps/web/app/app/leads/trial-notice.tsx`, driven by `planState`).
+2. A written operator reset, in `devDocs/OPERATIONS.md` — with the checks to run
+   before it, and the reason not to write `paidUntil` instead.
+
+**Still owed, and slice 9's:** a *supported* reset. The written one is a `psql`
+statement — a procedure, not a feature — and there is no admin screen to run it
+from.
 
 Worth considering there, not required: a per-page limit on `POST /leads` to
 match chat's 30/hour, and whether paying should consume the remaining trial —

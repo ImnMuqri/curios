@@ -107,7 +107,9 @@ The second half is the plan gate, added in slice 8. `canCapture`
 three leads are free, and after that it needs `paidUntil` in the future.
 `apps/web/app/[handle]/page.tsx` computes it and `Ask` passes `onCapture` only when it
 holds, so on a lapsed page the card never appears however qualified the conversation is.
-The owner is told nothing here; explaining it is `/app/billing`'s job.
+The visitor is told nothing here, deliberately. The owner is told on their own leads
+screen, which counts the trial down and names a spent trial or a lapsed payment
+(`apps/web/app/app/leads/trial-notice.tsx`); paying is slice 9's `/app/billing`.
 
 Carries a consent line in the visitor's language, above the field, not hidden in a
 tooltip. It names who receives the number: the owner, not us.
