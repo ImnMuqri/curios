@@ -162,7 +162,10 @@ describe('the callback under conditions that are not the happy path', () => {
     // Clicking Cancel is an ordinary thing to do. Answering it with a 400 and
     // a validation message on the API origin is a dead end with no way back.
     expect(res.statusCode).toBe(302);
-    expect(res.headers.location).toContain('/signin');
+    // Exact, not `toContain('/signin')`, which would pass for a redirect that
+    // dropped `?cancelled=1` -- the one parameter that lets the sign-in page
+    // tell a cancel apart from a fresh visit.
+    expect(res.headers.location).toBe('http://localhost:3000/signin?cancelled=1');
     // Was `expect(res.json).toBeDefined()`, which could never fail: on an
     // injected response `res.json` is light-my-request's parsing METHOD, so
     // it is a truthy function whatever the server sent. It read as a
