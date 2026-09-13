@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { deleteQuestion } from '../questions/question.service.js';
 import { PrismaClient } from '@prisma/client';
 import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
 import type { ChatMessage, Gateway } from '@curios/gateway';
@@ -507,6 +508,74 @@ describe('faq slug assignment', () => {
     const question = await prisma.question.findFirstOrThrow({ where: { normalizedQuestion } });
     expect(question.askCount).toBe(3);
     expect(question.faqSlug).toBe('berapa-harga-kek-coklat');
+  });
+});
+
+describe('an erased question, asked again', () => {
+  it('comes back as a stranger: no answer, no slug, and the model answers it', async () => {
+    // Right-to-erasure only means something if it survives the next customer.
+    // The chat path upserts questions by normalised text, so an erased row
+    // returns the moment somebody asks the same thing -- which is fine, as long
+    // as it returns as a stranger. The answer is the part that matters: chat
+    // serves a PinnedAnswer ahead of the model, so one left behind by an
+    // incomplete erasure puts the erased words straight back in front of the
+    // very next visitor.
+    const page = await prisma.page.findFirstOrThrow({
+      where: { handle: 'nadia' },
+      select: { id: true, accountId: true },
+    });
+    // The same phrasing and key as the slug test above, which already proves
+    // chat normalises this text to exactly this key -- so the erased row, the
+    // pinned answer and the re-asked question all line up without guessing.
+    const text = 'Berapa harga kek coklat?';
+    const normalizedQuestion = 'berapa harga kek coklat';
+    const erased = await prisma.question.create({
+      data: {
+        pageId: page.id,
+        text,
+        normalizedQuestion,
+        askCount: 3,
+        answered: true,
+        faqSlug: 'berapa-harga-kek-coklat',
+      },
+      select: { id: true },
+    });
+    await prisma.pinnedAnswer.create({
+      data: {
+        pageId: page.id,
+        question: text,
+        normalizedQuestion,
+        answer: 'RM80. WhatsApp saya terus di 0123456789.',
+      },
+    });
+
+    await deleteQuestion(prisma, page.accountId, erased.id);
+
+    const events = await collect(
+      answer(
+        { prisma, gateway: gatewaySaying('A model answer.'), cap },
+        { handle: 'nadia', question: text },
+      ),
+    );
+    const reply = events
+      .filter((event) => event.type === 'text')
+      .map((event) => event.text ?? '')
+      .join('');
+
+    // The model answered, not the erased owner text. Had deleteQuestion left
+    // the PinnedAnswer behind, chat would have served it here instead.
+    expect(reply).toBe('A model answer.');
+    expect(await prisma.pinnedAnswer.count({ where: { pageId: page.id, normalizedQuestion } })).toBe(0);
+
+    const back = await prisma.question.findUniqueOrThrow({
+      where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
+    });
+    expect(back.id).not.toBe(erased.id);
+    // One ask: the one just made. The walkthrough once said to ask "twice more"
+    // and expect a count of one, which the upsert makes two.
+    expect(back.askCount).toBe(1);
+    expect(back.answered).toBe(false);
+    expect(back.faqSlug).toBeNull();
   });
 });
 
