@@ -1,45 +1,62 @@
 # Manual verification — the capture gate
 
-**Status: NOT RUN.** Written down at the end of slice 8 rather than run, for the same
-reason the four documents before it were: the four gates are green and the branch is
-about to be reviewed, and the checks that need a real browser watching a capture card
-actually appear and disappear, or a real server refusing a real POST over the network,
-are not things any gate can run. It is the fifth document of its kind, after
-`manual-verification-google-link.md`, `manual-verification-leads.md`,
-`manual-verification-faq.md`, and `manual-verification-caps.md`.
+**Status: NOT RUN.** Written down at the end of slice 8 rather than run. It is the fifth
+document of its kind, after `manual-verification-google-link.md`,
+`manual-verification-leads.md`, `manual-verification-faq.md`, and
+`manual-verification-caps.md`.
+
+**Two of its seven checks no longer need a person.** A later sweep moved check 3 — the
+server's refusal over HTTP — and check 7 — the counter — into tests that run on every
+change; see the table below. The other five need a real browser watching the capture card
+appear and disappear, which no gate here can run.
 
 Re-run it after any change to `packages/core/src/plan.ts`, the plan-gate check in
 `apps/api/src/modules/leads/lead.service.ts`, or `canCapture`'s wiring in
 `apps/web/app/[handle]/page.tsx` or `apps/web/app/[handle]/ask.tsx`.
 
-## Why it can't be automated here
+## What CI proves, and what still needs a person
 
-`packages/core/src/plan.test.ts` already proves `canCapture` itself against every
-combination of mode, `paidUntil`, and `leadsCaptured` the rule cares about, as a pure
-function with no server in front of it. `apps/api/src/modules/leads/lead.plan.test.ts`
-proves the endpoint half — that `captureLead` calls `canCapture` with the stored page's
-real fields, throws `NotQualifiedError` when it disagrees, and counts a stored lead but
-not a refused one — against a real Prisma client on the test database, but calls the
-service function directly, with only its queue argument stubbed, and never goes through
-Fastify. (`lead.service.test.ts` alongside it is the older qualification and dedupe
-suite; it touches neither plan column.)
-`apps/api/src/modules/leads/lead.routes.test.ts` exercises the real HTTP route, but only
-for `DELETE /leads/:id`; nothing sends a real `POST /leads` over the network in the whole
-suite. `apps/web/app/[handle]/page.test.tsx` proves `page.tsx` reads the same two fields
-and hands the right boolean to a *mocked* `Ask`. `apps/web/app/[handle]/ask.test.tsx`
-proves the last mile — that `Ask` turns that boolean into whether `onCapture` exists at
-all — against a stubbed `fetch`, never a real one.
+Every test named below was checked to exist, by name, before this table was written. **No**
+means tests that run on every change prove the check. **Partly** means the logic underneath
+is proven, but not the thing a person would actually see. **Yes** means only a real browser,
+server or third party can confirm it.
 
-What none of that reaches: a real browser, watching the actual `CaptureCard` physically
-appear when a conversation qualifies and physically vanish when the page's plan lapses,
-with nothing on screen explaining why. And a real `POST /leads`, reached the way the
-deployed `Ask` component reaches it — over the network, past Fastify's schema and error
-handler — refusing with the exact status and body a real `fetch` call would have to parse.
+| # | Check | Proven by | Still needs a person |
+|---|---|---|---|
+| 1 | A page inside its trial offers the card, and a real capture succeeds | `plan.test.ts` — 'lets a page that has never paid capture inside its trial'; `lead.routes.test.ts` — 'captures over real HTTP for a page inside its trial'; `ask.test.tsx` — 'offers the capture card when the page can capture'; `CaptureCard.test.tsx` — 'confirms rather than leaving the form sitting there' | **Partly** — the card appearing in a real browser |
+| 2 | The trial spent, the card simply vanishes | `plan.test.ts` — 'refuses once the trial is spent'; `lead.plan.test.ts` — 'refuses once the trial is spent and nothing has been paid'; `[handle]/page.test.tsx` — 'withholds capture from a lapsed page -- trial spent and payment expired' | **Partly** — the card's absence in a real browser |
+| 3 | The server refuses over HTTP, indistinguishably from an unqualified conversation | `lead.routes.test.ts` — 'refuses a trial-spent conversation with 400 NOT_QUALIFIED'; 'refuses a trial-spent conversation identically to one that never qualified' | **No** |
+| 4 | Paid makes capture unconditional, even with the trial spent | `plan.test.ts` — 'lets a paid business page capture, however many leads it has had'; `lead.plan.test.ts` — 'captures for a paid page whose trial is long gone'; `[handle]/page.test.tsx` — 'offers capture to a paid page, even with its free trial already spent' | **Partly** — in a real browser |
+| 5 | A personal page never offers the card | `plan.test.ts` — 'refuses a personal page however it is paid' | **Partly** — in a real browser |
+| 6 | Everything but capture is untouched on a lapsed page | — | **Yes** |
+| 7 | `leadsCaptured` only increments on an actual capture | `lead.plan.test.ts` — 'counts a captured lead against the trial'; 'does not count a refused capture'; 'stores the lead and the count together or not at all' | **No** |
 
-Checks 1, 2, 4, 5 and 6 need a browser rendering `@curios/ui/sheet`'s `AskSheet` and
-`CaptureCard`, and this repo has no Playwright, Puppeteer, or other browser driver to
-open one with. Check 3 is plain HTTP — a `curl` and a look at the response — and check 7
-is plain SQL; neither needs a browser at all.
+Two checks need no person, four are proven underneath but not on screen, and one has nothing
+automated at all.
+
+## What still needs a person, and why
+
+`packages/core/src/plan.test.ts` proves `canCapture` itself against every combination of
+mode, `paidUntil`, and `leadsCaptured` the rule cares about, as a pure function.
+`apps/api/src/modules/leads/lead.plan.test.ts` proves the endpoint half against a real
+Prisma client, calling the service directly. `apps/api/src/modules/leads/lead.routes.test.ts`
+now drives `POST /leads` through Fastify itself — schema, handler and error plugin — and
+proves a trial-spent conversation is refused with `400 NOT_QUALIFIED`, byte-identical to a
+conversation that never qualified. (`lead.service.test.ts` is the older qualification and
+dedupe suite; it touches neither plan column.) `apps/web/app/[handle]/page.test.tsx` proves
+`page.tsx` hands the right boolean to a *mocked* `Ask`, and `apps/web/app/[handle]/ask.test.tsx`
+proves `Ask` turns that boolean into whether `onCapture` exists at all, against a stubbed
+`fetch`.
+
+What none of that reaches is a real browser, watching the actual `CaptureCard` appear when a
+conversation qualifies and vanish when the page's plan lapses, with nothing on screen
+explaining why. Checks 1, 2, 4, 5 and 6 need exactly that, and this repo has no Playwright,
+Puppeteer, or other browser driver.
+
+"Through Fastify" is not "over the network". `app.inject` runs the whole request lifecycle
+without opening a socket, so check 3's `curl` below is still the only thing here that reaches
+the running server the way a deployed `Ask` does. Run it when the network layer changes —
+not as the guard for the refusal itself, which CI now holds.
 
 ## Before you start
 
@@ -165,10 +182,10 @@ That sameness is deliberate — `lead.service.ts`'s own comment says a distingui
 It does not make that status private, and nothing here could: the public page omits the
 capture card, so one anonymous `GET /nadia` reads `"canCapture":false` straight out of the
 RSC payload, without the three-turn conversation this check needs. What the sameness buys
-is that the API stays no more informative than the page. Nothing in the automated suite sends this request
-over real HTTP: `lead.plan.test.ts` and `lead.service.test.ts` both call `captureLead`
-directly, function to function, and `lead.routes.test.ts` only exercises
-`DELETE /leads/:id`.
+is that the API stays no more informative than the page. `lead.routes.test.ts` now sends this exact request through Fastify and asserts both the
+`400 NOT_QUALIFIED` and that the body matches an unqualified conversation's, so this check
+no longer guards the refusal itself. What it still adds is the network: `app.inject` never
+opens a socket, and this `curl` reaches the running server the way a deployed `Ask` does.
 
 ### 4. Paid makes it unconditional, even with the trial already spent
 

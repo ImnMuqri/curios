@@ -9,7 +9,31 @@ deployed URL are not things any gate can run. It is the third document of its ki
 Re-run it after any change to `faq-slug.ts`, `faq.query.ts`, either `/[handle]/faq` route,
 or `generateMetadata` on `/[handle]`.
 
-## Why it can't be automated here
+## What CI proves, and what still needs a person
+
+Every test named below was checked to exist, by name, before this table was written. **No**
+means tests that run on every change prove the check. **Partly** means the logic underneath
+is proven, but not the thing a person would actually see. **Yes** means only a real browser,
+server or third party can confirm it. Check 7 is split into its five steps.
+
+| # | Check | Proven by | Still needs a person |
+|---|---|---|---|
+| 1 | The third ask, arriving last, with no owner in the loop | `chat.service.test.ts` — 'assigns a faq slug when a third ask is the last condition to arrive' | **Partly** — over HTTP, from two real browser sessions |
+| 2 | The entry page renders the owner's exact words | `faq.query.test.ts` — 'returns the question and the owner exact answer'; `[slug]/page.test.tsx` — 'renders the question as the heading and the owner exact answer' | **No** |
+| 3 | Google's Rich Results Test | — | **Yes** — a system this repo does not own |
+| 4 | `noindex` on personal, not on business | `[handle]/page.test.tsx` — 'asks crawlers to skip a personal page'; 'leaves a business page indexable' | **No** |
+| 5 | A closing script tag renders as text, not as a tag | `faq.test.ts` — 'leaves no character that could close the script element'; `[slug]/page.test.tsx` — 'cannot be made to close its own script element' | **No** |
+| 6 | Withdrawing the answer 404s the page and keeps the slug | `faq.query.test.ts` — 'omits a question whose answer the owner has withdrawn'; 'returns null once the answer is withdrawn, though the slug remains' | **No** |
+| 7.1 | Hiding a question 404s both routes within the minute | `faq.query.test.ts` — 'drops a suppressed question from the index'; `question.routes.test.ts` — 'suppresses for the owner, and the row shows it' | **Partly** — the 60-second cache timing; see `deferred-findings.md` |
+| 7.2 | Unsuppressing serves it again at the same URL | `faq.query.test.ts` — 'serves it again once the owner unsuppresses'; `question.takedown.test.ts` — 'puts it back' | **No** |
+| 7.3 | Editing a published answer updates the public page | `question-list.test.tsx` — 'opens the editor with what the owner wrote, rather than blank'; 'saves the correction through the same writeback' | **Partly** — seeing the live page change |
+| 7.4 | Erasing removes the question and its answer | `question.takedown.test.ts` — 'erases the question and the answer together'; `question.routes.test.ts` — 'erases the question for its owner'; `question-list.test.tsx` — 'asks before erasing, because a customer wrote those words' | **No** |
+| 7.5 | An erased question asked again comes back a stranger | `chat.service.test.ts` — 'comes back as a stranger: no answer, no slug, and the model answers it' | **No** |
+
+Seven of the eleven need no person, three are proven underneath but not on screen, and one —
+Google's own test — never can be.
+
+## What still needs a person, and why
 
 Three different kinds of gap live in this one document, and they are worth telling apart
 because they call for different amounts of trust in what follows.

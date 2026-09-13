@@ -10,22 +10,42 @@ document of its kind, after `manual-verification-google-link.md`.
 Re-run it after any change to `leads.query.ts`, `lead-list.tsx`, `lead.service.ts`'s
 delete, or the dashboard nav.
 
-## Why it can't be automated here
+## What CI proves, and what still needs a person
 
-**Corrected after an audit: most of it already is automated.** This section used to claim
-two of the seven checks needed a browser. None of them do -- the client-side ones run
-under jsdom via Testing Library, which the paragraph below already said, contradicting the
-sentence above it. Six of the seven are covered by tests that run in CI on every change.
+Every test named below was checked to exist, by name, before this table was written. **No**
+means tests that run on every change prove the check. **Partly** means the logic underneath
+is proven, but not the thing a person would actually see.
 
-What is genuinely left is check 7, which no test covers: that a phone number never reaches
-the logs. The rest of this document is worth running against real data occasionally, but
-it is a sanity pass, not the safety net it was written as.
+| # | Check | Proven by | Still needs a person |
+|---|---|---|---|
+| 1 | Newest first, with at least two leads present | `leads.query.test.ts` — 'returns the newest first, because a cold lead is a lost one' | **No** |
+| 2 | The transcript opens and closes | `lead-list.test.tsx` — 'keeps the transcript closed until asked'; 'opens the transcript on request' | **No** |
+| 3 | The WhatsApp link points at the number with no `+` | `lead-list.test.tsx` — 'offers a WhatsApp link that opens on the right number' | **No** |
+| 4 | Delete asks first, and Cancel during a delete removes nothing | `lead-list.test.tsx` — 'asks before deleting'; 'shuts Cancel too while a delete is in flight'; `lead.routes.test.ts` — 'deletes a lead the owner owns, called the way the browser actually calls it' | **No** |
+| 5 | The nav moves between screens and marks the current one | `Nav.test.tsx` — its `aria-current` assertions; `layout.test.tsx` — 'hides the nav from an owner who has not claimed a handle yet'; 'keeps the nav for an owner revisiting onboarding to add sources' | **Partly** — `app-nav.tsx`, which feeds the real pathname to the marker, is untested |
+| 6 | Deleting a lead leaves its conversation | `lead.delete.test.ts` — 'leaves the conversation alone' | **No** |
+| 7 | No phone number reaches the API log | `lead.logging.test.ts` — 'does not appear in any log line around POST /leads or DELETE /leads/:id' | **No** |
 
-That distinction is the point. The unit tests already cover the transcript toggle and the
-delete confirm (`apps/web/app/app/leads/lead-list.test.tsx`) and `aria-current`
-(`packages/ui/src/nav/Nav.test.tsx`). What no test covers is the screen running against
-the actual database with the actual lead captured in slice 4 — where a wrong column, a
-serialisation problem, or a phone number reaching a log would show up.
+Six checks need no person, and the seventh has one untested component inside it.
+
+## What still needs a person, and why
+
+**Almost nothing.** All seven checks are proven by tests that run on every change — see the
+table below — and none needs a browser: the client-side ones run under jsdom via Testing
+Library. Check 7, that a phone number never reaches the logs, was the last one uncovered.
+`apps/api/src/modules/leads/lead.logging.test.ts` now asserts it against every line pino
+emits around a real capture and a real delete, after first proving it can see those lines
+at all — an empty capture would otherwise pass.
+
+One real gap is left, inside check 5. `packages/ui/src/nav/Nav.test.tsx` proves
+`aria-current` lands on the link it is told is current, and
+`apps/web/app/app/layout.test.tsx` proves when the nav is shown. But
+`apps/web/app/app/app-nav.tsx`, the component that feeds the real pathname into that marker,
+has no test, and `layout.test.tsx` mocks `usePathname` to a constant. A change that broke the
+pathname-to-link mapping would stay green.
+
+So this document is a sanity pass against real data — a wrong column, or a serialisation
+problem the fixtures happen not to hit — not the safety net it was written as.
 
 ## Before you start
 
