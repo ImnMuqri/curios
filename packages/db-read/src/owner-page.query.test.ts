@@ -68,6 +68,38 @@ describe('getOwnerPage', () => {
     expect(await getOwnerPage(stranger)).toBeNull();
   });
 
+  it('carries the plan columns the leads screen explains itself from', async () => {
+    // Non-default values on purpose. A page left at mode BUSINESS, paidUntil
+    // null and leadsCaptured 0 would pass an assertion against those defaults
+    // whether or not the select actually read the columns -- so each is set to
+    // something a default could never produce.
+    const slug = randomUUID().slice(0, 8);
+    const paidUntil = new Date('2026-11-01T00:00:00.000Z');
+    const account = await write.account.create({
+      data: {
+        email: `owner-page-plan-${randomUUID()}@example.com`,
+        pages: {
+          create: {
+            handle: `op-${slug}`,
+            skeleton: `op-${slug}`,
+            displayName: 'A Shop',
+            published: true,
+            mode: 'PERSONAL',
+            paidUntil,
+            leadsCaptured: 2,
+          },
+        },
+      },
+      select: { id: true },
+    });
+
+    const page = await getOwnerPage(account.id);
+
+    expect(page?.mode).toBe('PERSONAL');
+    expect(page?.leadsCaptured).toBe(2);
+    expect(page?.paidUntil?.toISOString()).toBe(paidUntil.toISOString());
+  });
+
   it('does not write, so the read-only role can run it', async () => {
     const accountId = await anAccount({ published: false });
     const before = await write.page.findFirst({ where: { accountId }, select: { published: true } });

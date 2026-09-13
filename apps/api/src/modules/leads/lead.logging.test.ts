@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, type MockInstance, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
@@ -16,7 +16,11 @@ const PHONE_DIGITS = '123456789';
 
 let app: FastifyInstance;
 const lines: string[] = [];
-let writeSpy: ReturnType<typeof vi.spyOn>;
+// Typed as what it actually wraps. `ReturnType<typeof vi.spyOn>` resolves to
+// the generic default, `MockInstance<(...args: unknown[]) => unknown>`, which
+// the overloaded `process.stdout.write` spy is not assignable to -- vitest ran
+// this file green regardless, since it does not typecheck, and tsc did not.
+let writeSpy: MockInstance<typeof process.stdout.write>;
 
 let nth = 0;
 const from = () => `203.0.117.${(nth++ % 200) + 1}`;
