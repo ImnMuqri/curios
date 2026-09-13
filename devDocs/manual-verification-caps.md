@@ -1,16 +1,38 @@
 # Manual verification — the conversation cap
 
-**Status: NOT RUN.** Written down at the end of slice 7 rather than run, for the same
-reason the three documents before it were: the four gates are green and the plan is
-about to merge, and the checks that need a browser rendering the actual ask sheet, or a
-question asked from a real dev server rather than a fixture, are not things any gate can
-run. It is the fourth document of its kind, after `manual-verification-google-link.md`,
+**Status: NOT RUN.** Written down at the end of slice 7 rather than run. It is the fourth
+document of its kind, after `manual-verification-google-link.md`,
 `manual-verification-leads.md`, and `manual-verification-faq.md`.
+
+**Three of its seven checks no longer need a person.** A later sweep moved checks 1, 6 and
+7 — the counter, and that a refused conversation costs nothing — into a test that drives the
+real chat route; see the table below. The other four need a browser rendering the actual ask
+sheet.
 
 Re-run it after any change to `packages/core/src/cap.ts`, the cap branch in
 `apps/api/src/modules/chat/chat.service.ts`, or the `CONVERSATION_CAP_PER_MONTH` env var.
 
-## Why it can't be automated here
+## What CI proves, and what still needs a person
+
+Every test named below was checked to exist, by name, before this table was written. **No**
+means tests that run on every change prove the check. **Partly** means the logic underneath
+is proven, but not the thing a person would actually see. **Yes** means only a real browser
+can confirm it.
+
+| # | Check | Proven by | Still needs a person |
+|---|---|---|---|
+| 1 | Put the page over the cap by hand | `chat.routes.test.ts` — 'degrades over real HTTP, counts a new conversation but not a continued one, and calls the model for neither', which seeds the counter itself | **No** — kept as the setup the browser checks need |
+| 2 | The degraded reply is an ordinary answer bubble, not an error | `chat.service.test.ts` — 'spends nothing at all once over the cap'; 'answers in Malay first, then English, and persists that reply as an assistant message' | **Partly** — how `AskSheet` renders it |
+| 3 | The page itself is unchanged | — | **Yes** |
+| 4 | A pinned answer still answers properly over the cap | `chat.service.test.ts` — 'still serves a pinned answer over the cap, because it costs nothing' | **Partly** — in the sheet |
+| 5 | The capture card still appears when the visitor qualifies | — | **Yes** — and the page needs `leadsCaptured` below 3 first |
+| 6 | The counter kept climbing | `chat.routes.test.ts` — the test in row 1; `chat.service.test.ts` — 'keeps counting while refusing, because refused demand is the data' | **No** |
+| 7 | No `ModelCall` row for the refused question | `chat.routes.test.ts` — the test in row 1 | **No** |
+
+Three checks need no person, two are proven underneath but not on screen, and two have
+nothing automated at all.
+
+## What still needs a person, and why
 
 Three different kinds of check live in this one document, and they call for different
 amounts of trust in what follows.
@@ -31,13 +53,15 @@ What no test covers is what those events look like once
 bubble or trips whatever branch the sheet uses for a transport error, and whether the
 card the visitor actually sees still appears when chat has stopped answering.
 
-Checks 1, 6 and 7 are plain SQL against the dev database and need no browser at all —
-they exist here rather than in the test suite because the point is to drive the real
-`answer()` generator end to end against a real running API, not a mocked gateway, and to
-read back what it actually wrote. Check 1 is the shortcut that makes the rest of this
-document possible without holding 200 real conversations open; checks 6 and 7 are the
-proof, at the end, of the two claims the slice makes about money — that the counter kept
-counting, and that nothing was spent doing it.
+Checks 1, 6 and 7 were here because nothing drove the cap through the real route and read
+back what it wrote. `apps/api/src/modules/chat/chat.routes.test.ts` now does: it seeds a page
+over the cap, posts to `/chat/:handle` through Fastify, and asserts the reply is
+`CAP_REACHED_REPLY`, that a new conversation counts and a continued one does not, and that no
+`ModelCall` row is written. The gateway there is a stub, deliberately — a refused
+conversation must never reach the model, and a stub that records a row whenever it is
+called is the right instrument for proving it was not. The three checks stay below as the
+shortcut that makes the browser checks reachable without holding 200 real conversations
+open, not as the proof of the money claims, which CI now holds.
 
 Check 3 sits between the two: it is reachable over plain HTTP (a GET and a look at the
 response), so a browser is not strictly required, but nothing today exercises it against
@@ -65,6 +89,16 @@ FAQ entries already generated makes check 3 worth more, since it exercises
 `/[handle]/faq` rather than an empty index. Use a page you do not mind leaving with an
 inflated `UsageCounter` rather than a real demo account; check 1 sets it to a number no
 real page should reach by hand.
+
+**Check the page's plan columns before check 5.** Since slice 8 the capture card also
+needs `leadsCaptured < 3` or a future `paidUntil`, and a page kept around for manual QA
+has very likely spent its three. If it has, check 5 fails with the card simply absent --
+which is exactly the symptom check 5 exists to catch, for a cause that has nothing to do
+with the cap. Reset it first:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c   "UPDATE \"Page\" SET \"leadsCaptured\" = 0 WHERE handle = 'HANDLE';"
+```
 
 ---
 
@@ -119,14 +153,19 @@ whether that separation actually holds, not whether it was intended to.
 
 ### 4. A pinned answer still answers properly over the cap
 
-Ask, in the same over-cap sheet, the exact question you have a `PinnedAnswer` for.
+Close the sheet and reopen it, then ask the exact question you have a `PinnedAnswer` for.
+Reopening matters: `AskSheet` holds one `conversationId` per open sheet, and
+`chat.service.ts` only increments `UsageCounter` for a *new* conversation. Continuing the
+same sheet from check 2 would add turns to that conversation instead, and check 6 would
+then show one increment where it says three.
 Confirm the reply is the owner's pinned text, not the degraded sentence from check 2 —
 this is the slice's central argument made visible: a pinned answer costs no tokens, so
 the cap must never intercept it.
 
 ### 5. The capture card still appears when the visitor qualifies
 
-Still over cap, hold a conversation of at least three visitor turns on the `BUSINESS`
+Still over cap, and again in a freshly reopened sheet, hold a conversation of at least
+three visitor turns on the `BUSINESS`
 page, with at least one visitor message containing a standalone number (a quantity, a
 count, a date — "2kg", "20 Mac"; see `packages/core/src/qualify.ts`). Confirm the capture
 card still offers itself. `intent` is computed from the conversation history before the

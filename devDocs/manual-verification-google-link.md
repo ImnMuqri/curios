@@ -7,7 +7,40 @@ itself is unproven until someone does this.
 Run it again after any change to `auth.routes.ts`'s callback, `oauth.service.ts`, or the settings
 screen.
 
-## Why it can't be automated here
+## What CI proves, and what still needs a person
+
+The round trip through Google is still unproven end to end, for the reason given in the next
+section. Most of what this walkthrough asks a person to look at along the way, though, is not.
+Every test named below was checked to exist, by name, before this table was written. **No**
+means tests that run on every change prove the check. **Partly** means the logic underneath is
+proven, but not the thing a person would actually see. **Yes** means only your machine or real
+Google can confirm it.
+
+| # | Check | Proven by | Still needs a person |
+|---|---|---|---|
+| 1 | Ports 3000 and 3001 are free before starting | — | **Yes** — a property of your machine |
+| 2 | Connect Google reaches Google's real consent screen | — | **Yes** — real Google |
+| 3 | Path 1 lands exactly on `/app/settings?linked=google` | `link.test.ts` — 'attaches the identity to the account already signed in' | **No** |
+| 4 | Path 1 shows "Google is now connected to your account." | `settings/page.test.tsx` — 'after linking, says Google is connected and offers neither form' | **No** |
+| 5 | Path 1: the Connect Google link disappears | `settings/page.test.tsx` — the same test, and 'before linking, offers the Connect Google link and says nothing about it' | **No** |
+| 6 | Path 1 with both methods shows the both-methods sentence and no form | `settings/page.test.tsx` — 'after linking, says Google is connected and offers neither form' | **No** |
+| 7 | Path 1 writes exactly one new `AuthIdentity` row | `link.test.ts` — 'attaches the identity to the account already signed in' | **No** |
+| 8 | Path 1 clears the one-time cookies | `oauth.routes.test.ts` — 'signs in and issues a session when the state matches' | **No** |
+| 9 | Path 2 lands exactly on `/signin?cancelled=1` | `oauth.routes.test.ts` — 'sends someone who cancelled at Google back to the app, not to raw JSON' | **No** |
+| 10 | Path 2 shows the cancelled message | `signin-form.test.tsx` — 'tells someone why they were sent here when they cancelled at Google' | **No** |
+| 11 | Path 2 is not on port 3001 and not a JSON body | `oauth.routes.test.ts` — 'sends someone who cancelled at Google back to the app, not to raw JSON' | **No** |
+| 12 | Path 3 lands exactly on `?error=identity_taken` | `link.test.ts` — 'refuses to move an identity that already belongs to another account' | **No** |
+| 13 | Path 3 shows the already-connected message | `oauth-errors.test.ts` — 'explains an already-linked identity using the API sentence'; `settings.test.ts` — 'explains an already-linked identity using the shared table, not an invented one' | **Partly** — the message and the banner decision are proven, but the rendered banner only for the session-ended code in row 17, through the same `Callout` |
+| 14 | Path 3 leaves the identity with the first account | `link.test.ts` — 'refuses to move an identity that already belongs to another account' | **No** |
+| 15 | Path 4 lands on `?error=unauthenticated` and creates nothing | `link.test.ts` — 'creates no account and links nothing when the link cookie arrives without a session' | **No** |
+| 16 | Path 4 may show the sign-in page instead of the message | `layout.test.tsx` — 'refuses a session the database does not recognise, before asking for a page' | **No** |
+| 17 | Path 4 shows the session-ended message | `settings/page.test.tsx` — 'paints the session-ended message when a link attempt outlived its session' | **No** |
+| 18 | Every callback failure is logged before the redirect | — | **Recorded as a finding** — a malformed callback takes the cancel branch and logs nothing; see `deferred-findings.md` |
+
+Fourteen of the eighteen need no person, one is proven underneath but not rendered, two need
+your machine or real Google, and one turned out not to be true.
+
+## What still needs a person, and why
 
 The callback's correctness depends on things only a browser does: following a 302 to an external
 origin, carrying `SameSite=Lax` cookies back on a top-level navigation, and returning a `code` that
@@ -24,7 +57,7 @@ be the **API** origin — `http://localhost:3001/auth/google/callback` — not t
 # All three, in separate terminals from the repo root.
 pnpm --filter @curios/api dev        # 3001
 pnpm --filter @curios/web dev        # 3000
-docker compose up -d                 # postgres + redis, if not already up
+docker compose up -d                 # postgres, redis and mailpit, if not already up
 ```
 
 Check nothing is already holding those ports — an orphaned dev server from an earlier session will
@@ -39,8 +72,9 @@ netstat -ano | grep -E ":(3000|3001)\s.*LISTENING"
 ## Path 1 — the happy path
 
 **Setup.** You need an account that has a password and no Google identity. Sign up at
-`http://localhost:3000/signup`, then confirm the email via Mailpit at `http://localhost:8025` and
-click through the verification link.
+`http://localhost:3000/signup`, then confirm the email via Mailpit at `http://localhost:8075` and
+click through the verification link. (8075 is the host port; `docker-compose.yml` maps it to
+Mailpit's internal 8025, and nothing listens on 8025 from outside the container.)
 
 1. Go to `http://localhost:3000/app/settings`.
 2. Confirm you see **"Signed in as \<your address\>"** and a **Connect Google** link, and **no**

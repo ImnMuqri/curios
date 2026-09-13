@@ -146,6 +146,11 @@ describe('linking Google while signed in', () => {
     });
 
     expect(res.statusCode).toBe(302);
+    // Exact, like the three failure paths below. The success path was the one
+    // redirect in this file nobody read: a 302 to the wrong place still
+    // attaches the identity, so the DB assertion alone would stay green while
+    // the owner landed somewhere that never says Google is connected.
+    expect(res.headers.location).toBe('http://localhost:3000/app/settings?linked=google');
     const identity = await app.prisma.authIdentity.findFirst({
       where: { provider: 'GOOGLE', providerUserId: sub },
       select: { accountId: true },

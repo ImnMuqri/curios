@@ -5,6 +5,11 @@ export interface OwnerPage {
   handle: string;
   displayName: string;
   published: boolean;
+  mode: 'PERSONAL' | 'BUSINESS';
+  /** Paid through this instant, or null for never paid. */
+  paidUntil: Date | null;
+  /** Leads ever captured. Never decremented -- deleting a lead does not return one. */
+  leadsCaptured: number;
 }
 
 /**
@@ -20,10 +25,23 @@ export interface OwnerPage {
  * between a query that happens to return one row and one that cannot return
  * two. Prisma exposes `accountId` directly on the unique-where input for a
  * single-field `@@unique`, so there is no composite key name to work around.
+ *
+ * Carries the plan columns because the leads screen has to explain itself: an
+ * owner whose trial is spent sees the capture card vanish from their page, and
+ * without a count on the one screen they check for leads, the only signal is
+ * that leads stopped arriving.
  */
 export async function getOwnerPage(accountId: string): Promise<OwnerPage | null> {
   return prismaRead.page.findUnique({
     where: { accountId },
-    select: { id: true, handle: true, displayName: true, published: true },
+    select: {
+      id: true,
+      handle: true,
+      displayName: true,
+      published: true,
+      mode: true,
+      paidUntil: true,
+      leadsCaptured: true,
+    },
   });
 }

@@ -9,7 +9,31 @@ deployed URL are not things any gate can run. It is the third document of its ki
 Re-run it after any change to `faq-slug.ts`, `faq.query.ts`, either `/[handle]/faq` route,
 or `generateMetadata` on `/[handle]`.
 
-## Why it can't be automated here
+## What CI proves, and what still needs a person
+
+Every test named below was checked to exist, by name, before this table was written. **No**
+means tests that run on every change prove the check. **Partly** means the logic underneath
+is proven, but not the thing a person would actually see. **Yes** means only a real browser,
+server or third party can confirm it. Check 7 is split into its five steps.
+
+| # | Check | Proven by | Still needs a person |
+|---|---|---|---|
+| 1 | The third ask, arriving last, with no owner in the loop | `chat.service.test.ts` — 'assigns a faq slug when a third ask is the last condition to arrive' | **Partly** — over HTTP, from two real browser sessions |
+| 2 | The entry page renders the owner's exact words | `faq.query.test.ts` — 'returns the question and the owner exact answer'; `[slug]/page.test.tsx` — 'renders the question as the heading and the owner exact answer' | **No** |
+| 3 | Google's Rich Results Test | — | **Yes** — a system this repo does not own |
+| 4 | `noindex` on personal, not on business | `[handle]/page.test.tsx` — 'asks crawlers to skip a personal page'; 'leaves a business page indexable' | **No** |
+| 5 | A closing script tag renders as text, not as a tag | `faq.test.ts` — 'leaves no character that could close the script element'; `[slug]/page.test.tsx` — 'cannot be made to close its own script element' | **No** |
+| 6 | Withdrawing the answer 404s the page and keeps the slug | `faq.query.test.ts` — 'omits a question whose answer the owner has withdrawn'; 'returns null once the answer is withdrawn, though the slug remains' | **No** |
+| 7.1 | Hiding a question 404s both routes within the minute | `faq.query.test.ts` — 'drops a suppressed question from the index'; `question.routes.test.ts` — 'suppresses for the owner, and the row shows it' | **Partly** — the 60-second cache timing; see `deferred-findings.md` |
+| 7.2 | Unsuppressing serves it again at the same URL | `faq.query.test.ts` — 'serves it again once the owner unsuppresses'; `question.takedown.test.ts` — 'puts it back' | **No** |
+| 7.3 | Editing a published answer updates the public page | `question-list.test.tsx` — 'opens the editor with what the owner wrote, rather than blank'; 'saves the correction through the same writeback' | **Partly** — seeing the live page change |
+| 7.4 | Erasing removes the question and its answer | `question.takedown.test.ts` — 'erases the question and the answer together'; `question.routes.test.ts` — 'erases the question for its owner'; `question-list.test.tsx` — 'asks before erasing, because a customer wrote those words' | **No** |
+| 7.5 | An erased question asked again comes back a stranger | `chat.service.test.ts` — 'comes back as a stranger: no answer, no slug, and the model answers it' | **No** |
+
+Seven of the eleven need no person, three are proven underneath but not on screen, and one —
+Google's own test — never can be.
+
+## What still needs a person, and why
 
 Three different kinds of gap live in this one document, and they are worth telling apart
 because they call for different amounts of trust in what follows.
@@ -27,10 +51,14 @@ Next's actual script-tag renderer would show up.
 
 Check 1 is different: it is fully reachable over HTTP, but it is listed here rather than
 inferred from the unit tests because it is the one path with no owner action in it at all,
-and `faq-slug.test.ts` only proves it works when called directly with a crafted seed —not
-that the chat route actually calls it at the right moment for a real, unscripted sequence
-of requests. Worth the ten minutes precisely because Task 3's own history shows this path
-had no test until one was written for it on purpose.
+and it is the seam between the chat path and slug assignment.
+
+**Corrected after an audit:** this used to say `faq-slug.test.ts` "only proves it works
+when called directly with a crafted seed". That was already untrue when it was written.
+`chat.service.test.ts`'s `faq slug assignment` block drives the real `answer()` for a
+third ask and asserts the slug appears -- added in the very commit that introduced
+`faq-slug.ts`. What is actually left unproven here is the HTTP layer and two distinct
+real browser sessions, which is a much smaller claim than this section used to make.
 
 Check 3 is the one nothing here can ever automate, no matter how good the browser driver
 gets: the tests can prove the JSON is well-formed and safe, not that Google's crawler reads
@@ -202,15 +230,17 @@ With a question live at `/[handle]/faq/[slug]`, open the questions screen and:
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c   'SELECT q.text, q."faqSuppressed", p.answer FROM "Question" q
-     LEFT JOIN "PinnedAnswer" p ON p."normalizedQuestion" = q."normalizedQuestion"
+     LEFT JOIN "PinnedAnswer" p ON p."pageId" = q."pageId" AND p."normalizedQuestion" = q."normalizedQuestion"
     WHERE q."faqSlug" IS NOT NULL;'
 ```
 
-5. **Then ask it again in chat, twice more.** This is the part worth doing by hand: an
+5. **Then ask it again in chat, once.** This is the part worth doing by hand: an
    erased question is re-logged the next time somebody asks, because the chat path
    upserts on the normalised text. It must come back as a *fresh* row — ask count 1,
    unanswered, no slug — and must **not** reappear on `/faq`. If the old answer comes
-   back with it, the erasure did not erase.
+   back with it, the erasure did not erase. (This said "twice more" until an audit caught
+   the arithmetic: the upsert increments on every ask after the create, so two asks give
+   ask count 2 and a careful reader would think the erasure was broken.)
 
 ## Recording the result
 

@@ -349,3 +349,44 @@ deploy script anywhere in the repo — so there are no live owners to hurt, and
 recovery is one `UPDATE` regardless. Slice 8 cannot ship alone for a larger
 reason anyway: without slice 9 there is no way to pay, so every business page
 would stop capturing at three leads permanently.
+
+---
+
+### A malformed OAuth callback is logged as nothing — found by the walkthrough audit
+
+`GET /auth/google/callback` sends anything carrying `error`, or missing `code` or
+`state`, straight to `/signin?cancelled=1` and returns — the first branch in
+`auth.routes.ts` after the OAuth cookies are cleared. Nothing is logged on that
+path. Every other failure falls through to the `catch`, which logs at error level
+before redirecting.
+
+That is right for someone who clicked Cancel at Google, which is an ordinary act
+and not a fault to diagnose. It is wrong for a callback arriving with no `code`
+and no `error` at all. That is not a cancellation but a broken redirect — a
+misconfigured redirect URI, a proxy stripping the query string, a client dropping
+a parameter — and it looks identical to a cancel and leaves no trace. The failure
+an operator would most need to find is the one the log cannot show.
+
+Not fixed here: it is a behaviour change, and this sweep was about verification.
+Worth a `request.log.warn` that tells a real `error=` cancel apart from a callback
+missing its parameters.
+
+Also not pinned by a test, deliberately. A test asserting the silence would lock
+the gap in. The guarantee worth pinning — that every failure reaching the `catch`
+logs at error — needs a spy on the log stream, and pino bypasses a
+`process.stdout.write` spy unless it is installed before the app is built (see
+`lead.logging.test.ts`). The OAuth test files build their app in `beforeAll`, so a
+spy bolted on there risks passing without ever seeing a log line.
+
+### The FAQ takedown's "within the minute" is not automated — deferred with a reason
+
+The audit counted FAQ check 7.1 as automatable: hiding a question must 404 both
+`/faq` and the entry's own URL within the 60-second revalidate window. The audit
+found the data half already covered, by the suppression tests in
+`faq.query.test.ts` and the suppress route in `question.routes.test.ts`.
+
+The timing half is the cache, not the query, so it needs `next build && next start`,
+a real request, and polling through the revalidate window. No such harness exists
+for the Next app — there is no equivalent of Fastify's `app.inject` — and building
+one is infrastructure out of proportion to a single check. It stays in the
+walkthrough as a manual step.
