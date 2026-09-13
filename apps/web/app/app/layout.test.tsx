@@ -45,6 +45,9 @@ const page: OwnerPage = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
   published: false,
+  mode: 'BUSINESS',
+  paidUntil: null,
+  leadsCaptured: 0,
 };
 
 describe('the dashboard layout', () => {

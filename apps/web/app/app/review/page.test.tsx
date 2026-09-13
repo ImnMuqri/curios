@@ -46,6 +46,9 @@ const page: OwnerPage = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
   published: false,
+  mode: 'BUSINESS',
+  paidUntil: null,
+  leadsCaptured: 0,
 };
 
 const unreviewed: ReviewFact[] = [
