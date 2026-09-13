@@ -175,6 +175,11 @@ disappears. Telling them is `/app/billing`'s job in slice 9, and until that exis
 owner sees a card vanish with no explanation — which is the strongest argument for keeping
 these two slices close together.
 
+*Since overtaken in part:* the verification sweep built the owner-facing half before
+slice 9. The leads screen now counts the trial down and says why capture stopped
+(`apps/web/app/app/leads/trial-notice.tsx`). A visitor on the public page is still told
+nothing, deliberately, and paying still waits for slice 9.
+
 ---
 
 ## One plan

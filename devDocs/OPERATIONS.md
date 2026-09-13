@@ -24,8 +24,8 @@ three different days with their own number spends all three. They then hit a
 paywall with an empty dashboard, having seen the product work only for
 themselves.
 
-**Until slice 9 ships the owner-visible counter, assume owners will do this and
-will not know why the card vanished.**
+**The leads screen now shows an owner how much of the trial is left, but nothing
+stops them spending it on their own tests** — so expect this to happen anyway.
 
 ### 1. Confirm the state before changing anything
 
@@ -91,9 +91,10 @@ request shows it.
 
 ### Retire this when
 
-Slice 9 ships the owner-visible "N of 3 free leads used" and a supported reset.
-The reset above stays useful as an operator escape hatch; the *need* for it,
-driven by owners not knowing the trial exists, should disappear. See
+When there is a supported way to reset a trial — an admin or billing screen, not a
+`psql` statement. The owner-visible counter this procedure was waiting on has
+shipped on the leads screen, which should make the need rarer but not zero: an
+owner who reads "3 of 3" still cannot get their trial back without you. See
 `deferred-findings.md`.
 
 ---
