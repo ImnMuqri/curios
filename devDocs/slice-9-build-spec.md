@@ -179,7 +179,8 @@ monthly owner about five days a year. `now` is a parameter, so the boundaries ca
 **1. Starting a payment: `POST /billing/bills` with `{ plan: 'MONTHLY' | 'ANNUAL' }`.** It requires
 a session and carries a per-account rate limit, `RATE_LIMIT_BILLING_PER_ACCOUNT` (10 an hour by default), keyed exactly as
 ingest's per-page limiter keys: on `request.account?.id`, falling back to the caller's address and
-never to a constant. An owner with no page yet gets the existing `PAGE_NOT_FOUND`; a personal page is
+never to a constant. An owner with no page yet gets the existing `NoPageError` — `NO_PAGE`, 404, the code every owner route uses (`PAGE_NOT_FOUND`
+is the visitor chat's); a personal page is
 refused with a new `NOT_A_BUSINESS_PAGE` (400). `request.account` carries only an id, so the route
 loads the page and the account's email itself.
 
