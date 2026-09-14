@@ -1,5 +1,12 @@
 export { normalizeClaim } from './normalize.js';
-export { FACT_CATEGORIES, INGEST_QUEUE, LEAD_QUEUE, MAIL_QUEUE } from './types.js';
+export {
+  BILLING_QUEUE,
+  FACT_CATEGORIES,
+  INGEST_QUEUE,
+  LEAD_QUEUE,
+  MAIL_QUEUE,
+  PENDING_CHECK_JOB,
+} from './types.js';
 export type {
   FactCategory,
   SourceDocument,
@@ -28,4 +35,6 @@ export { MIN_VISITOR_TURNS, qualifies } from './qualify.js';
 export { conversationCap, FREE_CONVERSATIONS_PER_MONTH, isOverCap } from './cap.js';
 export { canCapture, FREE_LEADS, planState } from './plan.js';
 export type { PlanInput, PlanState } from './plan.js';
+export { extendPaidUntil, PLAN_PRICES_CENTS } from './billing.js';
+export type { BillingPlan } from './billing.js';
 export { FAQ_MIN_ASKS, faqSlugBase, qualifiesForFaq, serialiseJsonLd } from './faq.js';

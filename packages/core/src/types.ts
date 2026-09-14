@@ -74,3 +74,12 @@ export interface MailJobData {
   subject: string;
   text: string;
 }
+
+/**
+ * The billing schedule. The name lives here for the same reason as every other
+ * queue's: apps/workers consumes it, and a name spelled inside one app is how the
+ * next app to need it gets it wrong. Scheduled jobs carry no data; the job name says
+ * which check to run.
+ */
+export const BILLING_QUEUE = 'billing';
+export const PENDING_CHECK_JOB = 'pending-check';
