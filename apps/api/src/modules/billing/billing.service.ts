@@ -18,6 +18,17 @@ export class NotABusinessPageError extends Error {
   }
 }
 
+export class TrialResetUsedError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'TRIAL_RESET_USED';
+  constructor() {
+    super(
+      'The free trial can be reset once, and only for a page that has never paid. Pay for a month to keep capturing leads.',
+    );
+    this.name = 'TrialResetUsedError';
+  }
+}
+
 /** Billplz caps a description at 200 characters, and a long shop name must not fail the bill. */
 export function billDescription(plan: BillingPlan, displayName: string): string {
   return `Curios Business, ${plan === 'ANNUAL' ? '1 year' : '1 month'} — ${displayName}`.slice(0, 200);
@@ -87,4 +98,41 @@ export async function createBillForOwner(
     throw error;
   }
   return { url: bill.url };
+}
+
+/**
+ * Gives an owner their free trial back, once.
+ *
+ * One conditional update, and no read before it. Two clicks a moment apart both
+ * reach the database; the first matches its `where` and the second does not,
+ * because the first wrote `trialResetAt`. A read-then-write would let both pass
+ * the check and hand out two trials.
+ *
+ * The conditions are the whole policy, and each is here for its own reason:
+ * BUSINESS, because a personal page never captures; `paidUntil` null, because a
+ * page that has paid owes a renewal rather than a second trial -- and null is
+ * what "never paid" means on this column; `trialResetAt` null, because there is
+ * exactly one; and at least one lead captured, because resetting at zero would
+ * spend the reset on nothing and leave the owner without it when it mattered.
+ *
+ * Zero rows changed cannot tell us which condition failed, and deliberately does
+ * not try: one message covering all of them is honest, where a read to find out
+ * would reintroduce the race this avoids.
+ */
+export async function resetTrial(
+  deps: { prisma: PrismaClient },
+  input: { accountId: string; now: Date },
+): Promise<void> {
+  const reset = await deps.prisma.page.updateMany({
+    where: {
+      accountId: input.accountId,
+      mode: 'BUSINESS',
+      paidUntil: null,
+      trialResetAt: null,
+      leadsCaptured: { gte: 1 },
+    },
+    data: { leadsCaptured: 0, trialResetAt: input.now },
+  });
+
+  if (reset.count === 0) throw new TrialResetUsedError();
 }

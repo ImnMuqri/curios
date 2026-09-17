@@ -12,7 +12,7 @@ import {
   type GrantOutcome,
 } from '@curios/billing';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { createBillForOwner } from './billing.service.js';
+import { createBillForOwner, resetTrial } from './billing.service.js';
 
 export interface BillingRouteOptions {
   /**
@@ -68,6 +68,21 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
         { accountId: request.account.id, plan: request.body.plan },
       );
       return reply.status(201).send(result);
+    },
+  );
+
+  app.post(
+    '/billing/trial-reset',
+    { schema: { response: { 200: z.object({ status: z.string() }), 409: errorSchema } } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await resetTrial({ prisma: app.prisma }, { accountId: request.account.id, now: new Date() });
+      // The account and the outcome. Which page it was is derivable from the
+      // account, and a reset is worth being able to find in the log: it is the
+      // one place the product gives something away.
+      request.log.info({ accountId: request.account.id }, 'free trial reset by owner');
+      return reply.send({ status: 'reset' });
     },
   );
 };
