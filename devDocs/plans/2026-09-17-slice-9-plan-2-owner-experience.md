@@ -1809,9 +1809,13 @@ describe('paymentLine', () => {
     plan: 'MONTHLY' as const,
     amountCents: 3900,
     status: 'PAID' as const,
+    // The two dates fall on different Malaysian calendar days on purpose: 20:00
+    // UTC is already the 12th in Kuala Lumpur, 10:00 UTC is still the 11th. With
+    // both on one day, the started-date expectation below could never appear and
+    // the mutation that dates a paid payment by createdAt could not fail.
     paidAt: new Date('2026-09-11T20:00:00.000Z'),
     grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-    createdAt: new Date('2026-09-11T19:00:00.000Z'),
+    createdAt: new Date('2026-09-11T10:00:00.000Z'),
   };
 
   it('dates a paid payment by when it was paid, in Malaysian time', () => {
@@ -1973,7 +1977,7 @@ and add these tests to the `describe('BillingPage')` block:
         status: 'PAID',
         paidAt: new Date('2026-09-11T20:00:00.000Z'),
         grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-        createdAt: new Date('2026-09-11T19:00:00.000Z'),
+        createdAt: new Date('2026-09-11T10:00:00.000Z'),
       },
     ]);
 
@@ -2276,6 +2280,10 @@ Make each change, run the billing tests, confirm the named test fails, then rest
 4. In `paymentLine`, date a paid payment by `createdAt` — `'dates a paid payment by when it was paid'` fails.
 5. In `ResetTrialForm`, call `refresh()` outside the `try` — `'does not refresh when the reset failed'` fails.
 6. In `planSummary`, ignore `lapsedOn` — `'tells a page that lapsed with free leads left that its plan ended'` fails.
+7. In `page.tsx`, drop `page.leadsCaptured >= 1` from `canReset` — `'withholds the reset from a page with nothing to give back'` fails.
+8. In `page.tsx`, remove the personal-page short-circuit so usage and payments are always read — `'reads no usage or payments for a personal page'` fails.
+
+Mutations 7 and 8 exist because those two tests assert an absence, and an absence is true before the code that could break it is written: both passed in the RED run, so only a mutation shows they can fail.
 
 - [ ] **Step 8: The whole web suite and gates**
 
