@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@curios/billing": "workspace:*",
     "@curios/core": "workspace:*",
     "@curios/db": "workspace:*",
     "@curios/gateway": "workspace:*",

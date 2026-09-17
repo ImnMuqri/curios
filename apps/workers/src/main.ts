@@ -2,16 +2,23 @@ import pino from 'pino';
 import { prisma } from '@curios/db';
 import { createAnthropicGateway } from '@curios/gateway';
 import { Queue } from 'bullmq';
-import { MAIL_QUEUE, type MailJobData } from '@curios/core';
+import { BILLING_QUEUE, MAIL_QUEUE, type MailJobData } from '@curios/core';
 import { createRedis } from './lib/redis.js';
 import { createIngestionWorker } from './ingestion/ingestion.worker.js';
 import { createMailWorker } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
+import { createBillplzClient } from '@curios/billing';
+import { createBillingWorker, scheduleBillingJobs } from './billing/pending-check.js';
 
 const log = pino({ name: 'workers' });
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
+
+const billplzApiKey = process.env.BILLPLZ_API_KEY;
+if (!billplzApiKey) throw new Error('BILLPLZ_API_KEY is not set');
+const billplzBaseUrl = process.env.BILLPLZ_BASE_URL;
+if (!billplzBaseUrl) throw new Error('BILLPLZ_BASE_URL is not set');
 
 const connection = createRedis();
 const gateway = createAnthropicGateway(apiKey);
@@ -54,5 +61,21 @@ leadWorker.on('failed', (job, err) =>
   log.error({ jobId: job?.id, err: err.message }, 'lead notification failed'),
 );
 leadWorker.on('error', (err) => log.error({ err: err.message }, 'lead worker error'));
+
+// Its own connection, for the reason every worker above has one.
+const billingWorker = createBillingWorker({
+  connection: createRedis(),
+  prisma,
+  client: createBillplzClient({ apiKey: billplzApiKey, baseUrl: billplzBaseUrl }),
+  log,
+});
+billingWorker.on('failed', (job, err) =>
+  log.error({ jobId: job?.id, err: err.message }, 'billing job failed'),
+);
+billingWorker.on('error', (err) => log.error({ err: err.message }, 'billing worker error'));
+
+// The repo's first schedule. Awaited, so a Redis that cannot take it stops the process
+// here, rather than leaving a worker running with nothing ever scheduled.
+await scheduleBillingJobs(new Queue(BILLING_QUEUE, { connection: createRedis() }));
 
 log.info('workers up');
