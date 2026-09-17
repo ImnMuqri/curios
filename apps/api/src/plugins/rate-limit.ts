@@ -269,3 +269,25 @@ export function authPerEmailLimit(redis: IORedis): RateLimitPluginOptions {
     errorResponseBuilder: tooMany((after) => `Too many attempts. Try again in ${after}.`),
   };
 }
+
+/**
+ * Per account, on starting a payment. Every request raises a bill at Billplz, so an
+ * owner or a runaway loop must not be able to raise them without bound.
+ *
+ * Keyed on the account, falling back to the caller and never to a constant -- the
+ * shape and the reason of ingestPerPageLimit: a shared constant bucket fills once and
+ * locks everyone out.
+ */
+export function billingPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('billing-account:'),
+    max: limit('RATE_LIMIT_BILLING_PER_ACCOUNT', 10),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => request.account?.id ?? caller(request),
+    errorResponseBuilder: tooMany((after) => `Too many payment attempts. Try again in ${after}.`),
+  };
+}

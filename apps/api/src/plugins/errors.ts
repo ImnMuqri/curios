@@ -57,6 +57,15 @@ export const DOMAIN_ERROR_CODES = new Set([
   'NO_PAGE',
   'PASSWORD_ALREADY_SET',
   'IDENTITY_TAKEN',
+  // Starting a payment on a personal page. It says what is true: there is nothing
+  // to pay for.
+  'NOT_A_BUSINESS_PAGE',
+  // A 502, so the handler below still replaces its message with the generic sentence.
+  // Listed so the code survives the trip -- the web app turns it into "Billplz is not
+  // answering". Unlike OAUTH_EXCHANGE_FAILED, an outage is worth waiting out, and a
+  // misconfiguration never becomes this code: the Billplz client throws a plain Error
+  // for a 4xx, which stays INTERNAL_ERROR.
+  'BILLPLZ_UNAVAILABLE',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --

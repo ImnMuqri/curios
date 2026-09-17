@@ -42,3 +42,15 @@ process.env.RATE_LIMIT_AUTH_PER_EMAIL = '10';
 // app via buildApp() -- app.test.ts among them. Pinned to the production
 // default so those suites see the same number production does.
 process.env.CONVERSATION_CAP_PER_MONTH = '200';
+
+// The Billplz settings buildApp() now requires at boot. Dummies: every test that
+// reaches Billplz injects a stub client through AppOverrides, so none of these is
+// ever sent anywhere. They exist so the boot check passes, and so a developer's own
+// sandbox keys in .env never change what a test does.
+process.env.BILLPLZ_API_KEY = 'test-billplz-api-key';
+process.env.BILLPLZ_COLLECTION_ID = 'test-collection';
+process.env.BILLPLZ_X_SIGNATURE_KEY = 'test-signature-key';
+process.env.BILLPLZ_BASE_URL = 'https://billplz.invalid';
+process.env.BILLPLZ_CALLBACK_URL = 'http://localhost:3001/billing/billplz/callback';
+process.env.BILLPLZ_REDIRECT_URL = 'http://localhost:3001/billing/billplz/return';
+process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';

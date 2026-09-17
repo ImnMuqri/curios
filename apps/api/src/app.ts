@@ -14,6 +14,7 @@ import { requireSession, sessionPlugin } from './plugins/session.js';
 import {
   authPerEmailLimit,
   authPerIpLimit,
+  billingPerAccountLimit,
   chatPerIpLimit,
   chatPerPageLimit,
   ingestPerIpLimit,
@@ -26,6 +27,11 @@ import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { pageRoutes } from './modules/pages/page.routes.js';
 import { factRoutes } from './modules/facts/fact.routes.js';
 import { questionRoutes } from './modules/questions/question.routes.js';
+import {
+  billplzRoutes,
+  ownerBillingRoutes,
+  type BillingRouteOptions,
+} from './modules/billing/billing.routes.js';
 import {
   authFlowRoutes,
   authRoutes,
@@ -51,6 +57,7 @@ export interface AppOverrides {
   auth?: AuthRouteOptions;
   ingest?: IngestRouteOptions;
   chat?: ChatRouteOptions;
+  billing?: BillingRouteOptions;
 }
 
 export async function buildApp(overrides: AppOverrides = {}) {
@@ -141,6 +148,20 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(factRoutes);
     await scope.register(questionRoutes);
     await scope.register(ownerLeadRoutes);
+  });
+
+  // Billplz's callback and redirect. No session -- Billplz has none -- and no per-IP
+  // limit: every genuine retry comes from Billplz's own addresses, and a forged request
+  // costs one HMAC to refuse. The plugin registers its own form parser, and its
+  // encapsulation keeps that parser off every other route.
+  await app.register(billplzRoutes, overrides.billing ?? {});
+
+  // Starting a payment. The session hook goes before the limiter, as in the ingest
+  // scope, so an unauthenticated request is refused before it can spend any budget.
+  await app.register(async (scope) => {
+    scope.addHook('onRequest', requireSession);
+    await scope.register(rateLimit, billingPerAccountLimit(app.rateLimitRedis));
+    await scope.register(ownerBillingRoutes, overrides.billing ?? {});
   });
 
   return app;

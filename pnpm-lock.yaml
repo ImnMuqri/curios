@@ -54,6 +54,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@curios/billing':
+        specifier: workspace:*
+        version: link:../../packages/billing
       '@curios/core':
         specifier: workspace:*
         version: link:../../packages/core
