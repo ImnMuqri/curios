@@ -34,6 +34,7 @@ const page: OwnerPage = {
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,
+  trialResetAt: null,
 };
 
 async function renderWith(owned: OwnerPage | null, payment?: string) {
