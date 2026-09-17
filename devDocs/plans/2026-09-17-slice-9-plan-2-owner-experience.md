@@ -1562,7 +1562,6 @@ export async function runRenewalReminders(deps: {
       id: true,
       displayName: true,
       paidUntil: true,
-      renewalReminderFor: true,
       account: { select: { email: true } },
     },
     orderBy: { paidUntil: 'asc' },
@@ -1572,12 +1571,15 @@ export async function runRenewalReminders(deps: {
   for (const page of due) {
     const paidUntil = page.paidUntil;
     if (paidUntil === null) continue;
-    if (page.renewalReminderFor?.getTime() === paidUntil.getTime()) continue;
 
-    // The claim. `paidUntil` is in the `where` too, so an owner who renews
-    // between the read above and this write is not marked for a period that is
-    // no longer theirs. The explicit null branch is here rather than a bare
-    // `not`, so the query does not depend on how NULL compares in an inequality.
+    // The claim, and the only guard. There is deliberately no check of the mark
+    // in front of it, so the test that proves one reminder per period is a test
+    // of this update rather than of a shortcut before it. A page already
+    // reminded costs one update that changes no rows, at most three days running.
+    // `paidUntil` is in the `where` too, so an owner who renews between the read
+    // above and this write is not marked for a period that is no longer theirs.
+    // The explicit null branch is here rather than a bare `not`, so the query
+    // does not depend on how NULL compares in an inequality.
     const claim = await deps.prisma.page.updateMany({
       where: {
         id: page.id,
@@ -1719,7 +1721,7 @@ Expected: 22 passed — 8 pending-check, 2 scheduling, 8 reminder runs, 4 remind
 Make each change, run the affected file, confirm the named test fails, then restore:
 
 1. Swap the claim and the send — enqueue the mail before the `updateMany` — `'keeps the claim when the email cannot be queued'` fails, because the page is left unmarked.
-2. Remove the `OR` from the claim's `where` — `'never sends a second reminder for the same period'` fails.
+2. Remove the `OR` from the claim's `where` — `'never sends a second reminder for the same period'` fails. It can only fail because nothing else stands in front of the claim; if it passes, check that no pre-check of `renewalReminderFor` has crept in before the update.
 3. Change `lte` to `lt` in the window — `'reminds a plan ending exactly three days out'` fails.
 4. Change `gt: deps.now` to `gte: new Date(0)` — `'says nothing to a plan that has already ended'` fails.
 5. Drop `tz` from the daily schedule — `'schedules the reminder daily at 10:00 Malaysian time'` fails.
