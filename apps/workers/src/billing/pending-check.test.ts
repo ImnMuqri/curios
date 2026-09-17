@@ -156,4 +156,18 @@ describe('scheduleBillingJobs', () => {
       { name: 'pending-check' },
     );
   });
+
+  it('schedules the reminder daily at 10:00 Malaysian time', async () => {
+    // Without the zone, BullMQ reads the pattern in the server's own zone, and
+    // an email meant for mid-morning arrives at 6pm or at 2am.
+    const queue = { upsertJobScheduler: vi.fn<SchedulerQueue['upsertJobScheduler']>(async () => ({})) };
+
+    await scheduleBillingJobs(queue);
+
+    expect(queue.upsertJobScheduler).toHaveBeenCalledWith(
+      'renewal-reminder',
+      { pattern: '0 10 * * *', tz: 'Asia/Kuala_Lumpur' },
+      { name: 'renewal-reminder' },
+    );
+  });
 });

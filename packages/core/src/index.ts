@@ -6,6 +6,7 @@ export {
   LEAD_QUEUE,
   MAIL_QUEUE,
   PENDING_CHECK_JOB,
+  RENEWAL_REMINDER_JOB,
 } from './types.js';
 export type {
   FactCategory,
