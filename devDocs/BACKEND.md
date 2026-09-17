@@ -563,6 +563,21 @@ Billplz retries in fifteen seconds rather than leaving the payment to the hourly
 check. The callback body carries the payer's email and mobile, so only the bill
 id and the outcome are ever logged.
 
+### Telling an owner their plan is ending
+
+A daily job, `runRenewalReminders` in `apps/workers/src/billing/renewal-reminder.ts`,
+runs at 10:00 Malaysian time and selects business pages whose `paidUntil` is later
+than now and at most three days away. Each page is claimed by a conditional update
+that writes its own `paidUntil` into `renewalReminderFor` **before** the email is
+enqueued, so a crash between the two loses at most one email and can never send
+two. Renewing moves `paidUntil`, which makes the next period eligible again by
+itself -- there is no reminders table. One page's email failing does not stop the
+rest of the run. The email says plainly that nothing is charged automatically,
+because FPX cannot auto-charge.
+
+The workers refuse to boot without `APP_URL` set, because the email links to
+`{APP_URL}/app/billing`.
+
 ---
 
 ## Abuse and injection

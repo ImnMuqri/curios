@@ -163,3 +163,19 @@ When the create-bill request is made idempotent against Billplz -- so a retry af
 exact failure re-uses the same bill instead of the owner needing a human to find it -- or
 when a scheduled sweep looks for exactly this shape (`PENDING`, `billplzBillId` null, old)
 and either recovers or flags it without a person going looking first.
+
+---
+
+## An owner says the renewal reminder never arrived
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT handle, \"paidUntil\", \"renewalReminderFor\" FROM \"Page\" WHERE handle = 'HANDLE';"
+```
+
+Compare the two columns. If `renewalReminderFor` equals the page's current
+`paidUntil`, the reminder for this period was already claimed and enqueued --
+the problem is downstream of the billing code, so look in the mail worker's
+logs and the mail provider rather than here. If it is null or an older value
+than `paidUntil`, the page has not been reminded for this period yet, and the
+daily run at 10:00 Malaysia time is the next chance.

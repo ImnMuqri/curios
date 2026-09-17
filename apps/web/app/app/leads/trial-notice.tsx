@@ -71,7 +71,7 @@ export function trialNotice(state: PlanState): Notice | null {
       return {
         tone: 'action',
         text: `All ${FREE_LEADS} of your free leads are used, so the capture card is no longer shown on your page. Everything else still works — your page, your FAQ pages and chat are unaffected.`,
-        action: { href: BILLING, label: 'Pay to turn capture back on' },
+        action: { href: BILLING, label: 'See your options' },
       };
 
     case 'lapsed':

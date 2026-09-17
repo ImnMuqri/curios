@@ -129,11 +129,20 @@ export async function runRenewalReminders(deps: {
       paidUntil,
       appUrl: deps.appUrl,
     });
-    await deps.mailQueue.add(MAIL_QUEUE, {
-      to: page.account.email,
-      subject: mail.subject,
-      text: mail.text,
-    });
+    try {
+      await deps.mailQueue.add(MAIL_QUEUE, {
+        to: page.account.email,
+        subject: mail.subject,
+        text: mail.text,
+      });
+    } catch (error) {
+      // One page's email failing -- Redis briefly unreachable, say -- must not
+      // stop the rest. The claim above already stands, so this page stays
+      // claimed for this period: losing one reminder is the accepted failure,
+      // not losing every page still to be checked in the loop.
+      deps.log?.error({ pageId: page.id, err: String(error) }, 'renewal reminder could not be queued');
+      continue;
+    }
 
     reminded += 1;
     // The page and the period, never the address: an owner's email in a log is

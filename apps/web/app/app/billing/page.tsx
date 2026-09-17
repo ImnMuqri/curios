@@ -55,14 +55,6 @@ export default async function BillingPage({
       {banner ? <Callout tone={banner.tone}>{banner.text}</Callout> : null}
       <p>{planSummary(state)}</p>
       {usage ? <p>{usageSummary(usage)}</p> : null}
-      {state.kind === 'personal' ? null : (
-        <PayButtons
-          options={[
-            { plan: 'MONTHLY', label: `Pay ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} for a month` },
-            { plan: 'ANNUAL', label: `Pay ${ringgit(PLAN_PRICES_CENTS.ANNUAL)} for a year` },
-          ]}
-        />
-      )}
       {canReset ? (
         <section>
           <h2>Spent your trial testing your own page?</h2>
@@ -73,6 +65,14 @@ export default async function BillingPage({
           <ResetTrial />
         </section>
       ) : null}
+      {state.kind === 'personal' ? null : (
+        <PayButtons
+          options={[
+            { plan: 'MONTHLY', label: `Pay ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} for a month` },
+            { plan: 'ANNUAL', label: `Pay ${ringgit(PLAN_PRICES_CENTS.ANNUAL)} for a year` },
+          ]}
+        />
+      )}
       {payments.length > 0 ? (
         <section>
           <h2>Recent payments</h2>

@@ -135,15 +135,37 @@ describe('runRenewalReminders', () => {
     // Claimed first, emailed second. If this order were reversed, a queue
     // failure would leave the page unmarked and tomorrow's run would email
     // again -- and a crash between the two would send twice.
-    const paidUntil = inDays(2);
-    const page = await aPage({ paidUntil });
-    const failing = { add: vi.fn<MailQueueLike['add']>(async () => { throw new Error('redis is gone'); }) };
+    //
+    // Two due pages, different `paidUntil` inside the window, so
+    // `orderBy: { paidUntil: 'asc' }` makes the first page here the first one
+    // the loop visits -- deterministically the one the queue fails for.
+    const firstPaidUntil = inDays(1);
+    const secondPaidUntil = inDays(2);
+    const first = await aPage({ paidUntil: firstPaidUntil });
+    const second = await aPage({ paidUntil: secondPaidUntil });
+    let calls = 0;
+    const failingOnce = {
+      add: vi.fn<MailQueueLike['add']>(async () => {
+        calls += 1;
+        if (calls === 1) throw new Error('redis is gone');
+        return { id: 'queued' };
+      }),
+    };
 
+    // One page's email failing must not stop the rest: the run itself does
+    // not reject, and the page behind the failure still gets reminded.
     await expect(
-      runRenewalReminders({ prisma, mailQueue: failing, now: NOW, appUrl: APP_URL }),
-    ).rejects.toThrow('redis is gone');
+      runRenewalReminders({ prisma, mailQueue: failingOnce, now: NOW, appUrl: APP_URL }),
+    ).resolves.toEqual({ reminded: 1 });
 
-    expect(await reminderMark(page.pageId)).toEqual(paidUntil);
+    // The failed page stays claimed -- losing one reminder rather than
+    // sending two -- while the page behind it in the loop still gets its
+    // email.
+    expect(await reminderMark(first.pageId)).toEqual(firstPaidUntil);
+    expect(failingOnce.add).toHaveBeenCalledTimes(2);
+    const [, secondMail] = failingOnce.add.mock.calls[1] ?? [];
+    expect(secondMail?.to).toBe(second.email);
+    expect(await reminderMark(second.pageId)).toEqual(secondPaidUntil);
   });
 });
 
