@@ -64,7 +64,7 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
       if (!request.account) throw new UnauthenticatedError();
 
       const result = await createBillForOwner(
-        { prisma: app.prisma, client: billplz.client, config: billplz },
+        { prisma: app.prisma, client: billplz.client, config: billplz, log: request.log },
         { accountId: request.account.id, plan: request.body.plan },
       );
       return reply.status(201).send(result);
@@ -121,6 +121,13 @@ export const billplzRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (
         return reply.status(400).send();
       }
 
+      // Not wrapped in try/catch. An outcome below -- unpaid, mismatched -- answers 200
+      // because no retry could ever fix it. An unexpected failure here (the database
+      // unreachable, a transaction timeout) is the opposite: exactly what Billplz's own
+      // retry schedule (15 seconds, then 15 minutes) exists for. Letting it propagate to
+      // a 500 keeps the payment where a retry -- or worst case the hourly check -- can
+      // still resolve it; answering 200 would end Billplz's retries and leave only the
+      // hourly check, hours later.
       const outcome = await grantPayment(app.prisma, evidenceFromCallback(request.body), { now: new Date() });
       logOutcome(request.log, request.body.id, 'callback', outcome);
       // 200 for everything that verified. Billplz retries anything else, and no retry

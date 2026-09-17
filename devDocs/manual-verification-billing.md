@@ -64,6 +64,10 @@ On `http://localhost:3000/app/billing`, press **Pay RM39 for a month**. The brow
 `billplz-sandbox.com` bill showing **RM39.00**, the page's display name, and a description of
 `Curios Business, 1 month — <display name>`.
 
+Note **whether Billplz also emails the bill to the payer**. If it does, an orphaned bill (see
+`devDocs/OPERATIONS.md`) could still be paid by an owner who never saw it in the app -- reached
+straight from that email -- which changes how much that window matters.
+
 ### 2. The callback verifies and grants
 
 Pay with the sandbox's test bank and choose success. In the API's log, look for

@@ -114,6 +114,27 @@ function paidBill(billId: string, paymentId: string): BillplzBill {
   };
 }
 
+/**
+ * `vi.spyOn(...).mockRestore()` does not work on a Prisma model delegate: each method is
+ * handed back freshly bound on every property read, so `Object.getOwnPropertyDescriptor`
+ * -- what `spyOn` snapshots to restore later -- sees a placeholder (`{ value: undefined }`)
+ * rather than the real function. Restoring from that snapshot leaves the method missing
+ * instead of reviving it, breaking every test that runs after in this file. This installs
+ * and restores the mock by hand instead, from a reference read before the mock went on --
+ * plain `vi.fn()`, not `vi.spyOn`, since there is nothing here to call through to.
+ */
+function spyOnPrismaMethod<T extends object, M extends keyof T>(obj: T, method: M) {
+  const original = obj[method];
+  const mock = vi.fn();
+  Object.defineProperty(obj, method, { value: mock, writable: true, configurable: true, enumerable: true });
+  return {
+    spy: mock,
+    restore: () => {
+      Object.defineProperty(obj, method, { value: original, writable: true, configurable: true, enumerable: true });
+    },
+  };
+}
+
 const postCallback = (payload: string) =>
   app.inject({
     method: 'POST',
@@ -205,6 +226,29 @@ describe('POST /billing/bills', () => {
     });
     expect(payment).toEqual({ billplzBillId: null, status: 'PENDING' });
   });
+
+  it('fails rather than hand out a bill URL when the bill id cannot be recorded, leaving an orphaned bill behind', async () => {
+    // Billplz has already accepted the bill by this point. If the update below fails, the
+    // Payment row must not look like the request succeeded -- an owner must never receive
+    // a URL to a bill nothing can later grant.
+    const owner = await anOwner();
+    const { spy: updateSpy, restore } = spyOnPrismaMethod(app.prisma.payment, 'update');
+    updateSpy.mockRejectedValueOnce(new Error('database went away'));
+
+    try {
+      const res = await raise(owner.cookie);
+
+      expect(res.statusCode).toBe(500);
+      expect(res.json()).not.toHaveProperty('url');
+      const payment = await app.prisma.payment.findFirstOrThrow({
+        where: { pageId: owner.pageId },
+        select: { billplzBillId: true, status: true },
+      });
+      expect(payment).toEqual({ billplzBillId: null, status: 'PENDING' });
+    } finally {
+      restore();
+    }
+  });
 });
 
 describe('POST /billing/billplz/callback', () => {
@@ -250,6 +294,23 @@ describe('POST /billing/billplz/callback', () => {
     expect(res.statusCode).toBe(200);
     expect(await statusOf(paymentId)).toBe('PENDING');
     expect(await paidUntilOf(owner.pageId)).toBeNull();
+  });
+
+  it('answers 500 to a signed, paid callback when granting fails unexpectedly, so Billplz retries', async () => {
+    const owner = await anOwner();
+    const { billId, paymentId } = await aPendingPayment(owner.pageId);
+    // grantPayment's first database call.
+    const { spy: findUniqueSpy, restore } = spyOnPrismaMethod(app.prisma.payment, 'findUnique');
+    findUniqueSpy.mockRejectedValueOnce(new Error('database went away'));
+
+    try {
+      const res = await postCallback(callbackBody(billId));
+
+      expect(res.statusCode).toBe(500);
+      expect(await statusOf(paymentId)).toBe('PENDING');
+    } finally {
+      restore();
+    }
   });
 });
 

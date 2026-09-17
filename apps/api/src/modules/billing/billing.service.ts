@@ -32,7 +32,13 @@ export function billDescription(plan: BillingPlan, displayName: string): string 
  * and the hourly check skips rows without one.
  */
 export async function createBillForOwner(
-  deps: { prisma: PrismaClient; client: BillplzClient; config: BillingConfig },
+  deps: {
+    prisma: PrismaClient;
+    client: BillplzClient;
+    config: BillingConfig;
+    /** Optional, like `assignFaqSlug`'s -- `request.log` fits it without a new dependency. */
+    log?: { error: (obj: unknown, msg: string) => void };
+  },
   input: { accountId: string; plan: BillingPlan },
 ): Promise<{ url: string }> {
   const page = await deps.prisma.page.findUnique({
@@ -65,6 +71,20 @@ export async function createBillForOwner(
     reference1: payment.id,
   });
 
-  await deps.prisma.payment.update({ where: { id: payment.id }, data: { billplzBillId: bill.id } });
+  try {
+    await deps.prisma.payment.update({ where: { id: payment.id }, data: { billplzBillId: bill.id } });
+  } catch (error) {
+    deps.log?.error(
+      { paymentId: payment.id, billId: bill.id, err: error },
+      'billplz accepted the bill but the payment row could not be updated with its id -- the bill is now orphaned',
+    );
+    // Rethrown on purpose. Billplz already holds a real, payable bill, but without this
+    // update the row that could resolve it stays PENDING with billplzBillId null: the
+    // hourly check skips rows without one, and a callback for this bill finds no match
+    // and reports unknown-bill. Nothing downstream can reconcile that on its own, so the
+    // owner must not be handed a URL to a bill this system cannot later grant -- failing
+    // the request is safer than pretending it succeeded. See devDocs/OPERATIONS.md.
+    throw error;
+  }
   return { url: bill.url };
 }

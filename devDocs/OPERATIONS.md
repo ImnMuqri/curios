@@ -116,3 +116,46 @@ docker exec -i curios-postgres-test psql -U curios -d curios_test \
 
 Both are required. Migrating alone leaves the role missing, and the read-only
 package's tests fail in a way that looks like a permissions bug in the code.
+
+---
+
+## An orphaned Billplz bill
+
+**Why this exists.** `createBillForOwner` (`apps/api/src/modules/billing/billing.service.ts`)
+creates a `Payment` row, then asks Billplz for a bill, then writes the bill's id onto that
+row. If the app crashes or the database is briefly unreachable between the second and third
+steps, Billplz is left holding a real, payable bill, but the row that should resolve it keeps
+`billplzBillId` null. The hourly check only ever looks at `PENDING` rows with a
+`billplzBillId` set, so it skips this one by construction, and a callback that names this
+bill finds no matching row and reports `unknown-bill`. Nothing in the system reconciles this
+by itself.
+
+**Recognise it** by a `PENDING` `Payment` with `billplzBillId` null and `createdAt` more than
+a few minutes old — the update should be near-instant, so anything older did not merely lose
+a race — paired with an owner reporting a bill they could not pay, or a payment that never
+registered:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT id, \"pageId\", plan, \"amountCents\", \"createdAt\" FROM \"Payment\" WHERE status = 'PENDING' AND \"billplzBillId\" IS NULL AND \"createdAt\" < now() - interval '5 minutes';"
+```
+
+**Resolve it.** The bill Billplz raised carries `reference_1` equal to that `Payment.id` --
+that is what correlates the two sides. Look the bill up in the Billplz dashboard (or via its
+API) by searching for a bill whose reference matches one of the `id`s above. If the bill was
+genuinely paid, write its id onto the row so the hourly check grants it on the next pass:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "UPDATE \"Payment\" SET \"billplzBillId\" = 'BILL_ID' WHERE id = 'PAYMENT_ID' AND status = 'PENDING' AND \"billplzBillId\" IS NULL;"
+```
+
+Expect `UPDATE 1`. If the bill was never paid, or none matches, leave the row alone; it ages
+out like any other unpaid bill.
+
+### Retire this when
+
+When the create-bill request is made idempotent against Billplz -- so a retry after this
+exact failure re-uses the same bill instead of the owner needing a human to find it -- or
+when a scheduled sweep looks for exactly this shape (`PENDING`, `billplzBillId` null, old)
+and either recovers or flags it without a person going looking first.
