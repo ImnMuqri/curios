@@ -98,6 +98,7 @@ describe('planState', () => {
       kind: 'trial',
       used: 1,
       remaining: FREE_LEADS - 1,
+      lapsedOn: PAST,
     });
   });
 
@@ -125,5 +126,48 @@ describe('planState', () => {
         }
       }
     }
+  });
+
+  it('marks a trial that outlived a lapsed subscription with the date it ended', () => {
+    // Paid once, captured one lead, lapsed -- and two free leads remain. The OR
+    // rule already lets this page capture; what it lacked was a way to say why.
+    const state = planState({
+      mode: 'BUSINESS',
+      paidUntil: new Date('2026-08-01T00:00:00.000Z'),
+      leadsCaptured: 1,
+      now: new Date('2026-09-17T00:00:00.000Z'),
+    });
+
+    expect(state).toEqual({
+      kind: 'trial',
+      used: 1,
+      remaining: FREE_LEADS - 1,
+      lapsedOn: new Date('2026-08-01T00:00:00.000Z'),
+    });
+  });
+
+  it('leaves lapsedOn off a trial that never paid', () => {
+    const state = planState({
+      mode: 'BUSINESS',
+      paidUntil: null,
+      leadsCaptured: 1,
+      now: new Date('2026-09-17T00:00:00.000Z'),
+    });
+
+    expect(state).toEqual({ kind: 'trial', used: 1, remaining: FREE_LEADS - 1 });
+    expect(state).not.toHaveProperty('lapsedOn');
+  });
+
+  it('still lets a lapsed page with trial left capture', () => {
+    // The point of the OR rule, and the reason lapsedOn is a property of a trial
+    // rather than a state of its own: nothing about enforcement changes here.
+    expect(
+      canCapture({
+        mode: 'BUSINESS',
+        paidUntil: new Date('2026-08-01T00:00:00.000Z'),
+        leadsCaptured: 1,
+        now: new Date('2026-09-17T00:00:00.000Z'),
+      }),
+    ).toBe(true);
   });
 });
