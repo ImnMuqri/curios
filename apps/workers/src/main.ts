@@ -20,6 +20,9 @@ if (!billplzApiKey) throw new Error('BILLPLZ_API_KEY is not set');
 const billplzBaseUrl = process.env.BILLPLZ_BASE_URL;
 if (!billplzBaseUrl) throw new Error('BILLPLZ_BASE_URL is not set');
 
+const appUrl = process.env.APP_URL;
+if (!appUrl) throw new Error('APP_URL is not set');
+
 const connection = createRedis();
 const gateway = createAnthropicGateway(apiKey);
 const worker = createIngestionWorker({ connection, prisma, gateway, log });
@@ -67,6 +70,8 @@ const billingWorker = createBillingWorker({
   connection: createRedis(),
   prisma,
   client: createBillplzClient({ apiKey: billplzApiKey, baseUrl: billplzBaseUrl }),
+  mailQueue: mailProducer,
+  appUrl,
   log,
 });
 billingWorker.on('failed', (job, err) =>

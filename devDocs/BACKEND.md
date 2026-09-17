@@ -529,6 +529,55 @@ prefix, so a page with only 30 facts can fall under it, silently cache nothing,
 and cost several times a comparable page per conversation.
 `cacheReadTokens / inputTokens` is the only place that becomes visible.
 
+### Granting paid time
+
+Three things can tell us a bill was paid: Billplz's callback, the redirect the
+browser follows back, and an hourly check that asks about payments still
+pending. All three go through one function, `grantPayment` in
+`packages/billing/src/grant.ts`, and nothing else writes `Page.paidUntil`.
+
+**Binding comes before granting.** A bill is looked up by `billplzBillId`, which
+is unique, so an arrival for a bill we never raised grants nothing. It must also
+match the collection and the exact `amountCents` stored when the bill was raised
+-- never today's price, which may have changed -- and, when the evidence came
+from fetching the bill rather than from the callback, its `reference_1` must be
+that payment's own id.
+
+**Then one transaction.** The payment is claimed with a conditional update from
+`PENDING` to `PAID`; a second arrival for the same bill changes no rows and
+stops there. The page row is locked with `SELECT ... FOR UPDATE` before
+`paidUntil` is read, so two payments landing together for one page both extend
+it instead of one overwriting the other. `extendPaidUntil` counts calendar
+months from whichever is later, now or the current `paidUntil`.
+
+**Why the hourly check exists.** Billplz retries a failed callback four times
+and then stops, about a day after the first attempt. If the API is down for that
+long, the owner has paid and nothing has granted it. The check scans `PENDING`
+payments with a bill id, created between two hours and seven days ago, fetches
+each bill, and grants through the same step.
+
+**What the callback answers.** 400 for a missing or wrong signature, and 200 for
+everything else -- an unpaid bill and a mismatched amount are both things no
+retry can fix. An unexpected failure is allowed to become a 500 on purpose, so
+Billplz retries in fifteen seconds rather than leaving the payment to the hourly
+check. The callback body carries the payer's email and mobile, so only the bill
+id and the outcome are ever logged.
+
+### Telling an owner their plan is ending
+
+A daily job, `runRenewalReminders` in `apps/workers/src/billing/renewal-reminder.ts`,
+runs at 10:00 Malaysian time and selects business pages whose `paidUntil` is later
+than now and at most three days away. Each page is claimed by a conditional update
+that writes its own `paidUntil` into `renewalReminderFor` **before** the email is
+enqueued, so a crash between the two loses at most one email and can never send
+two. Renewing moves `paidUntil`, which makes the next period eligible again by
+itself -- there is no reminders table. One page's email failing does not stop the
+rest of the run. The email says plainly that nothing is charged automatically,
+because FPX cannot auto-charge.
+
+The workers refuse to boot without `APP_URL` set, because the email links to
+`{APP_URL}/app/billing`.
+
 ---
 
 ## Abuse and injection

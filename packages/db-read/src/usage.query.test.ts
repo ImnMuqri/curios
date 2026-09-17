@@ -1,0 +1,60 @@
+import { beforeAll, describe, expect, it } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
+import { getConversationUsage } from './usage.query.js';
+
+const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+
+const NOW = new Date('2026-09-17T04:00:00.000Z');
+let pageId = '';
+
+beforeAll(async () => {
+  await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
+  const account = await write.account.create({
+    data: {
+      email: 'usage@example.com',
+      pages: { create: { handle: 'usage', skeleton: 'usage', displayName: 'Nadia Bakes' } },
+    },
+    select: { pages: { select: { id: true } } },
+  });
+  pageId = account.pages[0]?.id ?? '';
+
+  await write.usageCounter.createMany({
+    data: [
+      { pageId, period: '2026-09', count: 12 },
+      // Last month's, which must not be counted into this month's.
+      { pageId, period: '2026-08', count: 99 },
+    ],
+  });
+});
+
+describe('getConversationUsage', () => {
+  it('counts this month, in the same period the API increments', async () => {
+    // The API's counter keys on `now.toISOString().slice(0, 7)`, so this must
+    // agree with it exactly: a different bucket would show an owner a number
+    // nothing is enforcing.
+    expect(await getConversationUsage(pageId, NOW)).toEqual({
+      used: 12,
+      cap: FREE_CONVERSATIONS_PER_MONTH,
+      period: '2026-09',
+    });
+  });
+
+  it('reads zero for a month with no conversations at all', async () => {
+    const usage = await getConversationUsage(pageId, new Date('2026-11-02T00:00:00.000Z'));
+
+    expect(usage).toEqual({ used: 0, cap: FREE_CONVERSATIONS_PER_MONTH, period: '2026-11' });
+  });
+
+  it('counts nothing for another page', async () => {
+    const other = await write.account.create({
+      data: {
+        email: 'usage-other@example.com',
+        pages: { create: { handle: 'usage-other', skeleton: 'usageother', displayName: 'Someone Else' } },
+      },
+      select: { pages: { select: { id: true } } },
+    });
+
+    expect((await getConversationUsage(other.pages[0]?.id ?? '', NOW)).used).toBe(0);
+  });
+});

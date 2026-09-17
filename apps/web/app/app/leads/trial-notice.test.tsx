@@ -54,6 +54,45 @@ describe('trialNotice', () => {
     expect(notice?.text).toContain('2026');
     expect(notice?.text).not.toContain('free leads');
   });
+
+  it('sends every notice to billing, now that there is somewhere to pay', () => {
+    const states = [
+      from({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: 1 }),
+      from({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: FREE_LEADS }),
+      from({ mode: 'BUSINESS', paidUntil: PAST, leadsCaptured: FREE_LEADS }),
+    ];
+
+    for (const state of states) {
+      expect(trialNotice(state)?.action.href).toBe('/app/billing');
+      expect(trialNotice(state)?.action.label.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('tells a page that lapsed with free leads left both halves of that', () => {
+    // Paid, captured one, lapsed, two free leads remain. Called a plain trial it
+    // reads as though the page never paid; called a lapse it reads as though
+    // capture has stopped, and it has not.
+    const notice = trialNotice(from({ mode: 'BUSINESS', paidUntil: PAST, leadsCaptured: 1 }));
+
+    expect(notice?.tone).toBe('action');
+    expect(notice?.text).toContain('subscription ended');
+    expect(notice?.text).toContain(`${FREE_LEADS - 1} free leads left`);
+    expect(notice?.text).not.toContain('no longer shown');
+  });
+
+  it('writes the lapse date as a Malaysian calendar day', () => {
+    // 20:00 UTC on 12 August is already the 13th in Kuala Lumpur, which is the
+    // date the owner's own calendar shows.
+    const notice = trialNotice(
+      from({
+        mode: 'BUSINESS',
+        paidUntil: new Date('2026-08-12T20:00:00.000Z'),
+        leadsCaptured: FREE_LEADS,
+      }),
+    );
+
+    expect(notice?.text).toContain('13 August 2026');
+  });
 });
 
 describe('TrialNotice', () => {
@@ -67,5 +106,11 @@ describe('TrialNotice', () => {
   it('renders the count where an owner will see it', () => {
     render(<TrialNotice state={from({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: 1 })} />);
     expect(screen.getByRole('status')).toHaveTextContent(`1 of your ${FREE_LEADS} free leads used`);
+  });
+
+  it('renders the link an owner has to follow to do anything about it', () => {
+    render(<TrialNotice state={from({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: FREE_LEADS })} />);
+
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/app/billing');
   });
 });

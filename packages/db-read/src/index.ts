@@ -13,3 +13,7 @@ export { getLeads } from './leads.query.js';
 export type { OwnerLead, LeadSlots, LeadTranscriptLine } from './leads.query.js';
 export { getFaqIndex, getFaqEntry } from './faq.query.js';
 export type { FaqIndex, FaqListEntry, FaqAnswer } from './faq.query.js';
+export { getConversationUsage } from './usage.query.js';
+export type { ConversationUsage } from './usage.query.js';
+export { getRecentPayments, RECENT_PAYMENTS } from './payments.query.js';
+export type { OwnerPayment } from './payments.query.js';

@@ -539,7 +539,7 @@ Make each change, run the file, confirm the named test fails, then restore:
 - [ ] **Step 6: The leads screen still renders**
 
 Run: `cd apps/web && npx vitest run app/app/leads`
-Expected: every leads test passes. The component's props did not change, so `page.test.tsx` and `lead-list.test.tsx` should be untouched by this; if either fails, report it rather than adjusting the notice.
+Expected: every leads test passes. The component's props did not change, so `lead-list.test.tsx` should be untouched by this — the leads screen has no page test of its own. If it fails, report it rather than adjusting the notice.
 
 - [ ] **Step 7: Package gates**
 
@@ -568,6 +568,8 @@ git commit -m "feat(web): the trial notice links to billing, and names a lapse t
 - Modify: `packages/db-read/src/owner-page.query.ts`
 - Modify: `packages/db-read/src/owner-page.query.test.ts`
 - Modify: `packages/db-read/src/index.ts`
+- Modify: `packages/db-read/vitest.setup.ts`
+- Modify: `apps/web/app/app/layout.test.tsx`, `apps/web/app/app/review/page.test.tsx`, `apps/web/app/app/billing/page.test.tsx` — one fixture field each
 
 **Interfaces:**
 - Consumes: `conversationCap()` from `@curios/core`; `UsageCounter` and `Payment` from the schema.
@@ -589,6 +591,15 @@ docker exec curios-postgres psql -U curios -d curios -tAc "SELECT has_table_priv
 ```
 
 Expected: `t` from both. `readonly-role.sql` carries `ALTER DEFAULT PRIVILEGES`, so tables created by later migrations inherit the grant; this step is here because a `f` would otherwise surface as an authentication-shaped failure in Step 3 rather than a missing grant. If either prints `f`, re-run `packages/db/prisma/sql/readonly-role.sql` against that database and say so in your report.
+
+Then pin the cap for this package's tests. `getConversationUsage` calls `conversationCap()`, which reads `CONVERSATION_CAP_PER_MONTH` when called, and the root setup loads `.env` — so a developer who raised the cap locally would change what these tests see. Append to `packages/db-read/vitest.setup.ts`, the same fix for the same reason as `apps/api/vitest.setup.ts`:
+
+```ts
+// Pinned to the production default. conversationCap() reads this when called,
+// and the root setup loads .env, so without the pin a developer's local
+// override would change what the usage test expects. Same as apps/api.
+process.env.CONVERSATION_CAP_PER_MONTH = '200';
+```
 
 - [ ] **Step 2: Write the failing tests**
 
@@ -898,6 +909,8 @@ and to the `select`, after `leadsCaptured: true,`:
       trialResetAt: true,
 ```
 
+`OwnerPage` has only required fields, so a new field breaks every object literal typed as one. Three exist, all test fixtures in `apps/web`: `app/app/layout.test.tsx`, `app/app/review/page.test.tsx` and `app/app/billing/page.test.tsx`. In each, add `trialResetAt: null,` as the fixture's last field, after `leadsCaptured: 0,`. Then search for others — `grep -rn "OwnerPage = {" apps packages` — and fix every one it finds: the list above was right when this plan was written, not necessarily now.
+
 - [ ] **Step 6: Run them and watch them pass**
 
 Run: `cd packages/db-read && npx vitest run src/usage.query.test.ts src/payments.query.test.ts src/owner-page.query.test.ts`
@@ -923,10 +936,20 @@ npx eslint .; echo "LINT EXIT: $?"
 
 Expected: all three exit 0, with the package's existing query tests still passing.
 
+Then check the app whose fixtures you touched, because this package's `tsc` cannot see them:
+
+```bash
+cd apps/web
+npx tsc --noEmit; echo "WEB TSC EXIT: $?"
+npx vitest run app/app/layout.test.tsx app/app/review app/app/billing; echo "WEB TEST EXIT: $?"
+```
+
+Expected: both exit 0.
+
 - [ ] **Step 9: Commit**
 
 ```bash
-git add packages/db-read/src/usage.query.ts packages/db-read/src/usage.query.test.ts packages/db-read/src/payments.query.ts packages/db-read/src/payments.query.test.ts packages/db-read/src/owner-page.query.ts packages/db-read/src/owner-page.query.test.ts packages/db-read/src/index.ts
+git add packages/db-read/src/usage.query.ts packages/db-read/src/usage.query.test.ts packages/db-read/src/payments.query.ts packages/db-read/src/payments.query.test.ts packages/db-read/src/owner-page.query.ts packages/db-read/src/owner-page.query.test.ts packages/db-read/src/index.ts packages/db-read/vitest.setup.ts apps/web/app/app/layout.test.tsx apps/web/app/app/review/page.test.tsx apps/web/app/app/billing/page.test.tsx
 git commit -m "feat(db-read): this month's usage, and the payments behind a page's paid time"
 ```
 
@@ -1539,7 +1562,6 @@ export async function runRenewalReminders(deps: {
       id: true,
       displayName: true,
       paidUntil: true,
-      renewalReminderFor: true,
       account: { select: { email: true } },
     },
     orderBy: { paidUntil: 'asc' },
@@ -1549,12 +1571,15 @@ export async function runRenewalReminders(deps: {
   for (const page of due) {
     const paidUntil = page.paidUntil;
     if (paidUntil === null) continue;
-    if (page.renewalReminderFor?.getTime() === paidUntil.getTime()) continue;
 
-    // The claim. `paidUntil` is in the `where` too, so an owner who renews
-    // between the read above and this write is not marked for a period that is
-    // no longer theirs. The explicit null branch is here rather than a bare
-    // `not`, so the query does not depend on how NULL compares in an inequality.
+    // The claim, and the only guard. There is deliberately no check of the mark
+    // in front of it, so the test that proves one reminder per period is a test
+    // of this update rather than of a shortcut before it. A page already
+    // reminded costs one update that changes no rows, at most three days running.
+    // `paidUntil` is in the `where` too, so an owner who renews between the read
+    // above and this write is not marked for a period that is no longer theirs.
+    // The explicit null branch is here rather than a bare `not`, so the query
+    // does not depend on how NULL compares in an inequality.
     const claim = await deps.prisma.page.updateMany({
       where: {
         id: page.id,
@@ -1696,7 +1721,7 @@ Expected: 22 passed — 8 pending-check, 2 scheduling, 8 reminder runs, 4 remind
 Make each change, run the affected file, confirm the named test fails, then restore:
 
 1. Swap the claim and the send — enqueue the mail before the `updateMany` — `'keeps the claim when the email cannot be queued'` fails, because the page is left unmarked.
-2. Remove the `OR` from the claim's `where` — `'never sends a second reminder for the same period'` fails.
+2. Remove the `OR` from the claim's `where` — `'never sends a second reminder for the same period'` fails. It can only fail because nothing else stands in front of the claim; if it passes, check that no pre-check of `renewalReminderFor` has crept in before the update.
 3. Change `lte` to `lt` in the window — `'reminds a plan ending exactly three days out'` fails.
 4. Change `gt: deps.now` to `gte: new Date(0)` — `'says nothing to a plan that has already ended'` fails.
 5. Drop `tz` from the daily schedule — `'schedules the reminder daily at 10:00 Malaysian time'` fails.
@@ -1749,11 +1774,31 @@ describe('usageSummary', () => {
     );
   });
 
+  it('adds nothing at exactly the cap, where chat still answers normally', () => {
+    // The API refuses only above the cap (isOverCap is `>`), so the 200th
+    // conversation of 200 was answered by the model like any other.
+    expect(usageSummary({ used: 200, cap: 200, period: '2026-09' })).toBe(
+      '200 of 200 conversations used this month.',
+    );
+  });
+
   it('says what happens past the cap, because chat has already changed', () => {
     // Over the cap the API answers with a fixed reply instead of the model. An
     // owner seeing "201 of 200" without that sentence would think nothing had.
     expect(usageSummary({ used: 201, cap: 200, period: '2026-09' })).toBe(
       '201 of 200 conversations used this month. Chat is answering with a short fixed reply until next month.',
+    );
+  });
+});
+
+describe('planSummary, after a lapse', () => {
+  it('tells a page that lapsed with free leads left that its plan ended', () => {
+    // The leads screen says both halves of this (trial-notice.tsx). This
+    // screen saying only "free trial" would tell the same owner otherwise.
+    expect(
+      planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: 1 })),
+    ).toBe(
+      `Your plan ended on 1 August 2026. You have ${FREE_LEADS - 1} free leads left before the capture card stops.`,
     );
   });
 });
@@ -1764,9 +1809,13 @@ describe('paymentLine', () => {
     plan: 'MONTHLY' as const,
     amountCents: 3900,
     status: 'PAID' as const,
+    // The two dates fall on different Malaysian calendar days on purpose: 20:00
+    // UTC is already the 12th in Kuala Lumpur, 10:00 UTC is still the 11th. With
+    // both on one day, the started-date expectation below could never appear and
+    // the mutation that dates a paid payment by createdAt could not fail.
     paidAt: new Date('2026-09-11T20:00:00.000Z'),
     grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-    createdAt: new Date('2026-09-11T19:00:00.000Z'),
+    createdAt: new Date('2026-09-11T10:00:00.000Z'),
   };
 
   it('dates a paid payment by when it was paid, in Malaysian time', () => {
@@ -1871,7 +1920,7 @@ const ResetTrial = vi.fn(() => null);
 vi.mock('./reset-button.js', () => ({ ResetTrial }));
 ```
 
-update the `page` fixture to carry the new column:
+confirm the `page` fixture carries the new column — Task 4 added `trialResetAt: null` to it — so it reads:
 
 ```tsx
 const page: OwnerPage = {
@@ -1928,7 +1977,7 @@ and add these tests to the `describe('BillingPage')` block:
         status: 'PAID',
         paidAt: new Date('2026-09-11T20:00:00.000Z'),
         grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-        createdAt: new Date('2026-09-11T19:00:00.000Z'),
+        createdAt: new Date('2026-09-11T10:00:00.000Z'),
       },
     ]);
 
@@ -1982,7 +2031,7 @@ and add these tests to the `describe('BillingPage')` block:
 - [ ] **Step 2: Run them and watch them fail**
 
 Run: `cd apps/web && npx vitest run app/app/billing`
-Expected: `billing-copy.test.ts` fails on the two missing exports, `reset-button.test.tsx` fails to load, and `page.test.tsx` fails because the page neither reads usage nor renders a reset.
+Expected: `billing-copy.test.ts` fails on the two missing exports and on the lapsed wording, `reset-button.test.tsx` fails to load, and `page.test.tsx` fails because the page neither reads usage nor renders a reset.
 
 - [ ] **Step 3: The copy**
 
@@ -2028,6 +2077,25 @@ export function paymentLine(payment: OwnerPayment): string {
 ```
 
 This file is imported only by `page.tsx`, a Server Component, so a type import from `@curios/db-read` costs the browser nothing.
+
+Then change the `trial` case of the existing `planSummary` from
+
+```ts
+    case 'trial':
+      return `You are on the free trial: ${state.used} of ${FREE_LEADS} free leads used.`;
+```
+
+to
+
+```ts
+    case 'trial':
+      // A trial can outlive a subscription -- planState's `lapsedOn`. Calling it
+      // a plain free trial would tell an owner who has paid that they never did,
+      // and the leads screen, which says both halves, would disagree with this.
+      return state.lapsedOn
+        ? `Your plan ended on ${formatDate(state.lapsedOn)}. You have ${state.remaining} free leads left before the capture card stops.`
+        : `You are on the free trial: ${state.used} of ${FREE_LEADS} free leads used.`;
+```
 
 - [ ] **Step 4: The reset button**
 
@@ -2148,10 +2216,8 @@ export default async function BillingPage({
 
   // A personal page pays nothing and is capped like any other, but has no
   // billing story to tell -- so it is asked for neither number.
-  const [usage, payments] =
-    state.kind === 'personal'
-      ? [null, []]
-      : await Promise.all([getConversationUsage(page.id, now), getRecentPayments(page.id)]);
+  const usage = state.kind === 'personal' ? null : await getConversationUsage(page.id, now);
+  const payments = state.kind === 'personal' ? [] : await getRecentPayments(page.id);
 
   // Exactly the conditions the API enforces (billing.service.ts, resetTrial).
   // A button that leads to a 409 is worse than no button.
@@ -2202,7 +2268,7 @@ export default async function BillingPage({
 - [ ] **Step 6: Run them and watch them pass**
 
 Run: `cd apps/web && npx vitest run app/app/billing`
-Expected: 36 passed — 17 copy, 4 pay buttons, 4 reset, 11 page. If the count differs, report the actual numbers rather than adjusting a test.
+Expected: 38 passed — 19 copy, 4 pay buttons, 4 reset, 11 page. If the count differs, report the actual numbers rather than adjusting a test.
 
 - [ ] **Step 7: Prove the tests can fail**
 
@@ -2210,9 +2276,14 @@ Make each change, run the billing tests, confirm the named test fails, then rest
 
 1. In `page.tsx`, drop `page.trialResetAt === null` from `canReset` — `'withholds the reset once it has been used'` fails.
 2. Drop `page.paidUntil === null` from `canReset` — `'withholds the reset from a page that has paid before'` fails.
-3. In `usageSummary`, compare `>=` instead of `>` — `'counts this month against the cap in force'` fails, because 200 of 200 would gain the fixed-reply sentence while chat is still answering normally.
+3. In `usageSummary`, compare `>=` instead of `>` — `'adds nothing at exactly the cap'` fails, because 200 of 200 would gain the fixed-reply sentence while chat is still answering normally.
 4. In `paymentLine`, date a paid payment by `createdAt` — `'dates a paid payment by when it was paid'` fails.
 5. In `ResetTrialForm`, call `refresh()` outside the `try` — `'does not refresh when the reset failed'` fails.
+6. In `planSummary`, ignore `lapsedOn` — `'tells a page that lapsed with free leads left that its plan ended'` fails.
+7. In `page.tsx`, drop `page.leadsCaptured >= 1` from `canReset` — `'withholds the reset from a page with nothing to give back'` fails.
+8. In `page.tsx`, remove the personal-page short-circuit so usage and payments are always read — `'reads no usage or payments for a personal page'` fails.
+
+Mutations 7 and 8 exist because those two tests assert an absence, and an absence is true before the code that could break it is written: both passed in the RED run, so only a mutation shows they can fail.
 
 - [ ] **Step 8: The whole web suite and gates**
 
@@ -2424,7 +2495,7 @@ docker exec -i curios-postgres psql -U curios -d curios -c \
 With the workers running, wait for the next 10:00, or restart them after setting the
 schedule's pattern to `'* * * * *'` locally — and put it back afterwards. In the workers'
 log, look for `renewal reminder queued` with that page's id, and in Mailpit
-(`http://localhost:8025`) for a message whose subject names the shop and the end date.
+(`http://localhost:8075` — `docker-compose.yml` maps Mailpit's web port there, not to 8025) for a message whose subject names the shop and the end date.
 
 The email must **not** say anything will be charged automatically. If it does, the copy
 is wrong and this check has failed, whatever else worked: FPX cannot auto-charge, and an

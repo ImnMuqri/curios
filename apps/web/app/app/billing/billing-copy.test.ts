@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_LEADS, planState } from '@curios/core';
-import { formatDate, paymentBanner, planSummary, ringgit } from './billing-copy.js';
+import { formatDate, paymentBanner, paymentLine, planSummary, ringgit, usageSummary } from './billing-copy.js';
 
 const NOW = new Date('2026-09-14T08:00:00.000Z');
 
@@ -84,5 +84,70 @@ describe('paymentBanner', () => {
   it('says nothing for anything else', () => {
     expect(paymentBanner(undefined)).toBeNull();
     expect(paymentBanner('granted')).toBeNull();
+  });
+});
+
+describe('usageSummary', () => {
+  it('counts this month against the cap in force', () => {
+    expect(usageSummary({ used: 12, cap: 200, period: '2026-09' })).toBe(
+      '12 of 200 conversations used this month.',
+    );
+  });
+
+  it('adds nothing at exactly the cap, where chat still answers normally', () => {
+    // The API refuses only above the cap (isOverCap is `>`), so the 200th
+    // conversation of 200 was answered by the model like any other.
+    expect(usageSummary({ used: 200, cap: 200, period: '2026-09' })).toBe(
+      '200 of 200 conversations used this month.',
+    );
+  });
+
+  it('says what happens past the cap, because chat has already changed', () => {
+    // Over the cap the API answers with a fixed reply instead of the model. An
+    // owner seeing "201 of 200" without that sentence would think nothing had.
+    expect(usageSummary({ used: 201, cap: 200, period: '2026-09' })).toBe(
+      '201 of 200 conversations used this month. Chat is answering with a short fixed reply until next month.',
+    );
+  });
+});
+
+describe('planSummary, after a lapse', () => {
+  it('tells a page that lapsed with free leads left that its plan ended', () => {
+    // The leads screen says both halves of this (trial-notice.tsx). This
+    // screen saying only "free trial" would tell the same owner otherwise.
+    expect(
+      planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: 1 })),
+    ).toBe(
+      `Your plan ended on 1 August 2026. You have ${FREE_LEADS - 1} free leads left before the capture card stops.`,
+    );
+  });
+});
+
+describe('paymentLine', () => {
+  const base = {
+    id: 'pay-1',
+    plan: 'MONTHLY' as const,
+    amountCents: 3900,
+    status: 'PAID' as const,
+    paidAt: new Date('2026-09-11T20:00:00.000Z'), // the 12th in Kuala Lumpur
+    grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
+    createdAt: new Date('2026-09-11T10:00:00.000Z'), // still the 11th in Kuala Lumpur
+  };
+
+  it('dates a paid payment by when it was paid, in Malaysian time', () => {
+    // 20:00 UTC is already the 12th in Kuala Lumpur.
+    expect(paymentLine(base)).toBe('12 September 2026 — RM39 for a month, paid');
+  });
+
+  it('dates an unfinished payment by when it was started, and says so', () => {
+    expect(paymentLine({ ...base, status: 'PENDING', paidAt: null, grantedUntil: null })).toBe(
+      '11 September 2026 — RM39 for a month, not completed',
+    );
+  });
+
+  it('names the annual plan by its period, not its price', () => {
+    expect(paymentLine({ ...base, plan: 'ANNUAL', amountCents: 39000 })).toBe(
+      '12 September 2026 — RM390 for a year, paid',
+    );
   });
 });

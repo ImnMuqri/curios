@@ -290,9 +290,7 @@ became 0, and the api suite went 6 for 6. Test-only change — the production
 `skipOnError: false` is untouched, and the test was confirmed still
 load-bearing by flipping it to `true` and watching exactly that test fail.
 
----
-
-### A page's free trial is spendable by anyone, including its owner — counter and runbook shipped, a supported reset still owed
+### A page's free trial is spendable by anyone, including its owner — resolved in slice 9
 
 Found by slice 8's whole-branch review. Not a defect in slice 8's logic; two
 decisions that were each right alone compose into a trap once a meter exists.
@@ -333,33 +331,19 @@ window is 24 hours per phone per page (`lead.service.ts:57`), so it does **not**
 take three phone numbers. One owner, their own number, three days of poking at
 their new page spends the whole trial.
 
-### Settled
+**Shipped in slice 9's plan 2:** the supported reset. `POST /billing/trial-reset`
+(`apps/api/src/modules/billing/billing.service.ts`) is one conditional update —
+BUSINESS, `paidUntil` null, `trialResetAt` null, at least one lead captured — and
+the button is on `/app/billing`. It can be used once, and a page that paid and
+lapsed is refused with `TRIAL_RESET_USED`: that page owes a renewal, not a second
+trial.
 
-No code change in slice 8. The gate is correct; what is wrong is that the state
-is invisible and unrecoverable, and both of those live on the owner-facing
-surface slice 8 deliberately does not build.
+Still open, and still not required: a per-page limit on `POST /leads` to match
+chat's 30/hour, and whether paying should consume the remaining trial — see
+`plan.test.ts`'s pay, capture twice, lapse case. Neither blocks anything.
 
-**Both shipped in the verification sweep, ahead of slice 9:**
-
-1. The owner-visible count. The leads screen says "2 of your 3 free leads used",
-   and names a spent trial or a lapsed payment once capture stops
-   (`apps/web/app/app/leads/trial-notice.tsx`, driven by `planState`).
-2. A written operator reset, in `devDocs/OPERATIONS.md` — with the checks to run
-   before it, and the reason not to write `paidUntil` instead.
-
-**Still owed, and slice 9's:** a *supported* reset. The written one is a `psql`
-statement — a procedure, not a feature — and there is no admin screen to run it
-from.
-
-Worth considering there, not required: a per-page limit on `POST /leads` to
-match chat's 30/hour, and whether paying should consume the remaining trial —
-see `plan.test.ts`'s pay, capture twice, lapse case.
-
-Safe to sit on until then. Nothing is deployed — no CI, no host config, no
-deploy script anywhere in the repo — so there are no live owners to hurt, and
-recovery is one `UPDATE` regardless. Slice 8 cannot ship alone for a larger
-reason anyway: without slice 9 there is no way to pay, so every business page
-would stop capturing at three leads permanently.
+Kept here rather than deleted, so a reader who was told about a finding can
+see what happened to it.
 
 ---
 

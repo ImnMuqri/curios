@@ -1,9 +1,10 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
-import { BILLING_QUEUE, PENDING_CHECK_JOB } from '@curios/core';
+import { BILLING_QUEUE, PENDING_CHECK_JOB, RENEWAL_REMINDER_JOB } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { evidenceFromBill, grantPayment, type BillplzClient } from '@curios/billing';
 import { QUEUE_CONCURRENCY } from '../queues.js';
+import { runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -23,7 +24,11 @@ export interface BillingLog {
 }
 
 export interface SchedulerQueue {
-  upsertJobScheduler(id: string, repeat: { pattern: string }, template: { name: string }): Promise<unknown>;
+  upsertJobScheduler(
+    id: string,
+    repeat: { pattern: string; tz?: string },
+    template: { name: string },
+  ): Promise<unknown>;
 }
 
 /**
@@ -76,6 +81,8 @@ export function createBillingWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   client: BillplzClient;
+  mailQueue: MailQueueLike;
+  appUrl: string;
   log?: BillingLog;
 }): Worker {
   return new Worker(
@@ -84,12 +91,28 @@ export function createBillingWorker(deps: {
       if (job.name === PENDING_CHECK_JOB) {
         await runPendingCheck({ prisma: deps.prisma, client: deps.client, now: new Date(), log: deps.log });
       }
+      if (job.name === RENEWAL_REMINDER_JOB) {
+        await runRenewalReminders({
+          prisma: deps.prisma,
+          mailQueue: deps.mailQueue,
+          now: new Date(),
+          appUrl: deps.appUrl,
+          log: deps.log,
+        });
+      }
     },
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.billing },
   );
 }
 
-/** Upserted under a fixed id, so a restart replaces the schedule instead of adding a second. */
+/** Upserted under fixed ids, so a restart replaces the schedules instead of adding more. */
 export async function scheduleBillingJobs(queue: SchedulerQueue): Promise<void> {
   await queue.upsertJobScheduler(PENDING_CHECK_JOB, { pattern: '0 * * * *' }, { name: PENDING_CHECK_JOB });
+  // 10:00 in Malaysia, named explicitly: without `tz` BullMQ reads the pattern
+  // in the server's zone, and a mid-morning email arrives at 2am.
+  await queue.upsertJobScheduler(
+    RENEWAL_REMINDER_JOB,
+    { pattern: '0 10 * * *', tz: 'Asia/Kuala_Lumpur' },
+    { name: RENEWAL_REMINDER_JOB },
+  );
 }

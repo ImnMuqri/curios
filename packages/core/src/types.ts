@@ -83,3 +83,5 @@ export interface MailJobData {
  */
 export const BILLING_QUEUE = 'billing';
 export const PENDING_CHECK_JOB = 'pending-check';
+/** The daily reminder that a plan is about to end. Scheduled jobs carry no data. */
+export const RENEWAL_REMINDER_JOB = 'renewal-reminder';

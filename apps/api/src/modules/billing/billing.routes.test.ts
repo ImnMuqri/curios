@@ -362,3 +362,83 @@ describe('GET /billing/billplz/return', () => {
     expect(await statusOf(paymentId)).toBe('PENDING');
   });
 });
+
+describe('POST /billing/trial-reset', () => {
+  const reset = (cookie: string | undefined) =>
+    app.inject({
+      method: 'POST',
+      url: '/billing/trial-reset',
+      remoteAddress: from(),
+      cookies: cookie ? { [SESSION_COOKIE]: cookie } : {},
+    });
+
+  const pageRow = (pageId: string) =>
+    app.prisma.page.findUniqueOrThrow({
+      where: { id: pageId },
+      select: { leadsCaptured: true, trialResetAt: true },
+    });
+
+  it('refuses a caller with no session', async () => {
+    expect((await reset(undefined)).statusCode).toBe(401);
+  });
+
+  it('gives a spent trial back to a page that never paid', async () => {
+    const owner = await anOwner();
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 3 } });
+
+    const res = await reset(owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'reset' });
+    const page = await pageRow(owner.pageId);
+    expect(page.leadsCaptured).toBe(0);
+    expect(page.trialResetAt).not.toBeNull();
+  });
+
+  it('refuses the second reset, and leaves the count where it was', async () => {
+    // The whole point of the stamp: one reset, not one per click.
+    const owner = await anOwner();
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 3 } });
+    await reset(owner.cookie);
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 2 } });
+
+    const res = await reset(owner.cookie);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ error: { code: 'TRIAL_RESET_USED' } });
+    expect((await pageRow(owner.pageId)).leadsCaptured).toBe(2);
+  });
+
+  it('refuses a page that has paid before, even one whose plan lapsed', async () => {
+    // A lapsed page owes a renewal. A free trial back would be a discount
+    // nobody decided to give.
+    const owner = await anOwner();
+    await app.prisma.page.update({
+      where: { id: owner.pageId },
+      data: { leadsCaptured: 3, paidUntil: new Date('2026-01-01T00:00:00.000Z') },
+    });
+
+    const res = await reset(owner.cookie);
+
+    expect(res.statusCode).toBe(409);
+    expect((await pageRow(owner.pageId)).leadsCaptured).toBe(3);
+  });
+
+  it('refuses a reset that would give nothing back', async () => {
+    // Zero leads captured: resetting would spend the one reset on nothing, and
+    // an owner who later needs it would find it gone.
+    const owner = await anOwner();
+
+    const res = await reset(owner.cookie);
+
+    expect(res.statusCode).toBe(409);
+    expect((await pageRow(owner.pageId)).trialResetAt).toBeNull();
+  });
+
+  it('refuses a personal page, which has no trial to reset', async () => {
+    const owner = await anOwner('PERSONAL');
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 3 } });
+
+    expect((await reset(owner.cookie)).statusCode).toBe(409);
+  });
+});

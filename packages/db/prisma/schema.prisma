@@ -104,6 +104,14 @@ model Page {
   /// count(Lead) because slice 5 gave owners a lead delete -- counting rows
   /// would let somebody delete their three trial leads and get three more.
   leadsCaptured Int            @default(0)
+  /// When the owner spent their one trial reset. Null means unused, and the
+  /// reset's conditional update requires null -- so a second click changes no
+  /// rows rather than granting a second trial.
+  trialResetAt  DateTime?
+  /// The paidUntil this owner was last reminded about. Renewing moves paidUntil,
+  /// which makes the next period eligible by itself: no reminders table, and no
+  /// way to send the same reminder twice.
+  renewalReminderFor DateTime?
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]

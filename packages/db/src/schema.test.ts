@@ -330,6 +330,34 @@ describe('the owner surface columns', () => {
     expect(payment).toEqual({ status: 'PENDING', paidAt: null, grantedUntil: null, billplzBillId: null });
   });
 
+  it('starts a page with its trial reset unused and no reminder recorded', async () => {
+    // Both columns are read as "has this happened yet", so their default is the
+    // whole of their meaning: the reset's conditional update requires
+    // trialResetAt null, and the reminder job treats null as never reminded.
+    const pageId = await aPageForPayments();
+
+    const page = await prisma.page.findUniqueOrThrow({
+      where: { id: pageId },
+      select: { trialResetAt: true, renewalReminderFor: true },
+    });
+
+    expect(page).toEqual({ trialResetAt: null, renewalReminderFor: null });
+  });
+
+  it('keeps both stamps once they are written', async () => {
+    const pageId = await aPageForPayments();
+    const resetAt = new Date('2026-09-17T02:00:00.000Z');
+    const remindedFor = new Date('2026-10-01T00:00:00.000Z');
+
+    const page = await prisma.page.update({
+      where: { id: pageId },
+      data: { trialResetAt: resetAt, renewalReminderFor: remindedFor },
+      select: { trialResetAt: true, renewalReminderFor: true },
+    });
+
+    expect(page).toEqual({ trialResetAt: resetAt, renewalReminderFor: remindedFor });
+  });
+
   it('refuses a second payment carrying the same Billplz bill id', async () => {
     // The unique index is what lets one bill grant exactly once.
     const pageId = await aPageForPayments();

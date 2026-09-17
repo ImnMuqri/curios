@@ -34,7 +34,18 @@ export interface PlanInput {
 export type PlanState =
   | { kind: 'personal' }
   | { kind: 'paid'; paidUntil: Date }
-  | { kind: 'trial'; used: number; remaining: number }
+  | {
+      /**
+       * `lapsedOn` is set when this page paid before and that payment has expired --
+       * a subscription can end while free leads remain, because the rule below is an
+       * OR. Optional rather than a state of its own: capture is unaffected, and only
+       * the wording an owner reads changes.
+       */
+      kind: 'trial';
+      used: number;
+      remaining: number;
+      lapsedOn?: Date;
+    }
   | { kind: 'trialSpent' }
   | { kind: 'lapsed'; paidUntil: Date };
 
@@ -53,6 +64,10 @@ export function planState(input: PlanInput): PlanState {
       kind: 'trial',
       used: input.leadsCaptured,
       remaining: FREE_LEADS - input.leadsCaptured,
+      // Spread, not `lapsedOn: input.paidUntil ?? undefined`: an explicit
+      // `lapsedOn: undefined` is a property the object has, and `toEqual` in the
+      // test above distinguishes that from a property it does not have.
+      ...(input.paidUntil !== null ? { lapsedOn: input.paidUntil } : {}),
     };
   }
 

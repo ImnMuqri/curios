@@ -100,6 +100,19 @@ describe('getOwnerPage', () => {
     expect(page?.paidUntil?.toISOString()).toBe(paidUntil.toISOString());
   });
 
+  it('carries whether the one trial reset has been spent', async () => {
+    const accountId = await anAccount({ published: true });
+    const before = await getOwnerPage(accountId);
+    expect(before?.trialResetAt).toBeNull();
+
+    const spentAt = new Date('2026-09-17T02:00:00.000Z');
+    await write.page.updateMany({ where: { accountId }, data: { trialResetAt: spentAt } });
+
+    // Without this column the screen would offer a reset the API then refuses,
+    // which is worse than not offering one.
+    expect((await getOwnerPage(accountId))?.trialResetAt).toEqual(spentAt);
+  });
+
   it('does not write, so the read-only role can run it', async () => {
     const accountId = await anAccount({ published: false });
     const before = await write.page.findFirst({ where: { accountId }, select: { published: true } });

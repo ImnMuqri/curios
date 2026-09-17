@@ -24,21 +24,24 @@ three different days with their own number spends all three. They then hit a
 paywall with an empty dashboard, having seen the product work only for
 themselves.
 
-**The leads screen now shows an owner how much of the trial is left, but nothing
-stops them spending it on their own tests** — so expect this to happen anyway.
+**Most of this is now the owner's to do.** `/app/billing` offers a reset while the
+page has never paid and has captured at least one lead, and it can be used once
+(`Page.trialResetAt`). This procedure is what remains: a page that already used
+its reset, a page that paid and lapsed, or anything else where you need to know
+what happened before changing it.
 
 ### 1. Confirm the state before changing anything
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c \
-  "SELECT handle, mode, published, \"leadsCaptured\", \"paidUntil\" FROM \"Page\" WHERE handle = 'HANDLE';"
+  "SELECT handle, mode, published, \"leadsCaptured\", \"paidUntil\", \"trialResetAt\" FROM \"Page\" WHERE handle = 'HANDLE';"
 ```
 
 Read it before deciding. Three different situations look the same to an owner:
 
 | What you see | What actually happened | Action |
 |---|---|---|
-| `leadsCaptured >= 3`, `paidUntil` null | Trial spent | Reset, if the leads were tests |
+| `leadsCaptured >= 3`, `paidUntil` null | Trial spent | Owner can reset it themselves on /app/billing, unless `trialResetAt` is set |
 | `leadsCaptured >= 3`, `paidUntil` in the past | Paid once, lapsed | **Do not reset.** They owe a renewal |
 | `mode = PERSONAL` | Never had capture at all | Nothing to reset; explain the tier |
 
@@ -71,15 +74,15 @@ trial back", not arithmetic against a number you would have to trust.
 ### 3. Do not reach for `paidUntil` instead
 
 It looks like the same fix and it is not. Writing a future `paidUntil` by hand
-creates a page that is paid with no payment behind it. Once slice 9 exists there
-will be a `Payment` table that is supposed to account for every paid page, and
-this row will not reconcile against it — by then the reason will be a year old
-and nobody will remember.
+creates a page that is paid with no payment behind it. The `Payment` table now
+accounts for every paid page, and a hand-written `paidUntil` reconciles against
+nothing in it — by the time anyone asks, the reason will be a year old and
+nobody will remember.
 
 If someone genuinely needs to be given paid time — a goodwill gesture, an outage
-— that is a decision with a record attached, not a `psql` statement. Wait for
-slice 9's billing surface, or write down who authorised it and why alongside the
-change.
+— that is a decision with a record attached, not a `psql` statement. Write down
+who authorised it and why alongside the change, and prefer giving them a bill
+they do not have to pay over inventing paid time.
 
 ### 4. Verify
 
@@ -91,11 +94,12 @@ request shows it.
 
 ### Retire this when
 
-When there is a supported way to reset a trial — an admin or billing screen, not a
-`psql` statement. The owner-visible counter this procedure was waiting on has
-shipped on the leads screen, which should make the need rarer but not zero: an
-owner who reads "3 of 3" still cannot get their trial back without you. See
-`deferred-findings.md`.
+Mostly retired already: the owner's own reset on `/app/billing` covers the case
+this was written for — an owner who spent the trial testing their own page and
+has never paid. What is left has no owner-facing equivalent and probably should
+not have one: a second reset, and anything touching a page that has paid. Retire
+the rest if an admin screen ever grows a supported way to do those, with the
+record of who did it that a `psql` statement cannot carry.
 
 ---
 
@@ -159,3 +163,19 @@ When the create-bill request is made idempotent against Billplz -- so a retry af
 exact failure re-uses the same bill instead of the owner needing a human to find it -- or
 when a scheduled sweep looks for exactly this shape (`PENDING`, `billplzBillId` null, old)
 and either recovers or flags it without a person going looking first.
+
+---
+
+## An owner says the renewal reminder never arrived
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT handle, \"paidUntil\", \"renewalReminderFor\" FROM \"Page\" WHERE handle = 'HANDLE';"
+```
+
+Compare the two columns. If `renewalReminderFor` equals the page's current
+`paidUntil`, the reminder for this period was already claimed and enqueued --
+the problem is downstream of the billing code, so look in the mail worker's
+logs and the mail provider rather than here. If it is null or an older value
+than `paidUntil`, the page has not been reminded for this period yet, and the
+daily run at 10:00 Malaysia time is the next chance.

@@ -56,6 +56,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   'FACT_DUPLICATE',
   'NO_PAGE',
   'PASSWORD_ALREADY_SET',
+  // The one trial reset, already spent -- or asked for by a page that is not
+  // entitled to it. 409 rather than 403: nothing is forbidden about the caller,
+  // the thing they are asking for is simply gone. The message says which.
+  'TRIAL_RESET_USED',
   'IDENTITY_TAKEN',
   // Starting a payment on a personal page. It says what is true: there is nothing
   // to pay for.

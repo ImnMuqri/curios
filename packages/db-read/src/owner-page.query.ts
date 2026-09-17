@@ -10,6 +10,8 @@ export interface OwnerPage {
   paidUntil: Date | null;
   /** Leads ever captured. Never decremented -- deleting a lead does not return one. */
   leadsCaptured: number;
+  /** When the owner spent their one trial reset, or null while it is unspent. */
+  trialResetAt: Date | null;
 }
 
 /**
@@ -42,6 +44,7 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       mode: true,
       paidUntil: true,
       leadsCaptured: true,
+      trialResetAt: true,
     },
   });
 }
