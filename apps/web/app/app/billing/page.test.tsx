@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage }));
+const getConversationUsage = vi.fn();
+const getRecentPayments = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getConversationUsage, getRecentPayments }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -19,10 +21,12 @@ const redirect = vi.fn((url: string) => {
 });
 vi.mock('next/navigation', () => ({ redirect }));
 
-// PayButtons closes over apiFetch and window.location. These tests are about what the
-// page decides to offer, so it records the options it was given instead.
+// Both client components are recorded rather than rendered: these tests are
+// about what the page decides to offer, not about what those two do with it.
 const PayButtons = vi.fn((_props: { options: { plan: string; label: string }[] }) => null);
 vi.mock('./pay-buttons.js', () => ({ PayButtons }));
+const ResetTrial = vi.fn(() => null);
+vi.mock('./reset-button.js', () => ({ ResetTrial }));
 
 const BillingPage = (await import('./page.js')).default;
 
@@ -47,6 +51,11 @@ describe('BillingPage', () => {
     getOwnerPage.mockReset();
     resolveOwner.mockReset();
     PayButtons.mockClear();
+    ResetTrial.mockClear();
+    getConversationUsage.mockReset();
+    getRecentPayments.mockReset();
+    getConversationUsage.mockResolvedValue({ used: 12, cap: 200, period: '2026-09' });
+    getRecentPayments.mockResolvedValue([]);
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
   });
 
@@ -76,5 +85,71 @@ describe('BillingPage', () => {
 
   it('sends an owner with no page to onboarding', async () => {
     await expect(renderWith(null)).rejects.toThrow('NEXT_REDIRECT:/app/onboarding');
+  });
+
+  it('shows this month’s usage against the cap', async () => {
+    await renderWith(page);
+
+    expect(screen.getByText('12 of 200 conversations used this month.')).toBeInTheDocument();
+    expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('lists what has been paid', async () => {
+    getRecentPayments.mockResolvedValue([
+      {
+        id: 'pay-1',
+        plan: 'MONTHLY',
+        amountCents: 3900,
+        status: 'PAID',
+        paidAt: new Date('2026-09-11T20:00:00.000Z'),
+        grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
+        createdAt: new Date('2026-09-11T19:00:00.000Z'),
+      },
+    ]);
+
+    await renderWith(page);
+
+    expect(screen.getByText('12 September 2026 — RM39 for a month, paid')).toBeInTheDocument();
+  });
+
+  it('offers the reset to a page that never paid and spent leads testing itself', async () => {
+    await renderWith({ ...page, leadsCaptured: 3 });
+
+    expect(ResetTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('withholds the reset once it has been used', async () => {
+    await renderWith({
+      ...page,
+      leadsCaptured: 3,
+      trialResetAt: new Date('2026-09-01T00:00:00.000Z'),
+    });
+
+    // Offering a button the API answers 409 to is worse than offering none.
+    expect(ResetTrial).not.toHaveBeenCalled();
+  });
+
+  it('withholds the reset from a page that has paid before', async () => {
+    await renderWith({
+      ...page,
+      leadsCaptured: 3,
+      paidUntil: new Date('2026-01-01T00:00:00.000Z'),
+    });
+
+    expect(ResetTrial).not.toHaveBeenCalled();
+  });
+
+  it('withholds the reset from a page with nothing to give back', async () => {
+    await renderWith({ ...page, leadsCaptured: 0 });
+
+    expect(ResetTrial).not.toHaveBeenCalled();
+  });
+
+  it('reads no usage or payments for a personal page', async () => {
+    await renderWith({ ...page, mode: 'PERSONAL' });
+
+    // Nothing to show, so nothing to ask the database for.
+    expect(getConversationUsage).not.toHaveBeenCalled();
+    expect(getRecentPayments).not.toHaveBeenCalled();
   });
 });

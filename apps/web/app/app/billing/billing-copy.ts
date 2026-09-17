@@ -1,4 +1,5 @@
 import { FREE_LEADS, type PlanState } from '@curios/core';
+import type { ConversationUsage, OwnerPayment } from '@curios/db-read';
 
 const MALAYSIAN_DATE: Intl.DateTimeFormatOptions = {
   day: 'numeric',
@@ -27,7 +28,12 @@ export function planSummary(state: PlanState): string {
     case 'paid':
       return `Your plan is paid through ${formatDate(state.paidUntil)}.`;
     case 'trial':
-      return `You are on the free trial: ${state.used} of ${FREE_LEADS} free leads used.`;
+      // A trial can outlive a subscription -- planState's `lapsedOn`. Calling it
+      // a plain free trial would tell an owner who has paid that they never did,
+      // and the leads screen, which says both halves, would disagree with this.
+      return state.lapsedOn
+        ? `Your plan ended on ${formatDate(state.lapsedOn)}. You have ${state.remaining} free leads left before the capture card stops.`
+        : `You are on the free trial: ${state.used} of ${FREE_LEADS} free leads used.`;
     case 'trialSpent':
       return `All ${FREE_LEADS} of your free leads are used. Pay to keep the capture card on your page.`;
     case 'lapsed':
@@ -62,4 +68,35 @@ export function paymentBanner(value: string | undefined): PaymentBanner | null {
     default:
       return null;
   }
+}
+
+/**
+ * Conversations this month against the cap in force.
+ *
+ * Over the cap, chat answers with a short fixed reply rather than the model --
+ * that has already happened by the time an owner reads this, so the number
+ * alone would understate it.
+ */
+export function usageSummary(usage: ConversationUsage): string {
+  const counted = `${usage.used} of ${usage.cap} conversations used this month.`;
+  return usage.used > usage.cap
+    ? `${counted} Chat is answering with a short fixed reply until next month.`
+    : counted;
+}
+
+/**
+ * One line of payment history.
+ *
+ * A paid payment is dated by when it was paid; one that never completed is
+ * dated by when it was started, because it has no payment date and the owner
+ * remembers starting it. "Not completed" rather than "failed": most of these
+ * are a bill someone opened and closed, not a payment that went wrong.
+ */
+export function paymentLine(payment: OwnerPayment): string {
+  const period = payment.plan === 'ANNUAL' ? 'a year' : 'a month';
+  const amount = ringgit(payment.amountCents);
+
+  return payment.status === 'PAID' && payment.paidAt !== null
+    ? `${formatDate(payment.paidAt)} — ${amount} for ${period}, paid`
+    : `${formatDate(payment.createdAt)} — ${amount} for ${period}, not completed`;
 }
