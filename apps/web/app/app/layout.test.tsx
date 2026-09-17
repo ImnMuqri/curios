@@ -75,7 +75,7 @@ describe('the dashboard layout', () => {
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
     expect(screen.getByRole('navigation')).toBeInTheDocument();
-    expect(screen.getAllByRole('link')).toHaveLength(4);
+    expect(screen.getAllByRole('link')).toHaveLength(5);
   });
 
   it('refuses a session the database does not recognise, before asking for a page', async () => {

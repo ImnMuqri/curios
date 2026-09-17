@@ -7,6 +7,7 @@ const ITEMS = [
   { href: '/app/review', label: 'Review' },
   { href: '/app/questions', label: 'Questions' },
   { href: '/app/leads', label: 'Leads' },
+  { href: '/app/billing', label: 'Billing' },
   { href: '/app/settings', label: 'Settings' },
 ];
 
