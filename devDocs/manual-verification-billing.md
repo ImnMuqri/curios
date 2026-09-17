@@ -21,6 +21,8 @@ not the thing a person would actually see. **Yes** means only Billplz itself can
 | 5 | A failed sandbox payment shows the failed banner and grants nothing | `billing.routes.test.ts` — 'sends a signed but unpaid redirect to the failed banner, without fetching' | **Partly** |
 | 6 | A paid bill whose callback never arrived is granted by the hourly check | `pending-check.test.ts` — 'grants a payment whose callbacks never arrived' | **Partly** — the real schedule firing |
 | 7 | A personal page is offered nothing to pay | `page.test.tsx` — 'offers nothing to pay for on a personal page'; `billing.routes.test.ts` — 'refuses a personal page, and raises no bill' | **No** |
+| 8 | The renewal reminder reaches the owner's inbox three days out | `renewal-reminder.test.ts` — 'emails an owner whose plan ends in two days, and marks the period done'; 'never sends a second reminder for the same period' | **Yes** — only a real mail run proves an email arrives |
+| 9 | The owner can reset a spent trial once, and only before they have ever paid | `billing.routes.test.ts` — 'gives a spent trial back to a page that never paid'; 'refuses the second reset, and leaves the count where it was'; `page.test.tsx` — 'withholds the reset once it has been used' | **Partly** — the button and the refreshed screen |
 
 ## Before you start
 
@@ -130,6 +132,42 @@ Put both URLs back afterwards.
 
 Covered by CI. Worth a glance if you have a personal page to hand: `/app/billing` says there is nothing
 to pay for, and shows no buttons.
+
+### 8. The renewal reminder
+
+The schedule fires at 10:00 Malaysian time, which is no use to a walkthrough, so run
+the job directly against a page you have set up:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "UPDATE \"Page\" SET \"paidUntil\" = now() + interval '2 days', \"renewalReminderFor\" = NULL WHERE handle = 'YOURHANDLE';"
+```
+
+With the workers running, wait for the next 10:00, or restart them after setting the
+schedule's pattern to `'* * * * *'` locally — and put it back afterwards. In the workers'
+log, look for `renewal reminder queued` with that page's id, and in Mailpit
+(`http://localhost:8075` — `docker-compose.yml` maps Mailpit's web port there, not to 8025) for a message whose subject names the shop and the end date.
+
+The email must **not** say anything will be charged automatically. If it does, the copy
+is wrong and this check has failed, whatever else worked: FPX cannot auto-charge, and an
+owner who believes otherwise finds out by losing their capture card.
+
+Run the job a second time without changing anything. No second email may appear.
+
+### 9. The trial reset, once
+
+On a business page that has never paid, capture a lead (or set `"leadsCaptured" = 3`
+directly), then open `/app/billing`. Press **Reset my free trial**. The count returns to
+zero on the leads screen, and the capture card comes back on the public page after a
+qualifying conversation.
+
+Press it again — the button should be gone, because the screen reads `trialResetAt`. If
+you call the endpoint directly a second time, it must answer 409 `TRIAL_RESET_USED`.
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT \"leadsCaptured\", \"trialResetAt\" FROM \"Page\" WHERE handle = 'YOURHANDLE';"
+```
 
 ## Recording the result
 

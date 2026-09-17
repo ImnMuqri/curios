@@ -529,6 +529,40 @@ prefix, so a page with only 30 facts can fall under it, silently cache nothing,
 and cost several times a comparable page per conversation.
 `cacheReadTokens / inputTokens` is the only place that becomes visible.
 
+### Granting paid time
+
+Three things can tell us a bill was paid: Billplz's callback, the redirect the
+browser follows back, and an hourly check that asks about payments still
+pending. All three go through one function, `grantPayment` in
+`packages/billing/src/grant.ts`, and nothing else writes `Page.paidUntil`.
+
+**Binding comes before granting.** A bill is looked up by `billplzBillId`, which
+is unique, so an arrival for a bill we never raised grants nothing. It must also
+match the collection and the exact `amountCents` stored when the bill was raised
+-- never today's price, which may have changed -- and, when the evidence came
+from fetching the bill rather than from the callback, its `reference_1` must be
+that payment's own id.
+
+**Then one transaction.** The payment is claimed with a conditional update from
+`PENDING` to `PAID`; a second arrival for the same bill changes no rows and
+stops there. The page row is locked with `SELECT ... FOR UPDATE` before
+`paidUntil` is read, so two payments landing together for one page both extend
+it instead of one overwriting the other. `extendPaidUntil` counts calendar
+months from whichever is later, now or the current `paidUntil`.
+
+**Why the hourly check exists.** Billplz retries a failed callback four times
+and then stops, about a day after the first attempt. If the API is down for that
+long, the owner has paid and nothing has granted it. The check scans `PENDING`
+payments with a bill id, created between two hours and seven days ago, fetches
+each bill, and grants through the same step.
+
+**What the callback answers.** 400 for a missing or wrong signature, and 200 for
+everything else -- an unpaid bill and a mismatched amount are both things no
+retry can fix. An unexpected failure is allowed to become a 500 on purpose, so
+Billplz retries in fifteen seconds rather than leaving the payment to the hourly
+check. The callback body carries the payer's email and mobile, so only the bill
+id and the outcome are ever logged.
+
 ---
 
 ## Abuse and injection

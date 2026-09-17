@@ -21,7 +21,7 @@ people, not operators. Build them as two different products in one codebase.
 /app/leads                table + transcript drawer
 /app/questions            top asked, unanswered, answer-writeback
 /app/appearance           theme, avatar, badge
-/app/billing               plan, usage against cap
+/app/billing              plan, usage against cap, payments, trial reset
 ```
 
 **One flat namespace.** `curios.my/nadia` is the URL for a person and for a bakery
@@ -109,7 +109,7 @@ three leads are free, and after that it needs `paidUntil` in the future.
 holds, so on a lapsed page the card never appears however qualified the conversation is.
 The visitor is told nothing here, deliberately. The owner is told on their own leads
 screen, which counts the trial down and names a spent trial or a lapsed payment
-(`apps/web/app/app/leads/trial-notice.tsx`); paying is slice 9's `/app/billing`.
+(`apps/web/app/app/leads/trial-notice.tsx`); paying is `/app/billing`, which also shows the month's usage against the cap, recent payments, and — once, for a page that has never paid — a way to put the trial counter back to zero.
 
 Carries a consent line in the visitor's language, above the field, not hidden in a
 tooltip. It names who receives the number: the owner, not us.
