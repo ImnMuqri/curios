@@ -129,9 +129,9 @@ describe('paymentLine', () => {
     plan: 'MONTHLY' as const,
     amountCents: 3900,
     status: 'PAID' as const,
-    paidAt: new Date('2026-09-11T20:00:00.000Z'),
+    paidAt: new Date('2026-09-11T20:00:00.000Z'), // the 12th in Kuala Lumpur
     grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-    createdAt: new Date('2026-09-11T19:00:00.000Z'),
+    createdAt: new Date('2026-09-11T10:00:00.000Z'), // still the 11th in Kuala Lumpur
   };
 
   it('dates a paid payment by when it was paid, in Malaysian time', () => {

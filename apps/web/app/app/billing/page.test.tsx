@@ -103,7 +103,7 @@ describe('BillingPage', () => {
         status: 'PAID',
         paidAt: new Date('2026-09-11T20:00:00.000Z'),
         grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-        createdAt: new Date('2026-09-11T19:00:00.000Z'),
+        createdAt: new Date('2026-09-11T10:00:00.000Z'),
       },
     ]);
 
