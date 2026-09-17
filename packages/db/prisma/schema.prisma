@@ -49,6 +49,16 @@ enum AuthTokenKind {
   PASSWORD_RESET
 }
 
+enum BillingPlan {
+  MONTHLY
+  ANNUAL
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+}
+
 model Account {
   id              String               @id @default(cuid())
   email           String               @unique
@@ -106,6 +116,7 @@ model Page {
   @@unique([accountId])
   leads         Lead[]
   questions     Question[]
+  payments      Payment[]
 }
 
 model Link {
@@ -324,4 +335,32 @@ model Question {
   @@unique([pageId, faqSlug])
   // The screen's only ordering: most asked first, then most recent.
   @@index([pageId, askCount])
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  pageId              String
+  /// Restrict, not Cascade like every other table here: a payment is a financial
+  /// record, and it must not disappear as a side effect of removing a page.
+  page                Page          @relation(fields: [pageId], references: [id], onDelete: Restrict)
+  plan                BillingPlan
+  /// What was billed, fixed at creation. A grant is checked against this -- never
+  /// against today's price, which may have changed since the bill was raised.
+  amountCents         Int
+  /// Fixed at creation for the same reason, so a later change of collection cannot
+  /// break the grant for a bill already issued.
+  billplzCollectionId String
+  /// Filled from Billplz's response. Unique, so one bill can never grant twice;
+  /// nullable, because a failed call to Billplz leaves a pending row without one.
+  billplzBillId       String?       @unique
+  status              PaymentStatus @default(PENDING)
+  paidAt              DateTime?
+  /// The paidUntil this payment produced -- an audit trail for every extension.
+  grantedUntil        DateTime?
+  createdAt           DateTime      @default(now())
+
+  // The hourly pending check scans by status and age.
+  @@index([status, createdAt])
+  // Plan 2's "recent payments" reads by page, newest first.
+  @@index([pageId, createdAt])
 }

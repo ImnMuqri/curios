@@ -319,4 +319,57 @@ describe('the owner surface columns', () => {
       prisma.$executeRawUnsafe('UPDATE "Page" SET "leadsCaptured" = NULL WHERE id = $1', page.id),
     ).rejects.toThrow(/23502/);
   });
+
+  it('starts a payment pending, with nothing paid or granted yet', async () => {
+    const pageId = await aPageForPayments();
+    const payment = await prisma.payment.create({
+      data: { pageId, plan: 'MONTHLY', amountCents: 3900, billplzCollectionId: 'col-test' },
+      select: { status: true, paidAt: true, grantedUntil: true, billplzBillId: true },
+    });
+
+    expect(payment).toEqual({ status: 'PENDING', paidAt: null, grantedUntil: null, billplzBillId: null });
+  });
+
+  it('refuses a second payment carrying the same Billplz bill id', async () => {
+    // The unique index is what lets one bill grant exactly once.
+    const pageId = await aPageForPayments();
+    const billplzBillId = `bill-${randomUUID()}`;
+    const data = { pageId, plan: 'MONTHLY' as const, amountCents: 3900, billplzCollectionId: 'col-test', billplzBillId };
+    await prisma.payment.create({ data });
+
+    await expect(prisma.payment.create({ data })).rejects.toMatchObject({ code: 'P2002' });
+  });
+
+  it('allows any number of payments that never got a bill id', async () => {
+    // A failed call to Billplz leaves a pending row with no bill id. Several of
+    // those must not collide on the unique index.
+    const pageId = await aPageForPayments();
+    const data = { pageId, plan: 'ANNUAL' as const, amountCents: 39000, billplzCollectionId: 'col-test' };
+    await prisma.payment.create({ data });
+
+    await expect(prisma.payment.create({ data })).resolves.toBeTruthy();
+  });
+
+  it('will not delete a page that has a payment', async () => {
+    // Restrict, where every other table cascades: a payment is a financial
+    // record and must not vanish as a side effect of removing a page.
+    const pageId = await aPageForPayments();
+    await prisma.payment.create({
+      data: { pageId, plan: 'MONTHLY', amountCents: 3900, billplzCollectionId: 'col-test' },
+    });
+
+    await expect(prisma.page.delete({ where: { id: pageId } })).rejects.toMatchObject({ code: 'P2003' });
+  });
 });
+
+async function aPageForPayments(): Promise<string> {
+  const skeleton = `pay-${randomUUID().slice(0, 8)}`;
+  const account = await prisma.account.create({
+    data: {
+      email: `payments-${randomUUID()}@example.com`,
+      pages: { create: { handle: skeleton, skeleton, displayName: 'Nadia Bakes' } },
+    },
+    select: { pages: { select: { id: true } } },
+  });
+  return account.pages[0]?.id ?? '';
+}
