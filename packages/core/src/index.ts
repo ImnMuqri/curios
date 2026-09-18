@@ -38,4 +38,5 @@ export { canCapture, FREE_LEADS, planState } from './plan.js';
 export type { PlanInput, PlanState } from './plan.js';
 export { extendPaidUntil, PLAN_PRICES_CENTS } from './billing.js';
 export type { BillingPlan } from './billing.js';
+export { shouldIndex } from './indexing.js';
 export { FAQ_MIN_ASKS, faqSlugBase, qualifiesForFaq, serialiseJsonLd } from './faq.js';
