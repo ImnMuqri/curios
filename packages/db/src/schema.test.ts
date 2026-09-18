@@ -358,6 +358,48 @@ describe('the owner surface columns', () => {
     expect(page).toEqual({ trialResetAt: resetAt, renewalReminderFor: remindedFor });
   });
 
+  it('keeps a new page out of search results until its owner says otherwise', async () => {
+    const pageId = await aPageForPayments();
+
+    const page = await prisma.page.findUniqueOrThrow({
+      where: { id: pageId },
+      select: { allowSearchIndexing: true },
+    });
+
+    expect(page.allowSearchIndexing).toBe(false);
+  });
+
+  it('accepts an ingestion from pasted text alone', async () => {
+    const pageId = await aPageForPayments();
+
+    const ingestion = await prisma.ingestion.create({
+      data: { pageId, pastedText: 'I bake cakes in Shah Alam.' },
+      select: { sourceUrl: true, pastedText: true },
+    });
+
+    expect(ingestion).toEqual({ sourceUrl: null, pastedText: 'I bake cakes in Shah Alam.' });
+  });
+
+  it('refuses an ingestion with both a website address and pasted text', async () => {
+    // Raw SQL, because Prisma's own types would let this through and only the
+    // database constraint can refuse it. 23514 is Postgres's check violation.
+    const pageId = await aPageForPayments();
+
+    await expect(
+      prisma.$executeRaw`INSERT INTO "Ingestion" ("id", "pageId", "sourceUrl", "pastedText", "updatedAt")
+        VALUES (${`ing-${randomUUID()}`}, ${pageId}, 'https://nadia.example/', 'About me', now())`,
+    ).rejects.toThrow(/23514/);
+  });
+
+  it('refuses an ingestion with neither', async () => {
+    const pageId = await aPageForPayments();
+
+    await expect(
+      prisma.$executeRaw`INSERT INTO "Ingestion" ("id", "pageId", "updatedAt")
+        VALUES (${`ing-${randomUUID()}`}, ${pageId}, now())`,
+    ).rejects.toThrow(/23514/);
+  });
+
   it('refuses a second payment carrying the same Billplz bill id', async () => {
     // The unique index is what lets one bill grant exactly once.
     const pageId = await aPageForPayments();

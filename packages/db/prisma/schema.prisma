@@ -112,6 +112,11 @@ model Page {
   /// which makes the next period eligible by itself: no reminders table, and no
   /// way to send the same reminder twice.
   renewalReminderFor DateTime?
+  /// Whether a personal page may appear in search results. Off by default:
+  /// most people do not want an AI page about themselves ranking for their own
+  /// name. Business pages are always indexed, so this is read only for personal
+  /// pages -- see shouldIndex in @curios/core.
+  allowSearchIndexing Boolean @default(false)
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]
@@ -218,7 +223,12 @@ model Ingestion {
   id             String          @id @default(cuid())
   pageId         String
   page           Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  sourceUrl      String
+  /// The page crawled. Null when the owner pasted text instead.
+  sourceUrl      String?
+  /// What the owner pasted. Null when a URL was crawled. Not called
+  /// sourceText: Fact.sourceText already exists and means the excerpt one fact
+  /// came from, which is a different thing.
+  pastedText     String?
   status         IngestionStatus @default(QUEUED)
   extractedCount Int             @default(0)
   error          String?

@@ -56,7 +56,8 @@ export const ingestRoutes: FastifyPluginAsyncZod<IngestRouteOptions> = async (ap
             status: z.enum(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED']),
             extractedCount: z.number(),
             error: z.string().nullable(),
-            sourceUrl: z.string(),
+            // Null for an ingestion from pasted text.
+            sourceUrl: z.string().nullable(),
           }),
           404: errorSchema,
         },
