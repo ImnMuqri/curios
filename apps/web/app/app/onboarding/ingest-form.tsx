@@ -42,9 +42,18 @@ export function IngestForm({
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    // `required` is satisfied by whitespace, and the API's own answer to an
+    // all-whitespace paste is Fastify's raw validation wording -- catch it
+    // here so the owner hears it from us instead.
+    if (using === 'text' && pastedText.trim() === '') {
+      setError('Paste something first — a bio, captions, an About section, whatever says it best.');
+      return;
+    }
     // Checked here so the owner is told before anything is sent; the API's
-    // schema is what actually enforces it.
-    if (using === 'text' && pastedText.length > pastedTextMax) {
+    // schema is what actually enforces it. The API trims before measuring, so
+    // this compares trimmed length too -- trailing whitespace should not
+    // fail someone the API would have accepted.
+    if (using === 'text' && pastedText.trim().length > pastedTextMax) {
       setError(`That is more than ${count(pastedTextMax)} characters. Paste the part that says the most.`);
       return;
     }

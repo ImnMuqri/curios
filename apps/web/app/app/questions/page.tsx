@@ -30,7 +30,7 @@ export default async function QuestionsPage() {
   // request time that no gate catches.
   return (
     <Shell title="Questions">
-      <Questions questions={questions} publishesFaq={page?.mode !== 'PERSONAL'} />
+      <Questions questions={questions} publishesFaq={page?.mode === 'BUSINESS'} />
     </Shell>
   );
 }

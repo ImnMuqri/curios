@@ -49,6 +49,38 @@ describe('IngestForm', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('more than 10 characters');
   });
 
+  it('refuses a whitespace-only paste before sending it', async () => {
+    // `required` is satisfied by "   ", so this is caught here, not by the
+    // browser -- and not by the API, whose raw validation wording is not fit
+    // for an owner to read.
+    const onIngest = vi.fn(async () => ({ ingestionId: 'i-1' }));
+    wrap(
+      <IngestForm pageId="p1" mode="BUSINESS" pastedTextMax={20_000} onIngest={onIngest} fetchStatus={vi.fn(pending)} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Paste text instead' }));
+    await userEvent.type(screen.getByLabelText('About your business'), '   ');
+    await userEvent.click(screen.getByRole('button', { name: 'Read what I pasted' }));
+
+    expect(onIngest).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent('Paste something first');
+  });
+
+  it('does not fail someone whose paste is only over the cap before trimming', async () => {
+    // The API trims before measuring, so trailing whitespace here must not
+    // fail someone the API would have accepted.
+    const onIngest = vi.fn(async () => ({ ingestionId: 'i-1' }));
+    wrap(
+      <IngestForm pageId="p1" mode="BUSINESS" pastedTextMax={10} onIngest={onIngest} fetchStatus={vi.fn(pending)} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Paste text instead' }));
+    await userEvent.type(screen.getByLabelText('About your business'), '1234567890   ');
+    await userEvent.click(screen.getByRole('button', { name: 'Read what I pasted' }));
+
+    expect(onIngest).toHaveBeenCalledWith({ pageId: 'p1', pastedText: '1234567890   ' });
+  });
+
   it('goes back to the paste box when the link gave us nothing', async () => {
     // Where an Instagram URL usually lands: the crawl succeeded and found
     // nothing. It must not be a dead end.

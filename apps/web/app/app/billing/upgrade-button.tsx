@@ -33,6 +33,7 @@ export function UpgradeForm({
       refresh();
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Something failed. Try again.');
+    } finally {
       setBusy(false);
     }
   }
