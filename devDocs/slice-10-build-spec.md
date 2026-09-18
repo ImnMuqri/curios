@@ -71,8 +71,12 @@ On `Ingestion`:
   /// The page crawled. Null when the owner pasted text instead.
   sourceUrl      String?
   /// What the owner pasted. Null when a URL was crawled.
-  sourceText     String?
+  pastedText     String?
 ```
+
+`pastedText`, not `sourceText`: `Fact.sourceText` already exists and means something else -- the
+excerpt a single fact was drawn from. One name with two meanings on two tables is a trap for the
+next reader.
 
 **Exactly one of the two is set**, enforced by a `CHECK` constraint written by hand into the
 migration — Prisma cannot express it, and a row with both or neither would leave the worker with
@@ -80,7 +84,7 @@ nothing to decide on:
 
 ```sql
 ALTER TABLE "Ingestion" ADD CONSTRAINT "Ingestion_one_source"
-  CHECK (("sourceUrl" IS NULL) <> ("sourceText" IS NULL));
+  CHECK (("sourceUrl" IS NULL) <> ("pastedText" IS NULL));
 ```
 
 `Fact.sourceUrl` is already nullable. A fact extracted from pasted text has none.
@@ -98,7 +102,9 @@ export function shouldIndex(input: {
 page's metadata calls this rather than restating the rule, for `canCapture`'s reason: two
 expressions of one rule are how a page and a test end up disagreeing about it.
 
-`SourceDocument.url` becomes `string | null`, and `IngestJobData.sourceUrl` becomes optional.
+`SourceDocument.url` becomes `string | null`, and `IngestJobData.sourceUrl` becomes optional. The
+gateway writes each document into the extraction prompt as `<source url="..." title="...">`; a
+document with no URL omits the attribute rather than carrying an empty one.
 
 ---
 
@@ -129,11 +135,14 @@ leads and indexed FAQ pages that nothing needs yet.
 guard. Accepted for any page; the column's meaning is "if this page is personal, index it", so a
 business page setting it changes nothing a visitor or a crawler sees.
 
-**`POST /ingest`** accepts either `{ pageId, sourceUrl }` or `{ pageId, sourceText }`, never both
-and never neither — refused as a validation error before anything is written. `sourceText` is
+**`POST /ingest`** accepts either `{ pageId, sourceUrl }` or `{ pageId, pastedText }`, never both
+and never neither — refused as a validation error before anything is written. `pastedText` is
 capped at **20,000 characters**. The SSRF host guard runs only for URLs; there is no host to guard
 for pasted text. The per-page ingest limiter applies to both, because pasted text still costs a
 model call.
+
+**`GET /ingest/:id`** returns `sourceUrl` as nullable, since a pasted-text ingestion has none. The
+status screen does not read it.
 
 ---
 
@@ -166,12 +175,19 @@ login wall — or refuse outright — to an unfamiliar bot, and the crawler iden
 `CuriosBot/0.1`. When a platform refuses, even the meta tags are unreachable, and the paste box is
 the answer. The walkthrough records what real profile URLs return; this spec does not promise it.
 
-**The text path in the worker.** When a job has no URL, the worker reads `sourceText` from the
+**The text path in the worker.** When a job has no URL, the worker reads `pastedText` from the
 `Ingestion` row — the text lives in one place, and the Redis payload stays small. A new
 `apps/workers/src/sources/text.adapter.ts` turns it into one `SourceDocument` with no URL.
-Everything after — extraction, fact writing, Review — is unchanged, except that facts from a
-null-URL document are written with a null `sourceUrl`, and Review shows them as "From text you
-pasted".
+Everything after — extraction, fact writing, Review — is unchanged. Facts take their `sourceUrl`
+from the job, so a pasted-text fact is written with none, and Review already hides the Source
+link when there is no URL while still showing the quoted line the fact came from. That is an
+honest display with no new column; a "From text you pasted" label would need each fact linked to
+its ingestion, which nothing else needs.
+
+**An empty crawl costs nothing.** When the adapter returns no documents at all — a blocked
+profile, a dead link — the worker marks the ingestion succeeded with zero facts and makes no
+model call. Today it sends an empty source to the model and pays for it; with personal owners
+pasting social URLs that the platforms refuse, that becomes a common path.
 
 ---
 
@@ -210,7 +226,7 @@ the meta tag is the whole of the control. Nothing else a visitor sees changes.
 
 | What happens | Result |
 |---|---|
-| A social site blocks `CuriosBot`, or serves a login wall | Zero facts; job status offers the paste box |
+| A social site blocks `CuriosBot`, or serves a login wall | Zero facts, no model call; job status offers the paste box |
 | A page's body is thin but its meta tags are rich | The fallback reads them; facts go to Review |
 | The owner pastes both a URL and text | 400 before anything is written |
 | A row somehow has both sources, or neither | The database refuses it (`Ingestion_one_source`) |
@@ -232,7 +248,8 @@ needs a mutation more than any other.
 | `packages/core` | `shouldIndex` in all four combinations |
 | `packages/db` | `allowSearchIndexing` defaults to false; `Ingestion_one_source` refuses both and neither, asserted on SQLSTATE `23514` with raw SQL |
 | `apps/api` | Claim sets personal, and defaults to business; upgrade switches personal to business, succeeds without change on business, answers `NO_PAGE` without a page; the indexing switch; ingest accepts text, refuses both, neither and over-cap, and never consults the host guard for text |
-| `apps/workers` | The fallback reads meta tags only when the body is thin; the text adapter; the worker picks the adapter from the row; facts from text carry no `sourceUrl` |
+| `packages/gateway` | A document with no URL is written without a `url` attribute |
+| `apps/workers` | The fallback reads meta tags only when the body is thin; the text adapter; the worker picks the adapter from the row; facts from text carry no `sourceUrl`; an empty crawl makes no model call |
 | `apps/web` | The claim form requires a choice and sends it; the paste box; job status with zero facts; the leads empty state; the upgrade's two steps; the Questions hint by mode; the Settings switch; the public page's robots tag in each case |
 
 **What no test covers.** What a real Instagram, TikTok or Linktree URL returns to `CuriosBot`
@@ -257,7 +274,7 @@ this slice's correctness depends on a third party.
 
 | Document | Correction |
 |---|---|
-| `README.md` | Build order item 8 marked built. Settled decisions: the tier is chosen at claim, and the upgrade is one-way. The Personal privacy row points at the opt-in in Settings. |
+| `README.md` | A line after the build order saying all eight items are built. Settled decisions: the tier is chosen at claim, and the upgrade is one-way. The Personal privacy row points at the opt-in in Settings. |
 | `BACKEND.md` | The mode table's Indexing row: `noindex` unless the owner opts in. "It is a toggle in Appearance" becomes Settings. The upgrade, and its effect on the trial. Ingestion's two new ways in: pasted text, and the meta-tag fallback. |
-| `FRONTEND.md` | Onboarding's tier choice and paste box. The `/app/appearance` line in the screen list, which names a screen that does not exist. The personal-pages paragraph. |
+| `FRONTEND.md` | Onboarding's tier choice and paste box, in the screen list's onboarding line. The personal-pages paragraph's "the toggle lives in Appearance", which becomes Settings. The screen list itself stays: it is a design list, and `/app/appearance`, `/app/knowledge` and `/app/links` are all unbuilt, so removing one line would imply the others exist. |
 | `manual-verification-personal-tier.md` | New, with its coverage table from the start. |
