@@ -71,6 +71,8 @@ around personality and then rewrite it for catalogs, hours, and prices.
 7. Billing and caps
 8. Free personal tier (a config flag, not a project)
 
+All eight are built, the last in slice 10 — see `slice-10-build-spec.md`.
+
 ---
 
 ## Settled decisions
@@ -85,11 +87,12 @@ around personality and then rewrite it for catalogs, hours, and prices.
 | Prompt quality | Mechanical golden-set assertions in CI now, model-graded tone later. |
 | Sources | Static facts vs live connectors, kept separate. See BACKEND.md. |
 | Namespace | One flat `/handle` for both modes. Mode is a column, URLs never change shape. |
-| Personal privacy | `noindex` by default on personal pages, opt-in only. |
+| Personal privacy | `noindex` by default on personal pages, opt-in only, from a switch in Settings. `shouldIndex` in `@curios/core` is the one statement of the rule. |
 | Owner auth | Google, or email and password — both since slice 2. Phone OTP publishing gate deferred, not shipped. See slice-2-build-spec.md. |
 | Admin auth | Its own table, its own login, its own cookie. Shares nothing with owner auth. See ADMIN.md. |
 | Billing rails | Verified 2026-09-12, not assumed. Billplz recurring exists only as card tokenisation (`Agreements`, beta, billed as Auto-Deduct at 2% + RM0.75), and Billplz offers no FPX e-Mandate. FPX itself cannot auto-charge — every payment needs the payer to authenticate. So there is no auto-renew on the rail this market actually uses. |
 | Plans | Monthly and annual, both as a one-off FPX bill. Monthly is renewed by hand; there is no mandate to lapse and no beta to depend on. Annual is one bill a year, and at 0.75–1.25% against Auto-Deduct's flat RM0.75+ component it is several times cheaper per subscriber-year at these ticket sizes. |
+| Tiers | Chosen when the handle is claimed — personal or business, with neither pre-selected. A personal page can become a business page once, from Billing; there is no way back, because business to personal would need rules for paid time, captured leads and indexed FAQ pages that nothing needs. A personal owner with no website pastes text instead of a link. See slice-10-build-spec.md. |
 | Granting paid time | One step, three callers. Billplz's callback and the browser's redirect both verify an X Signature and go through `grantPayment` (`packages/billing/src/grant.ts`), which binds the bill to the `Payment` row it was raised for, claims that row `PENDING → PAID` with a conditional update, and locks the page before extending `paidUntil`. An hourly check asks Billplz about payments still pending, because Billplz gives up after five callback attempts. Two arrivals for one bill grant once; two payments for one page both count. |
 | Free trial | Three leads, then capture stops — not a time trial. A clock can expire having produced nothing, which teaches an owner the product does not work and spends the model budget proving it; a lead trial ends only once it demonstrably has. A lapse withdraws capture and nothing else: FAQ pages stay generated and indexed, chat keeps answering, the cap stays at 200. Withdrawing indexed URLs an owner earned is a punishment that outlives the lapse. `FREE_LEADS` in `packages/core/src/plan.ts`. The trial is spendable by anyone, the owner's own testing included, so the leads screen shows how much is left and the owner can reset it once, on `/app/billing`, while the page has never paid. A page that paid and lapsed owes a renewal instead. `OPERATIONS.md` keeps the `psql` reset for every other case. |
 | Price | Business is RM39/month or RM390/year — two months free. Personal stays free. Anchored on one extra customer a month, not on cost: the product's own fixture prices a cake at RM95, so a single order covers RM39 even at a thin margin, and the claim survives an owner checking it. RM49 was the rounder number and needed better than ~52% margin on that order to stay true, which is a worse trade than RM10. |

@@ -15,7 +15,7 @@ people, not operators. Build them as two different products in one codebase.
 /[handle]/faq             question index       ISR, revalidate 60s
 /[handle]/faq/[slug]      single answer        ISR, revalidate 60s
 /app                      dashboard shell      client, authed
-/app/onboarding           paste a URL, wait, review facts
+/app/onboarding           choose personal or business, paste a link or text, review facts
 /app/knowledge            facts, pinned answers, never-say list
 /app/links                the boring part that pays the rent
 /app/leads                table + transcript drawer
@@ -29,10 +29,10 @@ alike, and it never changes shape on upgrade. Mode is a property of the page, so
 one route renders both and the difference is in what the page shows, not where it
 lives.
 
-**Personal pages are `noindex` by default.** A privacy default, not an SEO setting:
-most people do not want an AI page about themselves ranking for their own name. The
-toggle lives in Appearance, off until they turn it on. Business pages index by default
-and emit `FAQPage` structured data.
+**Personal pages are `noindex` by default.** A privacy default, not an SEO setting: most
+people do not want an AI page about themselves ranking for their own name. The switch
+lives in Settings, off until they turn it on. Business pages index by default and emit
+`FAQPage` structured data.
 
 **Handles are a reserved namespace.** Claim-time validation rejects app, api, faq,
 admin, about, pricing, help, support, blog, login, signup, settings, static, plus
