@@ -7,6 +7,7 @@ import { ClaimForm } from './claim-form.js';
 const fill = async (handle: string, name = 'Nadia Bakes') => {
   await userEvent.type(screen.getByLabelText(/handle/i), handle);
   await userEvent.type(screen.getByLabelText(/display name/i), name);
+  await userEvent.click(screen.getByRole('radio', { name: /^business/i }));
   await userEvent.click(screen.getByRole('button', { name: /claim/i }));
 };
 
@@ -15,7 +16,7 @@ describe('ClaimForm', () => {
     const claim = vi.fn().mockRejectedValue(
       new ApiError(409, 'HANDLE_TOO_SIMILAR', 'That handle is too close to one already in use. Pick another.'),
     );
-    render(<ClaimForm onClaim={claim} />);
+    render(<ClaimForm monthlyPrice="RM39" onClaim={claim} />);
 
     await fill('nadiabakes');
 
@@ -29,7 +30,7 @@ describe('ClaimForm', () => {
     const claim = vi.fn().mockRejectedValue(
       new ApiError(400, 'HANDLE_RESERVED', 'That handle is reserved. Pick another.'),
     );
-    render(<ClaimForm onClaim={claim} />);
+    render(<ClaimForm monthlyPrice="RM39" onClaim={claim} />);
 
     await fill('admin');
 
@@ -40,7 +41,7 @@ describe('ClaimForm', () => {
     const claim = vi.fn().mockRejectedValue(
       new ApiError(400, 'HANDLE_INVALID', 'Handles are 3 to 30 characters, letters, numbers, hyphens and underscores, and cannot start or end with a separator.'),
     );
-    render(<ClaimForm onClaim={claim} />);
+    render(<ClaimForm monthlyPrice="RM39" onClaim={claim} />);
 
     await fill('ab');
 
@@ -52,7 +53,7 @@ describe('ClaimForm', () => {
   it('does not submit twice on a double tap', async () => {
     let release: () => void = () => {};
     const claim = vi.fn(() => new Promise<void>((r) => (release = r)));
-    render(<ClaimForm onClaim={claim} />);
+    render(<ClaimForm monthlyPrice="RM39" onClaim={claim} />);
 
     await fill('nadiabakes');
     await userEvent.click(screen.getByRole('button', { name: /claiming/i }));
@@ -61,5 +62,46 @@ describe('ClaimForm', () => {
     // taken -- by themselves, a second ago.
     expect(claim).toHaveBeenCalledTimes(1);
     release();
+  });
+
+  it('offers no tier until the owner picks one', () => {
+    // No default, on purpose: nobody should land in a tier they did not pick
+    // and find out later.
+    render(<ClaimForm monthlyPrice="RM39" onClaim={vi.fn()} />);
+
+    expect(screen.getByRole('radio', { name: /^personal/i })).not.toBeChecked();
+    expect(screen.getByRole('radio', { name: /^business/i })).not.toBeChecked();
+  });
+
+  it('will not claim until a tier is chosen', async () => {
+    const claim = vi.fn(async () => ({}));
+    render(<ClaimForm monthlyPrice="RM39" onClaim={claim} />);
+
+    await userEvent.type(screen.getByLabelText('Handle'), 'nadia');
+    await userEvent.type(screen.getByLabelText('Display name'), 'Nadia');
+    await userEvent.click(screen.getByRole('button', { name: 'Claim' }));
+
+    expect(claim).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Choose whether this page is about you or for selling.',
+    );
+  });
+
+  it('sends the tier the owner chose', async () => {
+    const claim = vi.fn(async () => ({}));
+    render(<ClaimForm monthlyPrice="RM39" onClaim={claim} />);
+
+    await userEvent.click(screen.getByRole('radio', { name: /^personal/i }));
+    await userEvent.type(screen.getByLabelText('Handle'), 'nadia');
+    await userEvent.type(screen.getByLabelText('Display name'), 'Nadia');
+    await userEvent.click(screen.getByRole('button', { name: 'Claim' }));
+
+    expect(claim).toHaveBeenCalledWith({ handle: 'nadia', displayName: 'Nadia', mode: 'PERSONAL' });
+  });
+
+  it('names the business price it was given', () => {
+    render(<ClaimForm monthlyPrice="RM39" onClaim={vi.fn()} />);
+
+    expect(screen.getByRole('radio', { name: /RM39 a month/ })).toBeInTheDocument();
   });
 });
