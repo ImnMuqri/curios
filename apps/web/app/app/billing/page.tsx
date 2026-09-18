@@ -7,6 +7,7 @@ import { resolveOwner } from '../session.js';
 import { paymentBanner, paymentLine, planSummary, ringgit, usageSummary } from './billing-copy.js';
 import { PayButtons } from './pay-buttons.js';
 import { ResetTrial } from './reset-button.js';
+import { UpgradeToBusiness } from './upgrade-button.js';
 
 /**
  * Where the plan stands, what the month has used, what has been paid, and the
@@ -65,7 +66,17 @@ export default async function BillingPage({
           <ResetTrial />
         </section>
       ) : null}
-      {state.kind === 'personal' ? null : (
+      {state.kind === 'personal' ? (
+        <section>
+          <h2>Selling something?</h2>
+          <p>
+            A business page can take customers' phone numbers: three free leads, then{' '}
+            {ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month. Questions asked three or more times get
+            their own FAQ pages, and the page appears in search results.
+          </p>
+          <UpgradeToBusiness />
+        </section>
+      ) : (
         <PayButtons
           options={[
             { plan: 'MONTHLY', label: `Pay ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} for a month` },

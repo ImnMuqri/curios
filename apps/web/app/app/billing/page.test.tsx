@@ -28,6 +28,9 @@ vi.mock('./pay-buttons.js', () => ({ PayButtons }));
 const ResetTrial = vi.fn(() => null);
 vi.mock('./reset-button.js', () => ({ ResetTrial }));
 
+const UpgradeToBusiness = vi.fn(() => null);
+vi.mock('./upgrade-button.js', () => ({ UpgradeToBusiness }));
+
 const BillingPage = (await import('./page.js')).default;
 
 const page: OwnerPage = {
@@ -53,6 +56,7 @@ describe('BillingPage', () => {
     resolveOwner.mockReset();
     PayButtons.mockClear();
     ResetTrial.mockClear();
+    UpgradeToBusiness.mockClear();
     getConversationUsage.mockReset();
     getRecentPayments.mockReset();
     getConversationUsage.mockResolvedValue({ used: 12, cap: 200, period: '2026-09' });
@@ -152,5 +156,19 @@ describe('BillingPage', () => {
     // Nothing to show, so nothing to ask the database for.
     expect(getConversationUsage).not.toHaveBeenCalled();
     expect(getRecentPayments).not.toHaveBeenCalled();
+  });
+
+  it('offers a personal page the upgrade, and says what changes', async () => {
+    await renderWith({ ...page, mode: 'PERSONAL' });
+
+    expect(UpgradeToBusiness).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('heading', { name: 'Selling something?' })).toBeInTheDocument();
+    expect(screen.getByText(/appears in search results/)).toBeInTheDocument();
+  });
+
+  it('does not offer the upgrade to a business page', async () => {
+    await renderWith(page);
+
+    expect(UpgradeToBusiness).not.toHaveBeenCalled();
   });
 });

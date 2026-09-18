@@ -29,12 +29,12 @@ const questions: OwnerQuestion[] = [
 
 describe('QuestionList', () => {
   it('shows how often each was asked, because that is the ranking', async () => {
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/asked 9/i)).toBeInTheDocument();
   });
 
   it('offers the primary action only where it would do something', async () => {
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     // One unanswered question, one Answer button. FRONTEND.md allows one
     // primary action per screen, and an already-answered question is not
@@ -45,7 +45,7 @@ describe('QuestionList', () => {
 
   it('sends what the owner wrote', async () => {
     const onAnswer = vi.fn().mockResolvedValue(undefined);
-    render(<QuestionList questions={questions} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /answer this/i }));
     await userEvent.type(screen.getByLabelText(/answer/i), 'RM95 sekilo.');
@@ -59,7 +59,7 @@ describe('QuestionList', () => {
     // places a human writes real prose, and throwing it away on a failed save
     // means retyping from memory.
     const onAnswer = vi.fn().mockRejectedValue(new Error('That failed. Try again.'));
-    render(<QuestionList questions={questions} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /answer this/i }));
     await userEvent.type(screen.getByLabelText(/answer/i), 'RM95 sekilo.');
@@ -71,7 +71,7 @@ describe('QuestionList', () => {
 
   it('does not submit twice on a double tap', async () => {
     const onAnswer = vi.fn().mockReturnValue(new Promise(() => {}));
-    render(<QuestionList questions={questions} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /answer this/i }));
     await userEvent.type(screen.getByLabelText(/answer/i), 'RM95.');
@@ -81,7 +81,7 @@ describe('QuestionList', () => {
   });
 
   it('lets an owner back out without losing the list', async () => {
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /answer this/i }));
     await userEvent.click(screen.getByRole('button', { name: /cancel/i }));
@@ -91,8 +91,33 @@ describe('QuestionList', () => {
 
   it('says what to do when there is nothing yet', async () => {
     // Empty states are instructions, not moods.
-    render(<QuestionList questions={[]} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={[]} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
     expect(screen.getByText(/share your link/i)).toBeInTheDocument();
+  });
+
+  it('tells a business owner their answer may be published at /faq', async () => {
+    render(
+      <QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Answer this' }));
+
+    expect(screen.getByText(/publishes the question and your answer at \/faq/)).toBeInTheDocument();
+  });
+
+  it('tells a personal owner their answer is not published anywhere', async () => {
+    // Personal pages never get FAQ pages. Promising one would be the only false
+    // sentence on this screen.
+    render(
+      <QuestionList questions={questions} publishesFaq={false} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Answer this' }));
+
+    expect(
+      screen.getByText('Saving this lets your page answer the question the way you wrote it.'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/publishes the question/)).not.toBeInTheDocument();
   });
 });
 
@@ -102,7 +127,7 @@ const suppressed: OwnerQuestion[] = [
 
 describe('taking a published question down', () => {
   it('offers to hide a question that is live on the public FAQ', async () => {
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     // Only the published one. An answered question with no slug has no public
     // page to hide, and offering the control would imply otherwise.
@@ -114,7 +139,7 @@ describe('taking a published question down', () => {
     // must not remove the answer chat still uses.
     const onSuppress = vi.fn().mockResolvedValue(undefined);
     const onDelete = vi.fn();
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={onDelete} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={onDelete} />);
 
     await userEvent.click(screen.getByRole('button', { name: /hide from/i }));
 
@@ -124,7 +149,7 @@ describe('taking a published question down', () => {
 
   it('offers to put a hidden question back', async () => {
     const onSuppress = vi.fn().mockResolvedValue(undefined);
-    render(<QuestionList questions={suppressed} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={vi.fn()} />);
+    render(<QuestionList questions={suppressed} publishesFaq={true} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /show on/i }));
 
@@ -135,7 +160,7 @@ describe('taking a published question down', () => {
 describe('erasing a question', () => {
   it('asks before erasing, because a customer wrote those words', async () => {
     const onDelete = vi.fn();
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={onDelete} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={onDelete} />);
 
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
 
@@ -145,7 +170,7 @@ describe('erasing a question', () => {
 
   it('erases once confirmed', async () => {
     const onDelete = vi.fn().mockResolvedValue(undefined);
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={onDelete} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={onDelete} />);
 
     await userEvent.click(screen.getByRole('button', { name: /^delete$/i }));
     await userEvent.click(screen.getByRole('button', { name: /delete it/i }));
@@ -164,7 +189,7 @@ describe('erasing a question', () => {
     // row the hide button is inside the confirm branch and the test would be
     // asserting against itself.
     const two = [questions[1]!, { ...questions[1]!, id: 'q4', text: 'ada parking' }];
-    render(<QuestionList questions={two} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={onDelete} />);
+    render(<QuestionList questions={two} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={onDelete} />);
 
     await userEvent.click(screen.getAllByRole('button', { name: /^delete$/i })[0]!);
     await userEvent.click(screen.getByRole('button', { name: /delete it/i }));
@@ -188,7 +213,7 @@ describe('a failure on one row', () => {
     // shared-state shape slice 5 shipped a real bug in.
     const onSuppress = vi.fn().mockRejectedValue(new Error('Could not hide that.'));
     render(
-      <QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={vi.fn()} />,
+      <QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={onSuppress} onDelete={vi.fn()} />,
     );
 
     await userEvent.click(screen.getByRole('button', { name: /answer this/i }));
@@ -204,7 +229,7 @@ describe('fixing an answer already published', () => {
     // A blank box would mean retyping from memory to correct one word, on text
     // that is already public -- and the likeliest reason to reopen a published
     // answer is that something in it is wrong.
-    render(<QuestionList questions={questions} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={vi.fn()} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /edit answer/i }));
 
@@ -213,7 +238,7 @@ describe('fixing an answer already published', () => {
 
   it('saves the correction through the same writeback', async () => {
     const onAnswer = vi.fn().mockResolvedValue(undefined);
-    render(<QuestionList questions={questions} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
+    render(<QuestionList questions={questions} publishesFaq={true} onAnswer={onAnswer} onSuppress={vi.fn()} onDelete={vi.fn()} />);
 
     await userEvent.click(screen.getByRole('button', { name: /edit answer/i }));
     await userEvent.clear(screen.getByLabelText(/answer/i));
