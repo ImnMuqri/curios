@@ -50,6 +50,13 @@ export interface IngestJobData {
 }
 
 /**
+ * The most an owner may paste as an ingestion source. Here rather than in the
+ * API because the onboarding screen counts against it too, and the two apps
+ * never import each other. The API's schema enforces it; the screen only warns.
+ */
+export const PASTED_TEXT_MAX = 20_000;
+
+/**
  * Transactional mail. Same rule as the ingest queue, and here for the same
  * reason: `apps/api` enqueues, `apps/workers` sends, and neither imports the
  * other.

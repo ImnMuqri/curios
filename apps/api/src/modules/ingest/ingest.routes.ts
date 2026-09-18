@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { PASTED_TEXT_MAX } from '@curios/core';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { getIngestion, startIngestion } from './ingest.service.js';
 import { createHostGuard, type HostGuard } from './host-guard.js';
@@ -21,7 +22,17 @@ export const ingestRoutes: FastifyPluginAsyncZod<IngestRouteOptions> = async (ap
       schema: {
         // pageId is capped because it becomes a Redis key with a day-long TTL in
         // the per-page rate limiter; a cuid is 25 characters.
-        body: z.object({ pageId: z.string().min(1).max(64), sourceUrl: z.string().min(1).max(2048) }),
+        body: z
+          .object({
+            pageId: z.string().min(1).max(64),
+            sourceUrl: z.string().min(1).max(2048).optional(),
+            pastedText: z.string().trim().min(1).max(PASTED_TEXT_MAX).optional(),
+          })
+          // Exactly one source, refused here before anything is written. The
+          // Ingestion_one_source constraint holds if anything writes around this.
+          .refine((body) => (body.sourceUrl === undefined) !== (body.pastedText === undefined), {
+            message: 'Send a website address or pasted text, one or the other.',
+          }),
         response: { 202: z.object({ ingestionId: z.string() }), 400: errorSchema },
       },
     },

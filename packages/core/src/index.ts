@@ -5,6 +5,7 @@ export {
   INGEST_QUEUE,
   LEAD_QUEUE,
   MAIL_QUEUE,
+  PASTED_TEXT_MAX,
   PENDING_CHECK_JOB,
   RENEWAL_REMINDER_JOB,
 } from './types.js';
