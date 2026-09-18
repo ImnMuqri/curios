@@ -41,6 +41,7 @@ const page: PublicPage = {
     // looks like this, and the page must not assume otherwise.
     { id: 'f2', category: 'HOURS', claim: 'Open Monday to Saturday', question: null },
   ],
+  allowSearchIndexing: false,
 };
 
 describe('public page', () => {
@@ -182,6 +183,15 @@ describe('indexing', () => {
     vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, mode: 'BUSINESS' });
 
     const { generateMetadata } = await import('./page.js');
+    const meta = await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) });
+
+    expect(meta.robots).toBeUndefined();
+  });
+
+  it('lets a personal page that opted in be indexed', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, mode: 'PERSONAL', allowSearchIndexing: true });
+    const { generateMetadata } = await import('./page.js');
+
     const meta = await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) });
 
     expect(meta.robots).toBeUndefined();

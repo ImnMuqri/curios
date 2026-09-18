@@ -88,6 +88,26 @@ describe('getPublicPage', () => {
     expect(page).toMatchObject({ paidUntil: null, leadsCaptured: 0 });
   });
 
+  it('carries whether a personal page opted into search results', async () => {
+    await write.account.create({
+      data: {
+        email: 'indexed@example.com',
+        pages: {
+          create: {
+            handle: 'indexed',
+            skeleton: 'indexed',
+            displayName: 'Opted In',
+            published: true,
+            mode: 'PERSONAL',
+            allowSearchIndexing: true,
+          },
+        },
+      },
+    });
+
+    expect((await getPublicPage('indexed'))?.allowSearchIndexing).toBe(true);
+  });
+
   it('cannot write through the read-only connection', async () => {
     const { prismaRead } = await import('./client.js');
     await expect(

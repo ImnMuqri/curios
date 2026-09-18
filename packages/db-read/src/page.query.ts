@@ -30,6 +30,8 @@ export interface PublicPage {
   paidUntil: Date | null;
   /** Leads ever captured, for the free-trial half of the gate. */
   leadsCaptured: number;
+  /** Whether this page, if personal, may appear in search results. See shouldIndex in @curios/core. */
+  allowSearchIndexing: boolean;
 }
 
 /**
@@ -52,6 +54,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       mode: true,
       paidUntil: true,
       leadsCaptured: true,
+      allowSearchIndexing: true,
       links: {
         orderBy: { position: 'asc' },
         select: { id: true, label: true, url: true, icon: true, position: true },

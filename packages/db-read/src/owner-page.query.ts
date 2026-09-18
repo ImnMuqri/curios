@@ -12,6 +12,8 @@ export interface OwnerPage {
   leadsCaptured: number;
   /** When the owner spent their one trial reset, or null while it is unspent. */
   trialResetAt: Date | null;
+  /** Whether this page, if personal, may appear in search results. Settings' switch. */
+  allowSearchIndexing: boolean;
 }
 
 /**
@@ -45,6 +47,7 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       paidUntil: true,
       leadsCaptured: true,
       trialResetAt: true,
+      allowSearchIndexing: true,
     },
   });
 }

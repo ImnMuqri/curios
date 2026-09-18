@@ -39,6 +39,7 @@ const page: OwnerPage = {
   paidUntil: null,
   leadsCaptured: 0,
   trialResetAt: null,
+  allowSearchIndexing: false,
 };
 
 async function renderWith(owned: OwnerPage | null, payment?: string) {

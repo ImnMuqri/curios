@@ -14,7 +14,8 @@ import { oauthErrorMessage } from '../../../lib/oauth-errors.js';
  * The decisions run for real here; only the edges of the page are stubbed.
  */
 const getSignInMethods = vi.fn();
-vi.mock('@curios/db-read', () => ({ getSignInMethods }));
+const getOwnerPage = vi.fn();
+vi.mock('@curios/db-read', () => ({ getSignInMethods, getOwnerPage }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -38,6 +39,9 @@ vi.mock('next/navigation', () => ({ redirect }));
 // actual link.
 vi.mock('./add-password-form.js', () => ({ AddPassword: () => null }));
 
+const SearchIndexing = vi.fn((_props: { mode: string; allowed: boolean }) => null);
+vi.mock('./search-indexing.js', () => ({ SearchIndexing }));
+
 const SettingsPage = (await import('./page.js')).default;
 
 const methods = (overrides: Partial<SignInMethods>): SignInMethods => ({
@@ -57,6 +61,9 @@ describe('SettingsPage', () => {
     resolveOwner.mockReset();
     getSignInMethods.mockReset();
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
+    getOwnerPage.mockReset();
+    getOwnerPage.mockResolvedValue(null);
+    SearchIndexing.mockClear();
   });
 
   it('after linking, says Google is connected and offers neither form', async () => {
@@ -91,5 +98,23 @@ describe('SettingsPage', () => {
     await renderWith({ error: 'unauthenticated' }, methods({ providers: [] }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(oauthErrorMessage('unauthenticated'));
+  });
+
+  it('offers a personal page its search switch, set as the page has it', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1',
+      handle: 'nadia',
+      displayName: 'Nadia',
+      published: true,
+      mode: 'PERSONAL',
+      paidUntil: null,
+      leadsCaptured: 0,
+      trialResetAt: null,
+      allowSearchIndexing: false,
+    });
+
+    await renderWith({}, methods({}));
+
+    expect(SearchIndexing.mock.calls[0]?.[0]).toEqual({ mode: 'PERSONAL', allowed: false });
   });
 });

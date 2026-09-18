@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { canCapture } from '@curios/core';
+import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
 import { Chip, LinkRow } from '@curios/ui';
 import { Ask } from './ask.js';
@@ -45,7 +45,10 @@ export async function generateMetadata({
   return {
     title: page.displayName,
     description: page.bio ?? undefined,
-    ...(page.mode === 'PERSONAL' ? { robots: { index: false, follow: false } } : {}),
+    // One rule, in @curios/core: every business page, and a personal page only
+    // once its owner has opted in. There is no sitemap, so this tag is the
+    // whole of the control.
+    ...(shouldIndex(page) ? {} : { robots: { index: false, follow: false } }),
   };
 }
 
