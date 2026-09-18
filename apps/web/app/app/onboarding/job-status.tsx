@@ -23,6 +23,7 @@ export function JobStatus({
   fetchStatus,
   intervalMs = 2000,
   onNothingFound,
+  source = 'link',
 }: {
   ingestionId: string;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
@@ -36,6 +37,12 @@ export function JobStatus({
    * box. Where a social profile the crawler could not read lands.
    */
   onNothingFound?: () => void;
+  /**
+   * Which source the owner gave us. A crawl that found nothing and a paste that
+   * found nothing are different failures and need different words -- and the
+   * paste box is not an escape hatch for someone who just used it.
+   */
+  source?: 'link' | 'text';
 }) {
   const { data } = useQuery({
     queryKey: ['ingestion', ingestionId],
@@ -61,12 +68,13 @@ export function JobStatus({
     return (
       <div>
         <Callout tone="action">
-          We could not find anything to use there. Some sites, Instagram and TikTok especially, do not
-          let us read them.
+          {source === 'text'
+            ? 'We could not find anything to use in what you pasted. Try a few sentences about what you sell, your prices, or your hours.'
+            : 'We could not find anything to use there. Some sites, Instagram and TikTok especially, do not let us read them.'}
         </Callout>
         {onNothingFound ? (
           <Button type="button" onClick={onNothingFound}>
-            Paste text instead
+            {source === 'text' ? 'Try different text' : 'Paste text instead'}
           </Button>
         ) : null}
       </div>

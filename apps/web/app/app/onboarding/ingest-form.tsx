@@ -65,6 +65,7 @@ export function IngestForm({
       <JobStatus
         ingestionId={ingestionId}
         fetchStatus={fetchStatus}
+        source={using}
         onNothingFound={() => {
           setIngestionId(null);
           setUsing('text');

@@ -65,4 +65,21 @@ describe('JobStatus', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Paste text instead' }));
     expect(onNothingFound).toHaveBeenCalledOnce();
   });
+
+  it('does not offer the paste box to someone who just pasted text', async () => {
+    const onNothingFound = vi.fn();
+    wrap(
+      <JobStatus
+        ingestionId="i-1"
+        fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null })}
+        onNothingFound={onNothingFound}
+        source="text"
+      />,
+    );
+
+    expect(await screen.findByText(/could not find anything to use in what you pasted/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Paste text instead' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Try different text' }));
+    expect(onNothingFound).toHaveBeenCalledOnce();
+  });
 });

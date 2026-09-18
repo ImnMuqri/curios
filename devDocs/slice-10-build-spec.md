@@ -161,8 +161,11 @@ with a live count against the cap. The URL field's hint adapts to the tier; a pe
 "A link to your site, Linktree or profile — or paste a few paragraphs about yourself."
 
 **Job status with nothing found.** Today it says "Found 0 facts." and stops. When an ingestion
-extracts nothing, it says we could not read anything useful from that page and offers the paste
-box. This is where most social profile URLs will land, so it must not be a dead end.
+extracts nothing, it names the source that failed: a link that found nothing says we could not
+read anything useful from that page and offers the paste box, and pasted text that found nothing
+says so and offers to try different text instead — the paste box is not an escape hatch for
+someone who just used it. The link case is where most social profile URLs will land, so it must
+not be a dead end.
 
 **The og/meta fallback.** `extractText` in `apps/workers/src/sources/website.adapter.ts` reads the
 `<title>` and the `<body>` text today and ignores `<meta>` entirely. It gains a fallback: when the

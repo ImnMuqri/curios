@@ -64,4 +64,21 @@ describe('IngestForm', () => {
 
     expect(screen.getByLabelText('About you')).toBeInTheDocument();
   });
+
+  it('tells a pasted-text owner their text gave nothing, not that a crawl failed', async () => {
+    // The paste box is the thing they just used -- offering it back as the
+    // escape hatch would be a dead end wearing the label of the way out.
+    const onIngest = vi.fn(async () => ({ ingestionId: 'i-1' }));
+    const fetchStatus = vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 0, error: null }));
+    wrap(
+      <IngestForm pageId="p1" mode="BUSINESS" pastedTextMax={20_000} onIngest={onIngest} fetchStatus={fetchStatus} />,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'Paste text instead' }));
+    await userEvent.type(screen.getByLabelText('About your business'), 'Kek butter RM95.');
+    await userEvent.click(screen.getByRole('button', { name: 'Read what I pasted' }));
+
+    expect(await screen.findByText(/could not find anything to use in what you pasted/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Paste text instead' })).not.toBeInTheDocument();
+  });
 });
