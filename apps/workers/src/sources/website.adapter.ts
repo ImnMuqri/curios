@@ -6,18 +6,39 @@ const MAX_PAGES = 25;
 const MAX_DEPTH = 2;
 const MAX_TOTAL_BYTES = 4_000_000;
 
+/** Below this, a page's body is too thin to extract from -- usually a JavaScript shell. */
+const THIN_BODY_CHARS = 200;
+
 export function extractText(html: string): { title: string; text: string; links: string[] } {
   const $ = cheerio.load(html);
   $('script, style, noscript, svg').remove();
 
   const title = $('title').first().text().trim();
-  const text = $('body').text().replace(/\s+/g, ' ').trim();
+  const body = $('body').text().replace(/\s+/g, ' ').trim();
   const links = $('a[href]')
     .map((_, el) => $(el).attr('href') ?? '')
     .get()
     .filter(Boolean);
 
-  return { title, text, links };
+  return { title, text: body.length < THIN_BODY_CHARS ? withMetaTags($, body) : body, links };
+}
+
+/**
+ * A thin body with the tags a crawler is shown for link previews appended:
+ * og:title, og:description and the meta description. Platforms that render in
+ * JavaScript often still serve these, and they are sometimes the only words
+ * about the owner that reach a bot. Each distinct value appears once.
+ */
+function withMetaTags($: cheerio.CheerioAPI, body: string): string {
+  const meta = [
+    $('meta[property="og:title"]').attr('content'),
+    $('meta[property="og:description"]').attr('content'),
+    $('meta[name="description"]').attr('content'),
+  ]
+    .map((value) => (value ?? '').replace(/\s+/g, ' ').trim())
+    .filter((value, index, all) => value !== '' && all.indexOf(value) === index);
+
+  return [body, ...meta].filter((part) => part !== '').join(' ');
 }
 
 export interface WebsiteAdapterDeps {

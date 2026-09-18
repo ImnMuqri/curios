@@ -49,6 +49,7 @@ const page: OwnerPage = {
   paidUntil: null,
   leadsCaptured: 0,
   trialResetAt: null,
+  allowSearchIndexing: false,
 };
 
 describe('the dashboard layout', () => {

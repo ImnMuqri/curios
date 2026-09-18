@@ -28,11 +28,17 @@ function toMessage(failure: unknown): string {
  */
 export function QuestionList({
   questions,
+  publishesFaq,
   onAnswer,
   onSuppress,
   onDelete,
 }: {
   questions: OwnerQuestion[];
+  /**
+   * Whether saving an answer can publish it at /faq. False for a personal
+   * page, which never gets FAQ pages -- see qualifiesForFaq in @curios/core.
+   */
+  publishesFaq: boolean;
   onAnswer: (id: string, answer: string) => Promise<void>;
   onSuppress: (id: string, suppressed: boolean) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
@@ -109,7 +115,11 @@ export function QuestionList({
                 id={`answer-${question.id}`}
                 label="Answer"
                 multiline
-                hint="Asked 3 or more times? Saving this also publishes the question and your answer at /faq, where search engines can find them."
+                hint={
+                  publishesFaq
+                    ? 'Asked 3 or more times? Saving this also publishes the question and your answer at /faq, where search engines can find them.'
+                    : 'Saving this lets your page answer the question the way you wrote it.'
+                }
                 value={draft}
                 onChange={setDraft}
               />
@@ -222,12 +232,19 @@ export function QuestionList({
  * so `page.tsx` passes plain rows and the closure over `apiFetch` is built
  * here, on the client side of it.
  */
-export function Questions({ questions }: { questions: OwnerQuestion[] }) {
+export function Questions({
+  questions,
+  publishesFaq,
+}: {
+  questions: OwnerQuestion[];
+  publishesFaq: boolean;
+}) {
   const router = useRouter();
 
   return (
     <QuestionList
       questions={questions}
+      publishesFaq={publishesFaq}
       onAnswer={async (id, answer) => {
         await apiFetch(`/questions/${id}/answer`, {
           method: 'POST',

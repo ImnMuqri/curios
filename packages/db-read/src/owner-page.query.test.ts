@@ -113,6 +113,15 @@ describe('getOwnerPage', () => {
     expect((await getOwnerPage(accountId))?.trialResetAt).toEqual(spentAt);
   });
 
+  it('carries the search-indexing choice, for the Settings switch', async () => {
+    const accountId = await anAccount({ published: true });
+    expect((await getOwnerPage(accountId))?.allowSearchIndexing).toBe(false);
+
+    await write.page.updateMany({ where: { accountId }, data: { allowSearchIndexing: true } });
+
+    expect((await getOwnerPage(accountId))?.allowSearchIndexing).toBe(true);
+  });
+
   it('does not write, so the read-only role can run it', async () => {
     const accountId = await anAccount({ published: false });
     const before = await write.page.findFirst({ where: { accountId }, select: { published: true } });

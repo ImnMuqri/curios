@@ -1,6 +1,6 @@
 'use client';
 
-import { Callout } from '@curios/ui';
+import { Button, Callout } from '@curios/ui';
 import { useQuery } from '@tanstack/react-query';
 
 export type IngestionResult = {
@@ -22,6 +22,8 @@ export function JobStatus({
   ingestionId,
   fetchStatus,
   intervalMs = 2000,
+  onNothingFound,
+  source = 'link',
 }: {
   ingestionId: string;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
@@ -30,6 +32,17 @@ export function JobStatus({
    * and verify the poll stops; production uses the 2000ms default.
    */
   intervalMs?: number;
+  /**
+   * Called from the nothing-found state, so the form can reopen with the paste
+   * box. Where a social profile the crawler could not read lands.
+   */
+  onNothingFound?: () => void;
+  /**
+   * Which source the owner gave us. A crawl that found nothing and a paste that
+   * found nothing are different failures and need different words -- and the
+   * paste box is not an escape hatch for someone who just used it.
+   */
+  source?: 'link' | 'text';
 }) {
   const { data } = useQuery({
     queryKey: ['ingestion', ingestionId],
@@ -41,7 +54,7 @@ export function JobStatus({
   });
 
   if (!data || data.status === 'QUEUED' || data.status === 'RUNNING') {
-    return <Callout tone="info">Reading your website…</Callout>;
+    return <Callout tone="info">Reading what you gave us…</Callout>;
   }
 
   if (data.status === 'FAILED') {
@@ -49,6 +62,23 @@ export function JobStatus({
     // precisely so this screen can say which of the many ways a crawl fails
     // actually happened.
     return <Callout tone="error">{data.error}</Callout>;
+  }
+
+  if (data.extractedCount === 0) {
+    return (
+      <div>
+        <Callout tone="action">
+          {source === 'text'
+            ? 'We could not find anything to use in what you pasted. Try a few sentences about what you sell, your prices, or your hours.'
+            : 'We could not find anything to use there. Some sites, Instagram and TikTok especially, do not let us read them.'}
+        </Callout>
+        {onNothingFound ? (
+          <Button type="button" onClick={onNothingFound}>
+            {source === 'text' ? 'Try different text' : 'Paste text instead'}
+          </Button>
+        ) : null}
+      </div>
+    );
   }
 
   return (

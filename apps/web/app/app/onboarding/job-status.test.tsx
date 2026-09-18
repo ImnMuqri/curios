@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { JobStatus } from './job-status.js';
 
@@ -12,10 +13,10 @@ describe('JobStatus', () => {
   it('says what is happening while the job runs', async () => {
     wrap(<JobStatus ingestionId="i-1" fetchStatus={vi.fn().mockResolvedValue({ status: 'RUNNING', extractedCount: 0, error: null })} />);
 
-    // "Reading your website" is a instruction-shaped empty state, not a
+    // "Reading what you gave us" is a instruction-shaped empty state, not a
     // spinner with no words. Someone on a slow connection needs to know the
     // machine is doing something and roughly what.
-    expect(await screen.findByText(/reading your website/i)).toBeInTheDocument();
+    expect(await screen.findByText(/reading what you gave us/i)).toBeInTheDocument();
   });
 
   it('reports the count when it succeeds', async () => {
@@ -48,5 +49,37 @@ describe('JobStatus', () => {
     // A poll that never stops is a request every two seconds forever on a
     // phone, for a job that finished.
     expect(fetchStatus.mock.calls.length).toBe(callsAtResolution);
+  });
+
+  it('offers the paste box when the page gave us nothing to use', async () => {
+    const onNothingFound = vi.fn();
+    wrap(
+      <JobStatus
+        ingestionId="i-1"
+        fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null })}
+        onNothingFound={onNothingFound}
+      />,
+    );
+
+    expect(await screen.findByText(/could not find anything to use/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Paste text instead' }));
+    expect(onNothingFound).toHaveBeenCalledOnce();
+  });
+
+  it('does not offer the paste box to someone who just pasted text', async () => {
+    const onNothingFound = vi.fn();
+    wrap(
+      <JobStatus
+        ingestionId="i-1"
+        fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null })}
+        onNothingFound={onNothingFound}
+        source="text"
+      />,
+    );
+
+    expect(await screen.findByText(/could not find anything to use in what you pasted/i)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Paste text instead' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Try different text' }));
+    expect(onNothingFound).toHaveBeenCalledOnce();
   });
 });

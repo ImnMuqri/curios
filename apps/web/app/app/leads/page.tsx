@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { planState, SESSION_COOKIE } from '@curios/core';
 import { getLeads, getOwnerPage } from '@curios/db-read';
-import { Shell } from '@curios/ui';
+import { Callout, Shell } from '@curios/ui';
 import { resolveOwner } from '../session.js';
 import { Leads } from './lead-list.js';
 import { TrialNotice } from './trial-notice.js';
@@ -41,7 +41,16 @@ export default async function LeadsPage() {
           })}
         />
       ) : null}
-      <Leads leads={leads} />
+      {page?.mode === 'PERSONAL' ? (
+        // A personal page never offers the capture card, so there will never
+        // be a list here. Say why, and where that changes.
+        <Callout tone="info">
+          Personal pages don't collect phone numbers. Visitors can still chat with your page. If
+          you start selling, you can make this a business page from <a href="/app/billing">Billing</a>.
+        </Callout>
+      ) : (
+        <Leads leads={leads} />
+      )}
     </Shell>
   );
 }

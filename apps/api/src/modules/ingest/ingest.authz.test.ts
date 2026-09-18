@@ -189,3 +189,57 @@ describe('the order of the session check and the limiters', () => {
     expect(res.json().error.code).toBe('BLOCKED_SOURCE_URL');
   });
 });
+
+describe('POST /ingest with pasted text', () => {
+  const ingest = (cookie: string, payload: object) =>
+    app.inject({
+      method: 'POST',
+      url: '/ingest',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: cookie },
+      payload,
+    });
+
+  it('accepts pasted text, and reports its status with no website address', async () => {
+    const mine = await anOwnerWithAPage();
+
+    const started = await ingest(mine.cookie, { pageId: mine.pageId, pastedText: 'I bake cakes in Shah Alam.' });
+    expect(started.statusCode).toBe(202);
+
+    const status = await app.inject({
+      method: 'GET',
+      url: `/ingest/${started.json().ingestionId}`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+    });
+    expect(status.statusCode).toBe(200);
+    expect(status.json()).toMatchObject({ status: 'QUEUED', sourceUrl: null });
+  });
+
+  it('refuses a body with both a website address and pasted text, and writes nothing', async () => {
+    const mine = await anOwnerWithAPage();
+
+    const res = await ingest(mine.cookie, {
+      pageId: mine.pageId,
+      sourceUrl: 'https://example.com/',
+      pastedText: 'Both at once.',
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(await app.prisma.ingestion.count({ where: { pageId: mine.pageId } })).toBe(0);
+  });
+
+  it('refuses a body with neither', async () => {
+    const mine = await anOwnerWithAPage();
+
+    expect((await ingest(mine.cookie, { pageId: mine.pageId })).statusCode).toBe(400);
+  });
+
+  it('refuses pasted text over the cap', async () => {
+    const mine = await anOwnerWithAPage();
+
+    const res = await ingest(mine.cookie, { pageId: mine.pageId, pastedText: 'x'.repeat(20_001) });
+
+    expect(res.statusCode).toBe(400);
+  });
+});

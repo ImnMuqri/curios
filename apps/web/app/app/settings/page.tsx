@@ -1,12 +1,13 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
-import { getSignInMethods } from '@curios/db-read';
+import { getOwnerPage, getSignInMethods } from '@curios/db-read';
 import { Callout } from '@curios/ui';
 import { resolveOwner } from '../session.js';
 import { decideSettingsBanner, decideSettingsView } from './settings.js';
 import { AddPassword } from './add-password-form.js';
 import { ConnectGoogle } from './connect-google.js';
+import { SearchIndexing } from './search-indexing.js';
 import styles from './settings.module.css';
 
 /**
@@ -25,7 +26,10 @@ export default async function SettingsPage({
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
-  const methods = await getSignInMethods(owner.accountId);
+  const [methods, page] = await Promise.all([
+    getSignInMethods(owner.accountId),
+    getOwnerPage(owner.accountId),
+  ]);
   // The layout already proved the session is real, which means the account
   // it names exists -- this is belt and braces for a direct render, narrowing
   // the type rather than guarding against a real path.
@@ -56,6 +60,9 @@ export default async function SettingsPage({
         // screen with nothing to click.
         <Callout tone="info">You can already sign in with your password or with Google.</Callout>
       ) : null}
+
+      {/* An account with no page yet has nothing to index. */}
+      {page ? <SearchIndexing mode={page.mode} allowed={page.allowSearchIndexing} /> : null}
     </>
   );
 }

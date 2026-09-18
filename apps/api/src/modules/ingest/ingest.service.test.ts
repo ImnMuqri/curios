@@ -122,6 +122,50 @@ describe('startIngestion', () => {
       }),
     ).rejects.toMatchObject({ code: 'INVALID_SOURCE_URL' });
   });
+
+  it('starts an ingestion from pasted text, with no website address anywhere', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+
+    const { ingestionId } = await startIngestion(
+      { prisma, queue: { add }, guard: async () => {} },
+      accountId,
+      { pageId, pastedText: 'I bake cakes in Shah Alam.' },
+    );
+
+    const row = await prisma.ingestion.findUniqueOrThrow({
+      where: { id: ingestionId },
+      select: { status: true, sourceUrl: true, pastedText: true },
+    });
+    expect(row).toEqual({ status: 'QUEUED', sourceUrl: null, pastedText: 'I bake cakes in Shah Alam.' });
+    // No sourceUrl key at all: the worker reads the text from the row.
+    expect(add.mock.calls[0]?.[1]).toEqual({ ingestionId, pageId, idempotencyKey: ingestionId });
+  });
+
+  it('never asks the host guard about pasted text', async () => {
+    // There is no host to guard. A guard consulted anyway would make the paste
+    // box fail whenever DNS does.
+    const guard = vi.fn(async () => {});
+
+    await startIngestion(
+      { prisma, queue: { add: vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' })) }, guard },
+      accountId,
+      { pageId, pastedText: 'About me.' },
+    );
+
+    expect(guard).not.toHaveBeenCalled();
+  });
+
+  it('refuses pasted text for a page that is not yours, and writes nothing', async () => {
+    await expect(
+      startIngestion(
+        { prisma, queue: { add: vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' })) }, guard: async () => {} },
+        'someone-else',
+        { pageId, pastedText: 'Not my page.' },
+      ),
+    ).rejects.toMatchObject({ code: 'NOT_FOUND' });
+
+    expect(await prisma.ingestion.count({ where: { pageId } })).toBe(0);
+  });
 });
 
 describe('getIngestion', () => {

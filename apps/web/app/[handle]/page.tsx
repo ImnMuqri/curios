@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { canCapture } from '@curios/core';
+import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
 import { Chip, LinkRow } from '@curios/ui';
 import { Ask } from './ask.js';
@@ -25,9 +25,9 @@ export const dynamic = 'force-dynamic';
  * The first metadata in this app, and it exists to honour a promise
  * FRONTEND.md has made since slice 1: personal pages are noindex by default.
  *
- * A privacy decision, not an SEO one. The opt-in toggle belongs in
- * /app/appearance, which does not exist yet -- until it does, personal means
- * not indexed, which is the safe direction to be wrong in.
+ * A privacy decision, not an SEO one. The owner opts in from Settings, and
+ * `shouldIndex` in `@curios/core` is the one place that decides -- its
+ * default is still the safe direction to be wrong in.
  *
  * This repeats the `getPublicPage` the render does, the same way every /app
  * page repeats its layout's `resolveOwner`. Deduping is a `cache()` change
@@ -45,7 +45,10 @@ export async function generateMetadata({
   return {
     title: page.displayName,
     description: page.bio ?? undefined,
-    ...(page.mode === 'PERSONAL' ? { robots: { index: false, follow: false } } : {}),
+    // One rule, in @curios/core: every business page, and a personal page only
+    // once its owner has opted in. There is no sitemap, so this tag is the
+    // whole of the control.
+    ...(shouldIndex(page) ? {} : { robots: { index: false, follow: false } }),
   };
 }
 

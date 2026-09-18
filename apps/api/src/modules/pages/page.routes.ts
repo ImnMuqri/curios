@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { claimHandle, publishPage } from './page.service.js';
+import { claimHandle, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 
 export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -20,6 +20,9 @@ export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
           // has a code and a message that say what the rule is.
           handle: z.string().min(1).max(200),
           displayName: z.string().min(1).max(80),
+          // Optional so existing callers keep working; absent means BUSINESS,
+          // the column's own default.
+          mode: z.enum(['PERSONAL', 'BUSINESS']).optional(),
         }),
       },
     },
@@ -39,4 +42,22 @@ export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
     await publishPage(app.prisma, request.account.id);
     return reply.send({ status: 'published' });
   });
+
+  app.post('/pages/upgrade', async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+
+    await upgradeToBusiness(app.prisma, request.account.id);
+    return reply.send({ status: 'business' });
+  });
+
+  app.patch(
+    '/pages/search-indexing',
+    { schema: { body: z.object({ allow: z.boolean() }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await setSearchIndexing(app.prisma, request.account.id, request.body.allow);
+      return reply.send({ allowSearchIndexing: request.body.allow });
+    },
+  );
 };

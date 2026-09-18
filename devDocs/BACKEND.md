@@ -179,9 +179,14 @@ permanent maintenance and should not be carried by free pages.
 
 `POST /ingest` → 202 → BullMQ.
 
-1. **Fetch.** Site: crawl same-origin, depth 2, cap 25 pages. Instagram: profile plus
-   recent captions via whatever access is legal that week. Isolate this behind an
-   adapter interface, the platform will break it.
+1. **Fetch.** Either a URL or pasted text, never both: `Ingestion.sourceUrl` and
+   `Ingestion.pastedText`, held to exactly one by the `Ingestion_one_source`
+   constraint. A site is crawled same-origin, depth 2, cap 25 pages; when a page's
+   body is under 200 characters -- a JavaScript shell, as social profiles are -- its
+   `og:title`, `og:description` and meta description are read too. Pasted text becomes
+   one document with no URL, and its facts carry none. A crawl that returns nothing
+   makes no model call. Instagram proper stays behind an adapter that throws
+   `NOT_CONFIGURED`: the platform will break any access, so it stays isolated.
 2. **Extract.** One Opus call per source batch. Output is a list of atomic claims with
    category, source line, confidence. Not JSON-constrained for the claim text itself,
    same reasoning as the captions: schemas flatten language, and Malay pricing prose
@@ -383,7 +388,7 @@ stays fair.
 | Capture card | never | 3 free leads, then paid |
 | Hours, location under the name | hidden | shown |
 | FAQ pages | not generated | generated and indexed |
-| Indexing | **`noindex` by default** | indexed by default |
+| Indexing | **`noindex` unless the owner opts in** (Settings) | always indexed |
 | Connectors | none | Pro and Max |
 
 The capture-card row hides a second gate. `canCapture` (`packages/core/src/plan.ts`)
@@ -406,8 +411,16 @@ kept.
 
 The `noindex` default on personal pages is a privacy decision, not an SEO one. Most
 people do not want an AI page about themselves ranking for their own name, and the
-default has to be the safe one. It is a toggle in Appearance, off until the owner
-turns it on.
+default has to be the safe one. It is a switch in Settings, off until the owner turns it
+on, and `shouldIndex` in `@curios/core` is the one place the rule is written -- the
+public page's metadata calls it rather than restating it.
+
+**The tier is chosen at claim, and personal upgrades once.** `POST /pages` takes `mode`,
+defaulting to business. `POST /pages/upgrade` moves a personal page to business in one
+conditional update and succeeds without change on a page that is already business;
+nothing moves it back. The upgraded page needs no other write: a personal page never
+captures, so `leadsCaptured` is still 0 and the whole trial is there, and FAQ pages and
+indexing follow from the mode itself.
 
 Free personal pages: first come, first served. Verification is a **bio code**. We issue
 a short code, the owner pastes it into their Instagram or TikTok bio, we fetch and

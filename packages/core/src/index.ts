@@ -5,6 +5,7 @@ export {
   INGEST_QUEUE,
   LEAD_QUEUE,
   MAIL_QUEUE,
+  PASTED_TEXT_MAX,
   PENDING_CHECK_JOB,
   RENEWAL_REMINDER_JOB,
 } from './types.js';
@@ -38,4 +39,5 @@ export { canCapture, FREE_LEADS, planState } from './plan.js';
 export type { PlanInput, PlanState } from './plan.js';
 export { extendPaidUntil, PLAN_PRICES_CENTS } from './billing.js';
 export type { BillingPlan } from './billing.js';
+export { shouldIndex } from './indexing.js';
 export { FAQ_MIN_ASKS, faqSlugBase, qualifiesForFaq, serialiseJsonLd } from './faq.js';

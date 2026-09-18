@@ -213,6 +213,102 @@ a future change to Button's shape skips this control. An `as`/`href` prop on
 
 ---
 
+## Personal tier
+
+Opened 2026-09-19, from the whole-branch review of `slice-10/personal-tier`.
+
+### `extractedCount` counts rows written, not facts created
+
+`apps/workers/src/ingestion/extract.service.ts` writes `extractedCount: rows.length`,
+while `runExtraction` itself returns `created.count` — the number left after
+`skipDuplicates` has already thrown duplicates away. The mismatch predates this slice,
+but this slice is what made the number load-bearing: `JobStatus` now branches an owner
+between the found-facts screen and the nothing-found screen entirely on whether
+`extractedCount` is zero. Re-ingesting the same URL writes a non-zero `extractedCount`
+with zero new facts, so the owner is sent to a Review queue with nothing new waiting in
+it, having just been told the crawl worked.
+
+Not fixed here because the two callers of `runExtraction` disagree about which count
+they want, and reconciling them means deciding what the field should mean, not swapping
+one property access for another. Worth fixing the day anyone deliberately re-ingests a
+source that has already been read — today onboarding only ever calls it once.
+
+### `'PERSONAL' | 'BUSINESS'` is hand-written in about a dozen places, under three names
+
+The same two-value union appears as `mode`, as the bare literal union, and as `Tier` in
+`claim-form.tsx` — three names for one type, spread across `packages/core` (where
+`shouldIndex`, `planState` and the FAQ helpers all spell it out by hand) and `apps/web`.
+A `PageMode` exported from `@curios/core`'s barrel — `import type`-safe for the client
+components that may not pull in the rest of the barrel — would let every one of those
+sites read the same name and retire `Tier` as a synonym that adds nothing of its own.
+
+Not fixed here because none of the sites are wrong today; the duplication costs nothing
+until the two names drift, which is a small, low-urgency cleanup rather than a review
+finding with a deadline. Worth its own small commit rather than folding into a fix wave
+that touches none of the type's actual behaviour.
+
+### `startIngestion` guards "neither" but not "both"
+
+`apps/api/src/modules/ingest/ingest.service.ts` lets `pastedText` win when a caller
+supplies both sources, silently dropping `sourceUrl` rather than refusing the call —
+and the database's `Ingestion_one_source` CHECK cannot catch it, because the row it
+ends up writing (pastedText, no sourceUrl) is valid on its own terms. No production
+path reaches this: the route's own schema already refuses a body carrying both fields,
+and refuses one carrying neither, before `startIngestion` is ever called. But the
+function's own comment sets a standard — one source, never both, never neither — that
+its code only half enforces for a caller that is not the route. The "neither" case it
+does guard throws `InvalidSourceUrlError`, whose message is about a URL, to a caller
+that sent none of either kind.
+
+Not fixed here because it is unreachable from the one caller that exists, and pinning a
+test to behaviour no path can trigger is exactly the shape of test this codebase's own
+convention warns against. Worth fixing if `startIngestion` ever gets a second direct
+caller — a backfill script, an admin tool — that does not pass through the route's
+schema first.
+
+### The text adapter is imported directly, not injected
+
+`extract.service.ts` takes the website adapter through `ExtractDeps.adapter`, the seam
+this slice's own tests use to stub a crawl — but it imports `textAdapter` at the top of
+the file and calls it directly for the pasted-text path. The seam that exists for one
+source does not exist for the other, so a test wanting to stub the text path has to run
+the real adapter instead.
+
+Not fixed here because the text adapter is trivial enough — turn a string into one
+`SourceDocument` with no URL — that nothing has yet needed to fake it, and the tests
+that exist run it for real without friction. Worth fixing in step with `ExtractDeps`
+the day the text adapter grows enough behaviour that a test wants it stubbed.
+
+### The two new controls have no stylesheet
+
+The claim form's tier `fieldset` in `claim-form.tsx` and the Settings search-indexing
+checkbox are bare markup — no CSS module — on screens where every sibling control
+either comes from `@curios/ui` or carries its own module, the pattern `leads.module.css`,
+`questions.module.css` and `settings.module.css` all follow. The walkthrough already
+marks the claim form as needing a person's eye before launch; this is exactly what that
+eye will land on first.
+
+Not fixed here because styling two controls is a design decision, not the kind of
+correctness fix this wave was scoped to. Worth a small styling pass before the claim
+form or the Settings screen is put in front of a real owner.
+
+### Hand-written CHECK constraints take a validating lock
+
+`ADD CONSTRAINT ... CHECK` without `NOT VALID` — the form used for `Ingestion_one_source`
+in this slice's migration — takes `ACCESS EXCLUSIVE` on the table for the length of the
+migration and validates every existing row against the new rule before releasing it.
+Instant on today's tables, and irrelevant before launch, since there is no traffic to
+block. The zero-downtime form is `ADD CONSTRAINT ... CHECK (...) NOT VALID` followed by
+a separate `VALIDATE CONSTRAINT`, which takes only a `SHARE UPDATE EXCLUSIVE` lock and
+does not block reads or writes while it scans.
+
+Not fixed here because rewriting a migration already applied is not something to do for
+its own sake, and the cost today is genuinely zero. Worth adopting as the default the
+day `Ingestion` — or any table gaining a hand-written CHECK — is large or live enough
+that an `ACCESS EXCLUSIVE` lock would be felt.
+
+---
+
 ## Resolved
 
 ### A published question and answer have no way to come down — fixed

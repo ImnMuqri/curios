@@ -45,8 +45,14 @@ export class PageNotYoursError extends Error {
 export async function startIngestion(
   deps: IngestDeps,
   accountId: string,
-  input: { pageId: string; sourceUrl: string },
+  input: { pageId: string; sourceUrl?: string; pastedText?: string },
 ): Promise<{ ingestionId: string }> {
+  if (input.pastedText !== undefined) {
+    return startFromPastedText(deps, accountId, input.pageId, input.pastedText);
+  }
+  // The route refuses a body with neither. This guards a direct caller.
+  if (input.sourceUrl === undefined) throw new InvalidSourceUrlError();
+
   // Shape only. Whether the address is one we may reach -- literal or resolved
   // -- is the guard's question below, because that is where the escape hatch
   // is honoured.
@@ -57,11 +63,7 @@ export async function startIngestion(
   // Ownership is checked here, before any row exists. Facts land unverified,
   // so an ingestion into someone else's page plants claims in a stranger's
   // review queue waiting to be accepted.
-  const page = await deps.prisma.page.findFirst({
-    where: { id: input.pageId, accountId },
-    select: { id: true },
-  });
-  if (!page) throw new PageNotYoursError();
+  await assertOwnsPage(deps.prisma, accountId, input.pageId);
 
   // After the ownership check, deliberately. Resolving first would let a
   // stranger use this endpoint as a resolver for pages they do not own, which
@@ -79,20 +81,53 @@ export async function startIngestion(
     select: { id: true },
   });
 
-  await deps.queue.add(
-    INGEST_QUEUE,
-    {
-      ingestionId: ingestion.id,
-      pageId: input.pageId,
-      sourceUrl: url.href,
-      // The ingestion id is stable per request, so a replayed job is a repeat of
-      // the same work rather than new work.
-      idempotencyKey: ingestion.id,
-    },
-    { jobId: ingestion.id, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-  );
-
+  await enqueue(deps.queue, { ingestionId: ingestion.id, pageId: input.pageId, sourceUrl: url.href });
   return { ingestionId: ingestion.id };
+}
+
+/**
+ * The same path, for text the owner pasted. Ownership first, for the reason the
+ * URL path gives. No host guard, because there is no host: a guard consulted
+ * anyway would make the paste box fail whenever DNS does.
+ */
+async function startFromPastedText(
+  deps: IngestDeps,
+  accountId: string,
+  pageId: string,
+  pastedText: string,
+): Promise<{ ingestionId: string }> {
+  await assertOwnsPage(deps.prisma, accountId, pageId);
+
+  const ingestion = await deps.prisma.ingestion.create({
+    data: { pageId, pastedText },
+    select: { id: true },
+  });
+
+  // No sourceUrl on the job: the worker reads the text from the row, so it
+  // lives in one place and the job stays small.
+  await enqueue(deps.queue, { ingestionId: ingestion.id, pageId });
+  return { ingestionId: ingestion.id };
+}
+
+async function assertOwnsPage(prisma: PrismaClient, accountId: string, pageId: string): Promise<void> {
+  const page = await prisma.page.findFirst({
+    where: { id: pageId, accountId },
+    select: { id: true },
+  });
+  if (!page) throw new PageNotYoursError();
+}
+
+async function enqueue(
+  queue: QueueLike,
+  job: { ingestionId: string; pageId: string; sourceUrl?: string },
+): Promise<void> {
+  await queue.add(
+    INGEST_QUEUE,
+    // The ingestion id is stable per request, so a replayed job is a repeat of
+    // the same work rather than new work.
+    { ...job, idempotencyKey: job.ingestionId },
+    { jobId: job.ingestionId, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+  );
 }
 
 export async function getIngestion(prisma: PrismaClient, accountId: string, id: string) {
