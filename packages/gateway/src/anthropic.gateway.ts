@@ -33,10 +33,12 @@ function escapeForPrompt(input: string): string {
  */
 export function buildSourceBlock(documents: ExtractInput['documents']): string {
   return documents
-    .map(
-      (d) =>
-        `<source url="${escapeForPrompt(d.url)}" title="${escapeForPrompt(d.title)}">\n${escapeForPrompt(d.text)}\n</source>`,
-    )
+    .map((d) => {
+      // A document with no URL -- text the owner pasted -- carries no url
+      // attribute at all, rather than an empty one that reads as a page at "".
+      const url = d.url === null ? '' : ` url="${escapeForPrompt(d.url)}"`;
+      return `<source${url} title="${escapeForPrompt(d.title)}">\n${escapeForPrompt(d.text)}\n</source>`;
+    })
     .join('\n\n');
 }
 

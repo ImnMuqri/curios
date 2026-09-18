@@ -7,6 +7,7 @@ import {
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { EXTRACT_MODEL, type Gateway } from '@curios/gateway';
 import type { SourceAdapter } from '../sources/types.js';
+import { textAdapter } from '../sources/text.adapter.js';
 
 export interface ExtractDeps {
   prisma: PrismaClient;
@@ -58,7 +59,22 @@ export async function runExtraction(
     // would pollute the margin data that table exists to provide. The
     // Instagram adapter throws NOT_CONFIGURED by design, so "crawl threw" is a
     // guaranteed path rather than a hypothetical one.
-    const documents: SourceDocument[] = await adapter.fetch(job.sourceUrl);
+    // A URL is crawled; no URL means the owner pasted text, which the row holds.
+    const documents: SourceDocument[] = job.sourceUrl
+      ? await adapter.fetch(job.sourceUrl)
+      : await textAdapter.fetch(await pastedTextOf(prisma, job.ingestionId));
+
+    // Nothing to read: a blocked profile, a dead link, an empty paste. Marked
+    // succeeded with zero facts and no model call -- an empty source costs
+    // tokens and can only come back empty. The onboarding screen offers the
+    // paste box when this happens.
+    if (documents.length === 0) {
+      await prisma.ingestion.update({
+        where: { id: job.ingestionId },
+        data: { status: 'SUCCEEDED', extractedCount: 0 },
+      });
+      return { extractedCount: 0 };
+    }
 
     let raw: string;
     try {
@@ -101,7 +117,9 @@ export async function runExtraction(
         claim: fact.claim,
         question: fact.question,
         normalizedClaim: normalizeClaim(fact.claim),
-        sourceUrl: job.sourceUrl,
+        // Taken from the job, not the document: a fact from pasted text has no
+        // page, and Review hides the Source link when there is none.
+        sourceUrl: job.sourceUrl ?? null,
         sourceText: fact.sourceText,
         confidence: flagged ? Math.min(fact.confidence, 0.2) : fact.confidence,
         flagged,
@@ -130,4 +148,20 @@ export async function runExtraction(
     });
     throw error;
   }
+}
+
+/**
+ * The text an owner pasted for this ingestion. The Ingestion_one_source
+ * constraint means a job with no URL always has some; the throw guards the
+ * type, and would mean the constraint had been removed.
+ */
+async function pastedTextOf(prisma: PrismaClient, ingestionId: string): Promise<string> {
+  const row = await prisma.ingestion.findUniqueOrThrow({
+    where: { id: ingestionId },
+    select: { pastedText: true },
+  });
+  if (row.pastedText === null) {
+    throw new Error('This ingestion has neither a website address nor pasted text.');
+  }
+  return row.pastedText;
 }

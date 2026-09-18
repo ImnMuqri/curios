@@ -67,6 +67,16 @@ describe('buildSourceBlock', () => {
     ];
     expect(buildSourceBlock(two)).toContain('</source>\n\n<source');
   });
+
+  it('writes a document with no URL without a url attribute', () => {
+    // Text the owner pasted has no page. An empty url="" would read as a page
+    // at the empty address.
+    const block = buildSourceBlock([
+      { url: null, title: 'Written by the page owner', text: 'I bake cakes in Shah Alam.' },
+    ]);
+
+    expect(block).toBe('<source title="Written by the page owner">\nI bake cakes in Shah Alam.\n</source>');
+  });
 });
 
 describe('parseSlots', () => {

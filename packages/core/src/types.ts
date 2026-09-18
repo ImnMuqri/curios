@@ -12,7 +12,8 @@ export type FactCategory = (typeof FACT_CATEGORIES)[number];
 
 /** One fetched page or profile, before extraction. */
 export interface SourceDocument {
-  url: string;
+  /** The page it came from. Null for text the owner pasted, which has no page. */
+  url: string | null;
   title: string;
   text: string;
 }
@@ -39,7 +40,12 @@ export const INGEST_QUEUE = 'ingest';
 export interface IngestJobData {
   ingestionId: string;
   pageId: string;
-  sourceUrl: string;
+  /**
+   * The page to crawl. Absent when the owner pasted text instead: the worker
+   * reads that from the Ingestion row, so the text lives in one place and the
+   * job stays small.
+   */
+  sourceUrl?: string;
   idempotencyKey: string;
 }
 
