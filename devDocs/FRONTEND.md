@@ -22,6 +22,7 @@ people, not operators. Build them as two different products in one codebase.
 /app/questions            top asked, unanswered, answer-writeback
 /app/appearance           theme, avatar, badge
 /app/billing              plan, usage against cap, payments, trial reset
+/app/settings             sign-in methods, the search-engine switch
 ```
 
 **One flat namespace.** `curios.my/nadia` is the URL for a person and for a bakery
