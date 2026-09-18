@@ -43,6 +43,37 @@ describe('extractText', () => {
   });
 });
 
+const SHELL = `<html><head>
+  <title>Nadia (@nadiabakes)</title>
+  <meta property="og:title" content="Nadia (@nadiabakes)">
+  <meta property="og:description" content="Home baker in Shah Alam. Kek butter from RM95, order by DM.">
+  <meta name="description" content="Home baker in Shah Alam. Kek butter from RM95, order by DM.">
+</head><body><div id="root"></div></body></html>`;
+
+describe('extractText, on a page that renders in JavaScript', () => {
+  it('reads the meta tags when the body has almost nothing', () => {
+    const { text } = extractText(SHELL);
+
+    expect(text).toContain('Nadia (@nadiabakes)');
+    expect(text).toContain('Kek butter from RM95');
+  });
+
+  it('does not repeat a description that og and meta share', () => {
+    const { text } = extractText(SHELL);
+
+    expect(text.split('Kek butter from RM95').length - 1).toBe(1);
+  });
+
+  it('ignores meta tags on a page with real content', () => {
+    // Well over 200 characters of body. The fallback is for shells; a real page
+    // already says what it says, and its description is usually marketing.
+    const prose = 'Kek butter 1kg RM95, tempahan 3 hari awal. '.repeat(8);
+    const html = `<html><head><meta property="og:description" content="A tagline that must not appear"></head><body><p>${prose}</p></body></html>`;
+
+    expect(extractText(html).text).not.toContain('must not appear');
+  });
+});
+
 describe('createWebsiteAdapter', () => {
   it('crawls the root and same-origin links', async () => {
     const f = fakeFetcher({
