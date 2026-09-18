@@ -71,7 +71,7 @@ function violatedFields(error: unknown): string[] {
 export async function claimHandle(
   prisma: PrismaClient,
   accountId: string,
-  input: { handle: string; displayName: string },
+  input: { handle: string; displayName: string; mode?: 'PERSONAL' | 'BUSINESS' },
 ): Promise<{ pageId: string; handle: string }> {
   const checked = checkHandle(input.handle);
   if (!checked.ok) {
@@ -85,6 +85,9 @@ export async function claimHandle(
         handle: checked.handle,
         skeleton: checked.skeleton,
         displayName: input.displayName.trim(),
+        // The column's own default, spelled out so the claim reads without the
+        // schema open. The onboarding form always sends a choice.
+        mode: input.mode ?? 'BUSINESS',
       },
       select: { id: true, handle: true },
     });
@@ -125,4 +128,47 @@ export async function publishPage(prisma: PrismaClient, accountId: string): Prom
   });
 
   if (published.count !== 1) throw new NoPageError();
+}
+
+/**
+ * Makes the owner's personal page a business page. One-way: nothing leads
+ * back, because going from business to personal would need rules for paid
+ * time, captured leads and indexed FAQ pages that nothing needs yet.
+ *
+ * A page that is already business succeeds without change -- a second click or
+ * a stale screen is not an error. Zero rows changed means one of two things,
+ * so a read tells them apart; the read cannot race anything, because the only
+ * write it could miss is this same idempotent one.
+ *
+ * What the page gains needs no further write: a personal page never captures,
+ * so `leadsCaptured` is still 0 and the full trial is there; `trialResetAt` is
+ * still null, so the reset is too; and FAQ pages and indexing follow from the
+ * mode itself.
+ */
+export async function upgradeToBusiness(prisma: PrismaClient, accountId: string): Promise<void> {
+  const upgraded = await prisma.page.updateMany({
+    where: { accountId, mode: 'PERSONAL' },
+    data: { mode: 'BUSINESS' },
+  });
+  if (upgraded.count === 1) return;
+
+  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });
+  if (!page) throw new NoPageError();
+}
+
+/**
+ * Whether the owner's page may appear in search results, if it is personal.
+ * Accepted for any page: a business page is indexed regardless (`shouldIndex`
+ * in @curios/core), so setting this there changes nothing anyone sees.
+ */
+export async function setSearchIndexing(
+  prisma: PrismaClient,
+  accountId: string,
+  allow: boolean,
+): Promise<void> {
+  const updated = await prisma.page.updateMany({
+    where: { accountId },
+    data: { allowSearchIndexing: allow },
+  });
+  if (updated.count !== 1) throw new NoPageError();
 }

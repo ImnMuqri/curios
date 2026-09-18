@@ -36,6 +36,27 @@ const claim = (cookie: string, handle: string) =>
     payload: { handle, displayName: 'A Shop' },
   });
 
+const claimAs = (cookie: string, handle: string, mode: 'PERSONAL' | 'BUSINESS') =>
+  app.inject({
+    method: 'POST',
+    url: '/pages',
+    remoteAddress: from(),
+    cookies: { [SESSION_COOKIE]: cookie },
+    payload: { handle, displayName: 'Nadia', mode },
+  });
+
+const call = (cookie: string | undefined, method: 'POST' | 'PATCH', url: string, payload?: object) =>
+  app.inject({
+    method,
+    url,
+    remoteAddress: from(),
+    cookies: cookie ? { [SESSION_COOKIE]: cookie } : {},
+    ...(payload ? { payload } : {}),
+  });
+
+const modeOf = async (handle: string) =>
+  (await app.prisma.page.findUniqueOrThrow({ where: { handle }, select: { mode: true } })).mode;
+
 describe('POST /pages', () => {
   it('refuses an unauthenticated caller', async () => {
     const res = await app.inject({
@@ -113,6 +134,26 @@ describe('POST /pages', () => {
     const res = await claim(cookie, `after${randomUUID().slice(0, 8)}`);
     // If the rejected attempt had written a row, this would be PAGE_EXISTS.
     expect(res.statusCode).toBe(201);
+  });
+
+  it('claims a personal page when the owner asks for one', async () => {
+    const handle = `h${randomUUID().slice(0, 8)}`;
+
+    const res = await claimAs(await anOwner(), handle, 'PERSONAL');
+
+    expect(res.statusCode).toBe(201);
+    expect(await modeOf(handle)).toBe('PERSONAL');
+  });
+
+  it('claims a business page when no tier is sent', async () => {
+    // The column's own default. Existing callers send no mode, and must keep
+    // getting what they got before this slice.
+    const handle = `h${randomUUID().slice(0, 8)}`;
+
+    const res = await claim(await anOwner(), handle);
+
+    expect(res.statusCode).toBe(201);
+    expect(await modeOf(handle)).toBe('BUSINESS');
   });
 });
 
@@ -201,5 +242,79 @@ describe('POST /publish', () => {
     const res = await app.inject({ method: 'POST', url: '/publish', remoteAddress: from() });
 
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('POST /pages/upgrade', () => {
+  it('refuses an unauthenticated caller', async () => {
+    expect((await call(undefined, 'POST', '/pages/upgrade')).statusCode).toBe(401);
+  });
+
+  it('makes a personal page a business page', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'PERSONAL');
+
+    const res = await call(cookie, 'POST', '/pages/upgrade');
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'business' });
+    expect(await modeOf(handle)).toBe('BUSINESS');
+  });
+
+  it('succeeds without change on a page that is already business', async () => {
+    // A second click, or a stale screen, must not produce an error: there is
+    // nothing to refuse.
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'BUSINESS');
+
+    const res = await call(cookie, 'POST', '/pages/upgrade');
+
+    expect(res.statusCode).toBe(200);
+    expect(await modeOf(handle)).toBe('BUSINESS');
+  });
+
+  it('answers NO_PAGE for an owner with no page yet', async () => {
+    const res = await call(await anOwner(), 'POST', '/pages/upgrade');
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({ error: { code: 'NO_PAGE' } });
+  });
+});
+
+describe('PATCH /pages/search-indexing', () => {
+  const allowed = async (handle: string) =>
+    (
+      await app.prisma.page.findUniqueOrThrow({
+        where: { handle },
+        select: { allowSearchIndexing: true },
+      })
+    ).allowSearchIndexing;
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await call(undefined, 'PATCH', '/pages/search-indexing', { allow: true });
+
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('turns search indexing on, and off again', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'PERSONAL');
+
+    const on = await call(cookie, 'PATCH', '/pages/search-indexing', { allow: true });
+    expect(on.json()).toEqual({ allowSearchIndexing: true });
+    expect(await allowed(handle)).toBe(true);
+
+    await call(cookie, 'PATCH', '/pages/search-indexing', { allow: false });
+    expect(await allowed(handle)).toBe(false);
+  });
+
+  it('answers NO_PAGE for an owner with no page yet', async () => {
+    const res = await call(await anOwner(), 'PATCH', '/pages/search-indexing', { allow: true });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({ error: { code: 'NO_PAGE' } });
   });
 });
