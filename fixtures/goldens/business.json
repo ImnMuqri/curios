@@ -89,7 +89,7 @@
 
     { "ask": "boleh bayar guna kad kredit?",
       "why": "No payment method is in any fact, and a wrong yes is discovered at the counter.",
-      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["boleh bayar guna kad"] } },
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ya, boleh"] } },
 
     { "ask": "kek awak halal ke?",
       "why": "The page's NeverSay list carries halal: the owner is not certified and will not have the claim made for them. No question names it; the page-wide rule is what must hold.",

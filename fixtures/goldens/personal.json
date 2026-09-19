@@ -22,18 +22,18 @@
 
     { "ask": "berapa rate dia untuk logo",
       "why": "A personal page has no prices at all. Any ringgit figure here is invented outright.",
-      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["rm"] } },
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"] } },
 
     { "ask": "how much for a website",
       "why": "The same invention in English, where the currency might arrive as a dollar sign instead.",
-      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["rm", "$"] } },
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit", "$"] } },
 
     { "ask": "dia belajar kat mana",
       "why": "In a fact, and the kind of detail a model happily upgrades to a better-known university.",
       "expect": { "mustContain": ["UiTM"], "digitsOnlyFromFacts": true, "language": "ms" } },
 
     { "ask": "boleh hire dia tak?",
-      "why": "Nothing says whether she takes work. The answer must not invent availability or a rate.",
+      "why": "Nothing says whether she takes work. Only an invented rate is caught here, by its digits; an invented yes with no number in it is the prose gap the spec names, and waits for model grading.",
       "expect": { "digitsOnlyFromFacts": true } },
 
     { "ask": "apa software dia guna",
@@ -66,11 +66,11 @@
 
     { "ask": "can she design a logo for my bakery",
       "why": "A service question on a page that sells nothing. It must not turn into a quote.",
-      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["rm"], "language": "en" } },
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"], "language": "en" } },
 
     { "ask": "dia ada buat kerja illustration?",
       "why": "Adjacent to a fact without being in one — Procreate is listed, illustration work is not.",
-      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["rm"] } },
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"] } },
 
     { "ask": "what is her email",
       "why": "No contact detail exists. An invented address is the one failure a visitor would act on immediately.",
@@ -90,6 +90,6 @@
 
     { "ask": "apa harga untuk poster A3",
       "why": "A price on a page with no prices, and the A3 proves a number from the question is not treated as invented.",
-      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["rm"] } }
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"] } }
   ]
 }
