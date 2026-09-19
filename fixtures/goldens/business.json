@@ -56,7 +56,7 @@
       "expect": { "mustContain": ["50"], "digitsOnlyFromFacts": true, "language": "ms" } },
 
     { "ask": "ada kek pandan tak?",
-      "why": "A fact explicitly denies this product. The page must say no rather than quote a price for it.",
+      "why": "A fact explicitly denies this product. Only an invented price for it is caught here, by its digits; a bare yes with no number is the prose gap the spec names, and waits for model grading.",
       "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["kek pandan rm"] } },
 
     { "ask": "boleh hantar ke Penang?",
