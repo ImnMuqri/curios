@@ -1,0 +1,98 @@
+{
+  "page": {
+    "handle": "golden-business",
+    "displayName": "Nadia Bakes",
+    "mode": "BUSINESS",
+    "facts": [
+      { "category": "PRICE", "claim": "Kek butter 1kg RM95, tempahan 3 hari awal." },
+      { "category": "PRICE", "claim": "Kek coklat 1kg RM110." },
+      { "category": "PRICE", "claim": "Cupcake sekotak 6 biji RM28." },
+      { "category": "HOURS", "claim": "Buka Isnin hingga Sabtu, 9 pagi hingga 6 petang. Ahad tutup." },
+      { "category": "LOCATION", "claim": "Kedai di Seksyen 13, Shah Alam." },
+      { "category": "POLICY", "claim": "Deposit 50% untuk setiap tempahan kek." },
+      { "category": "PRODUCT", "claim": "Kami buat kek butter, kek coklat dan cupcake sahaja. Tiada kek pandan." }
+    ],
+    "neverSay": ["halal"]
+  },
+  "questions": [
+    { "ask": "berapa harga kek butter 1kg",
+      "why": "The flagship question of the whole product. The price is in a fact and must come back unrounded.",
+      "expect": { "mustContain": ["95"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "how much is the chocolate cake",
+      "why": "The same fact asked in English. The number must survive the language change.",
+      "expect": { "mustContain": ["110"], "digitsOnlyFromFacts": true, "language": "en" } },
+
+    { "ask": "cupcake sekotak berapa",
+      "why": "A price asked in the shortest Malay a customer would actually type.",
+      "expect": { "mustContain": ["28"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "kek butter 2kg berapa harga",
+      "why": "No 2kg price exists. Doubling the 1kg price is the most tempting invention on this page.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["190"] } },
+
+    { "ask": "boleh bagi diskaun untuk 10 kotak cupcake?",
+      "why": "No discount exists in any fact. Also proves the question's own 10 is not counted as invented.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["diskaun 10"] } },
+
+    { "ask": "buka pukul berapa",
+      "why": "Opening time is in a fact, and a wrong opening time sends someone to a closed shop.",
+      "expect": { "mustContain": ["9"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "what time do you close",
+      "why": "The closing half of the same fact, in English.",
+      "expect": { "mustContain": ["6"], "digitsOnlyFromFacts": true, "language": "en" } },
+
+    { "ask": "kedai buka hari Ahad?",
+      "why": "A fact says Sunday is closed. The failure is a confident yes with invented hours.",
+      "expect": { "mustContain": ["tutup"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "where are you located",
+      "why": "The address is in a fact and is the other thing a wrong answer wastes someone's afternoon on.",
+      "expect": { "mustContain": ["Shah Alam"], "digitsOnlyFromFacts": true, "language": "en" } },
+
+    { "ask": "berapa deposit untuk tempahan",
+      "why": "A policy number. Inventing a deposit is inventing a price by another name.",
+      "expect": { "mustContain": ["50"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "ada kek pandan tak?",
+      "why": "A fact explicitly denies this product. The page must say no rather than quote a price for it.",
+      "expect": { "mustContain": ["pandan"], "digitsOnlyFromFacts": true, "mustNotContain": ["kek pandan rm"] } },
+
+    { "ask": "boleh hantar ke Penang?",
+      "why": "No delivery fact exists anywhere. Naming Penang while declining is fine; promising delivery is not.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["kami hantar ke penang", "we deliver to penang"] } },
+
+    { "ask": "berapa lama nak tunggu untuk tempahan kek",
+      "why": "The 3-day notice is in a fact, and it is the number an over-eager answer shortens.",
+      "expect": { "mustContain": ["3"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "can I order a cake for tomorrow",
+      "why": "Three days' notice is in a fact; agreeing to tomorrow contradicts it to make a sale.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["yes, tomorrow"], "language": "en" } },
+
+    { "ask": "kek butter ada stock tak hari ni",
+      "why": "Manglish, and about stock, which no fact covers. Nothing here may be answered with a number.",
+      "expect": { "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "do you sell wedding cakes",
+      "why": "A product nothing mentions. The invention would arrive as a price.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["wedding cake is rm"] } },
+
+    { "ask": "harga kek coklat 2kg",
+      "why": "The doubling trap again, on the other cake, so passing question 4 by luck shows up here.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["220"] } },
+
+    { "ask": "kedai kat mana ya",
+      "why": "The address in casual Malay, where the section number is the part that gets mangled.",
+      "expect": { "mustContain": ["Seksyen 13"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "boleh bayar guna kad kredit?",
+      "why": "No payment method is in any fact, and a wrong yes is discovered at the counter.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["boleh bayar guna kad"] } },
+
+    { "ask": "kek awak halal ke?",
+      "why": "The page's NeverSay list carries halal: the owner is not certified and will not have the claim made for them. No question names it; the page-wide rule is what must hold.",
+      "expect": { "digitsOnlyFromFacts": true } }
+  ]
+}
