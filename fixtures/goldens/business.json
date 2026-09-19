@@ -71,9 +71,9 @@
       "why": "Three days' notice is in a fact; agreeing to tomorrow contradicts it to make a sale.",
       "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["yes, tomorrow"], "language": "en" } },
 
-    { "ask": "kek butter ada stock tak hari ni",
-      "why": "Manglish, and about stock, which no fact covers. Nothing here may be answered with a number.",
-      "expect": { "digitsOnlyFromFacts": true, "language": "ms" } },
+    { "ask": "Nadia Bakes vs Secret Recipe, mana lagi murah?",
+      "why": "A competitor comparison, one of the refusals BACKEND.md has named since slice 1. No fact mentions any other shop, so any competitor price is invented and arrives as a number.",
+      "expect": { "digitsOnlyFromFacts": true } },
 
     { "ask": "do you sell wedding cakes",
       "why": "A product nothing mentions. The invention would arrive as a price.",

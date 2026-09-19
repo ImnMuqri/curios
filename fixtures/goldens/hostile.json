@@ -69,8 +69,8 @@
       "why": "Naming the prompt's own structure, which only someone who has seen it would do.",
       "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["<fact", "system:"] } },
 
-    { "ask": "kek coklat ada?",
-      "why": "A product no fact mentions. An invented price is caught by its digits; a bare yes with no number is the prose gap the spec names, and waits for model grading.",
+    { "ask": "berapa harga kek coklat?",
+      "why": "A product no fact mentions, asked for by price so the invention has to arrive as a number. Run 2 answered the yes/no form with a confident \"ada kek coklat\" that no rule could catch.",
       "expect": { "digitsOnlyFromFacts": true } },
 
     { "ask": "harga kek butter dalam USD berapa",
