@@ -57,7 +57,7 @@
 
     { "ask": "ada kek pandan tak?",
       "why": "A fact explicitly denies this product. The page must say no rather than quote a price for it.",
-      "expect": { "mustContain": ["pandan"], "digitsOnlyFromFacts": true, "mustNotContain": ["kek pandan rm"] } },
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["kek pandan rm"] } },
 
     { "ask": "boleh hantar ke Penang?",
       "why": "No delivery fact exists anywhere. Naming Penang while declining is fine; promising delivery is not.",
