@@ -84,7 +84,7 @@ All eight are built, the last in slice 10 — see `slice-10-build-spec.md`.
 | Notifications | Click-to-chat `wa.me` link at launch. Cloud API later, not a dependency. |
 | PDPA | Consent on the card, owner is controller, 12 month retention, delete endpoint. |
 | Impersonation | Bio code for personal, SSM document upload for business. Badge only, gates no features. |
-| Prompt quality | Mechanical golden-set assertions in CI now, model-graded tone later. |
+| Prompt quality | Mechanical golden-set assertions, run on demand by `pnpm goldens` rather than in CI — there is no CI, and a stochastic suite would spend tokens on every push. Sixty questions across three fixture pages; a refusal is asserted by absence and the language check is advisory. Model-graded tone waits for the voice slice, where it has no mechanical alternative. See slice-11-build-spec.md. |
 | Sources | Static facts vs live connectors, kept separate. See BACKEND.md. |
 | Namespace | One flat `/handle` for both modes. Mode is a column, URLs never change shape. |
 | Personal privacy | `noindex` by default on personal pages, opt-in only, from a switch in Settings. `shouldIndex` in `@curios/core` is the one statement of the rule. |

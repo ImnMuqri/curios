@@ -161,8 +161,10 @@ A run, in order:
    already computed there by the same helper production uses.
 7. **Delete only the `golden-` pages.** Never a truncate: a `pnpm test` running in another
    terminal shares that database, and pulling its tables out from under it would be a failure
-   nobody could explain. Deleting the pages cascades their conversations, messages, usage
-   counters and model calls, which also resets the cap counter between runs.
+   nobody could explain. Teardown deletes the fixture accounts, which cascades the pages and
+   everything hanging off them — conversations, messages, questions and usage counters, which
+   also resets the cap counter between runs — but `ModelCall` rows carry no foreign key and are
+   removed explicitly, through those pages, before the accounts.
 
 Exit code 0 when every rule passed, 1 otherwise, so the command can be trusted in a script later
 even though nothing runs it automatically today.

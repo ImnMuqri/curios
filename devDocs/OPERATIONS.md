@@ -123,6 +123,28 @@ package's tests fail in a way that looks like a permissions bug in the code.
 
 ---
 
+## Running the golden set
+
+```bash
+pnpm goldens
+```
+
+Sixty questions, three fixture pages, real model calls on `claude-haiku-4-5`. A run costs
+about a cent and takes a few minutes, most of it re-asking whatever failed.
+
+It needs `ANTHROPIC_API_KEY` and a reachable test database, and refuses to start without
+either rather than failing halfway through. If it reports the test database is gone, restore
+it with the two commands in the section above and run it again.
+
+It writes only to the test database: three pages under `golden-` handles, deleted again when
+the run ends. It never reads or writes the development database. The full transcript of every
+answer lands in `.goldens/`, which is git-ignored.
+
+Run it before a change that touches the chat prompt, and after one. The record of past runs,
+and what to do when one fails, is in `manual-verification-goldens.md`.
+
+---
+
 ## An orphaned Billplz bill
 
 **Why this exists.** `createBillForOwner` (`apps/api/src/modules/billing/billing.service.ts`)
