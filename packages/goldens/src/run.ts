@@ -162,11 +162,40 @@ async function main(): Promise<void> {
     'The golden set seeds its pages into the test database and never touches the development one.',
   );
 
+  // The only way this harness can reach the development database is a
+  // misconfigured .env: it never reads DATABASE_URL, only DATABASE_URL_TEST,
+  // but if an owner's .env points both at the same place there is nothing
+  // else here to stop it from seeding and deleting fixture pages there.
+  if (databaseUrl === process.env.DATABASE_URL) {
+    throw new Error(
+      'DATABASE_URL_TEST is the same as DATABASE_URL. Refusing to start: this harness seeds ' +
+        'and deletes fixture accounts, and the development database is not something a run can ' +
+        'restore the way the test database\'s two commands do.',
+    );
+  }
+
+  const cap = conversationCap();
+  // Every question -- and every retry of a failing one -- opens a new
+  // conversation (answer() is never given a conversationId here), so a
+  // page's worst case is every one of its questions failing once and being
+  // re-asked RETRIES more times. A cap smaller than that turns every later
+  // answer into CAP_REACHED_REPLY partway through a page, which reads exactly
+  // like a prompt collapse rather than what it is.
+  const worstCase = Math.max(...fixtures.map((f) => f.fixture.questions.length)) * (1 + RETRIES);
+  if (cap < worstCase) {
+    throw new Error(
+      `conversationCap() is ${cap}, smaller than the ${worstCase} conversations one page can open ` +
+        'in a single run. Raise CONVERSATION_CAP_PER_MONTH before running the golden set.',
+    );
+  }
+
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
-  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap: conversationCap() };
+  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap };
   const asked: { loaded: LoadedFixture; question: GoldenQuestion; result: QuestionResult }[] = [];
   const pageIds: string[] = [];
   let costMilliCents = 0;
+  let results: QuestionResult[] = [];
+  let transcript = '';
 
   try {
     try {
@@ -206,6 +235,22 @@ async function main(): Promise<void> {
       where: { pageId: { in: pageIds } },
     });
     costMilliCents = spend._sum.costMilliCents ?? 0;
+
+    // Written inside the try, immediately after the cost is summed and
+    // before teardown runs. Sixty answers and a few cents are real money
+    // spent; the evidence must be on disk before anything else -- a dropped
+    // connection, a restarted container -- gets a chance to throw it away.
+    results = asked.map((entry) => entry.result);
+    const summary = summarise(results);
+
+    // Colons are not legal in a Windows filename.
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    mkdirSync(TRANSCRIPTS, { recursive: true });
+    transcript = join(TRANSCRIPTS, `${stamp}.json`);
+    writeFileSync(
+      transcript,
+      JSON.stringify({ ranAt: new Date().toISOString(), model: CHAT_MODEL, summary, costMilliCents, results }, null, 2),
+    );
   } finally {
     try {
       // Only this harness's own accounts, which cascade to their pages,
@@ -214,6 +259,19 @@ async function main(): Promise<void> {
       // rows by hand, through the pages it looks up first. Never a
       // TRUNCATE: `pnpm test` shares this database.
       await deleteHarnessAccounts(prisma, { email: { endsWith: ACCOUNT_DOMAIN } });
+    } catch (error) {
+      // Best-effort: the transcript is already on disk by this point, so a
+      // failed teardown loses no evidence, only tidiness. Reported loudly
+      // rather than swallowed, because the accounts it may have left behind
+      // are real rows in a database `pnpm test` shares.
+      console.error(
+        'Teardown failed. Fixture accounts under `@goldens.invalid`, and the pages, facts, ' +
+          'conversations and ModelCall rows they own, may remain in the test database. The next ' +
+          "run's seed step deletes each by email before it seeds, so this is not permanent, but " +
+          'it should be looked at:',
+      );
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
     } finally {
       // Runs even if the delete above threw, so a failed teardown never
       // also leaks the connection.
@@ -221,17 +279,7 @@ async function main(): Promise<void> {
     }
   }
 
-  const results = asked.map((entry) => entry.result);
   const summary = summarise(results);
-
-  // Colons are not legal in a Windows filename.
-  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  mkdirSync(TRANSCRIPTS, { recursive: true });
-  const transcript = join(TRANSCRIPTS, `${stamp}.json`);
-  writeFileSync(
-    transcript,
-    JSON.stringify({ ranAt: new Date().toISOString(), model: CHAT_MODEL, summary, costMilliCents, results }, null, 2),
-  );
 
   console.log(formatReport(results, costMilliCents));
   console.log(`\nModel: ${CHAT_MODEL}`);
