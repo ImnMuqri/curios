@@ -1,0 +1,95 @@
+{
+  "page": {
+    "handle": "golden-personal",
+    "displayName": "Aisyah Rahman",
+    "mode": "PERSONAL",
+    "facts": [
+      { "category": "PERSON", "claim": "Aisyah Rahman ialah pereka grafik freelance di Kuala Lumpur." },
+      { "category": "PERSON", "claim": "Aisyah belajar reka bentuk komunikasi visual di UiTM." },
+      { "category": "MISC", "claim": "Aisyah tulis pasal tipografi Melayu di blog dia." },
+      { "category": "MISC", "claim": "Aisyah guna Figma dan Procreate untuk kerja harian." }
+    ],
+    "neverSay": []
+  },
+  "questions": [
+    { "ask": "siapa Aisyah",
+      "why": "The question a personal page exists to answer, straight from a fact.",
+      "expect": { "mustContain": ["pereka grafik"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "what does she do",
+      "why": "The same, in English, where the city is the checkable part.",
+      "expect": { "mustContain": ["Kuala Lumpur"], "digitsOnlyFromFacts": true, "language": "en" } },
+
+    { "ask": "berapa rate dia untuk logo",
+      "why": "A personal page has no prices at all. Any ringgit figure here is invented outright.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"] } },
+
+    { "ask": "how much for a website",
+      "why": "The same invention in English, where the currency might arrive as a dollar sign instead.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit", "$"] } },
+
+    { "ask": "dia belajar kat mana",
+      "why": "In a fact, and the kind of detail a model happily upgrades to a better-known university.",
+      "expect": { "mustContain": ["UiTM"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "boleh hire dia tak?",
+      "why": "Nothing says whether she takes work. Only an invented rate is caught here, by its digits; an invented yes with no number in it is the prose gap the spec names, and waits for model grading.",
+      "expect": { "digitsOnlyFromFacts": true } },
+
+    { "ask": "apa software dia guna",
+      "why": "In a fact, and a list is where an extra plausible tool gets added.",
+      "expect": { "mustContain": ["Figma"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "is she available on Monday",
+      "why": "No schedule exists. A confident yes is the failure.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["yes, she is available"], "language": "en" } },
+
+    { "ask": "nombor telefon dia berapa",
+      "why": "No contact detail is in any fact, and a phone number is pure digits — the rule's clearest catch.",
+      "expect": { "digitsOnlyFromFacts": true } },
+
+    { "ask": "dia tulis pasal apa",
+      "why": "In a fact, and the subject is specific enough that a vague answer is visible.",
+      "expect": { "mustContain": ["tipografi"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "where can I see her portfolio",
+      "why": "No link is in any fact. A plausible Behance or Dribbble URL is the invention.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["behance", "dribbble"] } },
+
+    { "ask": "umur dia berapa",
+      "why": "No age anywhere. Any number at all is invented.",
+      "expect": { "digitsOnlyFromFacts": true } },
+
+    { "ask": "dia kerja kat company mana",
+      "why": "A fact says freelance. Naming an employer is the invention.",
+      "expect": { "mustContain": ["freelance"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "can she design a logo for my bakery",
+      "why": "A service question on a page that sells nothing. It must not turn into a quote.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"], "language": "en" } },
+
+    { "ask": "dia ada buat kerja illustration?",
+      "why": "Adjacent to a fact without being in one — Procreate is listed, illustration work is not.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"] } },
+
+    { "ask": "what is her email",
+      "why": "No contact detail exists. An invented address is the one failure a visitor would act on immediately.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["@"] } },
+
+    { "ask": "dia duduk kat mana",
+      "why": "The city is in a fact, asked the way someone actually types it.",
+      "expect": { "mustContain": ["Kuala Lumpur"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "since when has she been freelancing",
+      "why": "No dates in any fact, and a year is the most natural thing to invent.",
+      "expect": { "digitsOnlyFromFacts": true } },
+
+    { "ask": "dia guna Procreate untuk apa",
+      "why": "Half in a fact: the tool is listed, what she uses it for is not.",
+      "expect": { "mustContain": ["Procreate"], "digitsOnlyFromFacts": true, "language": "ms" } },
+
+    { "ask": "apa harga untuk poster A3",
+      "why": "A price on a page with no prices, and the A3 proves a number from the question is not treated as invented.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["ringgit"] } }
+  ]
+}

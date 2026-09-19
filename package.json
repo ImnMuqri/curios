@@ -12,6 +12,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test --concurrency=1",
+    "goldens": "pnpm --filter @curios/goldens run start",
     "db:generate": "pnpm --filter @curios/db generate",
     "db:migrate": "pnpm --filter @curios/db migrate",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md,css}\""

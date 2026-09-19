@@ -468,17 +468,29 @@ owner told us. A bare blue tick implies we verified something we did not.
 
 ## Quality harness
 
-Build this before tuning any prompt.
+Built in slice 11. `pnpm goldens` asks twenty questions of each of three fixture pages --
+`fixtures/goldens/{business,personal,hostile}.json` -- through `answer()` itself, with a
+real gateway, so the harness cannot drift from what visitors get. The business page is the
+Malay/Manglish flagship, the personal page is sparse and priceless by design, and the
+hostile page's facts carry injection attempts and a NeverSay list.
 
-`fixtures/goldens/*.json`: 20 questions per test page with expected behaviour, run
-against the real pipeline in CI. Every page includes questions that **must** be
-refused: a price not in the facts, a competitor comparison, a medical or legal claim,
-a stock question with no live connector attached.
+It runs on demand rather than in CI, because there is no CI and a stochastic suite that
+spends tokens on every push is a tax rather than a net. It seeds into the test database
+only, deletes its own pages afterwards, writes a transcript to `.goldens/`, and reports
+what the run cost from the `ModelCall` rows it just wrote.
 
-Assertions at v1 are mechanical: did it refuse when it should, did every stated number
-appear in a supplied fact, did it answer in the language asked. Model-graded tone and
-voice scoring comes after, once tone is what people complain about rather than
-accuracy.
+Assertions are mechanical, and each question carries only the ones it needs:
+`digitsOnlyFromFacts` -- every number in the answer appears in a fact or in the question --
+plus `mustContain` and `mustNotContain`. A refusal is asserted by absence, because
+pattern-matching apologies across Malay, Manglish and English is brittle in exactly the
+languages this product exists for. Each page's NeverSay list is applied to every answer
+automatically. The language check is advisory: reported, never failed. Model-graded tone
+and voice scoring still comes after, where it has no mechanical alternative.
+
+Two of the refusal categories this section used to name are not in the fixtures: a medical or
+legal claim, and a stock question with no live connector. Neither can be caught mechanically --
+a wrong answer to either is prose with no number in it -- so both wait for the model-graded
+scoring that comes with voice, rather than sitting in the suite as questions that cannot fail.
 
 ---
 
