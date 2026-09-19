@@ -130,7 +130,7 @@ pnpm goldens
 ```
 
 Sixty questions, three fixture pages, real model calls on `claude-haiku-4-5`. A run costs
-about a cent and takes a few minutes, most of it re-asking whatever failed.
+about five cents and takes a few minutes, most of it re-asking whatever failed.
 
 It needs `ANTHROPIC_API_KEY` and a reachable test database, and refuses to start without
 either rather than failing halfway through. If it reports the test database is gone, restore

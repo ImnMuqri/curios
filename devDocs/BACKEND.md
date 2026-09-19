@@ -487,6 +487,11 @@ languages this product exists for. Each page's NeverSay list is applied to every
 automatically. The language check is advisory: reported, never failed. Model-graded tone
 and voice scoring still comes after, where it has no mechanical alternative.
 
+Two of the refusal categories this section used to name are not in the fixtures: a medical or
+legal claim, and a stock question with no live connector. Neither can be caught mechanically --
+a wrong answer to either is prose with no number in it -- so both wait for the model-graded
+scoring that comes with voice, rather than sitting in the suite as questions that cannot fail.
+
 ---
 
 ## FAQ generation

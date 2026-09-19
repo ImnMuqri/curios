@@ -43,7 +43,7 @@ export function summarise(results: QuestionResult[]): Summary {
  *
  * `ModelCall.costMilliCents` is milli-cents and 1 cent = 1000 milli-cents, so a
  * dollar is 100,000 of them. Four decimal places, because a Haiku run of sixty
- * questions costs about a cent and rounding it to two would print "$0.01" for
+ * questions costs about five cents and rounding it to two would print "$0.05" for
  * every run forever.
  */
 export function formatCost(milliCents: number): string {
