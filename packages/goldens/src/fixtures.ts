@@ -108,10 +108,19 @@ export function loadFixtures(dir: string): LoadedFixture[] {
     .sort();
   if (files.length === 0) throw new Error(`No fixtures in ${dir}.`);
 
-  const loaded = files.map((file) => ({
-    name: file.replace(/\.json$/, ''),
-    fixture: JSON.parse(readFileSync(join(dir, file), 'utf8')) as GoldenFixture,
-  }));
+  const loaded = files.map((file) => {
+    const raw = readFileSync(join(dir, file), 'utf8');
+    let fixture: GoldenFixture;
+    try {
+      fixture = JSON.parse(raw) as GoldenFixture;
+    } catch (error) {
+      // Named, so a broken fixture says which of the three it is rather than
+      // a bare "Unexpected token" with no file attached to it.
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`${file}: ${message}`);
+    }
+    return { name: file.replace(/\.json$/, ''), fixture };
+  });
 
   const problems = loaded.flatMap(({ name, fixture }) => validateFixture(name, fixture));
   if (problems.length > 0) {

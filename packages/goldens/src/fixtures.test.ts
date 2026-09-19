@@ -61,8 +61,9 @@ describe('validateFixture', () => {
   });
 
   it('refuses a handle outside the reserved prefix', () => {
-    // Teardown deletes by prefix. A fixture handle that does not carry it would
-    // survive the run and collide with the next one.
+    // Teardown deletes by the account's email domain, not this prefix -- the
+    // prefix instead reserves a namespace against `pnpm test`, which seeds its
+    // own pages and would collide with a golden fixture that did not carry it.
     const fixture = valid();
     fixture.page.handle = 'nadia';
 
@@ -147,5 +148,14 @@ describe('loadFixtures', () => {
     dir = mkdtempSync(join(tmpdir(), 'goldens-'));
 
     expect(() => loadFixtures(dir)).toThrow(/No fixtures/);
+  });
+
+  it('names the file when its JSON cannot be parsed', () => {
+    // A bare "Unexpected token" with no file attached sends whoever hits it
+    // looking through all three before they find the broken one.
+    dir = mkdtempSync(join(tmpdir(), 'goldens-'));
+    writeFileSync(join(dir, 'business.json'), '{ not valid json');
+
+    expect(() => loadFixtures(dir)).toThrow(/^business\.json:/);
   });
 });
