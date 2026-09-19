@@ -3,7 +3,11 @@ import { join } from 'node:path';
 import type { FactCategory } from '@curios/core';
 import type { Expectation } from './rules.js';
 
-/** Reserved so teardown can delete the harness's own pages and nothing else. */
+/**
+ * Reserved so a golden fixture's handle cannot collide with one `pnpm test`
+ * seeds -- teardown itself deletes by the account's email domain, not this
+ * prefix.
+ */
 export const GOLDEN_HANDLE_PREFIX = 'golden-';
 
 export interface GoldenFact {
