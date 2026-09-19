@@ -169,4 +169,33 @@ describe('checkAnswer, the language check', () => {
 
     expect(verdicts.find((v) => v.rule === 'language:ms')?.passed).toBe(true);
   });
+
+  it('does not let "Isnin" (Monday) pass language:en just because it starts with "is"', () => {
+    // The `en` marker regex used to be anchored only at the start, so it
+    // matched inside "Isnin" and a wholly Malay answer that named a weekday
+    // scored an English marker -- business question 7 passed `language: 'en'`
+    // in both real runs despite being answered entirely in Malay.
+    const verdicts = checkAnswer({
+      ...NO_RULES,
+      answer: 'Kami buka setiap hari kecuali Isnin.',
+      expect: { language: 'en' },
+    });
+
+    expect(verdicts.find((v) => v.rule === 'language:en')?.passed).toBe(false);
+  });
+
+  it('recognises a short factual Malay answer that carries none of the old hedging or commerce words', () => {
+    // The original twelve markers are all hedging or commerce words, so a
+    // plain factual sentence -- exactly the shape this product exists to
+    // produce -- scored zero of them. This is a real run-2 answer (the
+    // address question) that carries none of the original twelve and only
+    // passes once a common function word like "kat" is added.
+    const verdicts = checkAnswer({
+      ...NO_RULES,
+      answer: 'Kedai Nadia Bakes kat Seksyen 13, Shah Alam.',
+      expect: { language: 'ms' },
+    });
+
+    expect(verdicts.find((v) => v.rule === 'language:ms')?.passed).toBe(true);
+  });
 });

@@ -31,7 +31,10 @@ export interface RuleVerdict {
  * worth reporting and not worth failing a run over.
  */
 const LANGUAGE_MARKERS: Record<'ms' | 'en', string[]> = {
-  ms: ['harga', 'boleh', 'ada', 'tak', 'kami', 'pukul', 'buka', 'tempah', 'sila', 'untuk', 'tidak', 'saya'],
+  ms: [
+    'harga', 'boleh', 'ada', 'tak', 'kami', 'pukul', 'buka', 'tempah', 'sila', 'untuk', 'tidak', 'saya',
+    'di', 'dan', 'dia', 'ialah', 'adalah', 'ini', 'itu', 'nak', 'kat', 'yang', 'dengan',
+  ],
   en: ['the', 'is', 'are', 'we', 'you', 'open', 'price', 'order', 'please', 'can', 'from', 'sorry'],
 };
 
@@ -115,7 +118,10 @@ export function checkAnswer(input: {
     const markers = LANGUAGE_MARKERS[expect.language];
     verdicts.push({
       rule: `language:${expect.language}`,
-      passed: markers.some((marker) => new RegExp(`\\b${marker}`, 'i').test(answer)),
+      // Anchored at both ends: start-anchored only, the `en` marker "is"
+      // matches inside "Isnin" (Monday), so a Malay answer with no English in
+      // it at all scored a false pass.
+      passed: markers.some((marker) => new RegExp(`\\b${marker}\\b`, 'i').test(answer)),
       advisory: true,
     });
   }
