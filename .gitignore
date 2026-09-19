@@ -44,3 +44,7 @@ Thumbs.db
 
 # SDD scratch
 .superpowers/
+
+# Golden-set transcripts. One per run, and a stochastic run's transcript is
+# churn nobody reads in a diff.
+.goldens/

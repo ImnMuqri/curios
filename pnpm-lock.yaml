@@ -302,9 +302,18 @@ importers:
 
   packages/goldens:
     dependencies:
+      '@curios/api':
+        specifier: workspace:*
+        version: link:../../apps/api
       '@curios/core':
         specifier: workspace:*
         version: link:../core
+      '@curios/gateway':
+        specifier: workspace:*
+        version: link:../gateway
+      '@prisma/client':
+        specifier: ^6.1.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
     devDependencies:
       tsx:
         specifier: ^4.19.2

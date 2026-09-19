@@ -8,3 +8,5 @@ export type {
   GoldenQuestion,
   LoadedFixture,
 } from './fixtures.js';
+export { formatCost, formatReport, summarise } from './report.js';
+export type { QuestionResult, Summary } from './report.js';

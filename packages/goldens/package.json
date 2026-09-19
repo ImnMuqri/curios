@@ -13,7 +13,10 @@
     "start": "tsx --env-file=../../.env src/run.ts"
   },
   "dependencies": {
-    "@curios/core": "workspace:*"
+    "@curios/api": "workspace:*",
+    "@curios/core": "workspace:*",
+    "@curios/gateway": "workspace:*",
+    "@prisma/client": "^6.1.0"
   },
   "devDependencies": {
     "tsx": "^4.19.2",
