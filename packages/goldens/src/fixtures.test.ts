@@ -80,6 +80,17 @@ describe('validateFixture', () => {
     ]);
   });
 
+  it('refuses two questions that differ only in case or spacing', () => {
+    // The same question typed twice is the same model call twice, every run,
+    // forever. Neither case nor a stray space makes it a different question.
+    const fixture = valid();
+    fixture.questions.push({ ...fixture.questions[0]!, ask: '  Berapa Harga Kek Butter  ', why: 'A near-duplicate.' });
+
+    expect(validateFixture('business', fixture)).toEqual([
+      'business: question 2 "  Berapa Harga Kek Butter  " is asked twice',
+    ]);
+  });
+
   it('refuses a question with no why', () => {
     // Whoever debugs a failure next month needs to know what it was protecting.
     const fixture = valid();

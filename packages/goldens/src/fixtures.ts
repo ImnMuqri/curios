@@ -73,8 +73,12 @@ export function validateFixture(name: string, fixture: GoldenFixture): string[] 
     const at = `${name}: question ${index + 1}`;
     if (question.why.trim() === '') problems.push(`${at} "${question.ask}" has no why`);
     if (!assertsSomething(question.expect)) problems.push(`${at} "${question.ask}" asserts nothing`);
-    if (asked.has(question.ask)) problems.push(`${at} "${question.ask}" is asked twice`);
-    asked.add(question.ask);
+    // Compared normalised, so a stray case or spacing change is not read as a
+    // different question, but reported with the text as the author wrote it,
+    // so they can find it in the fixture.
+    const normalisedAsk = question.ask.trim().toLowerCase();
+    if (asked.has(normalisedAsk)) problems.push(`${at} "${question.ask}" is asked twice`);
+    asked.add(normalisedAsk);
 
     // Skipped when the page has no facts at all: that is already reported
     // above, and checking against an empty page here would only pile a
