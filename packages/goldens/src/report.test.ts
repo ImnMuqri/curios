@@ -93,7 +93,10 @@ describe('formatReport', () => {
   it('counts each page separately, so a whole bad page is obvious at a glance', () => {
     const report = formatReport([passing('business', 'a'), failing('hostile', 'b'), failing('hostile', 'c')], 0);
 
-    expect(report).toMatch(/business.*1 passed/);
-    expect(report).toMatch(/hostile.*2 failed/);
+    // Each page's line carries its own counts. Summarising every page's results
+    // together would print "3 questions  1 passed  2 failed" on both lines --
+    // which looser patterns than these would still match.
+    expect(report).toContain('business  1 questions  1 passed  0 failed');
+    expect(report).toContain('hostile  2 questions  0 passed  2 failed');
   });
 });
