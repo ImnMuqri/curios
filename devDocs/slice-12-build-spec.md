@@ -31,7 +31,7 @@ price went missing.
 | Dropping the `id` attribute from each fact in the prompt | Changing the prompt's instructions, refusal rules or NeverSay handling |
 | Prompt caching switched off in retrieval mode | Removing caching from the fallback path, where the prompt is stable |
 | Reusing a stored embedding for a repeated question | Reusing a stored **answer** — that is its own slice |
-| The golden set as the gate, plus two new cross-language questions | Model-graded scoring of any kind |
+| The golden set as the gate, with embeddings written when it seeds | Model-graded scoring of any kind |
 
 **The model does not change.** Chat stays on `CHAT_MODEL` (Haiku 4.5) with the same instructions,
 the same refusal rules and the same answer shape. This slice changes only which facts reach it.
