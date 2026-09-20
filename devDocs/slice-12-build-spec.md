@@ -27,6 +27,7 @@ price went missing.
 | One vector per fact, stored in Postgres and read per question | pgvector, a vector database, or an index of any kind |
 | A character budget of facts per question | Reranking, chunking, or a second retrieval pass |
 | Falling back to every fact whenever the match is weak or anything is missing | Letting a visitor's question go unanswered because retrieval failed |
+| A fourth golden fixture page, big enough to cross the retrieval floor | Growing the three existing fixture pages, whose baselines would move |
 | Dropping the `id` attribute from each fact in the prompt | Changing the prompt's instructions, refusal rules or NeverSay handling |
 | Prompt caching switched off in retrieval mode | Removing caching from the fallback path, where the prompt is stable |
 | Reusing a stored embedding for a repeated question | Reusing a stored **answer** — that is its own slice |
@@ -147,10 +148,21 @@ vectors: the budget is respected, the order is by score, a fact that would overf
 selection, a score below the floor asks for fallback, and a page under the minimum asks for fallback.
 Every test is proven by a mutation, as every test in this repo is.
 
-**The golden set is the gate.** All sixty questions run before and after, and the first of them is
-that "berapa harga kek butter 1kg" must still come back RM95. A question that starts failing is
-retrieval dropping a fact. Two questions are added for the case this slice exists to fix: an English
-question against a Malay-worded fact, and a Malay question against an English-worded one.
+**The golden set is the gate, and it needs a fourth page to be one.** The three existing fixtures
+hold 7, 5 and 4 facts — all under the 25-fact floor, so every one of their sixty questions would run
+in fallback mode and prove nothing about retrieval. They still run, unchanged, as the proof that
+small pages are untouched.
+
+Retrieval is proven by a new fixture, `catalog`: a business page with **at least 40 facts** and
+twenty questions that only retrieval can satisfy — a fact sitting far down the list by score, an
+English question against a Malay-worded fact, a Malay question against an English-worded one, a
+question whose answer needs two facts at once, and a question about something the page genuinely
+does not cover, which must still refuse. The suite goes from sixty questions to eighty, and a run
+from about five cents to about seven.
+
+**The golden runner writes embeddings when it seeds.** A fixture page whose facts have no vectors
+falls back by rule, so without this the new page would prove as little as the old ones. One batched
+call per run, at seeding time, using the same package the worker uses.
 
 **The fallback rate is free to measure.** A retrieved answer carries a ~900-token prompt and a
 fallback carries ~6,000, and `ModelCall` already records prompt size per call. No new tracking, and
@@ -164,7 +176,7 @@ fallback rate plus the questions owners see on their Questions screen.
 
 ## Done means
 
-The golden set passes with retrieval on, the prompt on a 114-fact page drops from ~6,000 tokens to
+The golden set passes with retrieval on -- the `catalog` page exercising it and the other three proving small pages are untouched -- the prompt on a 114-fact page drops from ~6,000 tokens to
 under 1,200 in retrieval mode, the fallback path is proven by a test for each of its four triggers —
 a page under the minimum, a missing or outdated vector, a provider failure or timeout, and a best
 score below the floor — and the three workspace gates pass. `devDocs/manual-verification-goldens.md` carries a row for the
