@@ -245,6 +245,9 @@ importers:
 
   packages/db:
     dependencies:
+      '@curios/embeddings':
+        specifier: workspace:*
+        version: link:../embeddings
       '@curios/gateway':
         specifier: workspace:*
         version: link:../gateway

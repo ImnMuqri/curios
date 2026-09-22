@@ -12,7 +12,16 @@
  * vector read back byte-swapped does not fail -- it silently scores every
  * fact as unrelated, which reads as "retrieval just is not very good".
  */
-export function encodeVector(values: Float32Array | readonly number[]): Uint8Array {
+// The return type is pinned to `Uint8Array<ArrayBuffer>`, not the bare
+// `Uint8Array` (which TypeScript 5.7+ treats as `Uint8Array<ArrayBufferLike>`
+// -- a type that also admits a SharedArrayBuffer-backed view). `new
+// Uint8Array(length)` always allocates a fresh, non-shared ArrayBuffer, so
+// this only makes the signature say what was already true. It matters
+// because Prisma's generated `Bytes` fields require the narrower
+// `Uint8Array<ArrayBuffer>` on write; the bare annotation widens the return
+// value and makes every `prisma.*.create({ data: { vector: encodeVector(...) } })`
+// a type error at the call site instead of here, once.
+export function encodeVector(values: Float32Array | readonly number[]): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(values.length * 4);
   const view = new DataView(bytes.buffer);
   for (let i = 0; i < values.length; i += 1) {

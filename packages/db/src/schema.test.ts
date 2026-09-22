@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { decodeVector, encodeVector, EMBEDDING_MODEL } from '@curios/embeddings';
 
 const prisma = new PrismaClient({
   datasources: { db: { url: process.env.DATABASE_URL_TEST } },
@@ -443,3 +444,159 @@ async function aPageForPayments(): Promise<string> {
   });
   return account.pages[0]?.id ?? '';
 }
+
+async function seedPage(): Promise<{ id: string }> {
+  const account = await prisma.account.create({
+    data: { email: `embed-${randomUUID()}@example.com` },
+    select: { id: true },
+  });
+  const skeleton = `embed-${randomUUID().slice(0, 8)}`;
+  return prisma.page.create({
+    data: { accountId: account.id, handle: skeleton, skeleton, displayName: 'Nadia Bakes' },
+    select: { id: true },
+  });
+}
+
+describe('FactEmbedding', () => {
+  it('is deleted with the fact it belongs to', async () => {
+    const page = await seedPage();
+    const fact = await prisma.fact.create({
+      data: {
+        pageId: page.id,
+        category: 'PRICE',
+        claim: 'Kek butter 1kg RM95.',
+        normalizedClaim: 'kek butter 1kg rm95',
+        confidence: 1,
+      },
+    });
+    await prisma.factEmbedding.create({
+      data: { factId: fact.id, vector: new Uint8Array(4), model: 'm', dims: 1 },
+    });
+
+    await prisma.fact.delete({ where: { id: fact.id } });
+
+    expect(await prisma.factEmbedding.count({ where: { factId: fact.id } })).toBe(0);
+  });
+
+  it('holds one row per fact', async () => {
+    const page = await seedPage();
+    const fact = await prisma.fact.create({
+      data: {
+        pageId: page.id,
+        category: 'PRICE',
+        claim: 'Kek coklat 1kg RM85.',
+        normalizedClaim: 'kek coklat 1kg rm85',
+        confidence: 1,
+      },
+    });
+    await prisma.factEmbedding.create({
+      data: { factId: fact.id, vector: new Uint8Array(4), model: 'm', dims: 1 },
+    });
+
+    await expect(
+      prisma.factEmbedding.create({
+        data: { factId: fact.id, vector: new Uint8Array(4), model: 'm', dims: 1 },
+      }),
+    ).rejects.toThrow();
+  });
+
+  it('returns the bytes it was given, unchanged', async () => {
+    const page = await seedPage();
+    const fact = await prisma.fact.create({
+      data: {
+        pageId: page.id,
+        category: 'PRICE',
+        claim: 'Bunting RM85.',
+        normalizedClaim: 'bunting rm85',
+        confidence: 1,
+      },
+    });
+    const vector = encodeVector([0.5, -0.25]);
+    await prisma.factEmbedding.create({
+      data: { factId: fact.id, vector, model: EMBEDDING_MODEL, dims: 2 },
+    });
+
+    const row = await prisma.factEmbedding.findUniqueOrThrow({ where: { factId: fact.id } });
+    expect(Array.from(decodeVector(row.vector, 2))).toEqual([0.5, -0.25]);
+  });
+
+  // Not in the brief. Later tasks filter on `Fact.embedding` as a single
+  // nullable relation (see the interface note in the task brief), but nothing
+  // above ever reads that field -- every test so far goes through
+  // `prisma.factEmbedding` directly. `embedding FactEmbedding?` and
+  // `embedding FactEmbedding[]` compile to the identical foreign key and
+  // produce an identical migration.sql (proved separately: `prisma migrate
+  // diff` between the two schemas emits an empty migration), so a mutation
+  // from `?` to `[]` passes every other test in this file and every gate.
+  // Only the shape read through Prisma's generated client tells them apart.
+  it('exposes the relation as a single nullable object, never a list', async () => {
+    const page = await seedPage();
+    const bare = await prisma.fact.create({
+      data: {
+        pageId: page.id,
+        category: 'PRICE',
+        claim: 'Susu RM8.',
+        normalizedClaim: 'susu rm8',
+        confidence: 1,
+      },
+      include: { embedding: true },
+    });
+    expect(bare.embedding).toBeNull();
+
+    const fact = await prisma.fact.create({
+      data: {
+        pageId: page.id,
+        category: 'PRICE',
+        claim: 'Roti RM3.',
+        normalizedClaim: 'roti rm3',
+        confidence: 1,
+      },
+    });
+    await prisma.factEmbedding.create({
+      data: { factId: fact.id, vector: new Uint8Array(4), model: 'm', dims: 1 },
+    });
+
+    const found = await prisma.fact.findUniqueOrThrow({
+      where: { id: fact.id },
+      include: { embedding: true },
+    });
+    expect(Array.isArray(found.embedding)).toBe(false);
+    expect(found.embedding?.factId).toBe(fact.id);
+  });
+});
+
+describe('QuestionEmbedding', () => {
+  // The constraint this proves is the reason every harness and test that
+  // causes a row here must delete it by hand.
+  it('survives TRUNCATE "Account" CASCADE, because it hangs off nothing', async () => {
+    await prisma.questionEmbedding.create({
+      data: { key: 'a'.repeat(64), vector: new Uint8Array(4), model: 'm', dims: 1 },
+    });
+
+    await prisma.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
+
+    expect(await prisma.questionEmbedding.count({ where: { key: 'a'.repeat(64) } })).toBe(1);
+    await prisma.questionEmbedding.deleteMany({ where: { key: 'a'.repeat(64) } });
+  });
+
+  // Not in the brief. FactEmbedding got a "holds one row per fact" test;
+  // QuestionEmbedding did not get its equivalent, even though the same
+  // `<col> @id` line is doing the same job (cache key uniqueness) on both
+  // tables. Without this, dropping `@id` from `key` in favour of a separate
+  // cuid id -- the same shape of mutation Step 7 names for FactEmbedding --
+  // would pass every other test in this file.
+  it('holds one row per key', async () => {
+    const key = 'b'.repeat(64);
+    await prisma.questionEmbedding.create({
+      data: { key, vector: new Uint8Array(4), model: 'm', dims: 1 },
+    });
+
+    await expect(
+      prisma.questionEmbedding.create({
+        data: { key, vector: new Uint8Array(4), model: 'm', dims: 1 },
+      }),
+    ).rejects.toThrow();
+
+    await prisma.questionEmbedding.deleteMany({ where: { key } });
+  });
+});

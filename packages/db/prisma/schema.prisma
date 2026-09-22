@@ -160,9 +160,51 @@ model Fact {
   flagged         Boolean      @default(false)
   rejectedAt      DateTime?
   createdAt       DateTime     @default(now())
+  embedding       FactEmbedding?
 
   @@unique([pageId, normalizedClaim])
   @@index([pageId, category])
+}
+
+/// One vector per fact, written by syncFactEmbeddings and read per question.
+///
+/// Its own table rather than columns on Fact, so re-embedding never rewrites
+/// a fact row and no ordinary read of a fact drags two kilobytes of vector
+/// along with it. `model` and `dims` are stored on every row because a vector
+/// is only meaningful to the embedder that produced it: the chat path reads
+/// only rows matching the embedder it holds, so a model change puts pages in
+/// fallback rather than scoring against vectors from two different spaces.
+model FactEmbedding {
+  factId    String   @id
+  fact      Fact     @relation(fields: [factId], references: [id], onDelete: Cascade)
+  vector    Bytes
+  model     String
+  dims      Int
+  createdAt DateTime @default(now())
+}
+
+/// The vector for a question somebody already asked, anywhere in the product.
+///
+/// Question text is page-independent, so one row serves every page ever asked
+/// the same thing. It is a cache of a pure function and needs no invalidation:
+/// a row whose model or width does not match the current embedder is ignored
+/// and overwritten.
+///
+/// Keyed by a SHA-256 of the normalised text, never by the text. A follow-up
+/// embeds the previous turn together with the question, which can exceed
+/// Postgres' ~2,700-byte btree key limit and would throw on a visitor's
+/// question in production. The hash is also why this table cannot become a
+/// log of what every visitor in the product has ever asked.
+///
+/// It has no foreign key to anything, so `TRUNCATE "Account" CASCADE` does not
+/// clear it. Anything that writes rows here in a test or a harness removes them
+/// itself.
+model QuestionEmbedding {
+  key       String   @id
+  vector    Bytes
+  model     String
+  dims      Int
+  createdAt DateTime @default(now())
 }
 
 model PinnedAnswer {
