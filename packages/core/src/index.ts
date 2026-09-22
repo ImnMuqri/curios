@@ -41,3 +41,11 @@ export { extendPaidUntil, PLAN_PRICES_CENTS } from './billing.js';
 export type { BillingPlan } from './billing.js';
 export { shouldIndex } from './indexing.js';
 export { FAQ_MIN_ASKS, faqSlugBase, qualifiesForFaq, serialiseJsonLd } from './faq.js';
+export {
+  cosineSimilarity,
+  FACT_BUDGET_CHARS,
+  RETRIEVAL_FLOOR,
+  RETRIEVAL_MIN_FACTS,
+  selectFacts,
+} from './retrieval.js';
+export type { FallbackReason, Selection } from './retrieval.js';
