@@ -67,6 +67,7 @@ describe('selectFacts', () => {
     expect(result.mode).toBe('fallback');
     expect(result.reason).toBe('below-minimum');
     expect(result.facts).toHaveLength(RETRIEVAL_MIN_FACTS - 1);
+    expect(result.bestScore).toBeNull();
   });
 
   it('retrieves on a page with exactly the minimum facts', () => {
@@ -80,6 +81,26 @@ describe('selectFacts', () => {
     expect(result.mode).toBe('retrieved');
   });
 
+  it('takes an overridden minFacts, so the golden set can tune it', () => {
+    const facts = page(10);
+    // Would fall back with default minFacts: 25
+    const resultDefault = selectFacts({
+      facts,
+      vectors: vectorsFor(facts, axis),
+      question: axis(0),
+    });
+    expect(resultDefault.mode).toBe('fallback');
+
+    // Retrieves with minFacts: 5
+    const resultOverride = selectFacts({
+      facts,
+      vectors: vectorsFor(facts, axis),
+      question: axis(0),
+      minFacts: 5,
+    });
+    expect(resultOverride.mode).toBe('retrieved');
+  });
+
   it('falls back when one fact has no vector', () => {
     const facts = page(RETRIEVAL_MIN_FACTS);
     const vectors = vectorsFor(facts, (index) => axis(index % 8));
@@ -90,6 +111,7 @@ describe('selectFacts', () => {
     expect(result.mode).toBe('fallback');
     expect(result.reason).toBe('missing-vectors');
     expect(result.facts).toEqual(facts);
+    expect(result.bestScore).toBeNull();
   });
 
   it('falls back when the best score is below the floor', () => {
@@ -116,6 +138,7 @@ describe('selectFacts', () => {
     const result = selectFacts({ facts, vectors, question: axis(0), floor });
 
     expect(result.mode).toBe('retrieved');
+    expect(result.reason).toBeNull();
   });
 
   it('returns facts in score order, best first', () => {
