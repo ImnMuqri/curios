@@ -119,6 +119,42 @@ describe('createOpenAiEmbedder', () => {
     await expect(embedder.embed(['slow'])).rejects.toThrow();
   });
 
+  // The test above only proves *some* timeout eventually fires -- it passes
+  // `timeoutMs: 20` and never checks what value reaches `AbortSignal.timeout`
+  // when no override is given, so the `?? EMBEDDING_TIMEOUT_MS` fallback
+  // itself is unexercised: swapping it for `?? 999999`, or dropping
+  // `options.timeoutMs` entirely, would leave every existing test green.
+  it('asks AbortSignal.timeout for EMBEDDING_TIMEOUT_MS when no override is given', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    try {
+      const fetchImpl = fetchReturning([{ index: 0, embedding: vector(0.1) }]);
+      const embedder = createOpenAiEmbedder('k', { fetchImpl: fetchImpl as unknown as typeof fetch });
+
+      await embedder.embed(['one']);
+
+      expect(timeoutSpy).toHaveBeenCalledWith(EMBEDDING_TIMEOUT_MS);
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
+  it('asks AbortSignal.timeout for the caller-supplied timeoutMs, not the default', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    try {
+      const fetchImpl = fetchReturning([{ index: 0, embedding: vector(0.1) }]);
+      const embedder = createOpenAiEmbedder('k', {
+        timeoutMs: 42,
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+      });
+
+      await embedder.embed(['one']);
+
+      expect(timeoutSpy).toHaveBeenCalledWith(42);
+    } finally {
+      timeoutSpy.mockRestore();
+    }
+  });
+
   it('reports the model and dimensions it writes, so a stored row can be checked against them', () => {
     const embedder = createOpenAiEmbedder('k');
     expect(embedder.model).toBe(EMBEDDING_MODEL);
@@ -140,6 +176,21 @@ describe('createOpenAiEmbedder', () => {
     const embedder = createOpenAiEmbedder('k', { fetchImpl: fetchImpl as unknown as typeof fetch });
 
     await expect(embedder.embed(['one', 'two'])).rejects.toThrow(/skipped/);
+  });
+
+  // The length check above (`data.length !== texts.length`) only counts
+  // entries -- it passes on any response with the right *count*, whatever
+  // indices those entries carry. A provider that echoes back an index equal
+  // to (or past) the request length -- e.g. index 1 for a single-text
+  // request -- slips through that check with a correct-length response, and
+  // only this clause catches it. Without it, `vectors[1] = ...` silently
+  // extends the result array past its declared length while the real slot
+  // 0 is left unset.
+  it('throws when the provider answers with an index outside the request', async () => {
+    const fetchImpl = fetchReturning([{ index: 1, embedding: vector(0.1) }]);
+    const embedder = createOpenAiEmbedder('k', { fetchImpl: fetchImpl as unknown as typeof fetch });
+
+    await expect(embedder.embed(['one'])).rejects.toThrow(/unusable entry/);
   });
 
   // The requests-in-order test above checks EMBEDDING_DIMS only by round
