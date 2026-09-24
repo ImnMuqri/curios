@@ -1,5 +1,48 @@
-import { describe, expect, it } from 'vitest';
-import { buildSourceBlock, parseSlots, systemBlockFor } from './anthropic.gateway.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildSourceBlock, createAnthropicGateway, parseSlots, systemBlockFor } from './anthropic.gateway.js';
+
+// A module-level mock of the SDK itself, not a fake-client constructor
+// parameter on createAnthropicGateway -- the brief pre-authorises only not
+// adding the latter. This fakes `client.messages.stream()` so `chat()`'s real
+// call into the SDK can be driven end to end, and the exact `system` value it
+// sent can be read back, without touching the gateway's public API.
+const { streamMock } = vi.hoisted(() => ({ streamMock: vi.fn() }));
+
+vi.mock('@anthropic-ai/sdk', () => ({
+  default: class {
+    messages = { stream: streamMock };
+  },
+}));
+
+/**
+ * A minimal double for the SDK's MessageStream: async-iterable, which is how
+ * `chat()` consumes it (`for await`), and with a `finalMessage()` of the same
+ * shape `chat()` awaits afterwards. One text delta and one usage object is
+ * enough -- `chat()` only needs to yield one `text` event and one `done` event.
+ */
+function fakeStream() {
+  return {
+    async *[Symbol.asyncIterator]() {
+      yield { type: 'content_block_delta', delta: { type: 'text_delta', text: 'hi' } };
+    },
+    finalMessage: async () => ({
+      usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 },
+    }),
+  };
+}
+
+async function drainChat(cachePrompt: boolean) {
+  const gateway = createAnthropicGateway('test-key');
+  const events = [];
+  for await (const event of gateway.chat({
+    systemPrompt: 'rules and facts',
+    messages: [{ role: 'user', content: 'hi' }],
+    cachePrompt,
+  })) {
+    events.push(event);
+  }
+  return events;
+}
 
 describe('buildSourceBlock', () => {
   const documents = [
@@ -90,6 +133,32 @@ describe('systemBlockFor', () => {
   // premium, that nothing ever reads.
   it('sends a plain string when caching would never pay', () => {
     expect(systemBlockFor('rules and facts', false)).toBe('rules and facts');
+  });
+});
+
+describe('chat, the system field it actually sends the SDK', () => {
+  beforeEach(() => {
+    streamMock.mockReset();
+    streamMock.mockImplementation(() => fakeStream());
+  });
+
+  // This is the line systemBlockFor's own unit tests cannot reach: the wiring
+  // inside chat() that calls it and hands the result to the SDK. Mutating
+  // that call to hardcode the cached array (see the mutation report) makes
+  // this test -- and only this one -- go red.
+  it('sends the array-with-cache_control form when cachePrompt is true', async () => {
+    await drainChat(true);
+
+    expect(streamMock).toHaveBeenCalledTimes(1);
+    expect(streamMock.mock.calls[0]?.[0]?.system).toEqual([
+      { type: 'text', text: 'rules and facts', cache_control: { type: 'ephemeral' } },
+    ]);
+  });
+
+  it('sends the bare string when cachePrompt is false', async () => {
+    await drainChat(false);
+
+    expect(streamMock.mock.calls[0]?.[0]?.system).toBe('rules and facts');
   });
 });
 
