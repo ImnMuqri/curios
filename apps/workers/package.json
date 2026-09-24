@@ -13,6 +13,7 @@
     "@curios/billing": "workspace:*",
     "@curios/core": "workspace:*",
     "@curios/db": "workspace:*",
+    "@curios/embeddings": "workspace:*",
     "@curios/gateway": "workspace:*",
     "@prisma/client": "^6.1.0",
     "bullmq": "^5.34.0",

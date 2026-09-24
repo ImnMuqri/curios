@@ -176,6 +176,9 @@ importers:
       '@curios/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@curios/embeddings':
+        specifier: workspace:*
+        version: link:../../packages/embeddings
       '@curios/gateway':
         specifier: workspace:*
         version: link:../../packages/gateway

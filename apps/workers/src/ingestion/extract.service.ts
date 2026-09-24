@@ -4,8 +4,9 @@ import {
   type IngestJobData,
   type SourceDocument,
 } from '@curios/core';
-import { recordModelCall, type PrismaClient } from '@curios/db';
+import { recordModelCall, syncFactEmbeddings, type PrismaClient } from '@curios/db';
 import { EXTRACT_MODEL, type Gateway } from '@curios/gateway';
+import type { Embedder } from '@curios/embeddings';
 import type { SourceAdapter } from '../sources/types.js';
 import { textAdapter } from '../sources/text.adapter.js';
 
@@ -13,6 +14,13 @@ export interface ExtractDeps {
   prisma: PrismaClient;
   gateway: Gateway;
   adapter: SourceAdapter;
+  /**
+   * Null when the process has no embeddings key. Facts are still written;
+   * the page simply has no vectors, which puts every question on it into
+   * fallback until a backfill runs. Never a reason to fail an ingestion.
+   */
+  embedder: Embedder | null;
+  log?: { warn?: (details: object, message: string) => void };
 }
 
 /** Phrases that indicate scraped text is addressing the model, not describing the business. */
@@ -133,6 +141,23 @@ export async function runExtraction(
     // try/catch in this function and left the row RUNNING forever -- it is
     // now covered by the outer catch like everything else.
     const created = await prisma.fact.createMany({ data: rows, skipDuplicates: true });
+
+    // Its own try, not the outer one. An ingestion that crawled a site, spent
+    // an Opus call and wrote its facts has succeeded; a provider blip on the
+    // embeddings call must not turn that into a FAILED row the owner sees as
+    // "we could not read your website". The page stays in fallback -- every
+    // fact on every question, which is exactly what it did before this slice
+    // -- until the backfill or the next crawl catches it.
+    if (deps.embedder) {
+      try {
+        await syncFactEmbeddings(prisma, deps.embedder, { pageId: job.pageId });
+      } catch (error) {
+        deps.log?.warn?.(
+          { pageId: job.pageId, err: error instanceof Error ? error.message : String(error) },
+          'facts written but not embedded; this page falls back until a backfill runs',
+        );
+      }
+    }
 
     await prisma.ingestion.update({
       where: { id: job.ingestionId },

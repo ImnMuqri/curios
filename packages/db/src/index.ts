@@ -12,3 +12,5 @@ export * from '@prisma/client';
 
 export { recordModelCall } from './model-call.js';
 export type { ModelCallFields } from './model-call.js';
+
+export { syncFactEmbeddings } from './fact-embedding.js';

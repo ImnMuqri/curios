@@ -1,6 +1,7 @@
 import pino from 'pino';
 import { prisma } from '@curios/db';
 import { createAnthropicGateway } from '@curios/gateway';
+import { createOpenAiEmbedder, EMBEDDING_BATCH_TIMEOUT_MS } from '@curios/embeddings';
 import { Queue } from 'bullmq';
 import { BILLING_QUEUE, MAIL_QUEUE, type MailJobData } from '@curios/core';
 import { createRedis } from './lib/redis.js';
@@ -25,7 +26,15 @@ if (!appUrl) throw new Error('APP_URL is not set');
 
 const connection = createRedis();
 const gateway = createAnthropicGateway(apiKey);
-const worker = createIngestionWorker({ connection, prisma, gateway, log });
+
+const openAiKey = process.env.OPENAI_API_KEY;
+if (!openAiKey) throw new Error('OPENAI_API_KEY is not set');
+
+// The batch timeout, not the visitor one: nothing is waiting on an
+// ingestion, and a whole page of facts goes in one request.
+const embedder = createOpenAiEmbedder(openAiKey, { timeoutMs: EMBEDDING_BATCH_TIMEOUT_MS });
+
+const worker = createIngestionWorker({ connection, prisma, gateway, embedder, log });
 // Its own connection: BullMQ blocks on one per worker, so sharing would let a
 // slow extraction stall every outgoing verification and reset link. Held rather
 // than discarded, so it can be closed on the way out.

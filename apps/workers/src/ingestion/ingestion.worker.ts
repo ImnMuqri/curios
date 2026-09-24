@@ -2,6 +2,7 @@ import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import type { PrismaClient } from '@curios/db';
 import type { Gateway } from '@curios/gateway';
+import type { Embedder } from '@curios/embeddings';
 import { allowsPrivateAddresses, INGEST_QUEUE, type IngestJobData } from '@curios/core';
 import { createWebsiteAdapter } from '../sources/website.adapter.js';
 import { QUEUE_CONCURRENCY } from '../queues.js';
@@ -12,6 +13,7 @@ export function createIngestionWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   gateway: Gateway;
+  embedder: Embedder | null;
   log?: { warn: (details: object, message: string) => void };
 }): Worker<IngestJobData> {
   // Read once, at construction. A flag consulted per request is a flag that can
@@ -33,7 +35,11 @@ export function createIngestionWorker(deps: {
 
   return new Worker<IngestJobData>(
     INGEST_QUEUE,
-    async (job) => runExtraction({ prisma: deps.prisma, gateway: deps.gateway, adapter }, job.data),
+    async (job) =>
+      runExtraction(
+        { prisma: deps.prisma, gateway: deps.gateway, adapter, embedder: deps.embedder, log: deps.log },
+        job.data,
+      ),
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.ingest },
   );
 }
