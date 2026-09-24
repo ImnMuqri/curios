@@ -1,7 +1,6 @@
 import { type FactCategory } from '@curios/core';
 
 export interface PromptFact {
-  id: string;
   category: FactCategory;
   claim: string;
 }
@@ -14,28 +13,50 @@ function escapeForPrompt(input: string): string {
 }
 
 /**
- * The cached prefix.
+ * The system prompt for one answer.
  *
- * Everything here must be stable for a given page: prompt caching is a prefix
- * match, so a timestamp, a session id, or a detected language anywhere in this
- * string silently destroys the cache for every page in the product. The
- * visitor's question goes in `messages`, after the cache breakpoint, never here.
+ * `facts` is what retrieval chose for this question, or every verified fact
+ * on the page when retrieval did not run -- see `retrieval.ts` in this
+ * directory for which, and why. This function does not know or care: it is
+ * given a list and it wraps it.
  *
- * `facts` MUST be every verified fact for the page, never a question-dependent
- * subset. Filtering by question was the original design and it was wrong twice
- * over. It made the prefix vary per question, destroying cross-visitor cache
- * reuse — which is the only reuse that matters, since a cache read costs a tenth
- * of an input token and the whole block is stable between owner edits. And it
- * broke the product's flagship question: bag-of-words matching on "berapa harga"
- * shares no token with "Kek 1kg butter starts at RM95", so the single most
- * common question in the product returned no prices at all.
+ * It used to be every fact, always, and the argument for that is worth
+ * keeping because two of its three claims were true and it was still wrong.
  *
- * Sending everything is affordable by the same argument that rules out a vector
- * database at this stage: a page holds 30 to 120 facts and they fit with room to
- * spare. Revisit above ~400 facts per page.
+ * True: filtering by question varies the prefix, so cross-visitor prompt
+ * caching never happens. True: bag-of-words matching on "berapa harga" shares
+ * no token with "Kek 1kg butter starts at RM95", so the first attempt at
+ * selection broke the product's flagship question. False, and the reason the
+ * whole thing held: that sending everything was therefore affordable.
  *
- * The language instruction is a rule rather than a value, which is what makes it
- * safe to cache.
+ * Affordable conflated fitting in the context window with costing little.
+ * Measured, a 114-fact page sent 5,994 tokens on every question, of which
+ * about 96% was re-reading facts the model had read hundreds of times. And
+ * the caching argument assumed traffic this product does not have: Haiku 4.5
+ * will not cache a prefix under 4,096 tokens at all, an entry expires after
+ * five minutes, and a small shop's visitors arrive hours apart -- so the
+ * cache was written at a 25% premium and almost never read.
+ *
+ * What changed: every fact now stores the question it answers, so the match
+ * is question-to-question rather than question-to-claim, and slice 11's
+ * golden set can prove for a few cents that no price went missing.
+ *
+ * Caching is now the caller's decision, passed to the gateway as
+ * `cachePrompt`: on in fallback, where the prefix is the stable whole-page
+ * list, off in retrieval, where it differs per question.
+ *
+ * Everything that is not the fact list must still be stable for a given page.
+ * A timestamp, a session id or a detected language anywhere in this string
+ * destroys what caching is left. The visitor's question goes in `messages`,
+ * after the cache breakpoint, never here.
+ *
+ * There is no fact `id` in the output. It cost about 19 tokens a fact -- 36%
+ * of that 114-fact prompt -- and nothing ever read one back: the model is
+ * never asked to cite one, no parser looks for one, and `Message.citedFactIds`
+ * is written from the selection rather than from the answer.
+ *
+ * The language instruction is a rule rather than a value, which is what makes
+ * it safe to cache.
  */
 export function buildSystemPrompt(input: {
   displayName: string;
@@ -49,7 +70,7 @@ export function buildSystemPrompt(input: {
   // claim containing a literal "</fact>" would otherwise close its own tag
   // early and let whatever follows in the claim stand outside it, unwrapped.
   const factBlock = input.facts
-    .map((f) => `<fact id="${f.id}" category="${f.category}">${escapeForPrompt(f.claim)}</fact>`)
+    .map((f) => `<fact category="${f.category}">${escapeForPrompt(f.claim)}</fact>`)
     .join('\n');
 
   const neverSayBlock = input.neverSay.length

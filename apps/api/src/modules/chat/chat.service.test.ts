@@ -61,6 +61,26 @@ function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
   return { gateway, prompt: () => captured };
 }
 
+/** Records the exact `cachePrompt` flag the gateway received. */
+function gatewayCapturingCachePrompt(): { gateway: Gateway; cachePrompt: () => boolean | undefined } {
+  let captured: boolean | undefined;
+  const gateway: Gateway = {
+    extract: vi.fn(),
+    slots: vi.fn(),
+    chat: async function* ({ cachePrompt }) {
+      captured = cachePrompt;
+      yield { type: 'text' as const, text: 'ok' };
+      yield {
+        type: 'done' as const,
+        usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        model: 'claude-haiku-4-5',
+        latencyMs: 700,
+      };
+    },
+  };
+  return { gateway, cachePrompt: () => captured };
+}
+
 /** Records the exact message list the gateway received, for asserting on the thread. */
 function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMessage[] } {
   let captured: ChatMessage[] = [];
@@ -232,6 +252,13 @@ describe('answer', () => {
     await expect(
       collect(answer({ prisma, gateway, cap }, { handle: 'nobody', question: 'hi' })),
     ).rejects.toThrow(PageNotFoundError);
+  });
+
+  it('sends cachePrompt: true, since this service still sends every fact -- Task 7 makes it a decision', async () => {
+    const { gateway, cachePrompt } = gatewayCapturingCachePrompt();
+    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+
+    expect(cachePrompt()).toBe(true);
   });
 
   it('never sends an unverified fact\'s claim to the gateway', async () => {

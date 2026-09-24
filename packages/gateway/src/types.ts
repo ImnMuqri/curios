@@ -31,6 +31,17 @@ export interface ChatInput {
    * sensible window is, and the caller does.
    */
   messages: ChatMessage[];
+  /**
+   * Whether to mark the system prompt as a cacheable prefix.
+   *
+   * Required rather than defaulted, because both answers are right in
+   * different modes and a default hides which one a caller got. True when the
+   * prompt is the page's whole fact list, which is stable between owner edits
+   * and shared by every visitor. False when it was built for this question:
+   * the prefix differs every time, so each call would write an entry at a 25%
+   * premium that nothing ever reads.
+   */
+  cachePrompt: boolean;
 }
 
 export type ChatEvent =

@@ -274,7 +274,9 @@ export async function* answer(
 
   let text = '';
   try {
-    for await (const event of gateway.chat({ systemPrompt, messages })) {
+    // Task 7 turns this into `selection.mode === 'fallback'`. Until then the
+    // service still sends every fact, so caching is still the right answer.
+    for await (const event of gateway.chat({ systemPrompt, messages, cachePrompt: true })) {
       if (event.type === 'text') {
         text += event.text;
         yield { type: 'text', text: event.text };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSourceBlock , parseSlots } from './anthropic.gateway.js';
+import { buildSourceBlock, parseSlots, systemBlockFor } from './anthropic.gateway.js';
 
 describe('buildSourceBlock', () => {
   const documents = [
@@ -76,6 +76,20 @@ describe('buildSourceBlock', () => {
     ]);
 
     expect(block).toBe('<source title="Written by the page owner">\nI bake cakes in Shah Alam.\n</source>');
+  });
+});
+
+describe('systemBlockFor', () => {
+  it('marks the prompt cacheable when asked to', () => {
+    expect(systemBlockFor('rules and facts', true)).toEqual([
+      { type: 'text', text: 'rules and facts', cache_control: { type: 'ephemeral' } },
+    ]);
+  });
+
+  // A prompt that differs per question writes a fresh cache entry, at a 25%
+  // premium, that nothing ever reads.
+  it('sends a plain string when caching would never pay', () => {
+    expect(systemBlockFor('rules and facts', false)).toBe('rules and facts');
   });
 });
 

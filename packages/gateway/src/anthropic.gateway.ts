@@ -94,6 +94,20 @@ function usageFrom(u: {
   };
 }
 
+/**
+ * The `system` field for one call. Extracted and exported so the caching
+ * decision can be tested without a client: it is one branch, and it is the
+ * difference between paying a 25% premium on every question and not.
+ */
+export function systemBlockFor(
+  systemPrompt: string,
+  cachePrompt: boolean,
+): Anthropic.MessageCreateParams['system'] {
+  return cachePrompt
+    ? [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }]
+    : systemPrompt;
+}
+
 export function createAnthropicGateway(apiKey: string): Gateway {
   const client = new Anthropic({ apiKey });
 
@@ -125,18 +139,19 @@ export function createAnthropicGateway(apiKey: string): Gateway {
       };
     },
 
-    async *chat({ systemPrompt, messages }: ChatInput): AsyncIterable<ChatEvent> {
+    async *chat({ systemPrompt, messages, cachePrompt }: ChatInput): AsyncIterable<ChatEvent> {
       const started = Date.now();
 
       // Haiku 4.5 predates adaptive thinking and effort: pass neither.
-      // cache_control sits at the end of the system prompt so the stable fact
-      // block is cached and the volatile conversation lands after the
-      // breakpoint -- which is exactly why history goes in `messages` and is
-      // never appended to the system prompt.
+      // When the prompt is cached, cache_control sits at the end of the system
+      // block so the stable fact list is cached and the volatile conversation
+      // lands after the breakpoint -- which is why history goes in `messages`
+      // and is never appended to the system prompt. When it is not, the whole
+      // block is built for this one question and there is nothing to reuse.
       const stream = client.messages.stream({
         model: CHAT_MODEL,
         max_tokens: 1024,
-        system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+        system: systemBlockFor(systemPrompt, cachePrompt),
         messages: messages.map((m) => ({ role: m.role, content: m.content })),
       });
 
