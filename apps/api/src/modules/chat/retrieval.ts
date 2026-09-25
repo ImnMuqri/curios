@@ -129,9 +129,20 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
 
   if (rows.length !== facts.length) return everything('missing-vectors');
 
-  const vectors = new Map(
-    rows.map((row) => [row.factId, decodeVector(row.vector, embedder.dims)] as const),
-  );
+  let vectors: Map<string, Float32Array>;
+  try {
+    vectors = new Map(
+      rows.map((row) => [row.factId, decodeVector(row.vector, embedder.dims)] as const),
+    );
+  } catch {
+    // A row present but undecodable (byte length not a multiple of this
+    // embedder's dims) is, for this function's purposes, indistinguishable
+    // from a row that was never there: either way this page does not have a
+    // full, usable set of vectors to score against. Reusing 'missing-vectors'
+    // rather than inventing a reason -- the visitor's turn must never fail
+    // because a byte column got corrupted.
+    return everything('missing-vectors');
+  }
 
   const text = retrievalText(input.question, input.previousUserTurn);
   // Keyed on what is actually embedded, not on the bare question: a follow-up
@@ -139,15 +150,26 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
   // the vector of a different question.
   const key = questionKey(text);
 
-  let question: Float32Array;
+  let question: Float32Array | undefined;
   const cached = await prisma.questionEmbedding.findUnique({
     where: { key },
     select: { vector: true, model: true, dims: true },
   });
 
   if (cached && cached.model === embedder.model && cached.dims === embedder.dims) {
-    question = decodeVector(cached.vector, embedder.dims);
-  } else {
+    try {
+      question = decodeVector(cached.vector, embedder.dims);
+    } catch {
+      // Corrupt bytes on an otherwise-matching row. Treated exactly like a
+      // cache miss, not a reason to fail the visitor's turn: falling through
+      // to the embed-and-overwrite branch below re-embeds the question and
+      // rewrites this row with a decodable one, the same recovery a stale
+      // model or width already gets.
+      question = undefined;
+    }
+  }
+
+  if (question === undefined) {
     let embedded: Float32Array | undefined;
     try {
       // The embedder holds its own deadline (EMBEDDING_TIMEOUT_MS on this

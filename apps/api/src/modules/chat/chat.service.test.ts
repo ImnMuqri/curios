@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteQuestion } from '../questions/question.service.js';
 import { PrismaClient } from '@prisma/client';
 import { FREE_CONVERSATIONS_PER_MONTH, normalizeClaim, RETRIEVAL_MIN_FACTS } from '@curios/core';
@@ -167,6 +167,17 @@ async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
   for await (const event of stream) events.push(event);
   return events;
 }
+
+// This clears QuestionEmbedding before every test but not after the last one.
+// This file's own describe('retrieval in the chat path') writes rows to it,
+// so -- run alone, and depending on which test happens to be declared last --
+// a row can be left behind: QuestionEmbedding hangs off nothing, so no
+// CASCADE from Account reaches it. The afterAll below is the guaranteed
+// cleanup; relying on "the last test never calls the embedder" is an accident
+// of declaration order, not a property this file enforces.
+afterAll(async () => {
+  await prisma.$executeRawUnsafe('TRUNCATE "Account", "ModelCall", "QuestionEmbedding" CASCADE');
+});
 
 beforeEach(async () => {
   // QuestionEmbedding hangs off nothing, so CASCADE from Account does not

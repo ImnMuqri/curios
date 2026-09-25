@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { RETRIEVAL_MIN_FACTS } from '@curios/core';
 import {
@@ -93,6 +93,15 @@ beforeEach(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE "Account", "QuestionEmbedding" CASCADE');
 });
 
+// The beforeEach above clears QuestionEmbedding before every test but not
+// after the last one -- so this file, run alone, used to leave a row behind:
+// QuestionEmbedding does not cascade from Account (global-constraints.md),
+// and this file is the one place selectForQuestion's cache-write path is
+// exercised most heavily.
+afterAll(async () => {
+  await prisma.$executeRawUnsafe('TRUNCATE "Account", "QuestionEmbedding" CASCADE');
+});
+
 describe('retrievalText', () => {
   it('is the question alone when there is no previous turn', () => {
     expect(retrievalText('berapa harga kek', null)).toBe('berapa harga kek');
@@ -181,6 +190,42 @@ describe('selectForQuestion', () => {
 
     expect(result.reason).toBe('missing-vectors');
     expect(embed).not.toHaveBeenCalled();
+  });
+
+  // A row can be present, with metadata that matches this embedder's model
+  // and dims, and still hold bytes that do not decode to that many
+  // dimensions -- a corrupted column, not a stale model or width. Before the
+  // fix this reviewed, decodeVector's throw was outside every try/catch in
+  // this function and would fail the visitor's whole turn. It must instead
+  // land in the same place a genuinely missing vector does: fall back,
+  // spend nothing, and never let the question reach the log.
+  it("falls back when a fact's vector cannot be decoded, rather than fail the turn", async () => {
+    const { pageId, facts } = await seedPage(RETRIEVAL_MIN_FACTS + 5);
+    const [corrupted] = facts;
+    if (!corrupted) throw new Error('seed produced no facts');
+    // Metadata matches (model, dims) but the byte length does not decode to
+    // EMBEDDING_DIMS floats -- exactly the case the model/dims filter in the
+    // findMany where-clause cannot catch, because it never inspects bytes.
+    await prisma.factEmbedding.update({
+      where: { factId: corrupted.id },
+      data: { vector: new Uint8Array(3) },
+    });
+    const { embedder, embed } = embedderAnswering();
+    const info = vi.fn();
+
+    const result = await selectForQuestion(
+      { prisma, embedder, log: { info } },
+      { pageId, facts, question: 'berapa harga kek butter', previousUserTurn: null },
+    );
+
+    expect(result.mode).toBe('fallback');
+    expect(result.reason).toBe('missing-vectors');
+    expect(result.facts).toEqual(facts);
+    // Before any spend, same as a genuinely missing vector: the decode
+    // failure is caught before the embedder is ever reached.
+    expect(embed).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledOnce();
+    expect(JSON.stringify(info.mock.calls[0]?.[0])).not.toContain('berapa harga kek butter');
   });
 
   it('retrieves when everything is in place', async () => {
@@ -292,9 +337,14 @@ describe('selectForQuestion', () => {
   // exercised `cached.dims`. A row of the right model but a stale width is
   // not hypothetical -- it is exactly what a change to EMBEDDING_DIMS alone
   // (no model rename) would leave behind -- and decoding it against the
-  // current width throws inside decodeVector, outside every try/catch this
-  // function has, which would crash the visitor's whole turn rather than
-  // simply re-embedding.
+  // current width would once have thrown inside decodeVector, outside every
+  // try/catch this function had -- crashing the visitor's whole turn rather
+  // than simply re-embedding. A fix now wraps that decode, so this exact
+  // mutation (removing the `cached.dims === embedder.dims` check) recovers
+  // to the same visible outcome via the decode-failure path below rather
+  // than failing; the dedicated test right after this one is what actually
+  // proves that recovery. This test still stands for the cheap, no-decode
+  // path: a metadata mismatch is caught before ever touching the bytes.
   it('ignores a stored question vector of a different width and rewrites it', async () => {
     const { pageId, facts } = await seedPage(RETRIEVAL_MIN_FACTS + 5);
     const staleDims = 3;
@@ -317,6 +367,43 @@ describe('selectForQuestion', () => {
     expect(result.mode).toBe('retrieved');
     const row = await prisma.questionEmbedding.findFirstOrThrow();
     expect(row.dims).toBe(EMBEDDING_DIMS);
+  });
+
+  // The other half of the same defence: metadata says this row matches (same
+  // model, same dims), so the cheap check above lets it through, and only the
+  // actual bytes are wrong -- a corrupted column, not a stale cache entry.
+  // Before the fix this reviewed, decodeVector's throw here was uncaught and
+  // would fail the visitor's turn outright. It must instead be treated
+  // exactly like a cache miss: re-embed, and the row gets rewritten with
+  // decodable bytes.
+  it('re-embeds when a cached question vector cannot be decoded, rather than fail the turn', async () => {
+    const { pageId, facts } = await seedPage(RETRIEVAL_MIN_FACTS + 5);
+    await prisma.questionEmbedding.create({
+      data: {
+        key: questionKey(retrievalText('berapa harga', null)),
+        // Model and dims both match this embedder -- the metadata check
+        // alone would let this row through -- but 3 bytes never decodes to
+        // EMBEDDING_DIMS floats.
+        vector: new Uint8Array(3),
+        model: EMBEDDING_MODEL,
+        dims: EMBEDDING_DIMS,
+      },
+    });
+    const { embedder, embed } = embedderAnswering();
+    const info = vi.fn();
+
+    const result = await selectForQuestion(
+      { prisma, embedder, log: { info } },
+      { pageId, facts, question: 'berapa harga', previousUserTurn: null },
+    );
+
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect(result.mode).toBe('retrieved');
+    const row = await prisma.questionEmbedding.findFirstOrThrow();
+    // Rewritten with decodable bytes: the original 3-byte row is gone.
+    expect(row.vector.length).toBe(EMBEDDING_DIMS * 4);
+    expect(info).toHaveBeenCalledOnce();
+    expect(JSON.stringify(info.mock.calls[0]?.[0])).not.toContain('berapa harga');
   });
 
   it('embeds the question with a query-shaped text and nothing else', async () => {

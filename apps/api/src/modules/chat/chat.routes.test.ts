@@ -121,6 +121,15 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // QuestionEmbedding is global and does not cascade from Account (see
+  // global-constraints.md), so the one test below that drives a real
+  // embedder end-to-end ("threads the registered embedder into a real
+  // request") leaves a row behind unless something removes it. This file has
+  // no per-test truncate (unlike chat.service.test.ts's beforeEach) -- its
+  // tests rely on unique handles instead, which QuestionEmbedding's global,
+  // content-hashed key does not benefit from -- so the cleanup belongs here,
+  // once, after every test in this file has run.
+  await app.prisma.$executeRawUnsafe('TRUNCATE "QuestionEmbedding"');
   await app.close();
 });
 
