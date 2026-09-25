@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { answer } from '@curios/api/chat';
 import { questionKey, retrievalText } from '@curios/api/chat/retrieval';
-import { conversationCap, normalizeClaim } from '@curios/core';
+import { conversationCap } from '@curios/core';
 import { syncFactEmbeddings } from '@curios/db';
 import {
   createOpenAiEmbedder,
@@ -12,7 +12,7 @@ import {
 } from '@curios/embeddings';
 import { CHAT_MODEL, createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { checkAnswer, failed } from './rules.js';
-import { loadFixtures, type GoldenQuestion, type LoadedFixture } from './fixtures.js';
+import { loadFixtures, toFactCreateInput, type GoldenQuestion, type LoadedFixture } from './fixtures.js';
 import {
   formatReport,
   formatRetrievalTally,
@@ -139,20 +139,11 @@ async function seed(
           displayName: page.displayName,
           mode: page.mode,
           published: true,
-          facts: {
-            create: page.facts.map((fact) => ({
-              category: fact.category,
-              claim: fact.claim,
-              // The question a visitor's question is matched against. Null on
-              // the three original fixtures, which is what keeps them in
-              // fallback and makes them the proof that small pages are
-              // untouched.
-              question: fact.question ?? null,
-              normalizedClaim: normalizeClaim(fact.claim),
-              confidence: 1,
-              verified: true,
-            })),
-          },
+          // Mapped through fixtures.ts's toFactCreateInput, not inline: it is
+          // the one pure line in this whole seeding step -- `question:
+          // fact.question ?? null`, never a bare null -- and pulling it out
+          // is what gives it a test seam this file cannot offer on its own.
+          facts: { create: page.facts.map(toFactCreateInput) },
           neverSay: { create: page.neverSay.map((phrase) => ({ phrase })) },
         },
       },
@@ -351,10 +342,29 @@ async function main(): Promise<void> {
       JSON.stringify({ ranAt: new Date().toISOString(), model: CHAT_MODEL, summary, costMilliCents, results }, null, 2),
     );
   } finally {
+    // Two separate try/catches, not one shared try around both deletes: a
+    // shared try means a throw from the first skips the second entirely, so
+    // one failed delete (QuestionEmbedding) would silently leak the other
+    // (the harness accounts) with no error printed about it at all. Each is
+    // best-effort on its own -- the transcript is already on disk by this
+    // point, so a failed teardown loses no evidence, only tidiness -- and
+    // each is reported loudly rather than swallowed, because what it may
+    // have left behind is real rows in a database `pnpm test` shares.
     try {
       // Before deleteHarnessAccounts: QuestionEmbedding hangs off nothing, so
       // deleting the accounts below does not cascade to it either.
       await deleteQuestionVectors(prisma, fixtures);
+    } catch (error) {
+      console.error(
+        "Teardown failed to delete this run's QuestionEmbedding rows. They hang off nothing, " +
+          'so no later delete cleans them up either; the next reader of the same question just ' +
+          're-embeds it and overwrites the row, so this is not permanent, but it should be looked at:',
+      );
+      console.error(error instanceof Error ? error.message : error);
+      process.exitCode = 1;
+    }
+
+    try {
       // Only this harness's own accounts, which cascade to their pages,
       // facts, conversations, messages, questions and usage counters --
       // ModelCall does not cascade, so deleteHarnessAccounts deletes those
@@ -362,21 +372,16 @@ async function main(): Promise<void> {
       // TRUNCATE: `pnpm test` shares this database.
       await deleteHarnessAccounts(prisma, { email: { endsWith: ACCOUNT_DOMAIN } });
     } catch (error) {
-      // Best-effort: the transcript is already on disk by this point, so a
-      // failed teardown loses no evidence, only tidiness. Reported loudly
-      // rather than swallowed, because the accounts (and question vectors)
-      // it may have left behind are real rows in a database `pnpm test`
-      // shares.
       console.error(
-        'Teardown failed. Fixture accounts under `@goldens.invalid`, and the pages, facts, ' +
-          'conversations and ModelCall rows they own, may remain in the test database, and this ' +
-          "run's QuestionEmbedding rows along with them. The next run's seed step deletes each " +
-          'account by email before it seeds, so this is not permanent, but it should be looked at:',
+        'Teardown failed to delete fixture accounts under `@goldens.invalid`. They, and the ' +
+          'pages, facts, conversations and ModelCall rows they own, may remain in the test ' +
+          "database. The next run's seed step deletes each by email before it seeds, so this is " +
+          'not permanent, but it should be looked at:',
       );
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;
     } finally {
-      // Runs even if the delete above threw, so a failed teardown never
+      // Runs even if either delete above threw, so a failed teardown never
       // also leaks the connection.
       await prisma.$disconnect();
     }

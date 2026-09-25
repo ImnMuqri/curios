@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadFixtures, validateFixture, type GoldenFixture } from './fixtures.js';
+import { loadFixtures, toFactCreateInput, validateFixture, type GoldenFixture } from './fixtures.js';
 
 /** A fixture with one fact and one question, valid, for tests to bend one way. */
 const valid = (): GoldenFixture => ({
@@ -133,6 +133,41 @@ describe('validateFixture', () => {
     });
 
     expect(problems).toContainEqual(expect.stringContaining('1 of 2 facts carry a question'));
+  });
+});
+
+describe('toFactCreateInput', () => {
+  it('passes a fact\'s own question through, unchanged, alongside the rest of the row', () => {
+    // The whole object, not just `question`: pinning every field is what
+    // catches a mutation that quietly drops or renames one of the others
+    // (category, claim, normalizedClaim, confidence, verified) too.
+    expect(toFactCreateInput({ category: 'PRICE', claim: 'Kek RM95.', question: 'Berapa harga kek?' })).toEqual({
+      category: 'PRICE',
+      claim: 'Kek RM95.',
+      question: 'Berapa harga kek?',
+      normalizedClaim: 'kek rm95',
+      confidence: 1,
+      verified: true,
+    });
+  });
+
+  it('maps a fact with no question to question: null, not to a missing key', () => {
+    // This is the exact line `seed()` used to write inline before it was
+    // pulled out here: `fact.question ?? null`. A fact with no `question` at
+    // all is the three original fixtures' whole shape, and it is what keeps
+    // them in fallback -- `selectForQuestion` treats a page missing even one
+    // vector as unscoreable, and a fact whose `question` column is simply
+    // absent from the insert (rather than `null`) would be a different bug
+    // again, caught by Prisma's own required column rather than by this
+    // fixture format at all.
+    expect(toFactCreateInput({ category: 'HOURS', claim: 'Buka 9 pagi.' })).toEqual({
+      category: 'HOURS',
+      claim: 'Buka 9 pagi.',
+      question: null,
+      normalizedClaim: 'buka 9 pagi',
+      confidence: 1,
+      verified: true,
+    });
   });
 });
 

@@ -1,6 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import type { FactCategory } from '@curios/core';
+import { normalizeClaim, type FactCategory } from '@curios/core';
 import type { Expectation } from './rules.js';
 
 /**
@@ -47,6 +47,39 @@ export interface GoldenFixture {
 export interface LoadedFixture {
   name: string;
   fixture: GoldenFixture;
+}
+
+/** One golden fact, shaped for Prisma's `Fact.create`. */
+export interface FactCreateInput {
+  category: FactCategory;
+  claim: string;
+  question: string | null;
+  normalizedClaim: string;
+  confidence: number;
+  verified: boolean;
+}
+
+/**
+ * A golden fixture's fact, mapped to what `seed()` writes to the database.
+ *
+ * Pure, and pulled out of `run.ts` on purpose: that file has no test seam --
+ * no exports, and its module body runs `main()` on import -- so the one line
+ * this whole fixture format exists to prove (`question: fact.question ??
+ * null`, never a bare `null` that would silently drop back to embedding
+ * claims instead of questions -- see `syncFactEmbeddings`) needs a home a
+ * test can reach. `confidence: 1` and `verified: true` are fixed: `answer()`
+ * only reads verified facts on a published page, and a golden fixture always
+ * ships already-reviewed facts.
+ */
+export function toFactCreateInput(fact: GoldenFact): FactCreateInput {
+  return {
+    category: fact.category,
+    claim: fact.claim,
+    question: fact.question ?? null,
+    normalizedClaim: normalizeClaim(fact.claim),
+    confidence: 1,
+    verified: true,
+  };
 }
 
 /**
