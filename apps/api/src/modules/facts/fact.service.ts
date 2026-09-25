@@ -76,6 +76,11 @@ export async function verifyFact(
  * deleted instead: a stale vector matches wording the claim no longer has,
  * which is a wrong answer, and no vector puts the page into fallback, which
  * is merely an expensive right one.
+ *
+ * The failure is also logged -- an id and the error only, never the claim.
+ * `syncFactEmbeddings` deliberately does not log ("a caller decides whether a
+ * failure to embed is fatal"), so this catch is the one place in the system
+ * an embedding outage during an owner's edit becomes visible to anyone.
  */
 export async function editFact(
   prisma: PrismaClient,
@@ -83,6 +88,7 @@ export async function editFact(
   factId: string,
   claim: string,
   embedder: Embedder | null,
+  log?: { warn?: (details: object, message: string) => void },
 ): Promise<void> {
   let updated;
   try {
@@ -114,8 +120,12 @@ export async function editFact(
     // than a stale one: the failure that costs money is always the safer one.
     await prisma.factEmbedding.deleteMany({ where: { factId } });
     await syncFactEmbeddings(prisma, embedder, { id: factId });
-  } catch {
+  } catch (error) {
     await prisma.factEmbedding.deleteMany({ where: { factId } });
+    log?.warn?.(
+      { factId, err: error instanceof Error ? error.message : String(error) },
+      'fact edited but its vector could not be refreshed; this page falls back until a backfill runs',
+    );
   }
 }
 

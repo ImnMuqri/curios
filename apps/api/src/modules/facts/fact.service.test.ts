@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { decodeVector, EMBEDDING_DIMS, EMBEDDING_MODEL, type Embedder } from '@curios/embeddings';
 import { syncFactEmbeddings } from '@curios/db';
@@ -108,6 +108,38 @@ describe('editFact and the fact’s vector', () => {
     expect(await prisma.factEmbedding.count({ where: { factId } })).toBe(0);
     const fact = await prisma.fact.findUniqueOrThrow({ where: { id: factId } });
     expect(fact.claim).toBe('Kek RM120.');
+  });
+
+  // syncFactEmbeddings deliberately does not log a failure itself ("a caller
+  // decides whether a failure to embed is fatal"), so this catch is the one
+  // place an embedding outage during an owner's edit becomes visible to
+  // anyone. Asserting only "warn was called" would stay green even if the
+  // message were swapped for an unrelated string or `err` were dropped from
+  // the payload -- that's exactly the gap Task 4 left in the worker's version
+  // of this same call. The exact payload and message are asserted here, and
+  // an exact-match assertion also catches the claim text ever being added to
+  // it, which the global logging rule forbids.
+  it('logs the failure when re-embedding fails, with an id and the error but never the claim', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Kek RM95.', question: null });
+    const { embedder } = embedderCounting();
+    await syncFactEmbeddings(prisma, embedder, { id: factId });
+
+    const failing: Embedder = {
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+      embed: async () => {
+        throw new Error('provider unavailable');
+      },
+    };
+    const log = { warn: vi.fn() };
+
+    await editFact(prisma, accountId, factId, 'Kek RM120.', failing, log);
+
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    expect(log.warn).toHaveBeenCalledWith(
+      { factId, err: 'provider unavailable' },
+      'fact edited but its vector could not be refreshed; this page falls back until a backfill runs',
+    );
   });
 
   it('deletes the vector when there is no embedder at all', async () => {

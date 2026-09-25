@@ -39,7 +39,14 @@ export const factRoutes: FastifyPluginAsyncZod<FactRouteOptions> = async (app, o
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
 
-      await editFact(app.prisma, request.account.id, request.params.id, request.body.claim, embedder);
+      await editFact(
+        app.prisma,
+        request.account.id,
+        request.params.id,
+        request.body.claim,
+        embedder,
+        request.log,
+      );
       return reply.send({ status: 'updated' });
     },
   );

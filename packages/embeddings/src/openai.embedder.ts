@@ -29,7 +29,16 @@ export const EMBEDDING_DIMS = 512;
  */
 export const EMBEDDING_TIMEOUT_MS = 1000;
 
-/** Batches: the worker and the backfill, where nobody is waiting. */
+/**
+ * Batches: the worker and the backfill, where nobody is waiting -- and the
+ * owner's edit path, which does have someone waiting but still belongs here,
+ * not on EMBEDDING_TIMEOUT_MS above. One fact failing to embed does not cost
+ * that fact alone: retrieval treats a page missing even one vector as
+ * unscoreable and answers from every fact until a backfill runs, so a save
+ * that gives up early trades a few seconds of spinner for the whole page's
+ * saving, indefinitely. Thirty seconds is a ceiling only a genuine outage
+ * reaches.
+ */
 export const EMBEDDING_BATCH_TIMEOUT_MS = 30_000;
 
 /**
