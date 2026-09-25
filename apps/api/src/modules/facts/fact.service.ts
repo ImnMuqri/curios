@@ -1,5 +1,6 @@
-import type { PrismaClient } from '@curios/db';
+import { syncFactEmbeddings, type PrismaClient } from '@curios/db';
 import { normalizeClaim } from '@curios/core';
+import type { Embedder } from '@curios/embeddings';
 
 export class FactNotFoundError extends Error {
   readonly statusCode = 404;
@@ -58,12 +59,30 @@ export async function verifyFact(
  * `normalizeClaim` is re-run rather than left alone, so the key never drifts
  * from the text it is meant to key. That is also what makes a collision
  * possible here, and a collision is an owner-fixable fact rather than a 500.
+ *
+ * The fact's vector is handled last, and only when it can be stale. A vector
+ * is of `question ?? claim`: a fact carrying a question is matched on that
+ * question, which this function cannot change, so its vector is still
+ * correct and re-embedding it would write the same numbers back. A fact with
+ * no question is matched on its claim, which just changed, so it is
+ * re-embedded.
+ *
+ * NOTE for whoever adds an edit-the-question path: that one must re-embed
+ * unconditionally. The condition below is not "we can skip this sometimes",
+ * it is "this path cannot change what was embedded".
+ *
+ * A failure to embed never fails the save. The edit is already committed, and
+ * an owner watching a spinner does not care which vendor is down. The row is
+ * deleted instead: a stale vector matches wording the claim no longer has,
+ * which is a wrong answer, and no vector puts the page into fallback, which
+ * is merely an expensive right one.
  */
 export async function editFact(
   prisma: PrismaClient,
   accountId: string,
   factId: string,
   claim: string,
+  embedder: Embedder | null,
 ): Promise<void> {
   let updated;
   try {
@@ -79,8 +98,25 @@ export async function editFact(
   // Thrown OUTSIDE the catch above, deliberately. Inside it, a not-found we
   // raised ourselves would be handed to `isUniqueViolation` to classify, and
   // the two would only stay distinct for as long as their `code` values happen
-  // to differ.
+  // to differ. It is also thrown before any embedding work, so a refused edit
+  // never spends a call or touches a vector.
   if (updated.count !== 1) throw new FactNotFoundError();
+
+  const fact = await prisma.fact.findUnique({
+    where: { id: factId },
+    select: { question: true },
+  });
+  if (fact?.question != null) return;
+
+  try {
+    if (!embedder) throw new Error('no embedder is configured');
+    // Deleted first, so that a crash between the two leaves no vector rather
+    // than a stale one: the failure that costs money is always the safer one.
+    await prisma.factEmbedding.deleteMany({ where: { factId } });
+    await syncFactEmbeddings(prisma, embedder, { id: factId });
+  } catch {
+    await prisma.factEmbedding.deleteMany({ where: { factId } });
+  }
 }
 
 /**

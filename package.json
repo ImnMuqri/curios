@@ -20,6 +20,7 @@
   "dependencies": {
     "@curios/core": "workspace:*",
     "@curios/db": "workspace:*",
+    "@curios/embeddings": "workspace:*",
     "@curios/gateway": "workspace:^"
   },
   "devDependencies": {

@@ -54,3 +54,11 @@ process.env.BILLPLZ_BASE_URL = 'https://billplz.invalid';
 process.env.BILLPLZ_CALLBACK_URL = 'http://localhost:3001/billing/billplz/callback';
 process.env.BILLPLZ_REDIRECT_URL = 'http://localhost:3001/billing/billplz/return';
 process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';
+
+// The embeddings key factRoutes now requires at boot, for the same reason as
+// the Billplz settings above: every test that reaches the embedder injects a
+// stub through AppOverrides.facts.embedder, so this dummy is never sent
+// anywhere. It exists so the boot check passes, and so a developer's own key
+// in .env never changes what a test does -- and so nothing in this suite can
+// spend real money reaching a real embedder by accident.
+process.env.OPENAI_API_KEY = 'test-openai-api-key';

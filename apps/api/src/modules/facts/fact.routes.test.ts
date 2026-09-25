@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { EMBEDDING_DIMS, EMBEDDING_MODEL, type Embedder } from '@curios/embeddings';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
@@ -11,7 +12,14 @@ let nth = 0;
 const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
-  app = await buildApp();
+  // `null`, not omitted: PATCH /facts/:id now reaches an embedder on every
+  // successful edit (fact.service.test.ts covers what it does with one).
+  // Omitting this would leave PATCH here building a real embedder from the
+  // dummy key vitest.setup.ts pins and reaching out to OpenAI on every run --
+  // no money spent (the key is a fake), but a real network call this suite
+  // does not need and should not depend on. `null` is the documented
+  // "only tests pass this" case in FactRouteOptions.
+  app = await buildApp({ facts: { embedder: null } });
   await app.ready();
 });
 
@@ -294,5 +302,111 @@ describe('the other two routes are scoped and guarded too', () => {
 
     expect(edit.statusCode).toBe(401);
     expect(reject.statusCode).toBe(401);
+  });
+});
+
+describe('PATCH /facts/:id actually uses the embedder it was given', () => {
+  // `embedder: null` is honoured by an `=== undefined` check specifically so
+  // that an explicit null is never confused with "no override given".
+  // `!embedder` reads the same in every case above (production never passes
+  // null) but treats null as falsy too, silently rebuilding a real embedder
+  // from the dummy env key on every request here -- still no money spent (the
+  // key is fake), but a real, slow network call this suite must never make.
+  // No status code or DB row can tell the two branches apart: the fallback
+  // degrades so cleanly that the only observable difference is whether the
+  // network was ever reached. The spy has to be in place *before* buildApp()
+  // registers factRoutes, because createOpenAiEmbedder closes over whatever
+  // `fetch` is at that moment -- spying inside the test, after the shared
+  // `app` above was already built in beforeAll, would watch a function this
+  // embedder never calls.
+  it('never reaches the network when configured with no embedder', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const ownApp = await buildApp({ facts: { embedder: null } });
+    await ownApp.ready();
+
+    try {
+      const slug = randomUUID().slice(0, 8);
+      const account = await ownApp.prisma.account.create({
+        data: {
+          email: `fact-${randomUUID()}@example.com`,
+          pages: { create: { handle: `f-${slug}`, skeleton: `f-${slug}`, displayName: 'F' } },
+        },
+        select: { id: true, pages: { select: { id: true } } },
+      });
+      const pageId = account.pages[0]?.id ?? '';
+      const fact = await ownApp.prisma.fact.create({
+        data: { pageId, category: 'PRICE', claim: 'kek', normalizedClaim: 'kek', confidence: 0.9 },
+        select: { id: true },
+      });
+      const { value: cookie } = await createSession(ownApp.prisma, account.id);
+
+      const res = await ownApp.inject({
+        method: 'PATCH',
+        url: `/facts/${fact.id}`,
+        remoteAddress: from(),
+        cookies: { [SESSION_COOKIE]: cookie },
+        payload: { claim: 'Kek RM130.' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      await ownApp.close();
+      fetchSpy.mockRestore();
+    }
+  });
+
+  // The shared `app` above is built with `facts: { embedder: null }`, on
+  // purpose (see the comment in beforeAll), which means no test using it can
+  // tell "the route passed its embedder to editFact" apart from "the route
+  // passed null" -- both look identical from the outside once nothing calls
+  // it. A stub embedder, and an assertion that it was actually called, is the
+  // only way to pin that the PATCH handler threads its resolved `embedder`
+  // through rather than, say, passing `null` unconditionally.
+  it('threads the configured embedder through to editFact', async () => {
+    const embed = vi.fn(async (texts: string[]) =>
+      texts.map(() => new Float32Array(EMBEDDING_DIMS)),
+    );
+    const stub: Embedder = { model: EMBEDDING_MODEL, dims: EMBEDDING_DIMS, embed };
+    const ownApp = await buildApp({ facts: { embedder: stub } });
+    await ownApp.ready();
+
+    try {
+      const mine = await anOwnerWithAFact();
+
+      const res = await ownApp.inject({
+        method: 'PATCH',
+        url: `/facts/${mine.factId}`,
+        remoteAddress: from(),
+        cookies: { [SESSION_COOKIE]: mine.cookie },
+        payload: { claim: 'Kek RM120.' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(embed).toHaveBeenCalledWith(['Kek RM120.']);
+      const row = await ownApp.prisma.factEmbedding.findUnique({
+        where: { factId: mine.factId },
+      });
+      expect(row).not.toBeNull();
+    } finally {
+      await ownApp.close();
+    }
+  });
+});
+
+describe('factRoutes requires a real embedder key at boot', () => {
+  it('refuses to start when OPENAI_API_KEY is not set', async () => {
+    const original = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+
+    try {
+      // The message is asserted verbatim, not just "it threw": chatRoutes
+      // throws a near-identical error for its own missing key, so a looser
+      // assertion here would stay green even if this were accidentally
+      // testing that route instead of this one.
+      await expect(buildApp()).rejects.toThrow('OPENAI_API_KEY is not set');
+    } finally {
+      process.env.OPENAI_API_KEY = original;
+    }
   });
 });
