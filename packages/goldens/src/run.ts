@@ -23,6 +23,10 @@ interface Deps {
   prisma: PrismaClient;
   gateway: Gateway;
   cap: number;
+  // Task 8 wires the real embedder in. Until then every golden run answers in
+  // fallback -- every fact, on every page -- which is the pre-slice behaviour
+  // this harness has always exercised.
+  embedder: null;
 }
 
 function required(name: string, hint: string): string {
@@ -190,7 +194,7 @@ async function main(): Promise<void> {
   }
 
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
-  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap };
+  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap, embedder: null };
   const asked: { loaded: LoadedFixture; question: GoldenQuestion; result: QuestionResult }[] = [];
   const pageIds: string[] = [];
   let costMilliCents = 0;

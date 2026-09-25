@@ -2,6 +2,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { conversationCap } from '@curios/core';
 import { createAnthropicGateway, type Gateway } from '@curios/gateway';
+import { createOpenAiEmbedder, type Embedder } from '@curios/embeddings';
 import { answer } from './chat.service.js';
 
 export interface ChatRouteOptions {
@@ -11,6 +12,12 @@ export interface ChatRouteOptions {
    * that could not be tested without either an API key or real model spend.
    */
   gateway?: Gateway;
+  /**
+   * `undefined` builds one from the environment, as production does. `null`
+   * means retrieval is off and every page sends every fact -- correct, and
+   * about seven times the cost. Only tests pass null.
+   */
+  embedder?: Embedder | null;
 }
 
 export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
@@ -29,6 +36,18 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
   // ChatDeps.cap in chat.service.ts for what calling it per request used to
   // cost.
   const cap = conversationCap();
+
+  // Resolved at registration for the reason the API key and the cap above are:
+  // a missing key should fail the deploy, not one visitor's question. It is
+  // required rather than optional-with-a-warning because the failure is
+  // invisible from outside -- every page would quietly answer from every fact
+  // at seven times the cost, and look completely healthy doing it.
+  let embedder = options.embedder;
+  if (embedder === undefined) {
+    const openAiKey = process.env.OPENAI_API_KEY;
+    if (!openAiKey) throw new Error('OPENAI_API_KEY is not set');
+    embedder = createOpenAiEmbedder(openAiKey);
+  }
 
   app.post(
     '/chat/:handle',
@@ -69,7 +88,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       reply.raw.writeHead(200);
 
       const stream = answer(
-        { prisma: app.prisma, gateway, cap, log: request.log },
+        { prisma: app.prisma, gateway, cap, embedder, log: request.log },
         {
           handle: request.params.handle,
           question: request.body.question,

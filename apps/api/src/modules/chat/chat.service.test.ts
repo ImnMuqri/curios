@@ -1,8 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteQuestion } from '../questions/question.service.js';
 import { PrismaClient } from '@prisma/client';
-import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
-import type { ChatMessage, Gateway } from '@curios/gateway';
+import { FREE_CONVERSATIONS_PER_MONTH, normalizeClaim, RETRIEVAL_MIN_FACTS } from '@curios/core';
+import type { ChatInput, ChatMessage, Gateway } from '@curios/gateway';
+import {
+  encodeVector,
+  EMBEDDING_DIMS,
+  EMBEDDING_MODEL,
+  type Embedder,
+} from '@curios/embeddings';
 import { answer, CAP_REACHED_REPLY, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -101,6 +107,61 @@ function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMes
   return { gateway, messages: () => captured };
 }
 
+/** Records the whole ChatInput the gateway received, for asserting on retrieval's wiring. */
+function gatewayCapturingCall(): { gateway: Gateway; call: () => ChatInput } {
+  let captured: ChatInput | undefined;
+  const gateway: Gateway = {
+    extract: vi.fn(),
+    slots: vi.fn(),
+    chat: async function* (input) {
+      captured = input;
+      yield { type: 'text' as const, text: 'ok' };
+      yield {
+        type: 'done' as const,
+        usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        model: 'claude-haiku-4-5',
+        latencyMs: 700,
+      };
+    },
+  };
+  return {
+    gateway,
+    call: () => {
+      if (!captured) throw new Error('gateway.chat was never called');
+      return captured;
+    },
+  };
+}
+
+function axis(index: number): Float32Array {
+  const vector = new Float32Array(EMBEDDING_DIMS);
+  vector[index] = 1;
+  return vector;
+}
+
+/**
+ * A claim exactly 200 characters long, unique per index -- the same fixture
+ * shape retrieval.test.ts uses, and for the same reason: the ~85-character
+ * claim this fixture used to carry left a 30-fact page under
+ * FACT_BUDGET_CHARS (4,000), so the budget never bound and "sends a chosen
+ * few" could not tell a chosen few apart from the whole page.
+ */
+function claimOfLength(index: number, length = 200): string {
+  const prefix = `Fakta nombor ${index}: `;
+  const filler =
+    'lapan puluh aksara sahaja tidak mencukupi untuk menguji bajet retrieval, jadi fakta ini ' +
+    'sengaja dipanjangkan supaya jumlah kandungan tiga puluh fakta melebihi bajet retrieval ' +
+    'yang ditetapkan bagi halaman ini. '.repeat(3);
+  return (prefix + filler).slice(0, length);
+}
+
+/** An embedder that always answers with `axis(0)` and counts its calls. Copied from retrieval.test.ts. */
+function embedderAnswering(vector: Float32Array = axis(0)) {
+  const embed = vi.fn(async (texts: string[]) => texts.map(() => vector));
+  const embedder: Embedder = { model: EMBEDDING_MODEL, dims: EMBEDDING_DIMS, embed };
+  return { embedder, embed };
+}
+
 async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
   const events = [];
   for await (const event of stream) events.push(event);
@@ -108,7 +169,9 @@ async function collect(stream: AsyncIterable<{ type: string; text?: string }>) {
 }
 
 beforeEach(async () => {
-  await prisma.$executeRawUnsafe('TRUNCATE "Account", "ModelCall" CASCADE');
+  // QuestionEmbedding hangs off nothing, so CASCADE from Account does not
+  // reach it -- the same defect ModelCall was fixed for last slice.
+  await prisma.$executeRawUnsafe('TRUNCATE "Account", "ModelCall", "QuestionEmbedding" CASCADE');
   await prisma.account.create({
     data: {
       email: 'n@example.com',
@@ -176,10 +239,68 @@ beforeEach(async () => {
   });
 });
 
+/**
+ * A page with RETRIEVAL_MIN_FACTS + 5 facts, all carrying a current vector.
+ * Its own handle and account -- 'nadia' above is this file's small fixture
+ * page and stays under the retrieval minimum on purpose, so the two never
+ * need to share a shape.
+ *
+ * Fact 0 gets `axis(0)`, matching the question vector `embedderAnswering()`
+ * hands out by default, so it always scores best; every other fact gets
+ * `axis(1)`, orthogonal to it. Mirrors retrieval.test.ts's own seedPage.
+ */
+async function seedLargePage(): Promise<string> {
+  const count = RETRIEVAL_MIN_FACTS + 5;
+  const claims = Array.from({ length: count }, (_unused, index) => claimOfLength(index));
+
+  const account = await prisma.account.create({
+    data: {
+      email: `katalog-${Date.now()}@example.com`,
+      pages: {
+        create: {
+          handle: 'katalog',
+          skeleton: 'katalog',
+          displayName: 'Katalog Besar',
+          published: true,
+          facts: {
+            create: claims.map((claim) => ({
+              category: 'PRICE' as const,
+              claim,
+              normalizedClaim: claim.toLowerCase(),
+              confidence: 1,
+              verified: true,
+            })),
+          },
+        },
+      },
+    },
+    include: { pages: { include: { facts: true } } },
+  });
+
+  const page = account.pages[0];
+  if (!page) throw new Error('seedLargePage produced no page');
+
+  await prisma.factEmbedding.createMany({
+    data: page.facts.map((fact, index) => ({
+      factId: fact.id,
+      vector: encodeVector(index === 0 ? axis(0) : axis(1)),
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+    })),
+  });
+
+  return page.id;
+}
+
+async function pageIdFor(handle: string): Promise<string> {
+  const page = await prisma.page.findUniqueOrThrow({ where: { handle }, select: { id: true } });
+  return page.id;
+}
+
 describe('answer', () => {
   it('streams text and creates a conversation', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toContain('RM95');
     expect(await prisma.conversation.count()).toBe(1);
@@ -190,7 +311,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     const events = await collect(
-      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'Berapa harga?' }),
+      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'Berapa harga?' }),
     );
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Bermula RM95.');
@@ -201,14 +322,14 @@ describe('answer', () => {
   it('matches a pinned answer ignoring case and punctuation', async () => {
     const gateway = gatewaySaying('unused');
     const events = await collect(
-      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'berapa harga' }),
+      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'berapa harga' }),
     );
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Bermula RM95.');
   });
 
   it('persists both messages after the stream closes', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     const messages = await prisma.message.findMany({ orderBy: { createdAt: 'asc' } });
     expect(messages.map((m) => m.role)).toEqual(['USER', 'ASSISTANT']);
@@ -216,7 +337,7 @@ describe('answer', () => {
 
   it('records a ModelCall with a non-zero cost', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     const call = await prisma.modelCall.findFirstOrThrow();
     expect(call.model).toBe('claude-haiku-4-5');
@@ -225,8 +346,8 @@ describe('answer', () => {
 
   it('increments the usage counter once per conversation, not per message', async () => {
     const gateway = gatewaySaying('answer');
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek lagi' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek lagi' }));
 
     const counters = await prisma.usageCounter.findMany();
     expect(counters).toHaveLength(1);
@@ -237,7 +358,7 @@ describe('answer', () => {
     const gateway = gatewayThatFails();
 
     await expect(
-      collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' })),
+      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' })),
     ).rejects.toThrow('provider unavailable');
 
     const call = await prisma.modelCall.findFirstOrThrow();
@@ -250,20 +371,20 @@ describe('answer', () => {
   it('throws for an unknown handle', async () => {
     const gateway = gatewaySaying('unused');
     await expect(
-      collect(answer({ prisma, gateway, cap }, { handle: 'nobody', question: 'hi' })),
+      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nobody', question: 'hi' })),
     ).rejects.toThrow(PageNotFoundError);
   });
 
   it('sends cachePrompt: true, since this service still sends every fact -- Task 7 makes it a decision', async () => {
     const { gateway, cachePrompt } = gatewayCapturingCachePrompt();
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(cachePrompt()).toBe(true);
   });
 
   it('never sends an unverified fact\'s claim to the gateway', async () => {
     const { gateway, prompt } = gatewayCapturingPrompt();
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     // Assert on the prompt the gateway actually received, not a rebuilt string.
     expect(prompt()).not.toContain('Unverified secret price RM1');
@@ -275,7 +396,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     await expect(
-      collect(answer({ prisma, gateway, cap }, { handle: 'draft', question: 'harga?' })),
+      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'draft', question: 'harga?' })),
     ).rejects.toThrow(PageNotFoundError);
 
     expect(chatSpy).not.toHaveBeenCalled();
@@ -285,11 +406,11 @@ describe('answer', () => {
 
 describe('threading a conversation', () => {
   function depsSaying(text = 'an answer') {
-    return { prisma, gateway: gatewaySaying(text), cap };
+    return { prisma, gateway: gatewaySaying(text), cap, embedder: null };
   }
 
   async function ask(
-    deps: { prisma: typeof prisma; gateway: Gateway; cap: number },
+    deps: { prisma: typeof prisma; gateway: Gateway; cap: number; embedder: Embedder | null },
     question: string,
     conversationId?: string,
   ) {
@@ -336,7 +457,7 @@ describe('threading a conversation', () => {
 
   it('sends the earlier turns to the model, so a follow-up has context', async () => {
     const captured = gatewayCapturingMessages();
-    const deps = { prisma, gateway: captured.gateway, cap };
+    const deps = { prisma, gateway: captured.gateway, cap, embedder: null };
 
     const conversationId = conversationIdOf(await ask(deps, 'harga kek?'));
     await ask(deps, 'ada delivery?', conversationId);
@@ -352,7 +473,7 @@ describe('threading a conversation', () => {
 
   it('bounds the history it sends, so a long thread cannot grow the prompt forever', async () => {
     const captured = gatewayCapturingMessages();
-    const deps = { prisma, gateway: captured.gateway, cap };
+    const deps = { prisma, gateway: captured.gateway, cap, embedder: null };
 
     const conversationId = conversationIdOf(await ask(deps, 'q0'));
     for (let i = 1; i <= 8; i += 1) await ask(deps, `q${i}`, conversationId);
@@ -527,7 +648,7 @@ describe('faq slug assignment', () => {
 
     await collect(
       answer(
-        { prisma, gateway: gatewaySaying('RM80.'), cap },
+        { prisma, gateway: gatewaySaying('RM80.'), cap, embedder: null },
         { handle: 'nadia', question: 'Berapa harga kek coklat?' },
       ),
     );
@@ -580,7 +701,7 @@ describe('an erased question, asked again', () => {
 
     const events = await collect(
       answer(
-        { prisma, gateway: gatewaySaying('A model answer.'), cap },
+        { prisma, gateway: gatewaySaying('A model answer.'), cap, embedder: null },
         { handle: 'nadia', question: text },
       ),
     );
@@ -636,7 +757,7 @@ describe('the monthly cap', () => {
     await usageAt(10);
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga?' }));
+    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' }));
 
     expect(spy).toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text' && e.text === 'a model answer')).toBe(true);
@@ -650,7 +771,7 @@ describe('the monthly cap', () => {
     await usageAt(500);
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga?' }));
+    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' }));
 
     expect(spy).not.toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text')).toBe(true);
@@ -672,7 +793,7 @@ describe('the monthly cap', () => {
     });
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga' }));
+    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga' }));
 
     expect(spy).not.toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text' && e.text === 'RM95 sekilo.')).toBe(true);
@@ -685,13 +806,13 @@ describe('the monthly cap', () => {
     await usageAt(500);
     const { gateway, spy } = chatSpyGateway();
 
-    const first = await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'one' }));
+    const first = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'one' }));
     const done = first.find((e) => e.type === 'done');
     const conversationId = (done as { conversationId?: string } | undefined)?.conversationId;
     expect(conversationId).toBeTruthy();
 
     await collect(
-      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'two', conversationId }),
+      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'two', conversationId }),
     );
 
     expect(spy).not.toHaveBeenCalled();
@@ -703,7 +824,7 @@ describe('the monthly cap', () => {
     const pageId = await usageAt(500);
     const { gateway } = chatSpyGateway();
 
-    await collect(answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'harga?' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' }));
 
     // findUnique on the exact key usageAt() wrote, not findFirst: this is the
     // only assertion in the file that reads UsageCounter back by pageId
@@ -727,7 +848,7 @@ describe('the monthly cap', () => {
     const { gateway, spy } = chatSpyGateway();
 
     const events = await collect(
-      answer({ prisma, gateway, cap }, { handle: 'nadia', question: 'Berapa harga kek?' }),
+      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'Berapa harga kek?' }),
     );
 
     expect(spy).not.toHaveBeenCalled();
@@ -744,5 +865,166 @@ describe('the monthly cap', () => {
       orderBy: { createdAt: 'desc' },
     });
     expect(assistantMessage.content).toBe(CAP_REACHED_REPLY);
+  });
+});
+
+describe('retrieval in the chat path', () => {
+  it('sends every fact on a small page, and caches the prompt', async () => {
+    const captured = gatewayCapturingCall();
+
+    await collect(
+      answer(
+        { prisma, gateway: captured.gateway, cap, embedder: embedderAnswering().embedder },
+        { handle: 'nadia', question: 'harga kek' },
+      ),
+    );
+
+    // The fixture page has two facts, far under RETRIEVAL_MIN_FACTS.
+    expect(captured.call().systemPrompt).toContain('Kek 1kg butter starts at RM95');
+    expect(captured.call().cachePrompt).toBe(true);
+  });
+
+  it('sends a chosen few on a large page, and does not cache the prompt', async () => {
+    const pageId = await seedLargePage(); // RETRIEVAL_MIN_FACTS + 5 facts, all with vectors
+    const captured = gatewayCapturingCall();
+
+    await collect(
+      answer(
+        { prisma, gateway: captured.gateway, cap, embedder: embedderAnswering().embedder },
+        { handle: 'katalog', question: 'berapa harga' },
+      ),
+    );
+
+    const prompt = captured.call().systemPrompt;
+    expect(prompt.match(/<fact /g)?.length).toBeLessThan(RETRIEVAL_MIN_FACTS + 5);
+    expect(captured.call().cachePrompt).toBe(false);
+    expect(pageId).toBeTruthy();
+  });
+
+  it('records only the facts it sent', async () => {
+    await seedLargePage();
+    const captured = gatewayCapturingCall();
+
+    await collect(
+      answer(
+        { prisma, gateway: captured.gateway, cap, embedder: embedderAnswering().embedder },
+        { handle: 'katalog', question: 'berapa harga' },
+      ),
+    );
+
+    const message = await prisma.message.findFirstOrThrow({
+      where: { role: 'ASSISTANT' },
+      orderBy: { createdAt: 'desc' },
+    });
+    expect(message.citedFactIds.length).toBeLessThan(RETRIEVAL_MIN_FACTS + 5);
+  });
+
+  it('answers from every fact when the embedder is down', async () => {
+    await seedLargePage();
+    const captured = gatewayCapturingCall();
+    const failing: Embedder = {
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+      embed: async () => {
+        throw new Error('provider unavailable');
+      },
+    };
+
+    const events = await collect(
+      answer(
+        { prisma, gateway: captured.gateway, cap, embedder: failing },
+        { handle: 'katalog', question: 'berapa harga' },
+      ),
+    );
+
+    expect(events.some((event) => event.type === 'text')).toBe(true);
+    expect(captured.call().systemPrompt.match(/<fact /g)?.length).toBe(RETRIEVAL_MIN_FACTS + 5);
+    expect(captured.call().cachePrompt).toBe(true);
+  });
+
+  // Step 9's own mutation table flags this exact mutant: `.at(-2)` for the
+  // previous turn mutated to `.at(-1)` survives every test above, because
+  // none of them drives two turns of one conversation while also asserting on
+  // what was actually embedded for the second. This one does both: `.at(-1)`
+  // would hand the second turn its OWN question as "the previous turn",
+  // embedding it twice instead of carrying the first question as context.
+  it('embeds the first turn as context on a follow-up, not the follow-up question twice', async () => {
+    await seedLargePage();
+    const { embedder, embed } = embedderAnswering();
+
+    const first = await collect(
+      answer(
+        { prisma, gateway: gatewaySaying('answer one'), cap, embedder },
+        { handle: 'katalog', question: 'berapa harga kek' },
+      ),
+    );
+    const done = first.find((event) => event.type === 'done') as
+      | { conversationId?: string }
+      | undefined;
+    const conversationId = done?.conversationId;
+    expect(conversationId).toBeTruthy();
+
+    await collect(
+      answer(
+        { prisma, gateway: gatewaySaying('answer two'), cap, embedder },
+        { handle: 'katalog', question: 'yang coklat pula?', conversationId },
+      ),
+    );
+
+    expect(embed).toHaveBeenCalledTimes(2);
+    expect(embed.mock.calls[1]?.[0]).toEqual(['berapa harga kek\nyang coklat pula?']);
+  });
+
+  // A gap the brief's own Step 9 table missed: nothing in this file asserted
+  // that chat.service.ts actually threads its own `log` through to
+  // selectForQuestion. retrieval.test.ts already proves retrieval.ts logs
+  // correctly when it IS given a logger; without this test, deleting `log:
+  // deps.log` from the selectForQuestion call here would make every chosen
+  // few, floor miss and fallback invisible in production logs, with every
+  // other test in this file still green.
+  it('passes its own logger through to retrieval, so a decision is visible in the log', async () => {
+    await seedLargePage();
+    const info = vi.fn();
+
+    await collect(
+      answer(
+        {
+          prisma,
+          gateway: gatewaySaying('ok'),
+          cap,
+          embedder: embedderAnswering().embedder,
+          log: { error: vi.fn(), info },
+        },
+        { handle: 'katalog', question: 'berapa harga' },
+      ),
+    );
+
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: expect.any(String) }),
+      'chat retrieval',
+    );
+  });
+
+  it('a pinned answer still costs nothing, whatever retrieval would have done', async () => {
+    await seedLargePage();
+    const { embedder, embed } = embedderAnswering();
+    await prisma.pinnedAnswer.create({
+      data: {
+        pageId: await pageIdFor('katalog'),
+        question: 'berapa harga',
+        normalizedQuestion: normalizeClaim('berapa harga'),
+        answer: 'Bermula RM95.',
+      },
+    });
+
+    const events = await collect(
+      answer(
+        { prisma, gateway: gatewaySaying('unused'), cap, embedder },
+        { handle: 'katalog', question: 'berapa harga' },
+      ),
+    );
+
+    expect(events[0]).toMatchObject({ type: 'text', text: 'Bermula RM95.' });
+    expect(embed).not.toHaveBeenCalled();
   });
 });

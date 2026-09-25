@@ -1,7 +1,9 @@
 import { isOverCap, normalizeClaim, qualifies } from '@curios/core';
 import { recordModelCall, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
+import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
+import { selectForQuestion } from './retrieval.js';
 import { assignFaqSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
@@ -30,6 +32,17 @@ export interface ChatDeps {
    * is always `false`).
    */
   cap: number;
+  /**
+   * The embedder retrieval uses, or null for none.
+   *
+   * Required and explicitly nullable, for the reason `cap` above is required:
+   * a deps object that simply omitted it would silently never retrieve, and
+   * "every page sends every fact" is invisible from the outside -- it is a
+   * seven-times-the-cost bug that looks exactly like success. `null` is a
+   * legitimate answer (a test that is not about retrieval, a deployment with
+   * no key), and writing it says so at the call site.
+   */
+  embedder: Embedder | null;
   // Optional, and only for the faq-slug assignment below: without it, a
   // qualifying question that fails to get a URL -- an exhausted collision
   // loop, unsluggable text, a transient DB error -- leaves no trace anywhere,
@@ -170,8 +183,9 @@ export async function* answer(
 
   // Whether the capture card may be offered, computed from the visitor's own
   // turns. Deliberately NOT from Message.citedFactIds: that column stores
-  // every verified fact on the page rather than the ones an answer used, so a
-  // signal drawn from it would be true of every message ever sent.
+  // what was sent to the model for an answer, not what the answer actually
+  // used -- which is still not the same thing, so a signal drawn from it
+  // would be no more reliable than one drawn from the whole fact list was.
   const intent = {
     qualified: qualifies({
       mode: page.mode,
@@ -263,20 +277,37 @@ export async function* answer(
     return;
   }
 
-  // Every verified fact, not a question-dependent subset. Filtering here would
-  // vary the cached prefix per question and destroy cross-visitor cache reuse.
-  const facts = page.facts;
+  // The visitor's own previous turn, for a follow-up like "yang coklat pula?"
+  // that means nothing on its own. `history` already ends with the question
+  // being asked now -- it was written above -- so the one before it is at -2.
+  const previousUserTurn =
+    history.filter((message) => message.role === 'USER').at(-2)?.content ?? null;
+
+  // What this question needs, or everything, and always a correct answer
+  // either way. See retrieval.ts for the order of the checks and why it is
+  // the order.
+  const selection = await selectForQuestion(
+    { prisma, embedder: deps.embedder, log: deps.log },
+    { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn },
+  );
+
   const systemPrompt = buildSystemPrompt({
     displayName: page.displayName,
-    facts,
+    facts: selection.facts,
     neverSay: page.neverSay.map((n) => n.phrase),
   });
 
   let text = '';
   try {
-    // Task 7 turns this into `selection.mode === 'fallback'`. Until then the
-    // service still sends every fact, so caching is still the right answer.
-    for await (const event of gateway.chat({ systemPrompt, messages, cachePrompt: true })) {
+    // Cached only in fallback, where the prefix is the page's whole fact list
+    // and is the same for every visitor between owner edits. In retrieval mode
+    // the prefix is built for this one question, so a cache entry would be
+    // written at a 25% premium and read by nobody.
+    for await (const event of gateway.chat({
+      systemPrompt,
+      messages,
+      cachePrompt: selection.mode === 'fallback',
+    })) {
       if (event.type === 'text') {
         text += event.text;
         yield { type: 'text', text: event.text };
@@ -318,7 +349,12 @@ export async function* answer(
       conversationId,
       role: 'ASSISTANT',
       content: text,
-      citedFactIds: facts.map((f) => f.id),
+      // The facts this answer was actually built from. Until retrieval it was
+      // every verified fact on the page, which made the column true of every
+      // message ever sent and useless as a signal -- see the `intent` comment
+      // above, which still holds: qualification is computed from the visitor's
+      // turns, never from this.
+      citedFactIds: selection.facts.map((fact) => fact.id),
     },
   });
 

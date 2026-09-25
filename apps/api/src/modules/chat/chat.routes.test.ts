@@ -2,8 +2,19 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { Gateway } from '@curios/gateway';
+import { RETRIEVAL_MIN_FACTS } from '@curios/core';
+import { encodeVector, EMBEDDING_DIMS, EMBEDDING_MODEL, type Embedder } from '@curios/embeddings';
 import { buildApp } from '../../app.js';
 import { CAP_REACHED_REPLY } from './chat.service.js';
+
+// Spies on createOpenAiEmbedder without changing its behaviour (delegates to
+// the real implementation), so the "honors an explicit null" test below can
+// prove chatRoutes never calls it when `embedder: null` is passed -- rather
+// than proving it only by side effect (a real network call with a dummy key).
+vi.mock('@curios/embeddings', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@curios/embeddings')>();
+  return { ...actual, createOpenAiEmbedder: vi.fn(actual.createOpenAiEmbedder) };
+});
 
 let app: FastifyInstance;
 
@@ -77,7 +88,12 @@ function conversationIdOf(payload: string): string {
 }
 
 beforeAll(async () => {
-  app = await buildApp({ chat: { gateway: stubGateway() } });
+  // embedder: null -- these tests are not about retrieval, and the fixture
+  // page below has one fact, far under RETRIEVAL_MIN_FACTS, so it always
+  // falls back regardless. Explicit rather than left to the route's own
+  // environment fallback, so nothing here can reach a real embedder by
+  // accident.
+  app = await buildApp({ chat: { gateway: stubGateway(), embedder: null } });
   await app.ready();
 
   await app.prisma.account.create({
@@ -153,6 +169,157 @@ describe('POST /chat/:handle', () => {
 
     expect(res.payload).toContain('Try again');
     expect(res.payload).not.toMatch(/sorry|oops/i);
+  });
+});
+
+describe('registration', () => {
+  it('refuses to start without an embeddings key, rather than quietly sending every fact', async () => {
+    const key = process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_API_KEY;
+    try {
+      // facts: { embedder: null } satisfies factRoutes' own OPENAI_API_KEY
+      // check (registered by the same buildApp call), so this failure can only
+      // come from chatRoutes' own throw -- not a coincidence of registration
+      // order.
+      await expect(
+        buildApp({ chat: { gateway: stubGateway() }, facts: { embedder: null } }),
+      ).rejects.toThrow(/OPENAI_API_KEY/);
+    } finally {
+      if (key !== undefined) process.env.OPENAI_API_KEY = key;
+    }
+  });
+
+  // A gap no test in this file closed: every other test here registers with
+  // `embedder: null`, so a chat.routes.ts that resolved a real embedder at
+  // registration and then simply never passed it into `answer()`'s deps --
+  // silently downgrading the whole route to fallback forever -- would leave
+  // every test above green. This builds its own app with a real embedder
+  // injected, seeds a page over RETRIEVAL_MIN_FACTS with matching vectors, and
+  // proves retrieval actually ran end-to-end over HTTP, not just inside
+  // chat.service.ts's own unit tests.
+  it('threads the registered embedder into a real request, so a large page actually retrieves', async () => {
+    function axis(index: number): Float32Array {
+      const vector = new Float32Array(EMBEDDING_DIMS);
+      vector[index] = 1;
+      return vector;
+    }
+    const embedder: Embedder = {
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+      embed: async (texts) => texts.map(() => axis(0)),
+    };
+
+    let capturedPrompt = '';
+    const capturingGateway: Gateway = {
+      extract: vi.fn(),
+      slots: vi.fn(),
+      chat: async function* ({ systemPrompt }) {
+        capturedPrompt = systemPrompt;
+        yield { type: 'text' as const, text: 'ok' };
+        yield {
+          type: 'done' as const,
+          usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
+          model: 'claude-haiku-4-5',
+          latencyMs: 1,
+        };
+      },
+    };
+
+    const retrievalApp = await buildApp({ chat: { gateway: capturingGateway, embedder } });
+    await retrievalApp.ready();
+    try {
+      const bigHandle = `retrieval-${randomUUID().slice(0, 8)}`;
+      const count = RETRIEVAL_MIN_FACTS + 5;
+      const account = await retrievalApp.prisma.account.create({
+        data: {
+          email: `retrieval-${randomUUID()}@example.com`,
+          pages: {
+            create: {
+              handle: bigHandle,
+              skeleton: bigHandle,
+              displayName: 'Big Catalog',
+              published: true,
+              facts: {
+                create: Array.from({ length: count }, (_unused, index) => {
+                  // 200 characters, unique per index: comfortably over
+                  // FACT_BUDGET_CHARS (4,000) across thirty facts, so the
+                  // budget actually binds and a "chosen few" is observable
+                  // rather than the whole page slipping in under it. Mirrors
+                  // retrieval.test.ts's own claimOfLength fixture.
+                  const prefix = `Fakta nombor ${index}: `;
+                  const filler =
+                    'lapan puluh aksara sahaja tidak mencukupi untuk menguji bajet retrieval, jadi fakta ini ' +
+                    'sengaja dipanjangkan supaya jumlah kandungan tiga puluh fakta melebihi bajet retrieval ' +
+                    'yang ditetapkan bagi halaman ini. '.repeat(3);
+                  const claim = (prefix + filler).slice(0, 200);
+                  return {
+                    category: 'PRICE' as const,
+                    claim,
+                    normalizedClaim: claim.toLowerCase(),
+                    confidence: 1,
+                    verified: true,
+                  };
+                }),
+              },
+            },
+          },
+        },
+        include: { pages: { include: { facts: true } } },
+      });
+      const page = account.pages[0];
+      if (!page) throw new Error('seed produced no page');
+
+      await retrievalApp.prisma.factEmbedding.createMany({
+        data: page.facts.map((fact, index) => ({
+          factId: fact.id,
+          vector: encodeVector(index === 0 ? axis(0) : axis(1)),
+          model: EMBEDDING_MODEL,
+          dims: EMBEDDING_DIMS,
+        })),
+      });
+
+      const res = await retrievalApp.inject({
+        method: 'POST',
+        url: `/chat/${bigHandle}`,
+        remoteAddress: from(),
+        payload: { question: 'berapa harga' },
+      });
+
+      expect(res.statusCode).toBe(200);
+      expect(capturedPrompt.match(/<fact /g)?.length).toBeLessThan(count);
+    } finally {
+      await retrievalApp.close();
+    }
+  });
+
+  // A second gap the same shape leaves open: `embedder === undefined` (build
+  // from the environment) versus a falsy check would treat an explicit
+  // `embedder: null` exactly like an omitted option, silently building a real
+  // embedder from OPENAI_API_KEY's test dummy anyway -- the one distinction
+  // this file's own docstring on ChatRouteOptions.embedder exists to make.
+  // Every other test here that passes `embedder: null` also seeds a page
+  // under RETRIEVAL_MIN_FACTS, so it falls back regardless of which check ran
+  // and never observes the difference. This asserts on the actual construction
+  // call, not a side effect of it.
+  it('honors an explicit null embedder rather than building one from the environment', async () => {
+    const { createOpenAiEmbedder } = await import('@curios/embeddings');
+    const spy = vi.mocked(createOpenAiEmbedder);
+    spy.mockClear();
+
+    // facts: { embedder: null } -- factRoutes builds its own embedder at
+    // registration too (Task 5), so without this override the spy would
+    // record ITS construction call and this test would prove nothing about
+    // chatRoutes specifically. Same reasoning as the key-refusal test above.
+    const nullApp = await buildApp({
+      chat: { gateway: stubGateway(), embedder: null },
+      facts: { embedder: null },
+    });
+    await nullApp.ready();
+    try {
+      expect(spy).not.toHaveBeenCalled();
+    } finally {
+      await nullApp.close();
+    }
   });
 });
 
