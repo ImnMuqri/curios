@@ -116,6 +116,24 @@ describe('validateFixture', () => {
 
     expect(validateFixture('business', fixture)).toHaveLength(2);
   });
+
+  it('rejects a page where only some facts carry a question', () => {
+    const problems = validateFixture('half', {
+      page: {
+        handle: 'golden-half',
+        displayName: 'Half',
+        mode: 'BUSINESS',
+        facts: [
+          { category: 'PRICE', claim: 'Kek RM95.', question: 'Berapa harga kek?' },
+          { category: 'HOURS', claim: 'Buka 9 pagi.' },
+        ],
+        neverSay: [],
+      },
+      questions: [{ ask: 'harga', why: 'w', expect: { digitsOnlyFromFacts: true } }],
+    });
+
+    expect(problems).toContainEqual(expect.stringContaining('1 of 2 facts carry a question'));
+  });
 });
 
 describe('loadFixtures', () => {

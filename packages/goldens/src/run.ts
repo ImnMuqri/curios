@@ -2,11 +2,25 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { answer } from '@curios/api/chat';
+import { questionKey, retrievalText } from '@curios/api/chat/retrieval';
 import { conversationCap, normalizeClaim } from '@curios/core';
+import { syncFactEmbeddings } from '@curios/db';
+import {
+  createOpenAiEmbedder,
+  EMBEDDING_BATCH_TIMEOUT_MS,
+  type Embedder,
+} from '@curios/embeddings';
 import { CHAT_MODEL, createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { checkAnswer, failed } from './rules.js';
 import { loadFixtures, type GoldenQuestion, type LoadedFixture } from './fixtures.js';
-import { formatReport, summarise, type QuestionResult } from './report.js';
+import {
+  formatReport,
+  formatRetrievalTally,
+  summarise,
+  tallyRetrieval,
+  type QuestionResult,
+  type RetrievalLogEntry,
+} from './report.js';
 
 // packages/goldens/src -> the repo root.
 const ROOT = join(import.meta.dirname, '..', '..', '..');
@@ -23,10 +37,40 @@ interface Deps {
   prisma: PrismaClient;
   gateway: Gateway;
   cap: number;
-  // Task 8 wires the real embedder in. Until then every golden run answers in
-  // fallback -- every fact, on every page -- which is the pre-slice behaviour
-  // this harness has always exercised.
-  embedder: null;
+  embedder: Embedder;
+  /**
+   * Structurally the same shape as chat.service.ts's `ChatDeps.log` (`Log`
+   * from faq-slug.ts): `error` required, `info` optional. Not imported by
+   * name -- this file owns only the shape it reads, the same way
+   * retrieval.ts's own `RetrievalLog` is narrower than `Log`.
+   */
+  log?: { error: (obj: unknown, msg: string) => void; info?: (obj: unknown, msg: string) => void };
+}
+
+/**
+ * Collects the `'chat retrieval'` log line `selectForQuestion` writes on every
+ * question, so this run's own output can show whether a page actually
+ * retrieved instead of silently falling back on all twenty questions -- the
+ * exact failure this fixture exists to catch. `entries` only ever holds what
+ * that log line carries: ids, a mode, a reason, a score, two counts. Never a
+ * visitor's question, because that log line never carries one either.
+ *
+ * `error` is a no-op rather than left unset: `assignFaqSlug` calls `log?.error`
+ * during every turn, and a shim that is present but silent keeps this run's
+ * behaviour identical to the no-`log` version that came before it, while
+ * still counting as "supplied" so `info` fires at all.
+ */
+function createRetrievalLog(): { log: NonNullable<Deps['log']>; entries: RetrievalLogEntry[] } {
+  const entries: RetrievalLogEntry[] = [];
+  return {
+    entries,
+    log: {
+      error: () => {},
+      info: (obj, msg) => {
+        if (msg === 'chat retrieval') entries.push(obj as RetrievalLogEntry);
+      },
+    },
+  };
 }
 
 function required(name: string, hint: string): string {
@@ -58,7 +102,7 @@ async function deleteHarnessAccounts(prisma: PrismaClient, where: Prisma.Account
 }
 
 /**
- * One fixture page, in the test database.
+ * One fixture page, in the test database, with its vectors.
  *
  * Published, with every fact verified, because `answer` reads only verified
  * facts on a published page -- seeded any other way this suite produces twenty
@@ -66,8 +110,17 @@ async function deleteHarnessAccounts(prisma: PrismaClient, where: Prisma.Account
  * (and any ModelCall debris an interrupted run left on its page) is deleted
  * first, so that debris cannot collide with the handle's unique index and
  * cannot leak past this run either.
+ *
+ * Without the vectors every page falls back by rule and the catalog fixture
+ * proves exactly as little as the three small ones. One batched call per page,
+ * through the same helper the worker and the backfill use, so the harness
+ * cannot drift from what production writes.
  */
-async function seed(prisma: PrismaClient, { name, fixture }: LoadedFixture): Promise<string> {
+async function seed(
+  prisma: PrismaClient,
+  embedder: Embedder,
+  { name, fixture }: LoadedFixture,
+): Promise<string> {
   const { page } = fixture;
   const email = `golden-${name}${ACCOUNT_DOMAIN}`;
   await deleteHarnessAccounts(prisma, { email });
@@ -90,6 +143,11 @@ async function seed(prisma: PrismaClient, { name, fixture }: LoadedFixture): Pro
             create: page.facts.map((fact) => ({
               category: fact.category,
               claim: fact.claim,
+              // The question a visitor's question is matched against. Null on
+              // the three original fixtures, which is what keeps them in
+              // fallback and makes them the proof that small pages are
+              // untouched.
+              question: fact.question ?? null,
               normalizedClaim: normalizeClaim(fact.claim),
               confidence: 1,
               verified: true,
@@ -104,7 +162,32 @@ async function seed(prisma: PrismaClient, { name, fixture }: LoadedFixture): Pro
 
   const seeded = account.pages[0];
   if (!seeded) throw new Error(`Seeding ${name} produced no page.`);
+
+  await syncFactEmbeddings(prisma, embedder, { pageId: seeded.id });
+
   return seeded.id;
+}
+
+/**
+ * The question vectors this run caused to be written.
+ *
+ * `QuestionEmbedding` has no foreign key to anything, so deleting the fixture
+ * accounts does not touch it -- the same trap `ModelCall` set in slice 11,
+ * and the same fix: work out exactly which rows are ours and delete those.
+ * Every question here is asked in a fresh conversation, so the text embedded
+ * is the question alone, with no previous turn.
+ *
+ * Deleting a row another test happened to write the same key for is harmless:
+ * it is a cache of a pure function and the next reader re-embeds it.
+ */
+async function deleteQuestionVectors(
+  prisma: PrismaClient,
+  fixtures: LoadedFixture[],
+): Promise<void> {
+  const keys = fixtures.flatMap(({ fixture }) =>
+    fixture.questions.map((question) => questionKey(retrievalText(question.ask, null))),
+  );
+  await prisma.questionEmbedding.deleteMany({ where: { key: { in: keys } } });
 }
 
 /** The whole answer, as a visitor would have read it once the stream closed. */
@@ -161,6 +244,10 @@ async function main(): Promise<void> {
     'ANTHROPIC_API_KEY',
     'The golden set asks the real model; there is nothing to assert without it.',
   );
+  const openAiKey = required(
+    'OPENAI_API_KEY',
+    'The fixture pages need vectors, or every question runs in fallback and proves nothing about retrieval.',
+  );
   const databaseUrl = required(
     'DATABASE_URL_TEST',
     'The golden set seeds its pages into the test database and never touches the development one.',
@@ -194,7 +281,15 @@ async function main(): Promise<void> {
   }
 
   const prisma = new PrismaClient({ datasources: { db: { url: databaseUrl } } });
-  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap, embedder: null };
+  // Batch, not the visitor-path EMBEDDING_TIMEOUT_MS: this same embedder seeds
+  // every fixture's vectors below AND answers every question through
+  // selectForQuestion, so the visitor path in this harness is also on the
+  // batch timeout. Deliberate -- a harness that failed a question because an
+  // embedding call took 1.1 seconds would report a prompt regression that
+  // never happened.
+  const embedder = createOpenAiEmbedder(openAiKey, { timeoutMs: EMBEDDING_BATCH_TIMEOUT_MS });
+  const { log: retrievalLog, entries: retrievalEntries } = createRetrievalLog();
+  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap, embedder, log: retrievalLog };
   const asked: { loaded: LoadedFixture; question: GoldenQuestion; result: QuestionResult }[] = [];
   const pageIds: string[] = [];
   let costMilliCents = 0;
@@ -213,7 +308,7 @@ async function main(): Promise<void> {
     }
 
     for (const loaded of fixtures) {
-      pageIds.push(await seed(prisma, loaded));
+      pageIds.push(await seed(prisma, embedder, loaded));
       for (const question of loaded.fixture.questions) {
         asked.push({ loaded, question, result: await askAndCheck(deps, loaded, question) });
       }
@@ -257,6 +352,9 @@ async function main(): Promise<void> {
     );
   } finally {
     try {
+      // Before deleteHarnessAccounts: QuestionEmbedding hangs off nothing, so
+      // deleting the accounts below does not cascade to it either.
+      await deleteQuestionVectors(prisma, fixtures);
       // Only this harness's own accounts, which cascade to their pages,
       // facts, conversations, messages, questions and usage counters --
       // ModelCall does not cascade, so deleteHarnessAccounts deletes those
@@ -266,13 +364,14 @@ async function main(): Promise<void> {
     } catch (error) {
       // Best-effort: the transcript is already on disk by this point, so a
       // failed teardown loses no evidence, only tidiness. Reported loudly
-      // rather than swallowed, because the accounts it may have left behind
-      // are real rows in a database `pnpm test` shares.
+      // rather than swallowed, because the accounts (and question vectors)
+      // it may have left behind are real rows in a database `pnpm test`
+      // shares.
       console.error(
         'Teardown failed. Fixture accounts under `@goldens.invalid`, and the pages, facts, ' +
-          'conversations and ModelCall rows they own, may remain in the test database. The next ' +
-          "run's seed step deletes each by email before it seeds, so this is not permanent, but " +
-          'it should be looked at:',
+          'conversations and ModelCall rows they own, may remain in the test database, and this ' +
+          "run's QuestionEmbedding rows along with them. The next run's seed step deletes each " +
+          'account by email before it seeds, so this is not permanent, but it should be looked at:',
       );
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;
@@ -286,6 +385,19 @@ async function main(): Promise<void> {
   const summary = summarise(results);
 
   console.log(formatReport(results, costMilliCents));
+
+  // One line per page: did it actually retrieve, or fall back on every
+  // question? Without this a catalog run that fell back on all twenty
+  // questions would look identical to one that retrieved -- same pass count,
+  // same cost order of magnitude -- and prove nothing about retrieval while
+  // reporting success.
+  const tallies = tallyRetrieval(
+    retrievalEntries,
+    fixtures.map((loaded, index) => ({ name: loaded.name, pageId: pageIds[index]! })),
+  );
+  console.log('\nRetrieval:');
+  console.log(formatRetrievalTally(tallies));
+
   console.log(`\nModel: ${CHAT_MODEL}`);
   console.log(`Transcript: ${transcript}`);
 

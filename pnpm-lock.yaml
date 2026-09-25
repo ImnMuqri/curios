@@ -332,6 +332,12 @@ importers:
       '@curios/core':
         specifier: workspace:*
         version: link:../core
+      '@curios/db':
+        specifier: workspace:*
+        version: link:../db
+      '@curios/embeddings':
+        specifier: workspace:*
+        version: link:../embeddings
       '@curios/gateway':
         specifier: workspace:*
         version: link:../gateway

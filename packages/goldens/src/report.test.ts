@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { formatCost, formatReport, summarise, type QuestionResult } from './report.js';
+import {
+  formatCost,
+  formatReport,
+  formatRetrievalTally,
+  summarise,
+  tallyRetrieval,
+  type QuestionResult,
+  type RetrievalLogEntry,
+} from './report.js';
 
 const passing = (page: string, ask: string): QuestionResult => ({
   page,
@@ -98,5 +106,123 @@ describe('formatReport', () => {
     // which looser patterns than these would still match.
     expect(report).toContain('business  1 questions  1 passed  0 failed');
     expect(report).toContain('hostile  2 questions  0 passed  2 failed');
+  });
+});
+
+const retrieved = (pageId: string, selectedCount: number): RetrievalLogEntry => ({
+  pageId,
+  mode: 'retrieved',
+  reason: null,
+  bestScore: 0.8,
+  factCount: 48,
+  selectedCount,
+});
+
+const fallback = (pageId: string, reason: string): RetrievalLogEntry => ({
+  pageId,
+  mode: 'fallback',
+  reason,
+  bestScore: null,
+  factCount: 48,
+  selectedCount: 48,
+});
+
+describe('tallyRetrieval', () => {
+  it('splits entries by pageId, so one page never bleeds into another', () => {
+    const tallies = tallyRetrieval(
+      [retrieved('catalog-id', 10), retrieved('business-id', 5)],
+      [
+        { name: 'business', pageId: 'business-id' },
+        { name: 'catalog', pageId: 'catalog-id' },
+      ],
+    );
+
+    expect(tallies).toEqual([
+      { page: 'business', retrieved: 1, fallback: 0, reasons: {}, selectedCountRange: { min: 5, max: 5 } },
+      { page: 'catalog', retrieved: 1, fallback: 0, reasons: {}, selectedCountRange: { min: 10, max: 10 } },
+    ]);
+  });
+
+  it('counts retrieved and fallback separately', () => {
+    const [tally] = tallyRetrieval(
+      [retrieved('p', 10), retrieved('p', 12), fallback('p', 'below-floor')],
+      [{ name: 'catalog', pageId: 'p' }],
+    );
+
+    expect(tally!.retrieved).toBe(2);
+    expect(tally!.fallback).toBe(1);
+  });
+
+  it('tallies fallback reasons by name, and never counts a retrieved line as a reason', () => {
+    const [tally] = tallyRetrieval(
+      [
+        fallback('p', 'below-minimum'),
+        fallback('p', 'below-minimum'),
+        fallback('p', 'below-floor'),
+        retrieved('p', 20),
+      ],
+      [{ name: 'catalog', pageId: 'p' }],
+    );
+
+    expect(tally!.reasons).toEqual({ 'below-minimum': 2, 'below-floor': 1 });
+  });
+
+  it('reports the min and max selectedCount seen, across both retrieved and fallback lines', () => {
+    const [tally] = tallyRetrieval(
+      [retrieved('p', 15), retrieved('p', 40), fallback('p', 'below-floor')],
+      [{ name: 'catalog', pageId: 'p' }],
+    );
+
+    // fallback('p', ...) selects every fact -- 48 -- which is the max here.
+    expect(tally!.selectedCountRange).toEqual({ min: 15, max: 48 });
+  });
+
+  it('gives a page with no logged entries an empty tally rather than throwing', () => {
+    const [tally] = tallyRetrieval([], [{ name: 'personal', pageId: 'personal-id' }]);
+
+    expect(tally).toEqual({
+      page: 'personal',
+      retrieved: 0,
+      fallback: 0,
+      reasons: {},
+      selectedCountRange: null,
+    });
+  });
+});
+
+describe('formatRetrievalTally', () => {
+  it('names the page and both counts', () => {
+    const text = formatRetrievalTally(
+      tallyRetrieval([retrieved('p', 10)], [{ name: 'catalog', pageId: 'p' }]),
+    );
+
+    expect(text).toContain('catalog');
+    expect(text).toContain('retrieved 1');
+    expect(text).toContain('fallback 0');
+  });
+
+  it('prints each fallback reason and its count', () => {
+    const text = formatRetrievalTally(
+      tallyRetrieval(
+        [fallback('p', 'below-minimum'), fallback('p', 'below-minimum')],
+        [{ name: 'business', pageId: 'p' }],
+      ),
+    );
+
+    expect(text).toContain('below-minimum=2');
+  });
+
+  it('omits the reasons parenthetical entirely when nothing fell back', () => {
+    const text = formatRetrievalTally(
+      tallyRetrieval([retrieved('p', 10)], [{ name: 'catalog', pageId: 'p' }]),
+    );
+
+    expect(text).not.toContain('(');
+  });
+
+  it('prints n/a for a page nothing was logged for', () => {
+    const text = formatRetrievalTally(tallyRetrieval([], [{ name: 'personal', pageId: 'p' }]));
+
+    expect(text).toContain('selectedCount n/a');
   });
 });

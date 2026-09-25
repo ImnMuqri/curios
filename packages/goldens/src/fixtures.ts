@@ -13,6 +13,15 @@ export const GOLDEN_HANDLE_PREFIX = 'golden-';
 export interface GoldenFact {
   category: FactCategory;
   claim: string;
+  /**
+   * The question this fact answers, as extraction would have written it.
+   *
+   * Optional, so the three original fixtures stay exactly as they were. It is
+   * what retrieval matches a visitor's question against, so a fixture meant to
+   * exercise retrieval must set it on every fact -- see the check in
+   * fixtures.real.test.ts.
+   */
+  question?: string;
 }
 
 export interface GoldenQuestion {
@@ -95,6 +104,15 @@ export function validateFixture(name: string, fixture: GoldenFixture): string[] 
       }
     }
   });
+
+  const withQuestions = page.facts.filter((fact) => fact.question !== undefined).length;
+  if (withQuestions > 0 && withQuestions < page.facts.length) {
+    problems.push(
+      `${name}: ${withQuestions} of ${page.facts.length} facts carry a question. ` +
+        'Set it on every fact or none -- a page with some is a page where retrieval ' +
+        'matches half the catalogue against claims and half against questions.',
+    );
+  }
 
   return problems;
 }
