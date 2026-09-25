@@ -251,7 +251,7 @@ describe('registration', () => {
               facts: {
                 create: Array.from({ length: count }, (_unused, index) => {
                   // 200 characters, unique per index: comfortably over
-                  // FACT_BUDGET_CHARS (4,000) across thirty facts, so the
+                  // FACT_BUDGET_CHARS (2,500) across thirty facts, so the
                   // budget actually binds and a "chosen few" is observable
                   // rather than the whole page slipping in under it. Mirrors
                   // retrieval.test.ts's own claimOfLength fixture.

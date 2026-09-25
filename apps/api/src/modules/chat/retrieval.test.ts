@@ -21,9 +21,10 @@ function axis(index: number): Float32Array {
  * A claim exactly 200 characters long, unique per index.
  *
  * Thirty of these hold about 6,000 characters, comfortably over
- * FACT_BUDGET_CHARS (4,000) -- unlike the ~85-character claim this fixture
- * used to carry, which put every seeded page under the budget and made it
- * impossible for a test to observe the budget actually binding.
+ * FACT_BUDGET_CHARS (2,500) -- unlike the ~85-character claim this fixture
+ * used to carry, which put every seeded page under the budget as it then
+ * stood (4,000) and made it impossible for a test to observe the budget
+ * actually binding.
  */
 function claimOfLength(index: number, length = 200): string {
   const prefix = `Fakta nombor ${index}: `;

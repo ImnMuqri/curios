@@ -32,11 +32,19 @@ export const RETRIEVAL_MIN_FACTS = 25;
 export const RETRIEVAL_FLOOR = 0.35;
 
 /**
- * How many characters of claims one answer may carry: roughly 1,150 tokens of
- * Malay prose, so a retrieved prompt is about 1,500 tokens against the ~6,000
- * a 114-fact page used to send.
+ * How many characters of claims one answer may carry.
+ *
+ * Counted in claim characters, but a fact costs more than its claim: each one
+ * carries its prompt wrapper, about 34 tokens a fact on a page whose claims
+ * average 58 characters. Measured on the 114-fact development page, 2,500
+ * characters sends 38-50 facts and a prompt of ~1,500-1,700 tokens against
+ * the 3,824 of sending everything, while the facts that answer each probe
+ * question ranked in the top five. 4,000, the first value, measured ~2,500
+ * tokens and missed the slice's gate; 3,000 cleared it by 45 tokens, too
+ * thin for a page with a longer name or never-say list. Tuned against the
+ * golden set.
  */
-export const FACT_BUDGET_CHARS = 4000;
+export const FACT_BUDGET_CHARS = 2500;
 
 export type FallbackReason = 'below-minimum' | 'missing-vectors' | 'below-floor';
 

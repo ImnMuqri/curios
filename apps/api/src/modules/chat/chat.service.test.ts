@@ -142,9 +142,9 @@ function axis(index: number): Float32Array {
 /**
  * A claim exactly 200 characters long, unique per index -- the same fixture
  * shape retrieval.test.ts uses, and for the same reason: the ~85-character
- * claim this fixture used to carry left a 30-fact page under
- * FACT_BUDGET_CHARS (4,000), so the budget never bound and "sends a chosen
- * few" could not tell a chosen few apart from the whole page.
+ * claim this fixture used to carry left a 30-fact page under the budget as
+ * it then stood (4,000), so the budget never bound and "sends a chosen few"
+ * could not tell a chosen few apart from the whole page.
  */
 function claimOfLength(index: number, length = 200): string {
   const prefix = `Fakta nombor ${index}: `;
