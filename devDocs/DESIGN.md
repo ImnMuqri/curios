@@ -40,6 +40,11 @@ Owner themes change the accent hue only. Structure, type, and spacing never chan
 Ten thousand pages that look related is a brand. Ten thousand pages that look like
 anything is a theme picker.
 
+*Amended by slice 13.* An owner also chooses one of two page styles and one of six
+curated heading fonts, alongside the accent — see **The two page styles**, below.
+Spacing, the six-step type scale and the shopfront layout structure within a style
+still never change: a theme changes treatment, not structure.
+
 ---
 
 ## Type
@@ -134,8 +139,11 @@ can make a page unreadable.
 
 **Six curated heading fonts** — Jakarta (default), Bricolage Grotesque, Fraunces, Space
 Grotesk, DM Serif Display, Outfit — apply to the owner's name and tile labels only; body
-text stays Inter regardless. Each is declared with `next/font` (`display: swap`,
-`preload: false`), so a visitor downloads only the face their page actually uses.
+text stays Inter regardless. Each is declared with `next/font` (`display: swap`); five
+of the six set `preload: false`, so a visitor downloads only the face their page
+actually uses. Bricolage is the exception — it is the sitewide `--font-display`
+default (see the amendment in **Type**, above) and so preloads regardless of which
+heading font a page picks.
 
 **The dashboard itself speaks Plus Jakarta Sans**, not Bricolage — a deliberate split
 from the public page's type, which keeps this document's own fonts.
