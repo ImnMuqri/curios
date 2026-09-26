@@ -40,4 +40,35 @@ describe('MyCuriosEditor', () => {
 
     expect(within(screen.getByRole('region', { name: 'Live preview' })).getByRole('heading', { name: 'Iman M.' })).toBeInTheDocument();
   });
+
+  // Fix round 1, Important #1: a link edit (label or size) must reach the
+  // preview from local state, on every keystroke/click, independent of
+  // whether the save behind it ever resolves. `updateLink` never resolving
+  // is what proves that -- if the preview waited on the save, it would never
+  // update at all here.
+  it('shows a link label change in the live preview immediately, before the save resolves', async () => {
+    const stuck = api();
+    stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
+    render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
+
+    const row = screen.getByRole('listitem', { name: 'Portfolio' });
+    await userEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
+    await userEvent.type(within(row).getByLabelText('Name'), '!');
+
+    const preview = screen.getByRole('region', { name: 'Live preview' });
+    expect(within(preview).getByText('Portfolio!')).toBeInTheDocument();
+  });
+
+  it('shows a chosen tile size in the live preview immediately, before the save resolves', async () => {
+    const stuck = api();
+    stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
+    render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
+
+    const row = screen.getByRole('listitem', { name: 'Portfolio' });
+    await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
+
+    const preview = screen.getByRole('region', { name: 'Live preview' });
+    const tile = within(preview).getByText('Portfolio').closest('[data-size]');
+    expect(tile).toHaveAttribute('data-size', 'BIG');
+  });
 });
