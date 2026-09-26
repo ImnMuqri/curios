@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
+import { loginWalledSite } from '../../../lib/social-links.js';
 import { JobStatus, type IngestionResult } from './job-status.js';
 
 type Source = { pageId: string; sourceUrl: string } | { pageId: string; pastedText: string };
@@ -15,6 +16,11 @@ type Source = { pageId: string; sourceUrl: string } | { pageId: string; pastedTe
  * Once the ingest request is accepted, the form hands the returned
  * `ingestionId` straight to `JobStatus`, which polls it until it resolves. If
  * it finds nothing, the form comes back with the paste box open.
+ *
+ * One source at a time, as many as the owner likes: a website then a shop, a
+ * LinkedIn bio then a portfolio. After each one resolves the owner can add
+ * another, and the form comes back empty. Each is its own ingestion, and every
+ * source's facts land in the same review queue, duplicates skipped.
  */
 export function IngestForm({
   pageId,
@@ -36,12 +42,24 @@ export function IngestForm({
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [ingestionId, setIngestionId] = useState<string | null>(null);
+  // Why the paste box opened on its own, when a link could not be read.
+  const [notice, setNotice] = useState('');
+  // How many sources this visit has already read, so the form can say so.
+  const [added, setAdded] = useState(0);
   const personal = mode === 'PERSONAL';
   const count = (n: number) => n.toLocaleString('en-MY');
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
+    // Caught before sending: a login wall can only come back as "we found
+    // nothing", after spending an ingestion and a rate-limit token.
+    const walled = using === 'link' ? loginWalledSite(sourceUrl) : null;
+    if (walled) {
+      setUsing('text');
+      setNotice(`${walled} does not let us read profiles. Paste your bio or About section from it instead.`);
+      return;
+    }
     // `required` is satisfied by whitespace, and the API's own answer to an
     // all-whitespace paste is Fastify's raw validation wording -- catch it
     // here so the owner hears it from us instead.
@@ -80,23 +98,39 @@ export function IngestForm({
           setUsing('text');
           setBusy(false);
         }}
+        onAddAnother={() => {
+          setIngestionId(null);
+          setUsing('link');
+          setSourceUrl('');
+          setPastedText('');
+          setNotice('');
+          setBusy(false);
+          setAdded((count) => count + 1);
+        }}
       />
     );
   }
 
   return (
     <form onSubmit={(event) => void submit(event)}>
+      {added > 0 ? (
+        <Callout tone="info">
+          Facts from what you added so far are already in your review queue.{' '}
+          <a href="/app/review">Review them</a>, or add the next source.
+        </Callout>
+      ) : null}
+      {notice ? <Callout tone="action">{notice}</Callout> : null}
       {using === 'link' ? (
         <Field
           id="sourceUrl"
-          label={personal ? 'A link about you' : 'Your website address'}
+          label={added > 0 ? 'Another link' : personal ? 'A link about you' : 'Your website address'}
           type="url"
           autoComplete="off"
           required
           hint={
             personal
-              ? 'Your site, Linktree or profile — or paste a few paragraphs about yourself instead.'
-              : undefined
+              ? 'Your site, Linktree or profile — or paste a few paragraphs about yourself instead. LinkedIn and Instagram block us, so paste your bio from those.'
+              : 'Your website, online shop, or any page about the business.'
           }
           value={sourceUrl}
           onChange={setSourceUrl}
@@ -118,6 +152,7 @@ export function IngestForm({
         variant="secondary"
         onClick={() => {
           setError('');
+          setNotice('');
           setUsing(using === 'link' ? 'text' : 'link');
         }}
       >
@@ -131,7 +166,7 @@ export function IngestForm({
           ? 'Starting…'
           : using === 'text'
             ? 'Read what I pasted'
-            : personal
+            : personal || added > 0
               ? 'Read this link'
               : 'Read my website'}
       </Button>

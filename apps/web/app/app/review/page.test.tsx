@@ -103,6 +103,21 @@ describe('the review screen, assembled', () => {
     expect(screen.getByText(/nothing left to review/i)).toBeInTheDocument();
   });
 
+  // A second source -- a shop, a LinkedIn bio -- can arrive at any time, not
+  // only during onboarding, and its facts join this same queue.
+  it('offers to add another source', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce(page);
+    getReviewQueue.mockResolvedValueOnce([]);
+
+    render(await ReviewPage());
+
+    expect(screen.getByRole('link', { name: 'Add another source' })).toHaveAttribute(
+      'href',
+      '/app/onboarding',
+    );
+  });
+
   it('shows the live URL instead of the button once published', async () => {
     // B1: publishing is a one-time switch. Both public read paths filter
     // `verified: true` at read time, so a fact accepted after publishing is

@@ -82,4 +82,46 @@ describe('JobStatus', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Try different text' }));
     expect(onNothingFound).toHaveBeenCalledOnce();
   });
+
+  // One source is rarely the whole story: a website and a shop, a LinkedIn bio
+  // and a portfolio. Facts from every source land in the same review queue.
+  it('offers another source once one has been read', async () => {
+    const onAddAnother = vi.fn();
+    wrap(
+      <JobStatus
+        ingestionId="i-1"
+        fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 4, error: null })}
+        onAddAnother={onAddAnother}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add another link or text' }));
+
+    expect(onAddAnother).toHaveBeenCalledOnce();
+    expect(screen.getByRole('link', { name: 'Review the facts' })).toBeInTheDocument();
+  });
+
+  // A failed crawl used to be a dead end with no way to try anything else.
+  it('offers a different source when one fails', async () => {
+    const onAddAnother = vi.fn();
+    wrap(
+      <JobStatus
+        ingestionId="i-1"
+        fetchStatus={vi.fn().mockResolvedValue({ status: 'FAILED', extractedCount: 0, error: 'Could not reach that address.' })}
+        onAddAnother={onAddAnother}
+      />,
+    );
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Try a different link or text' }));
+
+    expect(onAddAnother).toHaveBeenCalledOnce();
+  });
+
+  it('offers nothing extra without somewhere to go back to', async () => {
+    wrap(<JobStatus ingestionId="i-1" fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 4, error: null })} />);
+
+    await screen.findByText(/found 4 facts/i);
+    expect(screen.queryByRole('button')).toBeNull();
+  });
 });
+

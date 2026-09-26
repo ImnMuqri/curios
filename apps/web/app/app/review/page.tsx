@@ -5,6 +5,7 @@ import { getOwnerPage, getReviewQueue } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Review } from './review-queue.js';
 import { Publish } from './publish-button.js';
+import styles from './review.module.css';
 
 /**
  * The highest-leverage screen in the product, per FRONTEND.md: the one place
@@ -63,6 +64,11 @@ export default async function ReviewPage() {
   return (
     <>
       <Review facts={facts} />
+      {/* A shop, a LinkedIn bio, a second site: sources can arrive at any time,
+          and each one's facts join this same queue. */}
+      <a className={styles.addSource} href="/app/onboarding">
+        Add another source
+      </a>
       <Publish publicUrl={publicUrl} published={page.published} />
     </>
   );

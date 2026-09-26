@@ -61,3 +61,10 @@
   font-size: var(--text-base);
   word-break: break-all;
 }
+
+.addSource {
+  display: inline-block;
+  margin: 8px 0 24px;
+  color: var(--hijau);
+  font-size: var(--text-body);
+}

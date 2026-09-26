@@ -24,6 +24,7 @@ export function JobStatus({
   intervalMs = 2000,
   onNothingFound,
   source = 'link',
+  onAddAnother,
 }: {
   ingestionId: string;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
@@ -43,6 +44,13 @@ export function JobStatus({
    * paste box is not an escape hatch for someone who just used it.
    */
   source?: 'link' | 'text';
+  /**
+   * Called to read one more source for the same page: a shop after a website,
+   * a portfolio after a LinkedIn bio. Offered after a success, and after a
+   * failure, where it is the way forward. Each source is its own ingestion; the
+   * facts land in one review queue, duplicates skipped.
+   */
+  onAddAnother?: () => void;
 }) {
   const { data } = useQuery({
     queryKey: ['ingestion', ingestionId],
@@ -61,7 +69,16 @@ export function JobStatus({
     // The API's own `error` string, not a generic apology -- it exists
     // precisely so this screen can say which of the many ways a crawl fails
     // actually happened.
-    return <Callout tone="error">{data.error}</Callout>;
+    return (
+      <div>
+        <Callout tone="error">{data.error}</Callout>
+        {onAddAnother ? (
+          <Button type="button" onClick={onAddAnother}>
+            Try a different link or text
+          </Button>
+        ) : null}
+      </div>
+    );
   }
 
   if (data.extractedCount === 0) {
@@ -85,6 +102,11 @@ export function JobStatus({
     <div>
       <Callout tone="info">Found {data.extractedCount} facts.</Callout>
       <a href="/app/review">Review the facts</a>
+      {onAddAnother ? (
+        <Button type="button" variant="secondary" onClick={onAddAnother}>
+          Add another link or text
+        </Button>
+      ) : null}
     </div>
   );
 }
