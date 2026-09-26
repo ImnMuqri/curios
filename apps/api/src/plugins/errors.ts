@@ -60,6 +60,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_LINK',
   'LINK_LIMIT',
   'LINK_ORDER_STALE',
+  // A style, colour, font, name or bio an owner sent that fails its own rule.
+  'INVALID_APPEARANCE',
   'PASSWORD_ALREADY_SET',
   // The one trial reset, already spent -- or asked for by a page that is not
   // entitled to it. 409 rather than 403: nothing is forbidden about the caller,

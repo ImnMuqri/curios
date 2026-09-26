@@ -1,6 +1,8 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { HEADING_FONTS, PAGE_STYLES } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
+import { updateAppearance } from './appearance.service.js';
 import { claimHandle, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 
 export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
@@ -58,6 +60,25 @@ export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
 
       await setSearchIndexing(app.prisma, request.account.id, request.body.allow);
       return reply.send({ allowSearchIndexing: request.body.allow });
+    },
+  );
+
+  app.patch(
+    '/pages/appearance',
+    {
+      schema: {
+        body: z.object({
+          style: z.enum(PAGE_STYLES).optional(),
+          accentColor: z.string().max(40).optional(),
+          headingFont: z.enum(HEADING_FONTS).optional(),
+          displayName: z.string().max(400).optional(),
+          bio: z.string().max(2000).nullable().optional(),
+        }),
+      },
+    },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      return { appearance: await updateAppearance(app.prisma, request.account.id, request.body) };
     },
   );
 };
