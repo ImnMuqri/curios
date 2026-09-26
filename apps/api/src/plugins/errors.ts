@@ -55,6 +55,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   'PAGE_EXISTS',
   'FACT_DUPLICATE',
   'NO_PAGE',
+  // My Curios: a link an owner typed wrong, one too many, or an order from a
+  // tab that is behind. Each says what to do next.
+  'INVALID_LINK',
+  'LINK_LIMIT',
+  'LINK_ORDER_STALE',
   'PASSWORD_ALREADY_SET',
   // The one trial reset, already spent -- or asked for by a page that is not
   // entitled to it. 409 rather than 403: nothing is forbidden about the caller,
