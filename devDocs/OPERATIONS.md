@@ -183,7 +183,7 @@ older model is re-embedded, not skipped.
 
 ## The embeddings provider is down
 
-**What to do: nothing.** `packages/core/src/retrieval.ts`'s own contract is that every
+**During the outage: nothing.** `packages/core/src/retrieval.ts`'s own contract is that every
 failure sends every fact instead of a chosen few. An embeddings outage is one of those
 failures: every page falls back to sending everything it has, answers stay exactly as
 correct as they were before this slice, and the only consequence is that the bill goes
@@ -195,6 +195,41 @@ retrieval and do not restart anything — there is nothing broken to restart.
 provider outage or timeout, `reason` reads `"provider-failed"` on every line. Any other
 fallback reason (`"below-minimum"`, `"missing-vectors"`, `"below-floor"`) is a different
 page shape behaving correctly, not an outage.
+
+**"Nothing" covers the outage itself, not what happened underneath it.** Two writes re-embed
+inline and both swallow a failure to embed rather than fail the request that triggered it:
+`runExtraction` (`apps/workers/src/ingestion/extract.service.ts`) still writes an ingestion's
+facts when the batched embedding call fails, and `editFact`
+(`apps/api/src/modules/facts/fact.service.ts`) still commits an owner's claim edit when
+re-embedding it fails. An ingestion or a fact edit landing during the outage leaves that page
+with one or more facts carrying no vector — and unlike the outage itself, that does not resolve
+on its own when the provider comes back. The page stays in fallback, sending everything, until
+the backfill is run by hand.
+
+**Check for this once the provider recovers.** Both paths log a `warn` with an id and the error,
+never a claim or a question — grep for the exact lines:
+
+```bash
+grep -F 'facts written but not embedded; this page falls back until a backfill runs' <log>
+grep -F 'fact edited but its vector could not be refreshed; this page falls back until a backfill runs' <log>
+```
+
+A hit on either from during the outage window means run the backfill, the same command as
+"Backfilling fact vectors" above:
+
+```bash
+pnpm exec tsx scripts/backfill-fact-embeddings.ts
+```
+
+It costs nothing to run speculatively even without a log hit — it only ever selects facts with
+no vector or one from a different model or width, so a database with nothing to fix scans
+everything and writes nothing.
+
+**The same residue shows up in `chat retrieval` without touching a log.**
+`reason: "missing-vectors"` on a page that was retrieving normally before, especially a large
+one, appearing only after an outage has already passed, means exactly this: an edit or an
+ingestion wrote a fact with no vector while the provider was down, and the page has been paying
+roughly twice per answer in fallback ever since, waiting for the backfill above.
 
 ---
 
