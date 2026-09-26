@@ -2,6 +2,7 @@
 
 import type { MyCurios as MyCuriosData } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
+import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { resizeImage } from './resize-image.js';
 import { MyCuriosEditor, type CuriosApi } from './my-curios.js';
 import type { LinkItem } from './links-editor.js';
@@ -24,7 +25,7 @@ export function MyCurios({
   uploadsEnabled: boolean;
   publicBase: string;
 }) {
-  const avatarUrlFromKey = (key: string) => `${publicBase}/${key}`;
+  const avatarUrlFromKey = (key: string) => joinAvatarUrl(publicBase, key);
 
   const api: CuriosApi = {
     addLink: async (input) => (await apiFetch<{ link: LinkItem }>('/links', { method: 'POST', body: JSON.stringify(input) })).link,

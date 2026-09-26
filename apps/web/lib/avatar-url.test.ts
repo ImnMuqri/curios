@@ -1,5 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { avatarUrl } from './avatar-url.js';
+import { avatarUrl, joinAvatarUrl } from './avatar-url.js';
+
+/**
+ * Fix round 1, item 2: `avatarUrl` trims a base's trailing slash before
+ * joining, but `my-curios-wrapper.tsx` built the fresh-upload URL with a bare
+ * template literal and no trim, so the two could disagree the moment
+ * `STORAGE_PUBLIC_URL` ends in "/". `joinAvatarUrl` is the one rule now, used
+ * by both.
+ */
+describe('joinAvatarUrl', () => {
+  it('joins a base and a key', () => {
+    expect(joinAvatarUrl('https://cdn.example', 'avatars/p/1.webp')).toBe('https://cdn.example/avatars/p/1.webp');
+  });
+
+  it('does not double the slash when the base already ends in one', () => {
+    expect(joinAvatarUrl('https://cdn.example/', 'avatars/p/1.webp')).toBe('https://cdn.example/avatars/p/1.webp');
+  });
+
+  it('trims more than one trailing slash', () => {
+    expect(joinAvatarUrl('https://cdn.example//', 'avatars/p/1.webp')).toBe('https://cdn.example/avatars/p/1.webp');
+  });
+});
 
 /**
  * Self-review addition (not in the task brief's own test list): `avatarUrl`
