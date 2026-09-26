@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { StrictMode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { AskSheet } from './AskSheet.js';
 
@@ -19,6 +20,24 @@ describe('AskSheet', () => {
     render(<AskSheet seed="Berapa harga kek?" onClose={vi.fn()} onAsk={onAsk} />);
 
     await waitFor(() => expect(onAsk).toHaveBeenCalledWith('Berapa harga kek?', null));
+  });
+
+  // React mounts every component twice in development, on purpose. Asked from
+  // an effect with no guard, the seed went out twice: two model calls, two
+  // conversations against the page's cap, and both answers streamed into one
+  // bubble word by word -- two greetings interleaved into nonsense.
+  it('asks the seed question once, even when React mounts it twice', async () => {
+    const onAsk = vi.fn().mockResolvedValue(
+      streamOf('data: {"type":"text","text":"Hai! "}\n\n', 'data: {"type":"done"}\n\n'),
+    );
+    render(
+      <StrictMode>
+        <AskSheet seed="Hello" onClose={vi.fn()} onAsk={onAsk} />
+      </StrictMode>,
+    );
+
+    await waitFor(() => expect(screen.getByText('Hai!')).toBeInTheDocument());
+    expect(onAsk).toHaveBeenCalledTimes(1);
   });
 
   it('renders streamed text as it arrives', async () => {

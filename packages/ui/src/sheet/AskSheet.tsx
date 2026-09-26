@@ -158,7 +158,20 @@ export function AskSheet({ seed, onClose, onAsk, shopName, onCapture }: AskSheet
     [onAsk],
   );
 
+  /**
+   * Whether the seed has gone out. React mounts every component twice in
+   * development, running this effect twice on the same instance; without the
+   * guard the seed was sent twice -- two model calls, two conversations against
+   * the page's cap, and both answers streamed into one bubble. A ref survives
+   * that remount, where state set in the first pass would not yet be visible.
+   * Not an abort on cleanup: by then the server has already opened the
+   * conversation and started the model call, so the only fix is not to send.
+   */
+  const seedSent = useRef(false);
+
   useEffect(() => {
+    if (seedSent.current) return;
+    seedSent.current = true;
     void send(seed);
     // Empty on purpose: the seed is asked once, when the sheet opens.
     // Depending on `send` or `seed` would re-ask the first question in the
