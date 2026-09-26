@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { BentoPage, type BentoPageProps } from './BentoPage.js';
 
 const base: BentoPageProps = {
@@ -52,6 +52,19 @@ describe('BentoPage', () => {
   it('shows the picture beside the name when there is one', () => {
     render(<BentoPage {...base} avatarUrl="https://cdn.example/avatars/p/1.webp" />);
     expect(screen.getByRole('img', { name: 'Iman Muqri' })).toHaveAttribute('src', 'https://cdn.example/avatars/p/1.webp');
+  });
+
+  // Fix round 1: Avatar's onError path -- storage down, an object removed --
+  // was untested. The picture disappears; the name stands alone, never a
+  // broken-image icon.
+  it('hides the picture if it fails to load, and leaves the name standing alone', () => {
+    render(<BentoPage {...base} avatarUrl="https://cdn.example/avatars/p/1.webp" />);
+    const img = screen.getByRole('img', { name: 'Iman Muqri' });
+
+    fireEvent.error(img);
+
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(screen.getByRole('heading', { name: 'Iman Muqri' })).toBeInTheDocument();
   });
 
   // Review Focus 5.

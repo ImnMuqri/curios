@@ -90,11 +90,6 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         accentColor={page.accentColor}
         headingFont={page.headingFont}
       >
-        {hasFaq ? (
-          <a className={styles.faqLink} href={`/${page.handle}/faq`}>
-            See every question we&apos;ve answered
-          </a>
-        ) : null}
         <Ask
           handle={page.handle}
           questions={questions}
@@ -106,6 +101,11 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
             now: new Date(),
           })}
         />
+        {hasFaq ? (
+          <a className={styles.faqLink} href={`/${page.handle}/faq`}>
+            See every question we&apos;ve answered
+          </a>
+        ) : null}
       </BentoPage>
     </main>
   );

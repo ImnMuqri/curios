@@ -131,6 +131,27 @@ describe('the link to /[handle]/faq', () => {
     );
   });
 
+  // Fix round 1: the spec's top-to-bottom order (devDocs/slice-13-build-spec.md,
+  // "The public page") is bento grid, ask bar, then -- on a business page with
+  // entries -- the FAQ link. The brief's own sample had them reversed; the spec
+  // wins. `Ask` normally renders null here (see the file-level mock), so this
+  // test gives it a one-time real marker to find in the DOM.
+  it('places the ask bar before the FAQ link, per the spec', async () => {
+    vi.mocked(Ask).mockImplementationOnce(() => <div data-testid="ask-bar" />);
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+    vi.mocked(getFaqIndex).mockResolvedValue({
+      handle: 'nadia',
+      displayName: 'Nadia Bakes',
+      entries: [{ slug: 'berapa-harga', question: 'Berapa harga?' }],
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const askBar = screen.getByTestId('ask-bar');
+    const faqLink = screen.getByRole('link', { name: /every question/i });
+    expect(askBar.compareDocumentPosition(faqLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
     vi.mocked(getFaqIndex).mockResolvedValue({
