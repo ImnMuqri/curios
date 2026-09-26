@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Callout } from '@curios/ui';
+import { Button, Callout } from '@curios/ui';
 import { ACCENT_PRESETS, HEADING_FONTS, isHexColor, type HeadingFont, type PageStyle } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../../lib/heading-fonts.js';
 import type { AppearancePatch } from './my-curios.js';
@@ -36,11 +36,31 @@ export function AppearanceEditor({
 }) {
   const [custom, setCustom] = useState(accentColor);
   const [error, setError] = useState('');
+  // The patch a failed save should send again. Cleared on success, replaced
+  // by whatever the owner tries next -- retry always sends the latest
+  // failed change, never a stale one.
+  const [failedPatch, setFailedPatch] = useState<AppearancePatch | null>(null);
+
+  const attempt = (patch: AppearancePatch) => {
+    save(patch)
+      .then(() => {
+        setError('');
+        setFailedPatch(null);
+      })
+      .catch(() => {
+        setError('That did not save. Try again.');
+        setFailedPatch(patch);
+      });
+  };
 
   const choose = (patch: AppearancePatch) => {
     setError('');
     onChange(patch);
-    save(patch).catch(() => setError('That did not save. Try again.'));
+    attempt(patch);
+  };
+
+  const retry = () => {
+    if (failedPatch) attempt(failedPatch);
   };
 
   return (
@@ -76,7 +96,12 @@ export function AppearanceEditor({
               const value = event.target.value.trim();
               setCustom(value);
               if (isHexColor(value)) choose({ accentColor: value.toLowerCase() });
-              else setError('Type a colour as six-digit hex, like #0c7a62.');
+              else {
+                // Not a failed save -- nothing was sent -- so there is
+                // nothing for a Retry button here to resend.
+                setError('Type a colour as six-digit hex, like #0c7a62.');
+                setFailedPatch(null);
+              }
             }}
           />
         </label>
@@ -94,7 +119,12 @@ export function AppearanceEditor({
         </div>
       </fieldset>
 
-      {error ? <Callout tone="error">{error}</Callout> : null}
+      {error ? (
+        <Callout tone="error">
+          {error}
+          {failedPatch ? <Button type="button" variant="secondary" onClick={retry}>Retry</Button> : null}
+        </Callout>
+      ) : null}
     </section>
   );
 }
