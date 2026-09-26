@@ -23,6 +23,16 @@ config({ path: join(import.meta.dirname, '..', '.env') });
  * It spends one model call per batch of 25 facts, against whatever DATABASE_URL
  * points at -- check that before running it. Safe to re-run: it only ever
  * selects facts whose question is still null.
+ *
+ * Run `scripts/backfill-fact-embeddings.ts` immediately after this one. A fact
+ * that already had a vector -- embedded from its claim, because it had no
+ * question yet -- keeps matching against that claim forever otherwise:
+ * `syncFactEmbeddings` (packages/db/src/fact-embedding.ts) only re-embeds a
+ * fact with no vector or one from a different model or width, and writing a
+ * question here does not by itself make the stored vector either. This script
+ * clears each fact's vector in the same transaction as the question, so the
+ * embeddings backfill picks it up as missing and re-embeds from the new
+ * question rather than skipping it.
  */
 const BATCH = 25;
 
@@ -69,7 +79,17 @@ for (let i = 0; i < pending.length; i += BATCH) {
   for (const [n, fact] of batch.entries()) {
     const question = answers.get(n + 1);
     if (!question) continue;
-    await prisma.fact.update({ where: { id: fact.id }, data: { question } });
+    // The vector is cleared in the same transaction as the question is
+    // written, not left for a caller to remember separately -- see the
+    // header comment for why a stale vector would otherwise survive this
+    // script untouched. deleteMany rather than a nested relation delete: it
+    // is a no-op when the fact has no embedding row yet, where a nested
+    // `embedding: { delete: true }` would throw (P2025) on exactly the facts
+    // that never had a vector to begin with.
+    await prisma.$transaction([
+      prisma.fact.update({ where: { id: fact.id }, data: { question } }),
+      prisma.factEmbedding.deleteMany({ where: { factId: fact.id } }),
+    ]);
   }
 
   console.log(`  ${Math.min(i + BATCH, pending.length)}/${pending.length}`);
