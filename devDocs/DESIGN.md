@@ -54,6 +54,12 @@ Bricolage carries a slight sign-painter irregularity in its wider optical sizes,
 is exactly the shopfront reference and is not the face everyone else reaches for.
 Use it for the owner's name, page headings, and nothing under 15px.
 
+*Amended by slice 13.* The owner's name and tile labels on the public page now use
+whichever of six curated fonts the owner picked (Bricolage remains one, and the
+fallback face when none is set) — see **The two page styles**, below. The dashboard's
+own chrome no longer uses Bricolage at all: it speaks Plus Jakarta Sans, a deliberate
+split from the public page's type.
+
 Body is Inter because Malay runs long and Inter stays legible when a caption wraps to
 four lines on a small phone. This is a legibility decision, not a taste one.
 
@@ -100,13 +106,39 @@ is a tool that a busy person opens at 11pm, and it should be instant, not theatr
 | Component | Job |
 |---|---|
 | `AskBar` | the signature. see above. |
-| `LinkRow` | 44px min target, label left, arrow right. boring on purpose. |
+| `BentoPage` / tiles | *replaces `LinkRow`, slice 13.* the shopfront arrangement: an accent lead tile, a warm second, then smalls and wides; sizes automatic until the owner picks one. One renderer for the public page and the editor's live preview, so the two cannot disagree. |
 | `Chip` | generated question. `lead` variant uses mint, one per page maximum. |
 | `AnswerBubble` | streams, can contain a `LinkCard`. |
 | `LinkCard` | how chat returns people to the links. |
 | `CaptureCard` | kuning. one input. never more than one input. business mode only. |
 | `FactCard` | claim, source line, accept/edit/delete. onboarding lives or dies here. |
 | `GapCard` | unanswered question plus one button. the dashboard's whole point. |
+
+---
+
+## The two page styles
+
+*Added by slice 13.* Same shopfront arrangement in both; only the treatment differs.
+
+| | Soft (default) | High contrast |
+|---|---|---|
+| Corner radius | 16px | 14px |
+| Depth | a light shadow | none — contrast does the work |
+| Tiles | white and pale accent tints | ink, with accent tiles |
+
+**One accent colour per page** — eight curated presets plus a custom picker — paints the
+lead tile, the ask bar's emphasis and the chat sheet's highlights. Text on it is never
+the owner's problem: `readableOn(hex)` in `@curios/core` picks black or white ink,
+whichever has the higher WCAG contrast ratio against that colour, so no custom colour
+can make a page unreadable.
+
+**Six curated heading fonts** — Jakarta (default), Bricolage Grotesque, Fraunces, Space
+Grotesk, DM Serif Display, Outfit — apply to the owner's name and tile labels only; body
+text stays Inter regardless. Each is declared with `next/font` (`display: swap`,
+`preload: false`), so a visitor downloads only the face their page actually uses.
+
+**The dashboard itself speaks Plus Jakarta Sans**, not Bricolage — a deliberate split
+from the public page's type, which keeps this document's own fonts.
 
 ---
 

@@ -17,13 +17,16 @@ people, not operators. Build them as two different products in one codebase.
 /app                      dashboard shell      client, authed
 /app/onboarding           choose personal or business, paste a link or text, review facts
 /app/knowledge            facts, pinned answers, never-say list
-/app/links                the boring part that pays the rent
+/app/curios               My Curios: profile, links, appearance, live preview
 /app/leads                table + transcript drawer
 /app/questions            top asked, unanswered, answer-writeback
-/app/appearance           theme, avatar, badge
 /app/billing              plan, usage against cap, payments, trial reset
 /app/settings             sign-in methods, the search-engine switch
 ```
+
+**`/app` lands in My Curios.** A signed-in owner with a page is sent straight to
+`/app/curios`; one without a page yet goes to onboarding instead. It is the only screen
+that decides this.
 
 **One flat namespace.** `curios.my/nadia` is the URL for a person and for a bakery
 alike, and it never changes shape on upgrade. Mode is a property of the page, so this
@@ -42,8 +45,9 @@ go live in two minutes. Verification is separate: a bio code for personal pages,
 SSM document upload for business pages. It earns the badge and nothing else: an
 unverified Pro page keeps every feature, including lead capture. The badge renders the
 registration number and registered name, never a bare tick. Upload sits in
-`/app/appearance`, not in the payment flow, and states plainly that the file is
-deleted after checking.
+`/app/curios`, not in the payment flow, and states plainly that the file is
+deleted after checking. *Amended by slice 13, which folded profile and appearance into
+My Curios; this document upload is still unbuilt.*
 
 ---
 
@@ -53,6 +57,15 @@ deleted after checking.
 FAQ content into real DOM. Hydrate chat on top. If JS fails, the page is still a
 working link list with readable answers. That fallback is also the SEO artifact and
 the over-cap degraded state, so it is one build serving three jobs.
+
+*Amended by slice 13, which built the links half of the product and, with it, removed
+the fact list this sentence promised.* The public page server-renders a bento grid of
+the owner's links (`BentoPage`, shared with the editor's live preview), not a list, and
+carries no fact list at all. "Readable answers" no longer live on the page itself: they
+live on the FAQ pages, still indexed for business pages (personal pages stay `noindex`
+by default), which the public page links to when any exist. Without JavaScript the grid
+is still plain server-rendered anchors, so the page keeps working as a link page; only
+the ask bar needs JS.
 
 Budget. *Amended by slice 3, which measured this for the first time and found the
 original sentence could not be true.*
@@ -146,6 +159,30 @@ failure that loses a customer permanently.
 
 Poll the job: the ingest request returns 202 with a job id, and the review screen
 polls that id until the job resolves. Nothing generative ever blocks an HTTP request.
+
+---
+
+## My Curios
+
+*Added by slice 13.* One screen, at `/app/curios`, where `/app` sends every owner who
+already has a page. Profile (picture, display name, bio), links, and appearance sit
+together with a live preview that never leaves the screen — the same `BentoPage`
+visitors see, so the preview cannot disagree with the published page.
+
+**No Save button.** Every control saves itself: name, bio and an inline link's label or
+address debounce 600ms after the owner stops typing; a tile size, style, accent or
+heading font save the instant they are clicked. The preview updates from local state on
+every keystroke or click, before the save round-trip returns. A control shows its own
+brief "Saved", and a failed save keeps what the owner typed or chose and offers a Retry
+beside that control, never a page-wide banner.
+
+**Reorder** is drag (`@dnd-kit/sortable`) or the up/down buttons, which is how the
+keyboard and a screen reader reach it too. A failed reorder — most often a second tab
+having changed the list first — snaps the list back to the last saved order and says
+so, rather than leaving the two tabs disagreeing.
+
+**The 30-link limit** (`MAX_LINKS`) is enforced in the editor and the API alike: past
+it, "+ Add a link" is replaced by a line naming the limit instead of a rejected request.
 
 ---
 
