@@ -211,17 +211,19 @@ Two ways, neither needing a code change.
 same page by construction — on the 114-fact development page, retrieval measured
 1,494-1,709 tokens against 3,824-3,830 for that page's fallback prompt, about 40-45%.
 Caching can move tokens between `inputTokens`, `cacheReadTokens` and `cacheWriteTokens`
-call to call, so compare their sum, not `inputTokens` alone:
+call to call, so compare their sum, not `inputTokens` alone. Filter to rows with a
+`conversationId`: extraction calls carry the same `pageId` and would land in the
+fallback cluster.
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c \
   "SELECT (\"inputTokens\" + \"cacheReadTokens\" + \"cacheWriteTokens\") AS prompt_tokens, count(*) \
-   FROM \"ModelCall\" WHERE \"pageId\" = 'PAGE_ID' AND ok = true \
+   FROM \"ModelCall\" WHERE \"pageId\" = 'PAGE_ID' AND \"conversationId\" IS NOT NULL AND ok = true \
    GROUP BY 1 ORDER BY 1;"
 ```
 
 A page that mixes both modes shows two clusters: a lower one where retrieval fired and a
-higher one, several times larger, where it fell back. One tight cluster near the higher
+higher one, roughly twice as large on the development page, where it fell back. One tight cluster near the higher
 number on a large page is worth checking against `RETRIEVAL_MIN_FACTS` and the `chat
 retrieval` log before assuming retrieval is broken.
 
