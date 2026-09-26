@@ -38,9 +38,12 @@ export interface ChatDeps {
    * Required and explicitly nullable, for the reason `cap` above is required:
    * a deps object that simply omitted it would silently never retrieve, and
    * "every page sends every fact" is invisible from the outside -- it is a
-   * seven-times-the-cost bug that looks exactly like success. `null` is a
-   * legitimate answer (a test that is not about retrieval, a deployment with
-   * no key), and writing it says so at the call site.
+   * roughly-twice-the-cost bug that looks exactly like success. `null` is a
+   * legitimate value here -- a test that is not about retrieval -- but never
+   * a production one: `chatRoutes` refuses to start when `OPENAI_API_KEY` is
+   * unset, the same way it already refuses without `ANTHROPIC_API_KEY`, so a
+   * running deployment never calls this function with no embedder. Writing
+   * the field as required says so at the call site.
    */
   embedder: Embedder | null;
   // Optional, and only for the faq-slug assignment below: without it, a

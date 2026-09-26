@@ -263,7 +263,10 @@ run in `apps/api/src/modules/chat/retrieval.ts` and `packages/core/src/retrieval
 and each one stops at the first reason to send everything — nothing downstream of that
 line runs:
 
-1. No embedder configured (`OPENAI_API_KEY` unset).
+1. No embedder configured. In production this trigger cannot fire: `chatRoutes`, `factRoutes`
+   and the workers' `main.ts` all refuse to start when `OPENAI_API_KEY` is unset, precisely so
+   that a missing key fails the deploy instead of quietly doubling every page's cost. `embedder:
+   null` reaches `selectForQuestion` only as a test or harness state, never in a running process.
 2. Fewer than `RETRIEVAL_MIN_FACTS` (25) verified facts on the page — there is nothing
    to save on a small page, and no reason to carry the risk of dropping the one fact
    that mattered.

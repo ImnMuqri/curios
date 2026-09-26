@@ -15,9 +15,12 @@ export interface ExtractDeps {
   gateway: Gateway;
   adapter: SourceAdapter;
   /**
-   * Null when the process has no embeddings key. Facts are still written;
-   * the page simply has no vectors, which puts every question on it into
-   * fallback until a backfill runs. Never a reason to fail an ingestion.
+   * Null only in a test or harness: `main.ts` refuses to start this process
+   * when `OPENAI_API_KEY` is unset, the same way `chatRoutes` and
+   * `factRoutes` do, so a running worker never reaches this function with no
+   * embedder. When it is null, facts are still written; the page simply has
+   * no vectors, which puts every question on it into fallback until a
+   * backfill runs. Never a reason to fail an ingestion.
    */
   embedder: Embedder | null;
   log?: { warn?: (details: object, message: string) => void };
