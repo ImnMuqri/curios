@@ -1,8 +1,11 @@
 # The golden set — run record
 
-`pnpm goldens` asks sixty fixed questions of three fixture pages — `business`, `personal` and
-`hostile` — through the real chat pipeline, and checks the answers mechanically. The fixtures are
-in `fixtures/goldens/`, the rules in `packages/goldens/src/rules.ts`.
+`pnpm goldens` asks eighty fixed questions of four fixture pages — `business`, `personal`,
+`hostile` and `catalog` — through the real chat pipeline, and checks the answers mechanically.
+`catalog` is the only one with enough facts to exercise retrieval (see
+`slice-12-build-spec.md`); the other three stay under `RETRIEVAL_MIN_FACTS` on purpose, proof
+that a small page is untouched by it. The fixtures are in `fixtures/goldens/`, the rules in
+`packages/goldens/src/rules.ts`.
 
 Run it on demand: before a change that touches the chat prompt, and after one. Not in CI, because
 there is no CI, and a stochastic suite spending tokens on every push would be a tax rather than a
@@ -27,10 +30,12 @@ worth reading, not a measurement worth trusting.
 pnpm goldens
 ```
 
-Needs `ANTHROPIC_API_KEY` and a reachable test database; it refuses to start without either, and
-names which. It seeds three pages into the **test** database under `golden-` handles and deletes
-them again at the end — it never touches the development database. Each run prints a table, writes
-the full transcript to `.goldens/`, and reports its own cost.
+Needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` — the fixture pages need vectors before retrieval
+has anything to match against, or every question runs in fallback and proves nothing about it —
+and a reachable test database; it refuses to start without any of the three, and names which. It
+seeds four pages into the **test** database under `golden-` handles and deletes them again at the
+end — it never touches the development database. Each run prints a table, writes the full
+transcript to `.goldens/`, and reports its own cost.
 
 ## When it fails
 

@@ -49,7 +49,7 @@ separate processes sharing `db` and `core`, and they never import each other.
 | Web | Next.js (App Router) | public pages SSR, dashboard client |
 | API | Fastify + zod | returns 202 and enqueues, never blocks on a model |
 | Jobs | BullMQ + Redis | ingestion, lead extraction, email |
-| DB | Postgres + Prisma | facts are rows, not a vector store (see BACKEND.md) |
+| DB | Postgres + Prisma | facts are rows; their vectors are bytes in a column, and there is still no vector database (see BACKEND.md) |
 | Files | Cloudflare R2 | avatars, OG images, scraped assets |
 | Pay | Billplz | one-off bills only — recurring is card-tokenised and in beta, and FPX cannot auto-charge. See Settled decisions. |
 | Models | Haiku for chat, Opus for ingestion | the asymmetry is the margin |
@@ -84,7 +84,8 @@ All eight are built, the last in slice 10 — see `slice-10-build-spec.md`.
 | Notifications | Click-to-chat `wa.me` link at launch. Cloud API later, not a dependency. |
 | PDPA | Consent on the card, owner is controller, 12 month retention, delete endpoint. |
 | Impersonation | Bio code for personal, SSM document upload for business. Badge only, gates no features. |
-| Prompt quality | Mechanical golden-set assertions, run on demand by `pnpm goldens` rather than in CI — there is no CI, and a stochastic suite would spend tokens on every push. Sixty questions across three fixture pages; a refusal is asserted by absence and the language check is advisory. Model-graded tone waits for the voice slice, where it has no mechanical alternative. See slice-11-build-spec.md. |
+| Prompt quality | Mechanical golden-set assertions, run on demand by `pnpm goldens` rather than in CI — there is no CI, and a stochastic suite would spend tokens on every push. Eighty questions across four fixture pages, the fourth big enough to exercise retrieval; a refusal is asserted by absence and the language check is advisory. Model-graded tone waits for the voice slice, where it has no mechanical alternative. See slice-11-build-spec.md and slice-12-build-spec.md. |
+| Fact retrieval | Each fact stores the question it answers, that question is embedded once, and a visitor's question is matched against it — the closest few facts go to the model, bounded by a character budget. Every failure sends every fact instead: a page under 25 verified facts, a missing or stale vector, a provider failure or a best match under the floor. Prompt caching is on only in that fallback, because caching does not pay on a small shop's traffic — Haiku will not cache a prefix under 4,096 tokens and an entry expires in five minutes. The fact `id` is no longer sent; nothing ever read it. See slice-12-build-spec.md. |
 | Sources | Static facts vs live connectors, kept separate. See BACKEND.md. |
 | Namespace | One flat `/handle` for both modes. Mode is a column, URLs never change shape. |
 | Personal privacy | `noindex` by default on personal pages, opt-in only, from a switch in Settings. `shouldIndex` in `@curios/core` is the one statement of the rule. |

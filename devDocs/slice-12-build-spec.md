@@ -6,8 +6,14 @@ everything whenever the match is weak or anything is missing.
 
 Measured on the 114-fact development page: the prompt is 5,994 tokens, of which about 96% of an
 answer's cost is re-reading facts the model has read hundreds of times before. Retrieval takes that
-to roughly 900 tokens — **about 85% off every answer** — without changing the model, the wording of
-the prompt's instructions, or what an answer is allowed to say.
+down — without changing the model, the wording of the prompt's instructions, or what an answer is
+allowed to say.
+
+*Revised 2026-09-26: this line originally read "Retrieval takes that to roughly 900 tokens — about
+85% off every answer." Measured after the design was built rather than estimated before it (and
+after this same slice also dropped the fact `id` attribute from the prompt — see BACKEND.md), the
+114-fact page's full prompt sends 3,824-3,830 tokens, and a retrieved prompt sends 1,494-1,709
+tokens across three probe questions — **about 55% off every answer**, not 85%.*
 
 This is the third attempt at the idea and the first with evidence behind it. `prompt.ts` records why
 the first one was removed: bag-of-words matching shares no token between "berapa harga" and "Kek 1kg
@@ -115,6 +121,14 @@ ignored and rewritten.
    full, and send those. A fact that would overflow the budget ends the selection rather than being
    skipped over, so the set is always the top N by score.
 
+   *Revised 2026-09-26: the owner lowered `FACT_BUDGET_CHARS` from 4,000 to 2,500. Measured, 4,000
+   characters cost about 2,500 tokens, not the 1,150 estimated above, and missed the done-gate below.
+   The arithmetic the estimate above missed: each fact costs roughly 34 tokens including its prompt
+   wrapper (the `<fact category="...">...</fact>` tag), against claims that average 58 characters —
+   so a budget counted only in claim characters undercounts what a fact actually costs. At 2,500,
+   retrieval measured 1,494-1,709 tokens across three probe questions on the 114-fact development
+   page, selecting 38-50 of its 114 facts.*
+
 The prompt is built as it is today, minus the `id` attribute on each fact, which nothing has ever
 read back.
 
@@ -177,10 +191,16 @@ fallback rate plus the questions owners see on their Questions screen.
 ## Done means
 
 The golden set passes with retrieval on -- the `catalog` page exercising it and the other three proving small pages are untouched -- the prompt on a 114-fact page drops from ~6,000 tokens to
-under 1,200 in retrieval mode, the fallback path is proven by a test for each of its four triggers —
+under 2,000 in retrieval mode, the fallback path is proven by a test for each of its four triggers —
 a page under the minimum, a missing or outdated vector, a provider failure or timeout, and a best
 score below the floor — and the three workspace gates pass. `devDocs/manual-verification-goldens.md` carries a row for the
 run that proved it.
+
+*Revised 2026-09-26: this line originally read "under 1,200 in retrieval mode," which the spec's own
+4,000-character `FACT_BUDGET_CHARS` could not reach (see the revision note there). The gate actually
+enforced is under 2,000 tokens. At the tuned `FACT_BUDGET_CHARS` of 2,500, retrieval measured
+1,494-1,709 tokens across three probe questions on the 114-fact page — comfortably inside the gate.
+At the original 4,000, it measured roughly 2,500 tokens and missed it.*
 
 ---
 

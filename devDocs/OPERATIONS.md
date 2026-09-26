@@ -129,19 +129,101 @@ package's tests fail in a way that looks like a permissions bug in the code.
 pnpm goldens
 ```
 
-Sixty questions, three fixture pages, real model calls on `claude-haiku-4-5`. A run costs
-about five cents and takes a few minutes, most of it re-asking whatever failed.
+Eighty questions across four fixture pages, real model calls on `claude-haiku-4-5`. A run
+costs about eight cents ($0.0761 on the 2026-09-26 run) and takes a few minutes, most of it
+re-asking whatever failed. Three of the four pages — `business`, `personal`, `hostile` —
+stay under `RETRIEVAL_MIN_FACTS` on purpose, proof that a small page is untouched by
+retrieval; the fourth, `catalog`, is the only one big enough to exercise it.
 
-It needs `ANTHROPIC_API_KEY` and a reachable test database, and refuses to start without
-either rather than failing halfway through. If it reports the test database is gone, restore
-it with the two commands in the section above and run it again.
+It needs `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` — the fixture pages need vectors before
+their questions can retrieve anything, or every one of them runs in fallback and proves
+nothing about retrieval — and a reachable test database, and refuses to start without any
+of the three rather than failing halfway through. If it reports the test database is gone,
+restore it with the two commands in the section above and run it again.
 
-It writes only to the test database: three pages under `golden-` handles, deleted again when
+It writes only to the test database: four pages under `golden-` handles, deleted again when
 the run ends. It never reads or writes the development database. The full transcript of every
 answer lands in `.goldens/`, which is git-ignored.
 
 Run it before a change that touches the chat prompt, and after one. The record of past runs,
 and what to do when one fails, is in `manual-verification-goldens.md`.
+
+---
+
+## Backfilling fact vectors
+
+**Why this exists.** Chat retrieves by matching a visitor's question against the vector
+stored on each fact (`FactEmbedding`). A fact with no vector, or one from an older
+embedding model, cannot be scored, and `packages/core/src/retrieval.ts`'s rule is every
+fact or none — so one stale vector puts its whole page into fallback, sending everything,
+until this is run.
+
+```bash
+pnpm exec tsx scripts/backfill-fact-embeddings.ts
+```
+
+It needs `OPENAI_API_KEY` and runs against whatever `DATABASE_URL` points at — check that
+first. It embeds every non-rejected fact that has no vector or one from a different model
+or dimension count, in batches, and prints how many facts needed one and how many it
+wrote.
+
+**What it costs.** `text-embedding-3-small` is $0.02 per million tokens, and a fact's
+question runs roughly 10-20 tokens. A thousand facts is 10,000-20,000 tokens, so
+$0.0002-$0.0004 — at RM4.4-4.7 to the dollar, call it a tenth of a sen per thousand facts,
+not a figure worth budgeting around.
+
+**Safe to re-run.** It only ever selects facts that need a vector, so running it against
+an already-backfilled database scans everything and writes nothing.
+
+Run it twice in this slice's life: once after the migration that added `FactEmbedding`,
+and again every time `EMBEDDING_MODEL` changes — a fact whose stored vector came from an
+older model is re-embedded, not skipped.
+
+---
+
+## The embeddings provider is down
+
+**What to do: nothing.** `packages/core/src/retrieval.ts`'s own contract is that every
+failure sends every fact instead of a chosen few. An embeddings outage is one of those
+failures: every page falls back to sending everything it has, answers stay exactly as
+correct as they were before this slice, and the only consequence is that the bill goes
+back up to what it cost before retrieval, until the provider recovers. Do not disable
+retrieval and do not restart anything — there is nothing broken to restart.
+
+**Confirm it's this.** Every chat turn logs one `chat retrieval` line (`pageId`, `mode`,
+`reason`, `bestScore`, and both fact counts — never the visitor's question). During a
+provider outage or timeout, `reason` reads `"provider-failed"` on every line. Any other
+fallback reason (`"below-minimum"`, `"missing-vectors"`, `"below-floor"`) is a different
+page shape behaving correctly, not an outage.
+
+---
+
+## Telling retrieval from fallback
+
+Two ways, neither needing a code change.
+
+**The `chat retrieval` log line**, written by `selectForQuestion`
+(`apps/api/src/modules/chat/retrieval.ts`) on every question: `pageId`, `mode`
+(`"retrieved"` or `"fallback"`), `reason` (null when retrieved), `bestScore`, and both
+`factCount` and `selectedCount`. Never the question itself.
+
+**`ModelCall`'s token columns.** A retrieved prompt is smaller than a fallback's on the
+same page by construction — on the 114-fact development page, retrieval measured
+1,494-1,709 tokens against 3,824-3,830 for that page's fallback prompt, about 40-45%.
+Caching can move tokens between `inputTokens`, `cacheReadTokens` and `cacheWriteTokens`
+call to call, so compare their sum, not `inputTokens` alone:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c \
+  "SELECT (\"inputTokens\" + \"cacheReadTokens\" + \"cacheWriteTokens\") AS prompt_tokens, count(*) \
+   FROM \"ModelCall\" WHERE \"pageId\" = 'PAGE_ID' AND ok = true \
+   GROUP BY 1 ORDER BY 1;"
+```
+
+A page that mixes both modes shows two clusters: a lower one where retrieval fired and a
+higher one, several times larger, where it fell back. One tight cluster near the higher
+number on a large page is worth checking against `RETRIEVAL_MIN_FACTS` and the `chat
+retrieval` log before assuming retrieval is broken.
 
 ---
 

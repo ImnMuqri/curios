@@ -20,11 +20,12 @@ PinnedAnswer   exact-match override, always wins over model output
 NeverSay       forbidden topics and phrases, injected as a hard constraint
 Conversation   session, visitor fingerprint, referrer, resolved
 Message        role, content, cited fact ids, intent tags
-               NOTE: citedFactIds currently stores EVERY verified fact on the
-               page, not the ones the answer used -- chat.service.ts writes
-               facts.map(f => f.id). Nothing depends on it, so nothing is
-               broken, but the column reads like data and is not. Real
-               citation tracking needs the model to name what it used.
+               NOTE (amended by slice 12): citedFactIds stores what retrieval
+               sent for this answer -- the chosen few, or every verified fact
+               in fallback mode -- never what the answer actually used.
+               chat.service.ts writes selection.facts.map(f => f.id). Still
+               not a citation in the strict sense: real citation tracking
+               needs the model to name what it used.
 Lead           phone, extracted slots, score, status, conversationId
 Question       clustered text, ask count, answered flag
                faqSlug is nullable and unique per page, assigned by apps/api.
@@ -51,10 +52,14 @@ model Fact {
 }
 ```
 
-**No vector database at v1.** A page has 30 to 120 facts. That fits in a prompt with
-room to spare. Retrieval is a Postgres query filtered by category and recency.
-Adding pgvector before you have a page that breaks this is premature and you will
-spend a week on chunking instead of on leads. Revisit above ~400 facts per page.
+**No vector database at v1.** *Amended by slice 12.* A page's whole fact list still fits
+in a prompt with room to spare, but a page that fits is no longer a page that is always
+sent whole — see "Send the facts the question needs" below. Retrieval is a plain
+Postgres read of one vector per fact, scored by cosine similarity against the visitor's
+question, never a query filtered by category or recency, and never pgvector: a vector
+is `Bytes` on the `FactEmbedding` row, scored in process. Adding a real vector database
+before a page's fact count breaks that is still premature. Revisit above ~400 facts per
+page.
 
 ---
 
@@ -193,6 +198,9 @@ permanent maintenance and should not be carried by free pages.
    suffers worst.
 3. **Dedupe** on normalised claim text.
 4. **Stage as unverified.** Nothing is live until the owner reviews it.
+5. **Embed.** One batched call writes a vector per fact, from the question each fact
+   answers. An ingestion that fails to embed still writes its facts; the page answers
+   from all of them until a backfill catches it.
 
 Re-run weekly for `volatile` facts. Diff, and surface changes as a dashboard nudge
 rather than silently overwriting what the owner approved.
@@ -213,8 +221,9 @@ visitor watching a blank bubble for four seconds leaves.
 1  rate limit by ip + page. leaky bucket in Redis.
 2  exact match against PinnedAnswer. hit → return it. zero tokens, zero risk.
 3  check UsageCounter. over cap → the degraded reply, HTTP 200, no model call.
-4  load every verified fact for the page. not a per-question subset, see below.
-5  one Haiku call. system prompt carries facts, NeverSay, language rule, refusal rule.
+4  load every verified fact. retrieve the few this question needs, or keep them all. see below.
+5  one Haiku call. system prompt carries those facts, NeverSay, language rule, refusal rule.
+   prefix-cached only when the fact list is the whole page.
 6  stream. persist Message after the stream closes.
 7  same response returns an intent block (below). no second classifier call.
 ```
@@ -223,24 +232,72 @@ The cap sits after the pinned match, not before it. A pinned answer costs no tok
 the cap exists to bound what a model call spends — refusing an answer that was already
 free would punish an owner for having answered the question well.
 
-### Send every fact, do not select
+### Send the facts the question needs
 
-An earlier version of step 4 filtered facts by the visitor's question. That is
-wrong twice over and the reasons are worth keeping.
+*Amended by slice 12.* An earlier version of step 4 sent every verified fact on every
+question, and defended that in this section under the heading "Send every fact, do not
+select." The argument is quoted below because it was half right, and getting the other
+half wrong held this design in place through two slices.
 
-It breaks caching. Prompt caching is a prefix match, so a question-dependent
-fact block changes the prefix on every distinct question and cross-visitor reuse
-never happens. Cross-visitor reuse is the only reuse worth having: a cache read
-costs a tenth of an input token and the block is stable between owner edits.
+> It breaks caching. Prompt caching is a prefix match, so a question-dependent fact
+> block changes the prefix on every distinct question and cross-visitor reuse never
+> happens. It breaks the flagship question: bag-of-words matching on "berapa harga"
+> shares no token with "Kek 1kg butter starts at RM95", so the single most common
+> question in the product returned no prices. Sending everything is affordable — 30 to
+> 120 facts fit with room to spare.
 
-It breaks the flagship question. Bag-of-words matching on "berapa harga" shares
-no token with "Kek 1kg butter starts at RM95", so the single most common
-question in the product returns no prices. The page a shop owner bought to stop
-answering "berapa harga" forty times a day would answer it with opening hours.
+The caching half was true and the flagship-question half was true. "Affordable" was
+not: it conflated *fits in the context window* with *costs little*. Measured, a
+114-fact page sent 3,824-3,830 tokens on every question (after this same slice dropped
+the fact `id` — see below), most of it re-reading facts the model had already read
+hundreds of times. And the caching argument assumed traffic this product does not have:
+Haiku 4.5 will not cache a prefix under 4,096 tokens at all, a written entry expires
+after five minutes, and a small shop's visitors arrive hours apart, so the cache was
+being written at a 25% premium and almost never read.
 
-Sending everything is affordable on the same argument that rules out a vector
-database: 30 to 120 facts fit with room to spare. Revisit above ~400 facts per
-page, the same threshold set above.
+What made selection possible this time is `Fact.question` — every fact now stores the
+question a visitor would ask to get it, embedded once, so the match is
+question-to-question rather than the bag-of-words question-to-claim matching that broke
+the flagship question the first time. The order of the checks below is the order they
+run in `apps/api/src/modules/chat/retrieval.ts` and `packages/core/src/retrieval.ts`,
+and each one stops at the first reason to send everything — nothing downstream of that
+line runs:
+
+1. No embedder configured (`OPENAI_API_KEY` unset).
+2. Fewer than `RETRIEVAL_MIN_FACTS` (25) verified facts on the page — there is nothing
+   to save on a small page, and no reason to carry the risk of dropping the one fact
+   that mattered.
+3. Any verified fact missing a vector, or one from a different embedding model or
+   width — every fact is scored or none are, because a fact silently absent from the
+   ranking rather than ranked last might be the one holding the price.
+4. The embeddings provider fails, or answers slower than `EMBEDDING_TIMEOUT_MS`
+   (1,000ms).
+5. The best cosine score, across every fact, is below `RETRIEVAL_FLOOR` (0.35) — so
+   that a question the page genuinely does not cover reaches the model with
+   everything, and its refusal is the model's own judgement rather than an artefact of
+   retrieval finding nothing.
+
+Otherwise, facts are taken in score order until `FACT_BUDGET_CHARS` (2,500 claim
+characters) is full. The best-scored fact is always sent whatever its length; after
+that, a fact that would overflow the budget ends the selection rather than being
+skipped for a shorter one further down, so what is sent is always the top N by score,
+never a shorter substitute.
+
+Every one of the triggers above ends in a correct answer — sending every fact is
+exactly what this product did before retrieval existed, so nothing here can make an
+answer worse, only more expensive.
+
+**Prompt caching is switched off whenever retrieval selects a subset**, and stays on
+only in fallback, where the fact list — and so the prompt prefix — is stable for every
+visitor until the owner next edits a fact. It is a smaller saving even where it does
+fire than the number above suggests: the 114-fact development page's own *full* prompt
+measures 3,824 tokens, itself under Haiku's 4,096-token cache minimum, so fallback
+caching only takes effect on pages whose fact list pushes the full prompt past that
+line.
+
+The fact `id` is no longer in the prompt. Nothing has ever read it back: the model is
+never asked to cite one, no parser looks for one, and `Message.citedFactIds` is written
+from the selection, never from the answer.
 
 ### The refusal rule
 
@@ -468,11 +525,17 @@ owner told us. A bare blue tick implies we verified something we did not.
 
 ## Quality harness
 
-Built in slice 11. `pnpm goldens` asks twenty questions of each of three fixture pages --
-`fixtures/goldens/{business,personal,hostile}.json` -- through `answer()` itself, with a
-real gateway, so the harness cannot drift from what visitors get. The business page is the
-Malay/Manglish flagship, the personal page is sparse and priceless by design, and the
-hostile page's facts carry injection attempts and a NeverSay list.
+Built in slice 11. `pnpm goldens` asks twenty questions of each of `fixtures/goldens/
+{business,personal,hostile}.json` -- through `answer()` itself, with a real gateway, so the
+harness cannot drift from what visitors get. The business page is the Malay/Manglish
+flagship, the personal page is sparse and priceless by design, and the hostile page's facts
+carry injection attempts and a NeverSay list.
+
+*Amended by slice 12.* A fourth fixture, `catalog.json`, carries twenty more questions and
+enough facts to cross `RETRIEVAL_MIN_FACTS` -- the other three stay under it on purpose, so
+the suite also proves a small page is untouched by retrieval. Eighty questions across four
+pages now, not sixty across three. See "Send the facts the question needs" above and
+`slice-12-build-spec.md`.
 
 It runs on demand rather than in CI, because there is no CI and a stochastic suite that
 spends tokens on every push is a tax rather than a net. It seeds into the test database
