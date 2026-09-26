@@ -94,6 +94,10 @@ lineup when the plan is written, and the name is stored on every row so a later 
 rather than silent. The provider sits behind `packages/embeddings`, the shape `packages/gateway`
 already sets: one interface, one implementation, swappable without touching the chat path.
 
+*Revised 2026-09-26: the plan that followed this spec chose OpenAI's `text-embedding-3-small` at
+512 dims, not Voyage AI. See `EMBEDDING_MODEL` and `EMBEDDING_DIMS` in `@curios/embeddings` and
+global-constraints.md.*
+
 **A second table, `QuestionEmbedding`**, stores the vector for a normalized visitor question, keyed
 by that normalized text and carrying the same `model` and `dims` columns. Question text is
 page-independent, so one row serves every page that is ever asked the same thing. It is a cache of a
@@ -150,6 +154,10 @@ nothing ever reads.
 | The visitor asks a follow-up | The previous user turn is embedded with the question |
 | Retrieval succeeds | About 900 tokens instead of 5,994, and no cache write |
 
+*Revised 2026-09-26: measured, not estimated. On the 114-fact development page, a retrieved prompt
+sends 1,494-1,709 tokens against 3,824-3,830 for that page's fallback prompt — roughly twice the
+cost when retrieval misses, not the 900-vs-5,994 estimated above.*
+
 Every path ends in a correct answer. The only thing at stake in this slice is how much it costs.
 
 ---
@@ -181,6 +189,10 @@ call per run, at seeding time, using the same package the worker uses.
 **The fallback rate is free to measure.** A retrieved answer carries a ~900-token prompt and a
 fallback carries ~6,000, and `ModelCall` already records prompt size per call. No new tracking, and
 the first real run's numbers go in `manual-verification-goldens.md`.
+
+*Revised 2026-09-26: measured on the 114-fact development page, a retrieved prompt is 1,494-1,709
+tokens and a fallback prompt is 3,824-3,830 — fallback costs roughly twice a retrieved prompt, not
+the ~900-vs-~6,000 estimated above.*
 
 **What no test covers.** Whether retrieval picks well for a question nobody wrote a fixture for.
 Sixty questions across three pages is a net, not a proof, and the honest signal after launch is the
