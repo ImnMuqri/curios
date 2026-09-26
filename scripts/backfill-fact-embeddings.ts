@@ -17,8 +17,8 @@ config({ path: join(import.meta.dirname, '..', '.env') });
  * Run it once after the migration that added FactEmbedding, and again any
  * time EMBEDDING_MODEL changes -- a fact whose stored vector came from
  * another model is re-embedded, not skipped. Until it has run, the pages it
- * covers answer from every fact they have, which is correct and about seven
- * times the cost.
+ * covers answer from every fact they have, which is correct and roughly
+ * twice the cost.
  *
  *   pnpm exec tsx scripts/backfill-fact-embeddings.ts
  *

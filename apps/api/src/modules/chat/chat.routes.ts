@@ -15,7 +15,7 @@ export interface ChatRouteOptions {
   /**
    * `undefined` builds one from the environment, as production does. `null`
    * means retrieval is off and every page sends every fact -- correct, and
-   * about seven times the cost. Only tests pass null.
+   * roughly twice the cost. Only tests pass null.
    */
   embedder?: Embedder | null;
 }
@@ -41,7 +41,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
   // a missing key should fail the deploy, not one visitor's question. It is
   // required rather than optional-with-a-warning because the failure is
   // invisible from outside -- every page would quietly answer from every fact
-  // at seven times the cost, and look completely healthy doing it.
+  // at roughly twice the cost, and look completely healthy doing it.
   let embedder = options.embedder;
   if (embedder === undefined) {
     const openAiKey = process.env.OPENAI_API_KEY;
