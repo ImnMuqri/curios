@@ -55,9 +55,15 @@ const FAQ_OWN_CHUNK_CEILING_BYTES = 550;
 describe('the public page JS budget', () => {
   const root = process.cwd();
   const manifestPath = join(root, '.next/app-build-manifest.json');
+  // Only `next build` writes BUILD_ID. `next dev` rewrites the manifest above in
+  // place, compiling routes as they are visited, so a dev manifest can be
+  // populated and still lack whole routes -- the FAQ pages, until someone opens
+  // one. The checks below each catch one dev-output shape; this is the first to
+  // ask the question directly: was the last thing to write .next a build?
+  const built = existsSync(join(root, '.next/BUILD_ID'));
 
   it('keeps the route own chunk under budget', () => {
-    if (!existsSync(manifestPath)) {
+    if (!built || !existsSync(manifestPath)) {
       // Skipped rather than failed: `pnpm test` runs without a build, and a
       // test that fails for the absence of an artifact trains people to ignore
       // it. `pnpm build && pnpm test` is where this bites.
@@ -118,7 +124,7 @@ describe('the public page JS budget', () => {
     // interacted with, framework included. It is a ratchet, not a target --
     // 355kB uncompressed is roughly the 107kB Next reports gzipped, most of it
     // React, and the number that matters is whether it grows.
-    if (!existsSync(manifestPath)) return;
+    if (!built || !existsSync(manifestPath)) return;
 
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
       pages: Record<string, string[]>;
@@ -137,7 +143,7 @@ describe('the public page JS budget', () => {
     // size ceiling rather than an empty-array check; see
     // FAQ_OWN_CHUNK_CEILING_BYTES above for why the own file list is never
     // actually empty.
-    if (!existsSync(manifestPath)) return;
+    if (!built || !existsSync(manifestPath)) return;
 
     const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as {
       pages: Record<string, string[]>;
