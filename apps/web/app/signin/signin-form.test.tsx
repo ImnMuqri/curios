@@ -24,6 +24,17 @@ describe('SignInForm', () => {
     ).toBeInTheDocument();
   });
 
+  // /forgot existed from slice 2 with nothing linking to it, so an owner who
+  // mistyped a password at signup had no way back in.
+  it('links to the forgotten-password page', () => {
+    render(<SignInForm onSubmit={vi.fn()} />);
+
+    expect(screen.getByRole('link', { name: /forgot your password/i })).toHaveAttribute(
+      'href',
+      '/forgot',
+    );
+  });
+
   it('tells someone why they were sent here when they cancelled at Google', () => {
     render(<SignInForm onSubmit={vi.fn()} cancelled />);
 

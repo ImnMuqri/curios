@@ -57,4 +57,59 @@ describe('Field', () => {
     );
     expect(screen.getByLabelText('Handle')).toHaveAccessibleDescription('Letters and numbers only.');
   });
+
+  // A typo in a password nobody can see is an account nobody can sign in to.
+  describe('a password field', () => {
+    const renderPassword = (onSubmit = vi.fn((event: Event) => event.preventDefault())) => {
+      render(
+        <form onSubmit={(event) => onSubmit(event.nativeEvent)}>
+          <Field id="password" label="Password" type="password" value="secret" onChange={vi.fn()} />
+        </form>,
+      );
+      return onSubmit;
+    };
+
+    it('starts hidden, and shows what was typed on request', async () => {
+      renderPassword();
+      const input = screen.getByLabelText('Password');
+      expect(input).toHaveAttribute('type', 'password');
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+
+      expect(input).toHaveAttribute('type', 'text');
+      expect(screen.getByRole('button', { name: 'Hide password' })).toHaveAttribute('aria-pressed', 'true');
+    });
+
+    it('hides it again', async () => {
+      renderPassword();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Hide password' }));
+
+      expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
+    });
+
+    // Inside a sign-in form, a toggle that submitted would sign in half-typed.
+    it('never submits the form it sits in', async () => {
+      const onSubmit = renderPassword();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Show password' }));
+
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    // Its accessible name comes from text, not aria-label, so a query for the
+    // field by its label still finds exactly one element.
+    it('leaves the field findable by its label alone', () => {
+      renderPassword();
+
+      expect(screen.getAllByLabelText(/password/i)).toHaveLength(1);
+    });
+  });
+
+  it('adds no toggle to any other field', () => {
+    render(<Field id="email" label="Email" type="email" value="" onChange={vi.fn()} />);
+
+    expect(screen.queryByRole('button')).toBeNull();
+  });
 });

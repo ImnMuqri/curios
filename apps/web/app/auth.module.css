@@ -15,3 +15,11 @@
   font-size: var(--text-base);
   color: var(--muted);
 }
+
+/* A link that belongs to the field above it, not to the whole form. */
+.inline {
+  display: inline-block;
+  margin: -8px 0 16px;
+  color: var(--hijau);
+  font-size: var(--text-base);
+}

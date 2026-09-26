@@ -71,6 +71,9 @@ export function SignInForm({
           value={password}
           onChange={setPassword}
         />
+        <a className={styles.inline} href="/forgot">
+          Forgot your password?
+        </a>
 
         {/* Rendered verbatim. The API returns one message for every cause on
             purpose -- wrong password, unknown address, unverified -- and
