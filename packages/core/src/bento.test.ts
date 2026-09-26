@@ -44,6 +44,12 @@ describe('normalizeLinkUrl', () => {
     expect(normalizeLinkUrl('   ')).toBeNull();
     expect(normalizeLinkUrl('localhost:3000')).toBeNull();
     expect(normalizeLinkUrl('not a link')).toBeNull();
+    // No-dot host check: localhost with valid http: scheme
+    expect(normalizeLinkUrl('http://localhost')).toBeNull();
+  });
+
+  it('trims trailing slash from a bare domain', () => {
+    expect(normalizeLinkUrl('wa.me')).toBe('https://wa.me');
   });
 });
 
@@ -105,6 +111,12 @@ describe('arrangeTiles', () => {
   it('keeps a size the owner chose, and does not widen it', () => {
     const tiles = arrangeTiles([{ size: 'BIG' }, { size: null }, { size: 'SMALL' }]);
     expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL']);
+  });
+
+  it('does not widen a chosen size even with odd cells', () => {
+    // 7 cells total (odd), last tile is chosen SMALL. Parity fix should not apply.
+    const tiles = arrangeTiles([{ size: 'BIG' }, { size: null }, { size: null }, { size: 'SMALL' }]);
+    expect(tiles.map((t) => t.size)).toEqual(['BIG', 'SMALL', 'SMALL', 'SMALL']);
   });
 
   it('colours the first tile with the accent and the second warm, whatever their size', () => {
