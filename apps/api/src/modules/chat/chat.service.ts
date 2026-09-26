@@ -296,6 +296,7 @@ export async function* answer(
 
   const systemPrompt = buildSystemPrompt({
     displayName: page.displayName,
+    mode: page.mode,
     facts: selection.facts,
     neverSay: page.neverSay.map((n) => n.phrase),
   });
