@@ -18,6 +18,9 @@
   /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
   --card: #ffffff;
   --line: #e3e8e5;
+  /* The Soft style's page and tile shadow -- the default look of a My Curios page. */
+  --soft-page: #f4f6f5;
+  --soft-shadow: rgb(16 35 31 / 6%);
   /*
    * --ink at 45%. It lives here rather than in the sheet because the rule is
    * that colour has one home, and a no-hex test that would have missed this

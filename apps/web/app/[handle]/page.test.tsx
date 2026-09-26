@@ -60,10 +60,52 @@ describe('public page', () => {
     expect(screen.getByRole('link', { name: /instagram/i })).toBeDefined();
   });
 
-  it('renders facts into the DOM so the page works without JavaScript', async () => {
+  // The page is the owner's links now; facts live behind the ask bar.
+  it('shows no fact list', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-    expect(screen.getByText(/Kek 1kg butter starts at RM95/)).toBeDefined();
+    expect(screen.queryByText(/what people ask/i)).toBeNull();
+    expect(screen.queryByText(page.facts[0]!.claim)).toBeNull();
+  });
+
+  // Self-review addition: BentoPage.test.tsx proves these attributes render
+  // from whatever props it is given, but nothing in this file proved page.tsx
+  // itself forwards the page's OWN style/accent/font rather than a constant --
+  // every other test here uses the fixture's defaults, so a hardcoded
+  // '#0c7a62' or 'SOFT' in page.tsx would still leave them green.
+  it("carries the page's own style, accent and heading font to the rendered page", async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({
+      ...page,
+      style: 'CONTRAST',
+      accentColor: '#6d3fb3',
+      headingFont: 'FRAUNCES',
+    });
+    const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const bento = container.querySelector('main > *') as HTMLElement;
+    expect(bento).toHaveAttribute('data-style', 'CONTRAST');
+    expect(bento.style.getPropertyValue('--accent')).toBe('#6d3fb3');
+    expect(bento.style.getPropertyValue('--font-heading')).toBe('var(--font-fraunces)');
+  });
+
+  // Self-review addition: every other test's fixture has avatarKey: null, so
+  // nothing here proved page.tsx turns a real key into a URL and passes it
+  // through -- BentoPage.test.tsx only proves BentoPage renders whatever
+  // avatarUrl string it is handed.
+  it("shows the owner's picture when one was uploaded, through the public storage URL", async () => {
+    const original = process.env.STORAGE_PUBLIC_URL;
+    process.env.STORAGE_PUBLIC_URL = 'https://cdn.example';
+    try {
+      vi.mocked(getPublicPage).mockResolvedValue({ ...page, avatarKey: 'avatars/p/1.webp' });
+      render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+      expect(screen.getByRole('img', { name: page.displayName })).toHaveAttribute(
+        'src',
+        'https://cdn.example/avatars/p/1.webp',
+      );
+    } finally {
+      if (original === undefined) delete process.env.STORAGE_PUBLIC_URL;
+      else process.env.STORAGE_PUBLIC_URL = original;
+    }
   });
 
   it('calls notFound for an unknown handle', async () => {
