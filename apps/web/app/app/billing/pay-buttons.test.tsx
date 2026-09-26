@@ -55,6 +55,15 @@ describe('PayButtonsForm', () => {
 });
 
 describe('payError', () => {
+  // Development without Billplz settings. A 503, so again only the code arrives.
+  it('says payments are switched off when billing is not configured', () => {
+    const failure = new ApiError(503, 'BILLING_NOT_CONFIGURED', 'Something failed on our side. Try again.');
+
+    expect(payError(failure)).toBe(
+      'Payments are switched off here: no Billplz settings in this environment.',
+    );
+  });
+
   it('passes any other API message through unchanged', () => {
     expect(payError(new ApiError(429, 'RATE_LIMITED', 'Too many payment attempts. Try again in 1 hour.'))).toBe(
       'Too many payment attempts. Try again in 1 hour.',

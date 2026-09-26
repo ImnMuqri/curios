@@ -8,7 +8,7 @@ import { createRedis } from './lib/redis.js';
 import { createIngestionWorker } from './ingestion/ingestion.worker.js';
 import { createMailWorker } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
-import { createBillplzClient } from '@curios/billing';
+import { billingDisabled, createBillplzClient } from '@curios/billing';
 import { createBillingWorker, scheduleBillingJobs } from './billing/pending-check.js';
 
 const log = pino({ name: 'workers' });
@@ -16,10 +16,17 @@ const log = pino({ name: 'workers' });
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
 
-const billplzApiKey = process.env.BILLPLZ_API_KEY;
-if (!billplzApiKey) throw new Error('BILLPLZ_API_KEY is not set');
-const billplzBaseUrl = process.env.BILLPLZ_BASE_URL;
-if (!billplzBaseUrl) throw new Error('BILLPLZ_BASE_URL is not set');
+// Switched off only in development with no Billplz settings at all -- see
+// billingDisabled. Production, or a half-filled configuration, still refuses to start.
+const billing = billingDisabled()
+  ? null
+  : { apiKey: required('BILLPLZ_API_KEY'), baseUrl: required('BILLPLZ_BASE_URL') };
+
+function required(name: string): string {
+  const value = process.env[name];
+  if (!value) throw new Error(`${name} is not set`);
+  return value;
+}
 
 const appUrl = process.env.APP_URL;
 if (!appUrl) throw new Error('APP_URL is not set');
@@ -74,22 +81,26 @@ leadWorker.on('failed', (job, err) =>
 );
 leadWorker.on('error', (err) => log.error({ err: err.message }, 'lead worker error'));
 
-// Its own connection, for the reason every worker above has one.
-const billingWorker = createBillingWorker({
-  connection: createRedis(),
-  prisma,
-  client: createBillplzClient({ apiKey: billplzApiKey, baseUrl: billplzBaseUrl }),
-  mailQueue: mailProducer,
-  appUrl,
-  log,
-});
-billingWorker.on('failed', (job, err) =>
-  log.error({ jobId: job?.id, err: err.message }, 'billing job failed'),
-);
-billingWorker.on('error', (err) => log.error({ err: err.message }, 'billing worker error'));
+if (billing) {
+  // Its own connection, for the reason every worker above has one.
+  const billingWorker = createBillingWorker({
+    connection: createRedis(),
+    prisma,
+    client: createBillplzClient(billing),
+    mailQueue: mailProducer,
+    appUrl,
+    log,
+  });
+  billingWorker.on('failed', (job, err) =>
+    log.error({ jobId: job?.id, err: err.message }, 'billing job failed'),
+  );
+  billingWorker.on('error', (err) => log.error({ err: err.message }, 'billing worker error'));
 
-// The repo's first schedule. Awaited, so a Redis that cannot take it stops the process
-// here, rather than leaving a worker running with nothing ever scheduled.
-await scheduleBillingJobs(new Queue(BILLING_QUEUE, { connection: createRedis() }));
+  // The repo's first schedule. Awaited, so a Redis that cannot take it stops the process
+  // here, rather than leaving a worker running with nothing ever scheduled.
+  await scheduleBillingJobs(new Queue(BILLING_QUEUE, { connection: createRedis() }));
+} else {
+  log.warn('No BILLPLZ_* settings: the billing worker and its schedule are off in development.');
+}
 
 log.info('workers up');

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import {
+  BILLPLZ_ENV,
   BillplzUnavailableError,
   flattenRedirectParams,
   signBillplz,
@@ -440,5 +441,93 @@ describe('POST /billing/trial-reset', () => {
     await app.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 3 } });
 
     expect((await reset(owner.cookie)).statusCode).toBe(409);
+  });
+});
+
+// Development with no Billplz settings at all: the API still boots, so a developer
+// working on anything else needs no Billplz sandbox account. Production never does.
+describe('with billing switched off', () => {
+  const saved = Object.fromEntries(BILLPLZ_ENV.map((name) => [name, process.env[name]]));
+  const savedNodeEnv = process.env.NODE_ENV;
+  let offApp: FastifyInstance;
+
+  beforeAll(async () => {
+    for (const name of BILLPLZ_ENV) delete process.env[name];
+    offApp = await buildApp();
+    await offApp.ready();
+  });
+
+  afterAll(async () => {
+    await offApp.close();
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+    process.env.NODE_ENV = savedNodeEnv;
+  });
+
+  async function anOffOwner() {
+    const slug = randomUUID().slice(0, 8);
+    const account = await offApp.prisma.account.create({
+      data: {
+        email: `billing-off-${randomUUID()}@example.com`,
+        pages: { create: { handle: `bo-${slug}`, skeleton: `bo-${slug}`, displayName: 'Nadia Bakes', mode: 'BUSINESS' } },
+      },
+      select: { id: true, pages: { select: { id: true } } },
+    });
+    const { value } = await createSession(offApp.prisma, account.id);
+    return { cookie: value, pageId: account.pages[0]?.id ?? '' };
+  }
+
+  it('answers a payment with its own code, and raises no bill', async () => {
+    const owner = await anOffOwner();
+
+    const res = await offApp.inject({
+      method: 'POST',
+      url: '/billing/bills',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: owner.cookie },
+      payload: { plan: 'MONTHLY' },
+    });
+
+    expect(res.statusCode).toBe(503);
+    expect(res.json().error.code).toBe('BILLING_NOT_CONFIGURED');
+    expect(await offApp.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
+  });
+
+  // No bill can exist, so Billplz has nothing to call back about.
+  it('does not register the Billplz callback', async () => {
+    const res = await offApp.inject({
+      method: 'POST',
+      url: '/billing/billplz/callback',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'id=anything',
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  // Nothing about the trial reset touches Billplz.
+  it('still resets a spent trial', async () => {
+    const owner = await anOffOwner();
+    await offApp.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 3 } });
+
+    const res = await offApp.inject({
+      method: 'POST',
+      url: '/billing/trial-reset',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: owner.cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('refuses to start in production without the settings', async () => {
+    process.env.NODE_ENV = 'production';
+    try {
+      await expect(buildApp()).rejects.toThrow(/BILLPLZ_API_KEY is not set/);
+    } finally {
+      process.env.NODE_ENV = savedNodeEnv;
+    }
   });
 });

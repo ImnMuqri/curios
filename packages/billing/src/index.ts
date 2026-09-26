@@ -1,3 +1,4 @@
+export { BILLPLZ_ENV, billingDisabled } from './config.js';
 export {
   flattenRedirectParams,
   signatureSource,

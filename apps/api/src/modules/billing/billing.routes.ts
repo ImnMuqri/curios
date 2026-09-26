@@ -2,6 +2,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
+  billingDisabled,
   createBillplzClient,
   evidenceFromBill,
   evidenceFromCallback,
@@ -29,12 +30,31 @@ function required(name: string): string {
 }
 
 /**
+ * Billing is switched off in this environment -- development with no Billplz settings,
+ * see `billingDisabled`. A 503 like BILLPLZ_UNAVAILABLE, so the web app turns the code
+ * into its own sentence; it can never happen in production, where the settings are
+ * required at startup.
+ */
+export class BillingNotConfiguredError extends Error {
+  readonly statusCode = 503;
+  readonly code = 'BILLING_NOT_CONFIGURED';
+  constructor() {
+    super('Billing is not configured in this environment.');
+    this.name = 'BillingNotConfiguredError';
+  }
+}
+
+/**
  * Every Billplz setting, read once at registration -- the moment the chat routes check
  * their model key, and for the same reason: a missing value fails the deploy, not an
  * owner's payment. A missing signature key in particular must never reach a request,
  * where it could only mean refusing every genuine payment.
+ *
+ * Null only when billing is switched off: outside production, with none of the settings
+ * present. A test that injects a client is never switched off.
  */
 function billplzSettings(options: BillingRouteOptions) {
+  if (!options.client && billingDisabled()) return null;
   const apiKey = required('BILLPLZ_API_KEY');
   const baseUrl = required('BILLPLZ_BASE_URL');
   return {
@@ -51,6 +71,12 @@ const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.st
 /** Starting a payment. Registered behind a session and a per-account limit in app.ts. */
 export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
   const billplz = billplzSettings(options);
+  if (!billplz) {
+    app.log.warn(
+      'No BILLPLZ_* settings: billing is switched off in development. Starting a payment ' +
+        'answers BILLING_NOT_CONFIGURED. Production refuses to start without them.',
+    );
+  }
 
   app.post(
     '/billing/bills',
@@ -62,6 +88,7 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
     },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
+      if (!billplz) throw new BillingNotConfiguredError();
 
       const result = await createBillForOwner(
         { prisma: app.prisma, client: billplz.client, config: billplz, log: request.log },
@@ -114,6 +141,9 @@ function logOutcome(
 /** Billplz's callback and redirect. No session, and no per-IP limit -- see app.ts. */
 export const billplzRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
   const billplz = billplzSettings(options);
+  // Switched off: no bill can have been raised, so Billplz has nothing to call back
+  // about, and a route that could only refuse is better not registered at all.
+  if (!billplz) return;
 
   // Billplz posts its callback form-encoded, and nothing else in this API accepts a
   // form. Added inside this plugin's own encapsulated scope, so no other route starts

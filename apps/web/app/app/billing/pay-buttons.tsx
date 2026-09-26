@@ -19,6 +19,10 @@ export function payError(failure: unknown): string {
   if (failure instanceof ApiError && failure.code === 'BILLPLZ_UNAVAILABLE') {
     return 'Billplz is not answering right now. Try again in a few minutes.';
   }
+  // Only ever seen in development, where billing runs switched off without Billplz settings.
+  if (failure instanceof ApiError && failure.code === 'BILLING_NOT_CONFIGURED') {
+    return 'Payments are switched off here: no Billplz settings in this environment.';
+  }
   return failure instanceof Error ? failure.message : 'Something failed. Try again.';
 }
 

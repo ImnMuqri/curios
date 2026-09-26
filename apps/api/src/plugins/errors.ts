@@ -70,6 +70,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   // misconfiguration never becomes this code: the Billplz client throws a plain Error
   // for a 4xx, which stays INTERNAL_ERROR.
   'BILLPLZ_UNAVAILABLE',
+  // Development only: billing switched off because no BILLPLZ_* setting is present
+  // (billingDisabled in @curios/billing). A 503 for the same reason as the one above,
+  // and listed for the same reason: the web app says what is actually true rather than
+  // "something failed on our side".
+  'BILLING_NOT_CONFIGURED',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --
