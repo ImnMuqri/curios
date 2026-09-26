@@ -48,7 +48,17 @@ export function MyCuriosEditor({
       <div className={styles.controls}>
         <h1 className={styles.title}>My Curios</h1>
         <p className={styles.lede}>Your page, arranged. Changes save as you make them.</p>
-        <ProfileEditor displayName={page.displayName} bio={page.bio} onChange={update} save={api.saveAppearance} />
+        <ProfileEditor
+          displayName={page.displayName}
+          bio={page.bio}
+          onChange={update}
+          save={api.saveAppearance}
+          avatarUrl={page.avatarUrl}
+          uploadsEnabled={uploadsEnabled}
+          onAvatar={(url) => update({ avatarUrl: url })}
+          uploadAvatar={api.uploadAvatar}
+          removeAvatar={async () => { await api.removeAvatar(); update({ avatarUrl: null }); }}
+        />
         <LinksEditor
           links={page.links}
           onChange={(links) => update({ links })}
@@ -64,8 +74,6 @@ export function MyCuriosEditor({
           onChange={update}
           save={api.saveAppearance}
         />
-        {/* The picture (Task 9) joins here. uploadsEnabled is read by Task 9. */}
-        <input type="hidden" value={String(uploadsEnabled)} readOnly />
       </div>
       <section className={styles.preview} aria-label="Live preview">
         <div className={styles.phone}>

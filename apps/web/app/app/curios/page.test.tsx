@@ -75,9 +75,12 @@ describe('MyCuriosPage', () => {
     render(await MyCuriosPage());
 
     expect(MyCurios).toHaveBeenCalledTimes(1);
-    const props = MyCurios.mock.calls[0]?.[0] as { initial: MyCuriosData & { avatarUrl: string | null }; uploadsEnabled: boolean };
+    const props = MyCurios.mock.calls[0]?.[0] as { initial: MyCuriosData & { avatarUrl: string | null }; uploadsEnabled: boolean; publicBase: string };
     expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg' });
     expect(props.uploadsEnabled).toBe(true);
+    // The client component cannot read a server-only env var itself, so the
+    // wrapper needs it passed down to build an uploaded picture's URL.
+    expect(props.publicBase).toBe('https://cdn.example');
   });
 
   it('says uploads are off, and the picture is null, when storage is not configured', async () => {
@@ -87,8 +90,9 @@ describe('MyCuriosPage', () => {
 
     render(await MyCuriosPage());
 
-    const props = MyCurios.mock.calls[0]?.[0] as { initial: { avatarUrl: string | null }; uploadsEnabled: boolean };
+    const props = MyCurios.mock.calls[0]?.[0] as { initial: { avatarUrl: string | null }; uploadsEnabled: boolean; publicBase: string };
     expect(props.uploadsEnabled).toBe(false);
     expect(props.initial.avatarUrl).toBeNull();
+    expect(props.publicBase).toBe('');
   });
 });

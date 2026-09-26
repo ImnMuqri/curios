@@ -525,7 +525,10 @@ describe('with billing switched off', () => {
   it('refuses to start in production without the settings', async () => {
     process.env.NODE_ENV = 'production';
     try {
-      await expect(buildApp()).rejects.toThrow(/BILLPLZ_API_KEY is not set/);
+      // `pages: { store: null }` sidesteps Task 9's own production check
+      // (storage is unset throughout this suite -- see vitest.setup.ts) so
+      // this test isolates the one setting it actually means to prove: Billplz's.
+      await expect(buildApp({ pages: { store: null } })).rejects.toThrow(/BILLPLZ_API_KEY is not set/);
     } finally {
       process.env.NODE_ENV = savedNodeEnv;
     }

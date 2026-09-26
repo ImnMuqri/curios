@@ -24,7 +24,7 @@ import {
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
-import { pageRoutes } from './modules/pages/page.routes.js';
+import { pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { questionRoutes } from './modules/questions/question.routes.js';
@@ -60,6 +60,7 @@ export interface AppOverrides {
   chat?: ChatRouteOptions;
   billing?: BillingRouteOptions;
   facts?: FactRouteOptions;
+  pages?: PageRouteOptions;
 }
 
 export async function buildApp(overrides: AppOverrides = {}) {
@@ -146,7 +147,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
 
   await app.register(async (scope) => {
     scope.addHook('onRequest', requireSession);
-    await scope.register(pageRoutes);
+    await scope.register(pageRoutes, overrides.pages ?? {});
     await scope.register(linkRoutes);
     await scope.register(factRoutes, overrides.facts ?? {});
     await scope.register(questionRoutes);

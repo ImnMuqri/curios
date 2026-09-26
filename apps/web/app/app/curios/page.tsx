@@ -12,5 +12,11 @@ export default async function MyCuriosPage() {
   const page = await getMyCurios(owner.accountId);
   if (!page) redirect('/app/onboarding');
 
-  return <MyCurios initial={{ ...page, avatarUrl: avatarUrl(page.avatarKey) }} uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)} />;
+  return (
+    <MyCurios
+      initial={{ ...page, avatarUrl: avatarUrl(page.avatarKey) }}
+      uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
+      publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
+    />
+  );
 }
