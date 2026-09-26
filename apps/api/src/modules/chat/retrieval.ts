@@ -118,14 +118,25 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
   // Filtered to this embedder's model and width at the read, so a row from an
   // older model is simply absent and lands in the missing-vector rule below
   // rather than being scored against vectors from a different space.
-  const rows = await prisma.factEmbedding.findMany({
-    where: {
-      factId: { in: facts.map((fact) => fact.id) },
-      model: embedder.model,
-      dims: embedder.dims,
-    },
-    select: { factId: true, vector: true },
-  });
+  let rows;
+  try {
+    rows = await prisma.factEmbedding.findMany({
+      where: {
+        factId: { in: facts.map((fact) => fact.id) },
+        model: embedder.model,
+        dims: embedder.dims,
+      },
+      select: { factId: true, vector: true },
+    });
+  } catch {
+    // A pool timeout, or this page hit by a rolling deploy before the
+    // FactEmbedding migration landed, is for this function's purposes
+    // indistinguishable from a page with no vectors yet: either way there is
+    // no full, usable set to score against, and the visitor's turn must never
+    // fail because the database hiccuped on a read this function can live
+    // without. Reusing 'missing-vectors' rather than inventing a reason.
+    return everything('missing-vectors');
+  }
 
   if (rows.length !== facts.length) return everything('missing-vectors');
 
@@ -151,10 +162,19 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
   const key = questionKey(text);
 
   let question: Float32Array | undefined;
-  const cached = await prisma.questionEmbedding.findUnique({
-    where: { key },
-    select: { vector: true, model: true, dims: true },
-  });
+  let cached;
+  try {
+    cached = await prisma.questionEmbedding.findUnique({
+      where: { key },
+      select: { vector: true, model: true, dims: true },
+    });
+  } catch {
+    // Treated exactly like a cache miss, not a reason to fail the visitor's
+    // turn: falling through embeds the question fresh, and the upsert below
+    // -- already best-effort -- is what would write the row this read could
+    // not reach.
+    cached = null;
+  }
 
   if (cached && cached.model === embedder.model && cached.dims === embedder.dims) {
     try {

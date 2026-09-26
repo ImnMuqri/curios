@@ -42,6 +42,44 @@ function embedderAnswering(vector: Float32Array = axis(0)) {
   return { embedder, embed };
 }
 
+/**
+ * A prisma that delegates to the real test client for everything except one
+ * named method, which throws instead. A Proxy rather than an object literal
+ * spreading `prisma.factEmbedding` / `prisma.questionEmbedding`, because
+ * Prisma's model delegates are not plain objects with enumerable own
+ * methods -- a spread silently drops the methods a hand-built stand-in would
+ * have to reimplement (`upsert`, in particular, still has to work on the
+ * `questionEmbedding` case below).
+ */
+function prismaWhere(overrides: {
+  factEmbeddingFindMany?: () => never;
+  questionEmbeddingFindUnique?: () => never;
+}): PrismaClient {
+  return new Proxy(prisma, {
+    get(target, prop, receiver) {
+      if (prop === 'factEmbedding' && overrides.factEmbeddingFindMany) {
+        const real = Reflect.get(target, prop, receiver);
+        return new Proxy(real, {
+          get(innerTarget, innerProp, innerReceiver) {
+            if (innerProp === 'findMany') return overrides.factEmbeddingFindMany;
+            return Reflect.get(innerTarget, innerProp, innerReceiver);
+          },
+        });
+      }
+      if (prop === 'questionEmbedding' && overrides.questionEmbeddingFindUnique) {
+        const real = Reflect.get(target, prop, receiver);
+        return new Proxy(real, {
+          get(innerTarget, innerProp, innerReceiver) {
+            if (innerProp === 'findUnique') return overrides.questionEmbeddingFindUnique;
+            return Reflect.get(innerTarget, innerProp, innerReceiver);
+          },
+        });
+      }
+      return Reflect.get(target, prop, receiver);
+    },
+  });
+}
+
 /** A page of `count` facts. Fact `i` gets `axis(i % 8)`, unless `skipVectors`. */
 async function seedPage(count: number, options: { vectors?: boolean; model?: string } = {}) {
   const facts = Array.from({ length: count }, (_unused, index) => ({
@@ -227,6 +265,59 @@ describe('selectForQuestion', () => {
     expect(embed).not.toHaveBeenCalled();
     expect(info).toHaveBeenCalledOnce();
     expect(JSON.stringify(info.mock.calls[0]?.[0])).not.toContain('berapa harga kek butter');
+  });
+
+  // Before the fix this reviewed, factEmbedding.findMany's throw was outside
+  // every try/catch in this function: a pool timeout, or this page reached
+  // mid-deploy before the FactEmbedding migration had run, would fail the
+  // visitor's whole turn instead of falling back. Proven by mutation: remove
+  // the try/catch around this read and this test goes red with the original
+  // "pool timeout" escaping selectForQuestion, rather than a fallback result.
+  it('falls back when factEmbedding.findMany throws, rather than fail the turn', async () => {
+    const { pageId, facts } = await seedPage(RETRIEVAL_MIN_FACTS + 5);
+    const { embedder, embed } = embedderAnswering();
+    const info = vi.fn();
+    const throwingPrisma = prismaWhere({
+      factEmbeddingFindMany: () => {
+        throw new Error('pool timeout');
+      },
+    });
+
+    const result = await selectForQuestion(
+      { prisma: throwingPrisma, embedder, log: { info } },
+      { pageId, facts, question: 'berapa harga kek butter', previousUserTurn: null },
+    );
+
+    expect(result.mode).toBe('fallback');
+    expect(result.reason).toBe('missing-vectors');
+    expect(result.facts).toEqual(facts);
+    // Before any spend, same as a genuinely missing vector.
+    expect(embed).not.toHaveBeenCalled();
+    expect(info).toHaveBeenCalledOnce();
+    expect(JSON.stringify(info.mock.calls[0]?.[0])).not.toContain('berapa harga kek butter');
+  });
+
+  // The other half: a cache read that throws must not fail the turn either --
+  // it must be treated exactly like a miss, and the question re-embedded.
+  // Proven by mutation the same way: remove the try/catch around this read
+  // and this test goes red with "pool timeout" escaping instead of a
+  // retrieved result.
+  it('treats a questionEmbedding.findUnique throw as a cache miss, and embeds', async () => {
+    const { pageId, facts } = await seedPage(RETRIEVAL_MIN_FACTS + 5);
+    const { embedder, embed } = embedderAnswering();
+    const throwingPrisma = prismaWhere({
+      questionEmbeddingFindUnique: () => {
+        throw new Error('pool timeout');
+      },
+    });
+
+    const result = await selectForQuestion(
+      { prisma: throwingPrisma, embedder },
+      { pageId, facts, question: 'berapa harga', previousUserTurn: null },
+    );
+
+    expect(embed).toHaveBeenCalledTimes(1);
+    expect(result.mode).toBe('retrieved');
   });
 
   it('retrieves when everything is in place', async () => {
