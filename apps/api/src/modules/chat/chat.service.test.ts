@@ -386,7 +386,7 @@ describe('answer', () => {
     ).rejects.toThrow(PageNotFoundError);
   });
 
-  it('sends cachePrompt: true, since this service still sends every fact -- Task 7 makes it a decision', async () => {
+  it('sends cachePrompt: true, since with no embedder it falls back and caches the prompt', async () => {
     const { gateway, cachePrompt } = gatewayCapturingCachePrompt();
     await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
