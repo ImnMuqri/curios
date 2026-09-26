@@ -4,6 +4,7 @@ import { useState } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import type { HeadingFont, PageStyle, TileSize } from '@curios/core/bento';
 import { BentoPage } from '../../_bento/BentoPage.js';
+import { AppearanceEditor } from './appearance-editor.js';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 import { ProfileEditor } from './profile-editor.js';
 import styles from './curios.module.css';
@@ -56,7 +57,14 @@ export function MyCuriosEditor({
           removeLink={api.removeLink}
           reorder={api.reorder}
         />
-        {/* Appearance (Task 8) and the picture (Task 9) join here. uploadsEnabled is read by Task 9. */}
+        <AppearanceEditor
+          style={page.style}
+          accentColor={page.accentColor}
+          headingFont={page.headingFont}
+          onChange={update}
+          save={api.saveAppearance}
+        />
+        {/* The picture (Task 9) joins here. uploadsEnabled is read by Task 9. */}
         <input type="hidden" value={String(uploadsEnabled)} readOnly />
       </div>
       <section className={styles.preview} aria-label="Live preview">

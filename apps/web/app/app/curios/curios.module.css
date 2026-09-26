@@ -22,3 +22,19 @@
 .preview { position: sticky; top: 24px; }
 .phone { border: 1px solid var(--line); border-radius: 28px; overflow: hidden; max-height: 78vh; overflow-y: auto; }
 @media (max-width: 960px) { .editor { grid-template-columns: 1fr; } .preview { position: static; } }
+
+.fieldset { margin: 0 0 16px; padding: 0; border: 0; }
+.fieldset legend { margin-bottom: 8px; font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.segment { display: inline-flex; padding: 3px; background: var(--surface); border-radius: 8px; }
+.segment label { padding: 6px 12px; border-radius: 6px; font-size: var(--text-sm); cursor: pointer; }
+.segment label[data-checked='true'] { background: var(--card); font-weight: 700; box-shadow: 0 1px 2px var(--soft-shadow); }
+.segment input, .swatch input, .fonts input { position: absolute; opacity: 0; pointer-events: none; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.swatch { position: relative; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); cursor: pointer; }
+.swatch[data-checked='true'] { box-shadow: 0 0 0 2px var(--ink); }
+.swatch:has(input:focus-visible), .fonts label:has(input:focus-visible), .segment label:has(input:focus-visible) { outline: 2px solid var(--hijau); outline-offset: 2px; }
+.custom { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); }
+.custom input { width: 110px; min-height: 36px; padding: 0 10px; border: 1.5px solid var(--line); border-radius: 8px; font-family: var(--font-mono); font-size: var(--text-sm); }
+.fonts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.fonts label { position: relative; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); font-size: var(--text-body); cursor: pointer; }
+.fonts label[data-checked='true'] { border-color: var(--hijau); background: var(--mint); }

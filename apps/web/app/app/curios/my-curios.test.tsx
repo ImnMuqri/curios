@@ -71,4 +71,10 @@ describe('MyCuriosEditor', () => {
     const tile = within(preview).getByText('Portfolio').closest('[data-size]');
     expect(tile).toHaveAttribute('data-size', 'BIG');
   });
+
+  it('restyles the preview the moment a style is chosen', async () => {
+    const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
+    expect(container.querySelector('[aria-label="Live preview"] [data-style]')).toHaveAttribute('data-style', 'CONTRAST');
+  });
 });
