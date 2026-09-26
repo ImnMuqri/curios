@@ -309,6 +309,91 @@ that an `ACCESS EXCLUSIVE` lock would be felt.
 
 ---
 
+## Retrieval
+
+Opened 2026-09-26, from the whole-branch review of `slice-12/retrieval`.
+
+### There is no scheduled vector backfill
+
+`scripts/backfill-fact-embeddings.ts` (`pnpm exec tsx scripts/backfill-fact-embeddings.ts`)
+only ever runs when someone remembers to run it by hand. Nothing calls
+`syncFactEmbeddings(prisma, embedder, {})` on a schedule. A page can be pushed into
+fallback in two ordinary ways with nothing wrong on the owner's side: an ingestion whose
+batched embedding call fails (`runExtraction`, `apps/workers/src/ingestion/extract.service.ts`)
+still writes its facts, and an owner's fact edit whose re-embed fails (`editFact`,
+`apps/api/src/modules/facts/fact.service.ts`) still commits the claim — both deliberately,
+so a vendor blip never blocks a write that has nothing to do with retrieval. Either one
+during an embeddings outage (see OPERATIONS.md's "The embeddings provider is down") leaves
+that page's facts short a vector, and unlike the outage itself, that does not clear on its
+own once the provider recovers.
+
+**Cost of leaving it.** Answers on the affected page stay entirely correct — every fallback
+path here degrades to "send every fact," never to a wrong or missing one — and the only
+cost is roughly twice the per-answer token spend until someone runs the backfill by hand.
+No owner-visible symptom names this: the page simply looks like a fact list too small to
+benefit from retrieval, indistinguishable from `below-minimum` without reading the `chat
+retrieval` log's `reason` alongside a `ModelCall` token check.
+
+Not fixed here because it is a new operational job, not a bug in what this slice shipped.
+The fix is a periodic workers job — daily is plenty, given the cost is doubled tokens, not
+wrong answers — calling `syncFactEmbeddings(prisma, embedder, {})` with no filter, exactly
+the backfill script's own call. It is safe to run on a schedule precisely because it is
+idempotent: a database with nothing to fix scans every fact and writes nothing.
+
+### `editFact` can 500 after the edit has already committed, and its own cleanup can fail silently
+
+`editFact` (`apps/api/src/modules/facts/fact.service.ts:111`) reads the fact back
+(`prisma.fact.findUnique`) after the claim update at line 95-98 has already committed. A
+throw from that read — a pool timeout, a dropped connection — propagates straight out of
+`editFact` uncaught, and the owner sees a 500 for an edit that, underneath it, actually
+saved. Nothing rolls the claim back; nothing tells the owner it worked.
+
+The second half compounds it. Inside the catch that handles a failed re-embed
+(`fact.service.ts:124`), the cleanup delete — `prisma.factEmbedding.deleteMany({ where: {
+factId } })` — is not itself guarded. If that delete also throws (the same outage that
+broke `syncFactEmbeddings` two lines above is a plausible reason it would), the stale
+vector from before this edit survives, now matching claim text the fact no longer has —
+a wrong vector, not merely a missing one, which is the one failure mode this whole slice's
+fallback design exists to avoid.
+
+**Cost of leaving it.** The 500 is a false negative on a save that worked — confusing, but
+self-correcting the next time the owner reloads the page and sees their edit. The stale
+vector is worse and does not self-correct: a wrong answer via a mismatched vector is a
+retrieval failure the "everything or nothing" contract in `packages/core/src/retrieval.ts`
+was built specifically to prevent, and this is the one path that can still produce it,
+narrowly, only when two independent DB calls fail back to back.
+
+Not fixed here because both fixes are behaviour changes to a function this slice did not
+open — the read at line 111 needs its own try/catch deciding what "committed but unreadable"
+should return, and the cleanup delete at line 124 needs either a retry or a way to surface
+"this fact's vector state is now unknown" that is not simply eating a second exception. Worth
+fixing together, since both are the same class of gap: this function assumes its own
+best-effort cleanup cannot itself fail.
+
+### Design limit: an edited fact keeps its old question
+
+Recorded in `editFact`'s own docstring NOTE as of this slice, and repeated here because it
+is a product question, not a code one. When an owner rewrites a fact's claim, the function
+re-embeds only when `fact.question` is null — a fact that already carries a question is
+matched on that question, which editing the claim does not change, by design: "this path
+cannot change what was embedded." An owner who rewrites a fact to answer a different
+question entirely (not just reword the same one) leaves it permanently matched against
+whatever it used to be about.
+
+**Cost of leaving it.** A visitor asking the fact's *new* topic will not find it — it is
+still keyed on the old question's vector — while a visitor asking about the *old* topic
+may still surface a fact that no longer says what it used to. Both are silent: nothing
+logs or flags a fact whose question has drifted from its claim. Narrow in practice, since
+most edits correct wording rather than swap topics, but the fact stays wrong for that
+question until someone re-runs `scripts/backfill-fact-questions.ts` (itself a one-off, see
+its header) or edits the fact again after its question is cleared by hand.
+
+Not fixed here because it needs a real edit-the-question path — the NOTE in `editFact` says
+explicitly that whoever adds one must re-embed unconditionally, not skip it the way an
+unrelated claim edit does — which is new surface area, not a bug in what this slice shipped.
+
+---
+
 ## Resolved
 
 ### A published question and answer have no way to come down — fixed
