@@ -27,8 +27,8 @@ const page: PublicPage = {
   paidUntil: null,
   leadsCaptured: 0,
   links: [
-    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0 },
-    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1 },
+    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0, size: null },
+    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1, size: null },
   ],
   facts: [
     {
@@ -42,6 +42,10 @@ const page: PublicPage = {
     { id: 'f2', category: 'HOURS', claim: 'Open Monday to Saturday', question: null },
   ],
   allowSearchIndexing: false,
+  style: 'SOFT',
+  accentColor: '#0c7a62',
+  headingFont: 'JAKARTA',
+  avatarKey: null,
 };
 
 describe('public page', () => {

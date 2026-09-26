@@ -59,6 +59,27 @@ enum PaymentStatus {
   PAID
 }
 
+enum TileSize {
+  SMALL
+  WIDE
+  TALL
+  BIG
+}
+
+enum PageStyle {
+  SOFT
+  CONTRAST
+}
+
+enum HeadingFont {
+  JAKARTA
+  BRICOLAGE
+  FRAUNCES
+  SPACE_GROTESK
+  DM_SERIF
+  OUTFIT
+}
+
 model Account {
   id              String               @id @default(cuid())
   email           String               @unique
@@ -117,6 +138,13 @@ model Page {
   /// name. Business pages are always indexed, so this is read only for personal
   /// pages -- see shouldIndex in @curios/core.
   allowSearchIndexing Boolean @default(false)
+  /// Soft is the default look; High contrast is the owner's alternative.
+  style       PageStyle   @default(SOFT)
+  /// #rrggbb, validated by isHexColor before it is written.
+  accentColor String      @default("#0c7a62")
+  headingFont HeadingFont @default(JAKARTA)
+  /// The object key of the uploaded picture in storage. Null is no picture.
+  avatarKey   String?
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]
@@ -140,6 +168,9 @@ model Link {
   url      String
   icon     String?
   position Int
+  /// Null is "automatic": arrangeTiles in @curios/core/bento decides from the
+  /// tile's position.
+  size     TileSize?
 
   @@index([pageId, position])
 }

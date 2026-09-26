@@ -1,4 +1,5 @@
 import type { FactCategory } from '@curios/core';
+import type { HeadingFont, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 
 export interface PublicLink {
@@ -7,6 +8,7 @@ export interface PublicLink {
   url: string;
   icon: string | null;
   position: number;
+  size: TileSize | null;
 }
 
 export interface PublicFact {
@@ -32,6 +34,11 @@ export interface PublicPage {
   leadsCaptured: number;
   /** Whether this page, if personal, may appear in search results. See shouldIndex in @curios/core. */
   allowSearchIndexing: boolean;
+  style: PageStyle;
+  accentColor: string;
+  headingFont: HeadingFont;
+  /** The picture's object key, or null. apps/web turns it into a URL. */
+  avatarKey: string | null;
 }
 
 /**
@@ -55,9 +62,13 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       paidUntil: true,
       leadsCaptured: true,
       allowSearchIndexing: true,
+      style: true,
+      accentColor: true,
+      headingFont: true,
+      avatarKey: true,
       links: {
         orderBy: { position: 'asc' },
-        select: { id: true, label: true, url: true, icon: true, position: true },
+        select: { id: true, label: true, url: true, icon: true, position: true, size: true },
       },
       facts: {
         where: { verified: true },
