@@ -15,6 +15,9 @@
   --kuning: #f2a33c;
   --merah: #d8452f;
   --muted: #6b7c7f;
+  /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
+  --card: #ffffff;
+  --line: #e3e8e5;
   /*
    * --ink at 45%. It lives here rather than in the sheet because the rule is
    * that colour has one home, and a no-hex test that would have missed this

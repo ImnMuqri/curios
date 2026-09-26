@@ -5,9 +5,9 @@ import { redirect } from 'next/navigation';
 // barrel's transitive node:crypto import is fine. The split between the two
 // is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
-import { getOwnerPage } from '@curios/db-read';
+import { countPendingFacts, getOwnerPage } from '@curios/db-read';
 import { Shell } from '@curios/ui';
-import { AppNav } from './app-nav.js';
+import { AppFrame } from './app-frame.js';
 import { resolveOwner } from './session.js';
 
 /**
@@ -23,13 +23,13 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   if (!owner) redirect('/signin');
 
-  // The nav is gated on having a page, not on the route, and the two are not
-  // interchangeable. Three of the four screens are unreachable without a
+  // The frame is gated on having a page, not on the route, and the two are
+  // not interchangeable. Three of the four screens are unreachable without a
   // page -- Review redirects back to onboarding, Questions and Leads scope on
   // `page: { accountId }` and match nothing -- so offering them to an owner
   // mid-claim is worse than offering nothing. But onboarding is not a
   // one-time screen either: it renders `<Ingest>` once a page exists, so
-  // mounting the nav on a route group that excludes onboarding would strand
+  // mounting the frame on a route group that excludes onboarding would strand
   // an owner who came back to add sources. Gating on the page is the only
   // form that gets both right.
   //
@@ -38,12 +38,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // either one is a `cache()` change across every screen, not this fix.
   const page = await getOwnerPage(owner.accountId);
 
-  // Shell, not className="app-shell" -- that class was never defined in any
-  // stylesheet in this repo, so it styled nothing from the day it was written.
+  // No page yet: onboarding, full width, no frame -- the modules would all be
+  // unreachable (the reason the old nav was gated on the page, kept).
+  if (!page) return <Shell>{children}</Shell>;
+
+  const pendingReview = await countPendingFacts(owner.accountId);
   return (
-    <Shell>
-      {page ? <AppNav /> : null}
+    <AppFrame displayName={page.displayName} handle={page.handle} pendingReview={pendingReview}>
       {children}
-    </Shell>
+    </AppFrame>
   );
 }
