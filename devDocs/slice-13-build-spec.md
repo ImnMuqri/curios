@@ -216,11 +216,15 @@ All routes sit behind the session and check that the page belongs to the caller.
 *Revised 2026-09-26: `POST /pages/avatar` takes the picture as base64 inside the same
 JSON body every other route uses, not multipart — `apiFetch`'s CSRF stand-in only
 covers JSON requests, and a second request shape would have needed its own. The
-browser resizes to 512×512 WebP and checks the 1 MB limit before sending; the API
-re-checks the byte length and matches the declared type against the file's magic
-bytes (`decodeAvatar` in `apps/api/src/modules/pages/avatar.ts`), so a renamed or
-mislabelled file is refused with `400 INVALID_IMAGE` regardless of what the browser
-already did.*
+browser resizes to 512×512 and declares whatever content type its own canvas actually
+produced — usually WebP, but Safari's `canvas.toBlob` silently falls back to PNG, and
+claiming WebP for those bytes is exactly what made every iPhone upload fail until this
+was fixed (`resizeImage` in `apps/web/app/app/curios/resize-image.ts`). It also checks
+the 1 MB limit before sending, retrying at lower quality a few times and refusing with a
+clear message if the picture is still too large; the API re-checks the byte length and
+matches the declared type against the file's magic bytes (`decodeAvatar` in
+`apps/api/src/modules/pages/avatar.ts`), so a renamed or mislabelled file is refused
+with `400 INVALID_IMAGE` regardless of what the browser already did.*
 
 **Storage** uses `@aws-sdk/client-s3`, which speaks to both R2 and S3. Settings: `STORAGE_ENDPOINT`,
 `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL`.

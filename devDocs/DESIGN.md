@@ -60,10 +60,13 @@ is exactly the shopfront reference and is not the face everyone else reaches for
 Use it for the owner's name, page headings, and nothing under 15px.
 
 *Amended by slice 13.* The owner's name and tile labels on the public page now use
-whichever of six curated fonts the owner picked (Bricolage remains one, and the
-fallback face when none is set) — see **The two page styles**, below. The dashboard's
-own chrome no longer uses Bricolage at all: it speaks Plus Jakarta Sans, a deliberate
-split from the public page's type.
+whichever of six curated fonts the owner picked (Bricolage remains one; Jakarta, not
+Bricolage, is the default a page carries until an owner chooses another) — see **The
+two page styles**, below. Bricolage keeps one older job: it is still the sitewide
+`--font-display` a stylesheet falls back to if `--font-heading` itself is ever unset,
+which is why it alone of the six preloads regardless of which heading font a page
+picks. The dashboard's own chrome no longer uses Bricolage at all: it speaks Plus
+Jakarta Sans, a deliberate split from the public page's type.
 
 Body is Inter because Malay runs long and Inter stays legible when a caption wraps to
 four lines on a small phone. This is a legibility decision, not a taste one.
@@ -112,7 +115,7 @@ is a tool that a busy person opens at 11pm, and it should be instant, not theatr
 |---|---|
 | `AskBar` | the signature. see above. |
 | `BentoPage` / tiles | *replaces `LinkRow`, slice 13.* the shopfront arrangement: an accent lead tile, a warm second, then smalls and wides; sizes automatic until the owner picks one. One renderer for the public page and the editor's live preview, so the two cannot disagree. |
-| `Chip` | generated question. `lead` variant uses mint, one per page maximum. |
+| `Chip` | *retired, slice 13 fix round 2.* generated question. `lead` variant used mint, one per page maximum. Deleted with `Nav` and `LinkRow`, the dashboard's old nav row (both replaced by the shell and the bento grid) once a grep across `apps/` found no import of any of the three left. |
 | `AnswerBubble` | streams, can contain a `LinkCard`. |
 | `LinkCard` | how chat returns people to the links. |
 | `CaptureCard` | kuning. one input. never more than one input. business mode only. |

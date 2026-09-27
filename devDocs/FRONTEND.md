@@ -170,11 +170,13 @@ together with a live preview that never leaves the screen — the same `BentoPag
 visitors see, so the preview cannot disagree with the published page.
 
 **No Save button.** Every control saves itself: name, bio and an inline link's label or
-address debounce 600ms after the owner stops typing; a tile size, style, accent or
-heading font save the instant they are clicked. The preview updates from local state on
-every keystroke or click, before the save round-trip returns. A control shows its own
-brief "Saved", and a failed save keeps what the owner typed or chose and offers a Retry
-beside that control, never a page-wide banner.
+address debounce 600ms after the owner stops typing; a tile size saves the instant it is
+clicked. The preview updates from local state on every keystroke or click, before the
+save round-trip returns. Each of those shows its own brief "Saved", and a failed save
+keeps what the owner typed or chose and offers a Retry right beside that field or
+button, never a page-wide banner. Appearance (style, accent, heading font) is the one
+exception: those three save as a matched set on the same click, so a failure shows one
+Retry in the Appearance section rather than three that would all resend the same patch.
 
 **Reorder** is drag (`@dnd-kit/sortable`) or the up/down buttons, which is how the
 keyboard and a screen reader reach it too. A failed reorder — most often a second tab
