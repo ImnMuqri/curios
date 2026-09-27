@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 
 const getQuestions = vi.fn();
@@ -61,5 +61,15 @@ describe('QuestionsPage', () => {
     render(await QuestionsPage());
 
     expect(Questions.mock.calls[0]?.[0]).toMatchObject({ publishesFaq: true });
+  });
+
+  // Fix round 2, Important #3: AppFrame renders its own main around every
+  // screen it wraps, this one included, so a second one here would nest.
+  it('renders no main of its own', async () => {
+    getOwnerPage.mockResolvedValue(business);
+
+    render(await QuestionsPage());
+
+    expect(screen.queryByRole('main')).toBeNull();
   });
 });

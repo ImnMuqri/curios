@@ -30,7 +30,7 @@ export default async function LeadsPage() {
   // -- a Server Component may not pass a function here, and doing so is a
   // 500 at request time that no gate catches.
   return (
-    <Shell title="Leads">
+    <Shell as="div" title="Leads">
       {page ? (
         <TrialNotice
           state={planState({

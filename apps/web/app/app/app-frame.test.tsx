@@ -59,6 +59,14 @@ describe('AppFrame', () => {
     expect(screen.getByText('content')).toBeInTheDocument();
   });
 
+  // Fix round 2, Important #3: without this, My Curios, Review, Settings and
+  // onboarding-with-a-page have no main landmark at all -- a div is not one.
+  it('gives the screen it wraps exactly one main landmark', () => {
+    frame();
+    expect(screen.getAllByRole('main')).toHaveLength(1);
+    expect(screen.getByRole('main')).toHaveTextContent('content');
+  });
+
   // The given tests above check the sidebar's links but never its "who"
   // block or the top bar's breadcrumb -- both render straight from props, so
   // a mistake here (swapping displayName and handle, or a dead breadcrumb)

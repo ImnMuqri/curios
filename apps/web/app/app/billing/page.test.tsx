@@ -68,6 +68,9 @@ describe('BillingPage', () => {
     await renderWith(page);
 
     expect(screen.getByRole('heading', { name: 'Billing' })).toBeInTheDocument();
+    // Fix round 2, Important #3: AppFrame renders its own main around every
+    // screen it wraps, this one included, so a second one here would nest.
+    expect(screen.queryByRole('main')).toBeNull();
     expect(PayButtons).toHaveBeenCalledTimes(1);
     expect(PayButtons.mock.calls[0]?.[0].options).toEqual([
       { plan: 'MONTHLY', label: 'Pay RM39 for a month' },

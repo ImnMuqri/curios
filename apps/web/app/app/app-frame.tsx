@@ -116,7 +116,7 @@ export function AppFrame({
             View page ↗
           </a>
         </header>
-        <div className={styles.content}>{children}</div>
+        <main className={styles.content}>{children}</main>
       </div>
     </div>
   );

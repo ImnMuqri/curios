@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode } from 'react';
@@ -268,5 +270,18 @@ describe('AskSheet', () => {
 
     await waitFor(() => expect(onAsk).toHaveBeenCalled());
     expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
+
+  // Fix round 2, Important #2: the spec says the accent paints "the chat
+  // sheet's highlights" -- the send button and the composer's focus ring --
+  // not a fixed --hijau. Read the way design-rules.test.ts reads a
+  // stylesheet: this package's vitest config has no `css: true`, so a
+  // rendered element's computed style here would not reflect BentoPage's
+  // cascade regardless.
+  it('reads its send button and focus ring from BentoPage-supplied accent variables, with a fallback', () => {
+    const css = readFileSync(join(import.meta.dirname, 'AskSheet.module.css'), 'utf8');
+    expect(css).toMatch(/border-color:\s*var\(--accent,\s*var\(--hijau\)\)/);
+    expect(css).toMatch(/background:\s*var\(--accent,\s*var\(--hijau\)\)/);
+    expect(css).toMatch(/color:\s*var\(--on-accent,\s*var\(--paper\)\)/);
   });
 });

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { BentoPage, type BentoPageProps } from './BentoPage.js';
@@ -78,5 +80,41 @@ describe('BentoPage', () => {
     render(<BentoPage {...base} interactive={false} />);
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByText('Portfolio')).toBeInTheDocument();
+  });
+
+  // Fix round 2, Important #2: "a white pill, soft" in Soft (no ink
+  // outline) and "outlined in ink" in High contrast -- the ask bar (rendered
+  // as `children`, inside this same `.page`) reads `--ask-border` for that.
+  // A rendered computed style would not prove the CONTRAST branch either,
+  // since this package's own vitest config has no `css: true` -- read the
+  // stylesheet itself, the way design-rules.test.ts does.
+  it('sets --ask-border per style, so the ask bar it wraps can be borderless in Soft and ink-outlined in High contrast', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/--ask-border:\s*transparent;/);
+    expect(css).toMatch(/\[data-style='CONTRAST'\][^}]*--ask-border:\s*var\(--ink\);/s);
+  });
+
+  // M1: the editor's live preview renders this same `.page` nested inside
+  // the dashboard's `.frame` (app-frame.module.css), which sets --font-body
+  // and --font-display to Plus Jakarta Sans for its own chrome. Without its
+  // own reset, the preview would show Jakarta where /:handle shows Inter and
+  // Bricolage. Read the stylesheet directly, same reason as the tests above.
+  it('resets the dashboard frame\'s Jakarta font variables back to the public page\'s own', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/--font-body:\s*var\(--font-inter\);/);
+    expect(css).toMatch(/--font-display:\s*var\(--font-bricolage,/);
+  });
+
+  // The sheet and the ask bar are not portalled -- both render as `children`
+  // inside this same `.page` div -- which is what lets `--accent`,
+  // `--on-accent` and `--ask-border` reach them by ordinary CSS inheritance.
+  it('renders its children inside the styled page, not portalled elsewhere', () => {
+    const { container } = render(
+      <BentoPage {...base}>
+        <p data-testid="child">the ask bar would render here</p>
+      </BentoPage>,
+    );
+    const page = container.firstElementChild as HTMLElement;
+    expect(page.querySelector('[data-testid="child"]')).toBe(screen.getByTestId('child'));
   });
 });

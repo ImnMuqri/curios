@@ -5,6 +5,20 @@
   --plain-fg: var(--ink);
   --page-bg: var(--soft-page);
   --shadow: 0 1px 3px var(--soft-shadow);
+  /* The spec: the ask bar is "a white pill, soft" here -- no ink outline --
+     and "outlined in ink" in High contrast, below. AskBar and AskSheet read
+     these with a fallback, so nothing outside this page (there is no such
+     caller today, but the components do not assume it) loses its look. */
+  --ask-border: transparent;
+  --ask-tint: color-mix(in srgb, var(--accent) 16%, var(--paper));
+  /* M1: the dashboard's own `.frame` (app-frame.module.css) sets --font-body
+     and --font-display to Plus Jakarta Sans for its own chrome, and My
+     Curios' live preview renders this page nested inside that frame. Reset
+     both back to what the public page -- which never nests inside .frame --
+     actually uses, so the preview cannot show a different typeface than
+     /:handle does. */
+  --font-body: var(--font-inter);
+  --font-display: var(--font-bricolage, 'Bricolage Grotesque', system-ui, sans-serif);
   max-width: 520px;
   margin: 0 auto;
   padding: 32px 16px 120px;
@@ -21,6 +35,7 @@
   --plain-fg: var(--paper);
   --page-bg: var(--paper);
   --shadow: none;
+  --ask-border: var(--ink);
 }
 
 .page[data-on-accent='dark'] { --on-accent: var(--ink); }

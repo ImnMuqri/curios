@@ -23,4 +23,13 @@ describe('Shell', () => {
     render(<Shell>x</Shell>);
     expect(screen.queryByRole('heading')).not.toBeInTheDocument();
   });
+
+  // Fix round 2, Important #3: AppFrame now renders its own `<main>` around
+  // Billing, Leads and Questions, each of which renders a Shell of its own --
+  // without this, that would be two nested main landmarks.
+  it('renders a plain div, not a second main, when told to', () => {
+    render(<Shell as="div">x</Shell>);
+    expect(screen.queryByRole('main')).not.toBeInTheDocument();
+    expect(screen.getByText('x').closest('div')).toBeInTheDocument();
+  });
 });

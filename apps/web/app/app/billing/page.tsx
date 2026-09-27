@@ -52,7 +52,7 @@ export default async function BillingPage({
     page.leadsCaptured >= 1;
 
   return (
-    <Shell title="Billing">
+    <Shell as="div" title="Billing">
       {banner ? <Callout tone={banner.tone}>{banner.text}</Callout> : null}
       <p>{planSummary(state)}</p>
       {usage ? <p>{usageSummary(usage)}</p> : null}

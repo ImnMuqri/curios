@@ -82,7 +82,8 @@
 }
 
 .input:focus {
-  border-color: var(--hijau);
+  /* The page's accent, same as `.send` below -- see its comment. */
+  border-color: var(--accent, var(--hijau));
 }
 
 .send {
@@ -91,11 +92,14 @@
   padding: 11px 18px;
   border: 1.5px solid transparent;
   border-radius: 10px;
-  background: var(--hijau);
+  /* The spec: the accent "paints ... the chat sheet's highlights." Falls
+     back to the colours this always used, for anywhere `--accent` (and the
+     readable text colour that goes with it, `--on-accent`) is not set. */
+  background: var(--accent, var(--hijau));
   font-family: var(--font-body);
   font-size: var(--text-body);
   font-weight: 500;
-  color: var(--paper);
+  color: var(--on-accent, var(--paper));
   cursor: pointer;
   transition: background 120ms ease;
 }
