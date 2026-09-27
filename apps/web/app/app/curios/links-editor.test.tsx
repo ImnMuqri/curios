@@ -158,6 +158,11 @@ describe('LinksEditor', () => {
   // immediately (from local state), independent of whether the save behind
   // it succeeds -- so a failed save shows the error but does not un-choose
   // the tile the owner just picked.
+  //
+  // Fix round 2: this is now the size group's own SaveState, not a
+  // section-level Callout, and SaveState only surfaces an ApiError's own
+  // message -- a plain Error (a dropped connection, here) gets the generic
+  // sentence, with Retry.
   it('keeps a chosen tile size on screen, but says so, when the save fails', async () => {
     const props = setup(three, {
       updateLink: vi.fn(async () => { throw new Error('Could not reach the server.'); }),
@@ -166,7 +171,8 @@ describe('LinksEditor', () => {
     await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
 
     expect(props.onChange).toHaveBeenCalledWith(three.map((link) => (link.id === 'a' ? { ...link, size: 'BIG' } : link)));
-    expect(screen.getByRole('alert')).toHaveTextContent(/could not reach the server/i);
+    expect(await screen.findByRole('alert')).toHaveTextContent(/that did not save/i);
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
   });
 
   // Fix round 1, Important #3 (the removal half): removal is optimistic, the
@@ -313,5 +319,137 @@ describe('LinksEditor', () => {
 
     expect(within(row).getByLabelText('Address')).toHaveValue('https://wa.me/60123');
     vi.useRealTimers();
+  });
+
+  // Fix round 2, Important #1: a failed label save must show Retry beside
+  // the field (not "Saved"), and Retry must resend exactly the same label --
+  // proving `onPersist` now hands useAutosave a promise it can actually see
+  // reject, instead of the old `Promise.resolve(void persist(...))` that
+  // always resolved regardless of what `persist` did.
+  it('offers Retry beside a failed label save, and Retry sends the same label again', async () => {
+    vi.useFakeTimers();
+    const updateLink = vi.fn(async () => { throw new Error('offline'); });
+    setup(three, { updateLink });
+
+    const row = screen.getByRole('listitem', { name: 'Portfolio' });
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
+    fireEvent.change(within(row).getByLabelText('Name'), { target: { value: 'Work' } });
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(updateLink).toHaveBeenCalledWith('a', { label: 'Work' });
+    expect(screen.queryByText('Saved')).toBeNull();
+
+    const retry = within(row).getByRole('button', { name: 'Retry' });
+    updateLink.mockClear();
+    await act(async () => { fireEvent.click(retry); });
+
+    expect(updateLink).toHaveBeenCalledWith('a', { label: 'Work' });
+    vi.useRealTimers();
+  });
+
+  // The size half of the same fix: its own SaveState, its own Retry, and
+  // Retry resends the size the owner actually chose (read off the current
+  // `link.size`, which the optimistic `onLiveChange` already applied). Needs
+  // the stateful harness, not `setup()`'s static `links` prop and no-op
+  // `onChange` spy: Retry reads `link.size` off the CURRENT prop, and only a
+  // caller that actually echoes `onChange` back into `links` (as
+  // `MyCuriosEditor` does) ever updates it away from the value `setup()`
+  // renders it with.
+  it('offers Retry beside a failed size save, and Retry sends the same size again', async () => {
+    const updateLink = vi.fn(async () => { throw new Error('offline'); });
+
+    function Harness() {
+      const [links, setLinks] = useState(three);
+      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />;
+    }
+    render(<Harness />);
+
+    const row = screen.getByRole('listitem', { name: 'Portfolio' });
+    await act(async () => { fireEvent.click(within(row).getByRole('button', { name: 'Big tile' })); });
+    expect(updateLink).toHaveBeenCalledWith('a', { size: 'BIG' });
+
+    const retry = await within(row).findByRole('button', { name: 'Retry' });
+    updateLink.mockClear();
+    await act(async () => { fireEvent.click(retry); });
+
+    expect(updateLink).toHaveBeenCalledWith('a', { size: 'BIG' });
+  });
+
+  // Fix round 2, Important #1's merge rule: `persist` must apply only the
+  // keys a given call actually sent (`pick(saved, keys(change))`), not the
+  // server's whole row -- otherwise a size save that lands while a label
+  // save is still pending would overwrite that label with the stale copy
+  // the size response happens to carry for it.
+  it('does not let a size save that succeeds overwrite a label save still pending', async () => {
+    let resolveLabelSave!: (link: LinkItem) => void;
+    const updateLink = vi.fn((id: string, patch: Partial<LinkItem>) => {
+      if ('label' in patch) return new Promise<LinkItem>((resolve) => { resolveLabelSave = resolve; });
+      return Promise.resolve({ ...three.find((l) => l.id === id)!, ...patch });
+    });
+
+    function Harness() {
+      const [links, setLinks] = useState(three);
+      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />;
+    }
+    vi.useFakeTimers();
+    render(<Harness />);
+
+    // `aria-label` on the row is bound straight to the `link.label` prop,
+    // in or out of edit mode -- unlike the Name field's value, which is
+    // local state that only re-syncs from the prop when the editor reopens.
+    // It is what actually proves whether the prop itself got clobbered.
+    const row = screen.getByRole('listitem', { name: 'Portfolio' });
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
+    fireEvent.change(within(row).getByLabelText('Name'), { target: { value: 'Work' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(updateLink).toHaveBeenCalledWith('a', { label: 'Work' });
+
+    // The size click saves at once, no debounce, and its response --
+    // `{ ...original row (label: 'Portfolio'), size: 'BIG' }` -- lands
+    // before the label save above (still in flight) ever resolves. A merge
+    // that applies the whole response wholesale reverts the label to its
+    // stale "Portfolio" right here, before the label save even settles.
+    fireEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
+    await act(async () => {});
+
+    expect(row).toHaveAttribute('aria-label', 'Work');
+
+    // And once the label save itself resolves -- with a server copy whose
+    // own `label` field agrees, since this is the response to the label
+    // request -- the prop still correctly reads 'Work'.
+    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: three[0]!.url, size: 'BIG' }); });
+
+    expect(row).toHaveAttribute('aria-label', 'Work');
+    vi.useRealTimers();
+  });
+
+  // Fix round 2, Minor #7: focus follows the inline editor open and closed --
+  // into the first field when it appears, back to the button that opened it
+  // once it is gone.
+  it('moves focus into the inline editor on open, and back to the Edit button on close', () => {
+    setup();
+    const row = screen.getByRole('listitem', { name: 'Portfolio' });
+    const editButton = within(row).getByRole('button', { name: 'Edit Portfolio' });
+
+    fireEvent.click(editButton);
+    expect(within(row).getByLabelText('Name')).toHaveFocus();
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Done' }));
+    expect(within(row).getByRole('button', { name: 'Edit Portfolio' })).toHaveFocus();
+  });
+
+  // The confirm half of the same fix: focus goes to "Keep" -- the safer
+  // default -- when the confirm appears, and back to the Remove button that
+  // triggered it once the owner keeps the link after all.
+  it('moves focus to Keep when the remove confirm appears, and back to Remove once kept', () => {
+    setup();
+    const row = screen.getByRole('listitem', { name: 'GitHub' });
+    const removeButton = within(row).getByRole('button', { name: 'Remove GitHub' });
+
+    fireEvent.click(removeButton);
+    expect(within(row).getByRole('button', { name: 'Keep' })).toHaveFocus();
+
+    fireEvent.click(within(row).getByRole('button', { name: 'Keep' }));
+    expect(within(row).getByRole('button', { name: 'Remove GitHub' })).toHaveFocus();
   });
 });

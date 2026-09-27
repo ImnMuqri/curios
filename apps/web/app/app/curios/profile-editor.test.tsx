@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ApiError } from '../../../lib/api.js';
 import { ProfileEditor } from './profile-editor.js';
 
 /** ProfileEditor's fields are controlled; a real caller (MyCuriosEditor) keeps
@@ -71,6 +72,71 @@ describe('ProfileEditor', () => {
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
     vi.useRealTimers();
   });
+
+  // Fix round 2, Minor #2: an ApiError carries its own reason (the
+  // empty-name or bio-too-long message, here), and SaveState must show that
+  // instead of always the same generic sentence.
+  it("shows the ApiError's own message instead of a generic one", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const save = vi.fn(async () => { throw new ApiError(400, 'DISPLAY_NAME_INVALID', 'Give the page a name, up to 80 characters.'); });
+    render(<Controlled save={save} />);
+
+    const name = screen.getByLabelText('Display name');
+    await userEvent.type(name, '!', { delay: null });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Give the page a name, up to 80 characters.');
+    vi.useRealTimers();
+  });
+
+  // Fix round 2, Minor #2: a 4xx is a validation failure -- sending the same
+  // rejected value again cannot succeed, so Retry must not be offered for one.
+  it('offers no Retry for a 4xx, because sending the same value again cannot fix it', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const save = vi.fn(async () => { throw new ApiError(400, 'BIO_TOO_LONG', 'That bio is too long.'); });
+    render(<Controlled save={save} />);
+
+    const bio = screen.getByLabelText('Bio');
+    await userEvent.type(bio, 'x'.repeat(161), { delay: null });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('That bio is too long.');
+    expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull();
+    vi.useRealTimers();
+  });
+
+  // A 5xx is not a validation failure -- retrying might actually work, so
+  // Retry must still be offered for one, alongside the server's own message.
+  it('still offers Retry for a 5xx, with the server\'s own message', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const save = vi.fn(async () => { throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.'); });
+    render(<Controlled save={save} />);
+
+    const name = screen.getByLabelText('Display name');
+    await userEvent.type(name, '!', { delay: null });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Something failed. Try again.');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    vi.useRealTimers();
+  });
+
+  // A failure with no ApiError attached (a dropped connection, say) still
+  // gets the generic sentence and its Retry -- only a known 4xx is refused
+  // one, never a failure this code cannot classify at all.
+  it('keeps the generic message and Retry for a plain Error', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    const save = vi.fn(async () => { throw new Error('offline'); });
+    render(<Controlled save={save} />);
+
+    const name = screen.getByLabelText('Display name');
+    await userEvent.type(name, '!', { delay: null });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+
+    expect(screen.getByRole('alert')).toHaveTextContent('That did not save.');
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
+    vi.useRealTimers();
+  });
 });
 
 const base = { displayName: 'Iman', bio: null, onChange: vi.fn(), save: vi.fn(async () => undefined), avatarUrl: null, onAvatar: vi.fn(), removeAvatar: vi.fn(async () => undefined) };
@@ -124,5 +190,23 @@ describe('ProfileEditor picture', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Remove picture' }));
 
     expect(screen.getByRole('alert')).toHaveTextContent(/did not save/i);
+  });
+
+  // Fix round 2, Minor #3: the Avatar behaviour (apps/web/app/_bento/Avatar.tsx)
+  // -- a picture that fails to load disappears rather than showing a broken
+  // image icon, so the placeholder (or, once storage answers, just the name)
+  // stands in its place instead.
+  it('hides the thumbnail if it fails to load, showing the placeholder instead', () => {
+    // Not `getByRole('img')`: this thumbnail's `alt=""` is deliberately
+    // decorative (the name beside it already says who it is), which gives it
+    // an implicit role of `presentation`, not `img` -- a container query is
+    // what a sighted person's "is the picture still there" actually is here.
+    const { container } = render(<ProfileEditor {...base} avatarUrl="https://cdn.example/old.webp" uploadsEnabled uploadAvatar={vi.fn()} />);
+    const img = container.querySelector('img');
+    expect(img).not.toBeNull();
+
+    fireEvent.error(img as HTMLImageElement);
+
+    expect(container.querySelector('img')).toBeNull();
   });
 });

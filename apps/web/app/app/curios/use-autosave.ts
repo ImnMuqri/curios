@@ -11,6 +11,10 @@ export const SAVE_DEBOUNCE_MS = 600;
  */
 export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAVE_DEBOUNCE_MS) {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  // The failure itself, not just that one happened: SaveState needs it to
+  // show an ApiError's own message and to know whether a 4xx makes Retry
+  // pointless.
+  const [error, setError] = useState<unknown>(null);
   const latest = useRef<{ value: T } | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveRef = useRef(save);
@@ -23,8 +27,10 @@ export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAV
     try {
       await saveRef.current(value);
       setStatus('saved');
-    } catch {
+      setError(null);
+    } catch (failure) {
       setStatus('error');
+      setError(failure);
     }
   }, []);
 
@@ -39,5 +45,5 @@ export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAV
 
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  return { status, schedule, retry: () => void flush() };
+  return { status, error, schedule, retry: () => void flush() };
 }

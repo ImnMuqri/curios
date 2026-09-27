@@ -3,6 +3,7 @@
 import { useState, type ChangeEvent } from 'react';
 import { Button, Callout, Field } from '@curios/ui';
 import { BIO_MAX } from '@curios/core/bento';
+import { ApiError } from '../../../lib/api.js';
 import { useAutosave } from './use-autosave.js';
 import styles from './curios.module.css';
 
@@ -36,6 +37,10 @@ export function ProfileEditor({
   const name = useAutosave((value: string) => save({ displayName: value }));
   const about = useAutosave((value: string) => save({ bio: value }));
   const [avatarError, setAvatarError] = useState('');
+  // The Avatar behaviour: a picture that fails to load disappears rather than
+  // showing a broken-image icon, never re-shown for the same URL once it has
+  // failed once.
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -49,6 +54,7 @@ export function ProfileEditor({
       // state is the one storage actually confirmed, not a guess.
       const url = await uploadAvatar(file);
       setAvatarError('');
+      setAvatarFailed(false);
       onAvatar(url);
     } catch (error) {
       setAvatarError(error instanceof Error ? error.message : 'That picture could not be used.');
@@ -69,8 +75,8 @@ export function ProfileEditor({
       <h2 id="profile-title" className={styles.sectionTitle}>Profile</h2>
       {uploadsEnabled ? (
         <div className={styles.avatarRow}>
-          {avatarUrl ? (
-            <img src={avatarUrl} alt="" className={styles.avatarPreview} />
+          {avatarUrl && !avatarFailed ? (
+            <img src={avatarUrl} alt="" className={styles.avatarPreview} onError={() => setAvatarFailed(true)} />
           ) : (
             <div className={styles.avatarPlaceholder} aria-hidden="true" />
           )}
@@ -101,7 +107,7 @@ export function ProfileEditor({
         value={displayName}
         onChange={(value) => { onChange({ displayName: value }); name.schedule(value); }}
       />
-      <SaveState status={name.status} retry={name.retry} />
+      <SaveState status={name.status} error={name.error} retry={name.retry} />
       <Field
         id="bio"
         label="Bio"
@@ -110,16 +116,26 @@ export function ProfileEditor({
         hint={`${[...(bio ?? '')].length} of ${BIO_MAX}`}
         onChange={(value) => { onChange({ bio: value }); about.schedule(value); }}
       />
-      <SaveState status={about.status} retry={about.retry} />
+      <SaveState status={about.status} error={about.error} retry={about.retry} />
     </section>
   );
 }
 
-export function SaveState({ status, retry }: { status: keyof typeof STATUS; retry: () => void }) {
+/**
+ * A failed save's own words when it has them (the empty-name or
+ * bio-too-long reason from the API, for example) rather than always the
+ * same generic sentence -- and a 4xx never offers Retry, because sending the
+ * same rejected value again cannot succeed. Anything else (a dropped
+ * connection, a 5xx) keeps the generic message and the Retry, since trying
+ * again might actually work.
+ */
+export function SaveState({ status, error, retry }: { status: keyof typeof STATUS; error?: unknown; retry: () => void }) {
   if (status === 'error') {
+    const message = error instanceof ApiError ? error.message : 'That did not save.';
+    const canRetry = !(error instanceof ApiError && error.status >= 400 && error.status < 500);
     return (
       <p className={styles.saveError} role="alert">
-        That did not save. <Button type="button" variant="secondary" onClick={retry}>Retry</Button>
+        {message} {canRetry ? <Button type="button" variant="secondary" onClick={retry}>Retry</Button> : null}
       </p>
     );
   }
