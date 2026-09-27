@@ -6,10 +6,17 @@
 .sectionTitle { margin: 0 0 12px; font-size: var(--text-body); }
 .empty { color: var(--muted); font-size: var(--text-base); }
 .links { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
-.link { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+/* Fix round 2, Important #5: flex-wrap so the fixed-width controls (size
+   buttons, move and remove) can spill onto a second line instead of
+   overflowing -- their combined width plus the drag handle and label was
+   about 316px before any of the label's own space, which a 375px phone does
+   not have to give. */
+.link { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; padding: 6px 10px; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
 .grip { cursor: grab; color: var(--muted); letter-spacing: -2px; touch-action: none; }
 .linkText { flex: 1; min-width: 0; font-size: var(--text-base); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; border: none; margin: 0; padding: 0; font-family: inherit; color: inherit; text-align: left; cursor: pointer; }
 .linkText small { display: block; font-weight: 400; color: var(--muted); font-size: var(--text-xs); }
+.sizeGroup { display: inline-flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+.sizeGroup .saveState, .sizeGroup .saveError { margin: 2px 0 0; min-height: 14px; }
 .sizes { display: inline-flex; gap: 3px; }
 .sizes button, .iconButton, .confirm button { min-width: 30px; min-height: 30px; padding: 0 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); font: inherit; font-size: var(--text-xs); font-weight: 600; cursor: pointer; }
 .sizes button[aria-pressed='true'] { border-color: var(--hijau); background: var(--mint); color: var(--hijau); }
@@ -22,6 +29,18 @@
 .preview { position: sticky; top: 24px; }
 .phone { border: 1px solid var(--line); border-radius: 28px; overflow: hidden; max-height: 78vh; overflow-y: auto; }
 @media (max-width: 960px) { .editor { grid-template-columns: 1fr; } .preview { position: static; } }
+
+/* Below about 480px (Important #5): an invisible full-width break forces the
+   size group, the move buttons and remove/confirm onto their own second
+   line, together, rather than each wrapping wherever it individually first
+   runs out of room -- the link's name and address keep the whole first line
+   to themselves. `order` moves the break (and everything after it) without
+   touching DOM order, which is what the drag-and-drop and focus-management
+   code above still relies on. */
+@media (max-width: 480px) {
+  .link::after { content: ''; order: 2; flex-basis: 100%; }
+  .sizeGroup, .iconButton, .confirm { order: 3; }
+}
 
 .fieldset { margin: 0 0 16px; padding: 0; border: 0; }
 .fieldset legend { margin-bottom: 8px; font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
