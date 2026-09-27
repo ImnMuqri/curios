@@ -157,6 +157,16 @@ export function ChatMode({
    * (nothing else does, now that this is not a modal dialog with a manual
    * focus trap), and `aria-hidden` backs it up for anything that only reads
    * ARIA. Both flip back the moment chat mode closes.
+   *
+   * The returned cleanup reverses exactly what this run applied, using the
+   * `page`/`foldaway` nodes captured in its own closure rather than looking
+   * them up again -- `panel.current` is already null by the time a passive
+   * effect's cleanup runs on unmount, so re-deriving them there would find
+   * nothing. Without this, an unmount while chat mode is open (an error
+   * boundary, a route change tearing this component down but not the page
+   * around it, React Strict Mode's own mount/unmount/remount) would leave
+   * the bento permanently hidden and inert with nothing left alive to ever
+   * undo it.
    */
   useEffect(() => {
     const page = findPage(panel.current);
@@ -166,10 +176,19 @@ export function ChatMode({
     else delete page.dataset.mode;
 
     const foldaway = page.querySelector<HTMLElement>('[data-foldaway]');
-    if (!foldaway) return;
-    foldaway.inert = open;
-    if (open) foldaway.setAttribute('aria-hidden', 'true');
-    else foldaway.removeAttribute('aria-hidden');
+    if (foldaway) {
+      foldaway.inert = open;
+      if (open) foldaway.setAttribute('aria-hidden', 'true');
+      else foldaway.removeAttribute('aria-hidden');
+    }
+
+    return () => {
+      delete page.dataset.mode;
+      if (foldaway) {
+        foldaway.inert = false;
+        foldaway.removeAttribute('aria-hidden');
+      }
+    };
   }, [open]);
 
   /**
@@ -179,12 +198,20 @@ export function ChatMode({
    * component, not the server-rendered page around it, knows. Keyed on the
    * turn count rather than `turns` itself, so a streaming answer's growing
    * text does not re-touch the DOM on every chunk.
+   *
+   * Cleared on cleanup for the same reason the effect above clears its own
+   * attributes: an unmount must not leave this behind on a page element that
+   * outlives this component.
    */
   useEffect(() => {
     const page = findPage(panel.current);
     if (!page) return;
     if (turns.length > 0) page.dataset.hasTurns = 'true';
     else delete page.dataset.hasTurns;
+
+    return () => {
+      delete page.dataset.hasTurns;
+    };
   }, [turns.length]);
 
   useEffect(() => {

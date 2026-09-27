@@ -157,4 +157,17 @@ describe('BentoPage', () => {
     expect(css).toMatch(/\[data-mode='chat'\]\s*\[data-ask-bar\]\s*\{[^}]*display:\s*none;/s);
     expect(css).toMatch(/\[data-has-turns\]\s*\[data-ask-prompt\]\s*\{[^}]*display:\s*none;/s);
   });
+
+  // Fix round: the owner saw the back arrow render "in the middle" -- caused
+  // by ChatMode.module.css's `.panel` claiming `position: relative` for
+  // itself, which made it the containing block for `.back`'s `position:
+  // absolute` instead of letting it skip through to this `.page`. Half of
+  // that fix lives in ChatMode.module.css (its own test pins `.panel`
+  // declaring no position); this half is the room `.head` makes for the
+  // arrow once it does correctly anchor here. Pinned together so the two
+  // sides of this cross-package pairing cannot drift apart silently again.
+  it("keeps .head's room for the back button, so a fixed .panel elsewhere does not leave it stranded with nowhere to sit", () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\[data-mode='chat'\]\s*\.head\s*\{[^}]*padding-left:\s*44px;/s);
+  });
 });

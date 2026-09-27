@@ -76,10 +76,6 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
       ? ((await getFaqIndex(page.handle, { limit: 1 }))?.entries.length ?? 0) > 0
       : false;
 
-  // Computed once: BentoPage and Ask both need the owner's picture, and the
-  // function is pure but there is no reason to call it twice.
-  const ownerAvatarUrl = avatarUrl(page.avatarKey);
-
   // Server-rendered into real DOM: with JavaScript disabled the tiles are
   // still a working link list, which is also the SEO artifact.
   return (
@@ -88,7 +84,11 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         displayName={page.displayName}
         handle={page.handle}
         bio={page.bio}
-        avatarUrl={ownerAvatarUrl}
+        // BentoPage's own header is the only one that shows this now --
+        // ChatMode stopped rendering its own picture once the in-place
+        // rework removed its duplicate header, which left Ask (below) with
+        // no remaining use for it.
+        avatarUrl={avatarUrl(page.avatarKey)}
         links={page.links}
         style={page.style}
         accentColor={page.accentColor}

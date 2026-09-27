@@ -15,14 +15,26 @@
  * host element toggles instantly, deliberately, so the fold is the only
  * thing that animates.
  */
+/*
+ * No `position` declared here, deliberately: `.back` below is `position:
+ * absolute` and needs to skip straight past this panel to `.page`
+ * (Bento.module.css, `position: relative`) for its containing block. Giving
+ * `.panel` a `position` of its own -- `relative` included -- would make IT
+ * the containing block instead, and the arrow would resolve against this
+ * panel's own place in the flow (down where the chat content starts) rather
+ * than against the page, landing nowhere near the header it is meant to sit
+ * beside. This happened once already; BentoPage.test.tsx's CSS-content check
+ * on `.head[data-mode='chat']`'s padding-left now guards the pairing.
+ */
 .panel {
-  position: relative;
 }
 
 .back {
   /* Anchored to `.page` (Bento.module.css sets `position: relative` there),
      not this panel -- it needs to sit beside BentoPage's own header, which is
-     a sibling far above this component in the tree, not a parent. */
+     a sibling far above this component in the tree, not a parent. See the
+     comment on `.panel` above for why that still works with nothing declared
+     between here and there. */
   position: absolute;
   top: 36px;
   left: 16px;
@@ -87,11 +99,12 @@
 }
 
 /*
- * The ask bar's own sticky-bottom spot, taken over: same `bottom` offset as
- * AskBar.module.css's `.bar`, so the composer reads as that control settling
- * into place rather than something new appearing elsewhere. `padding-bottom`
- * adds `env(safe-area-inset-bottom)` on top of the usual gap so the input
- * never sits flush against a phone's home indicator.
+ * The ask bar's own sticky-bottom spot, taken over -- not the same `bottom`
+ * offset as AskBar.module.css's `.bar` (16px), but flush with `bottom: 0`
+ * and the gap moved into `padding-bottom` instead, so the composer reads as
+ * that control settling into place rather than something new appearing
+ * elsewhere. `env(safe-area-inset-bottom)` is added on top of the usual 16px
+ * so the input never sits flush against a phone's home indicator.
  */
 .composer {
   position: sticky;

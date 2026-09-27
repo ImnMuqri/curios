@@ -85,6 +85,40 @@ describe('ChatMode, entering', () => {
     expect(onAsk).not.toHaveBeenCalled();
   });
 
+  // Important #2: an unmount used to leave data-mode, data-has-turns, inert
+  // and aria-hidden all stuck on the ancestor page forever, since neither
+  // effect returned a cleanup -- an error boundary, a route change tearing
+  // this component down without the page around it, or Strict Mode's own
+  // mount/unmount/remount could each strand the bento hidden and inert with
+  // nothing left alive to ever undo it.
+  it('clears data-mode, data-has-turns, inert and aria-hidden on unmount, even while open with a turn', async () => {
+    const onAsk = vi
+      .fn()
+      .mockResolvedValue(streamOf('data: {"type":"text","text":"RM45"}\n\n', 'data: {"type":"done"}\n\n'));
+    const { container, unmount } = render(
+      <PageHarness>
+        <ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />
+      </PageHarness>,
+    );
+
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const page = container.querySelector('[data-bento-page]') as HTMLElement;
+    const foldaway = container.querySelector('[data-foldaway]') as HTMLElement;
+    await waitFor(() => expect(page).toHaveAttribute('data-has-turns', 'true'));
+    expect(page).toHaveAttribute('data-mode', 'chat');
+    expect(foldaway).toHaveAttribute('aria-hidden', 'true');
+    expect(foldaway.inert).toBe(true);
+
+    unmount();
+
+    expect(page).not.toHaveAttribute('data-mode');
+    expect(page).not.toHaveAttribute('data-has-turns');
+    expect(foldaway).not.toHaveAttribute('aria-hidden');
+    expect(foldaway.inert).toBe(false);
+  });
+
   it('focuses the composer on entry, not a close control', async () => {
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
     render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
@@ -423,6 +457,33 @@ describe('ChatMode, leaving', () => {
     expect(container.querySelector('[data-bento-page]')).not.toHaveAttribute('data-mode');
   });
 
+  // Minor: the close path above proves the attributes come OFF; this proves
+  // they go back ON a second time, not just once -- the effect's guard logic
+  // (Strict-Mode double-invoke protection on the history push, separately)
+  // must not accidentally leave the DOM-sync effect thinking there is
+  // nothing left to do on a reopen.
+  it('reapplies data-mode, inert and aria-hidden on a second open', async () => {
+    vi.spyOn(history, 'back').mockImplementation(() => {});
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
+    const { container } = render(<Harness onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+
+    const page = container.querySelector('[data-bento-page]') as HTMLElement;
+    const foldaway = container.querySelector('[data-foldaway]') as HTMLElement;
+    expect(page).toHaveAttribute('data-mode', 'chat');
+    expect(foldaway).toHaveAttribute('aria-hidden', 'true');
+    expect(foldaway.inert).toBe(true);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
+    expect(page).not.toHaveAttribute('data-mode');
+    expect(foldaway).not.toHaveAttribute('aria-hidden');
+    expect(foldaway.inert).toBe(false);
+
+    await userEvent.click(screen.getByRole('button', { name: 'reopen' }));
+    expect(page).toHaveAttribute('data-mode', 'chat');
+    expect(foldaway).toHaveAttribute('aria-hidden', 'true');
+    expect(foldaway.inert).toBe(true);
+  });
+
   it('is a plain part of the page: no fixed overlay, and no second copy of the display name', () => {
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
     render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
@@ -574,5 +635,23 @@ describe('ChatMode, styling', () => {
     expect(css).toMatch(/border-color:\s*var\(--accent,\s*var\(--hijau\)\)/);
     expect(css).toMatch(/background:\s*var\(--accent,\s*var\(--hijau\)\)/);
     expect(css).toMatch(/color:\s*var\(--on-accent,\s*var\(--paper\)\)/);
+  });
+
+  // Fix round: the owner saw this live -- "the arrow back is in the middle
+  // for some reason". `.panel { position: relative }` made `.panel` itself
+  // the containing block for `.back`'s `position: absolute`, so the arrow
+  // resolved against this panel's own place in the flow (down where the
+  // chat content starts) instead of skipping past it to BentoPage's `.page`
+  // (Bento.module.css, position: relative), which is what actually sits
+  // beside the header. jsdom cannot render layout to catch this, so this
+  // reads the stylesheet directly, the way every other CSS assertion in this
+  // suite does. Bento.module.css's own test pins the other half of this
+  // pairing: `.head[data-mode='chat']`'s padding-left, which only makes
+  // sense once `.back` anchors to the right element.
+  it('declares no position on .panel, so .back anchors to the page instead of this panel', () => {
+    const css = readFileSync(join(import.meta.dirname, 'ChatMode.module.css'), 'utf8');
+    const panelBlock = css.match(/(?<!\S)\.panel\s*\{([^}]*)\}/s)?.[1];
+    expect(panelBlock).toBeDefined();
+    expect(panelBlock).not.toMatch(/position:/);
   });
 });
