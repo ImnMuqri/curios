@@ -34,6 +34,22 @@ function stubQualifyingFetch() {
   vi.stubGlobal('fetch', spy);
 }
 
+/**
+ * What `BentoPage` actually renders, reduced to what `ChatMode` looks for --
+ * see `ChatMode.test.tsx`'s own `PageHarness` for the fuller version. `Ask`
+ * itself never renders this; it is a sibling of `Ask` inside the real
+ * `BentoPage`, which is why proving chat mode reaches it at all is a
+ * property of this integration, not of `Ask` alone.
+ */
+function PageHarness({ children }: { children: React.ReactNode }) {
+  return (
+    <div data-bento-page>
+      <div data-foldaway>bio and links go here</div>
+      {children}
+    </div>
+  );
+}
+
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Ask, opening chat mode', () => {
@@ -58,25 +74,61 @@ describe('Ask, opening chat mode', () => {
     expect(container.querySelector('[aria-label="Back to links"]')).not.toBeInTheDocument();
   });
 
-  it('enters chat mode with nothing sent, and passes displayName and avatarUrl through', async () => {
+  it('shows the greeting prompt above the ask bar, with nothing sent, before any tap', () => {
     stubQualifyingFetch();
-    render(
-      <Ask
-        handle="nadia"
-        questions={['Berapa harga?']}
-        displayName="Nadia Bakes"
-        avatarUrl="https://cdn.example/nadia.webp"
-        canCapture={true}
-      />,
+    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
+
+    // "What do you want to know?" is the one prompt: chat mode's own empty
+    // state reuses it rather than showing a second, personalised greeting.
+    // Moved here from page.tsx (previously proved at that level), since
+    // page.tsx no longer renders this text at all.
+    const prompt = screen.getByText('What do you want to know?');
+    const askBar = screen.getByRole('button', { name: /ask a question/i });
+    expect(prompt).toHaveAttribute('data-ask-prompt');
+    expect(prompt.compareDocumentPosition(askBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('enters chat mode on the page it is part of, not a layer over it', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <PageHarness>
+        <Ask
+          handle="nadia"
+          questions={['Berapa harga?']}
+          displayName="Nadia Bakes"
+          canCapture={true}
+        />
+      </PageHarness>,
     );
 
     await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
 
-    const dialog = await screen.findByRole('dialog', { name: 'Chat with Nadia Bakes' });
-    expect(dialog).toBeInTheDocument();
-    expect(screen.getByText('Hi! What do you want to know about Nadia Bakes?')).toBeInTheDocument();
-    expect(dialog.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/nadia.webp');
+    // Set on the ancestor BentoPage renders, not on anything Ask/ChatMode
+    // owns themselves -- BentoPage is a server component and holds no chat
+    // state of its own, so this is how the client side reaches it at all.
+    expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-mode', 'chat');
+    expect(screen.getByRole('button', { name: 'Back to links' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Berapa harga?' })).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('hides the prompt once a turn exists, and marks that on the page too', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <PageHarness>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </PageHarness>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    expect(screen.getByText('What do you want to know?')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa harga?' }));
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-has-turns', 'true'),
+    );
   });
 
   it('returns focus to the ask bar once chat mode closes', async () => {
@@ -86,11 +138,11 @@ describe('Ask, opening chat mode', () => {
 
     const askBar = screen.getByRole('button', { name: /ask a question/i });
     await userEvent.click(askBar);
-    await screen.findByRole('dialog');
+    await screen.findByRole('button', { name: 'Back to links' });
 
     await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
     expect(askBar).toHaveFocus();
   });
 });

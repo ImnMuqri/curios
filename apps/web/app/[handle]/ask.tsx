@@ -1,8 +1,9 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { AskBar } from '@curios/ui';
+import styles from './page.module.css';
 
 /*
  * The budget lives here. FRONTEND.md: under 40KB before chat opens, and the
@@ -29,13 +30,11 @@ export function Ask({
   handle,
   questions,
   displayName,
-  avatarUrl,
   canCapture,
 }: {
   handle: string;
   questions: string[];
   displayName: string;
-  avatarUrl?: string | null;
   /** False for a personal page. The server refuses anyway; this stops the card being offered at all. */
   canCapture: boolean;
 }) {
@@ -52,13 +51,26 @@ export function Ask({
     setOpen(true);
   }, []);
 
-  const onClose = useCallback(() => {
-    setOpen(false);
-    // Focus follows the visitor back to what they tapped -- without this,
-    // Tab from a just-closed chat mode lands wherever it happened to be
-    // before the bar was ever touched.
-    askBarRef.current?.focus();
-  }, []);
+  const onClose = useCallback(() => setOpen(false), []);
+
+  /**
+   * Focus follows the visitor back to what they tapped -- without this, Tab
+   * from a just-closed chat mode lands wherever it happened to be before the
+   * bar was ever touched. Done from an effect, on the true -> false edge,
+   * rather than inside `onClose` itself: the ask bar is hidden by a CSS rule
+   * keyed on `data-mode`, which `ChatMode` removes from its own effect on the
+   * very same `open` transition. Calling `.focus()` synchronously inside
+   * `onClose` would run before either effect has fired -- while the bar is
+   * still `display: none` under the old attribute value -- and silently
+   * fail. Ordering `ChatMode`'s effect before this one (a child's effects run
+   * before its parent's, for the same commit) is what makes waiting for the
+   * next effect pass enough.
+   */
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) askBarRef.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
 
   // Stable across renders: the streaming loop reads this after awaits, so a
   // fresh function every render would not itself break anything here, but
@@ -106,6 +118,18 @@ export function Ask({
 
   return (
     <>
+      {/*
+        Moved here from page.tsx: this text now doubles as chat mode's own
+        empty-state greeting (FRONTEND.md's amendment), which means whether
+        it shows depends on client state -- whether a turn exists yet -- that
+        a server component cannot hold. `data-ask-prompt` is the hook
+        Bento.module.css hides it through once `[data-has-turns]` is set;
+        server-rendered regardless, so a no-JS visitor still sees it, same as
+        before.
+      */}
+      <p className={styles.askPrompt} data-ask-prompt>
+        What do you want to know?
+      </p>
       <AskBar ref={askBarRef} questions={questions} onOpen={onOpen} />
       {everOpened ? (
         <ChatMode
@@ -113,7 +137,6 @@ export function Ask({
           onClose={onClose}
           onAsk={onAsk}
           displayName={displayName}
-          avatarUrl={avatarUrl}
           questions={questions}
           // Omitted on a personal page, so the card is never offered there.
           // The server refuses one anyway; this stops it being asked for.

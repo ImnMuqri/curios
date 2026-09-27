@@ -17,6 +17,16 @@ interface Turn {
   answer: string;
 }
 
+/**
+ * The ancestor `BentoPage` renders with `data-bento-page`. This component is
+ * never portalled and never full-screen -- it is a state of that same page --
+ * so it reaches up through the real DOM tree to it rather than taking it as
+ * a prop, which would make a server component carry chat-mode's own state.
+ */
+function findPage(node: HTMLElement | null): HTMLElement | null {
+  return node?.closest<HTMLElement>('[data-bento-page]') ?? null;
+}
+
 export interface ChatModeProps {
   /**
    * Controlled by the caller, not this component: the whole point of the
@@ -38,10 +48,8 @@ export interface ChatModeProps {
     question: string,
     conversationId: string | null,
   ) => Promise<ReadableStream<Uint8Array> | null>;
-  /** Named in the top bar and the greeting, and on the capture card's consent line. */
+  /** Named on the capture card's consent line. The page's own header already shows it; this does not repeat it. */
   displayName: string;
-  /** Rendered in the top bar next to the name. Omitted -- nothing, not a placeholder icon -- when there is none. */
-  avatarUrl?: string | null;
   /** This page's suggested questions. Up to four become tappable chips before any turn exists. */
   questions: string[];
   /**
@@ -57,7 +65,6 @@ export function ChatMode({
   onClose,
   onAsk,
   displayName,
-  avatarUrl,
   questions,
   onCapture,
 }: ChatModeProps) {
@@ -72,6 +79,7 @@ export function ChatMode({
   const [qualified, setQualified] = useState(false);
   const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const end = useRef<HTMLDivElement>(null);
 
   /**
    * A ref, not state. The streaming loop below reads it after awaits, and a
@@ -135,16 +143,49 @@ export function ChatMode({
     onClose();
   }, [onClose]);
 
+  /**
+   * The owner's own complaint about the first version of this: a full-screen
+   * layer "looks like it opened another page". Chat mode is a state of the
+   * same page instead -- `data-mode="chat"` on the page root is what
+   * Bento.module.css collapses the grid and bio against, and what hides the
+   * ask bar in favour of the composer below. `BentoPage` is a server
+   * component and holds none of this itself, so it is set here by direct DOM
+   * mutation on the ancestor rather than through a prop.
+   *
+   * The folded-away content is also marked `inert` and `aria-hidden` here,
+   * in the same effect: native `inert` is what removes it from the tab order
+   * (nothing else does, now that this is not a modal dialog with a manual
+   * focus trap), and `aria-hidden` backs it up for anything that only reads
+   * ARIA. Both flip back the moment chat mode closes.
+   */
   useEffect(() => {
-    // A `position: fixed` layer still lets the page behind it scroll on
-    // touch unless the body itself is pinned.
-    if (!open) return;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = previous;
-    };
+    const page = findPage(panel.current);
+    if (!page) return;
+
+    if (open) page.dataset.mode = 'chat';
+    else delete page.dataset.mode;
+
+    const foldaway = page.querySelector<HTMLElement>('[data-foldaway]');
+    if (!foldaway) return;
+    foldaway.inert = open;
+    if (open) foldaway.setAttribute('aria-hidden', 'true');
+    else foldaway.removeAttribute('aria-hidden');
   }, [open]);
+
+  /**
+   * "What do you want to know?" (rendered by `Ask`, outside this component)
+   * doubles as chat mode's own empty-state greeting, so it has to disappear
+   * once there is a transcript to show instead -- something only this
+   * component, not the server-rendered page around it, knows. Keyed on the
+   * turn count rather than `turns` itself, so a streaming answer's growing
+   * text does not re-touch the DOM on every chunk.
+   */
+  useEffect(() => {
+    const page = findPage(panel.current);
+    if (!page) return;
+    if (turns.length > 0) page.dataset.hasTurns = 'true';
+    else delete page.dataset.hasTurns;
+  }, [turns.length]);
 
   useEffect(() => {
     // The keyboard follows the eye. There is no seed answer to wait on
@@ -153,6 +194,19 @@ export function ChatMode({
     if (!open) return;
     input.current?.focus();
   }, [open]);
+
+  /**
+   * Nothing here is `position: fixed` anymore, so the page scrolls normally
+   * and a lock would just fight the visitor's own scrolling. What used to be
+   * a lock is now this: keep the newest line of the conversation in view as
+   * it streams in, the same way any chat surface does. Keyed on the whole
+   * `turns` array, not its length, so this also fires as an answer's text
+   * grows chunk by chunk, not just when a new turn is added.
+   */
+  useEffect(() => {
+    if (turns.length === 0) return;
+    end.current?.scrollIntoView({ block: 'end' });
+  }, [turns]);
 
   /**
    * One question, from a chip or the composer. The streaming loop is the one
@@ -245,32 +299,16 @@ export function ChatMode({
     [onAsk],
   );
 
+  /**
+   * Escape only, now. The old manual Tab-wrap existed because `aria-modal`
+   * does not itself stop Tab reaching what it labels inert -- but this is no
+   * longer a modal dialog laid over the page, and the content it replaces is
+   * marked genuinely `inert` above, which natively removes it from the tab
+   * order. There is nothing left for a hand-rolled trap to do.
+   */
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Escape') {
-        leave();
-        return;
-      }
-      if (event.key !== 'Tab') return;
-
-      // A real trap. aria-modal tells assistive technology the rest of the
-      // page is inert; it does not stop Tab, so the wrap is done by hand.
-      const focusable = panel.current?.querySelectorAll<HTMLElement>(
-        'button, [href], input, textarea, select, [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusable || focusable.length === 0) return;
-
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
+      if (event.key === 'Escape') leave();
     },
     [leave],
   );
@@ -281,7 +319,7 @@ export function ChatMode({
   return (
     <div
       ref={panel}
-      className={styles.layer}
+      className={styles.panel}
       // Kept mounted, not conditionally rendered, so the thread survives
       // being hidden -- `hidden` drops it from layout and the accessibility
       // tree, `inert` additionally stops it from being focused or clicked
@@ -290,57 +328,48 @@ export function ChatMode({
       hidden={!open}
       inert={!open}
       onKeyDown={onKeyDown}
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Chat with ${displayName}`}
     >
-      <div className={styles.topBar}>
-        <button type="button" aria-label="Back to links" className={styles.back} onClick={leave}>
-          ←
-        </button>
-        {avatarUrl ? <img src={avatarUrl} alt="" className={styles.avatar} /> : null}
-        <p className={styles.name}>{displayName}</p>
-      </div>
+      <button type="button" aria-label="Back to links" className={styles.back} onClick={leave}>
+        ←
+      </button>
 
-      <div className={styles.body}>
-        {turns.length === 0 ? (
-          <div className={styles.empty}>
-            <p className={styles.greeting}>Hi! What do you want to know about {displayName}?</p>
-            {chips.length > 0 ? (
-              <div className={styles.chips}>
-                {chips.map((question) => (
-                  <button
-                    key={question}
-                    type="button"
-                    className={styles.chip}
-                    onClick={() => void send(question)}
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            ) : null}
+      {turns.length === 0 ? (
+        chips.length > 0 ? (
+          <div className={styles.chips}>
+            {chips.map((question) => (
+              <button
+                key={question}
+                type="button"
+                className={styles.chip}
+                onClick={() => void send(question)}
+              >
+                {question}
+              </button>
+            ))}
           </div>
-        ) : (
-          turns.map((turn, index) => (
-            <div key={`${index}-${turn.question}`} className={styles.turn}>
-              <p className={styles.question}>{turn.question}</p>
-              <AnswerBubble text={turn.answer} />
-            </div>
-          ))
-        )}
+        ) : null
+      ) : (
+        turns.map((turn, index) => (
+          <div key={`${index}-${turn.question}`} className={styles.turn}>
+            <p className={styles.question}>{turn.question}</p>
+            <AnswerBubble text={turn.answer} />
+          </div>
+        ))
+      )}
 
-        {qualified && onCapture ? (
-          <CaptureCard
-            shopName={displayName}
-            // Chat mode supplies the conversation id, the same way it
-            // supplies it to onAsk: this component owns the thread, so
-            // nothing outside has to keep a second copy of which one is
-            // current.
-            onSubmit={(phone) => onCapture(phone, conversationId.current ?? '')}
-          />
-        ) : null}
-      </div>
+      {qualified && onCapture ? (
+        <CaptureCard
+          shopName={displayName}
+          // Chat mode supplies the conversation id, the same way it
+          // supplies it to onAsk: this component owns the thread, so
+          // nothing outside has to keep a second copy of which one is
+          // current.
+          onSubmit={(phone) => onCapture(phone, conversationId.current ?? '')}
+        />
+      ) : null}
+
+      {/* Scrolled into view as the thread grows; carries no content of its own. */}
+      <div ref={end} />
 
       <form
         className={styles.composer}

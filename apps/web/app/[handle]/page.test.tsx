@@ -152,17 +152,12 @@ describe('the link to /[handle]/faq', () => {
     expect(askBar.compareDocumentPosition(faqLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  // The ask bar sat straight under the grid with nothing to say what it was for.
-  it('introduces the ask bar with a prompt just above it', async () => {
-    vi.mocked(Ask).mockImplementationOnce(() => <div data-testid="ask-bar" />);
-    vi.mocked(getPublicPage).mockResolvedValue(page);
-
-    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-
-    const prompt = screen.getByText('What do you want to know?');
-    const askBar = screen.getByTestId('ask-bar');
-    expect(prompt.compareDocumentPosition(askBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
+  // The prompt ("What do you want to know?") moved into `Ask` itself in the
+  // in-place chat mode rework -- it now doubles as chat mode's own
+  // empty-state greeting, which needs client state (`Ask`, mocked to a stub
+  // here) that page.tsx cannot hold. ask.test.tsx proves it sits above the
+  // ask bar; this file only ever proved page.tsx's own wiring, and page.tsx
+  // no longer renders this text at all.
 
   it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
@@ -244,24 +239,11 @@ describe('the capture card and the plan', () => {
     expect(askProps()?.canCapture).toBe(false);
   });
 
-  // Self-review addition: the picture test above proves BentoPage gets the
-  // owner's avatar URL, but nothing proved `Ask` gets the same one -- chat
-  // mode's top bar needs it too, and a page.tsx that forgot to forward it
-  // would leave BentoPage's test green while chat mode showed no picture.
-  it("passes the owner's picture url to Ask, computed the same way as BentoPage's", async () => {
-    const original = process.env.STORAGE_PUBLIC_URL;
-    process.env.STORAGE_PUBLIC_URL = 'https://cdn.example';
-    try {
-      vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, avatarKey: 'avatars/p/1.webp' });
-
-      render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-
-      expect(askProps()?.avatarUrl).toBe('https://cdn.example/avatars/p/1.webp');
-    } finally {
-      if (original === undefined) delete process.env.STORAGE_PUBLIC_URL;
-      else process.env.STORAGE_PUBLIC_URL = original;
-    }
-  });
+  // avatarUrl is no longer part of Ask's props: the in-place chat mode
+  // rework removed ChatMode's own header (BentoPage's real one is the only
+  // one now, per the owner's "looks like it opened another page" note), which
+  // left Ask with no remaining use for the picture. BentoPage.test.tsx still
+  // proves page.tsx forwards a real avatar key to BentoPage's own header.
 
   it('passes the display name to Ask', async () => {
     vi.mocked(getPublicPage).mockResolvedValueOnce(page);

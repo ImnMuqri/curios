@@ -67,6 +67,16 @@ describe('AskBar', () => {
     expect(onOpen).toHaveBeenCalledWith();
   });
 
+  // The in-place chat mode rework: the composer takes over this exact
+  // sticky-bottom spot rather than appearing somewhere else, by hiding this
+  // button through a plain `[data-ask-bar]` attribute selector in
+  // Bento.module.css -- a hashed CSS-module class name could not be reached
+  // from a different package's stylesheet, but a plain attribute can.
+  it('carries a stable attribute a page-level stylesheet can hide it through', () => {
+    render(<AskBar questions={['a question']} onOpen={vi.fn()} />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-ask-bar');
+  });
+
   it('forwards its ref to the button, so a caller can return focus to it', () => {
     const ref = { current: null as HTMLButtonElement | null };
     render(<AskBar ref={ref} questions={['a question']} onOpen={vi.fn()} />);

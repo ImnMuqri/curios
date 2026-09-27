@@ -94,15 +94,14 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         accentColor={page.accentColor}
         headingFont={page.headingFont}
       >
-        {/* A sibling of the ask bar, never a wrapper: the bar is position:
-            sticky, and a wrapper would become its containing block and stop
-            it sticking. The prompt scrolls away; the bar stays. */}
-        <p className={styles.askPrompt}>What do you want to know?</p>
+        {/* The "What do you want to know?" prompt now lives inside Ask
+            (ask.tsx) -- it doubles as chat mode's own empty-state greeting,
+            which needs to react to client state (whether a turn exists yet)
+            that page.tsx, a server component, cannot hold. */}
         <Ask
           handle={page.handle}
           questions={questions}
           displayName={page.displayName}
-          avatarUrl={ownerAvatarUrl}
           canCapture={canCapture({
             mode: page.mode,
             paidUntil: page.paidUntil,

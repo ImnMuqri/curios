@@ -43,6 +43,12 @@ export const AskBar = forwardRef<HTMLButtonElement, { questions: string[]; onOpe
         ref={ref}
         type="button"
         className={styles.bar}
+        // A plain attribute, not the (hashed) CSS-module class: BentoPage's
+        // own stylesheet hides this element in chat mode by reaching for
+        // `[data-ask-bar]` directly, since the composer is meant to read as
+        // this same control settling into place rather than a new one
+        // appearing elsewhere.
+        data-ask-bar
         // A fixed name, because the visible text rotates. Without it, what this
         // control announces itself as changes every four seconds.
         aria-label="Ask a question about this page"

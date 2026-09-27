@@ -109,18 +109,27 @@ Rules:
 - Answers can render a `LinkCard`. That is the whole point.
 
 *Amended by slice 13.* The sheet is gone. Tapping the bar now switches the whole page
-into **chat mode** (`ChatMode`, `packages/ui/src/chat`) -- a full-screen layer, the
-claude.ai treatment, not a 74% sheet with links peeking out behind it. A back arrow
-(labelled "Back to links" for a screen reader), Escape, or the phone's own back gesture
-returns to the bento; entering pushes one history entry so the gesture has something of
-chat mode's own to consume rather than leaving the page outright. States: `idle` →
-`chat-mode` (`empty` -- a greeting plus up to four chips, nothing sent yet -- or
-`thread`) → `thinking` → `answering` (streamed) → `capture` (conditional). The old
-`sheet-open` state sent the bar's rotating suggestion immediately on tap; chat mode
-sends nothing until the visitor taps a chip or submits the composer themselves. The
-thread is kept, not thrown away, while chat mode is hidden -- the component stays
-mounted, so tapping the bar again resumes the same conversation rather than starting a
-new one.
+into **chat mode** (`ChatMode`, `packages/ui/src/chat`) -- a state of this same page,
+not a layer over it. The first version was a full-screen overlay, the claude.ai
+treatment; the owner's own read of it was "it looks like it opened another page", so it
+was reworked to transition the page in place instead. The header (picture, name,
+`curios.my/:handle`) stays exactly where BentoPage already renders it, with a small back
+arrow beside it (labelled "Back to links" for a screen reader); the bio and the bento
+grid fold upward to make room, and the freed space becomes the conversation. The ask bar
+itself becomes the composer, settling into the same sticky-bottom spot rather than a new
+control appearing elsewhere. Escape or the phone's own back gesture also returns to the
+bento; entering pushes one history entry so the gesture has something of chat mode's own
+to consume rather than leaving the page outright. States: `idle` → `chat-mode` (`empty`
+-- the same "What do you want to know?" prompt as the greeting, plus up to four chips,
+nothing sent yet -- or `thread`) → `thinking` → `answering` (streamed) → `capture`
+(conditional). The old `sheet-open` state sent the bar's rotating suggestion immediately
+on tap; chat mode sends nothing until the visitor taps a chip or submits the composer
+themselves. The thread is kept, not thrown away, while chat mode is closed -- the
+component stays mounted, hidden, so tapping the bar again resumes the same conversation
+rather than starting a new one. `BentoPage` is a server component and holds none of this
+state itself: `ChatMode` reaches its root through `closest('[data-bento-page]')` and
+toggles `data-mode`/`data-has-turns` on it directly, which is what the fold, the hidden
+ask bar and the hidden prompt are all keyed on in Bento.module.css.
 
 ---
 

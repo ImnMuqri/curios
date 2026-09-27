@@ -16,3 +16,11 @@ Object.defineProperty(window, 'matchMedia', {
 });
 
 import '@testing-library/jest-dom/vitest';
+
+// jsdom has no layout engine, so it does not implement scrollIntoView at all
+// -- calling it throws "not a function" without this. ChatMode calls it to
+// keep the newest line of a streaming answer in view, now that nothing is
+// position: fixed and the page scrolls normally instead of being locked.
+if (!window.HTMLElement.prototype.scrollIntoView) {
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+}

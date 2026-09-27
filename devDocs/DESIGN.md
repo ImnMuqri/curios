@@ -108,11 +108,11 @@ No scroll reveals. No parallax. No entrance animations on the dashboard. The das
 is a tool that a busy person opens at 11pm, and it should be instant, not theatrical.
 
 *Amended by slice 13.* The one orchestrated moment is now entering chat mode, not the
-sheet -- there is no separate dim to fade in behind it, because the full-screen layer
-covers the bento completely rather than sitting over it. Same budget, moved: 260ms,
-the same spring curve, fading and rising in together rather than as two separate
-motions on two separate elements. Messages still arrive with the 8px rise and no
-stagger delay beyond 40ms.
+sheet -- and not a layer fading in over the bento either. The bio and the bento grid
+fold upward in place: a single-row CSS grid animating its own row track from `1fr` to
+`0fr`, fading at the same time, so the page transitions rather than something new
+appearing on top of it. Same budget, moved: 260ms, the same spring curve. Messages still
+arrive with the 8px rise and no stagger delay beyond 40ms.
 
 ---
 

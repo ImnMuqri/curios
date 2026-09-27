@@ -17,6 +17,25 @@ function streamOf(...events: string[]): ReadableStream<Uint8Array> {
 }
 
 /**
+ * The DOM shape `BentoPage` actually renders, reduced to what `ChatMode`
+ * looks for: a `[data-bento-page]` ancestor to toggle `data-mode`/`data-has-turns`
+ * on, and a `[data-foldaway]` block -- with something real and focusable
+ * inside it, standing in for the bio and the tile grid -- that chat mode
+ * marks `inert` while open. `Ask`'s own bar is not part of this harness;
+ * `ask.test.tsx` covers the real wiring end to end.
+ */
+function PageHarness({ children }: { children: React.ReactNode }) {
+  return (
+    <div data-bento-page>
+      <div data-foldaway>
+        <a href="https://example.com">A bento link</a>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
  * A minimal stand-in for `apps/web/app/[handle]/ask.tsx`'s own `open` state,
  * so tests can prove the thread survives a close/reopen cycle the way the
  * real caller keeps ChatMode mounted -- without depending on `Ask` or
@@ -25,39 +44,38 @@ function streamOf(...events: string[]): ReadableStream<Uint8Array> {
 function Harness(props: Omit<ChatModeProps, 'open' | 'onClose'>) {
   const [open, setOpen] = useState(true);
   return (
-    <>
+    <PageHarness>
       <button type="button" onClick={() => setOpen(true)}>
         reopen
       </button>
       <ChatMode {...props} open={open} onClose={() => setOpen(false)} />
-    </>
+    </PageHarness>
   );
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
-  document.body.style.overflow = '';
 });
 
 describe('ChatMode, entering', () => {
-  it('shows a greeting, up to four chips, and sends nothing until one is chosen', async () => {
+  it('sets data-mode="chat" on the page root, shows the chips, and sends nothing until one is chosen', async () => {
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
-    render(
-      <ChatMode
-        open
-        onClose={vi.fn()}
-        onAsk={onAsk}
-        displayName="Nadia Bakes"
-        questions={['Berapa harga?', 'Buka bila?', 'Ada delivery?', 'Boleh custom?', 'Lokasi kat mana?']}
-      />,
+    const { container } = render(
+      <PageHarness>
+        <ChatMode
+          open
+          onClose={vi.fn()}
+          onAsk={onAsk}
+          displayName="Nadia Bakes"
+          questions={['Berapa harga?', 'Buka bila?', 'Ada delivery?', 'Boleh custom?', 'Lokasi kat mana?']}
+        />
+      </PageHarness>,
     );
 
-    const dialog = await screen.findByRole('dialog', { name: 'Chat with Nadia Bakes' });
-    expect(dialog).toBeInTheDocument();
-    expect(
-      screen.getByText('Hi! What do you want to know about Nadia Bakes?'),
-    ).toBeInTheDocument();
+    const page = container.querySelector('[data-bento-page]');
+    expect(page).toHaveAttribute('data-mode', 'chat');
 
+    expect(screen.getByRole('button', { name: 'Back to links' })).toBeInTheDocument();
     for (const q of ['Berapa harga?', 'Buka bila?', 'Ada delivery?', 'Boleh custom?']) {
       expect(screen.getByRole('button', { name: q })).toBeInTheDocument();
     }
@@ -80,7 +98,7 @@ describe('ChatMode, entering', () => {
       <ChatMode open={false} onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />,
     );
 
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
   });
 
   it('pushes exactly one history entry on entry, even under Strict Mode', () => {
@@ -95,19 +113,29 @@ describe('ChatMode, entering', () => {
     expect(pushSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('locks page scroll while open, and restores it on close', () => {
-    const original = document.body.style.overflow;
-    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
-    const { rerender } = render(
-      <ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />,
-    );
+  it('scrolls the latest line of the thread into view as it grows, instead of locking page scroll', async () => {
+    // Nothing here is position: fixed anymore, so a body-scroll lock would
+    // just fight the visitor's own scrolling; this replaced it. Spied on
+    // HTMLElement's own prototype, not Element's -- that is where
+    // vitest.setup.ts's stub for jsdom's missing scrollIntoView lives, and it
+    // is closer than Element.prototype on a real element's chain, so a spy
+    // placed on Element.prototype would never be reached at all.
+    const scrollSpy = vi
+      .spyOn(window.HTMLElement.prototype, 'scrollIntoView')
+      .mockImplementation(() => {});
+    const onAsk = vi
+      .fn()
+      .mockResolvedValue(
+        streamOf('data: {"type":"text","text":"RM45 "}\n\n', 'data: {"type":"text","text":"sekilo."}\n\n'),
+      );
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
 
-    expect(document.body.style.overflow).toBe('hidden');
+    expect(scrollSpy).not.toHaveBeenCalled();
 
-    rerender(
-      <ChatMode open={false} onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />,
-    );
-    expect(document.body.style.overflow).toBe(original);
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalled());
   });
 
   // React mounts every component twice in development, on purpose. With no
@@ -276,21 +304,6 @@ describe('ChatMode, asking', () => {
     await waitFor(() => expect(onAsk).toHaveBeenLastCalledWith('ada delivery?', 'c1'));
   });
 
-  // Fix round 1, Important #1: carried over from the deleted AskSheet suite.
-  // FRONTEND.md's accessibility floor calls this non-negotiable -- a
-  // streamed answer must announce politely, not silently or interrupting.
-  it('announces the answer politely', async () => {
-    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"text","text":"RM45"}\n\n'));
-    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
-
-    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
-    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
-
-    const live = await screen.findByRole('status');
-    await waitFor(() => expect(live).toHaveTextContent('RM45'));
-    expect(live).toHaveAttribute('aria-live', 'polite');
-  });
-
   it('keeps every turn on screen, because the thread is the point', async () => {
     const onAsk = vi
       .fn()
@@ -320,6 +333,21 @@ describe('ChatMode, asking', () => {
     expect(screen.getByText(/RM45 sekilo/)).toBeInTheDocument();
     expect(screen.getByText('harga?')).toBeInTheDocument();
     expect(screen.getByText('ada delivery?')).toBeInTheDocument();
+  });
+
+  // Fix round 1, Important #1: carried over from the deleted AskSheet suite.
+  // FRONTEND.md's accessibility floor calls this non-negotiable -- a
+  // streamed answer must announce politely, not silently or interrupting.
+  it('announces the answer politely', async () => {
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"text","text":"RM45"}\n\n'));
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const live = await screen.findByRole('status');
+    await waitFor(() => expect(live).toHaveTextContent('RM45'));
+    expect(live).toHaveAttribute('aria-live', 'polite');
   });
 });
 
@@ -375,12 +403,39 @@ describe('ChatMode, leaving', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('is a modal dialog, so focus and the accessibility tree agree', async () => {
+  it('removes the bento grid and bio from the tab order and accessibility tree while open, and restores both on close', async () => {
+    vi.spyOn(history, 'back').mockImplementation(() => {});
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
+    const { container } = render(
+      <Harness onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />,
+    );
+
+    const foldaway = container.querySelector('[data-foldaway]');
+    expect(foldaway).toHaveAttribute('aria-hidden', 'true');
+    expect((foldaway as HTMLElement).inert).toBe(true);
+    expect(screen.queryByRole('link', { name: 'A bento link' })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
+
+    expect(foldaway).not.toHaveAttribute('aria-hidden');
+    expect((foldaway as HTMLElement).inert).toBe(false);
+    expect(screen.getByRole('link', { name: 'A bento link' })).toBeInTheDocument();
+    expect(container.querySelector('[data-bento-page]')).not.toHaveAttribute('data-mode');
+  });
+
+  it('is a plain part of the page: no fixed overlay, and no second copy of the display name', () => {
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
     render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
 
-    const dialog = await screen.findByRole('dialog');
-    expect(dialog).toHaveAttribute('aria-modal', 'true');
+    // BentoPage's own header renders the name; this component must not
+    // repeat it -- the owner's complaint about the first version was that a
+    // full-screen layer "looks like it opened another page", and a second
+    // header would carry the same problem in miniature.
+    expect(screen.queryByText('Nadia Bakes')).not.toBeInTheDocument();
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+
+    const css = readFileSync(join(import.meta.dirname, 'ChatMode.module.css'), 'utf8');
+    expect(css).not.toMatch(/position:\s*fixed/);
   });
 
   it('keeps the thread across a close and reopen', async () => {
@@ -397,14 +452,14 @@ describe('ChatMode, leaving', () => {
     await waitFor(() => expect(screen.getByText(/RM45/)).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'reopen' }));
     expect(screen.getByText(/RM45/)).toBeInTheDocument();
     expect(screen.getByText('Berapa harga?')).toBeInTheDocument();
-    // The empty state -- greeting and chips -- must not come back once a
-    // turn exists; that would look like the thread had been forgotten.
-    expect(screen.queryByText(/Hi! What do you want to know/)).not.toBeInTheDocument();
+    // The empty-state chips must not come back once a turn exists; that
+    // would look like the thread had been forgotten.
+    expect(screen.queryByRole('button', { name: 'Berapa harga?' })).not.toBeInTheDocument();
   });
 
   // Fix round 1, Important #2: brief test #3 in full -- the previous test only
@@ -430,7 +485,7 @@ describe('ChatMode, leaving', () => {
     await waitFor(() => expect(screen.getByText(/RM45/)).toBeInTheDocument());
 
     await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'reopen' }));
     expect(screen.getByText(/RM45/)).toBeInTheDocument();
@@ -508,29 +563,6 @@ describe('ChatMode, the capture card', () => {
 });
 
 describe('ChatMode, styling', () => {
-  it('renders the owner picture when given, and nothing when there is none', () => {
-    // alt="" is deliberate -- the name sits right next to it as visible text
-    // -- which drops the image out of the accessible "img" role, so this
-    // reaches it as a plain DOM node instead of through screen.getByRole.
-    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
-    const { container, rerender } = render(
-      <ChatMode
-        open
-        onClose={vi.fn()}
-        onAsk={onAsk}
-        displayName="Nadia Bakes"
-        avatarUrl="https://cdn.example/a.webp"
-        questions={[]}
-      />,
-    );
-    expect(container.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/a.webp');
-
-    rerender(
-      <ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />,
-    );
-    expect(container.querySelector('img')).not.toBeInTheDocument();
-  });
-
   // Fix round 2, Important #2: the spec says the accent paints "the chat
   // sheet's highlights" -- the send button and the composer's focus ring --
   // not a fixed --hijau. Read the way design-rules.test.ts reads a
