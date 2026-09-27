@@ -16,6 +16,21 @@ const FONT_NAMES: Record<HeadingFont, string> = {
   OUTFIT: 'Outfit',
 };
 
+// A hex string is not a name -- "Accent #0c7a62" tells a screen-reader user
+// nothing a sighted owner does not already get for free from the swatch's
+// colour. One name per preset, in `ACCENT_PRESETS`' order; the hex still
+// shows, as the swatch's `title`, for whoever wants it.
+const ACCENT_NAMES: Record<string, string> = {
+  '#0c7a62': 'Hijau',
+  '#1f4fd1': 'Blue',
+  '#6d3fb3': 'Purple',
+  '#c2185b': 'Magenta',
+  '#d8452f': 'Red',
+  '#e08a1e': 'Amber',
+  '#2d6a4f': 'Forest',
+  '#10231f': 'Ink',
+};
+
 /**
  * Style, accent and heading font. Each choice is a single click, so it saves
  * at once rather than on a debounce. A custom colour saves only once it is a
@@ -83,8 +98,8 @@ export function AppearanceEditor({
         <legend>Accent colour</legend>
         <div className={styles.swatches}>
           {ACCENT_PRESETS.map((hex) => (
-            <label key={hex} className={styles.swatch} style={{ background: hex }} data-checked={accentColor === hex}>
-              <input type="radio" name="accent" aria-label={`Accent ${hex}`} checked={accentColor === hex} onChange={() => { setCustom(hex); choose({ accentColor: hex }); }} />
+            <label key={hex} className={styles.swatch} style={{ background: hex }} title={hex} data-checked={accentColor === hex}>
+              <input type="radio" name="accent" aria-label={ACCENT_NAMES[hex] ?? hex} checked={accentColor === hex} onChange={() => { setCustom(hex); choose({ accentColor: hex }); }} />
             </label>
           ))}
         </div>

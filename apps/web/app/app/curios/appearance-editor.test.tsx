@@ -41,8 +41,22 @@ describe('AppearanceEditor', () => {
 
   it('picks a preset accent', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('radio', { name: 'Accent #6d3fb3' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Purple' }));
     expect(props.save).toHaveBeenCalledWith({ accentColor: '#6d3fb3' });
+  });
+
+  // Fix round 2, Minor #8: a hex string read out loud ("Accent pound sign
+  // zero c seven a six two") tells a screen-reader user nothing a sighted
+  // owner does not already get from the swatch's own colour. Each preset
+  // gets a human name; the hex still shows, as the swatch's title, for
+  // whoever wants it.
+  it('names every preset swatch for a screen reader, and keeps the hex as its title', () => {
+    setup();
+    const names = ['Hijau', 'Blue', 'Purple', 'Magenta', 'Red', 'Amber', 'Forest', 'Ink'];
+    for (const name of names) {
+      expect(screen.getByRole('radio', { name })).toBeInTheDocument();
+    }
+    expect(screen.getByRole('radio', { name: 'Hijau' }).closest('label')).toHaveAttribute('title', '#0c7a62');
   });
 
   it('takes a custom colour typed as hex, and refuses one that is not', async () => {
@@ -89,7 +103,7 @@ describe('AppearanceEditor', () => {
   // test read the custom field's value after a preset click.
   it('syncs the custom colour field to a chosen preset', async () => {
     setup();
-    await userEvent.click(screen.getByRole('radio', { name: 'Accent #6d3fb3' }));
+    await userEvent.click(screen.getByRole('radio', { name: 'Purple' }));
     expect(screen.getByLabelText('Custom colour')).toHaveValue('#6d3fb3');
   });
 
