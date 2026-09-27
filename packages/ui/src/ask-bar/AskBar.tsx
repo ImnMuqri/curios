@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { forwardRef, useEffect, useState } from 'react';
 import styles from './AskBar.module.css';
 
 const CYCLE_MS = 4000;
@@ -16,42 +16,43 @@ const FALLBACK = 'Ask about anything on this page';
 /**
  * The signature. DESIGN.md: everything else stays quiet so this can be loud.
  *
- * A button, not an input. Tapping it opens the sheet, which is where typing
- * happens -- and a button is tabbable and fires on Enter without any of the
- * work a div would need to fake both.
+ * A button, not an input. Tapping it switches the page into chat mode, which
+ * is where typing happens -- and a button is tabbable and fires on Enter
+ * without any of the work a div would need to fake both.
+ *
+ * Forwards its ref to the underlying button so the caller can return focus
+ * to it when chat mode closes -- the one piece of chat mode's own DOM this
+ * component has no way to reach itself.
  */
-export function AskBar({
-  questions,
-  onOpen,
-}: {
-  questions: string[];
-  onOpen: (seed: string) => void;
-}) {
-  const [index, setIndex] = useState(0);
+export const AskBar = forwardRef<HTMLButtonElement, { questions: string[]; onOpen: () => void }>(
+  function AskBar({ questions, onOpen }, ref) {
+    const [index, setIndex] = useState(0);
 
-  useEffect(() => {
-    if (questions.length < 2) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    useEffect(() => {
+      if (questions.length < 2) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    const timer = setInterval(() => setIndex((i) => (i + 1) % questions.length), CYCLE_MS);
-    return () => clearInterval(timer);
-  }, [questions.length]);
+      const timer = setInterval(() => setIndex((i) => (i + 1) % questions.length), CYCLE_MS);
+      return () => clearInterval(timer);
+    }, [questions.length]);
 
-  const showing = questions[index] ?? FALLBACK;
+    const showing = questions[index] ?? FALLBACK;
 
-  return (
-    <button
-      type="button"
-      className={styles.bar}
-      // A fixed name, because the visible text rotates. Without it, what this
-      // control announces itself as changes every four seconds.
-      aria-label="Ask a question about this page"
-      onClick={() => onOpen(showing)}
-    >
-      {/* Keyed by content so React remounts it and the wipe replays. */}
-      <span key={showing} className={styles.question}>
-        {showing}
-      </span>
-    </button>
-  );
-}
+    return (
+      <button
+        ref={ref}
+        type="button"
+        className={styles.bar}
+        // A fixed name, because the visible text rotates. Without it, what this
+        // control announces itself as changes every four seconds.
+        aria-label="Ask a question about this page"
+        onClick={() => onOpen()}
+      >
+        {/* Keyed by content so React remounts it and the wipe replays. */}
+        <span key={showing} className={styles.question}>
+          {showing}
+        </span>
+      </button>
+    );
+  },
+);

@@ -243,6 +243,33 @@ describe('the capture card and the plan', () => {
 
     expect(askProps()?.canCapture).toBe(false);
   });
+
+  // Self-review addition: the picture test above proves BentoPage gets the
+  // owner's avatar URL, but nothing proved `Ask` gets the same one -- chat
+  // mode's top bar needs it too, and a page.tsx that forgot to forward it
+  // would leave BentoPage's test green while chat mode showed no picture.
+  it("passes the owner's picture url to Ask, computed the same way as BentoPage's", async () => {
+    const original = process.env.STORAGE_PUBLIC_URL;
+    process.env.STORAGE_PUBLIC_URL = 'https://cdn.example';
+    try {
+      vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, avatarKey: 'avatars/p/1.webp' });
+
+      render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+      expect(askProps()?.avatarUrl).toBe('https://cdn.example/avatars/p/1.webp');
+    } finally {
+      if (original === undefined) delete process.env.STORAGE_PUBLIC_URL;
+      else process.env.STORAGE_PUBLIC_URL = original;
+    }
+  });
+
+  it('passes the display name to Ask', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce(page);
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(askProps()?.displayName).toBe('Nadia Bakes');
+  });
 });
 
 describe('indexing', () => {

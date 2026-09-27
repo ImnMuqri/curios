@@ -76,6 +76,10 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
       ? ((await getFaqIndex(page.handle, { limit: 1 }))?.entries.length ?? 0) > 0
       : false;
 
+  // Computed once: BentoPage and Ask both need the owner's picture, and the
+  // function is pure but there is no reason to call it twice.
+  const ownerAvatarUrl = avatarUrl(page.avatarKey);
+
   // Server-rendered into real DOM: with JavaScript disabled the tiles are
   // still a working link list, which is also the SEO artifact.
   return (
@@ -84,7 +88,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         displayName={page.displayName}
         handle={page.handle}
         bio={page.bio}
-        avatarUrl={avatarUrl(page.avatarKey)}
+        avatarUrl={ownerAvatarUrl}
         links={page.links}
         style={page.style}
         accentColor={page.accentColor}
@@ -97,7 +101,8 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         <Ask
           handle={page.handle}
           questions={questions}
-          shopName={page.displayName}
+          displayName={page.displayName}
+          avatarUrl={ownerAvatarUrl}
           canCapture={canCapture({
             mode: page.mode,
             paidUntil: page.paidUntil,

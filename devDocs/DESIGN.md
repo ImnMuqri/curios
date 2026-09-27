@@ -107,6 +107,13 @@ Everything else: 120ms colour transitions on press states, and nothing more.
 No scroll reveals. No parallax. No entrance animations on the dashboard. The dashboard
 is a tool that a busy person opens at 11pm, and it should be instant, not theatrical.
 
+*Amended by slice 13.* The one orchestrated moment is now entering chat mode, not the
+sheet -- there is no separate dim to fade in behind it, because the full-screen layer
+covers the bento completely rather than sitting over it. Same budget, moved: 260ms,
+the same spring curve, fading and rising in together rather than as two separate
+motions on two separate elements. Messages still arrive with the 8px rise and no
+stagger delay beyond 40ms.
+
 ---
 
 ## Components worth naming
@@ -135,7 +142,7 @@ is a tool that a busy person opens at 11pm, and it should be instant, not theatr
 | Tiles | white and pale accent tints | ink, with accent tiles |
 
 **One accent colour per page** — eight curated presets plus a custom picker — paints the
-lead tile, the ask bar's emphasis and the chat sheet's highlights. Text on it is never
+lead tile, the ask bar's emphasis and chat mode's highlights. Text on it is never
 the owner's problem: `readableOn(hex)` in `@curios/core` picks black or white ink,
 whichever has the higher WCAG contrast ratio against that colour, so no custom colour
 can make a page unreadable.

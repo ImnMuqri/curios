@@ -85,11 +85,11 @@ while React is in the page. The budget was unmeetable, not merely unmet.
 measures it, and claiming otherwise is what got the line above rewritten.
 
 Chat bundle loads on first interaction with the ask bar, never before. *Also not yet true:*
-the sheet is behind a `next/dynamic` import that does not currently produce a separate
-chunk, because `AskBar` is imported from the same `@curios/ui` barrel and webpack has
-nothing left to defer. It costs about 4KB of a 7KB chunk. See the comment in
-`apps/web/app/[handle]/ask.tsx`, which says so rather than describing a split that does
-not happen.
+chat mode (`ChatMode`, formerly the sheet) is behind a `next/dynamic` import that does not
+currently produce a separate chunk, because `AskBar` is imported from the same
+`@curios/ui` barrel and webpack has nothing left to defer. It costs about 4KB of a 7KB
+chunk. See the comment in `apps/web/app/[handle]/ask.tsx`, which says so rather than
+describing a split that does not happen.
 
 ---
 
@@ -107,6 +107,20 @@ Rules:
 - The sheet covers roughly 74% of the viewport. Links stay visible behind it. The AI
   pushes people back to links, it does not replace them.
 - Answers can render a `LinkCard`. That is the whole point.
+
+*Amended by slice 13.* The sheet is gone. Tapping the bar now switches the whole page
+into **chat mode** (`ChatMode`, `packages/ui/src/chat`) -- a full-screen layer, the
+claude.ai treatment, not a 74% sheet with links peeking out behind it. A back arrow
+(labelled "Back to links" for a screen reader), Escape, or the phone's own back gesture
+returns to the bento; entering pushes one history entry so the gesture has something of
+chat mode's own to consume rather than leaving the page outright. States: `idle` →
+`chat-mode` (`empty` -- a greeting plus up to four chips, nothing sent yet -- or
+`thread`) → `thinking` → `answering` (streamed) → `capture` (conditional). The old
+`sheet-open` state sent the bar's rotating suggestion immediately on tap; chat mode
+sends nothing until the visitor taps a chip or submits the composer themselves. The
+thread is kept, not thrown away, while chat mode is hidden -- the component stays
+mounted, so tapping the bar again resumes the same conversation rather than starting a
+new one.
 
 ---
 

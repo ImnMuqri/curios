@@ -56,12 +56,22 @@ describe('AskBar', () => {
     expect(screen.getByRole('button')).toHaveTextContent('first one');
   });
 
-  it('opens with the question on show, so tapping answers what was offered', async () => {
+  it('opens chat mode on tap', async () => {
+    // No seed argument: chat mode's own empty state shows the greeting and
+    // chips, and nothing is sent until one is chosen. AskBar only signals
+    // that it was tapped.
     const onOpen = vi.fn();
     render(<AskBar questions={['Berapa harga kek?']} onOpen={onOpen} />);
 
     await userEvent.click(screen.getByRole('button'));
-    expect(onOpen).toHaveBeenCalledWith('Berapa harga kek?');
+    expect(onOpen).toHaveBeenCalledWith();
+  });
+
+  it('forwards its ref to the button, so a caller can return focus to it', () => {
+    const ref = { current: null as HTMLButtonElement | null };
+    render(<AskBar ref={ref} questions={['a question']} onOpen={vi.fn()} />);
+
+    expect(ref.current).toBe(screen.getByRole('button'));
   });
 
   it('is reachable and operable from the keyboard', async () => {
