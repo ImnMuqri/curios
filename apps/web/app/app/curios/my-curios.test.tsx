@@ -93,9 +93,12 @@ describe('the live preview fits its box', () => {
     expect(page?.parentElement?.parentElement?.getAttribute('aria-label')).toBe('Live preview');
   });
 
-  it('undoes the full-screen height for the preview page', () => {
+  // The frame fills the height below the top bar; the page fills the frame
+  // rather than forcing a full screen of its own inside it.
+  it('fills a full-height frame without forcing its own screen height', () => {
     const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
-    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*0/);
+    expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*calc\(100vh/);
+    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
   });
 });
 

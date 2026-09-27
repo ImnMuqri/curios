@@ -29,15 +29,16 @@
 .saveError { margin: -10px 0 8px; color: var(--merah); font-size: var(--text-sm); }
 .preview { position: sticky; top: 24px; }
 /*
- * The preview is BentoPage, which on the public page fills the screen
- * (min-height: 100vh) and leaves room at the bottom for the sticky ask bar.
- * Inside this box that forced a scrollbar even for three links, so here it is
- * sized to its content. A page long enough to exceed the box still scrolls,
- * without a visible scrollbar.
+ * The preview is a phone-shaped frame that fills the height left below the
+ * dashboard's top bar (56px), the content padding and the sticky offset, so it
+ * reads as the whole page rather than a card that stops after the last tile.
+ * BentoPage fills the frame (its own full-screen min-height is replaced by the
+ * frame's height, which is what caused a scrollbar before). A page taller than
+ * the frame still scrolls, with no visible scrollbar.
  */
-.phone { border: 1px solid var(--line); border-radius: 28px; overflow: hidden; max-height: 82vh; overflow-y: auto; scrollbar-width: none; }
+.phone { height: calc(100vh - 136px); min-height: 420px; border: 1px solid var(--line); border-radius: 28px; overflow-y: auto; scrollbar-width: none; }
 .phone::-webkit-scrollbar { display: none; }
-.phone > [data-bento-page] { min-height: 0; padding-bottom: 28px; }
+.phone > [data-bento-page] { min-height: 100%; padding-bottom: 28px; }
 @media (max-width: 960px) { .editor { grid-template-columns: 1fr; } .preview { position: static; } }
 
 /* Below about 480px (Important #5): an invisible full-width break forces the
