@@ -121,12 +121,17 @@ export function ChatMode({
    * eventually fires, so closing is immediate and not a bet on a real
    * browser's navigation timing -- the later popstate this triggers finds
    * `pushedHistory.current` already false and is a no-op.
+   *
+   * Guarded on that same ref, not just called unconditionally: a second
+   * invocation before `open` has had a chance to flip false -- Escape
+   * pressed twice in quick succession, or the back button clicked twice --
+   * must not call `onClose` a second time for a chat mode that is, as far as
+   * this component is concerned, already closed.
    */
   const leave = useCallback(() => {
-    if (pushedHistory.current) {
-      pushedHistory.current = false;
-      history.back();
-    }
+    if (!pushedHistory.current) return;
+    pushedHistory.current = false;
+    history.back();
     onClose();
   }, [onClose]);
 

@@ -205,7 +205,9 @@ it, "+ Add a link" is replaced by a line naming the limit instead of a rejected 
 ## State
 
 - Server state: TanStack Query. No global store for it.
-- Chat session: local reducer, one `useReducer` per sheet instance.
+- Chat session: local component state, one instance per `ChatMode` (`useState`,
+  not `useReducer` -- *amended by slice 13*, which is also when the instance
+  moved from the sheet to chat mode).
 - Auth: httpOnly cookie. The API issues and refreshes it; middleware only
   redirects. `apps/web` holds a SELECT-only connection and cannot write, so it
   cannot extend a session even if it wanted to.
@@ -227,6 +229,7 @@ in Malay.
 
 ## Accessibility floor
 
-Keyboard reachable ask bar, focus trap in the sheet, escape closes, visible focus
-rings, `prefers-reduced-motion` respected, chat announces new messages politely.
-Not negotiable and not a phase two.
+Keyboard reachable ask bar, focus trap in chat mode (*amended by slice 13*; was
+the sheet), escape closes, visible focus rings, `prefers-reduced-motion`
+respected, chat announces new messages politely. Not negotiable and not a
+phase two.

@@ -276,6 +276,21 @@ describe('ChatMode, asking', () => {
     await waitFor(() => expect(onAsk).toHaveBeenLastCalledWith('ada delivery?', 'c1'));
   });
 
+  // Fix round 1, Important #1: carried over from the deleted AskSheet suite.
+  // FRONTEND.md's accessibility floor calls this non-negotiable -- a
+  // streamed answer must announce politely, not silently or interrupting.
+  it('announces the answer politely', async () => {
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"text","text":"RM45"}\n\n'));
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const live = await screen.findByRole('status');
+    await waitFor(() => expect(live).toHaveTextContent('RM45'));
+    expect(live).toHaveAttribute('aria-live', 'polite');
+  });
+
   it('keeps every turn on screen, because the thread is the point', async () => {
     const onAsk = vi
       .fn()
@@ -333,6 +348,23 @@ describe('ChatMode, leaving', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
+  // Fix round 1, Important #4: `leave` used to call `onClose` unconditionally,
+  // even on a second invocation after it had already consumed the pushed
+  // history entry. Two Escapes in quick succession -- before the parent has
+  // had a chance to re-render with `open={false}` -- used to tell the parent
+  // to close chat mode twice.
+  it('does not call onClose a second time for a second close in a row', async () => {
+    const onClose = vi.fn();
+    vi.spyOn(history, 'back').mockImplementation(() => {});
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
+    render(<ChatMode open onClose={onClose} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+
+    await userEvent.keyboard('{Escape}');
+    await userEvent.keyboard('{Escape}');
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('closes when a popstate fires -- the browser or phone back gesture', () => {
     const onClose = vi.fn();
     const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"done"}\n\n'));
@@ -373,6 +405,40 @@ describe('ChatMode, leaving', () => {
     // The empty state -- greeting and chips -- must not come back once a
     // turn exists; that would look like the thread had been forgotten.
     expect(screen.queryByText(/Hi! What do you want to know/)).not.toBeInTheDocument();
+  });
+
+  // Fix round 1, Important #2: brief test #3 in full -- the previous test only
+  // proved the transcript survives a close/reopen, not that the conversation
+  // id does too. A second question after reopening must still carry the id
+  // the first `done` returned, not start a new thread.
+  it('carries the conversation id across a close and reopen, not just across turns in one sitting', async () => {
+    vi.spyOn(history, 'back').mockImplementation(() => {});
+    const onAsk = vi
+      .fn()
+      .mockResolvedValueOnce(
+        streamOf(
+          'data: {"type":"text","text":"RM45"}\n\n',
+          'data: {"type":"done","conversationId":"c-1"}\n\n',
+        ),
+      )
+      .mockResolvedValueOnce(streamOf('data: {"type":"done","conversationId":"c-1"}\n\n'));
+
+    render(<Harness onAsk={onAsk} displayName="Nadia Bakes" questions={['Berapa harga?']} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa harga?' }));
+    await waitFor(() => expect(onAsk).toHaveBeenCalledWith('Berapa harga?', null));
+    await waitFor(() => expect(screen.getByText(/RM45/)).toBeInTheDocument());
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'reopen' }));
+    expect(screen.getByText(/RM45/)).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'ada delivery?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => expect(onAsk).toHaveBeenLastCalledWith('ada delivery?', 'c-1'));
   });
 });
 
