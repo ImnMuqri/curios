@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -78,3 +80,22 @@ describe('MyCuriosEditor', () => {
     expect(container.querySelector('[aria-label="Live preview"] [data-style]')).toHaveAttribute('data-style', 'CONTRAST');
   });
 });
+
+// The preview reuses BentoPage, which fills the screen on the public page
+// (min-height: 100vh). Inside the preview box that forced a scrollbar even for
+// three links; the owner asked for none. jsdom has no layout, so this pins the
+// two halves that make it fit: BentoPage's root is the box's direct child, and
+// the stylesheet undoes the full-screen height for exactly that child.
+describe('the live preview fits its box', () => {
+  it('renders BentoPage directly inside the preview box', () => {
+    const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    const page = container.querySelector('[aria-label="Live preview"] [data-bento-page]');
+    expect(page?.parentElement?.parentElement?.getAttribute('aria-label')).toBe('Live preview');
+  });
+
+  it('undoes the full-screen height for the preview page', () => {
+    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
+    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*0/);
+  });
+});
+
