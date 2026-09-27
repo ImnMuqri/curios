@@ -152,6 +152,18 @@ describe('the link to /[handle]/faq', () => {
     expect(askBar.compareDocumentPosition(faqLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  // The ask bar sat straight under the grid with nothing to say what it was for.
+  it('introduces the ask bar with a prompt just above it', async () => {
+    vi.mocked(Ask).mockImplementationOnce(() => <div data-testid="ask-bar" />);
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const prompt = screen.getByText('What do you want to know?');
+    const askBar = screen.getByTestId('ask-bar');
+    expect(prompt.compareDocumentPosition(askBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
     vi.mocked(getFaqIndex).mockResolvedValue({
