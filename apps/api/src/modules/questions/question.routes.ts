@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { answerQuestion, deleteQuestion, setFaqSuppressed } from './question.service.js';
+import { answerQuestion, deleteQuestion, setFaqSuppressed, withdrawAnswer } from './question.service.js';
 
 export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post(
@@ -29,6 +29,22 @@ export const questionRoutes: FastifyPluginAsyncZod = async (app) => {
         request.log,
       );
       return reply.send({ status: 'answered' });
+    },
+  );
+
+  /**
+   * The withdrawal. The third act on an answered question, between suppress
+   * (not public, still true) and delete (erase the customer's words): the
+   * owner no longer stands behind the answer, so it goes, and the question
+   * reopens for a fresh one.
+   */
+  app.delete(
+    '/questions/:id/answer',
+    { schema: { params: z.object({ id: z.string().min(1).max(64) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      await withdrawAnswer(app.prisma, request.account.id, request.params.id);
+      return reply.send({ status: 'withdrawn' });
     },
   );
 

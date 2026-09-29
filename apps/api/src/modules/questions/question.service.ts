@@ -104,6 +104,37 @@ export async function setFaqSuppressed(
 }
 
 /**
+ * Withdraw an answer, keeping the question.
+ *
+ * The third act on an answered question, between suppress (not public, still
+ * true) and delete (erase the customer's words): the owner no longer stands
+ * behind the answer. The PinnedAnswer goes, so chat falls back to the model
+ * and the FAQ route 404s; the question stays and reads as unanswered again,
+ * so it returns to the top of Questions to be answered afresh.
+ *
+ * The slug is kept, as it always is -- a URL that has begun to rank must not
+ * move, and a later answer republishes at the same address.
+ */
+export async function withdrawAnswer(
+  prisma: PrismaClient,
+  accountId: string,
+  questionId: string,
+): Promise<void> {
+  const question = await prisma.question.findFirst({
+    where: { id: questionId, page: { accountId } },
+    select: { id: true, pageId: true, normalizedQuestion: true },
+  });
+  if (!question) throw new QuestionNotYoursError();
+
+  await prisma.$transaction([
+    prisma.pinnedAnswer.deleteMany({
+      where: { pageId: question.pageId, normalizedQuestion: question.normalizedQuestion, page: { accountId } },
+    }),
+    prisma.question.updateMany({ where: { id: question.id, page: { accountId } }, data: { answered: false } }),
+  ]);
+}
+
+/**
  * Erase a question and the answer written to it.
  *
  * This is the right-to-erasure primitive, and it is a different act from

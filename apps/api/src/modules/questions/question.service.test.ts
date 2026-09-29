@@ -1,6 +1,7 @@
+import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { answerQuestion } from './question.service.js';
+import { answerQuestion, withdrawAnswer, QuestionNotYoursError } from './question.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -88,5 +89,54 @@ describe('answerQuestion', () => {
     await expect(answerQuestion(prisma, accountId, 'nope', 'hello')).rejects.toMatchObject({
       code: 'NOT_FOUND',
     });
+  });
+});
+
+async function anAnsweredQuestion() {
+  const slug = randomUUID().slice(0, 8);
+  const account = await prisma.account.create({
+    data: {
+      email: `aq-${randomUUID()}@example.com`,
+      pages: {
+        create: {
+          handle: `aq-${slug}`,
+          skeleton: `aq-${slug}`,
+          displayName: 'Nadia Bakes',
+          questions: {
+            create: { text: 'Berapa harga kek?', normalizedQuestion: `berapa harga kek ${slug}` },
+          },
+        },
+      },
+    },
+    include: { pages: { include: { questions: true } } },
+  });
+  const pageId = account.pages[0]?.id ?? '';
+  const questionId = account.pages[0]?.questions[0]?.id ?? '';
+
+  await answerQuestion(prisma, account.id, questionId, 'RM95.');
+
+  return { accountId: account.id, pageId, questionId };
+}
+
+describe('withdrawAnswer', () => {
+  it('deletes the pinned answer and marks the question unanswered, keeping its slug', async () => {
+    // Arrange with the file's own helper: an owner, a question, answered via answerQuestion.
+    const { accountId, questionId, pageId } = await anAnsweredQuestion();
+    await prisma.question.update({ where: { id: questionId }, data: { faqSlug: 'berapa-harga-kek' } });
+
+    await withdrawAnswer(prisma, accountId, questionId);
+
+    const question = await prisma.question.findUniqueOrThrow({ where: { id: questionId } });
+    expect(question.answered).toBe(false);
+    expect(question.faqSlug).toBe('berapa-harga-kek');
+    expect(await prisma.pinnedAnswer.count({ where: { pageId } })).toBe(0);
+  });
+
+  it('is a not-found for another owner’s question, whose answer survives', async () => {
+    const mine = await anAnsweredQuestion();
+    const theirs = await anAnsweredQuestion();
+
+    await expect(withdrawAnswer(prisma, mine.accountId, theirs.questionId)).rejects.toBeInstanceOf(QuestionNotYoursError);
+    expect(await prisma.pinnedAnswer.count({ where: { pageId: theirs.pageId } })).toBe(1);
   });
 });

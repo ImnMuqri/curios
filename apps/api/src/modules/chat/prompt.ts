@@ -79,8 +79,12 @@ export function buildSystemPrompt(input: {
     .map((f) => `<fact category="${f.category}">${escapeForPrompt(f.claim)}</fact>`)
     .join('\n');
 
+  // Escaped like a fact, and flattened to one line: every entry is a line of
+  // this prompt, and a line break inside one would start an instruction of
+  // its own. The API refuses both on write since slice 14; this covers rows
+  // written before it.
   const neverSayBlock = input.neverSay.length
-    ? input.neverSay.map((p) => `- ${p}`).join('\n')
+    ? input.neverSay.map((p) => `- ${escapeForPrompt(p.replace(/\s+/g, ' ').trim())}`).join('\n')
     : '- (nothing)';
 
   const name = input.displayName;
