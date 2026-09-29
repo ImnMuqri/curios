@@ -10,8 +10,10 @@ let mine = '';
 let theirs = '';
 let sourceId = '';
 let failedSourceId = '';
+const failedSourceCreatedAt = new Date('2026-02-01T00:00:00Z');
 let orderTestAccountId = '';
 let neverSayTestAccountId = '';
+const fixtureFactIds: Map<string, string> = new Map(); // claim -> id
 
 async function anOwnerWithAPage() {
   const slug = randomUUID().slice(0, 8);
@@ -42,17 +44,17 @@ beforeAll(async () => {
   });
   sourceId = source.id;
 
-  // Create a failed source with error
+  // Create a failed source with error and explicit createdAt
   const failedSource = await write.ingestion.create({
-    data: { pageId: a.pageId, sourceUrl: 'https://broken.example/', status: 'FAILED', error: 'Network timeout' }
+    data: { pageId: a.pageId, sourceUrl: 'https://broken.example/', status: 'FAILED', error: 'Network timeout', createdAt: failedSourceCreatedAt }
   });
   failedSourceId = failedSource.id;
 
-  await fact(a.pageId, 'from the site', { ingestionId: source.id, verified: true });
+  fixtureFactIds.set('from the site', (await fact(a.pageId, 'from the site', { ingestionId: source.id, verified: true })).id);
   await fact(a.pageId, 'pending from the site', { ingestionId: source.id });
   await fact(a.pageId, 'rejected from the site', { ingestionId: source.id, rejectedAt: new Date() });
-  await fact(a.pageId, 'typed by the owner', { origin: 'OWNER', verified: true, category: 'HOURS' });
-  await fact(a.pageId, 'from before', { origin: 'UNTRACKED', verified: true });
+  fixtureFactIds.set('typed by the owner', (await fact(a.pageId, 'typed by the owner', { origin: 'OWNER', verified: true, category: 'HOURS' })).id);
+  fixtureFactIds.set('from before', (await fact(a.pageId, 'from before', { origin: 'UNTRACKED', verified: true })).id);
 
   await write.ingestion.create({
     data: { pageId: a.pageId, pastedText: '\n\n  About Nadia Bakes\nMore.', status: 'SUCCEEDED', tracked: false }
@@ -91,16 +93,14 @@ beforeAll(async () => {
     data: { pageId: orderTest.pageId, sourceUrl: 'https://new.example/', status: 'SUCCEEDED' }
   });
 
-  // Facts ordering: create in reverse of desired return order
-  // Ordered by: category asc, createdAt asc (H < P alphabetically)
-  // Create: PRICE past first, then HOURS tomorrow
-  // Without orderBy: PRICE past, HOURS tomorrow (insertion order)
-  // With orderBy: HOURS tomorrow, PRICE past (H < P in category order)
-  const tomorrow = new Date(Date.now() + 86400000);
-  const yesterday = new Date(Date.now() - 86400000);
-
-  await fact(orderTest.pageId, 'price fact', { verified: true, category: 'PRICE', createdAt: yesterday });
-  await fact(orderTest.pageId, 'hours fact', { verified: true, category: 'HOURS', createdAt: tomorrow });
+  // Facts ordering: FactCategory enum declared as [PRICE, HOURS, LOCATION, ...] so PRICE < HOURS
+  // Create in order: (a) HOURS late, (b) HOURS early, (c) PRICE mid
+  // Insertion order: ['hours late', 'hours early', 'price']
+  // Sorted by [category asc, createdAt asc]: ['price', 'hours early', 'hours late']
+  // Insertion order ≠ sorted order, so deleteOrderBy must fail
+  await fact(orderTest.pageId, 'hours late', { verified: true, category: 'HOURS', createdAt: new Date('2026-01-03') });
+  await fact(orderTest.pageId, 'hours early', { verified: true, category: 'HOURS', createdAt: new Date('2026-01-01') });
+  await fact(orderTest.pageId, 'price', { verified: true, category: 'PRICE', createdAt: new Date('2026-01-02') });
 
   // Questions ordering: create lower askCount FIRST, then higher askCount
   // Should return in desc order: highAsk before lowAsk
@@ -200,9 +200,9 @@ describe('getKnowledge', () => {
   it('returns facts in category then createdAt order', async () => {
     const k = await getKnowledge(orderTestAccountId);
     const facts = k?.facts ?? [];
-    // Created: PRICE past first, then HOURS future
-    // Ordered by category asc, createdAt asc
-    expect(facts.map((f) => f.claim)).toEqual(['price fact', 'hours fact']);
+    // Created insertion order: ['hours late', 'hours early', 'price']
+    // Sorted by [category asc, createdAt asc] (PRICE < HOURS): ['price', 'hours early', 'hours late']
+    expect(facts.map((f) => f.claim)).toEqual(['price', 'hours early', 'hours late']);
   });
 
   it('orders pinned answers by question askCount descending', async () => {
@@ -219,21 +219,22 @@ describe('getKnowledge', () => {
     expect(k?.pinned.length).toBeGreaterThan(0);
   });
 
-  it('passes through source status, error, and ids with exact values', async () => {
+  it('passes through source status, error, createdAt, and fact ids with exact values', async () => {
     const k = await getKnowledge(mine);
     const failedSource = k?.sources.find((s) => s.id === failedSourceId);
     expect(failedSource).toMatchObject({
       id: failedSourceId,
       status: 'FAILED',
       error: 'Network timeout',
+      createdAt: failedSourceCreatedAt,
     });
-    // Verify fact ids are preserved exactly
-    const k2 = await getKnowledge(mine);
-    const facts = k2?.facts ?? [];
+    // Verify fact ids match fixture ids by value
+    const facts = k?.facts ?? [];
     expect(facts.length).toBeGreaterThan(0);
-    facts.forEach((f) => {
-      expect(f.id).toMatch(/^[a-z0-9]+$/);
-      expect(typeof f.id).toBe('string');
+    const claimToId = new Map(facts.map((f) => [f.claim, f.id]));
+    fixtureFactIds.forEach((expectedId, claim) => {
+      const returnedId = claimToId.get(claim);
+      expect(returnedId).toBe(expectedId);
     });
   });
 
