@@ -203,6 +203,54 @@ describe('POST /facts/:id/reject', () => {
   });
 });
 
+describe('POST /facts', () => {
+  it('adds a live fact the owner typed', async () => {
+    const mine = await anOwnerWithAFact();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/facts',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { category: 'HOURS', claim: 'Closed on public holidays.' },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const fact = await app.prisma.fact.findUniqueOrThrow({ where: { id: res.json<{ id: string }>().id } });
+    expect(fact).toMatchObject({ pageId: mine.pageId, verified: true, origin: 'OWNER' });
+  });
+
+  it('creating a fact verifies no other', async () => {
+    const mine = await anOwnerWithAFact('pending claim');
+    await app.inject({
+      method: 'POST',
+      url: '/facts',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { category: 'MISC', claim: 'Another.' },
+    });
+    expect((await app.prisma.fact.findUniqueOrThrow({ where: { id: mine.factId } })).verified).toBe(false);
+  });
+
+  it('says what is wrong with a bad fact', async () => {
+    const mine = await anOwnerWithAFact();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/facts',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { category: 'WEATHER', claim: 'Sunny.' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_FACT');
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await app.inject({ method: 'POST', url: '/facts', remoteAddress: from(), payload: { category: 'MISC', claim: 'x' } });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
 describe('the one hard rule', () => {
   it('exposes no route that can verify more than one fact', () => {
     const routes = app.printRoutes({ commonPrefix: false });
@@ -215,13 +263,59 @@ describe('the one hard rule', () => {
     // an :id. That case is covered behaviourally by the test below, and the
     // real backstop for both is that `verifyFact` takes one id and has no
     // plural form. This test is the cheap outer guard, not the guarantee.
-    const mutating = routes
-      .split('\n')
-      .filter((line) => line.includes('/facts') && /POST|PATCH|PUT|DELETE/.test(line));
+    //
+    // `printRoutes({ commonPrefix: false })` prints each node's path SEGMENT
+    // relative to its parent, not the full accumulated path -- a node only
+    // gets a line of its own once it (or a sibling) forces a branch; a
+    // parent with no handler of its own and exactly one child is merged onto
+    // that child's line instead. Before this task /facts had no handler, so
+    // /facts and /facts/:id merged onto a single line ("/facts/:id
+    // (PATCH)"), which a plain `line.includes('/facts')` scan happened to
+    // catch. Now that POST /facts exists, /facts prints on its own line and
+    // ":id" (PATCH), "/verify" (POST) and "/reject" (POST) each print on
+    // their own line, none of which contain the literal text "/facts" --
+    // and the last two do not even contain ":id", which is two levels up.
+    // Observed with this Fastify version, verified by printing `routes` once
+    // during development:
+    //   ├── /facts (POST)
+    //   │   └── /:id (PATCH)
+    //   │       ├── /verify (POST)
+    //   │       └── /reject (POST)
+    // So this walks the tree by indentation (4 spaces/pipes per level) and
+    // reconstructs each line's full path from its ancestors, then asks of
+    // the reconstructed path the question the old substring scan could only
+    // approximate.
+    //
+    // One exemption, by exact path: POST /facts creates ONE fact the owner
+    // wrote and touches no other (see "creating a fact verifies no other"
+    // below, which is what earns the exemption). Anything else mutating
+    // under /facts whose reconstructed path lacks ":id" fails here.
+    const stack: string[] = [];
+    const factsNodes: { path: string; methods: string }[] = [];
+    for (const rawLine of routes.split('\n')) {
+      const line = rawLine.replace(/\r$/, '');
+      const node = line.match(/^([│ ]*)[├└]── (\/\S*)(?: \(([^)]*)\))?$/);
+      if (!node) continue;
+      const indent = node[1] ?? '';
+      const segment = node[2];
+      const methods = node[3];
+      if (!segment) continue;
+      const depth = indent.length / 4;
+      stack.length = depth;
+      stack.push(segment);
+      const path = stack.join('');
+      if (path === '/facts' || path.startsWith('/facts/')) {
+        factsNodes.push({ path, methods: methods ?? '' });
+      }
+    }
 
-    expect(mutating.length).toBeGreaterThan(0);
-    for (const line of mutating) {
-      expect(line).toMatch(/:id/);
+    const mutating = factsNodes.filter((n) => /POST|PATCH|PUT|DELETE/.test(n.methods));
+    const create = mutating.filter((n) => n.path === '/facts' && n.methods === 'POST');
+
+    expect(create).toHaveLength(1);
+    expect(mutating.length).toBeGreaterThan(1);
+    for (const n of mutating.filter((m) => !create.includes(m))) {
+      expect(n.path).toMatch(/:id/);
     }
   });
 

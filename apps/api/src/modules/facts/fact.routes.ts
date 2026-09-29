@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Embedder } from '@curios/embeddings';
 import { createOpenAiEmbedder, EMBEDDING_BATCH_TIMEOUT_MS } from '@curios/embeddings';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { editFact, rejectFact, verifyFact } from './fact.service.js';
+import { addFact, editFact, rejectFact, verifyFact } from './fact.service.js';
 
 const params = z.object({ id: z.string().min(1).max(64) });
 
@@ -57,4 +57,17 @@ export const factRoutes: FastifyPluginAsyncZod<FactRouteOptions> = async (app, o
     await rejectFact(app.prisma, request.account.id, request.params.id);
     return reply.send({ status: 'rejected' });
   });
+
+  app.post(
+    '/facts',
+    // Size bounds only. The rules an owner can break -- empty, too long, an
+    // unknown category -- are the service's, with their own code.
+    { schema: { body: z.object({ category: z.string().max(32), claim: z.string().max(2000) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      const result = await addFact(app.prisma, request.account.id, request.body, embedder, request.log);
+      return reply.status(201).send(result);
+    },
+  );
 };

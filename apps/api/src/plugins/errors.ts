@@ -54,6 +54,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   'HANDLE_TOO_SIMILAR',
   'PAGE_EXISTS',
   'FACT_DUPLICATE',
+  // A fact the owner typed that is empty, too long, or has no real category.
+  'INVALID_FACT',
   'NO_PAGE',
   // My Curios: a link an owner typed wrong, one too many, or an order from a
   // tab that is behind. Each says what to do next.

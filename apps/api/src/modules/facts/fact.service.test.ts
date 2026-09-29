@@ -1,13 +1,18 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { decodeVector, EMBEDDING_DIMS, EMBEDDING_MODEL, type Embedder } from '@curios/embeddings';
 import { syncFactEmbeddings } from '@curios/db';
-import { editFact, FactNotFoundError } from './fact.service.js';
+import { normalizeClaim } from '@curios/core';
+import { addFact, DuplicateFactError, editFact, FactNotFoundError, InvalidFactError } from './fact.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 beforeEach(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
+});
+
+afterAll(async () => {
+  await prisma.$disconnect();
 });
 
 /** An embedder that returns a vector whose first value is the text's length. */
@@ -180,5 +185,188 @@ describe('editFact and the fact’s vector', () => {
 
     expect(calls()).toHaveLength(before);
     expect(await prisma.factEmbedding.count({ where: { factId } })).toBe(1);
+  });
+});
+
+async function factsOn(accountId: string) {
+  return prisma.fact.findMany({ where: { page: { accountId } }, orderBy: { createdAt: 'asc' } });
+}
+
+async function anIngestionFor(accountId: string) {
+  const page = await prisma.page.findUniqueOrThrow({ where: { accountId } });
+  return prisma.ingestion.create({ data: { pageId: page.id, sourceUrl: 'https://a.example/', status: 'SUCCEEDED' } });
+}
+
+describe('editFact makes the fact the owner’s', () => {
+  it('marks it OWNER and unlinks it from its source', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    const source = await anIngestionFor(accountId);
+    await prisma.fact.update({ where: { id: factId }, data: { ingestionId: source.id, origin: 'EXTRACTED' } });
+
+    await editFact(prisma, accountId, factId, 'Open 9 to 6.', null);
+
+    const fact = await prisma.fact.findUniqueOrThrow({ where: { id: factId } });
+    expect(fact.origin).toBe('OWNER');
+    expect(fact.ingestionId).toBeNull();
+  });
+
+  it('leaves verified exactly as it was -- an edit is not an accept', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    await editFact(prisma, accountId, factId, 'Open 9 to 6.', null);
+    expect((await prisma.fact.findUniqueOrThrow({ where: { id: factId } })).verified).toBe(false);
+  });
+
+  it('tombstones the old wording so a re-read cannot bring it back', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    await prisma.fact.update({ where: { id: factId }, data: { normalizedClaim: normalizeClaim('Open 9 to 5.') } });
+
+    await editFact(prisma, accountId, factId, 'Open 9 to 6.', null);
+
+    const tombstone = (await factsOn(accountId)).find((f) => f.id !== factId);
+    expect(tombstone).toMatchObject({
+      claim: 'Open 9 to 5.',
+      normalizedClaim: normalizeClaim('Open 9 to 5.'),
+      verified: false,
+      origin: 'OWNER',
+    });
+    expect(tombstone?.rejectedAt).not.toBeNull();
+  });
+
+  it('writes no tombstone when only the punctuation or case changed', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    await prisma.fact.update({ where: { id: factId }, data: { normalizedClaim: normalizeClaim('Open 9 to 5.') } });
+
+    await editFact(prisma, accountId, factId, 'open 9 to 5', null);
+
+    expect(await factsOn(accountId)).toHaveLength(1);
+  });
+
+  // Review Focus 1.
+  it('can be edited back to what it said', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    await prisma.fact.update({ where: { id: factId }, data: { normalizedClaim: normalizeClaim('Open 9 to 5.') } });
+
+    await editFact(prisma, accountId, factId, 'Open 9 to 6.', null);
+    await editFact(prisma, accountId, factId, 'Open 9 to 5.', null);
+
+    const facts = await factsOn(accountId);
+    const live = facts.filter((f) => f.rejectedAt === null);
+    expect(live.map((f) => f.claim)).toEqual(['Open 9 to 5.']);
+    // The 9-to-5 tombstone was replaced by the live fact; the 9-to-6 one is new.
+    expect(facts.filter((f) => f.rejectedAt !== null).map((f) => f.claim)).toEqual(['Open 9 to 6.']);
+  });
+
+  it('still refuses a clash with another live fact', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    const page = await prisma.page.findUniqueOrThrow({ where: { accountId } });
+    await prisma.fact.create({
+      data: { pageId: page.id, category: 'HOURS', claim: 'Closed Sunday.', normalizedClaim: normalizeClaim('Closed Sunday.'), confidence: 1 },
+    });
+
+    await expect(editFact(prisma, accountId, factId, 'Closed Sunday.', null)).rejects.toBeInstanceOf(DuplicateFactError);
+    // Rolled back: no tombstone was left behind by the failed edit.
+    expect(await factsOn(accountId)).toHaveLength(2);
+  });
+
+  it('is a not-found for another owner’s fact, and writes nothing', async () => {
+    const mine = await seedFact({ claim: 'Mine.' });
+    const theirs = await seedFact({ claim: 'Theirs.' });
+
+    await expect(editFact(prisma, mine.accountId, theirs.factId, 'Hijacked.', null)).rejects.toBeInstanceOf(FactNotFoundError);
+    expect(await factsOn(theirs.accountId)).toHaveLength(1);
+  });
+});
+
+describe('addFact', () => {
+  it('adds one live OWNER fact', async () => {
+    const { accountId } = await seedFact({ claim: 'Existing.' });
+
+    const { id } = await addFact(prisma, accountId, { category: 'HOURS', claim: '  Closed on public holidays.  ' }, null);
+
+    const fact = await prisma.fact.findUniqueOrThrow({ where: { id } });
+    expect(fact).toMatchObject({
+      claim: 'Closed on public holidays.',
+      normalizedClaim: normalizeClaim('Closed on public holidays.'),
+      category: 'HOURS',
+      verified: true,
+      origin: 'OWNER',
+      ingestionId: null,
+      confidence: 1,
+    });
+  });
+
+  it('verifies nothing but the fact it creates', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Pending.' });
+    await addFact(prisma, accountId, { category: 'MISC', claim: 'New.' }, null);
+    expect((await prisma.fact.findUniqueOrThrow({ where: { id: factId } })).verified).toBe(false);
+  });
+
+  it('embeds the new fact', async () => {
+    const { accountId } = await seedFact({ claim: 'Existing.' });
+    const { embedder, calls } = embedderCounting();
+
+    const { id } = await addFact(prisma, accountId, { category: 'MISC', claim: 'Parking at the back.' }, embedder);
+
+    expect(calls().at(-1)).toEqual(['Parking at the back.']);
+    expect(await prisma.factEmbedding.findUnique({ where: { factId: id } })).not.toBeNull();
+  });
+
+  it('refuses an empty claim, an over-long one, and an unknown category', async () => {
+    const { accountId } = await seedFact({ claim: 'Existing.' });
+    await expect(addFact(prisma, accountId, { category: 'MISC', claim: '   ' }, null)).rejects.toBeInstanceOf(InvalidFactError);
+    await expect(addFact(prisma, accountId, { category: 'MISC', claim: 'x'.repeat(501) }, null)).rejects.toBeInstanceOf(InvalidFactError);
+    await expect(addFact(prisma, accountId, { category: 'WEATHER', claim: 'Sunny.' }, null)).rejects.toBeInstanceOf(InvalidFactError);
+  });
+
+  it('counts the limit in characters, not UTF-16 units', async () => {
+    const { accountId } = await seedFact({ claim: 'Existing.' });
+    await expect(addFact(prisma, accountId, { category: 'MISC', claim: '🎂'.repeat(500) }, null)).resolves.toHaveProperty('id');
+  });
+
+  it('refuses a clash with a live fact', async () => {
+    const { accountId } = await seedFact({ claim: 'Existing.' });
+    await prisma.fact.updateMany({ where: { page: { accountId } }, data: { normalizedClaim: normalizeClaim('Existing.') } });
+    await expect(addFact(prisma, accountId, { category: 'MISC', claim: 'Existing.' }, null)).rejects.toBeInstanceOf(DuplicateFactError);
+  });
+
+  it('replaces a rejected fact with the same words -- the owner is vouching for it now', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'We deliver.' });
+    await prisma.fact.update({
+      where: { id: factId },
+      data: { normalizedClaim: normalizeClaim('We deliver.'), rejectedAt: new Date() },
+    });
+
+    const { id } = await addFact(prisma, accountId, { category: 'POLICY', claim: 'We deliver.' }, null);
+
+    const facts = await factsOn(accountId);
+    expect(facts.map((f) => f.id)).toEqual([id]);
+  });
+
+  it('refuses an owner with no page', async () => {
+    const account = await prisma.account.create({ data: { email: `np${Date.now()}@example.com` } });
+    await expect(addFact(prisma, account.id, { category: 'MISC', claim: 'x' }, null)).rejects.toMatchObject({ code: 'NO_PAGE' });
+  });
+
+  // Not in the brief's own test list -- the /[\r\n]/ check is a line the
+  // given tests never exercise: every other bad-claim case (empty, over-long,
+  // bad category) would still pass with it deleted, and the suite would stay
+  // green. "One line" is also the promise InvalidFactError's own message
+  // makes, so a claim smuggling a second line past the length check must be
+  // refused too.
+  it('refuses a claim with an embedded line break, even a short one', async () => {
+    const { accountId } = await seedFact({ claim: 'Existing.' });
+    await expect(addFact(prisma, accountId, { category: 'MISC', claim: 'Line one\nLine two' }, null)).rejects.toBeInstanceOf(InvalidFactError);
+    await expect(addFact(prisma, accountId, { category: 'MISC', claim: 'Line one\r\nLine two' }, null)).rejects.toBeInstanceOf(InvalidFactError);
+  });
+
+  // Also not in the brief's own test list. addFact checks the claim before
+  // it looks up the page, so an account with both a bad claim and no page
+  // gets INVALID_FACT, not NO_PAGE -- consistent with claimHandle elsewhere,
+  // which checks the handle's shape before it checks anything about the
+  // database. Swapping the two checks would still pass every other test here
+  // (none combines "no page" with "bad claim"), so this pins the order.
+  it('checks the claim before it checks for a page', async () => {
+    const account = await prisma.account.create({ data: { email: `np2${Date.now()}@example.com` } });
+    await expect(addFact(prisma, account.id, { category: 'WEATHER', claim: '   ' }, null)).rejects.toBeInstanceOf(InvalidFactError);
   });
 });
