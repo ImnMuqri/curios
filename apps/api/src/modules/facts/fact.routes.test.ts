@@ -286,6 +286,36 @@ describe('the one hard rule', () => {
     // the reconstructed path the question the old substring scan could only
     // approximate.
     //
+    // Review found the first version of this walk still failed OPEN: any
+    // tree line its regex could not parse was silently `continue`d past,
+    // rather than failing the outer guard on the product's one hard rule.
+    // find-my-way's radix-tree compression prints several real,
+    // still-mutating-under-/facts shapes that regex could not see:
+    //   - a wildcard route (POST /facts/*) prints as bare "* (POST)" -- no
+    //     leading "/", so a segment pattern requiring one skips the line.
+    //   - two routes sharing a prefix print only the DIVERGING suffix on the
+    //     child's line -- "GET /facts/export" beside "POST
+    //     /facts/export-verify-all" prints the child as "-verify-all
+    //     (POST)"; "GET /facts/pending" beside "POST
+    //     /facts/pendingVerifyAll" prints it as "VerifyAll (POST)". Neither
+    //     starts with "/", and neither line contains ":id" even though the
+    //     reconstructed path is still id-less and still mutating.
+    //   - a version-constrained route prints its constraint as JSON after
+    //     the methods group -- "/verify-all (POST)
+    //     {"version":"1.0.0"}" -- which a pattern anchoring `$` right after
+    //     the methods group cannot match.
+    // So this now (a) accepts a bare, non-"/"-prefixed segment, since a
+    // diverging suffix or a wildcard is exactly that; (b) allows arbitrary
+    // trailing text after the methods group, for a constraint's JSON blob;
+    // and (c) asserts every non-blank tree line matches this widened
+    // pattern, failing the test outright on any it still cannot parse,
+    // rather than skipping it. Subtree membership is decided by the STACK'S
+    // ROOT segment being exactly "/facts", not by a string prefix on the
+    // reconstructed path: the wildcard's own segment has no leading "/", so
+    // its reconstructed path is "/facts*" (no separating slash), which a
+    // `.startsWith('/facts/')` check would miss entirely -- precisely the
+    // kind of line this guard must not silently pass over.
+    //
     // One exemption, by exact path: POST /facts creates ONE fact the owner
     // wrote and touches no other (see "creating a fact verifies no other"
     // below, which is what earns the exemption). Anything else mutating
@@ -294,18 +324,22 @@ describe('the one hard rule', () => {
     const factsNodes: { path: string; methods: string }[] = [];
     for (const rawLine of routes.split('\n')) {
       const line = rawLine.replace(/\r$/, '');
-      const node = line.match(/^([│ ]*)[├└]── (\/\S*)(?: \(([^)]*)\))?$/);
-      if (!node) continue;
-      const indent = node[1] ?? '';
-      const segment = node[2];
-      const methods = node[3];
-      if (!segment) continue;
+      if (line.trim() === '') continue;
+
+      const node = line.match(/^([│ ]*)[├└]── (\S+)(?: \(([^)]*)\))?(?: .*)?$/);
+      expect(
+        node,
+        `printRoutes produced a tree line this guard cannot parse: ${JSON.stringify(line)}`,
+      ).not.toBeNull();
+      const indent = node?.[1] ?? '';
+      const segment = node?.[2] ?? '';
+      const methods = node?.[3] ?? '';
       const depth = indent.length / 4;
       stack.length = depth;
       stack.push(segment);
       const path = stack.join('');
-      if (path === '/facts' || path.startsWith('/facts/')) {
-        factsNodes.push({ path, methods: methods ?? '' });
+      if (stack[0] === '/facts') {
+        factsNodes.push({ path, methods });
       }
     }
 
