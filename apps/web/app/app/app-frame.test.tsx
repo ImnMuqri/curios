@@ -19,12 +19,17 @@ describe('AppFrame', () => {
     expect(within(nav).getAllByRole('link').map((a) => a.textContent)).toEqual([
       'My Curios',
       'Review3',
-      'Add a source',
+      'Knowledge',
       'Questions',
       'Leads',
       'Billing',
       'Settings',
     ]);
+  });
+
+  it('sends Knowledge to its own screen', () => {
+    frame();
+    expect(screen.getByRole('link', { name: 'Knowledge' })).toHaveAttribute('href', '/app/knowledge');
   });
 
   it('marks where the owner is', () => {

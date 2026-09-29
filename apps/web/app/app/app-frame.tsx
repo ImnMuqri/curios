@@ -18,7 +18,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: '/app/curios', label: 'My Curios', icon: svg(<><rect x="3" y="3" width="8" height="10" rx="2" /><rect x="13" y="3" width="8" height="6" rx="2" /><rect x="13" y="11" width="8" height="10" rx="2" /><rect x="3" y="15" width="8" height="6" rx="2" /></>) },
       { href: '/app/review', label: 'Review', icon: svg(<><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9" /></>) },
-      { href: '/app/onboarding', label: 'Add a source', icon: svg(<path d="M12 5v14M5 12h14" />) },
+      { href: '/app/knowledge', label: 'Knowledge', icon: svg(<><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z" /><path d="M8 7h8M8 11h6" /></>) },
     ],
   },
   {
