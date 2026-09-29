@@ -57,6 +57,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   // A fact the owner typed that is empty, too long, or has no real category.
   'INVALID_FACT',
   'NO_PAGE',
+  // Knowledge: a source that is being read cannot be removed or re-read, and
+  // pasted text has nothing to re-read.
+  'SOURCE_BUSY',
+  'SOURCE_NOT_RECHECKABLE',
   // My Curios: a link an owner typed wrong, one too many, or an order from a
   // tab that is behind. Each says what to do next.
   'INVALID_LINK',

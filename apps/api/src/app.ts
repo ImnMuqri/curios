@@ -27,6 +27,7 @@ import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
+import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
 import { questionRoutes } from './modules/questions/question.routes.js';
 import {
   billplzRoutes,
@@ -107,6 +108,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, ingestPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, ingestPerPageLimit(app.rateLimitRedis));
     await scope.register(ingestRoutes, overrides.ingest ?? {});
+    await scope.register(sourceRecheckRoutes);
   });
 
   await app.register(async (scope) => {
@@ -150,6 +152,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(pageRoutes, overrides.pages ?? {});
     await scope.register(linkRoutes);
     await scope.register(factRoutes, overrides.facts ?? {});
+    await scope.register(sourceRoutes);
     await scope.register(questionRoutes);
     await scope.register(ownerLeadRoutes);
   });
