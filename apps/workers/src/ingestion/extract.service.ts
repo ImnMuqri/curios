@@ -124,6 +124,11 @@ export async function runExtraction(
       const flagged = isImperative(fact.claim);
       return {
         pageId: job.pageId,
+        // Credited to this ingestion so the owner can remove the source and
+        // its facts together. A re-check re-runs the same ingestion id, so
+        // new facts from it land on the same source.
+        ingestionId: job.ingestionId,
+        origin: 'EXTRACTED' as const,
         category: fact.category,
         claim: fact.claim,
         question: fact.question,
