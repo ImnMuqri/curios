@@ -19,3 +19,5 @@ export { getRecentPayments, RECENT_PAYMENTS } from './payments.query.js';
 export type { OwnerPayment } from './payments.query.js';
 export { getMyCurios, countPendingFacts } from './my-curios.query.js';
 export type { MyCurios } from './my-curios.query.js';
+export { getKnowledge, sourceLabel } from './knowledge.query.js';
+export type { Knowledge, KnowledgeSource, KnowledgeFact, KnowledgePinned, KnowledgeNeverSay } from './knowledge.query.js';
