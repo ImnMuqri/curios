@@ -44,6 +44,8 @@ describe('addNeverSay', () => {
     ['a carriage return inside', 'halal\rx'],
     ['a tab-like control character', 'halal\u0007x'],
     ['one character too many', 'x'.repeat(121)],
+    ['a line separator inside', 'halal x'],
+    ['a paragraph separator inside', 'halal x'],
   ])('refuses %s', async (_label, phrase) => {
     const { accountId } = await anOwner();
     await expect(addNeverSay(prisma, accountId, phrase)).rejects.toBeInstanceOf(InvalidNeverSayError);
@@ -59,6 +61,12 @@ describe('addNeverSay', () => {
     const { accountId } = await anOwner();
     await addNeverSay(prisma, accountId, 'halal certified');
     await expect(addNeverSay(prisma, accountId, '  Halal Certified ')).rejects.toBeInstanceOf(DuplicateNeverSayError);
+  });
+
+  it('refuses a phrase that differs only in interior whitespace', async () => {
+    const { accountId } = await anOwner();
+    await addNeverSay(prisma, accountId, 'halal certified');
+    await expect(addNeverSay(prisma, accountId, 'halal   certified')).rejects.toBeInstanceOf(DuplicateNeverSayError);
   });
 
   it(`refuses the ${NEVER_SAY_MAX + 1}th`, async () => {
