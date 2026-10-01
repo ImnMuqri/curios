@@ -28,6 +28,7 @@ export function IngestForm({
   pastedTextMax,
   onIngest,
   fetchStatus,
+  onSettled,
 }: {
   pageId: string;
   mode: 'PERSONAL' | 'BUSINESS';
@@ -35,6 +36,8 @@ export function IngestForm({
   pastedTextMax: number;
   onIngest: (input: Source) => Promise<{ ingestionId: string }>;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
+  /** Passed to the job's `JobStatus`; the Knowledge tab uses it to re-read its list. */
+  onSettled?: (result: IngestionResult) => void;
 }) {
   const [using, setUsing] = useState<'link' | 'text'>('link');
   const [sourceUrl, setSourceUrl] = useState('');
@@ -93,6 +96,7 @@ export function IngestForm({
         ingestionId={ingestionId}
         fetchStatus={fetchStatus}
         source={using}
+        onSettled={onSettled}
         onNothingFound={() => {
           setIngestionId(null);
           setUsing('text');
@@ -184,13 +188,16 @@ export function Ingest({
   pageId,
   mode,
   pastedTextMax,
+  onSettled,
 }: {
   pageId: string;
   mode: 'PERSONAL' | 'BUSINESS';
   pastedTextMax: number;
+  onSettled?: (result: IngestionResult) => void;
 }) {
   return (
     <IngestForm
+      onSettled={onSettled}
       pageId={pageId}
       mode={mode}
       pastedTextMax={pastedTextMax}

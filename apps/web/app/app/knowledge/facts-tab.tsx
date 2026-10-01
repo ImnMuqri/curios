@@ -16,10 +16,12 @@ const origin = (fact: KnowledgeFact) =>
 
 function FactRow({
   fact,
+  ownerFactMax,
   onEdit,
   onRemove,
 }: {
   fact: KnowledgeFact;
+  ownerFactMax: number;
   onEdit: (id: string, claim: string) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
 }) {
@@ -44,7 +46,14 @@ function FactRow({
   return (
     <li className={styles.row}>
       {mode === 'edit' ? (
-        <Field id={`fact-${fact.id}`} label="Fact" multiline value={draft} onChange={setDraft} />
+        <Field
+          id={`fact-${fact.id}`}
+          label="Fact"
+          multiline
+          hint={`One line, up to ${ownerFactMax} characters.`}
+          value={draft}
+          onChange={setDraft}
+        />
       ) : (
         <p className={styles.label}>{fact.claim}</p>
       )}
@@ -148,12 +157,14 @@ export function FactList({
 
       {facts.length === 0 ? (
         <Callout tone="info">No facts yet. Add one above, or add a source and accept its facts in Review.</Callout>
+      ) : groups.length === 0 ? (
+        <Callout tone="info">No facts match your search.</Callout>
       ) : (
         groups.map((group) => (
           <div key={group.category}>
             <h2 className={styles.group}>{title(group.category)}</h2>
             <ul className={styles.list}>
-              {group.facts.map((fact) => <FactRow key={fact.id} fact={fact} onEdit={edit} onRemove={remove} />)}
+              {group.facts.map((fact) => <FactRow key={fact.id} fact={fact} ownerFactMax={ownerFactMax} onEdit={edit} onRemove={remove} />)}
             </ul>
           </div>
         ))

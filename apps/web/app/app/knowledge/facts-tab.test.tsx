@@ -130,6 +130,19 @@ describe('FactList', () => {
     expect(screen.getByText('Closed Sunday.')).toBeInTheDocument();
   });
 
+  it('says so when a search matches nothing, and keeps the no-facts message for no facts', async () => {
+    list();
+    await userEvent.type(screen.getByRole('searchbox', { name: 'Search facts' }), 'zzzz');
+    expect(screen.getByText('No facts match your search.')).toBeInTheDocument();
+    expect(screen.queryByText(/no facts yet/i)).toBeNull();
+  });
+
+  it('shows the same length hint on edit as on add', async () => {
+    list();
+    await userEvent.click(within(card('Kek RM95.')).getByRole('button', { name: 'Edit' }));
+    expect(within(card('Kek RM95.')).getByText('One line, up to 500 characters.')).toBeInTheDocument();
+  });
+
   it('has an empty state', () => {
     list({ facts: [] });
     expect(screen.getByText(/no facts yet/i)).toBeInTheDocument();

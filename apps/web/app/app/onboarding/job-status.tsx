@@ -1,6 +1,7 @@
 'use client';
 
 import { Button, Callout } from '@curios/ui';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
 export type IngestionResult = {
@@ -25,6 +26,8 @@ export function JobStatus({
   onNothingFound,
   source = 'link',
   onAddAnother,
+  onSettled,
+  recheck = false,
 }: {
   ingestionId: string;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
@@ -51,6 +54,16 @@ export function JobStatus({
    * facts land in one review queue, duplicates skipped.
    */
   onAddAnother?: () => void;
+  /**
+   * Called once, when the polled job first becomes SUCCEEDED or FAILED. Lets a
+   * list that rendered this row from server props re-read.
+   */
+  onSettled?: (result: IngestionResult) => void;
+  /**
+   * The source already had facts, so finding no new ones is not "we could not
+   * read it" -- it is "nothing changed".
+   */
+  recheck?: boolean;
 }) {
   const { data } = useQuery({
     queryKey: ['ingestion', ingestionId],
@@ -60,6 +73,13 @@ export function JobStatus({
       return status === 'QUEUED' || status === 'RUNNING' ? intervalMs : false;
     },
   });
+
+  const settledStatus = data && (data.status === 'SUCCEEDED' || data.status === 'FAILED') ? data.status : null;
+  useEffect(() => {
+    if (settledStatus && data) onSettled?.(data);
+    // Keyed on the settled status alone: a re-render must not fire it again.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settledStatus]);
 
   if (!data || data.status === 'QUEUED' || data.status === 'RUNNING') {
     return <Callout tone="info">Reading what you gave us…</Callout>;
@@ -79,6 +99,10 @@ export function JobStatus({
         ) : null}
       </div>
     );
+  }
+
+  if (data.extractedCount === 0 && recheck) {
+    return <Callout tone="info">No new facts — everything it found was already there.</Callout>;
   }
 
   if (data.extractedCount === 0) {

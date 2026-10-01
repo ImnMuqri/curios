@@ -85,6 +85,26 @@ describe('SourceList', () => {
     expect(within(r).queryByRole('button', { name: 'Check for new facts' })).toBeNull();
   });
 
+  it('re-reads the list when a reading row settles', async () => {
+    const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 3, error: null });
+    const { onChanged } = list([reading], { fetchStatus });
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+  });
+
+  it('does not re-read while a row is still reading', async () => {
+    const { onChanged } = list([reading]);
+    await screen.findByText(/reading what you gave us/i);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('words a re-check that finds nothing new as nothing new, only for a source that had facts', async () => {
+    const none = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null });
+    list([reading, { ...reading, id: 's6', sourceUrl: 'https://first.example/', label: 'https://first.example/', tracked: true, factCount: 5 }], { fetchStatus: none });
+    expect(await screen.findByText(/no new facts/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/could not find anything to use there/i)).toHaveLength(1);
+  });
+
   it('shows why a source failed, and still lets it be removed', () => {
     list([failed]);
     const r = row('https://nadia.example/');

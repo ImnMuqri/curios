@@ -47,12 +47,12 @@ function PinnedRow({
 
       {mode === 'view' ? (
         <div className={styles.actions}>
-          <Button variant="secondary" onClick={() => setMode('edit')}>Edit</Button>
-          <Button variant="secondary" onClick={() => setMode('confirm')}>Remove</Button>
+          <Button variant="secondary" aria-label={`Edit answer to ${item.question}`} onClick={() => setMode('edit')}>Edit</Button>
+          <Button variant="secondary" aria-label={`Remove answer to ${item.question}`} onClick={() => setMode('confirm')}>Remove</Button>
         </div>
       ) : mode === 'edit' ? (
         <div className={styles.actions}>
-          <Button busy={busy} onClick={() => void run(() => onEdit(item.questionId, draft))}>Save</Button>
+          <Button busy={busy} aria-label={`Save answer to ${item.question}`} onClick={() => void run(() => onEdit(item.questionId, draft))}>Save</Button>
           <Button variant="secondary" onClick={() => { setDraft(item.answer); setError(''); setMode('view'); }}>Cancel</Button>
         </div>
       ) : (

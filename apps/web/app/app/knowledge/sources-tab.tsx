@@ -76,7 +76,13 @@ export function SourceList({
                 </p>
 
                 {reading ? (
-                  <JobStatus ingestionId={source.id} fetchStatus={fetchStatus} source={source.sourceUrl ? 'link' : 'text'} />
+                  <JobStatus
+                    ingestionId={source.id}
+                    fetchStatus={fetchStatus}
+                    source={source.sourceUrl ? 'link' : 'text'}
+                    recheck={source.tracked && source.factCount > 0}
+                    onSettled={() => onChanged()}
+                  />
                 ) : (
                   <>
                     {source.status === 'FAILED' && source.error ? <Callout tone="error">{source.error}</Callout> : null}
@@ -139,7 +145,7 @@ export function Sources({
   return (
     <SourceList
       sources={sources}
-      addForm={<Ingest pageId={pageId} mode={mode} pastedTextMax={pastedTextMax} />}
+      addForm={<Ingest pageId={pageId} mode={mode} pastedTextMax={pastedTextMax} onSettled={() => router.refresh()} />}
       onRemove={(id) => apiFetch<{ removedFacts: number }>(`/sources/${id}`, { method: 'DELETE' })}
       onRecheck={async (id) => {
         await apiFetch(`/sources/${id}/recheck`, { method: 'POST' });

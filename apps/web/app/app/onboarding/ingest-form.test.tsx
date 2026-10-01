@@ -13,6 +13,23 @@ const wrap = (ui: React.ReactNode) => {
 const pending = () => new Promise<never>(() => {});
 
 describe('IngestForm', () => {
+  it('tells its caller when the job it started settles', async () => {
+    const onSettled = vi.fn();
+    wrap(
+      <IngestForm
+        pageId="p1"
+        mode="BUSINESS"
+        pastedTextMax={20_000}
+        onIngest={vi.fn(async () => ({ ingestionId: 'i-1' }))}
+        fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 4, error: null })}
+        onSettled={onSettled}
+      />,
+    );
+    await userEvent.type(screen.getByLabelText('Your website address'), 'https://a.example/');
+    await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
+    await vi.waitFor(() => expect(onSettled).toHaveBeenCalledTimes(1));
+  });
+
   it('sends pasted text when the owner switches to it', async () => {
     const onIngest = vi.fn(async () => ({ ingestionId: 'i-1' }));
     wrap(
