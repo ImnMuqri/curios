@@ -140,8 +140,20 @@ describe('SourceList', () => {
 
   it('shows the Malaysian date, not the UTC one the server ran in', () => {
     // 2026-09-27T20:00Z is 04:00 on 28 Sep in Malaysia. Unpinned, a UTC server
-    // prints 27 Sep and the browser prints 28 Sep: a hydration mismatch.
-    list([{ ...site, createdAt: new Date('2026-09-27T20:00:00Z') }]);
-    expect(within(row('https://nadia.example/')).getByText(/Added 28 Sep(t)? 2026/)).toBeInTheDocument();
+    // prints 27 Sep and the browser prints 28 Sep: a hydration mismatch. TZ is
+    // forced to UTC, the production server's zone, so this does not depend on
+    // the zone of whatever machine runs the suite (same as lead-list's test).
+    const originalTz = process.env.TZ;
+    process.env.TZ = 'UTC';
+    try {
+      list([{ ...site, createdAt: new Date('2026-09-27T20:00:00Z') }]);
+      const r = row('https://nadia.example/');
+      expect(within(r).getByText(/Added 28 Sep(t)? 2026/)).toBeInTheDocument();
+      expect(within(r).queryByText(/27 Sep(t)? 2026/)).toBeNull();
+    } finally {
+      // `= undefined` would store the string "undefined".
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
   });
 });
