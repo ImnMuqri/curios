@@ -32,6 +32,19 @@ export class InvalidFactError extends Error {
   }
 }
 
+/**
+ * The one rule for wording the owner writes, shared by add and edit: trimmed,
+ * not empty, one line, at most OWNER_FACT_MAX code points. Returns the trimmed
+ * claim, which is what gets saved.
+ */
+function checkOwnerClaim(raw: string): string {
+  const claim = raw.trim();
+  if (claim === '' || /[\r\n]/.test(claim) || [...claim].length > OWNER_FACT_MAX) {
+    throw new InvalidFactError();
+  }
+  return claim;
+}
+
 function isFactCategory(value: string): value is FactCategory {
   return (FACT_CATEGORIES as readonly string[]).includes(value);
 }
@@ -135,10 +148,11 @@ export async function editFact(
   prisma: PrismaClient,
   accountId: string,
   factId: string,
-  claim: string,
+  rawClaim: string,
   embedder: Embedder | null,
   log?: { warn?: (details: object, message: string) => void },
 ): Promise<void> {
+  const claim = checkOwnerClaim(rawClaim);
   const before = await prisma.fact.findFirst({
     where: { id: factId, page: { accountId } },
     select: { pageId: true, category: true, claim: true, normalizedClaim: true, question: true },
@@ -204,10 +218,8 @@ export async function addFact(
   embedder: Embedder | null,
   log?: { warn?: (details: object, message: string) => void },
 ): Promise<{ id: string }> {
-  const claim = input.claim.trim();
-  if (claim === '' || /[\r\n]/.test(claim) || [...claim].length > OWNER_FACT_MAX || !isFactCategory(input.category)) {
-    throw new InvalidFactError();
-  }
+  const claim = checkOwnerClaim(input.claim);
+  if (!isFactCategory(input.category)) throw new InvalidFactError();
   const category = input.category;
 
   const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });

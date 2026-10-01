@@ -160,6 +160,37 @@ describe('PATCH /facts/:id', () => {
   });
 });
 
+describe('PATCH /facts/:id validates like POST /facts', () => {
+  const patch = (mine: { factId: string; cookie: string }, claim: string) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/facts/${mine.factId}`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { claim },
+    });
+
+  it.each([
+    ['empty', ''],
+    ['whitespace only', '   '],
+    ['two lines', 'a\nb'],
+    ['501 characters', 'x'.repeat(501)],
+  ])('answers INVALID_FACT, not raw validation text, for %s, and changes nothing', async (_name, claim) => {
+    const mine = await anOwnerWithAFact('original claim');
+    const res = await patch(mine, claim);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_FACT');
+    expect((await app.prisma.fact.findUniqueOrThrow({ where: { id: mine.factId } })).claim).toBe('original claim');
+  });
+
+  it('accepts 500 emoji and trims', async () => {
+    const mine = await anOwnerWithAFact('original claim');
+    expect((await patch(mine, '😀'.repeat(500))).statusCode).toBe(200);
+    expect((await patch(mine, '  trimmed claim  ')).statusCode).toBe(200);
+    expect((await app.prisma.fact.findUniqueOrThrow({ where: { id: mine.factId } })).claim).toBe('trimmed claim');
+  });
+});
+
 describe('POST /facts/:id/reject', () => {
   it('soft-deletes the fact and stops it being public', async () => {
     const mine = await anOwnerWithAFact();

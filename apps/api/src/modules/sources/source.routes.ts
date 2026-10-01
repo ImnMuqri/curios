@@ -15,7 +15,10 @@ export const sourceRoutes: FastifyPluginAsyncZod = async (app) => {
 
 /**
  * Ingest scope: a re-check crawls and spends a model call, exactly like
- * POST /ingest, so it shares that scope's per-IP and per-page limiters.
+ * POST /ingest, so it shares that scope's per-IP limiter. It does NOT share
+ * POST /ingest's per-page bucket: that one keys `owner:pageId` only when the
+ * body carries a `pageId`, and a re-check has no body, so it falls into the
+ * limiter's owner-only bucket -- its own per-owner daily allowance.
  */
 export const sourceRecheckRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/sources/:id/recheck', { schema: { params } }, async (request, reply) => {

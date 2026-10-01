@@ -35,7 +35,7 @@ export const factRoutes: FastifyPluginAsyncZod<FactRouteOptions> = async (app, o
 
   app.patch(
     '/facts/:id',
-    { schema: { params, body: z.object({ claim: z.string().min(1).max(500) }) } },
+    { schema: { params, body: z.object({ claim: z.string().max(2000) }) } },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
 

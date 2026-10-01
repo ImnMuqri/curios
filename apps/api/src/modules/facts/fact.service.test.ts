@@ -256,6 +256,31 @@ describe('editFact makes the fact the owner’s', () => {
     expect(facts.filter((f) => f.rejectedAt !== null).map((f) => f.claim)).toEqual(['Open 9 to 6.']);
   });
 
+  it('refuses the wording addFact refuses, and changes nothing', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    for (const bad of ['', '   ', 'a\nb', 'a\r\nb', 'x'.repeat(501)]) {
+      await expect(editFact(prisma, accountId, factId, bad, null)).rejects.toBeInstanceOf(InvalidFactError);
+    }
+    const facts = await factsOn(accountId);
+    expect(facts).toHaveLength(1);
+    expect(facts[0]?.claim).toBe('Open 9 to 5.');
+  });
+
+  it('counts code points, not UTF-16 units: 500 emoji is fine, 501 is not', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    await editFact(prisma, accountId, factId, '😀'.repeat(500), null);
+    expect((await prisma.fact.findUniqueOrThrow({ where: { id: factId } })).claim).toBe('😀'.repeat(500));
+    await expect(editFact(prisma, accountId, factId, '😀'.repeat(501), null)).rejects.toBeInstanceOf(InvalidFactError);
+  });
+
+  it('saves the trimmed wording', async () => {
+    const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
+    await editFact(prisma, accountId, factId, '  Open 9 to 6.  ', null);
+    const fact = await prisma.fact.findUniqueOrThrow({ where: { id: factId } });
+    expect(fact.claim).toBe('Open 9 to 6.');
+    expect(fact.normalizedClaim).toBe(normalizeClaim('Open 9 to 6.'));
+  });
+
   it('still refuses a clash with another live fact', async () => {
     const { accountId, factId } = await seedFact({ claim: 'Open 9 to 5.' });
     const page = await prisma.page.findUniqueOrThrow({ where: { accountId } });
