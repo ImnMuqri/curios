@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { OwnerTopic } from '@curios/db-read';
 import { TopicList, type TopicActions } from './topic-list.js';
@@ -80,7 +80,7 @@ function list(
 const row = (title: string) => screen.getByText(title, { selector: 'p' }).closest('li') as HTMLElement;
 const menuOf = async (title: string) => {
   await userEvent.click(within(row(title)).getByRole('button', { name: /more actions/i }));
-  return within(row(title)).getByRole('menu');
+  return within(row(title)).getByRole('list', { name: /^Actions for/ });
 };
 
 describe('TopicList', () => {
@@ -170,13 +170,14 @@ describe('TopicList', () => {
   it("merges with 'Same as…', asking which answer to keep when both are answered", async () => {
     const { actions, onChanged } = list([answered, unanswered, conflicted]);
     const menu = await menuOf(answered.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Same as…' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Same as…' }));
     await userEvent.selectOptions(screen.getByLabelText('Same question as'), 't3');
 
     // Both answered: Merge waits for a choice.
     const merge = screen.getByRole('button', { name: 'Merge' });
     expect(merge).toBeDisabled();
-    await userEvent.click(screen.getByLabelText('Keep theirs'));
+    expect(screen.getByLabelText('Keep theirs: “RM95”')).toBeInTheDocument();
+    await userEvent.click(screen.getByLabelText(/^Keep theirs/));
     expect(merge).toBeEnabled();
     await userEvent.click(merge);
 
@@ -187,10 +188,10 @@ describe('TopicList', () => {
   it('merges straight away, keeping the only answer, when just one topic has one', async () => {
     const { actions } = list([answered, unanswered]);
     const menu = await menuOf(unanswered.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Same as…' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Same as…' }));
     await userEvent.selectOptions(screen.getByLabelText('Same question as'), 't1');
 
-    expect(screen.queryByLabelText('Keep theirs')).toBeNull();
+    expect(screen.queryByLabelText(/^Keep theirs/)).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Merge' }));
     expect(actions.merge).toHaveBeenCalledWith('t2', 't1', 'into');
   });
@@ -198,7 +199,7 @@ describe('TopicList', () => {
   it('renames from the ⋯ menu', async () => {
     const { actions, onChanged } = list([answered, unanswered]);
     const menu = await menuOf(unanswered.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Rename' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Rename' }));
     const field = screen.getByLabelText('Title');
     expect(field).toHaveValue(unanswered.title);
     await userEvent.clear(field);
@@ -213,25 +214,25 @@ describe('TopicList', () => {
     // Business page, topic with a FAQ page: Hide, then (once hidden) Show.
     const { actions } = list([answered, unanswered]);
     let menu = await menuOf(answered.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Hide from FAQ' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Hide from FAQ' }));
     expect(actions.suppress).toHaveBeenCalledWith('t1', true);
     // A topic with no FAQ page has no FAQ item.
     menu = await menuOf(unanswered.title);
-    expect(within(menu).queryByRole('menuitem', { name: /FAQ/ })).toBeNull();
+    expect(within(menu).queryByRole('button', { name: /FAQ/ })).toBeNull();
   });
 
   it('offers Show on FAQ for a hidden topic, and no FAQ items on a personal page', async () => {
     const hidden = { ...answered, faqSuppressed: true };
     const { actions } = list([hidden]);
     const menu = await menuOf(hidden.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Show on FAQ' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Show on FAQ' }));
     expect(actions.suppress).toHaveBeenCalledWith('t1', false);
   });
 
   it('shows no FAQ items on a personal page', async () => {
     list([answered, unanswered], { publishesFaq: false });
     const menu = await menuOf(answered.title);
-    expect(within(menu).queryByRole('menuitem', { name: /FAQ/ })).toBeNull();
+    expect(within(menu).queryByRole('button', { name: /FAQ/ })).toBeNull();
     expect(within(row(answered.title)).queryByText(/\/faq/)).toBeNull();
   });
 
@@ -244,7 +245,7 @@ describe('TopicList', () => {
   it('deletes a topic only after confirming, naming how many wordings go', async () => {
     const { actions, onChanged } = list([answered, unanswered]);
     const menu = await menuOf(answered.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Delete topic' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Delete topic' }));
 
     expect(actions.deleteTopic).not.toHaveBeenCalled();
     expect(screen.getByText(/Delete this topic and its 2 wordings\?/)).toBeInTheDocument();
@@ -253,7 +254,7 @@ describe('TopicList', () => {
     expect(actions.deleteTopic).not.toHaveBeenCalled();
 
     const again = await menuOf(answered.title);
-    await userEvent.click(within(again).getByRole('menuitem', { name: 'Delete topic' }));
+    await userEvent.click(within(again).getByRole('button', { name: 'Delete topic' }));
     await userEvent.click(screen.getByRole('button', { name: 'Delete it' }));
     expect(actions.deleteTopic).toHaveBeenCalledWith('t1');
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -264,7 +265,7 @@ describe('TopicList', () => {
     expect(screen.getByText('Two answers — pick one')).toBeInTheDocument();
     const other = screen.getByText('RM90').parentElement as HTMLElement;
     expect(screen.getByText('RM95')).toBeInTheDocument();
-    await userEvent.click(within(other).getByRole('button', { name: 'Keep this' }));
+    await userEvent.click(within(other).getByRole('button', { name: 'Keep this answer: RM90' }));
 
     expect(actions.resolve).toHaveBeenCalledWith('t3', 'conflict');
     expect(onChanged).toHaveBeenCalledTimes(1);
@@ -273,7 +274,7 @@ describe('TopicList', () => {
   it('keeps the current answer from the conflict flag', async () => {
     const { actions } = list([conflicted]);
     const current = screen.getByText('RM95').parentElement as HTMLElement;
-    await userEvent.click(within(current).getByRole('button', { name: 'Keep this' }));
+    await userEvent.click(within(current).getByRole('button', { name: 'Keep this answer: RM95' }));
     expect(actions.resolve).toHaveBeenCalledWith('t3', 'answer');
   });
 
@@ -285,7 +286,7 @@ describe('TopicList', () => {
     await userEvent.keyboard('{Tab}');
     await userEvent.keyboard('{Escape}');
 
-    expect(screen.queryByRole('menu')).toBeNull();
+    expect(screen.queryByRole('list', { name: /^Actions for/ })).toBeNull();
     expect(button).toHaveAttribute('aria-expanded', 'false');
     expect(button).toHaveFocus();
   });
@@ -294,11 +295,65 @@ describe('TopicList', () => {
     const { actions } = list([answered]);
     actions.deleteTopic.mockRejectedValue(new Error('Could not delete that.'));
     const menu = await menuOf(answered.title);
-    await userEvent.click(within(menu).getByRole('menuitem', { name: 'Delete topic' }));
+    await userEvent.click(within(menu).getByRole('button', { name: 'Delete topic' }));
     await userEvent.click(screen.getByRole('button', { name: 'Delete it' }));
 
     expect(await screen.findByText('Could not delete that.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Delete it' })).toBeInTheDocument();
+  });
+
+  it('names the delete-topic consequence by whether it has an answer', async () => {
+    list([answered, unanswered]);
+    await userEvent.click(within(await menuOf(answered.title)).getByRole('button', { name: 'Delete topic' }));
+    expect(screen.getByText(/Your answer goes too/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
+
+    await userEvent.click(within(await menuOf(unanswered.title)).getByRole('button', { name: 'Delete topic' }));
+    expect(screen.getByText(/Delete this topic and its 1 wording\?/)).toBeInTheDocument();
+    expect(screen.queryByText(/Your answer goes too/)).toBeNull();
+  });
+
+  it('moves focus to the first field when Rename, Same as… or Answer opens', async () => {
+    list([answered, unanswered]);
+    await userEvent.click(within(await menuOf(unanswered.title)).getByRole('button', { name: 'Rename' }));
+    expect(screen.getByLabelText('Title')).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await userEvent.click(within(await menuOf(unanswered.title)).getByRole('button', { name: 'Same as…' }));
+    expect(screen.getByLabelText('Same question as')).toHaveFocus();
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await userEvent.click(within(row(unanswered.title)).getByRole('button', { name: 'Answer' }));
+    expect(screen.getByLabelText('Answer')).toHaveFocus();
+  });
+
+  it('puts focus back on the ⋯ button after hiding from the FAQ', async () => {
+    list([answered]);
+    await userEvent.click(within(await menuOf(answered.title)).getByRole('button', { name: 'Hide from FAQ' }));
+    expect(screen.getByRole('button', { name: /more actions/i })).toHaveFocus();
+  });
+
+  it('sends a request once when a button is tapped twice before the screen updates', async () => {
+    const { actions } = list([conflicted]);
+    let release: () => void = () => undefined;
+    actions.resolve.mockReturnValue(new Promise<void>((resolve) => { release = resolve; }));
+    const keep = screen.getByRole('button', { name: 'Keep this answer: RM90' });
+    act(() => { keep.click(); keep.click(); });
+    expect(actions.resolve).toHaveBeenCalledTimes(1);
+    await act(async () => release());
+  });
+
+  it('sends a wording action once on a double tap', async () => {
+    const { actions } = list([answered]);
+    await userEvent.click(screen.getByRole('button', { name: '+1 other wording' }));
+    let release: () => void = () => undefined;
+    actions.split.mockReturnValue(new Promise<void>((resolve) => { release = resolve; }));
+    const split = within(screen.getByText('What is his full name').closest('li') as HTMLElement).getByRole('button', {
+      name: 'Not the same question',
+    });
+    act(() => { split.click(); split.click(); });
+    expect(actions.split).toHaveBeenCalledTimes(1);
+    await act(async () => release());
   });
 
   it('has an empty state', () => {

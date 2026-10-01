@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Callout, Field } from '@curios/ui';
 import type { OwnerTopic, OwnerWording } from '@curios/db-read';
@@ -45,8 +45,12 @@ function WordingRow({
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // A ref, not just `busy`: two taps before React re-renders both see busy false.
+  const inFlight = useRef(false);
 
   async function run(work: () => Promise<void>) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError('');
     try {
@@ -56,6 +60,7 @@ function WordingRow({
     } catch (failure) {
       setError(toMessage(failure));
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -119,16 +124,29 @@ function TopicRow({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const menuButton = useRef<HTMLButtonElement>(null);
+  const inFlight = useRef(false);
+  const mergeId = `merge-${topic.id}`;
+  const menuId = `menu-${topic.id}`;
+
 
   const extra = topic.wordings.length - 1;
   const answerId = `answer-${topic.id}`;
   const titleId = `title-${topic.id}`;
+
+  // A panel that opens takes focus to its first field, so the keyboard user
+  // lands where they are about to type.
+  useEffect(() => {
+    const target = mode === 'answer' ? answerId : mode === 'rename' ? titleId : mode === 'merge' ? mergeId : null;
+    if (target) document.getElementById(target)?.focus();
+  }, [mode, answerId, titleId, mergeId]);
   const into = others.find((other) => other.id === intoId);
   const bothAnswered = Boolean(topic.answer && into?.answer);
   const showFaq = publishesFaq && topic.faqSlug !== null;
 
   /** Runs one request. On success `after` closes whatever was open; on failure the panel stays, with its input. */
   async function run(work: () => Promise<void>, after: () => void, focusId?: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setError('');
     try {
@@ -140,6 +158,7 @@ function TopicRow({
       // A busy submit-less Button keeps focus, but a re-render can still drop it; put it back on the field.
       if (focusId) document.getElementById(focusId)?.focus();
     } finally {
+      inFlight.current = false;
       setBusy(false);
     }
   }
@@ -218,42 +237,46 @@ function TopicRow({
             type="button"
             className={styles.menuButton}
             aria-label={`More actions for ${topic.title}`}
-            aria-haspopup="menu"
+            aria-controls={menuOpen ? menuId : undefined}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen(!menuOpen)}
           >
             ⋯
           </button>
           {menuOpen ? (
-            <ul className={styles.menu} role="menu" aria-label={`Actions for ${topic.title}`}>
+            <ul id={menuId} className={styles.menu} aria-label={`Actions for ${topic.title}`}>
               {others.length > 0 ? (
-                <li role="none">
-                  <button type="button" role="menuitem" onClick={() => { setIntoId(''); setKeep(''); openMode('merge'); }}>
+                <li>
+                  <button type="button" onClick={() => { setIntoId(''); setKeep(''); openMode('merge'); }}>
                     Same as…
                   </button>
                 </li>
               ) : null}
-              <li role="none">
-                <button type="button" role="menuitem" onClick={() => { setTitleDraft(topic.title); openMode('rename'); }}>
+              <li>
+                <button type="button" onClick={() => { setTitleDraft(topic.title); openMode('rename'); }}>
                   Rename
                 </button>
               </li>
               {showFaq ? (
-                <li role="none">
+                <li>
                   <button
                     type="button"
-                    role="menuitem"
+                   
                     onClick={() => {
+                      // The item unmounts with the list; park focus on the ⋯ button now and after.
                       setMenuOpen(false);
-                      void run(() => actions.suppress(topic.id, !topic.faqSuppressed), () => undefined);
+                      menuButton.current?.focus();
+                      void run(() => actions.suppress(topic.id, !topic.faqSuppressed), () => undefined).then(() =>
+                        menuButton.current?.focus(),
+                      );
                     }}
                   >
                     {topic.faqSuppressed ? 'Show on FAQ' : 'Hide from FAQ'}
                   </button>
                 </li>
               ) : null}
-              <li role="none">
-                <button type="button" role="menuitem" onClick={() => openMode('delete')}>
+              <li>
+                <button type="button" onClick={() => openMode('delete')}>
                   Delete topic
                 </button>
               </li>
@@ -267,13 +290,22 @@ function TopicRow({
           <Callout tone="action">Two answers — pick one</Callout>
           <div className={styles.choice}>
             <p>{topic.answer}</p>
-            <Button disabled={busy} onClick={() => void run(() => actions.resolve(topic.id, 'answer'), () => undefined)}>
+            <Button
+              aria-label={`Keep this answer: ${topic.answer ?? ''}`}
+              disabled={busy}
+              onClick={() => void run(() => actions.resolve(topic.id, 'answer'), () => undefined)}
+            >
               Keep this
             </Button>
           </div>
           <div className={styles.choice}>
             <p>{topic.conflictAnswer}</p>
-            <Button disabled={busy} onClick={() => void run(() => actions.resolve(topic.id, 'conflict'), () => undefined)}>
+            <Button
+              variant="secondary"
+              aria-label={`Keep this answer: ${topic.conflictAnswer}`}
+              disabled={busy}
+              onClick={() => void run(() => actions.resolve(topic.id, 'conflict'), () => undefined)}
+            >
               Keep this
             </Button>
           </div>
@@ -332,6 +364,7 @@ function TopicRow({
           <label className={styles.select}>
             Same question as
             <select
+              id={mergeId}
               aria-label="Same question as"
               value={intoId}
               onChange={(event) => { setIntoId(event.target.value); setKeep(''); }}
@@ -351,7 +384,7 @@ function TopicRow({
               </label>
               <label>
                 <input type="radio" name={`keep-${topic.id}`} checked={keep === 'into'} onChange={() => setKeep('into')} />
-                Keep theirs
+                Keep theirs: “{into?.answer}”
               </label>
             </fieldset>
           ) : null}
@@ -378,8 +411,7 @@ function TopicRow({
         <div className={styles.panel}>
           <div className={styles.confirm} role="group" aria-label="Confirm deleting this topic">
             <p>
-              Delete this topic and its {plural(topic.wordings.length, 'wording')}? Your answer goes
-              too, and this cannot be undone.
+              Delete this topic and its {plural(topic.wordings.length, 'wording')}?{topic.answer ? ' Your answer goes too, and' : ' This'} cannot be undone.
             </p>
             <Button variant="danger" busy={busy} onClick={() => void run(() => actions.deleteTopic(topic.id), close)}>
               Delete it
