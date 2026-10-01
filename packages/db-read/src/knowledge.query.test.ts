@@ -84,13 +84,14 @@ beforeAll(async () => {
 
   // ===== ORDERING TESTS FIXTURE (separate owner) =====
 
-  // Source ordering: create older first, newer last - should be returned newest first
+  // Source ordering: create older first, newer last - should be returned newest first.
+  // Explicit, distinct createdAt: back-to-back default timestamps can share a millisecond.
   await write.ingestion.create({
-    data: { pageId: orderTest.pageId, sourceUrl: 'https://old.example/', status: 'SUCCEEDED' }
+    data: { pageId: orderTest.pageId, sourceUrl: 'https://old.example/', status: 'SUCCEEDED', createdAt: new Date('2026-01-01T00:00:00Z') }
   });
 
   await write.ingestion.create({
-    data: { pageId: orderTest.pageId, sourceUrl: 'https://new.example/', status: 'SUCCEEDED' }
+    data: { pageId: orderTest.pageId, sourceUrl: 'https://new.example/', status: 'SUCCEEDED', createdAt: new Date('2026-01-05T00:00:00Z') }
   });
 
   // Facts ordering: FactCategory enum declared as [PRICE, HOURS, LOCATION, ...] so PRICE < HOURS
@@ -186,15 +187,8 @@ describe('getKnowledge', () => {
 
   it('orders sources by createdAt descending (newest first)', async () => {
     const k = await getKnowledge(orderTestAccountId);
-    const sources = k?.sources ?? [];
-    // We created: olderSource, then newerSource
-    // Should be returned: newerSource first, then olderSource
-    const sourceUrls = sources.map((s) => s.sourceUrl);
-    const newIdx = sourceUrls.indexOf('https://new.example/');
-    const oldIdx = sourceUrls.indexOf('https://old.example/');
-    expect(newIdx).toBeGreaterThanOrEqual(0);
-    expect(oldIdx).toBeGreaterThanOrEqual(0);
-    expect(newIdx).toBeLessThan(oldIdx);
+    // Created old then new; newest first. These are the owner's only sources.
+    expect(k?.sources.map((s) => s.sourceUrl)).toEqual(['https://new.example/', 'https://old.example/']);
   });
 
   it('returns facts in category then createdAt order', async () => {
