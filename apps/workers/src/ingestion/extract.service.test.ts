@@ -112,6 +112,16 @@ describe('runExtraction', () => {
     expect(await prisma.fact.count({ where: { pageId } })).toBe(2);
   });
 
+  it('counts only the facts that were new: a repeat run reports 0, on the row and in the result', async () => {
+    const deps = { prisma, gateway: gatewayReturning(RAW), adapter, embedder: null };
+    await runExtraction(deps, job());
+    const second = await runExtraction(deps, job());
+
+    expect(second.extractedCount).toBe(0);
+    const ingestion = await prisma.ingestion.findUniqueOrThrow({ where: { id: ingestionId } });
+    expect(ingestion.extractedCount).toBe(0);
+  });
+
   it('records a ModelCall with a non-zero cost', async () => {
     const deps = { prisma, gateway: gatewayReturning(RAW), adapter, embedder: null };
     await runExtraction(deps, job());

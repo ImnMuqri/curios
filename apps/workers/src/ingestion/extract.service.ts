@@ -169,7 +169,7 @@ export async function runExtraction(
 
     await prisma.ingestion.update({
       where: { id: job.ingestionId },
-      data: { status: 'SUCCEEDED', extractedCount: rows.length },
+      data: { status: 'SUCCEEDED', extractedCount: created.count },
     });
 
     return { extractedCount: created.count };
