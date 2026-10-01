@@ -137,10 +137,89 @@ describe('runGroupJob', () => {
     for (const t of ['c1', 'c2', 'c3', 'c4']) await aWording(pageId, t, { grouped: true });
     const q = await aWording(pageId, 'me');
     const { gateway, calls } = gatewaySaying(() => null);
-    const embedder = embedderFor({ c1: 1, c2: 1, c3: 1, c4: 1, me: 1 });
+    // The angle from "me" grows c3 < c1 < c4 < c2; all clear the 0.7 floor, c2 is cut by the limit.
+    const tilt: Record<string, number> = { c3: 0.1, c1: 0.2, c4: 0.3, c2: 0.4 };
+    const embedder: Embedder = {
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+      embed: async (texts) =>
+        texts.map((text) => {
+          const v = new Float32Array(EMBEDDING_DIMS);
+          v[0] = 1;
+          v[1] = tilt[text] ?? 0;
+          return v;
+        }),
+    };
 
     await runGroupJob({ prisma, gateway, embedder }, { questionId: q.id });
-    expect(calls[0]!.candidates).toHaveLength(3);
+    expect(calls[0]!.candidates.map((c) => c.title)).toEqual(['c3', 'c1', 'c4']);
+  });
+
+  it('embeds uncached wordings in chunks of 100', async () => {
+    const pageId = await aPage();
+    for (let i = 0; i < 249; i += 1) await aWording(pageId, `w${i}`, { grouped: true });
+    const q = await aWording(pageId, 'me');
+    const base = embedderFor({});
+    const embed = vi.fn((texts: string[]) => base.embed(texts));
+    const { gateway } = gatewaySaying(() => null);
+    await runGroupJob({ prisma, gateway, embedder: { ...base, embed } }, { questionId: q.id });
+    expect(embed.mock.calls.map(([texts]) => texts.length)).toEqual([100, 100, 50]);
+  });
+
+  describe('when the world changes while the model is answering', () => {
+    /** A gateway that does something to the database, then names the first candidate. */
+    function gatewayDoing(during: () => Promise<unknown>): Gateway {
+      return {
+        sameQuestion: async (input: SameQuestionInput) => {
+          await during();
+          return { match: input.candidates[0]!.id, usage: { inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 }, model: 'claude-haiku-4-5', latencyMs: 1 };
+        },
+      } as unknown as Gateway;
+    }
+
+    it('skips a wording the owner pinned meanwhile, even if its topic has siblings', async () => {
+      const pageId = await aPage();
+      await aWording(pageId, 'a', { grouped: true });
+      const q = await aWording(pageId, 'b');
+      await prisma.question.create({ data: { pageId, topicId: q.topicId, text: 'sib', normalizedQuestion: 'sib', groupedAt: new Date() } });
+      const gateway = gatewayDoing(() => prisma.question.update({ where: { id: q.id }, data: { pinnedByOwner: true } }));
+
+      await expect(runGroupJob({ prisma, gateway, embedder: embedderFor({ a: 1, b: 1, sib: 2 }) }, { questionId: q.id })).resolves.toBe('skipped');
+      const after = await prisma.question.findUniqueOrThrow({ where: { id: q.id } });
+      expect(after).toMatchObject({ topicId: q.topicId, pinnedByOwner: true, groupedAt: null });
+    });
+
+    it('skips, without throwing, a wording deleted meanwhile', async () => {
+      const pageId = await aPage();
+      await aWording(pageId, 'a', { grouped: true });
+      const q = await aWording(pageId, 'b');
+      const gateway = gatewayDoing(() => prisma.question.delete({ where: { id: q.id } }));
+      await expect(runGroupJob({ prisma, gateway, embedder: embedderFor({ a: 1, b: 1 }) }, { questionId: q.id })).resolves.toBe('skipped');
+    });
+
+    it('settles on none when the matched topic is deleted meanwhile', async () => {
+      const pageId = await aPage();
+      const target = await aWording(pageId, 'a', { grouped: true });
+      const q = await aWording(pageId, 'b');
+      const gateway = gatewayDoing(async () => {
+        await prisma.question.delete({ where: { id: target.id } });
+        await prisma.topic.delete({ where: { id: target.topicId } });
+      });
+      await expect(runGroupJob({ prisma, gateway, embedder: embedderFor({ a: 1, b: 1 }) }, { questionId: q.id })).resolves.toBe('none');
+      const after = await prisma.question.findUniqueOrThrow({ where: { id: q.id } });
+      expect(after.topicId).toBe(q.topicId);
+      expect(after.groupedAt).not.toBeNull();
+    });
+
+    it('skips a wording moved to another topic meanwhile', async () => {
+      const pageId = await aPage();
+      await aWording(pageId, 'a', { grouped: true });
+      const q = await aWording(pageId, 'b');
+      const elsewhere = await prisma.topic.create({ data: { pageId, title: 'elsewhere', askCount: 1 } });
+      const gateway = gatewayDoing(() => prisma.question.update({ where: { id: q.id }, data: { topicId: elsewhere.id } }));
+      await expect(runGroupJob({ prisma, gateway, embedder: embedderFor({ a: 1, b: 1 }) }, { questionId: q.id })).resolves.toBe('skipped');
+      expect((await prisma.question.findUniqueOrThrow({ where: { id: q.id } })).topicId).toBe(elsewhere.id);
+    });
   });
 
   it('moves only this wording when its topic holds others', async () => {
