@@ -1,6 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteWording } from '../topics/topic.service.js';
 import { PrismaClient } from '@prisma/client';
+import { refreshTopic } from '@curios/db';
 import { FREE_CONVERSATIONS_PER_MONTH, GROUP_QUEUE, normalizeClaim, RETRIEVAL_MIN_FACTS } from '@curios/core';
 import type { ChatInput, ChatMessage, Gateway } from '@curios/gateway';
 import {
@@ -1208,4 +1209,82 @@ describe('topics in the chat', () => {
     await collect(answer({ prisma, gateway: gatewaySaying('ok'), cap, embedder: null }, { handle: 'nadia', question: 'Who is Iman' }));
     expect(await prisma.topic.count()).toBe(1);
   });
+
+  it('still queues a new wording when the model fails mid-answer', async () => {
+    const groupQueue = queueSpy();
+
+    await expect(
+      collect(
+        answer(
+          { prisma, gateway: gatewayThatFails(), cap, embedder: null, groupQueue },
+          { handle: 'nadia', question: 'Who is Iman' },
+        ),
+      ),
+    ).rejects.toThrow('provider unavailable');
+
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('two first asks of one new wording make one wording and one topic', async () => {
+    const groupQueue = queueSpy();
+    const deps = { prisma, gateway: gatewaySaying('ok'), cap, embedder: null, groupQueue };
+
+    await Promise.all([
+      collect(answer(deps, { handle: 'nadia', question: 'Who is Iman' })),
+      collect(answer(deps, { handle: 'nadia', question: 'Who is Iman' })),
+    ]);
+
+    const questions = await prisma.question.findMany({});
+    expect(questions).toHaveLength(1);
+    expect(questions[0]?.askCount).toBe(2);
+    const topics = await prisma.topic.findMany({});
+    expect(topics).toHaveLength(1);
+    expect(topics[0]?.askCount).toBe(2);
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it("a repeat that waits on the grouping job's lock counts on, and answers from, the topic the job moved it to", async () => {
+    const pageId = await pageIdFor('nadia');
+    const from = await seedTopic(pageId, { wordings: [{ text: 'What is his full name' }] });
+    const into = await seedTopic(pageId, { answer: 'Iman Muqri', wordings: [{ text: 'Who is Iman', askCount: 2 }] });
+    const wordingId = (await prisma.question.findFirstOrThrow({ where: { topicId: from.id } })).id;
+
+    const jobClient = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+    try {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let locked!: () => void;
+      const lockedDone = new Promise<void>((resolve) => (locked = resolve));
+
+      // What the grouping job does: lock the wording, move it, merge-empty its old topic.
+      const job = jobClient.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Question" WHERE "id" = ${wordingId} FOR UPDATE`;
+        await tx.question.update({ where: { id: wordingId }, data: { topicId: into.id } });
+        await refreshTopic(tx, into.id);
+        await refreshTopic(tx, from.id);
+        locked();
+        await gate;
+      });
+      await lockedDone;
+
+      const ask = collect(
+        answer(
+          { prisma, gateway: gatewaySaying('unused'), cap, embedder: null },
+          { handle: 'nadia', question: 'what is his full name' },
+        ),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 400)); // let the ask reach its wait on the row
+      release();
+      const [events] = await Promise.all([ask, job]);
+
+      expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Iman Muqri');
+      const survivor = await prisma.topic.findUniqueOrThrow({ where: { id: into.id } });
+      const sum = await prisma.question.aggregate({ where: { topicId: into.id }, _sum: { askCount: true } });
+      expect(survivor.askCount).toBe(sum._sum.askCount);
+      expect(survivor.askCount).toBe(4);
+    } finally {
+      await jobClient.$disconnect();
+    }
+  });
 });
+
