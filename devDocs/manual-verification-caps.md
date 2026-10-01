@@ -1,5 +1,7 @@
 # Manual verification — the conversation cap
 
+> **Slice 15 note:** `PinnedAnswer`, `Question.answered`, `Question.faqSlug` and `Question.faqSuppressed` no longer exist; the answer, slug and suppression live on `Topic`. SQL and wording below that names them is out of date, so read it against `Topic` (see `manual-verification-topics.md`).
+
 **Status: NOT RUN.** Written down at the end of slice 7 rather than run. It is the fourth
 document of its kind, after `manual-verification-google-link.md`,
 `manual-verification-leads.md`, and `manual-verification-faq.md`.

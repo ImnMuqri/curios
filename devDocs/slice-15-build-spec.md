@@ -272,3 +272,42 @@ a time with exit codes checked, and a real-browser pass has been done.
 - **FRONTEND.md** — the Questions screen's layout and actions; Knowledge's Pinned tab lists topics.
 - **slice-5-build-spec.md** — the "matching is exact" limit points here.
 - **A manual-verification checklist** for topics.
+
+---
+
+## Revisions during planning (2026-10-01)
+
+Where the plan refined this spec, and where building it changed what the spec said. The code is the
+authority; this section says why it differs.
+
+**From planning**
+
+1. **A job moves only its own wording.** If the wording is alone in its topic, the whole topic merges
+   into the match; if its topic has other wordings (possible during the one-off grouping), only this
+   wording moves. A wording the owner split out (`pinnedByOwner`) never moves, because only its own
+   job could move it and that job skips it.
+2. **Topic aggregates are recomputed from members, never incremented**, inside every mutation
+   (`refreshTopic`). A chat ask racing a merge cannot lose or double a count.
+3. **Haiku sees candidates as letters (A, B, C), not ids**, and the parser maps the letter back. A
+   model echoes a letter far more reliably than a cuid.
+4. **Retired slugs are never reissued**: slug assignment treats `FaqRedirect` slugs as taken.
+5. **New domain codes**: `INVALID_ANSWER`, `INVALID_TITLE`, `ALREADY_ALONE`, `NO_CONFLICT`.
+
+**From execution**
+
+6. **`refreshTopic` and `mergeTopics` take row locks** (`SELECT ... FOR UPDATE`, topic ids in sorted
+   order), so a chat ask racing a merge cannot leave a short count. Both must run inside a
+   transaction.
+7. **The grouping verdict parser accepts only a clean letter**: bare, with a full stop, bracket or
+   dash tail, or "Option X". Anything else is `none`. Text reaching the grouping prompt is
+   whitespace-flattened and escaped, and the page name is tagged as data.
+8. **The grouping job re-reads and locks the wording inside its final transaction** and skips cleanly
+   if the owner split, moved or deleted it meanwhile. A target that vanished marks the wording
+   decided without moving it.
+9. **The chat uses the wording's topic as it stands after locking**, and queues a new wording's
+   grouping in a `finally`, so a failed reply still groups it.
+10. **Retired FAQ addresses use Next's `permanentRedirect` (HTTP 308)** where this spec said 301:
+    permanent, cacheable and ranking-transferring, with the method preserved, which is irrelevant
+    for a GET.
+11. **The Questions screen's ⋯ control is a disclosure list, not an ARIA menu** (no arrow-key
+    navigation; Tab works). Opening a panel focuses its field, and double taps are guarded.

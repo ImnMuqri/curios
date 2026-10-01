@@ -1,5 +1,7 @@
 # Manual verification — FAQ generation
 
+> **Slice 15 note:** `PinnedAnswer`, `Question.answered`, `Question.faqSlug` and `Question.faqSuppressed` no longer exist; the answer, slug and suppression live on `Topic`. SQL and wording below that names them is out of date, so read it against `Topic` (see `manual-verification-topics.md`).
+
 **Status: NOT RUN.** Written down at the end of slice 6 rather than run, for the same
 reason `manual-verification-leads.md` was: the four gates are green and the plan is about
 to merge, and the checks that need a browser, a stranger's-eye view of `view-source`, or a

@@ -16,7 +16,6 @@ AuthIdentity   provider + subject id, one row per sign-in method
 Page           handle, mode (PERSONAL | BUSINESS), theme, language, published
 Link           label, url, icon, position
 Fact           the knowledge base. one atomic claim per row.
-PinnedAnswer   exact-match override, always wins over model output
 NeverSay       forbidden topics and phrases, injected as a hard constraint
 Conversation   session, visitor fingerprint, referrer, resolved
 Message        role, content, cited fact ids, intent tags
@@ -27,10 +26,16 @@ Message        role, content, cited fact ids, intent tags
                not a citation in the strict sense: real citation tracking
                needs the model to name what it used.
 Lead           phone, extracted slots, score, status, conversationId
-Question       clustered text, ask count, answered flag
-               faqSlug is nullable and unique per page, assigned by apps/api.
-               answered means the owner wrote a pinned answer, not that the
-               model coped -- see the refusal rule below.
+Topic          one thing visitors ask, in however many wordings (slice 15).
+               owns the pinned answer (answer, answeredAt, conflictAnswer),
+               title, askCount (the sum of its wordings), faqSlug (nullable,
+               unique per page, assigned by apps/api), faqSuppressed.
+               an answered topic always wins over model output.
+Question       one wording: text, ask count, topicId (required), groupedAt,
+               pinnedByOwner. "Answered" means its topic has an answer the
+               owner wrote, not that the model coped -- see the refusal rule.
+FaqRedirect    a retired faqSlug and the topic it now points to (null once
+               that topic is deleted, so the address 404s and is never reissued)
 UsageCounter   pageId + period, conversation count. the meter.
 Ingestion      source url, status, extracted count, error, tracked
 ModelCall      one row per provider call. tokens, cost, cache hits. the margin.
@@ -241,9 +246,9 @@ for anything on another account's page (a 403 would confirm the id exists).
   repeat (trimmed, whitespace-collapsed, case-folded) is `409 NEVER_SAY_DUPLICATE` and the 51st
   entry is `409 NEVER_SAY_LIMIT` (`NEVER_SAY_MAX` is 50). In the prompt each entry is flattened
   to one line and escaped like a fact, which also covers rows written before the API existed.
-- **Withdraw** (`DELETE /questions/:id/answer`) deletes the pinned answer and marks the question
-  unanswered again; the question and its FAQ slug stay, and the public FAQ page catches up
-  within its 60-second window.
+- **Withdraw** (`DELETE /topics/:id/answer`) clears the topic's answer, so it is unanswered
+  again; the topic and its FAQ slug stay, and the public FAQ page catches up within its
+  60-second window.
 
 Re-run weekly for `volatile` facts. Diff, and surface changes as a dashboard nudge
 rather than silently overwriting what the owner approved.
@@ -262,7 +267,7 @@ visitor watching a blank bubble for four seconds leaves.
 
 ```
 1  rate limit by ip + page. leaky bucket in Redis.
-2  exact match against PinnedAnswer. hit → return it. zero tokens, zero risk.
+2  the wording's topic has an answer. hit → return it word for word. zero tokens, zero risk.
 3  check UsageCounter. over cap → the degraded reply, HTTP 200, no model call.
 4  load every verified fact. retrieve the few this question needs, or keep them all. see below.
 5  one Haiku call. system prompt carries those facts, NeverSay, language rule, refusal rule.
@@ -271,7 +276,7 @@ visitor watching a blank bubble for four seconds leaves.
 7  same response returns an intent block (below). no second classifier call.
 ```
 
-The cap sits after the pinned match, not before it. A pinned answer costs no tokens, and
+The cap sits after the topic-answer lookup, not before it. A pinned answer costs no tokens, and
 the cap exists to bound what a model call spends — refusing an answer that was already
 free would punish an owner for having answered the question well.
 
@@ -353,8 +358,8 @@ tanya Nadia."*
 
 *Amended by slice 5.* That sentence originally continued: *"Then notify the owner and log
 it as an unanswered Question."* **Every** question is logged and clustered now, not only
-refused ones, and `answered` means the owner has written an answer rather than that the
-model coped.
+refused ones, and "answered" (since slice 15, a topic with an answer) means the owner has written
+one rather than that the model coped.
 
 Refusal detection is deliberately absent. This prompt tells the model to answer in the
 language it was asked in, "including Malay, Manglish, or a mix", so there is nothing
@@ -603,13 +608,84 @@ scoring that comes with voice, rather than sitting in the suite as questions tha
 
 ---
 
+## Question topics
+
+*Added by slice 15; the argument, and its revisions, are in `devDocs/slice-15-build-spec.md`.*
+
+A visitor's wording is a `Question`; the thing the owner answers is a `Topic`, which groups every
+wording that one answer would be correct for. `PinnedAnswer` is gone: the answer lives on
+`Topic.answer`, and `answered`, `faqSlug` and `faqSuppressed` moved from `Question` to `Topic`.
+`Question` carries `topicId` (required), `groupedAt` (null until the grouping job has decided) and
+`pinnedByOwner` (set by a split; the job never moves it).
+
+**Aggregates are recomputed, never incremented.** `refreshTopic` (packages/db) rebuilds a topic's
+`askCount`, `lastAskedAt` and title (the most-asked wording, unless `titleSetByOwner`) from its
+wordings. `refreshTopic` and `mergeTopics` take row locks (`SELECT ... FOR UPDATE`, topic ids in
+sorted order) and must run inside a transaction, so a chat ask racing a merge cannot leave a short
+count.
+
+**The chat.** A new wording and its one-wording topic are created in one transaction. The chat
+reads the wording's topic as it stands after locking; if it has an `answer`, that is streamed word
+for word at zero tokens, otherwise the model answers. A new wording's `group-question` job is
+queued in a `finally` (`attempts: 3`, exponential backoff, job id = the question id), so a failed
+reply still groups it. A repeat wording enqueues nothing.
+
+**The grouping job** (`apps/workers/src/grouping/group.job.ts`, queue `group-question`):
+
+1. Skip if the wording is gone, `groupedAt` is set, or `pinnedByOwner` is true.
+2. Embed it (the `QuestionEmbedding` cache keyed by `questionKey`, else embed and store).
+3. Shortlist the page's other topics that have a grouped wording, by best cosine similarity, at or
+   above `GROUP_SHORTLIST_MIN` (0.70, deliberately loose), at most `GROUP_CANDIDATES` (3).
+4. No candidates: set `groupedAt`, no model call.
+5. Otherwise one Haiku call through the gateway, recorded in `ModelCall`. Candidates are letters
+   (A, B, C) with their title and up to `GROUP_SAMPLE_WORDINGS` wordings; "the same question" means
+   one answer would be correct for both. Text is whitespace-flattened and escaped, and the page
+   name is tagged as data. The verdict parser accepts only a clean letter (bare, with a full stop,
+   bracket or dash tail, or "Option X"); anything else is `none`.
+6. A match moves **only this wording**, in one transaction. The job re-reads and locks the wording
+   there and skips cleanly if the owner split, moved or deleted it meanwhile; a vanished target
+   marks it decided without moving it. An emptied source topic is deleted; where both topics were
+   answered the more-asked answer stays and the other goes to `conflictAnswer`. `none` sets
+   `groupedAt`.
+7. Any failure (including the provider) leaves it undecided with `groupedAt` null. BullMQ retries
+   it; after the last retry the backfill picks it up.
+
+**Backfill.** `pnpm --filter @curios/workers group:backfill [-- <pageId>]` runs the same job over
+every undecided, non-pinned wording, page by page, oldest first, one at a time. It needs
+`ANTHROPIC_API_KEY` and `OPENAI_API_KEY`. The migration made one topic per existing question and
+left `groupedAt` null, so nothing visible changes until the backfill runs.
+
+**Routes** (owner scope, `page: { accountId }` in the statement; another owner's id is `404
+NOT_FOUND`):
+
+| route | does | other codes |
+| --- | --- | --- |
+| `POST /topics/:id/answer` | set or edit the answer; clears `conflictAnswer` | `400 INVALID_ANSWER` |
+| `DELETE /topics/:id/answer` | withdraw; the slug is kept | |
+| `POST /topics/:id/suppress` | hide or show the FAQ page | |
+| `PATCH /topics/:id` | rename; sets `titleSetByOwner` | `400 INVALID_TITLE` |
+| `POST /topics/:id/merge` `{ intoTopicId, keepAnswer }` | move every wording into the other topic; the loser's slug goes to `FaqRedirect` | |
+| `POST /topics/:id/resolve` `{ keep }` | settle "two answers" | `409 NO_CONFLICT` |
+| `DELETE /topics/:id` | erase the topic, its wordings and its answer; its slug is retired with no target | |
+| `POST /questions/:id/split` | the wording becomes its own topic, `pinnedByOwner = true`, no answer, no slug | `400 ALREADY_ALONE` |
+| `DELETE /questions/:id` | erase a wording; an emptied topic goes with it | |
+
+`POST /questions/:id/answer`, `/suppress` and `DELETE /questions/:id/answer` no longer exist.
+
+---
+
 ## FAQ generation
 
-When a Question crosses `FAQ_MIN_ASKS` asks and the owner has answered it, it earns a
-`faqSlug` and appears at `/[handle]/faq`. The page is rendered on first request and cached
+When a Topic's total `askCount` crosses `FAQ_MIN_ASKS` and the owner has answered it, it earns a
+`faqSlug` and appears at `/[handle]/faq`. `getFaqIndex` and `getFaqEntry` read `Topic` (published
+business page, slug set, answer set, not suppressed): one page per topic, not per wording. A slug
+the topic loses in a merge goes to `FaqRedirect`, and the old address answers with Next's
+`permanentRedirect` (HTTP 308) to the surviving topic's page; a deleted topic's slug stays there
+with no target, so it 404s and is never reissued. `assignTopicSlug` (apps/api) treats
+`FaqRedirect` slugs as taken. The page is rendered on first request and cached
 for 60 seconds by Next's ISR, not built by a worker — there is no BullMQ job, and
 `generateStaticParams` is deliberately absent so `pnpm build` needs no database. Withdrawing
-the pinned answer behind a published question does not take effect on the public page
+the answer behind a published topic does not take effect on the public page
 instantly: the read stops returning it at once, but the cached HTML only catches up when
 that page's 60-second ISR window turns over, since nothing calls `revalidatePath`. This is
 the SEO layer — it was meant to double as the over-cap fallback too, one artifact doing
