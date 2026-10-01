@@ -81,6 +81,11 @@ describe('Button', () => {
     expect(screen.getByRole('button')).toHaveAttribute('type', 'button');
   });
 
+  it('forwards an accessible name when the label alone is ambiguous', () => {
+    render(<Button aria-label="Remove halal certified">Remove</Button>);
+    expect(screen.getByRole('button', { name: 'Remove halal certified' })).toBeInTheDocument();
+  });
+
   it('can be a submit button when asked', () => {
     render(<Button type="submit">Sign in</Button>);
     expect(screen.getByRole('button')).toHaveAttribute('type', 'submit');

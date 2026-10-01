@@ -16,6 +16,7 @@ export function Button({
   busy = false,
   disabled = false,
   onClick,
+  'aria-label': ariaLabel,
 }: {
   children: ReactNode;
   type?: 'button' | 'submit';
@@ -23,6 +24,7 @@ export function Button({
   busy?: boolean;
   disabled?: boolean;
   onClick?: () => void;
+  'aria-label'?: string;
 }) {
   // A submit button has no `onClick` of its own to take away: the double
   // submit it must refuse comes from the browser's default action on
@@ -51,6 +53,7 @@ export function Button({
       // button and a slow one to someone who cannot see it change.
       aria-busy={busy || undefined}
       onClick={busy ? undefined : onClick}
+      aria-label={ariaLabel}
     >
       {children}
     </button>
