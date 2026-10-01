@@ -12,7 +12,8 @@
     border-color 120ms ease;
 }
 
-.button:disabled {
+.button:disabled,
+.button[aria-disabled='true'] {
   opacity: 0.55;
   cursor: default;
 }
@@ -22,7 +23,7 @@
   color: var(--paper);
 }
 
-.primary:active:not(:disabled) {
+.primary:active:not(:disabled):not([aria-disabled='true']) {
   background: var(--ink);
 }
 
@@ -32,7 +33,7 @@
   color: var(--ink);
 }
 
-.secondary:active:not(:disabled) {
+.secondary:active:not(:disabled):not([aria-disabled='true']) {
   background: var(--surface);
 }
 
@@ -43,7 +44,7 @@
   color: var(--merah);
 }
 
-.danger:active:not(:disabled) {
+.danger:active:not(:disabled):not([aria-disabled='true']) {
   background: var(--merah);
   color: var(--paper);
 }
