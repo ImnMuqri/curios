@@ -1,6 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { mergeTopics, moveWording, refreshTopic, retireSlug } from './topics.js';
+import { MergeWouldDropAnswerError, mergeTopics, moveWording, refreshTopic, retireSlug } from './topics.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -155,6 +155,58 @@ describe('mergeTopics', () => {
     const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }], { answer: 'MINE' });
     await mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'auto' });
     expect(await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).toMatchObject({ answer: 'MINE', conflictAnswer: null });
+  });
+
+  it('keeps a hidden page hidden when the survivor takes its slug', async () => {
+    const pageId = await aPage();
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }], { faqSlug: 'hidden', faqSuppressed: true, answer: 'A' });
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }]);
+    await mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'auto' });
+    expect(await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).toMatchObject({ faqSlug: 'hidden', faqSuppressed: true });
+  });
+
+  it('keeps its own flag when both are slugged: the survivor page stays, the other redirects to it', async () => {
+    const pageId = await aPage();
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }], { faqSlug: 'from-slug', faqSuppressed: true });
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }], { faqSlug: 'into-slug' });
+    await mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'into' });
+    expect(await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).toMatchObject({ faqSlug: 'into-slug', faqSuppressed: false });
+    expect(await prisma.faqRedirect.findUnique({ where: { pageId_slug: { pageId, slug: 'from-slug' } } })).toMatchObject({ topicId: into.id });
+  });
+
+  it("on 'auto', refuses when the survivor already holds a conflict and the source has an answer, writing nothing", async () => {
+    const pageId = await aPage();
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }], { answer: 'THIRD' });
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }], { answer: 'FIRST', conflictAnswer: 'SECOND' });
+    await expect(mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'auto' })).rejects.toBeInstanceOf(MergeWouldDropAnswerError);
+    expect(await prisma.topic.findUnique({ where: { id: from.id } })).not.toBeNull();
+    expect(await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).toMatchObject({ answer: 'FIRST', conflictAnswer: 'SECOND', askCount: 1 });
+    expect((await prisma.question.findFirstOrThrow({ where: { text: 'a' } })).topicId).toBe(from.id);
+  });
+
+  it("on 'auto', refuses when the source holds a conflict of its own, writing nothing", async () => {
+    const pageId = await aPage();
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }], { answer: 'ONE', conflictAnswer: 'TWO' });
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }]);
+    await expect(mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'auto' })).rejects.toBeInstanceOf(MergeWouldDropAnswerError);
+    expect(await prisma.topic.findUnique({ where: { id: from.id } })).toMatchObject({ conflictAnswer: 'TWO' });
+    expect((await prisma.question.findFirstOrThrow({ where: { text: 'a' } })).topicId).toBe(from.id);
+  });
+
+  it("on 'auto', still merges when the survivor holds a conflict but the source has no answer", async () => {
+    const pageId = await aPage();
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }]);
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }], { answer: 'FIRST', conflictAnswer: 'SECOND' });
+    await mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'auto' });
+    expect(await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).toMatchObject({ answer: 'FIRST', conflictAnswer: 'SECOND', askCount: 2 });
+  });
+
+  it("an owner's merge ('from') may drop the source's conflict: it is their choice", async () => {
+    const pageId = await aPage();
+    const from = await aTopic(pageId, [{ text: 'a', askCount: 1 }], { answer: 'ONE', conflictAnswer: 'TWO' });
+    const into = await aTopic(pageId, [{ text: 'b', askCount: 1 }], { answer: 'KEEP', conflictAnswer: 'OTHER' });
+    await mergeTopics(prisma, { fromTopicId: from.id, intoTopicId: into.id, answer: 'from' });
+    expect(await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).toMatchObject({ answer: 'ONE' });
   });
 
   it('refuses to merge across pages', async () => {

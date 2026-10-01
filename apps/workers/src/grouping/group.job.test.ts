@@ -222,6 +222,40 @@ describe('runGroupJob', () => {
     });
   });
 
+  describe("when an automatic merge would drop an owner's answer", () => {
+    async function runExpectingNone(pageId: string, q: { id: string; topicId: string }, targetTopicId: string) {
+      const { gateway } = gatewaySaying((input) => input.candidates[0]!.id);
+      const warn = vi.fn();
+      await expect(runGroupJob({ prisma, gateway, embedder: embedderFor({ target: 1, me: 1 }), log: { warn } }, { questionId: q.id })).resolves.toBe('none');
+      expect(warn).toHaveBeenCalledOnce();
+      const after = await prisma.question.findUniqueOrThrow({ where: { id: q.id } });
+      expect(after.groupedAt).not.toBeNull();
+      expect(after.topicId).toBe(q.topicId);
+      expect(await prisma.topic.findUnique({ where: { id: q.topicId } })).not.toBeNull();
+      expect(await prisma.topic.count({ where: { pageId } })).toBe(2);
+      return prisma.topic.findUniqueOrThrow({ where: { id: targetTopicId } });
+    }
+
+    it('settles on none when the target already holds a conflict and the wording has an answer', async () => {
+      const pageId = await aPage();
+      const target = await aWording(pageId, 'target', { grouped: true, answer: 'FIRST' });
+      await prisma.topic.update({ where: { id: target.topicId }, data: { conflictAnswer: 'SECOND' } });
+      const q = await aWording(pageId, 'me', { answer: 'THIRD' });
+      const kept = await runExpectingNone(pageId, q, target.topicId);
+      expect(kept).toMatchObject({ answer: 'FIRST', conflictAnswer: 'SECOND', askCount: 1 });
+    });
+
+    it('settles on none when the wording’s own topic holds a conflict', async () => {
+      const pageId = await aPage();
+      const target = await aWording(pageId, 'target', { grouped: true });
+      const q = await aWording(pageId, 'me', { answer: 'ONE' });
+      await prisma.topic.update({ where: { id: q.topicId }, data: { conflictAnswer: 'TWO' } });
+      const kept = await runExpectingNone(pageId, q, target.topicId);
+      expect(kept).toMatchObject({ answer: null, conflictAnswer: null, askCount: 1 });
+      expect(await prisma.topic.findUniqueOrThrow({ where: { id: q.topicId } })).toMatchObject({ answer: 'ONE', conflictAnswer: 'TWO' });
+    });
+  });
+
   it('moves only this wording when its topic holds others', async () => {
     const pageId = await aPage();
     const target = await aWording(pageId, 'target', { grouped: true });

@@ -59,16 +59,32 @@ export async function retireSlug(tx: Tx, pageId: string, slug: string, topicId: 
   });
 }
 
+/**
+ * An automatic merge would have to hold a third owner-written answer, and a
+ * topic keeps at most two. Thrown before anything is written; the owner
+ * merges these by hand and picks.
+ */
+export class MergeWouldDropAnswerError extends Error {
+  constructor() {
+    super('mergeTopics: merging would drop an owner-written answer');
+    this.name = 'MergeWouldDropAnswerError';
+  }
+}
+
 export async function mergeTopics(
   tx: Tx,
   input: { fromTopicId: string; intoTopicId: string; answer: 'from' | 'into' | 'auto' },
 ): Promise<void> {
   await lockTopics(tx, [input.fromTopicId, input.intoTopicId]);
-  const select = { id: true, pageId: true, answer: true, answeredAt: true, askCount: true, faqSlug: true } as const;
+  const select = { id: true, pageId: true, answer: true, answeredAt: true, askCount: true, faqSlug: true, conflictAnswer: true, faqSuppressed: true } as const;
   const from = await tx.topic.findUniqueOrThrow({ where: { id: input.fromTopicId }, select });
   const into = await tx.topic.findUniqueOrThrow({ where: { id: input.intoTopicId }, select });
   if (from.pageId !== into.pageId) throw new Error('mergeTopics: topics are on different pages');
   if (from.id === into.id) throw new Error('mergeTopics: a topic cannot merge into itself');
+
+  if (input.answer === 'auto' && (from.conflictAnswer !== null || (into.conflictAnswer !== null && from.answer !== null))) {
+    throw new MergeWouldDropAnswerError();
+  }
 
   let answer = into.answer;
   let answeredAt = into.answeredAt;
@@ -101,14 +117,18 @@ export async function mergeTopics(
   await tx.topic.delete({ where: { id: from.id } });
 
   let faqSlug = into.faqSlug;
+  let faqSuppressed = into.faqSuppressed;
   if (fromSlug) {
-    if (faqSlug === null) faqSlug = fromSlug;
-    else await retireSlug(tx, into.pageId, fromSlug, into.id);
+    if (faqSlug === null) {
+      // The survivor inherits the address, so it inherits a takedown too.
+      faqSlug = fromSlug;
+      faqSuppressed = into.faqSuppressed || from.faqSuppressed;
+    } else await retireSlug(tx, into.pageId, fromSlug, into.id);
   }
 
   await tx.topic.update({
     where: { id: into.id },
-    data: { answer, answeredAt, faqSlug, ...(conflictAnswer !== undefined ? { conflictAnswer } : {}) },
+    data: { answer, answeredAt, faqSlug, faqSuppressed, ...(conflictAnswer !== undefined ? { conflictAnswer } : {}) },
   });
   await refreshTopic(tx, into.id);
 }

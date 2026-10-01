@@ -6,7 +6,7 @@ import {
   questionKey,
   type GroupJobData,
 } from '@curios/core';
-import { mergeTopics, moveWording, recordModelCall, type PrismaClient } from '@curios/db';
+import { MergeWouldDropAnswerError, mergeTopics, moveWording, recordModelCall, type PrismaClient } from '@curios/db';
 import { decodeVector, encodeVector, type Embedder } from '@curios/embeddings';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 
@@ -163,7 +163,15 @@ export async function runGroupJob(deps: GroupJobDeps, data: GroupJobData): Promi
     const siblings = await tx.question.count({ where: { topicId: question.topicId, id: { not: question.id } } });
     await tx.question.update({ where: { id: question.id }, data: { groupedAt: new Date() } });
     if (siblings === 0) {
-      await mergeTopics(tx, { fromTopicId: question.topicId, intoTopicId, answer: 'auto' });
+      try {
+        await mergeTopics(tx, { fromTopicId: question.topicId, intoTopicId, answer: 'auto' });
+      } catch (error) {
+        // It throws before writing anything, so the transaction stays clean and
+        // the wording's decided mark (set above) commits: the owner merges by hand.
+        if (!(error instanceof MergeWouldDropAnswerError)) throw error;
+        deps.log?.warn?.({ questionId: question.id, fromTopicId: question.topicId, intoTopicId }, 'grouping left alone: merging would drop an owner-written answer');
+        return 'none' as const;
+      }
       return 'merged' as const;
     }
     await moveWording(tx, { questionId: question.id, intoTopicId });

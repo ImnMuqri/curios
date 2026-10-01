@@ -15,4 +15,4 @@ export type { ModelCallFields } from './model-call.js';
 
 export { syncFactEmbeddings } from './fact-embedding.js';
 
-export { mergeTopics, moveWording, refreshTopic, retireSlug } from './topics.js';
+export { MergeWouldDropAnswerError, mergeTopics, moveWording, refreshTopic, retireSlug } from './topics.js';
