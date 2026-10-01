@@ -60,21 +60,13 @@ beforeAll(async () => {
     data: { pageId: a.pageId, pastedText: '\n\n  About Nadia Bakes\nMore.', status: 'SUCCEEDED', tracked: false }
   });
 
-  const question = await write.question.create({
-    data: { pageId: a.pageId, text: 'Berapa harga kek?', normalizedQuestion: 'berapa harga kek', answered: true }
-  });
-  await write.pinnedAnswer.create({
-    data: { pageId: a.pageId, question: question.text, normalizedQuestion: 'berapa harga kek', answer: 'RM95.' }
-  });
+  await write.topic.create({ data: { pageId: a.pageId, title: 'Berapa harga kek?', answer: 'RM95.', askCount: 3 } });
 
-  // Question with answered: true but NO PinnedAnswer
-  await write.question.create({
-    data: { pageId: a.pageId, text: 'No pin here?', normalizedQuestion: 'no pin here', answered: true }
-  });
+  // Asked about a lot but unanswered: not pinned.
+  await write.topic.create({ data: { pageId: a.pageId, title: 'No answer here?', askCount: 9 } });
 
-  await write.question.create({
-    data: { pageId: a.pageId, text: 'Ada delivery?', normalizedQuestion: 'ada delivery' }
-  });
+  // Another owner's answered topic.
+  await write.topic.create({ data: { pageId: b.pageId, title: 'Their question?', answer: 'Theirs.', askCount: 50 } });
 
   await write.neverSay.create({
     data: { pageId: a.pageId, phrase: 'halal certified' }
@@ -103,21 +95,11 @@ beforeAll(async () => {
   await fact(orderTest.pageId, 'hours early', { verified: true, category: 'HOURS', createdAt: new Date('2026-01-01') });
   await fact(orderTest.pageId, 'price', { verified: true, category: 'PRICE', createdAt: new Date('2026-01-02') });
 
-  // Questions ordering: create lower askCount FIRST, then higher askCount
-  // Should return in desc order: highAsk before lowAsk
-  const lowAskQuestion = await write.question.create({
-    data: { pageId: orderTest.pageId, text: 'Asked 5 times?', normalizedQuestion: 'asked 5', answered: true, askCount: 5 }
-  });
-  await write.pinnedAnswer.create({
-    data: { pageId: orderTest.pageId, question: lowAskQuestion.text, normalizedQuestion: 'asked 5', answer: 'Five.' }
-  });
-
-  const highAskQuestion = await write.question.create({
-    data: { pageId: orderTest.pageId, text: 'Asked 20 times?', normalizedQuestion: 'asked 20', answered: true, askCount: 20 }
-  });
-  await write.pinnedAnswer.create({
-    data: { pageId: orderTest.pageId, question: highAskQuestion.text, normalizedQuestion: 'asked 20', answer: 'Twenty.' }
-  });
+  // Topics ordering: lower askCount FIRST, then higher; a tie broken by lastAskedAt.
+  await write.topic.create({ data: { pageId: orderTest.pageId, title: 'Asked 5 times?', answer: 'Five.', askCount: 5 } });
+  await write.topic.create({ data: { pageId: orderTest.pageId, title: 'Asked 20 times?', answer: 'Twenty.', askCount: 20 } });
+  await write.topic.create({ data: { pageId: orderTest.pageId, title: 'Tie older?', answer: 'Older.', askCount: 1, lastAskedAt: new Date('2026-01-01T00:00:00Z') } });
+  await write.topic.create({ data: { pageId: orderTest.pageId, title: 'Tie newer?', answer: 'Newer.', askCount: 1, lastAskedAt: new Date('2026-02-01T00:00:00Z') } });
 
   // ===== NEVER-SAY ORDERING FIXTURE (separate owner) =====
 
@@ -167,12 +149,16 @@ describe('getKnowledge', () => {
     expect(JSON.stringify(k)).not.toContain('More.');
   });
 
-  it('lists pinned answers, not unanswered questions', async () => {
+  it('lists answered topics as pinned answers, not unanswered ones', async () => {
     const k = await getKnowledge(mine);
-    // Exact equality: ordered by askCount desc then lastAskedAt desc
-    // Only one pinned question in this fixture (Berapa harga kek?)
-    expect(k?.pinned).toEqual([{ questionId: expect.any(String), question: 'Berapa harga kek?', answer: 'RM95.' }]);
-    expect(JSON.stringify(k?.pinned)).not.toContain('No pin here?');
+    expect(k?.pinned).toEqual([{ topicId: expect.any(String), question: 'Berapa harga kek?', answer: 'RM95.' }]);
+    expect(JSON.stringify(k?.pinned)).not.toContain('No answer here?');
+    expect(JSON.stringify(k?.pinned)).not.toContain('Their question?');
+  });
+
+  it("carries the topic's id", async () => {
+    const topic = await write.topic.findFirstOrThrow({ where: { title: 'Berapa harga kek?', page: { accountId: mine } } });
+    expect((await getKnowledge(mine))?.pinned[0]?.topicId).toBe(topic.id);
   });
 
   it('lists never-say entries', async () => {
@@ -199,18 +185,9 @@ describe('getKnowledge', () => {
     expect(facts.map((f) => f.claim)).toEqual(['price', 'hours early', 'hours late']);
   });
 
-  it('orders pinned answers by question askCount descending', async () => {
+  it('orders pinned answers by askCount descending, then most recently asked', async () => {
     const k = await getKnowledge(orderTestAccountId);
-    // Created: low askCount (5) first, then high askCount (20)
-    // Should return: high askCount (20) first, then low askCount (5)
-    expect(k?.pinned.map((p) => p.question)).toEqual(['Asked 20 times?', 'Asked 5 times?']);
-  });
-
-  it('excludes questions with answered: true but no PinnedAnswer', async () => {
-    const k = await getKnowledge(mine);
-    expect(k?.pinned.map((p) => p.question)).not.toContain('No pin here?');
-    // Verify a pinned question is present
-    expect(k?.pinned.length).toBeGreaterThan(0);
+    expect(k?.pinned.map((p) => p.question)).toEqual(['Asked 20 times?', 'Asked 5 times?', 'Tie newer?', 'Tie older?']);
   });
 
   it('passes through source status, error, createdAt, and fact ids with exact values', async () => {

@@ -36,18 +36,11 @@ function publishedBusinessPage(handle: string) {
 }
 
 /**
- * Every question on a page that has earned a public URL and still has an
- * answer behind it, most asked first.
+ * Every topic on a page that has earned a public URL and still has an answer,
+ * most asked first.
  *
- * Two queries rather than a join: `Question` and `PinnedAnswer` have no Prisma
- * relation, but both carry a unique `(pageId, normalizedQuestion)`, so this is
- * two indexed reads and an in-memory match -- no raw SQL, and no new foreign
- * key on a table the chat path writes to on every question.
- *
- * The answer is read through `PinnedAnswer` rather than cached onto `Question`
- * so that withdrawing an answer removes it from THIS query's result the very
- * next time it runs, without anyone having to remember a second write. That is
- * not the same as the public page updating immediately: `/[handle]/faq` and
+ * The answer lives on the topic, so withdrawing it drops the entry from this query immediately.
+ * That is not the same as the public page updating immediately: `/[handle]/faq` and
  * `/[handle]/faq/[slug]` cache the rendered HTML for up to 60 seconds (Next ISR,
  * no `revalidatePath` call anywhere), so a page a visitor or a crawler already
  * has cached keeps showing the withdrawn answer until that window turns over.
@@ -60,37 +53,23 @@ export async function getFaqIndex(
   const page = await publishedBusinessPage(handle);
   if (!page) return null;
 
-  const questions = await prismaRead.question.findMany({
-    where: { pageId: page.id, faqSlug: { not: null }, faqSuppressed: false },
+  const topics = await prismaRead.topic.findMany({
+    where: { pageId: page.id, faqSlug: { not: null }, faqSuppressed: false, answer: { not: null } },
     orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
     take: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
-    select: { faqSlug: true, text: true, normalizedQuestion: true },
+    select: { faqSlug: true, title: true },
   });
-
-  const answered = new Set(
-    (
-      await prismaRead.pinnedAnswer.findMany({
-        where: {
-          pageId: page.id,
-          normalizedQuestion: { in: questions.map((q) => q.normalizedQuestion) },
-        },
-        select: { normalizedQuestion: true },
-      })
-    ).map((row) => row.normalizedQuestion),
-  );
 
   return {
     handle: page.handle,
     displayName: page.displayName,
-    entries: questions
-      .filter((q) => answered.has(q.normalizedQuestion))
-      // The slug is non-null by the query above; this narrows it for the type.
-      .map((q) => ({ slug: q.faqSlug as string, question: q.text })),
+    // The slug is non-null by the query above; this narrows it for the type.
+    entries: topics.map((t) => ({ slug: t.faqSlug as string, question: t.title })),
   };
 }
 
 /**
- * One question and the owner's exact words.
+ * One topic and the owner's exact words.
  *
  * Null covers every failure the route turns into a 404: no such handle, a
  * personal page, an unpublished page, a slug nobody holds, and a slug whose
@@ -104,27 +83,23 @@ export async function getFaqEntry(handle: string, slug: string): Promise<FaqAnsw
   // so a mixed-case inbound link (a typo, a chat client that title-cases URLs)
   // resolves instead of 404ing. Inbound links finding the page are the point
   // of this slice.
-  const question = await prismaRead.question.findFirst({
-    where: { pageId: page.id, faqSlug: slug.toLowerCase(), faqSuppressed: false },
-    select: { text: true, normalizedQuestion: true },
+  const topic = await prismaRead.topic.findFirst({
+    where: { pageId: page.id, faqSlug: slug.toLowerCase(), faqSuppressed: false, answer: { not: null } },
+    select: { title: true, answer: true },
   });
-  if (!question) return null;
+  if (!topic || topic.answer === null) return null;
 
-  const pinned = await prismaRead.pinnedAnswer.findUnique({
-    where: {
-      pageId_normalizedQuestion: {
-        pageId: page.id,
-        normalizedQuestion: question.normalizedQuestion,
-      },
-    },
-    select: { answer: true },
+  return { handle: page.handle, displayName: page.displayName, question: topic.title, answer: topic.answer };
+}
+
+/** Where a retired slug now lives: its topic's slug, or null if the topic is gone or the slug unknown. */
+export async function getFaqRedirect(handle: string, slug: string): Promise<string | null> {
+  const page = await publishedBusinessPage(handle);
+  if (!page) return null;
+  const redirect = await prismaRead.faqRedirect.findUnique({
+    where: { pageId_slug: { pageId: page.id, slug: slug.toLowerCase() } },
+    select: { topic: { select: { faqSlug: true, answer: true, faqSuppressed: true } } },
   });
-  if (!pinned) return null;
-
-  return {
-    handle: page.handle,
-    displayName: page.displayName,
-    question: question.text,
-    answer: pinned.answer,
-  };
+  const topic = redirect?.topic;
+  return topic && topic.faqSlug && topic.answer !== null && !topic.faqSuppressed ? topic.faqSlug : null;
 }
