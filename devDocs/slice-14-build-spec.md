@@ -299,3 +299,7 @@ pass has been done on a dev page.
    disabled submit button drops it).
 8. **The never-say limit message reads "You have reached 50. Remove one first."** — the API's
    no-contraction house style — rather than "You've reached 50 — remove one first".
+9. **Facts from before tracking sit inside their category groups, labelled "Before tracking"**, not
+   in a separate group. Decision 2 said "their own group", the Screen section said "grouped by
+   category, each with its label"; the build follows the Screen section.
+10. **The tabs run Facts, Sources, Pinned answers, Never say, with Facts the default.**
