@@ -1,7 +1,5 @@
 # Manual verification — the conversation cap
 
-> **Slice 15 note:** `PinnedAnswer`, `Question.answered`, `Question.faqSlug` and `Question.faqSuppressed` no longer exist; the answer, slug and suppression live on `Topic`. SQL and wording below that names them is out of date, so read it against `Topic` (see `manual-verification-topics.md`).
-
 **Status: NOT RUN.** Written down at the end of slice 7 rather than run. It is the fourth
 document of its kind, after `manual-verification-google-link.md`,
 `manual-verification-leads.md`, and `manual-verification-faq.md`.
@@ -86,7 +84,7 @@ netstat -ano | grep -E ":(3000|3001)\s.*LISTENING"
 ```
 
 You need one published `BUSINESS` page with at least one link, one verified fact, and one
-`PinnedAnswer` already written for some question (for check 4) — a page with a couple of
+answered `Topic` (an `answer` written, for check 4) — a page with a couple of
 FAQ entries already generated makes check 3 worth more, since it exercises
 `/[handle]/faq` rather than an empty index. Use a page you do not mind leaving with an
 inflated `UsageCounter` rather than a real demo account; check 1 sets it to a number no
@@ -146,7 +144,7 @@ than inferring it from check 2:
   renders, unchanged from before the page went over cap.
 - Load `/[handle]/faq` and confirm the FAQ index still renders whatever entries existed
   before.
-- If the page has a `faqSlug`'d question, load `/[handle]/faq/[slug]` directly and
+- If the page has a topic with a `faqSlug`, load `/[handle]/faq/[slug]` directly and
   confirm the entry page still 200s.
 
 Nothing in this slice touches any of these three routes — they are `apps/web`, and the
@@ -155,7 +153,7 @@ whether that separation actually holds, not whether it was intended to.
 
 ### 4. A pinned answer still answers properly over the cap
 
-Close the sheet and reopen it, then ask the exact question you have a `PinnedAnswer` for.
+Close the sheet and reopen it, then ask the exact question (or any wording of the topic) that has an owner's answer.
 Reopening matters: `AskSheet` holds one `conversationId` per open sheet, and
 `chat.service.ts` only increments `UsageCounter` for a *new* conversation. Continuing the
 same sheet from check 2 would add turns to that conversation instead, and check 6 would

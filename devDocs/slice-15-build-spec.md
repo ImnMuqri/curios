@@ -249,8 +249,8 @@ drop the empty-topic delete.
 
 ## Rollout
 
-1. Drain the ingest and new grouping queues; deploy the migration together with the API and workers.
-2. Run `scripts/group-questions.ts` for each page.
+1. Drain the ingest and grouping queues, then ship all four together in one step: the migration, the API, the workers **and the web**, with a short outage expected. The migration drops columns and a table that the old API, workers and web read (`Question.answered`, `faqSlug`, `faqSuppressed`, `PinnedAnswer`), and the new code needs `Topic`, so any half-deployed state fails (old API: every chat turn; old or new web on the wrong schema: Questions, Knowledge and `/faq` return 500).
+2. Run `pnpm --filter @curios/workers group:backfill -- <pageId>` for each page.
 3. Gates uncached and one at a time; a real-browser pass on Questions and on a redirected FAQ address.
 
 ---

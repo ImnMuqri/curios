@@ -645,15 +645,25 @@ reply still groups it. A repeat wording enqueues nothing.
 6. A match moves **only this wording**, in one transaction. The job re-reads and locks the wording
    there and skips cleanly if the owner split, moved or deleted it meanwhile; a vanished target
    marks it decided without moving it. An emptied source topic is deleted; where both topics were
-   answered the more-asked answer stays and the other goes to `conflictAnswer`. `none` sets
-   `groupedAt`.
+   answered the more-asked answer stays and the other goes to `conflictAnswer`; if that would
+   mean a third owner-written answer (either topic already holds a `conflictAnswer`), nothing is
+   merged, the wording is marked decided and the owner merges by hand. A merge that hands the
+   survivor a slug also hands it the loser's `faqSuppressed`. `none` sets `groupedAt`.
 7. Any failure (including the provider) leaves it undecided with `groupedAt` null. BullMQ retries
    it; after the last retry the backfill picks it up.
 
 **Backfill.** `pnpm --filter @curios/workers group:backfill [-- <pageId>]` runs the same job over
 every undecided, non-pinned wording, page by page, oldest first, one at a time. It needs
 `ANTHROPIC_API_KEY` and `OPENAI_API_KEY`. The migration made one topic per existing question and
-left `groupedAt` null, so nothing visible changes until the backfill runs.
+left `groupedAt` null, so nothing visible changes until the backfill runs. It exits non-zero if any
+wording failed (those stay undecided; re-run it).
+
+**Rollout.** The migration drops columns and a table the old API, workers and web all read
+(`Question.answered`, `faqSlug`, `faqSuppressed`, `PinnedAnswer`), and the new code needs `Topic`.
+So the migration, API, workers and web ship in one step, after draining the ingest and grouping
+queues, with a short outage expected. Any half-deployed state fails: old API on the new schema
+fails every chat turn, and old or new web on the wrong schema returns 500 on Questions,
+Knowledge and `/faq`.
 
 **Routes** (owner scope, `page: { accountId }` in the statement; another owner's id is `404
 NOT_FOUND`):

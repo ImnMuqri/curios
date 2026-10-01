@@ -1,7 +1,5 @@
 # Manual verification — FAQ generation
 
-> **Slice 15 note:** `PinnedAnswer`, `Question.answered`, `Question.faqSlug` and `Question.faqSuppressed` no longer exist; the answer, slug and suppression live on `Topic`. SQL and wording below that names them is out of date, so read it against `Topic` (see `manual-verification-topics.md`).
-
 **Status: NOT RUN.** Written down at the end of slice 6 rather than run, for the same
 reason `manual-verification-leads.md` was: the four gates are green and the plan is about
 to merge, and the checks that need a browser, a stranger's-eye view of `view-source`, or a
@@ -88,7 +86,7 @@ extra test questions on it rather than a real demo account.
 
 ---
 
-## The seven checks
+## The eight checks
 
 ### 1. The third ask, arriving last, with no owner in the loop
 
@@ -111,8 +109,9 @@ the chat route actually reaches it at the right moment on a live server.
 4. As a **third**, different visitor, ask the identical question again. Nothing about this
    step involves the owner or the dashboard.
 5. Confirm the question now appears at `/[handle]/faq`, and that
-   `SELECT "faqSlug" FROM "Question" WHERE id = '<id>'` (or the query in check 6) shows a
-   non-null slug.
+   `SELECT "faqSlug" FROM "Topic" WHERE id = '<topicId>'` (or the query in check 6) shows a
+   non-null slug. (The slug lives on the topic, not on the wording; the topic id is the
+   `topicId` of the `Question` row.)
 
 If step 3 already produced the FAQ page, something is wrong — it would mean the count check
 is being skipped, not just satisfied.
@@ -175,38 +174,35 @@ either way, hiding the difference this check exists to find.
 
 ### 6. Withdrawing the answer 404s the page and keeps the slug
 
-There is no dashboard action that withdraws a pinned answer yet — this exercises the
-database state that the read gates were built to handle, standing in for a future "delete
-answer" feature. Take the counts **before** you delete anything.
+Withdrawing an answer from the Knowledge screen does this; this exercises the database
+state directly, so the read gates are proved independently of the UI. Take the counts
+**before** you change anything.
 
 ```bash
-docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT text, "faqSlug", "askCount", answered FROM "Question" WHERE "faqSlug" IS NOT NULL;'
+docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT title, "faqSlug", "askCount", answer IS NOT NULL AS answered FROM "Topic" WHERE "faqSlug" IS NOT NULL;'
 ```
 
 Pick a row with a `faqSlug` and confirm it currently 200s at `/[handle]/faq/[slug]` and
-appears in the `/[handle]/faq` list. Then remove the pinned answer directly, joining on the
-slug so there is no id to copy by hand:
+appears in the `/[handle]/faq` list. Then clear the topic's answer directly, scoped to the
+page by handle (a slug is unique only within a page):
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c '
-DELETE FROM "PinnedAnswer" pa
-USING "Question" q
-WHERE pa."pageId" = q."pageId"
-  AND pa."normalizedQuestion" = q."normalizedQuestion"
-  AND q."faqSlug" = '"'"'<slug>'"'"';'
+UPDATE "Topic" SET answer = NULL, "answeredAt" = NULL
+WHERE "faqSlug" = '"'"'<slug>'"'"'
+  AND "pageId" = (SELECT id FROM "Page" WHERE handle = '"'"'<handle>'"'"');'
 ```
 
-Run the first `SELECT` again. **The row must be unchanged** — same `faqSlug`, same
-`askCount`, and `answered` still `true` (the `Question` row is never told the answer
-underneath it was withdrawn; that flag only means the owner once wrote one). What must
-change is what the routes do with it:
+Run the first `SELECT` again. **The row must be unchanged except `answered`** — same
+`faqSlug`, same `askCount`, and `answered` now `false`. The slug stays on the topic
+(it is never cleared). What must change is what the routes do with it:
 
 - `/[handle]/faq/[slug]` now 404s.
-- The question is gone from `/[handle]/faq`'s list.
+- The topic is gone from `/[handle]/faq`'s list.
 
-Both routes key off `PinnedAnswer` existing, not off `Question.answered` or
-`Question.faqSlug` — this is the check that proves it, and the reason the schema comment
-on `faqSlug` says the column is "never cleared."
+Both routes key off `Topic.answer` being set, not off `Topic.faqSlug` alone — this is the
+check that proves it, and the reason the schema comment on `faqSlug` says the column is
+"never changed or cleared once set."
 
 ---
 
@@ -231,18 +227,35 @@ With a question live at `/[handle]/faq/[slug]`, open the questions screen and:
    both gone:
 
 ```bash
-docker exec -i curios-postgres psql -U curios -d curios -c   'SELECT q.text, q."faqSuppressed", p.answer FROM "Question" q
-     LEFT JOIN "PinnedAnswer" p ON p."pageId" = q."pageId" AND p."normalizedQuestion" = q."normalizedQuestion"
-    WHERE q."faqSlug" IS NOT NULL;'
+docker exec -i curios-postgres psql -U curios -d curios -c   'SELECT title, "faqSuppressed", answer FROM "Topic" WHERE "faqSlug" IS NOT NULL;'
 ```
 
 5. **Then ask it again in chat, once.** This is the part worth doing by hand: an
    erased question is re-logged the next time somebody asks, because the chat path
-   upserts on the normalised text. It must come back as a *fresh* row — ask count 1,
+   upserts on the normalised text. It must come back as a *fresh* topic — ask count 1,
    unanswered, no slug — and must **not** reappear on `/faq`. If the old answer comes
    back with it, the erasure did not erase. (This said "twice more" until an audit caught
    the arithmetic: the upsert increments on every ask after the create, so two asks give
    ask count 2 and a careful reader would think the erasure was broken.)
+
+### 8. A merged-away address redirects to the survivor
+
+Added with topics (slice 15). Needs two topics on a business page that each have a FAQ
+page (three asks and an answer each). Note both addresses from `/[handle]/faq`.
+
+1. On the Questions screen, merge one topic into the other ("Same as…"), keeping either
+   answer.
+2. Load the **merged-away** address, `/[handle]/faq/[old-slug]`. It must redirect
+   (permanently) to the survivor's `/[handle]/faq/[survivor-slug]` and show its answer.
+   The survivor's own address is unchanged.
+3. Confirm the retired slug is recorded against the survivor:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT r.slug, t."faqSlug" AS survivor FROM "FaqRedirect" r JOIN "Topic" t ON t.id = r."topicId" WHERE r.slug = '"'"'<old-slug>'"'"';'
+```
+
+4. Delete the survivor topic, then reload the old address: with no target the redirect
+   row's `topicId` is NULL and the address must 404, never redirect.
 
 ## Recording the result
 
