@@ -4,7 +4,7 @@ import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion } from './retrieval.js';
-import { assignFaqSlug, type Log } from '../questions/faq-slug.js';
+import { assignTopicSlug as assignFaqSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }

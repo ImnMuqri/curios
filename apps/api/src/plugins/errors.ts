@@ -75,6 +75,12 @@ export const DOMAIN_ERROR_CODES = new Set([
   // A file for the profile picture that is too big, the wrong type, or whose
   // bytes disagree with the type it claimed. The old picture is kept either way.
   'INVALID_IMAGE',
+  // Topics: an answer or title that fails its rule, a split of a lone wording,
+  // a resolve with nothing to resolve.
+  'INVALID_ANSWER',
+  'INVALID_TITLE',
+  'ALREADY_ALONE',
+  'NO_CONFLICT',
   'PASSWORD_ALREADY_SET',
   // The one trial reset, already spent -- or asked for by a page that is not
   // entitled to it. 409 rather than 403: nothing is forbidden about the caller,
