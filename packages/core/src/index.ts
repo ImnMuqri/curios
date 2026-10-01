@@ -50,3 +50,13 @@ export {
 } from './retrieval.js';
 export type { FallbackReason, Selection } from './retrieval.js';
 export { NEVER_SAY_MAX_CHARS, NEVER_SAY_MAX, OWNER_FACT_MAX, SOURCE_LABEL_MAX } from './knowledge.js';
+export {
+  ANSWER_MAX,
+  GROUP_CANDIDATES,
+  GROUP_QUEUE,
+  GROUP_SAMPLE_WORDINGS,
+  GROUP_SHORTLIST_MIN,
+  questionKey,
+  TOPIC_TITLE_MAX,
+} from './topics.js';
+export type { GroupJobData } from './topics.js';

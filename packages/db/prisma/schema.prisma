@@ -158,7 +158,8 @@ model Page {
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]
-  pinnedAnswers PinnedAnswer[]
+  topics        Topic[]
+  faqRedirects  FaqRedirect[]
   neverSay      NeverSay[]
   conversations Conversation[]
   ingestions    Ingestion[]
@@ -253,17 +254,6 @@ model QuestionEmbedding {
   model     String
   dims      Int
   createdAt DateTime @default(now())
-}
-
-model PinnedAnswer {
-  id                 String @id @default(cuid())
-  pageId             String
-  page               Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  question           String
-  normalizedQuestion String
-  answer             String
-
-  @@unique([pageId, normalizedQuestion])
 }
 
 model NeverSay {
@@ -424,30 +414,63 @@ model Question {
   page               Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
   /// The first phrasing seen, kept verbatim so the owner reads what a customer typed.
   text               String
-  /// normalizeClaim(text). The cluster key, and the same key PinnedAnswer uses.
+  /// normalizeClaim(text). The key a repeat of this wording is recognised by.
   normalizedQuestion String
   askCount           Int      @default(1)
-  /// True once the owner has written a pinned answer. NOT whether the model
-  /// coped -- see the refusal rule in BACKEND.md for why that is not detected.
-  answered           Boolean  @default(false)
-  /// Set when the owner takes a published question off /faq. A flag rather than
-  /// a delete because the chat path upserts questions by normalised text, so a
-  /// deleted row silently returns the next time somebody asks -- and a takedown
-  /// that undoes itself is worse than none. Erasure is a separate act: see
-  /// deleteQuestion, which removes the row and its answer together.
-  faqSuppressed      Boolean  @default(false)
-  /// The public FAQ URL segment, once the question has earned one. Assigned by
-  /// apps/api, never by apps/web, which holds a SELECT-only connection.
-  /// Never overwritten and never cleared -- a URL that has begun to rank must
-  /// not move, so withdrawing an answer 404s the route and keeps the slug.
-  faqSlug            String?
+  /// The topic this wording belongs to. Every wording has exactly one.
+  topicId            String
+  topic              Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  /// Null until the grouping job has decided where this wording belongs.
+  groupedAt          DateTime?
+  /// Set when the owner split this wording out. The grouping job never moves it.
+  pinnedByOwner      Boolean  @default(false)
   firstAskedAt       DateTime @default(now())
   lastAskedAt        DateTime @default(now())
 
   @@unique([pageId, normalizedQuestion])
-  @@unique([pageId, faqSlug])
+  @@index([topicId])
   // The screen's only ordering: most asked first, then most recent.
   @@index([pageId, askCount])
+}
+
+/// One thing visitors ask, in however many wordings. Owns the single pinned
+/// answer, the FAQ slug and the combined count. Aggregates are recomputed from
+/// its wordings by refreshTopic (packages/db/src/topics.ts), never incremented.
+model Topic {
+  id              String        @id @default(cuid())
+  pageId          String
+  page            Page          @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  title           String
+  titleSetByOwner Boolean       @default(false)
+  answer          String?
+  answeredAt      DateTime?
+  /// Only the one-off grouping sets this: the answer that lost a merge of two
+  /// answered topics, kept so the owner can pick.
+  conflictAnswer  String?
+  askCount        Int           @default(0)
+  /// Never changed or cleared once set; retired into FaqRedirect on merge/delete.
+  faqSlug         String?
+  faqSuppressed   Boolean       @default(false)
+  createdAt       DateTime      @default(now())
+  lastAskedAt     DateTime      @default(now())
+  questions       Question[]
+  redirects       FaqRedirect[]
+
+  @@unique([pageId, faqSlug])
+  @@index([pageId, askCount])
+}
+
+/// A retired FAQ slug. With a topic, the address 301s to that topic's page;
+/// with none (the topic was deleted), it 404s -- and is never reissued.
+model FaqRedirect {
+  id      String  @id @default(cuid())
+  pageId  String
+  page    Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  slug    String
+  topicId String?
+  topic   Topic?  @relation(fields: [topicId], references: [id], onDelete: SetNull)
+
+  @@unique([pageId, slug])
 }
 
 model Payment {
