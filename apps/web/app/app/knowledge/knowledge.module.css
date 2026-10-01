@@ -28,3 +28,9 @@
 .confirm p { flex-basis: 100%; margin: 0 0 4px; font-size: var(--text-base); }
 .recheck { display: inline-flex; flex-direction: column; gap: 4px; }
 .recheck small { font-size: var(--text-xs); color: var(--muted); }
+
+.add { display: grid; gap: 10px; margin-bottom: 20px; }
+.select { display: grid; gap: 4px; font-size: var(--text-sm); }
+.select select { padding: 10px; font: inherit; font-size: var(--text-base); border: 1px solid var(--surface); border-radius: 10px; background: var(--paper); }
+.search { width: 100%; padding: 10px 12px; margin-bottom: 16px; font: inherit; font-size: var(--text-base); border: 1px solid var(--surface); border-radius: 10px; }
+.group { margin: 16px 0 8px; font-size: var(--text-sm); color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
