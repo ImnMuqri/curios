@@ -77,7 +77,15 @@ describe('QuestionList', () => {
     await userEvent.type(screen.getByLabelText(/answer/i), 'RM95.');
     await userEvent.click(screen.getByRole('button', { name: /^save$/i }));
 
-    expect(screen.getByRole('button', { name: /^save$/i })).toBeDisabled();
+    // aria-disabled, not the native attribute -- busy on a plain button no
+    // longer blurs the button it was just pressed on (see Button.tsx). The
+    // guard against a second save is `save`'s own `if (busy) return`, proven
+    // here by the call count rather than the attribute.
+    const save = screen.getByRole('button', { name: /^save$/i });
+    expect(save).not.toBeDisabled();
+    expect(save).toHaveAttribute('aria-disabled', 'true');
+    await userEvent.click(save);
+    expect(onAnswer).toHaveBeenCalledOnce();
   });
 
   it('lets an owner back out without losing the list', async () => {
