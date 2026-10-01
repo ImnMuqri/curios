@@ -1,10 +1,10 @@
-import { isOverCap, normalizeClaim, qualifies } from '@curios/core';
-import { recordModelCall, type PrismaClient } from '@curios/db';
+import { GROUP_QUEUE, isOverCap, normalizeClaim, qualifies, type GroupJobData } from '@curios/core';
+import { recordModelCall, refreshTopic, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion } from './retrieval.js';
-import { assignTopicSlug as assignFaqSlug, type Log } from '../questions/faq-slug.js';
+import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
@@ -51,6 +51,17 @@ export interface ChatDeps {
   // loop, unsluggable text, a transient DB error -- leaves no trace anywhere,
   // which is exactly what assignFaqSlug's `log` parameter exists to prevent.
   log?: Log;
+  /**
+   * Where a new wording's grouping job goes. Optional: a deployment or test
+   * without it simply never groups, and the wording keeps its own topic.
+   */
+  groupQueue?: { add(name: string, data: GroupJobData, opts?: unknown): Promise<unknown> };
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
+  );
 }
 
 export class PageNotFoundError extends Error {
@@ -94,7 +105,7 @@ function currentPeriod(now = new Date()): string {
  *
  * Says only that the page's own links still work, never that a
  * most-asked-questions link exists: `/[handle]/faq` is gated on
- * `FAQ_MIN_ASKS` asks and an owner-written `PinnedAnswer`, so a page can be
+ * `FAQ_MIN_ASKS` asks and an owner-written topic answer, so a page can be
  * over cap with zero FAQ entries. The page's other links render
  * unconditionally, so that much is true in every case.
  */
@@ -196,44 +207,99 @@ export async function* answer(
     }),
   };
 
-  // Logged for the Questions screen, clustered on the same key the pinned
-  // answer below is looked up by. EVERY question, not only refused ones:
+  // Logged for the Questions screen. EVERY question, not only refused ones:
   // nothing in an answer is machine-readable enough to tell a refusal from a
   // confident one across Malay, Manglish and English, and a question asked
   // nine times is a gap either way. See BACKEND.md's refusal rule.
+  //
+  // A wording is looked up by its normalised text, so a repeat in other
+  // capitals or punctuation is the same wording: it counts, and queues nothing.
   const normalizedQuestion = normalizeClaim(input.question);
-  const logged = await prisma.question.upsert({
+  const existing = await prisma.question.findUnique({
     where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
-    // The first phrasing wins and is never overwritten: the owner reads what
-    // somebody actually typed, and rewriting it on every ask would churn the
-    // list for no gain.
-    create: { pageId: page.id, text: input.question, normalizedQuestion },
-    update: { askCount: { increment: 1 }, lastAskedAt: new Date() },
-    select: { id: true },
+    select: { id: true, topicId: true },
   });
 
-  // The other site. A question the owner answered when it had two asks
+  let wording: { id: string; topicId: string };
+  let newWording = false;
+  if (existing) {
+    wording = existing;
+    await prisma.$transaction(async (tx) => {
+      await tx.question.update({
+        where: { id: existing.id },
+        data: { askCount: { increment: 1 }, lastAskedAt: new Date() },
+      });
+      await refreshTopic(tx, existing.topicId);
+    });
+  } else {
+    // Created together: a wording is never without its topic. A concurrent
+    // first ask of the same wording loses the unique race and is retried as
+    // a repeat. The first phrasing wins and is never overwritten.
+    try {
+      wording = await prisma.$transaction(async (tx) => {
+        const topic = await tx.topic.create({
+          data: { pageId: page.id, title: input.question, askCount: 1 },
+          select: { id: true },
+        });
+        return tx.question.create({
+          data: { pageId: page.id, topicId: topic.id, text: input.question, normalizedQuestion },
+          select: { id: true, topicId: true },
+        });
+      });
+      newWording = true;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      const raced = await prisma.question.findUniqueOrThrow({
+        where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
+        select: { id: true, topicId: true },
+      });
+      wording = raced;
+      await prisma.$transaction(async (tx) => {
+        await tx.question.update({
+          where: { id: raced.id },
+          data: { askCount: { increment: 1 }, lastAskedAt: new Date() },
+        });
+        await refreshTopic(tx, raced.topicId);
+      });
+    }
+  }
+
+  // The other site. A topic the owner answered when it had two asks
   // qualifies on its third, and that third ask happens here, with no owner
   // involved. See faq-slug.ts on why both sites exist.
-  await assignFaqSlug(prisma, logged.id, deps.log);
+  await assignTopicSlug(prisma, wording.topicId, deps.log);
 
-  // A pinned answer wins over model output. Zero tokens, zero risk.
-  const pinned = await prisma.pinnedAnswer.findUnique({
-    where: {
-      pageId_normalizedQuestion: {
-        pageId: page.id,
-        normalizedQuestion,
-      },
-    },
+  /** After the reply: decide this wording's topic in the background. Never fails the visitor. */
+  const queueGrouping = async () => {
+    if (!newWording || !deps.groupQueue) return;
+    try {
+      await deps.groupQueue.add(
+        GROUP_QUEUE,
+        { questionId: wording.id },
+        { jobId: wording.id, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+      );
+    } catch (error) {
+      deps.log?.warn?.(
+        { questionId: wording.id, err: error instanceof Error ? error.message : String(error) },
+        'could not queue grouping',
+      );
+    }
+  };
+
+  // The topic's answer wins over model output, for any wording grouped
+  // under it. Zero tokens, zero risk.
+  const topic = await prisma.topic.findUnique({
+    where: { id: wording.topicId },
     select: { answer: true },
   });
 
-  if (pinned) {
-    yield { type: 'text', text: pinned.answer };
+  if (topic?.answer) {
+    yield { type: 'text', text: topic.answer };
     await prisma.message.create({
-      data: { conversationId, role: 'ASSISTANT', content: pinned.answer },
+      data: { conversationId, role: 'ASSISTANT', content: topic.answer },
     });
     yield { type: 'done', conversationId, intent };
+    await queueGrouping();
     return;
   }
 
@@ -277,6 +343,7 @@ export async function* answer(
       data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },
     });
     yield { type: 'done', conversationId, intent };
+    await queueGrouping();
     return;
   }
 
@@ -363,4 +430,5 @@ export async function* answer(
   });
 
   yield { type: 'done', conversationId, intent };
+  await queueGrouping();
 }

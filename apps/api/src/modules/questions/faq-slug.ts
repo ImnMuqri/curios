@@ -14,6 +14,8 @@ export interface Log {
    * object; `request.log` (a Fastify/pino logger) already has both.
    */
   info?: (obj: unknown, msg: string) => void;
+  /** Optional for the same reason: the chat's grouping-queue failure is logged here. */
+  warn?: (obj: unknown, msg: string) => void;
 }
 
 /**
