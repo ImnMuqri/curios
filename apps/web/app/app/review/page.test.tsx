@@ -114,7 +114,7 @@ describe('the review screen, assembled', () => {
 
     expect(screen.getByRole('link', { name: 'Add another source' })).toHaveAttribute(
       'href',
-      '/app/onboarding',
+      '/app/knowledge?tab=sources',
     );
   });
 

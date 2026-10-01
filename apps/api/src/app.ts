@@ -24,8 +24,11 @@ import {
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
-import { pageRoutes } from './modules/pages/page.routes.js';
+import { pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
+import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
+import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
+import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
 import { questionRoutes } from './modules/questions/question.routes.js';
 import {
   billplzRoutes,
@@ -59,6 +62,7 @@ export interface AppOverrides {
   chat?: ChatRouteOptions;
   billing?: BillingRouteOptions;
   facts?: FactRouteOptions;
+  pages?: PageRouteOptions;
 }
 
 export async function buildApp(overrides: AppOverrides = {}) {
@@ -105,6 +109,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, ingestPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, ingestPerPageLimit(app.rateLimitRedis));
     await scope.register(ingestRoutes, overrides.ingest ?? {});
+    await scope.register(sourceRecheckRoutes);
   });
 
   await app.register(async (scope) => {
@@ -145,8 +150,11 @@ export async function buildApp(overrides: AppOverrides = {}) {
 
   await app.register(async (scope) => {
     scope.addHook('onRequest', requireSession);
-    await scope.register(pageRoutes);
+    await scope.register(pageRoutes, overrides.pages ?? {});
+    await scope.register(linkRoutes);
     await scope.register(factRoutes, overrides.facts ?? {});
+    await scope.register(sourceRoutes);
+    await scope.register(neverSayRoutes);
     await scope.register(questionRoutes);
     await scope.register(ownerLeadRoutes);
   });

@@ -108,6 +108,13 @@ describe('getPublicPage', () => {
     expect((await getPublicPage('indexed'))?.allowSearchIndexing).toBe(true);
   });
 
+  it('carries the appearance and each link size the page renders with', async () => {
+    const page = await getPublicPage('nadia');
+
+    expect(page).toMatchObject({ style: 'SOFT', accentColor: '#0c7a62', headingFont: 'JAKARTA', avatarKey: null });
+    expect(page?.links[0]).toMatchObject({ size: null });
+  });
+
   it('cannot write through the read-only connection', async () => {
     const { prismaRead } = await import('./client.js');
     await expect(

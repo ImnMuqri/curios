@@ -16,6 +16,7 @@ export function Button({
   busy = false,
   disabled = false,
   onClick,
+  'aria-label': ariaLabel,
 }: {
   children: ReactNode;
   type?: 'button' | 'submit';
@@ -23,17 +24,36 @@ export function Button({
   busy?: boolean;
   disabled?: boolean;
   onClick?: () => void;
+  'aria-label'?: string;
 }) {
+  // A submit button has no `onClick` of its own to take away: the double
+  // submit it must refuse comes from the browser's default action on
+  // `type="submit"`, not from this prop, and several forms on this surface
+  // (ClaimForm, AddPasswordForm among them) lean on the native `disabled`
+  // attribute alone to refuse it -- they carry no re-entry guard of their
+  // own. So a submit button still goes natively `disabled` while busy, same
+  // as before.
+  //
+  // A plain button's protection is `onClick` disappearing below, so it does
+  // not need the native attribute -- and skipping it matters here: a real
+  // browser blurs the focused element the instant it goes natively disabled,
+  // and the one moment a button goes busy is the moment right after someone
+  // pressed it. `aria-disabled` still tells assistive tech and the stylesheet
+  // it cannot be used, without moving focus away just as a failure is about
+  // to render beside this same button.
+  const nativeDisable = disabled || (busy && type === 'submit');
   return (
     <button
       type={type}
       className={`${styles.button} ${styles[variant]}`}
-      disabled={busy || disabled}
+      disabled={nativeDisable}
+      aria-disabled={busy && !nativeDisable ? true : undefined}
       // Only when busy. Disabled on its own says "you cannot press this" and
       // not "because it is working", which is the difference between a broken
       // button and a slow one to someone who cannot see it change.
       aria-busy={busy || undefined}
-      onClick={onClick}
+      onClick={busy ? undefined : onClick}
+      aria-label={ariaLabel}
     >
       {children}
     </button>

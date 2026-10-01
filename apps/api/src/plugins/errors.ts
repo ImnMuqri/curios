@@ -54,7 +54,27 @@ export const DOMAIN_ERROR_CODES = new Set([
   'HANDLE_TOO_SIMILAR',
   'PAGE_EXISTS',
   'FACT_DUPLICATE',
+  // A fact the owner typed that is empty, too long, or has no real category.
+  'INVALID_FACT',
   'NO_PAGE',
+  // Knowledge: a source that is being read cannot be removed or re-read, and
+  // pasted text has nothing to re-read.
+  'SOURCE_BUSY',
+  'SOURCE_NOT_RECHECKABLE',
+  // Never-say: a phrase that is not one short line, one already listed, or one too many.
+  'INVALID_NEVER_SAY',
+  'NEVER_SAY_DUPLICATE',
+  'NEVER_SAY_LIMIT',
+  // My Curios: a link an owner typed wrong, one too many, or an order from a
+  // tab that is behind. Each says what to do next.
+  'INVALID_LINK',
+  'LINK_LIMIT',
+  'LINK_ORDER_STALE',
+  // A style, colour, font, name or bio an owner sent that fails its own rule.
+  'INVALID_APPEARANCE',
+  // A file for the profile picture that is too big, the wrong type, or whose
+  // bytes disagree with the type it claimed. The old picture is kept either way.
+  'INVALID_IMAGE',
   'PASSWORD_ALREADY_SET',
   // The one trial reset, already spent -- or asked for by a page that is not
   // entitled to it. 409 rather than 403: nothing is forbidden about the caller,
@@ -75,6 +95,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   // and listed for the same reason: the web app says what is actually true rather than
   // "something failed on our side".
   'BILLING_NOT_CONFIGURED',
+  // Development only: pictures switched off because no STORAGE_* setting is present
+  // (storageDisabled in ./modules/pages/storage.js). A 503 for the same reason as the
+  // one above, and listed for the same reason: the web app says what is actually true
+  // rather than "something failed on our side".
+  'STORAGE_NOT_CONFIGURED',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --

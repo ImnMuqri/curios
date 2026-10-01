@@ -1,0 +1,172 @@
+/*
+ * Chat mode is a state of the public page, not a layer over it -- the owner's
+ * own words for the first version were "it looks like it opened another
+ * page". There is no fixed positioning here at all: this content is a normal
+ * part of the flow inside BentoPage's `.page` column, which is what keeps it
+ * at the same max-width as the bento and the same page's own custom
+ * properties (--accent, --on-accent, --ask-border, --ask-tint, --font-heading,
+ * --page-bg) cascading in, each read with the same fallback AskBar already
+ * uses so this still looks right anywhere those are not set -- a bare vitest
+ * render, for instance.
+ *
+ * The one orchestrated moment moved to the fold: Bento.module.css collapses
+ * the grid and bio, under `prefers-reduced-motion: no-preference`, to make
+ * room for what follows. This panel itself just appears -- `hidden` on the
+ * host element toggles instantly, deliberately, so the fold is the only
+ * thing that animates.
+ */
+/*
+ * No `position` declared here, deliberately: `.back` below is `position:
+ * absolute` and needs to skip straight past this panel to `.page`
+ * (Bento.module.css, `position: relative`) for its containing block. Giving
+ * `.panel` a `position` of its own -- `relative` included -- would make IT
+ * the containing block instead, and the arrow would resolve against this
+ * panel's own place in the flow (down where the chat content starts) rather
+ * than against the page, landing nowhere near the header it is meant to sit
+ * beside. This happened once already; BentoPage.test.tsx's CSS-content check
+ * on `.head[data-mode='chat']`'s padding-left now guards the pairing.
+ */
+.panel {
+}
+
+.back {
+  /* Anchored to `.page` (Bento.module.css sets `position: relative` there),
+     not this panel -- it needs to sit beside BentoPage's own header, which is
+     a sibling far above this component in the tree, not a parent. See the
+     comment on `.panel` above for why that still works with nothing declared
+     between here and there. */
+  position: absolute;
+  top: 36px;
+  left: 16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: var(--text-lg);
+  color: var(--ink);
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.back:active {
+  background: var(--ask-tint, var(--mint));
+}
+
+.chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.chip {
+  padding: 12px 14px;
+  border: 1.5px solid var(--ask-border, var(--hijau));
+  border-radius: 10px;
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.chip:active {
+  background: var(--ask-tint, var(--mint));
+}
+
+.turn {
+  margin-top: 20px;
+}
+
+.turn:first-child {
+  margin-top: 0;
+}
+
+/* The visitor's own words, quieter than the answer to them. */
+.question {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+
+/*
+ * The ask bar's own sticky-bottom spot, taken over -- not the same `bottom`
+ * offset as AskBar.module.css's `.bar` (16px), but flush with `bottom: 0`
+ * and the gap moved into `padding-bottom` instead, so the composer reads as
+ * that control settling into place rather than something new appearing
+ * elsewhere. `env(safe-area-inset-bottom)` is added on top of the usual 16px
+ * so the input never sits flush against a phone's home indicator.
+ */
+.composer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 16px;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--page-bg, var(--paper));
+  border-top: 1px solid var(--ask-border, var(--surface));
+}
+
+.composerLabel {
+  display: block;
+  margin-bottom: 6px;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.13em;
+  color: var(--muted);
+}
+
+.composerRow {
+  display: flex;
+  gap: 8px;
+}
+
+.input {
+  flex: 1;
+  min-height: 48px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--surface);
+  border-radius: 24px;
+  background: var(--paper);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  color: var(--ink);
+  transition: border-color 120ms ease;
+}
+
+.input:focus {
+  /* The page's accent, same as `.send` below -- see its comment. */
+  border-color: var(--accent, var(--hijau));
+}
+
+.send {
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 13px 20px;
+  border: 1.5px solid transparent;
+  border-radius: 24px;
+  /* The spec: the accent "paints ... chat mode's highlights." Falls back to
+     the colours this always used, for anywhere `--accent` (and the readable
+     text colour that goes with it, `--on-accent`) is not set. */
+  background: var(--accent, var(--hijau));
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  font-weight: 500;
+  color: var(--on-accent, var(--paper));
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.send:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

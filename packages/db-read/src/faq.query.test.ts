@@ -234,6 +234,15 @@ describe('getFaqEntry', () => {
     expect(await getFaqEntry(page.handle, 'berapa-harga')).toBeNull();
   });
 
+  it('returns null for a withdrawn answer exactly as withdrawAnswer leaves it', async () => {
+    // withdrawAnswer deletes the PinnedAnswer, sets answered:false and keeps the
+    // slug. The route 404s on this state because there is no PinnedAnswer.
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga', answer: null, answered: false });
+
+    expect(await getFaqEntry(page.handle, 'berapa-harga')).toBeNull();
+  });
+
   it('refuses an unpublished page', async () => {
     const page = await seedPage({ published: false });
     await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });

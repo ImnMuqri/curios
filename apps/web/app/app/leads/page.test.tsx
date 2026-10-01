@@ -65,4 +65,14 @@ describe('LeadsPage', () => {
 
     expect(Leads).toHaveBeenCalledTimes(1);
   });
+
+  // Fix round 2, Important #3: AppFrame renders its own main around every
+  // screen it wraps, this one included, so a second one here would nest.
+  it('renders no main of its own', async () => {
+    getOwnerPage.mockResolvedValue(personal);
+
+    render(await LeadsPage());
+
+    expect(screen.queryByRole('main')).toBeNull();
+  });
 });

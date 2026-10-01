@@ -5,6 +5,8 @@ import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
 let app: FastifyInstance;
+let nth = 0;
+const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
   app = await buildApp();
@@ -55,6 +57,64 @@ async function anOwnerWithAPublishedQuestion() {
   const session = await createSession(app.prisma, account.id);
   return { questionId: question.id, cookie: `${SESSION_COOKIE}=${session.value}` };
 }
+
+async function anOwnerWithAnAnsweredQuestion() {
+  const slug = randomUUID().slice(0, 8);
+  const account = await app.prisma.account.create({
+    data: {
+      email: `wd-${randomUUID()}@example.com`,
+      pages: { create: { handle: `wd-${slug}`, skeleton: `wd-${slug}`, displayName: 'W' } },
+    },
+    select: { id: true, pages: { select: { id: true } } },
+  });
+  const pageId = account.pages[0]?.id ?? '';
+  const question = await app.prisma.question.create({
+    data: { pageId, text: 'Berapa harga kek?', normalizedQuestion: 'berapa harga kek', answered: true },
+  });
+  await app.prisma.pinnedAnswer.create({
+    data: { pageId, question: question.text, normalizedQuestion: 'berapa harga kek', answer: 'RM95.' },
+  });
+  const { value } = await createSession(app.prisma, account.id);
+  return { cookie: value, pageId, questionId: question.id };
+}
+
+describe('DELETE /questions/:id/answer', () => {
+  it('withdraws the answer and reopens the question', async () => {
+    const mine = await anOwnerWithAnAnsweredQuestion();
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/questions/${mine.questionId}/answer`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(await app.prisma.pinnedAnswer.count({ where: { pageId: mine.pageId } })).toBe(0);
+    expect((await app.prisma.question.findUniqueOrThrow({ where: { id: mine.questionId } })).answered).toBe(false);
+  });
+
+  it('is a 404 for another owner’s question, whose answer survives', async () => {
+    const mine = await anOwnerWithAnAnsweredQuestion();
+    const theirs = await anOwnerWithAnAnsweredQuestion();
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/questions/${theirs.questionId}/answer`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+    });
+
+    expect(res.statusCode).toBe(404);
+    expect(await app.prisma.pinnedAnswer.count({ where: { pageId: theirs.pageId } })).toBe(1);
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const mine = await anOwnerWithAnAnsweredQuestion();
+    const res = await app.inject({ method: 'DELETE', url: `/questions/${mine.questionId}/answer`, remoteAddress: from() });
+    expect(res.statusCode).toBe(401);
+  });
+});
 
 describe('POST /questions/:id/suppress', () => {
   it('refuses a request with no session', async () => {

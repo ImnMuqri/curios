@@ -394,6 +394,40 @@ unrelated claim edit does — which is new surface area, not a bug in what this 
 
 ---
 
+## My Curios
+
+Opened 2026-09-27, from the per-task and whole-branch reviews of `slice-13/my-curios`. Each was
+triaged "can wait" at the final review: real, but none blocks an owner or a visitor.
+
+- **`example.com:8080` is read as a URL scheme** (`packages/core/src/bento.ts`,
+  `normalizeLinkUrl`): a bare domain with a port is refused instead of gaining `https://`. Rare
+  for the links owners paste; the error is clear. Cost of leaving it: an owner retypes with `https://`.
+- **`reorderLinks`' final `update()` has no `pageId` in its where**
+  (`apps/api/src/modules/links/link.service.ts`). Safe by the set check before it; a concurrent
+  delete in the same instant surfaces as a 500 (`P2025`) rather than `LINK_ORDER_STALE`.
+- **Link and appearance validation runs before the page lookup**, so a pageless owner with a bad
+  label gets `INVALID_LINK` rather than `NO_PAGE`. No real client can reach it.
+- **An invalid `style`/`headingFont` enum value surfaces as `INTERNAL_ERROR`** (zod rejects it
+  before the handler) -- the same pre-existing shape as `POST /pages`' `mode`. The editor only
+  ever sends enum values.
+- **The custom accent colour saves on every edit that forms a valid hex**, with no debounce,
+  unlike name and bio (`apps/web/app/app/curios/appearance-editor.tsx`). Functionally correct;
+  a few extra saves while someone types a colour.
+- **The add-link form and an inline editor can be open at once**, both labelled "Name" and
+  "Address". Harmless visually; ambiguous for a screen reader.
+- **`remove()`'s failure restore uses a call-time snapshot** (same as `move()`), so a concurrent
+  edit to another row during a failed removal is dropped from the preview. The server keeps it;
+  a reload shows it.
+- **`AVATAR_MAX_BYTES` is defined twice**, in `apps/web/app/app/curios/resize-image.ts` and
+  `apps/api/src/modules/pages/avatar.ts`, linked only by a comment. Change one, change both.
+- **`budget.test.ts`'s `BUILD_ID` gate is fooled when `next dev` runs after a `next build`**:
+  `BUILD_ID` survives while the dev server rewrites the manifest. Seen once, when a build ran
+  under a live dev server during slice 13. Harden by checking the manifest's own mode.
+- **Test gaps**: `linkKind`'s invalid-URL branch; the root layout test checks three of eight font
+  classes; no stateful test that a failed removal visibly restores the row; `useAutosave` sets
+  state after an await without an unmount check (harmless in React 18+); `:has()` focus rings
+  assume a 2023+ browser floor that no doc states.
+
 ## Resolved
 
 ### A published question and answer have no way to come down — fixed

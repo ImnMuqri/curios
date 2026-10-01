@@ -16,7 +16,7 @@ Designed with the owner on 2026-09-26, with mockups; the choices below are their
 
 1. **A dashboard shell with a sidebar.** Light sidebar, Plus Jakarta Sans, line icons, three groups:
    *Your page* (My Curios, Review with its waiting count, Add a source), *Visitors* (Questions,
-   Leads), *Account* (Billing, Settings). Owner's name and page link at the bottom. A top bar with a
+   Leads), *Account* (Billing, Settings). *(Slice 14 replaced Add a source with Knowledge.)* Owner's name and page link at the bottom. A top bar with a
    breadcrumb and **View page ↗** — no "Live" badge. On a phone the sidebar folds into a top bar with
    a menu button. `/app` opens My Curios. Existing screens move inside the shell unchanged.
 2. **Links.** Add, edit, remove, reorder, and a size per tile.
@@ -30,7 +30,8 @@ Designed with the owner on 2026-09-26, with mockups; the choices below are their
 - **Removing a source in Settings.** Its own spec next. A fact does not record which ingestion
   produced it (`Fact.sourceUrl` is the crawled sub-page, and pasted-text facts carry nothing), so
   "remove this source and its facts" needs a schema change and has open questions of its own —
-  chiefly what happens to facts written before the link existed.
+  chiefly what happens to facts written before the link existed. Built in slice 14 as the
+  Knowledge screen — see `slice-14-build-spec.md`.
 - **Owner-uploaded link icons.** Icons are detected from the address. `Link.icon` stays unused.
 - **Per-tile colours.** One accent colour drives the page.
 - **Analytics** (visits, clicks). Nothing measures them today and this slice does not start.
@@ -98,6 +99,10 @@ model Page {
 - `accentColor` must match `^#[0-9a-f]{6}$` (lower-cased on write).
 - The picture: JPEG, PNG or WebP, at most 1 MB, resized to 512×512 in the browser before upload.
 
+*Revised 2026-09-26: `BIO_MAX = 160` (code points), left unstated above. `LABEL_MAX`,
+`DISPLAY_NAME_MAX` and the rest are as listed; the bio limit is the one this section
+never gave a number.*
+
 ---
 
 ## Link icons
@@ -119,6 +124,12 @@ A two-column grid with `grid-auto-flow: dense`, so tiles pack without holes.
 2. **Small**, in the warm second accent.
 3. onward: Small, Small, Wide, repeating — and the final tile becomes **Wide** when it would
    otherwise leave an empty half-row.
+
+*Revised 2026-09-26: the numbered rule above is the arrangement from three links onward.
+A page with exactly **one** link renders it as a single **Wide** tile, and a page with
+exactly **two** renders both as **Small** — a Tall lead tile at either of those counts
+would leave a hole (its neighbouring column empty at one link, or a gap under the small
+at two), which the position rule alone does not avoid.*
 
 A link with a `size` uses it. Sizes map to grid spans: Small 1×1, Wide 2×1, Tall 1×2, Big 2×2. A pure
 function (`arrangeTiles(links) → { link, span, tone }[]`) lives in `@curios/core` and is what both
@@ -202,6 +213,19 @@ All routes sit behind the session and check that the page belongs to the caller.
 | `PATCH /pages/appearance` | style, accentColor, headingFont, displayName, bio |
 | `POST /pages/avatar` | multipart upload; replaces and deletes any previous object |
 | `DELETE /pages/avatar` | removes the picture and its object |
+
+*Revised 2026-09-26: `POST /pages/avatar` takes the picture as base64 inside the same
+JSON body every other route uses, not multipart — `apiFetch`'s CSRF stand-in only
+covers JSON requests, and a second request shape would have needed its own. The
+browser resizes to 512×512 and declares whatever content type its own canvas actually
+produced — usually WebP, but Safari's `canvas.toBlob` silently falls back to PNG, and
+claiming WebP for those bytes is exactly what made every iPhone upload fail until this
+was fixed (`resizeImage` in `apps/web/app/app/curios/resize-image.ts`). It also checks
+the 1 MB limit before sending, retrying at lower quality a few times and refusing with a
+clear message if the picture is still too large; the API re-checks the byte length and
+matches the declared type against the file's magic bytes (`decodeAvatar` in
+`apps/api/src/modules/pages/avatar.ts`), so a renamed or mislabelled file is refused
+with `400 INVALID_IMAGE` regardless of what the browser already did.*
 
 **Storage** uses `@aws-sdk/client-s3`, which speaks to both R2 and S3. Settings: `STORAGE_ENDPOINT`,
 `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL`.

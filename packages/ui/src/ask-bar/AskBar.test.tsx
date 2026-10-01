@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -54,12 +56,32 @@ describe('AskBar', () => {
     expect(screen.getByRole('button')).toHaveTextContent('first one');
   });
 
-  it('opens with the question on show, so tapping answers what was offered', async () => {
+  it('opens chat mode on tap', async () => {
+    // No seed argument: chat mode's own empty state shows the greeting and
+    // chips, and nothing is sent until one is chosen. AskBar only signals
+    // that it was tapped.
     const onOpen = vi.fn();
     render(<AskBar questions={['Berapa harga kek?']} onOpen={onOpen} />);
 
     await userEvent.click(screen.getByRole('button'));
-    expect(onOpen).toHaveBeenCalledWith('Berapa harga kek?');
+    expect(onOpen).toHaveBeenCalledWith();
+  });
+
+  // The in-place chat mode rework: the composer takes over this exact
+  // sticky-bottom spot rather than appearing somewhere else, by hiding this
+  // button through a plain `[data-ask-bar]` attribute selector in
+  // Bento.module.css -- a hashed CSS-module class name could not be reached
+  // from a different package's stylesheet, but a plain attribute can.
+  it('carries a stable attribute a page-level stylesheet can hide it through', () => {
+    render(<AskBar questions={['a question']} onOpen={vi.fn()} />);
+    expect(screen.getByRole('button')).toHaveAttribute('data-ask-bar');
+  });
+
+  it('forwards its ref to the button, so a caller can return focus to it', () => {
+    const ref = { current: null as HTMLButtonElement | null };
+    render(<AskBar ref={ref} questions={['a question']} onOpen={vi.fn()} />);
+
+    expect(ref.current).toBe(screen.getByRole('button'));
   });
 
   it('is reachable and operable from the keyboard', async () => {
@@ -80,5 +102,18 @@ describe('AskBar', () => {
     // screen-reader user's idea of what this control is changes with it.
     render(<AskBar questions={['a', 'b']} onOpen={vi.fn()} />);
     expect(screen.getByRole('button', { name: /ask/i })).toBeInTheDocument();
+  });
+
+  // Fix round 2, Important #2: the spec says the accent paints "the ask
+  // bar's emphasis", and the bar itself is a plain, borderless white pill in
+  // Soft but outlined in ink in High contrast -- neither of which a
+  // hard-coded --hijau/--mint can do. Read the way design-rules.test.ts
+  // reads a stylesheet, because jsdom's rendered styles here would not
+  // reflect a real cascade from BentoPage's `.page` anyway (no `css: true`
+  // in this package's vitest config).
+  it('reads its border and press-state tint from BentoPage-supplied variables, with a fallback', () => {
+    const css = readFileSync(join(import.meta.dirname, 'AskBar.module.css'), 'utf8');
+    expect(css).toMatch(/border:[^;]*var\(--ask-border,\s*var\(--hijau\)\)/);
+    expect(css).toMatch(/background:\s*var\(--ask-tint,\s*var\(--mint\)\)/);
   });
 });

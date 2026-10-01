@@ -65,8 +65,10 @@ export default async function ReviewPage() {
     <>
       <Review facts={facts} />
       {/* A shop, a LinkedIn bio, a second site: sources can arrive at any time,
-          and each one's facts join this same queue. */}
-      <a className={styles.addSource} href="/app/onboarding">
+          and each one's facts join this same queue. Sends to the Knowledge
+          screen's Sources tab, not onboarding -- this owner already has a
+          page. */}
+      <a className={styles.addSource} href="/app/knowledge?tab=sources">
         Add another source
       </a>
       <Publish publicUrl={publicUrl} published={page.published} />

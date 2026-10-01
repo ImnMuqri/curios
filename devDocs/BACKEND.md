@@ -32,7 +32,7 @@ Question       clustered text, ask count, answered flag
                answered means the owner wrote a pinned answer, not that the
                model coped -- see the refusal rule below.
 UsageCounter   pageId + period, conversation count. the meter.
-Ingestion      source url, status, extracted count, error
+Ingestion      source url, status, extracted count, error, tracked
 ModelCall      one row per provider call. tokens, cost, cache hits. the margin.
 ```
 
@@ -49,8 +49,17 @@ model Fact {
   confidence Float
   verified  Boolean  @default(false)   // owner clicked accept
   volatile  Boolean  @default(false)   // prices, stock. flag for re-check.
+  ingestionId String?                  // the Ingestion that wrote it; onDelete: SetNull
+  origin    FactOrigin @default(EXTRACTED) // EXTRACTED | OWNER | UNTRACKED
 }
 ```
+
+*Amended by slice 14.* A fact records where it came from. `ingestionId` points at the
+ingestion that wrote it and is `SetNull`, so deleting an ingestion never deletes a fact by
+cascade. `origin` is `EXTRACTED` (written by an ingestion), `OWNER` (typed or edited by the
+owner, and unlinked from any source), or `UNTRACKED` (written before slice 14, when nothing
+recorded the ingestion). `Ingestion.tracked` is false for those older ingestions, so their
+facts cannot be counted per source and removing the row removes only the row.
 
 **No vector database at v1.** *Amended by slice 12.* A page's whole fact list still fits
 in a prompt with room to spare, but a page that fits is no longer a page that is always
@@ -201,6 +210,40 @@ permanent maintenance and should not be carried by free pages.
 5. **Embed.** One batched call writes a vector per fact, from the question each fact
    answers. An ingestion that fails to embed still writes its facts; the page answers
    from all of them until a backfill catches it.
+
+**Knowledge (slice 14).** The owner manages what the pipeline wrote, and `NOT_FOUND` is a 404
+for anything on another account's page (a 403 would confirm the id exists).
+
+- **Removing a source** (`DELETE /sources/:id`) deletes the ingestion and every fact it wrote
+  that the owner has not rejected, live or still in Review, and returns `{ removedFacts }`.
+  Rejected facts stay as tombstones (`SetNull` unlinks them), so their normalised claim keeps
+  blocking a re-read. A fact is credited to the one source that wrote it first, so a fact a
+  second source also states goes too; the screen says so. Refused with `409 SOURCE_BUSY` while
+  the source is queued or running, and the delete is conditional on the status so a re-check
+  claimed in between rolls the removal back.
+- **Check for new facts** (`POST /sources/:id/recheck`, 202) re-runs the same ingestion, behind
+  the ingest limiters. One conditional update claims it, so two clicks cannot both queue a run
+  (`409 SOURCE_BUSY`); pasted text is `400 SOURCE_NOT_RECHECKABLE`. The job id is fresh
+  (`<ingestionId>-recheck-<ms>`) because the queue keeps completed jobs and ignores an add whose
+  id it holds; a failed enqueue marks the row `FAILED`. It never removes a fact.
+- **Adding a fact** (`POST /facts`, 201) is live at once and `OWNER`. Empty, multi-line, longer
+  than `OWNER_FACT_MAX` (500) or an unknown category is `400 INVALID_FACT`.
+- **Editing a fact** (`PATCH /facts/:id`) makes it `OWNER` and unlinks it from its source. If
+  the wording changed, the old wording is kept as a rejected `OWNER` row (the tombstone), so a
+  re-read cannot bring back what the owner corrected.
+- **An owner's words replace a rejected row with the same key**: a rejected row holding the new
+  normalised claim is deleted in the same transaction (this is what makes A, B, A work, and what
+  lets an owner type a claim once rejected in Review). Only a live clash is
+  `409 FACT_DUPLICATE`.
+- **Removing a fact** is the existing `POST /facts/:id/reject`, which keeps the row.
+- **Never-say** (`POST /never-say`, `DELETE /never-say/:id`): one line, at most
+  `NEVER_SAY_MAX_CHARS` (120) code points, no control characters; `400 INVALID_NEVER_SAY`. A
+  repeat (trimmed, whitespace-collapsed, case-folded) is `409 NEVER_SAY_DUPLICATE` and the 51st
+  entry is `409 NEVER_SAY_LIMIT` (`NEVER_SAY_MAX` is 50). In the prompt each entry is flattened
+  to one line and escaped like a fact, which also covers rows written before the API existed.
+- **Withdraw** (`DELETE /questions/:id/answer`) deletes the pinned answer and marks the question
+  unanswered again; the question and its FAQ slug stay, and the public FAQ page catches up
+  within its 60-second window.
 
 Re-run weekly for `volatile` facts. Diff, and surface changes as a dashboard nudge
 rather than silently overwriting what the owner approved.

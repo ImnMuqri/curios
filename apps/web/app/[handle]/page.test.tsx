@@ -27,8 +27,8 @@ const page: PublicPage = {
   paidUntil: null,
   leadsCaptured: 0,
   links: [
-    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0 },
-    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1 },
+    { id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', icon: null, position: 0, size: null },
+    { id: 'l2', label: 'Instagram', url: 'https://instagram.com/nadia', icon: null, position: 1, size: null },
   ],
   facts: [
     {
@@ -42,6 +42,10 @@ const page: PublicPage = {
     { id: 'f2', category: 'HOURS', claim: 'Open Monday to Saturday', question: null },
   ],
   allowSearchIndexing: false,
+  style: 'SOFT',
+  accentColor: '#0c7a62',
+  headingFont: 'JAKARTA',
+  avatarKey: null,
 };
 
 describe('public page', () => {
@@ -56,10 +60,52 @@ describe('public page', () => {
     expect(screen.getByRole('link', { name: /instagram/i })).toBeDefined();
   });
 
-  it('renders facts into the DOM so the page works without JavaScript', async () => {
+  // The page is the owner's links now; facts live behind the ask bar.
+  it('shows no fact list', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-    expect(screen.getByText(/Kek 1kg butter starts at RM95/)).toBeDefined();
+    expect(screen.queryByText(/what people ask/i)).toBeNull();
+    expect(screen.queryByText(page.facts[0]!.claim)).toBeNull();
+  });
+
+  // Self-review addition: BentoPage.test.tsx proves these attributes render
+  // from whatever props it is given, but nothing in this file proved page.tsx
+  // itself forwards the page's OWN style/accent/font rather than a constant --
+  // every other test here uses the fixture's defaults, so a hardcoded
+  // '#0c7a62' or 'SOFT' in page.tsx would still leave them green.
+  it("carries the page's own style, accent and heading font to the rendered page", async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({
+      ...page,
+      style: 'CONTRAST',
+      accentColor: '#6d3fb3',
+      headingFont: 'FRAUNCES',
+    });
+    const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const bento = container.querySelector('main > *') as HTMLElement;
+    expect(bento).toHaveAttribute('data-style', 'CONTRAST');
+    expect(bento.style.getPropertyValue('--accent')).toBe('#6d3fb3');
+    expect(bento.style.getPropertyValue('--font-heading')).toBe('var(--font-fraunces)');
+  });
+
+  // Self-review addition: every other test's fixture has avatarKey: null, so
+  // nothing here proved page.tsx turns a real key into a URL and passes it
+  // through -- BentoPage.test.tsx only proves BentoPage renders whatever
+  // avatarUrl string it is handed.
+  it("shows the owner's picture when one was uploaded, through the public storage URL", async () => {
+    const original = process.env.STORAGE_PUBLIC_URL;
+    process.env.STORAGE_PUBLIC_URL = 'https://cdn.example';
+    try {
+      vi.mocked(getPublicPage).mockResolvedValue({ ...page, avatarKey: 'avatars/p/1.webp' });
+      render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+      expect(screen.getByRole('img', { name: page.displayName })).toHaveAttribute(
+        'src',
+        'https://cdn.example/avatars/p/1.webp',
+      );
+    } finally {
+      if (original === undefined) delete process.env.STORAGE_PUBLIC_URL;
+      else process.env.STORAGE_PUBLIC_URL = original;
+    }
   });
 
   it('calls notFound for an unknown handle', async () => {
@@ -84,6 +130,34 @@ describe('the link to /[handle]/faq', () => {
       '/nadia/faq',
     );
   });
+
+  // Fix round 1: the spec's top-to-bottom order (devDocs/slice-13-build-spec.md,
+  // "The public page") is bento grid, ask bar, then -- on a business page with
+  // entries -- the FAQ link. The brief's own sample had them reversed; the spec
+  // wins. `Ask` normally renders null here (see the file-level mock), so this
+  // test gives it a one-time real marker to find in the DOM.
+  it('places the ask bar before the FAQ link, per the spec', async () => {
+    vi.mocked(Ask).mockImplementationOnce(() => <div data-testid="ask-bar" />);
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+    vi.mocked(getFaqIndex).mockResolvedValue({
+      handle: 'nadia',
+      displayName: 'Nadia Bakes',
+      entries: [{ slug: 'berapa-harga', question: 'Berapa harga?' }],
+    });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const askBar = screen.getByTestId('ask-bar');
+    const faqLink = screen.getByRole('link', { name: /every question/i });
+    expect(askBar.compareDocumentPosition(faqLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  // The prompt ("What do you want to know?") moved into `Ask` itself in the
+  // in-place chat mode rework -- it now doubles as chat mode's own
+  // empty-state greeting, which needs client state (`Ask`, mocked to a stub
+  // here) that page.tsx cannot hold. ask.test.tsx proves it sits above the
+  // ask bar; this file only ever proved page.tsx's own wiring, and page.tsx
+  // no longer renders this text at all.
 
   it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
@@ -163,6 +237,20 @@ describe('the capture card and the plan', () => {
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
     expect(askProps()?.canCapture).toBe(false);
+  });
+
+  // avatarUrl is no longer part of Ask's props: the in-place chat mode
+  // rework removed ChatMode's own header (BentoPage's real one is the only
+  // one now, per the owner's "looks like it opened another page" note), which
+  // left Ask with no remaining use for the picture. BentoPage.test.tsx still
+  // proves page.tsx forwards a real avatar key to BentoPage's own header.
+
+  it('passes the display name to Ask', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce(page);
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(askProps()?.displayName).toBe('Nadia Bakes');
   });
 });
 

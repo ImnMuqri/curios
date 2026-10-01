@@ -1,9 +1,35 @@
+import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { HEADING_FONTS, PAGE_STYLES } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { claimHandle, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { updateAppearance } from './appearance.service.js';
+import { decodeAvatar } from './avatar.js';
+import { claimHandle, NoPageError, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { createS3Store, storageDisabled, type AvatarStore } from './storage.js';
 
-export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
+export interface PageRouteOptions {
+  /**
+   * `undefined` builds a store from the environment (or none, in development
+   * with no storage settings). `null` means uploads are off. Tests pass a stub.
+   */
+  store?: AvatarStore | null;
+}
+
+export class StorageNotConfiguredError extends Error {
+  readonly statusCode = 503;
+  readonly code = 'STORAGE_NOT_CONFIGURED';
+  constructor() {
+    super('Pictures are switched off here: no storage settings in this environment.');
+    this.name = 'StorageNotConfiguredError';
+  }
+}
+
+export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, options) => {
+  // Resolved at registration, like chat's embedder: production with a missing
+  // setting fails the deploy, not an owner's upload.
+  const store = options.store !== undefined ? options.store : storageDisabled() ? null : createS3Store();
+
   app.post(
     '/pages',
     {
@@ -60,4 +86,70 @@ export const pageRoutes: FastifyPluginAsyncZod = async (app) => {
       return reply.send({ allowSearchIndexing: request.body.allow });
     },
   );
+
+  app.patch(
+    '/pages/appearance',
+    {
+      schema: {
+        body: z.object({
+          style: z.enum(PAGE_STYLES).optional(),
+          accentColor: z.string().max(40).optional(),
+          headingFont: z.enum(HEADING_FONTS).optional(),
+          displayName: z.string().max(400).optional(),
+          bio: z.string().max(2000).nullable().optional(),
+        }),
+      },
+    },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      return { appearance: await updateAppearance(app.prisma, request.account.id, request.body) };
+    },
+  );
+
+  app.post(
+    '/pages/avatar',
+    {
+      // A 512px WebP is ~40 KB; base64 adds a third. 2 MB is the ceiling of
+      // AVATAR_MAX_BYTES encoded, with room for the JSON around it.
+      bodyLimit: 2 * 1024 * 1024,
+      schema: { body: z.object({ contentType: z.string().max(40), data: z.string().max(1_500_000) }) },
+    },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      if (!store) throw new StorageNotConfiguredError();
+      const { body, ext } = decodeAvatar(request.body);
+
+      const page = await app.prisma.page.findUnique({ where: { accountId: request.account.id }, select: { id: true, avatarKey: true } });
+      if (!page) throw new NoPageError();
+
+      // Random, so a replaced picture is never served from a stale cache.
+      const key = `avatars/${page.id}/${randomUUID()}.${ext}`;
+      await store.put(key, body, request.body.contentType);
+      await app.prisma.page.update({ where: { id: page.id }, data: { avatarKey: key } });
+
+      // After the new key is recorded, never before: a failure here leaves an
+      // orphaned object, not a page pointing at nothing.
+      if (page.avatarKey) {
+        await store.remove(page.avatarKey).catch((error: unknown) =>
+          request.log.warn({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'old avatar could not be removed'),
+        );
+      }
+      return { avatarKey: key };
+    },
+  );
+
+  app.delete('/pages/avatar', async (request) => {
+    if (!request.account) throw new UnauthenticatedError();
+    if (!store) throw new StorageNotConfiguredError();
+    const page = await app.prisma.page.findUnique({ where: { accountId: request.account.id }, select: { id: true, avatarKey: true } });
+    if (!page) throw new NoPageError();
+
+    await app.prisma.page.update({ where: { id: page.id }, data: { avatarKey: null } });
+    if (page.avatarKey) {
+      await store.remove(page.avatarKey).catch((error: unknown) =>
+        request.log.warn({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'removed avatar object could not be deleted'),
+      );
+    }
+    return { status: 'removed' };
+  });
 };

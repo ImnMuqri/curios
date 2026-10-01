@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { ElementType, ReactNode } from 'react';
 import styles from './Shell.module.css';
 
 /**
@@ -9,12 +9,18 @@ import styles from './Shell.module.css';
  * the day it was written and nothing ever failed, because a missing class is
  * silent -- which is the argument for components over class-name conventions
  * in one sentence.
+ *
+ * `as` defaults to `'main'`, because most callers are the one screen on the
+ * page. AppFrame (slice 13) puts its own `<main>` around My Curios, Review,
+ * Settings and the rest, so Billing, Leads and Questions -- which already
+ * render this inside that frame -- pass `as="div"` to avoid a second, nested
+ * landmark.
  */
-export function Shell({ title, children }: { title?: string; children: ReactNode }) {
+export function Shell({ as: As = 'main', title, children }: { as?: ElementType; title?: string; children: ReactNode }) {
   return (
-    <main className={styles.shell}>
+    <As className={styles.shell}>
       {title ? <h1 className={styles.title}>{title}</h1> : null}
       {children}
-    </main>
+    </As>
   );
 }

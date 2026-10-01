@@ -16,14 +16,26 @@ people, not operators. Build them as two different products in one codebase.
 /[handle]/faq/[slug]      single answer        ISR, revalidate 60s
 /app                      dashboard shell      client, authed
 /app/onboarding           choose personal or business, paste a link or text, review facts
-/app/knowledge            facts, pinned answers, never-say list
-/app/links                the boring part that pays the rent
+/app/knowledge            Knowledge: four tabs (Facts, Sources, Pinned answers, Never say); the tab is in `?tab=`
+/app/curios               My Curios: profile, links, appearance, live preview
 /app/leads                table + transcript drawer
 /app/questions            top asked, unanswered, answer-writeback
-/app/appearance           theme, avatar, badge
 /app/billing              plan, usage against cap, payments, trial reset
 /app/settings             sign-in methods, the search-engine switch
 ```
+
+**The sidebar's first group is *My Curios · Review · Knowledge*.** Add a source lives on the
+Knowledge screen's Sources tab, not in the sidebar. `/app/onboarding` remains the first-run
+claim-and-first-source screen. `?tab=` is `facts` (the default), `sources`, `pinned` or
+`never-say`. Dates on the Sources tab are formatted in Asia/Kuala_Lumpur, so the server and
+browser renders agree. The shared Button (`packages/ui`) treats `busy` by type: a plain
+`type="button"` sets `aria-disabled` and ignores clicks, so focus stays where the owner pressed;
+a `type="submit"` goes natively disabled, which forms rely on against a double post. It forwards
+`aria-label`.
+
+**`/app` lands in My Curios.** A signed-in owner with a page is sent straight to
+`/app/curios`; one without a page yet goes to onboarding instead. It is the only screen
+that decides this.
 
 **One flat namespace.** `curios.my/nadia` is the URL for a person and for a bakery
 alike, and it never changes shape on upgrade. Mode is a property of the page, so this
@@ -42,8 +54,9 @@ go live in two minutes. Verification is separate: a bio code for personal pages,
 SSM document upload for business pages. It earns the badge and nothing else: an
 unverified Pro page keeps every feature, including lead capture. The badge renders the
 registration number and registered name, never a bare tick. Upload sits in
-`/app/appearance`, not in the payment flow, and states plainly that the file is
-deleted after checking.
+`/app/curios`, not in the payment flow, and states plainly that the file is
+deleted after checking. *Amended by slice 13, which folded profile and appearance into
+My Curios; this document upload is still unbuilt.*
 
 ---
 
@@ -53,6 +66,15 @@ deleted after checking.
 FAQ content into real DOM. Hydrate chat on top. If JS fails, the page is still a
 working link list with readable answers. That fallback is also the SEO artifact and
 the over-cap degraded state, so it is one build serving three jobs.
+
+*Amended by slice 13, which built the links half of the product and, with it, removed
+the fact list this sentence promised.* The public page server-renders a bento grid of
+the owner's links (`BentoPage`, shared with the editor's live preview), not a list, and
+carries no fact list at all. "Readable answers" no longer live on the page itself: they
+live on the FAQ pages, still indexed for business pages (personal pages stay `noindex`
+by default), which the public page links to when any exist. Without JavaScript the grid
+is still plain server-rendered anchors, so the page keeps working as a link page; only
+the ask bar needs JS.
 
 Budget. *Amended by slice 3, which measured this for the first time and found the
 original sentence could not be true.*
@@ -72,11 +94,11 @@ while React is in the page. The budget was unmeetable, not merely unmet.
 measures it, and claiming otherwise is what got the line above rewritten.
 
 Chat bundle loads on first interaction with the ask bar, never before. *Also not yet true:*
-the sheet is behind a `next/dynamic` import that does not currently produce a separate
-chunk, because `AskBar` is imported from the same `@curios/ui` barrel and webpack has
-nothing left to defer. It costs about 4KB of a 7KB chunk. See the comment in
-`apps/web/app/[handle]/ask.tsx`, which says so rather than describing a split that does
-not happen.
+chat mode (`ChatMode`, formerly the sheet) is behind a `next/dynamic` import that does not
+currently produce a separate chunk, because `AskBar` is imported from the same
+`@curios/ui` barrel and webpack has nothing left to defer. It costs about 4KB of a 7KB
+chunk. See the comment in `apps/web/app/[handle]/ask.tsx`, which says so rather than
+describing a split that does not happen.
 
 ---
 
@@ -94,6 +116,29 @@ Rules:
 - The sheet covers roughly 74% of the viewport. Links stay visible behind it. The AI
   pushes people back to links, it does not replace them.
 - Answers can render a `LinkCard`. That is the whole point.
+
+*Amended by slice 13.* The sheet is gone. Tapping the bar now switches the whole page
+into **chat mode** (`ChatMode`, `packages/ui/src/chat`) -- a state of this same page,
+not a layer over it. The first version was a full-screen overlay, the claude.ai
+treatment; the owner's own read of it was "it looks like it opened another page", so it
+was reworked to transition the page in place instead. The header (picture, name,
+`curios.my/:handle`) stays exactly where BentoPage already renders it, with a small back
+arrow beside it (labelled "Back to links" for a screen reader); the bio and the bento
+grid fold upward to make room, and the freed space becomes the conversation. The ask bar
+itself becomes the composer, settling into the same sticky-bottom spot rather than a new
+control appearing elsewhere. Escape or the phone's own back gesture also returns to the
+bento; entering pushes one history entry so the gesture has something of chat mode's own
+to consume rather than leaving the page outright. States: `idle` → `chat-mode` (`empty`
+-- the same "What do you want to know?" prompt as the greeting, plus up to four chips,
+nothing sent yet -- or `thread`) → `thinking` → `answering` (streamed) → `capture`
+(conditional). The old `sheet-open` state sent the bar's rotating suggestion immediately
+on tap; chat mode sends nothing until the visitor taps a chip or submits the composer
+themselves. The thread is kept, not thrown away, while chat mode is closed -- the
+component stays mounted, hidden, so tapping the bar again resumes the same conversation
+rather than starting a new one. `BentoPage` is a server component and holds none of this
+state itself: `ChatMode` reaches its root through `closest('[data-bento-page]')` and
+toggles `data-mode`/`data-has-turns` on it directly, which is what the fold, the hidden
+ask bar and the hidden prompt are all keyed on in Bento.module.css.
 
 ---
 
@@ -149,10 +194,38 @@ polls that id until the job resolves. Nothing generative ever blocks an HTTP req
 
 ---
 
+## My Curios
+
+*Added by slice 13.* One screen, at `/app/curios`, where `/app` sends every owner who
+already has a page. Profile (picture, display name, bio), links, and appearance sit
+together with a live preview that never leaves the screen — the same `BentoPage`
+visitors see, so the preview cannot disagree with the published page.
+
+**No Save button.** Every control saves itself: name, bio and an inline link's label or
+address debounce 600ms after the owner stops typing; a tile size saves the instant it is
+clicked. The preview updates from local state on every keystroke or click, before the
+save round-trip returns. Each of those shows its own brief "Saved", and a failed save
+keeps what the owner typed or chose and offers a Retry right beside that field or
+button, never a page-wide banner. Appearance (style, accent, heading font) is the one
+exception: those three save as a matched set on the same click, so a failure shows one
+Retry in the Appearance section rather than three that would all resend the same patch.
+
+**Reorder** is drag (`@dnd-kit/sortable`) or the up/down buttons, which is how the
+keyboard and a screen reader reach it too. A failed reorder — most often a second tab
+having changed the list first — snaps the list back to the last saved order and says
+so, rather than leaving the two tabs disagreeing.
+
+**The 30-link limit** (`MAX_LINKS`) is enforced in the editor and the API alike: past
+it, "+ Add a link" is replaced by a line naming the limit instead of a rejected request.
+
+---
+
 ## State
 
 - Server state: TanStack Query. No global store for it.
-- Chat session: local reducer, one `useReducer` per sheet instance.
+- Chat session: local component state, one instance per `ChatMode` (`useState`,
+  not `useReducer` -- *amended by slice 13*, which is also when the instance
+  moved from the sheet to chat mode).
 - Auth: httpOnly cookie. The API issues and refreshes it; middleware only
   redirects. `apps/web` holds a SELECT-only connection and cannot write, so it
   cannot extend a session even if it wanted to.
@@ -174,6 +247,7 @@ in Malay.
 
 ## Accessibility floor
 
-Keyboard reachable ask bar, focus trap in the sheet, escape closes, visible focus
-rings, `prefers-reduced-motion` respected, chat announces new messages politely.
-Not negotiable and not a phase two.
+Keyboard reachable ask bar, focus trap in chat mode (*amended by slice 13*; was
+the sheet), escape closes, visible focus rings, `prefers-reduced-motion`
+respected, chat announces new messages politely. Not negotiable and not a
+phase two.

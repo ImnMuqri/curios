@@ -160,6 +160,37 @@ describe('PATCH /facts/:id', () => {
   });
 });
 
+describe('PATCH /facts/:id validates like POST /facts', () => {
+  const patch = (mine: { factId: string; cookie: string }, claim: string) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/facts/${mine.factId}`,
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { claim },
+    });
+
+  it.each([
+    ['empty', ''],
+    ['whitespace only', '   '],
+    ['two lines', 'a\nb'],
+    ['501 characters', 'x'.repeat(501)],
+  ])('answers INVALID_FACT, not raw validation text, for %s, and changes nothing', async (_name, claim) => {
+    const mine = await anOwnerWithAFact('original claim');
+    const res = await patch(mine, claim);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_FACT');
+    expect((await app.prisma.fact.findUniqueOrThrow({ where: { id: mine.factId } })).claim).toBe('original claim');
+  });
+
+  it('accepts 500 emoji and trims', async () => {
+    const mine = await anOwnerWithAFact('original claim');
+    expect((await patch(mine, '😀'.repeat(500))).statusCode).toBe(200);
+    expect((await patch(mine, '  trimmed claim  ')).statusCode).toBe(200);
+    expect((await app.prisma.fact.findUniqueOrThrow({ where: { id: mine.factId } })).claim).toBe('trimmed claim');
+  });
+});
+
 describe('POST /facts/:id/reject', () => {
   it('soft-deletes the fact and stops it being public', async () => {
     const mine = await anOwnerWithAFact();
@@ -203,6 +234,54 @@ describe('POST /facts/:id/reject', () => {
   });
 });
 
+describe('POST /facts', () => {
+  it('adds a live fact the owner typed', async () => {
+    const mine = await anOwnerWithAFact();
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/facts',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { category: 'HOURS', claim: 'Closed on public holidays.' },
+    });
+
+    expect(res.statusCode).toBe(201);
+    const fact = await app.prisma.fact.findUniqueOrThrow({ where: { id: res.json<{ id: string }>().id } });
+    expect(fact).toMatchObject({ pageId: mine.pageId, verified: true, origin: 'OWNER' });
+  });
+
+  it('creating a fact verifies no other', async () => {
+    const mine = await anOwnerWithAFact('pending claim');
+    await app.inject({
+      method: 'POST',
+      url: '/facts',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { category: 'MISC', claim: 'Another.' },
+    });
+    expect((await app.prisma.fact.findUniqueOrThrow({ where: { id: mine.factId } })).verified).toBe(false);
+  });
+
+  it('says what is wrong with a bad fact', async () => {
+    const mine = await anOwnerWithAFact();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/facts',
+      remoteAddress: from(),
+      cookies: { [SESSION_COOKIE]: mine.cookie },
+      payload: { category: 'WEATHER', claim: 'Sunny.' },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_FACT');
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await app.inject({ method: 'POST', url: '/facts', remoteAddress: from(), payload: { category: 'MISC', claim: 'x' } });
+    expect(res.statusCode).toBe(401);
+  });
+});
+
 describe('the one hard rule', () => {
   it('exposes no route that can verify more than one fact', () => {
     const routes = app.printRoutes({ commonPrefix: false });
@@ -215,13 +294,93 @@ describe('the one hard rule', () => {
     // an :id. That case is covered behaviourally by the test below, and the
     // real backstop for both is that `verifyFact` takes one id and has no
     // plural form. This test is the cheap outer guard, not the guarantee.
-    const mutating = routes
-      .split('\n')
-      .filter((line) => line.includes('/facts') && /POST|PATCH|PUT|DELETE/.test(line));
+    //
+    // `printRoutes({ commonPrefix: false })` prints each node's path SEGMENT
+    // relative to its parent, not the full accumulated path -- a node only
+    // gets a line of its own once it (or a sibling) forces a branch; a
+    // parent with no handler of its own and exactly one child is merged onto
+    // that child's line instead. Before this task /facts had no handler, so
+    // /facts and /facts/:id merged onto a single line ("/facts/:id
+    // (PATCH)"), which a plain `line.includes('/facts')` scan happened to
+    // catch. Now that POST /facts exists, /facts prints on its own line and
+    // ":id" (PATCH), "/verify" (POST) and "/reject" (POST) each print on
+    // their own line, none of which contain the literal text "/facts" --
+    // and the last two do not even contain ":id", which is two levels up.
+    // Observed with this Fastify version, verified by printing `routes` once
+    // during development:
+    //   ├── /facts (POST)
+    //   │   └── /:id (PATCH)
+    //   │       ├── /verify (POST)
+    //   │       └── /reject (POST)
+    // So this walks the tree by indentation (4 spaces/pipes per level) and
+    // reconstructs each line's full path from its ancestors, then asks of
+    // the reconstructed path the question the old substring scan could only
+    // approximate.
+    //
+    // Review found the first version of this walk still failed OPEN: any
+    // tree line its regex could not parse was silently `continue`d past,
+    // rather than failing the outer guard on the product's one hard rule.
+    // find-my-way's radix-tree compression prints several real,
+    // still-mutating-under-/facts shapes that regex could not see:
+    //   - a wildcard route (POST /facts/*) prints as bare "* (POST)" -- no
+    //     leading "/", so a segment pattern requiring one skips the line.
+    //   - two routes sharing a prefix print only the DIVERGING suffix on the
+    //     child's line -- "GET /facts/export" beside "POST
+    //     /facts/export-verify-all" prints the child as "-verify-all
+    //     (POST)"; "GET /facts/pending" beside "POST
+    //     /facts/pendingVerifyAll" prints it as "VerifyAll (POST)". Neither
+    //     starts with "/", and neither line contains ":id" even though the
+    //     reconstructed path is still id-less and still mutating.
+    //   - a version-constrained route prints its constraint as JSON after
+    //     the methods group -- "/verify-all (POST)
+    //     {"version":"1.0.0"}" -- which a pattern anchoring `$` right after
+    //     the methods group cannot match.
+    // So this now (a) accepts a bare, non-"/"-prefixed segment, since a
+    // diverging suffix or a wildcard is exactly that; (b) allows arbitrary
+    // trailing text after the methods group, for a constraint's JSON blob;
+    // and (c) asserts every non-blank tree line matches this widened
+    // pattern, failing the test outright on any it still cannot parse,
+    // rather than skipping it. Subtree membership is decided by the STACK'S
+    // ROOT segment being exactly "/facts", not by a string prefix on the
+    // reconstructed path: the wildcard's own segment has no leading "/", so
+    // its reconstructed path is "/facts*" (no separating slash), which a
+    // `.startsWith('/facts/')` check would miss entirely -- precisely the
+    // kind of line this guard must not silently pass over.
+    //
+    // One exemption, by exact path: POST /facts creates ONE fact the owner
+    // wrote and touches no other (see "creating a fact verifies no other"
+    // below, which is what earns the exemption). Anything else mutating
+    // under /facts whose reconstructed path lacks ":id" fails here.
+    const stack: string[] = [];
+    const factsNodes: { path: string; methods: string }[] = [];
+    for (const rawLine of routes.split('\n')) {
+      const line = rawLine.replace(/\r$/, '');
+      if (line.trim() === '') continue;
 
-    expect(mutating.length).toBeGreaterThan(0);
-    for (const line of mutating) {
-      expect(line).toMatch(/:id/);
+      const node = line.match(/^([│ ]*)[├└]── (\S+)(?: \(([^)]*)\))?(?: .*)?$/);
+      expect(
+        node,
+        `printRoutes produced a tree line this guard cannot parse: ${JSON.stringify(line)}`,
+      ).not.toBeNull();
+      const indent = node?.[1] ?? '';
+      const segment = node?.[2] ?? '';
+      const methods = node?.[3] ?? '';
+      const depth = indent.length / 4;
+      stack.length = depth;
+      stack.push(segment);
+      const path = stack.join('');
+      if (stack[0] === '/facts') {
+        factsNodes.push({ path, methods });
+      }
+    }
+
+    const mutating = factsNodes.filter((n) => /POST|PATCH|PUT|DELETE/.test(n.methods));
+    const create = mutating.filter((n) => n.path === '/facts' && n.methods === 'POST');
+
+    expect(create).toHaveLength(1);
+    expect(mutating.length).toBeGreaterThan(1);
+    for (const n of mutating.filter((m) => !create.includes(m))) {
+      expect(n.path).toMatch(/:id/);
     }
   });
 

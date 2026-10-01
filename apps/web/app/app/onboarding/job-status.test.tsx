@@ -123,5 +123,39 @@ describe('JobStatus', () => {
     await screen.findByText(/found 4 facts/i);
     expect(screen.queryByRole('button')).toBeNull();
   });
+  describe('onSettled', () => {
+    const result = (status: string) => ({ status, extractedCount: 2, error: status === 'FAILED' ? 'No.' : null });
+
+    it('fires once when the job succeeds, however often it re-renders', async () => {
+      const onSettled = vi.fn();
+      const fetchStatus = vi.fn().mockResolvedValue(result('SUCCEEDED'));
+      const { rerender } = wrap(<JobStatus ingestionId="i-1" fetchStatus={fetchStatus} onSettled={onSettled} />);
+      await screen.findByText(/found 2 facts/i);
+      rerender(<QueryClientProvider client={new QueryClient()}><JobStatus ingestionId="i-1" fetchStatus={fetchStatus} onSettled={onSettled} /></QueryClientProvider>);
+      expect(onSettled).toHaveBeenCalledTimes(1);
+      expect(onSettled).toHaveBeenCalledWith(result('SUCCEEDED'));
+    });
+
+    it('fires once when the job fails', async () => {
+      const onSettled = vi.fn();
+      wrap(<JobStatus ingestionId="i-1" fetchStatus={vi.fn().mockResolvedValue(result('FAILED'))} onSettled={onSettled} />);
+      await screen.findByText('No.');
+      expect(onSettled).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not fire while the job is queued or running', async () => {
+      const onSettled = vi.fn();
+      wrap(<JobStatus ingestionId="i-1" fetchStatus={vi.fn().mockResolvedValue(result('RUNNING'))} onSettled={onSettled} />);
+      await screen.findByText(/reading what you gave us/i);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(onSettled).not.toHaveBeenCalled();
+    });
+  });
+
+  it('says a re-check with nothing new found nothing new, not that the site is unreadable', async () => {
+    wrap(<JobStatus recheck ingestionId="i-1" fetchStatus={vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null })} />);
+    expect(await screen.findByText('No new facts — everything it found was already there.')).toBeInTheDocument();
+    expect(screen.queryByText(/could not find anything/i)).toBeNull();
+  });
 });
 

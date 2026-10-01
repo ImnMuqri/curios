@@ -40,6 +40,11 @@ Owner themes change the accent hue only. Structure, type, and spacing never chan
 Ten thousand pages that look related is a brand. Ten thousand pages that look like
 anything is a theme picker.
 
+*Amended by slice 13.* An owner also chooses one of two page styles and one of six
+curated heading fonts, alongside the accent — see **The two page styles**, below.
+Spacing, the six-step type scale and the shopfront layout structure within a style
+still never change: a theme changes treatment, not structure.
+
 ---
 
 ## Type
@@ -53,6 +58,15 @@ Utility   IBM Plex Mono         labels, counts, timestamps, uppercase, 0.13em
 Bricolage carries a slight sign-painter irregularity in its wider optical sizes, which
 is exactly the shopfront reference and is not the face everyone else reaches for.
 Use it for the owner's name, page headings, and nothing under 15px.
+
+*Amended by slice 13.* The owner's name and tile labels on the public page now use
+whichever of six curated fonts the owner picked (Bricolage remains one; Jakarta, not
+Bricolage, is the default a page carries until an owner chooses another) — see **The
+two page styles**, below. Bricolage keeps one older job: it is still the sitewide
+`--font-display` a stylesheet falls back to if `--font-heading` itself is ever unset,
+which is why it alone of the six preloads regardless of which heading font a page
+picks. The dashboard's own chrome no longer uses Bricolage at all: it speaks Plus
+Jakarta Sans, a deliberate split from the public page's type.
 
 Body is Inter because Malay runs long and Inter stays legible when a caption wraps to
 four lines on a small phone. This is a legibility decision, not a taste one.
@@ -93,6 +107,13 @@ Everything else: 120ms colour transitions on press states, and nothing more.
 No scroll reveals. No parallax. No entrance animations on the dashboard. The dashboard
 is a tool that a busy person opens at 11pm, and it should be instant, not theatrical.
 
+*Amended by slice 13.* The one orchestrated moment is now entering chat mode, not the
+sheet -- and not a layer fading in over the bento either. The bio and the bento grid
+fold upward in place: a single-row CSS grid animating its own row track from `1fr` to
+`0fr`, fading at the same time, so the page transitions rather than something new
+appearing on top of it. Same budget, moved: 260ms, the same spring curve. Messages still
+arrive with the 8px rise and no stagger delay beyond 40ms.
+
 ---
 
 ## Components worth naming
@@ -100,13 +121,42 @@ is a tool that a busy person opens at 11pm, and it should be instant, not theatr
 | Component | Job |
 |---|---|
 | `AskBar` | the signature. see above. |
-| `LinkRow` | 44px min target, label left, arrow right. boring on purpose. |
-| `Chip` | generated question. `lead` variant uses mint, one per page maximum. |
+| `BentoPage` / tiles | *replaces `LinkRow`, slice 13.* the shopfront arrangement: an accent lead tile, a warm second, then smalls and wides; sizes automatic until the owner picks one. One renderer for the public page and the editor's live preview, so the two cannot disagree. |
+| `Chip` | *retired, slice 13 fix round 2.* generated question. `lead` variant used mint, one per page maximum. Deleted with `Nav` and `LinkRow`, the dashboard's old nav row (both replaced by the shell and the bento grid) once a grep across `apps/` found no import of any of the three left. |
 | `AnswerBubble` | streams, can contain a `LinkCard`. |
 | `LinkCard` | how chat returns people to the links. |
 | `CaptureCard` | kuning. one input. never more than one input. business mode only. |
 | `FactCard` | claim, source line, accept/edit/delete. onboarding lives or dies here. |
 | `GapCard` | unanswered question plus one button. the dashboard's whole point. |
+
+---
+
+## The two page styles
+
+*Added by slice 13.* Same shopfront arrangement in both; only the treatment differs.
+
+| | Soft (default) | High contrast |
+|---|---|---|
+| Corner radius | 16px | 14px |
+| Depth | a light shadow | none — contrast does the work |
+| Tiles | white and pale accent tints | ink, with accent tiles |
+
+**One accent colour per page** — eight curated presets plus a custom picker — paints the
+lead tile, the ask bar's emphasis and chat mode's highlights. Text on it is never
+the owner's problem: `readableOn(hex)` in `@curios/core` picks black or white ink,
+whichever has the higher WCAG contrast ratio against that colour, so no custom colour
+can make a page unreadable.
+
+**Six curated heading fonts** — Jakarta (default), Bricolage Grotesque, Fraunces, Space
+Grotesk, DM Serif Display, Outfit — apply to the owner's name and tile labels only; body
+text stays Inter regardless. Each is declared with `next/font` (`display: swap`); five
+of the six set `preload: false`, so a visitor downloads only the face their page
+actually uses. Bricolage is the exception — it is the sitewide `--font-display`
+default (see the amendment in **Type**, above) and so preloads regardless of which
+heading font a page picks.
+
+**The dashboard itself speaks Plus Jakarta Sans**, not Bricolage — a deliberate split
+from the public page's type, which keeps this document's own fonts.
 
 ---
 

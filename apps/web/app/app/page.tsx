@@ -10,8 +10,8 @@ import { resolveOwner } from './session.js';
 /**
  * A router, not a screen. Decides where a signed-in owner belongs: no page
  * yet sends them to onboarding to claim a handle, a page (published or not)
- * sends them to their review queue. This is the only place that decision is
- * made.
+ * sends them to My Curios, where an owner with a page lands. This is the
+ * only place that decision is made.
  */
 export default async function AppPage() {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
@@ -20,5 +20,5 @@ export default async function AppPage() {
   if (!owner) redirect('/signin');
 
   const page = await getOwnerPage(owner.accountId);
-  redirect(page ? '/app/review' : '/app/onboarding');
+  redirect(page ? '/app/curios' : '/app/onboarding');
 }

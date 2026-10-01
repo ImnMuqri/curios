@@ -1,6 +1,7 @@
 import { syncFactEmbeddings, type PrismaClient } from '@curios/db';
-import { normalizeClaim } from '@curios/core';
+import { FACT_CATEGORIES, normalizeClaim, OWNER_FACT_MAX, type FactCategory } from '@curios/core';
 import type { Embedder } from '@curios/embeddings';
+import { NoPageError } from '../pages/page.service.js';
 
 export class FactNotFoundError extends Error {
   readonly statusCode = 404;
@@ -20,6 +21,32 @@ export class DuplicateFactError extends Error {
     super('You already have a fact that says this.');
     this.name = 'DuplicateFactError';
   }
+}
+
+export class InvalidFactError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_FACT';
+  constructor() {
+    super(`Write the fact in one line, up to ${OWNER_FACT_MAX} characters, and pick a category.`);
+    this.name = 'InvalidFactError';
+  }
+}
+
+/**
+ * The one rule for wording the owner writes, shared by add and edit: trimmed,
+ * not empty, one line, at most OWNER_FACT_MAX code points. Returns the trimmed
+ * claim, which is what gets saved.
+ */
+function checkOwnerClaim(raw: string): string {
+  const claim = raw.trim();
+  if (claim === '' || /[\r\n]/.test(claim) || [...claim].length > OWNER_FACT_MAX) {
+    throw new InvalidFactError();
+  }
+  return claim;
+}
+
+function isFactCategory(value: string): value is FactCategory {
+  return (FACT_CATEGORIES as readonly string[]).includes(value);
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -54,11 +81,46 @@ export async function verifyFact(
 }
 
 /**
+ * Re-embeds one fact. A failure never fails the caller's save: the vector is
+ * deleted instead (a stale one is a wrong answer; none is merely fallback),
+ * and the failure is logged with an id and the error, never the claim.
+ */
+async function refreshVector(
+  prisma: PrismaClient,
+  factId: string,
+  embedder: Embedder | null,
+  log?: { warn?: (details: object, message: string) => void },
+): Promise<void> {
+  try {
+    if (!embedder) throw new Error('no embedder is configured');
+    // Deleted first, so that a crash between the two leaves no vector rather
+    // than a stale one: the failure that costs money is always the safer one.
+    await prisma.factEmbedding.deleteMany({ where: { factId } });
+    await syncFactEmbeddings(prisma, embedder, { id: factId });
+  } catch (error) {
+    await prisma.factEmbedding.deleteMany({ where: { factId } });
+    log?.warn?.(
+      { factId, err: error instanceof Error ? error.message : String(error) },
+      'fact edited but its vector could not be refreshed; this page falls back until a backfill runs',
+    );
+  }
+}
+
+/**
  * Rewrites a claim, and the dedupe key with it.
  *
  * `normalizeClaim` is re-run rather than left alone, so the key never drifts
  * from the text it is meant to key. That is also what makes a collision
  * possible here, and a collision is an owner-fixable fact rather than a 500.
+ *
+ * Since slice 14 an edit also makes the fact the owner's: `origin` becomes
+ * OWNER and it is unlinked from its source, so removing that source leaves
+ * it. If the wording changed, the old wording is kept as a rejected OWNER
+ * row -- the tombstone -- so a re-read of the source cannot bring back what
+ * the owner corrected. A rejected row already holding the NEW wording is
+ * deleted first: the owner's words override a tombstone (that is also how
+ * A -> B -> A works). All of it is one transaction, so a refused edit leaves
+ * no tombstone behind.
  *
  * The fact's vector is handled last, and only when it can be stale. A vector
  * is of `question ?? claim`: a fact carrying a question is matched on that
@@ -86,47 +148,101 @@ export async function editFact(
   prisma: PrismaClient,
   accountId: string,
   factId: string,
-  claim: string,
+  rawClaim: string,
   embedder: Embedder | null,
   log?: { warn?: (details: object, message: string) => void },
 ): Promise<void> {
-  let updated;
+  const claim = checkOwnerClaim(rawClaim);
+  const before = await prisma.fact.findFirst({
+    where: { id: factId, page: { accountId } },
+    select: { pageId: true, category: true, claim: true, normalizedClaim: true, question: true },
+  });
+  if (!before) throw new FactNotFoundError();
+
+  const normalizedClaim = normalizeClaim(claim);
+  const reworded = normalizedClaim !== before.normalizedClaim;
+
   try {
-    updated = await prisma.fact.updateMany({
-      where: { id: factId, page: { accountId } },
-      data: { claim, normalizedClaim: normalizeClaim(claim) },
+    await prisma.$transaction(async (tx) => {
+      if (reworded) {
+        await tx.fact.deleteMany({
+          where: { pageId: before.pageId, normalizedClaim, rejectedAt: { not: null }, page: { accountId } },
+        });
+      }
+      const updated = await tx.fact.updateMany({
+        where: { id: factId, page: { accountId } },
+        data: { claim, normalizedClaim, origin: 'OWNER', ingestionId: null },
+      });
+      if (updated.count !== 1) throw new FactNotFoundError();
+      if (reworded) {
+        await tx.fact.create({
+          data: {
+            pageId: before.pageId,
+            category: before.category,
+            claim: before.claim,
+            normalizedClaim: before.normalizedClaim,
+            confidence: 0,
+            verified: false,
+            rejectedAt: new Date(),
+            origin: 'OWNER',
+          },
+        });
+      }
+    });
+  } catch (error) {
+    // Checked first: a not-found we raised ourselves must never be handed to
+    // isUniqueViolation to classify.
+    if (error instanceof FactNotFoundError) throw error;
+    if (isUniqueViolation(error)) throw new DuplicateFactError();
+    throw error;
+  }
+
+  // The vector is of `question ?? claim`. A fact carrying a question is
+  // matched on the question, which this function cannot change.
+  if (before.question != null) return;
+  await refreshVector(prisma, factId, embedder, log);
+}
+
+/**
+ * A fact the owner typed in. Live at once -- the owner wrote it, which is the
+ * explicit human action on one specific fact the hard rule asks for -- and
+ * OWNER, so no source's removal touches it.
+ *
+ * A rejected row holding the same wording is replaced, for the reason
+ * `editFact` gives. A live one is a duplicate.
+ */
+export async function addFact(
+  prisma: PrismaClient,
+  accountId: string,
+  input: { category: string; claim: string },
+  embedder: Embedder | null,
+  log?: { warn?: (details: object, message: string) => void },
+): Promise<{ id: string }> {
+  const claim = checkOwnerClaim(input.claim);
+  if (!isFactCategory(input.category)) throw new InvalidFactError();
+  const category = input.category;
+
+  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true } });
+  if (!page) throw new NoPageError();
+
+  const normalizedClaim = normalizeClaim(claim);
+  let id: string;
+  try {
+    id = await prisma.$transaction(async (tx) => {
+      await tx.fact.deleteMany({ where: { pageId: page.id, normalizedClaim, rejectedAt: { not: null } } });
+      const fact = await tx.fact.create({
+        data: { pageId: page.id, category, claim, normalizedClaim, confidence: 1, verified: true, origin: 'OWNER' },
+        select: { id: true },
+      });
+      return fact.id;
     });
   } catch (error) {
     if (isUniqueViolation(error)) throw new DuplicateFactError();
     throw error;
   }
 
-  // Thrown OUTSIDE the catch above, deliberately. Inside it, a not-found we
-  // raised ourselves would be handed to `isUniqueViolation` to classify, and
-  // the two would only stay distinct for as long as their `code` values happen
-  // to differ. It is also thrown before any embedding work, so a refused edit
-  // never spends a call or touches a vector.
-  if (updated.count !== 1) throw new FactNotFoundError();
-
-  const fact = await prisma.fact.findUnique({
-    where: { id: factId },
-    select: { question: true },
-  });
-  if (fact?.question != null) return;
-
-  try {
-    if (!embedder) throw new Error('no embedder is configured');
-    // Deleted first, so that a crash between the two leaves no vector rather
-    // than a stale one: the failure that costs money is always the safer one.
-    await prisma.factEmbedding.deleteMany({ where: { factId } });
-    await syncFactEmbeddings(prisma, embedder, { id: factId });
-  } catch (error) {
-    await prisma.factEmbedding.deleteMany({ where: { factId } });
-    log?.warn?.(
-      { factId, err: error instanceof Error ? error.message : String(error) },
-      'fact edited but its vector could not be refreshed; this page falls back until a backfill runs',
-    );
-  }
+  await refreshVector(prisma, id, embedder, log);
+  return { id };
 }
 
 /**

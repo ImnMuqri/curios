@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
-import { Chip, LinkRow } from '@curios/ui';
+import { BentoPage } from '../_bento/BentoPage.js';
+import { avatarUrl } from '../../lib/avatar-url.js';
 import { Ask } from './ask.js';
 import styles from './page.module.css';
 
@@ -57,9 +58,8 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
   const page = await getPublicPage(handle);
   if (!page) notFound();
 
-  // Facts written before the question column existed have none. They still
-  // render their claim -- the answer is the part a visitor came for -- they
-  // just cannot be offered as a question the bar cycles.
+  // Facts now reach a visitor only through the ask bar's cycling questions and
+  // the FAQ pages, per slice 13 -- this page renders no fact list of its own.
   const questions = page.facts
     .map((fact) => fact.question)
     .filter((question): question is string => question !== null);
@@ -76,48 +76,45 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
       ? ((await getFaqIndex(page.handle, { limit: 1 }))?.entries.length ?? 0) > 0
       : false;
 
-  // Server-rendered into real DOM. With JavaScript disabled this is still a
-  // working link list with readable answers, which is also the SEO artifact.
+  // Server-rendered into real DOM: with JavaScript disabled the tiles are
+  // still a working link list, which is also the SEO artifact.
   return (
-    <main className={styles.page}>
-      <h1 className={styles.name}>{page.displayName}</h1>
-      {page.bio ? <p className={styles.bio}>{page.bio}</p> : null}
-
-      <nav className={styles.links}>
-        {page.links.map((link) => (
-          <LinkRow key={link.id} href={link.url} label={link.label} />
-        ))}
-      </nav>
-
-      <section>
-        <h2 className={styles.sectionLabel}>What people ask</h2>
-        <ul className={styles.facts}>
-          {page.facts.map((fact) => (
-            <li key={fact.id} className={styles.fact}>
-              {fact.question ? <Chip>{fact.question}</Chip> : null}
-              <p className={styles.claim}>{fact.claim}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {hasFaq ? (
-        <a className={styles.faqLink} href={`/${page.handle}/faq`}>
-          See every question we&apos;ve answered
-        </a>
-      ) : null}
-
-      <Ask
+    <main>
+      <BentoPage
+        displayName={page.displayName}
         handle={page.handle}
-        questions={questions}
-        shopName={page.displayName}
-        canCapture={canCapture({
-          mode: page.mode,
-          paidUntil: page.paidUntil,
-          leadsCaptured: page.leadsCaptured,
-          now: new Date(),
-        })}
-      />
+        bio={page.bio}
+        // BentoPage's own header is the only one that shows this now --
+        // ChatMode stopped rendering its own picture once the in-place
+        // rework removed its duplicate header, which left Ask (below) with
+        // no remaining use for it.
+        avatarUrl={avatarUrl(page.avatarKey)}
+        links={page.links}
+        style={page.style}
+        accentColor={page.accentColor}
+        headingFont={page.headingFont}
+      >
+        {/* The "What do you want to know?" prompt now lives inside Ask
+            (ask.tsx) -- it doubles as chat mode's own empty-state greeting,
+            which needs to react to client state (whether a turn exists yet)
+            that page.tsx, a server component, cannot hold. */}
+        <Ask
+          handle={page.handle}
+          questions={questions}
+          displayName={page.displayName}
+          canCapture={canCapture({
+            mode: page.mode,
+            paidUntil: page.paidUntil,
+            leadsCaptured: page.leadsCaptured,
+            now: new Date(),
+          })}
+        />
+        {hasFaq ? (
+          <a className={styles.faqLink} href={`/${page.handle}/faq`}>
+            See every question we&apos;ve answered
+          </a>
+        ) : null}
+      </BentoPage>
     </main>
   );
 }

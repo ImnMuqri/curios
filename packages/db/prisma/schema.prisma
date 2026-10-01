@@ -33,6 +33,16 @@ enum IngestionStatus {
   FAILED
 }
 
+/// Who a fact came from. EXTRACTED facts belong to the Ingestion that wrote
+/// them and go when it is removed. OWNER facts were typed or edited by the
+/// owner and survive any source's removal. UNTRACKED facts predate slice 14,
+/// when no fact recorded its ingestion; they are removed one at a time.
+enum FactOrigin {
+  EXTRACTED
+  OWNER
+  UNTRACKED
+}
+
 enum MessageRole {
   USER
   ASSISTANT
@@ -57,6 +67,27 @@ enum BillingPlan {
 enum PaymentStatus {
   PENDING
   PAID
+}
+
+enum TileSize {
+  SMALL
+  WIDE
+  TALL
+  BIG
+}
+
+enum PageStyle {
+  SOFT
+  CONTRAST
+}
+
+enum HeadingFont {
+  JAKARTA
+  BRICOLAGE
+  FRAUNCES
+  SPACE_GROTESK
+  DM_SERIF
+  OUTFIT
 }
 
 model Account {
@@ -117,6 +148,13 @@ model Page {
   /// name. Business pages are always indexed, so this is read only for personal
   /// pages -- see shouldIndex in @curios/core.
   allowSearchIndexing Boolean @default(false)
+  /// Soft is the default look; High contrast is the owner's alternative.
+  style       PageStyle   @default(SOFT)
+  /// #rrggbb, validated by isHexColor before it is written.
+  accentColor String      @default("#0c7a62")
+  headingFont HeadingFont @default(JAKARTA)
+  /// The object key of the uploaded picture in storage. Null is no picture.
+  avatarKey   String?
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]
@@ -140,6 +178,9 @@ model Link {
   url      String
   icon     String?
   position Int
+  /// Null is "automatic": arrangeTiles in @curios/core/bento decides from the
+  /// tile's position.
+  size     TileSize?
 
   @@index([pageId, position])
 }
@@ -159,11 +200,18 @@ model Fact {
   volatile        Boolean      @default(false)
   flagged         Boolean      @default(false)
   rejectedAt      DateTime?
+  /// The ingestion that wrote this fact. SetNull, not Cascade: a rejected
+  /// fact must outlive its source, because its normalizedClaim is what stops
+  /// the next crawl re-asking. Null for OWNER and UNTRACKED facts.
+  ingestionId     String?
+  ingestion       Ingestion?   @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
+  origin          FactOrigin   @default(EXTRACTED)
   createdAt       DateTime     @default(now())
   embedding       FactEmbedding?
 
   @@unique([pageId, normalizedClaim])
   @@index([pageId, category])
+  @@index([ingestionId])
 }
 
 /// One vector per fact, written by syncFactEmbeddings and read per question.
@@ -274,6 +322,11 @@ model Ingestion {
   status         IngestionStatus @default(QUEUED)
   extractedCount Int             @default(0)
   error          String?
+  /// False for ingestions that ran before slice 14. Their facts are UNTRACKED,
+  /// so the Sources tab cannot count them and removing the row removes only
+  /// the row.
+  tracked        Boolean         @default(true)
+  facts          Fact[]
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
 

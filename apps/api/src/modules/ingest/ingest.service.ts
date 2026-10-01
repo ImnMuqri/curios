@@ -2,8 +2,22 @@ import { BlockedAddressError, INGEST_QUEUE, inspectSourceUrl, type IngestJobData
 import type { PrismaClient } from '@curios/db';
 import type { HostGuard } from './host-guard.js';
 
+/**
+ * The shape `enqueue` below actually passes, and the one a re-check
+ * (`source.service.ts`) needs to read back off its own mock in a test --
+ * `unknown` let a caller pass anything but gave nothing to read. BullMQ's own
+ * `JobsOptions` has far more fields; this is deliberately only the ones this
+ * codebase uses; bivariant method assignability is why a real `Queue` still
+ * satisfies this interface.
+ */
+export interface QueueJobOptions {
+  jobId?: string;
+  attempts?: number;
+  backoff?: { type: string; delay: number };
+}
+
 export interface QueueLike {
-  add(name: string, data: IngestJobData, opts?: unknown): Promise<{ id?: string }>;
+  add(name: string, data: IngestJobData, opts?: QueueJobOptions): Promise<{ id?: string }>;
 }
 
 export interface IngestDeps {

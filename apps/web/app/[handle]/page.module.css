@@ -1,57 +1,14 @@
-.page {
-  max-width: 480px;
-  margin: 0 auto;
-  padding: 32px 16px;
-  min-height: 100vh;
-}
-
-.name {
-  font-family: var(--font-display);
-  font-size: var(--text-display);
-  letter-spacing: -0.02em;
-  margin: 0 0 4px;
-}
-
-.bio {
-  color: var(--muted);
-  margin-top: 0;
-}
-
-.links {
-  margin: 24px 0;
-}
-
 /*
- * The utility voice: mono, uppercase, tracked out. It says "this is data"
- * rather than joining the conversation, which is the whole reason DESIGN.md
- * gives the dashboard a third face.
+ * What the ask bar is for, said once, with room between it and the grid so the
+ * links and the conversation read as two things. The label voice: small, plain,
+ * a prompt rather than a heading.
  */
-.sectionLabel {
-  font-family: var(--font-mono);
+.askPrompt {
+  margin: 32px 0 10px;
+  font-family: var(--font-heading), var(--font-display);
   font-size: var(--text-base);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  color: var(--muted);
-}
-
-.facts {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-
-.fact {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--surface);
-}
-
-/*
- * The claim stays in the DOM under its question. FRONTEND.md: with JavaScript
- * off this page is still a working link list with readable answers, and that
- * same markup is the SEO artifact and the over-cap degraded state.
- */
-.claim {
-  margin: 8px 0 0;
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /*

@@ -49,3 +49,4 @@ export {
   selectFacts,
 } from './retrieval.js';
 export type { FallbackReason, Selection } from './retrieval.js';
+export { NEVER_SAY_MAX_CHARS, NEVER_SAY_MAX, OWNER_FACT_MAX, SOURCE_LABEL_MAX } from './knowledge.js';

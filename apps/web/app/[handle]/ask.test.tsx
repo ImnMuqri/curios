@@ -1,15 +1,15 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Ask } from './ask.js';
 
 /**
  * Step 5's finding: `page.test.tsx` renders `HandlePage` and asserts only
  * that the ask bar appears, which is true whatever `canCapture` is -- opening
- * the sheet and reaching a qualified conversation never happens at that
+ * chat mode and reaching a qualified conversation never happens at that
  * level. Hard-coding `canCapture={false}` in page.tsx left every test there
  * green. `Ask` is the one place that turns the `canCapture` prop into
- * whether the sheet is EVER given a capture handler at all
+ * whether chat mode is EVER given a capture handler at all
  * (`onCapture={canCapture ? onCapture : undefined}`), so this drives `Ask`
  * itself through a real qualifying conversation and asserts on the capture
  * card's presence -- the actual behaviour the gate exists to control, not
@@ -34,34 +34,147 @@ function stubQualifyingFetch() {
   vi.stubGlobal('fetch', spy);
 }
 
+/**
+ * What `BentoPage` actually renders, reduced to what `ChatMode` looks for --
+ * see `ChatMode.test.tsx`'s own `PageHarness` for the fuller version. `Ask`
+ * itself never renders this; it is a sibling of `Ask` inside the real
+ * `BentoPage`, which is why proving chat mode reaches it at all is a
+ * property of this integration, not of `Ask` alone.
+ */
+function PageHarness({ children }: { children: React.ReactNode }) {
+  return (
+    <div data-bento-page>
+      <div data-foldaway>bio and links go here</div>
+      {children}
+    </div>
+  );
+}
+
 afterEach(() => vi.unstubAllGlobals());
+
+describe('Ask, opening chat mode', () => {
+  it('mounts chat mode only once opened, not on the cold page', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />,
+    );
+
+    // Long enough for the dynamic import to resolve, if the JSX branch that
+    // triggers it was reached at all -- a synchronous assertion right after
+    // render would pass whether or not chat mode is gated, since `next/dynamic`
+    // resolves asynchronously either way. Waiting is what makes this able to
+    // tell "never mounted" apart from "mounted, but not finished loading yet".
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+
+    // The budget the dynamic import exists for: nothing of chat mode's own
+    // DOM should exist before the visitor has ever tapped the bar, hidden or
+    // not -- `container.querySelector` sees a hidden node too, unlike
+    // `screen.getByRole`, so this would catch chat mode being mounted eagerly
+    // and merely hidden rather than not mounted at all.
+    expect(container.querySelector('[aria-label="Back to links"]')).not.toBeInTheDocument();
+  });
+
+  it('shows the greeting prompt above the ask bar, with nothing sent, before any tap', () => {
+    stubQualifyingFetch();
+    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
+
+    // "What do you want to know?" is the one prompt: chat mode's own empty
+    // state reuses it rather than showing a second, personalised greeting.
+    // Moved here from page.tsx (previously proved at that level), since
+    // page.tsx no longer renders this text at all.
+    const prompt = screen.getByText('What do you want to know?');
+    const askBar = screen.getByRole('button', { name: /ask a question/i });
+    expect(prompt).toHaveAttribute('data-ask-prompt');
+    expect(prompt.compareDocumentPosition(askBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('enters chat mode on the page it is part of, not a layer over it', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <PageHarness>
+        <Ask
+          handle="nadia"
+          questions={['Berapa harga?']}
+          displayName="Nadia Bakes"
+          canCapture={true}
+        />
+      </PageHarness>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+
+    // Set on the ancestor BentoPage renders, not on anything Ask/ChatMode
+    // owns themselves -- BentoPage is a server component and holds no chat
+    // state of its own, so this is how the client side reaches it at all.
+    expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-mode', 'chat');
+    expect(screen.getByRole('button', { name: 'Back to links' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Berapa harga?' })).toBeInTheDocument();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('hides the prompt once a turn exists, and marks that on the page too', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <PageHarness>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </PageHarness>,
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    expect(screen.getByText('What do you want to know?')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa harga?' }));
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-has-turns', 'true'),
+    );
+  });
+
+  it('returns focus to the ask bar once chat mode closes', async () => {
+    stubQualifyingFetch();
+    vi.spyOn(history, 'back').mockImplementation(() => {});
+    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
+
+    const askBar = screen.getByRole('button', { name: /ask a question/i });
+    await userEvent.click(askBar);
+    await screen.findByRole('button', { name: 'Back to links' });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
+
+    expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
+    expect(askBar).toHaveFocus();
+  });
+});
 
 describe('Ask, once a conversation qualifies', () => {
   it('offers the capture card when the page can capture', async () => {
     stubQualifyingFetch();
-    render(<Ask handle="nadia" questions={['Berapa harga?']} shopName="Nadia Bakes" canCapture={true} />);
+    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
 
     await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
 
     expect(await screen.findByRole('button', { name: /send my number/i })).toBeInTheDocument();
   });
 
   it('never offers the capture card when the page cannot capture', async () => {
     stubQualifyingFetch();
-    render(<Ask handle="nadia" questions={['Berapa harga?']} shopName="Nadia Bakes" canCapture={false} />);
+    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={false} />);
 
     await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
 
     // The same qualifying response as above lands either way; only the prop
     // differs. Waited on the composer leaving its busy state -- set at the
-    // start of AskSheet's `send` and cleared only in its `finally`, so this is
+    // start of ChatMode's `send` and cleared only in its `finally`, so this is
     // stream completion, not just dispatch -- rather than on `fetch` having
     // been called, which proves only that a request went out. That keeps this
     // a real regression check: it would still catch `onCapture` ever being
     // forwarded unconditionally, instead of racing the stream and passing by
     // accident.
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /send/i })).not.toHaveAttribute('aria-busy'),
+      expect(screen.getByRole('button', { name: 'Send' })).not.toHaveAttribute('aria-busy'),
     );
     expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
   });
