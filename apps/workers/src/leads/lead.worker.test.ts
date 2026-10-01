@@ -16,6 +16,9 @@ function gatewayReturning(slots: {
     extract: vi.fn(),
     chat: vi.fn(),
     slots: vi.fn().mockResolvedValue(slots),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
   };
 }
 
@@ -79,6 +82,9 @@ describe('runLeadJob', () => {
       extract: vi.fn(),
       chat: vi.fn(),
       slots: vi.fn().mockRejectedValue(new Error('provider unavailable')),
+      sameQuestion: async () => {
+        throw new Error('not used');
+      },
     };
 
     await runLeadJob({ prisma, gateway: failing, mailQueue }, { leadId });

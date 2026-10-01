@@ -25,6 +25,9 @@ function gatewaySaying(text: string): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* () {
       yield { type: 'text' as const, text };
       yield {
@@ -41,6 +44,9 @@ function gatewayThatFails(): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* () {
       throw new Error('provider unavailable');
     },
@@ -53,6 +59,9 @@ function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* ({ systemPrompt }) {
       captured = systemPrompt;
       yield { type: 'text' as const, text: 'ok' };
@@ -73,6 +82,9 @@ function gatewayCapturingCachePrompt(): { gateway: Gateway; cachePrompt: () => b
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* ({ cachePrompt }) {
       captured = cachePrompt;
       yield { type: 'text' as const, text: 'ok' };
@@ -93,6 +105,9 @@ function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMes
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* ({ messages }) {
       captured = messages;
       yield { type: 'text' as const, text: 'an answer' };
@@ -113,6 +128,9 @@ function gatewayCapturingCall(): { gateway: Gateway; call: () => ChatInput } {
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* (input) {
       captured = input;
       yield { type: 'text' as const, text: 'ok' };

@@ -1,5 +1,11 @@
 export { costFor, PRICE_VERSION } from './pricing.js';
-export { createAnthropicGateway, CHAT_MODEL, EXTRACT_MODEL } from './anthropic.gateway.js';
+export {
+  createAnthropicGateway,
+  buildSameQuestionPrompt,
+  parseSameQuestion,
+  CHAT_MODEL,
+  EXTRACT_MODEL,
+} from './anthropic.gateway.js';
 export type {
   Gateway,
   TokenUsage,
@@ -10,4 +16,7 @@ export type {
   ChatEvent,
   SlotsInput,
   SlotsOutput,
+  SameQuestionCandidate,
+  SameQuestionInput,
+  SameQuestionOutput,
 } from './types.js';
