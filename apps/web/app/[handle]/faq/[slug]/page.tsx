@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { serialiseJsonLd } from '@curios/core';
-import { getFaqEntry } from '@curios/db-read';
+import { getFaqEntry, getFaqRedirect } from '@curios/db-read';
 import styles from '../faq.module.css';
 
 export const runtime = 'nodejs';
@@ -65,9 +65,15 @@ export default async function FaqEntryPage({
   const { handle, slug } = await params;
   const entry = await getFaqEntry(handle, slug);
 
-  // One null for every failure: no such handle, personal page, unpublished
-  // page, unknown slug, withdrawn answer. A visitor needs no distinction.
-  if (!entry) notFound();
+  if (!entry) {
+    // A slug retired by a merge or split points at its topic's live page; the
+    // permanent redirect carries search ranking over. Every other failure (no
+    // such handle, personal or unpublished page, unknown slug, withdrawn
+    // answer) is one 404: a visitor needs no distinction.
+    const target = await getFaqRedirect(handle, slug);
+    if (target) permanentRedirect(`/${handle.toLowerCase()}/faq/${target}`);
+    notFound();
+  }
 
   const jsonLd = serialiseJsonLd({
     '@context': 'https://schema.org',
