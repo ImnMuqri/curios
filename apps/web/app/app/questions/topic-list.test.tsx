@@ -305,11 +305,13 @@ describe('TopicList', () => {
   it('names the delete-topic consequence by whether it has an answer', async () => {
     list([answered, unanswered]);
     await userEvent.click(within(await menuOf(answered.title)).getByRole('button', { name: 'Delete topic' }));
-    expect(screen.getByText(/Your answer goes too/)).toBeInTheDocument();
+    expect(
+      screen.getByText('Delete this topic and its 2 wordings? Your answer goes too, and this cannot be undone.'),
+    ).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: 'Keep it' }));
 
     await userEvent.click(within(await menuOf(unanswered.title)).getByRole('button', { name: 'Delete topic' }));
-    expect(screen.getByText(/Delete this topic and its 1 wording\?/)).toBeInTheDocument();
+    expect(screen.getByText('Delete this topic and its 1 wording? This cannot be undone.')).toBeInTheDocument();
     expect(screen.queryByText(/Your answer goes too/)).toBeNull();
   });
 

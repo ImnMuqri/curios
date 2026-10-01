@@ -128,7 +128,6 @@ function TopicRow({
   const mergeId = `merge-${topic.id}`;
   const menuId = `menu-${topic.id}`;
 
-
   const extra = topic.wordings.length - 1;
   const answerId = `answer-${topic.id}`;
   const titleId = `title-${topic.id}`;
@@ -261,7 +260,6 @@ function TopicRow({
                 <li>
                   <button
                     type="button"
-                   
                     onClick={() => {
                       // The item unmounts with the list; park focus on the ⋯ button now and after.
                       setMenuOpen(false);
@@ -411,7 +409,7 @@ function TopicRow({
         <div className={styles.panel}>
           <div className={styles.confirm} role="group" aria-label="Confirm deleting this topic">
             <p>
-              Delete this topic and its {plural(topic.wordings.length, 'wording')}?{topic.answer ? ' Your answer goes too, and' : ' This'} cannot be undone.
+              Delete this topic and its {plural(topic.wordings.length, 'wording')}?{topic.answer ? ' Your answer goes too, and this cannot be undone.' : ' This cannot be undone.'}
             </p>
             <Button variant="danger" busy={busy} onClick={() => void run(() => actions.deleteTopic(topic.id), close)}>
               Delete it
