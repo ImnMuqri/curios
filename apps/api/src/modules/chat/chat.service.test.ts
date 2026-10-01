@@ -1096,7 +1096,11 @@ describe('topics in the chat', () => {
     expect(groupQueue.add).toHaveBeenCalledWith(
       GROUP_QUEUE,
       { questionId: questions[0]?.id },
-      expect.objectContaining({ jobId: questions[0]?.id }),
+      expect.objectContaining({
+        jobId: questions[0]?.id,
+        removeOnComplete: true,
+        removeOnFail: { age: 7 * 24 * 3600 },
+      }),
     );
     // The reply is complete before the job is queued.
     expect(order.at(-1)).toBe('queued');

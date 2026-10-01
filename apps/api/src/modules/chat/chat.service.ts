@@ -279,7 +279,13 @@ export async function* answer(
       await deps.groupQueue.add(
         GROUP_QUEUE,
         { questionId: wording.id },
-        { jobId: wording.id, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+        {
+          jobId: wording.id,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: true,
+          removeOnFail: { age: 7 * 24 * 3600 },
+        },
       );
     } catch (error) {
       deps.log?.warn?.(

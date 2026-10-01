@@ -91,8 +91,10 @@ export async function assignTopicSlug(
       const candidate = attempt === 1 ? base : `${base}-${attempt}`;
       if (taken.has(candidate)) continue;
       try {
-        await prisma.topic.update({
-          where: { id: topic.id },
+        // Only onto a topic still unnamed: a merge or a concurrent assignment
+        // may have named it since the read above, and that slug must survive.
+        await prisma.topic.updateMany({
+          where: { id: topic.id, faqSlug: null },
           data: { faqSlug: candidate },
         });
         return;

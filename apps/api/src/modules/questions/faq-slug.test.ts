@@ -107,6 +107,30 @@ describe('assignTopicSlug', () => {
     expect((await slugOf(topicId)).faqSlug).toBe('the-original');
   });
 
+  it('never overwrites a slug another writer set between its read and its write', async () => {
+    const { topicId } = await seed({ askCount: 5, answered: true });
+    // The slug lands (say, from a merge) after assignTopicSlug has read the
+    // topic as unnamed, while it is reading the taken names.
+    const racing = new Proxy(prisma, {
+      get(target, key, receiver) {
+        if (key !== 'faqRedirect') return Reflect.get(target, key, receiver);
+        return new Proxy(target.faqRedirect, {
+          get(redirects, method, r) {
+            if (method !== 'findMany') return Reflect.get(redirects, method, r);
+            return async (args: never) => {
+              await target.topic.update({ where: { id: topicId }, data: { faqSlug: 'set-first' } });
+              return redirects.findMany(args);
+            };
+          },
+        });
+      },
+    }) as PrismaClient;
+
+    await assignTopicSlug(racing, topicId);
+
+    expect((await slugOf(topicId)).faqSlug).toBe('set-first');
+  });
+
   it('suffixes a slug another topic on the same page already holds', async () => {
     const { pageId, topicId } = await seed({ askCount: 5, answered: true });
     await prisma.topic.create({
