@@ -33,6 +33,19 @@
   font-family: var(--font-body);
 }
 
+/* Once the window is wider than the column, the column reads as a card:
+   room above and below, rounded corners. On a phone it stays edge to edge --
+   margins there only take width the page does not have to spare. The My
+   Curios preview turns both back off (curios.module.css), because its own
+   phone frame already supplies the edge and the rounding. */
+@media (min-width: 560px) {
+  .page {
+    margin: 24px auto;
+    min-height: calc(100vh - 48px);
+    border-radius: 20px;
+  }
+}
+
 .page[data-style='CONTRAST'] {
   --tile-radius: 14px;
   --warm: var(--kuning);

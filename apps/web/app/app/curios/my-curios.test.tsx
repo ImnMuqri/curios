@@ -100,5 +100,15 @@ describe('the live preview fits its box', () => {
     expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*calc\(100vh/);
     expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
   });
+
+  // The public page's column gets a margin and rounded corners on wide
+  // screens (Bento.module.css); inside the preview's own phone frame both
+  // would show as a gap and a second set of corners, so the preview turns
+  // them back off.
+  it('turns off the public page column’s margin and rounding inside the preview frame', () => {
+    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
+    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*margin:\s*0;/);
+    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*border-radius:\s*0;/);
+  });
 });
 

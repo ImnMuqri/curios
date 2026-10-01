@@ -166,6 +166,20 @@ describe('BentoPage', () => {
   // declaring no position); this half is the room `.head` makes for the
   // arrow once it does correctly anchor here. Pinned together so the two
   // sides of this cross-package pairing cannot drift apart silently again.
+  // Once the window is wider than the 520px column, it reads as a card --
+  // space above and below and rounded corners -- while a phone keeps it edge
+  // to edge, so the rule must live inside a min-width query, not on .page.
+  it('spaces and rounds the column on wide screens only', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    const wide = css.match(/@media \(min-width: 560px\)\s*\{\s*\.page\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(wide).toMatch(/margin:\s*24px auto;/);
+    expect(wide).toMatch(/border-radius:\s*20px;/);
+    expect(wide).toMatch(/min-height:\s*calc\(100vh - 48px\);/);
+    const base = css.match(/^\.page\s*\{([^}]*)\}/m)?.[1] ?? '';
+    expect(base).toMatch(/margin:\s*0 auto;/);
+    expect(base).not.toMatch(/border-radius/);
+  });
+
   it("keeps .head's room for the back button, so a fixed .panel elsewhere does not leave it stranded with nowhere to sit", () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\[data-mode='chat'\]\s*\.head\s*\{[^}]*padding-left:\s*44px;/s);
