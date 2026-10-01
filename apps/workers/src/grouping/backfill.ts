@@ -2,6 +2,7 @@ import pino from 'pino';
 import { prisma } from '@curios/db';
 import { createAnthropicGateway } from '@curios/gateway';
 import { createOpenAiEmbedder, EMBEDDING_BATCH_TIMEOUT_MS } from '@curios/embeddings';
+import { pageIdFromArgs } from './backfill-args.js';
 import { runGroupJob } from './group.job.js';
 
 /**
@@ -24,25 +25,32 @@ async function main() {
     log,
   };
 
-  const onlyPage = process.argv[2];
-  const pending = await prisma.question.findMany({
-    where: { groupedAt: null, pinnedByOwner: false, ...(onlyPage ? { pageId: onlyPage } : {}) },
-    orderBy: [{ pageId: 'asc' }, { firstAskedAt: 'asc' }],
-    select: { id: true, pageId: true },
-  });
+  try {
+    const onlyPage = pageIdFromArgs(process.argv.slice(2));
+    const pending = await prisma.question.findMany({
+      where: { groupedAt: null, pinnedByOwner: false, ...(onlyPage ? { pageId: onlyPage } : {}) },
+      orderBy: [{ pageId: 'asc' }, { firstAskedAt: 'asc' }],
+      select: { id: true, pageId: true },
+    });
 
-  const tally: Record<string, number> = {};
-  for (const q of pending) {
-    try {
-      const outcome = await runGroupJob(deps, { questionId: q.id });
-      tally[outcome] = (tally[outcome] ?? 0) + 1;
-    } catch (error) {
-      tally.failed = (tally.failed ?? 0) + 1;
-      log.error({ questionId: q.id, err: error instanceof Error ? error.message : String(error) }, 'grouping failed; left undecided');
+    const tally: Record<string, number> = {};
+    for (const q of pending) {
+      try {
+        const outcome = await runGroupJob(deps, { questionId: q.id });
+        tally[outcome] = (tally[outcome] ?? 0) + 1;
+      } catch (error) {
+        tally.failed = (tally.failed ?? 0) + 1;
+        log.error({ questionId: q.id, err: error instanceof Error ? error.message : String(error) }, 'grouping failed; left undecided');
+      }
     }
+    log.info({ wordings: pending.length, ...tally }, 'backfill done');
+    if (tally.failed) process.exitCode = 1;
+  } finally {
+    await prisma.$disconnect();
   }
-  log.info({ wordings: pending.length, ...tally }, 'backfill done');
-  await prisma.$disconnect();
 }
 
-void main();
+main().catch((error) => {
+  pino({ name: 'group-backfill' }).error({ err: error instanceof Error ? error.message : String(error) }, 'backfill failed');
+  process.exitCode = 1;
+});
