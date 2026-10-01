@@ -16,13 +16,22 @@ people, not operators. Build them as two different products in one codebase.
 /[handle]/faq/[slug]      single answer        ISR, revalidate 60s
 /app                      dashboard shell      client, authed
 /app/onboarding           choose personal or business, paste a link or text, review facts
-/app/knowledge            facts, pinned answers, never-say list
+/app/knowledge            Knowledge: four tabs (Facts, Sources, Pinned answers, Never say); the tab is in `?tab=`
 /app/curios               My Curios: profile, links, appearance, live preview
 /app/leads                table + transcript drawer
 /app/questions            top asked, unanswered, answer-writeback
 /app/billing              plan, usage against cap, payments, trial reset
 /app/settings             sign-in methods, the search-engine switch
 ```
+
+**The sidebar's first group is *My Curios · Review · Knowledge*.** Add a source lives on the
+Knowledge screen's Sources tab, not in the sidebar. `/app/onboarding` remains the first-run
+claim-and-first-source screen. `?tab=` is `facts` (the default), `sources`, `pinned` or
+`never-say`. Dates on the Sources tab are formatted in Asia/Kuala_Lumpur, so the server and
+browser renders agree. The shared Button (`packages/ui`) treats `busy` by type: a plain
+`type="button"` sets `aria-disabled` and ignores clicks, so focus stays where the owner pressed;
+a `type="submit"` goes natively disabled, which forms rely on against a double post. It forwards
+`aria-label`.
 
 **`/app` lands in My Curios.** A signed-in owner with a page is sent straight to
 `/app/curios`; one without a page yet goes to onboarding instead. It is the only screen

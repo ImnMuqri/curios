@@ -16,7 +16,7 @@ Designed with the owner on 2026-09-26, with mockups; the choices below are their
 
 1. **A dashboard shell with a sidebar.** Light sidebar, Plus Jakarta Sans, line icons, three groups:
    *Your page* (My Curios, Review with its waiting count, Add a source), *Visitors* (Questions,
-   Leads), *Account* (Billing, Settings). Owner's name and page link at the bottom. A top bar with a
+   Leads), *Account* (Billing, Settings). *(Slice 14 replaced Add a source with Knowledge.)* Owner's name and page link at the bottom. A top bar with a
    breadcrumb and **View page ↗** — no "Live" badge. On a phone the sidebar folds into a top bar with
    a menu button. `/app` opens My Curios. Existing screens move inside the shell unchanged.
 2. **Links.** Add, edit, remove, reorder, and a size per tile.
@@ -30,7 +30,8 @@ Designed with the owner on 2026-09-26, with mockups; the choices below are their
 - **Removing a source in Settings.** Its own spec next. A fact does not record which ingestion
   produced it (`Fact.sourceUrl` is the crawled sub-page, and pasted-text facts carry nothing), so
   "remove this source and its facts" needs a schema change and has open questions of its own —
-  chiefly what happens to facts written before the link existed.
+  chiefly what happens to facts written before the link existed. Built in slice 14 as the
+  Knowledge screen — see `slice-14-build-spec.md`.
 - **Owner-uploaded link icons.** Icons are detected from the address. `Link.icon` stays unused.
 - **Per-tile colours.** One accent colour drives the page.
 - **Analytics** (visits, clicks). Nothing measures them today and this slice does not start.

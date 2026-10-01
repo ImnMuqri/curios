@@ -271,3 +271,31 @@ pass has been done on a dev page.
   routes; the never-say rules and escaping; withdraw.
 - **slice-13-build-spec.md** — the "Removing a source" out-item points here.
 - **A manual-verification checklist** for Knowledge, alongside the existing ones.
+
+---
+
+## Revisions during planning (2026-09-28)
+
+1. **An owner's own words override a tombstone.** "Adding a fact" and "Editing a fact" said a clash
+   with a tombstone is a 409 the owner fixes by rewording. That made A → B → A impossible and made a
+   claim once rejected in Review impossible to type in. Instead a rejected row holding the same
+   normalised claim is deleted in the same transaction; the owner's fact then holds the key, so a
+   re-read still skips it. Only a live clash is `409 FACT_DUPLICATE`.
+2. **Re-check enqueues under a fresh job id** (`<ingestionId>-recheck-<ms>`): the ingest queue keeps
+   completed jobs and BullMQ ignores an add whose id it holds. A failed enqueue marks the row
+   FAILED so it is not stuck "Reading…".
+3. **`POST /facts` is exempt from the `:id` route guard** in `fact.routes.test.ts`, by exact line,
+   with a behavioural test that creating a fact verifies no other.
+4. **Never-say also refuses control characters** and is flattened to one line in the prompt, which
+   covers rows written before the API existed.
+
+5. **The shared Button (`packages/ui`) changed.** A plain `type="button"` Button that is `busy` sets
+   `aria-disabled` and ignores clicks instead of going natively disabled, so focus stays where the
+   owner pressed; a busy `type="submit"` Button stays natively disabled (forms rely on it against a
+   double post). Button also forwards `aria-label`.
+6. **Dates on the Sources tab are formatted in Asia/Kuala_Lumpur**, as lead-list does, so the
+   server and browser renders agree.
+7. **When adding a fact or a never-say entry fails, focus returns to the field** (the natively
+   disabled submit button drops it).
+8. **The never-say limit message reads "You have reached 50. Remove one first."** — the API's
+   no-contraction house style — rather than "You've reached 50 — remove one first".
