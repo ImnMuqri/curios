@@ -78,7 +78,6 @@ export function JobStatus({
   useEffect(() => {
     if (settledStatus && data) onSettled?.(data);
     // Keyed on the settled status alone: a re-render must not fire it again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settledStatus]);
 
   if (!data || data.status === 'QUEUED' || data.status === 'RUNNING') {
