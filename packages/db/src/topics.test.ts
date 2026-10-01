@@ -176,6 +176,67 @@ describe('moveWording', () => {
   });
 });
 
+describe('moveWording guards', () => {
+  it("refuses another page's topic", async () => {
+    const a = await aTopic(await aPage(), [{ text: 'a', askCount: 1 }]);
+    const b = await aTopic(await aPage(), [{ text: 'b', askCount: 1 }]);
+    const q = await prisma.question.findFirstOrThrow({ where: { topicId: a.id } });
+    await expect(moveWording(prisma, { questionId: q.id, intoTopicId: b.id })).rejects.toThrow();
+    expect((await prisma.question.findUniqueOrThrow({ where: { id: q.id } })).topicId).toBe(a.id);
+  });
+});
+
+describe('refreshTopic under a racing merge', () => {
+  // Review Focus 3. A merge has moved wordings into T but not yet committed;
+  // a refresh of T starts meanwhile. Without the row lock it counts only the
+  // wordings it can see and, once the merge commits, writes that short sum.
+  it('never writes a count that omits a merge still in flight', async () => {
+    const other = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+    try {
+      const pageId = await aPage();
+      const into = await aTopic(pageId, [{ text: 'stays', askCount: 1 }]);
+      const from = await aTopic(pageId, [{ text: 'moves', askCount: 10 }]);
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let moved!: () => void;
+      const movedDone = new Promise<void>((resolve) => (moved = resolve));
+
+      const merge = prisma.$transaction(async (tx) => {
+        await mergeTopics(tx, { fromTopicId: from.id, intoTopicId: into.id, answer: 'into' });
+        moved();
+        await gate;
+      });
+      await movedDone;
+
+      const chat = other.$transaction(async (tx) => {
+        await tx.question.updateMany({ where: { topicId: into.id, text: 'stays' }, data: { askCount: { increment: 1 } } });
+        await refreshTopic(tx, into.id);
+      });
+      await new Promise((resolve) => setTimeout(resolve, 400)); // let the chat reach its wait
+      release();
+      await Promise.all([merge, chat]);
+
+      expect((await prisma.topic.findUniqueOrThrow({ where: { id: into.id } })).askCount).toBe(12);
+    } finally {
+      await other.$disconnect();
+    }
+  });
+});
+
+describe('refreshTopic title tie-break', () => {
+  it('titles by the lower id when askCount and firstAskedAt both tie', async () => {
+    const pageId = await aPage();
+    const at = new Date('2026-01-01');
+    const topic = await prisma.topic.create({ data: { pageId, title: 'x' } });
+    const ids = ['q-bbb', 'q-aaa'];
+    for (const id of ids) {
+      await prisma.question.create({ data: { id, pageId, topicId: topic.id, text: id, normalizedQuestion: id, askCount: 2, firstAskedAt: at } });
+    }
+    await refreshTopic(prisma, topic.id);
+    expect((await prisma.topic.findUniqueOrThrow({ where: { id: topic.id } })).title).toBe('q-aaa');
+  });
+});
+
 describe('retireSlug', () => {
   it('re-points an already-retired slug rather than failing', async () => {
     const pageId = await aPage();

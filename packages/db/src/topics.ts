@@ -3,13 +3,16 @@ import type { Prisma, PrismaClient } from '@prisma/client';
 type Tx = Prisma.TransactionClient | PrismaClient;
 
 /**
- * Recompute a topic's aggregates from its wordings. Never increments: a chat
- * ask that lands while a merge is moving wordings cannot be lost or counted
- * twice, because the count is always re-derived from the rows that exist.
+ * Recompute a topic's aggregates from its wordings. Never increments: the
+ * count is always re-derived from the rows that exist. Call it inside a
+ * transaction: it first locks the topic row (FOR UPDATE), and under READ
+ * COMMITTED every later statement then sees whatever a racing merge committed
+ * while it waited, so a stale sum can never be written over a merge's result.
  * An empty topic is deleted, and its slug retired with no target so the old
  * address 404s and is never handed to another topic.
  */
 export async function refreshTopic(tx: Tx, topicId: string): Promise<boolean> {
+  await lockTopics(tx, [topicId]);
   const topic = await tx.topic.findUnique({
     where: { id: topicId },
     select: { id: true, pageId: true, faqSlug: true, titleSetByOwner: true },
@@ -19,7 +22,7 @@ export async function refreshTopic(tx: Tx, topicId: string): Promise<boolean> {
   const wordings = await tx.question.findMany({
     where: { topicId },
     select: { text: true, askCount: true, firstAskedAt: true, lastAskedAt: true },
-    orderBy: [{ askCount: 'desc' }, { firstAskedAt: 'asc' }],
+    orderBy: [{ askCount: 'desc' }, { firstAskedAt: 'asc' }, { id: 'asc' }],
   });
 
   if (wordings.length === 0) {
@@ -41,6 +44,13 @@ export async function refreshTopic(tx: Tx, topicId: string): Promise<boolean> {
   return true;
 }
 
+/** Lock topic rows in a fixed (sorted) order, so concurrent callers cannot deadlock. */
+async function lockTopics(tx: Tx, ids: string[]): Promise<void> {
+  for (const id of [...new Set(ids)].sort()) {
+    await tx.$queryRaw`SELECT "id" FROM "Topic" WHERE "id" = ${id} FOR UPDATE`;
+  }
+}
+
 export async function retireSlug(tx: Tx, pageId: string, slug: string, topicId: string | null): Promise<void> {
   await tx.faqRedirect.upsert({
     where: { pageId_slug: { pageId, slug } },
@@ -53,6 +63,7 @@ export async function mergeTopics(
   tx: Tx,
   input: { fromTopicId: string; intoTopicId: string; answer: 'from' | 'into' | 'auto' },
 ): Promise<void> {
+  await lockTopics(tx, [input.fromTopicId, input.intoTopicId]);
   const select = { id: true, pageId: true, answer: true, answeredAt: true, askCount: true, faqSlug: true } as const;
   const from = await tx.topic.findUniqueOrThrow({ where: { id: input.fromTopicId }, select });
   const into = await tx.topic.findUniqueOrThrow({ where: { id: input.intoTopicId }, select });
@@ -103,7 +114,9 @@ export async function mergeTopics(
 }
 
 export async function moveWording(tx: Tx, input: { questionId: string; intoTopicId: string }): Promise<void> {
-  const question = await tx.question.findUniqueOrThrow({ where: { id: input.questionId }, select: { topicId: true } });
+  const question = await tx.question.findUniqueOrThrow({ where: { id: input.questionId }, select: { topicId: true, pageId: true } });
+  const into = await tx.topic.findUniqueOrThrow({ where: { id: input.intoTopicId }, select: { pageId: true } });
+  if (into.pageId !== question.pageId) throw new Error('moveWording: the topic is on a different page');
   await tx.question.update({ where: { id: input.questionId }, data: { topicId: input.intoTopicId } });
   await refreshTopic(tx, input.intoTopicId);
   await refreshTopic(tx, question.topicId);
