@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { PinnedList } from './pinned-tab.js';
 
-const pinned = [{ questionId: 'q1', question: 'Berapa harga kek?', answer: 'RM95.' }];
+const pinned = [{ topicId: 'q1', question: 'Berapa harga kek?', answer: 'RM95.' }];
 
 function list(overrides: Partial<Parameters<typeof PinnedList>[0]> = {}) {
   const props = {
@@ -21,8 +21,8 @@ describe('PinnedList', () => {
   it('gives every row buttons that name their own question', () => {
     list({
       pinned: [
-        { questionId: 'q1', question: 'Berapa harga kek?', answer: 'RM95.' },
-        { questionId: 'q2', question: 'Bila buka?', answer: '9 to 5.' },
+        { topicId: 'q1', question: 'Berapa harga kek?', answer: 'RM95.' },
+        { topicId: 'q2', question: 'Bila buka?', answer: '9 to 5.' },
       ],
     });
     const names = screen.getAllByRole('button').map((b) => b.getAttribute('aria-label'));

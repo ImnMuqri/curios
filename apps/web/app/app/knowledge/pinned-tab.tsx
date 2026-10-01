@@ -40,7 +40,7 @@ function PinnedRow({
     <li className={styles.row}>
       <p className={styles.meta}>{item.question}</p>
       {mode === 'edit' ? (
-        <Field id={`answer-${item.questionId}`} label="Answer" multiline value={draft} onChange={setDraft} />
+        <Field id={`answer-${item.topicId}`} label="Answer" multiline value={draft} onChange={setDraft} />
       ) : (
         <p className={styles.label}>{item.answer}</p>
       )}
@@ -52,13 +52,13 @@ function PinnedRow({
         </div>
       ) : mode === 'edit' ? (
         <div className={styles.actions}>
-          <Button busy={busy} aria-label={`Save answer to ${item.question}`} onClick={() => void run(() => onEdit(item.questionId, draft))}>Save</Button>
+          <Button busy={busy} aria-label={`Save answer to ${item.question}`} onClick={() => void run(() => onEdit(item.topicId, draft))}>Save</Button>
           <Button variant="secondary" onClick={() => { setDraft(item.answer); setError(''); setMode('view'); }}>Cancel</Button>
         </div>
       ) : (
         <div className={styles.confirm} role="group" aria-label="Confirm removal">
           <p>Remove this answer? The question goes back to Questions as unanswered.</p>
-          <Button busy={busy} onClick={() => void run(() => onWithdraw(item.questionId))}>Remove answer</Button>
+          <Button busy={busy} onClick={() => void run(() => onWithdraw(item.topicId))}>Remove answer</Button>
           <Button variant="secondary" onClick={() => { setError(''); setMode('view'); }}>Cancel</Button>
         </div>
       )}
@@ -90,7 +90,7 @@ export function PinnedList({
   const withdraw = async (id: string) => { await onWithdraw(id); onChanged(); };
   return (
     <ul className={styles.list}>
-      {pinned.map((item) => <PinnedRow key={item.questionId} item={item} onEdit={edit} onWithdraw={withdraw} />)}
+      {pinned.map((item) => <PinnedRow key={item.topicId} item={item} onEdit={edit} onWithdraw={withdraw} />)}
     </ul>
   );
 }
@@ -101,10 +101,10 @@ export function Pinned({ pinned }: { pinned: KnowledgePinned[] }) {
     <PinnedList
       pinned={pinned}
       onEdit={async (id, answer) => {
-        await apiFetch(`/questions/${id}/answer`, { method: 'POST', body: JSON.stringify({ answer }) });
+        await apiFetch(`/topics/${id}/answer`, { method: 'POST', body: JSON.stringify({ answer }) });
       }}
       onWithdraw={async (id) => {
-        await apiFetch(`/questions/${id}/answer`, { method: 'DELETE' });
+        await apiFetch(`/topics/${id}/answer`, { method: 'DELETE' });
       }}
       onChanged={() => router.refresh()}
     />
