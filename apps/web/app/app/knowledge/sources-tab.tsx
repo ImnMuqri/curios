@@ -10,6 +10,13 @@ import { JobStatus, type IngestionResult } from '../onboarding/job-status.js';
 import styles from './knowledge.module.css';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
+
+// Pinned to Malaysian time, as lead-list does: this renders on a UTC server and
+// again in the browser, and an unpinned date differs between them for sources
+// added 00:00-08:00 MYT. Not billing-copy's formatDate: it pulls in the core
+// barrel, which a client component may not import.
+const addedOn = (value: Date) =>
+  value.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' });
 const facts = (n: number) => `${n} ${n === 1 ? 'fact' : 'facts'}`;
 
 /**
@@ -64,7 +71,7 @@ export function SourceList({
               <li key={source.id} className={styles.row}>
                 <p className={styles.label}>{source.label}</p>
                 <p className={styles.meta}>
-                  Added {source.createdAt.toLocaleDateString('en-MY')} ·{' '}
+                  Added {addedOn(source.createdAt)} ·{' '}
                   {source.tracked ? facts(source.factCount) : 'Facts from before tracking are listed under Facts'}
                 </p>
 

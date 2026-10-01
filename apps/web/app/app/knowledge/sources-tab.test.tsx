@@ -137,4 +137,11 @@ describe('SourceList', () => {
     await userEvent.click(button);
     expect(screen.queryByText('Not now.')).toBeNull();
   });
+
+  it('shows the Malaysian date, not the UTC one the server ran in', () => {
+    // 2026-09-27T20:00Z is 04:00 on 28 Sep in Malaysia. Unpinned, a UTC server
+    // prints 27 Sep and the browser prints 28 Sep: a hydration mismatch.
+    list([{ ...site, createdAt: new Date('2026-09-27T20:00:00Z') }]);
+    expect(within(row('https://nadia.example/')).getByText(/Added 28 Sep(t)? 2026/)).toBeInTheDocument();
+  });
 });
