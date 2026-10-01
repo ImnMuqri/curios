@@ -62,6 +62,14 @@ describe('FactList', () => {
     expect(onChanged).not.toHaveBeenCalled();
   });
 
+  it('puts focus back on the fact field when adding fails', async () => {
+    list({ onAdd: vi.fn().mockRejectedValue(new Error('You already have a fact that says this.')) });
+    await userEvent.type(screen.getByLabelText('A fact'), 'Kek RM95.');
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    await screen.findByText('You already have a fact that says this.');
+    expect(screen.getByLabelText('A fact')).toHaveFocus();
+  });
+
   it('edits a fact in place', async () => {
     const { onEdit, onChanged } = list();
     await userEvent.click(within(card('Kek RM95.')).getByRole('button', { name: 'Edit' }));

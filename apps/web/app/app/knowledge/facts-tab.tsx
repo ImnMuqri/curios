@@ -8,6 +8,7 @@ import type { KnowledgeFact } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './knowledge.module.css';
 
+const NEW_FACT_ID = 'new-fact';
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 const title = (category: string) => category.charAt(0) + category.slice(1).toLowerCase();
 const origin = (fact: KnowledgeFact) =>
@@ -105,6 +106,8 @@ export function FactList({
       onChanged();
     } catch (failure) {
       setError(toMessage(failure));
+      // Add is natively disabled while busy, which drops focus; Field takes no ref, so find the input by id.
+      document.getElementById(NEW_FACT_ID)?.focus();
     } finally {
       setBusy(false);
     }
@@ -129,7 +132,7 @@ export function FactList({
             {categories.map((c) => <option key={c} value={c}>{title(c)}</option>)}
           </select>
         </label>
-        <Field id="new-fact" label="A fact" value={claim} onChange={setClaim} hint={`One line, up to ${ownerFactMax} characters. Live straight away.`} />
+        <Field id={NEW_FACT_ID} label="A fact" value={claim} onChange={setClaim} hint={`One line, up to ${ownerFactMax} characters. Live straight away.`} />
         <Button type="submit" busy={busy}>Add</Button>
         {error ? <Callout tone="error">{error}</Callout> : null}
       </form>
