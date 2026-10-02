@@ -23,7 +23,7 @@ export interface KnowledgeFact {
   /** The source's label for EXTRACTED facts; null otherwise. */
   sourceLabel: string | null;
 }
-export interface KnowledgePinned { questionId: string; question: string; answer: string }
+export interface KnowledgePinned { topicId: string; question: string; answer: string }
 export interface KnowledgeNeverSay { id: string; phrase: string }
 export interface Knowledge {
   sources: KnowledgeSource[];
@@ -51,7 +51,7 @@ export async function getKnowledge(accountId: string): Promise<Knowledge | null>
   const page = await prismaRead.page.findUnique({ where: { accountId }, select: { id: true } });
   if (!page) return null;
 
-  const [rows, facts, questions, neverSay] = await Promise.all([
+  const [rows, facts, topics, neverSay] = await Promise.all([
     prismaRead.ingestion.findMany({
       where: { pageId: page.id },
       orderBy: { createdAt: 'desc' },
@@ -71,10 +71,10 @@ export async function getKnowledge(accountId: string): Promise<Knowledge | null>
       orderBy: [{ category: 'asc' }, { createdAt: 'asc' }],
       select: { id: true, category: true, claim: true, origin: true, ingestionId: true },
     }),
-    prismaRead.question.findMany({
-      where: { pageId: page.id, answered: true },
+    prismaRead.topic.findMany({
+      where: { pageId: page.id, answer: { not: null } },
       orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
-      select: { id: true, text: true, normalizedQuestion: true },
+      select: { id: true, title: true, answer: true },
     }),
     prismaRead.neverSay.findMany({ where: { pageId: page.id }, orderBy: { id: 'asc' }, select: { id: true, phrase: true } }),
   ]);
@@ -91,17 +91,6 @@ export async function getKnowledge(accountId: string): Promise<Knowledge | null>
   }));
   const labels = new Map(sources.map((s) => [s.id, s.label]));
 
-  // Two reads joined in memory: Question and PinnedAnswer share a unique
-  // (pageId, normalizedQuestion) but no relation -- the getFaqIndex shape.
-  const answers = new Map(
-    (
-      await prismaRead.pinnedAnswer.findMany({
-        where: { pageId: page.id, normalizedQuestion: { in: questions.map((q) => q.normalizedQuestion) } },
-        select: { normalizedQuestion: true, answer: true },
-      })
-    ).map((row) => [row.normalizedQuestion, row.answer]),
-  );
-
   return {
     sources,
     facts: facts.map((f) => ({
@@ -111,10 +100,7 @@ export async function getKnowledge(accountId: string): Promise<Knowledge | null>
       origin: f.origin,
       sourceLabel: f.ingestionId ? (labels.get(f.ingestionId) ?? null) : null,
     })),
-    pinned: questions.flatMap((q) => {
-      const answer = answers.get(q.normalizedQuestion);
-      return answer === undefined ? [] : [{ questionId: q.id, question: q.text, answer }];
-    }),
+    pinned: topics.map((t) => ({ topicId: t.id, question: t.title, answer: t.answer as string })),
     neverSay,
   };
 }

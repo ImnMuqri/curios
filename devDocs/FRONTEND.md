@@ -19,7 +19,7 @@ people, not operators. Build them as two different products in one codebase.
 /app/knowledge            Knowledge: four tabs (Facts, Sources, Pinned answers, Never say); the tab is in `?tab=`
 /app/curios               My Curios: profile, links, appearance, live preview
 /app/leads                table + transcript drawer
-/app/questions            top asked, unanswered, answer-writeback
+/app/questions            topics, most asked first; answer, merge, split, rename
 /app/billing              plan, usage against cap, payments, trial reset
 /app/settings             sign-in methods, the search-engine switch
 ```
@@ -32,6 +32,31 @@ browser renders agree. The shared Button (`packages/ui`) treats `busy` by type: 
 `type="button"` sets `aria-disabled` and ignores clicks, so focus stays where the owner pressed;
 a `type="submit"` goes natively disabled, which forms rely on against a double post. It forwards
 `aria-label`.
+
+### Questions (slice 15)
+
+`/app/questions` lists **topics**, not wordings: one row per topic, most asked first, then most
+recent (the order `getTopics` returns; the client does not re-sort). Left, the topic's title and a
+subline: "+N other wordings" and "Answered: ..." or "Not answered yet". Right, the total ask count
+and one action, **Answer** (unanswered) or **Edit** (answered), which opens an inline editor under
+the row.
+
+- **"+N other wordings"** folds out the topic's wordings, each with its own count, **Not the same
+  question** (splits it into its own topic; it never regroups) and **Delete**.
+- **The ⋯ control** is a disclosure list, not an ARIA menu: a button with `aria-expanded` opens a
+  list of plain buttons, so Tab moves through it and there is no arrow-key navigation. It holds
+  **Same as...** (a picker of the page's other topics), **Rename**, **Hide from FAQ** / **Show on
+  FAQ** (only for a business page's topic with a slug) and **Delete topic**, whose confirm names how
+  many wordings go.
+- **Same as...** merges into the chosen topic. If both topics have an answer the owner must pick
+  one to keep (**pick-one**), with the other topic's answer shown beside "Keep theirs".
+- **A topic with a `conflictAnswer`** (two answers, left by the one-off grouping) shows "Two answers
+  - pick one", both answers, and a **Keep this** on each.
+- Opening a panel (answer, rename, same-as, delete) focuses its field; double taps are guarded, and
+  every action's error shows in place, keeping the owner's input and focus.
+
+**Knowledge's Pinned answers tab** lists answered topics (title, answer) with edit and remove; it
+calls the `/topics/:id/answer` routes. Removing one returns the topic to Questions as unanswered.
 
 **`/app` lands in My Curios.** A signed-in owner with a page is sent straight to
 `/app/curios`; one without a page yet goes to onboarding instead. It is the only screen
@@ -170,7 +195,7 @@ it gets filed as one.
 1. **No blank prompt boxes.** Anywhere. Every input is a control with a fixed set of
    answers, except the two places a human writes real prose: a pinned answer, and a
    fact correction.
-2. **One primary action per screen.** Questions has "Answer this". Leads has "WhatsApp
+2. **One primary action per screen.** Questions has "Answer" on each topic row. Leads has "WhatsApp
    them". Everything else is secondary.
 3. **Empty states are instructions, not moods.** "No leads yet. Share your link and
    they will land here." Not "Nothing to see!"

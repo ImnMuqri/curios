@@ -1,7 +1,8 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { deleteQuestion } from '../questions/question.service.js';
+import { deleteWording } from '../topics/topic.service.js';
 import { PrismaClient } from '@prisma/client';
-import { FREE_CONVERSATIONS_PER_MONTH, normalizeClaim, RETRIEVAL_MIN_FACTS } from '@curios/core';
+import { refreshTopic } from '@curios/db';
+import { FREE_CONVERSATIONS_PER_MONTH, GROUP_QUEUE, normalizeClaim, RETRIEVAL_MIN_FACTS } from '@curios/core';
 import type { ChatInput, ChatMessage, Gateway } from '@curios/gateway';
 import {
   encodeVector,
@@ -25,6 +26,9 @@ function gatewaySaying(text: string): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* () {
       yield { type: 'text' as const, text };
       yield {
@@ -41,6 +45,9 @@ function gatewayThatFails(): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* () {
       throw new Error('provider unavailable');
     },
@@ -53,6 +60,9 @@ function gatewayCapturingPrompt(): { gateway: Gateway; prompt: () => string } {
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* ({ systemPrompt }) {
       captured = systemPrompt;
       yield { type: 'text' as const, text: 'ok' };
@@ -73,6 +83,9 @@ function gatewayCapturingCachePrompt(): { gateway: Gateway; cachePrompt: () => b
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* ({ cachePrompt }) {
       captured = cachePrompt;
       yield { type: 'text' as const, text: 'ok' };
@@ -93,6 +106,9 @@ function gatewayCapturingMessages(): { gateway: Gateway; messages: () => ChatMes
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* ({ messages }) {
       captured = messages;
       yield { type: 'text' as const, text: 'an answer' };
@@ -113,6 +129,9 @@ function gatewayCapturingCall(): { gateway: Gateway; call: () => ChatInput } {
   const gateway: Gateway = {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* (input) {
       captured = input;
       yield { type: 'text' as const, text: 'ok' };
@@ -215,13 +234,6 @@ beforeEach(async () => {
               },
             ],
           },
-          pinnedAnswers: {
-            create: {
-              question: 'Berapa harga?',
-              normalizedQuestion: 'berapa harga',
-              answer: 'Bermula RM95.',
-            },
-          },
         },
       },
     },
@@ -308,6 +320,44 @@ async function pageIdFor(handle: string): Promise<string> {
   return page.id;
 }
 
+/**
+ * A topic holding the given wordings, answered when `answerText` is given.
+ * The topic's count is the sum of its wordings', as refreshTopic keeps it.
+ */
+async function seedTopic(
+  pageId: string,
+  input: { title?: string; answer?: string; wordings: { text: string; askCount?: number }[] },
+) {
+  const asks = input.wordings.map((w) => w.askCount ?? 1);
+  return prisma.topic.create({
+    data: {
+      pageId,
+      title: input.title ?? input.wordings[0]?.text ?? '',
+      answer: input.answer ?? null,
+      answeredAt: input.answer ? new Date() : null,
+      askCount: asks.reduce((a, b) => a + b, 0),
+      questions: {
+        create: input.wordings.map((w, i) => ({
+          pageId,
+          text: w.text,
+          normalizedQuestion: normalizeClaim(w.text),
+          askCount: asks[i] ?? 1,
+          groupedAt: new Date(),
+        })),
+      },
+    },
+    select: { id: true },
+  });
+}
+
+/** The nadia fixture's answered topic: one wording, "Berapa harga?". */
+async function seedNadiaPrice() {
+  return seedTopic(await pageIdFor('nadia'), {
+    answer: 'Bermula RM95.',
+    wordings: [{ text: 'Berapa harga?' }],
+  });
+}
+
 describe('answer', () => {
   it('streams text and creates a conversation', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
@@ -317,7 +367,8 @@ describe('answer', () => {
     expect(await prisma.conversation.count()).toBe(1);
   });
 
-  it('returns a pinned answer without calling the model at all', async () => {
+  it('returns a topic answer without calling the model at all', async () => {
+    await seedNadiaPrice();
     const gateway = gatewaySaying('should not be used');
     const chatSpy = vi.spyOn(gateway, 'chat');
 
@@ -330,7 +381,8 @@ describe('answer', () => {
     expect(await prisma.modelCall.count()).toBe(0);
   });
 
-  it('matches a pinned answer ignoring case and punctuation', async () => {
+  it('matches a topic answer ignoring case and punctuation', async () => {
+    await seedNadiaPrice();
     const gateway = gatewaySaying('unused');
     const events = await collect(
       answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'berapa harga' }),
@@ -501,7 +553,8 @@ describe('threading a conversation', () => {
     // Verbatim, not normalised: the owner should read what a customer typed.
     expect(question.text).toBe('berapa harga kek butter?');
     expect(question.askCount).toBe(1);
-    expect(question.answered).toBe(false);
+    const topic = await prisma.topic.findUniqueOrThrow({ where: { id: question.topicId } });
+    expect(topic.answer).toBeNull();
   });
 
   it('counts two phrasings of one question as one question', async () => {
@@ -537,16 +590,21 @@ describe('threading a conversation', () => {
     expect(await prisma.conversation.count()).toBe(2);
   });
 
-  it('logs a question the pinned answer handled, too', async () => {
-    // This file's fixture already pins "Berapa harga?", so this ask never
-    // reaches the model. The row still has to exist and still has to count, or
-    // a question would drop off the screen the moment it got popular enough to
-    // be worth pinning.
+  it('counts a question the topic answer handled, too', async () => {
+    // This file's fixture already answers "Berapa harga?", so this ask never
+    // reaches the model. The wording still has to count, or a question would
+    // drop off the screen the moment it got popular enough to be answered.
+    await seedNadiaPrice();
     await ask(depsSaying(), 'berapa harga?');
 
-    const question = await prisma.question.findFirstOrThrow({});
-    expect(question.askCount).toBe(1);
-    expect(question.text).toBe('berapa harga?');
+    const question = await prisma.question.findFirstOrThrow({
+      where: { normalizedQuestion: 'berapa harga' },
+    });
+    expect(question.askCount).toBe(2);
+    // The first phrasing wins and is never overwritten.
+    expect(question.text).toBe('Berapa harga?');
+    const topic = await prisma.topic.findUniqueOrThrow({ where: { id: question.topicId } });
+    expect(topic.askCount).toBe(2);
   });
 
   it('keeps the questions of one page out of another', async () => {
@@ -561,10 +619,10 @@ describe('threading a conversation', () => {
       },
     });
 
-    await ask(depsSaying(), 'berapa harga?');
-    await collect(answer(depsSaying(), { handle: 'someoneelse', question: 'berapa harga?' }));
+    await ask(depsSaying(), 'ada delivery?');
+    await collect(answer(depsSaying(), { handle: 'someoneelse', question: 'ada delivery?' }));
 
-    expect(await prisma.question.count()).toBe(2);
+    expect(await prisma.question.count({ where: { normalizedQuestion: 'ada delivery' } })).toBe(2);
     expect(other.id).toBeTruthy();
   });
 
@@ -642,31 +700,22 @@ describe('faq slug assignment', () => {
     // The site this task adds to chat.service.ts. A question already answered
     // while it had two asks qualifies right here, on its third, with no owner
     // involved -- see faq-slug.ts on why the writeback alone is not enough.
-    const page = await prisma.page.findFirstOrThrow({
-      where: { handle: 'nadia' },
-      select: { id: true },
-    });
-    const normalizedQuestion = 'berapa harga kek coklat';
-    await prisma.question.create({
-      data: {
-        pageId: page.id,
-        text: 'Berapa harga kek coklat?',
-        normalizedQuestion,
-        askCount: 2,
-        answered: true,
-      },
+    const pageId = await pageIdFor('nadia');
+    const topic = await seedTopic(pageId, {
+      answer: 'RM80.',
+      wordings: [{ text: 'Berapa harga kek coklat?', askCount: 2 }],
     });
 
     await collect(
       answer(
-        { prisma, gateway: gatewaySaying('RM80.'), cap, embedder: null },
+        { prisma, gateway: gatewaySaying('unused'), cap, embedder: null },
         { handle: 'nadia', question: 'Berapa harga kek coklat?' },
       ),
     );
 
-    const question = await prisma.question.findFirstOrThrow({ where: { normalizedQuestion } });
-    expect(question.askCount).toBe(3);
-    expect(question.faqSlug).toBe('berapa-harga-kek-coklat');
+    const after = await prisma.topic.findUniqueOrThrow({ where: { id: topic.id } });
+    expect(after.askCount).toBe(3);
+    expect(after.faqSlug).toBe('berapa-harga-kek-coklat');
   });
 });
 
@@ -676,39 +725,28 @@ describe('an erased question, asked again', () => {
     // The chat path upserts questions by normalised text, so an erased row
     // returns the moment somebody asks the same thing -- which is fine, as long
     // as it returns as a stranger. The answer is the part that matters: chat
-    // serves a PinnedAnswer ahead of the model, so one left behind by an
+    // serves a topic's answer ahead of the model, so one left behind by an
     // incomplete erasure puts the erased words straight back in front of the
     // very next visitor.
     const page = await prisma.page.findFirstOrThrow({
       where: { handle: 'nadia' },
       select: { id: true, accountId: true },
     });
-    // The same phrasing and key as the slug test above, which already proves
-    // chat normalises this text to exactly this key -- so the erased row, the
-    // pinned answer and the re-asked question all line up without guessing.
     const text = 'Berapa harga kek coklat?';
     const normalizedQuestion = 'berapa harga kek coklat';
-    const erased = await prisma.question.create({
-      data: {
-        pageId: page.id,
-        text,
-        normalizedQuestion,
-        askCount: 3,
-        answered: true,
-        faqSlug: 'berapa-harga-kek-coklat',
-      },
+    const topic = await seedTopic(page.id, {
+      answer: 'RM80. WhatsApp saya terus di 0123456789.',
+      wordings: [{ text, askCount: 3 }],
+    });
+    await prisma.topic.update({ where: { id: topic.id }, data: { faqSlug: 'berapa-harga-kek-coklat' } });
+    const erased = await prisma.question.findFirstOrThrow({
+      where: { topicId: topic.id },
       select: { id: true },
     });
-    await prisma.pinnedAnswer.create({
-      data: {
-        pageId: page.id,
-        question: text,
-        normalizedQuestion,
-        answer: 'RM80. WhatsApp saya terus di 0123456789.',
-      },
-    });
 
-    await deleteQuestion(prisma, page.accountId, erased.id);
+    // The topic's only wording: erasing it takes the topic and its answer too.
+    await deleteWording(prisma, page.accountId, erased.id);
+    expect(await prisma.topic.count({ where: { id: topic.id } })).toBe(0);
 
     const events = await collect(
       answer(
@@ -721,20 +759,19 @@ describe('an erased question, asked again', () => {
       .map((event) => event.text ?? '')
       .join('');
 
-    // The model answered, not the erased owner text. Had deleteQuestion left
-    // the PinnedAnswer behind, chat would have served it here instead.
+    // The model answered, not the erased owner text.
     expect(reply).toBe('A model answer.');
-    expect(await prisma.pinnedAnswer.count({ where: { pageId: page.id, normalizedQuestion } })).toBe(0);
 
     const back = await prisma.question.findUniqueOrThrow({
       where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
+      include: { topic: true },
     });
     expect(back.id).not.toBe(erased.id);
-    // One ask: the one just made. The walkthrough once said to ask "twice more"
-    // and expect a count of one, which the upsert makes two.
+    expect(back.topicId).not.toBe(topic.id);
     expect(back.askCount).toBe(1);
-    expect(back.answered).toBe(false);
-    expect(back.faqSlug).toBeNull();
+    expect(back.topic.answer).toBeNull();
+    // Retired with the old topic, never reissued; and one ask is not enough anyway.
+    expect(back.topic.faqSlug).toBeNull();
   });
 });
 
@@ -789,19 +826,12 @@ describe('the monthly cap', () => {
     expect(events.some((e) => e.type === 'done')).toBe(true);
   });
 
-  it('still serves a pinned answer over the cap, because it costs nothing', async () => {
-    // The argument of this slice. BACKEND.md checked the cap above the pinned
-    // branch; a pinned answer makes no model call, so refusing it punishes an
+  it('still serves a topic answer over the cap, because it costs nothing', async () => {
+    // The argument of this slice. BACKEND.md checked the cap above the answered
+    // branch; a topic answer makes no model call, so refusing it punishes an
     // owner for having answered the question well.
     const pageId = await usageAt(500);
-    await prisma.pinnedAnswer.create({
-      data: {
-        pageId,
-        question: 'Berapa harga?',
-        normalizedQuestion: 'harga',
-        answer: 'RM95 sekilo.',
-      },
-    });
+    await seedTopic(pageId, { answer: 'RM95 sekilo.', wordings: [{ text: 'harga' }] });
     const { gateway, spy } = chatSpyGateway();
 
     const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga' }));
@@ -1016,16 +1046,12 @@ describe('retrieval in the chat path', () => {
     );
   });
 
-  it('a pinned answer still costs nothing, whatever retrieval would have done', async () => {
+  it('a topic answer still costs nothing, whatever retrieval would have done', async () => {
     await seedLargePage();
     const { embedder, embed } = embedderAnswering();
-    await prisma.pinnedAnswer.create({
-      data: {
-        pageId: await pageIdFor('katalog'),
-        question: 'berapa harga',
-        normalizedQuestion: normalizeClaim('berapa harga'),
-        answer: 'Bermula RM95.',
-      },
+    await seedTopic(await pageIdFor('katalog'), {
+      answer: 'Bermula RM95.',
+      wordings: [{ text: 'berapa harga' }],
     });
 
     const events = await collect(
@@ -1039,3 +1065,230 @@ describe('retrieval in the chat path', () => {
     expect(embed).not.toHaveBeenCalled();
   });
 });
+
+describe('topics in the chat', () => {
+  function queueSpy() {
+    return { add: vi.fn(async () => undefined) };
+  }
+
+  it('a new wording gets its own topic and queues exactly one grouping job, after the reply', async () => {
+    const order: string[] = [];
+    const groupQueue = {
+      add: vi.fn(async () => {
+        order.push('queued');
+      }),
+    };
+
+    for await (const event of answer(
+      { prisma, gateway: gatewaySaying('Dia pemilik.'), cap, embedder: null, groupQueue },
+      { handle: 'nadia', question: 'Who is Iman' },
+    )) {
+      order.push(event.type);
+    }
+
+    const questions = await prisma.question.findMany({});
+    const topics = await prisma.topic.findMany({});
+    expect(questions).toHaveLength(1);
+    expect(topics).toHaveLength(1);
+    expect(topics[0]).toMatchObject({ title: 'Who is Iman', askCount: 1 });
+    expect(questions[0]?.topicId).toBe(topics[0]?.id);
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+    expect(groupQueue.add).toHaveBeenCalledWith(
+      GROUP_QUEUE,
+      { questionId: questions[0]?.id },
+      expect.objectContaining({
+        jobId: questions[0]?.id,
+        removeOnComplete: true,
+        removeOnFail: { age: 7 * 24 * 3600 },
+      }),
+    );
+    // The reply is complete before the job is queued.
+    expect(order.at(-1)).toBe('queued');
+    expect(order.indexOf('done')).toBeGreaterThan(-1);
+    expect(order.indexOf('done')).toBeLessThan(order.indexOf('queued'));
+  });
+
+  it('a repeat of a known wording, whatever its capitals or punctuation, queues nothing and counts on its topic', async () => {
+    const groupQueue = queueSpy();
+    const deps = { prisma, gateway: gatewaySaying('Iman Muqri'), cap, embedder: null, groupQueue };
+
+    await collect(answer(deps, { handle: 'nadia', question: 'What is his full name' }));
+    await collect(answer(deps, { handle: 'nadia', question: 'WHAT is his full name??' }));
+
+    const questions = await prisma.question.findMany({});
+    expect(questions).toHaveLength(1);
+    expect(questions[0]?.askCount).toBe(2);
+    const topic = await prisma.topic.findUniqueOrThrow({ where: { id: questions[0]?.topicId ?? '' } });
+    expect(topic.askCount).toBe(2);
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('a repeat whose topic is answered streams the answer and still queues nothing', async () => {
+    const groupQueue = queueSpy();
+    await seedTopic(await pageIdFor('nadia'), {
+      answer: 'Iman Muqri',
+      wordings: [{ text: 'What is his full name' }],
+    });
+
+    const events = await collect(
+      answer(
+        { prisma, gateway: gatewaySaying('unused'), cap, embedder: null, groupQueue },
+        { handle: 'nadia', question: 'WHAT is his full name??' },
+      ),
+    );
+
+    expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Iman Muqri');
+    expect(groupQueue.add).not.toHaveBeenCalled();
+  });
+
+  it("streams the topic's answer word for word for any grouped wording", async () => {
+    const gateway = gatewaySaying('should not be used');
+    const chatSpy = vi.spyOn(gateway, 'chat');
+    await seedTopic(await pageIdFor('nadia'), {
+      answer: 'Iman Muqri',
+      wordings: [{ text: "What is Iman's full name" }, { text: 'What is his full name' }],
+    });
+
+    const events = await collect(
+      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'what is his full name' }),
+    );
+
+    expect(events.filter((e) => e.type === 'text').map((e) => e.text)).toEqual(['Iman Muqri']);
+    expect(chatSpy).not.toHaveBeenCalled();
+    const topic = await prisma.topic.findFirstOrThrow({});
+    expect(topic.askCount).toBe(3);
+  });
+
+  it('an unanswered topic goes to the model', async () => {
+    const gateway = gatewaySaying('Dari model.');
+    const chatSpy = vi.spyOn(gateway, 'chat');
+    await seedTopic(await pageIdFor('nadia'), { wordings: [{ text: 'What is his full name' }] });
+
+    const events = await collect(
+      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'what is his full name' }),
+    );
+
+    expect(chatSpy).toHaveBeenCalledTimes(1);
+    expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Dari model.');
+  });
+
+  it('queues after the reply on the model path and the cap path too', async () => {
+    const groupQueue = queueSpy();
+    const deps = { prisma, gateway: gatewaySaying('x'), cap, embedder: null, groupQueue };
+    await collect(answer(deps, { handle: 'nadia', question: 'one' }));
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+
+    const pageId = await pageIdFor('nadia');
+    const period = new Date().toISOString().slice(0, 7);
+    await prisma.usageCounter.upsert({
+      where: { pageId_period: { pageId, period } },
+      create: { pageId, period, count: 500 },
+      update: { count: 500 },
+    });
+    const events = await collect(answer(deps, { handle: 'nadia', question: 'two' }));
+
+    expect(events.some((e) => e.type === 'text' && e.text === CAP_REACHED_REPLY)).toBe(true);
+    expect(groupQueue.add).toHaveBeenCalledTimes(2);
+  });
+
+  it('a failure to queue the job is logged, never thrown at the visitor', async () => {
+    const groupQueue = { add: vi.fn(async () => Promise.reject(new Error('redis down'))) };
+    const warn = vi.fn();
+
+    const events = await collect(
+      answer(
+        { prisma, gateway: gatewaySaying('Masih jawab.'), cap, embedder: null, groupQueue, log: { error: vi.fn(), warn } },
+        { handle: 'nadia', question: 'Who is Iman' },
+      ),
+    );
+
+    expect(events.some((e) => e.type === 'done')).toBe(true);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({ err: 'redis down' }),
+      'could not queue grouping',
+    );
+  });
+
+  it('without a groupQueue, a new wording still answers and keeps its own topic', async () => {
+    await collect(answer({ prisma, gateway: gatewaySaying('ok'), cap, embedder: null }, { handle: 'nadia', question: 'Who is Iman' }));
+    expect(await prisma.topic.count()).toBe(1);
+  });
+
+  it('still queues a new wording when the model fails mid-answer', async () => {
+    const groupQueue = queueSpy();
+
+    await expect(
+      collect(
+        answer(
+          { prisma, gateway: gatewayThatFails(), cap, embedder: null, groupQueue },
+          { handle: 'nadia', question: 'Who is Iman' },
+        ),
+      ),
+    ).rejects.toThrow('provider unavailable');
+
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('two first asks of one new wording make one wording and one topic', async () => {
+    const groupQueue = queueSpy();
+    const deps = { prisma, gateway: gatewaySaying('ok'), cap, embedder: null, groupQueue };
+
+    await Promise.all([
+      collect(answer(deps, { handle: 'nadia', question: 'Who is Iman' })),
+      collect(answer(deps, { handle: 'nadia', question: 'Who is Iman' })),
+    ]);
+
+    const questions = await prisma.question.findMany({});
+    expect(questions).toHaveLength(1);
+    expect(questions[0]?.askCount).toBe(2);
+    const topics = await prisma.topic.findMany({});
+    expect(topics).toHaveLength(1);
+    expect(topics[0]?.askCount).toBe(2);
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it("a repeat that waits on the grouping job's lock counts on, and answers from, the topic the job moved it to", async () => {
+    const pageId = await pageIdFor('nadia');
+    const from = await seedTopic(pageId, { wordings: [{ text: 'What is his full name' }] });
+    const into = await seedTopic(pageId, { answer: 'Iman Muqri', wordings: [{ text: 'Who is Iman', askCount: 2 }] });
+    const wordingId = (await prisma.question.findFirstOrThrow({ where: { topicId: from.id } })).id;
+
+    const jobClient = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+    try {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => (release = resolve));
+      let locked!: () => void;
+      const lockedDone = new Promise<void>((resolve) => (locked = resolve));
+
+      // What the grouping job does: lock the wording, move it, merge-empty its old topic.
+      const job = jobClient.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Question" WHERE "id" = ${wordingId} FOR UPDATE`;
+        await tx.question.update({ where: { id: wordingId }, data: { topicId: into.id } });
+        await refreshTopic(tx, into.id);
+        await refreshTopic(tx, from.id);
+        locked();
+        await gate;
+      });
+      await lockedDone;
+
+      const ask = collect(
+        answer(
+          { prisma, gateway: gatewaySaying('unused'), cap, embedder: null },
+          { handle: 'nadia', question: 'what is his full name' },
+        ),
+      );
+      await new Promise((resolve) => setTimeout(resolve, 400)); // let the ask reach its wait on the row
+      release();
+      const [events] = await Promise.all([ask, job]);
+
+      expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Iman Muqri');
+      const survivor = await prisma.topic.findUniqueOrThrow({ where: { id: into.id } });
+      const sum = await prisma.question.aggregate({ where: { topicId: into.id }, _sum: { askCount: true } });
+      expect(survivor.askCount).toBe(sum._sum.askCount);
+      expect(survivor.askCount).toBe(4);
+    } finally {
+      await jobClient.$disconnect();
+    }
+  });
+});
+

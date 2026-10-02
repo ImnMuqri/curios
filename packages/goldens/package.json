@@ -10,7 +10,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "start": "tsx --env-file=../../.env src/run.ts"
+    "start": "tsx --env-file=../../.env src/run.ts",
+    "start:grouping": "tsx --env-file=../../.env src/grouping.ts"
   },
   "dependencies": {
     "@curios/api": "workspace:*",

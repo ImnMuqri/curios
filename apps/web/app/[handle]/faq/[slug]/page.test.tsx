@@ -3,12 +3,16 @@ import { render, screen } from '@testing-library/react';
 import type { FaqAnswer } from '@curios/db-read';
 
 const getFaqEntry = vi.fn();
-vi.mock('@curios/db-read', () => ({ getFaqEntry }));
+const getFaqRedirect = vi.fn();
+vi.mock('@curios/db-read', () => ({ getFaqEntry, getFaqRedirect }));
 
 const notFound = vi.fn(() => {
   throw new Error('NEXT_NOT_FOUND');
 });
-vi.mock('next/navigation', () => ({ notFound }));
+const permanentRedirect = vi.fn((to: string) => {
+  throw new Error(`PERMANENT_REDIRECT:${to}`);
+});
+vi.mock('next/navigation', () => ({ notFound, permanentRedirect }));
 
 const FaqEntryPage = (await import('./page.js')).default;
 
@@ -64,8 +68,36 @@ describe('one FAQ answer', () => {
     expect(container.querySelector('img')).toBeNull();
   });
 
+  // Review Focus 5.
+  it('sends a retired address to its topic page with a permanent redirect', async () => {
+    getFaqEntry.mockResolvedValueOnce(null);
+    getFaqRedirect.mockResolvedValueOnce('what-is-imans-full-name');
+
+    await expect(FaqEntryPage(params('Nadia', 'what-is-his-full-name'))).rejects.toThrow(
+      'PERMANENT_REDIRECT:/nadia/faq/what-is-imans-full-name',
+    );
+    expect(getFaqRedirect).toHaveBeenCalledWith('Nadia', 'what-is-his-full-name');
+  });
+
+  it('404s an address that is neither live nor redirected', async () => {
+    getFaqEntry.mockResolvedValueOnce(null);
+    getFaqRedirect.mockResolvedValueOnce(null);
+
+    await expect(FaqEntryPage(params('nadia', 'gone'))).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('does not look for a redirect when the entry is live', async () => {
+    getFaqRedirect.mockClear();
+    getFaqEntry.mockResolvedValueOnce(entry);
+
+    render(await FaqEntryPage(params('nadia', 'berapa-harga')));
+
+    expect(getFaqRedirect).not.toHaveBeenCalled();
+  });
+
   it('404s a slug whose answer has been withdrawn', async () => {
     getFaqEntry.mockResolvedValueOnce(null);
+    getFaqRedirect.mockResolvedValueOnce(null);
 
     await expect(FaqEntryPage(params('nadia', 'berapa-harga'))).rejects.toThrow('NEXT_NOT_FOUND');
   });

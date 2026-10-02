@@ -1,12 +1,17 @@
-import { createHash } from 'node:crypto';
 import {
-  normalizeClaim,
+  questionKey,
   RETRIEVAL_MIN_FACTS,
   selectFacts,
   type FallbackReason,
 } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { decodeVector, encodeVector, type Embedder } from '@curios/embeddings';
+
+/**
+ * The cache key for a question's vector lives in `@curios/core` so the grouping
+ * worker computes the same one. Re-exported for the chat tests and the goldens.
+ */
+export { questionKey };
 
 /**
  * Narrower than faq-slug.ts's `Log`: this module only ever logs at `info`
@@ -49,20 +54,6 @@ export interface ChatSelection<T> {
  */
 export function retrievalText(question: string, previousUserTurn: string | null): string {
   return previousUserTurn === null ? question : `${previousUserTurn}\n${question}`;
-}
-
-/**
- * The key a question's vector is cached under.
- *
- * A digest of the normalised text, never the text. `QuestionEmbedding` is
- * global across every page in the product, so a text column there would be a
- * log of everything every visitor has ever asked anywhere -- something nobody
- * asked for and nothing needs. The hash also bounds the key: a follow-up can
- * reach a thousand characters, and Postgres' btree refuses a key over about
- * 2,700 bytes, which would throw on a visitor's question in production.
- */
-export function questionKey(text: string): string {
-  return createHash('sha256').update(normalizeClaim(text)).digest('hex');
 }
 
 /**

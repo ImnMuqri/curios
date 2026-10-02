@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 
-const getQuestions = vi.fn();
+const getTopics = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getQuestions, getOwnerPage }));
+vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -20,8 +20,8 @@ vi.mock('next/navigation', () => ({ redirect }));
 
 // The list closes over apiFetch and the router. These tests are about what the
 // page tells it, so the list records its props instead.
-const Questions = vi.fn((_props: { questions: unknown[]; publishesFaq: boolean }) => null);
-vi.mock('./question-list.js', () => ({ Questions }));
+const Topics = vi.fn((_props: { topics: unknown[]; publishesFaq: boolean; answerMax: number; titleMax: number }) => null);
+vi.mock('./topic-list.js', () => ({ Topics }));
 
 const QuestionsPage = (await import('./page.js')).default;
 
@@ -39,12 +39,12 @@ const business: OwnerPage = {
 
 describe('QuestionsPage', () => {
   beforeEach(() => {
-    getQuestions.mockReset();
+    getTopics.mockReset();
     getOwnerPage.mockReset();
     resolveOwner.mockReset();
-    Questions.mockClear();
+    Topics.mockClear();
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
-    getQuestions.mockResolvedValue([]);
+    getTopics.mockResolvedValue([]);
   });
 
   it('tells the list a personal page publishes no FAQ pages', async () => {
@@ -52,7 +52,7 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage());
 
-    expect(Questions.mock.calls[0]?.[0]).toMatchObject({ publishesFaq: false });
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ publishesFaq: false });
   });
 
   it('tells the list a business page publishes them', async () => {
@@ -60,7 +60,17 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage());
 
-    expect(Questions.mock.calls[0]?.[0]).toMatchObject({ publishesFaq: true });
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ publishesFaq: true });
+  });
+
+  it('hands the list the topics and the length limits from core', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getTopics.mockResolvedValue([{ id: 't1' }]);
+
+    render(await QuestionsPage());
+
+    expect(getTopics).toHaveBeenCalledWith('acc1');
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200 });
   });
 
   // Fix round 2, Important #3: AppFrame renders its own main around every

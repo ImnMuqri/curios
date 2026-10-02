@@ -8,6 +8,7 @@ import { createRedis } from './lib/redis.js';
 import { createIngestionWorker } from './ingestion/ingestion.worker.js';
 import { createMailWorker } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
+import { createGroupWorker } from './grouping/group.worker.js';
 import { billingDisabled, createBillplzClient } from '@curios/billing';
 import { createBillingWorker, scheduleBillingJobs } from './billing/pending-check.js';
 
@@ -80,6 +81,11 @@ leadWorker.on('failed', (job, err) =>
   log.error({ jobId: job?.id, err: err.message }, 'lead notification failed'),
 );
 leadWorker.on('error', (err) => log.error({ err: err.message }, 'lead worker error'));
+
+// One at a time (QUEUE_CONCURRENCY.group), on its own connection like the rest.
+const groupWorker = createGroupWorker({ connection: createRedis(), prisma, gateway, embedder, log });
+groupWorker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'grouping failed'));
+groupWorker.on('error', (err) => log.error({ err: err.message }, 'group worker error'));
 
 if (billing) {
   // Its own connection, for the reason every worker above has one.

@@ -1,10 +1,10 @@
-import { isOverCap, normalizeClaim, qualifies } from '@curios/core';
-import { recordModelCall, type PrismaClient } from '@curios/db';
+import { GROUP_QUEUE, isOverCap, normalizeClaim, qualifies, type GroupJobData } from '@curios/core';
+import { recordModelCall, refreshTopic, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion } from './retrieval.js';
-import { assignFaqSlug, type Log } from '../questions/faq-slug.js';
+import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
@@ -51,6 +51,17 @@ export interface ChatDeps {
   // loop, unsluggable text, a transient DB error -- leaves no trace anywhere,
   // which is exactly what assignFaqSlug's `log` parameter exists to prevent.
   log?: Log;
+  /**
+   * Where a new wording's grouping job goes. Optional: a deployment or test
+   * without it simply never groups, and the wording keeps its own topic.
+   */
+  groupQueue?: { add(name: string, data: GroupJobData, opts?: unknown): Promise<unknown> };
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002'
+  );
 }
 
 export class PageNotFoundError extends Error {
@@ -94,7 +105,7 @@ function currentPeriod(now = new Date()): string {
  *
  * Says only that the page's own links still work, never that a
  * most-asked-questions link exists: `/[handle]/faq` is gated on
- * `FAQ_MIN_ASKS` asks and an owner-written `PinnedAnswer`, so a page can be
+ * `FAQ_MIN_ASKS` asks and an owner-written topic answer, so a page can be
  * over cap with zero FAQ entries. The page's other links render
  * unconditionally, so that much is true in every case.
  */
@@ -196,171 +207,240 @@ export async function* answer(
     }),
   };
 
-  // Logged for the Questions screen, clustered on the same key the pinned
-  // answer below is looked up by. EVERY question, not only refused ones:
+  // Logged for the Questions screen. EVERY question, not only refused ones:
   // nothing in an answer is machine-readable enough to tell a refusal from a
   // confident one across Malay, Manglish and English, and a question asked
   // nine times is a gap either way. See BACKEND.md's refusal rule.
+  //
+  // A wording is looked up by its normalised text, so a repeat in other
+  // capitals or punctuation is the same wording: it counts, and queues nothing.
   const normalizedQuestion = normalizeClaim(input.question);
-  const logged = await prisma.question.upsert({
+  const existing = await prisma.question.findUnique({
     where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
-    // The first phrasing wins and is never overwritten: the owner reads what
-    // somebody actually typed, and rewriting it on every ask would churn the
-    // list for no gain.
-    create: { pageId: page.id, text: input.question, normalizedQuestion },
-    update: { askCount: { increment: 1 }, lastAskedAt: new Date() },
-    select: { id: true },
+    select: { id: true, topicId: true },
   });
 
-  // The other site. A question the owner answered when it had two asks
+  /**
+   * Counts a repeat and returns the wording as it is AFTER the row lock. The
+   * grouping job may move or merge a wording at any moment: the update waits
+   * for the job's lock on the row, so its `topicId` is the post-job topic,
+   * where the one read above may already be dead.
+   */
+  const countRepeat = (id: string) =>
+    prisma.$transaction(async (tx) => {
+      const updated = await tx.question.update({
+        where: { id },
+        data: { askCount: { increment: 1 }, lastAskedAt: new Date() },
+        select: { id: true, topicId: true },
+      });
+      await refreshTopic(tx, updated.topicId);
+      return updated;
+    });
+
+  let wording: { id: string; topicId: string };
+  let newWording = false;
+  if (existing) {
+    wording = await countRepeat(existing.id);
+  } else {
+    // Created together: a wording is never without its topic. A concurrent
+    // first ask of the same wording loses the unique race and is retried as
+    // a repeat. The first phrasing wins and is never overwritten.
+    try {
+      wording = await prisma.$transaction(async (tx) => {
+        const topic = await tx.topic.create({
+          data: { pageId: page.id, title: input.question, askCount: 1 },
+          select: { id: true },
+        });
+        return tx.question.create({
+          data: { pageId: page.id, topicId: topic.id, text: input.question, normalizedQuestion },
+          select: { id: true, topicId: true },
+        });
+      });
+      newWording = true;
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      const raced = await prisma.question.findUniqueOrThrow({
+        where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
+        select: { id: true },
+      });
+      wording = await countRepeat(raced.id);
+    }
+  }
+
+  // The other site. A topic the owner answered when it had two asks
   // qualifies on its third, and that third ask happens here, with no owner
   // involved. See faq-slug.ts on why both sites exist.
-  await assignFaqSlug(prisma, logged.id, deps.log);
+  await assignTopicSlug(prisma, wording.topicId, deps.log);
 
-  // A pinned answer wins over model output. Zero tokens, zero risk.
-  const pinned = await prisma.pinnedAnswer.findUnique({
-    where: {
-      pageId_normalizedQuestion: {
-        pageId: page.id,
-        normalizedQuestion,
-      },
-    },
-    select: { answer: true },
-  });
-
-  if (pinned) {
-    yield { type: 'text', text: pinned.answer };
-    await prisma.message.create({
-      data: { conversationId, role: 'ASSISTANT', content: pinned.answer },
-    });
-    yield { type: 'done', conversationId, intent };
-    return;
-  }
-
-  // The cap, and this is the line where it belongs.
-  //
-  // Everything above is database work that has already happened -- the
-  // conversation row, the message, the question upsert, the pinned lookup.
-  // The gateway call below is the only thing that costs money, so the boundary
-  // sits exactly where the spend starts. BACKEND.md put this at step 1, above
-  // the pinned branch; that predates pinned answers being free, and refusing a
-  // free answer because a page has spent too much punishes an owner for having
-  // answered the question well.
-  //
-  // Read on every turn, not only when the conversation is created. The counter
-  // increments on creation alone, so a check gated on `isNew` would refuse the
-  // first turn of a conversation started over cap and then hand the second to
-  // the model for nothing.
-  const used = await prisma.usageCounter.findUnique({
-    where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
-    select: { count: true },
-  });
-
-  if (isOverCap({ used: used?.count ?? 0, cap })) {
-    // The same two events the pinned branch yields, so the sheet renders this
-    // through a path it already has. `intent` is untouched: a capped page
-    // still offers the capture card, because the lead is what the owner is
-    // here for and it is worth more when chat has stopped answering.
-    //
-    // Logged at `info`, not `error`: the cap firing is this control working
-    // exactly as designed, not a failure needing attention. Without this
-    // line the only way to learn a page hit its cap is the manual SQL in
-    // manual-verification-caps.md's checks 6 and 7 -- a spend control whose
-    // stated failure mode is being indistinguishable from success should not
-    // also be invisible when it succeeds.
-    deps.log?.info?.(
-      { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
-      'conversation cap reached; chat degraded to the fixed reply',
-    );
-    yield { type: 'text', text: CAP_REACHED_REPLY };
-    await prisma.message.create({
-      data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },
-    });
-    yield { type: 'done', conversationId, intent };
-    return;
-  }
-
-  // The visitor's own previous turn, for a follow-up like "yang coklat pula?"
-  // that means nothing on its own. `history` already ends with the question
-  // being asked now -- it was written above -- so the one before it is at -2.
-  const previousUserTurn =
-    history.filter((message) => message.role === 'USER').at(-2)?.content ?? null;
-
-  // What this question needs, or everything, and always a correct answer
-  // either way. See retrieval.ts for the order of the checks and why it is
-  // the order.
-  const selection = await selectForQuestion(
-    { prisma, embedder: deps.embedder, log: deps.log },
-    { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn },
-  );
-
-  const systemPrompt = buildSystemPrompt({
-    displayName: page.displayName,
-    mode: page.mode,
-    facts: selection.facts,
-    neverSay: page.neverSay.map((n) => n.phrase),
-  });
-
-  let text = '';
-  try {
-    // Cached only in fallback, where the prefix is the page's whole fact list
-    // and is the same for every visitor between owner edits. In retrieval mode
-    // the prefix is built for this one question, so a cache entry would be
-    // written at a 25% premium and read by nobody.
-    for await (const event of gateway.chat({
-      systemPrompt,
-      messages,
-      cachePrompt: selection.mode === 'fallback',
-    })) {
-      if (event.type === 'text') {
-        text += event.text;
-        yield { type: 'text', text: event.text };
-      } else {
-        // Persisted after the stream closes, never before the first token.
-        // Same helper the worker uses -- one place computes cost, so the margin
-        // numbers cannot drift between the two processes that produce them.
-        await recordModelCall(prisma, {
-          pageId: page.id,
-          conversationId,
-          model: event.model,
-          usage: event.usage,
-          latencyMs: event.latencyMs,
-          ok: true,
-        });
-      }
+  /** After the reply: decide this wording's topic in the background. Never fails the visitor. */
+  const queueGrouping = async () => {
+    if (!newWording || !deps.groupQueue) return;
+    try {
+      await deps.groupQueue.add(
+        GROUP_QUEUE,
+        { questionId: wording.id },
+        {
+          jobId: wording.id,
+          attempts: 3,
+          backoff: { type: 'exponential', delay: 2000 },
+          removeOnComplete: true,
+          removeOnFail: { age: 7 * 24 * 3600 },
+        },
+      );
+    } catch (error) {
+      deps.log?.warn?.(
+        { questionId: wording.id, err: error instanceof Error ? error.message : String(error) },
+        'could not queue grouping',
+      );
     }
-  } catch (error) {
-    // A call that fails mid-stream has already consumed tokens; recording
-    // nothing would lose both the cost and the fact that the failure
-    // happened, leaving the failure rate invisible in the one table meant to
-    // show it. The zeros are a known-unknown, not a lie: unlike a crawl
-    // failure where no model was ever called, a call genuinely happened here
-    // and we simply do not know its usage.
-    await recordModelCall(prisma, {
-      pageId: page.id,
-      conversationId,
-      model: CHAT_MODEL,
-      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
-      latencyMs: 0,
-      ok: false,
-      errorCode: 'PROVIDER_UNAVAILABLE',
+  };
+
+  // Queued however this turn ends -- the reply finishing, the model failing,
+  // the consumer walking away -- and always after the last event is yielded.
+  try {
+    // The topic's answer wins over model output, for any wording grouped
+    // under it. Zero tokens, zero risk.
+    const topic = await prisma.topic.findUnique({
+      where: { id: wording.topicId },
+      select: { answer: true },
     });
-    throw error;
+
+    if (topic?.answer) {
+      yield { type: 'text', text: topic.answer };
+      await prisma.message.create({
+        data: { conversationId, role: 'ASSISTANT', content: topic.answer },
+      });
+      yield { type: 'done', conversationId, intent };
+      return;
+    }
+
+    // The cap, and this is the line where it belongs.
+    //
+    // Everything above is database work that has already happened -- the
+    // conversation row, the message, the question upsert, the pinned lookup.
+    // The gateway call below is the only thing that costs money, so the boundary
+    // sits exactly where the spend starts. BACKEND.md put this at step 1, above
+    // the pinned branch; that predates pinned answers being free, and refusing a
+    // free answer because a page has spent too much punishes an owner for having
+    // answered the question well.
+    //
+    // Read on every turn, not only when the conversation is created. The counter
+    // increments on creation alone, so a check gated on `isNew` would refuse the
+    // first turn of a conversation started over cap and then hand the second to
+    // the model for nothing.
+    const used = await prisma.usageCounter.findUnique({
+      where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
+      select: { count: true },
+    });
+
+    if (isOverCap({ used: used?.count ?? 0, cap })) {
+      // The same two events the pinned branch yields, so the sheet renders this
+      // through a path it already has. `intent` is untouched: a capped page
+      // still offers the capture card, because the lead is what the owner is
+      // here for and it is worth more when chat has stopped answering.
+      //
+      // Logged at `info`, not `error`: the cap firing is this control working
+      // exactly as designed, not a failure needing attention. Without this
+      // line the only way to learn a page hit its cap is the manual SQL in
+      // manual-verification-caps.md's checks 6 and 7 -- a spend control whose
+      // stated failure mode is being indistinguishable from success should not
+      // also be invisible when it succeeds.
+      deps.log?.info?.(
+        { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
+        'conversation cap reached; chat degraded to the fixed reply',
+      );
+      yield { type: 'text', text: CAP_REACHED_REPLY };
+      await prisma.message.create({
+        data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },
+      });
+      yield { type: 'done', conversationId, intent };
+      return;
+    }
+
+    // The visitor's own previous turn, for a follow-up like "yang coklat pula?"
+    // that means nothing on its own. `history` already ends with the question
+    // being asked now -- it was written above -- so the one before it is at -2.
+    const previousUserTurn =
+      history.filter((message) => message.role === 'USER').at(-2)?.content ?? null;
+
+    // What this question needs, or everything, and always a correct answer
+    // either way. See retrieval.ts for the order of the checks and why it is
+    // the order.
+    const selection = await selectForQuestion(
+      { prisma, embedder: deps.embedder, log: deps.log },
+      { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn },
+    );
+
+    const systemPrompt = buildSystemPrompt({
+      displayName: page.displayName,
+      mode: page.mode,
+      facts: selection.facts,
+      neverSay: page.neverSay.map((n) => n.phrase),
+    });
+
+    let text = '';
+    try {
+      // Cached only in fallback, where the prefix is the page's whole fact list
+      // and is the same for every visitor between owner edits. In retrieval mode
+      // the prefix is built for this one question, so a cache entry would be
+      // written at a 25% premium and read by nobody.
+      for await (const event of gateway.chat({
+        systemPrompt,
+        messages,
+        cachePrompt: selection.mode === 'fallback',
+      })) {
+        if (event.type === 'text') {
+          text += event.text;
+          yield { type: 'text', text: event.text };
+        } else {
+          // Persisted after the stream closes, never before the first token.
+          // Same helper the worker uses -- one place computes cost, so the margin
+          // numbers cannot drift between the two processes that produce them.
+          await recordModelCall(prisma, {
+            pageId: page.id,
+            conversationId,
+            model: event.model,
+            usage: event.usage,
+            latencyMs: event.latencyMs,
+            ok: true,
+          });
+        }
+      }
+    } catch (error) {
+      // A call that fails mid-stream has already consumed tokens; recording
+      // nothing would lose both the cost and the fact that the failure
+      // happened, leaving the failure rate invisible in the one table meant to
+      // show it. The zeros are a known-unknown, not a lie: unlike a crawl
+      // failure where no model was ever called, a call genuinely happened here
+      // and we simply do not know its usage.
+      await recordModelCall(prisma, {
+        pageId: page.id,
+        conversationId,
+        model: CHAT_MODEL,
+        usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+        latencyMs: 0,
+        ok: false,
+        errorCode: 'PROVIDER_UNAVAILABLE',
+      });
+      throw error;
+    }
+
+    await prisma.message.create({
+      data: {
+        conversationId,
+        role: 'ASSISTANT',
+        content: text,
+        // The facts this answer was actually built from. Until retrieval it was
+        // every verified fact on the page, which made the column true of every
+        // message ever sent and useless as a signal -- see the `intent` comment
+        // above, which still holds: qualification is computed from the visitor's
+        // turns, never from this.
+        citedFactIds: selection.facts.map((fact) => fact.id),
+      },
+    });
+
+    yield { type: 'done', conversationId, intent };
+  } finally {
+    await queueGrouping();
   }
-
-  await prisma.message.create({
-    data: {
-      conversationId,
-      role: 'ASSISTANT',
-      content: text,
-      // The facts this answer was actually built from. Until retrieval it was
-      // every verified fact on the page, which made the column true of every
-      // message ever sent and useless as a signal -- see the `intent` comment
-      // above, which still holds: qualification is computed from the visitor's
-      // turns, never from this.
-      citedFactIds: selection.facts.map((fact) => fact.id),
-    },
-  });
-
-  yield { type: 'done', conversationId, intent };
 }

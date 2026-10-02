@@ -10,14 +10,16 @@ export interface Log {
    * Optional, unlike `error` above: this interface's only consumer that needs
    * it is the conversation cap's over-cap branch in chat.service.ts, logging
    * an expected, working-as-designed event rather than a failure. Every
-   * existing caller of `assignFaqSlug` keeps compiling with an `error`-only
+   * existing caller of `assignTopicSlug` keeps compiling with an `error`-only
    * object; `request.log` (a Fastify/pino logger) already has both.
    */
   info?: (obj: unknown, msg: string) => void;
+  /** Optional for the same reason: the chat's grouping-queue failure is logged here. */
+  warn?: (obj: unknown, msg: string) => void;
 }
 
 /**
- * Give a question its public URL, if it has earned one.
+ * Give a topic its public URL, if it has earned one.
  *
  * Called from BOTH places that can complete the rule, because either condition
  * can be the last to arrive: the owner writing an answer, or a third visitor
@@ -26,66 +28,73 @@ export interface Log {
  * bug that reads as randomness.
  *
  * Idempotent and best-effort. It re-runs on every ask and every answer edit
- * for the life of a question, so doing nothing must be cheap and safe; and it
+ * for the life of a topic, so doing nothing must be cheap and safe; and it
  * sits inside a visitor's chat request, so no failure here may become their
  * error. Everything is caught and logged.
  */
-export async function assignFaqSlug(
+export async function assignTopicSlug(
   prisma: PrismaClient,
-  questionId: string,
+  topicId: string,
   log?: Log,
 ): Promise<void> {
   try {
-    const question = await prisma.question.findUnique({
-      where: { id: questionId },
+    const topic = await prisma.topic.findUnique({
+      where: { id: topicId },
       select: {
         id: true,
         pageId: true,
-        text: true,
+        title: true,
         askCount: true,
-        answered: true,
+        answer: true,
         faqSlug: true,
         page: { select: { mode: true } },
       },
     });
 
     // Gone, or already named. Both are ordinary, and neither is an error.
-    if (!question || question.faqSlug !== null) return;
+    if (!topic || topic.faqSlug !== null) return;
 
     if (
       !qualifiesForFaq({
-        mode: question.page.mode,
-        askCount: question.askCount,
-        answered: question.answered,
+        mode: topic.page.mode,
+        askCount: topic.askCount,
+        answered: topic.answer !== null,
       })
     ) {
       return;
     }
 
-    const base = faqSlugBase(question.text);
+    const base = faqSlugBase(topic.title);
     if (base === null) {
-      log?.error({ questionId }, 'question has no sluggable text; no faq url assigned');
+      log?.error({ topicId }, 'topic has no sluggable text; no faq url assigned');
       return;
     }
 
     // Read the taken names rather than guessing, then let the unique
     // constraint be the final arbiter -- two concurrent asks can both read
-    // "free" and only one write can win.
-    const taken = new Set(
-      (
-        await prisma.question.findMany({
-          where: { pageId: question.pageId, faqSlug: { startsWith: base } },
-          select: { faqSlug: true },
-        })
-      ).map((row) => row.faqSlug),
-    );
+    // "free" and only one write can win. A retired slug (FaqRedirect) is taken
+    // too: its old address may be ranking, or must stay a 404, and either way
+    // it is never handed to another topic.
+    const [held, retired] = await Promise.all([
+      prisma.topic.findMany({
+        where: { pageId: topic.pageId, faqSlug: { startsWith: base } },
+        select: { faqSlug: true },
+      }),
+      prisma.faqRedirect.findMany({
+        where: { pageId: topic.pageId, slug: { startsWith: base } },
+        select: { slug: true },
+      }),
+    ]);
+    const taken = new Set<string | null>([...held.map((r) => r.faqSlug), ...retired.map((r) => r.slug)]);
 
     for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const candidate = attempt === 1 ? base : `${base}-${attempt}`;
       if (taken.has(candidate)) continue;
       try {
-        await prisma.question.update({
-          where: { id: question.id },
+        // Only onto a topic still unnamed: a merge or a concurrent assignment
+        // may have named it since the read above, and that slug must survive.
+        await prisma.topic.updateMany({
+          where: { id: topic.id, faqSlug: null },
           data: { faqSlug: candidate },
         });
         return;
@@ -97,10 +106,10 @@ export async function assignFaqSlug(
       }
     }
 
-    log?.error({ questionId, base }, 'could not find a free faq slug');
+    log?.error({ topicId, base }, 'could not find a free faq slug');
   } catch (error) {
     // The outer guard. An SEO URL is never worth failing a visitor's chat or
     // an owner's answer.
-    log?.error({ err: error, questionId }, 'faq slug assignment failed');
+    log?.error({ err: error, topicId }, 'faq slug assignment failed');
   }
 }

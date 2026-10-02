@@ -98,6 +98,8 @@ the same normalized key and marks the `Question` answered.
 answer wins over model output. Zero tokens, zero risk."* So the next person to ask gets the
 owner's exact words, immediately and free.
 
+> **Superseded in slice 15:** answers belong to topics, which group wordings by meaning — see `slice-15-build-spec.md`. The paragraph below describes slice 5 as built; `PinnedAnswer` and `Question.answered` no longer exist.
+
 **The limitation, written down rather than discovered.** Matching is exact on the
 normalized form. Answering *"berapa harga kek 1kg"* does not cover *"harga kek 1kg
 berapa"*; that variant falls through to the model, which still has the facts. This is

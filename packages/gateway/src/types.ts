@@ -71,6 +71,26 @@ export interface SlotsOutput {
   location: string | null;
 }
 
+export interface SameQuestionCandidate {
+  id: string;
+  title: string;
+  wordings: string[];
+}
+
+export interface SameQuestionInput {
+  pageName: string;
+  mode: 'PERSONAL' | 'BUSINESS';
+  wording: string;
+  candidates: SameQuestionCandidate[]; // 1..GROUP_CANDIDATES
+}
+
+export interface SameQuestionOutput {
+  match: string | null; // a candidate id, or null
+  usage: TokenUsage;
+  model: string;
+  latencyMs: number;
+}
+
 export interface Gateway {
   extract(input: ExtractInput): Promise<ExtractOutput>;
   chat(input: ChatInput): AsyncIterable<ChatEvent>;
@@ -80,4 +100,10 @@ export interface Gateway {
    * model tokens only where a lead already exists.
    */
   slots(input: SlotsInput): Promise<SlotsOutput>;
+  /**
+   * Haiku decides whether a new wording asks the same thing as one of a few
+   * shortlisted topics -- 'same' meaning one answer would be correct for both.
+   * Background only; never in a request.
+   */
+  sameQuestion(input: SameQuestionInput): Promise<SameQuestionOutput>;
 }

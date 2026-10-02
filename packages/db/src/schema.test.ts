@@ -184,7 +184,7 @@ describe('the owner surface columns', () => {
 
   it('lets two pages use the same faq slug but not one page twice', async () => {
     // Per page, not global. Two bakeries may both answer "berapa harga kek" and
-    // both deserve the readable URL; the same page cannot have two questions
+    // both deserve the readable URL; the same page cannot have two topics
     // resolving to one route.
     const [one, two] = await Promise.all([
       prisma.account.create({ data: { email: `faq-a-${randomUUID()}@example.com` }, select: { id: true } }),
@@ -202,25 +202,19 @@ describe('the owner surface columns', () => {
 
     const [pageOne, pageTwo] = await Promise.all([mk(one.id), mk(two.id)]);
 
-    await prisma.question.create({
-      data: { pageId: pageOne, text: 'Berapa harga?', normalizedQuestion: 'berapa harga', faqSlug: 'berapa-harga' },
-    });
+    await prisma.topic.create({ data: { pageId: pageOne, title: 'Berapa harga?', faqSlug: 'berapa-harga' } });
     // Same slug, different page: allowed.
     await expect(
-      prisma.question.create({
-        data: { pageId: pageTwo, text: 'Berapa harga?', normalizedQuestion: 'berapa harga', faqSlug: 'berapa-harga' },
-      }),
+      prisma.topic.create({ data: { pageId: pageTwo, title: 'Berapa harga?', faqSlug: 'berapa-harga' } }),
     ).resolves.toBeTruthy();
 
     // Same slug, same page: refused.
     await expect(
-      prisma.question.create({
-        data: { pageId: pageOne, text: 'Harga berapa?', normalizedQuestion: 'harga berapa', faqSlug: 'berapa-harga' },
-      }),
+      prisma.topic.create({ data: { pageId: pageOne, title: 'Harga berapa?', faqSlug: 'berapa-harga' } }),
     ).rejects.toThrow();
   });
 
-  it('leaves faqSlug null for a question that has not earned a page', async () => {
+  it('leaves faqSlug null for a topic that has not earned a page', async () => {
     // The default, and the state most questions stay in forever.
     const account = await prisma.account.create({
       data: { email: `faq-null-${randomUUID()}@example.com` },
@@ -232,21 +226,21 @@ describe('the owner surface columns', () => {
       select: { id: true },
     });
 
-    const question = await prisma.question.create({
-      data: { pageId: page.id, text: 'Ada kek halal?', normalizedQuestion: 'ada kek halal' },
+    const topic = await prisma.topic.create({
+      data: { pageId: page.id, title: 'Ada kek halal?' },
       select: { faqSlug: true },
     });
 
-    expect(question.faqSlug).toBeNull();
+    expect(topic.faqSlug).toBeNull();
   });
 
   it('allows multiple null faqSlugs on the same page — the dominant real-world case', async () => {
-    // Most questions on a page stay in faqSlug=null state forever: they never earn
+    // Most topics on a page stay in faqSlug=null state forever: they never earn
     // enough asks to justify a public page. The unique constraint must permit this.
     // PostgreSQL's unique-index default is NULLS DISTINCT (each NULL is treated as
     // distinct), which is why this works. A future migration using NULLS NOT DISTINCT
-    // or a check constraint would silently break question logging for any second
-    // distinct question asked on any page.
+    // or a check constraint would silently break topic creation for any second
+    // distinct topic on any page.
     const account = await prisma.account.create({
       data: { email: `faq-multi-null-${randomUUID()}@example.com` },
       select: { id: true },
@@ -257,17 +251,10 @@ describe('the owner surface columns', () => {
       select: { id: true },
     });
 
-    // Create two questions on the same page, both with faqSlug omitted.
-    // They need different normalizedQuestion values to avoid violating the other unique constraint.
+    // Create two topics on the same page, both with faqSlug omitted.
     const [q1, q2] = await Promise.all([
-      prisma.question.create({
-        data: { pageId: page.id, text: 'Question one?', normalizedQuestion: 'question one' },
-        select: { faqSlug: true },
-      }),
-      prisma.question.create({
-        data: { pageId: page.id, text: 'Question two?', normalizedQuestion: 'question two' },
-        select: { faqSlug: true },
-      }),
+      prisma.topic.create({ data: { pageId: page.id, title: 'Question one?' }, select: { faqSlug: true } }),
+      prisma.topic.create({ data: { pageId: page.id, title: 'Question two?' }, select: { faqSlug: true } }),
     ]);
 
     // Both must be null and both must succeed (no constraint violation).

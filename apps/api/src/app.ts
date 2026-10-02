@@ -29,7 +29,7 @@ import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
 import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
-import { questionRoutes } from './modules/questions/question.routes.js';
+import { topicRoutes } from './modules/topics/topic.routes.js';
 import {
   billplzRoutes,
   ownerBillingRoutes,
@@ -155,7 +155,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(factRoutes, overrides.facts ?? {});
     await scope.register(sourceRoutes);
     await scope.register(neverSayRoutes);
-    await scope.register(questionRoutes);
+    await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
   });
 

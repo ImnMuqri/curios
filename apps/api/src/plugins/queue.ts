@@ -4,9 +4,11 @@ import IORedis from 'ioredis';
 import type { FastifyInstance } from 'fastify';
 import fp from 'fastify-plugin';
 import {
+  GROUP_QUEUE,
   INGEST_QUEUE,
   LEAD_QUEUE,
   MAIL_QUEUE,
+  type GroupJobData,
   type IngestJobData,
   type LeadJobData,
   type MailJobData,
@@ -17,6 +19,7 @@ declare module 'fastify' {
     ingestQueue: Queue<IngestJobData>;
     mailQueue: Queue<MailJobData>;
     leadQueue: Queue<LeadJobData>;
+    groupQueue: Queue<GroupJobData>;
   }
 }
 
@@ -31,10 +34,12 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
   const queue = new Queue<IngestJobData>(INGEST_QUEUE, { connection });
   const mailQueue = new Queue<MailJobData>(MAIL_QUEUE, { connection });
   const leadQueue = new Queue<LeadJobData>(LEAD_QUEUE, { connection });
+  const groupQueue = new Queue<GroupJobData>(GROUP_QUEUE, { connection });
 
   app.decorate('ingestQueue', queue);
   app.decorate('mailQueue', mailQueue);
   app.decorate('leadQueue', leadQueue);
+  app.decorate('groupQueue', groupQueue);
   app.addHook('onClose', async () => {
     // Each queue runs its own startup commands in the background, and nothing
     // awaits them. Closed before they finish, a queue goes on issuing them on
@@ -43,12 +48,13 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
     // booting. Bounded, because with maxRetriesPerRequest: null readiness
     // never arrives during a Redis outage, and a shutdown must not hang on it.
     await Promise.race([
-      Promise.allSettled([queue, mailQueue, leadQueue].map((q) => q.waitUntilReady())),
+      Promise.allSettled([queue, mailQueue, leadQueue, groupQueue].map((q) => q.waitUntilReady())),
       sleep(QUEUE_READY_ON_CLOSE_MS, undefined, { ref: false }),
     ]);
     await queue.close();
     await mailQueue.close();
     await leadQueue.close();
+    await groupQueue.close();
     connection.disconnect();
   });
 });

@@ -40,6 +40,9 @@ function stubGateway(): Gateway {
   return {
     extract: vi.fn(),
     slots: vi.fn(),
+    sameQuestion: async () => {
+      throw new Error('not used');
+    },
     chat: async function* () {
       yield { type: 'text' as const, text: 'Kek butter 1kg RM95.' };
       yield {
@@ -222,6 +225,9 @@ describe('registration', () => {
     const capturingGateway: Gateway = {
       extract: vi.fn(),
       slots: vi.fn(),
+      sameQuestion: async () => {
+        throw new Error('not used');
+      },
       chat: async function* ({ systemPrompt }) {
         capturedPrompt = systemPrompt;
         yield { type: 'text' as const, text: 'ok' };

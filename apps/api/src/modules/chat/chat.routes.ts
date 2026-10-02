@@ -88,7 +88,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       reply.raw.writeHead(200);
 
       const stream = answer(
-        { prisma: app.prisma, gateway, cap, embedder, log: request.log },
+        { prisma: app.prisma, gateway, cap, embedder, log: request.log, groupQueue: app.groupQueue },
         {
           handle: request.params.handle,
           question: request.body.question,
