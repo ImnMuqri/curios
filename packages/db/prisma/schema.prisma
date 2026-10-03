@@ -151,7 +151,7 @@ model Page {
   /// Soft is the default look; High contrast is the owner's alternative.
   style       PageStyle   @default(SOFT)
   /// #rrggbb, validated by isHexColor before it is written.
-  accentColor String      @default("#0c7a62")
+  accentColor String      @default("#2340c8")
   headingFont HeadingFont @default(JAKARTA)
   /// The object key of the uploaded picture in storage. Null is no picture.
   avatarKey   String?

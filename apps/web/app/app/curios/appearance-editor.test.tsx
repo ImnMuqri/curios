@@ -6,7 +6,7 @@ import { AppearanceEditor } from './appearance-editor.js';
 import type { AppearancePatch } from './my-curios.js';
 
 const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }> = {}) => {
-  const props = { style: 'SOFT' as const, accentColor: '#0c7a62', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
+  const props = { style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
   render(<AppearanceEditor {...props} />);
   return props;
 };
@@ -19,7 +19,7 @@ const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }>
 function Controlled({ save }: { save: (patch: AppearancePatch) => Promise<unknown> }) {
   const [state, setState] = useState<{ style: 'SOFT' | 'CONTRAST'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
     style: 'SOFT',
-    accentColor: '#0c7a62',
+    accentColor: '#2340c8',
     headingFont: 'JAKARTA',
   });
   return (
@@ -52,11 +52,11 @@ describe('AppearanceEditor', () => {
   // whoever wants it.
   it('names every preset swatch for a screen reader, and keeps the hex as its title', () => {
     setup();
-    const names = ['Hijau', 'Blue', 'Purple', 'Magenta', 'Red', 'Amber', 'Forest', 'Ink'];
+    const names = ['Biru', 'Hijau', 'Purple', 'Magenta', 'Red', 'Amber', 'Forest', 'Ink'];
     for (const name of names) {
       expect(screen.getByRole('radio', { name })).toBeInTheDocument();
     }
-    expect(screen.getByRole('radio', { name: 'Hijau' }).closest('label')).toHaveAttribute('title', '#0c7a62');
+    expect(screen.getByRole('radio', { name: 'Biru' }).closest('label')).toHaveAttribute('title', '#2340c8');
   });
 
   it('takes a custom colour typed as hex, and refuses one that is not', async () => {

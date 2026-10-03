@@ -34,7 +34,7 @@ const page: MyCuriosData = {
   displayName: 'Iman Muqri',
   bio: null,
   style: 'SOFT',
-  accentColor: '#0c7a62',
+  accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: 'avatars/p1.jpg',
   links: [],

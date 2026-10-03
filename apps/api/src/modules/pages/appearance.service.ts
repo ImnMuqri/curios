@@ -35,7 +35,7 @@ export async function updateAppearance(
   if (input.style !== undefined) data.style = input.style;
   if (input.headingFont !== undefined) data.headingFont = input.headingFont;
   if (input.accentColor !== undefined) {
-    if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #0c7a62.');
+    if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #2340c8.');
     data.accentColor = input.accentColor.toLowerCase();
   }
   if (input.displayName !== undefined) {

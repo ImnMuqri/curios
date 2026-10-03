@@ -21,17 +21,17 @@ export const LABEL_MAX = 40;
 export const BIO_MAX = 160;
 export const DISPLAY_NAME_MAX = 80;
 
-export const DEFAULT_ACCENT = '#0c7a62';
+export const DEFAULT_ACCENT = '#2340c8';
 /** Chosen to look right in both styles. Custom colours are allowed too. */
 export const ACCENT_PRESETS = [
+  '#2340c8',
   '#0c7a62',
-  '#1f4fd1',
   '#6d3fb3',
   '#c2185b',
   '#d8452f',
   '#e08a1e',
   '#2d6a4f',
-  '#10231f',
+  '#191f2c',
 ] as const;
 
 /** Characters as a person counts them. "🎂" is one, though it is two UTF-16 units. */
@@ -113,8 +113,8 @@ function luminance(hex: string): number {
 }
 
 /** The ink and paper tokens in tokens.css, which is where text on an accent comes from. */
-const INK = luminance('#10231f');
-const PAPER = luminance('#fafbfa');
+const INK = luminance('#191f2c');
+const PAPER = luminance('#fafbfc');
 
 /**
  * Which text colour stays readable on an accent: whichever of ink or paper has

@@ -6,7 +6,7 @@
 .alternative {
   display: block;
   margin-top: 20px;
-  color: var(--hijau);
+  color: var(--biru);
   font-size: var(--text-body);
 }
 
@@ -20,6 +20,6 @@
 .inline {
   display: inline-block;
   margin: -8px 0 16px;
-  color: var(--hijau);
+  color: var(--biru);
   font-size: var(--text-base);
 }

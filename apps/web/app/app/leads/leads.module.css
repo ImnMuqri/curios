@@ -63,7 +63,7 @@
   padding: 11px 18px;
   border: 1.5px solid transparent;
   border-radius: 10px;
-  background: var(--hijau);
+  background: var(--biru);
   color: var(--paper);
   font-family: var(--font-body);
   font-size: var(--text-body);
@@ -114,10 +114,10 @@
   color: var(--ink);
 }
 
-/* The reply the page sent back -- quiet emphasis, the same mint AnswerBubble
+/* The reply the page sent back -- quiet emphasis, the same --biru-muda AnswerBubble
    uses for an answer arriving on the public page. */
 .fromOwner {
   align-self: flex-end;
-  background: var(--mint);
+  background: var(--biru-muda);
   color: var(--ink);
 }

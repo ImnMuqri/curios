@@ -42,7 +42,7 @@
 
 .sourceLink {
   font-size: var(--text-base);
-  color: var(--hijau);
+  color: var(--biru);
 }
 
 .actions {
@@ -65,6 +65,6 @@
 .addSource {
   display: inline-block;
   margin: 8px 0 24px;
-  color: var(--hijau);
+  color: var(--biru);
   font-size: var(--text-body);
 }

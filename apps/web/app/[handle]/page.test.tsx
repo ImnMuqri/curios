@@ -43,7 +43,7 @@ const page: PublicPage = {
   ],
   allowSearchIndexing: false,
   style: 'SOFT',
-  accentColor: '#0c7a62',
+  accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: null,
 };
@@ -72,7 +72,7 @@ describe('public page', () => {
   // from whatever props it is given, but nothing in this file proved page.tsx
   // itself forwards the page's OWN style/accent/font rather than a constant --
   // every other test here uses the fixture's defaults, so a hardcoded
-  // '#0c7a62' or 'SOFT' in page.tsx would still leave them green.
+  // '#2340c8' or 'SOFT' in page.tsx would still leave them green.
   it("carries the page's own style, accent and heading font to the rendered page", async () => {
     vi.mocked(getPublicPage).mockResolvedValue({
       ...page,

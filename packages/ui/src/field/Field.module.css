@@ -28,7 +28,7 @@
 }
 
 .control:focus {
-  border-color: var(--hijau);
+  border-color: var(--biru);
 }
 
 .hint {
@@ -66,7 +66,7 @@
 
 .reveal:hover,
 .reveal:focus-visible {
-  color: var(--hijau);
+  color: var(--biru);
 }
 
 .visuallyHidden {

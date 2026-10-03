@@ -35,7 +35,7 @@
   border-radius: 6px;
   display: grid;
   place-items: center;
-  background: var(--hijau);
+  background: var(--biru);
   color: var(--card);
   font-size: var(--text-sm);
 }
@@ -69,8 +69,8 @@
 }
 
 .item[aria-current='page'] {
-  background: var(--mint);
-  color: var(--hijau);
+  background: var(--biru-muda);
+  color: var(--biru);
   font-weight: 700;
 }
 
@@ -118,8 +118,8 @@
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--mint);
-  color: var(--hijau);
+  background: var(--biru-muda);
+  color: var(--biru);
   font-size: var(--text-xs);
   font-weight: 700;
 }

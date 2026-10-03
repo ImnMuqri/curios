@@ -10,7 +10,7 @@ const base: BentoPageProps = {
   bio: 'Software developer.',
   avatarUrl: null,
   style: 'SOFT',
-  accentColor: '#0c7a62',
+  accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   links: [
     { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null },

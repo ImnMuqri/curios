@@ -82,6 +82,7 @@ describe('isHexColor', () => {
 describe('readableOn', () => {
   it('puts light text on a dark accent and dark text on a light one', () => {
     expect(readableOn('#0c7a62')).toBe('light');
+    expect(readableOn('#2340c8')).toBe('light');
     expect(readableOn('#10231f')).toBe('light');
     expect(readableOn('#f2a33c')).toBe('dark');
     expect(readableOn('#ffffff')).toBe('dark');

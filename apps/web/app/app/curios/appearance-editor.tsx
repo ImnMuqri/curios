@@ -16,19 +16,19 @@ const FONT_NAMES: Record<HeadingFont, string> = {
   OUTFIT: 'Outfit',
 };
 
-// A hex string is not a name -- "Accent #0c7a62" tells a screen-reader user
+// A hex string is not a name -- "Accent #2340c8" tells a screen-reader user
 // nothing a sighted owner does not already get for free from the swatch's
 // colour. One name per preset, in `ACCENT_PRESETS`' order; the hex still
 // shows, as the swatch's `title`, for whoever wants it.
 const ACCENT_NAMES: Record<string, string> = {
+  '#2340c8': 'Biru',
   '#0c7a62': 'Hijau',
-  '#1f4fd1': 'Blue',
   '#6d3fb3': 'Purple',
   '#c2185b': 'Magenta',
   '#d8452f': 'Red',
   '#e08a1e': 'Amber',
   '#2d6a4f': 'Forest',
-  '#10231f': 'Ink',
+  '#191f2c': 'Ink',
 };
 
 /**
@@ -114,7 +114,7 @@ export function AppearanceEditor({
               else {
                 // Not a failed save -- nothing was sent -- so there is
                 // nothing for a Retry button here to resend.
-                setError('Type a colour as six-digit hex, like #0c7a62.');
+                setError('Type a colour as six-digit hex, like #2340c8.');
                 setFailedPatch(null);
               }
             }}

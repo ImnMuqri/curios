@@ -23,15 +23,24 @@ communicating.
 ## Palette
 
 ```
---ink        #10231F   near-black with green in it. text, dark surfaces.
---paper      #FAFBFA   cool white. never cream.
---surface    #EFF2F0   cards, resting links.
---hijau      #0C7A62   primary. actions, the ask bar, the owner's voice.
---mint       #E3F5EF   hijau at 8%. quiet emphasis.
+--ink        #191F2C   near-black with biru in it. text, dark surfaces.
+--paper      #FAFBFC   cool white. never cream.
+--surface    #F0F1F4   cards, resting links.
+--biru       #2340C8   primary. actions, the ask bar, the owner's voice.
+--biru-muda  #EAF0FF   biru, pale. quiet emphasis.
 --kuning     #F2A33C   lead capture, unanswered questions. money and attention only.
 --merah      #D8452F   destructive and errors. nothing else.
---muted      #6B7C7F   secondary text. minimum size 12px.
+--muted      #696E7B   secondary text. minimum size 12px.
 ```
+
+*Amended 2026-10-03: hijau to biru.* The primary is now biru enamel, the cobalt of old
+enamel shop signs and kopitiam cups; green is what every AI-made palette reaches for.
+`--biru` is the brand and is never adjusted. Every neutral is derived from it in OKLCH:
+the old ramp's lightness and chroma, turned to biru's hue (267), so the greys belong to
+the blue. `--muted` sits one step darker than that so it clears 4.5:1 on `--surface`
+(the green-era muted did not). Contrast: paper on biru 7.7:1, biru on biru-muda 7.0:1,
+ink on kuning 7.9:1. Known short: `--merah` on paper is 4.2:1, so small error text
+needs an icon or ink beside it. Hijau stays one of the owner accent presets.
 
 Two accents, and each owns exactly one job. `kuning` means *a human needs to act*.
 If it shows up anywhere decorative, delete it.
@@ -84,7 +93,7 @@ One component carries the whole product. Everything else stays quiet so this can
 loud.
 
 - Always present, sticky to the bottom of the public page, never scrolls away.
-- 1.5px `hijau` border. Solid, not a shadow. It should read like a stamped field on a
+- 1.5px `biru` border. Solid, not a shadow. It should read like a stamped field on a
   form, something you are meant to fill in.
 - **Idle state cycles real questions from this page's facts**, one every 4 seconds,
   with a soft vertical wipe. "Berapa harga kek 1kg?" then "Open hari Ahad?" This is
