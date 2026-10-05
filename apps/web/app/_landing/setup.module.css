@@ -1,0 +1,80 @@
+/*
+ * Paper band. Words and steps on the left, a photograph on the right; on a
+ * phone the photo follows the steps.
+ */
+
+.setup {
+  padding: var(--l-space-10) 0 var(--l-space-9);
+}
+
+.grid {
+  display: grid;
+  gap: var(--l-space-8);
+}
+
+.steps {
+  display: grid;
+  gap: var(--l-space-5);
+  margin: var(--l-space-7) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Each step on its own row: a big numeral in a pill, then the words. */
+.step {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  column-gap: var(--l-space-4);
+  align-content: start;
+}
+
+.number {
+  grid-row: span 3;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--l-radius-pill);
+  background: var(--biru-muda);
+  color: var(--l-biru-800);
+  font-family: var(--font-display);
+  font-size: var(--l-step-2);
+  font-weight: var(--l-weight-display);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  margin: 4px 0 var(--l-space-1);
+  font-family: var(--font-display);
+  font-size: var(--l-step-1);
+  font-weight: 700;
+  line-height: var(--l-leading-snug);
+  letter-spacing: var(--l-tracking-heading);
+}
+
+.body {
+  margin: 0;
+  max-width: 30em;
+  color: var(--band-soft);
+  font-size: var(--text-base);
+}
+
+/* The address, as the product's stamped field shows it: 1.5px solid, never a shadow. */
+.address {
+  justify-self: start;
+  margin: var(--l-space-3) 0 0;
+  padding: 8px 16px;
+  border: 1.5px solid var(--band-text);
+  border-radius: var(--l-radius-pill);
+  font-weight: 600;
+  font-size: var(--text-base);
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    align-items: center;
+    gap: var(--l-space-9);
+  }
+}

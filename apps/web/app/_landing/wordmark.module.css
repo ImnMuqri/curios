@@ -1,0 +1,26 @@
+.mark {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--l-wordmark, 28px);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  color: currentColor;
+}
+
+.i {
+  position: relative;
+}
+
+/* The ask bar in miniature, where the i's dot would be. */
+.i::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0.06em;
+  width: 0.42em;
+  height: 0.26em;
+  border: 0.065em solid currentColor;
+  border-radius: 0.08em;
+  transform: translateX(-50%);
+}

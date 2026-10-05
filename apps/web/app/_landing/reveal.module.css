@@ -1,0 +1,12 @@
+.reveal[data-reveal='hidden'] {
+  opacity: 0;
+  transform: translateY(var(--l-reveal-rise));
+}
+
+.reveal[data-reveal='shown'] {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--l-dur-reveal) var(--l-ease-out) var(--reveal-delay, 0ms),
+    transform var(--l-dur-reveal) var(--l-ease-out) var(--reveal-delay, 0ms);
+}

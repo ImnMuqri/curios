@@ -1,0 +1,29 @@
+/*
+ * Tinted from whatever band it sits on (its text colour at low alpha), framed
+ * with a dashed edge so it reads as "not finished" at a glance.
+ */
+
+.slot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  width: 100%;
+  padding: var(--l-space-5);
+  border-radius: var(--l-radius-card);
+  background: color-mix(in oklch, var(--band-text) 7%, transparent);
+  outline: 2px dashed color-mix(in oklch, var(--band-text) 30%, transparent);
+  outline-offset: -2px;
+}
+
+.label {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  max-width: 28ch;
+  color: var(--band-text);
+  font-size: var(--text-base);
+}
+
+.kind {
+  font-weight: 600;
+}

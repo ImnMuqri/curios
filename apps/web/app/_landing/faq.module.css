@@ -1,0 +1,94 @@
+.faq {
+  padding: var(--l-space-9) 0 var(--l-space-10);
+}
+
+.grid {
+  display: grid;
+  gap: var(--l-space-6);
+}
+
+.list {
+  border-top: 1px solid var(--l-line);
+}
+
+.item {
+  border-bottom: 1px solid var(--l-line);
+  interpolate-size: allow-keywords;
+}
+
+/*
+ * The answer slides open rather than appearing. Browsers without
+ * ::details-content (or interpolate-size) simply open it at once.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  .item::details-content {
+    height: 0;
+    overflow: clip;
+    transition:
+      height var(--l-dur-reveal) var(--l-ease-out),
+      content-visibility var(--l-dur-reveal) allow-discrete;
+  }
+
+  .item[open]::details-content {
+    height: auto;
+  }
+}
+
+.q {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--l-space-4);
+  min-height: 60px;
+  padding: var(--l-space-3) 0;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.q::-webkit-details-marker {
+  display: none;
+}
+
+/* A plus that becomes a minus: two bars, the vertical one folds away. */
+.sign {
+  position: relative;
+  flex: none;
+  width: 14px;
+  height: 14px;
+}
+
+.sign::before,
+.sign::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+  transition: transform var(--l-dur-reveal) var(--l-ease-out);
+}
+
+.sign::after {
+  transform: rotate(90deg);
+}
+
+.item[open] .sign::after {
+  transform: rotate(0deg);
+}
+
+.a {
+  margin: 0;
+  padding: 0 var(--l-space-7) var(--l-space-5) 0;
+  max-width: var(--l-measure);
+  color: var(--l-text);
+}
+
+@media (min-width: 1024px) {
+  .grid {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    align-items: start;
+  }
+}

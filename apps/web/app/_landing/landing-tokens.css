@@ -1,0 +1,166 @@
+/*
+ * The landing page's design tokens. Every colour, size, space, radius, shadow
+ * and timing the landing page uses is declared here, so the whole page can be
+ * audited in one file. Component stylesheets (*.module.css under _landing/)
+ * only ever read var(--l-*) or the product tokens in packages/ui/src/tokens.css.
+ *
+ * Colour rules, from DESIGN.md:
+ *   - The locked palette is tokens.css: --ink, --paper, --surface, --biru,
+ *     --biru-muda, --kuning, --merah, --muted, --card, --line.
+ *     Nothing here changes them.
+ *   - Everything below is DERIVED from one of them, in OKLCH, keeping the
+ *     parent's hue. Each line names its parent and its OKLCH coordinates.
+ *   - kuning means "money, or a human needs to act". On this page it marks the
+ *     lead being captured and the price. Nowhere else.
+ *   - merah is not used on the landing page at all: there is nothing to delete
+ *     and no form to fail.
+ *
+ * Scoped to [data-landing] so none of it leaks into the product's own pages.
+ */
+[data-landing] {
+  /* ---- Colour: biru ramp (parent --biru #2340c8, oklch 0.450 0.212 267) ---- */
+  --l-biru-800: #122686; /* oklch 0.331 0.160 267 -- primary button pressed; paper on it 12.3:1 */
+  --l-biru-700: #1a31a8; /* oklch 0.389 0.190 267 -- primary button hover; paper on it 9.9:1 */
+  --l-biru-300: #86a2ea; /* oklch 0.720 0.110 267 -- biru as text on ink; 6.6:1 */
+  --l-biru-200: #bfd1f9; /* oklch 0.860 0.059 267 -- hairlines on biru-muda, text on ink 10.8:1 */
+  --l-biru-100: #dfe8fd; /* oklch 0.931 0.030 267 -- hover wash on paper */
+
+  /* ---- Colour: kuning ramp (parent --kuning #f2a33c, oklch 0.776 0.147 69) ---- */
+  --l-kuning-100: #ffebd6; /* oklch 0.951 0.035 69 -- the captured-lead card's ground; ink on it 14:1 */
+  --l-kuning-700: #8f5c15; /* oklch 0.519 0.105 69 -- kuning as small text on paper 5.5:1, on kuning-100 4.9:1 */
+  --l-kuning-900: #563505; /* oklch 0.360 0.075 69 -- headline on the kuning-100 band; 9.5:1 */
+
+  /* ---- Colour: ink ramp (parent --ink #191f2c, oklch 0.238 0.026 267) ---- */
+  --l-ink-300: #b3b7c1; /* oklch 0.779 0.015 268 -- secondary text on ink; 8.2:1 (--muted is 3.4:1 there, so never used on ink) */
+
+  /* ---- Colour: alpha variants (parent named in each) ---- */
+  --l-paper-a08: rgb(250 251 252 / 8%); /* --paper -- question bubbles on ink, fallback scene */
+  --l-paper-a16: rgb(250 251 252 / 16%); /* --paper -- their outline */
+
+  /* ---- Colour: semantic roles. Remapped here, never new hues. ---- */
+  --l-bg: var(--paper);
+  --l-bg-alt: var(--surface);
+  --l-bg-deep: var(--ink);
+  --l-text: var(--ink);
+  --l-text-soft: var(--muted); /* 4.9:1 on paper, 4.5:1 on surface */
+  --l-text-on-deep: var(--paper);
+  --l-text-on-deep-soft: var(--l-ink-300);
+  --l-text-on-brand: var(--paper); /* 7.7:1 */
+  --l-action: var(--biru);
+  --l-action-hover: var(--l-biru-700);
+  --l-action-press: var(--l-biru-800);
+  --l-money: var(--kuning); /* fills only, always with --ink text */
+  --l-money-text: var(--l-kuning-700);
+  --l-money-ground: var(--l-kuning-100);
+  --l-line: var(--line);
+  --l-focus: var(--biru);
+  --l-focus-on-deep: var(--l-biru-300);
+
+  /*
+   * ---- Bands ----
+   * Each section is a full-width band of one palette colour (landing.module.css
+   * .band*). A band sets these five roles and everything inside reads them, so
+   * a heading, a paragraph or a button looks right on whichever band it sits.
+   * Contrast of each pair is noted on the band class.
+   */
+  --band-text: var(--l-text);
+  --band-head: var(--l-text);
+  --band-soft: var(--l-text-soft);
+  --band-btn-bg: var(--l-action);
+  --band-btn-fg: var(--l-text-on-brand);
+  --band-btn-hover: var(--l-action-hover);
+  --band-line: var(--l-line);
+  --band-focus: var(--l-focus);
+
+  /*
+   * ---- Type: a 1.25 (major third) scale on a 17px body ----
+   * The product keeps DESIGN.md's six sizes. The landing page is exempt by
+   * owner decision (2026-10-03): a marketing page needs display sizes the
+   * dashboard never should. Fluid steps clamp between the 390px and 1280px
+   * layouts, so the scale holds its ratio at both ends.
+   */
+  --l-step--1: 13.6px; /* 17 / 1.25 */
+  --l-step-0: 17px;
+  --l-step-1: 21.25px;
+  --l-step-2: 26.56px;
+  --l-step-3: clamp(26.56px, 23.65px + 0.746vw, 33.2px);
+  --l-step-4: clamp(33.2px, 29.56px + 0.933vw, 41.5px);
+  --l-step-5: clamp(33.2px, 25.01px + 2.099vw, 51.88px);
+  --l-step-6: clamp(41.5px, 24.16px + 4.445vw, 81.06px);
+
+  /* Bricolage for headings; IBM Plex Sans for reading (loaded in app/(landing)/layout.tsx). */
+  --l-font-body: var(--font-plex-sans, 'IBM Plex Sans', system-ui, sans-serif);
+
+  /* Headlines are set heavy and tight: Bricolage at 800, close to touching. */
+  --l-weight-display: 800;
+  --l-leading-tight: 0.98;
+  --l-leading-snug: 1.06;
+  --l-leading-body: 1.55;
+  --l-tracking-display: -0.04em;
+  --l-tracking-heading: -0.03em;
+  --l-measure: 34em; /* about 68 characters of Plex Sans at body size */
+  --l-wordmark: 28px; /* the logotype; a mark, not a step of the text scale */
+
+  /* ---- Space: a 4px base ---- */
+  --l-space-1: 4px;
+  --l-space-2: 8px;
+  --l-space-3: 12px;
+  --l-space-4: 16px;
+  --l-space-5: 24px;
+  --l-space-6: 32px;
+  --l-space-7: 48px;
+  --l-space-8: 64px;
+  --l-space-9: 96px;
+  --l-space-10: 128px;
+  --l-gutter: 16px; /* 390px; widened below */
+  --l-max: 1200px;
+  --l-header-h: 88px; /* the floating nav pill plus its top gap; bands pad their tops by this */
+
+  /*
+   * ---- Radii: soft and generous, with a hierarchy ----
+   * Pills for anything you press, large rounded cards for anything that holds
+   * content, small corners for chips. Three sizes, never one for everything.
+   */
+  --l-radius-s: 6px; /* chips, small controls */
+  --l-radius-m: 16px; /* inner panels, inputs inside cards */
+  --l-radius-card: 28px; /* cards and picture frames */
+  --l-radius-phone: 40px; /* device frames */
+  --l-radius-pill: 999px; /* buttons, the claim field, the nav */
+
+  /* ---- No shadows. Surfaces separate by colour, the way the bands do. ---- */
+
+  /* ---- Motion ---- */
+  --l-dur-press: 120ms; /* colour on press and hover, the product's own budget */
+  --l-dur-reveal: 280ms; /* scroll reveals: under the 300ms ceiling */
+  --l-dur-step: 260ms; /* a step arriving in the leads story */
+  --l-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --l-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* the product's sheet curve */
+  --l-reveal-rise: 12px; /* under the 16px ceiling */
+}
+
+@media (min-width: 768px) {
+  [data-landing] {
+    --l-gutter: 32px;
+  }
+}
+
+@media (min-width: 1280px) {
+  [data-landing] {
+    --l-gutter: 48px;
+  }
+}
+
+/*
+ * In-page links (How it works, Pricing, FAQ) glide rather than jump, and land
+ * below the floating nav. Scoped with :has() to pages that contain the
+ * landing, so no other page's scrolling changes.
+ */
+html:has([data-landing]) {
+  scroll-padding-top: calc(var(--l-header-h, 88px) + 8px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has([data-landing]) {
+    scroll-behavior: smooth;
+  }
+}

@@ -1,0 +1,272 @@
+/*
+ * The biru-muda band, running up under the floating nav.
+ * 390px: promise, mechanism, the claim field; then the photo with the demo
+ * phone standing in front of its lower half.
+ * 1024px+: text left, photo right, the phone overlapping the photo's left
+ * edge and dropping past its bottom.
+ */
+
+.hero {
+  padding: calc(var(--l-header-h) + var(--l-space-7)) 0 var(--l-space-9);
+}
+
+.grid {
+  display: grid;
+  gap: var(--l-space-8);
+}
+
+/* Let the columns shrink to the screen: grid items otherwise refuse to go below their content's minimum. */
+.grid > * {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  max-width: 11ch;
+  color: var(--band-head);
+  font-family: var(--font-display);
+  font-size: var(--l-step-6);
+  font-weight: var(--l-weight-display);
+  line-height: var(--l-leading-tight);
+  letter-spacing: var(--l-tracking-display);
+  text-wrap: balance;
+}
+
+.sub {
+  margin: var(--l-space-5) 0 0;
+  max-width: 32em;
+  color: var(--band-soft);
+  font-size: var(--l-step-0);
+  text-wrap: pretty;
+}
+
+.actions {
+  margin-top: var(--l-space-6);
+}
+
+.note {
+  margin: var(--l-space-3) 0 0 var(--l-space-5);
+  color: var(--band-soft);
+  font-size: var(--l-step--1);
+}
+
+/* ---- The proof: a photo, and the real product in front of it ---- */
+
+.proof {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  margin: 0;
+}
+
+.proof .photo {
+  aspect-ratio: 4 / 3;
+  /* The phone covers the lower part; the label waits at the top. */
+  align-items: flex-start;
+}
+
+.phoneWrap {
+  position: relative;
+  width: min(100%, 300px);
+  margin-top: -120px;
+}
+
+/* The frame, status bar and address bar are Device; this is the page scrolling inside it. */
+.phone {
+  position: relative;
+}
+
+.screen {
+  height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+
+.screen::-webkit-scrollbar {
+  display: none;
+}
+
+/* The page's own full-screen sizing is the phone's job here (same move as the My Curios preview). */
+.screen > [data-bento-page] {
+  /* The stamped border the product's ask bar is known for; Soft pages drop it, the demo should not hide its signature. */
+  --ask-border: var(--biru);
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  margin: 0;
+  padding: 12px 14px 26px;
+  border-radius: 0;
+}
+
+/* Like a chat: the bar sits at the bottom of the screen, and answers arrive just above it. */
+.screen [data-ask-bar] {
+  margin-top: auto;
+}
+
+.thread {
+  margin: auto 0 var(--l-space-3);
+  padding-top: var(--l-space-4);
+}
+
+.thread + [data-ask-bar] {
+  margin-top: 0;
+}
+
+.asked {
+  margin: 0 0 0 auto;
+  width: fit-content;
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  font-size: var(--text-base);
+}
+
+/* A cue on the phone's bottom bezel, under the ask bar, outside the screen so it never covers an answer. */
+.hint {
+  position: absolute;
+  z-index: 1;
+  right: 22px;
+  bottom: -14px;
+  margin: 0;
+  padding: 4px 12px;
+  border-radius: var(--l-radius-pill);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--l-step--1);
+  font-weight: 600;
+}
+
+/* The cue has done its job once someone has asked. */
+.phone[data-asked='true'] .hint {
+  display: none;
+}
+
+.caption {
+  margin: var(--l-space-6) 0 0;
+  justify-self: start;
+  color: var(--band-soft);
+  font-size: var(--l-step--1);
+}
+
+@media (min-width: 1024px) {
+  .hero {
+    padding: calc(var(--l-header-h) + var(--l-space-8)) 0 var(--l-space-10);
+  }
+
+  .grid {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+    align-items: center;
+    gap: var(--l-space-9);
+  }
+
+  .proof {
+    justify-items: end;
+  }
+
+  .proof .photo {
+    aspect-ratio: 4 / 5;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding-left: 45%;
+  }
+
+  .phoneWrap {
+    position: absolute;
+    left: -56px;
+    bottom: -40px;
+    width: 280px;
+    margin: 0;
+  }
+
+  .caption {
+    position: absolute;
+    right: 0;
+    bottom: -48px;
+    margin: 0;
+    justify-self: end;
+  }
+}
+
+/* ---- Motion ---- */
+
+/* The demo's "typing" dots, before an answer streams in. */
+.typing {
+  display: inline-flex;
+  gap: 5px;
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--biru-muda);
+}
+
+.typing span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--l-biru-800);
+  opacity: 0.35;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .typing span {
+    animation: dot 900ms ease-in-out infinite;
+  }
+
+  .typing span:nth-child(2) {
+    animation-delay: 150ms;
+  }
+
+  .typing span:nth-child(3) {
+    animation-delay: 300ms;
+  }
+
+  @keyframes dot {
+    30% {
+      opacity: 1;
+      transform: translateY(-3px);
+    }
+  }
+
+  /*
+   * The page's opening: the headline rises in a word at a time, then the rest
+   * follows. Transform plus a partial fade, never from fully invisible, so
+   * the headline still paints (and counts as painted) at once.
+   */
+  .word {
+    display: inline-block;
+    animation: word 520ms var(--l-ease-out) both;
+    animation-delay: calc(var(--i) * 55ms);
+  }
+
+  @keyframes word {
+    from {
+      opacity: 0.15;
+      transform: translateY(0.35em);
+    }
+  }
+
+  .after {
+    animation: after 520ms var(--l-ease-out) 380ms both;
+  }
+
+  @keyframes after {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+  }
+
+  /* The phone settles in from below, a beat after the words. */
+  .phoneWrap {
+    animation: after 640ms var(--l-ease-out) 260ms both;
+  }
+}
+
+/* Their own address, once they start typing one: the line under the shop's name, in biru. */
+.phone[data-typed='true'] [data-bento-page] header p:last-of-type {
+  color: var(--biru);
+  font-weight: 600;
+}

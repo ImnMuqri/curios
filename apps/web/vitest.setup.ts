@@ -41,6 +41,7 @@ vi.mock('next/font/google', () => ({
   Bricolage_Grotesque: () => ({ variable: 'font-bricolage', className: 'font-bricolage' }),
   Inter: () => ({ variable: 'font-inter', className: 'font-inter' }),
   IBM_Plex_Mono: () => ({ variable: 'font-plex-mono', className: 'font-plex-mono' }),
+  IBM_Plex_Sans: () => ({ variable: 'font-plex-sans', className: 'font-plex-sans' }),
   Plus_Jakarta_Sans: () => ({ variable: 'font-jakarta', className: 'font-jakarta' }),
   Fraunces: () => ({ variable: 'font-fraunces', className: 'font-fraunces' }),
   Space_Grotesk: () => ({ variable: 'font-space-grotesk', className: 'font-space-grotesk' }),

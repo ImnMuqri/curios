@@ -1,0 +1,132 @@
+/*
+ * Sticky, but it takes no room of its own: the negative margin lets the hero
+ * band run up underneath it, so the pill floats on colour rather than sitting
+ * on a white strip.
+ */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--l-header-h);
+  margin-bottom: calc(-1 * var(--l-header-h));
+  padding-top: var(--l-space-3);
+  pointer-events: none;
+}
+
+.pill {
+  display: flex;
+  align-items: center;
+  gap: var(--l-space-4);
+  min-height: 64px;
+  padding: 0 var(--l-space-2) 0 var(--l-space-5);
+  border-radius: var(--l-radius-pill);
+  background: var(--card);
+  color: var(--ink);
+  pointer-events: auto;
+  transition: box-shadow 200ms ease;
+}
+
+/* Floating over content once the page moves: a hairline edge so it never melts into a white band. */
+.pill[data-scrolled='true'] {
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.link[aria-current='location'] {
+  background: var(--biru-muda);
+  color: var(--l-biru-800);
+}
+
+.pill :focus-visible {
+  outline-color: var(--biru);
+}
+
+.brand {
+  display: inline-flex;
+  margin-top: 2px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.sections {
+  display: none;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: var(--l-space-1);
+  margin-left: auto;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--l-space-3);
+  border-radius: var(--l-radius-pill);
+  color: var(--ink);
+  font-size: var(--l-step--1);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--l-dur-press) ease;
+}
+
+.link:hover {
+  background: var(--surface);
+}
+
+/* Sign-in as a quiet grey pill, the way it sits beside the button. */
+.signIn {
+  background: var(--surface);
+}
+
+.signIn:hover {
+  background: var(--line);
+}
+
+/* On the white pill the button is always the brand's, whatever band is behind. */
+.cta {
+  --band-btn-bg: var(--biru);
+  --band-btn-fg: var(--paper);
+  --band-btn-hover: var(--l-biru-700);
+  min-height: 48px;
+  padding: 0 var(--l-space-4);
+  font-size: var(--l-step--1);
+}
+
+.ctaLong {
+  display: none;
+}
+
+/* The narrowest phones: the button keeps its room before sign-in does. */
+@media (max-width: 380px) {
+  .signIn {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .pill {
+    padding-left: var(--l-space-6);
+  }
+
+  .cta {
+    padding: 0 var(--l-space-5);
+  }
+
+  .ctaLong {
+    display: inline;
+  }
+
+  .ctaShort {
+    display: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sections {
+    display: flex;
+    gap: var(--l-space-1);
+    margin-left: var(--l-space-5);
+  }
+}

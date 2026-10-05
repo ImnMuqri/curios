@@ -26,6 +26,10 @@ const config: NextConfig = {
   // out of the box; webpack does not unless told to also try .ts/.tsx for a
   // literal .js specifier.
   experimental: {
+    // Inline the stylesheets into the HTML so no CSS request blocks the first
+    // paint. They are small (about 15 KB for the landing page); measured on
+    // the landing page, it removed Lighthouse's render-blocking finding.
+    inlineCss: true,
     extensionAlias: { '.js': ['.ts', '.tsx', '.js'] },
   },
 };

@@ -1,0 +1,617 @@
+/*
+ * 390px: the steps, then one phone -- whichever one the current step is on.
+ * 1024px+: the steps hold the left column; both phones stand on the right,
+ * the owner's set lower than the customer's, because it happens later.
+ *
+ * kuning appears twice here, and both are its job: the capture card (a lead
+ * being caught) and the number in the owner's email (the money).
+ */
+
+.leads {
+  padding: var(--l-space-9) 0 var(--l-space-10);
+}
+
+.story {
+  display: grid;
+  gap: var(--l-space-6);
+  margin-top: var(--l-space-7);
+}
+
+/* ---- Steps ---- */
+
+.steps {
+  display: grid;
+  gap: var(--l-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stepButton {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: var(--l-space-3);
+  width: 100%;
+  padding: var(--l-space-3);
+  border: 0;
+  border-radius: var(--l-radius-m);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--l-dur-press) ease;
+}
+
+.stepButton:hover {
+  background: color-mix(in oklch, var(--band-text) 10%, transparent);
+}
+
+.stepNumber {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--band-line);
+  color: var(--band-soft);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--text-base);
+  transition: background var(--l-dur-step) ease, color var(--l-dur-step) ease, box-shadow var(--l-dur-step) ease;
+}
+
+.step[data-state='done'] .stepNumber {
+  background: color-mix(in oklch, var(--band-text) 18%, transparent);
+  box-shadow: none;
+  color: var(--band-text);
+}
+
+.step[data-state='now'] .stepNumber {
+  background: var(--band-text);
+  box-shadow: none;
+  color: var(--band-bg);
+}
+
+.stepText {
+  display: grid;
+  gap: 2px;
+  padding-top: 4px;
+}
+
+.stepTitle {
+  font-weight: 600;
+  line-height: var(--l-leading-snug);
+}
+
+.stepBody {
+  color: var(--band-soft);
+  font-size: var(--text-base);
+}
+
+/*
+ * Below 1024px the phone comes first and the steps become a row of numbers
+ * under it, with the current step spelled out in .caption. The step text
+ * stays in each button for a screen reader, clipped rather than removed.
+ */
+.stage {
+  order: -1;
+}
+
+.steps {
+  grid-template-columns: repeat(5, auto);
+  justify-content: start;
+  gap: var(--l-space-2);
+}
+
+.stepButton {
+  grid-template-columns: 32px;
+  padding: 6px;
+  border-radius: 50%;
+}
+
+.stepText {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.caption {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  min-height: 3.6em;
+}
+
+.controls {
+  justify-content: start;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+}
+
+.replay {
+  min-height: 44px;
+  padding: 0 var(--l-space-4);
+  border: 1.5px solid currentColor;
+  border-radius: var(--l-radius-pill);
+  background: transparent;
+  color: var(--band-text);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background var(--l-dur-press) ease;
+}
+
+.replay:hover {
+  background: var(--band-btn-bg);
+  color: var(--band-btn-fg);
+  border-color: var(--band-btn-bg);
+}
+
+.playing {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--l-space-2);
+  min-height: 44px;
+  margin: 0;
+  color: var(--band-soft);
+  font-size: var(--text-base);
+  font-variant-numeric: tabular-nums;
+}
+
+.playingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--band-text);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .playingDot {
+    animation: blink 1.2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    50% {
+      opacity: 0.25;
+    }
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Stage and devices ---- */
+
+.stage {
+  display: grid;
+  justify-items: start;
+}
+
+.device {
+  width: min(100%, 300px);
+  margin: 0;
+}
+
+.stage[data-showing='visitor'] [data-device='owner'],
+.stage[data-showing='owner'] [data-device='visitor'] {
+  display: none;
+}
+
+.deviceLabel {
+  margin-bottom: var(--l-space-3);
+  color: var(--band-soft);
+  font-size: var(--l-step--1);
+  font-weight: 600;
+}
+
+/* Inside the browser on the customer's phone: Kek Lina's page. The frame itself is Device. */
+.page {
+  height: 100%;
+  overflow: hidden;
+  padding: var(--l-space-3) var(--l-space-4) var(--l-space-6);
+  font-size: var(--text-base);
+}
+
+/* Each piece of the story arrives the way a chat message does: an 8px rise. */
+.story [data-shown] {
+  transition:
+    opacity var(--l-dur-step) var(--l-ease-out),
+    transform var(--l-dur-step) var(--l-ease-out),
+    visibility 0s;
+}
+
+.story [data-shown='no'] {
+  opacity: 0;
+  transform: translateY(8px);
+  visibility: hidden;
+  transition:
+    opacity var(--l-dur-step) var(--l-ease-out),
+    transform var(--l-dur-step) var(--l-ease-out),
+    visibility 0s var(--l-dur-step);
+}
+
+/* ---- The customer's side ---- */
+
+.shopName {
+  margin: 0 0 var(--l-space-4);
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: var(--l-tracking-heading);
+}
+
+
+.chat {
+  display: grid;
+  gap: var(--l-space-3);
+}
+
+.fromVisitor,
+.fromPage,
+.captureDone {
+  margin: 0;
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+
+.fromVisitor {
+  justify-self: end;
+  background: var(--card);
+  border: 1px solid var(--l-line);
+}
+
+.fromPage {
+  background: var(--biru-muda);
+}
+
+.capture {
+  padding: var(--l-space-4);
+  border-radius: var(--l-radius-m);
+  background: var(--l-money-ground);
+  box-shadow: inset 0 0 0 1.5px var(--l-money);
+}
+
+.captureLead {
+  margin: 0 0 var(--l-space-3);
+  font-weight: 600;
+}
+
+.captureLabel {
+  margin: 0 0 4px;
+  font-size: var(--text-sm);
+}
+
+.captureField {
+  margin: 0 0 var(--l-space-3);
+  padding: 10px 12px;
+  border-radius: var(--l-radius-s);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--l-line);
+  font-variant-numeric: tabular-nums;
+}
+
+.captureButton {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--l-radius-s);
+  background: var(--ink);
+  color: var(--paper);
+  font-weight: 600;
+  text-align: center;
+}
+
+.captureDone {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--l-line);
+}
+
+
+/* ---- The owner's side ---- */
+
+/* Before the lead: the owner's lock screen, at the hour the customer asked. */
+.lock {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  justify-items: center;
+  padding-top: 76px;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.lockTime {
+  margin: 2px 0 0;
+  font-family: var(--font-display);
+  font-size: var(--l-step-6);
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: var(--l-tracking-display);
+  font-variant-numeric: tabular-nums;
+}
+
+.lockDate {
+  margin: 0;
+  color: var(--l-ink-300);
+  font-weight: 600;
+}
+
+.asleep {
+  position: absolute;
+  bottom: var(--l-space-6);
+  margin: 0;
+  color: var(--l-ink-300);
+  font-size: var(--text-sm);
+}
+
+.email {
+  margin: var(--l-space-3);
+  padding: var(--l-space-4);
+  border-radius: var(--l-radius-m);
+  background: var(--card);
+  border: 1px solid var(--l-line);
+}
+
+.emailFrom {
+  display: flex;
+  justify-content: space-between;
+  margin: 0;
+  color: var(--l-text-soft);
+  font-size: var(--text-sm);
+}
+
+.emailSubject {
+  margin: 2px 0 var(--l-space-3);
+  font-weight: 700;
+}
+
+.emailLine {
+  margin: 0 0 var(--l-space-2);
+  font-size: var(--text-sm);
+}
+
+.emailFacts {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px var(--l-space-3);
+  margin: 0 0 var(--l-space-3);
+  font-size: var(--text-sm);
+}
+
+.emailFacts dt {
+  color: var(--l-text-soft);
+}
+
+.emailFacts dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.money {
+  justify-self: start;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--l-money);
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.emailReply {
+  margin: 0 0 var(--l-space-3);
+  padding: 10px 12px;
+  border-radius: var(--l-radius-s);
+  background: var(--biru);
+  color: var(--l-text-on-brand);
+  font-weight: 600;
+  text-align: center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .emailReply[data-pulse='yes'] {
+    animation: press 520ms var(--l-ease-out);
+  }
+
+  @keyframes press {
+    40% {
+      transform: scale(0.96);
+      background: var(--l-action-press);
+    }
+  }
+}
+
+.emailTranscript {
+  margin: 0;
+  padding: var(--l-space-2) var(--l-space-3);
+  border-left: 2px solid var(--l-line);
+  color: var(--l-text-soft);
+  font-size: var(--text-sm);
+}
+
+/* Step five: the reply composer slides up over the email, greeting already typed. */
+.whatsapp {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--l-space-4) var(--l-space-4) var(--l-space-6);
+  border-top: 1px solid var(--l-line);
+  background: var(--card);
+}
+
+.whatsapp[data-shown='no'] {
+  transform: translateY(100%);
+}
+
+.whatsappTo {
+  margin: 0 0 var(--l-space-2);
+  color: var(--l-text-soft);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.whatsappDraft {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 20px;
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.footnote {
+  margin: var(--l-space-7) 0 0;
+  max-width: var(--l-measure);
+  color: var(--band-soft);
+  font-size: var(--text-base);
+}
+
+/* ---- Wide: steps left, both phones right ---- */
+
+@media (min-width: 1024px) {
+  .story {
+    grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    grid-template-areas:
+      'steps stage'
+      'controls stage'
+      '. stage';
+    align-items: start;
+    column-gap: var(--l-space-8);
+  }
+
+  .steps {
+    grid-area: steps;
+  }
+
+  .controls {
+    grid-area: controls;
+  }
+
+  .stage {
+    grid-area: stage;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--l-space-6);
+    align-items: start;
+  }
+
+  .stage[data-showing] .device {
+    display: block;
+  }
+
+  .stage [data-device='owner'] {
+    margin-top: var(--l-space-8);
+  }
+
+
+  .stage {
+    order: 0;
+  }
+
+  .steps {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+    gap: var(--l-space-1);
+  }
+
+  .stepButton {
+    grid-template-columns: 32px 1fr;
+    padding: var(--l-space-3);
+    border-radius: var(--l-radius-m);
+  }
+
+  .stepText {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .caption {
+    display: none;
+  }
+
+  .controls {
+    justify-content: start;
+  }
+}
+
+
+/* ---- Motion ---- */
+
+/* The ring round the playing step: it fills for exactly as long as the step lasts. */
+.stepNumber {
+  position: relative;
+}
+
+.ring {
+  position: absolute;
+  inset: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  transform: rotate(-90deg);
+  pointer-events: none;
+}
+
+.ring circle {
+  fill: none;
+  stroke: var(--band-text);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ring circle {
+    animation: ring var(--step-ms) linear forwards;
+  }
+
+  @keyframes ring {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  /* The moment the lead lands, the owner's phone buzzes once. */
+  .story[data-step='4'] [data-device='owner'] [data-tone] {
+    animation: buzz 420ms ease-out;
+  }
+
+  @keyframes buzz {
+    15%,
+    55% {
+      transform: translateX(-3px) rotate(-0.6deg);
+    }
+
+    35%,
+    75% {
+      transform: translateX(3px) rotate(0.6deg);
+    }
+  }
+
+  /* The captured number lands with a small pop, so the eye goes to it. */
+  .story[data-step='4'] .money {
+    animation: pop 360ms var(--l-ease-spring) 200ms both;
+  }
+
+  @keyframes pop {
+    from {
+      transform: scale(0.85);
+    }
+  }
+}

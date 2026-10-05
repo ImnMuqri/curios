@@ -1,0 +1,177 @@
+/*
+ * A phone. The frame is ink with a faint lighter rim (ink mixed with paper)
+ * and two side buttons; the screen has a status bar, an optional app bar, a
+ * body that fills the rest, and the home indicator. Proportions are a real
+ * phone's (about 9:19.5), so content is not cut off at an arbitrary height.
+ */
+
+.device {
+  --frame: var(--ink);
+  --rim: color-mix(in oklch, var(--ink) 78%, var(--paper));
+  position: relative;
+  width: 100%;
+  aspect-ratio: 9 / 19;
+  /* With aspect-ratio, the automatic minimum size follows the content: a tall page inside would widen the phone past its column. */
+  min-width: 0;
+  min-height: 0;
+  padding: 7px;
+  border-radius: 48px;
+  background: var(--frame);
+  box-shadow: inset 0 0 0 1.5px var(--rim);
+}
+
+/* Side buttons: power on the right, volume on the left. */
+.device::before,
+.device::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--rim);
+}
+
+.device::before {
+  top: 22%;
+  right: -3px;
+  height: 11%;
+}
+
+.device::after {
+  top: 18%;
+  left: -3px;
+  height: 7%;
+  box-shadow: 0 calc(100% + 14px) 0 var(--rim);
+}
+
+.screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 41px;
+  background: var(--soft-page);
+  color: var(--ink);
+}
+
+/* ---- Status bar ---- */
+
+.status {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 4px 26px 0 30px;
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.device[data-tone='dark'] .status {
+  color: var(--paper);
+}
+
+.island {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  width: 30%;
+  height: 26px;
+  border-radius: 999px;
+  background: var(--frame);
+  transform: translateX(-50%);
+}
+
+.icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.icons svg {
+  fill: currentColor;
+}
+
+/* ---- App bars ---- */
+
+.browser {
+  flex: none;
+  padding: 2px 12px 8px;
+}
+
+.address {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 34px;
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--text-sm);
+  font-weight: 500;
+}
+
+.address svg {
+  fill: var(--muted);
+}
+
+.mail {
+  display: grid;
+  flex: none;
+  gap: 2px;
+  padding: 2px 18px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.back {
+  color: var(--biru);
+  font-size: var(--text-base);
+  font-weight: 500;
+}
+
+.mailTitle {
+  font-size: var(--text-base);
+  font-weight: 700;
+}
+
+/* ---- Body, overlay, home indicator ---- */
+
+.body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.home {
+  position: absolute;
+  z-index: 4;
+  bottom: 8px;
+  left: 50%;
+  width: 36%;
+  height: 5px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.35;
+  transform: translateX(-50%);
+}
+
+.device[data-tone='dark'] .home {
+  background: var(--paper);
+  opacity: 0.6;
+}
+
+/* A dark screen is dark all the way to the curve, so no pale edge shows round a lock screen. */
+.device[data-tone='dark'] .screen {
+  background: var(--ink);
+}
