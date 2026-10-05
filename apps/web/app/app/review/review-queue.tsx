@@ -1,6 +1,6 @@
 'use client';
 
-import { Callout } from '@curios/ui';
+import { EmptyState } from '../_ui/empty-state.js';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { ReviewFact } from '@curios/db-read';
@@ -110,7 +110,11 @@ export function ReviewQueue({
     // deliberately its SIBLING in page.tsx, so publishing is offered whether
     // or not facts remain -- moving this would hide the button exactly when
     // F5 says it must stay visible.
-    return <Callout tone="info">Nothing left to review. Publish when you are ready.</Callout>;
+    return (
+      <EmptyState icon="done" title="Nothing left to review">
+        Publish when you are ready.
+      </EmptyState>
+    );
   }
 
   return (

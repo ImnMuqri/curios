@@ -6,6 +6,7 @@ import { Button, Callout, Field } from '@curios/ui';
 import type { KnowledgeNeverSay } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './knowledge.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 const NEVER_SAY_ID = 'never-say';
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
@@ -78,7 +79,13 @@ export function NeverSayList({
         {error ? <Callout tone="error">{error}</Callout> : null}
       </form>
 
-      <p className={styles.meta}>{`${entries.length} of ${max}`}</p>
+      {entries.length === 0 ? (
+        <EmptyState icon="never" title="Nothing off-limits yet">
+          Add a word or topic above, and your page will never bring it up.
+        </EmptyState>
+      ) : (
+        <p className={styles.meta}>{`${entries.length} of ${max}`}</p>
+      )}
       <ul className={styles.list}>
         {entries.map((entry) => (
           <li key={entry.id} className={styles.row}>

@@ -9,6 +9,7 @@ import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, type TileSize } from '@curios/c
 import { useAutosave } from './use-autosave.js';
 import { SaveState } from './profile-editor.js';
 import styles from './curios.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 export type LinkItem = { id: string; label: string; url: string; size: TileSize | null };
 
@@ -166,7 +167,11 @@ export function LinksEditor({
   return (
     <section className={styles.section} aria-labelledby="links-title">
       <h2 id="links-title" className={styles.sectionTitle}>Links</h2>
-      {links.length === 0 ? <p className={styles.empty}>Add your first link: your shop, WhatsApp, portfolio, anything.</p> : null}
+      {links.length === 0 && !adding ? (
+        <EmptyState icon="links" title="No links yet" compact>
+          Add your first link: your shop, WhatsApp, portfolio, anything.
+        </EmptyState>
+      ) : null}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
         <SortableContext items={links.map((l) => l.id)} strategy={verticalListSortingStrategy}>

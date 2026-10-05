@@ -133,7 +133,7 @@ describe('FactList', () => {
   it('says so when a search matches nothing, and keeps the no-facts message for no facts', async () => {
     list();
     await userEvent.type(screen.getByRole('searchbox', { name: 'Search facts' }), 'zzzz');
-    expect(screen.getByText('No facts match your search.')).toBeInTheDocument();
+    expect(screen.getByText('No facts match your search')).toBeInTheDocument();
     expect(screen.queryByText(/no facts yet/i)).toBeNull();
   });
 

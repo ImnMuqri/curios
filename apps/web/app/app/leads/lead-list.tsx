@@ -6,6 +6,7 @@ import { Button, Callout } from '@curios/ui';
 import type { OwnerLead } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './leads.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 function toMessage(failure: unknown): string {
   return failure instanceof Error ? failure.message : 'Something failed. Try again.';
@@ -70,7 +71,9 @@ export function LeadList({
   if (leads.length === 0) {
     // An instruction, not a mood. FRONTEND.md's own wording, verbatim.
     return (
-      <Callout tone="info">No leads yet. Share your link and they will land here.</Callout>
+      <EmptyState icon="leads" title="No leads yet">
+        Share your link and they will land here.
+      </EmptyState>
     );
   }
 

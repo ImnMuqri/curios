@@ -6,6 +6,7 @@ import { Button, Callout, Field } from '@curios/ui';
 import type { OwnerTopic, OwnerWording } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './questions.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 export interface TopicActions {
   answer(topicId: string, answer: string): Promise<void>;
@@ -468,9 +469,9 @@ export function TopicList({
 }) {
   if (topics.length === 0) {
     return (
-      <Callout tone="info">
-        No questions yet. Share your link and they will show up here as people ask.
-      </Callout>
+      <EmptyState icon="questions" title="No questions yet">
+        Share your link, and what people ask your page shows up here, grouped by topic.
+      </EmptyState>
     );
   }
 
