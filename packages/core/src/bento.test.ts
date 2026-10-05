@@ -6,7 +6,11 @@ import {
   LABEL_MAX,
   linkKind,
   normalizeLinkUrl,
+  PAGE_BACKGROUNDS,
   readableOn,
+  STOCK_COVERS,
+  stockCoverKey,
+  stockCoverName,
   type TileSize,
 } from './bento.js';
 
@@ -127,5 +131,23 @@ describe('arrangeTiles', () => {
 
   it('returns nothing for no links', () => {
     expect(arrangeTiles([])).toEqual([]);
+  });
+});
+
+describe('stock covers', () => {
+  it('names a stock cover from its key, and nothing else', () => {
+    expect(stockCoverName(stockCoverKey('kedai'))).toBe('kedai');
+    expect(stockCoverName('stock/manis')).toBe('manis');
+    // An uploaded cover is a storage key, not a stock one.
+    expect(stockCoverName('covers/page1/abc.webp')).toBeNull();
+    // A made-up stock name must never resolve to a file path.
+    expect(stockCoverName('stock/../../etc/passwd')).toBeNull();
+    expect(stockCoverName('stock/')).toBeNull();
+    expect(stockCoverName(null)).toBeNull();
+  });
+
+  it('ships every cover the editor offers', () => {
+    expect(STOCK_COVERS).toEqual(['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis']);
+    expect(PAGE_BACKGROUNDS).toEqual(['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK']);
   });
 });

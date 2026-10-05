@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { HEADING_FONTS, PAGE_STYLES } from '@curios/core/bento';
+import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverKey, stockCoverName } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
-import { decodeAvatar } from './avatar.js';
+import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
 import { claimHandle, NoPageError, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { createS3Store, storageDisabled, type AvatarStore } from './storage.js';
 
@@ -93,6 +93,7 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
       schema: {
         body: z.object({
           style: z.enum(PAGE_STYLES).optional(),
+          background: z.enum(PAGE_BACKGROUNDS).optional(),
           accentColor: z.string().max(40).optional(),
           headingFont: z.enum(HEADING_FONTS).optional(),
           displayName: z.string().max(400).optional(),
@@ -150,6 +151,71 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
         request.log.warn({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'removed avatar object could not be deleted'),
       );
     }
+    return { status: 'removed' };
+  });
+
+  // ---- The cover photo: an upload, a stock cover, or none ----
+
+  /**
+   * The page's current cover, and a way to let go of the old one once the new
+   * one is recorded. Only an uploaded cover is an object in storage; a stock
+   * cover ships with the web app and is never removed.
+   */
+  async function coverOf(accountId: string) {
+    const page = await app.prisma.page.findUnique({ where: { accountId }, select: { id: true, coverKey: true } });
+    if (!page) throw new NoPageError();
+    return page;
+  }
+
+  function releaseCover(pageId: string, key: string | null, log: { warn: (o: object, m: string) => void }) {
+    if (!key || stockCoverName(key) || !store) return;
+    void store.remove(key).catch((error: unknown) =>
+      log.warn({ pageId, err: error instanceof Error ? error.message : String(error) }, 'old cover could not be removed'),
+    );
+  }
+
+  app.post(
+    '/pages/cover',
+    {
+      // COVER_MAX_BYTES (2 MB) base64-encoded is ~2.8 MB, with room for the JSON around it.
+      bodyLimit: 3 * 1024 * 1024 + 512 * 1024,
+      schema: { body: z.object({ contentType: z.string().max(40), data: z.string().max(2_900_000) }) },
+    },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      if (!store) throw new StorageNotConfiguredError();
+      const { body, ext } = decodeImage(request.body, COVER_MAX_BYTES);
+      const page = await coverOf(request.account.id);
+
+      // Random, so a replaced cover is never served from a stale cache.
+      const key = `covers/${page.id}/${randomUUID()}.${ext}`;
+      await store.put(key, body, request.body.contentType);
+      await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: key } });
+      // After the new key is recorded, never before: a failure leaves an orphaned object, not a page pointing at nothing.
+      releaseCover(page.id, page.coverKey, request.log);
+      return { coverKey: key };
+    },
+  );
+
+  // A stock cover needs no storage, so it works where uploads are switched off.
+  app.put(
+    '/pages/cover/stock',
+    { schema: { body: z.object({ name: z.enum(STOCK_COVERS) }) } },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      const page = await coverOf(request.account.id);
+      const key = stockCoverKey(request.body.name);
+      await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: key } });
+      releaseCover(page.id, page.coverKey, request.log);
+      return { coverKey: key };
+    },
+  );
+
+  app.delete('/pages/cover', async (request) => {
+    if (!request.account) throw new UnauthenticatedError();
+    const page = await coverOf(request.account.id);
+    await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: null } });
+    releaseCover(page.id, page.coverKey, request.log);
     return { status: 'removed' };
   });
 };

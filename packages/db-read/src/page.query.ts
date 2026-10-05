@@ -1,5 +1,5 @@
 import type { FactCategory } from '@curios/core';
-import type { HeadingFont, PageStyle, TileSize } from '@curios/core/bento';
+import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 
 export interface PublicLink {
@@ -39,6 +39,9 @@ export interface PublicPage {
   headingFont: HeadingFont;
   /** The picture's object key, or null. apps/web turns it into a URL. */
   avatarKey: string | null;
+  /** The cover: `stock/<name>` or a storage key; null is no cover. apps/web turns it into a URL. */
+  coverKey: string | null;
+  background: PageBackground;
 }
 
 /**
@@ -66,6 +69,8 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       accentColor: true,
       headingFont: true,
       avatarKey: true,
+      coverKey: true,
+      background: true,
       links: {
         orderBy: { position: 'asc' },
         select: { id: true, label: true, url: true, icon: true, position: true, size: true },

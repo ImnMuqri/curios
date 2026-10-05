@@ -14,6 +14,35 @@ export const PAGE_STYLES = ['SOFT', 'CONTRAST'] as const;
 export type PageStyle = (typeof PAGE_STYLES)[number];
 
 export const HEADING_FONTS = ['JAKARTA', 'BRICOLAGE', 'FRAUNCES', 'SPACE_GROTESK', 'DM_SERIF', 'OUTFIT'] as const;
+
+/**
+ * The page's background: one of the palette's bands, the same five the
+ * landing page is built from. Owners pick one; text and buttons on it are
+ * chosen by the page for contrast, never by the owner.
+ */
+export const PAGE_BACKGROUNDS = ['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK'] as const;
+export type PageBackground = (typeof PAGE_BACKGROUNDS)[number];
+
+/**
+ * The cover photos that ship with Curios, for owners without a photo of their
+ * own. Stored on the page as `stock/<name>` and served by the web app from
+ * /covers/<name>.webp; an uploaded cover is a storage key instead.
+ */
+export const STOCK_COVERS = ['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis'] as const;
+export type StockCover = (typeof STOCK_COVERS)[number];
+
+const STOCK_PREFIX = 'stock/';
+
+export function stockCoverKey(name: StockCover): string {
+  return `${STOCK_PREFIX}${name}`;
+}
+
+/** The stock cover a key names, or null when it is an uploaded cover (or not a key at all). */
+export function stockCoverName(key: string | null): StockCover | null {
+  if (!key?.startsWith(STOCK_PREFIX)) return null;
+  const name = key.slice(STOCK_PREFIX.length);
+  return (STOCK_COVERS as readonly string[]).includes(name) ? (name as StockCover) : null;
+}
 export type HeadingFont = (typeof HEADING_FONTS)[number];
 
 export const MAX_LINKS = 30;

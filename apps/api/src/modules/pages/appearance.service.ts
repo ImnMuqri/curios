@@ -5,6 +5,7 @@ import {
   DISPLAY_NAME_MAX,
   isHexColor,
   type HeadingFont,
+  type PageBackground,
   type PageStyle,
 } from '@curios/core/bento';
 import { NoPageError } from './page.service.js';
@@ -20,6 +21,7 @@ export class InvalidAppearanceError extends Error {
 
 export interface Appearance {
   style: PageStyle;
+  background: PageBackground;
   accentColor: string;
   headingFont: HeadingFont;
   displayName: string;
@@ -33,6 +35,7 @@ export async function updateAppearance(
 ): Promise<Appearance> {
   const data: Partial<Appearance> = {};
   if (input.style !== undefined) data.style = input.style;
+  if (input.background !== undefined) data.background = input.background;
   if (input.headingFont !== undefined) data.headingFont = input.headingFont;
   if (input.accentColor !== undefined) {
     if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #2340c8.');
@@ -55,6 +58,6 @@ export async function updateAppearance(
   if (updated.count !== 1) throw new NoPageError();
   return prisma.page.findUniqueOrThrow({
     where: { accountId },
-    select: { style: true, accentColor: true, headingFont: true, displayName: true, bio: true },
+    select: { style: true, background: true, accentColor: true, headingFont: true, displayName: true, bio: true },
   });
 }

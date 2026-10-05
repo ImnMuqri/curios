@@ -27,6 +27,19 @@ describe('BentoPage', () => {
     expect(screen.getByText('WhatsApp')).toBeInTheDocument();
   });
 
+  it("renders the owner's name as the page heading unless told otherwise", () => {
+    // The landing page embeds a demo page under its own h1. Two h1s would
+    // leave a screen reader -- and a search engine -- two answers to "what is
+    // this page".
+    const { unmount } = render(<BentoPage {...base} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Iman Muqri' })).toBeInTheDocument();
+    unmount();
+
+    render(<BentoPage {...base} nameAs="p" />);
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+    expect(screen.getByText('Iman Muqri').tagName).toBe('P');
+  });
+
   it('gives each tile its arranged size and tone', () => {
     render(<BentoPage {...base} />);
     const [first, second, third] = screen.getAllByRole('link');
@@ -183,5 +196,41 @@ describe('BentoPage', () => {
   it("keeps .head's room for the back button, so a fixed .panel elsewhere does not leave it stranded with nowhere to sit", () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\[data-mode='chat'\]\s*\.head\s*\{[^}]*padding-left:\s*44px;/s);
+  });
+});
+
+describe('BentoPage High contrast follows the accent', () => {
+  // The owner saw only the first tile change colour in High contrast: the
+  // second was fixed kuning and the rest fixed ink. Every tile now takes the
+  // accent: the second as a deep shade, the ink tiles in their label.
+  it("derives the second tile and the ink tiles' labels from the accent, not a fixed colour", () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    const contrast = css.match(/\.page\[data-style='CONTRAST'\]\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(contrast).toMatch(/--warm:\s*color-mix\([^;]*var\(--accent\)/);
+    expect(contrast).not.toMatch(/--warm:\s*var\(--kuning\)/);
+    expect(contrast).toMatch(/--warm-fg:\s*var\(--paper\)/);
+    expect(contrast).toMatch(/--plain-kind:\s*color-mix\([^;]*var\(--accent\)/);
+    expect(css).toMatch(/\.tile\[data-tone='warm'\]\s*\{[^}]*color:\s*var\(--warm-fg\)/);
+  });
+});
+
+describe('BentoPage cover and background', () => {
+  it('draws the cover above the name only when there is one, and marks the band', () => {
+    const { container, unmount } = render(<BentoPage {...base} coverUrl="/covers/teh.webp" background="MUDA" />);
+    const page = container.firstElementChild as HTMLElement;
+    expect(page).toHaveAttribute('data-bg', 'MUDA');
+    // Decorative: the name under it says whose page it is.
+    expect(container.querySelector('[data-cover-photo] img')).toHaveAttribute('alt', '');
+    unmount();
+
+    const plain = render(<BentoPage {...base} />);
+    expect(plain.container.firstElementChild).toHaveAttribute('data-bg', 'PAPER');
+    expect(plain.container.querySelector('[data-cover-photo]')).toBeNull();
+  });
+
+  it('drops a cover that fails to load, rather than showing a broken image', () => {
+    const { container } = render(<BentoPage {...base} coverUrl="/covers/missing.webp" />);
+    fireEvent.error(container.querySelector('[data-cover-photo] img')!);
+    expect(container.querySelector('[data-cover-photo]')).toBeNull();
   });
 });

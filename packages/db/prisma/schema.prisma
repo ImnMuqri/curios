@@ -81,6 +81,15 @@ enum PageStyle {
   CONTRAST
 }
 
+/// The page's background band, from the palette. PAPER is the look every page had before there was a choice.
+enum PageBackground {
+  PAPER
+  MUDA
+  KUNING
+  BIRU
+  INK
+}
+
 enum HeadingFont {
   JAKARTA
   BRICOLAGE
@@ -155,6 +164,9 @@ model Page {
   headingFont HeadingFont @default(JAKARTA)
   /// The object key of the uploaded picture in storage. Null is no picture.
   avatarKey   String?
+  /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
+  coverKey    String?
+  background  PageBackground @default(PAPER)
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]

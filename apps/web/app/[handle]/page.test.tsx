@@ -46,6 +46,8 @@ const page: PublicPage = {
   accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: null,
+  coverKey: null,
+  background: 'PAPER' as const,
 };
 
 describe('public page', () => {
@@ -86,6 +88,16 @@ describe('public page', () => {
     expect(bento).toHaveAttribute('data-style', 'CONTRAST');
     expect(bento.style.getPropertyValue('--accent')).toBe('#6d3fb3');
     expect(bento.style.getPropertyValue('--font-heading')).toBe('var(--font-fraunces)');
+  });
+
+  it("carries the owner's background and stock cover through to the page", async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, background: 'INK', coverKey: 'stock/kopi' });
+    const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const bento = container.querySelector('main > *') as HTMLElement;
+    expect(bento).toHaveAttribute('data-bg', 'INK');
+    // A stock cover needs no storage: it is served by the web app itself.
+    expect(container.querySelector('[data-cover-photo] img')).toHaveAttribute('src', '/covers/kopi.webp');
   });
 
   // Self-review addition: every other test's fixture has avatarKey: null, so

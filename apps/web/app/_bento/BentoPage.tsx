@@ -4,11 +4,13 @@ import {
   linkKind,
   readableOn,
   type HeadingFont,
+  type PageBackground,
   type PageStyle,
   type TileSize,
 } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
+import { Cover } from './Cover.js';
 import styles from './Bento.module.css';
 
 export interface BentoPageProps {
@@ -22,6 +24,15 @@ export interface BentoPageProps {
   headingFont: HeadingFont;
   /** False in the editor's live preview: tiles become boxes that cannot navigate. */
   interactive?: boolean;
+  /**
+   * The element the owner's name renders as. h1 on the page itself; the landing
+   * page shows a demo page inside its own document, which already has its h1.
+   */
+  nameAs?: 'h1' | 'p';
+  /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
+  background?: PageBackground;
+  /** The cover photo's URL (stock or uploaded), or null for none. */
+  coverUrl?: string | null;
   /** The ask bar, on the public page. */
   children?: ReactNode;
 }
@@ -44,7 +55,7 @@ export interface BentoPageProps {
  * separately-collapsing pieces.
  */
 export function BentoPage(props: BentoPageProps) {
-  const { interactive = true } = props;
+  const { interactive = true, nameAs: Name = 'h1' } = props;
   const tiles = arrangeTiles(props.links);
   const vars = {
     '--accent': props.accentColor,
@@ -56,13 +67,16 @@ export function BentoPage(props: BentoPageProps) {
       className={styles.page}
       data-bento-page
       data-style={props.style}
+      data-bg={props.background ?? 'PAPER'}
+      data-cover={props.coverUrl ? 'yes' : 'no'}
       data-on-accent={readableOn(props.accentColor)}
       style={vars}
     >
+      {props.coverUrl ? <Cover src={props.coverUrl} /> : null}
       <header className={styles.head}>
         {props.avatarUrl ? <Avatar src={props.avatarUrl} name={props.displayName} /> : null}
         <div>
-          <h1 className={styles.name}>{props.displayName}</h1>
+          <Name className={styles.name}>{props.displayName}</Name>
           <p className={styles.handle}>curios.my/{props.handle}</p>
         </div>
       </header>
