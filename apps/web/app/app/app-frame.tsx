@@ -46,6 +46,23 @@ const TITLES: Record<string, string> = {
 };
 
 /**
+ * Each screen's colour band, behind its title -- the landing page's bands,
+ * from the same palette. Cobalt for your own page, warm where a human needs
+ * to act or money is involved (DESIGN.md: kuning's one job), pale blue for
+ * the rest, dark for billing.
+ */
+const BANDS: Record<string, 'BIRU' | 'KUNING' | 'MUDA' | 'INK'> = {
+  '/app/curios': 'BIRU',
+  '/app/review': 'KUNING',
+  '/app/knowledge': 'MUDA',
+  '/app/questions': 'MUDA',
+  '/app/leads': 'KUNING',
+  '/app/billing': 'INK',
+  '/app/settings': 'MUDA',
+  '/app/onboarding': 'BIRU',
+};
+
+/**
  * The dashboard's frame: a sidebar of grouped modules, a top bar with where
  * you are and a way to see your page, and the screen itself.
  *
@@ -105,7 +122,7 @@ export function AppFrame({
         </div>
       </aside>
 
-      <div className={styles.main}>
+      <div className={styles.main} data-band={BANDS[Object.keys(BANDS).find((href) => pathname.startsWith(href)) ?? '']}>
         <header className={styles.top}>
           <button
             type="button"

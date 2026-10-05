@@ -10,6 +10,7 @@
   font-family: var(--font-display);
   font-size: var(--shell-title-size, var(--text-lg));
   font-weight: var(--shell-title-weight, 700);
+  color: var(--shell-title-color, inherit);
   line-height: var(--shell-title-leading, inherit);
   letter-spacing: var(--shell-title-tracking, -0.02em);
 }
@@ -22,5 +23,5 @@
 .lede {
   margin: 0 0 24px;
   font-size: var(--text-body);
-  color: var(--muted);
+  color: var(--shell-lede-color, var(--muted));
 }

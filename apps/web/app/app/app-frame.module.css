@@ -28,6 +28,9 @@
   --field-size: var(--text-base);
   --callout-radius: 12px;
   --callout-size: var(--text-base);
+  /* Info bars sit on the colour bands too: white with a hairline, like the cards. */
+  --callout-info-bg: var(--card);
+  --callout-info-edge: inset 0 0 0 1px var(--line);
   --shell-max: 880px;
   --shell-margin: 0;
   --shell-padding: 0;
@@ -170,10 +173,51 @@
 /* ---- Top bar and content ---- */
 
 .main {
+  position: relative;
+  isolation: isolate;
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+}
+
+/*
+ * The band: full width under the top bar, tall enough to hold the title and
+ * its lede, so the first cards rise over its foot. Same mixes as the public
+ * page's bands (Bento.module.css), so the two read as one palette. Each band
+ * sets the title's and lede's colours through Shell's hooks.
+ */
+.main[data-band]::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 60px;
+  left: 0;
+  right: 0;
+  height: 172px;
+  background: var(--band-bg);
+}
+
+.main[data-band='BIRU'] {
+  --band-bg: var(--biru);
+  --shell-title-color: var(--paper);
+  --shell-lede-color: color-mix(in oklch, var(--paper) 82%, var(--biru));
+}
+
+.main[data-band='INK'] {
+  --band-bg: var(--ink);
+  --shell-title-color: var(--paper);
+  --shell-lede-color: color-mix(in oklch, var(--paper) 72%, var(--ink));
+}
+
+.main[data-band='MUDA'] {
+  --band-bg: var(--biru-muda);
+  --shell-lede-color: color-mix(in oklch, var(--ink) 78%, var(--biru-muda));
+}
+
+.main[data-band='KUNING'] {
+  --band-bg: color-mix(in oklch, var(--kuning) 22%, var(--paper));
+  --shell-lede-color: color-mix(in oklch, var(--ink) 78%, var(--kuning));
 }
 
 .top {
@@ -274,5 +318,10 @@
 
   .content {
     padding: 24px 16px 48px;
+  }
+
+  /* The lede wraps to two lines on a phone. */
+  .main[data-band]::before {
+    height: 200px;
   }
 }

@@ -4,8 +4,8 @@
 .editor { display: grid; grid-template-columns: minmax(0, 760px) minmax(300px, 1fr); gap: 40px; align-items: start; }
 .controls { min-width: 0; }
 .intro { margin-bottom: 24px; }
-.title { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--text-display); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; }
-.lede { margin: 0; color: var(--muted); font-size: var(--text-body); }
+.title { margin: 0 0 6px; font-family: var(--font-display); font-size: var(--text-display); font-weight: 800; line-height: 1.05; letter-spacing: -0.03em; color: var(--shell-title-color, inherit); }
+.lede { margin: 0; color: var(--shell-lede-color, var(--muted)); font-size: var(--text-body); }
 .section { margin-bottom: 16px; padding: 22px 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
 .sectionTitle { margin: 0 0 16px; font-family: var(--font-display); font-size: var(--text-body); font-weight: 700; letter-spacing: -0.01em; }
 .empty { color: var(--muted); font-size: var(--text-base); }

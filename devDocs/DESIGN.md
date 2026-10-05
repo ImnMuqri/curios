@@ -147,6 +147,14 @@ for data only (a phone number, a published address). The motion rule above still
 for the dashboard: no entrance animations. Claiming a page, before any dashboard exists,
 uses `AuthShell`, as the next step after sign-up.
 
+*Amended 2026-10-05: colour bands.* The owner found the dashboard too plain, so each
+screen's title now sits on a full-width band from the palette, the landing page's
+bands, quieter, with the first cards rising over its foot: cobalt for My Curios and
+Add a source, warm (kuning at 22% on paper) for Review and Leads, where a human needs
+to act or money is involved, pale blue for Knowledge, Questions and Settings, and ink
+for Billing. Set in `app-frame.tsx` (BANDS) and drawn by `app-frame.module.css`; each
+band sets the title and lede colours through Shell's hooks. Flat colour, no gradient.
+
 ---
 
 ## Components worth naming
