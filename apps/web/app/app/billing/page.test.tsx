@@ -72,9 +72,10 @@ describe('BillingPage', () => {
     // screen it wraps, this one included, so a second one here would nest.
     expect(screen.queryByRole('main')).toBeNull();
     expect(PayButtons).toHaveBeenCalledTimes(1);
+    // Each a plan card now, the yearly one featured; the button words still say exactly what happens.
     expect(PayButtons.mock.calls[0]?.[0].options).toEqual([
-      { plan: 'MONTHLY', label: 'Pay RM39 for a month' },
-      { plan: 'ANNUAL', label: 'Pay RM390 for a year' },
+      expect.objectContaining({ plan: 'MONTHLY', label: 'Pay RM39 for a month', price: 'RM39', per: 'a month' }),
+      expect.objectContaining({ plan: 'ANNUAL', label: 'Pay RM390 for a year', price: 'RM390', per: 'a year', featured: true }),
     ]);
   });
 
@@ -117,7 +118,11 @@ describe('BillingPage', () => {
 
     await renderWith(page);
 
-    expect(screen.getByText('12 September 2026 — RM39 for a month, paid')).toBeInTheDocument();
+    // A table row: when, what, and whether it went through.
+    const row = screen.getByText('12 September 2026').closest('li')!;
+    expect(row).toHaveTextContent('RM39 for a month');
+    expect(row).toHaveTextContent('Covers you until 12 October 2026');
+    expect(row).toHaveTextContent('Paid');
   });
 
   it('offers the reset to a page that never paid and spent leads testing itself', async () => {

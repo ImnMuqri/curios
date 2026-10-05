@@ -47,16 +47,16 @@ const TITLES: Record<string, string> = {
 
 /**
  * Each screen's colour band, behind its title -- the landing page's bands,
- * from the same palette. Cobalt for your own page, warm where a human needs
- * to act or money is involved (DESIGN.md: kuning's one job), pale blue for
- * the rest, dark for billing.
+ * from the same palette. Cobalt for your own page and for leads, warm for
+ * Review, where a human needs to act (DESIGN.md: kuning's one job), pale blue
+ * for the rest, dark for billing.
  */
 const BANDS: Record<string, 'BIRU' | 'KUNING' | 'MUDA' | 'INK'> = {
   '/app/curios': 'BIRU',
   '/app/review': 'KUNING',
   '/app/knowledge': 'MUDA',
   '/app/questions': 'MUDA',
-  '/app/leads': 'KUNING',
+  '/app/leads': 'BIRU',
   '/app/billing': 'INK',
   '/app/settings': 'MUDA',
   '/app/onboarding': 'BIRU',

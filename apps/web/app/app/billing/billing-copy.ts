@@ -41,6 +41,33 @@ export function planSummary(state: PlanState): string {
   }
 }
 
+/** The plan in two words, for the badge over the summary, and how loudly to say it. */
+export function planBadge(state: PlanState): { text: string; tone: 'biru' | 'muda' | 'kuning' } {
+  switch (state.kind) {
+    case 'personal':
+      return { text: 'Personal', tone: 'muda' };
+    case 'paid':
+      return { text: 'Business', tone: 'biru' };
+    case 'trial':
+      return state.lapsedOn ? { text: 'Plan ended', tone: 'kuning' } : { text: 'Free trial', tone: 'muda' };
+    case 'trialSpent':
+      return { text: 'Trial used up', tone: 'kuning' };
+    case 'lapsed':
+      return { text: 'Plan ended', tone: 'kuning' };
+  }
+}
+
+/** One payment as the payments table shows it: when, what, and whether it went through. */
+export function paymentParts(payment: OwnerPayment): { date: string; what: string; paid: boolean; until: string | null } {
+  const paid = payment.status === 'PAID' && payment.paidAt !== null;
+  return {
+    date: formatDate(paid && payment.paidAt ? payment.paidAt : payment.createdAt),
+    what: `${ringgit(payment.amountCents)} for ${payment.plan === 'ANNUAL' ? 'a year' : 'a month'}`,
+    paid,
+    until: paid && payment.grantedUntil ? formatDate(payment.grantedUntil) : null,
+  };
+}
+
 export interface PaymentBanner {
   tone: 'info' | 'error';
   text: string;

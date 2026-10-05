@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_LEADS, planState } from '@curios/core';
-import { formatDate, paymentBanner, paymentLine, planSummary, ringgit, usageSummary } from './billing-copy.js';
+import { formatDate, paymentBanner, paymentLine, paymentParts, planBadge, planSummary, ringgit, usageSummary } from './billing-copy.js';
 
 const NOW = new Date('2026-09-14T08:00:00.000Z');
 
@@ -149,5 +149,34 @@ describe('paymentLine', () => {
     expect(paymentLine({ ...base, plan: 'ANNUAL', amountCents: 39000 })).toBe(
       '12 September 2026 — RM390 for a year, paid',
     );
+  });
+});
+
+describe('planBadge', () => {
+  it('names each plan in two words, loud only when the plan has run out', () => {
+    expect(planBadge(stateOf({ mode: 'PERSONAL' }))).toEqual({ text: 'Personal', tone: 'muda' });
+    expect(planBadge(stateOf({ leadsCaptured: 1 }))).toEqual({ text: 'Free trial', tone: 'muda' });
+    expect(planBadge(stateOf({ paidUntil: new Date('2099-01-01T00:00:00.000Z') }))).toEqual({ text: 'Business', tone: 'biru' });
+    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS }))).toEqual({ text: 'Trial used up', tone: 'kuning' });
+    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2020-01-01T00:00:00.000Z') }))).toEqual({ text: 'Plan ended', tone: 'kuning' });
+  });
+});
+
+describe('paymentParts', () => {
+  const base = { id: 'p', plan: 'ANNUAL' as const, amountCents: 39000, createdAt: new Date('2026-09-11T10:00:00.000Z') };
+
+  it('dates a paid payment by when it was paid, and says how long it covers', () => {
+    expect(
+      paymentParts({ ...base, status: 'PAID', paidAt: new Date('2026-09-11T20:00:00.000Z'), grantedUntil: new Date('2027-09-12T00:00:00.000Z') }),
+    ).toEqual({ date: '12 September 2026', what: 'RM390 for a year', paid: true, until: '12 September 2027' });
+  });
+
+  it('dates an unfinished one by when it was started, and promises nothing', () => {
+    expect(paymentParts({ ...base, status: 'PENDING', paidAt: null, grantedUntil: null })).toEqual({
+      date: '11 September 2026',
+      what: 'RM390 for a year',
+      paid: false,
+      until: null,
+    });
   });
 });

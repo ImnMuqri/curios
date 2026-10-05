@@ -4,11 +4,19 @@ import type { BillingPlan } from '@curios/core';
 import { Button, Callout } from '@curios/ui';
 import { useState } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
-import panel from '../panel.module.css';
+import styles from './billing.module.css';
 
 export interface PayOption {
   plan: BillingPlan;
+  /** The button's words, which say exactly what happens: "Pay RM39 for a month". */
   label: string;
+  /** The card around the button, when there is one: "Monthly", "RM39", "a month". */
+  name?: string;
+  price?: string;
+  per?: string;
+  note?: string;
+  /** Drawn in cobalt, as the landing page draws its Business plan. */
+  featured?: boolean;
 }
 
 /**
@@ -57,17 +65,28 @@ export function PayButtonsForm({
   }
 
   return (
-    <div className={panel.buttons}>
-      {options.map((option) => (
-        <Button
-          key={option.plan}
-          busy={busy === option.plan}
-          disabled={busy !== null && busy !== option.plan}
-          onClick={() => void pay(option.plan)}
-        >
-          {option.label}
-        </Button>
-      ))}
+    <div>
+      <div className={styles.plans}>
+        {options.map((option) => (
+          <div key={option.plan} className={styles.plan} data-featured={option.featured || undefined}>
+            {option.name ? <p className={styles.planName}>{option.name}</p> : null}
+            {option.price ? (
+              <p className={styles.planPrice}>
+                {option.price}
+                {option.per ? <span> {option.per}</span> : null}
+              </p>
+            ) : null}
+            {option.note ? <p className={styles.planNote}>{option.note}</p> : null}
+            <Button
+              busy={busy === option.plan}
+              disabled={busy !== null && busy !== option.plan}
+              onClick={() => void pay(option.plan)}
+            >
+              {option.label}
+            </Button>
+          </div>
+        ))}
+      </div>
       {error ? <Callout tone="error">{error}</Callout> : null}
     </div>
   );
