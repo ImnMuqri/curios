@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { BlockedAddressError } from '@curios/core';
-import { getIngestion, startIngestion, type QueueLike } from './ingest.service.js';
+import { getIngestion, startFromFile, startIngestion, type QueueLike } from './ingest.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -179,5 +179,51 @@ describe('getIngestion', () => {
 
   it('returns null for an unknown id', async () => {
     expect(await getIngestion(prisma, accountId, 'nope')).toBeNull();
+  });
+});
+
+describe('startFromFile', () => {
+  const asBase64 = (text: string) => Buffer.from(text, 'utf8').toString('base64');
+
+  it("stores the file's text as the source, named by the file, and enqueues it like pasted text", async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    const { ingestionId, truncated } = await startFromFile(
+      { prisma, queue: { add }, guard: async () => {} },
+      accountId,
+      { pageId, fileName: 'C:\\Users\\me\\Iman-resume.txt', data: asBase64('Iman Muqri\nSoftware developer') },
+    );
+
+    const row = await prisma.ingestion.findUniqueOrThrow({
+      where: { id: ingestionId },
+      select: { status: true, sourceUrl: true, pastedText: true, fileName: true },
+    });
+    expect(row).toEqual({ status: 'QUEUED', sourceUrl: null, pastedText: 'Iman Muqri\nSoftware developer', fileName: 'Iman-resume.txt' });
+    expect(truncated).toBe(false);
+    expect(add).toHaveBeenCalledOnce();
+  });
+
+  it('checks the page is yours before opening the file', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    await expect(
+      startFromFile({ prisma, queue: { add }, guard: async () => {} }, 'someone-else', {
+        pageId,
+        fileName: 'x.txt',
+        data: asBase64('anything'),
+      }),
+    ).rejects.toThrow(/No such page/);
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing and queues nothing for a file it cannot read', async () => {
+    const add = vi.fn<QueueLike['add']>(async () => ({ id: 'job-1' }));
+    await expect(
+      startFromFile({ prisma, queue: { add }, guard: async () => {} }, accountId, {
+        pageId,
+        fileName: 'photo.png',
+        data: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0, 0]).toString('base64'),
+      }),
+    ).rejects.toThrow(/PDF, a Word document/);
+    expect(await prisma.ingestion.count()).toBe(0);
+    expect(add).not.toHaveBeenCalled();
   });
 });

@@ -62,6 +62,7 @@
 }
 
 /* The Sources tab opens with its Add button; the list keeps its distance. */
-button + .list {
+button + .list,
+form + .list {
   margin-top: 16px;
 }

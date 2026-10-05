@@ -1,6 +1,7 @@
 import { BlockedAddressError, INGEST_QUEUE, inspectSourceUrl, type IngestJobData } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import type { HostGuard } from './host-guard.js';
+import { readSourceFile, UnreadableFileError } from './file-text.js';
 
 /**
  * The shape `enqueue` below actually passes, and the one a re-check
@@ -121,6 +122,39 @@ async function startFromPastedText(
   // lives in one place and the job stays small.
   await enqueue(deps.queue, { ingestionId: ingestion.id, pageId });
   return { ingestionId: ingestion.id };
+}
+
+/** The name shown in the Sources list: the last path segment, trimmed, never empty. */
+function cleanFileName(name: string): string {
+  const base = name.split(/[\\/]/).pop()?.replace(/\s+/g, ' ').trim() ?? '';
+  const chars = [...base];
+  if (chars.length === 0) return 'Uploaded file';
+  return chars.length <= 200 ? base : chars.slice(0, 200).join('');
+}
+
+/**
+ * A file as a source: its text is read here, in the request -- it is parsing,
+ * not generation, and the owner should hear "that is a scan" now, not from a
+ * failed job later -- then it is stored and enqueued exactly like pasted text.
+ * Ownership is checked before the file is opened.
+ */
+export async function startFromFile(
+  deps: IngestDeps,
+  accountId: string,
+  input: { pageId: string; fileName: string; data: string },
+): Promise<{ ingestionId: string; truncated: boolean }> {
+  await assertOwnsPage(deps.prisma, accountId, input.pageId);
+
+  const bytes = Buffer.from(input.data, 'base64');
+  if (bytes.byteLength === 0) throw new UnreadableFileError('That file is empty.');
+  const { text, truncated } = await readSourceFile(new Uint8Array(bytes));
+
+  const ingestion = await deps.prisma.ingestion.create({
+    data: { pageId: input.pageId, pastedText: text, fileName: cleanFileName(input.fileName) },
+    select: { id: true },
+  });
+  await enqueue(deps.queue, { ingestionId: ingestion.id, pageId: input.pageId });
+  return { ingestionId: ingestion.id, truncated };
 }
 
 async function assertOwnsPage(prisma: PrismaClient, accountId: string, pageId: string): Promise<void> {
