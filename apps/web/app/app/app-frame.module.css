@@ -1,7 +1,41 @@
-/* The dashboard speaks Plus Jakarta Sans; the public page keeps its own fonts. */
+/*
+ * The dashboard's frame, in the landing page's family but quieter: a clean,
+ * white workspace with hairline dividers, Bricolage for titles, IBM Plex Sans
+ * for everything you read, and biru spent only where you act or where you are.
+ * The public page keeps its own fonts.
+ */
 .frame {
-  --font-display: var(--font-jakarta), system-ui, sans-serif;
-  --font-body: var(--font-jakarta), system-ui, sans-serif;
+  --font-display: var(--font-bricolage), system-ui, sans-serif;
+  --font-body: var(--font-plex-sans), system-ui, sans-serif;
+  /* Biru, a step deeper: text on biru-muda, 11:1. */
+  --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--ink));
+
+  /* The shared components, in the landing page's voice (see the hooks in @curios/ui). */
+  --button-height: 40px;
+  --button-padding: 0 18px;
+  --button-radius: 999px;
+  --button-size: var(--text-base);
+  --button-weight: 600;
+  --button-secondary-bg: var(--card);
+  --button-secondary-border: var(--line);
+  --field-label-font: var(--font-body);
+  --field-label-size: var(--text-base);
+  --field-label-weight: 600;
+  --field-label-case: none;
+  --field-label-tracking: 0;
+  --field-label-color: var(--ink);
+  --field-label-gap: 8px;
+  --field-size: var(--text-base);
+  --callout-radius: 12px;
+  --callout-size: var(--text-base);
+  --shell-max: 880px;
+  --shell-margin: 0;
+  --shell-padding: 0;
+  --shell-title-size: var(--text-display);
+  --shell-title-weight: 800;
+  --shell-title-tracking: -0.03em;
+  --shell-title-leading: 1.05;
+  --shell-title-margin: 0 0 24px;
   display: flex;
   min-height: 100vh;
   background: var(--paper);
@@ -9,44 +43,45 @@
   font-family: var(--font-body);
 }
 
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- Sidebar ---- */
+
 .side {
-  width: 232px;
+  position: sticky;
+  top: 0;
+  width: 240px;
+  height: 100vh;
   flex: none;
   display: flex;
   flex-direction: column;
-  padding: 18px 12px;
+  padding: 18px 12px 14px;
   background: var(--card);
   border-right: 1px solid var(--line);
 }
 
 .brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 8px 18px;
-  font-weight: 800;
-  font-size: var(--text-body);
-  letter-spacing: -0.02em;
+  --l-wordmark: 24px;
+  display: inline-flex;
+  align-self: flex-start;
+  margin: 2px 0 22px 10px;
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.mark {
-  width: 22px;
-  height: 22px;
-  border-radius: 6px;
-  display: grid;
-  place-items: center;
-  background: var(--biru);
-  color: var(--card);
-  font-size: var(--text-sm);
-}
-
+/* Section names in plain words, not shouted: small, sentence case, grey. */
 .group {
-  margin: 12px 0 4px;
+  margin: 18px 0 6px;
   padding: 0 10px;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--text-sm);
+  font-weight: 500;
   color: var(--muted);
 }
 
@@ -54,14 +89,15 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  min-height: 40px;
+  min-height: 36px;
+  margin-bottom: 2px;
   padding: 0 10px;
   border-radius: 8px;
   font-size: var(--text-base);
   font-weight: 500;
   color: var(--ink);
   text-decoration: none;
-  transition: background-color 120ms ease;
+  transition: background-color 120ms ease, color 120ms ease;
 }
 
 .item:hover {
@@ -70,8 +106,8 @@
 
 .item[aria-current='page'] {
   background: var(--biru-muda);
-  color: var(--biru);
-  font-weight: 700;
+  color: var(--biru-deep);
+  font-weight: 600;
 }
 
 .icon {
@@ -83,16 +119,20 @@
   stroke-width: 1.8;
   stroke-linecap: round;
   stroke-linejoin: round;
+  opacity: 0.85;
 }
 
+/* Waiting for review: kuning, because a human needs to act. */
 .count {
   margin-left: auto;
+  min-width: 20px;
   padding: 1px 7px;
   border-radius: 999px;
   background: var(--kuning);
   color: var(--ink);
   font-size: var(--text-xs);
   font-weight: 700;
+  text-align: center;
 }
 
 .who {
@@ -100,29 +140,34 @@
   align-items: center;
   gap: 10px;
   margin-top: auto;
-  padding: 12px 8px 0;
+  padding: 12px 10px 4px;
   border-top: 1px solid var(--line);
-  font-size: var(--text-sm);
+  font-size: var(--text-base);
   font-weight: 600;
 }
 
 .who small {
   display: block;
   font-weight: 400;
+  font-size: var(--text-sm);
   color: var(--muted);
 }
 
 .avatar {
-  width: 30px;
-  height: 30px;
+  width: 32px;
+  height: 32px;
+  flex: none;
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: var(--biru-muda);
-  color: var(--biru);
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-display);
   font-size: var(--text-xs);
   font-weight: 700;
 }
+
+/* ---- Top bar and content ---- */
 
 .main {
   flex: 1;
@@ -132,11 +177,14 @@
 }
 
 .top {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
   gap: 12px;
-  height: 56px;
-  padding: 0 24px;
+  height: 60px;
+  padding: 0 32px;
   background: var(--card);
   border-bottom: 1px solid var(--line);
   font-size: var(--text-base);
@@ -146,15 +194,35 @@
   color: var(--muted);
 }
 
+/* The one outbound action, as the landing page draws a secondary button: a pill outline. */
 .view {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin-left: auto;
-  padding: 7px 12px;
-  border: 1.5px solid var(--ink);
-  border-radius: 8px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
   color: var(--ink);
-  font-size: var(--text-sm);
-  font-weight: 700;
+  font-size: var(--text-base);
+  font-weight: 600;
   text-decoration: none;
+  transition: background-color 120ms ease;
+}
+
+.view:hover {
+  background: var(--surface);
+}
+
+.viewIcon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .menu {
@@ -162,7 +230,9 @@
 }
 
 .content {
-  padding: 28px 24px 64px;
+  width: 100%;
+  max-width: 1680px;
+  padding: 36px 32px 72px;
 }
 
 /* A phone: the sidebar folds behind the menu button. */
@@ -172,8 +242,10 @@
   }
 
   .side {
+    position: static;
     display: none;
     width: 100%;
+    height: auto;
     border-right: 0;
     border-bottom: 1px solid var(--line);
   }
@@ -182,19 +254,25 @@
     display: flex;
   }
 
+  .top {
+    padding: 0 16px;
+  }
+
   .menu {
     display: inline-flex;
-    min-height: 40px;
+    min-height: 36px;
     align-items: center;
-    padding: 0 12px;
-    border: 1.5px solid var(--line);
-    border-radius: 8px;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--line);
     background: var(--card);
+    color: var(--ink);
     font: inherit;
     font-weight: 600;
   }
 
   .content {
-    padding: 20px 16px 48px;
+    padding: 24px 16px 48px;
   }
 }

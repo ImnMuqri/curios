@@ -8,6 +8,7 @@ import { MyCuriosEditor } from './my-curios.js';
 const initial = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
   style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, avatarKey: null,
+  coverKey: null, coverUrl: null, background: 'PAPER' as const,
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
 };
 
@@ -19,6 +20,9 @@ const api = () => ({
   saveAppearance: vi.fn(async () => undefined),
   uploadAvatar: vi.fn(async () => null),
   removeAvatar: vi.fn(async () => undefined),
+  chooseStockCover: vi.fn(async (name: string) => ({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` })),
+  uploadCover: vi.fn(async () => ({ coverKey: "covers/p1/a.webp", coverUrl: null })),
+  removeCover: vi.fn(async () => undefined),
 });
 
 describe('MyCuriosEditor', () => {
@@ -87,17 +91,20 @@ describe('MyCuriosEditor', () => {
 // two halves that make it fit: BentoPage's root is the box's direct child, and
 // the stylesheet undoes the full-screen height for exactly that child.
 describe('the live preview fits its box', () => {
-  it('renders BentoPage directly inside the preview box', () => {
+  it("renders BentoPage inside the same phone the landing page shows, at the page's own address", () => {
     const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    const page = container.querySelector('[aria-label="Live preview"] [data-bento-page]');
-    expect(page?.parentElement?.parentElement?.getAttribute('aria-label')).toBe('Live preview');
+    const preview = container.querySelector('[aria-label="Live preview"]');
+    expect(preview?.querySelector('[data-tone] [data-bento-page]')).not.toBeNull();
+    expect(preview?.textContent).toContain(`curios.my/${initial.handle}`);
   });
 
-  // The frame fills the height below the top bar; the page fills the frame
-  // rather than forcing a full screen of its own inside it.
+  // The phone is as tall as the window allows below the top bar (its width
+  // follows from 9:19); the page fills the phone's screen rather than forcing
+  // a full screen of its own inside it.
   it('fills a full-height frame without forcing its own screen height', () => {
     const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
-    expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*calc\(100vh/);
+    expect(css).toMatch(/\.device\s*\{[^}]*width:\s*min\(100%, calc\(\(100vh/);
+    expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*100%/);
     expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
   });
 

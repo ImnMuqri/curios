@@ -2,8 +2,8 @@
 
 import type { MyCurios as MyCuriosData } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
-import { joinAvatarUrl } from '../../../lib/avatar-url.js';
-import { resizeImage } from './resize-image.js';
+import { coverUrlFrom, joinAvatarUrl } from '../../../lib/avatar-url.js';
+import { resizeCover, resizeImage } from './resize-image.js';
 import { MyCuriosEditor, type CuriosApi } from './my-curios.js';
 import type { LinkItem } from './links-editor.js';
 
@@ -21,7 +21,7 @@ export function MyCurios({
   uploadsEnabled,
   publicBase,
 }: {
-  initial: MyCuriosData & { avatarUrl: string | null };
+  initial: MyCuriosData & { avatarUrl: string | null; coverUrl: string | null };
   uploadsEnabled: boolean;
   publicBase: string;
 }) {
@@ -39,6 +39,16 @@ export function MyCurios({
       return avatarUrlFromKey(avatarKey);
     },
     removeAvatar: async () => { await apiFetch('/pages/avatar', { method: 'DELETE' }); },
+    chooseStockCover: async (name) => {
+      const { coverKey } = await apiFetch<{ coverKey: string }>('/pages/cover/stock', { method: 'PUT', body: JSON.stringify({ name }) });
+      return { coverKey, coverUrl: coverUrlFrom(coverKey, publicBase || null) };
+    },
+    uploadCover: async (file) => {
+      const image = await resizeCover(file);
+      const { coverKey } = await apiFetch<{ coverKey: string }>('/pages/cover', { method: 'POST', body: JSON.stringify(image) });
+      return { coverKey, coverUrl: coverUrlFrom(coverKey, publicBase || null) };
+    },
+    removeCover: async () => { await apiFetch('/pages/cover', { method: 'DELETE' }); },
   };
   return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} />;
 }

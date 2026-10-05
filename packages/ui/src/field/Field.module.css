@@ -3,14 +3,16 @@
 }
 
 /* The utility voice: mono, uppercase, tracked. It says "this is a slot". */
+/* The --field-* hooks: a surface can give every Field inside it its own voice (the dashboard frame does). */
 .label {
   display: block;
-  margin-bottom: 6px;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  color: var(--muted);
+  margin-bottom: var(--field-label-gap, 6px);
+  font-family: var(--field-label-font, var(--font-mono));
+  font-size: var(--field-label-size, var(--text-sm));
+  font-weight: var(--field-label-weight, 400);
+  text-transform: var(--field-label-case, uppercase);
+  letter-spacing: var(--field-label-tracking, 0.13em);
+  color: var(--field-label-color, var(--muted));
 }
 
 .control {
@@ -22,13 +24,23 @@
   border-radius: 10px;
   background: var(--paper);
   font-family: var(--font-body);
-  font-size: var(--text-body);
+  font-size: var(--field-size, var(--text-body));
   color: var(--ink);
   transition: border-color 120ms ease;
 }
 
 .control:focus {
   border-color: var(--biru);
+}
+
+/*
+ * One focus ring, not two: the biru border above plus a soft halo, in place of
+ * the site-wide outline (reset.css), which drew a second ring round the first.
+ * Restyled, never removed: keyboard focus is still unmistakable.
+ */
+.control:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--biru-muda);
 }
 
 .hint {
@@ -56,10 +68,11 @@
   padding: 0 14px;
   border: 0;
   background: none;
-  font-family: var(--font-mono);
+  font-family: var(--field-label-font, var(--font-mono));
   font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
+  font-weight: var(--field-label-weight, 400);
+  text-transform: var(--field-label-case, uppercase);
+  letter-spacing: var(--field-label-tracking, 0.13em);
   color: var(--muted);
   cursor: pointer;
 }

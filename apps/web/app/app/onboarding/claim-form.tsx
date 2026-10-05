@@ -1,9 +1,11 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
+import { forgetWantedHandle, readWantedHandle } from '../../../lib/wanted-handle.js';
+import styles from './onboarding.module.css';
 
 export type Tier = 'PERSONAL' | 'BUSINESS';
 
@@ -22,6 +24,14 @@ export function ClaimForm({
   const [mode, setMode] = useState<Tier | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+
+  // The handle typed into the landing page's curios.my/ field, if any. After
+  // mount rather than in useState, because the server render has no storage
+  // and the two must agree on the first paint. Never overwrites typing.
+  useEffect(() => {
+    const wanted = readWantedHandle();
+    if (wanted) setHandle((current) => current || wanted);
+  }, []);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -46,9 +56,9 @@ export function ClaimForm({
 
   return (
     <form onSubmit={(event) => void submit(event)}>
-      <fieldset>
+      <fieldset className={styles.modes}>
         <legend>What is this page for?</legend>
-        <label>
+        <label className={styles.mode} data-checked={mode === 'PERSONAL'}>
           <input
             type="radio"
             name="mode"
@@ -56,9 +66,11 @@ export function ClaimForm({
             checked={mode === 'PERSONAL'}
             onChange={() => setMode('PERSONAL')}
           />
-          Personal — about you. Free. Hidden from search engines unless you choose otherwise.
+          <span>
+            <strong>Personal</strong> — about you. Free. Hidden from search engines unless you choose otherwise.
+          </span>
         </label>
-        <label>
+        <label className={styles.mode} data-checked={mode === 'BUSINESS'}>
           <input
             type="radio"
             name="mode"
@@ -66,7 +78,9 @@ export function ClaimForm({
             checked={mode === 'BUSINESS'}
             onChange={() => setMode('BUSINESS')}
           />
-          Business — for selling. Three free leads, then {monthlyPrice} a month.
+          <span>
+            <strong>Business</strong> — for selling. Three free leads, then {monthlyPrice} a month.
+          </span>
         </label>
       </fieldset>
 
@@ -111,6 +125,7 @@ export function Claim({ monthlyPrice }: { monthlyPrice: string }) {
       monthlyPrice={monthlyPrice}
       onClaim={async (input) => {
         await apiFetch('/pages', { method: 'POST', body: JSON.stringify(input) });
+        forgetWantedHandle();
         // Re-runs the Server Component now that a page exists.
         router.refresh();
       }}

@@ -12,13 +12,26 @@ import styles from './curios.module.css';
 
 export type LinkItem = { id: string; label: string; url: string; size: TileSize | null };
 
-const SIZE_BUTTONS: { size: TileSize | null; short: string; name: string }[] = [
-  { size: null, short: 'Auto', name: 'Automatic size' },
-  { size: 'SMALL', short: 'S', name: 'Small tile' },
-  { size: 'WIDE', short: 'W', name: 'Wide tile' },
-  { size: 'TALL', short: 'T', name: 'Tall tile' },
-  { size: 'BIG', short: 'B', name: 'Big tile' },
+/** Each size drawn as the tile's own shape, so nobody has to decode S, W, T and B. */
+const SIZE_BUTTONS: { size: TileSize | null; shape: { x: number; y: number; w: number; h: number } | null; name: string }[] = [
+  { size: null, shape: null, name: 'Automatic size' },
+  { size: 'SMALL', shape: { x: 4, y: 4, w: 8, h: 8 }, name: 'Small tile' },
+  { size: 'WIDE', shape: { x: 1, y: 4, w: 14, h: 8 }, name: 'Wide tile' },
+  { size: 'TALL', shape: { x: 4, y: 1, w: 8, h: 14 }, name: 'Tall tile' },
+  { size: 'BIG', shape: { x: 1, y: 1, w: 14, h: 14 }, name: 'Big tile' },
 ];
+
+function Icon({ d }: { d: string }) {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={styles.toolIcon}>
+      <path d={d} />
+    </svg>
+  );
+}
+
+const UP = 'M6 15l6-6 6 6';
+const DOWN = 'M6 9l6 6 6-6';
+const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 
 const message = (failure: unknown) => (failure instanceof Error ? failure.message : 'That did not save. Try again.');
 
@@ -276,11 +289,16 @@ function LinkRow({
       ref={setNodeRef}
       aria-label={link.label}
       className={styles.link}
+      data-editing={editing}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <span className={styles.grip} {...attributes} {...listeners} aria-label={`Drag ${link.label}`}>⋮⋮</span>
+      <span className={styles.grip} {...attributes} {...listeners} aria-label={`Drag ${link.label}`}>
+        <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
+          <circle cx="2.5" cy="3" r="1.5" /><circle cx="7.5" cy="3" r="1.5" /><circle cx="2.5" cy="8" r="1.5" /><circle cx="7.5" cy="8" r="1.5" /><circle cx="2.5" cy="13" r="1.5" /><circle cx="7.5" cy="13" r="1.5" />
+        </svg>
+      </span>
       {editing ? (
-        <span className={styles.linkText}>
+        <span className={styles.editForm}>
           <Field
             id={`label-${link.id}`}
             label="Name"
@@ -296,7 +314,6 @@ function LinkRow({
             onChange={(value) => { setUrl(value); onLiveChange({ url: value }); urlSave.schedule(value); }}
           />
           <SaveState status={urlSave.status} error={urlSave.error} retry={urlSave.retry} />
-          <button type="button" onClick={() => setEditing(false)}>Done</button>
         </span>
       ) : (
         <button type="button" ref={editButtonRef} className={styles.linkText} aria-label={`Edit ${link.label}`} onClick={openEditor}>
@@ -311,25 +328,37 @@ function LinkRow({
               key={button.name}
               type="button"
               aria-label={button.name}
+              title={button.name}
               aria-pressed={link.size === button.size}
               onClick={() => chooseSize(button.size)}
             >
-              {button.short}
+              {button.shape ? (
+                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                  <rect x={button.shape.x} y={button.shape.y} width={button.shape.w} height={button.shape.h} rx="2" />
+                </svg>
+              ) : (
+                'Auto'
+              )}
             </button>
           ))}
         </span>
         <SaveState status={sizeStatus} error={sizeError} retry={() => persistSize(link.size)} />
       </span>
-      <button type="button" className={styles.iconButton} aria-label={`Move ${link.label} up`} disabled={first} onClick={() => onMove(-1)}>↑</button>
-      <button type="button" className={styles.iconButton} aria-label={`Move ${link.label} down`} disabled={last} onClick={() => onMove(1)}>↓</button>
-      {confirming ? (
-        <span className={styles.confirm}>
-          <button type="button" onClick={onRemove}>Yes, remove</button>
-          <button type="button" ref={keepButtonRef} onClick={() => setConfirming(false)}>Keep</button>
-        </span>
-      ) : (
-        <button type="button" ref={removeButtonRef} className={styles.iconButton} aria-label={`Remove ${link.label}`} onClick={() => setConfirming(true)}>×</button>
-      )}
+      <span className={styles.tools}>
+        {confirming ? (
+          <span className={styles.confirm}>
+            <button type="button" className={styles.confirmRemove} onClick={onRemove}>Yes, remove</button>
+            <button type="button" ref={keepButtonRef} onClick={() => setConfirming(false)}>Keep</button>
+          </span>
+        ) : (
+          <>
+            <button type="button" className={styles.iconButton} aria-label={`Move ${link.label} up`} title="Move up" disabled={first} onClick={() => onMove(-1)}><Icon d={UP} /></button>
+            <button type="button" className={styles.iconButton} aria-label={`Move ${link.label} down`} title="Move down" disabled={last} onClick={() => onMove(1)}><Icon d={DOWN} /></button>
+            <button type="button" ref={removeButtonRef} className={`${styles.iconButton} ${styles.removeButton}`} aria-label={`Remove ${link.label}`} title="Remove" onClick={() => setConfirming(true)}><Icon d={BIN} /></button>
+          </>
+        )}
+      </span>
+      {editing ? <button type="button" className={styles.doneButton} onClick={() => setEditing(false)}>Done</button> : null}
     </li>
   );
 }

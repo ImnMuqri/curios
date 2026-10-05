@@ -4,6 +4,7 @@ import type { BillingPlan } from '@curios/core';
 import { Button, Callout } from '@curios/ui';
 import { useState } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
+import panel from '../panel.module.css';
 
 export interface PayOption {
   plan: BillingPlan;
@@ -56,7 +57,7 @@ export function PayButtonsForm({
   }
 
   return (
-    <div>
+    <div className={panel.buttons}>
       {options.map((option) => (
         <Button
           key={option.plan}

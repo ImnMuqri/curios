@@ -37,6 +37,8 @@ const page: MyCuriosData = {
   accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: 'avatars/p1.jpg',
+  coverKey: null,
+  background: 'PAPER',
   links: [],
 };
 
@@ -76,7 +78,7 @@ describe('MyCuriosPage', () => {
 
     expect(MyCurios).toHaveBeenCalledTimes(1);
     const props = MyCurios.mock.calls[0]?.[0] as { initial: MyCuriosData & { avatarUrl: string | null }; uploadsEnabled: boolean; publicBase: string };
-    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg' });
+    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null });
     expect(props.uploadsEnabled).toBe(true);
     // The client component cannot read a server-only env var itself, so the
     // wrapper needs it passed down to build an uploaded picture's URL.

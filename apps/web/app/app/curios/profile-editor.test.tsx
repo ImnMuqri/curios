@@ -142,9 +142,10 @@ describe('ProfileEditor', () => {
 const base = { displayName: 'Iman', bio: null, onChange: vi.fn(), save: vi.fn(async () => undefined), avatarUrl: null, onAvatar: vi.fn(), removeAvatar: vi.fn(async () => undefined) };
 
 describe('ProfileEditor picture', () => {
-  it('offers no upload when storage is off', () => {
+  it('shows the upload disabled, with the reason, when storage is off', () => {
     render(<ProfileEditor {...base} uploadsEnabled={false} uploadAvatar={vi.fn()} />);
-    expect(screen.queryByLabelText('Upload a picture')).toBeNull();
+    expect(screen.getByLabelText('Upload a picture')).toBeDisabled();
+    expect(screen.getByText(/switched off here/i)).toBeInTheDocument();
   });
 
   it('uploads a chosen file and shows the new picture', async () => {

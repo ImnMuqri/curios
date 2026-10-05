@@ -27,7 +27,7 @@ export function ProfileEditor({
   save: (patch: { displayName?: string; bio?: string | null }) => Promise<unknown>;
   /** The current picture's URL, or null when there is none. */
   avatarUrl: string | null;
-  /** Whether storage is configured at all; false hides the picture control entirely. */
+  /** Whether storage is configured at all; false shows the picture control disabled, with the reason. */
   uploadsEnabled: boolean;
   /** Called once an upload or removal has actually taken effect -- never before. */
   onAvatar: (url: string | null) => void;
@@ -73,34 +73,47 @@ export function ProfileEditor({
   return (
     <section className={styles.section} aria-labelledby="profile-title">
       <h2 id="profile-title" className={styles.sectionTitle}>Profile</h2>
-      {uploadsEnabled ? (
-        <div className={styles.avatarRow}>
-          {avatarUrl && !avatarFailed ? (
-            <img src={avatarUrl} alt="" className={styles.avatarPreview} onError={() => setAvatarFailed(true)} />
-          ) : (
-            <div className={styles.avatarPlaceholder} aria-hidden="true" />
-          )}
-          <div className={styles.avatarActions}>
-            <label className={styles.avatarUpload}>
-              <span aria-hidden="true">Upload a picture</span>
-              <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                aria-label="Upload a picture"
-                className={styles.visuallyHidden}
-                onChange={(event) => { void handleUpload(event); }}
-              />
-            </label>
-            {avatarUrl ? (
-              <Button type="button" variant="secondary" onClick={() => { void handleRemove(); }}>
-                Remove picture
-              </Button>
-            ) : null}
+      {/* Always shown, so the owner knows a picture is possible; where storage is off the upload is there but disabled, and says why. */}
+      <div className={styles.avatarRow}>
+        {avatarUrl && !avatarFailed ? (
+          <img src={avatarUrl} alt="" className={styles.avatarPreview} onError={() => setAvatarFailed(true)} />
+        ) : (
+          <div className={styles.avatarPlaceholder} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <circle cx="12" cy="9" r="4" />
+              <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+            </svg>
           </div>
-          <p className={styles.avatarHint}>Optional. No picture? Your page shows just your name.</p>
-          {avatarError ? <div className={styles.avatarError}><Callout tone="error">{avatarError}</Callout></div> : null}
+        )}
+        <div className={styles.avatarText}>
+          <p className={styles.avatarTitle}>Profile picture</p>
+          <p className={styles.avatarHint}>
+            {uploadsEnabled ? 'Optional. A square photo works best. No picture? Your page shows just your name.' : 'Uploading pictures is switched off here.'}
+          </p>
         </div>
-      ) : null}
+        <div className={styles.avatarActions}>
+          <label className={styles.avatarUpload} data-disabled={!uploadsEnabled}>
+            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+              <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
+            </svg>
+            <span aria-hidden="true">{avatarUrl ? 'Change' : 'Upload a picture'}</span>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="Upload a picture"
+              disabled={!uploadsEnabled}
+              className={styles.visuallyHidden}
+              onChange={(event) => { void handleUpload(event); }}
+            />
+          </label>
+          {avatarUrl && uploadsEnabled ? (
+            <button type="button" className={styles.avatarRemove} onClick={() => { void handleRemove(); }}>
+              Remove picture
+            </button>
+          ) : null}
+        </div>
+        {avatarError ? <div className={styles.avatarError}><Callout tone="error">{avatarError}</Callout></div> : null}
+      </div>
       <Field
         id="display-name"
         label="Display name"

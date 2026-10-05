@@ -2,6 +2,8 @@
 
 import { useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import { Wordmark } from '../_landing/Wordmark.js';
+import { plexSans } from '../_landing/plex.js';
 import styles from './app-frame.module.css';
 
 type Item = { href: string; label: string; icon: ReactNode };
@@ -37,9 +39,11 @@ const GROUPS: { title: string; items: Item[] }[] = [
   },
 ];
 
-const TITLES: Record<string, string> = Object.fromEntries(
-  GROUPS.flatMap((group) => group.items.map((item) => [item.href, `${group.title} / ${item.label}`])),
-);
+const TITLES: Record<string, string> = {
+  ...Object.fromEntries(GROUPS.flatMap((group) => group.items.map((item) => [item.href, `${group.title} / ${item.label}`]))),
+  // Not in the sidebar (Knowledge's Sources tab is the way back to it), but still somewhere.
+  '/app/onboarding': 'Your page / Add a source',
+};
 
 /**
  * The dashboard's frame: a sidebar of grouped modules, a top bar with where
@@ -65,11 +69,12 @@ export function AppFrame({
   const initials = displayName.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className={styles.frame}>
+    <div className={`${styles.frame} ${plexSans.variable}`}>
       <aside className={styles.side} data-open={open}>
-        <div className={styles.brand}>
-          <span className={styles.mark} aria-hidden="true">c</span>curios
-        </div>
+        <a href="/app/curios" className={styles.brand}>
+          <Wordmark />
+          <span className={styles.srOnly}>Curios dashboard</span>
+        </a>
         <nav aria-label="Dashboard" id="dashboard-nav">
           {GROUPS.map((group) => (
             <div key={group.title}>
@@ -113,7 +118,10 @@ export function AppFrame({
           </button>
           <span className={styles.crumb}>{TITLES[Object.keys(TITLES).find((href) => pathname.startsWith(href)) ?? ''] ?? ''}</span>
           <a className={styles.view} href={`/${handle}`} target="_blank" rel="noreferrer">
-            View page ↗
+            View page
+            <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.viewIcon}>
+              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
+            </svg>
           </a>
         </header>
         <main className={styles.content}>{children}</main>

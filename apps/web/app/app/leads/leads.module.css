@@ -1,21 +1,23 @@
+/* Each lead a white card on a hairline, the same card the rest of the dashboard is built from. */
 .list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: grid;
+  gap: 10px;
 }
 
 .item {
-  padding: 16px 0;
-  border-bottom: 1px solid var(--surface);
+  padding: 20px 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
 }
 
-/* The utility voice: score, status and when, not the conversation. */
+/* Score, status and when: quiet, sentence case, not the conversation. */
 .meta {
-  margin: 0 0 4px;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
+  margin: 0 0 6px;
+  font-size: var(--text-sm);
   color: var(--muted);
 }
 
@@ -28,6 +30,7 @@
   margin: 0 0 8px;
   font-family: var(--font-mono);
   font-size: var(--text-lg);
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -43,11 +46,21 @@
   color: var(--ink);
 }
 
+.slots li::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 10px 2px 0;
+  border-radius: 50%;
+  background: var(--kuning);
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 14px;
 }
 
 /*
@@ -59,15 +72,15 @@
 .whatsapp {
   display: inline-flex;
   align-items: center;
-  min-height: 44px;
-  padding: 11px 18px;
+  min-height: var(--button-height, 44px);
+  padding: var(--button-padding, 11px 18px);
   border: 1.5px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--button-radius, 10px);
   background: var(--biru);
   color: var(--paper);
   font-family: var(--font-body);
-  font-size: var(--text-body);
-  font-weight: 500;
+  font-size: var(--button-size, var(--text-body));
+  font-weight: var(--button-weight, 500);
   text-decoration: none;
   transition: background 120ms ease;
 }
@@ -80,8 +93,8 @@
   margin-top: 12px;
   padding: 12px 14px;
   border: 1.5px solid var(--merah);
-  border-radius: 10px;
-  background: var(--paper);
+  border-radius: 12px;
+  background: var(--card);
 }
 
 .confirmText {
@@ -101,8 +114,8 @@
 
 .transcript li {
   max-width: 80%;
-  padding: 10px 12px;
-  border-radius: 10px;
+  padding: 10px 14px;
+  border-radius: 16px;
   font-size: var(--text-base);
   white-space: pre-wrap;
 }

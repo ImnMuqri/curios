@@ -5,6 +5,7 @@ import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
 import { loginWalledSite } from '../../../lib/social-links.js';
 import { JobStatus, type IngestionResult } from './job-status.js';
+import styles from './onboarding.module.css';
 
 type Source = { pageId: string; sourceUrl: string } | { pageId: string; pastedText: string };
 
@@ -116,7 +117,7 @@ export function IngestForm({
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
+    <form className={styles.ingest} onSubmit={(event) => void submit(event)}>
       {added > 0 ? (
         <Callout tone="info">
           Facts from what you added so far are already in your review queue.{' '}

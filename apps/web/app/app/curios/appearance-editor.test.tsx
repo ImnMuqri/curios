@@ -6,7 +6,7 @@ import { AppearanceEditor } from './appearance-editor.js';
 import type { AppearancePatch } from './my-curios.js';
 
 const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }> = {}) => {
-  const props = { style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
+  const props = { background: 'PAPER' as const, style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
   render(<AppearanceEditor {...props} />);
   return props;
 };
@@ -17,7 +17,8 @@ const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }>
  * to whatever a static prop said. This stands in for that caller, the same
  * way profile-editor.test.tsx's `Controlled` does for ProfileEditor. */
 function Controlled({ save }: { save: (patch: AppearancePatch) => Promise<unknown> }) {
-  const [state, setState] = useState<{ style: 'SOFT' | 'CONTRAST'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
+  const [state, setState] = useState<{ background: 'PAPER' | 'MUDA' | 'KUNING' | 'BIRU' | 'INK'; style: 'SOFT' | 'CONTRAST'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
+    background: 'PAPER',
     style: 'SOFT',
     accentColor: '#2340c8',
     headingFont: 'JAKARTA',
@@ -135,5 +136,16 @@ describe('AppearanceEditor', () => {
     await screen.findByRole('alert');
 
     expect(screen.getByRole('radio', { name: 'High contrast' })).toBeChecked();
+  });
+});
+
+describe('AppearanceEditor background', () => {
+  it('saves the background band the owner picks', async () => {
+    const save = vi.fn(async () => undefined);
+    const onChange = vi.fn();
+    render(<AppearanceEditor background="PAPER" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
+    await userEvent.click(screen.getByRole('radio', { name: /dark/i }));
+    expect(save).toHaveBeenCalledWith({ background: 'INK' });
+    expect(onChange).toHaveBeenCalledWith({ background: 'INK' });
   });
 });

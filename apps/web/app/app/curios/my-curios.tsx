@@ -2,14 +2,16 @@
 
 import { useState } from 'react';
 import type { MyCurios } from '@curios/db-read';
-import type { HeadingFont, PageStyle, TileSize } from '@curios/core/bento';
+import type { HeadingFont, PageBackground, PageStyle, StockCover, TileSize } from '@curios/core/bento';
 import { BentoPage } from '../../_bento/BentoPage.js';
+import { Device } from '../../_landing/Device.js';
 import { AppearanceEditor } from './appearance-editor.js';
+import { CoverEditor } from './cover-editor.js';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 import { ProfileEditor } from './profile-editor.js';
 import styles from './curios.module.css';
 
-export type AppearancePatch = Partial<{ style: PageStyle; accentColor: string; headingFont: HeadingFont; displayName: string; bio: string | null }>;
+export type AppearancePatch = Partial<{ background: PageBackground; style: PageStyle; accentColor: string; headingFont: HeadingFont; displayName: string; bio: string | null }>;
 
 // Function-typed properties, not method shorthand: several of these are handed
 // to child components as bare values (`addLink={api.addLink}`), and TS method
@@ -24,6 +26,10 @@ export interface CuriosApi {
   /** Resolves to the new picture's URL. */
   uploadAvatar: (file: File) => Promise<string | null>;
   removeAvatar: () => Promise<void>;
+  /** Each resolves to the new cover's key and URL. */
+  chooseStockCover: (name: StockCover) => Promise<{ coverKey: string; coverUrl: string | null }>;
+  uploadCover: (file: File) => Promise<{ coverKey: string; coverUrl: string | null }>;
+  removeCover: () => Promise<void>;
 }
 
 /**
@@ -36,7 +42,7 @@ export function MyCuriosEditor({
   api,
   uploadsEnabled,
 }: {
-  initial: MyCurios & { avatarUrl: string | null };
+  initial: MyCurios & { avatarUrl: string | null; coverUrl: string | null };
   api: CuriosApi;
   uploadsEnabled: boolean;
 }) {
@@ -46,8 +52,19 @@ export function MyCuriosEditor({
   return (
     <div className={styles.editor}>
       <div className={styles.controls}>
-        <h1 className={styles.title}>My Curios</h1>
-        <p className={styles.lede}>Your page, arranged. Changes save as you make them.</p>
+        <header className={styles.intro}>
+          <h1 className={styles.title}>My Curios</h1>
+          <p className={styles.lede}>Your page, arranged. Changes save as you make them.</p>
+        </header>
+        <CoverEditor
+          coverKey={page.coverKey}
+          coverUrl={page.coverUrl}
+          uploadsEnabled={uploadsEnabled}
+          onCover={update}
+          chooseStock={api.chooseStockCover}
+          uploadCover={api.uploadCover}
+          removeCover={api.removeCover}
+        />
         <ProfileEditor
           displayName={page.displayName}
           bio={page.bio}
@@ -68,6 +85,7 @@ export function MyCuriosEditor({
           reorder={api.reorder}
         />
         <AppearanceEditor
+          background={page.background}
           style={page.style}
           accentColor={page.accentColor}
           headingFont={page.headingFont}
@@ -76,9 +94,11 @@ export function MyCuriosEditor({
         />
       </div>
       <section className={styles.preview} aria-label="Live preview">
-        <div className={styles.phone}>
-          <BentoPage {...page} interactive={false} />
-        </div>
+        <Device time="9:41" chrome="browser" url={`curios.my/${page.handle}`} className={styles.device}>
+          <div className={styles.phone}>
+            <BentoPage {...page} interactive={false} />
+          </div>
+        </Device>
       </section>
     </div>
   );

@@ -4,6 +4,7 @@ import { Callout } from '@curios/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { apiFetch } from '../../../lib/api.js';
+import panel from '../panel.module.css';
 
 /**
  * Whether a personal page may appear in search results.
@@ -31,9 +32,9 @@ export function SearchIndexingForm({
 
   if (mode === 'BUSINESS') {
     return (
-      <section>
-        <h3>Search engines</h3>
-        <p>Business pages always appear in search results.</p>
+      <section className={panel.panel}>
+        <h2 className={panel.panelTitle}>Search engines</h2>
+        <p className={panel.text}>Business pages always appear in search results.</p>
       </section>
     );
   }
@@ -53,13 +54,13 @@ export function SearchIndexingForm({
   }
 
   return (
-    <section>
-      <h3>Search engines</h3>
-      <p>
+    <section className={panel.panel}>
+      <h2 className={panel.panelTitle}>Search engines</h2>
+      <p className={panel.text}>
         Your page starts out of search results: most people do not want an AI page about themselves
         ranking for their own name.
       </p>
-      <label>
+      <label className={panel.check}>
         <input
           type="checkbox"
           checked={on}

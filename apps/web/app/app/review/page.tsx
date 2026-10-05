@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
 import { getOwnerPage, getReviewQueue } from '@curios/db-read';
+import { Shell } from '@curios/ui';
 import { resolveOwner } from '../session.js';
 import { Review } from './review-queue.js';
 import { Publish } from './publish-button.js';
@@ -62,16 +63,18 @@ export default async function ReviewPage() {
   // `published` -- a "your page is live" badge, say -- this needs the
   // callback like the other three.
   return (
-    <>
+    <Shell as="div" title="Review" lede="Facts found in your sources. Accept, edit or reject each one.">
       <Review facts={facts} />
       {/* A shop, a LinkedIn bio, a second site: sources can arrive at any time,
           and each one's facts join this same queue. Sends to the Knowledge
           screen's Sources tab, not onboarding -- this owner already has a
           page. */}
-      <a className={styles.addSource} href="/app/knowledge?tab=sources">
-        Add another source
-      </a>
-      <Publish publicUrl={publicUrl} published={page.published} />
-    </>
+      <div className={styles.footer}>
+        <Publish publicUrl={publicUrl} published={page.published} />
+        <a className={styles.addSource} href="/app/knowledge?tab=sources">
+          Add another source
+        </a>
+      </div>
+    </Shell>
   );
 }

@@ -8,6 +8,7 @@ import { paymentBanner, paymentLine, planSummary, ringgit, usageSummary } from '
 import { PayButtons } from './pay-buttons.js';
 import { ResetTrial } from './reset-button.js';
 import { UpgradeToBusiness } from './upgrade-button.js';
+import panel from '../panel.module.css';
 
 /**
  * Where the plan stands, what the month has used, what has been paid, and the
@@ -52,48 +53,54 @@ export default async function BillingPage({
     page.leadsCaptured >= 1;
 
   return (
-    <Shell as="div" title="Billing">
+    <Shell as="div" title="Billing" lede="Your plan, what this month has used, and what you have paid.">
       {banner ? <Callout tone={banner.tone}>{banner.text}</Callout> : null}
-      <p>{planSummary(state)}</p>
-      {usage ? <p>{usageSummary(usage)}</p> : null}
-      {canReset ? (
-        <section>
-          <h2>Spent your trial testing your own page?</h2>
-          <p>
-            Every lead counts, including the ones you captured yourself. You can put the counter
-            back to zero once, and only while the page has never paid.
-          </p>
-          <ResetTrial />
+      <div className={panel.stack}>
+        <section className={panel.panel} aria-labelledby="plan-title">
+          <h2 id="plan-title" className={panel.panelTitle}>Your plan</h2>
+          <p className={panel.status}>{planSummary(state)}</p>
+          {usage ? <p className={panel.text}>{usageSummary(usage)}</p> : null}
+          {state.kind === 'personal' ? null : (
+            <PayButtons
+              options={[
+                { plan: 'MONTHLY', label: `Pay ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} for a month` },
+                { plan: 'ANNUAL', label: `Pay ${ringgit(PLAN_PRICES_CENTS.ANNUAL)} for a year` },
+              ]}
+            />
+          )}
         </section>
-      ) : null}
-      {state.kind === 'personal' ? (
-        <section>
-          <h2>Selling something?</h2>
-          <p>
-            A business page can take customers' phone numbers: three free leads, then{' '}
-            {ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month. Questions asked three or more times get
-            their own FAQ pages, and the page appears in search results.
-          </p>
-          <UpgradeToBusiness />
-        </section>
-      ) : (
-        <PayButtons
-          options={[
-            { plan: 'MONTHLY', label: `Pay ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} for a month` },
-            { plan: 'ANNUAL', label: `Pay ${ringgit(PLAN_PRICES_CENTS.ANNUAL)} for a year` },
-          ]}
-        />
-      )}
-      {payments.length > 0 ? (
-        <section>
-          <h2>Recent payments</h2>
-          <ul>
-            {payments.map((payment) => (
-              <li key={payment.id}>{paymentLine(payment)}</li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+        {canReset ? (
+          <section className={panel.panel}>
+            <h2 className={panel.panelTitle}>Spent your trial testing your own page?</h2>
+            <p className={panel.text}>
+              Every lead counts, including the ones you captured yourself. You can put the counter
+              back to zero once, and only while the page has never paid.
+            </p>
+            <ResetTrial />
+          </section>
+        ) : null}
+        {state.kind === 'personal' ? (
+          <section className={panel.panel}>
+            <h2 className={panel.panelTitle}>Selling something?</h2>
+            <p className={panel.text}>
+              A business page can take customers' phone numbers: three free leads, then{' '}
+              {ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month. Questions asked three or more times get
+              their own FAQ pages, and the page appears in search results.
+            </p>
+            <UpgradeToBusiness />
+          </section>
+        ) : null}
+        {payments.length > 0 ? (
+          <section className={panel.panel}>
+            <h2 className={panel.panelTitle}>Recent payments</h2>
+            <ul className={panel.list}>
+              {payments.map((payment) => (
+                <li key={payment.id}>{paymentLine(payment)}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </Shell>
   );
 }

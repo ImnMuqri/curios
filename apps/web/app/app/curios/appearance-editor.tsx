@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Button, Callout } from '@curios/ui';
-import { ACCENT_PRESETS, HEADING_FONTS, isHexColor, type HeadingFont, type PageStyle } from '@curios/core/bento';
+import { ACCENT_PRESETS, HEADING_FONTS, isHexColor, PAGE_BACKGROUNDS, type HeadingFont, type PageBackground, type PageStyle } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../../lib/heading-fonts.js';
 import type { AppearancePatch } from './my-curios.js';
 import styles from './curios.module.css';
@@ -32,17 +32,31 @@ const ACCENT_NAMES: Record<string, string> = {
 };
 
 /**
- * Style, accent and heading font. Each choice is a single click, so it saves
+ * The background bands, named for an owner and drawn from the palette's own
+ * tokens (never a hex here: the page's stylesheet owns the colours).
+ */
+const BANDS: Record<PageBackground, { name: string; swatch: string }> = {
+  PAPER: { name: 'Paper', swatch: 'var(--soft-page)' },
+  MUDA: { name: 'Pale blue', swatch: 'var(--biru-muda)' },
+  KUNING: { name: 'Warm', swatch: 'color-mix(in oklch, var(--kuning) 20%, var(--paper))' },
+  BIRU: { name: 'Cobalt', swatch: 'var(--biru)' },
+  INK: { name: 'Dark', swatch: 'var(--ink)' },
+};
+
+/**
+ * Background, style, accent and heading font. Each choice is a single click, so it saves
  * at once rather than on a debounce. A custom colour saves only once it is a
  * valid hex; text on it is made readable by the page, not by the owner.
  */
 export function AppearanceEditor({
+  background,
   style,
   accentColor,
   headingFont,
   onChange,
   save,
 }: {
+  background: PageBackground;
   style: PageStyle;
   accentColor: string;
   headingFont: HeadingFont;
@@ -81,6 +95,19 @@ export function AppearanceEditor({
   return (
     <section className={styles.section} aria-labelledby="appearance-title">
       <h2 id="appearance-title" className={styles.sectionTitle}>Appearance</h2>
+
+      <fieldset className={styles.fieldset}>
+        <legend>Background</legend>
+        <div className={styles.bands}>
+          {PAGE_BACKGROUNDS.map((value) => (
+            <label key={value} className={styles.band} data-checked={background === value}>
+              <input type="radio" name="background" checked={background === value} onChange={() => choose({ background: value })} />
+              <span className={styles.bandDot} style={{ background: BANDS[value].swatch }} aria-hidden="true" />
+              {BANDS[value].name}
+            </label>
+          ))}
+        </div>
+      </fieldset>
 
       <fieldset className={styles.fieldset}>
         <legend>Style</legend>

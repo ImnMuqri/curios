@@ -1,8 +1,8 @@
 .callout {
   margin: 0 0 16px;
   padding: 12px 14px;
-  border-radius: 10px;
-  font-size: var(--text-body);
+  border-radius: var(--callout-radius, 10px);
+  font-size: var(--callout-size, var(--text-body));
 }
 
 .error {
