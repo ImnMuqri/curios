@@ -100,3 +100,29 @@ describe('NO_PAGE', () => {
     expect(res.json().error.code).toBe('NO_PAGE');
   });
 });
+
+describe('a custom background', () => {
+  it('saves the colour with the choice, lower-cased', async () => {
+    const cookie = await anOwner();
+    const res = await patch(cookie, { background: 'CUSTOM', backgroundColor: '#F4D9C8' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().appearance).toMatchObject({ background: 'CUSTOM', backgroundColor: '#f4d9c8' });
+  });
+
+  it('keeps the colour while a band is chosen, so Custom finds it again', async () => {
+    const cookie = await anOwner();
+    await patch(cookie, { background: 'CUSTOM', backgroundColor: '#f4d9c8' });
+    await patch(cookie, { background: 'MUDA' });
+    const res = await patch(cookie, { background: 'CUSTOM' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().appearance).toMatchObject({ background: 'CUSTOM', backgroundColor: '#f4d9c8' });
+  });
+
+  it('refuses Custom with no colour ever picked, and a colour that is not six-digit hex', async () => {
+    const cookie = await anOwner();
+    expect((await patch(cookie, { background: 'CUSTOM' })).json().error.code).toBe('INVALID_APPEARANCE');
+    for (const backgroundColor of ['red', '#fff', '#0c7a62;x']) {
+      expect((await patch(cookie, { background: 'CUSTOM', backgroundColor })).json().error.code).toBe('INVALID_APPEARANCE');
+    }
+  });
+});

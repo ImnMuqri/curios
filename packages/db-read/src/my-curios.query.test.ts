@@ -55,7 +55,7 @@ describe('getMyCurios', () => {
       headingFont: 'JAKARTA',
       avatarKey: null,
       coverKey: null,
-      background: 'PAPER',
+      background: 'PAPER', backgroundColor: null,
     });
     expect(page?.links.map((l) => [l.label, l.size])).toEqual([
       ['Portfolio', null],

@@ -234,3 +234,29 @@ describe('BentoPage cover and background', () => {
     expect(container.querySelector('[data-cover-photo]')).toBeNull();
   });
 });
+
+describe('BentoPage, a custom background', () => {
+  it("paints the owner's colour and picks the text that reads on it", () => {
+    const light = render(<BentoPage {...base} background="CUSTOM" backgroundColor="#f4d9c8" />);
+    const page = light.container.firstElementChild as HTMLElement;
+    expect(page).toHaveAttribute('data-bg', 'CUSTOM');
+    expect(page).toHaveAttribute('data-bg-text', 'dark');
+    expect(page.style.getPropertyValue('--custom-bg')).toBe('#f4d9c8');
+    light.unmount();
+
+    const dark = render(<BentoPage {...base} background="CUSTOM" backgroundColor="#3b1f4a" />);
+    expect(dark.container.firstElementChild).toHaveAttribute('data-bg-text', 'light');
+  });
+
+  it('falls back to the plain page when Custom has no usable colour', () => {
+    const { container } = render(<BentoPage {...base} background="CUSTOM" backgroundColor={null} />);
+    expect(container.firstElementChild).toHaveAttribute('data-bg', 'PAPER');
+    expect(container.firstElementChild).not.toHaveAttribute('data-bg-text');
+  });
+
+  it('gives a dark custom colour the dark bands\' treatment, read from the stylesheet', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\[data-bg='CUSTOM'\]\[data-bg-text='light'\]\s*\{[^}]*--page-fg:\s*var\(--paper\)/);
+    expect(css).toMatch(/\[data-bg-text='light'\] \.tile\[data-tone='accent'\]/);
+  });
+});

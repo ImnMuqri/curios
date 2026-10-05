@@ -88,6 +88,8 @@ enum PageBackground {
   KUNING
   BIRU
   INK
+  /// The owner's own colour, in Page.backgroundColor.
+  CUSTOM
 }
 
 enum HeadingFont {
@@ -167,6 +169,9 @@ model Page {
   /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
   coverKey    String?
   background  PageBackground @default(PAPER)
+  /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
+  /// band, so switching back to Custom finds their colour again.
+  backgroundColor String?
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]

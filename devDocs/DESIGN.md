@@ -213,6 +213,14 @@ contrast is never the owner's problem: each band sets the page's own text colour
 bands High contrast's ink tiles are lifted a step and an accent tile gets a fine edge,
 so a cobalt accent on a cobalt page is still a tile.
 
+*Amended 2026-10-05: a custom background.* At the owner's request a sixth choice,
+Custom, takes any colour (a picker or six-digit hex; it starts as a light tint of the
+page's accent). Contrast is still never the owner's problem: `readableOn`, the test the
+accent uses, picks ink or paper text for it, a dark custom colour gets the dark bands'
+treatment (lifted ink tiles, an edge on the accent tile), and the soft text is mixed
+from the owner's own colour. The colour is kept while a band is chosen, so switching
+back to Custom finds it again.
+
 **Cover photo** is a wide picture at the top of the page: one of six that ship with
 Curios (`/covers/*.webp`, from Unsplash, credited in `apps/web/public/covers/CREDITS.md`)
 or the owner's own upload (2 MB, cropped to 16:10). It fades into the band behind it

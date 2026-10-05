@@ -103,7 +103,24 @@
   --page-soft: color-mix(in oklch, var(--paper) 72%, var(--ink));
 }
 
+/*
+ * The owner's own colour. Its text follows readableOn (data-bg-text), so no
+ * pick can make the page unreadable: ink and a soft ink on a light colour,
+ * paper and a soft paper on a dark one -- the soft tone mixed from the page's
+ * own colour, as the bands do.
+ */
+.page[data-bg='CUSTOM'] {
+  --page-bg: var(--custom-bg);
+  --page-soft: color-mix(in oklab, var(--ink) 74%, var(--custom-bg));
+}
+
+.page[data-bg='CUSTOM'][data-bg-text='light'] {
+  --page-fg: var(--paper);
+  --page-soft: color-mix(in oklab, var(--paper) 76%, var(--custom-bg));
+}
+
 /* High contrast's ink tiles would vanish into an ink page: lift them a step. */
+.page[data-bg='CUSTOM'][data-bg-text='light'][data-style='CONTRAST'],
 .page[data-bg='INK'][data-style='CONTRAST'] {
   --plain-bg: color-mix(in oklch, var(--paper) 12%, var(--ink));
 }
@@ -111,6 +128,8 @@
 /* On a dark band the accent tile can match the page (a biru accent on a biru page), and High contrast's deep tile can sink into it: a fine edge keeps each a tile. */
 .page[data-bg='BIRU'] .tile[data-tone='accent'],
 .page[data-bg='INK'] .tile[data-tone='accent'],
+.page[data-bg-text='light'] .tile[data-tone='accent'],
+.page[data-bg-text='light'][data-style='CONTRAST'] .tile[data-tone='warm'],
 .page[data-bg='BIRU'][data-style='CONTRAST'] .tile[data-tone='warm'],
 .page[data-bg='INK'][data-style='CONTRAST'] .tile[data-tone='warm'] {
   box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--paper) 40%, transparent);

@@ -20,7 +20,7 @@ export const HEADING_FONTS = ['JAKARTA', 'BRICOLAGE', 'FRAUNCES', 'SPACE_GROTESK
  * landing page is built from. Owners pick one; text and buttons on it are
  * chosen by the page for contrast, never by the owner.
  */
-export const PAGE_BACKGROUNDS = ['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK'] as const;
+export const PAGE_BACKGROUNDS = ['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK', 'CUSTOM'] as const;
 export type PageBackground = (typeof PAGE_BACKGROUNDS)[number];
 
 /**
@@ -155,6 +155,16 @@ export function readableOn(hex: string): 'dark' | 'light' {
   const withInk = (l + 0.05) / (INK + 0.05);
   const withPaper = (PAPER + 0.05) / (l + 0.05);
   return withInk >= withPaper ? 'dark' : 'light';
+}
+
+/**
+ * A colour taken toward paper: `share` of the colour, the rest white. What a
+ * Custom background starts as -- a light tint of the page's own accent, so a
+ * first pick already belongs to the page.
+ */
+export function tintOf(hex: string, share: number): string {
+  const mix = (i: number) => Math.round(parseInt(hex.slice(i, i + 2), 16) * share + 255 * (1 - share));
+  return `#${[1, 3, 5].map((i) => mix(i).toString(16).padStart(2, '0')).join('')}`;
 }
 
 export type Tone = 'accent' | 'warm' | 'plain';

@@ -94,6 +94,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         accentColor={page.accentColor}
         headingFont={page.headingFont}
         background={page.background}
+        backgroundColor={page.backgroundColor}
         coverUrl={coverUrl(page.coverKey)}
       >
         {/* The "What do you want to know?" prompt now lives inside Ask

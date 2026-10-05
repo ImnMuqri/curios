@@ -154,6 +154,10 @@
 .band input { position: absolute; opacity: 0; pointer-events: none; }
 .band[data-checked='true'] { box-shadow: 0 0 0 2px var(--ink); }
 .band:has(input:focus-visible) { outline: 2px solid var(--biru); outline-offset: 2px; }
+/* The custom choice's dot is the owner's colour, ringed so a white pick still shows. */
+.customDot { box-shadow: inset 0 0 0 1px var(--line), 0 0 0 2px var(--card), 0 0 0 3px var(--line); }
+.customBg { display: flex; align-items: center; gap: 12px; margin-top: 12px; }
+.colorWell { width: 44px; height: 36px; padding: 2px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); cursor: pointer; }
 .bandDot { width: 28px; height: 28px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--line); }
 
 /* Nothing to report yet: take no room, so a card ends where its last field does. */

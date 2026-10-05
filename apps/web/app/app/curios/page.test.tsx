@@ -38,7 +38,7 @@ const page: MyCuriosData = {
   headingFont: 'JAKARTA',
   avatarKey: 'avatars/p1.jpg',
   coverKey: null,
-  background: 'PAPER',
+  background: 'PAPER', backgroundColor: null,
   links: [],
 };
 

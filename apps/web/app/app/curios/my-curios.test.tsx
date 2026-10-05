@@ -8,7 +8,7 @@ import { MyCuriosEditor } from './my-curios.js';
 const initial = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
   style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, avatarKey: null,
-  coverKey: null, coverUrl: null, background: 'PAPER' as const,
+  coverKey: null, coverUrl: null, background: 'PAPER' as const, backgroundColor: null,
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
 };
 

@@ -42,6 +42,8 @@ export interface PublicPage {
   /** The cover: `stock/<name>` or a storage key; null is no cover. apps/web turns it into a URL. */
   coverKey: string | null;
   background: PageBackground;
+  /** The owner's own colour, used when background is CUSTOM. */
+  backgroundColor: string | null;
 }
 
 /**
@@ -71,6 +73,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       avatarKey: true,
       coverKey: true,
       background: true,
+      backgroundColor: true,
       links: {
         orderBy: { position: 'asc' },
         select: { id: true, label: true, url: true, icon: true, position: true, size: true },

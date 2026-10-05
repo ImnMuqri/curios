@@ -11,7 +11,7 @@ import { LinksEditor, type LinkItem } from './links-editor.js';
 import { ProfileEditor } from './profile-editor.js';
 import styles from './curios.module.css';
 
-export type AppearancePatch = Partial<{ background: PageBackground; style: PageStyle; accentColor: string; headingFont: HeadingFont; displayName: string; bio: string | null }>;
+export type AppearancePatch = Partial<{ background: PageBackground; backgroundColor: string; style: PageStyle; accentColor: string; headingFont: HeadingFont; displayName: string; bio: string | null }>;
 
 // Function-typed properties, not method shorthand: several of these are handed
 // to child components as bare values (`addLink={api.addLink}`), and TS method
@@ -169,6 +169,7 @@ export function MyCuriosEditor({
         <div role="tabpanel" id="panel-appearance" aria-labelledby="tab-appearance" hidden={tab !== 'appearance'}>
         <AppearanceEditor
           background={page.background}
+          backgroundColor={page.backgroundColor}
           style={page.style}
           accentColor={page.accentColor}
           headingFont={page.headingFont}

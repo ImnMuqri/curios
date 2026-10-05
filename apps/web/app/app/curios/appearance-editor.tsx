@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button, Callout } from '@curios/ui';
-import { ACCENT_PRESETS, HEADING_FONTS, isHexColor, PAGE_BACKGROUNDS, type HeadingFont, type PageBackground, type PageStyle } from '@curios/core/bento';
+import { ACCENT_PRESETS, HEADING_FONTS, isHexColor, PAGE_BACKGROUNDS, tintOf, type HeadingFont, type PageBackground, type PageStyle } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../../lib/heading-fonts.js';
 import type { AppearancePatch } from './my-curios.js';
 import styles from './curios.module.css';
@@ -35,7 +35,7 @@ const ACCENT_NAMES: Record<string, string> = {
  * The background bands, named for an owner and drawn from the palette's own
  * tokens (never a hex here: the page's stylesheet owns the colours).
  */
-const BANDS: Record<PageBackground, { name: string; swatch: string }> = {
+const BANDS: Record<Exclude<PageBackground, 'CUSTOM'>, { name: string; swatch: string }> = {
   PAPER: { name: 'Paper', swatch: 'var(--soft-page)' },
   MUDA: { name: 'Pale blue', swatch: 'var(--biru-muda)' },
   KUNING: { name: 'Warm', swatch: 'color-mix(in oklch, var(--kuning) 20%, var(--paper))' },
@@ -50,6 +50,7 @@ const BANDS: Record<PageBackground, { name: string; swatch: string }> = {
  */
 export function AppearanceEditor({
   background,
+  backgroundColor,
   style,
   accentColor,
   headingFont,
@@ -57,6 +58,8 @@ export function AppearanceEditor({
   save,
 }: {
   background: PageBackground;
+  /** The owner's own background colour, kept even while a band is chosen. */
+  backgroundColor: string | null;
   style: PageStyle;
   accentColor: string;
   headingFont: HeadingFont;
@@ -64,6 +67,31 @@ export function AppearanceEditor({
   save: (patch: AppearancePatch) => Promise<unknown>;
 }) {
   const [custom, setCustom] = useState(accentColor);
+  // A first Custom pick starts as a light tint of the accent, so it already belongs to the page.
+  const [customBg, setCustomBg] = useState(backgroundColor ?? tintOf(accentColor, 0.18));
+  const bgTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (bgTimer.current) clearTimeout(bgTimer.current);
+  }, []);
+
+  /**
+   * The custom background: the preview follows every move of the picker at
+   * once, and the save waits until the owner pauses, so dragging across the
+   * picker is one save, not a hundred.
+   */
+  const chooseBackgroundColor = (value: string) => {
+    setCustomBg(value);
+    if (!isHexColor(value)) {
+      setError('Type a colour as six-digit hex, like #eaf0ff.');
+      setFailedPatch(null);
+      return;
+    }
+    const patch: AppearancePatch = { background: 'CUSTOM', backgroundColor: value.toLowerCase() };
+    setError('');
+    onChange(patch);
+    if (bgTimer.current) clearTimeout(bgTimer.current);
+    bgTimer.current = setTimeout(() => attempt(patch), 400);
+  };
   const [error, setError] = useState('');
   // The patch a failed save should send again. Cleared on success, replaced
   // by whatever the owner tries next -- retry always sends the latest
@@ -99,14 +127,39 @@ export function AppearanceEditor({
       <fieldset className={styles.fieldset}>
         <legend>Background</legend>
         <div className={styles.bands}>
-          {PAGE_BACKGROUNDS.map((value) => (
+          {PAGE_BACKGROUNDS.filter((value) => value !== 'CUSTOM').map((value) => (
             <label key={value} className={styles.band} data-checked={background === value}>
               <input type="radio" name="background" checked={background === value} onChange={() => choose({ background: value })} />
               <span className={styles.bandDot} style={{ background: BANDS[value].swatch }} aria-hidden="true" />
               {BANDS[value].name}
             </label>
           ))}
+          <label className={styles.band} data-checked={background === 'CUSTOM'}>
+            <input
+              type="radio"
+              name="background"
+              checked={background === 'CUSTOM'}
+              onChange={() => chooseBackgroundColor(isHexColor(customBg) ? customBg : tintOf(accentColor, 0.18))}
+            />
+            <span className={`${styles.bandDot} ${styles.customDot}`} style={{ background: customBg }} aria-hidden="true" />
+            Custom
+          </label>
         </div>
+        {background === 'CUSTOM' ? (
+          <div className={styles.customBg}>
+            <input
+              type="color"
+              aria-label="Pick a background colour"
+              className={styles.colorWell}
+              value={isHexColor(customBg) ? customBg : '#ffffff'}
+              onChange={(event) => chooseBackgroundColor(event.target.value)}
+            />
+            <label className={styles.custom}>
+              Hex
+              <input value={customBg} aria-label="Background colour as hex" onChange={(event) => chooseBackgroundColor(event.target.value.trim())} />
+            </label>
+          </div>
+        ) : null}
       </fieldset>
 
       <fieldset className={styles.fieldset}>

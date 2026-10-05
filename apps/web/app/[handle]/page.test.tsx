@@ -47,7 +47,7 @@ const page: PublicPage = {
   headingFont: 'JAKARTA',
   avatarKey: null,
   coverKey: null,
-  background: 'PAPER' as const,
+  background: 'PAPER' as const, backgroundColor: null,
 };
 
 describe('public page', () => {
@@ -91,7 +91,7 @@ describe('public page', () => {
   });
 
   it("carries the owner's background and stock cover through to the page", async () => {
-    vi.mocked(getPublicPage).mockResolvedValue({ ...page, background: 'INK', coverKey: 'stock/kopi' });
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, background: 'INK', backgroundColor: null, coverKey: 'stock/kopi' });
     const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
     const bento = container.querySelector('main > *') as HTMLElement;

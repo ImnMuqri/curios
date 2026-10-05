@@ -6,7 +6,7 @@ import { AppearanceEditor } from './appearance-editor.js';
 import type { AppearancePatch } from './my-curios.js';
 
 const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }> = {}) => {
-  const props = { background: 'PAPER' as const, style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
+  const props = { background: 'PAPER' as const, backgroundColor: null, style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
   render(<AppearanceEditor {...props} />);
   return props;
 };
@@ -17,8 +17,8 @@ const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }>
  * to whatever a static prop said. This stands in for that caller, the same
  * way profile-editor.test.tsx's `Controlled` does for ProfileEditor. */
 function Controlled({ save }: { save: (patch: AppearancePatch) => Promise<unknown> }) {
-  const [state, setState] = useState<{ background: 'PAPER' | 'MUDA' | 'KUNING' | 'BIRU' | 'INK'; style: 'SOFT' | 'CONTRAST'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
-    background: 'PAPER',
+  const [state, setState] = useState<{ background: 'PAPER' | 'MUDA' | 'KUNING' | 'BIRU' | 'INK' | 'CUSTOM'; backgroundColor: string | null; style: 'SOFT' | 'CONTRAST'; accentColor: string; headingFont: 'JAKARTA' | 'BRICOLAGE' | 'FRAUNCES' | 'SPACE_GROTESK' | 'DM_SERIF' | 'OUTFIT' }>({
+    background: 'PAPER', backgroundColor: null,
     style: 'SOFT',
     accentColor: '#2340c8',
     headingFont: 'JAKARTA',
@@ -143,9 +143,39 @@ describe('AppearanceEditor background', () => {
   it('saves the background band the owner picks', async () => {
     const save = vi.fn(async () => undefined);
     const onChange = vi.fn();
-    render(<AppearanceEditor background="PAPER" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
+    render(<AppearanceEditor background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
     await userEvent.click(screen.getByRole('radio', { name: /dark/i }));
     expect(save).toHaveBeenCalledWith({ background: 'INK' });
     expect(onChange).toHaveBeenCalledWith({ background: 'INK' });
+  });
+});
+
+describe('AppearanceEditor, a custom background', () => {
+  it("starts Custom as a light tint of the accent, saves it, and offers a picker and a hex box", async () => {
+    const onChange = vi.fn();
+    const save = vi.fn(async () => undefined);
+    render(<AppearanceEditor background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
+
+    await userEvent.click(screen.getByRole('radio', { name: 'Custom' }));
+
+    expect(onChange).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#d7ddf5' });
+    await vi.waitFor(() => expect(save).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#d7ddf5' }));
+  });
+
+  it('shows the picker and hex box only while Custom is chosen, and refuses bad hex without saving', async () => {
+    const save = vi.fn(async () => undefined);
+    const first = render(
+      <AppearanceEditor background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />,
+    );
+    expect(screen.queryByLabelText('Pick a background colour')).toBeNull();
+    first.unmount();
+
+    render(<AppearanceEditor background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
+    expect(screen.getByLabelText('Pick a background colour')).toHaveValue('#f4d9c8');
+    const hex = screen.getByLabelText('Background colour as hex');
+    await userEvent.clear(hex);
+    await userEvent.type(hex, 'pink');
+    expect(screen.getByRole('alert')).toHaveTextContent(/six-digit hex/);
+    expect(save).not.toHaveBeenCalled();
   });
 });

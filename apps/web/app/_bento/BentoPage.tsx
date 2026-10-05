@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import {
   arrangeTiles,
+  isHexColor,
   linkKind,
   readableOn,
   type HeadingFont,
@@ -31,6 +32,8 @@ export interface BentoPageProps {
   nameAs?: 'h1' | 'p';
   /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
   background?: PageBackground;
+  /** The owner's own colour, used when `background` is CUSTOM. */
+  backgroundColor?: string | null;
   /** The cover photo's URL (stock or uploaded), or null for none. */
   coverUrl?: string | null;
   /** The ask bar, on the public page. */
@@ -57,9 +60,13 @@ export interface BentoPageProps {
 export function BentoPage(props: BentoPageProps) {
   const { interactive = true, nameAs: Name = 'h1' } = props;
   const tiles = arrangeTiles(props.links);
+  // Custom only with a colour to show; otherwise the look every page had before.
+  const custom = props.background === 'CUSTOM' && props.backgroundColor && isHexColor(props.backgroundColor) ? props.backgroundColor : null;
+  const background = props.background === 'CUSTOM' ? (custom ? 'CUSTOM' : 'PAPER') : (props.background ?? 'PAPER');
   const vars = {
     '--accent': props.accentColor,
     '--font-heading': HEADING_FONT_VAR[props.headingFont],
+    ...(custom ? { '--custom-bg': custom } : {}),
   } as CSSProperties;
 
   return (
@@ -67,7 +74,9 @@ export function BentoPage(props: BentoPageProps) {
       className={styles.page}
       data-bento-page
       data-style={props.style}
-      data-bg={props.background ?? 'PAPER'}
+      data-bg={background}
+      // Which text reads on the owner's colour: the same test the accent uses.
+      data-bg-text={custom ? readableOn(custom) : undefined}
       data-cover={props.coverUrl ? 'yes' : 'no'}
       data-on-accent={readableOn(props.accentColor)}
       style={vars}

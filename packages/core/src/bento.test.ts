@@ -11,6 +11,7 @@ import {
   STOCK_COVERS,
   stockCoverKey,
   stockCoverName,
+  tintOf,
   type TileSize,
 } from './bento.js';
 
@@ -148,6 +149,18 @@ describe('stock covers', () => {
 
   it('ships every cover the editor offers', () => {
     expect(STOCK_COVERS).toEqual(['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis']);
-    expect(PAGE_BACKGROUNDS).toEqual(['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK']);
+    expect(PAGE_BACKGROUNDS).toEqual(['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK', 'CUSTOM']);
+  });
+});
+
+describe('tintOf', () => {
+  it('takes a colour toward white by the share given', () => {
+    expect(tintOf('#2340c8', 1)).toBe('#2340c8');
+    expect(tintOf('#2340c8', 0)).toBe('#ffffff');
+    expect(tintOf('#000000', 0.5)).toBe('#808080');
+  });
+
+  it('always gives six-digit hex, which the API accepts', () => {
+    expect(isHexColor(tintOf('#0c7a62', 0.18))).toBe(true);
   });
 });
