@@ -1,9 +1,14 @@
+/* --bubble-* hooks: chat mode draws these as a thread; unset, this is the look everywhere else (the landing page's demo, the sign-in aside). */
 .bubble {
-  margin: 16px 0 0;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--biru-muda);
-  color: var(--ink);
+  max-width: var(--bubble-max, none);
+  width: var(--bubble-width, auto);
+  margin: var(--bubble-margin, 16px 0 0);
+  padding: var(--bubble-padding, 12px 14px);
+  border-radius: var(--bubble-radius, 12px);
+  background: var(--bubble-bg, var(--biru-muda));
+  color: var(--bubble-fg, var(--ink));
+  font-size: var(--bubble-size, inherit);
+  line-height: var(--bubble-leading, inherit);
   white-space: pre-wrap;
 }
 

@@ -49,7 +49,7 @@
   border-radius: 8px;
   background: transparent;
   font-size: var(--text-lg);
-  color: var(--ink);
+  color: var(--page-fg, var(--ink));
   cursor: pointer;
   transition: background 120ms ease;
 }
@@ -65,37 +65,89 @@
   margin-top: 4px;
 }
 
+/* A question to tap: the visitor's side of the thread before it starts, so drawn like their bubble. */
 .chip {
-  padding: 12px 14px;
-  border: 1.5px solid var(--ask-border, var(--biru));
-  border-radius: 10px;
-  background: var(--paper);
+  padding: 12px 16px;
+  border: 1.5px solid var(--ask-border, transparent);
+  border-radius: 16px;
+  background: var(--card, var(--paper));
+  box-shadow: 0 1px 3px var(--soft-shadow);
   font-family: var(--font-body);
-  font-size: var(--text-body);
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.45;
   color: var(--ink);
   text-align: left;
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background 120ms ease, transform 120ms ease;
 }
+
 
 .chip:active {
   background: var(--ask-tint, var(--biru-muda));
 }
 
+/*
+ * A thread, the way the landing page's demo draws one: the visitor's words
+ * on the right in a white bubble, the page's answer on the left in a tint of
+ * the accent (DESIGN.md: the accent is the owner's voice). Each bubble's
+ * square corner points at who said it.
+ */
 .turn {
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  --bubble-max: 85%;
+  --bubble-width: fit-content;
+  --bubble-margin: 0;
+  --bubble-padding: 10px 14px;
+  --bubble-radius: 18px 18px 18px 6px;
+  --bubble-bg: var(--ask-tint, var(--biru-muda));
+  --bubble-size: var(--text-base);
+  --bubble-leading: 1.5;
 }
 
 .turn:first-child {
   margin-top: 0;
 }
 
-/* The visitor's own words, quieter than the answer to them. */
 .question {
+  align-self: flex-end;
+  max-width: 85%;
   margin: 0;
+  padding: 10px 14px;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--card, var(--paper));
+  box-shadow: 0 1px 3px var(--soft-shadow);
   font-family: var(--font-body);
   font-size: var(--text-base);
-  color: var(--muted);
+  line-height: 1.5;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Waiting for the first word: the answer's live region is already mounted
+ * (so a screen reader hears the answer arrive), and while it is still empty
+ * it shows three dots instead of an empty pill.
+ */
+.turn [role='status']:empty::before {
+  content: '• • •';
+  letter-spacing: 1px;
+  color: var(--accent, var(--biru));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .turn [role='status']:empty::before {
+    animation: waiting 1s ease-in-out infinite;
+  }
+
+  @keyframes waiting {
+    50% {
+      opacity: 0.35;
+    }
+  }
 }
 
 /*
@@ -110,63 +162,108 @@
   position: sticky;
   bottom: 0;
   margin-top: 16px;
-  padding: 12px 16px calc(16px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 0 calc(16px + env(safe-area-inset-bottom, 0px));
   background: var(--page-bg, var(--paper));
   border-top: 1px solid var(--ask-border, var(--surface));
 }
 
+/* Sentence case and plain, the way the landing page labels a field: it is a label, not a stamp. */
 .composerLabel {
   display: block;
-  margin-bottom: 6px;
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
-  color: var(--muted);
+  margin-bottom: 8px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--page-soft, var(--muted));
 }
 
+/*
+ * One pill holding both the input and a round send button, like the landing
+ * page's claim field. The pill carries the focus ring for both, so the input
+ * inside draws none of its own (one ring, not two).
+ */
 .composerRow {
   display: flex;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 5px 5px 6px;
+  border: 1.5px solid var(--ask-border, var(--line));
+  border-radius: 999px;
+  background: var(--card, var(--paper));
+  box-shadow: 0 1px 3px var(--soft-shadow);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.composerRow:focus-within {
+  /* The page's accent, same as `.send` below -- see its comment. */
+  border-color: var(--accent, var(--biru));
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent, var(--biru)) 22%, transparent);
 }
 
 .input {
   flex: 1;
-  min-height: 48px;
-  padding: 13px 16px;
-  border: 1.5px solid var(--surface);
-  border-radius: 24px;
-  background: var(--paper);
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
   font-family: var(--font-body);
+  /* 17px: below 16px a phone zooms the page in when the field takes focus. */
   font-size: var(--text-body);
   color: var(--ink);
-  transition: border-color 120ms ease;
 }
 
-.input:focus {
-  /* The page's accent, same as `.send` below -- see its comment. */
-  border-color: var(--accent, var(--biru));
+.input:focus,
+.input:focus-visible {
+  outline: none;
 }
 
 .send {
   flex-shrink: 0;
-  min-height: 48px;
-  padding: 13px 20px;
-  border: 1.5px solid transparent;
-  border-radius: 24px;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
   /* The spec: the accent "paints ... chat mode's highlights." Falls back to
      the colours this always used, for anywhere `--accent` (and the readable
      text colour that goes with it, `--on-accent`) is not set. */
   background: var(--accent, var(--biru));
-  font-family: var(--font-body);
-  font-size: var(--text-body);
-  font-weight: 500;
   color: var(--on-accent, var(--paper));
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: transform 120ms ease, opacity 120ms ease;
 }
 
+.send svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.send:active:not(:disabled) {
+  transform: scale(0.94);
+}
+
+.send:focus-visible {
+  outline: 2px solid var(--accent, var(--biru));
+  outline-offset: 2px;
+}
+
+/* Nothing typed yet: present, but plainly not ready. */
 .send:disabled {
-  opacity: 0.55;
+  opacity: 0.35;
   cursor: default;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
