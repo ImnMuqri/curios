@@ -1292,3 +1292,127 @@ describe('topics in the chat', () => {
   });
 });
 
+
+describe('an answered question, asked in new words', () => {
+  const usage = { inputTokens: 300, outputTokens: 1, cacheReadTokens: 0, cacheWriteTokens: 0 };
+
+  /** An embedder that gives each text the axis named for it (axis 0 when unnamed). */
+  function embedderFor(axes: Record<string, number>): Embedder {
+    return {
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+      embed: vi.fn(async (texts: string[]) => texts.map((t) => axis(axes[t] ?? 0))),
+    };
+  }
+
+  /** A gateway whose judge answers as told, and whose chat says `reply` (or must not be called). */
+  function gatewayJudging(verdict: 'first' | 'none' | 'throws', reply?: string) {
+    const sameQuestion = vi.fn(async (input: { candidates: { id: string }[] }) => {
+      if (verdict === 'throws') throw new Error('provider unavailable');
+      return {
+        match: verdict === 'first' ? (input.candidates[0]?.id ?? null) : null,
+        usage,
+        model: 'claude-haiku-4-5',
+        latencyMs: 300,
+      };
+    });
+    const chat = vi.fn(async function* () {
+      if (reply === undefined) throw new Error('chat must not be called');
+      yield { type: 'text' as const, text: reply };
+      yield { type: 'done' as const, usage, model: 'claude-haiku-4-5', latencyMs: 700 };
+    });
+    const gateway: Gateway = { extract: vi.fn(), slots: vi.fn(), sameQuestion, chat };
+    return { gateway, sameQuestion, chat };
+  }
+
+  const queue = () => ({ add: vi.fn(async () => undefined) });
+  const textOf = (events: { type: string; text?: string }[]) =>
+    events.filter((e) => e.type === 'text').map((e) => e.text).join('');
+
+  // The bug the owner saw: "What's his age" asked after "What's is his age"
+  // was answered got "I'm not sure", and only after the reply did the
+  // grouping job fold it in.
+  it("gets the owner's answer on its first ask, joins the answered topic decided, and queues nothing", async () => {
+    const topic = await seedTopic(await pageIdFor('nadia'), { answer: '25 in 2026', wordings: [{ text: "What's is his age" }] });
+    const { gateway, sameQuestion, chat } = gatewayJudging('first');
+    const groupQueue = queue();
+
+    const events = await collect(
+      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: "What's his age" }),
+    );
+
+    expect(textOf(events)).toBe('25 in 2026');
+    expect(chat).not.toHaveBeenCalled();
+    expect(sameQuestion).toHaveBeenCalledTimes(1);
+    const joined = await prisma.question.findFirstOrThrow({ where: { text: "What's his age" } });
+    expect(joined.topicId).toBe(topic.id);
+    expect(joined.groupedAt).not.toBeNull();
+    expect(await prisma.topic.count()).toBe(1);
+    expect((await prisma.topic.findUniqueOrThrow({ where: { id: topic.id } })).askCount).toBe(2);
+    expect(groupQueue.add).not.toHaveBeenCalled();
+    // The judge's call is paid for like any other.
+    expect(await prisma.modelCall.count({ where: { ok: true } })).toBe(1);
+  });
+
+  it('answers as a new question, grouped after the reply as before, when the judge says it is a different one', async () => {
+    await seedTopic(await pageIdFor('nadia'), { answer: '25 in 2026', wordings: [{ text: "What's is his age" }] });
+    const { gateway } = gatewayJudging('none', 'Tak pasti.');
+    const groupQueue = queue();
+
+    const events = await collect(
+      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: 'Is he married' }),
+    );
+
+    expect(textOf(events)).toBe('Tak pasti.');
+    expect(await prisma.topic.count()).toBe(2);
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('never fails the visitor when the judge fails: the reply comes from chat and the failure is recorded', async () => {
+    await seedTopic(await pageIdFor('nadia'), { answer: '25 in 2026', wordings: [{ text: "What's is his age" }] });
+    const { gateway } = gatewayJudging('throws', 'Tak pasti.');
+    const groupQueue = queue();
+
+    const events = await collect(
+      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: "What's his age" }),
+    );
+
+    expect(textOf(events)).toBe('Tak pasti.');
+    expect(await prisma.modelCall.count({ where: { ok: false, errorCode: 'PROVIDER_UNAVAILABLE' } })).toBe(1);
+    expect(groupQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks the judge nothing when no answered wording is close', async () => {
+    await seedTopic(await pageIdFor('nadia'), { answer: '25 in 2026', wordings: [{ text: "What's is his age" }] });
+    const { gateway, sameQuestion } = gatewayJudging('first', 'Ada.');
+
+    await collect(
+      answer(
+        { prisma, gateway, cap, embedder: embedderFor({ "What's is his age": 1, 'Ada delivery?': 2 }), groupQueue: queue() },
+        { handle: 'nadia', question: 'Ada delivery?' },
+      ),
+    );
+
+    expect(sameQuestion).not.toHaveBeenCalled();
+  });
+
+  it('only ever offers answered topics: an unanswered one is left to the grouping job', async () => {
+    await seedTopic(await pageIdFor('nadia'), { wordings: [{ text: "What's is his age" }] });
+    const { gateway, sameQuestion } = gatewayJudging('first', 'Tak pasti.');
+
+    await collect(
+      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue: queue() }, { handle: 'nadia', question: "What's his age" }),
+    );
+
+    expect(sameQuestion).not.toHaveBeenCalled();
+  });
+
+  it("shows the model the owner's answers, for phrasings the judge was not asked about", async () => {
+    await seedTopic(await pageIdFor('nadia'), { answer: '25 in 2026', wordings: [{ text: "What's is his age" }] });
+    const captured = gatewayCapturingPrompt();
+
+    await collect(answer({ prisma, gateway: captured.gateway, cap, embedder: null }, { handle: 'nadia', question: 'How old is he' }));
+
+    expect(captured.prompt()).toContain(`<answer question="What's is his age">25 in 2026</answer>`);
+  });
+});

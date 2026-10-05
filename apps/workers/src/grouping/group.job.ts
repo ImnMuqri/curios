@@ -1,13 +1,6 @@
-import {
-  cosineSimilarity,
-  GROUP_CANDIDATES,
-  GROUP_SAMPLE_WORDINGS,
-  GROUP_SHORTLIST_MIN,
-  questionKey,
-  type GroupJobData,
-} from '@curios/core';
-import { MergeWouldDropAnswerError, mergeTopics, moveWording, recordModelCall, type PrismaClient } from '@curios/db';
-import { decodeVector, encodeVector, type Embedder } from '@curios/embeddings';
+import { type GroupJobData } from '@curios/core';
+import { MergeWouldDropAnswerError, mergeTopics, moveWording, recordModelCall, shortlistTopics, type PrismaClient } from '@curios/db';
+import { type Embedder } from '@curios/embeddings';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 
 export interface GroupJobDeps {
@@ -18,39 +11,6 @@ export interface GroupJobDeps {
 }
 
 export type GroupOutcome = 'skipped' | 'alone' | 'none' | 'merged' | 'moved';
-
-/** Texts per embed call, so a page's first grouping never sends one enormous request. */
-const EMBED_CHUNK = 100;
-
-/** Vectors for these texts: the shared cache first, one batch call for the rest. */
-async function vectorsFor(deps: GroupJobDeps, texts: string[]): Promise<Map<string, Float32Array>> {
-  const { prisma, embedder } = deps;
-  const keys = new Map(texts.map((t) => [t, questionKey(t)]));
-  const cached = await prisma.questionEmbedding.findMany({
-    where: { key: { in: [...new Set(keys.values())] }, model: embedder.model, dims: embedder.dims },
-    select: { key: true, vector: true },
-  });
-  const byKey = new Map(cached.map((row) => [row.key, decodeVector(row.vector, embedder.dims)]));
-
-  const missing = [...new Set(texts.filter((t) => !byKey.has(keys.get(t)!)))];
-  for (let from = 0; from < missing.length; from += EMBED_CHUNK) {
-    const chunk = missing.slice(from, from + EMBED_CHUNK);
-    const fresh = await embedder.embed(chunk);
-    for (const [i, text] of chunk.entries()) {
-      const vector = fresh[i];
-      if (!vector) continue;
-      const key = keys.get(text)!;
-      byKey.set(key, vector);
-      const row = { vector: encodeVector(vector), model: embedder.model, dims: embedder.dims };
-      await prisma.questionEmbedding.upsert({ where: { key }, create: { key, ...row }, update: row });
-    }
-  }
-
-  return new Map(texts.flatMap((t) => {
-    const v = byKey.get(keys.get(t)!);
-    return v ? [[t, v] as const] : [];
-  }));
-}
 
 /**
  * Decide which topic a new wording belongs to. Only this wording ever moves:
@@ -80,25 +40,11 @@ export async function runGroupJob(deps: GroupJobDeps, data: GroupJobData): Promi
     return 'alone';
   }
 
-  const vectors = await vectorsFor(deps, [question.text, ...others.map((o) => o.text)]);
-  const mine = vectors.get(question.text);
-  if (!mine) throw new Error('no vector for the wording being grouped');
-
-  const byTopic = new Map<string, { title: string; best: number; wordings: { text: string; score: number }[] }>();
-  for (const other of others) {
-    const v = vectors.get(other.text);
-    if (!v) continue;
-    const score = cosineSimilarity(mine, v);
-    const entry = byTopic.get(other.topicId) ?? { title: other.topic.title, best: -1, wordings: [] };
-    entry.best = Math.max(entry.best, score);
-    entry.wordings.push({ text: other.text, score });
-    byTopic.set(other.topicId, entry);
-  }
-
-  const shortlist = [...byTopic.entries()]
-    .filter(([, t]) => t.best >= GROUP_SHORTLIST_MIN)
-    .sort((a, b) => b[1].best - a[1].best)
-    .slice(0, GROUP_CANDIDATES);
+  const shortlist = await shortlistTopics(
+    deps,
+    question.text,
+    others.map((o) => ({ text: o.text, topicId: o.topicId, title: o.topic.title })),
+  );
   if (shortlist.length === 0) {
     await decided();
     return 'alone';
@@ -110,11 +56,7 @@ export async function runGroupJob(deps: GroupJobDeps, data: GroupJobData): Promi
       pageName: question.page.displayName,
       mode: question.page.mode,
       wording: question.text,
-      candidates: shortlist.map(([id, t]) => ({
-        id,
-        title: t.title,
-        wordings: t.wordings.sort((a, b) => b.score - a.score).slice(0, GROUP_SAMPLE_WORDINGS).map((w) => w.text),
-      })),
+      candidates: shortlist,
     });
   } catch (error) {
     await recordModelCall(prisma, {
@@ -137,7 +79,7 @@ export async function runGroupJob(deps: GroupJobDeps, data: GroupJobData): Promi
   });
 
   // Only an offered id counts; the gateway already maps letters to ids.
-  const offered = new Set(shortlist.map(([id]) => id));
+  const offered = new Set(shortlist.map((candidate) => candidate.id));
   if (verdict.match === null || !offered.has(verdict.match)) {
     await decided();
     return 'none';

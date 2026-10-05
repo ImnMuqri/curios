@@ -1,5 +1,5 @@
 import { GROUP_QUEUE, isOverCap, normalizeClaim, qualifies, type GroupJobData } from '@curios/core';
-import { recordModelCall, refreshTopic, type PrismaClient } from '@curios/db';
+import { recordModelCall, refreshTopic, shortlistTopics, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
@@ -64,6 +64,96 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
+/** A foreign key that no longer points anywhere: here, a topic deleted between the match and the write. */
+function isMissingParent(error: unknown): boolean {
+  return (
+    typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2003'
+  );
+}
+
+/**
+ * The answered topic a brand-new wording is the same question as, or null.
+ *
+ * Without this, an owner's answer reached only the exact wordings already in
+ * its topic: "What's his age" asked six seconds after the owner answered
+ * "What's is his age" got "I'm not sure", and only the grouping job, after
+ * the reply, folded it in. So before replying to a new wording, the same
+ * judge the grouping job uses is asked about the page's ANSWERED topics only
+ * -- the embedding shortlist first (no model call when nothing is close),
+ * then Haiku's one-letter verdict.
+ *
+ * Never fails the visitor: no embedder, nothing close, or the model failing
+ * all mean null, and the turn carries on as a new question, grouped after
+ * the reply as before. The verdict is a cheap background-sized call and is
+ * recorded like any other; it runs before the cap check on purpose, because
+ * the answer it unlocks is free and a capped page should still give it.
+ */
+async function answeredTopicFor(
+  deps: ChatDeps,
+  page: { id: string; displayName: string; mode: 'PERSONAL' | 'BUSINESS' },
+  conversationId: string,
+  text: string,
+): Promise<string | null> {
+  const { prisma, gateway, embedder } = deps;
+  if (!embedder) return null;
+
+  const others = await prisma.question.findMany({
+    where: { pageId: page.id, topic: { answer: { not: null } } },
+    select: { text: true, topicId: true, topic: { select: { title: true } } },
+  });
+  if (others.length === 0) return null;
+
+  let shortlist;
+  try {
+    shortlist = await shortlistTopics(
+      { prisma, embedder },
+      text,
+      others.map((o) => ({ text: o.text, topicId: o.topicId, title: o.topic.title })),
+    );
+  } catch (error) {
+    deps.log?.warn?.(
+      { pageId: page.id, err: error instanceof Error ? error.message : String(error) },
+      'could not shortlist answered topics; answering as a new question',
+    );
+    return null;
+  }
+  if (shortlist.length === 0) return null;
+
+  try {
+    const verdict = await gateway.sameQuestion({
+      pageName: page.displayName,
+      mode: page.mode,
+      wording: text,
+      candidates: shortlist,
+    });
+    await recordModelCall(prisma, {
+      pageId: page.id,
+      conversationId,
+      model: verdict.model,
+      usage: verdict.usage,
+      latencyMs: verdict.latencyMs,
+      ok: true,
+    });
+    // Only an offered id counts, as in the grouping job.
+    return verdict.match !== null && shortlist.some((c) => c.id === verdict.match) ? verdict.match : null;
+  } catch (error) {
+    await recordModelCall(prisma, {
+      pageId: page.id,
+      conversationId,
+      model: CHAT_MODEL,
+      usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
+      latencyMs: 0,
+      ok: false,
+      errorCode: 'PROVIDER_UNAVAILABLE',
+    });
+    deps.log?.warn?.(
+      { pageId: page.id, err: error instanceof Error ? error.message : String(error) },
+      'same-question check failed; answering as a new question',
+    );
+    return null;
+  }
+}
+
 export class PageNotFoundError extends Error {
   readonly statusCode = 404;
   readonly code = 'PAGE_NOT_FOUND';
@@ -87,6 +177,13 @@ export class ConversationNotFoundError extends Error {
     this.name = 'ConversationNotFoundError';
   }
 }
+
+/**
+ * How many of the owner's answers the model sees, most-asked first. Enough
+ * for any page we have seen; a ceiling so a page with hundreds cannot bloat
+ * every prompt.
+ */
+export const OWNER_ANSWERS_MAX = 30;
 
 /** Billing period. The anniversary rule arrives with billing; the shape does not change. */
 function currentPeriod(now = new Date()): string {
@@ -242,21 +339,52 @@ export async function* answer(
   if (existing) {
     wording = await countRepeat(existing.id);
   } else {
+    // A new wording of a question the owner already answered joins that
+    // topic now, decided (groupedAt set, so the grouping job leaves it be),
+    // and the pinned branch below answers it with the owner's words.
+    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, input.question);
+
     // Created together: a wording is never without its topic. A concurrent
     // first ask of the same wording loses the unique race and is retried as
     // a repeat. The first phrasing wins and is never overwritten.
     try {
-      wording = await prisma.$transaction(async (tx) => {
-        const topic = await tx.topic.create({
-          data: { pageId: page.id, title: input.question, askCount: 1 },
-          select: { id: true },
+      let joined: { id: string; topicId: string } | null = null;
+      if (answeredTopicId) {
+        try {
+          joined = await prisma.$transaction(async (tx) => {
+            const created = await tx.question.create({
+              data: {
+                pageId: page.id,
+                topicId: answeredTopicId,
+                text: input.question,
+                normalizedQuestion,
+                groupedAt: new Date(),
+              },
+              select: { id: true, topicId: true },
+            });
+            await refreshTopic(tx, answeredTopicId);
+            return created;
+          });
+        } catch (error) {
+          // The topic was deleted since the match: a new question after all.
+          if (!isMissingParent(error)) throw error;
+        }
+      }
+      if (joined) {
+        wording = joined;
+      } else {
+        wording = await prisma.$transaction(async (tx) => {
+          const topic = await tx.topic.create({
+            data: { pageId: page.id, title: input.question, askCount: 1 },
+            select: { id: true },
+          });
+          return tx.question.create({
+            data: { pageId: page.id, topicId: topic.id, text: input.question, normalizedQuestion },
+            select: { id: true, topicId: true },
+          });
         });
-        return tx.question.create({
-          data: { pageId: page.id, topicId: topic.id, text: input.question, normalizedQuestion },
-          select: { id: true, topicId: true },
-        });
-      });
-      newWording = true;
+        newWording = true;
+      }
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
       const raced = await prisma.question.findUniqueOrThrow({
@@ -371,11 +499,19 @@ export async function* answer(
       { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn },
     );
 
+    const answered = await prisma.topic.findMany({
+      where: { pageId: page.id, answer: { not: null } },
+      select: { title: true, answer: true },
+      orderBy: [{ askCount: 'desc' }, { id: 'asc' }],
+      take: OWNER_ANSWERS_MAX,
+    });
+
     const systemPrompt = buildSystemPrompt({
       displayName: page.displayName,
       mode: page.mode,
       facts: selection.facts,
       neverSay: page.neverSay.map((n) => n.phrase),
+      ownerAnswers: answered.flatMap((t) => (t.answer ? [{ question: t.title, answer: t.answer }] : [])),
     });
 
     let text = '';

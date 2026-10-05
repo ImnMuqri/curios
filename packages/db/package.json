@@ -16,6 +16,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@curios/core": "workspace:*",
     "@curios/embeddings": "workspace:*",
     "@curios/gateway": "workspace:*",
     "@prisma/client": "^6.1.0"
