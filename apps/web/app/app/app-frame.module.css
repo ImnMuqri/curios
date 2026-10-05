@@ -279,6 +279,11 @@
   padding: 36px 32px 72px;
 }
 
+/* A screen built to fit the window (My Curios) keeps only a small foot, so nothing scrolls the page. */
+.content:has([data-fit-screen]) {
+  padding-bottom: 24px;
+}
+
 /* A phone: the sidebar folds behind the menu button. */
 @media (max-width: 760px) {
   .frame {

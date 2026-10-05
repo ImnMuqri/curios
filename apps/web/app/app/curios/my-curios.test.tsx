@@ -29,6 +29,7 @@ describe('MyCuriosEditor', () => {
   // The preview updates from local state, before any save returns.
   it('shows a new link in the live preview as soon as it is added', async () => {
     render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
     await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Shop');
     await userEvent.type(screen.getByLabelText('Address'), 'shopee.com.my/iman');
@@ -57,6 +58,8 @@ describe('MyCuriosEditor', () => {
     stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
     render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
+
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     await userEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
     await userEvent.type(within(row).getByLabelText('Name'), '!');
@@ -70,6 +73,8 @@ describe('MyCuriosEditor', () => {
     stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
     render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
+
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
 
@@ -80,6 +85,7 @@ describe('MyCuriosEditor', () => {
 
   it('restyles the preview the moment a style is chosen', async () => {
     const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
     await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
     expect(container.querySelector('[aria-label="Live preview"] [data-style]')).toHaveAttribute('data-style', 'CONTRAST');
   });
@@ -119,3 +125,35 @@ describe('the live preview fits its box', () => {
   });
 });
 
+
+describe('the icon rail', () => {
+  it('shows one part at a time, Profile first, and the rail says which', async () => {
+    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Display name')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '+ Add a link' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
+    expect(screen.getByRole('radio', { name: 'High contrast' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Display name')).not.toBeVisible();
+  });
+
+  it('moves between parts with the arrow keys, as a tab list does', async () => {
+    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    screen.getByRole('tab', { name: 'Profile' }).focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('tab', { name: 'Links' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Links' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    expect(screen.getByRole('tab', { name: 'Appearance' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  // A hidden part keeps its state, so a name typed a moment ago still saves after switching away.
+  it('keeps a part mounted while another is shown', async () => {
+    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.type(screen.getByLabelText('Display name'), '!');
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Profile' }));
+    expect(screen.getByLabelText('Display name')).toHaveValue(`${initial.displayName}!`);
+  });
+});
