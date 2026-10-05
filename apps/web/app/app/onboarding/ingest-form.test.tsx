@@ -162,7 +162,7 @@ describe('IngestForm', () => {
 
     await userEvent.type(screen.getByLabelText('Your website address'), 'https://nadiabakes.my');
     await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add another link or text' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add another source' }));
 
     // Back to an empty form, saying where the first source's facts went.
     const field = screen.getByLabelText('Another link');

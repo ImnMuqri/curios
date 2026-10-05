@@ -61,7 +61,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
-  max-width: 720px;
+  max-width: none;
   padding: 22px 24px;
   background: var(--card);
   border: 1px solid var(--line);

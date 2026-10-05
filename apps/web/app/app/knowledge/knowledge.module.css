@@ -61,8 +61,9 @@
   .add { padding: 18px 16px; }
 }
 
-/* The Sources tab opens with its Add button; the list keeps its distance. */
+/* The Sources tab opens with its Add button, its form or a status card; the list keeps its distance. */
 button + .list,
-form + .list {
+form + .list,
+div + .list {
   margin-top: 16px;
 }

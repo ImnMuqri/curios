@@ -133,6 +133,7 @@ export function IngestForm({
         fetchStatus={fetchStatus}
         // A file is read as text, and fails or finds nothing the way pasted text does.
         source={using === 'link' ? 'link' : 'text'}
+        subject={using === 'file' && file ? file.name : undefined}
         onSettled={onSettled}
         onNothingFound={() => {
           setIngestionId(null);
