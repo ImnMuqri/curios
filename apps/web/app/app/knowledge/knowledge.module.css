@@ -16,6 +16,21 @@
   scrollbar-width: none;
 }
 
+/*
+ * Centred on the colour band's bottom edge, half on the band and half on white:
+ * the band ends 172px down (200px on a phone, where the lede wraps), and the
+ * switch is 45px tall.
+ */
+.tabs {
+  margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+  .tabs {
+    margin-top: 38px;
+  }
+}
+
 .tab {
   padding: 8px 16px;
   border-radius: 999px;

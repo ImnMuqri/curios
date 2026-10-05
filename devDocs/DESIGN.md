@@ -150,9 +150,9 @@ uses `AuthShell`, as the next step after sign-up.
 *Amended 2026-10-05: colour bands.* The owner found the dashboard too plain, so each
 screen's title now sits on a full-width band from the palette, the landing page's
 bands, quieter, with the first cards rising over its foot: cobalt for My Curios, Leads
-and Add a source, warm (kuning at 22% on paper) for Review, where a human needs to act,
-pale blue for Knowledge, Questions and Settings, and ink for Billing. (Leads began warm;
-the owner did not like it.) Set in `app-frame.tsx` (BANDS) and drawn by `app-frame.module.css`; each
+and Add a source, pale blue for Review, Knowledge, Questions and Settings, and ink for
+Billing. (Warm was tried on Review and Leads; the owner did not like it, so no band is
+warm and kuning keeps to its one job.) Set in `app-frame.tsx` (BANDS) and drawn by `app-frame.module.css`; each
 band sets the title and lede colours through Shell's hooks. Flat colour, no gradient.
 
 ---
