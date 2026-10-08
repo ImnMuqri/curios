@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Kek Lina, the landing page's demo shop: a two-tier cake with a raspberry on top. Drawn for Curios, not a real brand. -->
+  <circle cx="60" cy="60" r="60" fill="#b5294e"/>
+  <circle cx="60" cy="60" r="52" fill="none" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1.5"/>
+  <g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 84h60"/>
+    <path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"/>
+    <path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"/>
+    <path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"/>
+  </g>
+  <circle cx="60" cy="38" r="6" fill="#ffffff"/>
+  <path d="M60 32c1-4 4-6 7-6" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+</svg>

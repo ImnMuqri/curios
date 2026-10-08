@@ -85,11 +85,14 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
   }, [round, asked]);
 
   useEffect(() => {
-    // Keep the newest line in view inside the phone's own scroll box -- never
-    // scrollIntoView, which would also move the landing page itself.
+    // The phone opens at the top, cover and logo first, like a page someone just
+    // landed on. Only once a question is asked does it follow the newest line --
+    // inside the phone's own scroll box, never scrollIntoView, which would also
+    // move the landing page itself.
+    if (round === 0) return;
     const box = screen.current;
     if (box) box.scrollTop = box.scrollHeight;
-  }, [shown, thinking]);
+  }, [shown, thinking, round]);
 
   // Sends the question the input is showing, then offers the one after it.
   function ask() {

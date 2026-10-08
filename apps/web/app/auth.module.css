@@ -231,11 +231,15 @@
     width: min(270px, calc((100svh - 260px) * 9 / 19));
   }
 
-  /* Anchored to the bottom, like a chat scrolled to the latest message: the answer always shows. */
+  /*
+   * The top of the page, cover and logo first, as a visitor lands on it; the
+   * latest question and answer float at the foot of the screen like the newest
+   * messages of a chat, so the answer always shows.
+   */
   .asideScreen {
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
     height: 100%;
     overflow: hidden;
   }
@@ -254,7 +258,18 @@
   }
 
   .asideThread {
+    position: sticky;
+    bottom: 14px;
+    z-index: 1;
     margin-top: auto;
+    --bubble-max: 85%;
+    --bubble-width: fit-content;
+    --bubble-margin: 8px 0 0;
+    --bubble-padding: 10px 14px;
+    --bubble-radius: 18px 18px 18px 6px;
+    --bubble-bg: var(--ask-tint, var(--biru-muda));
+    --bubble-size: var(--text-base);
+    --bubble-leading: 1.5;
   }
 
   .asideAsked {
@@ -262,9 +277,10 @@
     width: fit-content;
     max-width: 85%;
     padding: 10px 14px;
-    border-radius: 12px;
-    border: 1px solid var(--line);
+    border-radius: 18px 18px 6px 18px;
     background: var(--card);
+    box-shadow: 0 2px 8px var(--soft-shadow);
     font-size: var(--text-base);
+    line-height: 1.5;
   }
 }

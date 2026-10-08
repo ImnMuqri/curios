@@ -21,17 +21,23 @@ export const DEMO_PAGE: Omit<BentoPageProps, 'children'> = {
   displayName: DEMO_SHOP,
   handle: 'keklina',
   bio: 'Kek dan dessert dari rumah, Shah Alam. Order 2 hari awal.',
-  avatarUrl: null,
+  // Dressed as a real owner would: its own logo, a cover photo, a raspberry
+  // background and accent, and a softer serif -- the customisation a page has,
+  // shown rather than described. The logo is ours (public/demo); the cover is
+  // one of the stock covers (public/covers/CREDITS.md).
+  avatarUrl: '/demo/keklina-logo.svg',
+  coverUrl: '/covers/manis.webp',
+  background: 'CUSTOM',
+  backgroundColor: '#fbeef1',
   style: 'SOFT',
-  accentColor: '#2340c8',
-  headingFont: 'BRICOLAGE',
+  accentColor: '#b5294e',
+  headingFont: 'FRAUNCES',
   interactive: false,
   nameAs: 'p',
   links: [
     { id: 'wa', label: 'Order di WhatsApp', url: 'https://wa.me/60123456789', size: null },
     { id: 'menu', label: 'Menu & harga', url: 'https://keklina.example/menu', size: null },
     { id: 'ig', label: 'Gambar kek', url: 'https://instagram.com/keklina', size: null },
-    { id: 'tt', label: 'Video', url: 'https://tiktok.com/@keklina', size: null },
   ],
 };
 

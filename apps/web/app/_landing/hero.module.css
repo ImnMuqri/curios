@@ -137,6 +137,10 @@
   gap: 8px;
   width: 100%;
   margin-top: auto;
+  /* Held at the foot of the phone as the page scrolls under it, as chat mode's input is. */
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   padding: 5px 5px 5px 16px;
   border: 1.5px solid var(--ask-border, var(--line));
   border-radius: 999px;
