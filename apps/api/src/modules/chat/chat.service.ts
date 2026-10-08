@@ -3,7 +3,7 @@ import { recordModelCall, refreshTopic, shortlistTopics, type PrismaClient } fro
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
-import { selectForQuestion } from './retrieval.js';
+import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
@@ -179,11 +179,12 @@ export class ConversationNotFoundError extends Error {
 }
 
 /**
- * How many of the owner's answers the model sees, most-asked first. Enough
- * for any page we have seen; a ceiling so a page with hundreds cannot bloat
- * every prompt.
+ * How many of the owner's answers are considered for one turn, most-asked
+ * first. Not how many are sent -- `selectOwnerAnswers` keeps that to
+ * ANSWER_BUDGET_CHARS -- but a ceiling on the rows read and ranked, so a page
+ * with thousands of answered topics cannot slow every turn down.
  */
-export const OWNER_ANSWERS_MAX = 30;
+export const OWNER_ANSWERS_MAX = 200;
 
 /** Billing period. The anniversary rule arrives with billing; the shape does not change. */
 function currentPeriod(now = new Date()): string {
@@ -228,6 +229,10 @@ export async function* answer(
       displayName: true,
       // Read for qualification: a personal page never offers the capture card.
       mode: true,
+      // The structured profile: small, always sent, so "how do I reach you?"
+      // and "what's your Instagram?" are answered from the page's own links.
+      bio: true,
+      links: { select: { label: true, url: true }, orderBy: { position: 'asc' } },
       facts: {
         where: { verified: true },
         select: { id: true, category: true, claim: true },
@@ -499,19 +504,31 @@ export async function* answer(
       { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn },
     );
 
+    // The owner's own answers, retrieved like the facts: every one when they
+    // all fit the budget, otherwise only the ones this question is about.
     const answered = await prisma.topic.findMany({
       where: { pageId: page.id, answer: { not: null } },
-      select: { title: true, answer: true },
+      select: { id: true, title: true, answer: true },
       orderBy: [{ askCount: 'desc' }, { id: 'asc' }],
       take: OWNER_ANSWERS_MAX,
     });
+    const answers = await selectOwnerAnswers(
+      { prisma, embedder: deps.embedder, log: deps.log },
+      {
+        pageId: page.id,
+        answers: answered.flatMap((t) => (t.answer ? [{ id: t.id, question: t.title, answer: t.answer }] : [])),
+        question: input.question,
+        previousUserTurn,
+      },
+    );
 
     const systemPrompt = buildSystemPrompt({
       displayName: page.displayName,
       mode: page.mode,
+      profile: { bio: page.bio, links: page.links },
       facts: selection.facts,
       neverSay: page.neverSay.map((n) => n.phrase),
-      ownerAnswers: answered.flatMap((t) => (t.answer ? [{ question: t.title, answer: t.answer }] : [])),
+      ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
     });
 
     let text = '';
@@ -523,7 +540,8 @@ export async function* answer(
       for await (const event of gateway.chat({
         systemPrompt,
         messages,
-        cachePrompt: selection.mode === 'fallback',
+        // Both halves must be the page's stable whole for the prefix to repeat.
+        cachePrompt: selection.mode === 'fallback' && answers.mode === 'all',
       })) {
         if (event.type === 'text') {
           text += event.text;

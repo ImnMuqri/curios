@@ -1416,3 +1416,62 @@ describe('an answered question, asked in new words', () => {
     expect(captured.prompt()).toContain(`<answer question="What's is his age">25 in 2026</answer>`);
   });
 });
+
+describe('the owner\'s answers and profile in the prompt', () => {
+  /** Each text on its own axis, the question on axis 0: only wordings named here as 0 are close to it. */
+  function embedderFor(axes: Record<string, number>): Embedder {
+    return {
+      model: EMBEDDING_MODEL,
+      dims: EMBEDDING_DIMS,
+      embed: vi.fn(async (texts: string[]) => texts.map((t) => axis(axes[t] ?? 0))),
+    };
+  }
+
+  it('sends only the answers this question is about once they no longer fit the budget, and does not cache that prompt', async () => {
+    const pageId = await pageIdFor('nadia');
+    // Three long answers: together far past ANSWER_BUDGET_CHARS.
+    await seedTopic(pageId, { answer: 'Delivery is RM10. ' + 'd'.repeat(900), wordings: [{ text: 'Ada delivery?' }] });
+    await seedTopic(pageId, { answer: 'Halal certified. ' + 'h'.repeat(900), wordings: [{ text: 'Halal tak?' }] });
+    await seedTopic(pageId, { answer: 'Open 10 to 7. ' + 'o'.repeat(900), wordings: [{ text: 'Buka pukul berapa?' }] });
+    const captured = gatewayCapturingCall();
+
+    await collect(
+      answer(
+        // The question and 'Halal tak?' share axis 0; the other wordings sit elsewhere.
+        { prisma, gateway: captured.gateway, cap, embedder: embedderFor({ 'Ada delivery?': 1, 'Buka pukul berapa?': 2 }) },
+        { handle: 'nadia', question: 'Is it halal?' },
+      ),
+    );
+
+    const prompt = captured.call().systemPrompt;
+    expect(prompt).toContain('Halal certified.');
+    expect(prompt).not.toContain('Delivery is RM10.');
+    expect(prompt).not.toContain('Open 10 to 7.');
+    expect(captured.call().cachePrompt).toBe(false);
+  });
+
+  it('sends every answer while they fit the budget, and keeps the prompt cacheable', async () => {
+    await seedTopic(await pageIdFor('nadia'), { answer: 'Delivery is RM10.', wordings: [{ text: 'Ada delivery?' }] });
+    const captured = gatewayCapturingCall();
+    // Off axis 0, so the pre-reply check for an answered topic finds nothing close and the model answers.
+    const embedder = embedderFor({ 'Ada delivery?': 1 });
+
+    await collect(answer({ prisma, gateway: captured.gateway, cap, embedder }, { handle: 'nadia', question: 'Is it halal?' }));
+
+    expect(captured.call().systemPrompt).toContain('Delivery is RM10.');
+    // Facts in fallback (a small page) and answers sent whole: the prefix repeats, so it is cached.
+    expect(captured.call().cachePrompt).toBe(true);
+  });
+
+  it("sends the page's bio and links, so a contact question has its answer", async () => {
+    const pageId = await pageIdFor('nadia');
+    await prisma.page.update({ where: { id: pageId }, data: { bio: 'Kek butter, Shah Alam' } });
+    await prisma.link.create({ data: { pageId, label: 'Order di WhatsApp', url: 'https://wa.me/60123', position: 0 } });
+    const captured = gatewayCapturingCall();
+
+    await collect(answer({ prisma, gateway: captured.gateway, cap, embedder: null }, { handle: 'nadia', question: 'How do I order?' }));
+
+    expect(captured.call().systemPrompt).toContain('About: Kek butter, Shah Alam');
+    expect(captured.call().systemPrompt).toContain('WhatsApp: Order di WhatsApp -- https://wa.me/60123');
+  });
+});
