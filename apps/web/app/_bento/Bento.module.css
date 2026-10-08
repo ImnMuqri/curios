@@ -152,6 +152,12 @@
   padding-left: 44px;
 }
 
+/* With a cover the back button sits on the photo, above the header, so the
+   header keeps its full width and a short name stays on one line. */
+.page[data-mode='chat'][data-cover='yes'] .head {
+  padding-left: 0;
+}
+
 /*
  * The cover photo: full width at the top of the page, bleeding past the
  * page's padding, fading into the page's own background at its foot (an

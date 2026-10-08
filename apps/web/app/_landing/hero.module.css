@@ -105,9 +105,9 @@
  * accent's tint, each square corner pointing at who spoke, and the input at
  * the bottom with the answers arriving just above it.
  */
+/* In chat mode the conversation starts right under the shop's name, as on a real page; the input stays at the foot. */
 .thread {
-  margin: auto 0 var(--l-space-3);
-  padding-top: var(--l-space-4);
+  margin: var(--l-space-3) 0 var(--l-space-3);
   --bubble-max: 85%;
   --bubble-width: fit-content;
   --bubble-margin: 8px 0 0;
@@ -163,8 +163,30 @@
   transition: border-color 120ms ease;
 }
 
-.thread + .composerBar {
-  margin-top: 0;
+/* Chat mode's way back to the page: top left, over the cover, where the real page puts it (ChatMode.module.css). */
+.back {
+  position: absolute;
+  top: 36px;
+  left: 16px;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: color-mix(in oklab, var(--card) 85%, transparent);
+  box-shadow: 0 1px 3px var(--soft-shadow);
+  color: var(--ink);
+  font-size: var(--text-lg);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.back:focus-visible {
+  outline: 2px solid var(--accent, var(--biru));
+  outline-offset: 2px;
 }
 
 .composer:hover {

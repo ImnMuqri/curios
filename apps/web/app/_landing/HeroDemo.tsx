@@ -94,8 +94,26 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
     if (box) box.scrollTop = box.scrollHeight;
   }, [shown, thinking, round]);
 
-  // Sends the question the input is showing, then offers the one after it.
+  // Chat mode, the way a real page enters it: `data-mode="chat"` on the page
+  // root, which Bento.module.css answers by folding the bio and the tiles away
+  // (the same 260ms the public page uses) and making room for the back arrow.
+  // Set on the element, as ChatMode does, because BentoPage holds no chat state.
+  const [chat, setChat] = useState(false);
+  useEffect(() => {
+    const page = screen.current?.querySelector('[data-bento-page]');
+    if (!page) return;
+    if (chat) page.setAttribute('data-mode', 'chat');
+    else page.removeAttribute('data-mode');
+  }, [chat]);
+
+  function leave() {
+    setChat(false);
+    if (screen.current) screen.current.scrollTop = 0;
+  }
+
+  // Opens chat mode and sends the question the input is showing, then offers the one after it.
   function ask() {
+    setChat(true);
     setAsked(DEMO_QA[next]!);
     setTapped(true);
     setRound((r) => r + 1);
@@ -107,18 +125,25 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
       <Device time="3:15" chrome="browser" url={`curios.my/${handle}`}>
       <div ref={screen} className={styles.screen}>
         <BentoPage {...DEMO_PAGE} handle={handle}>
-          <div className={styles.thread} key={round}>
-            <p className={styles.asked}>{asked.q}</p>
-            {thinking ? (
-              <p className={styles.typing} role="status" aria-label="Typing">
-                <span />
-                <span />
-                <span />
-              </p>
-            ) : (
-              <AnswerBubble text={shown} />
-            )}
-          </div>
+          {chat ? (
+            <>
+              <button type="button" className={styles.back} aria-label="Back to links" onClick={leave}>
+                ←
+              </button>
+              <div className={styles.thread} key={round}>
+                <p className={styles.asked}>{asked.q}</p>
+                {thinking ? (
+                  <p className={styles.typing} role="status" aria-label="Typing">
+                    <span />
+                    <span />
+                    <span />
+                  </p>
+                ) : (
+                  <AnswerBubble text={shown} />
+                )}
+              </div>
+            </>
+          ) : null}
           {/* Drawn as chat mode's own input -- a white pill, a round send button -- with the next question
               already typed in it. One tap sends it, so the demo is a chat, not a bar to open one. */}
           <div className={styles.composerBar}>

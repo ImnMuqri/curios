@@ -229,3 +229,21 @@ describe('the interactive bits', () => {
     expect(screen.getAllByText('curios.my/keklina')).toHaveLength(2);
   });
 });
+
+describe('the hero demo', () => {
+  // Like the public page: tapping the input opens chat mode, which folds the
+  // bio and the tiles away (Bento.module.css keys on data-mode), and the back
+  // arrow returns to the page.
+  it('opens chat mode when a question is sent, and the back arrow closes it', async () => {
+    const { container } = render(<HeroDemo label="Demo" hint="Tap" />);
+    const page = container.querySelector('[data-bento-page]')!;
+    expect(page).not.toHaveAttribute('data-mode');
+    expect(screen.queryByRole('button', { name: 'Back to links' })).toBeNull();
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: /^Ask:/ })));
+    expect(page).toHaveAttribute('data-mode', 'chat');
+
+    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Back to links' })));
+    expect(page).not.toHaveAttribute('data-mode');
+  });
+});
