@@ -33,7 +33,15 @@ export function Setup({ copy }: { copy: LandingCopy }) {
             ))}
           </ol>
         </div>
-        <PhotoSlot shot={copy.photos.setup} ratio={4 / 5} className={styles.photo} />
+        <PhotoSlot
+          shot={copy.photos.setup}
+          src="/landing/setup-laptop.webp"
+          alt="A shop owner at her kitchen table, typing on a laptop, her phone and a cup of teh tarik beside it"
+          // A landscape photo in a portrait frame: centred on her hands, the laptop and the phone.
+          focus="60% 50%"
+          ratio={4 / 5}
+          className={styles.photo}
+        />
       </div>
     </section>
   );

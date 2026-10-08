@@ -35,7 +35,15 @@ export function Hero({ copy }: { copy: LandingCopy }) {
           </div>
         </div>
         <figure className={styles.proof}>
-          <PhotoSlot shot={copy.photos.hero} className={styles.photo} />
+          <PhotoSlot
+            shot={copy.photos.hero}
+            src="/landing/hero-baker.webp"
+            alt="A home baker at her kitchen counter, smiling at her phone beside a chocolate cake and cake boxes"
+            // Her face, phone and the cake sit upper right; the demo phone covers the lower left.
+            focus="62% 22%"
+            priority
+            className={styles.photo}
+          />
           <div className={styles.phoneWrap}>
             <HeroDemo label={copy.demo.label} hint={copy.hero.tryHint} />
           </div>

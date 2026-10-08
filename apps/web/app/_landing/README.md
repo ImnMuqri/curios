@@ -152,8 +152,8 @@ Brand colours were never adjusted. Each fix changed the layer instead.
 | A live ask bar | `HeroDemo.tsx` | The comment there shows how to swap the scripted answer for the real `Ask` component on a seeded page. That costs inference on every visit. |
 | Lead email and capture card | `LeadsStory.tsx` | Rebuilt in HTML from the real product strings. Swap for real screenshots if preferred. |
 | Social proof | none yet | There are no real owners to quote, so the page has no proof section and invents nothing. When there is one, put it between Leads and Trust. |
-| Hero photo | `Hero.tsx` → `PhotoSlot` | A home baker at her counter, holding her phone with her Curios page open. 4:5 on desktop, 4:3 on a phone; the demo phone stands in front of its lower left, so keep the subject upper right. |
-| Setup photo | `Setup.tsx` → `PhotoSlot` | An owner pasting her shop's link into Curios on a laptop, phone beside her. 4:5. |
+| Hero photo | `Hero.tsx` → `PhotoSlot` | **Done:** `public/landing/hero-baker.webp`, supplied by the owner on 2026-10-08. A home baker at her counter, smiling at her phone beside a chocolate cake. Cropped round `focus` to 4:5 on desktop and 4:3 on a phone; the demo phone stands in front of its lower left, so the subject stays upper right. |
+| Setup photo | `Setup.tsx` → `PhotoSlot` | **Done:** `public/landing/setup-laptop.webp`, supplied by the owner on 2026-10-08. An owner at her kitchen table on a laptop, phone and teh tarik beside her. A landscape photo cropped round `focus` into the 4:5 slot. |
 | Share image fonts | `og-image.tsx` | Uses the default sans. Load Bricolage as a TTF into `ImageResponse` for a branded card. |
 
 ---

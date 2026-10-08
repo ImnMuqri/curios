@@ -27,3 +27,19 @@
 .kind {
   font-weight: 600;
 }
+
+/* The photograph itself: no frame, no tint, the picture to the slot's rounded edge. */
+.filled {
+  overflow: hidden;
+  padding: 0;
+  background: none;
+  outline: none;
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
