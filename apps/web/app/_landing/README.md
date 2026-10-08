@@ -36,7 +36,7 @@ every "berapa harga" after that and sends the ready-to-buy people to you.
 | Section | Job |
 |---|---|
 | Hero | The promise, the mechanism, one button. The proof is a real Curios page (BentoPage + AskBar) answering. |
-| Storm (ticker) | The problem it removes: forty ways to ask one question slide past in ticker rows, then clear away for one question, "asked 40×", and the owner's answer as the reply. |
+| Storm | The problem it removes: as the visitor scrolls, customers' messages (forty ways of asking one price) pop up round a phone one by one, then fly into it, where they are one question, "asked 40×", with the owner's one answer. |
 | Leads | Objection 3, "why pay?": what the RM39 buys, played out from 11:42pm question to WhatsApp reply. |
 | Trust | Objection 1, "it'll get prices wrong": approved facts, "I'll check with Lina", the waiting question. |
 | Setup | Objection 2, "no time": four steps, honest that Instagram can't be read. |
@@ -58,7 +58,7 @@ ours. No shadows: bands and cards separate by colour.
 | Section | Band | Headline | Buttons |
 |---|---|---|---|
 | Hero | `--biru-muda` | `--l-biru-800` | biru pill |
-| Storm (ticker) | `--ink` | `--l-biru-200` | |
+| Storm | `--ink` | `--l-biru-200` | |
 | Leads | `--biru` | `--biru-muda` | paper pill, biru text |
 | Trust | `--l-kuning-100` (unanswered questions are kuning's job) | `--l-kuning-900` | |
 | Setup | `--paper` | ink | |
@@ -96,7 +96,7 @@ with its coordinates.
 | `#fafbfc` | `--paper` | locked | Page background, text on ink/biru, inverted buttons |
 | `#f0f1f4` | `--surface` | locked | Trust band, count chip, done steps, replay hover |
 | `#2340c8` | `--biru` | locked | Primary buttons and the focus ring. Inside the demo phones: the accent tile, ask-bar border, reply button |
-| `#eaf0ff` | `--biru-muda` | locked | Answer bubbles (product UI), pale ticker pills |
+| `#eaf0ff` | `--biru-muda` | locked | Answer bubbles (product UI) |
 | `#f2a33c` | `--kuning` | locked | Only inside product mockups: the captured-lead card, the lead's number in the email, the waiting question. Money and "a human needs to act" only |
 | `#696e7b` | `--muted` | locked | Secondary text on light grounds only (4.9:1 paper, 4.5:1 surface) |
 | `#ffffff` | `--card` | locked | Cards, chat bubbles, email |
@@ -153,7 +153,6 @@ Brand colours were never adjusted. Each fix changed the layer instead.
 | Lead email and capture card | `LeadsStory.tsx` | Rebuilt in HTML from the real product strings. Swap for real screenshots if preferred. |
 | Social proof | none yet | There are no real owners to quote, so the page has no proof section and invents nothing. When there is one, put it between Leads and Trust. |
 | Hero photo | `Hero.tsx` → `PhotoSlot` | A home baker at her counter, holding her phone with her Curios page open. 4:5 on desktop, 4:3 on a phone; the demo phone stands in front of its lower left, so keep the subject upper right. |
-| Storm photo | `Storm.tsx` → `PhotoSlot` | An owner at her counter reading her phone between orders, cake boxes behind her. 16:9 on desktop, 5:4 on a phone. The question floats over its top left and the answer over its bottom right, so keep the subject in the middle. |
 | Setup photo | `Setup.tsx` → `PhotoSlot` | An owner pasting her shop's link into Curios on a laptop, phone beside her. 4:5. |
 | Share image fonts | `og-image.tsx` | Uses the default sans. Load Bricolage as a TTF into `ImageResponse` for a branded card. |
 

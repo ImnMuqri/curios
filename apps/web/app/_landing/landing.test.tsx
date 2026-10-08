@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { LandingPage, landingMetadata } from './LandingPage.js';
@@ -10,7 +11,7 @@ import { LeadsStory } from './LeadsStory.js';
 import { BusinessPrice } from './BusinessPrice.js';
 import { ClaimField } from './ClaimField.js';
 import { HeroDemo } from './HeroDemo.js';
-import { mergeFor } from './StormStage.js';
+import { askedAt } from './StormStage.js';
 
 const LOCALES = ['en', 'ms'] as const;
 
@@ -136,19 +137,23 @@ describe('the storm', () => {
     expect(ms.storm.body).toMatch(/empat puluh/);
   });
 
-  it('holds still at both ends of the scroll, so each state can be read', () => {
-    expect(mergeFor(0)).toBe(0);
-    expect(mergeFor(0.2)).toBe(0);
-    expect(mergeFor(0.8)).toBe(1);
-    expect(mergeFor(1)).toBe(1);
-    expect(mergeFor(0.5)).toBeGreaterThan(0.4);
-    expect(mergeFor(0.5)).toBeLessThan(0.6);
+  it('counts nobody until the messages fly in, then all forty, and never goes backwards', () => {
+    expect(askedAt(0, 40)).toBe(0);
+    expect(askedAt(0.45, 40)).toBe(0);
+    expect(askedAt(0.8, 40)).toBe(40);
+    expect(askedAt(1, 40)).toBe(40);
+    const along = [0.5, 0.55, 0.6, 0.65, 0.7, 0.74].map((p) => askedAt(p, 40));
+    expect(along).toEqual([...along].sort((a, b) => a - b));
+    expect(along[2]).toBeGreaterThan(0);
+    expect(along[2]).toBeLessThan(40);
   });
 
+  // The finished scene, as the server renders it -- what a visitor without JavaScript, or with
+  // reduced motion, sees. Scrolling counts up to it from nought.
   it('ends on one question, asked forty times, with the same answer the hero demo gives', () => {
-    render(<LandingPage locale="en" />);
-    expect(screen.getAllByText(DEMO_QA[0]!.a).length).toBeGreaterThan(0);
-    expect(screen.getByText('asked 40×')).toBeInTheDocument();
+    const html = renderToStaticMarkup(<LandingPage locale="en" />);
+    expect(html).toContain(DEMO_QA[0]!.a);
+    expect(html).toContain('asked 40×');
   });
 });
 

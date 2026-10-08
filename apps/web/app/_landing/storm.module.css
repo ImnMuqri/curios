@@ -1,29 +1,26 @@
 /*
  * The ink band, taller than the screen, with a sticky stage. Scrolling
- * through the extra height drives --merge (set by StormStage) from 0 to 1:
+ * through the extra height drives --p (set by StormStage) from 0 to 1:
  *
- *   0.10-0.30  the one question lands on the photo, "asked 40×"
- *   0.30-0.45  the owner's answer lands under it
- *   0.45-0.95  each wording in the moving rows gets the answer attached,
- *              one by one, scattered across the rows (--at per pill)
+ *   0.04-0.46  customers' messages pop up round the phone, one by one (--t each)
+ *   0.50-0.74  they fly into the phone, a little apart (--d each)
+ *   0.48       the one question is on the phone; its count ticks up (StormStage)
+ *   0.76-0.84  the owner's one answer arrives
  *
- * Layout, the way linktr.ee composes a section: words on one side, a big
- * rounded photograph on the other with the product's own UI floating over
- * it, and the ticker running full width underneath both. On a phone: words,
- * photo, ticker.
+ * Words on one side, the scene on the other; on a phone, words then scene.
  *
- * On ink: text is --paper (15.9:1), --l-ink-300 (8.2:1); answers are paper
- * on --biru (7.7:1).
+ * On ink: text is --paper (15.9:1), --l-ink-300 (8.2:1). The messages are
+ * ink on white, the phone is Kek Lina's own page (its accent and background
+ * arrive as --accent and --shop-bg from Storm.tsx).
  */
 
 .storm {
   position: relative;
-  height: 200svh;
+  height: 220svh;
 }
 
 .stage {
-  --merge: 0;
-  /* In vw, not %: the rows use it as a negative margin, where % would mean a narrower box. */
+  --p: 0;
   --edge: max(var(--l-gutter), calc((100vw - var(--l-max)) / 2));
   position: sticky;
   top: 0;
@@ -31,13 +28,12 @@
   grid-template-columns: minmax(0, 1fr);
   grid-template-areas:
     'copy'
-    'visual'
-    'rows';
+    'scene';
   align-content: center;
   row-gap: var(--l-space-6);
   height: 100svh;
-  min-height: 680px;
-  padding: var(--l-space-8) var(--edge) 0;
+  min-height: 640px;
+  padding: var(--l-space-7) var(--edge);
   overflow: hidden;
 }
 
@@ -59,248 +55,175 @@
   text-wrap: pretty;
 }
 
-/* ---- The photograph, with the product floating on it ---- */
+/* ---- The scene: the phone in the middle, the messages round it ---- */
 
-.visual {
-  grid-area: visual;
+.scene {
+  grid-area: scene;
   position: relative;
-  margin: 0;
+  display: grid;
+  place-items: center;
+  min-height: 0;
 }
 
-.visual .photo {
-  aspect-ratio: 5 / 4;
-  /* The question covers the top, the answer the bottom; the label waits between them. */
-  align-items: center;
-  justify-content: flex-start;
-}
-
-.question {
-  --q: clamp(0, calc((var(--merge) - 0.1) / 0.2), 1);
+.bubbles {
   position: absolute;
-  top: var(--l-space-4);
-  left: var(--l-space-3);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--l-space-2);
-  max-width: calc(100% - 2 * var(--l-space-3));
+  inset: 0;
+  z-index: 2;
   margin: 0;
-  opacity: var(--q);
-  transform: translateY(calc(18px * (1 - var(--q))));
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
 }
 
-.questionPill {
-  padding: 10px 18px;
-  border-radius: var(--l-radius-pill);
+/*
+ * One customer's message. --a: how far it has popped up (0..1); --f: how far
+ * it has flown into the phone (0..1). It starts at its spot (--x, --y, in %
+ * of the scene from its centre) and travels to the centre, shrinking and
+ * fading as it goes in to land on the one question.
+ */
+.bubble {
+  --a: clamp(0, calc((var(--p) - var(--t)) / 0.04), 1);
+  --f: clamp(0, calc((var(--p) - 0.5 - var(--d)) / 0.16), 1);
+  position: absolute;
+  left: calc(50% + var(--x) * var(--spread, 1) * 1% * (1 - var(--f)));
+  /* Lands on the question bubble, low on the phone, rather than its middle: that is what they become. */
+  top: calc(50% + (var(--y) * (1 - var(--f)) + 16 * var(--f)) * 1%);
+  max-width: 15em;
+  padding: 10px 16px;
+  border-radius: 18px 18px 6px 18px;
   background: var(--card);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--ink) 40%, transparent);
   color: var(--ink);
   font-size: var(--l-step-0);
-  font-weight: 600;
-  line-height: 1.25;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  opacity: min(var(--a), calc(1 - var(--f)));
+  transform: translate(-50%, -50%) scale(calc((0.86 + 0.14 * var(--a)) * (1 - 0.7 * var(--f))));
 }
 
-/* The count, as the Questions screen shows it: a small ink chip. */
+/* ---- The phone, Kek Lina's page in chat mode ---- */
+
+.phone {
+  position: relative;
+  z-index: 1;
+  width: min(270px, calc((100svh - 300px) * 9 / 19));
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 14px 14px 24px;
+  background: var(--shop-bg, var(--paper));
+  overflow: hidden;
+}
+
+.shop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 0;
+  font-family: var(--font-fraunces), serif;
+  font-size: var(--l-step-1);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.shop img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.thread {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: auto;
+}
+
+/* The one question, on the phone from the start of the flight. */
+.question {
+  --q: clamp(0, calc((var(--p) - 0.46) / 0.04), 1);
+  align-self: flex-end;
+  max-width: 88%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--card);
+  box-shadow: 0 1px 3px var(--soft-shadow);
+  font-size: var(--text-base);
+  line-height: 1.4;
+  color: var(--ink);
+  opacity: var(--q);
+  transform: translateY(calc(10px * (1 - var(--q))));
+}
+
+/* The count, as the Questions screen shows it: a small ink chip under the question. */
 .count {
-  padding: 6px 12px;
-  border-radius: var(--l-radius-pill);
+  --q: clamp(0, calc((var(--p) - 0.5) / 0.03), 1);
+  align-self: flex-end;
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
   background: var(--ink);
   color: var(--paper);
   font-size: var(--l-step--1);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  opacity: var(--q);
 }
 
+/* The owner's one answer: chat mode's answer bubble, in the shop's accent tint. */
 .answer {
-  --a: clamp(0, calc((var(--merge) - 0.3) / 0.15), 1);
-  position: absolute;
-  right: var(--l-space-3);
-  bottom: var(--l-space-4);
-  max-width: min(22em, calc(100% - 2 * var(--l-space-3)));
+  --q: clamp(0, calc((var(--p) - 0.76) / 0.08), 1);
+  align-self: flex-start;
+  max-width: 88%;
   margin: 0;
-  padding: 12px 18px;
-  border-radius: 22px;
-  border-bottom-right-radius: 6px;
-  background: var(--biru);
-  color: var(--paper);
-  font-size: var(--l-step-0);
-  line-height: var(--l-leading-snug);
-  opacity: var(--a);
-  transform: translateY(calc(18px * (1 - var(--a))));
-}
-
-/* ---- The ticker: full bleed, always moving ---- */
-
-.rows {
-  grid-area: rows;
-  display: grid;
-  gap: var(--l-space-2);
-  margin: 0 calc(-1 * var(--edge));
-}
-
-.row {
-  overflow: hidden;
-}
-
-.track {
-  display: flex;
-  gap: var(--l-space-2);
-  width: max-content;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-/*
- * A wording. Its own moment to be answered is --at (0..1); --on runs 0 to 1
- * across a short window at that moment. Answered, it turns pale blue and
- * grows a reply tag.
- */
-.pill {
-  --on: clamp(0, calc((var(--merge) - 0.45 - var(--at) * 0.45) / 0.05), 1);
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  flex: none;
-  padding: 6px 6px 6px 16px;
-  border-radius: var(--l-radius-pill);
-  background: var(--card);
+  padding: 10px 14px;
+  border-radius: 18px 18px 18px 6px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
+  font-size: var(--text-base);
+  line-height: 1.45;
   color: var(--ink);
-  font-size: var(--l-step--1);
-  font-weight: 500;
-  white-space: nowrap;
+  opacity: var(--q);
+  transform: translateY(calc(10px * (1 - var(--q))));
 }
 
-/* The pale-blue wash of an answered wording, laid over the white. */
-.pill::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--biru-muda);
-  opacity: var(--on);
-}
-
-.pillText {
-  position: relative;
-  padding-right: 10px;
-}
-
-.reply {
-  position: relative;
-  display: inline-block;
-  max-width: calc(var(--on) * 4.5em);
-  overflow: hidden;
-  padding: 3px calc(var(--on) * 9px);
-  border-radius: var(--l-radius-pill);
-  background: var(--biru);
-  color: var(--paper);
-  font-size: var(--l-step--1);
-  font-weight: 700;
-  opacity: var(--on);
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .track {
-    animation: slide var(--seconds) linear infinite;
-    animation-play-state: paused;
-  }
-
-  .track[data-reverse='true'] {
-    animation-direction: reverse;
-  }
-
-  .stage[data-playing='true'] .track {
-    animation-play-state: running;
-  }
-
-  /* Hold a row still to read it. */
-  .stage[data-playing='true'] .row:hover .track {
-    animation-play-state: paused;
-  }
-
-  @keyframes slide {
-    from {
-      transform: translateX(0);
-    }
-
-    to {
-      transform: translateX(-50%);
-    }
-  }
-}
-
-/* ---- Wide: words left, photo right, ticker across both ---- */
+/* ---- Wide: words left, scene right ---- */
 
 @media (min-width: 1024px) {
-  .storm {
-    height: 260svh;
-  }
-
   .stage {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    grid-template-areas:
-      'copy visual'
-      'rows rows';
-    align-items: center;
+    grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+    grid-template-areas: 'copy scene';
     column-gap: var(--l-space-8);
-    row-gap: var(--l-space-7);
+    align-items: center;
   }
 
-  .visual .photo {
-    aspect-ratio: 16 / 9;
-    /* Question top left, answer bottom right: the label takes the free top right corner. */
-    align-items: flex-start;
-    justify-content: flex-end;
-    text-align: right;
+  .scene {
+    height: min(640px, calc(100svh - 2 * var(--l-space-7)));
   }
 
-  .visual .photo > p {
-    max-width: 17ch;
-  }
-
-  /* The UI hangs over the photo's edges, the way a product sits on a picture. */
-  .question {
-    top: var(--l-space-6);
-    left: calc(-1 * var(--l-space-7));
-  }
-
-  .questionPill {
-    padding: 14px 24px;
-    font-size: var(--l-step-1);
-  }
-
-  .answer {
-    right: calc(-1 * var(--l-space-5));
-    bottom: var(--l-space-6);
-    font-size: var(--l-step-1);
-  }
-
-  .rows {
-    gap: var(--l-space-3);
-  }
-
-  .track {
-    gap: var(--l-space-3);
-  }
-
-  .pill {
-    padding: 8px 8px 8px 20px;
-    font-size: var(--l-step-0);
+  .phone {
+    width: min(270px, calc((100svh - 2 * var(--l-space-7) - 40px) * 9 / 19));
   }
 }
 
-/* ---- Reduced motion: one screen, nothing moves, everything answered ---- */
+/* ---- Narrow: the messages a size smaller, so they fit round the phone ---- */
 
-.stage[data-still='true'] {
-  position: relative;
-  height: auto;
-  min-height: 0;
-  padding-bottom: var(--l-space-9);
-  --merge: 1;
-}
+@media (max-width: 1023px) {
+  .scene {
+    height: min(560px, calc(100svh - 280px));
+  }
 
-@media (prefers-reduced-motion: reduce) {
-  .storm {
-    height: auto;
+  /* Closer in, so a long message does not run off a phone's edge. */
+  .scene {
+    --spread: 0.72;
+  }
+
+  .bubble {
+    padding: 8px 12px;
+    font-size: var(--text-base);
   }
 }
