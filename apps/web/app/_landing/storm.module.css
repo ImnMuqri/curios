@@ -86,8 +86,8 @@
   --f: clamp(0, calc((var(--p) - 0.5 - var(--d)) / 0.16), 1);
   position: absolute;
   left: calc(50% + var(--x) * var(--spread, 1) * 1% * (1 - var(--f)));
-  /* Lands on the question bubble, low on the phone, rather than its middle: that is what they become. */
-  top: calc(50% + (var(--y) * (1 - var(--f)) + 16 * var(--f)) * 1%);
+  /* Lands on the question bubble, just under the shop's name: that is what they become. */
+  top: calc(50% + var(--y) * 1% * (1 - var(--f)));
   max-width: 15em;
   padding: 10px 16px;
   border-radius: 18px 18px 6px 18px;
@@ -125,11 +125,12 @@
   border-radius: 0;
 }
 
+/* Right under the shop's name, where chat mode starts a conversation on a real page. */
 .thread {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: auto;
+  margin-top: 20px;
 }
 
 /* The one question, on the phone from the start of the flight. */
