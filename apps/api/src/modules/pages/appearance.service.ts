@@ -5,6 +5,7 @@ import {
   DISPLAY_NAME_MAX,
   isHexColor,
   type HeadingFont,
+  type PageBackground,
   type PageStyle,
 } from '@curios/core/bento';
 import { NoPageError } from './page.service.js';
@@ -20,6 +21,8 @@ export class InvalidAppearanceError extends Error {
 
 export interface Appearance {
   style: PageStyle;
+  background: PageBackground;
+  backgroundColor: string | null;
   accentColor: string;
   headingFont: HeadingFont;
   displayName: string;
@@ -33,9 +36,19 @@ export async function updateAppearance(
 ): Promise<Appearance> {
   const data: Partial<Appearance> = {};
   if (input.style !== undefined) data.style = input.style;
+  if (input.background !== undefined) data.background = input.background;
+  if (input.backgroundColor !== undefined && input.backgroundColor !== null) {
+    if (!isHexColor(input.backgroundColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #eaf0ff.');
+    data.backgroundColor = input.backgroundColor.toLowerCase();
+  }
+  // Custom needs a colour: this one, or the one saved before.
+  if (data.background === 'CUSTOM' && data.backgroundColor === undefined) {
+    const stored = await prisma.page.findUnique({ where: { accountId }, select: { backgroundColor: true } });
+    if (!stored?.backgroundColor) throw new InvalidAppearanceError('Pick a background colour first.');
+  }
   if (input.headingFont !== undefined) data.headingFont = input.headingFont;
   if (input.accentColor !== undefined) {
-    if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #0c7a62.');
+    if (!isHexColor(input.accentColor)) throw new InvalidAppearanceError('Pick a colour, or type one as six-digit hex like #2340c8.');
     data.accentColor = input.accentColor.toLowerCase();
   }
   if (input.displayName !== undefined) {
@@ -55,6 +68,6 @@ export async function updateAppearance(
   if (updated.count !== 1) throw new NoPageError();
   return prisma.page.findUniqueOrThrow({
     where: { accountId },
-    select: { style: true, accentColor: true, headingFont: true, displayName: true, bio: true },
+    select: { style: true, background: true, backgroundColor: true, accentColor: true, headingFont: true, displayName: true, bio: true },
   });
 }

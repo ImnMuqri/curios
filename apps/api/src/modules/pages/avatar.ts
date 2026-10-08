@@ -1,10 +1,13 @@
 export const AVATAR_MAX_BYTES = 1_048_576;
 
+/** A cover is wide and shown full-bleed, so it may be bigger than a profile picture. */
+export const COVER_MAX_BYTES = 2_097_152;
+
 export class InvalidImageError extends Error {
   readonly statusCode = 400;
   readonly code = 'INVALID_IMAGE';
-  constructor() {
-    super('That picture could not be used. Upload a JPEG, PNG or WebP under 1 MB.');
+  constructor(maxBytes: number = AVATAR_MAX_BYTES) {
+    super(`That picture could not be used. Upload a JPEG, PNG or WebP under ${Math.round(maxBytes / 1_048_576)} MB.`);
     this.name = 'InvalidImageError';
   }
 }
@@ -16,13 +19,21 @@ const SIGNATURES = {
 } as const;
 
 /**
- * The uploaded picture as bytes, checked. The declared content type is a
+ * An uploaded picture as bytes, checked. The declared content type is a
  * claim; the file's first bytes are the evidence, and they must agree.
  */
-export function decodeAvatar(input: { contentType: string; data: string }): { body: Buffer; ext: 'jpg' | 'png' | 'webp' } {
+export function decodeImage(
+  input: { contentType: string; data: string },
+  maxBytes: number,
+): { body: Buffer; ext: 'jpg' | 'png' | 'webp' } {
   const signature = SIGNATURES[input.contentType as keyof typeof SIGNATURES];
-  if (!signature) throw new InvalidImageError();
+  if (!signature) throw new InvalidImageError(maxBytes);
   const body = Buffer.from(input.data, 'base64');
-  if (body.length === 0 || body.length > AVATAR_MAX_BYTES || !signature.matches(body)) throw new InvalidImageError();
+  if (body.length === 0 || body.length > maxBytes || !signature.matches(body)) throw new InvalidImageError(maxBytes);
   return { body, ext: signature.ext };
+}
+
+/** The profile picture: the same checks, at its own size limit. */
+export function decodeAvatar(input: { contentType: string; data: string }): { body: Buffer; ext: 'jpg' | 'png' | 'webp' } {
+  return decodeImage(input, AVATAR_MAX_BYTES);
 }

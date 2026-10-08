@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ANSWER_BUDGET_CHARS,
   cosineSimilarity,
   FACT_BUDGET_CHARS,
   RETRIEVAL_MIN_FACTS,
+  selectAnswers,
   selectFacts,
 } from './retrieval.js';
 
@@ -228,5 +230,47 @@ describe('selectFacts', () => {
 
     const strict = selectFacts({ facts, vectors, question: axis(0), floor: 0.999 });
     expect(strict.mode).toBe('fallback');
+  });
+});
+
+describe('selectAnswers', () => {
+  const answer = (id: string, length = 900) => ({ id, question: `q ${id}`, answer: 'x'.repeat(length) });
+
+  it('sends every answer, with no vectors needed, when they all fit the budget', () => {
+    const answers = [answer('a', 100), answer('b', 100)];
+    expect(selectAnswers({ answers, vectors: null, question: null })).toEqual({ mode: 'all', answers, bestScore: null });
+  });
+
+  it('past the budget, sends only the answers whose wordings are close to the question, closest first', () => {
+    const answers = [answer('a'), answer('b'), answer('c')];
+    const vectors = new Map([
+      ['a', [axis(1)]],
+      ['b', [axis(2), axis(0)]], // one of its wordings is the question
+      ['c', [axis(3)]],
+    ]);
+    const selection = selectAnswers({ answers, vectors, question: axis(0) });
+    expect(selection.mode).toBe('retrieved');
+    expect(selection.answers.map((a) => a.id)).toEqual(['b']);
+    expect(selection.bestScore).toBe(1);
+  });
+
+  it('sends none of them when nothing is close: the facts still answer', () => {
+    const answers = [answer('a'), answer('b'), answer('c')];
+    const vectors = new Map([['a', [axis(1)]], ['b', [axis(2)]], ['c', [axis(3)]]]);
+    expect(selectAnswers({ answers, vectors, question: axis(0) }).answers).toEqual([]);
+  });
+
+  it('falls back to the most-asked that fit when there is nothing to rank with, never to all of them', () => {
+    const answers = [answer('a'), answer('b'), answer('c')];
+    const selection = selectAnswers({ answers, vectors: null, question: null });
+    expect(selection.mode).toBe('most-asked');
+    expect(selection.answers.map((a) => a.id)).toEqual(['a', 'b']);
+    expect(selection.answers.reduce((n, a) => n + a.question.length + a.answer.length, 0)).toBeLessThanOrEqual(ANSWER_BUDGET_CHARS);
+  });
+
+  it('always keeps the closest answer, even one longer than the budget on its own', () => {
+    const answers = [answer('a', 2400), answer('b', 2400)];
+    const vectors = new Map([['a', [axis(0)]], ['b', [axis(1)]]]);
+    expect(selectAnswers({ answers, vectors, question: axis(0) }).answers.map((a) => a.id)).toEqual(['a']);
   });
 });

@@ -1,36 +1,85 @@
+/*
+ * Knowledge, in the dashboard's voice: the four tabs as one pill switch, the
+ * add form on its own white card, and each fact, source or answer as a white
+ * row on a hairline -- the same card My Curios is built from.
+ */
 .tabs {
-  display: flex;
-  gap: 4px;
+  display: inline-flex;
+  gap: 2px;
+  max-width: 100%;
   margin: 0 0 20px;
-  border-bottom: 1px solid var(--surface);
+  padding: 4px;
   overflow-x: auto;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  border-radius: 999px;
+  scrollbar-width: none;
+}
+
+/*
+ * Centred on the colour band's bottom edge, half on the band and half on white:
+ * the band ends 172px down (200px on a phone, where the lede wraps), and the
+ * switch is 45px tall.
+ */
+.tabs {
+  margin-top: 24px;
+}
+
+@media (max-width: 760px) {
+  .tabs {
+    margin-top: 38px;
+  }
 }
 
 .tab {
-  padding: 10px 12px;
+  padding: 8px 16px;
+  border-radius: 999px;
   font-size: var(--text-base);
+  font-weight: 600;
   color: var(--muted);
   text-decoration: none;
   white-space: nowrap;
-  border-bottom: 2px solid transparent;
+  transition: color 120ms ease, background-color 120ms ease;
 }
 
-.tab[aria-current='page'] {
+.tab:hover {
   color: var(--ink);
-  border-bottom-color: var(--hijau);
 }
 
-.list { list-style: none; margin: 16px 0 0; padding: 0; }
-.row { padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--surface); border-radius: 12px; background: var(--paper); }
-.label { margin: 0; font-size: var(--text-body); overflow-wrap: anywhere; }
-.meta { margin: 4px 0 10px; font-size: var(--text-sm); color: var(--muted); }
+/* The current tab, drawn like the sidebar's current item. */
+.tab[aria-current='page'] {
+  background: var(--biru-muda);
+  color: var(--biru-deep, var(--biru));
+}
+
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.row { padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; transition: border-color 120ms ease; }
+.row:hover { border-color: color-mix(in oklch, var(--line) 50%, var(--muted)); }
+.label { margin: 0; font-size: var(--text-base); font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
+.meta { margin: 4px 0 12px; font-size: var(--text-sm); color: var(--muted); }
+.row > .meta:first-child { margin: 0 0 4px; font-weight: 600; color: var(--ink); }
+.row > :last-child { margin-bottom: 0; }
 .actions, .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .confirm p { flex-basis: 100%; margin: 0 0 4px; font-size: var(--text-base); }
-.recheck { display: inline-flex; flex-direction: column; gap: 4px; }
-.recheck small { font-size: var(--text-xs); color: var(--muted); }
+.recheck { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
+.recheck small { font-size: var(--text-sm); color: var(--muted); }
 
-.add { display: grid; gap: 10px; margin-bottom: 20px; }
-.select { display: grid; gap: 4px; font-size: var(--text-sm); }
-.select select { padding: 10px; font: inherit; font-size: var(--text-base); border: 1px solid var(--surface); border-radius: 10px; background: var(--paper); }
-.search { width: 100%; padding: 10px 12px; margin-bottom: 16px; font: inherit; font-size: var(--text-base); border: 1px solid var(--surface); border-radius: 10px; }
-.group { margin: 16px 0 8px; font-size: var(--text-sm); color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; }
+/* Adding: its own white card, fields stacked, the button at the foot. */
+.add { display: grid; gap: 4px; margin: 0 0 20px; padding: 22px 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
+.add > button { justify-self: start; }
+.select { display: grid; gap: 8px; margin-bottom: 16px; font-size: var(--text-base); font-weight: 600; }
+.select select { min-height: 44px; padding: 0 12px; font: inherit; font-size: var(--text-base); font-weight: 400; border: 1.5px solid var(--surface); border-radius: 10px; background: var(--paper); }
+.search { width: 100%; min-height: 44px; padding: 0 18px; margin-bottom: 20px; font: inherit; font-size: var(--text-base); border: 1px solid var(--line); border-radius: 999px; background: var(--card); }
+.search:focus-visible { outline: none; border-color: var(--biru); box-shadow: 0 0 0 3px var(--biru-muda); }
+.group { margin: 24px 0 10px; font-family: var(--font-display); font-size: var(--text-body); font-weight: 700; letter-spacing: -0.01em; }
+
+@media (max-width: 480px) {
+  .add { padding: 18px 16px; }
+}
+
+/* The Sources tab opens with its Add button, its form or a status card; the list keeps its distance. */
+button + .list,
+form + .list,
+div + .list {
+  margin-top: 16px;
+}

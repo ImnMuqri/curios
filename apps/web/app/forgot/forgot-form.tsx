@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Button, Callout, Field, Shell } from '@curios/ui';
+import { Button, Callout, Field } from '@curios/ui';
+import { AuthShell } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
 
 export function ForgotForm({
@@ -32,16 +33,20 @@ export function ForgotForm({
     // the API's response is byte-identical in both cases, and this screen
     // must not leak what the API refuses to.
     return (
-      <Shell title="Check your email">
+      <AuthShell title="Check your email" switchTo={{ prompt: 'Got your new password?', label: 'Sign in', href: '/signin' }}>
         <Callout tone="info">
           If that address has an account, check your email for a link to reset your password.
         </Callout>
-      </Shell>
+      </AuthShell>
     );
   }
 
   return (
-    <Shell title="Reset your password">
+    <AuthShell
+      title="Reset your password"
+      lede="We will email you a link to choose a new one."
+      switchTo={{ prompt: 'Remembered it?', label: 'Sign in', href: '/signin' }}
+    >
       <form onSubmit={(event) => void submit(event)}>
         <Field
           id="email"
@@ -59,7 +64,7 @@ export function ForgotForm({
           {busy ? 'Sending…' : 'Send reset link'}
         </Button>
       </form>
-    </Shell>
+    </AuthShell>
   );
 }
 

@@ -36,7 +36,7 @@ export default async function KnowledgePage({
   const tab = parseTab((await searchParams).tab);
 
   return (
-    <Shell as="div" title="Knowledge">
+    <Shell as="div" title="Knowledge" lede="Everything your page knows, and where it learned it.">
       <KnowledgeTabs current={tab} />
       {tab === 'facts' ? (
         <Facts facts={knowledge.facts} categories={[...FACT_CATEGORIES]} ownerFactMax={OWNER_FACT_MAX} />

@@ -107,13 +107,13 @@ describe('AskBar', () => {
   // Fix round 2, Important #2: the spec says the accent paints "the ask
   // bar's emphasis", and the bar itself is a plain, borderless white pill in
   // Soft but outlined in ink in High contrast -- neither of which a
-  // hard-coded --hijau/--mint can do. Read the way design-rules.test.ts
+  // hard-coded --biru/--biru-muda can do. Read the way design-rules.test.ts
   // reads a stylesheet, because jsdom's rendered styles here would not
   // reflect a real cascade from BentoPage's `.page` anyway (no `css: true`
   // in this package's vitest config).
   it('reads its border and press-state tint from BentoPage-supplied variables, with a fallback', () => {
     const css = readFileSync(join(import.meta.dirname, 'AskBar.module.css'), 'utf8');
-    expect(css).toMatch(/border:[^;]*var\(--ask-border,\s*var\(--hijau\)\)/);
-    expect(css).toMatch(/background:\s*var\(--ask-tint,\s*var\(--mint\)\)/);
+    expect(css).toMatch(/border:[^;]*var\(--ask-border,\s*var\(--biru\)\)/);
+    expect(css).toMatch(/background:\s*var\(--ask-tint,\s*var\(--biru-muda\)\)/);
   });
 });

@@ -3,10 +3,10 @@
  * field on a form -- something you are meant to fill in.
  *
  * The border colour is BentoPage's `--ask-border` (soft: none; high
- * contrast: ink), with `--hijau` as the fallback so this still looks like it
+ * contrast: ink), with `--biru` as the fallback so this still looks like it
  * always has anywhere the variable is not set. The press state's tint
  * follows the page's accent the same way, via `--ask-tint`, falling back to
- * the same `--mint` this used before there was a page accent to follow.
+ * the same `--biru-muda` this used before there was a page accent to follow.
  */
 .bar {
   position: sticky;
@@ -14,7 +14,7 @@
   display: block;
   width: 100%;
   padding: 14px 16px;
-  border: 1.5px solid var(--ask-border, var(--hijau));
+  border: 1.5px solid var(--ask-border, var(--biru));
   border-radius: 12px;
   background: var(--paper);
   font-family: var(--font-body);
@@ -27,7 +27,7 @@
 }
 
 .bar:active {
-  background: var(--ask-tint, var(--mint));
+  background: var(--ask-tint, var(--biru-muda));
 }
 
 .question {

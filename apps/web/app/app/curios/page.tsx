@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
 import { getMyCurios } from '@curios/db-read';
-import { avatarUrl } from '../../../lib/avatar-url.js';
+import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
 import { resolveOwner } from '../session.js';
 import { MyCurios } from './my-curios-wrapper.js';
 
@@ -14,7 +14,7 @@ export default async function MyCuriosPage() {
 
   return (
     <MyCurios
-      initial={{ ...page, avatarUrl: avatarUrl(page.avatarKey) }}
+      initial={{ ...page, avatarUrl: avatarUrl(page.avatarKey), coverUrl: coverUrl(page.coverKey) }}
       uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
       publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
     />

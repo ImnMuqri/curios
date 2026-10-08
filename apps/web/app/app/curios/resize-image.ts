@@ -6,6 +6,10 @@ export const AVATAR_EDGE = 512;
 // the API re-checks the byte length regardless of what this already refused.
 const AVATAR_MAX_BYTES = 1_048_576;
 
+/** The cover: wide, cropped to 16:10 and sent at 1440x900. Mirrors COVER_MAX_BYTES in the API. */
+export const COVER_SIZE = { width: 1440, height: 900 } as const;
+const COVER_MAX_BYTES = 2_097_152;
+
 // What the API's `decodeAvatar` actually accepts (its magic-byte check has no
 // fourth case). Declaring anything else would be refused as INVALID_IMAGE no
 // matter how well-formed the bytes are.
@@ -31,21 +35,34 @@ function encode(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
  * rather than uploading something the API is going to refuse anyway.
  */
 export async function resizeImage(file: File, edge = AVATAR_EDGE): Promise<{ contentType: string; data: string }> {
+  return prepare(file, edge, edge, AVATAR_MAX_BYTES);
+}
+
+/** The cover photo: the same pipeline, centre-cropped to COVER_SIZE's shape. */
+export async function resizeCover(file: File): Promise<{ contentType: string; data: string }> {
+  return prepare(file, COVER_SIZE.width, COVER_SIZE.height, COVER_MAX_BYTES);
+}
+
+/** Centre-crop to width:height, scale, encode as WebP (or what the browser can), and fit under maxBytes. */
+async function prepare(file: File, width: number, height: number, maxBytes: number): Promise<{ contentType: string; data: string }> {
   const bitmap = await createImageBitmap(file);
-  const side = Math.min(bitmap.width, bitmap.height);
+  // The largest centred crop of the source with the target's shape.
+  const scale = Math.min(bitmap.width / width, bitmap.height / height);
+  const cropW = width * scale;
+  const cropH = height * scale;
   const canvas = document.createElement('canvas');
-  canvas.width = edge;
-  canvas.height = edge;
+  canvas.width = width;
+  canvas.height = height;
   const context = canvas.getContext('2d');
   if (!context) throw new Error('This browser cannot prepare the picture.');
-  context.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, edge, edge);
+  context.drawImage(bitmap, (bitmap.width - cropW) / 2, (bitmap.height - cropH) / 2, cropW, cropH, 0, 0, width, height);
 
   let blob = await encode(canvas, 0.85);
   for (const quality of [0.7, 0.5, 0.35]) {
-    if (blob.size <= AVATAR_MAX_BYTES) break;
+    if (blob.size <= maxBytes) break;
     blob = await encode(canvas, quality);
   }
-  if (blob.size > AVATAR_MAX_BYTES) {
+  if (blob.size > maxBytes) {
     throw new Error('That picture is too large even resized. Try a smaller or simpler photo.');
   }
   if (!ACCEPTED_TYPES.has(blob.type)) {

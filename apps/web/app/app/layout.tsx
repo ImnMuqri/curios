@@ -6,7 +6,6 @@ import { redirect } from 'next/navigation';
 // is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
 import { countPendingFacts, getOwnerPage } from '@curios/db-read';
-import { Shell } from '@curios/ui';
 import { AppFrame } from './app-frame.js';
 import { resolveOwner } from './session.js';
 
@@ -40,7 +39,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   // No page yet: onboarding, full width, no frame -- the modules would all be
   // unreachable (the reason the old nav was gated on the page, kept).
-  if (!page) return <Shell>{children}</Shell>;
+  // Onboarding brings its own frame (AuthShell) before a page exists.
+  if (!page) return <>{children}</>;
 
   const pendingReview = await countPendingFacts(owner.accountId);
   return (

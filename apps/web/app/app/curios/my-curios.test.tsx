@@ -7,7 +7,8 @@ import { MyCuriosEditor } from './my-curios.js';
 
 const initial = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
-  style: 'SOFT' as const, accentColor: '#0c7a62', headingFont: 'JAKARTA' as const, avatarKey: null,
+  style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, avatarKey: null,
+  coverKey: null, coverUrl: null, background: 'PAPER' as const, backgroundColor: null,
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
 };
 
@@ -19,12 +20,16 @@ const api = () => ({
   saveAppearance: vi.fn(async () => undefined),
   uploadAvatar: vi.fn(async () => null),
   removeAvatar: vi.fn(async () => undefined),
+  chooseStockCover: vi.fn(async (name: string) => ({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` })),
+  uploadCover: vi.fn(async () => ({ coverKey: "covers/p1/a.webp", coverUrl: null })),
+  removeCover: vi.fn(async () => undefined),
 });
 
 describe('MyCuriosEditor', () => {
   // The preview updates from local state, before any save returns.
   it('shows a new link in the live preview as soon as it is added', async () => {
     render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
     await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Shop');
     await userEvent.type(screen.getByLabelText('Address'), 'shopee.com.my/iman');
@@ -53,6 +58,8 @@ describe('MyCuriosEditor', () => {
     stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
     render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
+
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     await userEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
     await userEvent.type(within(row).getByLabelText('Name'), '!');
@@ -66,6 +73,8 @@ describe('MyCuriosEditor', () => {
     stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
     render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
 
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
+
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
 
@@ -76,6 +85,7 @@ describe('MyCuriosEditor', () => {
 
   it('restyles the preview the moment a style is chosen', async () => {
     const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
     await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
     expect(container.querySelector('[aria-label="Live preview"] [data-style]')).toHaveAttribute('data-style', 'CONTRAST');
   });
@@ -87,17 +97,20 @@ describe('MyCuriosEditor', () => {
 // two halves that make it fit: BentoPage's root is the box's direct child, and
 // the stylesheet undoes the full-screen height for exactly that child.
 describe('the live preview fits its box', () => {
-  it('renders BentoPage directly inside the preview box', () => {
+  it("renders BentoPage inside the same phone the landing page shows, at the page's own address", () => {
     const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    const page = container.querySelector('[aria-label="Live preview"] [data-bento-page]');
-    expect(page?.parentElement?.parentElement?.getAttribute('aria-label')).toBe('Live preview');
+    const preview = container.querySelector('[aria-label="Live preview"]');
+    expect(preview?.querySelector('[data-tone] [data-bento-page]')).not.toBeNull();
+    expect(preview?.textContent).toContain(`curios.my/${initial.handle}`);
   });
 
-  // The frame fills the height below the top bar; the page fills the frame
-  // rather than forcing a full screen of its own inside it.
+  // The phone is as tall as the window allows below the top bar (its width
+  // follows from 9:19); the page fills the phone's screen rather than forcing
+  // a full screen of its own inside it.
   it('fills a full-height frame without forcing its own screen height', () => {
     const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
-    expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*calc\(100vh/);
+    expect(css).toMatch(/\.device\s*\{[^}]*width:\s*min\(100%, calc\(\(100vh/);
+    expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*100%/);
     expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
   });
 
@@ -112,3 +125,35 @@ describe('the live preview fits its box', () => {
   });
 });
 
+
+describe('the icon rail', () => {
+  it('shows one part at a time, Profile first, and the rail says which', async () => {
+    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByLabelText('Display name')).toBeVisible();
+    expect(screen.queryByRole('button', { name: '+ Add a link' })).toBeNull();
+
+    await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
+    expect(screen.getByRole('radio', { name: 'High contrast' })).toBeInTheDocument();
+    expect(screen.getByLabelText('Display name')).not.toBeVisible();
+  });
+
+  it('moves between parts with the arrow keys, as a tab list does', async () => {
+    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    screen.getByRole('tab', { name: 'Profile' }).focus();
+    await userEvent.keyboard('{ArrowDown}');
+    expect(screen.getByRole('tab', { name: 'Links' })).toHaveFocus();
+    expect(screen.getByRole('tab', { name: 'Links' })).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
+    expect(screen.getByRole('tab', { name: 'Appearance' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  // A hidden part keeps its state, so a name typed a moment ago still saves after switching away.
+  it('keeps a part mounted while another is shown', async () => {
+    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    await userEvent.type(screen.getByLabelText('Display name'), '!');
+    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
+    await userEvent.click(screen.getByRole('tab', { name: 'Profile' }));
+    expect(screen.getByLabelText('Display name')).toHaveValue(`${initial.displayName}!`);
+  });
+});

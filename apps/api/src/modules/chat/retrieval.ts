@@ -1,10 +1,12 @@
 import {
   questionKey,
   RETRIEVAL_MIN_FACTS,
+  selectAnswers,
   selectFacts,
+  type AnswerSelection,
   type FallbackReason,
 } from '@curios/core';
-import type { PrismaClient } from '@curios/db';
+import { questionVectors, type PrismaClient } from '@curios/db';
 import { decodeVector, encodeVector, type Embedder } from '@curios/embeddings';
 
 /**
@@ -146,7 +148,24 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
     return everything('missing-vectors');
   }
 
-  const text = retrievalText(input.question, input.previousUserTurn);
+  const question = await questionVector({ prisma, embedder }, retrievalText(input.question, input.previousUserTurn));
+  if (question === null) return everything('provider-failed');
+
+  const selection = selectFacts({ facts, vectors, question });
+  return report(selection);
+}
+
+/**
+ * The vector for what is embedded this turn: the cache first, the embedder on
+ * a miss (written back, best effort), null when the provider fails. Shared by
+ * the facts and the owner's answers, so one turn embeds its question at most
+ * once -- the second caller finds the row the first one wrote.
+ */
+async function questionVector(
+  deps: { prisma: PrismaClient; embedder: Embedder },
+  text: string,
+): Promise<Float32Array | null> {
+  const { prisma, embedder } = deps;
   // Keyed on what is actually embedded, not on the bare question: a follow-up
   // embeds two turns, and a cache keyed on the question alone would hand it
   // the vector of a different question.
@@ -189,9 +208,9 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
       // is the wrong trade.
       [embedded] = await embedder.embed([text]);
     } catch {
-      return everything('provider-failed');
+      return null;
     }
-    if (embedded === undefined) return everything('provider-failed');
+    if (embedded === undefined) return null;
     question = embedded;
 
     // Best effort. The answer does not depend on this row existing; the next
@@ -209,6 +228,51 @@ export async function selectForQuestion<T extends { id: string; claim: string }>
     }
   }
 
-  const selection = selectFacts({ facts, vectors, question });
-  return report(selection);
+  return question;
+}
+
+/**
+ * Which of the owner's own answers this question needs.
+ *
+ * They used to go into every prompt, up to thirty of them at up to 2,000
+ * characters each. Now: all of them when they fit ANSWER_BUDGET_CHARS (no
+ * embedding call, a stable prompt); otherwise the ones whose topic's wordings
+ * are closest to this question, ranked by `selectAnswers` in @curios/core.
+ * The wordings' vectors are the ones the grouping job already caches in
+ * QuestionEmbedding. Any failure falls back to the most-asked answers that
+ * fit -- bounded, and never a failed turn.
+ */
+export async function selectOwnerAnswers<T extends { id: string; question: string; answer: string }>(
+  deps: { prisma: PrismaClient; embedder: Embedder | null; log?: RetrievalLog },
+  input: { pageId: string; answers: T[]; question: string; previousUserTurn: string | null },
+): Promise<AnswerSelection<T>> {
+  const { prisma, embedder } = deps;
+  const report = (selection: AnswerSelection<T>): AnswerSelection<T> => {
+    deps.log?.info?.(
+      { pageId: input.pageId, mode: selection.mode, bestScore: selection.bestScore, answerCount: input.answers.length, selectedCount: selection.answers.length },
+      'chat answer retrieval',
+    );
+    return selection;
+  };
+
+  // Cheap first: under the budget, or nothing to rank with, needs no vectors at all.
+  const unranked = selectAnswers({ answers: input.answers, vectors: null, question: null });
+  if (unranked.mode === 'all' || !embedder) return report(unranked);
+
+  try {
+    const wordings = await prisma.question.findMany({
+      where: { pageId: input.pageId, topicId: { in: input.answers.map((a) => a.id) } },
+      select: { text: true, topicId: true },
+    });
+    const byText = await questionVectors({ prisma, embedder }, wordings.map((w) => w.text));
+    const vectors = new Map<string, Float32Array[]>();
+    for (const wording of wordings) {
+      const vector = byText.get(wording.text);
+      if (vector) vectors.set(wording.topicId, [...(vectors.get(wording.topicId) ?? []), vector]);
+    }
+    const question = await questionVector({ prisma, embedder }, retrievalText(input.question, input.previousUserTurn));
+    return report(selectAnswers({ answers: input.answers, vectors, question }));
+  } catch {
+    return report(unranked);
+  }
 }

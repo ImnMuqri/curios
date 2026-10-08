@@ -111,7 +111,7 @@ describe('getPublicPage', () => {
   it('carries the appearance and each link size the page renders with', async () => {
     const page = await getPublicPage('nadia');
 
-    expect(page).toMatchObject({ style: 'SOFT', accentColor: '#0c7a62', headingFont: 'JAKARTA', avatarKey: null });
+    expect(page).toMatchObject({ style: 'SOFT', accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null, coverKey: null, background: 'PAPER' });
     expect(page?.links[0]).toMatchObject({ size: null });
   });
 

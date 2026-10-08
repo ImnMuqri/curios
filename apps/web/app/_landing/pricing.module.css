@@ -1,0 +1,223 @@
+/*
+ * Surface band. Personal is a white card; Business is a biru card (it takes
+ * the biru band's roles, so its text and button colours follow), wider.
+ */
+
+.pricing {
+  padding: var(--l-space-9) 0 var(--l-space-10);
+}
+
+.plans {
+  display: grid;
+  gap: var(--l-space-4);
+  margin-top: var(--l-space-7);
+}
+
+.personal,
+.business {
+  display: flex;
+  flex-direction: column;
+  padding: var(--l-space-6) var(--l-space-5);
+  border-radius: var(--l-radius-card);
+}
+
+.personal {
+  background: var(--card);
+}
+
+/* On a phone Business comes first: it is what this page is selling. */
+.business {
+  order: -1;
+}
+
+.name {
+  margin: 0;
+  font-size: var(--l-step-0);
+  font-weight: 700;
+}
+
+.free,
+.tag {
+  font-family: var(--font-display);
+  font-size: var(--l-step-6);
+  font-weight: var(--l-weight-display);
+  line-height: 1;
+  letter-spacing: var(--l-tracking-display);
+}
+
+.free {
+  margin: var(--l-space-3) 0 0;
+}
+
+.blurb {
+  margin: var(--l-space-3) 0 0;
+  color: var(--band-soft);
+}
+
+.price {
+  display: flex;
+  align-items: baseline;
+  gap: var(--l-space-3);
+  margin: var(--l-space-3) 0 0;
+}
+
+.tag {
+  color: var(--band-head);
+}
+
+.per,
+.annual {
+  color: var(--band-soft);
+}
+
+.annual {
+  margin: var(--l-space-3) 0 0;
+  font-size: var(--text-base);
+}
+
+.trial {
+  margin: var(--l-space-4) 0 0;
+  font-weight: 600;
+}
+
+.points {
+  display: grid;
+  gap: var(--l-space-2);
+  margin: var(--l-space-5) 0 var(--l-space-6);
+  padding: 0;
+  list-style: none;
+  font-size: var(--text-base);
+}
+
+.points li {
+  position: relative;
+  padding-left: 22px;
+}
+
+/* A short dash, not a tick: these are what you get, not boxes ticked. */
+.points li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.7em;
+  width: 12px;
+  height: 2px;
+  background: var(--band-soft);
+}
+
+.planCta {
+  margin-top: auto;
+}
+
+.terms {
+  display: grid;
+  gap: var(--l-space-2);
+  margin-top: var(--l-space-7);
+  max-width: var(--l-measure);
+}
+
+.math {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--l-step-3);
+  font-weight: var(--l-weight-display);
+  line-height: var(--l-leading-snug);
+  letter-spacing: var(--l-tracking-heading);
+}
+
+.payment {
+  margin: 0;
+  color: var(--band-soft);
+  font-size: var(--text-base);
+}
+
+@media (min-width: 768px) {
+  .plans {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    align-items: stretch;
+  }
+
+  /* Side by side, Personal reads first and Business is the wider card to its right. */
+  .business {
+    order: 0;
+  }
+
+  .personal,
+  .business {
+    padding: var(--l-space-7) var(--l-space-6);
+  }
+}
+
+/* ---- The Monthly / Yearly switch ---- */
+
+.switch {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: 1fr 1fr;
+  margin-top: var(--l-space-4);
+  padding: 4px;
+  border-radius: var(--l-radius-pill);
+  background: color-mix(in oklch, var(--band-text) 14%, transparent);
+  justify-self: start;
+  align-self: flex-start;
+}
+
+.switchOption {
+  position: relative;
+  z-index: 1;
+  min-height: 40px;
+  padding: 0 var(--l-space-5);
+  border: 0;
+  border-radius: var(--l-radius-pill);
+  background: transparent;
+  color: var(--band-text);
+  font: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+  transition: color var(--l-dur-press) ease;
+}
+
+.switchOption[aria-pressed='true'] {
+  color: var(--band-bg);
+}
+
+/* The thumb slides under whichever option is on. */
+.switchThumb {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: var(--l-radius-pill);
+  background: var(--band-text);
+  transition: transform 260ms var(--l-ease-spring);
+}
+
+.switchThumb[data-yearly='true'] {
+  transform: translateX(100%);
+}
+
+.price {
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .roll {
+    display: inline-block;
+    animation: roll 320ms var(--l-ease-out);
+  }
+
+  @keyframes roll {
+    from {
+      opacity: 0;
+      transform: translateY(60%);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switchThumb {
+    transition: none;
+  }
+}

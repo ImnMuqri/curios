@@ -162,7 +162,7 @@ describe('IngestForm', () => {
 
     await userEvent.type(screen.getByLabelText('Your website address'), 'https://nadiabakes.my');
     await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add another link or text' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add another source' }));
 
     // Back to an empty form, saying where the first source's facts went.
     const field = screen.getByLabelText('Another link');
@@ -176,3 +176,53 @@ describe('IngestForm', () => {
   });
 });
 
+
+describe('IngestForm, a file as the source', () => {
+  const resume = () => new File(['Iman Muqri\nSoftware developer'], 'Iman-resume.pdf', { type: 'application/pdf' });
+
+  it('sends the chosen file, and says which file it is before it is sent', async () => {
+    const onIngest = vi.fn(async () => ({ ingestionId: 'i-1' }));
+    wrap(<IngestForm pageId="p1" mode="PERSONAL" pastedTextMax={20_000} onIngest={onIngest} fetchStatus={vi.fn(pending)} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+    expect(screen.getByText(/Your resume or CV/)).toBeInTheDocument();
+    await userEvent.upload(screen.getByLabelText('A file to read'), resume());
+    expect(screen.getByText('Iman-resume.pdf')).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Read this file' }));
+
+    expect(onIngest).toHaveBeenCalledWith({ pageId: 'p1', file: expect.objectContaining({ name: 'Iman-resume.pdf' }) });
+  });
+
+  it('offers the other two ways in from the file view', async () => {
+    wrap(<IngestForm pageId="p1" mode="BUSINESS" pastedTextMax={20_000} onIngest={vi.fn()} fetchStatus={vi.fn(pending)} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+    expect(screen.getByRole('button', { name: 'Use a link instead' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Paste text instead' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Upload a file' })).toBeNull();
+  });
+
+  it('asks for a file before sending nothing, and refuses one over 5 MB before uploading it', async () => {
+    const onIngest = vi.fn(async () => ({ ingestionId: 'i-1' }));
+    wrap(<IngestForm pageId="p1" mode="BUSINESS" pastedTextMax={20_000} onIngest={onIngest} fetchStatus={vi.fn(pending)} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+
+    await userEvent.click(screen.getByRole('button', { name: 'Read this file' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/Choose a file first/);
+
+    const huge = new File(['x'], 'catalogue.pdf', { type: 'application/pdf' });
+    Object.defineProperty(huge, 'size', { value: 6 * 1024 * 1024 });
+    await userEvent.upload(screen.getByLabelText('A file to read'), huge);
+    await userEvent.click(screen.getByRole('button', { name: 'Read this file' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/over 5 MB/);
+    expect(onIngest).not.toHaveBeenCalled();
+  });
+
+  it('says when only the start of a long file was read', async () => {
+    const onIngest = vi.fn(async () => ({ ingestionId: 'i-1', truncated: true }));
+    wrap(<IngestForm pageId="p1" mode="BUSINESS" pastedTextMax={20_000} onIngest={onIngest} fetchStatus={vi.fn(pending)} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Upload a file' }));
+    await userEvent.upload(screen.getByLabelText('A file to read'), resume());
+    await userEvent.click(screen.getByRole('button', { name: 'Read this file' }));
+    expect(await screen.findByText(/read the first 20,000 characters/)).toBeInTheDocument();
+  });
+});

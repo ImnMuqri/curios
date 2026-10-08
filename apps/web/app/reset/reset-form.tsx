@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Button, Callout, Field, Shell } from '@curios/ui';
+import { Button, Callout, Field } from '@curios/ui';
+import { AuthShell } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
 
 export function ResetForm({
@@ -37,16 +38,16 @@ export function ResetForm({
     // resetting under suspicion of compromise needs to be told that
     // happened, not left guessing.
     return (
-      <Shell title="Password changed">
+      <AuthShell title="Password changed" switchTo={{ prompt: 'All set.', label: 'Sign in', href: '/signin' }}>
         <Callout tone="info">
           Your password has changed, and you have been signed out everywhere.
         </Callout>
-      </Shell>
+      </AuthShell>
     );
   }
 
   return (
-    <Shell title="Choose a new password">
+    <AuthShell title="Choose a new password">
       <form onSubmit={(event) => void submit(event)}>
         <Field
           id="password"
@@ -64,7 +65,7 @@ export function ResetForm({
           {busy ? 'Changing…' : 'Change my password'}
         </Button>
       </form>
-    </Shell>
+    </AuthShell>
   );
 }
 

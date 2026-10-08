@@ -226,6 +226,10 @@ describe('sourceLabel', () => {
     expect(label.endsWith('…')).toBe(true);
   });
 
+  it('names a source read from a file by its file, not by the text inside it', () => {
+    expect(sourceLabel(null, 'Iman Muqri\nSoftware developer', 'Iman-resume.pdf')).toBe('Iman-resume.pdf');
+  });
+
   it('never returns an empty label', () => {
     expect(sourceLabel(null, '\n \n')).toBe('Pasted text');
   });

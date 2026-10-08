@@ -29,7 +29,7 @@ export default async function QuestionsPage() {
   // Server Component may not pass a function here, and doing so is a 500 at
   // request time that no gate catches.
   return (
-    <Shell as="div" title="Questions">
+    <Shell as="div" title="Questions" lede="What visitors ask your page, grouped by topic.">
       <Topics
         topics={topics}
         publishesFaq={page?.mode === 'BUSINESS'}

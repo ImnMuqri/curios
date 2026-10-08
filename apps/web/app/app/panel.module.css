@@ -1,0 +1,100 @@
+/*
+ * The dashboard's one container, shared by the screens that have no
+ * stylesheet of their own (Settings, Billing): a white card on a hairline,
+ * the same card My Curios is built from. Titles in Bricolage, text in the
+ * frame's Plex Sans, buttons in a row.
+ */
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
+.panel {
+  padding: 22px 24px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+}
+
+.panel > :last-child {
+  margin-bottom: 0;
+}
+
+.panelTitle {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: var(--text-body);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.text {
+  margin: 0 0 16px;
+  max-width: 64ch;
+  font-size: var(--text-base);
+  color: var(--muted);
+}
+
+/* A plain statement of where things stand: ink, a step larger. */
+.status {
+  margin: 0 0 4px;
+  font-size: var(--text-body);
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* A checkbox that reads as a setting: the box, then the sentence. */
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.check input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--biru);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.list li {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: var(--text-base);
+}
+
+.list li:first-child {
+  border-top: 0;
+  padding-top: 4px;
+}
+
+@media (max-width: 480px) {
+  .panel {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+}
+
+/* A sentence or an error inside a button row takes its own line. */
+.buttons > :not(button) {
+  flex-basis: 100%;
+}
+
+.buttons > p {
+  margin: 0 0 4px;
+  font-size: var(--text-base);
+}

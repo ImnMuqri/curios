@@ -1,25 +1,270 @@
 /*
- * Shared by the five screens outside the dashboard. They are one screen with
- * five contents, so they get one stylesheet rather than five near-copies that
- * drift apart.
+ * Shared by the five screens outside the dashboard (sign in, sign up, forgot,
+ * reset, verify). They are one screen with five contents, so they get one
+ * stylesheet rather than five near-copies that drift apart.
+ *
+ * The look is the landing page's (tokens from _landing/landing-tokens.css,
+ * scoped by AuthShell's data-landing): heavy Bricolage heading, Plex Sans
+ * body, pill fields and buttons, and a biru band beside the form on wide
+ * screens. The product's own Field, Button and Callout components keep their
+ * behaviour; only their look is restyled inside .content.
  */
+
+.auth {
+  display: grid;
+  min-height: 100svh;
+}
+
+/* ---- The form side ---- */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+  padding: var(--l-space-5) var(--l-gutter) var(--l-space-8);
+}
+
+.brand {
+  display: inline-flex;
+  align-self: flex-start;
+  margin-top: 2px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.body {
+  margin: auto 0;
+  padding-top: var(--l-space-8);
+}
+
+.title {
+  margin: 0;
+  color: var(--l-biru-800);
+  font-family: var(--font-display);
+  font-size: var(--l-step-5);
+  font-weight: var(--l-weight-display);
+  line-height: var(--l-leading-snug);
+  letter-spacing: var(--l-tracking-heading);
+  text-wrap: balance;
+}
+
+.lede {
+  margin: var(--l-space-3) 0 0;
+  color: var(--l-text-soft);
+}
+
+.content {
+  margin-top: var(--l-space-6);
+}
+
+/* Fields: a quiet label, then a pill input with the product's stamped 1.5px edge. */
+.content label {
+  margin-bottom: var(--l-space-2);
+  color: var(--ink);
+  font-family: var(--l-font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.content input[type='email'],
+.content input[type='password'],
+.content input[type='text'] {
+  min-height: 56px;
+  padding: 0 var(--l-space-5);
+  border: 1.5px solid var(--line);
+  border-radius: var(--l-radius-pill);
+  background: var(--card);
+  font-family: var(--l-font-body);
+  font-size: var(--l-step-0);
+}
+
+.content input:focus {
+  border-color: var(--biru);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--biru-muda);
+}
+
+/* The show/hide control sits inside the pill, in the page's own voice. */
+.content input + button {
+  border-radius: var(--l-radius-pill);
+  font-family: var(--l-font-body);
+  font-size: var(--text-base);
+  font-weight: 600;
+  letter-spacing: 0;
+  text-transform: capitalize;
+  color: var(--biru);
+}
+
+/* The submit: the landing page's primary pill, full width. */
+.content button[type='submit'] {
+  width: 100%;
+  min-height: 56px;
+  margin-top: var(--l-space-2);
+  border: 0;
+  border-radius: var(--l-radius-pill);
+  background: var(--biru);
+  color: var(--paper);
+  font-family: var(--l-font-body);
+  font-size: var(--l-step-0);
+  font-weight: 600;
+  transition:
+    background var(--l-dur-press) ease,
+    transform var(--l-dur-press) ease;
+}
+
+.content button[type='submit']:hover {
+  background: var(--l-biru-700);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .content button[type='submit']:active {
+    transform: scale(0.98);
+  }
+}
+
+/* The other way in (Google): an outlined pill after an "or" rule. */
 .alternative {
-  display: block;
-  margin-top: 20px;
-  color: var(--hijau);
-  font-size: var(--text-body);
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  margin-top: calc(var(--l-space-7) + 4px);
+  border-radius: var(--l-radius-pill);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  color: var(--ink);
+  font-size: var(--l-step-0);
+  font-weight: 600;
+  text-decoration: none;
+  transition: background var(--l-dur-press) ease;
+}
+
+.alternative:hover {
+  background: var(--surface);
+}
+
+.alternative::before {
+  content: 'or';
+  position: absolute;
+  top: calc(-1 * var(--l-space-7) + 6px);
+  left: 0;
+  right: 0;
+  color: var(--l-text-soft);
+  font-size: var(--text-base);
+  font-weight: 500;
+  text-align: center;
+  background: linear-gradient(var(--line), var(--line)) left center / calc(50% - 24px) 1px no-repeat,
+    linear-gradient(var(--line), var(--line)) right center / calc(50% - 24px) 1px no-repeat;
 }
 
 .footnote {
-  margin-top: 24px;
+  margin-top: var(--l-space-5);
   font-size: var(--text-base);
-  color: var(--muted);
+  color: var(--l-text-soft);
 }
 
 /* A link that belongs to the field above it, not to the whole form. */
 .inline {
   display: inline-block;
-  margin: -8px 0 16px;
-  color: var(--hijau);
+  margin: -6px 0 var(--l-space-4) var(--l-space-5);
+  color: var(--biru);
   font-size: var(--text-base);
+  font-weight: 500;
+}
+
+.switch {
+  margin: var(--l-space-6) 0 0;
+  color: var(--l-text-soft);
+  text-align: center;
+}
+
+.switch a {
+  color: var(--biru);
+  font-weight: 600;
+}
+
+/* ---- The band beside it, wide screens only ---- */
+
+.aside {
+  display: none;
+}
+
+@media (min-width: 960px) {
+  .auth {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .panel {
+    padding-top: var(--l-space-6);
+  }
+
+  .aside {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--l-space-7);
+    margin: var(--l-space-3);
+    padding: var(--l-space-8) var(--l-space-7);
+    overflow: hidden;
+    border-radius: var(--l-radius-card);
+  }
+
+  .asideTitle {
+    max-width: 14ch;
+    margin: 0;
+    color: var(--band-head);
+    font-family: var(--font-display);
+    font-size: var(--l-step-3);
+    font-weight: var(--l-weight-display);
+    line-height: var(--l-leading-tight);
+    letter-spacing: var(--l-tracking-display);
+    text-align: center;
+  }
+
+  /* Sized from the screen's height, so the whole phone always fits the band. */
+  .asidePhone {
+    width: min(270px, calc((100svh - 260px) * 9 / 19));
+  }
+
+  /* Anchored to the bottom, like a chat scrolled to the latest message: the answer always shows. */
+  .asideScreen {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .asideScreen > [data-bento-page] {
+    flex: none;
+  }
+
+  .asideScreen > [data-bento-page] {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    margin: 0;
+    padding: 12px 14px 26px;
+    border-radius: 0;
+  }
+
+  .asideThread {
+    margin-top: auto;
+  }
+
+  .asideAsked {
+    margin: 0 0 0 auto;
+    width: fit-content;
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    font-size: var(--text-base);
+  }
 }

@@ -6,6 +6,7 @@ import { Button, Callout, Field } from '@curios/ui';
 import type { KnowledgePinned } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './knowledge.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
@@ -80,9 +81,9 @@ export function PinnedList({
 }) {
   if (pinned.length === 0) {
     return (
-      <Callout tone="info">
-        No pinned answers yet. Answer what visitors ask on <a href="/app/questions">Questions</a>, and the chat repeats your words exactly.
-      </Callout>
+      <EmptyState icon="pinned" title="No pinned answers yet" action={<a href="/app/questions">Go to Questions</a>}>
+        Answer what visitors ask on Questions, and the chat repeats your words exactly.
+      </EmptyState>
     );
   }
   // Each row's own handlers wrap onChanged, so a success re-reads the server.

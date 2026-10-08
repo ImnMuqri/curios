@@ -8,7 +8,7 @@
   font-family: var(--font-heading), var(--font-display);
   font-size: var(--text-base);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--page-fg, var(--ink));
 }
 
 /*
@@ -20,5 +20,5 @@
   display: block;
   margin: 16px 0 24px;
   font-size: var(--text-base);
-  color: var(--muted);
+  color: var(--page-soft, var(--muted));
 }

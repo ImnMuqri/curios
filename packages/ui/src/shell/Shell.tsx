@@ -16,10 +16,22 @@ import styles from './Shell.module.css';
  * render this inside that frame -- pass `as="div"` to avoid a second, nested
  * landmark.
  */
-export function Shell({ as: As = 'main', title, children }: { as?: ElementType; title?: string; children: ReactNode }) {
+export function Shell({
+  as: As = 'main',
+  title,
+  lede,
+  children,
+}: {
+  as?: ElementType;
+  title?: string;
+  /** One line under the title saying what this screen is for. */
+  lede?: ReactNode;
+  children: ReactNode;
+}) {
   return (
     <As className={styles.shell}>
       {title ? <h1 className={styles.title}>{title}</h1> : null}
+      {lede ? <p className={styles.lede}>{lede}</p> : null}
       {children}
     </As>
   );

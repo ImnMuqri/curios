@@ -33,8 +33,9 @@ export interface Knowledge {
 }
 
 /** The link, or the first non-empty pasted line, cut to SOURCE_LABEL_MAX characters. */
-export function sourceLabel(sourceUrl: string | null, pastedText: string | null): string {
-  const raw = sourceUrl ?? (pastedText ?? '').split('\n').map((line) => line.trim()).find((line) => line !== '') ?? '';
+/** A file source is named by its file; a crawled one by its address; pasted text by its first line. */
+export function sourceLabel(sourceUrl: string | null, pastedText: string | null, fileName: string | null = null): string {
+  const raw = fileName ?? sourceUrl ?? (pastedText ?? '').split('\n').map((line) => line.trim()).find((line) => line !== '') ?? '';
   if (raw === '') return 'Pasted text';
   const chars = [...raw];
   return chars.length <= SOURCE_LABEL_MAX ? raw : `${chars.slice(0, SOURCE_LABEL_MAX - 1).join('')}…`;
@@ -59,6 +60,7 @@ export async function getKnowledge(accountId: string): Promise<Knowledge | null>
         id: true,
         sourceUrl: true,
         pastedText: true,
+        fileName: true,
         status: true,
         error: true,
         tracked: true,
@@ -82,7 +84,7 @@ export async function getKnowledge(accountId: string): Promise<Knowledge | null>
   const sources: KnowledgeSource[] = rows.map((row) => ({
     id: row.id,
     sourceUrl: row.sourceUrl,
-    label: sourceLabel(row.sourceUrl, row.pastedText),
+    label: sourceLabel(row.sourceUrl, row.pastedText, row.fileName),
     status: row.status,
     error: row.error,
     tracked: row.tracked,

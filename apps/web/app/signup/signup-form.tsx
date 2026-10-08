@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { Button, Callout, Field, Shell } from '@curios/ui';
+import { Button, Callout, Field } from '@curios/ui';
+import { AuthShell } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
 import styles from '../auth.module.css';
 
@@ -40,16 +41,20 @@ export function SignUpForm({
     // API's response is byte-identical in both cases, and this screen must
     // not leak what the API refuses to.
     return (
-      <Shell title="Check your email">
+      <AuthShell title="Check your email">
         <Callout tone="info">
           Check your email to confirm your address and finish signing up.
         </Callout>
-      </Shell>
+      </AuthShell>
     );
   }
 
   return (
-    <Shell title="Create your page">
+    <AuthShell
+      title="Create your free page"
+      lede="Answering is free on every plan. No card needed."
+      switchTo={{ prompt: 'Already have a page?', label: 'Sign in', href: '/signin' }}
+    >
       <form onSubmit={(event) => void submit(event)}>
         <Field
           id="email"
@@ -73,7 +78,7 @@ export function SignUpForm({
         {error ? <Callout tone="error">{error}</Callout> : null}
 
         <Button type="submit" busy={busy}>
-          {busy ? 'Signing up…' : 'Sign up'}
+          {busy ? 'Creating…' : 'Create my page'}
         </Button>
 
         {/* An anchor, never a button: it must leave the app for the API
@@ -85,7 +90,7 @@ export function SignUpForm({
           Continue with Google
         </a>
       </form>
-    </Shell>
+    </AuthShell>
   );
 }
 

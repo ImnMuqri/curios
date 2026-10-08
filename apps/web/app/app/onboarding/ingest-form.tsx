@@ -5,8 +5,23 @@ import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
 import { loginWalledSite } from '../../../lib/social-links.js';
 import { JobStatus, type IngestionResult } from './job-status.js';
+import styles from './onboarding.module.css';
 
-type Source = { pageId: string; sourceUrl: string } | { pageId: string; pastedText: string };
+type Source =
+  | { pageId: string; sourceUrl: string }
+  | { pageId: string; pastedText: string }
+  | { pageId: string; file: File };
+
+/** The API's ceiling (file-text.ts), checked here too so a 40 MB scan fails before it uploads. */
+const FILE_MAX_BYTES = 5 * 1024 * 1024;
+
+/** What the picker offers. The API decides from the file's bytes, not from this. */
+const FILE_ACCEPT =
+  '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown';
+
+function fileSize(bytes: number): string {
+  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 /**
  * A link, or text pasted straight in -- for anyone whose presence is a social
@@ -34,12 +49,16 @@ export function IngestForm({
   mode: 'PERSONAL' | 'BUSINESS';
   /** The API's cap, from `page.tsx`: this file may not import the core barrel. */
   pastedTextMax: number;
-  onIngest: (input: Source) => Promise<{ ingestionId: string }>;
+  /** `truncated`: a file longer than the cap, of which only the start was read. */
+  onIngest: (input: Source) => Promise<{ ingestionId: string; truncated?: boolean }>;
   fetchStatus: (ingestionId: string) => Promise<IngestionResult>;
   /** Passed to the job's `JobStatus`; the Knowledge tab uses it to re-read its list. */
   onSettled?: (result: IngestionResult) => void;
 }) {
-  const [using, setUsing] = useState<'link' | 'text'>('link');
+  const [using, setUsing] = useState<'link' | 'text' | 'file'>('link');
+  const [file, setFile] = useState<File | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [truncated, setTruncated] = useState(false);
   const [sourceUrl, setSourceUrl] = useState('');
   const [pastedText, setPastedText] = useState('');
   const [error, setError] = useState('');
@@ -66,6 +85,14 @@ export function IngestForm({
     // `required` is satisfied by whitespace, and the API's own answer to an
     // all-whitespace paste is Fastify's raw validation wording -- catch it
     // here so the owner hears it from us instead.
+    if (using === 'file' && !file) {
+      setError('Choose a file first: a PDF, a Word document or a text file.');
+      return;
+    }
+    if (using === 'file' && file && file.size > FILE_MAX_BYTES) {
+      setError('That file is over 5 MB. Try a smaller one, or paste the text instead.');
+      return;
+    }
     if (using === 'text' && pastedText.trim() === '') {
       setError('Paste something first — a bio, captions, an About section, whatever says it best.');
       return;
@@ -80,10 +107,15 @@ export function IngestForm({
     }
     setBusy(true);
     try {
-      const { ingestionId: id } = await onIngest(
-        using === 'text' ? { pageId, pastedText } : { pageId, sourceUrl },
+      const result = await onIngest(
+        using === 'text'
+          ? { pageId, pastedText }
+          : using === 'file' && file
+            ? { pageId, file }
+            : { pageId, sourceUrl },
       );
-      setIngestionId(id);
+      setTruncated(Boolean(result.truncated));
+      setIngestionId(result.ingestionId);
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Something failed. Try again.');
       setBusy(false);
@@ -92,10 +124,16 @@ export function IngestForm({
 
   if (ingestionId) {
     return (
+      <>
+      {truncated ? (
+        <Callout tone="info">That file is long, so your page read the first {count(pastedTextMax)} characters of it.</Callout>
+      ) : null}
       <JobStatus
         ingestionId={ingestionId}
         fetchStatus={fetchStatus}
-        source={using}
+        // A file is read as text, and fails or finds nothing the way pasted text does.
+        source={using === 'link' ? 'link' : 'text'}
+        subject={using === 'file' && file ? file.name : undefined}
         onSettled={onSettled}
         onNothingFound={() => {
           setIngestionId(null);
@@ -107,16 +145,19 @@ export function IngestForm({
           setUsing('link');
           setSourceUrl('');
           setPastedText('');
+          setFile(null);
+          setTruncated(false);
           setNotice('');
           setBusy(false);
           setAdded((count) => count + 1);
         }}
       />
+      </>
     );
   }
 
   return (
-    <form onSubmit={(event) => void submit(event)}>
+    <form className={styles.ingest} onSubmit={(event) => void submit(event)}>
       {added > 0 ? (
         <Callout tone="info">
           Facts from what you added so far are already in your review queue.{' '}
@@ -139,6 +180,52 @@ export function IngestForm({
           value={sourceUrl}
           onChange={setSourceUrl}
         />
+      ) : using === 'file' ? (
+        // A label, so the whole zone opens the picker; drop a file on it as well.
+        <label
+          className={styles.drop}
+          data-dragging={dragging || undefined}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragging(false);
+            const dropped = event.dataTransfer.files[0];
+            if (dropped) {
+              setFile(dropped);
+              setError('');
+            }
+          }}
+        >
+          <input
+            type="file"
+            accept={FILE_ACCEPT}
+            aria-label="A file to read"
+            className={styles.fileInput}
+            onChange={(event) => {
+              const chosen = event.target.files?.[0];
+              if (chosen) {
+                setFile(chosen);
+                setError('');
+              }
+            }}
+          />
+          <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" className={styles.dropIcon}>
+            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+            <path d="M14 3v5h5M12 18v-6M9 15l3-3 3 3" />
+          </svg>
+          <span className={styles.dropTitle}>{file ? file.name : 'Choose a file, or drop it here'}</span>
+          <span className={styles.dropHint}>
+            {file
+              ? `${fileSize(file.size)}. Click to choose a different one.`
+              : personal
+                ? 'Your resume or CV, a portfolio, a bio. PDF, Word (.docx) or text, up to 5 MB.'
+                : 'A menu, a price list, a brochure. PDF, Word (.docx) or text, up to 5 MB.'}
+          </span>
+        </label>
       ) : (
         <Field
           id="pastedText"
@@ -151,17 +238,23 @@ export function IngestForm({
         />
       )}
 
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={() => {
-          setError('');
-          setNotice('');
-          setUsing(using === 'link' ? 'text' : 'link');
-        }}
-      >
-        {using === 'link' ? 'Paste text instead' : 'Use a link instead'}
-      </Button>
+      {/* The other two ways in, whichever one is showing. */}
+      {(['link', 'text', 'file'] as const)
+        .filter((way) => way !== using)
+        .map((way) => (
+          <Button
+            key={way}
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              setError('');
+              setNotice('');
+              setUsing(way);
+            }}
+          >
+            {way === 'link' ? 'Use a link instead' : way === 'text' ? 'Paste text instead' : 'Upload a file'}
+          </Button>
+        ))}
 
       {error ? <Callout tone="error">{error}</Callout> : null}
 
@@ -170,12 +263,24 @@ export function IngestForm({
           ? 'Starting…'
           : using === 'text'
             ? 'Read what I pasted'
+            : using === 'file'
+              ? 'Read this file'
             : personal || added > 0
               ? 'Read this link'
               : 'Read my website'}
       </Button>
     </form>
   );
+}
+
+/** A file's bytes as base64, the way the picture uploads travel. Chunked: a spread of 5 MB overflows the stack. */
+async function asBase64(file: File): Promise<string> {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  let binary = '';
+  for (let from = 0; from < bytes.length; from += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(from, from + 0x8000));
+  }
+  return btoa(binary);
 }
 
 /**
@@ -201,7 +306,14 @@ export function Ingest({
       pageId={pageId}
       mode={mode}
       pastedTextMax={pastedTextMax}
-      onIngest={(input) => apiFetch('/ingest', { method: 'POST', body: JSON.stringify(input) })}
+      onIngest={async (input) =>
+        'file' in input
+          ? apiFetch<{ ingestionId: string; truncated: boolean }>('/ingest/file', {
+              method: 'POST',
+              body: JSON.stringify({ pageId: input.pageId, fileName: input.file.name, data: await asBase64(input.file) }),
+            })
+          : apiFetch<{ ingestionId: string }>('/ingest', { method: 'POST', body: JSON.stringify(input) })
+      }
       fetchStatus={(ingestionId) => apiFetch(`/ingest/${ingestionId}`)}
     />
   );

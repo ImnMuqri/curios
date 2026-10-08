@@ -16,7 +16,7 @@ describe('findHexLiterals', () => {
   });
 
   it('does not flag a token reference', () => {
-    expect(findHexLiterals('.a { color: var(--hijau); }')).toEqual([]);
+    expect(findHexLiterals('.a { color: var(--biru); }')).toEqual([]);
   });
 
   it('does not flag a URL fragment that merely contains a hash', () => {

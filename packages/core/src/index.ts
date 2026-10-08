@@ -42,13 +42,15 @@ export type { BillingPlan } from './billing.js';
 export { shouldIndex } from './indexing.js';
 export { FAQ_MIN_ASKS, faqSlugBase, qualifiesForFaq, serialiseJsonLd } from './faq.js';
 export {
+  ANSWER_BUDGET_CHARS,
   cosineSimilarity,
   FACT_BUDGET_CHARS,
   RETRIEVAL_FLOOR,
   RETRIEVAL_MIN_FACTS,
+  selectAnswers,
   selectFacts,
 } from './retrieval.js';
-export type { FallbackReason, Selection } from './retrieval.js';
+export type { AnswerSelection, FallbackReason, Selection } from './retrieval.js';
 export { NEVER_SAY_MAX_CHARS, NEVER_SAY_MAX, OWNER_FACT_MAX, SOURCE_LABEL_MAX } from './knowledge.js';
 export {
   ANSWER_MAX,

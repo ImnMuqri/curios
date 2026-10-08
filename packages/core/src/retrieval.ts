@@ -144,3 +144,86 @@ export function selectFacts<T extends { id: string; claim: string }>(input: {
 
   return { mode: 'retrieved', reason: null, facts: selected, bestScore: best };
 }
+
+/**
+ * How many characters of the owner's own answers one prompt may carry.
+ *
+ * An answer can be ANSWER_MAX (2,000) characters and a page can answer
+ * dozens of topics, so "send every answer" was up to sixty thousand
+ * characters on every turn. A page whose answers all fit under this is sent
+ * whole -- there is nothing to save and the prompt stays cacheable; past it,
+ * only the answers this question is about.
+ */
+export const ANSWER_BUDGET_CHARS = 2000;
+
+export interface AnswerSelection<T> {
+  /**
+   * 'all': every answer fits the budget. 'retrieved': ranked by this
+   * question. 'most-asked': no vectors to rank with, so the most-asked that
+   * fit -- bounded either way, never the whole list.
+   */
+  mode: 'all' | 'retrieved' | 'most-asked';
+  answers: T[];
+  bestScore: number | null;
+}
+
+const answerChars = (a: { question: string; answer: string }) => a.question.length + a.answer.length;
+
+/** Take answers in the order given until the budget is spent; the first always fits. */
+function withinBudget<T extends { question: string; answer: string }>(answers: T[], budget: number): T[] {
+  const taken: T[] = [];
+  let used = 0;
+  for (const answer of answers) {
+    if (taken.length > 0 && used + answerChars(answer) > budget) break;
+    taken.push(answer);
+    used += answerChars(answer);
+  }
+  return taken;
+}
+
+/**
+ * Which of the owner's answers a question needs.
+ *
+ * Each answer is ranked by the closest of its topic's wordings -- the
+ * questions visitors actually typed, which is what a new question is most
+ * like -- and only those at or above the floor are kept. An answer with no
+ * relevant wording is left out: unlike facts, the owner's answers are not the
+ * page's whole knowledge, so nothing matching means nothing to add, not a
+ * reason to send everything.
+ *
+ * `answers` arrives most-asked first; that order is the fallback when there
+ * is no question vector or a topic has no wording vectors.
+ */
+export function selectAnswers<T extends { id: string; question: string; answer: string }>(input: {
+  answers: T[];
+  /** Each topic's wording vectors, by topic id. */
+  vectors: ReadonlyMap<string, Float32Array[]> | null;
+  question: Float32Array | null;
+  floor?: number;
+  budgetChars?: number;
+}): AnswerSelection<T> {
+  const floor = input.floor ?? RETRIEVAL_FLOOR;
+  const budget = input.budgetChars ?? ANSWER_BUDGET_CHARS;
+  const { answers } = input;
+
+  if (answers.reduce((sum, a) => sum + answerChars(a), 0) <= budget) {
+    return { mode: 'all', answers, bestScore: null };
+  }
+
+  const vectors = input.vectors;
+  const question = input.question;
+  if (!question || !vectors || answers.some((a) => (vectors.get(a.id)?.length ?? 0) === 0)) {
+    return { mode: 'most-asked', answers: withinBudget(answers, budget), bestScore: null };
+  }
+
+  const scored = answers
+    .map((answer) => ({
+      answer,
+      score: Math.max(...(vectors.get(answer.id) ?? []).map((v) => cosineSimilarity(question, v))),
+    }))
+    .sort((left, right) => right.score - left.score);
+
+  const best = scored[0]?.score ?? null;
+  const relevant = scored.filter((s) => s.score >= floor).map((s) => s.answer);
+  return { mode: 'retrieved', answers: withinBudget(relevant, budget), bestScore: best };
+}

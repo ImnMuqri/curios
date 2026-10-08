@@ -1,18 +1,27 @@
+/*
+ * Review, in the dashboard's voice: each fact a white card on a hairline, the
+ * question it answers in Bricolage, the claim under it, and where it came
+ * from set apart with a rule. Publish sits at the foot with the way to add
+ * another source.
+ */
 .card {
-  padding: 16px;
+  padding: 20px 22px;
   margin-bottom: 12px;
-  border: 1px solid var(--surface);
-  border-radius: 12px;
-  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
 }
 
-/* The utility voice: this is metadata about the claim, not the claim. */
+/* What kind of fact this is: a small pill, sentence case (the category arrives in capitals), not shouted. */
 .category {
-  margin: 0 0 8px;
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.13em;
+  display: inline-block;
+  margin: 0 0 10px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  text-transform: lowercase;
   color: var(--muted);
 }
 
@@ -24,38 +33,70 @@
   margin: 0 0 4px;
   font-family: var(--font-display);
   font-size: var(--text-body);
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
 }
 
 .claim {
-  margin: 0 0 12px;
-  font-size: var(--text-body);
+  margin: 0 0 14px;
+  font-size: var(--text-base);
+  color: var(--ink);
 }
 
 .source {
   margin: 0 0 4px;
-  padding-left: 10px;
-  border-left: 2px solid var(--surface);
-  font-size: var(--text-base);
+  padding-left: 12px;
+  border-left: 2px solid var(--line);
+  font-size: var(--text-sm);
   color: var(--muted);
 }
 
 .sourceLink {
-  font-size: var(--text-base);
-  color: var(--hijau);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--biru);
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 16px;
+}
+
+/* The foot: publish (or where the page lives) first, then the way to add more. */
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 20px;
+  padding: 18px 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+/* Publish's own block: its note and the address side by side. */
+.footer > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.footer > div > * {
+  margin: 0;
+}
+
+.footer > a {
+  margin-left: auto;
 }
 
 .published {
-  padding: 12px 14px;
-  border: 1.5px solid var(--surface);
-  border-radius: 10px;
+  margin: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
   background: var(--surface);
   font-family: var(--font-mono);
   font-size: var(--text-base);
@@ -63,8 +104,17 @@
 }
 
 .addSource {
-  display: inline-block;
-  margin: 8px 0 24px;
-  color: var(--hijau);
-  font-size: var(--text-body);
+  color: var(--biru);
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+
+.category::first-letter {
+  text-transform: uppercase;
+}
+
+.published a {
+  color: var(--biru);
+  text-underline-offset: 3px;
 }

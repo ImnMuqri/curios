@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
 import { BentoPage } from '../_bento/BentoPage.js';
-import { avatarUrl } from '../../lib/avatar-url.js';
+import { avatarUrl, coverUrl } from '../../lib/avatar-url.js';
 import { Ask } from './ask.js';
 import styles from './page.module.css';
 
@@ -93,6 +93,9 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         style={page.style}
         accentColor={page.accentColor}
         headingFont={page.headingFont}
+        background={page.background}
+        backgroundColor={page.backgroundColor}
+        coverUrl={coverUrl(page.coverKey)}
       >
         {/* The "What do you want to know?" prompt now lives inside Ask
             (ask.tsx) -- it doubles as chat mode's own empty-state greeting,

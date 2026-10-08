@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { avatarUrl, joinAvatarUrl } from './avatar-url.js';
+import { avatarUrl, coverUrlFrom, joinAvatarUrl } from './avatar-url.js';
 
 /**
  * Fix round 1, item 2: `avatarUrl` trims a base's trailing slash before
@@ -57,5 +57,22 @@ describe('avatarUrl', () => {
   it('does not double the slash when the base already ends in one', () => {
     process.env.STORAGE_PUBLIC_URL = 'https://cdn.example/';
     expect(avatarUrl('avatars/p/1.webp')).toBe('https://cdn.example/avatars/p/1.webp');
+  });
+});
+
+describe('coverUrlFrom', () => {
+  it('serves a stock cover from this app, storage or not', () => {
+    expect(coverUrlFrom('stock/kedai', null)).toBe('/covers/kedai.webp');
+    expect(coverUrlFrom('stock/kedai', 'https://pub.example.dev')).toBe('/covers/kedai.webp');
+  });
+
+  it('serves an uploaded cover from storage, and nothing without it', () => {
+    expect(coverUrlFrom('covers/p1/a.webp', 'https://pub.example.dev/')).toBe('https://pub.example.dev/covers/p1/a.webp');
+    expect(coverUrlFrom('covers/p1/a.webp', null)).toBeNull();
+    expect(coverUrlFrom(null, 'https://pub.example.dev')).toBeNull();
+  });
+
+  it('never turns an unknown stock name into a path', () => {
+    expect(coverUrlFrom('stock/../../secret', null)).toBeNull();
   });
 });

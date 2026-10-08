@@ -1,11 +1,16 @@
+/*
+ * The --button-* hooks let a surface restyle every Button inside it in one
+ * place (the dashboard frame sets pills, for one); unset, the defaults below
+ * are the look everywhere else.
+ */
 .button {
-  min-height: 44px;
-  padding: 11px 18px;
+  min-height: var(--button-height, 44px);
+  padding: var(--button-padding, 11px 18px);
   border: 1.5px solid transparent;
-  border-radius: 10px;
+  border-radius: var(--button-radius, 10px);
   font-family: var(--font-body);
-  font-size: var(--text-body);
-  font-weight: 500;
+  font-size: var(--button-size, var(--text-body));
+  font-weight: var(--button-weight, 500);
   cursor: pointer;
   transition:
     background 120ms ease,
@@ -19,7 +24,7 @@
 }
 
 .primary {
-  background: var(--hijau);
+  background: var(--biru);
   color: var(--paper);
 }
 
@@ -28,8 +33,8 @@
 }
 
 .secondary {
-  background: var(--paper);
-  border-color: var(--surface);
+  background: var(--button-secondary-bg, var(--paper));
+  border-color: var(--button-secondary-border, var(--surface));
   color: var(--ink);
 }
 
@@ -39,7 +44,7 @@
 
 /* merah, and only here. It means destructive, and nothing else may borrow it. */
 .danger {
-  background: var(--paper);
+  background: var(--button-secondary-bg, var(--paper));
   border-color: var(--merah);
   color: var(--merah);
 }

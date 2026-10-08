@@ -81,6 +81,17 @@ enum PageStyle {
   CONTRAST
 }
 
+/// The page's background band, from the palette. PAPER is the look every page had before there was a choice.
+enum PageBackground {
+  PAPER
+  MUDA
+  KUNING
+  BIRU
+  INK
+  /// The owner's own colour, in Page.backgroundColor.
+  CUSTOM
+}
+
 enum HeadingFont {
   JAKARTA
   BRICOLAGE
@@ -151,10 +162,16 @@ model Page {
   /// Soft is the default look; High contrast is the owner's alternative.
   style       PageStyle   @default(SOFT)
   /// #rrggbb, validated by isHexColor before it is written.
-  accentColor String      @default("#0c7a62")
+  accentColor String      @default("#2340c8")
   headingFont HeadingFont @default(JAKARTA)
   /// The object key of the uploaded picture in storage. Null is no picture.
   avatarKey   String?
+  /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
+  coverKey    String?
+  background  PageBackground @default(PAPER)
+  /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
+  /// band, so switching back to Custom finds their colour again.
+  backgroundColor String?
   createdAt     DateTime       @default(now())
   links         Link[]
   facts         Fact[]
@@ -309,6 +326,10 @@ model Ingestion {
   /// sourceText: Fact.sourceText already exists and means the excerpt one fact
   /// came from, which is a different thing.
   pastedText     String?
+  /// The uploaded file this text was read from (a resume PDF, a Word menu), when
+  /// the owner sent a file rather than pasting. Its text is in pastedText; the
+  /// file itself is never kept.
+  fileName       String?
   status         IngestionStatus @default(QUEUED)
   extractedCount Int             @default(0)
   error          String?

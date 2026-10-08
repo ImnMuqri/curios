@@ -1,0 +1,284 @@
+/*
+ * Billing, in the landing page's pricing voice: the plan you are on in big
+ * type with its meters, the two ways to pay as plan cards (the yearly one in
+ * cobalt, as the landing page draws Business), and payments as a short table.
+ */
+
+/* ---- Your plan ---- */
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 24px 40px;
+  align-items: center;
+}
+
+.heroMain {
+  min-width: 0;
+}
+
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 10px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.badge {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.badge[data-tone='biru'] {
+  background: var(--biru);
+  color: var(--paper);
+}
+
+.badge[data-tone='muda'] {
+  background: var(--biru-muda);
+  color: var(--biru-deep, var(--biru));
+}
+
+/* Kuning: the plan has run out, and a human needs to act. */
+.badge[data-tone='kuning'] {
+  background: var(--kuning);
+  color: var(--ink);
+}
+
+.summary {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+}
+
+.meters {
+  display: grid;
+  gap: 18px;
+}
+
+.meterLabel {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 8px;
+  font-size: var(--text-base);
+  font-weight: 600;
+}
+
+.meterLabel span {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.bar {
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.bar span {
+  display: block;
+  height: 100%;
+  min-width: 4px;
+  border-radius: inherit;
+  background: var(--biru);
+}
+
+.meter[data-tone='kuning'] .bar span {
+  background: var(--kuning);
+}
+
+.meterText {
+  margin: 6px 0 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+/* ---- Two ways to pay ---- */
+.plans {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 16px;
+}
+
+.plan {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 22px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--paper);
+}
+
+.plan > button {
+  margin-top: auto;
+}
+
+.planName {
+  margin: 0 0 6px;
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.planPrice {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.planPrice span {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.planNote {
+  margin: 6px 0 18px;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+/* The yearly plan, featured: cobalt, its button turned paper so it still reads as the action. */
+.plan[data-featured] {
+  border-color: var(--biru);
+  background: var(--biru);
+}
+
+.plan[data-featured] .planName,
+.plan[data-featured] .planNote,
+.plan[data-featured] .planPrice span {
+  color: color-mix(in oklch, var(--paper) 80%, var(--biru));
+}
+
+.plan[data-featured] .planPrice {
+  color: var(--paper);
+}
+
+.plan[data-featured] > button {
+  background: var(--paper);
+  color: var(--biru);
+}
+
+.points {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 24px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+}
+
+.points li {
+  position: relative;
+  padding-left: 24px;
+  font-size: var(--text-base);
+}
+
+.points li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 4px;
+  width: 11px;
+  height: 6px;
+  border-left: 2px solid var(--biru);
+  border-bottom: 2px solid var(--biru);
+  transform: rotate(-45deg);
+}
+
+.fine {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+/* ---- A personal page's way up ---- */
+.upgrade {
+  border-color: var(--biru);
+  background: var(--biru-muda);
+}
+
+/* ---- Payments ---- */
+.payments {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.payments li {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  font-size: var(--text-base);
+}
+
+.payments li:first-child {
+  border-top: 0;
+}
+
+.payDate {
+  color: var(--muted);
+}
+
+.payWhat {
+  font-weight: 600;
+}
+
+.payWhat small {
+  display: block;
+  font-size: var(--text-sm);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.payStatus {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.payStatus[data-paid='true'] {
+  background: var(--biru-muda);
+  color: var(--biru-deep, var(--biru));
+}
+
+@media (max-width: 760px) {
+  .hero,
+  .plans,
+  .points {
+    grid-template-columns: 1fr;
+  }
+
+  .payments li {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .payDate {
+    grid-column: 1 / -1;
+    font-size: var(--text-sm);
+  }
+}

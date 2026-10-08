@@ -4,6 +4,7 @@ import { Button, Callout } from '@curios/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
+import panel from '../panel.module.css';
 
 /**
  * The API's 409 already says exactly what happened and what to do instead, and
@@ -45,7 +46,7 @@ export function ResetTrialForm({
   }
 
   return (
-    <div>
+    <div className={panel.buttons}>
       <Button busy={busy} onClick={() => void reset()}>
         Reset my free trial
       </Button>

@@ -1,9 +1,13 @@
 .page {
   --tile-radius: 16px;
   --warm: color-mix(in srgb, var(--accent) 16%, var(--card));
+  --warm-fg: var(--ink);
   --plain-bg: var(--card);
   --plain-fg: var(--ink);
   --page-bg: var(--soft-page);
+  /* Text on the page itself (not on a tile): set again by each background band below. */
+  --page-fg: var(--ink);
+  --page-soft: var(--muted);
   --shadow: 0 1px 3px var(--soft-shadow);
   /* The spec: the ask bar is "a white pill, soft" here -- no ink outline --
      and "outlined in ink" in High contrast, below. AskBar and AskSheet read
@@ -26,10 +30,10 @@
   position: relative;
   max-width: 520px;
   margin: 0 auto;
-  padding: 32px 16px 120px;
+  padding: var(--pad-top, 32px) var(--pad-x, 16px) 120px;
   min-height: 100vh;
   background: var(--page-bg);
-  color: var(--ink);
+  color: var(--page-fg);
   font-family: var(--font-body);
 }
 
@@ -46,14 +50,89 @@
   }
 }
 
+/*
+ * High contrast: every tile follows the accent, not just the first. The
+ * second is the accent taken deep (40% into ink, mixed in oklab so the hue
+ * holds -- oklch would swing a yellow round to plum -- light enough of any accent
+ * to stay a colour, dark enough under paper text: about 5:1 even for a
+ * near-white accent), and the ink tiles carry it in their label. It was
+ * kuning here once, which no accent could change, and which DESIGN.md keeps
+ * for "a human needs to act", never decoration.
+ */
 .page[data-style='CONTRAST'] {
   --tile-radius: 14px;
-  --warm: var(--kuning);
+  --warm: color-mix(in oklab, var(--accent) 40%, var(--ink));
+  --warm-fg: var(--paper);
+  --plain-kind: color-mix(in oklab, var(--accent) 45%, var(--paper));
   --plain-bg: var(--ink);
   --plain-fg: var(--paper);
   --page-bg: var(--paper);
   --shadow: none;
   --ask-border: var(--ink);
+}
+
+/*
+ * The background band the owner picked (PAGE_BACKGROUNDS in @curios/core).
+ * Every colour comes from the palette or a mix of two palette colours; text
+ * on the page follows the band, text on tiles follows the tile. PAPER sets
+ * nothing: it is each style's own page colour, the look before bands existed.
+ *
+ * Contrast of the page's own text: MUDA ink 14.5:1, soft about 7:1; KUNING
+ * ink about 14:1; BIRU paper 7.7:1, soft about 5.5:1; INK paper 15.9:1, soft
+ * about 8:1. --muted is never used on a band where it would fail.
+ */
+.page[data-bg='MUDA'] {
+  --page-bg: var(--biru-muda);
+  --page-soft: color-mix(in oklch, var(--ink) 78%, var(--biru-muda));
+}
+
+.page[data-bg='KUNING'] {
+  --page-bg: color-mix(in oklch, var(--kuning) 20%, var(--paper));
+  --page-soft: color-mix(in oklch, var(--ink) 78%, var(--kuning));
+}
+
+.page[data-bg='BIRU'] {
+  --page-bg: var(--biru);
+  --page-fg: var(--paper);
+  --page-soft: color-mix(in oklch, var(--paper) 82%, var(--biru));
+}
+
+.page[data-bg='INK'] {
+  --page-bg: var(--ink);
+  --page-fg: var(--paper);
+  --page-soft: color-mix(in oklch, var(--paper) 72%, var(--ink));
+}
+
+/*
+ * The owner's own colour. Its text follows readableOn (data-bg-text), so no
+ * pick can make the page unreadable: ink and a soft ink on a light colour,
+ * paper and a soft paper on a dark one -- the soft tone mixed from the page's
+ * own colour, as the bands do.
+ */
+.page[data-bg='CUSTOM'] {
+  --page-bg: var(--custom-bg);
+  --page-soft: color-mix(in oklab, var(--ink) 74%, var(--custom-bg));
+}
+
+.page[data-bg='CUSTOM'][data-bg-text='light'] {
+  --page-fg: var(--paper);
+  --page-soft: color-mix(in oklab, var(--paper) 76%, var(--custom-bg));
+}
+
+/* High contrast's ink tiles would vanish into an ink page: lift them a step. */
+.page[data-bg='CUSTOM'][data-bg-text='light'][data-style='CONTRAST'],
+.page[data-bg='INK'][data-style='CONTRAST'] {
+  --plain-bg: color-mix(in oklch, var(--paper) 12%, var(--ink));
+}
+
+/* On a dark band the accent tile can match the page (a biru accent on a biru page), and High contrast's deep tile can sink into it: a fine edge keeps each a tile. */
+.page[data-bg='BIRU'] .tile[data-tone='accent'],
+.page[data-bg='INK'] .tile[data-tone='accent'],
+.page[data-bg-text='light'] .tile[data-tone='accent'],
+.page[data-bg-text='light'][data-style='CONTRAST'] .tile[data-tone='warm'],
+.page[data-bg='BIRU'][data-style='CONTRAST'] .tile[data-tone='warm'],
+.page[data-bg='INK'][data-style='CONTRAST'] .tile[data-tone='warm'] {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--paper) 40%, transparent);
 }
 
 .page[data-on-accent='dark'] { --on-accent: var(--ink); }
@@ -73,6 +152,49 @@
   padding-left: 44px;
 }
 
+/*
+ * The cover photo: full width at the top of the page, bleeding past the
+ * page's padding, fading into the page's own background at its foot (an
+ * alpha mask, so it fades into whichever band is behind it). The header then
+ * rides up onto the faded part.
+ */
+.cover {
+  margin: calc(-1 * var(--pad-top, 32px)) calc(-1 * var(--pad-x, 16px)) 0;
+  height: 180px;
+  overflow: hidden;
+  border-radius: inherit;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Gone by 86%: the name, which rides up onto the last stretch, always sits on the page colour, not on the photo. */
+  mask-image: linear-gradient(to bottom, black 38%, transparent 86%);
+}
+
+/* Only when a cover actually rendered: the header steps up onto its faded foot. */
+.cover + .head {
+  position: relative;
+  margin-top: -40px;
+}
+
+@media (min-width: 560px) {
+  .cover {
+    height: 210px;
+  }
+}
+
+/* On a cover, the picture sits on a ring of the page's own colour, so it reads against the photo. */
+.cover + .head .avatar {
+  width: 72px;
+  height: 72px;
+  box-shadow: 0 0 0 3px var(--page-bg);
+}
+
 .avatar {
   width: 56px;
   height: 56px;
@@ -83,24 +205,26 @@
 
 .name {
   margin: 0;
+  color: var(--page-fg);
   font-family: var(--font-heading), var(--font-display);
-  font-size: var(--text-lg);
-  line-height: 1.15;
-  letter-spacing: -0.01em;
+  font-size: var(--text-display);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .handle {
   margin: 2px 0 0;
   font-family: var(--font-mono);
   font-size: var(--text-xs);
-  color: var(--muted);
+  color: var(--page-soft);
 }
 
 .bio {
   margin: 0 0 18px;
   font-size: var(--text-base);
   line-height: 1.5;
-  color: var(--muted);
+  color: var(--page-soft);
 }
 
 /*
@@ -196,12 +320,16 @@ a.tile:active { transform: scale(0.98); }
 .tile[data-size='BIG'] { grid-column: span 2; grid-row: span 2; }
 
 .tile[data-tone='accent'] { background: var(--accent); color: var(--on-accent); }
-.tile[data-tone='warm'] { background: var(--warm); color: var(--ink); }
+.tile[data-tone='warm'] { background: var(--warm); color: var(--warm-fg); }
+/* High contrast's ink tiles: the label in a light tint of the accent, full strength. */
+.page[data-style='CONTRAST'] .tile[data-tone='plain'] .kind { color: var(--plain-kind); opacity: 1; }
 
+/* The small "what this is" label on a tile. In the owner's heading font, like everything else on their page; still a label by size, case and spacing. */
 .kind {
-  font-family: var(--font-mono);
+  font-family: var(--font-heading), var(--font-display);
   font-size: var(--text-xs);
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   opacity: 0.8;
 }

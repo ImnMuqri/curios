@@ -1,3 +1,5 @@
+import { stockCoverName } from '@curios/core/bento';
+
 /**
  * Joins a storage base URL and an object key, trimming the base's trailing
  * slash(es) so the two never collide into a double slash. Shared by
@@ -14,4 +16,21 @@ export function avatarUrl(key: string | null): string | null {
   const base = process.env.STORAGE_PUBLIC_URL;
   if (!key || !base) return null;
   return joinAvatarUrl(base, key);
+}
+
+/**
+ * The cover photo's URL from its key: a stock cover is served by this app
+ * from /covers/<name>.webp; an uploaded one lives in storage at `base`.
+ * Null when there is no cover, or an upload with no storage configured.
+ */
+export function coverUrlFrom(key: string | null, base: string | null): string | null {
+  const stock = stockCoverName(key);
+  if (stock) return `/covers/${stock}.webp`;
+  if (!key || !base) return null;
+  return joinAvatarUrl(base, key);
+}
+
+/** Server-side: the cover's URL, reading STORAGE_PUBLIC_URL itself. */
+export function coverUrl(key: string | null): string | null {
+  return coverUrlFrom(key, process.env.STORAGE_PUBLIC_URL ?? null);
 }

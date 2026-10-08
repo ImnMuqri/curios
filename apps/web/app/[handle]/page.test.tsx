@@ -43,9 +43,11 @@ const page: PublicPage = {
   ],
   allowSearchIndexing: false,
   style: 'SOFT',
-  accentColor: '#0c7a62',
+  accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: null,
+  coverKey: null,
+  background: 'PAPER' as const, backgroundColor: null,
 };
 
 describe('public page', () => {
@@ -72,7 +74,7 @@ describe('public page', () => {
   // from whatever props it is given, but nothing in this file proved page.tsx
   // itself forwards the page's OWN style/accent/font rather than a constant --
   // every other test here uses the fixture's defaults, so a hardcoded
-  // '#0c7a62' or 'SOFT' in page.tsx would still leave them green.
+  // '#2340c8' or 'SOFT' in page.tsx would still leave them green.
   it("carries the page's own style, accent and heading font to the rendered page", async () => {
     vi.mocked(getPublicPage).mockResolvedValue({
       ...page,
@@ -86,6 +88,16 @@ describe('public page', () => {
     expect(bento).toHaveAttribute('data-style', 'CONTRAST');
     expect(bento.style.getPropertyValue('--accent')).toBe('#6d3fb3');
     expect(bento.style.getPropertyValue('--font-heading')).toBe('var(--font-fraunces)');
+  });
+
+  it("carries the owner's background and stock cover through to the page", async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, background: 'INK', backgroundColor: null, coverKey: 'stock/kopi' });
+    const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    const bento = container.querySelector('main > *') as HTMLElement;
+    expect(bento).toHaveAttribute('data-bg', 'INK');
+    // A stock cover needs no storage: it is served by the web app itself.
+    expect(container.querySelector('[data-cover-photo] img')).toHaveAttribute('src', '/covers/kopi.webp');
   });
 
   // Self-review addition: every other test's fixture has avatarKey: null, so

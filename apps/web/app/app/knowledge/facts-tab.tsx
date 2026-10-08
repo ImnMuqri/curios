@@ -7,6 +7,7 @@ import type { FactCategory } from '@curios/core';
 import type { KnowledgeFact } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './knowledge.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 const NEW_FACT_ID = 'new-fact';
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
@@ -146,19 +147,30 @@ export function FactList({
         {error ? <Callout tone="error">{error}</Callout> : null}
       </form>
 
-      <input
-        type="search"
-        aria-label="Search facts"
-        className={styles.search}
-        placeholder="Search facts"
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
-      />
+      {/* Nothing to search until there is a fact: the empty state below says what to do instead. */}
+      {facts.length > 0 ? (
+        <input
+          type="search"
+          aria-label="Search facts"
+          className={styles.search}
+          placeholder="Search facts"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+        />
+      ) : null}
 
       {facts.length === 0 ? (
-        <Callout tone="info">No facts yet. Add one above, or add a source and accept its facts in Review.</Callout>
+        <EmptyState
+          icon="facts"
+          title="No facts yet"
+          action={<a href="/app/knowledge?tab=sources">Add a source</a>}
+        >
+          Add one above, or add a source and accept its facts in Review.
+        </EmptyState>
       ) : groups.length === 0 ? (
-        <Callout tone="info">No facts match your search.</Callout>
+        <EmptyState icon="search" title="No facts match your search">
+          Try another word, or clear the search to see them all.
+        </EmptyState>
       ) : (
         groups.map((group) => (
           <div key={group.category}>

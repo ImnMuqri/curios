@@ -2,7 +2,8 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { PASTED_TEXT_MAX } from '@curios/core';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { getIngestion, startIngestion } from './ingest.service.js';
+import { getIngestion, startFromFile, startIngestion } from './ingest.service.js';
+import { SOURCE_FILE_MAX_BYTES } from './file-text.js';
 import { createHostGuard, type HostGuard } from './host-guard.js';
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -43,6 +44,33 @@ export const ingestRoutes: FastifyPluginAsyncZod<IngestRouteOptions> = async (ap
       if (!request.account) throw new UnauthenticatedError();
 
       const result = await startIngestion(
+        { prisma: app.prisma, queue: app.ingestQueue, guard },
+        request.account.id,
+        request.body,
+      );
+      return reply.status(202).send(result);
+    },
+  );
+
+  // A file as a source (a resume, a menu): sent as base64 JSON, the way the
+  // picture uploads are, so the same body parser and limits apply. Base64
+  // grows a file by a third; the limit leaves room for the JSON around it.
+  app.post(
+    '/ingest/file',
+    {
+      bodyLimit: Math.ceil((SOURCE_FILE_MAX_BYTES * 4) / 3) + 64 * 1024,
+      schema: {
+        body: z.object({
+          pageId: z.string().min(1).max(64),
+          fileName: z.string().min(1).max(255),
+          data: z.string().min(1).max(Math.ceil((SOURCE_FILE_MAX_BYTES * 4) / 3) + 4),
+        }),
+        response: { 202: z.object({ ingestionId: z.string(), truncated: z.boolean() }), 400: errorSchema },
+      },
+    },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      const result = await startFromFile(
         { prisma: app.prisma, queue: app.ingestQueue, guard },
         request.account.id,
         request.body,

@@ -2,7 +2,8 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Callout, Field, Shell } from '@curios/ui';
+import { Button, Callout, Field } from '@curios/ui';
+import { AuthShell } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
 import styles from '../auth.module.css';
 import { oauthErrorMessage } from '../../lib/oauth-errors.js';
@@ -46,7 +47,11 @@ export function SignInForm({
   }
 
   return (
-    <Shell title="Sign in">
+    <AuthShell
+      title="Welcome back"
+      lede="Sign in to see your leads and what customers keep asking."
+      switchTo={{ prompt: 'New to Curios?', label: 'Create your free page', href: '/signup' }}
+    >
       <form onSubmit={(event) => void submit(event)}>
         {cancelled ? (
           <Callout tone="info">Sign-in was cancelled. Try again when you are ready.</Callout>
@@ -95,7 +100,7 @@ export function SignInForm({
           Continue with Google
         </a>
       </form>
-    </Shell>
+    </AuthShell>
   );
 }
 

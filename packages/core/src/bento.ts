@@ -14,6 +14,35 @@ export const PAGE_STYLES = ['SOFT', 'CONTRAST'] as const;
 export type PageStyle = (typeof PAGE_STYLES)[number];
 
 export const HEADING_FONTS = ['JAKARTA', 'BRICOLAGE', 'FRAUNCES', 'SPACE_GROTESK', 'DM_SERIF', 'OUTFIT'] as const;
+
+/**
+ * The page's background: one of the palette's bands, the same five the
+ * landing page is built from. Owners pick one; text and buttons on it are
+ * chosen by the page for contrast, never by the owner.
+ */
+export const PAGE_BACKGROUNDS = ['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK', 'CUSTOM'] as const;
+export type PageBackground = (typeof PAGE_BACKGROUNDS)[number];
+
+/**
+ * The cover photos that ship with Curios, for owners without a photo of their
+ * own. Stored on the page as `stock/<name>` and served by the web app from
+ * /covers/<name>.webp; an uploaded cover is a storage key instead.
+ */
+export const STOCK_COVERS = ['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis'] as const;
+export type StockCover = (typeof STOCK_COVERS)[number];
+
+const STOCK_PREFIX = 'stock/';
+
+export function stockCoverKey(name: StockCover): string {
+  return `${STOCK_PREFIX}${name}`;
+}
+
+/** The stock cover a key names, or null when it is an uploaded cover (or not a key at all). */
+export function stockCoverName(key: string | null): StockCover | null {
+  if (!key?.startsWith(STOCK_PREFIX)) return null;
+  const name = key.slice(STOCK_PREFIX.length);
+  return (STOCK_COVERS as readonly string[]).includes(name) ? (name as StockCover) : null;
+}
 export type HeadingFont = (typeof HEADING_FONTS)[number];
 
 export const MAX_LINKS = 30;
@@ -21,17 +50,17 @@ export const LABEL_MAX = 40;
 export const BIO_MAX = 160;
 export const DISPLAY_NAME_MAX = 80;
 
-export const DEFAULT_ACCENT = '#0c7a62';
+export const DEFAULT_ACCENT = '#2340c8';
 /** Chosen to look right in both styles. Custom colours are allowed too. */
 export const ACCENT_PRESETS = [
+  '#2340c8',
   '#0c7a62',
-  '#1f4fd1',
   '#6d3fb3',
   '#c2185b',
   '#d8452f',
   '#e08a1e',
   '#2d6a4f',
-  '#10231f',
+  '#191f2c',
 ] as const;
 
 /** Characters as a person counts them. "🎂" is one, though it is two UTF-16 units. */
@@ -113,8 +142,8 @@ function luminance(hex: string): number {
 }
 
 /** The ink and paper tokens in tokens.css, which is where text on an accent comes from. */
-const INK = luminance('#10231f');
-const PAPER = luminance('#fafbfa');
+const INK = luminance('#191f2c');
+const PAPER = luminance('#fafbfc');
 
 /**
  * Which text colour stays readable on an accent: whichever of ink or paper has
@@ -126,6 +155,16 @@ export function readableOn(hex: string): 'dark' | 'light' {
   const withInk = (l + 0.05) / (INK + 0.05);
   const withPaper = (PAPER + 0.05) / (l + 0.05);
   return withInk >= withPaper ? 'dark' : 'light';
+}
+
+/**
+ * A colour taken toward paper: `share` of the colour, the rest white. What a
+ * Custom background starts as -- a light tint of the page's own accent, so a
+ * first pick already belongs to the page.
+ */
+export function tintOf(hex: string, share: number): string {
+  const mix = (i: number) => Math.round(parseInt(hex.slice(i, i + 2), 16) * share + 255 * (1 - share));
+  return `#${[1, 3, 5].map((i) => mix(i).toString(16).padStart(2, '0')).join('')}`;
 }
 
 export type Tone = 'accent' | 'warm' | 'plain';

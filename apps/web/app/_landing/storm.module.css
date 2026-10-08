@@ -1,0 +1,306 @@
+/*
+ * The ink band, taller than the screen, with a sticky stage. Scrolling
+ * through the extra height drives --merge (set by StormStage) from 0 to 1:
+ *
+ *   0.10-0.30  the one question lands on the photo, "asked 40×"
+ *   0.30-0.45  the owner's answer lands under it
+ *   0.45-0.95  each wording in the moving rows gets the answer attached,
+ *              one by one, scattered across the rows (--at per pill)
+ *
+ * Layout, the way linktr.ee composes a section: words on one side, a big
+ * rounded photograph on the other with the product's own UI floating over
+ * it, and the ticker running full width underneath both. On a phone: words,
+ * photo, ticker.
+ *
+ * On ink: text is --paper (15.9:1), --l-ink-300 (8.2:1); answers are paper
+ * on --biru (7.7:1).
+ */
+
+.storm {
+  position: relative;
+  height: 200svh;
+}
+
+.stage {
+  --merge: 0;
+  /* In vw, not %: the rows use it as a negative margin, where % would mean a narrower box. */
+  --edge: max(var(--l-gutter), calc((100vw - var(--l-max)) / 2));
+  position: sticky;
+  top: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    'copy'
+    'visual'
+    'rows';
+  align-content: center;
+  row-gap: var(--l-space-6);
+  height: 100svh;
+  min-height: 680px;
+  padding: var(--l-space-8) var(--edge) 0;
+  overflow: hidden;
+}
+
+/* ---- Words ---- */
+
+.copy {
+  grid-area: copy;
+}
+
+.title {
+  color: var(--band-head);
+}
+
+.body {
+  margin: var(--l-space-4) 0 0;
+  max-width: 30em;
+  color: var(--band-soft);
+  font-size: var(--l-step-0);
+  text-wrap: pretty;
+}
+
+/* ---- The photograph, with the product floating on it ---- */
+
+.visual {
+  grid-area: visual;
+  position: relative;
+  margin: 0;
+}
+
+.visual .photo {
+  aspect-ratio: 5 / 4;
+  /* The question covers the top, the answer the bottom; the label waits between them. */
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.question {
+  --q: clamp(0, calc((var(--merge) - 0.1) / 0.2), 1);
+  position: absolute;
+  top: var(--l-space-4);
+  left: var(--l-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--l-space-2);
+  max-width: calc(100% - 2 * var(--l-space-3));
+  margin: 0;
+  opacity: var(--q);
+  transform: translateY(calc(18px * (1 - var(--q))));
+}
+
+.questionPill {
+  padding: 10px 18px;
+  border-radius: var(--l-radius-pill);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--l-step-0);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* The count, as the Questions screen shows it: a small ink chip. */
+.count {
+  padding: 6px 12px;
+  border-radius: var(--l-radius-pill);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: var(--l-step--1);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.answer {
+  --a: clamp(0, calc((var(--merge) - 0.3) / 0.15), 1);
+  position: absolute;
+  right: var(--l-space-3);
+  bottom: var(--l-space-4);
+  max-width: min(22em, calc(100% - 2 * var(--l-space-3)));
+  margin: 0;
+  padding: 12px 18px;
+  border-radius: 22px;
+  border-bottom-right-radius: 6px;
+  background: var(--biru);
+  color: var(--paper);
+  font-size: var(--l-step-0);
+  line-height: var(--l-leading-snug);
+  opacity: var(--a);
+  transform: translateY(calc(18px * (1 - var(--a))));
+}
+
+/* ---- The ticker: full bleed, always moving ---- */
+
+.rows {
+  grid-area: rows;
+  display: grid;
+  gap: var(--l-space-2);
+  margin: 0 calc(-1 * var(--edge));
+}
+
+.row {
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  gap: var(--l-space-2);
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/*
+ * A wording. Its own moment to be answered is --at (0..1); --on runs 0 to 1
+ * across a short window at that moment. Answered, it turns pale blue and
+ * grows a reply tag.
+ */
+.pill {
+  --on: clamp(0, calc((var(--merge) - 0.45 - var(--at) * 0.45) / 0.05), 1);
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  padding: 6px 6px 6px 16px;
+  border-radius: var(--l-radius-pill);
+  background: var(--card);
+  color: var(--ink);
+  font-size: var(--l-step--1);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* The pale-blue wash of an answered wording, laid over the white. */
+.pill::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--biru-muda);
+  opacity: var(--on);
+}
+
+.pillText {
+  position: relative;
+  padding-right: 10px;
+}
+
+.reply {
+  position: relative;
+  display: inline-block;
+  max-width: calc(var(--on) * 4.5em);
+  overflow: hidden;
+  padding: 3px calc(var(--on) * 9px);
+  border-radius: var(--l-radius-pill);
+  background: var(--biru);
+  color: var(--paper);
+  font-size: var(--l-step--1);
+  font-weight: 700;
+  opacity: var(--on);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track {
+    animation: slide var(--seconds) linear infinite;
+    animation-play-state: paused;
+  }
+
+  .track[data-reverse='true'] {
+    animation-direction: reverse;
+  }
+
+  .stage[data-playing='true'] .track {
+    animation-play-state: running;
+  }
+
+  /* Hold a row still to read it. */
+  .stage[data-playing='true'] .row:hover .track {
+    animation-play-state: paused;
+  }
+
+  @keyframes slide {
+    from {
+      transform: translateX(0);
+    }
+
+    to {
+      transform: translateX(-50%);
+    }
+  }
+}
+
+/* ---- Wide: words left, photo right, ticker across both ---- */
+
+@media (min-width: 1024px) {
+  .storm {
+    height: 260svh;
+  }
+
+  .stage {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    grid-template-areas:
+      'copy visual'
+      'rows rows';
+    align-items: center;
+    column-gap: var(--l-space-8);
+    row-gap: var(--l-space-7);
+  }
+
+  .visual .photo {
+    aspect-ratio: 16 / 9;
+    /* Question top left, answer bottom right: the label takes the free top right corner. */
+    align-items: flex-start;
+    justify-content: flex-end;
+    text-align: right;
+  }
+
+  .visual .photo > p {
+    max-width: 17ch;
+  }
+
+  /* The UI hangs over the photo's edges, the way a product sits on a picture. */
+  .question {
+    top: var(--l-space-6);
+    left: calc(-1 * var(--l-space-7));
+  }
+
+  .questionPill {
+    padding: 14px 24px;
+    font-size: var(--l-step-1);
+  }
+
+  .answer {
+    right: calc(-1 * var(--l-space-5));
+    bottom: var(--l-space-6);
+    font-size: var(--l-step-1);
+  }
+
+  .rows {
+    gap: var(--l-space-3);
+  }
+
+  .track {
+    gap: var(--l-space-3);
+  }
+
+  .pill {
+    padding: 8px 8px 8px 20px;
+    font-size: var(--l-step-0);
+  }
+}
+
+/* ---- Reduced motion: one screen, nothing moves, everything answered ---- */
+
+.stage[data-still='true'] {
+  position: relative;
+  height: auto;
+  min-height: 0;
+  padding-bottom: var(--l-space-9);
+  --merge: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .storm {
+    height: auto;
+  }
+}

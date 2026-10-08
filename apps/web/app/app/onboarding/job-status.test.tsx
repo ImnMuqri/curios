@@ -95,7 +95,7 @@ describe('JobStatus', () => {
       />,
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Add another link or text' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Add another source' }));
 
     expect(onAddAnother).toHaveBeenCalledOnce();
     expect(screen.getByRole('link', { name: 'Review the facts' })).toBeInTheDocument();
@@ -112,7 +112,7 @@ describe('JobStatus', () => {
       />,
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Try a different link or text' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Try a different source' }));
 
     expect(onAddAnother).toHaveBeenCalledOnce();
   });

@@ -5,28 +5,33 @@
  * Two accents, each owning exactly one job. --kuning means a human needs to
  * act; --merah means destructive or error. If either turns up decoratively,
  * delete it rather than justify it.
+ *
+ * --biru is the brand and is never adjusted. Every neutral is derived from it
+ * in OKLCH: the old ramp's lightness and chroma, turned to --biru's hue (267),
+ * so the greys belong to the blue rather than sitting next to it. --muted is
+ * one step darker than that, to clear 4.5:1 on --surface.
  */
 :root {
-  --ink: #10231f;
-  --paper: #fafbfa;
-  --surface: #eff2f0;
-  --hijau: #0c7a62;
-  --mint: #e3f5ef;
+  --ink: #191f2c;
+  --paper: #fafbfc;
+  --surface: #f0f1f4;
+  --biru: #2340c8;
+  --biru-muda: #eaf0ff;
   --kuning: #f2a33c;
   --merah: #d8452f;
-  --muted: #6b7c7f;
+  --muted: #696e7b;
   /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
   --card: #ffffff;
-  --line: #e3e8e5;
+  --line: #e4e7eb;
   /* The Soft style's page and tile shadow -- the default look of a My Curios page. */
-  --soft-page: #f4f6f5;
-  --soft-shadow: rgb(16 35 31 / 6%);
+  --soft-page: #f5f5f7;
+  --soft-shadow: rgb(25 31 44 / 6%);
   /*
    * --ink at 45%. It lives here rather than in the sheet because the rule is
    * that colour has one home, and a no-hex test that would have missed this
    * spelling is a reason to be careful, not a reason to call it fine.
    */
-  --scrim: rgb(16 35 31 / 45%);
+  --scrim: rgb(25 31 44 / 45%);
 
   /* Six steps. A seventh is a smell -- see DESIGN.md, and the test. */
   --text-xs: 11px;

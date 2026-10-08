@@ -8,6 +8,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { Ingest } from '../onboarding/ingest-form.js';
 import { JobStatus, type IngestionResult } from '../onboarding/job-status.js';
 import styles from './knowledge.module.css';
+import { EmptyState } from '../_ui/empty-state.js';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
@@ -59,10 +60,19 @@ export function SourceList({
 
   return (
     <section>
-      {adding ? addForm : <Button onClick={() => setAdding(true)}>Add a source</Button>}
+      {/* With nothing listed yet, the button lives in the empty state instead of above it. */}
+      {adding ? addForm : sources.length > 0 ? <Button onClick={() => setAdding(true)}>Add a source</Button> : null}
 
       {sources.length === 0 ? (
-        <Callout tone="info">No sources yet. Add your website or paste a few paragraphs, and its facts go to Review.</Callout>
+        adding ? null : (
+          <EmptyState
+            icon="sources"
+            title="No sources yet"
+            action={<Button onClick={() => setAdding(true)}>Add a source</Button>}
+          >
+            Add your website or paste a few paragraphs, and its facts go to Review.
+          </EmptyState>
+        )
       ) : (
         <ul className={styles.list}>
           {sources.map((source) => {

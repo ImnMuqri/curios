@@ -17,6 +17,35 @@ trip), `manual-verification-leads.md` (slice 5, the leads screen — **not run**
 
 ## Cross-cutting
 
+### No font is preloaded anywhere, because Next's font manifest builds empty
+
+Found 2026-10-03 while measuring the landing page. A production build writes
+`server/next-font-manifest.json` as `{"pages":{},"app":{},"appUsingSizeAdjust":false}`,
+so no page emits `<link rel="preload" as="font">` and no fallback face gets
+size-adjust metrics. The fonts are still requested, but only once the CSS that
+names them has been parsed (about 100ms after the document on the landing page,
+behind every script), and the swap from fallback to Bricolage moves text. That
+swap is the whole of the landing page's 0.035 CLS.
+
+What was ruled out: moving `lib/fonts.ts` into `app/` and calling a loader
+directly in `app/layout.tsx` both still build an empty manifest, so neither the
+file's location nor the cross-file import is the cause. Untested suspects:
+`experimental.extensionAlias` (every import here is `.js` resolving to `.ts`)
+and `transpilePackages`. **Cost of leaving it:** a slower first paint of real
+text on every page, and layout shift on every page that uses a webfont above
+the fold. Deferred because it is app-wide build configuration, not landing work.
+
+### The AskBar's spoken name never matches its visible text
+
+Lighthouse's `label-content-name-mismatch` fails on every page with an ask
+bar: the button's `aria-label` is fixed ("Ask a question about this page")
+while its visible text cycles through questions. This is deliberate and
+documented in `AskBar.tsx` (a name that changed every four seconds would be
+worse), but it fails WCAG 2.5.3 for a voice-control user, who says what they
+see and gets no match. **Cost of leaving it:** a voice-control user cannot open
+the ask bar by speaking the question shown. A fix that satisfies both: a
+visible, static prefix inside the button ("Ask:") that the label starts with.
+
 ### The four owner screens diverge, and the nav now presents them as one
 
 `apps/web/app/app/layout.tsx` wraps children in `Shell`, which renders

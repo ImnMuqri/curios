@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../../lib/api.js';
@@ -103,5 +103,22 @@ describe('ClaimForm', () => {
     render(<ClaimForm monthlyPrice="RM39" onClaim={vi.fn()} />);
 
     expect(screen.getByRole('radio', { name: /RM39 a month/ })).toBeInTheDocument();
+  });
+});
+
+describe('ClaimForm, arriving from the landing page', () => {
+  afterEach(() => window.localStorage.clear());
+
+  it('starts with the handle typed into the landing page’s curios.my/ field', async () => {
+    window.localStorage.setItem('curios:wanted-handle', 'keklina');
+    render(<ClaimForm monthlyPrice="RM39" onClaim={vi.fn()} />);
+
+    // Signed up, verified by email, came back: the name they wanted is still there.
+    expect(await screen.findByDisplayValue('keklina')).toBeInTheDocument();
+  });
+
+  it('starts blank when nothing was typed there', () => {
+    render(<ClaimForm monthlyPrice="RM39" onClaim={vi.fn()} />);
+    expect(screen.getByLabelText(/handle/i)).toHaveValue('');
   });
 });

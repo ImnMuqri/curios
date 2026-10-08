@@ -6,7 +6,12 @@ import {
   LABEL_MAX,
   linkKind,
   normalizeLinkUrl,
+  PAGE_BACKGROUNDS,
   readableOn,
+  STOCK_COVERS,
+  stockCoverKey,
+  stockCoverName,
+  tintOf,
   type TileSize,
 } from './bento.js';
 
@@ -82,6 +87,7 @@ describe('isHexColor', () => {
 describe('readableOn', () => {
   it('puts light text on a dark accent and dark text on a light one', () => {
     expect(readableOn('#0c7a62')).toBe('light');
+    expect(readableOn('#2340c8')).toBe('light');
     expect(readableOn('#10231f')).toBe('light');
     expect(readableOn('#f2a33c')).toBe('dark');
     expect(readableOn('#ffffff')).toBe('dark');
@@ -126,5 +132,35 @@ describe('arrangeTiles', () => {
 
   it('returns nothing for no links', () => {
     expect(arrangeTiles([])).toEqual([]);
+  });
+});
+
+describe('stock covers', () => {
+  it('names a stock cover from its key, and nothing else', () => {
+    expect(stockCoverName(stockCoverKey('kedai'))).toBe('kedai');
+    expect(stockCoverName('stock/manis')).toBe('manis');
+    // An uploaded cover is a storage key, not a stock one.
+    expect(stockCoverName('covers/page1/abc.webp')).toBeNull();
+    // A made-up stock name must never resolve to a file path.
+    expect(stockCoverName('stock/../../etc/passwd')).toBeNull();
+    expect(stockCoverName('stock/')).toBeNull();
+    expect(stockCoverName(null)).toBeNull();
+  });
+
+  it('ships every cover the editor offers', () => {
+    expect(STOCK_COVERS).toEqual(['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis']);
+    expect(PAGE_BACKGROUNDS).toEqual(['PAPER', 'MUDA', 'KUNING', 'BIRU', 'INK', 'CUSTOM']);
+  });
+});
+
+describe('tintOf', () => {
+  it('takes a colour toward white by the share given', () => {
+    expect(tintOf('#2340c8', 1)).toBe('#2340c8');
+    expect(tintOf('#2340c8', 0)).toBe('#ffffff');
+    expect(tintOf('#000000', 0.5)).toBe('#808080');
+  });
+
+  it('always gives six-digit hex, which the API accepts', () => {
+    expect(isHexColor(tintOf('#0c7a62', 0.18))).toBe(true);
   });
 });

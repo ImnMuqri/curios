@@ -23,15 +23,24 @@ communicating.
 ## Palette
 
 ```
---ink        #10231F   near-black with green in it. text, dark surfaces.
---paper      #FAFBFA   cool white. never cream.
---surface    #EFF2F0   cards, resting links.
---hijau      #0C7A62   primary. actions, the ask bar, the owner's voice.
---mint       #E3F5EF   hijau at 8%. quiet emphasis.
+--ink        #191F2C   near-black with biru in it. text, dark surfaces.
+--paper      #FAFBFC   cool white. never cream.
+--surface    #F0F1F4   cards, resting links.
+--biru       #2340C8   primary. actions, the ask bar, the owner's voice.
+--biru-muda  #EAF0FF   biru, pale. quiet emphasis.
 --kuning     #F2A33C   lead capture, unanswered questions. money and attention only.
 --merah      #D8452F   destructive and errors. nothing else.
---muted      #6B7C7F   secondary text. minimum size 12px.
+--muted      #696E7B   secondary text. minimum size 12px.
 ```
+
+*Amended 2026-10-03: hijau to biru.* The primary is now biru enamel, the cobalt of old
+enamel shop signs and kopitiam cups; green is what every AI-made palette reaches for.
+`--biru` is the brand and is never adjusted. Every neutral is derived from it in OKLCH:
+the old ramp's lightness and chroma, turned to biru's hue (267), so the greys belong to
+the blue. `--muted` sits one step darker than that so it clears 4.5:1 on `--surface`
+(the green-era muted did not). Contrast: paper on biru 7.7:1, biru on biru-muda 7.0:1,
+ink on kuning 7.9:1. Known short: `--merah` on paper is 4.2:1, so small error text
+needs an icon or ink beside it. Hijau stays one of the owner accent presets.
 
 Two accents, and each owns exactly one job. `kuning` means *a human needs to act*.
 If it shows up anywhere decorative, delete it.
@@ -84,7 +93,7 @@ One component carries the whole product. Everything else stays quiet so this can
 loud.
 
 - Always present, sticky to the bottom of the public page, never scrolls away.
-- 1.5px `hijau` border. Solid, not a shadow. It should read like a stamped field on a
+- 1.5px `biru` border. Solid, not a shadow. It should read like a stamped field on a
   form, something you are meant to fill in.
 - **Idle state cycles real questions from this page's facts**, one every 4 seconds,
   with a soft vertical wipe. "Berapa harga kek 1kg?" then "Open hari Ahad?" This is
@@ -113,6 +122,38 @@ fold upward in place: a single-row CSS grid animating its own row track from `1f
 `0fr`, fading at the same time, so the page transitions rather than something new
 appearing on top of it. Same budget, moved: 260ms, the same spring curve. Messages still
 arrive with the 8px rise and no stagger delay beyond 40ms.
+
+*Amended 2026-10-03: the landing page is exempt.* `curios.my/` and `/ms` sell the
+product to someone who has never seen it, so the owner allowed them what the product
+never gets: a scroll-linked ticker moment, two small scroll reveals (280ms, 12px, once),
+and their own 1.25 type scale with display sizes above 32px. Later the same day the
+owner also chose a linktr.ee-style layout for it: full-width colour bands built only from
+this palette (kuning-100 included, on the section about unanswered questions), Bricolage
+at 800, pill buttons, and IBM Plex Sans for its body text. On 2026-10-04 the five
+sign-in screens (sign in, sign up, forgot, reset, verify) took the same look, through
+`app/_auth/AuthShell.tsx`. The exemption stops at
+`app/_landing/` and `app/_auth/`; the dashboard and every public page keep every rule above. Reduced
+motion still wins everywhere. See `apps/web/app/_landing/README.md`.
+
+*Amended 2026-10-04: the dashboard joins the landing page's family, quieter.* At the
+owner's request the dashboard took the landing page's look without its motion: Bricolage
+800 page titles with a one-line lede, IBM Plex Sans for everything read, white cards on a
+hairline, pill buttons, sentence-case field labels, and segmented pill switches. It is
+set in one place, `app/app/app-frame.module.css`, through `--button-*`, `--field-*`,
+`--callout-*` and `--shell-*` hooks that `@curios/ui` components read (their defaults are
+the old look, so the public page and anything else outside the frame are unchanged).
+This retires the dashboard's Plus Jakarta Sans and its mono uppercase labels; mono stays
+for data only (a phone number, a published address). The motion rule above still holds
+for the dashboard: no entrance animations. Claiming a page, before any dashboard exists,
+uses `AuthShell`, as the next step after sign-up.
+
+*Amended 2026-10-05: colour bands.* The owner found the dashboard too plain, so each
+screen's title now sits on a full-width band from the palette, the landing page's
+bands, quieter, with the first cards rising over its foot: cobalt for My Curios, Leads
+and Add a source, pale blue for Review, Knowledge, Questions and Settings, and ink for
+Billing. (Warm was tried on Review and Leads; the owner did not like it, so no band is
+warm and kuning keeps to its one job.) Set in `app-frame.tsx` (BANDS) and drawn by `app-frame.module.css`; each
+band sets the title and lede colours through Shell's hooks. Flat colour, no gradient.
 
 ---
 
@@ -157,6 +198,37 @@ heading font a page picks.
 
 **The dashboard itself speaks Plus Jakarta Sans**, not Bricolage — a deliberate split
 from the public page's type, which keeps this document's own fonts.
+
+---
+
+## Background and cover photo
+
+*Added 2026-10-04.* Two more owner choices on the public page, both in My Curios.
+
+**Background** is one of five bands from the palette, the same ones the landing page
+is built from: Paper (the look every page had before), Pale blue (`--biru-muda`), Warm
+(`--kuning` at 20% on paper), Cobalt (`--biru`) and Dark (`--ink`). Like the accent,
+contrast is never the owner's problem: each band sets the page's own text colours
+(`--page-fg`, `--page-soft`), chat mode reads the same roles, and on the two dark
+bands High contrast's ink tiles are lifted a step and an accent tile gets a fine edge,
+so a cobalt accent on a cobalt page is still a tile.
+
+*Amended 2026-10-05: a custom background.* At the owner's request a sixth choice,
+Custom, takes any colour (a picker or six-digit hex; it starts as a light tint of the
+page's accent). Contrast is still never the owner's problem: `readableOn`, the test the
+accent uses, picks ink or paper text for it, a dark custom colour gets the dark bands'
+treatment (lifted ink tiles, an edge on the accent tile), and the soft text is mixed
+from the owner's own colour. The colour is kept while a band is chosen, so switching
+back to Custom finds it again.
+
+**Cover photo** is a wide picture at the top of the page: one of six that ship with
+Curios (`/covers/*.webp`, from Unsplash, credited in `apps/web/public/covers/CREDITS.md`)
+or the owner's own upload (2 MB, cropped to 16:10). It fades into the band behind it
+with an alpha mask, not a coloured gradient, and is gone before the name: the name
+rides up onto the faded foot, so it always sits on the page colour, never on the
+photo. That is where the line on "any gradient behind a headline" falls: nothing
+coloured is behind the name, only the page. A cover that fails to load disappears,
+like the picture.
 
 ---
 
