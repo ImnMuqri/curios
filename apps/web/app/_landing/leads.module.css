@@ -220,11 +220,35 @@
 }
 
 /* Inside the browser on the customer's phone: Kek Lina's page. The frame itself is Device. */
+/*
+ * The customer's screen: Kek Lina's real page, filling the phone (its own
+ * full-screen sizing replaced by the phone's, as in the hero). Anchored to
+ * the bottom like a chat scrolled to its newest message, so once the story
+ * outgrows the screen the cover slides up out of view rather than the
+ * capture card falling off the bottom.
+ */
 .page {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
   height: 100%;
   overflow: hidden;
-  padding: var(--l-space-3) var(--l-space-4) var(--l-space-6);
   font-size: var(--text-base);
+}
+
+.page > [data-bento-page] {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  margin: 0;
+  padding: 12px 14px 24px;
+  border-radius: 0;
+}
+
+/* A phone mockup draws the page at a phone's width, where the public page's cover takes too much of the screen. */
+.page [data-cover-photo] {
+  height: 120px;
 }
 
 /* Each piece of the story arrives the way a chat message does: an 8px rise. */
@@ -247,18 +271,33 @@
 
 /* ---- The customer's side ---- */
 
-.shopName {
-  margin: 0 0 var(--l-space-4);
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  letter-spacing: var(--l-tracking-heading);
-}
-
-
+/* The conversation starts under the shop's name, as chat mode does on a real page. */
 .chat {
   display: grid;
   gap: var(--l-space-3);
+  margin-top: var(--l-space-4);
+}
+
+/*
+ * In the customer's phone a message not yet sent takes no room, so the page
+ * grows a message at a time like a real chat, and the newest is always in
+ * view. Each still arrives with the 8px rise.
+ */
+.page [data-shown='no'] {
+  display: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .page [data-shown='yes'] {
+    animation: arrive var(--l-dur-step) var(--l-ease-out);
+  }
+
+  @keyframes arrive {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+  }
 }
 
 .fromVisitor,
@@ -270,14 +309,17 @@
   border-radius: 12px;
 }
 
+/* Chat mode's bubbles: the visitor's white on the right, the page's answer in the shop's accent tint on the left. */
 .fromVisitor {
   justify-self: end;
+  border-radius: 18px 18px 6px 18px;
   background: var(--card);
-  border: 1px solid var(--l-line);
+  box-shadow: 0 1px 3px var(--soft-shadow);
 }
 
 .fromPage {
-  background: var(--biru-muda);
+  border-radius: 18px 18px 18px 6px;
+  background: var(--ask-tint, var(--biru-muda));
 }
 
 .capture {
@@ -317,8 +359,8 @@
 }
 
 .captureDone {
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--l-line);
+  border-radius: 18px 18px 18px 6px;
+  background: var(--ask-tint, var(--biru-muda));
 }
 
 

@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { LandingCopy } from './copy.js';
-import { DEMO_LEAD, DEMO_SHOP } from './demo.js';
+import { BentoPage } from '../_bento/BentoPage.js';
+import { DEMO_LEAD, DEMO_PAGE, DEMO_SHOP } from './demo.js';
 import { Device } from './Device.js';
 import styles from './leads.module.css';
 
@@ -136,7 +137,8 @@ export function LeadsStory({ copy }: { copy: LandingCopy['leads'] }) {
           <figcaption className={styles.deviceLabel}>{copy.visitorPhone}</figcaption>
           <Device time={clock(DEMO_LEAD.time)} chrome="browser" url="curios.my/keklina">
             <div className={styles.page}>
-              <p className={styles.shopName}>{DEMO_SHOP}</p>
+              {/* Kek Lina's real page -- the one the hero and the storm show -- in chat mode. */}
+              <BentoPage {...DEMO_PAGE} mode="chat">
               <div className={styles.chat}>
                 <p className={styles.fromVisitor} data-shown={shown(1)}>
                   {DEMO_LEAD.question}
@@ -154,6 +156,7 @@ export function LeadsStory({ copy }: { copy: LandingCopy['leads'] }) {
                   Got it. {DEMO_SHOP} will message you on WhatsApp.
                 </p>
               </div>
+              </BentoPage>
             </div>
           </Device>
         </figure>
