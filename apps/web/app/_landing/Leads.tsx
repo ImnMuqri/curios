@@ -20,7 +20,7 @@ export function Leads({ copy }: { copy: LandingCopy }) {
           </h2>
           <p className={base.lede}>{copy.leads.intro}</p>
         </Reveal>
-        <LeadsStory copy={copy.leads} />
+        <LeadsStory copy={copy.leads} shop={copy.shop} />
         <p className={styles.footnote}>{copy.leads.footnote}</p>
       </div>
     </section>

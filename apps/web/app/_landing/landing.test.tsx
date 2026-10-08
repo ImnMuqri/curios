@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, en, ms } from './copy.js';
-import { DEMO_QA, STORM_WORDINGS } from './demo.js';
+import { DEMO_EN, DEMO_MS } from './demo.js';
 import { BRAND } from './brand-colors.js';
 import { LeadsStory } from './LeadsStory.js';
 import { BusinessPrice } from './BusinessPrice.js';
@@ -131,8 +131,10 @@ describe('copy', () => {
 
 describe('the storm', () => {
   it('draws exactly forty distinct wordings, because the copy says forty', () => {
-    expect(STORM_WORDINGS).toHaveLength(40);
-    expect(new Set(STORM_WORDINGS).size).toBe(40);
+    for (const shop of [DEMO_EN, DEMO_MS]) {
+      expect(shop.storm).toHaveLength(40);
+      expect(new Set(shop.storm).size).toBe(40);
+    }
     expect(en.storm.body).toMatch(/forty/);
     expect(ms.storm.body).toMatch(/empat puluh/);
   });
@@ -152,14 +154,14 @@ describe('the storm', () => {
   // reduced motion, sees. Scrolling counts up to it from nought.
   it('ends on one question, asked forty times, with the same answer the hero demo gives', () => {
     const html = renderToStaticMarkup(<LandingPage locale="en" />);
-    expect(html).toContain(DEMO_QA[0]!.a);
+    expect(html).toContain(DEMO_EN.qa[0]!.a);
     expect(html).toContain('asked 40×');
   });
 });
 
 describe('the leads story', () => {
   it('jumps to any step, and shows the email only once the lead has been sent', async () => {
-    render(<LeadsStory copy={en.leads} />);
+    render(<LeadsStory copy={en.leads} shop={DEMO_EN} />);
     const steps = within(screen.getByRole('list')).getAllByRole('button');
     expect(steps).toHaveLength(5);
 
@@ -176,7 +178,7 @@ describe('the leads story', () => {
     const stub = window.matchMedia.bind(window);
     const spy = vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({ ...stub(query), matches: query.includes('reduce') }));
     try {
-      render(<LeadsStory copy={en.leads} />);
+      render(<LeadsStory copy={en.leads} shop={DEMO_EN} />);
       const steps = within(screen.getByRole('list')).getAllByRole('button');
       expect(steps[4]).toHaveAttribute('aria-current', 'step');
     } finally {
@@ -219,7 +221,7 @@ describe('the interactive bits', () => {
     render(
       <>
         <ClaimField id="claim-test" label="Address" placeholder="yourshop" button="Create" />
-        <HeroDemo label="Demo" hint="Tap" />
+        <HeroDemo label="Demo" hint="Tap" shop={DEMO_EN} />
       </>,
     );
     // Both the browser's address bar and the page's own handle line follow along.
@@ -240,7 +242,7 @@ describe('the hero demo', () => {
   // bio and the tiles away (Bento.module.css keys on data-mode), and the back
   // arrow returns to the page.
   it('opens chat mode when a question is sent, and the back arrow closes it', async () => {
-    const { container } = render(<HeroDemo label="Demo" hint="Tap" />);
+    const { container } = render(<HeroDemo label="Demo" hint="Tap" shop={DEMO_EN} />);
     const page = container.querySelector('[data-bento-page]')!;
     expect(page).not.toHaveAttribute('data-mode');
     expect(screen.queryByRole('button', { name: 'Back to links' })).toBeNull();
@@ -250,5 +252,20 @@ describe('the hero demo', () => {
 
     await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Back to links' })));
     expect(page).not.toHaveAttribute('data-mode');
+  });
+});
+
+describe("the demo shop speaks the page's language", () => {
+  // English on /, Malay on /ms: the question, the answer, the bio and the storm all follow.
+  it('is English on the English page and Malay on the Malay one', () => {
+    const english = renderToStaticMarkup(<LandingPage locale="en" />);
+    expect(english).toContain(DEMO_EN.qa[0]!.q);
+    expect(english).toContain(DEMO_EN.page.bio!);
+    expect(english).not.toContain(DEMO_MS.qa[0]!.q);
+    expect(english).not.toContain(DEMO_MS.page.bio!);
+
+    const malay = renderToStaticMarkup(<LandingPage locale="ms" />);
+    expect(malay).toContain(DEMO_MS.qa[0]!.q);
+    expect(malay).not.toContain(DEMO_EN.qa[0]!.q);
   });
 });

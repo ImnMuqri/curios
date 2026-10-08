@@ -1,3 +1,4 @@
+import { DEMO_EN, DEMO_MS, type Demo } from './demo.js';
 /**
  * Every word on the landing page, in both languages, in one shape.
  *
@@ -105,6 +106,8 @@ export interface LandingCopy {
   final: { title: string; sub: string; cta: string };
   footer: { signIn: string; start: string; demoNote: string };
   demo: { label: string };
+  /** Kek Lina, the demo shop, in this page's language (demo.ts). */
+  shop: Demo;
 }
 
 export const en: LandingCopy = {
@@ -264,6 +267,7 @@ export const en: LandingCopy = {
     demoNote: 'Kek Lina is a demo shop made up for this page.',
   },
   demo: { label: 'Demo of a Curios page for a home bakery' },
+  shop: DEMO_EN,
 };
 
 export const ms: LandingCopy = {
@@ -423,6 +427,7 @@ export const ms: LandingCopy = {
     demoNote: 'Kek Lina ialah kedai demo yang direka untuk page ini.',
   },
   demo: { label: 'Demo page Curios untuk kedai kek dari rumah' },
+  shop: DEMO_MS,
 };
 
 export const COPY: Record<Locale, LandingCopy> = { en, ms };

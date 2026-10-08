@@ -1,7 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { BRAND } from './brand-colors.js';
 import { COPY, type Locale } from './copy.js';
-import { DEMO_QA, DEMO_SHOP } from './demo.js';
+import { DEMO_SHOP } from './demo.js';
 
 export const OG_SIZE = { width: 1200, height: 630 };
 
@@ -13,6 +13,7 @@ export const OG_SIZE = { width: 1200, height: 630 };
  */
 export function ogImage(locale: Locale) {
   const copy = COPY[locale];
+  const DEMO_QA = copy.shop.qa;
   const qa = DEMO_QA[0]!;
   return new ImageResponse(
     (

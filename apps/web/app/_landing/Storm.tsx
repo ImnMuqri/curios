@@ -1,6 +1,5 @@
 import { BentoPage } from '../_bento/BentoPage.js';
 import type { LandingCopy } from './copy.js';
-import { DEMO_PAGE, DEMO_QA, STORM_WORDINGS } from './demo.js';
 import { Device } from './Device.js';
 import { StormStage } from './StormStage.js';
 import base from './landing.module.css';
@@ -15,6 +14,7 @@ import styles from './storm.module.css';
  * Server-rendered text; the client stage only moves things and counts.
  */
 export function Storm({ copy }: { copy: LandingCopy }) {
+  const { page: DEMO_PAGE, qa: DEMO_QA, storm: STORM_WORDINGS } = copy.shop;
   const first = DEMO_QA[0]!;
   const total = STORM_WORDINGS.length;
   const askedLabels = Array.from({ length: total + 1 }, (_, n) => copy.storm.asked(n));

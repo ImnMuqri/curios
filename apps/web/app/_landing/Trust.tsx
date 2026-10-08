@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import type { LandingCopy } from './copy.js';
 import { InView } from './InView.js';
 import { Reveal } from './Reveal.js';
-import { DEMO_FACTS, DEMO_PRICE_LIST, DEMO_SHOP } from './demo.js';
+import { DEMO_SHOP } from './demo.js';
 import base from './landing.module.css';
 import styles from './trust.module.css';
 
@@ -14,6 +14,7 @@ import styles from './trust.module.css';
  */
 export function Trust({ copy }: { copy: LandingCopy }) {
   const t = copy.trust;
+  const { facts: DEMO_FACTS, priceList: DEMO_PRICE_LIST } = copy.shop;
   return (
     <section className={`${base.bandKuning} ${styles.trust}`} aria-labelledby="trust-title">
       <div className={`${base.wrap} ${styles.grid}`}>

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { AnswerBubble } from '@curios/ui';
 import { BentoPage } from '../_bento/BentoPage.js';
 import { HANDLE_TYPED_EVENT } from '../../lib/wanted-handle.js';
-import { DEMO_PAGE, DEMO_QA } from './demo.js';
+import type { Demo } from './demo.js';
 import { Device } from './Device.js';
 import styles from './hero.module.css';
 
@@ -27,7 +27,9 @@ const WORD_MS = 55;
  * `Ask` component from app/[handle]/ask.tsx pointed at a seeded page. That
  * costs inference on every landing visit, which is why it is not the default.
  */
-export function HeroDemo({ label, hint }: { label: string; hint: string }) {
+export function HeroDemo({ label, hint, shop }: { label: string; hint: string; shop: Demo }) {
+  const DEMO_PAGE = shop.page;
+  const DEMO_QA = shop.qa;
   // Opens with the first question already answered, so the proof is visible
   // before anyone taps. The cue stays until they ask one of their own.
   const [asked, setAsked] = useState<{ q: string; a: string }>(DEMO_QA[0]!);

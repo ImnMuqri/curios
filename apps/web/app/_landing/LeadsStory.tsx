@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import type { LandingCopy } from './copy.js';
 import { BentoPage } from '../_bento/BentoPage.js';
-import { DEMO_LEAD, DEMO_PAGE, DEMO_SHOP } from './demo.js';
+import { DEMO_SHOP, type Demo } from './demo.js';
 import { Device } from './Device.js';
 import styles from './leads.module.css';
 
@@ -28,7 +28,9 @@ const clock = (time: string) => time.replace(/\s*[ap]m$/i, '');
  * (packages/ui CaptureCard, apps/workers notify.ts). SWAP: replace with real
  * screenshots once there is a production lead to show, if preferred.
  */
-export function LeadsStory({ copy }: { copy: LandingCopy['leads'] }) {
+export function LeadsStory({ copy, shop }: { copy: LandingCopy['leads']; shop: Demo }) {
+  const DEMO_LEAD = shop.lead;
+  const DEMO_PAGE = shop.page;
   const total = copy.steps.length;
   const [step, setStep] = useState(1);
   const [playing, setPlaying] = useState(false);

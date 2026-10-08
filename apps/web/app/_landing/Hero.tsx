@@ -45,7 +45,7 @@ export function Hero({ copy }: { copy: LandingCopy }) {
             className={styles.photo}
           />
           <div className={styles.phoneWrap}>
-            <HeroDemo label={copy.demo.label} hint={copy.hero.tryHint} />
+            <HeroDemo label={copy.demo.label} hint={copy.hero.tryHint} shop={copy.shop} />
           </div>
           <figcaption className={styles.caption}>{copy.hero.demoNote}</figcaption>
         </figure>

@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { AnswerBubble } from '@curios/ui';
 import '../_landing/landing-tokens.css';
 import { BentoPage } from '../_bento/BentoPage.js';
-import { DEMO_PAGE, DEMO_QA } from '../_landing/demo.js';
+import { DEMO_EN } from '../_landing/demo.js';
+
+// The sign-in screens are English, so their demo is too.
+const DEMO_PAGE = DEMO_EN.page;
+const DEMO_QA = DEMO_EN.qa;
 import { Device } from '../_landing/Device.js';
 import { Wordmark } from '../_landing/Wordmark.js';
 import { plexSans } from '../_landing/plex.js';
