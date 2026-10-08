@@ -141,7 +141,7 @@ export const en: LandingCopy = {
     cta: 'Create your free page',
     ctaNote: 'Answering is free on every plan. No card needed.',
     demoNote: 'A demo page. Kek Lina is not a real shop.',
-    tryHint: 'Tap the bar to ask it',
+    tryHint: 'Tap to ask it',
   },
   storm: {
     title: 'You answer each question once.',
@@ -300,7 +300,7 @@ export const ms: LandingCopy = {
     cta: 'Buat page percuma',
     ctaNote: 'Menjawab percuma untuk semua pelan. Tak perlu kad.',
     demoNote: 'Page demo. Kek Lina bukan kedai sebenar.',
-    tryHint: 'Tekan bar untuk tanya',
+    tryHint: 'Tekan untuk tanya',
   },
   storm: {
     title: 'Setiap soalan, anda jawab sekali.',

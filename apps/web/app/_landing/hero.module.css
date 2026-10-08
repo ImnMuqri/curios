@@ -99,18 +99,23 @@
   border-radius: 0;
 }
 
-/* Like a chat: the bar sits at the bottom of the screen, and answers arrive just above it. */
-.screen [data-ask-bar] {
-  margin-top: auto;
-}
-
+/*
+ * Drawn as chat mode is on a real page (ChatMode.module.css): the visitor's
+ * words in a white bubble on the right, the answer on the left in the
+ * accent's tint, each square corner pointing at who spoke, and the input at
+ * the bottom with the answers arriving just above it.
+ */
 .thread {
   margin: auto 0 var(--l-space-3);
   padding-top: var(--l-space-4);
-}
-
-.thread + [data-ask-bar] {
-  margin-top: 0;
+  --bubble-max: 85%;
+  --bubble-width: fit-content;
+  --bubble-margin: 8px 0 0;
+  --bubble-padding: 10px 14px;
+  --bubble-radius: 18px 18px 18px 6px;
+  --bubble-bg: var(--ask-tint, var(--biru-muda));
+  --bubble-size: var(--text-base);
+  --bubble-leading: 1.5;
 }
 
 .asked {
@@ -118,13 +123,78 @@
   width: fit-content;
   max-width: 85%;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: 18px 18px 6px 18px;
   background: var(--card);
-  border: 1px solid var(--line);
+  box-shadow: 0 1px 3px var(--soft-shadow);
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+/* Chat mode's input: a white pill, the next question in it, a round accent send button. */
+.composer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: auto;
+  padding: 5px 5px 5px 16px;
+  border: 1.5px solid var(--ask-border, var(--line));
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 1px 3px var(--soft-shadow);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 120ms ease;
+}
+
+.thread + .composer {
+  margin-top: 0;
+}
+
+.composer:hover {
+  border-color: var(--accent, var(--biru));
+}
+
+.composer:focus-visible {
+  outline: 2px solid var(--accent, var(--biru));
+  outline-offset: 2px;
+}
+
+.composerText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
   font-size: var(--text-base);
 }
 
-/* A cue on the phone's bottom bezel, under the ask bar, outside the screen so it never covers an answer. */
+.send {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--accent, var(--biru));
+  color: var(--on-accent, var(--paper));
+}
+
+.send svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.composer:active .send {
+  transform: scale(0.94);
+}
+
+/* A cue on the phone's bottom bezel, under the chat input, outside the screen so it never covers an answer. */
 .hint {
   position: absolute;
   z-index: 1;
@@ -196,10 +266,10 @@
 .typing {
   display: inline-flex;
   gap: 5px;
-  margin: 16px 0 0;
+  margin: 8px 0 0;
   padding: 14px 16px;
-  border-radius: 12px;
-  background: var(--biru-muda);
+  border-radius: 18px 18px 18px 6px;
+  background: var(--ask-tint, var(--biru-muda));
 }
 
 .typing span {

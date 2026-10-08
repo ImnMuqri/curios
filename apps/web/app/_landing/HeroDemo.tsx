@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnswerBubble, AskBar } from '@curios/ui';
+import { AnswerBubble } from '@curios/ui';
 import { BentoPage } from '../_bento/BentoPage.js';
 import { HANDLE_TYPED_EVENT } from '../../lib/wanted-handle.js';
 import { DEMO_PAGE, DEMO_QA } from './demo.js';
@@ -9,6 +9,8 @@ import { Device } from './Device.js';
 import styles from './hero.module.css';
 
 const THINK_MS = 650;
+/** How long each suggested question shows in the input before the next, the same pace the old ask bar kept. */
+const CYCLE_MS = 4000;
 const WORD_MS = 55;
 
 /**
@@ -35,9 +37,16 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
   const [round, setRound] = useState(0);
   const [handle, setHandle] = useState(DEMO_PAGE.handle);
   const [typed, setTyped] = useState(false);
+  // Which sample question the input offers next. Tapping sends it.
+  const [next, setNext] = useState(1 % DEMO_QA.length);
   const screen = useRef<HTMLDivElement>(null);
 
-  const questions = DEMO_QA.map((item) => item.q);
+  // The input offers the sample questions in turn, like a chat suggesting what to ask. Under reduced motion it holds still.
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const timer = setInterval(() => setNext((i) => (i + 1) % DEMO_QA.length), CYCLE_MS);
+    return () => clearInterval(timer);
+  }, []);
 
   // The visitor's own address, live, from the claim field beside the phone.
   useEffect(() => {
@@ -82,15 +91,12 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
     if (box) box.scrollTop = box.scrollHeight;
   }, [shown, thinking]);
 
+  // Sends the question the input is showing, then offers the one after it.
   function ask() {
-    // The bar shows whichever question it has cycled to; asking that one is
-    // what a visitor expects. AskBar keeps its index private, so read it from
-    // the DOM it rendered rather than duplicate its timer here.
-    const showing = document.querySelector('[data-hero-demo] [data-ask-bar]')?.textContent?.trim();
-    const item = DEMO_QA.find((qa) => qa.q === showing) ?? DEMO_QA[round % DEMO_QA.length]!;
-    setAsked(item);
+    setAsked(DEMO_QA[next]!);
     setTapped(true);
     setRound((r) => r + 1);
+    setNext((i) => (i + 1) % DEMO_QA.length);
   }
 
   return (
@@ -110,7 +116,16 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
               <AnswerBubble text={shown} />
             )}
           </div>
-          <AskBar questions={questions} onOpen={ask} />
+          {/* Drawn as chat mode's own input -- a white pill, a round send button -- with the next question
+              already typed in it. One tap sends it, so the demo is a chat, not a bar to open one. */}
+          <button type="button" className={styles.composer} onClick={ask} aria-label={`Ask: ${DEMO_QA[next]!.q}`}>
+            <span className={styles.composerText}>{DEMO_QA[next]!.q}</span>
+            <span className={styles.send} aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
+            </span>
+          </button>
         </BentoPage>
       </div>
       </Device>
