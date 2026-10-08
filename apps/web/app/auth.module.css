@@ -257,6 +257,11 @@
     border-radius: 0;
   }
 
+  /* A phone mockup draws the page at a phone's width, where the public page's cover takes too much of the screen: shorter here. */
+  .asideScreen [data-cover-photo] {
+    height: 120px;
+  }
+
   .asideThread {
     position: sticky;
     bottom: 14px;

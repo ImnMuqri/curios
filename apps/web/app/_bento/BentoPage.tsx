@@ -30,6 +30,12 @@ export interface BentoPageProps {
    * page shows a demo page inside its own document, which already has its h1.
    */
   nameAs?: 'h1' | 'p';
+  /**
+   * Drawn already in chat mode -- bio and tiles folded away, room for a
+   * conversation -- for a page shown mid-chat (the landing page's storm). The
+   * public page leaves this out: ChatMode sets the same attribute at runtime.
+   */
+  mode?: 'chat';
   /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
   background?: PageBackground;
   /** The owner's own colour, used when `background` is CUSTOM. */
@@ -78,6 +84,7 @@ export function BentoPage(props: BentoPageProps) {
       // Which text reads on the owner's colour: the same test the accent uses.
       data-bg-text={custom ? readableOn(custom) : undefined}
       data-cover={props.coverUrl ? 'yes' : 'no'}
+      data-mode={props.mode}
       data-on-accent={readableOn(props.accentColor)}
       style={vars}
     >

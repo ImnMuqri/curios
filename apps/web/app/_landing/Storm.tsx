@@ -1,6 +1,6 @@
-import type { CSSProperties } from 'react';
+import { BentoPage } from '../_bento/BentoPage.js';
 import type { LandingCopy } from './copy.js';
-import { DEMO_PAGE, DEMO_QA, DEMO_SHOP, STORM_WORDINGS } from './demo.js';
+import { DEMO_PAGE, DEMO_QA, STORM_WORDINGS } from './demo.js';
 import { Device } from './Device.js';
 import { StormStage } from './StormStage.js';
 import base from './landing.module.css';
@@ -25,17 +25,11 @@ export function Storm({ copy }: { copy: LandingCopy }) {
         wordings={STORM_WORDINGS}
         askedLabels={askedLabels}
         phone={
-          <div
-            className={styles.phone}
-            // Kek Lina's own colours, the same page the hero shows.
-            style={{ '--accent': DEMO_PAGE.accentColor, '--shop-bg': DEMO_PAGE.backgroundColor } as CSSProperties}
-          >
+          <div className={styles.phone}>
             <Device time="3:15" chrome="browser" url={`curios.my/${DEMO_PAGE.handle}`}>
               <div className={styles.screen}>
-                <p className={styles.shop}>
-                  {DEMO_PAGE.avatarUrl ? <img src={DEMO_PAGE.avatarUrl} alt="" width={32} height={32} /> : null}
-                  {DEMO_SHOP}
-                </p>
+                {/* Kek Lina's real page -- the one the hero shows -- already in chat mode. */}
+                <BentoPage {...DEMO_PAGE} mode="chat">
                 <div className={styles.thread}>
                   <p className={styles.question}>{first.q}</p>
                   <p className={styles.count}>
@@ -44,6 +38,7 @@ export function Storm({ copy }: { copy: LandingCopy }) {
                   </p>
                   <p className={styles.answer}>{first.a}</p>
                 </div>
+                </BentoPage>
               </div>
             </Device>
           </div>

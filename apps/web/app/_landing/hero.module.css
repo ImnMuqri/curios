@@ -377,3 +377,8 @@
   color: var(--biru);
   font-weight: 600;
 }
+
+/* A phone mockup draws the page at a phone's width, where the public page's cover takes too much of the screen: shorter here. */
+.screen [data-cover-photo] {
+  height: 120px;
+}

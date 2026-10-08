@@ -10,8 +10,8 @@
  * Words on one side, the scene on the other; on a phone, words then scene.
  *
  * On ink: text is --paper (15.9:1), --l-ink-300 (8.2:1). The messages are
- * ink on white, the phone is Kek Lina's own page (its accent and background
- * arrive as --accent and --shop-bg from Storm.tsx).
+ * ink on white; the phone is Kek Lina's real page (BentoPage) in chat mode,
+ * in its own colours.
  */
 
 .storm {
@@ -110,30 +110,19 @@
   width: min(270px, calc((100svh - 300px) * 9 / 19));
 }
 
+/* The page fills the phone's screen, its own full-screen sizing replaced by the phone's (as in the hero). */
 .screen {
-  display: flex;
-  flex-direction: column;
   height: 100%;
-  padding: 14px 14px 24px;
-  background: var(--shop-bg, var(--paper));
   overflow: hidden;
 }
 
-.shop {
+.screen > [data-bento-page] {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 4px 0 0;
-  font-family: var(--font-fraunces), serif;
-  font-size: var(--l-step-1);
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.shop img {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  flex-direction: column;
+  min-height: 100%;
+  margin: 0;
+  padding: 12px 14px 24px;
+  border-radius: 0;
 }
 
 .thread {
@@ -183,7 +172,7 @@
   margin: 0;
   padding: 10px 14px;
   border-radius: 18px 18px 18px 6px;
-  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
+  background: var(--ask-tint, var(--biru-muda));
   font-size: var(--text-base);
   line-height: 1.45;
   color: var(--ink);
@@ -226,4 +215,9 @@
     padding: 8px 12px;
     font-size: var(--text-base);
   }
+}
+
+/* A phone mockup draws the page at a phone's width, where the public page's cover takes too much of the screen: shorter here. */
+.screen [data-cover-photo] {
+  height: 120px;
 }

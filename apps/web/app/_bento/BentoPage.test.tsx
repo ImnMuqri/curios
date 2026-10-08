@@ -260,3 +260,16 @@ describe('BentoPage, a custom background', () => {
     expect(css).toMatch(/\[data-bg-text='light'\] \.tile\[data-tone='accent'\]/);
   });
 });
+
+describe('BentoPage, drawn in chat mode', () => {
+  // The landing page's storm shows a page mid-conversation; the public page
+  // leaves mode out and ChatMode sets the same attribute when a visitor asks.
+  it('carries data-mode="chat" only when asked to', () => {
+    const chat = render(<BentoPage {...base} mode="chat" />);
+    expect(chat.container.firstElementChild).toHaveAttribute('data-mode', 'chat');
+    chat.unmount();
+
+    const plain = render(<BentoPage {...base} />);
+    expect(plain.container.firstElementChild).not.toHaveAttribute('data-mode');
+  });
+});
