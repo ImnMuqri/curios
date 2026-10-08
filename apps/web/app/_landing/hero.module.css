@@ -89,8 +89,8 @@
 
 /* The page's own full-screen sizing is the phone's job here (same move as the My Curios preview). */
 .screen > [data-bento-page] {
-  /* The stamped border the product's ask bar is known for; Soft pages drop it, the demo should not hide its signature. */
-  --ask-border: var(--biru);
+  /* The stamped border the product's ask bar is known for, in the page's own accent; Soft pages drop it, the demo should not hide its signature. */
+  --ask-border: var(--accent, var(--biru));
   display: flex;
   flex-direction: column;
   min-height: 100%;
@@ -130,17 +130,28 @@
   line-height: 1.5;
 }
 
+/*
+ * The strip the input sits on, held at the foot of the phone as the page
+ * scrolls under it, as chat mode's is: the page's own colour edge to edge, so
+ * tiles pass behind it rather than show through, and room underneath for the
+ * phone's home bar. The negative margins reach past the page's own padding.
+ */
+.composerBar {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  margin: auto -14px -26px;
+  padding: 10px 14px 24px;
+  background: var(--page-bg);
+  box-shadow: 0 -10px 16px -12px var(--soft-shadow);
+}
+
 /* Chat mode's input: a white pill, the next question in it, a round accent send button. */
 .composer {
   display: flex;
   align-items: center;
   gap: 8px;
   width: 100%;
-  margin-top: auto;
-  /* Held at the foot of the phone as the page scrolls under it, as chat mode's input is. */
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
   padding: 5px 5px 5px 16px;
   border: 1.5px solid var(--ask-border, var(--line));
   border-radius: 999px;
@@ -152,7 +163,7 @@
   transition: border-color 120ms ease;
 }
 
-.thread + .composer {
+.thread + .composerBar {
   margin-top: 0;
 }
 

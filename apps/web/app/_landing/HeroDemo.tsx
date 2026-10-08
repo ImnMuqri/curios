@@ -121,6 +121,7 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
           </div>
           {/* Drawn as chat mode's own input -- a white pill, a round send button -- with the next question
               already typed in it. One tap sends it, so the demo is a chat, not a bar to open one. */}
+          <div className={styles.composerBar}>
           <button type="button" className={styles.composer} onClick={ask} aria-label={`Ask: ${DEMO_QA[next]!.q}`}>
             <span className={styles.composerText}>{DEMO_QA[next]!.q}</span>
             <span className={styles.send} aria-hidden="true">
@@ -129,6 +130,7 @@ export function HeroDemo({ label, hint }: { label: string; hint: string }) {
               </svg>
             </span>
           </button>
+          </div>
         </BentoPage>
       </div>
       </Device>
