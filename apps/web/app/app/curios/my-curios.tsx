@@ -23,6 +23,7 @@ export interface CuriosApi {
   updateLink: (id: string, patch: Partial<{ label: string; url: string; size: TileSize | null }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
+  saveShopSize: (size: TileSize | null) => Promise<void>;
   saveAppearance: (patch: AppearancePatch) => Promise<unknown>;
   /** Resolves to the new picture's URL. */
   uploadAvatar: (file: File) => Promise<string | null>;
@@ -169,6 +170,9 @@ export function MyCuriosEditor({
           updateLink={api.updateLink}
           removeLink={api.removeLink}
           reorder={api.reorder}
+          shop={page.shop ? { position: page.shop.position, size: page.shop.size } : null}
+          onShopChange={(placement) => setPage((current) => (current.shop ? { ...current, shop: { ...current.shop, ...placement } } : current))}
+          saveShopSize={api.saveShopSize}
         />
         </div>
         <div role="tabpanel" id="panel-appearance" aria-labelledby="tab-appearance" hidden={tab !== 'appearance'}>

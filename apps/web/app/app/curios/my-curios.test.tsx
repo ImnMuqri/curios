@@ -17,6 +17,7 @@ const api = () => ({
   updateLink: vi.fn(async (id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
+  saveShopSize: vi.fn(async () => undefined),
   saveAppearance: vi.fn(async () => undefined),
   uploadAvatar: vi.fn(async () => null),
   removeAvatar: vi.fn(async () => undefined),

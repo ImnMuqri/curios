@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, arrayMove, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Button, Callout, Field } from '@curios/ui';
-import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, type TileSize } from '@curios/core/bento';
+import { LABEL_MAX, MAX_LINKS, SHOP_TILE_ID, normalizeLinkUrl, withShopTile, type BentoEntry, type ShopTilePlacement, type TileSize } from '@curios/core/bento';
 import { useAutosave } from './use-autosave.js';
 import { SaveState } from './profile-editor.js';
 import styles from './curios.module.css';
@@ -57,6 +58,9 @@ export function LinksEditor({
   updateLink,
   removeLink,
   reorder,
+  shop = null,
+  onShopChange,
+  saveShopSize,
 }: {
   links: LinkItem[];
   onChange: (links: LinkItem[]) => void;
@@ -64,6 +68,10 @@ export function LinksEditor({
   updateLink: (id: string, patch: Partial<Omit<LinkItem, 'id'>>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
+  /** Where the shop tile sits among the links, or null when the shop is closed. */
+  shop?: ShopTilePlacement | null;
+  onShopChange?: (shop: ShopTilePlacement) => void;
+  saveShopSize?: (size: TileSize | null) => Promise<void>;
 }) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
@@ -77,23 +85,31 @@ export function LinksEditor({
   const linksRef = useRef(links);
   linksRef.current = links;
 
-  async function move(next: LinkItem[]) {
+  // The rows as visitors see them: the links, with the shop tile among them.
+  const entries = withShopTile(links, shop);
+
+  // The links and the shop's position change together, and are put back
+  // together if the server refuses the new order.
+  async function move(next: BentoEntry<LinkItem>[]) {
     const before = links;
-    onChange(next);
+    const shopBefore = shop;
+    onChange(next.flatMap((entry) => (entry.kind === 'link' ? [entry.link] : [])));
+    if (shop) onShopChange?.({ ...shop, position: next.findIndex((entry) => entry.kind === 'shop') });
     setError('');
     try {
-      await reorder(next.map((link) => link.id));
+      await reorder(next.map((entry) => entry.id));
     } catch (failure) {
       onChange(before);
+      if (shopBefore) onShopChange?.(shopBefore);
       setError(message(failure));
     }
   }
 
   function onDragEnd(event: DragEndEvent) {
     if (!event.over || event.active.id === event.over.id) return;
-    const from = links.findIndex((l) => l.id === event.active.id);
-    const to = links.findIndex((l) => l.id === event.over?.id);
-    void move(arrayMove(links, from, to));
+    const from = entries.findIndex((e) => e.id === event.active.id);
+    const to = entries.findIndex((e) => e.id === event.over?.id);
+    void move(arrayMove(entries, from, to));
   }
 
   async function add() {
@@ -167,27 +183,41 @@ export function LinksEditor({
   return (
     <section className={styles.section} aria-labelledby="links-title">
       <h2 id="links-title" className={styles.sectionTitle}>Links</h2>
-      {links.length === 0 && !adding ? (
+      {links.length === 0 && !shop && !adding ? (
         <EmptyState icon="links" title="No links yet" compact>
           Add your first link: your shop, WhatsApp, portfolio, anything.
         </EmptyState>
       ) : null}
 
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={links.map((l) => l.id)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={entries.map((e) => e.id)} strategy={verticalListSortingStrategy}>
           <ul className={styles.links}>
-            {links.map((link, index) => (
-              <LinkRow
-                key={link.id}
-                link={link}
-                first={index === 0}
-                last={index === links.length - 1}
-                onMove={(delta) => void move(arrayMove(links, index, index + delta))}
-                onLiveChange={(change) => applyLocal(link.id, change)}
-                onPersist={(change) => persist(link.id, change)}
-                onRemove={() => void remove(link.id)}
-              />
-            ))}
+            {entries.map((entry, index) =>
+              entry.kind === 'shop' ? (
+                <ShopRow
+                  key={SHOP_TILE_ID}
+                  size={entry.size}
+                  first={index === 0}
+                  last={index === entries.length - 1}
+                  onMove={(delta) => void move(arrayMove(entries, index, index + delta))}
+                  onSize={async (size) => {
+                    onShopChange?.({ position: index, size });
+                    await saveShopSize?.(size);
+                  }}
+                />
+              ) : (
+                <LinkRow
+                  key={entry.id}
+                  link={entry.link}
+                  first={index === 0}
+                  last={index === entries.length - 1}
+                  onMove={(delta) => void move(arrayMove(entries, index, index + delta))}
+                  onLiveChange={(change) => applyLocal(entry.id, change)}
+                  onPersist={(change) => persist(entry.id, change)}
+                  onRemove={() => void remove(entry.id)}
+                />
+              ),
+            )}
           </ul>
         </SortableContext>
       </DndContext>
@@ -207,6 +237,102 @@ export function LinksEditor({
         <button type="button" className={styles.addButton} onClick={() => setAdding(true)}>+ Add a link</button>
       )}
     </section>
+  );
+}
+
+/**
+ * The tile-size buttons with their own save state and Retry. A size saves at
+ * once, no debounce -- but a failed click must not be silently reverted nor
+ * left unreported, the same as the label and address fields.
+ */
+function SizePicker({
+  size,
+  onLive,
+  save,
+}: {
+  size: TileSize | null;
+  /** Applied locally (and so to the live preview) immediately. */
+  onLive: (size: TileSize | null) => void;
+  save: (size: TileSize | null) => Promise<void>;
+}) {
+  const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [error, setError] = useState<unknown>(null);
+
+  function persist(next: TileSize | null) {
+    setStatus('saving');
+    save(next)
+      .then(() => { setStatus('saved'); setError(null); })
+      .catch((failure: unknown) => { setStatus('error'); setError(failure); });
+  }
+
+  return (
+    <span className={styles.sizeGroup}>
+      <span className={styles.sizes} role="group" aria-label="Tile size">
+        {SIZE_BUTTONS.map((button) => (
+          <button
+            key={button.name}
+            type="button"
+            aria-label={button.name}
+            title={button.name}
+            aria-pressed={size === button.size}
+            onClick={() => { onLive(button.size); persist(button.size); }}
+          >
+            {button.shape ? (
+              <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
+                <rect x={button.shape.x} y={button.shape.y} width={button.shape.w} height={button.shape.h} rx="2" />
+              </svg>
+            ) : (
+              'Auto'
+            )}
+          </button>
+        ))}
+      </span>
+      <SaveState status={status} error={error} retry={() => persist(size)} />
+    </span>
+  );
+}
+
+function Grip({ label, attributes, listeners }: { label: string; attributes: object; listeners: object | undefined }) {
+  return (
+    <span className={styles.grip} {...attributes} {...listeners} aria-label={`Drag ${label}`}>
+      <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
+        <circle cx="2.5" cy="3" r="1.5" /><circle cx="7.5" cy="3" r="1.5" /><circle cx="2.5" cy="8" r="1.5" /><circle cx="7.5" cy="8" r="1.5" /><circle cx="2.5" cy="13" r="1.5" /><circle cx="7.5" cy="13" r="1.5" />
+      </svg>
+    </span>
+  );
+}
+
+/** The shop tile's row: draggable and sizable like a link, but only the Store
+ * screen can remove it. */
+function ShopRow({
+  size,
+  first,
+  last,
+  onMove,
+  onSize,
+}: {
+  size: TileSize | null;
+  first: boolean;
+  last: boolean;
+  onMove: (delta: 1 | -1) => void;
+  onSize: (size: TileSize | null) => Promise<void>;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: SHOP_TILE_ID });
+  return (
+    <li ref={setNodeRef} aria-label="Shop" className={styles.link} style={{ transform: CSS.Transform.toString(transform), transition }}>
+      <Grip label="Shop" attributes={attributes} listeners={listeners} />
+      <span className={styles.linkText}>
+        Shop
+        <small>
+          Turn your shop off in <Link href="/app/store">Store</Link> to remove this tile.
+        </small>
+      </span>
+      <SizePicker size={size} onLive={() => undefined} save={onSize} />
+      <span className={styles.tools}>
+        <button type="button" className={styles.iconButton} aria-label="Move Shop up" title="Move up" disabled={first} onClick={() => onMove(-1)}><Icon d={UP} /></button>
+        <button type="button" className={styles.iconButton} aria-label="Move Shop down" title="Move down" disabled={last} onClick={() => onMove(1)}><Icon d={DOWN} /></button>
+      </span>
+    </li>
   );
 }
 
@@ -238,12 +364,6 @@ function LinkRow({
   const [url, setUrl] = useState(link.url);
   const labelSave = useAutosave((value: string) => onPersist({ label: value }));
   const urlSave = useAutosave((value: string) => onPersist({ url: value }));
-
-  // A tile size saves at once, no debounce -- but it still needs its own
-  // save state and Retry, the same as the label and address fields, so a
-  // failed size click is not silently reverted nor left unreported.
-  const [sizeStatus, setSizeStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [sizeError, setSizeError] = useState<unknown>(null);
 
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const removeButtonRef = useRef<HTMLButtonElement>(null);
@@ -277,18 +397,6 @@ function LinkRow({
     setEditing(true);
   }
 
-  function persistSize(size: TileSize | null) {
-    setSizeStatus('saving');
-    onPersist({ size })
-      .then(() => { setSizeStatus('saved'); setSizeError(null); })
-      .catch((failure: unknown) => { setSizeStatus('error'); setSizeError(failure); });
-  }
-
-  function chooseSize(size: TileSize | null) {
-    onLiveChange({ size });
-    persistSize(size);
-  }
-
   return (
     <li
       ref={setNodeRef}
@@ -297,11 +405,7 @@ function LinkRow({
       data-editing={editing}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
-      <span className={styles.grip} {...attributes} {...listeners} aria-label={`Drag ${link.label}`}>
-        <svg viewBox="0 0 10 16" width="10" height="16" aria-hidden="true">
-          <circle cx="2.5" cy="3" r="1.5" /><circle cx="7.5" cy="3" r="1.5" /><circle cx="2.5" cy="8" r="1.5" /><circle cx="7.5" cy="8" r="1.5" /><circle cx="2.5" cy="13" r="1.5" /><circle cx="7.5" cy="13" r="1.5" />
-        </svg>
-      </span>
+      <Grip label={link.label} attributes={attributes} listeners={listeners} />
       {editing ? (
         <span className={styles.editForm}>
           <Field
@@ -326,29 +430,7 @@ function LinkRow({
           <small>{link.url}</small>
         </button>
       )}
-      <span className={styles.sizeGroup}>
-        <span className={styles.sizes} role="group" aria-label="Tile size">
-          {SIZE_BUTTONS.map((button) => (
-            <button
-              key={button.name}
-              type="button"
-              aria-label={button.name}
-              title={button.name}
-              aria-pressed={link.size === button.size}
-              onClick={() => chooseSize(button.size)}
-            >
-              {button.shape ? (
-                <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
-                  <rect x={button.shape.x} y={button.shape.y} width={button.shape.w} height={button.shape.h} rx="2" />
-                </svg>
-              ) : (
-                'Auto'
-              )}
-            </button>
-          ))}
-        </span>
-        <SaveState status={sizeStatus} error={sizeError} retry={() => persistSize(link.size)} />
-      </span>
+      <SizePicker size={link.size} onLive={(size) => onLiveChange({ size })} save={(size) => onPersist({ size })} />
       <span className={styles.tools}>
         {confirming ? (
           <span className={styles.confirm}>

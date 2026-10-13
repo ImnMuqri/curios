@@ -18,6 +18,9 @@ function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[
     updateLink: vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...links.find((l) => l.id === id)!, ...patch })),
     removeLink: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
+    shop: null,
+    onShopChange: vi.fn(),
+    saveShopSize: vi.fn(async () => undefined),
     ...overrides,
   };
   render(<LinksEditor {...props} />);
@@ -451,5 +454,58 @@ describe('LinksEditor', () => {
 
     fireEvent.click(within(row).getByRole('button', { name: 'Keep' }));
     expect(within(row).getByRole('button', { name: 'Remove GitHub' })).toHaveFocus();
+  });
+
+  describe('with the shop tile', () => {
+    const shop = { position: 1, size: null };
+    const rowNames = () => screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
+
+    it('lists the shop between the links, with a size picker, a note, and no Remove', () => {
+      setup(three.slice(0, 2), { shop });
+      expect(rowNames()).toEqual(['Portfolio', 'Shop', 'WhatsApp']);
+      const row = screen.getByRole('listitem', { name: 'Shop' });
+      expect(within(row).getByRole('group', { name: 'Tile size' })).toBeInTheDocument();
+      expect(within(row).queryByRole('button', { name: /remove/i })).toBeNull();
+      expect(row).toHaveTextContent('Turn your shop off in Store to remove this tile.');
+      expect(within(row).getByRole('link', { name: /Store/ })).toHaveAttribute('href', '/app/store');
+    });
+
+    it('moves the shop up, and puts both back when that is refused', async () => {
+      const ok = setup(three.slice(0, 2), { shop });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Shop' })).getByRole('button', { name: 'Move Shop up' }));
+      expect(ok.reorder).toHaveBeenCalledWith(['shop', 'a', 'b']);
+      expect(ok.onShopChange).toHaveBeenLastCalledWith({ position: 0, size: null });
+    });
+
+    it('rolls the links and the shop position back on a refused reorder', async () => {
+      const props = setup(three.slice(0, 2), { shop, reorder: vi.fn(async () => { throw new Error('No.'); }) });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Shop' })).getByRole('button', { name: 'Move Shop up' }));
+      expect(props.onShopChange).toHaveBeenNthCalledWith(1, { position: 0, size: null });
+      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 1, size: null });
+      expect(props.onChange).toHaveBeenLastCalledWith(three.slice(0, 2));
+    });
+
+    it('sends the combined order when a link moves past the shop', async () => {
+      const props = setup(three.slice(0, 2), { shop });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
+      expect(props.reorder).toHaveBeenCalledWith(['shop', 'a', 'b']);
+      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 0, size: null });
+    });
+
+    it('saves the shop size and hands it up', async () => {
+      const props = setup(three.slice(0, 2), { shop });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Shop' })).getByRole('button', { name: 'Big tile' }));
+      expect(props.saveShopSize).toHaveBeenCalledWith('BIG');
+      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 1, size: 'BIG' });
+      expect(props.updateLink).not.toHaveBeenCalled();
+    });
+
+    it('sends link ids only when there is no shop', async () => {
+      const props = setup(three.slice(0, 2), { shop: null });
+      expect(screen.queryByRole('listitem', { name: 'Shop' })).toBeNull();
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
+      expect(props.reorder).toHaveBeenCalledWith(['b', 'a']);
+      expect(props.onShopChange).not.toHaveBeenCalled();
+    });
   });
 });
