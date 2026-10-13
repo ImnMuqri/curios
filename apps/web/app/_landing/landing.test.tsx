@@ -376,3 +376,22 @@ describe('the hero', () => {
     expect(shown).toMatch(/visibility:\s*visible/);
   });
 });
+
+describe('the paid moment', () => {
+  it.each(LOCALES)('%s: lists all five steps in order, then the closing line', (locale) => {
+    const copy = COPY[locale];
+    const { container } = render(<LandingPage locale={locale} />);
+    const paid = container.querySelector('#paid')!;
+    const steps = [...paid.querySelectorAll('ol > li')].map((li) => li.textContent);
+    expect(steps).toHaveLength(5);
+    copy.leads.steps.forEach((s, i) => expect(steps[i]).toContain(s.title));
+    expect(paid).toHaveTextContent(copy.paid.closing);
+  });
+
+  it('shows the last step without motion: the email and the WhatsApp reply', () => {
+    const { container } = render(<LandingPage locale="en" />);
+    const paid = container.querySelector('#paid')!;
+    expect(paid.querySelector('[data-step="5"]')).not.toBeNull();
+    expect(paid).toHaveTextContent(DEMO_EN.lead.reply);
+  });
+});

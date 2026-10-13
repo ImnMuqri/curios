@@ -3,7 +3,7 @@ import './landing-tokens.css';
 import { COPY, type Locale } from './copy.js';
 import { Header } from './Header.js';
 import { HeroScene } from './HeroScene.js';
-import { Leads } from './Leads.js';
+import { PaidMoment } from './PaidMoment.js';
 import { Trust } from './Trust.js';
 import { HowItWorks } from './HowItWorks.js';
 import { Pricing } from './Pricing.js';
@@ -66,7 +66,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
       <main id="main">
         <HeroScene copy={copy} />
         <HowItWorks copy={copy} />
-        <Leads copy={copy} />
+        <PaidMoment copy={copy} />
         <Trust copy={copy} />
         <Pricing copy={copy} />
         <Faq copy={copy} />
