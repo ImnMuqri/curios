@@ -35,6 +35,16 @@ describe('whatsappNumber', () => {
     expect(whatsappNumber([{ label: 'bad', url: 'not a url' }])).toBeNull();
     expect(whatsappNumber([{ label: 'WA', url: 'https://whatsapp.com/channel/0029Va12345678' }])).toBeNull();
   });
+  it('reads digits only from a real number path, never from a business message or QR code', () => {
+    const wa = (url: string) => whatsappNumber([{ label: 'WA', url }]);
+    expect(wa('https://wa.me/message/AB12345678CD')).toBeNull();
+    expect(wa('https://wa.me/qr/12345678ABC')).toBeNull();
+    expect(wa('https://wa.me/c/60123456789')).toBe('60123456789');
+    expect(wa('https://wa.me/60123456789/')).toBe('60123456789');
+    expect(wa('https://wa.me/+60123456789')).toBe('60123456789');
+    expect(wa('https://wa.me/1234567890123456')).toBeNull();
+    expect(wa('https://api.whatsapp.com/send?phone=1234567890123456')).toBeNull();
+  });
 });
 
 describe('basketMessage', () => {

@@ -54,12 +54,14 @@ export function whatsappNumber(links: { label: string; url: string }[]): string 
     }
     const host = parsed.hostname.toLowerCase();
     if (host === 'wa.me') {
-      const digits = parsed.pathname.replace(/\D/g, '');
-      if (digits.length >= 8) return digits;
+      // Only a bare number or a /c/ number is a phone; wa.me/message/<code> and /qr/<code> are
+      // business codes whose digits belong to no one's phone, and an order sent there reaches a stranger.
+      const match = /^\/(?:c\/)?\+?(\d{8,15})\/?$/.exec(parsed.pathname);
+      if (match) return match[1] ?? null;
     }
     if (host === 'api.whatsapp.com' && parsed.pathname === '/send') {
       const digits = (parsed.searchParams.get('phone') ?? '').replace(/\D/g, '');
-      if (digits.length >= 8) return digits;
+      if (digits.length >= 8 && digits.length <= 15) return digits;
     }
   }
   return null;
