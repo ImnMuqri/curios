@@ -239,6 +239,19 @@ export async function* answer(
         orderBy: { createdAt: 'asc' },
       },
       neverSay: { select: { phrase: true } },
+      // The shop's shelf, for the SHOP block. Read only while the shop is open:
+      // a closed shop's items must not be offered for sale by the chat.
+      storeEnabled: true,
+      items: {
+        where: { available: true },
+        orderBy: { position: 'asc' },
+        select: {
+          name: true,
+          description: true,
+          priceCents: true,
+          options: { orderBy: { position: 'asc' }, select: { label: true, priceCents: true } },
+        },
+      },
     },
   });
 
@@ -529,6 +542,7 @@ export async function* answer(
       facts: selection.facts,
       neverSay: page.neverSay.map((n) => n.phrase),
       ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
+      shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
     });
 
     let text = '';

@@ -909,6 +909,45 @@ describe('the monthly cap', () => {
   });
 });
 
+describe('the shop in the chat path', () => {
+  async function seedShelf(storeEnabled: boolean, mode: 'BUSINESS' | 'PERSONAL' = 'BUSINESS') {
+    const pageId = await pageIdFor('nadia');
+    await prisma.page.update({ where: { id: pageId }, data: { storeEnabled, mode } });
+    await prisma.item.create({
+      data: { pageId, name: 'Kek Batik', priceCents: 2500, position: 1, available: true },
+    });
+    await prisma.item.create({
+      data: { pageId, name: 'Hidden Tart', priceCents: 900, position: 0, available: false },
+    });
+  }
+
+  it('sends an available item and not an unavailable one while the shop is open', async () => {
+    await seedShelf(true);
+    const { gateway, prompt } = gatewayCapturingPrompt();
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+
+    expect(prompt()).toContain('<item name="Kek Batik">RM25</item>');
+    expect(prompt()).not.toContain('Hidden Tart');
+  });
+
+  it('sends no SHOP while the shop is closed', async () => {
+    await seedShelf(false);
+    const { gateway, prompt } = gatewayCapturingPrompt();
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+
+    expect(prompt()).not.toContain('SHOP');
+    expect(prompt()).not.toContain('Kek Batik');
+  });
+
+  it('sends no SHOP on a personal page, even with items and an open flag', async () => {
+    await seedShelf(true, 'PERSONAL');
+    const { gateway, prompt } = gatewayCapturingPrompt();
+    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+
+    expect(prompt()).not.toContain('SHOP');
+  });
+});
+
 describe('retrieval in the chat path', () => {
   it('sends every fact on a small page, and caches the prompt', async () => {
     const captured = gatewayCapturingCall();
