@@ -116,6 +116,20 @@
   box-shadow: 0 -1px 3px var(--soft-shadow);
 }
 
+/* Embedded (the landing's demo): the bar stays inside its card instead of the viewport. */
+[data-variant='embedded'] .basket {
+  position: sticky;
+  right: auto;
+  left: auto;
+  max-width: none;
+  margin: 16px -8px 0;
+  border-radius: 12px;
+}
+
+[data-variant='embedded'] {
+  padding-bottom: 0;
+}
+
 .lines {
   max-height: 96px;
   margin: 0 0 8px;
@@ -153,6 +167,10 @@
 
 .order {
   display: block;
+  width: 100%;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
   padding: 12px 16px;
   border-radius: 999px;
   background: var(--biru);

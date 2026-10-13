@@ -4,6 +4,7 @@ import { COPY, type Locale } from './copy.js';
 import { Header } from './Header.js';
 import { HeroScene } from './HeroScene.js';
 import { PaidMoment } from './PaidMoment.js';
+import { ShopSection } from './ShopSection.js';
 import { Trust } from './Trust.js';
 import { HowItWorks } from './HowItWorks.js';
 import { Pricing } from './Pricing.js';
@@ -67,6 +68,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
         <HeroScene copy={copy} />
         <HowItWorks copy={copy} />
         <PaidMoment copy={copy} />
+        <ShopSection copy={copy} />
         <Trust copy={copy} />
         <Pricing copy={copy} />
         <Faq copy={copy} />

@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, en, ms } from './copy.js';
 import { DEMO_EN, DEMO_MS } from './demo.js';
@@ -418,5 +419,18 @@ describe('the paid moment', () => {
     expect(css).not.toMatch(/\.panel \{\s*display:\s*none/);
     expect(css).toMatch(/\[data-step='5'\] \.track \{\s*transform: translateX\(-80%\)/);
     expect(css).not.toMatch(/translateX\(calc\(var\(--p\)/);
+  });
+});
+
+describe('the shop section', () => {
+  // Review Focus 5.
+  it('runs the real shelf as a demo that never leaves the page', async () => {
+    render(<LandingPage locale="en" />);
+    const shop = document.querySelector('#shop') as HTMLElement;
+    await userEvent.click(within(shop).getByRole('button', { name: /Cookies balang/ }));
+    await userEvent.click(within(shop).getByRole('button', { name: /add to basket/i }));
+    expect(shop.querySelector('a[href^="https://wa.me"]')).toBeNull();
+    await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
+    expect(within(shop).getByRole('region', { name: en.shopSection.messageTitle })).toHaveTextContent('Cookies balang');
   });
 });

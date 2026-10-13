@@ -204,4 +204,38 @@ describe('ShopView', () => {
     expect(screen.getByText('Delivery: RM8')).toBeInTheDocument();
     expect(screen.getByText('Order at least 2 days ahead')).toBeInTheDocument();
   });
+
+  it('hands the order message to onOrder instead of linking to WhatsApp, when asked to', async () => {
+    const user = userEvent.setup();
+    const onOrder = vi.fn();
+    render(<ShopView {...base} onOrder={onOrder} showBack={false} />);
+    await addCake(user);
+    await user.click(screen.getByRole('button', { name: copy.orderOnWhatsApp }));
+    expect(onOrder).toHaveBeenCalledWith(expect.stringContaining('Kek'));
+    expect(screen.queryByRole('link', { name: copy.orderOnWhatsApp })).toBeNull();
+    expect(screen.queryByRole('link', { name: /back/i })).toBeNull();
+  });
+
+  it('shows the order button with the given label, even with no WhatsApp number', async () => {
+    const user = userEvent.setup();
+    render(<ShopView {...base} whatsapp={null} onOrder={vi.fn()} orderLabel="See it" />);
+    await addCake(user);
+    expect(screen.getByRole('button', { name: 'See it' })).toBeInTheDocument();
+    expect(screen.queryByText(copy.noWhatsApp('Kek Lina'))).toBeNull();
+  });
+
+  it('keeps its basket under the storage key it is given', async () => {
+    const user = userEvent.setup();
+    render(<ShopView {...base} storageKey="landing-demo" />);
+    await addCake(user);
+    expect(window.sessionStorage.getItem('landing-demo')).toContain('"quantity":2');
+    expect(window.sessionStorage.getItem('curios-basket:nadia')).toBeNull();
+  });
+
+  it('marks itself embedded when asked, and as a page otherwise', () => {
+    const { container, rerender } = render(<ShopView {...base} variant="embedded" />);
+    expect(container.querySelector('[data-variant="embedded"]')).not.toBeNull();
+    rerender(<ShopView {...base} />);
+    expect(container.querySelector('[data-variant="embedded"]')).toBeNull();
+  });
 });

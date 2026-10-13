@@ -1,0 +1,97 @@
+/*
+ * The shop section. Points on the left, Kek Lina's real shelf on the right in
+ * a framed card. The shelf is the product's own component, which reads the
+ * Bento page tokens; the few the landing does not define are set on .demo.
+ */
+
+.shop {
+  padding: var(--l-space-9) 0;
+}
+
+.grid {
+  display: grid;
+  gap: var(--l-space-7);
+  align-items: start;
+}
+
+.text {
+  display: grid;
+  gap: var(--l-space-5);
+}
+
+.points {
+  display: grid;
+  gap: var(--l-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--band-text);
+  font-size: var(--l-step-0);
+  line-height: var(--l-leading-body);
+}
+
+.points li {
+  padding-left: var(--l-space-5);
+  border-left: 2px solid var(--biru);
+}
+
+.demo {
+  --tile-radius: 14px;
+  --accent: var(--biru);
+  --page-fg: var(--ink);
+  --page-soft: var(--muted);
+  --shadow: none;
+  --warm: var(--surface);
+
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  min-width: 0;
+  padding: var(--l-space-4);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+/* No photos on the demo shelf: each card gets a flat, labelled-by-colour plate rather than an empty grey square. */
+.demo :global(span[aria-hidden='true']) {
+  background: var(--l-kuning-100);
+}
+
+.message {
+  margin-top: var(--l-space-4);
+  padding: var(--l-space-4);
+  border: 1px solid var(--line);
+  border-radius: var(--l-radius-m);
+  background: var(--surface);
+}
+
+.messageTitle {
+  margin: 0 0 var(--l-space-2);
+  font-family: var(--font-display);
+  font-size: var(--l-step-0);
+  font-weight: 600;
+}
+
+.messageText {
+  margin: 0;
+  font-family: var(--l-font-body);
+  font-size: var(--l-step--1);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin: var(--l-space-4) 0 0;
+  color: var(--muted);
+  font-size: var(--l-step--1);
+}
+
+@media (min-width: 960px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr) 420px;
+    gap: var(--l-space-8);
+  }
+}

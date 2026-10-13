@@ -9,7 +9,7 @@ import styles from './shop.module.css';
 
 type ViewItem = ShopItem & { photoUrl: string | null };
 
-const storageKey = (handle: string) => `curios-basket:${handle}`;
+const defaultStorageKey = (handle: string) => `curios-basket:${handle}`;
 
 /** Storage is the visitor's to edit, so each saved line is checked before anything prices or counts it. */
 function isBasketLine(value: unknown): value is BasketLine {
@@ -25,9 +25,9 @@ function isBasketLine(value: unknown): value is BasketLine {
 }
 
 /** sessionStorage can be missing or throw (private windows, blocked storage); the basket then lives in memory only. */
-function readBasket(handle: string): BasketLine[] {
+function readBasket(key: string): BasketLine[] {
   try {
-    const raw = window.sessionStorage.getItem(storageKey(handle));
+    const raw = window.sessionStorage.getItem(key);
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     return Array.isArray(parsed) ? parsed.filter(isBasketLine) : [];
   } catch {
@@ -35,9 +35,9 @@ function readBasket(handle: string): BasketLine[] {
   }
 }
 
-function writeBasket(handle: string, lines: BasketLine[]) {
+function writeBasket(key: string, lines: BasketLine[]) {
   try {
-    window.sessionStorage.setItem(storageKey(handle), JSON.stringify(lines));
+    window.sessionStorage.setItem(key, JSON.stringify(lines));
   } catch {
     // Memory only, as above.
   }
@@ -55,18 +55,29 @@ export function ShopView(props: {
   deliveryFeeCents: number | null;
   minNoticeDays: number;
   initialItemId: string | null;
+  /** When given, replaces the WhatsApp link with a button that hands the message here (the landing's demo). */
+  onOrder?: (message: string) => void;
+  /** Hide the "Back" link to /handle (the landing's demo has no page to go back to). Default true. */
+  showBack?: boolean;
+  /** sessionStorage key for the basket. Default `curios-basket:${handle}`. */
+  storageKey?: string;
+  /** The order button's words when `onOrder` is given. Default the shop copy's orderOnWhatsApp. */
+  orderLabel?: string;
+  /** 'embedded' keeps the basket bar inside its container (sticky) instead of fixed to the viewport. Default 'page'. */
+  variant?: 'page' | 'embedded';
 }) {
   const copy = shopCopy(props.language);
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [openId, setOpenId] = useState<string | null>(props.items.some((i) => i.id === props.initialItemId) ? props.initialItemId : null);
   const loaded = useRef(false);
+  const key = props.storageKey ?? defaultStorageKey(props.handle);
 
   useEffect(() => {
-    setBasket(readBasket(props.handle));
-  }, [props.handle]);
+    setBasket(readBasket(key));
+  }, [key]);
   useEffect(() => {
-    if (loaded.current) writeBasket(props.handle, basket);
-  }, [props.handle, basket]);
+    if (loaded.current) writeBasket(key, basket);
+  }, [key, basket]);
   // Declared after the writer on purpose: the first pass must not write the empty starting basket over what was saved.
   useEffect(() => {
     loaded.current = true;
@@ -87,8 +98,8 @@ export function ShopView(props: {
   }
 
   return (
-    <section className={styles.shop}>
-      <a className={styles.back} href={`/${props.handle}`}>← {copy.back}</a>
+    <section className={styles.shop} data-variant={props.variant === 'embedded' ? 'embedded' : undefined}>
+      {props.showBack !== false ? <a className={styles.back} href={`/${props.handle}`}>← {copy.back}</a> : null}
       <ul className={styles.terms}>
         {props.pickupEnabled ? <li>{copy.pickup(props.pickupNote)}</li> : null}
         {props.deliveryMode !== 'NONE' ? (
@@ -137,7 +148,11 @@ export function ShopView(props: {
             ))}
           </ul>
           <p className={styles.total}>{copy.basket(count, formatRinggit(priced.totalCents))}</p>
-          {props.whatsapp ? (
+          {props.onOrder ? (
+            <button type="button" className={styles.order} onClick={() => props.onOrder?.(basketMessage(props.displayName, priced, copy))}>
+              {props.orderLabel ?? copy.orderOnWhatsApp}
+            </button>
+          ) : props.whatsapp ? (
             <a className={styles.order} href={whatsappOrderUrl(props.whatsapp, basketMessage(props.displayName, priced, copy))} rel="noopener">
               {copy.orderOnWhatsApp}
             </a>
