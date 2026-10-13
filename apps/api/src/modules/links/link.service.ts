@@ -114,6 +114,13 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
     await tx.link.delete({ where: { id } });
     // Close the gap, so positions stay 0..n-1 and the next add lands last.
     await tx.link.updateMany({ where: { pageId, position: { gt: link.position } }, data: { position: { decrement: 1 } } });
+    // The shop tile's position is an index into the same list, so a link removed above it
+    // would otherwise slide the tile down one place past its neighbour. While the shop is
+    // closed the stored position is not in play, and reorderLinks rewrites it when it opens.
+    await tx.page.updateMany({
+      where: { id: pageId, storeEnabled: true, shopTilePosition: { gt: link.position } },
+      data: { shopTilePosition: { decrement: 1 } },
+    });
   });
 }
 

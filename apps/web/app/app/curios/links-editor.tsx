@@ -171,11 +171,16 @@ export function LinksEditor({
     // `removeLink` to resolve first would leave a window where a save
     // scheduled moments earlier could still land after the removal.
     const before = links;
+    const shopBefore = shop;
     onChange(links.filter((link) => link.id !== id));
+    // The tile's position counts the links above it, so removing one of them
+    // would otherwise slide the tile down past the neighbour it sits beside.
+    if (shop && links.findIndex((link) => link.id === id) < shop.position) onShopChange?.({ ...shop, position: shop.position - 1 });
     try {
       await removeLink(id);
     } catch (failure) {
       onChange(before);
+      if (shopBefore) onShopChange?.(shopBefore);
       setError(message(failure));
     }
   }

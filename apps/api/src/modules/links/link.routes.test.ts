@@ -275,3 +275,37 @@ describe('PUT /links/order with the shop tile', () => {
     expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['shop', a] })).statusCode).toBe(200);
   });
 });
+
+describe('DELETE /links/:id with the shop tile', () => {
+  async function shopAt(position: number, linkCount: number, open = true) {
+    const owner = await anOwner();
+    const ids: string[] = [];
+    for (const label of ['A', 'B', 'C'].slice(0, linkCount)) {
+      ids.push((await call(owner.cookie, 'POST', '/links', { label, url: 'a.com' })).json().link.id);
+    }
+    await app.prisma.page.update({
+      where: { id: owner.pageId },
+      data: { shopTilePosition: position, ...(open ? { storeEnabled: true, pickupEnabled: true, paymentQrKey: 'qr/x.png' } : {}) },
+    });
+    return { owner, ids };
+  }
+  const tileAt = async (pageId: string) => (await app.prisma.page.findUniqueOrThrow({ where: { id: pageId } })).shopTilePosition;
+
+  it('keeps the tile beside the same neighbour when a link above it is removed', async () => {
+    const { owner, ids } = await shopAt(1, 3);
+    await call(owner.cookie, 'DELETE', `/links/${ids[0]}`);
+    expect(await tileAt(owner.pageId)).toBe(0);
+  });
+
+  it('leaves the tile where it is when a link after it is removed', async () => {
+    const { owner, ids } = await shopAt(1, 3);
+    await call(owner.cookie, 'DELETE', `/links/${ids[2]}`);
+    expect(await tileAt(owner.pageId)).toBe(1);
+  });
+
+  it('leaves the stored position alone while the shop is closed', async () => {
+    const { owner, ids } = await shopAt(2, 3, false);
+    await call(owner.cookie, 'DELETE', `/links/${ids[0]}`);
+    expect(await tileAt(owner.pageId)).toBe(2);
+  });
+});

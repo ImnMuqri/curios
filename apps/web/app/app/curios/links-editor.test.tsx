@@ -500,6 +500,30 @@ describe('LinksEditor', () => {
       expect(props.updateLink).not.toHaveBeenCalled();
     });
 
+    it('keeps the shop beside the same neighbour when a link above it is removed', async () => {
+      const props = setup(three.slice(0, 2), { shop });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Remove Portfolio' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
+      expect(props.onChange).toHaveBeenLastCalledWith([three[1]]);
+      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 0, size: null });
+    });
+
+    it('leaves the shop where it is when a link below it is removed', async () => {
+      const props = setup(three.slice(0, 2), { shop });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'WhatsApp' })).getByRole('button', { name: 'Remove WhatsApp' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
+      expect(props.onShopChange).not.toHaveBeenCalled();
+    });
+
+    it('puts the shop back when removing a link above it is refused', async () => {
+      const props = setup(three.slice(0, 2), { shop, removeLink: vi.fn(async () => { throw new Error('No.'); }) });
+      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Remove Portfolio' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
+      expect(props.onShopChange).toHaveBeenNthCalledWith(1, { position: 0, size: null });
+      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 1, size: null });
+      expect(props.onChange).toHaveBeenLastCalledWith(three.slice(0, 2));
+    });
+
     it('sends link ids only when there is no shop', async () => {
       const props = setup(three.slice(0, 2), { shop: null });
       expect(screen.queryByRole('listitem', { name: 'Shop' })).toBeNull();
