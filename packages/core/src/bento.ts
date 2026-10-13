@@ -206,3 +206,38 @@ export function arrangeTiles<T extends { size: TileSize | null }>(
 
   return tiles;
 }
+
+/**
+ * The shop tile's id wherever a list of tiles is ordered -- the links order
+ * the editor sends, and the entries `withShopTile` returns. Link ids are cuids,
+ * so this can never collide with one.
+ */
+export const SHOP_TILE_ID = 'shop';
+
+export interface ShopTilePlacement {
+  position: number;
+  size: TileSize | null;
+}
+
+export type BentoEntry<L> =
+  | { kind: 'link'; id: string; size: TileSize | null; link: L }
+  | { kind: 'shop'; id: typeof SHOP_TILE_ID; size: TileSize | null };
+
+/**
+ * The page's tiles in visitor order: its links, with the shop tile inserted
+ * at its position when the shop is open.
+ *
+ * The position is clamped rather than trusted. It is stored as an index, and
+ * an owner who parks the tile last and then removes links leaves it pointing
+ * past the end -- the tile must still show, last, not disappear.
+ */
+export function withShopTile<L extends { id: string; size: TileSize | null }>(
+  links: L[],
+  shop: ShopTilePlacement | null,
+): BentoEntry<L>[] {
+  const entries: BentoEntry<L>[] = links.map((link) => ({ kind: 'link', id: link.id, size: link.size, link }));
+  if (!shop) return entries;
+  const at = Math.min(Math.max(0, Math.trunc(shop.position)), entries.length);
+  entries.splice(at, 0, { kind: 'shop', id: SHOP_TILE_ID, size: shop.size });
+  return entries;
+}

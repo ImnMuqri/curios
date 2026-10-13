@@ -8,10 +8,12 @@ import {
   normalizeLinkUrl,
   PAGE_BACKGROUNDS,
   readableOn,
+  SHOP_TILE_ID,
   STOCK_COVERS,
   stockCoverKey,
   stockCoverName,
   tintOf,
+  withShopTile,
   type TileSize,
 } from './bento.js';
 
@@ -162,5 +164,39 @@ describe('tintOf', () => {
 
   it('always gives six-digit hex, which the API accepts', () => {
     expect(isHexColor(tintOf('#0c7a62', 0.18))).toBe(true);
+  });
+});
+
+describe('withShopTile', () => {
+  const links = [
+    { id: 'a', size: null },
+    { id: 'b', size: 'WIDE' as const },
+  ];
+
+  it('leaves the links alone when there is no shop', () => {
+    expect(withShopTile(links, null).map((entry) => entry.id)).toEqual(['a', 'b']);
+  });
+
+  it('puts the shop tile at its position', () => {
+    expect(withShopTile(links, { position: 0, size: null }).map((entry) => entry.id)).toEqual([SHOP_TILE_ID, 'a', 'b']);
+    expect(withShopTile(links, { position: 1, size: 'BIG' }).map((entry) => entry.id)).toEqual(['a', SHOP_TILE_ID, 'b']);
+  });
+
+  // Review Focus 1: links removed after the tile was placed last.
+  it('clamps a position past the end to last, and a negative one to first', () => {
+    expect(withShopTile(links, { position: 9, size: null }).at(-1)?.id).toBe(SHOP_TILE_ID);
+    expect(withShopTile(links, { position: -3, size: null })[0]?.id).toBe(SHOP_TILE_ID);
+    // splice counts a negative index from the end, so -1 would land before the last link.
+    expect(withShopTile(links, { position: -1, size: null })[0]?.id).toBe(SHOP_TILE_ID);
+  });
+
+  it('carries its own size into the arrangement', () => {
+    const tiles = arrangeTiles(withShopTile(links, { position: 0, size: 'BIG' }));
+    expect(tiles[0]).toMatchObject({ size: 'BIG', tone: 'accent' });
+    expect(tiles[0]?.link.kind).toBe('shop');
+  });
+
+  it('works with no links at all', () => {
+    expect(withShopTile([], { position: 4, size: null }).map((entry) => entry.id)).toEqual([SHOP_TILE_ID]);
   });
 });
