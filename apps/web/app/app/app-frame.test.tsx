@@ -5,9 +5,9 @@ import userEvent from '@testing-library/user-event';
 vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios' }));
 const { AppFrame } = await import('./app-frame.js');
 
-const frame = (pendingReview = 3) =>
+const frame = (pendingReview = 3, mode: 'PERSONAL' | 'BUSINESS' = 'PERSONAL') =>
   render(
-    <AppFrame displayName="Iman Muqri" handle="imnmuqri" pendingReview={pendingReview}>
+    <AppFrame displayName="Iman Muqri" handle="imnmuqri" pendingReview={pendingReview} mode={mode}>
       <p>content</p>
     </AppFrame>,
   );
@@ -25,6 +25,18 @@ describe('AppFrame', () => {
       'Billing',
       'Settings',
     ]);
+  });
+
+  it('shows a business page a Store link, after My Curios', () => {
+    frame(3, 'BUSINESS');
+    expect(screen.getByRole('link', { name: 'Store' })).toHaveAttribute('href', '/app/store');
+    const nav = screen.getByRole('navigation', { name: 'Dashboard' });
+    expect(within(nav).getAllByRole('link').map((a) => a.textContent).slice(0, 2)).toEqual(['My Curios', 'Store']);
+  });
+
+  it('shows a personal page no Store link', () => {
+    frame(3, 'PERSONAL');
+    expect(screen.queryByRole('link', { name: 'Store' })).toBeNull();
   });
 
   it('sends Knowledge to its own screen', () => {

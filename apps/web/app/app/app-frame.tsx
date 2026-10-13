@@ -19,6 +19,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: 'Your page',
     items: [
       { href: '/app/curios', label: 'My Curios', icon: svg(<><rect x="3" y="3" width="8" height="10" rx="2" /><rect x="13" y="3" width="8" height="6" rx="2" /><rect x="13" y="11" width="8" height="10" rx="2" /><rect x="3" y="15" width="8" height="6" rx="2" /></>) },
+      { href: '/app/store', label: 'Store', icon: svg(<><path d="M3 9l1.5-5h15L21 9" /><path d="M4 9v11h16V9" /><path d="M3 9h18" /><path d="M9 20v-6h6v6" /></>) },
       { href: '/app/review', label: 'Review', icon: svg(<><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9" /></>) },
       { href: '/app/knowledge', label: 'Knowledge', icon: svg(<><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z" /><path d="M8 7h8M8 11h6" /></>) },
     ],
@@ -53,6 +54,7 @@ const TITLES: Record<string, string> = {
  */
 const BANDS: Record<string, 'BIRU' | 'KUNING' | 'MUDA' | 'INK'> = {
   '/app/curios': 'BIRU',
+  '/app/store': 'BIRU',
   '/app/review': 'MUDA',
   '/app/knowledge': 'MUDA',
   '/app/questions': 'MUDA',
@@ -74,11 +76,14 @@ export function AppFrame({
   displayName,
   handle,
   pendingReview,
+  mode,
   children,
 }: {
   displayName: string;
   handle: string;
   pendingReview: number;
+  /** The Store module is a business page's; a personal page's nav leaves it out. */
+  mode: 'PERSONAL' | 'BUSINESS';
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
@@ -93,7 +98,7 @@ export function AppFrame({
           <span className={styles.srOnly}>Curios dashboard</span>
         </a>
         <nav aria-label="Dashboard" id="dashboard-nav">
-          {GROUPS.map((group) => (
+          {GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => item.href !== '/app/store' || mode === 'BUSINESS') })).map((group) => (
             <div key={group.title}>
               <p className={styles.group}>{group.title}</p>
               {group.items.map((item) => (

@@ -44,7 +44,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
 
   const pendingReview = await countPendingFacts(owner.accountId);
   return (
-    <AppFrame displayName={page.displayName} handle={page.handle} pendingReview={pendingReview}>
+    <AppFrame displayName={page.displayName} handle={page.handle} pendingReview={pendingReview} mode={page.mode}>
       {children}
     </AppFrame>
   );
