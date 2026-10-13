@@ -420,6 +420,43 @@ describe('the owner surface columns', () => {
   });
 });
 
+describe('the shelf', () => {
+  it('stores an item with options and cascades both away with the page', async () => {
+    const pageId = await aPageForPayments();
+    const item = await prisma.item.create({
+      data: {
+        pageId,
+        name: 'Kek Batik',
+        position: 0,
+        options: {
+          create: [
+            { label: '1kg', priceCents: 9500, position: 0 },
+            { label: '2kg', priceCents: 17000, position: 1 },
+          ],
+        },
+      },
+      include: { options: true },
+    });
+    expect(item.available).toBe(true);
+    expect(item.priceCents).toBeNull();
+    expect(item.options).toHaveLength(2);
+
+    const shop = await prisma.page.findUniqueOrThrow({ where: { id: pageId } });
+    expect(shop).toMatchObject({
+      storeEnabled: false,
+      pickupEnabled: false,
+      deliveryMode: 'NONE',
+      minNoticeDays: 1,
+      shopTilePosition: 0,
+      shopTileSize: null,
+    });
+
+    await prisma.page.delete({ where: { id: pageId } });
+    expect(await prisma.item.count({ where: { id: item.id } })).toBe(0);
+    expect(await prisma.itemOption.count({ where: { itemId: item.id } })).toBe(0);
+  });
+});
+
 async function aPageForPayments(): Promise<string> {
   const skeleton = `pay-${randomUUID().slice(0, 8)}`;
   const account = await prisma.account.create({

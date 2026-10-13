@@ -101,6 +101,15 @@ enum HeadingFont {
   OUTFIT
 }
 
+/// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
+/// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
+/// so the fee is never part of what the shop charges.
+enum DeliveryMode {
+  NONE
+  FLAT
+  RIDER
+}
+
 model Account {
   id              String               @id @default(cuid())
   email           String               @unique
@@ -172,8 +181,30 @@ model Page {
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.
   backgroundColor String?
+  /// The shop. Off until the owner opens it, and it can only be opened with a
+  /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
+  storeEnabled      Boolean      @default(false)
+  pickupEnabled     Boolean      @default(false)
+  /// Where pickup happens, as the owner wants it said: "Seksyen 7, Shah Alam".
+  pickupNote        String?
+  deliveryMode      DeliveryMode @default(NONE)
+  /// Sen. Set only while deliveryMode is FLAT.
+  deliveryFeeCents  Int?
+  minNoticeDays     Int          @default(1)
+  /// The owner's DuitNow QR, an object key in storage.
+  paymentQrKey      String?
+  bankName          String?
+  bankAccountName   String?
+  /// Digits only -- normalizeBankAccountNumber.
+  bankAccountNumber String?
+  /// The shop tile's index among the page's tiles. Clamped on read by
+  /// withShopTile, so a stale value after links are removed still shows it.
+  shopTilePosition  Int          @default(0)
+  /// Null is automatic, as Link.size is.
+  shopTileSize      TileSize?
   createdAt     DateTime       @default(now())
   links         Link[]
+  items         Item[]
   facts         Fact[]
   topics        Topic[]
   faqRedirects  FaqRedirect[]
@@ -201,6 +232,38 @@ model Link {
   size     TileSize?
 
   @@index([pageId, position])
+}
+
+/// Something a business page sells. Either priceCents or at least one
+/// ItemOption, never both -- pricingProblem in @curios/core/store, checked by
+/// the API on every write.
+model Item {
+  id          String       @id @default(cuid())
+  pageId      String
+  page        Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  /// An object key in storage, like Page.avatarKey.
+  photoKey    String?
+  priceCents  Int?
+  /// Off hides it from the shop and from the chat.
+  available   Boolean      @default(true)
+  position    Int
+  createdAt   DateTime     @default(now())
+  options     ItemOption[]
+
+  @@index([pageId, position])
+}
+
+model ItemOption {
+  id         String @id @default(cuid())
+  itemId     String
+  item       Item   @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  label      String
+  priceCents Int
+  position   Int
+
+  @@index([itemId, position])
 }
 
 model Fact {
