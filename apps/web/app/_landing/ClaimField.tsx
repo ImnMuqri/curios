@@ -47,7 +47,6 @@ export function ClaimField({
           autoCapitalize="none"
           spellCheck={false}
           maxLength={30}
-          onChange={(event) => echo(event.currentTarget.value)}
         />
       </div>
       <button type="submit" className={`${base.button} ${styles.button}`}>
