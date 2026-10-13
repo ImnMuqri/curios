@@ -238,3 +238,40 @@ describe('NO_PAGE', () => {
     expect(res.json().error.code).toBe('NO_PAGE');
   });
 });
+
+describe('PUT /links/order with the shop tile', () => {
+  async function openShop(pageId: string) {
+    await app.prisma.page.update({ where: { id: pageId }, data: { storeEnabled: true, pickupEnabled: true, paymentQrKey: 'qr/x.png' } });
+  }
+
+  it('places the shop tile among the links', async () => {
+    const owner = await anOwner();
+    const a = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link.id as string;
+    const b = (await call(owner.cookie, 'POST', '/links', { label: 'B', url: 'b.com' })).json().link.id as string;
+    await openShop(owner.pageId);
+
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [b, 'shop', a] })).statusCode).toBe(200);
+    expect(await labels(owner.cookie)).toEqual(['B', 'A']);
+    expect((await app.prisma.page.findUniqueOrThrow({ where: { id: owner.pageId } })).shopTilePosition).toBe(1);
+  });
+
+  it('refuses the shop tile while the shop is closed, and its absence while open', async () => {
+    const owner = await anOwner();
+    const a = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link.id as string;
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [a, 'shop'] })).json().error.code).toBe('LINK_ORDER_STALE');
+    await openShop(owner.pageId);
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: [a] })).json().error.code).toBe('LINK_ORDER_STALE');
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['shop', a, 'shop'] })).json().error.code).toBe('LINK_ORDER_STALE');
+  });
+
+  // Review Focus 1.
+  it('still reorders after links were removed from under a last-placed tile', async () => {
+    const owner = await anOwner();
+    const a = (await call(owner.cookie, 'POST', '/links', { label: 'A', url: 'a.com' })).json().link.id as string;
+    const b = (await call(owner.cookie, 'POST', '/links', { label: 'B', url: 'b.com' })).json().link.id as string;
+    await openShop(owner.pageId);
+    await call(owner.cookie, 'PUT', '/links/order', { ids: [a, b, 'shop'] });
+    await call(owner.cookie, 'DELETE', `/links/${b}`);
+    expect((await call(owner.cookie, 'PUT', '/links/order', { ids: ['shop', a] })).statusCode).toBe(200);
+  });
+});

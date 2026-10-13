@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@curios/db';
-import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, type TileSize } from '@curios/core/bento';
+import { charCount, LABEL_MAX, MAX_LINKS, normalizeLinkUrl, SHOP_TILE_ID, type TileSize } from '@curios/core/bento';
 import { NoPageError } from '../pages/page.service.js';
 
 export class InvalidLinkError extends Error {
@@ -122,18 +122,29 @@ export async function removeLink(prisma: PrismaClient, accountId: string, id: st
  * page's current set -- no more, no fewer, no repeats. A second tab working
  * from a list that has since changed gets LINK_ORDER_STALE, not a silent
  * half-applied order.
+ *
+ * The shop tile travels in the same list as SHOP_TILE_ID, exactly once while
+ * the shop is open and never while it is closed, so the editor drags it like
+ * any link. Its index is the page's shopTilePosition.
  */
 export async function reorderLinks(prisma: PrismaClient, accountId: string, ids: string[]): Promise<void> {
-  const pageId = await pageIdFor(prisma, accountId);
+  const page = await prisma.page.findUnique({ where: { accountId }, select: { id: true, storeEnabled: true } });
+  if (!page) throw new NoPageError();
   await prisma.$transaction(async (tx) => {
-    const current = await tx.link.findMany({ where: { pageId }, select: { id: true } });
+    const shopAt = ids.indexOf(SHOP_TILE_ID);
+    const shopCount = ids.filter((id) => id === SHOP_TILE_ID).length;
+    if (shopCount !== (page.storeEnabled ? 1 : 0)) throw new LinkOrderStaleError();
+    const linkIds = ids.filter((id) => id !== SHOP_TILE_ID);
+
+    const current = await tx.link.findMany({ where: { pageId: page.id }, select: { id: true } });
     const known = new Set(current.map((link) => link.id));
-    const sent = new Set(ids);
-    if (sent.size !== ids.length || sent.size !== known.size || ids.some((id) => !known.has(id))) {
+    const sent = new Set(linkIds);
+    if (sent.size !== linkIds.length || sent.size !== known.size || linkIds.some((id) => !known.has(id))) {
       throw new LinkOrderStaleError();
     }
-    for (const [position, id] of ids.entries()) {
+    for (const [position, id] of linkIds.entries()) {
       await tx.link.update({ where: { id }, data: { position } });
     }
+    if (page.storeEnabled) await tx.page.update({ where: { id: page.id }, data: { shopTilePosition: shopAt } });
   });
 }
