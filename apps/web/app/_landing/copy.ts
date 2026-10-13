@@ -45,7 +45,7 @@ export interface LandingCopy {
   /** The curios.my/ field in the hero and the closing band. */
   claim: { label: string; placeholder: string };
   /** What each photograph should show, until the real ones arrive. */
-  photos: { hero: string; setup: string; storm: string };
+  photos: { hero: string; setup: string };
   heroScene: {
     /** Caption 2 and 3; caption 1 is hero.title + hero.sub. */
     problem: string;
@@ -75,29 +75,17 @@ export interface LandingCopy {
     cta: string;
     ctaNote: string;
     demoNote: string;
-    tryHint: string;
   };
   storm: {
-    title: string;
-    body: string;
     /** Beside the merged question, the way the Questions screen counts: "asked 40×". */
     asked: (n: number) => string;
-
   };
   leads: {
-    title: string;
-    intro: string;
     steps: Step[];
-    replay: string;
-    play: string;
-    playing: string;
-    /** {n} and {total} are filled in by the player. */
-    stepStatus: string;
     visitorPhone: string;
     ownerPhone: string;
     asleep: string;
     lockDate: string;
-    footnote: string;
   };
   trust: {
     title: string;
@@ -107,7 +95,6 @@ export interface LandingCopy {
     unsureQuestion: string;
     unsureAnswer: string;
   };
-  setup: { title: string; steps: Step[]; addressExample: string };
   pricing: {
     title: string;
     personal: { name: string; price: string; blurb: string; points: string[]; cta: string };
@@ -159,7 +146,6 @@ export const en: LandingCopy = {
   photos: {
     hero: 'A home baker at her counter, holding her phone with her Curios page open',
     setup: 'An owner pasting her shop’s link into Curios on a laptop, phone beside her',
-    storm: 'An owner at her counter, reading her phone between orders, cake boxes stacked behind her',
   },
   heroScene: {
     problem: 'Forty people. One question.',
@@ -204,17 +190,11 @@ export const en: LandingCopy = {
     cta: 'Create your free page',
     ctaNote: 'Answering is free on every plan. No card needed.',
     demoNote: 'A demo page. Kek Lina is not a real shop.',
-    tryHint: 'Tap to ask it',
   },
   storm: {
-    title: 'You answer each question once.',
-    body: 'Customers ask the price forty different ways. Curios groups them by meaning, and every version gets the answer you wrote.',
     asked: (n) => `asked ${n}×`,
   },
   leads: {
-    title: 'Business sends you every customer who leaves a number.',
-    intro:
-      'This is one lead from question to reply. The customer asks at 11:42 at night, and by morning you have their number, their order and a reply ready to send.',
     steps: [
       { title: 'They ask, any time', body: 'A customer asks at 11:42 at night and gets an answer straight away.' },
       { title: 'It answers from your facts', body: 'It quotes the RM95 price and RM10 delivery charge you approved.' },
@@ -222,15 +202,10 @@ export const en: LandingCopy = {
       { title: 'You get an email with everything', body: 'The email has their number, the order, the day, the area and the full chat.' },
       { title: 'One tap to reply on WhatsApp', body: 'WhatsApp opens with a greeting already typed in the language they used.' },
     ],
-    replay: 'Play it again',
-    play: 'Play the lead',
-    playing: 'Playing',
-    stepStatus: 'Step {n} of {total}',
     visitorPhone: 'The customer’s phone',
     ownerPhone: 'Your phone',
     asleep: 'You, asleep',
     lockDate: 'Friday',
-    footnote: 'Your first three leads are free. After that, Business is RM39 a month. The answering never stops, on any plan.',
   },
   trust: {
     title: 'It only quotes prices you approved.',
@@ -238,19 +213,6 @@ export const en: LandingCopy = {
     approvedBy: 'Every line approved by you',
     unsureQuestion: 'Ada kek tanpa gula?',
     unsureAnswer: 'Tak pasti. Saya check dengan Lina dulu ya.',
-  },
-  setup: {
-    title: 'Set it up from your website or your bio.',
-    addressExample: 'curios.my/keklina',
-    steps: [
-      { title: 'Pick your address', body: 'This is the link you put in your bio.' },
-      {
-        title: 'Paste a link, or a few paragraphs',
-        body: 'Your website or Linktree. Instagram and TikTok don’t let us read them, so paste your bio from there instead.',
-      },
-      { title: 'Check what it found', body: 'Approve the facts that are right. Fix the ones that aren’t.' },
-      { title: 'Put the link in your bio', body: 'Customers who tap it can ask and get answers from your facts.' },
-    ],
   },
   pricing: {
     title: 'Answering is free. Leads are RM39 a month.',
@@ -361,7 +323,6 @@ export const ms: LandingCopy = {
   photos: {
     hero: 'A home baker at her counter, holding her phone with her Curios page open',
     setup: 'An owner pasting her shop’s link into Curios on a laptop, phone beside her',
-    storm: 'An owner at her counter, reading her phone between orders, cake boxes stacked behind her',
   },
   heroScene: {
     problem: 'Empat puluh orang. Satu soalan.',
@@ -406,17 +367,11 @@ export const ms: LandingCopy = {
     cta: 'Buat page percuma',
     ctaNote: 'Menjawab percuma untuk semua pelan. Tak perlu kad.',
     demoNote: 'Page demo. Kek Lina bukan kedai sebenar.',
-    tryHint: 'Tekan untuk tanya',
   },
   storm: {
-    title: 'Setiap soalan, anda jawab sekali.',
-    body: 'Pelanggan tanya harga dengan empat puluh cara. Curios kumpul ikut maksud, dan setiap satu dapat jawapan yang anda tulis.',
     asked: (n) => `ditanya ${n}×`,
   },
   leads: {
-    title: 'Bisnes hantar pada anda setiap pelanggan yang tinggalkan nombor.',
-    intro:
-      'Ini satu lead dari soalan sampai balasan. Pelanggan tanya pukul 11:42 malam, dan pagi esok anda dah ada nombor dia, order dia dan balasan yang sedia dihantar.',
     steps: [
       { title: 'Dia tanya, bila-bila masa', body: 'Pelanggan tanya pukul 11:42 malam dan terus dapat jawapan.' },
       { title: 'Page jawab ikut fakta anda', body: 'Dia sebut harga RM95 dan caj hantar RM10 yang anda luluskan.' },
@@ -424,15 +379,10 @@ export const ms: LandingCopy = {
       { title: 'Anda dapat emel yang lengkap', body: 'Emel tu ada nombor, order, hari, kawasan dan seluruh chat.' },
       { title: 'Sekali tekan, balas di WhatsApp', body: 'WhatsApp buka dengan ucapan yang dah ditaip dalam bahasa dia.' },
     ],
-    replay: 'Main semula',
-    play: 'Main lead ni',
-    playing: 'Sedang main',
-    stepStatus: 'Langkah {n} daripada {total}',
     visitorPhone: 'Telefon pelanggan',
     ownerPhone: 'Telefon anda',
     asleep: 'Anda, tengah tidur',
     lockDate: 'Jumaat',
-    footnote: 'Tiga lead pertama percuma. Lepas tu, Bisnes RM39 sebulan. Menjawab tak pernah berhenti, untuk semua pelan.',
   },
   trust: {
     title: 'Dia cuma sebut harga yang anda luluskan.',
@@ -440,19 +390,6 @@ export const ms: LandingCopy = {
     approvedBy: 'Setiap baris diluluskan oleh anda',
     unsureQuestion: 'Ada kek tanpa gula?',
     unsureAnswer: 'Tak pasti. Saya check dengan Lina dulu ya.',
-  },
-  setup: {
-    title: 'Sediakan dari website atau bio anda.',
-    addressExample: 'curios.my/keklina',
-    steps: [
-      { title: 'Pilih alamat anda', body: 'Ini link yang anda letak dalam bio.' },
-      {
-        title: 'Tampal link, atau beberapa perenggan',
-        body: 'Website atau Linktree anda. Instagram dan TikTok tak bagi kami baca, jadi copy bio anda dari situ.',
-      },
-      { title: 'Semak apa yang dia jumpa', body: 'Luluskan fakta yang betul. Betulkan yang salah.' },
-      { title: 'Letak link dalam bio', body: 'Pelanggan yang tekan boleh tanya dan dapat jawapan dari fakta anda.' },
-    ],
   },
   pricing: {
     title: 'Menjawab percuma. Lead RM39 sebulan.',

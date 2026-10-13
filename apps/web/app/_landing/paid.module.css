@@ -12,7 +12,7 @@
  */
 
 .paid {
-  padding: var(--l-space-9) 0 var(--l-space-9);
+  padding-block: var(--l-section-pad);
 }
 
 .paid:has(.stage[data-motion='on']) {

@@ -26,7 +26,7 @@
 .list {
   padding: var(--l-space-6) var(--l-space-6) var(--l-space-5);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--l-card-radius);
   background: var(--card);
   color: var(--ink);
 }

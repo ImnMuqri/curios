@@ -4,7 +4,7 @@
  */
 
 .how {
-  padding: var(--l-space-10) 0 var(--l-space-9);
+  padding-block: var(--l-section-pad);
 }
 
 .photo {
@@ -36,9 +36,9 @@
 .card {
   display: flex;
   flex-direction: column;
-  padding: 28px;
+  padding: var(--l-card-pad);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--l-card-radius);
   background: var(--card);
 }
 
@@ -80,6 +80,7 @@
   color: var(--ink);
   overflow-wrap: anywhere;
   padding: var(--l-space-3) var(--l-space-4);
+  margin-top: auto;
 }
 
 .source,
@@ -93,28 +94,6 @@
 .facts {
   margin: auto 0 0;
   padding-top: var(--l-space-5);
-}
-
-.source,
-.link {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm, 0.875rem);
-  color: var(--ink);
-  overflow-wrap: anywhere;
-}
-
-.source,
-.link,
-.facts > li {
-  border: 1px solid var(--line);
-  border-radius: var(--l-radius-m);
-  background: var(--paper);
-}
-
-.source,
-.link {
-  padding: var(--l-space-3) var(--l-space-4);
-  margin-top: auto;
 }
 
 .facts {

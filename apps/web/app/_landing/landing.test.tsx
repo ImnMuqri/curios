@@ -1,18 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+// The page mounts SmoothScroll; jsdom has no ResizeObserver for Lenis, and these tests never scroll.
+vi.mock('./SmoothScroll.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('./SmoothScroll.js')>()), SmoothScroll: () => null }));
+
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, en, ms } from './copy.js';
 import { DEMO_EN, DEMO_MS } from './demo.js';
 import { BRAND } from './brand-colors.js';
-import { LeadsStory } from './LeadsStory.js';
 import { BusinessPrice } from './BusinessPrice.js';
-import { ClaimField } from './ClaimField.js';
-import { HeroDemo } from './HeroDemo.js';
-import { askedAt } from './StormStage.js';
 
 const LOCALES = ['en', 'ms'] as const;
 
@@ -188,55 +186,6 @@ describe('the storm', () => {
       expect(shop.storm).toHaveLength(40);
       expect(new Set(shop.storm).size).toBe(40);
     }
-    expect(en.storm.body).toMatch(/forty/);
-    expect(ms.storm.body).toMatch(/empat puluh/);
-  });
-
-  it('counts nobody until the messages fly in, then all forty, and never goes backwards', () => {
-    expect(askedAt(0, 40)).toBe(0);
-    expect(askedAt(0.45, 40)).toBe(0);
-    expect(askedAt(0.8, 40)).toBe(40);
-    expect(askedAt(1, 40)).toBe(40);
-    const along = [0.5, 0.55, 0.6, 0.65, 0.7, 0.74].map((p) => askedAt(p, 40));
-    expect(along).toEqual([...along].sort((a, b) => a - b));
-    expect(along[2]).toBeGreaterThan(0);
-    expect(along[2]).toBeLessThan(40);
-  });
-
-  // The finished scene, as the server renders it -- what a visitor without JavaScript, or with
-  // reduced motion, sees. Scrolling counts up to it from nought.
-  it('ends on one question, asked forty times, with the same answer the hero demo gives', () => {
-    const html = renderToStaticMarkup(<LandingPage locale="en" />);
-    expect(html).toContain(DEMO_EN.qa[0]!.a);
-    expect(html).toContain('asked 40×');
-  });
-});
-
-describe('the leads story', () => {
-  it('jumps to any step, and shows the email only once the lead has been sent', async () => {
-    render(<LeadsStory copy={en.leads} shop={DEMO_EN} />);
-    const steps = within(screen.getByRole('list')).getAllByRole('button');
-    expect(steps).toHaveLength(5);
-
-    const email = screen.getByText(/New lead for/).closest('article')!;
-    await act(async () => fireEvent.click(steps[1]!));
-    expect(email).toHaveAttribute('data-shown', 'no');
-    expect(steps[1]).toHaveAttribute('aria-current', 'step');
-
-    await act(async () => fireEvent.click(steps[3]!));
-    expect(email).toHaveAttribute('data-shown', 'yes');
-  });
-
-  it('shows the last step straight away when motion is reduced', async () => {
-    const stub = window.matchMedia.bind(window);
-    const spy = vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({ ...stub(query), matches: query.includes('reduce') }));
-    try {
-      render(<LeadsStory copy={en.leads} shop={DEMO_EN} />);
-      const steps = within(screen.getByRole('list')).getAllByRole('button');
-      expect(steps[4]).toHaveAttribute('aria-current', 'step');
-    } finally {
-      spy.mockRestore();
-    }
   });
 });
 
@@ -285,57 +234,26 @@ describe('the interactive bits', () => {
     // The last snippet is the shop's address, built from the demo's handle.
     expect(steps[2]!.querySelector('[data-snippet]')).toHaveTextContent(`curios.my/${copy.shop.page.handle}`);
   });
-
-  it('shows the address being typed on the demo page beside it', async () => {
-    render(
-      <>
-        <ClaimField id="claim-test" label="Address" placeholder="yourshop" button="Create" />
-        <HeroDemo label="Demo" hint="Tap" shop={DEMO_EN} />
-      </>,
-    );
-    // Both the browser's address bar and the page's own handle line follow along.
-    expect(screen.getAllByText('curios.my/keklina')).toHaveLength(2);
-
-    await act(async () => fireEvent.change(screen.getByLabelText('Address'), { target: { value: 'Rojak Pak Ali' } }));
-    expect(screen.getAllByText('curios.my/rojakpakali')).toHaveLength(2);
-
-    // Cleared: back to the demo shop's own address.
-    await act(async () => fireEvent.change(screen.getByLabelText('Address'), { target: { value: '' } }));
-    // Both the browser's address bar and the page's own handle line follow along.
-    expect(screen.getAllByText('curios.my/keklina')).toHaveLength(2);
-  });
-});
-
-describe('the hero demo', () => {
-  // Like the public page: tapping the input opens chat mode, which folds the
-  // bio and the tiles away (Bento.module.css keys on data-mode), and the back
-  // arrow returns to the page.
-  it('opens chat mode when a question is sent, and the back arrow closes it', async () => {
-    const { container } = render(<HeroDemo label="Demo" hint="Tap" shop={DEMO_EN} />);
-    const page = container.querySelector('[data-bento-page]')!;
-    expect(page).not.toHaveAttribute('data-mode');
-    expect(screen.queryByRole('button', { name: 'Back to links' })).toBeNull();
-
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: /^Ask:/ })));
-    expect(page).toHaveAttribute('data-mode', 'chat');
-
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Back to links' })));
-    expect(page).not.toHaveAttribute('data-mode');
-  });
 });
 
 describe("the demo shop speaks the page's language", () => {
-  // English on /, Malay on /ms: the question, the answer, the bio and the storm all follow.
+  // English on /, Malay on /ms: the hero's phone (its bio, its one answer) and the shop demo follow.
   it('is English on the English page and Malay on the Malay one', () => {
-    const english = renderToStaticMarkup(<LandingPage locale="en" />);
-    expect(english).toContain(DEMO_EN.qa[0]!.q);
-    expect(english).toContain(DEMO_EN.page.bio!);
-    expect(english).not.toContain(DEMO_MS.qa[0]!.q);
-    expect(english).not.toContain(DEMO_MS.page.bio!);
+    const english = render(<LandingPage locale="en" />).container;
+    const hero = english.querySelector('#hero')!;
+    expect(hero).toHaveTextContent(DEMO_EN.page.bio!);
+    expect(hero).toHaveTextContent(DEMO_EN.qa[0]!.a);
+    expect(hero).not.toHaveTextContent(DEMO_MS.page.bio!);
+    expect(hero).not.toHaveTextContent(DEMO_MS.qa[0]!.a);
+    expect(english.querySelector('#shop')).toHaveTextContent(en.shopSection.title);
+    expect(english.querySelector('#shop')).not.toHaveTextContent(ms.shopSection.title);
+    cleanup();
 
-    const malay = renderToStaticMarkup(<LandingPage locale="ms" />);
-    expect(malay).toContain(DEMO_MS.qa[0]!.q);
-    expect(malay).not.toContain(DEMO_EN.qa[0]!.q);
+    const malay = render(<LandingPage locale="ms" />).container;
+    expect(malay.querySelector('#hero')).toHaveTextContent(DEMO_MS.page.bio!);
+    expect(malay.querySelector('#hero')).toHaveTextContent(DEMO_MS.qa[0]!.a);
+    expect(malay.querySelector('#hero')).not.toHaveTextContent(DEMO_EN.qa[0]!.a);
+    expect(malay.querySelector('#shop')).toHaveTextContent(ms.shopSection.title);
   });
 });
 
@@ -453,5 +371,24 @@ describe('trust, quiet parts, pricing, FAQ and closing', () => {
   it('closes on the ink band', () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelector('#final-title')!.closest('[class*="bandInk"]')).not.toBeNull();
+  });
+});
+
+describe('the bands', () => {
+  // The page's colour rhythm (the spec's band map). jsdom ignores CSS modules but keeps their class names.
+  const band = (el: Element | null) => el?.closest('[class*="band"]')?.className ?? '';
+  it.each(LOCALES)('%s: every section sits on its band', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    const at = (selector: string) => container.querySelector(selector);
+    expect(band(at('#hero'))).toContain('bandMuda');
+    expect(band(at('#how'))).toContain('bandSurface');
+    expect(band(at('#paid'))).toContain('bandBiru');
+    expect(band(at('#shop'))).toContain('bandPaper');
+    expect(band(at('#trust-title'))).toContain('bandKuning');
+    expect(band(at('#quiet'))).toContain('bandSurface');
+    expect(band(at('#pricing'))).toContain('bandPaper');
+    expect(band(at('#pricing [class*="bandBiru"]'))).toContain('bandBiru');
+    expect(band(at('#faq'))).toContain('bandSurface');
+    expect(band(at('#final-title'))).toContain('bandInk');
   });
 });

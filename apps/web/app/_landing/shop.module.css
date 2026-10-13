@@ -5,7 +5,7 @@
  */
 
 .shop {
-  padding: var(--l-space-9) 0;
+  padding-block: var(--l-section-pad);
 }
 
 .grid {

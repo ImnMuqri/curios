@@ -19,9 +19,9 @@
 }
 
 .tile {
-  padding: 28px;
+  padding: var(--l-card-pad);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: var(--l-card-radius);
   background: var(--card);
 }
 

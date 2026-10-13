@@ -29,9 +29,9 @@ export interface ShopDemoItem {
 
 export interface Demo {
   page: Omit<BentoPageProps, 'children'>;
-  /** What the hero's input offers, and what each answers -- the shop's approved facts. */
+  /** The one question the hero's phone shows asked forty times, and the answer from the shop's approved facts. */
   qa: ReadonlyArray<{ q: string; a: string }>;
-  /** The facts card in the trust section: the same facts the answers above use. */
+  /** The facts card in the trust section: the same facts the answer above uses. */
   facts: ReadonlyArray<{ claim: string; value: string }>;
   /** The heading on the demo shop's price list, as Lina would write it. */
   priceList: string;
@@ -102,9 +102,6 @@ export const DEMO_EN: Demo = {
   },
   qa: [
     { q: 'How much is a 1kg chocolate cake?', a: 'A 1kg chocolate cake is RM95. Please order 2 days ahead.' },
-    { q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.' },
-    { q: 'Are you open on Sunday?', a: 'Closed on Sundays. Monday to Saturday, 10am to 7pm.' },
-    { q: 'Can you write a name on the cake?', a: 'Yes, for free. Just tell us the name when you order.' },
   ],
   facts: [
     { claim: '1kg chocolate cake', value: 'RM95' },
@@ -154,9 +151,6 @@ export const DEMO_MS: Demo = {
   },
   qa: [
     { q: 'Berapa harga kek coklat 1kg?', a: 'Kek coklat 1kg RM95. Order 2 hari awal ya.' },
-    { q: 'Hantar ke Klang tak?', a: 'Hantar ke Klang ada, RM15. Shah Alam RM10.' },
-    { q: 'Buka hari Ahad?', a: 'Ahad tutup. Isnin sampai Sabtu, 10 pagi ke 7 petang.' },
-    { q: 'Boleh tulis nama atas kek?', a: 'Boleh, percuma. Bagitahu nama masa order.' },
   ],
   facts: [
     { claim: 'Kek coklat 1kg', value: 'RM95' },

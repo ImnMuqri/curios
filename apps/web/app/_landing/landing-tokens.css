@@ -125,6 +125,8 @@
   --l-radius-s: 6px; /* chips, small controls */
   --l-radius-m: 16px; /* inner panels, inputs inside cards */
   --l-radius-card: 28px; /* cards and picture frames */
+  --l-card-radius: 20px; /* a content card: how-it-works, quiet parts, the trust facts */
+  --l-card-pad: 28px; /* its padding */
   --l-radius-phone: 40px; /* device frames */
   --l-radius-pill: 999px; /* buttons, the claim field, the nav */
 
