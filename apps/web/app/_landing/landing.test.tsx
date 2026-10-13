@@ -348,4 +348,15 @@ describe('the hero', () => {
     expect(bubbles).toHaveLength(12);
     expect(bubbles).toEqual(DEMO_MS.storm.slice(0, 12));
   });
+
+  // jsdom does not evaluate CSS modules, so the stylesheet's rule is read as text: with motion, a
+  // caption that is not showing must be visibility:hidden (out of the tab order), not just faded.
+  it('takes hidden captions out of the tab order, not just out of sight', () => {
+    const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
+    const hidden = css.match(/\.stage\[data-motion='on'\] \.caption \{[^}]*\}/)![0];
+    expect(hidden).toMatch(/visibility:\s*hidden/);
+    expect(hidden).toMatch(/visibility 0s linear 0\.4s/);
+    const shown = css.match(/\.caption\[data-caption='2'\] \{[^}]*\}/)![0];
+    expect(shown).toMatch(/visibility:\s*visible/);
+  });
 });

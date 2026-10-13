@@ -68,9 +68,12 @@
   grid-area: c;
   opacity: 0;
   transform: translateY(40px);
+  /* Hidden captions also leave the tab order and the a11y tree's focus path (their text stays in the DOM): visibility flips once the fade ends. */
+  visibility: hidden;
   transition:
     opacity 0.4s var(--l-ease-out),
-    transform 0.4s var(--l-ease-out);
+    transform 0.4s var(--l-ease-out),
+    visibility 0s linear 0.4s;
   pointer-events: none;
 }
 
@@ -79,15 +82,14 @@
 .stage[data-caption='2'] .caption[data-caption='2'] {
   opacity: 1;
   transform: none;
+  visibility: visible;
+  transition-delay: 0s;
   pointer-events: auto;
 }
 
 .title {
   margin: 0;
   max-width: 11ch;
-  /* The load-in lifts .line from below this clip; room for descenders. */
-  overflow: hidden;
-  padding-bottom: 0.08em;
   color: var(--band-head);
   font-family: var(--font-display);
   font-size: var(--l-step-6);
@@ -99,6 +101,12 @@
 
 .line {
   display: block;
+}
+
+/* The load-in lifts .line from below this clip (motion only, so a long title never clips); room for descenders. */
+.stage[data-motion='on'] .title {
+  overflow: hidden;
+  padding-bottom: 0.08em;
 }
 
 .sub {
@@ -344,6 +352,12 @@
     position: absolute;
     inset: 0;
     aspect-ratio: auto;
+  }
+
+  /* The one row is the whole sticky height, so the proof (and the phone's cqh) is not sized by the captions. */
+  .stage[data-motion='on'] > .grid {
+    grid-template-rows: minmax(0, 1fr);
+    align-content: stretch;
   }
 
   .stage[data-motion='on'] .proof {

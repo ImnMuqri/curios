@@ -47,7 +47,7 @@ export function HeroScene({ copy }: { copy: LandingCopy }) {
             <PhotoSlot shot={copy.photos.hero} src="/landing/hero-baker.webp" alt="" focus="62% 22%" priority className={styles.photo} />
             <ul className={styles.bubbles} aria-hidden="true">
               {storm.slice(0, SPOTS.length).map((wording, i) => (
-                <li key={wording} className={styles.bubble} data-bubble style={{ '--i': i, '--x': `${SPOTS[i]![0]}%`, '--y': `${SPOTS[i]![1]}%` } as CSSProperties}>
+                <li key={i} className={styles.bubble} data-bubble style={{ '--i': i, '--x': `${SPOTS[i]![0]}%`, '--y': `${SPOTS[i]![1]}%` } as CSSProperties}>
                   {wording}
                 </li>
               ))}
