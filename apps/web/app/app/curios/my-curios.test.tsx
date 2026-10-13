@@ -8,7 +8,7 @@ import { MyCuriosEditor } from './my-curios.js';
 const initial = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
   style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, avatarKey: null,
-  coverKey: null, coverUrl: null, background: 'PAPER' as const, backgroundColor: null, language: 'en', shop: null,
+  coverKey: null, coverUrl: null, background: 'PAPER' as const, backgroundColor: null, language: 'en', shop: null, shopPhotoUrl: null,
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
 };
 
@@ -155,5 +155,14 @@ describe('the icon rail', () => {
     await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
     await userEvent.click(screen.getByRole('tab', { name: 'Profile' }));
     expect(screen.getByLabelText('Display name')).toHaveValue(`${initial.displayName}!`);
+  });
+
+  it('previews the shop tile, as a box not a link', () => {
+    const shop = { position: 0, size: null, itemCount: 2, photoKey: null };
+    render(<MyCuriosEditor initial={{ ...initial, shop }} api={api()} uploadsEnabled={false} />);
+    const preview = screen.getByRole('region', { name: 'Live preview' });
+    expect(within(preview).getByText('Visit shop')).toBeInTheDocument();
+    expect(within(preview).getByText('2 items')).toBeInTheDocument();
+    expect(within(preview).queryByRole('link')).toBeNull();
   });
 });

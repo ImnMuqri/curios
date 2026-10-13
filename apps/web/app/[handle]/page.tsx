@@ -5,6 +5,7 @@ import { getFaqIndex, getPublicPage } from '@curios/db-read';
 import { BentoPage } from '../_bento/BentoPage.js';
 import { avatarUrl, coverUrl } from '../../lib/avatar-url.js';
 import { Ask } from './ask.js';
+import { shopCopy } from './shop/copy.js';
 import styles from './page.module.css';
 
 // Node, not edge: this reads Postgres directly through the read-only role.
@@ -76,6 +77,11 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
       ? ((await getFaqIndex(page.handle, { limit: 1 }))?.entries.length ?? 0) > 0
       : false;
 
+  const copy = shopCopy(page.language);
+  const shop = page.shop
+    ? { position: page.shop.position, size: page.shop.size, label: copy.visit, caption: copy.itemCount(page.shop.itemCount), photoUrl: avatarUrl(page.shop.photoKey) }
+    : null;
+
   // Server-rendered into real DOM: with JavaScript disabled the tiles are
   // still a working link list, which is also the SEO artifact.
   return (
@@ -90,6 +96,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         // no remaining use for it.
         avatarUrl={avatarUrl(page.avatarKey)}
         links={page.links}
+        shop={shop}
         style={page.style}
         accentColor={page.accentColor}
         headingFont={page.headingFont}

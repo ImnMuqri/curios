@@ -297,3 +297,19 @@ describe('indexing', () => {
     expect(meta.robots).toBeUndefined();
   });
 });
+
+describe('the shop tile on the public page', () => {
+  it("links to the shop in the page's language, with the item count", async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, language: 'ms', shop: { position: 0, size: null, itemCount: 3, photoKey: null } });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    const tile = screen.getByRole('link', { name: /Lawati kedai/ });
+    expect(tile.getAttribute('href')).toBe('/nadia/shop');
+    expect(tile.textContent).toContain('3 barang');
+  });
+
+  it('has no such link without a shop', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, shop: null });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    expect(document.querySelector('a[href="/nadia/shop"]')).toBeNull();
+  });
+});

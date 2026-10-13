@@ -164,6 +164,10 @@ describe('BentoPage', () => {
     expect(css).toMatch(/\[data-mode='chat'\]\s*\.foldaway\s*\{[^}]*grid-template-rows:\s*0fr;/s);
     expect(css).toMatch(/\[data-mode='chat'\]\s*\.foldawayInner\s*\{[^}]*opacity:\s*0;/s);
 
+    // The shop page folds the same way.
+    expect(css).toMatch(/\[data-mode='shop'\]\s*\.foldaway,[^{]*\{[^}]*grid-template-rows:\s*0fr;/s);
+    expect(css).toMatch(/\[data-mode='shop'\]\s*\.foldawayInner,[^{]*\{[^}]*opacity:\s*0;/s);
+
     // The ask bar becomes the composer in the same spot -- hidden, not
     // replaced by something appearing elsewhere -- and the prompt (chat
     // mode's own empty-state greeting) gives way to the transcript.
@@ -271,5 +275,33 @@ describe('BentoPage, drawn in chat mode', () => {
 
     const plain = render(<BentoPage {...base} />);
     expect(plain.container.firstElementChild).not.toHaveAttribute('data-mode');
+  });
+});
+
+describe('the shop tile', () => {
+  const shop = { position: 1, size: null, label: 'Visit shop', caption: '8 items', photoUrl: null };
+
+  it('links to the shop at its position among the links', () => {
+    render(<BentoPage {...base} links={[{ id: 'a', label: 'A', url: 'https://a.com', size: null }, { id: 'b', label: 'B', url: 'https://b.com', size: null }]} shop={shop} />);
+    const tiles = screen.getAllByRole('link');
+    expect(tiles.map((t) => t.textContent)).toEqual([expect.stringContaining('A'), expect.stringContaining('Visit shop'), expect.stringContaining('B')]);
+    expect(tiles[1]).toHaveAttribute('href', `/${base.handle}/shop`);
+    expect(tiles[1]).toHaveTextContent('8 items');
+  });
+
+  it('is a box, not a link, in the editor preview', () => {
+    render(<BentoPage {...base} links={[]} shop={shop} interactive={false} />);
+    expect(screen.queryByRole('link')).toBeNull();
+    expect(screen.getByText('Visit shop')).toBeInTheDocument();
+  });
+
+  it("draws the shop's photo behind the words when it has one", () => {
+    const { container } = render(<BentoPage {...base} links={[]} shop={{ ...shop, photoUrl: 'https://cdn.example/i.jpg' }} />);
+    expect(container.querySelector('[data-shop] img')).toHaveAttribute('src', 'https://cdn.example/i.jpg');
+  });
+
+  it('shows no tile without a shop', () => {
+    render(<BentoPage {...base} links={[]} />);
+    expect(screen.queryByText('Visit shop')).toBeNull();
   });
 });

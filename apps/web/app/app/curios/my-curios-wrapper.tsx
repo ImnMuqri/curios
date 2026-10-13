@@ -21,7 +21,7 @@ export function MyCurios({
   uploadsEnabled,
   publicBase,
 }: {
-  initial: MyCuriosData & { avatarUrl: string | null; coverUrl: string | null };
+  initial: MyCuriosData & { avatarUrl: string | null; coverUrl: string | null; shopPhotoUrl: string | null };
   uploadsEnabled: boolean;
   publicBase: string;
 }) {

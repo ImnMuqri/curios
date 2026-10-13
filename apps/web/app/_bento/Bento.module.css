@@ -256,10 +256,12 @@
   opacity: 1;
 }
 
+.page[data-mode='shop'] .foldaway,
 .page[data-mode='chat'] .foldaway {
   grid-template-rows: 0fr;
 }
 
+.page[data-mode='shop'] .foldawayInner,
 .page[data-mode='chat'] .foldawayInner {
   opacity: 0;
 }
@@ -318,6 +320,21 @@
   text-decoration: none;
   transition: transform 120ms ease;
 }
+
+/* The shop's tile: the shop's own photo behind the words, under a flat scrim (no gradient behind text). */
+.tile[data-shop] { position: relative; overflow: hidden; }
+.tile[data-shop] .kind,
+.tile[data-shop] .label { position: relative; z-index: 1; }
+.shopPhoto {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.45;
+}
+.tile[data-shop]:has(.shopPhoto) { background: var(--ink); color: var(--paper); }
+.tile[data-shop]:has(.shopPhoto) .kind { opacity: 1; }
 
 a.tile:active { transform: scale(0.98); }
 

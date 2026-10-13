@@ -78,11 +78,22 @@ describe('MyCuriosPage', () => {
 
     expect(MyCurios).toHaveBeenCalledTimes(1);
     const props = MyCurios.mock.calls[0]?.[0] as { initial: MyCuriosData & { avatarUrl: string | null }; uploadsEnabled: boolean; publicBase: string };
-    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null });
+    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null, shopPhotoUrl: null });
     expect(props.uploadsEnabled).toBe(true);
     // The client component cannot read a server-only env var itself, so the
     // wrapper needs it passed down to build an uploaded picture's URL.
     expect(props.publicBase).toBe('https://cdn.example');
+  });
+
+  it("hands the editor the shop tile's photo URL", async () => {
+    process.env.STORAGE_PUBLIC_URL = 'https://cdn.example';
+    resolveOwner.mockResolvedValue({ accountId: 'acc-1' });
+    getMyCurios.mockResolvedValue({ ...page, shop: { position: 0, size: null, itemCount: 2, photoKey: 'items/i1.jpg' } });
+
+    render(await MyCuriosPage());
+
+    const props = MyCurios.mock.calls[0]?.[0] as { initial: { shopPhotoUrl: string | null } };
+    expect(props.initial.shopPhotoUrl).toBe('https://cdn.example/items/i1.jpg');
   });
 
   it('says uploads are off, and the picture is null, when storage is not configured', async () => {

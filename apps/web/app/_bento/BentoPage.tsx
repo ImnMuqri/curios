@@ -8,6 +8,7 @@ import {
   type PageBackground,
   type PageStyle,
   type TileSize,
+  withShopTile,
 } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
@@ -31,11 +32,18 @@ export interface BentoPageProps {
    */
   nameAs?: 'h1' | 'p';
   /**
+   * The shop's tile, at its place among the links, when the shop is open.
+   * Words arrive ready-made (shopCopy) so this stays a renderer that does not
+   * know the page's language.
+   */
+  shop?: { position: number; size: TileSize | null; label: string; caption: string; photoUrl: string | null } | null;
+  /**
    * Drawn already in chat mode -- bio and tiles folded away, room for a
    * conversation -- for a page shown mid-chat (the landing page's storm). The
    * public page leaves this out: ChatMode sets the same attribute at runtime.
+   * `'shop'` folds the bio and tiles away the same way, for /handle/shop.
    */
-  mode?: 'chat';
+  mode?: 'chat' | 'shop';
   /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
   background?: PageBackground;
   /** The owner's own colour, used when `background` is CUSTOM. */
@@ -65,7 +73,7 @@ export interface BentoPageProps {
  */
 export function BentoPage(props: BentoPageProps) {
   const { interactive = true, nameAs: Name = 'h1' } = props;
-  const tiles = arrangeTiles(props.links);
+  const tiles = arrangeTiles(withShopTile(props.links, props.shop ?? null));
   // Custom only with a colour to show; otherwise the look every page had before.
   const custom = props.background === 'CUSTOM' && props.backgroundColor && isHexColor(props.backgroundColor) ? props.backgroundColor : null;
   const background = props.background === 'CUSTOM' ? (custom ? 'CUSTOM' : 'PAPER') : (props.background ?? 'PAPER');
@@ -103,7 +111,28 @@ export function BentoPage(props: BentoPageProps) {
 
           {tiles.length > 0 ? (
             <div className={styles.grid} data-bento-grid>
-              {tiles.map(({ link, size, tone }) => {
+              {tiles.map(({ link: entry, size, tone }) => {
+                if (entry.kind === 'shop' && props.shop) {
+                  const shop = props.shop;
+                  const body = (
+                    <>
+                      {shop.photoUrl ? <img className={styles.shopPhoto} src={shop.photoUrl} alt="" /> : null}
+                      <span className={styles.kind}>{shop.caption}</span>
+                      <span className={styles.label}>{shop.label}</span>
+                    </>
+                  );
+                  return interactive ? (
+                    <a key={entry.id} className={styles.tile} data-size={size} data-tone={tone} data-shop href={`/${props.handle}/shop`}>
+                      {body}
+                    </a>
+                  ) : (
+                    <div key={entry.id} className={styles.tile} data-size={size} data-tone={tone} data-shop>
+                      {body}
+                    </div>
+                  );
+                }
+                if (entry.kind !== 'link') return null;
+                const link = entry.link;
                 const body = (
                   <>
                     <span className={styles.kind}>{linkKind(link.url)}</span>

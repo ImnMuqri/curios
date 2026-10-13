@@ -14,7 +14,7 @@ export default async function MyCuriosPage() {
 
   return (
     <MyCurios
-      initial={{ ...page, avatarUrl: avatarUrl(page.avatarKey), coverUrl: coverUrl(page.coverKey) }}
+      initial={{ ...page, avatarUrl: avatarUrl(page.avatarKey), coverUrl: coverUrl(page.coverKey), shopPhotoUrl: avatarUrl(page.shop?.photoKey ?? null) }}
       uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
       publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
     />

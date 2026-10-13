@@ -4,6 +4,7 @@ import { useRef, useState, type KeyboardEvent } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import type { HeadingFont, PageBackground, PageStyle, StockCover, TileSize } from '@curios/core/bento';
 import { BentoPage } from '../../_bento/BentoPage.js';
+import { shopCopy } from '../../[handle]/shop/copy.js';
 import { Device } from '../../_landing/Device.js';
 import { AppearanceEditor } from './appearance-editor.js';
 import { CoverEditor } from './cover-editor.js';
@@ -71,12 +72,16 @@ export function MyCuriosEditor({
   api,
   uploadsEnabled,
 }: {
-  initial: MyCurios & { avatarUrl: string | null; coverUrl: string | null };
+  initial: MyCurios & { avatarUrl: string | null; coverUrl: string | null; shopPhotoUrl: string | null };
   api: CuriosApi;
   uploadsEnabled: boolean;
 }) {
   const [page, setPage] = useState(initial);
   const update = (change: Partial<typeof page>) => setPage((current) => ({ ...current, ...change }));
+  const copy = shopCopy(page.language);
+  const previewShop = page.shop
+    ? { position: page.shop.position, size: page.shop.size, label: copy.visit, caption: copy.itemCount(page.shop.itemCount), photoUrl: page.shopPhotoUrl }
+    : null;
   const [tab, setTab] = useState<Tab>('profile');
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
@@ -183,7 +188,7 @@ export function MyCuriosEditor({
       <section className={styles.preview} aria-label="Live preview">
         <Device time="9:41" chrome="browser" url={`curios.my/${page.handle}`} className={styles.device}>
           <div className={styles.phone}>
-            <BentoPage {...page} interactive={false} />
+            <BentoPage {...page} shop={previewShop} interactive={false} />
           </div>
         </Device>
       </section>
