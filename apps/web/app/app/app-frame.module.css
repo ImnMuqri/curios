@@ -156,6 +156,34 @@
   color: var(--muted);
 }
 
+/* Quiet, under who is signed in: the way out, not a call to action. */
+.signOut {
+  margin: 4px 10px 0;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.signOut:hover:not(:disabled) {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.signOut:disabled {
+  cursor: default;
+}
+
+.signOutError {
+  margin: 2px 10px 0;
+  font-size: var(--text-sm);
+  color: var(--ink);
+}
+
 .avatar {
   width: 32px;
   height: 32px;

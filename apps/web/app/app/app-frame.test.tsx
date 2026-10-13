@@ -34,6 +34,11 @@ describe('AppFrame', () => {
     expect(within(nav).getAllByRole('link').map((a) => a.textContent).slice(0, 2)).toEqual(['My Curios', 'Store']);
   });
 
+  it('offers a way to sign out, beside who is signed in', () => {
+    frame();
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
   it('shows a personal page no Store link', () => {
     frame(3, 'PERSONAL');
     expect(screen.queryByRole('link', { name: 'Store' })).toBeNull();

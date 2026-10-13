@@ -4,6 +4,7 @@ import { useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { Wordmark } from '../_landing/Wordmark.js';
 import { plexSans } from '../_landing/plex.js';
+import { SignOutButton } from './sign-out-button.js';
 import styles from './app-frame.module.css';
 
 type Item = { href: string; label: string; icon: ReactNode };
@@ -125,6 +126,7 @@ export function AppFrame({
             <small>curios.my/{handle}</small>
           </span>
         </div>
+        <SignOutButton />
       </aside>
 
       <div className={styles.main} data-band={BANDS[Object.keys(BANDS).find((href) => pathname.startsWith(href)) ?? '']}>
