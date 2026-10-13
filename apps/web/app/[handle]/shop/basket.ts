@@ -1,0 +1,77 @@
+import { formatRinggit } from '@curios/core/store';
+import type { ShopItem } from '@curios/db-read';
+import type { ShopCopy } from './copy.js';
+
+/** What the browser keeps: ids and counts, never prices -- a price is always read from the shelf as it is now. */
+export interface BasketLine {
+  itemId: string;
+  optionId: string | null;
+  quantity: number;
+}
+
+export interface PricedLine extends BasketLine {
+  name: string;
+  optionLabel: string | null;
+  unitCents: number;
+  lineCents: number;
+}
+
+/**
+ * The basket against the current shelf. A line whose item was taken down, or
+ * whose option no longer exists, is dropped rather than priced at a number the
+ * shop no longer offers.
+ */
+export function priceBasket(lines: BasketLine[], items: ShopItem[]): { lines: PricedLine[]; totalCents: number } {
+  const priced: PricedLine[] = [];
+  for (const line of lines) {
+    const item = items.find((candidate) => candidate.id === line.itemId);
+    if (!item || line.quantity < 1) continue;
+    let unitCents: number | null = null;
+    let optionLabel: string | null = null;
+    if (item.options.length === 0) {
+      if (line.optionId === null) unitCents = item.priceCents;
+    } else {
+      const option = item.options.find((candidate) => candidate.id === line.optionId);
+      if (option) {
+        unitCents = option.priceCents;
+        optionLabel = option.label;
+      }
+    }
+    if (unitCents === null) continue;
+    priced.push({ ...line, name: item.name, optionLabel, unitCents, lineCents: unitCents * line.quantity });
+  }
+  return { lines: priced, totalCents: priced.reduce((sum, line) => sum + line.lineCents, 0) };
+}
+
+/** The page's WhatsApp number, from a wa.me or api.whatsapp.com/send link; null when it has neither. */
+export function whatsappNumber(links: { label: string; url: string }[]): string | null {
+  for (const { url } of links) {
+    let parsed: URL;
+    try {
+      parsed = new URL(url);
+    } catch {
+      continue;
+    }
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'wa.me') {
+      const digits = parsed.pathname.replace(/\D/g, '');
+      if (digits.length >= 8) return digits;
+    }
+    if (host === 'api.whatsapp.com' && parsed.pathname === '/send') {
+      const digits = (parsed.searchParams.get('phone') ?? '').replace(/\D/g, '');
+      if (digits.length >= 8) return digits;
+    }
+  }
+  return null;
+}
+
+export function basketMessage(shopName: string, basket: { lines: PricedLine[]; totalCents: number }, copy: ShopCopy): string {
+  const lines = basket.lines.map(
+    (line) => `• ${line.quantity} × ${line.name}${line.optionLabel ? ` (${line.optionLabel})` : ''} — ${formatRinggit(line.lineCents)}`,
+  );
+  return [copy.greeting(shopName), ...lines, copy.totalLine(formatRinggit(basket.totalCents))].join('\n');
+}
+
+export function whatsappOrderUrl(number: string, text: string): string {
+  return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
+}
