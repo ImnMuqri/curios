@@ -376,12 +376,16 @@ describe('the hero', () => {
     expect(shown).toMatch(/visibility:\s*visible/);
   });
 
-  it('keeps the text-only captions readable to a screen reader while hidden', () => {
+  it('hides the text-only captions by fading, so a screen reader still reads them', () => {
     const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
     const textOnly = css.match(/\.caption:not\(\[data-caption='0'\]\) \{[^}]*\}/)![0];
-    expect(textOnly).toMatch(/clip-path:\s*inset\(50%\)/);
     expect(textOnly).toMatch(/visibility:\s*visible/);
-    expect(textOnly).not.toMatch(/display:\s*none/);
+    expect(textOnly).not.toMatch(/clip-path|display:\s*none|transition:\s*none/);
+    // The base rule they inherit fades them out, and caption 0 alone leaves the tab order.
+    const base = css.match(/\.stage\[data-motion='on'\] \.caption \{[^}]*\}/)![0];
+    expect(base).toMatch(/opacity:\s*0/);
+    expect(base).toMatch(/transition:[^;]*opacity 0\.4s/);
+    expect(css).not.toMatch(/clip-path/);
   });
 });
 

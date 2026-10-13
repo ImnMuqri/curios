@@ -87,27 +87,9 @@
   pointer-events: auto;
 }
 
-/* The two text-only captions are visually hidden rather than visibility:hidden, so a screen reader still reads them (caption 0 holds the claim form, which must leave the tab order). */
+/* The two text-only captions hide by fading only: at opacity 0 they stay in the accessibility tree, so a screen reader still reads them (caption 0 holds the claim form, which must leave the tab order). */
 .stage[data-motion='on'] .caption:not([data-caption='0']) {
   visibility: visible;
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  transition: none;
-}
-
-.stage[data-caption='1'] .caption[data-caption='1'],
-.stage[data-caption='2'] .caption[data-caption='2'] {
-  position: static;
-  width: auto;
-  height: auto;
-  overflow: hidden;
-  clip-path: none;
-  white-space: normal;
-  transition-delay: 0s;
 }
 
 .title {
