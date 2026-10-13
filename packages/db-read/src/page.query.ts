@@ -1,6 +1,7 @@
 import type { FactCategory } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
+import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
 
 export interface PublicLink {
   id: string;
@@ -44,6 +45,8 @@ export interface PublicPage {
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
+  /** The shop tile, or null while the shop is closed. */
+  shop: ShopTile | null;
 }
 
 /**
@@ -63,7 +66,6 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       displayName: true,
       bio: true,
       language: true,
-      mode: true,
       paidUntil: true,
       leadsCaptured: true,
       allowSearchIndexing: true,
@@ -74,6 +76,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       coverKey: true,
       background: true,
       backgroundColor: true,
+      ...SHOP_TILE_SELECT,
       links: {
         orderBy: { position: 'asc' },
         select: { id: true, label: true, url: true, icon: true, position: true, size: true },
@@ -86,5 +89,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
     },
   });
 
-  return page;
+  if (!page) return null;
+  const { storeEnabled: _open, shopTilePosition: _at, shopTileSize: _size, items: _items, ...rest } = page;
+  return { ...rest, shop: shopTileOf(page) };
 }

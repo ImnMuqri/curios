@@ -1,11 +1,13 @@
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
+import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
 
 export interface MyCurios {
   id: string;
   handle: string;
   displayName: string;
   bio: string | null;
+  language: string;
   style: PageStyle;
   accentColor: string;
   headingFont: HeadingFont;
@@ -16,17 +18,21 @@ export interface MyCurios {
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
   links: { id: string; label: string; url: string; size: TileSize | null }[];
+  /** The shop tile, or null while the shop is closed. */
+  shop: ShopTile | null;
 }
 
 /** Everything the My Curios editor starts from, in one query. */
 export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
-  return prismaRead.page.findUnique({
+  const page = await prismaRead.page.findUnique({
     where: { accountId },
     select: {
       id: true,
       handle: true,
       displayName: true,
       bio: true,
+      language: true,
+      ...SHOP_TILE_SELECT,
       style: true,
       accentColor: true,
       headingFont: true,
@@ -37,6 +43,9 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
       links: { orderBy: { position: 'asc' }, select: { id: true, label: true, url: true, size: true } },
     },
   });
+  if (!page) return null;
+  const { mode: _mode, storeEnabled: _open, shopTilePosition: _at, shopTileSize: _size, items: _items, ...rest } = page;
+  return { ...rest, shop: shopTileOf(page) };
 }
 
 /**

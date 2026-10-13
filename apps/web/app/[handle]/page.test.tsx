@@ -47,7 +47,7 @@ const page: PublicPage = {
   headingFont: 'JAKARTA',
   avatarKey: null,
   coverKey: null,
-  background: 'PAPER' as const, backgroundColor: null,
+  background: 'PAPER' as const, backgroundColor: null, shop: null,
 };
 
 describe('public page', () => {
