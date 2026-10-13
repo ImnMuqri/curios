@@ -4,7 +4,7 @@ import { useState } from 'react';
 import type { OwnerStore } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
-import { resizeImage } from '../curios/resize-image.js';
+import { resizeContained, resizeImage } from '../curios/resize-image.js';
 import { ItemsEditor, type EditorItem, type ItemRow, type ItemsApi } from './items-editor.js';
 import { StoreSettingsForm, type StoreSettingsApi } from './store-settings.js';
 import styles from './store.module.css';
@@ -36,7 +36,7 @@ export function StoreScreen({
     save: async (patch) =>
       (await apiFetch<{ settings: OwnerStore['settings'] }>('/store/settings', { method: 'PATCH', body: JSON.stringify(patch) })).settings,
     uploadQr: async (file) => {
-      const image = await resizeImage(file);
+      const image = await resizeContained(file);
       const { paymentQrKey } = await apiFetch<{ paymentQrKey: string }>('/store/payment-qr', { method: 'POST', body: JSON.stringify(image) });
       return joinAvatarUrl(publicBase, paymentQrKey);
     },

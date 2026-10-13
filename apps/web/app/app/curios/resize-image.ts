@@ -15,10 +15,21 @@ const COVER_MAX_BYTES = 2_097_152;
 // matter how well-formed the bytes are.
 const ACCEPTED_TYPES = new Set(['image/webp', 'image/png', 'image/jpeg']);
 
-function encode(canvas: HTMLCanvasElement, quality: number): Promise<Blob> {
+function encode(canvas: HTMLCanvasElement, quality?: number, type: 'image/webp' | 'image/png' = 'image/webp'): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The picture could not be prepared.'))), 'image/webp', quality),
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The picture could not be prepared.'))), type, quality),
   );
+}
+
+/** The blob as the JSON body the API takes, after checking the browser made a format the API accepts. */
+async function payload(blob: Blob): Promise<{ contentType: string; data: string }> {
+  if (!ACCEPTED_TYPES.has(blob.type)) {
+    throw new Error('This browser produced a picture in a format that cannot be uploaded.');
+  }
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return { contentType: blob.type, data: btoa(binary) };
 }
 
 /**
@@ -65,12 +76,41 @@ async function prepare(file: File, width: number, height: number, maxBytes: numb
   if (blob.size > maxBytes) {
     throw new Error('That picture is too large even resized. Try a smaller or simpler photo.');
   }
-  if (!ACCEPTED_TYPES.has(blob.type)) {
-    throw new Error('This browser produced a picture in a format that cannot be uploaded.');
-  }
+  return payload(blob);
+}
 
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return { contentType: blob.type, data: btoa(binary) };
+/** The longest edge a contained picture is sent at. */
+export const CONTAIN_EDGE = 1024;
+
+/** The picture's own shape, scaled down (never up) until its longer edge fits `edge`. */
+export function containedSize(width: number, height: number, edge = CONTAIN_EDGE): { width: number; height: number } {
+  const scale = Math.min(1, edge / Math.max(width, height));
+  return { width: Math.max(1, Math.round(width * scale)), height: Math.max(1, Math.round(height * scale)) };
+}
+
+/**
+ * A payment QR: the whole picture, never cropped -- a code cut at its edge
+ * does not scan -- and lossless, because a lossy re-encode softens the very
+ * modules a banking app has to read. PNG first; only if that cannot fit under
+ * the API's limit does it fall back to high-quality WebP.
+ */
+export async function resizeContained(file: File): Promise<{ contentType: string; data: string }> {
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = containedSize(bitmap.width, bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('This browser cannot prepare the picture.');
+  context.drawImage(bitmap, 0, 0, width, height);
+
+  let blob = await encode(canvas, undefined, 'image/png');
+  for (const quality of [0.95, 0.85, 0.7]) {
+    if (blob.size <= AVATAR_MAX_BYTES) break;
+    blob = await encode(canvas, quality);
+  }
+  if (blob.size > AVATAR_MAX_BYTES) {
+    throw new Error('That picture is too large even resized. Try a smaller or simpler photo.');
+  }
+  return payload(blob);
 }

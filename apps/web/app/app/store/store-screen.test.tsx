@@ -6,7 +6,11 @@ import userEvent from '@testing-library/user-event';
 
 const apiFetch = vi.fn();
 vi.mock('../../../lib/api.js', () => ({ apiFetch }));
-vi.mock('../curios/resize-image.js', () => ({ resizeImage: vi.fn(async () => ({ contentType: 'image/webp', data: 'AAAA' })) }));
+vi.mock('../curios/resize-image.js', () => ({
+  resizeImage: vi.fn(async () => ({ contentType: 'image/webp', data: 'AAAA' })),
+  // The QR goes through the uncropped, lossless path, so its bytes differ from an item photo's.
+  resizeContained: vi.fn(async () => ({ contentType: 'image/png', data: 'QQQQ' })),
+}));
 
 const { StoreScreen } = await import('./store-screen.js');
 
@@ -67,7 +71,7 @@ describe('StoreScreen', () => {
     apiFetch.mockResolvedValue({ paymentQrKey: 'qr/abc.webp' });
     screenWith();
     await userEvent.upload(screen.getByLabelText(/upload a payment qr/i), new File(['x'], 'qr.png', { type: 'image/png' }));
-    expect(apiFetch).toHaveBeenCalledWith('/store/payment-qr', { method: 'POST', body: JSON.stringify({ contentType: 'image/webp', data: 'AAAA' }) });
+    expect(apiFetch).toHaveBeenCalledWith('/store/payment-qr', { method: 'POST', body: JSON.stringify({ contentType: 'image/png', data: 'QQQQ' }) });
     expect(await screen.findByAltText(/payment qr/i)).toHaveAttribute('src', 'https://files.example/qr/abc.webp');
   });
 

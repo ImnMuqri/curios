@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resizeImage } from './resize-image.js';
+import { containedSize, resizeContained, resizeImage } from './resize-image.js';
 
 /**
  * jsdom's own Blob has no `arrayBuffer()`, so a real `new Blob(...)` cannot
@@ -82,5 +82,60 @@ describe('resizeImage', () => {
     await expect(resizeImage(new File(['x'], 'exact.png', { type: 'image/png' }))).resolves.toMatchObject({
       contentType: 'image/webp',
     });
+  });
+});
+
+describe('containedSize', () => {
+  it('scales a portrait screenshot to fit its long edge, keeping its shape', () => {
+    expect(containedSize(1080, 2340)).toEqual({ width: 473, height: 1024 });
+  });
+
+  it('scales a landscape picture the same way', () => {
+    expect(containedSize(4000, 3000)).toEqual({ width: 1024, height: 768 });
+  });
+
+  it('never scales a small picture up', () => {
+    expect(containedSize(300, 200)).toEqual({ width: 300, height: 200 });
+  });
+});
+
+describe('resizeContained', () => {
+  // A payment QR must not lose its edges to a crop, nor its modules to a lossy
+  // encode, so the picture is drawn whole and PNG is asked for first.
+  it('draws the whole picture, scaled to fit, and asks for a PNG', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 1080, height: 2340 }) as unknown as ImageBitmap));
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    const toBlob = vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(fakeBlob(1, 'image/png'));
+    });
+
+    const result = await resizeContained(new File(['x'], 'qr.png', { type: 'image/png' }));
+
+    expect(result.contentType).toBe('image/png');
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 473, 1024);
+    expect(toBlob.mock.calls[0]?.[1]).toBe('image/png');
+  });
+
+  it('falls back to high-quality WebP when the PNG is over the limit', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 800, height: 600 }) as unknown as ImageBitmap));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback, type?: string) => {
+      callback(type === 'image/png' ? fakeBlob(1_100_000, 'image/png') : fakeBlob(200_000, 'image/webp'));
+    });
+
+    const result = await resizeContained(new File(['x'], 'qr.png', { type: 'image/png' }));
+
+    expect(result.contentType).toBe('image/webp');
+  });
+
+  it('refuses a picture that no encoding brings under 1 MB', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 800, height: 600 }) as unknown as ImageBitmap));
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(fakeBlob(1_100_000, 'image/webp'));
+    });
+
+    await expect(resizeContained(new File(['x'], 'qr.png', { type: 'image/png' }))).rejects.toThrow(/too large/i);
   });
 });
