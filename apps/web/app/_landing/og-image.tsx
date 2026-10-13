@@ -27,9 +27,6 @@ export function ogImage(locale: Locale) {
           <div style={{ display: 'flex', fontSize: 30, fontWeight: 700, color: BRAND.paper, marginBottom: 'auto' }}>{DEMO_SHOP}</div>
           <div style={{ display: 'flex', alignSelf: 'flex-end', maxWidth: 320, padding: '12px 16px', borderRadius: 14, background: BRAND.card, fontSize: 22 }}>{qa.q}</div>
           <div style={{ display: 'flex', maxWidth: 320, marginTop: 12, padding: '12px 16px', borderRadius: 14, background: BRAND.biruMuda, fontSize: 22 }}>{qa.a}</div>
-          <div style={{ display: 'flex', marginTop: 20, padding: '14px 16px', borderRadius: 12, border: `3px solid ${BRAND.biru}`, background: BRAND.paper, color: BRAND.muted, fontSize: 22 }}>
-            {DEMO_QA[1]!.q}
-          </div>
         </div>
       </div>
     ),
