@@ -92,12 +92,12 @@
   --l-font-body: var(--font-plex-sans, 'IBM Plex Sans', system-ui, sans-serif);
 
   /* Headlines are set heavy and tight: Bricolage at 800, close to touching. */
-  --l-weight-display: 800;
+  --l-weight-display: 700;
   --l-leading-tight: 0.98;
   --l-leading-snug: 1.06;
   --l-leading-body: 1.55;
-  --l-tracking-display: -0.04em;
-  --l-tracking-heading: -0.03em;
+  --l-tracking-display: -0.03em;
+  --l-tracking-heading: -0.025em;
   --l-measure: 34em; /* about 68 characters of Plex Sans at body size */
   --l-wordmark: 28px; /* the logotype; a mark, not a step of the text scale */
 
@@ -114,7 +114,7 @@
   --l-space-10: 128px;
   --l-gutter: 16px; /* 390px; widened below */
   --l-max: 1200px;
-  --l-header-h: 88px; /* the floating nav pill plus its top gap; bands pad their tops by this */
+  --l-header-h: 64px; /* the solid nav bar; anchors stop below it */
 
   /*
    * ---- Radii: soft and generous, with a hierarchy ----
@@ -156,7 +156,7 @@
  * landing, so no other page's scrolling changes.
  */
 html:has([data-landing]) {
-  scroll-padding-top: calc(var(--l-header-h, 88px) + 8px);
+  scroll-padding-top: calc(var(--l-header-h, 64px) + 8px);
 }
 
 @media (prefers-reduced-motion: no-preference) {

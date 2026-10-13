@@ -72,6 +72,17 @@ describe('the landing page', () => {
     for (const item of COPY[locale].faq.items) expect(screen.getAllByText(item.q).length).toBeGreaterThan(0);
   });
 
+  it('sends section links through scrollToSection, so the smooth scroll lands on them', async () => {
+    const smooth = await import('./SmoothScroll.js');
+    const spy = vi.spyOn(smooth, 'scrollToSection').mockImplementation(() => {});
+    render(<LandingPage locale="en" />);
+    // fireEvent returns false when the click's default (a jump) was prevented.
+    const proceeded = fireEvent.click(screen.getAllByRole('link', { name: 'Pricing' })[0]!);
+    expect(proceeded).toBe(false);
+    expect(spy).toHaveBeenCalledWith('#pricing');
+    spy.mockRestore();
+  });
+
   it('escapes "<" in structured data, so no copy can close the script tag', () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelector('script[type="application/ld+json"]')!.innerHTML).not.toContain('<');

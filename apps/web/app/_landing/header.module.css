@@ -1,42 +1,30 @@
-/*
- * Sticky, but it takes no room of its own: the negative margin lets the hero
- * band run up underneath it, so the pill floats on colour rather than sitting
- * on a white strip.
- */
+/* A solid bar on paper, in flow: it takes its own room and the hero starts below it. */
 .header {
   position: sticky;
   top: 0;
   z-index: 20;
-  height: var(--l-header-h);
-  margin-bottom: calc(-1 * var(--l-header-h));
-  padding-top: var(--l-space-3);
-  pointer-events: none;
+  background: var(--paper);
+  color: var(--ink);
 }
 
-.pill {
+/* Once the page moves, a hairline under the bar; never a shadow. */
+.header:has([data-scrolled="true"]) {
+  border-bottom: 1px solid var(--line);
+}
+
+.bar {
   display: flex;
   align-items: center;
   gap: var(--l-space-4);
   min-height: 64px;
-  padding: 0 var(--l-space-2) 0 var(--l-space-5);
-  border-radius: var(--l-radius-pill);
-  background: var(--card);
-  color: var(--ink);
-  pointer-events: auto;
-  transition: box-shadow 200ms ease;
 }
 
-/* Floating over content once the page moves: a hairline edge so it never melts into a white band. */
-.pill[data-scrolled='true'] {
-  box-shadow: 0 0 0 1px var(--line);
-}
-
-.link[aria-current='location'] {
+.link[aria-current="location"] {
   background: var(--biru-muda);
   color: var(--l-biru-800);
 }
 
-.pill :focus-visible {
+.bar :focus-visible {
   outline-color: var(--biru);
 }
 
@@ -84,7 +72,7 @@
   background: var(--line);
 }
 
-/* On the white pill the button is always the brand's, whatever band is behind. */
+/* On the paper bar the button is always the brand's, whatever band is behind. */
 .cta {
   --band-btn-bg: var(--biru);
   --band-btn-fg: var(--paper);
@@ -106,10 +94,6 @@
 }
 
 @media (min-width: 768px) {
-  .pill {
-    padding-left: var(--l-space-6);
-  }
-
   .cta {
     padding: 0 var(--l-space-5);
   }
