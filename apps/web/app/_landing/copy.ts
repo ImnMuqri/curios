@@ -46,6 +46,29 @@ export interface LandingCopy {
   claim: { label: string; placeholder: string };
   /** What each photograph should show, until the real ones arrive. */
   photos: { hero: string; setup: string; storm: string };
+  heroScene: {
+    /** Caption 2 and 3; caption 1 is hero.title + hero.sub. */
+    problem: string;
+    fix: string;
+    scrollCue: string;
+  };
+  how: { title: string; steps: Step[] };
+  paid: {
+    title: string;
+    closing: string;
+    /** Accessible name for the progress line. */
+    progressLabel: string;
+  };
+  shopSection: {
+    title: string;
+    points: string[];
+    demoNote: string;
+    /** Heading over the message panel. */
+    messageTitle: string;
+    /** The demo's order button. */
+    orderButton: string;
+  };
+  quiet: { title: string; tiles: Step[] };
   hero: {
     title: string;
     sub: string;
@@ -138,6 +161,43 @@ export const en: LandingCopy = {
     setup: 'An owner pasting her shop’s link into Curios on a laptop, phone beside her',
     storm: 'An owner at her counter, reading her phone between orders, cake boxes stacked behind her',
   },
+  heroScene: {
+    problem: 'Forty people. One question.',
+    fix: 'Answer it once. Your page answers the rest.',
+    scrollCue: 'Scroll to see it answer',
+  },
+  how: {
+    title: 'Three steps from your price list to answers.',
+    steps: [
+      { title: 'Paste your link, or your price list', body: 'It reads your website or the text you paste. Instagram can’t be read, so paste what’s on it instead.' },
+      { title: 'Tick what’s right', body: 'Every fact it found waits for you. Nothing is said until you approve it.' },
+      { title: 'Put one link in your bio', body: 'curios.my/keklina answers from then on, day and night.' },
+    ],
+  },
+  paid: {
+    title: 'What Business does at 11:42 at night.',
+    closing: 'That’s what RM39 pays for.',
+    progressLabel: 'How far through the lead you are',
+  },
+  shopSection: {
+    title: 'Your prices on a shelf. Their order in your WhatsApp.',
+    points: [
+      'One price, or sizes with their own prices',
+      'The chat quotes your shelf’s prices',
+      'The basket arrives as a WhatsApp message',
+    ],
+    demoNote: 'A demo shop. Kek Lina is not a real shop.',
+    messageTitle: 'This is what Lina would get on WhatsApp',
+    orderButton: 'See the order message',
+  },
+  quiet: {
+    title: 'The quiet parts that save you later.',
+    tiles: [
+      { title: 'Malay, English or rojak', body: 'It answers in the language the customer used.' },
+      { title: 'FAQ pages from real questions', body: 'Questions asked three times or more, with your answer, become pages Google can find.' },
+      { title: 'Works with any bio link', body: 'Instagram, TikTok, WhatsApp Business, a QR on your counter.' },
+    ],
+  },
   hero: {
     title: 'Your link in bio answers “berapa harga” for you.',
     sub: 'For shops that sell on Instagram and WhatsApp. Curios answers your customers in Malay or English from the prices and details you approve, and sends you the number of anyone ready to order.',
@@ -217,6 +277,7 @@ export const en: LandingCopy = {
         'Reply on WhatsApp in one tap',
         'FAQ pages Google can find, built from what customers ask',
         'Questions grouped by meaning, so you answer each one once',
+        'Your own shop on your page, orders to your WhatsApp',
       ],
       cta: 'Create a page with 3 free leads',
     },
@@ -249,6 +310,10 @@ export const en: LandingCopy = {
       {
         q: 'What happens after my three free leads?',
         a: 'Your page keeps answering. To keep receiving leads, switch on Business.',
+      },
+      {
+        q: 'Can I sell on my page?',
+        a: 'Yes, on a business page. Add your items with their prices, and a Visit shop tile appears on your page. Customers fill a basket and send it to your WhatsApp.',
       },
       {
         q: 'Can I start with a personal page and switch later?',
@@ -297,6 +362,43 @@ export const ms: LandingCopy = {
     hero: 'A home baker at her counter, holding her phone with her Curios page open',
     setup: 'An owner pasting her shop’s link into Curios on a laptop, phone beside her',
     storm: 'An owner at her counter, reading her phone between orders, cake boxes stacked behind her',
+  },
+  heroScene: {
+    problem: 'Empat puluh orang. Satu soalan.',
+    fix: 'Jawab sekali. Page anda jawab selebihnya.',
+    scrollCue: 'Scroll untuk tengok ia jawab',
+  },
+  how: {
+    title: 'Tiga langkah dari senarai harga ke jawapan.',
+    steps: [
+      { title: 'Tampal link, atau senarai harga', body: 'Ia baca laman web anda atau teks yang anda tampal. Instagram tak boleh dibaca, jadi tampal apa yang ada di situ.' },
+      { title: 'Tanda yang betul', body: 'Setiap fakta yang dijumpai tunggu anda. Tiada apa disebut sampai anda luluskan.' },
+      { title: 'Letak satu link di bio', body: 'curios.my/keklina jawab lepas tu, siang dan malam.' },
+    ],
+  },
+  paid: {
+    title: 'Apa Bisnes buat pukul 11:42 malam.',
+    closing: 'Itulah yang RM39 bayar.',
+    progressLabel: 'Sejauh mana anda dalam cerita lead ini',
+  },
+  shopSection: {
+    title: 'Harga anda di rak. Tempahan mereka di WhatsApp anda.',
+    points: [
+      'Satu harga, atau saiz dengan harga sendiri',
+      'Chat sebut harga dari rak anda',
+      'Bakul sampai sebagai mesej WhatsApp',
+    ],
+    demoNote: 'Kedai demo. Kek Lina bukan kedai sebenar.',
+    messageTitle: 'Ini yang Lina akan dapat di WhatsApp',
+    orderButton: 'Tengok mesej tempahan',
+  },
+  quiet: {
+    title: 'Benda kecil yang selamatkan anda nanti.',
+    tiles: [
+      { title: 'BM, English atau rojak', body: 'Ia jawab dalam bahasa yang pelanggan guna.' },
+      { title: 'Page FAQ dari soalan sebenar', body: 'Soalan yang ditanya tiga kali atau lebih, dengan jawapan anda, jadi page yang Google boleh jumpa.' },
+      { title: 'Guna dengan mana-mana link bio', body: 'Instagram, TikTok, WhatsApp Business, QR di kaunter.' },
+    ],
   },
   hero: {
     title: 'Biar link bio yang jawab “berapa harga”.',
@@ -377,6 +479,7 @@ export const ms: LandingCopy = {
         'Balas di WhatsApp dengan sekali tekan',
         'Page FAQ yang Google boleh jumpa, dari soalan pelanggan',
         'Soalan dikumpul ikut maksud, jadi anda jawab sekali sahaja',
+        'Kedai sendiri di page anda, tempahan ke WhatsApp anda',
       ],
       cta: 'Buat page dengan 3 lead percuma',
     },
@@ -409,6 +512,10 @@ export const ms: LandingCopy = {
       {
         q: 'Apa jadi lepas tiga lead percuma?',
         a: 'Page anda terus menjawab. Untuk terus terima lead, buka Bisnes.',
+      },
+      {
+        q: 'Boleh saya jual di page saya?',
+        a: 'Boleh, di page bisnes. Masukkan barang dengan harganya, dan tile Lawati kedai muncul di page anda. Pelanggan isi bakul dan hantar ke WhatsApp anda.',
       },
       {
         q: 'Boleh saya mula dengan page peribadi, dan tukar kemudian?',

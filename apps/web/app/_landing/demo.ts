@@ -18,6 +18,15 @@ import type { BentoPageProps } from '../_bento/BentoPage.js';
  */
 export const DEMO_SHOP = 'Kek Lina';
 
+export interface ShopDemoItem {
+  id: string;
+  name: string;
+  description: string | null;
+  photoUrl: string | null;
+  priceCents: number | null;
+  options: { id: string; label: string; priceCents: number }[];
+}
+
 export interface Demo {
   page: Omit<BentoPageProps, 'children'>;
   /** What the hero's input offers, and what each answers -- the shop's approved facts. */
@@ -50,6 +59,8 @@ export interface Demo {
    * a count of these, not a claim about anyone's inbox.
    */
   storm: ReadonlyArray<string>;
+  /** The demo shop's shelf: one item with sizes, two with one price. */
+  items: ReadonlyArray<ShopDemoItem>;
 }
 
 /** The shop's look, the same in every language. */
@@ -123,6 +134,12 @@ export const DEMO_EN: Demo = {
     'how much is 1kg', 'may i know the price', 'cake price?', 'how much ah sis', 'chocolate cake price?',
     'how much for one', 'price ah?', 'pm price',
   ],
+  items: [
+    { id: 'demo-batik', name: 'Kek Batik', description: 'Nutella, keeps 5 days.', photoUrl: null, priceCents: null,
+      options: [{ id: 'demo-batik-1', label: '1kg', priceCents: 9500 }, { id: 'demo-batik-2', label: '2kg', priceCents: 17000 }] },
+    { id: 'demo-cookies', name: 'Cookies balang', description: null, photoUrl: null, priceCents: 2500, options: [] },
+    { id: 'demo-brownies', name: 'Brownies kotak', description: null, photoUrl: null, priceCents: 3850, options: [] },
+  ],
 };
 
 export const DEMO_MS: Demo = {
@@ -169,5 +186,11 @@ export const DEMO_MS: Demo = {
     'kek ni brp', '1kg how much', 'boleh tau harga?', 'quote pls', 'berapa kak?',
     'price ah?', 'hm berapa', 'tanya harga', 'brp ye kak', 'harga??', 'how much this',
     'chocolate 1kg price', 'brp sekarang', 'rate?',
+  ],
+  items: [
+    { id: 'demo-batik', name: 'Kek Batik', description: 'Nutella, tahan 5 hari.', photoUrl: null, priceCents: null,
+      options: [{ id: 'demo-batik-1', label: '1kg', priceCents: 9500 }, { id: 'demo-batik-2', label: '2kg', priceCents: 17000 }] },
+    { id: 'demo-cookies', name: 'Cookies balang', description: null, photoUrl: null, priceCents: 2500, options: [] },
+    { id: 'demo-brownies', name: 'Brownies kotak', description: null, photoUrl: null, priceCents: 3850, options: [] },
   ],
 };

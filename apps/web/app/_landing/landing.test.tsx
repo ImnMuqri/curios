@@ -119,6 +119,37 @@ describe('copy', () => {
     expect(document.body.textContent).not.toMatch(/—/);
   });
 
+  it('has the new sections in both languages, with the counts the layout expects', () => {
+    for (const copy of [en, ms]) {
+      expect(copy.how.steps).toHaveLength(3);
+      expect(copy.quiet.tiles).toHaveLength(3);
+      expect(copy.shopSection.points).toHaveLength(3);
+      expect(copy.heroScene.problem.length).toBeGreaterThan(0);
+      expect(copy.paid.closing).toMatch(/RM39/);
+    }
+  });
+
+  it('sells the shop only as it exists today: a basket sent to WhatsApp, nothing about paying', () => {
+    for (const copy of [en, ms]) {
+      const text = JSON.stringify(copy.shopSection);
+      expect(text).toMatch(/WhatsApp/);
+      expect(text).not.toMatch(/DuitNow|FPX|receipt|resit/i);
+    }
+  });
+
+  it('gives the demo shop the three items the spec lists, priced in sen', () => {
+    for (const demo of [DEMO_EN, DEMO_MS]) {
+      expect(demo.items.map((i) => i.priceCents ?? i.options.map((o) => o.priceCents))).toEqual([[9500, 17000], 2500, 3850]);
+    }
+  });
+
+  it('names the shop tile exactly as the shop does', () => {
+    const shopTile = { en: 'Visit shop', ms: 'Lawati kedai' };
+    for (const copy of [en, ms]) {
+      expect(JSON.stringify(copy.faq)).toContain(shopTile[copy.locale]);
+    }
+  });
+
   it('never claims Instagram import, which does not exist', () => {
     // apps/workers/src/sources/instagram.adapter.ts throws NOT_CONFIGURED.
     for (const copy of [en, ms]) {
