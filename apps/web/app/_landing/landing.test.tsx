@@ -4,7 +4,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 // The page mounts SmoothScroll; jsdom has no ResizeObserver for Lenis, and these tests never scroll.
-vi.mock('./SmoothScroll.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('./SmoothScroll.js')>()), SmoothScroll: () => null }));
+const { smoothScrollRendered } = vi.hoisted(() => ({ smoothScrollRendered: vi.fn() }));
+vi.mock('./SmoothScroll.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./SmoothScroll.js')>()),
+  SmoothScroll: () => {
+    smoothScrollRendered();
+    return null;
+  },
+}));
 
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, en, ms } from './copy.js';
@@ -15,6 +22,12 @@ import { BusinessPrice } from './BusinessPrice.js';
 const LOCALES = ['en', 'ms'] as const;
 
 describe('the landing page', () => {
+  it.each(LOCALES)('%s: mounts the smooth scroll', (locale) => {
+    smoothScrollRendered.mockClear();
+    render(<LandingPage locale={locale} />);
+    expect(smoothScrollRendered).toHaveBeenCalled();
+  });
+
   it.each(LOCALES)('%s: has exactly one h1, and headings never skip a level', (locale) => {
     const { container } = render(<LandingPage locale={locale} />);
     expect(container.querySelectorAll('h1')).toHaveLength(1);

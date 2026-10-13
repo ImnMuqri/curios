@@ -72,20 +72,6 @@
   --band-focus: var(--paper);
 }
 
-/* biru-800: paper 12.3:1, headline biru-muda 11.2:1, soft biru-200 8.3:1. */
-.bandDeep {
-  composes: band;
-  --band-bg: var(--l-biru-800);
-  --band-text: var(--paper);
-  --band-head: var(--biru-muda);
-  --band-soft: var(--l-biru-200);
-  --band-btn-bg: var(--biru-muda);
-  --band-btn-fg: var(--l-biru-800);
-  --band-btn-hover: var(--paper);
-  --band-line: var(--l-biru-300);
-  --band-focus: var(--paper);
-}
-
 /* kuning-100: ink 14.2:1, headline kuning-900 9.5:1. Body stays ink: --muted fails here (4.40:1), and orange paragraphs read as decoration. */
 .bandKuning {
   composes: band;

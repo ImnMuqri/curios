@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent } from 'react';
-import { HANDLE_TYPED_EVENT, rememberWantedHandle, tidyHandle } from '../../lib/wanted-handle.js';
+import { rememberWantedHandle } from '../../lib/wanted-handle.js';
 import base from './landing.module.css';
 import styles from './claim.module.css';
 
@@ -27,11 +27,6 @@ export function ClaimField({
   function remember(event: FormEvent<HTMLFormElement>) {
     const handle = new FormData(event.currentTarget).get('handle');
     rememberWantedHandle(typeof handle === 'string' ? handle : '');
-  }
-
-  // Tell the demo page beside the field, so it shows this address as it is typed.
-  function echo(value: string) {
-    window.dispatchEvent(new CustomEvent(HANDLE_TYPED_EVENT, { detail: tidyHandle(value) }));
   }
 
   return (

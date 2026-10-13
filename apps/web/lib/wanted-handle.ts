@@ -44,9 +44,3 @@ export function forgetWantedHandle(): void {
     // Nothing to clean up if storage was never reachable.
   }
 }
-
-/**
- * Fired on window as someone types into a curios.my/ field, with the tidied
- * handle as `detail`, so the demo page beside it can show their address live.
- */
-export const HANDLE_TYPED_EVENT = 'curios:handle-typed';
