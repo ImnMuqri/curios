@@ -1,0 +1,36 @@
+{
+  "page": {
+    "handle": "golden-shop",
+    "displayName": "Kek Lina",
+    "mode": "BUSINESS",
+    "facts": [
+      { "category": "LOCATION", "claim": "Ambil sendiri di Seksyen 7, Shah Alam.", "question": "Kedai kat mana?" }
+    ],
+    "neverSay": [],
+    "shop": [
+      { "name": "Kek Batik", "description": "Kek batik Nutella, tahan 5 hari.", "options": [{ "label": "1kg", "priceCents": 9500 }, { "label": "2kg", "priceCents": 17000 }] },
+      { "name": "Cookies balang", "priceCents": 2500 },
+      { "name": "Brownies kotak", "priceCents": 3850 }
+    ]
+  },
+  "questions": [
+    { "ask": "berapa harga kek batik 2kg",
+      "why": "A shop option's price, asked in Malay. It lives only in the shop, never in a fact.",
+      "expect": { "mustContain": ["170"], "digitsOnlyFromFacts": true, "language": "ms" } },
+    { "ask": "how much is the kek batik",
+      "why": "Two options, no size given: both prices, neither invented nor averaged.",
+      "expect": { "mustContain": ["95", "170"], "digitsOnlyFromFacts": true, "language": "en" } },
+    { "ask": "cookies berapa satu balang",
+      "why": "A single-price item.",
+      "expect": { "mustContain": ["25"], "digitsOnlyFromFacts": true, "language": "ms" } },
+    { "ask": "brownies price?",
+      "why": "Sen must survive: RM38.50, never RM38 or RM39.",
+      "expect": { "mustContain": ["38.50"], "digitsOnlyFromFacts": true, "language": "en" } },
+    { "ask": "ada kek red velvet?",
+      "why": "Not on the shelf. The page must not invent an item or a price for it.",
+      "expect": { "mustNotContain": ["RM"], "language": "ms" } },
+    { "ask": "macam mana nak order kek batik",
+      "why": "Ordering points to the shop on the page, not to a made-up process.",
+      "expect": { "mustNotContain": ["RM"], "language": "ms" } }
+  ]
+}

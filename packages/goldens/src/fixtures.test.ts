@@ -2,7 +2,14 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { loadFixtures, toFactCreateInput, validateFixture, type GoldenFixture } from './fixtures.js';
+import {
+  knowledgeText,
+  loadFixtures,
+  toFactCreateInput,
+  toItemCreateInput,
+  validateFixture,
+  type GoldenFixture,
+} from './fixtures.js';
 
 /** A fixture with one fact and one question, valid, for tests to bend one way. */
 const valid = (): GoldenFixture => ({
@@ -133,6 +140,87 @@ describe('validateFixture', () => {
     });
 
     expect(problems).toContainEqual(expect.stringContaining('1 of 2 facts carry a question'));
+  });
+});
+
+/** A page with no facts at all, only a shop. */
+const shopOnly = (): GoldenFixture => ({
+  page: {
+    handle: 'golden-shop',
+    displayName: 'Kek Lina',
+    mode: 'BUSINESS',
+    facts: [],
+    neverSay: [],
+    shop: [{ name: 'Kek Batik', options: [{ label: '1kg', priceCents: 9500 }] }],
+  },
+  questions: [{ ask: 'berapa harga kek batik', why: 'Shop price.', expect: { mustContain: ['95'] } }],
+});
+
+describe('shop fixtures', () => {
+  it('does not call a page with a shop and no facts empty, and finds its prices', () => {
+    expect(validateFixture('shop', shopOnly())).toEqual([]);
+  });
+
+  it('still refuses a page with neither facts nor a shop', () => {
+    const fixture = shopOnly();
+    delete fixture.page.shop;
+
+    expect(validateFixture('shop', fixture)).toContain('shop: the page has no facts');
+  });
+
+  it('refuses a mustContain that neither a fact nor a shop price could satisfy', () => {
+    const fixture = shopOnly();
+    fixture.questions[0]!.expect = { mustContain: ['170'] };
+
+    expect(validateFixture('shop', fixture)).toEqual([
+      'shop: question 1 expects "170", which appears in no fact on this page',
+    ]);
+  });
+
+  it('knowledgeText lists each fact claim, then each item with its price line', () => {
+    const fixture = shopOnly();
+    fixture.page.facts = [{ category: 'LOCATION', claim: 'Ambil sendiri.' }];
+    fixture.page.shop!.push({ name: 'Cookies', priceCents: 2500 }, { name: 'Brownies', priceCents: 3850 });
+
+    expect(knowledgeText(fixture.page)).toEqual([
+      'Ambil sendiri.',
+      'Kek Batik 1kg RM95',
+      'Cookies RM25',
+      'Brownies RM38.50',
+    ]);
+    expect(knowledgeText(shopOnly().page)).toEqual(['Kek Batik 1kg RM95']);
+  });
+});
+
+describe('toItemCreateInput', () => {
+  it('writes an option item with no price of its own, positions in order', () => {
+    expect(
+      toItemCreateInput(
+        { name: 'Kek Batik', description: 'Nutella.', priceCents: 1, options: [{ label: '1kg', priceCents: 9500 }, { label: '2kg', priceCents: 17000 }] },
+        2,
+      ),
+    ).toEqual({
+      name: 'Kek Batik',
+      description: 'Nutella.',
+      priceCents: null,
+      position: 2,
+      options: {
+        create: [
+          { label: '1kg', priceCents: 9500, position: 0 },
+          { label: '2kg', priceCents: 17000, position: 1 },
+        ],
+      },
+    });
+  });
+
+  it('writes a single-price item with null description and no options', () => {
+    expect(toItemCreateInput({ name: 'Cookies', priceCents: 2500 }, 0)).toEqual({
+      name: 'Cookies',
+      description: null,
+      priceCents: 2500,
+      position: 0,
+      options: { create: [] },
+    });
   });
 });
 

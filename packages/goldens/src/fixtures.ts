@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { normalizeClaim, type FactCategory } from '@curios/core';
+import { priceLine } from '@curios/core/store';
 import type { Expectation } from './rules.js';
 
 /**
@@ -31,12 +32,22 @@ export interface GoldenQuestion {
   expect: Expectation;
 }
 
+export interface GoldenItem {
+  name: string;
+  description?: string;
+  /** The item's one price. Ignored when `options` is set, as in the real shop. */
+  priceCents?: number;
+  options?: { label: string; priceCents: number }[];
+}
+
 export interface GoldenPage {
   handle: string;
   displayName: string;
   mode: 'PERSONAL' | 'BUSINESS';
   facts: GoldenFact[];
   neverSay: string[];
+  /** Present means a shop: the page is seeded with `storeEnabled` and these items. */
+  shop?: GoldenItem[];
 }
 
 export interface GoldenFixture {
@@ -82,6 +93,32 @@ export function toFactCreateInput(fact: GoldenFact): FactCreateInput {
   };
 }
 
+/** One golden shop item, shaped for Prisma's nested `Item.create`. */
+export function toItemCreateInput(item: GoldenItem, position: number) {
+  const options = item.options ?? [];
+  return {
+    name: item.name,
+    description: item.description ?? null,
+    // An item with options carries no price of its own, as the editor saves it.
+    priceCents: options.length > 0 ? null : (item.priceCents ?? null),
+    position,
+    options: { create: options.map((option, i) => ({ ...option, position: i })) },
+  };
+}
+
+/**
+ * Everything the page can truthfully say: each fact claim, then each shop item
+ * as "<name> <price line>". The one list both validation and the run's
+ * `digitsOnlyFromFacts` check read, so a price that lives only in the shop is
+ * neither "in no fact" nor an invented number.
+ */
+export function knowledgeText(page: GoldenPage): string[] {
+  const items = (page.shop ?? []).map((item) =>
+    `${item.name} ${priceLine({ priceCents: item.options?.length ? null : (item.priceCents ?? null), options: item.options ?? [] })}`.trim(),
+  );
+  return [...page.facts.map((fact) => fact.claim), ...items];
+}
+
 /**
  * Whether a question can fail at all.
  *
@@ -109,10 +146,11 @@ export function validateFixture(name: string, fixture: GoldenFixture): string[] 
   if (!page.handle.startsWith(GOLDEN_HANDLE_PREFIX)) {
     problems.push(`${name}: handle "${page.handle}" must start with "${GOLDEN_HANDLE_PREFIX}"`);
   }
-  if (page.facts.length === 0) problems.push(`${name}: the page has no facts`);
+  const knowledge = knowledgeText(page);
+  if (knowledge.length === 0) problems.push(`${name}: the page has no facts`);
   if (questions.length === 0) problems.push(`${name}: the page has no questions`);
 
-  const factText = page.facts.map((fact) => fact.claim).join(' ').toLowerCase();
+  const factText = knowledge.join(' ').toLowerCase();
   const asked = new Set<string>();
 
   questions.forEach((question, index) => {
@@ -126,10 +164,10 @@ export function validateFixture(name: string, fixture: GoldenFixture): string[] 
     if (asked.has(normalisedAsk)) problems.push(`${at} "${question.ask}" is asked twice`);
     asked.add(normalisedAsk);
 
-    // Skipped when the page has no facts at all: that is already reported
-    // above, and checking against an empty page here would only pile a
-    // second, misleading problem onto every mustContain question.
-    if (page.facts.length > 0) {
+    // Skipped when the page has no facts and no shop: that is already
+    // reported above, and checking against an empty page here would only pile
+    // a second, misleading problem onto every mustContain question.
+    if (knowledge.length > 0) {
       for (const needle of question.expect.mustContain ?? []) {
         if (!factText.includes(needle.toLowerCase())) {
           problems.push(`${at} expects "${needle}", which appears in no fact on this page`);

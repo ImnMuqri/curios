@@ -8,11 +8,12 @@ import { loadFixtures, validateFixture, type GoldenFixture } from './fixtures.js
 const DIR = join(import.meta.dirname, '..', '..', '..', 'fixtures', 'goldens');
 
 describe('the fixtures this repo ships', () => {
-  it('are the four this repo ships', () => {
+  it('are the five this repo ships', () => {
     // `catalog` joined the three original fixtures in Task 8 -- it is the
     // page big enough to exercise retrieval, and the other three stay small
-    // on purpose. See the two describe blocks below.
-    expect(loadFixtures(DIR).map((f) => f.name)).toEqual(['business', 'catalog', 'hostile', 'personal']);
+    // on purpose. `shop` joined in slice 17: a page whose prices live only in
+    // its shop. See the describe blocks below.
+    expect(loadFixtures(DIR).map((f) => f.name)).toEqual(['business', 'catalog', 'hostile', 'personal', 'shop']);
   });
 
   it('are all usable', () => {
@@ -34,7 +35,8 @@ describe('the fixtures this repo ships', () => {
 
   it('ask twenty questions each, as BACKEND.md says', () => {
     for (const { name, fixture } of loadFixtures(DIR)) {
-      expect(fixture.questions, name).toHaveLength(20);
+      // `shop` is the one exception: six questions, all about prices.
+      expect(fixture.questions, name).toHaveLength(name === 'shop' ? 6 : 20);
     }
   });
 });

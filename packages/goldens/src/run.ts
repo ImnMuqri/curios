@@ -12,7 +12,7 @@ import {
 } from '@curios/embeddings';
 import { CHAT_MODEL, createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { checkAnswer, failed } from './rules.js';
-import { loadFixtures, toFactCreateInput, type GoldenQuestion, type LoadedFixture } from './fixtures.js';
+import { knowledgeText, loadFixtures, toFactCreateInput, toItemCreateInput, type GoldenQuestion, type LoadedFixture } from './fixtures.js';
 import {
   formatReport,
   formatRetrievalTally,
@@ -145,6 +145,18 @@ async function seed(
           // is what gives it a test seam this file cannot offer on its own.
           facts: { create: page.facts.map(toFactCreateInput) },
           neverSay: { create: page.neverSay.map((phrase) => ({ phrase })) },
+          // A shop fixture is a page with the shop switched on and a way to
+          // pay, so the SHOP block reaches the prompt as it would in production.
+          ...(page.shop
+            ? {
+                storeEnabled: true,
+                pickupEnabled: true,
+                bankName: 'Maybank',
+                bankAccountName: page.displayName,
+                bankAccountNumber: '5140123456',
+                items: { create: page.shop.map(toItemCreateInput) },
+              }
+            : {}),
         },
       },
     },
@@ -220,7 +232,7 @@ async function askAndCheck(
     verdicts: checkAnswer({
       answer: text,
       question: question.ask,
-      facts: fixture.page.facts.map((fact) => fact.claim),
+      facts: knowledgeText(fixture.page),
       neverSay: fixture.page.neverSay,
       expect: question.expect,
     }),
