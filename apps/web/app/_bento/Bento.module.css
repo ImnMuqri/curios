@@ -321,7 +321,7 @@
   transition: transform 120ms ease;
 }
 
-/* The shop's tile: the shop's own photo behind the words, under a flat scrim (no gradient behind text). */
+/* The shop's tile: the shop's own photo behind the words, dimmed into the ink (no gradient behind text). */
 .tile[data-shop] { position: relative; overflow: hidden; }
 .tile[data-shop] .kind,
 .tile[data-shop] .label { position: relative; z-index: 1; }
@@ -331,7 +331,8 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.45;
+  /* At 0.30 even a white photo composites no lighter than about #5e626b, which keeps the 12px paper caption above 4.5:1. */
+  opacity: 0.3;
 }
 .tile[data-shop]:has(.shopPhoto) { background: var(--ink); color: var(--paper); }
 .tile[data-shop]:has(.shopPhoto) .kind { opacity: 1; }
