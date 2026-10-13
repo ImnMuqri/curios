@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type RefObject } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { loadMotion, prefersReducedMotion } from './motion.js';
 
 /**
@@ -15,6 +15,9 @@ import { loadMotion, prefersReducedMotion } from './motion.js';
  */
 export function useScrub(ref: RefObject<HTMLElement | null>, options: { scrub: number; onProgress?: (p: number) => void }): void {
   const { scrub, onProgress } = options;
+  // A ref, so a caller's fresh callback each render never rebuilds the trigger.
+  const cb = useRef(onProgress);
+  cb.current = onProgress;
   useEffect(() => {
     const node = ref.current;
     if (!node || prefersReducedMotion()) return;
@@ -32,7 +35,7 @@ export function useScrub(ref: RefObject<HTMLElement | null>, options: { scrub: n
           start: 'top top',
           end: 'bottom bottom',
           scrub,
-          onUpdate: (self) => onProgress?.(self.progress),
+          onUpdate: (self) => cb.current?.(self.progress),
         },
       });
       kill = () => {
@@ -44,5 +47,5 @@ export function useScrub(ref: RefObject<HTMLElement | null>, options: { scrub: n
       cancelled = true;
       kill?.();
     };
-  }, [ref, scrub, onProgress]);
+  }, [ref, scrub]);
 }

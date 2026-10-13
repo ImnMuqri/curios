@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const APP = join(__dirname, '..'); // apps/web/app
 const WEB = join(APP, '..'); // apps/web
+const LANDING = `_landing${sep}`;
 
 function files(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -13,11 +14,28 @@ function files(dir: string): string[] {
   });
 }
 
+// Any mention of the libraries as a module: static, side-effect, dynamic, re-export.
+const ANY = /(?:from|import)\s*\(?\s*['"](?:gsap|lenis)/;
+// The only forms allowed in motion.ts: import('gsap...') and typeof import('gsap...').
+const ALLOWED = /(?:typeof\s+)?import\s*\(\s*['"](?:gsap|lenis)[^'"]*['"]\s*\)/g;
+
 describe('the landing motion libraries', () => {
   it('are imported only from app/_landing', () => {
     const offenders = files(WEB)
-      .filter((path) => !relative(APP, path).startsWith(`_landing${sep}`))
-      .filter((path) => /(?:from|import)\s*\(?\s*['"](?:gsap|lenis)/.test(readFileSync(path, 'utf8')));
+      .filter((path) => !relative(APP, path).startsWith(LANDING))
+      .filter((path) => ANY.test(readFileSync(path, 'utf8')));
+    expect(offenders).toEqual([]);
+  });
+
+  it('inside app/_landing, only motion.ts reaches them, and only on demand', () => {
+    const offenders = files(join(APP, '_landing'))
+      .filter((path) => /\.tsx?$/.test(path) && !/\.test\.tsx?$/.test(path))
+      .filter((path) => {
+        const src = readFileSync(path, 'utf8');
+        if (!path.endsWith(`${sep}motion.ts`)) return ANY.test(src);
+        // In motion.ts, strip the allowed dynamic forms; anything left is static.
+        return ANY.test(src.replace(ALLOWED, ''));
+      });
     expect(offenders).toEqual([]);
   });
 
