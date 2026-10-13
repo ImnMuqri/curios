@@ -115,6 +115,7 @@
   --l-gutter: 16px; /* 390px; widened below */
   --l-max: 1200px;
   --l-header-h: 64px; /* the solid nav bar; anchors stop below it */
+  --l-section-pad: clamp(72px, 10vw, 128px); /* a section's top and bottom padding */
 
   /*
    * ---- Radii: soft and generous, with a hierarchy ----

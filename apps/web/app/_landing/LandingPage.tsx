@@ -6,6 +6,7 @@ import { HeroScene } from './HeroScene.js';
 import { PaidMoment } from './PaidMoment.js';
 import { ShopSection } from './ShopSection.js';
 import { Trust } from './Trust.js';
+import { QuietParts } from './QuietParts.js';
 import { HowItWorks } from './HowItWorks.js';
 import { Pricing } from './Pricing.js';
 import { Faq } from './Faq.js';
@@ -70,6 +71,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
         <PaidMoment copy={copy} />
         <ShopSection copy={copy} />
         <Trust copy={copy} />
+        <QuietParts copy={copy} />
         <Pricing copy={copy} />
         <Faq copy={copy} />
       </main>

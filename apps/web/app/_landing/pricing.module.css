@@ -1,10 +1,10 @@
 /*
- * Surface band. Personal is a white card; Business is a biru card (it takes
+ * Paper band. Personal is a white card; Business is a biru card (it takes
  * the biru band's roles, so its text and button colours follow), wider.
  */
 
 .pricing {
-  padding: var(--l-space-9) 0 var(--l-space-10);
+  padding-block: var(--l-section-pad);
 }
 
 .plans {
@@ -22,6 +22,7 @@
 }
 
 .personal {
+  border: 1px solid var(--line);
   background: var(--card);
 }
 

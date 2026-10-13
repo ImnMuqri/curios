@@ -436,3 +436,22 @@ describe('the shop section', () => {
     expect(document.activeElement).toBe(panel);
   });
 });
+
+describe('trust, quiet parts, pricing, FAQ and closing', () => {
+  it.each(LOCALES)('%s: the quiet parts are three tiles', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    expect(container.querySelectorAll('#quiet li')).toHaveLength(3);
+  });
+
+  it.each(LOCALES)('%s: the Business plan includes the shop, and the FAQ answers selling', (locale) => {
+    const copy = COPY[locale];
+    const { container } = render(<LandingPage locale={locale} />);
+    expect(container.querySelector('#pricing')).toHaveTextContent(copy.pricing.business.points[2]!);
+    expect(container.querySelector('#faq')).toHaveTextContent(copy.faq.items.find((i) => /sell|jual/i.test(i.q))!.q);
+  });
+
+  it('closes on the ink band', () => {
+    const { container } = render(<LandingPage locale="en" />);
+    expect(container.querySelector('#final-title')!.closest('[class*="bandInk"]')).not.toBeNull();
+  });
+});

@@ -6,12 +6,12 @@ import base from './landing.module.css';
 import styles from './closing.module.css';
 
 /**
- * The last ask, on the deep biru band: the curios.my/ field again, so the
+ * The last ask, on the ink band: the curios.my/ field again, so the
  * page ends where it started. The footer is a white card on the same band.
  */
 export function Closing({ copy, otherHome }: { copy: LandingCopy; otherHome: string }) {
   return (
-    <div className={`${base.bandDeep} ${styles.closing}`}>
+    <div className={`${base.bandInk} ${styles.closing}`}>
       <section className={styles.final} aria-labelledby="final-title">
         <div className={base.wrap}>
           <Reveal>

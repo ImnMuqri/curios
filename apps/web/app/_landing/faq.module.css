@@ -1,5 +1,5 @@
 .faq {
-  padding: var(--l-space-9) 0 var(--l-space-10);
+  padding-block: var(--l-section-pad);
 }
 
 .grid {

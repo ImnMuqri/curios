@@ -6,7 +6,7 @@
  */
 
 .trust {
-  padding: var(--l-space-10) 0 var(--l-space-9);
+  padding-block: var(--l-section-pad);
 }
 
 .grid {
@@ -25,7 +25,8 @@
 
 .list {
   padding: var(--l-space-6) var(--l-space-6) var(--l-space-5);
-  border-radius: var(--l-radius-card);
+  border: 1px solid var(--line);
+  border-radius: 20px;
   background: var(--card);
   color: var(--ink);
 }

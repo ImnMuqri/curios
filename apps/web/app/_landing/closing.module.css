@@ -1,11 +1,11 @@
-/* The deep biru band: the last ask, then the footer as a white card on it. */
+/* The ink band: the last ask, then the footer as a white card on it. */
 
 .closing {
   padding-bottom: var(--l-space-5);
 }
 
 .final {
-  padding: var(--l-space-10) 0 var(--l-space-9);
+  padding-block: var(--l-section-pad);
 }
 
 .title {

@@ -10,7 +10,7 @@ import styles from './faq.module.css';
  */
 export function Faq({ copy }: { copy: LandingCopy }) {
   return (
-    <section className={`${base.bandPaper} ${styles.faq}`} id="faq" aria-labelledby="faq-title">
+    <section className={`${base.bandSurface} ${styles.faq}`} id="faq" aria-labelledby="faq-title">
       <div className={`${base.wrap} ${styles.grid}`}>
         <Reveal>
           <h2 id="faq-title" className={base.h2}>
