@@ -16,7 +16,8 @@ export function ShopSection({ copy }: { copy: LandingCopy }) {
             ))}
           </ul>
         </Reveal>
-        <ShopDemo copy={copy} />
+        {/* Only plain data crosses to the client component: the whole copy holds functions. */}
+        <ShopDemo locale={copy.locale} shop={copy.shop} text={copy.shopSection} />
       </div>
     </section>
   );
