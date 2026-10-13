@@ -97,7 +97,8 @@ function pricingOf(draft: PricingDraft): { pricing: Pricing } | { error: string 
 function checkFields(name: string, description: string, draft: PricingDraft): { name: string; description: string | null; pricing: Pricing } | { error: string } {
   const trimmed = name.trim();
   if (trimmed === '' || [...trimmed].length > ITEM_NAME_MAX) return { error: NAME_SENTENCE };
-  if ([...description].length > ITEM_DESCRIPTION_MAX) return { error: DESCRIPTION_SENTENCE };
+  // The server trims before it counts, so a description that fits once trimmed is not refused for its spaces.
+  if ([...description.trim()].length > ITEM_DESCRIPTION_MAX) return { error: DESCRIPTION_SENTENCE };
   const priced = pricingOf(draft);
   if ('error' in priced) return priced;
   return { name: trimmed, description: description.trim() || null, pricing: priced.pricing };

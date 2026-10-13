@@ -166,6 +166,15 @@ describe('ShopView', () => {
     expect(screen.queryByText(/in basket/)).toBeNull();
   });
 
+  it('keeps the valid lines of a saved basket and drops the rest', async () => {
+    window.sessionStorage.setItem(
+      'curios-basket:nadia',
+      JSON.stringify([null, 7, { itemId: 'cookie', optionId: null, quantity: 0 }, { itemId: 'cookie', optionId: null, quantity: 1.5 }, { itemId: 'cookie', optionId: null, quantity: 1 }]),
+    );
+    render(<ShopView {...base} />);
+    expect(await screen.findByText('1 in basket · RM25')).toBeInTheDocument();
+  });
+
   it('ignores a garbled saved basket', async () => {
     window.sessionStorage.setItem('curios-basket:nadia', '{not json');
     render(<ShopView {...base} />);

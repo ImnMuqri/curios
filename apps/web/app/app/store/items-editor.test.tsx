@@ -51,6 +51,17 @@ describe('ItemsEditor', () => {
     expect(await screen.findByRole('listitem', { name: 'Cookies balang' })).toBeInTheDocument();
   });
 
+  it('counts the description the way the server will, without its surrounding spaces', async () => {
+    const api = setup([]);
+    await startAdd();
+    await userEvent.type(screen.getByLabelText('Price (RM)'), '25');
+    const description = screen.getByLabelText('Description');
+    await userEvent.click(description);
+    await userEvent.paste(`${'a'.repeat(280)}   `);
+    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    expect(api.add).toHaveBeenCalledWith({ name: 'Cookies balang', description: 'a'.repeat(280), pricing: { kind: 'single', priceCents: 2500 } });
+  });
+
   it('adds an item with options', async () => {
     const api = setup([]);
     await startAdd();

@@ -11,12 +11,25 @@ type ViewItem = ShopItem & { photoUrl: string | null };
 
 const storageKey = (handle: string) => `curios-basket:${handle}`;
 
+/** Storage is the visitor's to edit, so each saved line is checked before anything prices or counts it. */
+function isBasketLine(value: unknown): value is BasketLine {
+  if (typeof value !== 'object' || value === null) return false;
+  const line = value as Record<string, unknown>;
+  return (
+    typeof line.itemId === 'string' &&
+    (line.optionId === null || typeof line.optionId === 'string') &&
+    typeof line.quantity === 'number' &&
+    Number.isInteger(line.quantity) &&
+    line.quantity > 0
+  );
+}
+
 /** sessionStorage can be missing or throw (private windows, blocked storage); the basket then lives in memory only. */
 function readBasket(handle: string): BasketLine[] {
   try {
     const raw = window.sessionStorage.getItem(storageKey(handle));
     const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? (parsed as BasketLine[]) : [];
+    return Array.isArray(parsed) ? parsed.filter(isBasketLine) : [];
   } catch {
     return [];
   }
