@@ -106,6 +106,13 @@ export const DOMAIN_ERROR_CODES = new Set([
   // one above, and listed for the same reason: the web app says what is actually true
   // rather than "something failed on our side".
   'STORAGE_NOT_CONFIGURED',
+  // The shop (slice 17): each says what the owner can change.
+  'STORE_BUSINESS_ONLY',
+  'STORE_NOT_READY',
+  'INVALID_STORE_SETTING',
+  'INVALID_ITEM',
+  'ITEM_LIMIT',
+  'ITEM_ORDER_STALE',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --

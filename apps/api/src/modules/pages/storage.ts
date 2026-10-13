@@ -58,3 +58,14 @@ export function createS3Store(env: NodeJS.ProcessEnv = process.env): AvatarStore
     },
   };
 }
+
+/**
+ * The store a route plugin uploads to: the one a test passed, none when a test
+ * passed null, otherwise one built from the environment -- or none in
+ * development with no storage settings. Resolved at registration, so a
+ * production deploy with a missing setting fails at boot, not on an upload.
+ */
+export function resolveStore(option: AvatarStore | null | undefined): AvatarStore | null {
+  if (option !== undefined) return option;
+  return storageDisabled() ? null : createS3Store();
+}

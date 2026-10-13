@@ -6,7 +6,7 @@ import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
 import { claimHandle, NoPageError, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
-import { createS3Store, storageDisabled, type AvatarStore } from './storage.js';
+import { resolveStore, type AvatarStore } from './storage.js';
 
 export interface PageRouteOptions {
   /**
@@ -28,7 +28,7 @@ export class StorageNotConfiguredError extends Error {
 export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, options) => {
   // Resolved at registration, like chat's embedder: production with a missing
   // setting fails the deploy, not an owner's upload.
-  const store = options.store !== undefined ? options.store : storageDisabled() ? null : createS3Store();
+  const store = resolveStore(options.store);
 
   app.post(
     '/pages',
