@@ -5,6 +5,7 @@ import type { OwnerStore } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { resizeImage } from '../curios/resize-image.js';
+import { ItemsEditor, type EditorItem, type ItemRow, type ItemsApi } from './items-editor.js';
 import { StoreSettingsForm, type StoreSettingsApi } from './store-settings.js';
 import styles from './store.module.css';
 
@@ -21,12 +22,14 @@ export function StoreScreen({
   uploadsEnabled,
   publicBase,
   qrUrl,
+  items,
 }: {
   initial: OwnerStore['settings'];
   handle: string;
   uploadsEnabled: boolean;
   publicBase: string;
   qrUrl: string | null;
+  items: EditorItem[];
 }) {
   const [open, setOpen] = useState(initial.enabled);
   const api: StoreSettingsApi = {
@@ -42,6 +45,25 @@ export function StoreScreen({
     },
   };
 
+  const itemsApi: ItemsApi = {
+    add: async (input) => (await apiFetch<{ item: ItemRow }>('/store/items', { method: 'POST', body: JSON.stringify(input) })).item,
+    update: async (id, patch) => (await apiFetch<{ item: ItemRow }>(`/store/items/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).item,
+    remove: async (id) => {
+      await apiFetch(`/store/items/${id}`, { method: 'DELETE' });
+    },
+    reorder: async (ids) => {
+      await apiFetch('/store/items/order', { method: 'PUT', body: JSON.stringify({ ids }) });
+    },
+    uploadPhoto: async (id, file) => {
+      const image = await resizeImage(file);
+      const { photoKey } = await apiFetch<{ photoKey: string }>(`/store/items/${id}/photo`, { method: 'POST', body: JSON.stringify(image) });
+      return joinAvatarUrl(publicBase, photoKey);
+    },
+    removePhoto: async (id) => {
+      await apiFetch(`/store/items/${id}/photo`, { method: 'DELETE' });
+    },
+  };
+
   return (
     <div>
       {open ? (
@@ -50,6 +72,7 @@ export function StoreScreen({
         </p>
       ) : null}
       <StoreSettingsForm initial={initial} uploadsEnabled={uploadsEnabled} qrUrl={qrUrl} api={api} onSaved={(saved) => setOpen(saved.enabled)} />
+      <ItemsEditor items={items} uploadsEnabled={uploadsEnabled} api={itemsApi} />
     </div>
   );
 }

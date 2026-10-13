@@ -32,6 +32,7 @@ export default async function StorePage() {
         uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
         publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
         qrUrl={avatarUrl(store.settings.paymentQrKey)}
+        items={store.items.map((item) => ({ ...item, photoUrl: avatarUrl(item.photoKey) }))}
       />
     </Shell>
   );

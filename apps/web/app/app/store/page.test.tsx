@@ -66,6 +66,18 @@ describe('StorePage', () => {
     expect(props.initial).toEqual(settings);
   });
 
+  it('hands the items over with their picture URLs worked out here', async () => {
+    const base = { description: null, priceCents: 2500, options: [], available: true };
+    getOwnerStore.mockResolvedValue({
+      mode: 'BUSINESS',
+      settings,
+      items: [{ ...base, id: 'a', name: 'Kek', photoKey: 'items/k.webp' }, { ...base, id: 'b', name: 'Tart', photoKey: null }],
+    });
+    render(await StorePage());
+    const items = StoreScreen.mock.calls[0]![0].items as { id: string; photoUrl: string | null }[];
+    expect(items.map((i) => [i.id, i.photoUrl])).toEqual([['a', 'https://files.example/items/k.webp'], ['b', null]]);
+  });
+
   it('turns uploads off when storage is not configured', async () => {
     vi.stubEnv('STORAGE_PUBLIC_URL', '');
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings: { ...settings, paymentQrKey: null }, items: [] });
