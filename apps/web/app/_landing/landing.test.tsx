@@ -269,6 +269,22 @@ describe('the interactive bits', () => {
     expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it.each(LOCALES)('%s: How it works is three numbered steps, each with its snippet', (locale) => {
+    const copy = COPY[locale];
+    const { container } = render(<LandingPage locale={locale} />);
+    const how = container.querySelector('#how')!;
+    expect(container.querySelectorAll('#how')).toHaveLength(1);
+    const steps = [...how.querySelectorAll('ol > li')];
+    expect(steps).toHaveLength(3);
+    steps.forEach((li, i) => expect(li).toHaveTextContent(copy.how.steps[i]!.title));
+    expect(how.querySelectorAll('[data-snippet]')).toHaveLength(3);
+    // The middle snippet: the first fact is ticked, the other two are not.
+    const marks = [...how.querySelectorAll('li[data-ticked]')].map((li) => li.getAttribute('data-ticked'));
+    expect(marks).toEqual(['yes', 'no', 'no']);
+    // The last snippet is the shop's address, built from the demo's handle.
+    expect(steps[2]!.querySelector('[data-snippet]')).toHaveTextContent(`curios.my/${copy.shop.page.handle}`);
+  });
+
   it('shows the address being typed on the demo page beside it', async () => {
     render(
       <>

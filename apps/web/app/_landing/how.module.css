@@ -1,0 +1,142 @@
+/*
+ * Surface band. A wide photograph (from 720px), then three cards in a row
+ * (from 900px), each ending in a small piece of the product.
+ */
+
+.how {
+  padding: var(--l-space-10) 0 var(--l-space-9);
+}
+
+.photo {
+  display: none;
+  margin-top: var(--l-space-7);
+  border-radius: var(--l-radius-card);
+}
+
+@media (min-width: 720px) {
+  .photo {
+    display: block;
+  }
+}
+
+.steps {
+  display: grid;
+  gap: var(--l-space-5);
+  margin: var(--l-space-7) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 900px) {
+  .steps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 28px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: var(--card);
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 0.875rem);
+  font-weight: 500;
+  color: var(--biru);
+  font-variant-numeric: tabular-nums;
+}
+
+.title {
+  margin: var(--l-space-3) 0 var(--l-space-2);
+  font-family: var(--font-display);
+  font-size: var(--l-step-1);
+  font-weight: 700;
+  line-height: var(--l-leading-snug);
+  letter-spacing: var(--l-tracking-heading);
+}
+
+.body {
+  margin: 0;
+  color: var(--band-soft);
+}
+
+/* The snippets sit at the foot of the card so the three line up. */
+.source,
+.link,
+.facts {
+  margin: auto 0 0;
+  padding-top: var(--l-space-5);
+}
+
+.source,
+.link {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.source,
+.link,
+.facts > li {
+  border: 1px solid var(--line);
+  border-radius: var(--l-radius-m);
+  background: var(--paper);
+}
+
+.source,
+.link {
+  padding: var(--l-space-3) var(--l-space-4);
+  margin-top: auto;
+}
+
+.facts {
+  display: grid;
+  gap: var(--l-space-2);
+  list-style: none;
+  padding-left: 0;
+}
+
+.facts > li {
+  display: flex;
+  align-items: center;
+  gap: var(--l-space-3);
+  padding: var(--l-space-2) var(--l-space-3);
+  font-size: var(--text-sm, 0.875rem);
+}
+
+/* The mark: a box that is empty until the fact is approved, then holds a tick. */
+.facts > li::before {
+  content: '';
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 1.5px solid var(--muted);
+  border-radius: var(--l-radius-s);
+  background: var(--card);
+  color: var(--biru);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.facts > li[data-ticked='yes']::before {
+  content: '\2713';
+  border-color: var(--biru);
+}
+
+.claim {
+  flex: 1;
+  min-width: 0;
+}
+
+.value {
+  font-family: var(--font-mono);
+  color: var(--ink);
+}

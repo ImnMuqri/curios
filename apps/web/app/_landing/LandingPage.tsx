@@ -5,7 +5,7 @@ import { Header } from './Header.js';
 import { HeroScene } from './HeroScene.js';
 import { Leads } from './Leads.js';
 import { Trust } from './Trust.js';
-import { Setup } from './Setup.js';
+import { HowItWorks } from './HowItWorks.js';
 import { Pricing } from './Pricing.js';
 import { Faq } from './Faq.js';
 import { Closing } from './Closing.js';
@@ -65,9 +65,9 @@ export function LandingPage({ locale }: { locale: Locale }) {
       <Header copy={copy} home={HOME[locale]} otherHome={HOME[other]} />
       <main id="main">
         <HeroScene copy={copy} />
+        <HowItWorks copy={copy} />
         <Leads copy={copy} />
         <Trust copy={copy} />
-        <Setup copy={copy} />
         <Pricing copy={copy} />
         <Faq copy={copy} />
       </main>
