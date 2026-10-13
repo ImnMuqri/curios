@@ -135,6 +135,8 @@ sign-in screens (sign in, sign up, forgot, reset, verify) took the same look, th
 `app/_landing/` and `app/_auth/`; the dashboard and every public page keep every rule above. Reduced
 motion still wins everywhere. See `apps/web/app/_landing/README.md`.
 
+*Amended 2026-10-13: the Berkira pass.* Bricolage 700 at display sizes on the landing (was 800); two pinned scroll moments (the hero, the paid moment) and a Lenis smooth scroll, landing only, loaded on demand; colour bands kept with more restraint. Frosted surfaces stay banned. Reduced motion still wins: no smooth scroll, no pinning.
+
 *Amended 2026-10-04: the dashboard joins the landing page's family, quieter.* At the
 owner's request the dashboard took the landing page's look without its motion: Bricolage
 800 page titles with a one-line lede, IBM Plex Sans for everything read, white cards on a
