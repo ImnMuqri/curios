@@ -51,8 +51,8 @@ netstat -ano | grep -E ":(3000|3001)\s.*LISTENING"
 
 You need two signed-in owners, a **business** page (published, with a `wa.me` link among its
 links) and a **personal** page, and a second business page with **no** WhatsApp link. The
-three-lead trial does not matter here. Storage (`STORAGE_*` in `.env`) is on for checks 2, 9
-and 14 and off for check 15; check what you have first. In dev without storage settings,
+three-lead trial does not matter here. Storage (`STORAGE_*` in `.env`) is on for checks 2, 3
+and 15 (the QR and photo uploads) and off for the switched-off half of 15; check what you have first. In dev without storage settings,
 uploads are off, which is check 15.
 
 ---
@@ -196,4 +196,6 @@ Nothing here should be left in the dev database.
 Note which checks you ran and what you saw, in this file, with the date. Report any not run
 rather than leaving them ambiguous. As of 2026-10-13 the visual and phone checks (6 dragging,
 7 layout, 8 and 9 in a browser, 11, 12, and the DuitNow QR upload) are **for the owner — not
-yet looked at**.
+yet looked at**, as are the visual remainders of checks 3 (the add form and its messages as
+typed), 4 (the Available switch), 5 (the tile's photo, text and caption), 10 and 15 (how the
+"switched off" sentence reads under the QR field and the photo button).

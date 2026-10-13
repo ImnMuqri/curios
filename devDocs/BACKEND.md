@@ -13,7 +13,8 @@ route, never inside a Fastify request that is also holding a transaction.
 ```
 Account        owner, plan, billing ref
 AuthIdentity   provider + subject id, one row per sign-in method
-Page           handle, mode (PERSONAL | BUSINESS), theme, language, published
+Page           handle, mode (PERSONAL | BUSINESS), theme, language, published,
+               shop columns (storeEnabled, pickup, delivery, payment, shopTilePosition, shopTileSize; slice 17)
 Link           label, url, icon, position
 Item           something a business page sells (slice 17): name, description,
                photoKey, priceCents (null when it has options), available, position
@@ -537,7 +538,8 @@ While a business page's shop is open, `chat.service.ts` reads its **available** 
 prompt gets a `SHOP` section, one `<item name="...">1kg RM95 · 2kg RM170 -- description</item>`
 per item (`priceLine`, names escaped). The model may quote those prices exactly as it quotes
 verified facts, and the never-invent-a-price rule is unchanged; it is told to point buyers at
-the shop on the page and never to take an order itself. A closed shop, a personal page, or no
+the shop on the page ("you can order it from the shop on this page"); the prompt does not
+forbid anything beyond that, and the model has no way to place an order. A closed shop, a personal page, or no
 available items means no block and no mention of a shop. The block is owner data, wrapped as
 data, never an instruction. `fixtures/goldens/shop.json` holds the goldens: prices quoted
 exactly, sen included, and not invented, descriptions as knowledge, and no invented ordering
