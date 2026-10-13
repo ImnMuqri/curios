@@ -117,7 +117,7 @@
 }
 
 /* Embedded (the landing's demo): the bar stays inside its card instead of the viewport. */
-[data-variant='embedded'] .basket {
+.shop[data-variant='embedded'] .basket {
   position: sticky;
   right: auto;
   left: auto;
@@ -126,7 +126,7 @@
   border-radius: 12px;
 }
 
-[data-variant='embedded'] {
+.shop[data-variant='embedded'] {
   padding-bottom: 0;
 }
 

@@ -115,7 +115,7 @@ export function ShopView(props: {
           return (
             <li key={item.id}>
               <button type="button" className={styles.card} onClick={() => setOpenId(item.id)}>
-                {item.photoUrl ? <img className={styles.photo} src={item.photoUrl} alt="" /> : <span className={styles.photo} aria-hidden="true" />}
+                {item.photoUrl ? <img className={styles.photo} src={item.photoUrl} alt="" /> : <span className={styles.photo} data-empty-photo aria-hidden="true" />}
                 <span className={styles.name}>{item.name}</span>
                 <span className={styles.price}>
                   {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}

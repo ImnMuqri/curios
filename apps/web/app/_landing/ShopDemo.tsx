@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ShopView } from '../[handle]/shop/shop-view.js';
 import type { LandingCopy } from './copy.js';
 import styles from './shop.module.css';
@@ -8,6 +8,11 @@ import styles from './shop.module.css';
 /** Kek Lina's shelf, the real component, as a demo: the order button shows the message instead of opening WhatsApp. */
 export function ShopDemo({ copy }: { copy: LandingCopy }) {
   const [message, setMessage] = useState<string | null>(null);
+  const panel = useRef<HTMLElement>(null);
+  // The message lands below the basket bar, often off-screen on a phone: focus takes the visitor to it and has it read out.
+  useEffect(() => {
+    if (message) panel.current?.focus();
+  }, [message]);
   const { page, items } = copy.shop;
   return (
     <div className={styles.demo}>
@@ -30,7 +35,7 @@ export function ShopDemo({ copy }: { copy: LandingCopy }) {
         variant="embedded"
       />
       {message ? (
-        <section className={styles.message} aria-label={copy.shopSection.messageTitle}>
+        <section ref={panel} tabIndex={-1} className={styles.message} aria-label={copy.shopSection.messageTitle}>
           <h3 className={styles.messageTitle}>{copy.shopSection.messageTitle}</h3>
           <pre className={styles.messageText}>{message}</pre>
         </section>

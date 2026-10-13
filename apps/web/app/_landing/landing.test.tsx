@@ -431,6 +431,8 @@ describe('the shop section', () => {
     await userEvent.click(within(shop).getByRole('button', { name: /add to basket/i }));
     expect(shop.querySelector('a[href^="https://wa.me"]')).toBeNull();
     await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
-    expect(within(shop).getByRole('region', { name: en.shopSection.messageTitle })).toHaveTextContent('Cookies balang');
+    const panel = within(shop).getByRole('region', { name: en.shopSection.messageTitle });
+    expect(panel).toHaveTextContent('Cookies balang');
+    expect(document.activeElement).toBe(panel);
   });
 });
