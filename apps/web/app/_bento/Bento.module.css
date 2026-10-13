@@ -331,7 +331,7 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* At 0.30 even a white photo composites no lighter than about #5e626b, which keeps the 12px paper caption above 4.5:1. */
+  /* At 0.30 even a white photo stays dark enough over the ink to keep the 12px paper caption above 4.5:1. */
   opacity: 0.3;
 }
 .tile[data-shop]:has(.shopPhoto) { background: var(--ink); color: var(--paper); }
