@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 import './landing-tokens.css';
 import { COPY, type Locale } from './copy.js';
 import { Header } from './Header.js';
-import { Hero } from './Hero.js';
-import { Storm } from './Storm.js';
+import { HeroScene } from './HeroScene.js';
 import { Leads } from './Leads.js';
 import { Trust } from './Trust.js';
 import { Setup } from './Setup.js';
@@ -45,8 +44,8 @@ export function landingMetadata(locale: Locale): Metadata {
 
 /**
  * The landing page, in either language. Section order follows the owner's
- * objections, not a template: what it is (hero), the problem it removes
- * (storm), what you pay for (leads), "it'll get prices wrong" (trust), "no
+ * objections, not a template: what it is (the pinned hero), the problem it removes
+ * (its second caption), what you pay for (leads), "it'll get prices wrong" (trust), "no
  * time to set up" (setup), "is it worth RM39" (pricing), the rest (FAQ).
  *
  * The root layout fixes <html lang="en">, so the Malay page declares its
@@ -65,8 +64,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
       </a>
       <Header copy={copy} home={HOME[locale]} otherHome={HOME[other]} />
       <main id="main">
-        <Hero copy={copy} />
-        <Storm copy={copy} />
+        <HeroScene copy={copy} />
         <Leads copy={copy} />
         <Trust copy={copy} />
         <Setup copy={copy} />

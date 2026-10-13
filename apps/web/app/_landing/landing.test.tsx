@@ -321,3 +321,31 @@ describe("the demo shop speaks the page's language", () => {
     expect(malay).not.toContain(DEMO_EN.qa[0]!.q);
   });
 });
+
+describe('the hero', () => {
+  it.each(LOCALES)('%s: reads as three captions in order, with the claim field in the first', (locale) => {
+    const copy = COPY[locale];
+    const { container } = render(<LandingPage locale={locale} />);
+    const hero = container.querySelector('#hero')!;
+    const text = hero.textContent;
+    expect(text.indexOf(copy.hero.title)).toBeLessThan(text.indexOf(copy.heroScene.problem));
+    expect(text.indexOf(copy.heroScene.problem)).toBeLessThan(text.indexOf(copy.heroScene.fix));
+    expect(hero.querySelector('form[action="/signup"]')).not.toBeNull();
+  });
+
+  it('shows the finished phone without motion: one question, asked forty times, answered, and the shop tile', () => {
+    const { container } = render(<LandingPage locale="en" />);
+    const hero = container.querySelector('#hero')!;
+    expect(hero).toHaveTextContent(en.storm.asked(40));
+    expect(hero).toHaveTextContent(DEMO_EN.qa[0]!.a);
+    expect(hero.querySelector('[data-shop]')).not.toBeNull();
+    expect(hero.querySelector('[data-motion="on"]')).toBeNull();
+  });
+
+  it('draws twelve of the forty wordings round the phone, in the page language', () => {
+    const { container } = render(<LandingPage locale="ms" />);
+    const bubbles = [...container.querySelectorAll('#hero [data-bubble]')].map((b) => b.textContent);
+    expect(bubbles).toHaveLength(12);
+    expect(bubbles).toEqual(DEMO_MS.storm.slice(0, 12));
+  });
+});

@@ -1,28 +1,93 @@
 /*
- * The biru-muda band, running up under the floating nav.
- * 390px: promise, mechanism, the claim field; then the photo with the demo
- * phone standing in front of its lower half.
- * 1024px+: text left, photo right, the phone overlapping the photo's left
- * edge and dropping past its bottom.
+ * The pinned hero. The band is --biru-muda; the header above it is in normal
+ * flow (64px, --l-header-h), so nothing here pads for it again.
+ *
+ * Without motion (no JS, reduced motion) the stage is natural height: the three
+ * captions run in order, then the finished phone. With motion, useScrub sets
+ * data-motion="on" and --p (0..1) on .stage: the stage is 400vh tall and its
+ * grid sticks below the header while --p drives everything in CSS.
+ *
+ * The numbers in the --appear / --fly / opacity expressions mirror
+ * HERO_TIMELINE (timeline.ts): bubbles 0.12 to 0.45 (stagger 0.0275 =
+ * (0.45 - 0.12) / 12 bubbles), fly 0.45 to 0.70, answer from 0.70. Change
+ * them together.
+ *
+ * Text on --biru-muda: --band-head (biru 800) and --band-soft (ink), both
+ * AA+ on the band. The bubbles are ink on white.
  */
 
+/* Without motion: natural height, every caption shown in order, finished phone. */
+.stage {
+  --p: 1;
+  position: relative;
+}
+
 .hero {
-  padding: calc(var(--l-header-h) + var(--l-space-7)) 0 var(--l-space-9);
+  padding: var(--l-space-7) 0 var(--l-space-9);
+}
+
+.hero:has(.stage[data-motion='on']) {
+  padding: 0;
+}
+
+.stage[data-motion='on'] {
+  height: 400vh;
 }
 
 .grid {
   display: grid;
-  gap: var(--l-space-8);
+  gap: var(--l-space-7);
 }
 
-/* Let the columns shrink to the screen: grid items otherwise refuse to go below their content's minimum. */
 .grid > * {
   min-width: 0;
+}
+
+.stage[data-motion='on'] > .grid {
+  position: sticky;
+  top: var(--l-header-h);
+  height: calc(100svh - var(--l-header-h));
+  align-content: center;
+  overflow: hidden;
+}
+
+/* ---- Captions ---- */
+
+.captions {
+  display: grid;
+  gap: var(--l-space-6);
+}
+
+/* With motion, the three captions share one cell and only the current one shows. */
+.stage[data-motion='on'] .captions {
+  grid-template-areas: 'c';
+  align-content: center;
+}
+
+.stage[data-motion='on'] .caption {
+  grid-area: c;
+  opacity: 0;
+  transform: translateY(40px);
+  transition:
+    opacity 0.4s var(--l-ease-out),
+    transform 0.4s var(--l-ease-out);
+  pointer-events: none;
+}
+
+.stage[data-caption='0'] .caption[data-caption='0'],
+.stage[data-caption='1'] .caption[data-caption='1'],
+.stage[data-caption='2'] .caption[data-caption='2'] {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
 }
 
 .title {
   margin: 0;
   max-width: 11ch;
+  /* The load-in lifts .line from below this clip; room for descenders. */
+  overflow: hidden;
+  padding-bottom: 0.08em;
   color: var(--band-head);
   font-family: var(--font-display);
   font-size: var(--l-step-6);
@@ -30,6 +95,10 @@
   line-height: var(--l-leading-tight);
   letter-spacing: var(--l-tracking-display);
   text-wrap: balance;
+}
+
+.line {
+  display: block;
 }
 
 .sub {
@@ -40,74 +109,132 @@
   text-wrap: pretty;
 }
 
-.actions {
-  margin-top: var(--l-space-6);
-}
-
 .note {
   margin: var(--l-space-3) 0 0 var(--l-space-5);
   color: var(--band-soft);
   font-size: var(--l-step--1);
 }
 
-/* ---- The proof: a photo, and the real product in front of it ---- */
+.big {
+  margin: 0;
+  max-width: 14ch;
+  color: var(--band-head);
+  font-family: var(--font-display);
+  font-size: var(--l-step-5);
+  font-weight: var(--l-weight-display);
+  line-height: var(--l-leading-tight);
+  letter-spacing: var(--l-tracking-display);
+  text-wrap: balance;
+}
+
+/* ---- The proof: the phone, the photo behind it, the bubbles round it ---- */
 
 .proof {
   position: relative;
   display: grid;
-  justify-items: center;
+  place-items: center;
   margin: 0;
+  /* Bubbles are placed in % from the centre and can reach past a narrow screen: clip them here. */
+  overflow: hidden;
 }
 
-.proof .photo {
-  aspect-ratio: 4 / 3;
-  /* The phone covers the lower part; the label waits at the top. */
-  align-items: flex-start;
+.stage:not([data-motion='on']) .proof {
+  padding: var(--l-space-5) 0 var(--l-space-7);
 }
 
-.phoneWrap {
-  position: relative;
-  width: min(100%, 300px);
-  margin-top: -120px;
+.stage[data-motion='on'] .proof {
+  /* The phone sizes itself to the room the row gives it. */
+  container-type: size;
+  min-height: 0;
 }
 
-/* The frame, status bar and address bar are Device; this is the page scrolling inside it. */
-.phone {
-  position: relative;
-}
-
-.screen {
-  height: 100%;
-  overflow-y: auto;
-  overscroll-behavior: contain;
-  scrollbar-width: none;
-}
-
-.screen::-webkit-scrollbar {
+.photo {
   display: none;
 }
 
-/* The page's own full-screen sizing is the phone's job here (same move as the My Curios preview). */
-.screen > [data-bento-page] {
-  /* The stamped border the product's ask bar is known for, in the page's own accent; Soft pages drop it, the demo should not hide its signature. */
-  --ask-border: var(--accent, var(--biru));
+.phone {
+  position: relative;
+  z-index: 1;
+  width: min(270px, 100%);
+}
+
+.stage[data-motion='on'] .phone {
+  width: min(270px, 100%, calc(100cqh * 9 / 19));
+}
+
+.demoNote {
+  display: none;
+}
+
+.bubbles {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+/* Bubbles appear one by one across the first act, then fly to the one question. */
+.bubble {
+  --appear: clamp(0, calc((var(--p) - 0.12 - var(--i) * 0.0275) / 0.03), 1);
+  --fly: clamp(0, calc((var(--p) - 0.45) / 0.25), 1);
+  position: absolute;
+  /* --x / --y are % of the proof from its centre; the bubble travels to the centre as --fly reaches 1. */
+  left: calc(50% + var(--x) * var(--spread, 1) * (1 - var(--fly)));
+  top: calc(50% + var(--y) * (1 - var(--fly)));
+  max-width: 15em;
+  padding: 8px 12px;
+  border-radius: 18px 18px 6px 18px;
+  background: var(--card);
+  box-shadow: 0 8px 24px color-mix(in oklab, var(--ink) 25%, transparent);
+  color: var(--ink);
+  font-size: var(--text-base);
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  opacity: calc(var(--appear) * (1 - var(--fly)));
+  transform: translate(-50%, -50%) scale(calc(0.6 + 0.4 * var(--appear) - 0.5 * var(--fly)));
+}
+
+/* ---- Kek Lina's page in the phone: the shop's page, then the same page in chat ---- */
+
+.screen {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.screen [data-bento-page] {
   display: flex;
   flex-direction: column;
   min-height: 100%;
   margin: 0;
-  padding: 12px 14px 26px;
+  padding: 12px 14px 24px;
   border-radius: 0;
 }
 
-/*
- * Drawn as chat mode is on a real page (ChatMode.module.css): the visitor's
- * words in a white bubble on the right, the answer on the left in the
- * accent's tint, each square corner pointing at who spoke, and the input at
- * the bottom with the answers arriving just above it.
- */
-/* In chat mode the conversation starts right under the shop's name, as on a real page; the input stays at the foot. */
+.screen [data-cover-photo] {
+  height: 120px;
+}
+
+/* The finished state (and reduced motion): bubbles gone, the chat screen showing. */
+.idle {
+  opacity: clamp(0, calc((0.5 - var(--p)) / 0.05), 1);
+}
+
+.chat {
+  position: absolute;
+  inset: 0;
+  opacity: clamp(0, calc((var(--p) - 0.45) / 0.05), 1);
+}
+
 .thread {
-  margin: var(--l-space-3) 0 var(--l-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
   --bubble-max: 85%;
   --bubble-width: fit-content;
   --bubble-margin: 8px 0 0;
@@ -118,149 +245,87 @@
   --bubble-leading: 1.5;
 }
 
-.asked {
-  margin: 0 0 0 auto;
-  width: fit-content;
-  max-width: 85%;
+.question {
+  align-self: flex-end;
+  max-width: 88%;
+  margin: 0;
   padding: 10px 14px;
   border-radius: 18px 18px 6px 18px;
   background: var(--card);
   box-shadow: 0 1px 3px var(--soft-shadow);
-  font-size: var(--text-base);
-  line-height: 1.5;
-}
-
-/*
- * The strip the input sits on, held at the foot of the phone as the page
- * scrolls under it, as chat mode's is: the page's own colour edge to edge, so
- * tiles pass behind it rather than show through, and room underneath for the
- * phone's home bar. The negative margins reach past the page's own padding.
- */
-.composerBar {
-  position: sticky;
-  bottom: 0;
-  z-index: 1;
-  margin: auto -14px -26px;
-  padding: 10px 14px 24px;
-  background: var(--page-bg);
-  box-shadow: 0 -10px 16px -12px var(--soft-shadow);
-}
-
-/* Chat mode's input: a white pill, the next question in it, a round accent send button. */
-.composer {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 5px 5px 5px 16px;
-  border: 1.5px solid var(--ask-border, var(--line));
-  border-radius: 999px;
-  background: var(--card);
-  box-shadow: 0 1px 3px var(--soft-shadow);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: border-color 120ms ease;
-}
-
-/* Chat mode's way back to the page: top left, over the cover, where the real page puts it (ChatMode.module.css). */
-.back {
-  position: absolute;
-  top: 36px;
-  left: 16px;
-  z-index: 2;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 0;
-  border-radius: 50%;
-  background: color-mix(in oklab, var(--card) 85%, transparent);
-  box-shadow: 0 1px 3px var(--soft-shadow);
   color: var(--ink);
-  font-size: var(--text-lg);
-  line-height: 1;
-  cursor: pointer;
-}
-
-.back:focus-visible {
-  outline: 2px solid var(--accent, var(--biru));
-  outline-offset: 2px;
-}
-
-.composer:hover {
-  border-color: var(--accent, var(--biru));
-}
-
-.composer:focus-visible {
-  outline: 2px solid var(--accent, var(--biru));
-  outline-offset: 2px;
-}
-
-.composerText {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--muted);
   font-size: var(--text-base);
+  line-height: 1.4;
 }
 
-.send {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: var(--accent, var(--biru));
-  color: var(--on-accent, var(--paper));
-}
-
-.send svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.4;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.composer:active .send {
-  transform: scale(0.94);
-}
-
-/* A cue on the phone's bottom bezel, under the chat input, outside the screen so it never covers an answer. */
-.hint {
-  position: absolute;
-  z-index: 1;
-  right: 22px;
-  bottom: -14px;
+/* The count, as the Questions screen shows it: a small ink chip under the question. */
+.count {
+  align-self: flex-end;
   margin: 0;
-  padding: 4px 12px;
+  padding: 4px 10px;
   border-radius: var(--l-radius-pill);
   background: var(--ink);
   color: var(--paper);
   font-size: var(--l-step--1);
-  font-weight: 600;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-/* The cue has done its job once someone has asked. */
-.phone[data-asked='true'] .hint {
+.answer {
+  align-self: flex-start;
+  max-width: 88%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 18px 18px 18px 6px;
+  background: var(--ask-tint, var(--biru-muda));
+  color: var(--ink);
+  font-size: var(--text-base);
+  line-height: 1.45;
+  opacity: clamp(0, calc((var(--p) - 0.7) / 0.05), 1);
+}
+
+.cue {
   display: none;
 }
 
-.caption {
-  margin: var(--l-space-6) 0 0;
-  justify-self: start;
-  color: var(--band-soft);
-  font-size: var(--l-step--1);
+/* ---- Phones: the phone fills the stage, the captions sit at the bottom ---- */
+
+@media (max-width: 959px) {
+  .stage[data-motion='on'] > .grid {
+    grid-template-rows: minmax(0, 1fr) auto;
+    align-content: stretch;
+    gap: var(--l-space-3);
+    padding-bottom: var(--l-space-5);
+  }
+
+  /* Phone first, captions under it, with motion; without it the captions come first and read in order. */
+  .stage[data-motion='on'] .proof {
+    order: -1;
+  }
+
+  /* Closer in, so a long message does not run off a phone's edge. */
+  .proof {
+    --spread: 0.6;
+  }
+
+  .stage[data-motion='on'] .title {
+    font-size: var(--l-step-4);
+  }
+
+  .stage[data-motion='on'] .sub {
+    margin-top: var(--l-space-3);
+  }
+
+  .stage[data-motion='on'] .big {
+    max-width: none;
+  }
 }
 
-@media (min-width: 1024px) {
+/* ---- Wide: captions left, the scene (photo behind the phone) right ---- */
+
+@media (min-width: 960px) {
   .hero {
-    padding: calc(var(--l-header-h) + var(--l-space-8)) 0 var(--l-space-10);
+    padding: var(--l-space-8) 0 var(--l-space-10);
   }
 
   .grid {
@@ -269,116 +334,41 @@
     gap: var(--l-space-9);
   }
 
-  .proof {
-    justify-items: end;
+  .stage:not([data-motion='on']) .proof {
+    min-height: 640px;
+    padding: 0;
   }
 
-  .proof .photo {
-    aspect-ratio: 4 / 5;
-    align-items: flex-start;
-    justify-content: flex-end;
-    padding-left: 45%;
-  }
-
-  .phoneWrap {
+  .photo {
+    display: block;
     position: absolute;
-    left: -56px;
-    bottom: -40px;
-    width: 280px;
-    margin: 0;
+    inset: 0;
+    aspect-ratio: auto;
   }
 
-  .caption {
+  .stage[data-motion='on'] .proof {
+    height: 100%;
+  }
+
+  .demoNote {
+    display: block;
     position: absolute;
-    right: 0;
-    bottom: -48px;
+    z-index: 3;
+    right: var(--l-space-3);
+    bottom: var(--l-space-3);
     margin: 0;
-    justify-self: end;
-  }
-}
-
-/* ---- Motion ---- */
-
-/* The demo's "typing" dots, before an answer streams in. */
-.typing {
-  display: inline-flex;
-  gap: 5px;
-  margin: 8px 0 0;
-  padding: 14px 16px;
-  border-radius: 18px 18px 18px 6px;
-  background: var(--ask-tint, var(--biru-muda));
-}
-
-.typing span {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--l-biru-800);
-  opacity: 0.35;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .typing span {
-    animation: dot 900ms ease-in-out infinite;
+    color: var(--paper);
+    font-size: var(--l-step--1);
   }
 
-  .typing span:nth-child(2) {
-    animation-delay: 150ms;
+  .stage[data-motion='on'] .cue {
+    display: block;
+    position: absolute;
+    bottom: var(--l-space-4);
+    left: 50%;
+    margin: 0;
+    transform: translateX(-50%);
+    color: var(--band-soft);
+    font-size: var(--l-step--1);
   }
-
-  .typing span:nth-child(3) {
-    animation-delay: 300ms;
-  }
-
-  @keyframes dot {
-    30% {
-      opacity: 1;
-      transform: translateY(-3px);
-    }
-  }
-
-  /*
-   * The page's opening: the headline rises in a word at a time, then the rest
-   * follows. Transform plus a partial fade, never from fully invisible, so
-   * the headline still paints (and counts as painted) at once.
-   */
-  .word {
-    display: inline-block;
-    animation: word 520ms var(--l-ease-out) both;
-    animation-delay: calc(var(--i) * 55ms);
-  }
-
-  @keyframes word {
-    from {
-      opacity: 0.15;
-      transform: translateY(0.35em);
-    }
-  }
-
-  .after {
-    animation: after 520ms var(--l-ease-out) 380ms both;
-  }
-
-  @keyframes after {
-    from {
-      opacity: 0;
-      transform: translateY(12px);
-    }
-  }
-
-  /* The phone settles in from below, a beat after the words. */
-  .phoneWrap {
-    animation: after 640ms var(--l-ease-out) 260ms both;
-  }
-}
-
-/* Their own address, once they start typing one: the line under the shop's name, in biru. */
-.phone[data-typed='true'] [data-bento-page] header p:last-of-type {
-  color: var(--biru);
-  font-weight: 600;
-}
-
-/* A phone mockup draws the page at a phone's width, where the public page's cover takes too much of the screen: shorter here. */
-.screen [data-cover-photo] {
-  height: 120px;
 }
