@@ -436,7 +436,7 @@ function ItemRowView({
     try {
       const url = await api.uploadPhoto(item.id, file);
       setPictureFailed(false);
-      onPatch({ photoUrl: url, photoKey: item.photoKey ?? 'uploaded' });
+      onPatch({ photoUrl: url });
     } catch (failure) {
       setError(message(failure));
     }

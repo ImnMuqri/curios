@@ -190,4 +190,92 @@ describe('ItemsEditor', () => {
     expect(screen.getByRole('button', { name: 'Move Tart down' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Move Cookies up' })).toBeEnabled();
   });
+
+  describe('option lists', () => {
+    const kgs = item('o', 'Cookies', {
+      priceCents: null,
+      options: [
+        { id: 'o1', label: '1kg', priceCents: 9500 },
+        { id: 'o2', label: '2kg', priceCents: 17000 },
+        { id: 'o3', label: '3kg', priceCents: 24000 },
+      ],
+    });
+
+    it('blocks an option with no name, with no API call', async () => {
+      const api = setup([]);
+      await startAdd();
+      await userEvent.click(screen.getByRole('radio', { name: 'Options' }));
+      await userEvent.type(screen.getByLabelText('Option 1 price (RM)'), '95');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(screen.getByRole('alert')).toHaveTextContent('Give each option a name');
+      expect(api.add).not.toHaveBeenCalled();
+    });
+
+    it('blocks an option with no price, with no API call', async () => {
+      const api = setup([]);
+      await startAdd();
+      await userEvent.click(screen.getByRole('radio', { name: 'Options' }));
+      await userEvent.type(screen.getByLabelText('Option 1 name'), '1kg');
+      await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+      expect(screen.getByRole('alert')).toHaveTextContent(PARSE);
+      expect(api.add).not.toHaveBeenCalled();
+    });
+
+    it('blocks an edited option list with a blank name on Save', async () => {
+      const api = setup([kgs]);
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Cookies' }));
+      await userEvent.clear(screen.getByLabelText('Option 2 name'));
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(screen.getByRole('alert')).toHaveTextContent('Give each option a name');
+      expect(api.update).not.toHaveBeenCalled();
+    });
+
+    it('edits an existing options item: change one price, remove another, save exactly that', async () => {
+      const api = setup([kgs]);
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Cookies' }));
+      expect(screen.getByLabelText('Option 1 name')).toHaveValue('1kg');
+      expect(screen.getByLabelText('Option 2 price (RM)')).toHaveValue('170');
+      await userEvent.clear(screen.getByLabelText('Option 1 price (RM)'));
+      await userEvent.type(screen.getByLabelText('Option 1 price (RM)'), '99.50');
+      await userEvent.click(screen.getByRole('button', { name: 'Remove option 2' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(api.update).toHaveBeenCalledWith('o', {
+        name: 'Cookies',
+        description: null,
+        pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9950 }, { label: '3kg', priceCents: 24000 }] },
+      });
+    });
+
+    it('sends nothing while option fields are typed in, until Save', async () => {
+      const api = setup([kgs]);
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Cookies' }));
+      await userEvent.type(screen.getByLabelText('Option 1 name'), 'x');
+      await userEvent.click(screen.getByRole('button', { name: '+ Add option' }));
+      await userEvent.type(screen.getByLabelText('Option 4 name'), 'half');
+      expect(api.update).not.toHaveBeenCalled();
+      expect(api.add).not.toHaveBeenCalled();
+    });
+
+    it('switches an existing single-price item to options and saves it', async () => {
+      const api = setup();
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
+      await userEvent.click(screen.getByRole('radio', { name: 'Options' }));
+      await userEvent.type(screen.getByLabelText('Option 1 name'), 'Small');
+      await userEvent.type(screen.getByLabelText('Option 1 price (RM)'), '20');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      expect(api.update).toHaveBeenCalledWith('a', {
+        name: 'Kek Batik',
+        description: null,
+        pricing: { kind: 'options', options: [{ label: 'Small', priceCents: 2000 }] },
+      });
+    });
+
+    it('stops offering more options at the limit', async () => {
+      const many = item('m', 'Box', { priceCents: null, options: Array.from({ length: 10 }, (_, i) => ({ id: `x${i}`, label: `S${i}`, priceCents: 100 })) });
+      setup([many]);
+      await userEvent.click(screen.getByRole('button', { name: 'Edit Box' }));
+      expect(screen.queryByRole('button', { name: '+ Add option' })).toBeNull();
+      expect(screen.getByText('10 options is the most an item holds.')).toBeInTheDocument();
+    });
+  });
 });
