@@ -113,9 +113,13 @@ export function toItemCreateInput(item: GoldenItem, position: number) {
  * neither "in no fact" nor an invented number.
  */
 export function knowledgeText(page: GoldenPage): string[] {
-  const items = (page.shop ?? []).map((item) =>
-    `${item.name} ${priceLine({ priceCents: item.options?.length ? null : (item.priceCents ?? null), options: item.options ?? [] })}`.trim(),
-  );
+  const items = (page.shop ?? []).map((item) => {
+    const line = priceLine({ priceCents: item.options?.length ? null : (item.priceCents ?? null), options: item.options ?? [] });
+    // The description goes to the model after the price, so its digits are
+    // knowledge too.
+    const described = item.description ? `${line} -- ${item.description}` : line;
+    return `${item.name} ${described}`.trim();
+  });
   return [...page.facts.map((fact) => fact.claim), ...items];
 }
 

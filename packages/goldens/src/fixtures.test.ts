@@ -192,6 +192,17 @@ describe('shop fixtures', () => {
   });
 });
 
+describe('knowledgeText descriptions', () => {
+  it('carries an item description, after its price line, as the SHOP block does', () => {
+    // The model is given the description, so a number in it ("tahan 5 hari")
+    // is not an invented one.
+    const page = shopOnly().page;
+    page.shop![0]!.description = 'Kek batik Nutella, tahan 5 hari.';
+
+    expect(knowledgeText(page)).toEqual(['Kek Batik 1kg RM95 -- Kek batik Nutella, tahan 5 hari.']);
+  });
+});
+
 describe('toItemCreateInput', () => {
   it('writes an option item with no price of its own, positions in order', () => {
     expect(

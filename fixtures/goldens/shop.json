@@ -30,7 +30,7 @@
       "why": "Not on the shelf. The page must not invent an item or a price for it.",
       "expect": { "mustNotContain": ["RM"], "language": "ms" } },
     { "ask": "macam mana nak order kek batik",
-      "why": "Ordering points to the shop on the page, not to a made-up process.",
-      "expect": { "mustNotContain": ["RM"], "language": "ms" } }
+      "why": "Ordering points to the shop on this page. It must not invent a link, a number or a process.",
+      "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["http", "wa.me"], "language": "ms" } }
   ]
 }
