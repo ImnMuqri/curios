@@ -55,7 +55,7 @@ flowchart LR
     subgraph API [apps/api · Fastify]
       CHAT[chat]
       ING[ingest / sources]
-      REST[pages, links, facts,<br/>topics, leads, billing, auth]
+      REST[pages, links, facts, store,<br/>topics, leads, billing, auth]
     end
 
     API --> PG
@@ -177,6 +177,12 @@ Details in [`devDocs/BACKEND.md`](devDocs/BACKEND.md).
   they wanted (product, date, place), and the owner gets an email with the
   whole conversation and a one-tap WhatsApp link. The first three leads are
   free.
+- **Store (business pages).** An owner lists items, each with one price or a
+  list of priced options, and opens a shop at `/handle/shop` with a "Visit
+  shop" tile on the page. Customers pay the owner directly by DuitNow QR or
+  bank transfer; Curios never holds the money. The chat knows the shelf and
+  quotes its prices exactly. For now the basket goes to the owner as a
+  WhatsApp message; orders come in a later slice.
 
 ---
 

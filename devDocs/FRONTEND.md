@@ -14,11 +14,13 @@ people, not operators. Build them as two different products in one codebase.
 /[handle]                 public page          SSR, edge, cached
 /[handle]/faq             question index       ISR, revalidate 60s
 /[handle]/faq/[slug]      single answer        ISR, revalidate 60s
+/[handle]/shop            the shop (slice 17)  SSR, live, business pages with the shop open
 /app                      dashboard shell      client, authed
 /app/onboarding           choose personal or business, paste a link or text, review facts
 /app/knowledge            Knowledge: four tabs (Facts, Sources, Pinned answers, Never say); the tab is in `?tab=`
 /app/curios               My Curios: profile, links, appearance, live preview
 /app/leads                table + transcript drawer
+/app/store                the shop: settings and items (business pages)
 /app/questions            topics, most asked first; answer, merge, split, rename
 /app/billing              plan, usage against cap, payments, trial reset
 /app/settings             sign-in methods, the search-engine switch
@@ -124,6 +126,66 @@ currently produce a separate chunk, because `AskBar` is imported from the same
 `@curios/ui` barrel and webpack has nothing left to defer. It costs about 4KB of a 7KB
 chunk. See the comment in `apps/web/app/[handle]/ask.tsx`, which says so rather than
 describing a split that does not happen.
+
+---
+
+## The Store
+
+*Added by slice 17.* Business pages only; the API side is in `BACKEND.md`.
+
+**The shop tile.** With the shop open, the public page gains one tile in the bento, labelled
+**Visit shop** (**Lawati kedai** on a Malay page) with the item count under it ("3 items" /
+"3 barang") and the first available item's photo, if any item has one. It opens
+`/[handle]/shop`. It is a new kind of entry in the arrangement, not a link: `withShopTile`
+(core) puts it at the page's saved position and `arrangeTiles` sizes it like any tile, so it
+shows up first by default and takes an automatic size until the owner picks one. The words are
+passed to `BentoPage` ready-made (`shopCopy`), so the renderer stays language-free.
+
+**`/[handle]/shop`** is rendered on the server from `getPublicShop`, read live
+(`force-dynamic`) so an item turned off leaves the shelf on the next request, in the page's own
+look with the bio and tiles folded away (`BentoPage mode="shop"`) and a back arrow to the front
+page. It 404s when there is no shop to show: unpublished, personal or closed. A card per
+available item, "from RM95" when it has options; tapping one opens a sheet to choose an option
+and a quantity, and `?item=<id>` opens with that item's sheet up. The pickup, delivery and
+notice lines come from the owner's settings, in English or Malay (any other page language
+reads English).
+
+**The basket** holds ids, options and counts, never prices, in `sessionStorage` per handle, and
+is priced against the shelf as it is read now (`priceBasket`): an item taken down or an option
+removed since is dropped rather than priced at a number the shop no longer offers. Where
+`sessionStorage` is blocked it lives in memory only. The basket bar shows the count and the
+total, and its one button is **Order on WhatsApp**, which opens
+`wa.me/<number>?text=...` with the basket written into the message:
+
+```
+Hi <shop>, I'd like to order:
+• 2 × Kek Batik (1kg) — RM190
+Total: RM190
+```
+
+**That is the whole of ordering in slice 17.** The message is the order; Curios stores nothing
+about it, and slice 18 adds real orders. The number is read from the page's links, from a
+`wa.me` link or an `api.whatsapp.com/send?phone=` link. **A page with neither shows a line
+instead of the button** ("To order, contact <name> through the links on their page."), and an
+open shop with no available items still shows its "0 items" tile and an empty shelf ("Nothing
+for sale right now. Check back soon.").
+
+**`/app/store`** (the sidebar's *Store*, after My Curios, shown only to business owners; a
+personal owner who reaches it sees a line saying shops are part of business pages) has two
+parts. *Settings* is one explicit-Save form: open the shop, how customers pay (the DuitNow QR
+image, or bank, account name and account number), pickup and its note, delivery (none, a flat
+fee, or "rider paid separately"), and minimum notice in days. It sends only what changed, and
+the API's refusals appear in the owner's words; the open switch is disabled, with the missing
+pieces named, while the shop is closed and has no way to pay or hand over. *Items* is the
+editor beneath: add an item with one price or a list of priced options, edit it, give it a
+photo, toggle **Available** (which hides it from the shop and the chat at once), remove it, and
+reorder by drag or the up/down buttons. Available, order, removal and photos save the moment
+they are used. With storage off, photo and QR uploads say they are switched off and everything
+else still works.
+
+**The shop row in My Curios.** With the shop open, the links list carries a **Shop** row:
+draggable and sizable like a link, with a note to turn the shop off in Store to remove it. The
+row moves in the same list as the links, and the one reorder request sends it as `'shop'`.
 
 ---
 

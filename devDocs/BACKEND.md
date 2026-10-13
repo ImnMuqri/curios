@@ -15,6 +15,9 @@ Account        owner, plan, billing ref
 AuthIdentity   provider + subject id, one row per sign-in method
 Page           handle, mode (PERSONAL | BUSINESS), theme, language, published
 Link           label, url, icon, position
+Item           something a business page sells (slice 17): name, description,
+               photoKey, priceCents (null when it has options), available, position
+ItemOption     one priced choice of an item: label, priceCents, position
 Fact           the knowledge base. one atomic claim per row.
 NeverSay       forbidden topics and phrases, injected as a hard constraint
 Conversation   session, visitor fingerprint, referrer, resolved
@@ -452,6 +455,93 @@ thread. It is not a launch dependency.
 
 Get terms and the DPA reviewed by someone who knows current Malaysian rules before
 volume, not before launch.
+
+---
+
+## The Store
+
+*Added by slice 17, "the shelf". Design: `store-design.md`. Slice 18 adds orders.*
+
+A business page lists what it sells and opens a shop at `/handle/shop`. Customers pay the
+owner directly by DuitNow QR or bank transfer, so Curios never holds the money. **Slice 17
+takes no orders:** the basket leaves the browser as a WhatsApp message, and nothing is stored
+about it. There is no `Order` table until slice 18.
+
+### Tables and columns
+
+- **`Item`**: `pageId` (cascade), `name`, `description?`, `photoKey?`, `priceCents?`,
+  `available` (default true), `position`. **`ItemOption`**: `itemId` (cascade), `label`,
+  `priceCents`, `position`. Money is integer sen. An item has **either** `priceCents` **or** at
+  least one option, never both and never neither; `pricingProblem` in
+  `packages/core/src/store.ts` is the one statement of that rule and the API checks it on every
+  write. Limits live beside it: 40 items, 10 options, price RM0.01 to RM10,000.
+- **`Page`** gains `storeEnabled` (default false), `pickupEnabled`, `pickupNote`,
+  `deliveryMode` (`NONE` | `FLAT` | `RIDER`, a new enum), `deliveryFeeCents` (only while
+  `FLAT`; cleared otherwise), `minNoticeDays` (default 1), `paymentQrKey`, `bankName`,
+  `bankAccountName`, `bankAccountNumber` (digits only), `shopTilePosition` and `shopTileSize`.
+  The delivery and payment columns exist now so the settings screen is whole; slice 17 only
+  *shows* the delivery and notice lines on the shop and does not enforce them on anything.
+
+### Routes (`apps/api/src/modules/store`)
+
+All owner-only, on the signed-in owner's own page, **business pages only**.
+
+| Route | |
+|---|---|
+| `GET /store` | settings and items |
+| `PATCH /store/settings` | partial update, checked against the shop as it will be afterwards |
+| `POST` / `DELETE /store/payment-qr` | the QR image; the key is random per upload |
+| `POST /store/items`, `PATCH` / `DELETE /store/items/:id` | add, edit (including `available` and pricing), remove |
+| `PUT /store/items/order` | reorder; takes the full list of ids |
+| `POST` / `DELETE /store/items/:id/photo` | an item's picture |
+
+Uploads reuse the avatar decoder and the `AvatarStore`; with storage switched off they refuse
+with the same `StorageNotConfiguredError` avatars do, and bank details still work.
+
+**The shop can only open when a way to pay exists and a way to hand over exists** (`storeGaps`:
+a QR or all three bank fields; pickup on or delivery not `NONE`). A single `PATCH` may add
+the bank details and open the shop together, and nothing may leave an open shop without either
+-- removing the QR that is an open shop's only way to pay is refused.
+
+| Code | Status | When |
+|---|---|---|
+| `STORE_BUSINESS_ONLY` | 403 | every Store route, from a personal page |
+| `STORE_NOT_READY` | 400 | opening with a gap, or removing the only way to pay of an open shop |
+| `INVALID_STORE_SETTING` | 400 | a bad fee, notice, bank number or over-long text |
+| `INVALID_ITEM` | 400 | a name, description or pricing the rules refuse |
+| `ITEM_LIMIT` | 400 | the 41st item |
+| `ITEM_ORDER_STALE` | 409 | the ids sent are not exactly the page's items (another tab changed them) |
+
+An unknown or another page's item is a plain 404 `NOT_FOUND`.
+
+### The shop tile in the links order
+
+The tile is not a `Link` row, so it cannot be edited into a broken URL. It travels in
+`PUT /links/order` as the literal id `'shop'`: present exactly once while `storeEnabled`,
+absent while it is off, otherwise `LINK_ORDER_STALE` like any mismatch. Its index in the list is
+saved as `shopTilePosition`, and `withShopTile` (core) clamps it on read, so a position left
+over after links are removed still shows the tile. `shopTileSize` is null for automatic, as
+`Link.size` is, and is set from `PATCH /store/settings` (`tileSize`) or the editor.
+
+### Reading it
+
+`packages/db-read` has `getPublicShop(handle)` (the page's look, WhatsApp-bearing links, the
+available items with options in the owner's order; null for an unpublished, personal or
+closed shop, so `/handle/shop` 404s) and `getOwnerStore`. The public page and My Curios derive
+the tile with `shopTileOf`: null for a closed shop **or a personal page**, so a page flipped
+back by hand in `psql` grows no tile.
+
+### The chat's SHOP block
+
+While a business page's shop is open, `chat.service.ts` reads its **available** items and the
+prompt gets a `SHOP` section, one `<item name="...">1kg RM95 · 2kg RM170 -- description</item>`
+per item (`priceLine`, names escaped). The model may quote those prices exactly as it quotes
+verified facts, and the never-invent-a-price rule is unchanged; it is told to point buyers at
+the shop on the page and never to take an order itself. A closed shop, a personal page, or no
+available items means no block and no mention of a shop. The block is owner data, wrapped as
+data, never an instruction. `fixtures/goldens/shop.json` holds the goldens: prices quoted
+exactly, sen included, and not invented, descriptions as knowledge, and no invented ordering
+link.
 
 ---
 
