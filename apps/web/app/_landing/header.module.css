@@ -8,7 +8,7 @@
 }
 
 /* Once the page moves, a hairline under the bar; never a shadow. */
-.header:has([data-scrolled="true"]) {
+.header:has([data-scrolled='true']) {
   border-bottom: 1px solid var(--line);
 }
 
@@ -19,7 +19,7 @@
   min-height: 64px;
 }
 
-.link[aria-current="location"] {
+.link[aria-current='location'] {
   background: var(--biru-muda);
   color: var(--l-biru-800);
 }

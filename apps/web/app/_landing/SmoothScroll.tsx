@@ -41,6 +41,11 @@ export function SmoothScroll(): null {
 export function scrollToSection(href: string): void {
   const target = document.querySelector<HTMLElement>(href);
   if (!target) return;
-  if (lenis && !prefersReducedMotion()) lenis.scrollTo(target, { offset: 0, duration: 1.4 });
+  if (lenis && !prefersReducedMotion()) {
+    // Lenis ignores CSS scroll-padding, so clear the sticky bar by hand.
+    const holder = target.closest('[data-landing]') ?? document.documentElement;
+    const bar = parseFloat(getComputedStyle(holder).getPropertyValue('--l-header-h'));
+    lenis.scrollTo(target, { offset: -(Number.isFinite(bar) ? bar : 64), duration: 1.4 });
+  }
   else target.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
 }

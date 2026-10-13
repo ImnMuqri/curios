@@ -1,22 +1,14 @@
-import type { LandingCopy } from "./copy.js";
-import { SectionLinks } from "./SectionLinks.js";
-import { Wordmark } from "./Wordmark.js";
-import base from "./landing.module.css";
-import styles from "./header.module.css";
+import type { LandingCopy } from './copy.js';
+import { SectionLinks } from './SectionLinks.js';
+import { Wordmark } from './Wordmark.js';
+import base from './landing.module.css';
+import styles from './header.module.css';
 
 /**
  * A solid full-width bar on paper, sticky as the page scrolls. Section
  * links on wide screens; on a phone only the language, sign-in and the button.
  */
-export function Header({
-  copy,
-  home,
-  otherHome,
-}: {
-  copy: LandingCopy;
-  home: string;
-  otherHome: string;
-}) {
+export function Header({ copy, home, otherHome }: { copy: LandingCopy; home: string; otherHome: string }) {
   return (
     <header className={styles.header}>
       <div className={`${base.wrap} ${styles.bar}`} data-pill>
@@ -24,19 +16,13 @@ export function Header({
           <Wordmark />
           <span className={base.srOnly}>{copy.nav.home}</span>
         </a>
-        <SectionLinks
-          sections={copy.nav.sections}
-          label={copy.locale === "ms" ? "Bahagian" : "Sections"}
-        />
-        <nav
-          className={styles.nav}
-          aria-label={copy.locale === "ms" ? "Akaun" : "Account"}
-        >
+        <SectionLinks sections={copy.nav.sections} label={copy.locale === 'ms' ? 'Bahagian' : 'Sections'} />
+        <nav className={styles.nav} aria-label={copy.locale === 'ms' ? 'Akaun' : 'Account'}>
           <a
             href={otherHome}
             className={styles.link}
-            hrefLang={copy.locale === "ms" ? "en" : "ms"}
-            lang={copy.locale === "ms" ? "en" : "ms"}
+            hrefLang={copy.locale === 'ms' ? 'en' : 'ms'}
+            lang={copy.locale === 'ms' ? 'en' : 'ms'}
           >
             {/* Visible short form first, so the spoken name contains what is shown (WCAG 2.5.3). */}
             {copy.nav.otherLocaleName}

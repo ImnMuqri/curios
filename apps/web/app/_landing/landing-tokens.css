@@ -91,7 +91,7 @@
   /* Bricolage for headings; IBM Plex Sans for reading (loaded in app/(landing)/layout.tsx). */
   --l-font-body: var(--font-plex-sans, 'IBM Plex Sans', system-ui, sans-serif);
 
-  /* Headlines are set heavy and tight: Bricolage at 800, close to touching. */
+  /* Headlines are set heavy and tight: Bricolage at 700, close to touching. */
   --l-weight-display: 700;
   --l-leading-tight: 0.98;
   --l-leading-snug: 1.06;

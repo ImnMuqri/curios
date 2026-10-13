@@ -83,6 +83,16 @@ describe('the landing page', () => {
     spy.mockRestore();
   });
 
+  it('leaves new-tab clicks on a section link to the browser', async () => {
+    const smooth = await import('./SmoothScroll.js');
+    const spy = vi.spyOn(smooth, 'scrollToSection').mockImplementation(() => {});
+    render(<LandingPage locale="en" />);
+    const proceeded = fireEvent.click(screen.getAllByRole('link', { name: 'Pricing' })[0]!, { ctrlKey: true });
+    expect(proceeded).toBe(true);
+    expect(spy).not.toHaveBeenCalled();
+    spy.mockRestore();
+  });
+
   it('escapes "<" in structured data, so no copy can close the script tag', () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelector('script[type="application/ld+json"]')!.innerHTML).not.toContain('<');
