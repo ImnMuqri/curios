@@ -48,13 +48,14 @@ export function StoreSettingsForm({
   uploadsEnabled,
   qrUrl,
   api,
+  onSaved,
 }: {
   initial: StoreSettings;
   uploadsEnabled: boolean;
   qrUrl: string | null;
-  /** Kept for symmetry with the other editors; uploads return their own URL. */
-  publicBase?: string;
   api: StoreSettingsApi;
+  /** Called with the settings the API returned, once a save has taken effect. */
+  onSaved?: (settings: StoreSettings) => void;
 }) {
   const [saved, setSaved] = useState(initial);
   const [enabled, setEnabled] = useState(initial.enabled);
@@ -149,7 +150,9 @@ export function StoreSettingsForm({
 
     setBusy(true);
     try {
-      setSaved(await api.save(patch));
+      const next = await api.save(patch);
+      setSaved(next);
+      onSaved?.(next);
       setDone(true);
     } catch (failure) {
       // Verbatim: STORE_NOT_READY names exactly what is missing.

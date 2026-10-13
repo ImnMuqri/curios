@@ -25,7 +25,6 @@ function setup(
       initial={{ ...base, ...over }}
       uploadsEnabled={extra.uploadsEnabled ?? true}
       qrUrl={extra.qrUrl ?? null}
-      publicBase="https://files.example"
       api={api}
     />,
   );

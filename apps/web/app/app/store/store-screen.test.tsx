@@ -31,6 +31,24 @@ describe('StoreScreen', () => {
     expect(screen.queryByRole('link', { name: /see your shop/i })).toBeNull();
   });
 
+  it('shows the link once a save opens the shop', async () => {
+    apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true, paymentQrKey: 'k', enabled: true } });
+    screenWith({ pickupEnabled: true, paymentQrKey: 'k' });
+    expect(screen.queryByRole('link', { name: /see your shop/i })).toBeNull();
+    await userEvent.click(screen.getByRole('checkbox', { name: /open shop/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^save/i }));
+    expect(await screen.findByRole('link', { name: /see your shop/i })).toHaveAttribute('href', '/nadia/shop');
+  });
+
+  it('drops the link once a save closes the shop', async () => {
+    apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true, paymentQrKey: 'k', enabled: false } });
+    screenWith({ enabled: true, pickupEnabled: true, paymentQrKey: 'k' });
+    await userEvent.click(screen.getByRole('checkbox', { name: /open shop/i }));
+    await userEvent.click(screen.getByRole('button', { name: /^save/i }));
+    await screen.findByText(/^saved/i);
+    expect(screen.queryByRole('link', { name: /see your shop/i })).toBeNull();
+  });
+
   it('saves with PATCH /store/settings and unwraps the settings', async () => {
     apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true } });
     screenWith();

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import type { OwnerStore } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
@@ -27,6 +28,7 @@ export function StoreScreen({
   publicBase: string;
   qrUrl: string | null;
 }) {
+  const [open, setOpen] = useState(initial.enabled);
   const api: StoreSettingsApi = {
     save: async (patch) =>
       (await apiFetch<{ settings: OwnerStore['settings'] }>('/store/settings', { method: 'PATCH', body: JSON.stringify(patch) })).settings,
@@ -42,12 +44,12 @@ export function StoreScreen({
 
   return (
     <div>
-      {initial.enabled ? (
+      {open ? (
         <p className={styles.links}>
           <a href={`/${handle}/shop`}>See your shop</a>
         </p>
       ) : null}
-      <StoreSettingsForm initial={initial} uploadsEnabled={uploadsEnabled} qrUrl={qrUrl} publicBase={publicBase} api={api} />
+      <StoreSettingsForm initial={initial} uploadsEnabled={uploadsEnabled} qrUrl={qrUrl} api={api} onSaved={(saved) => setOpen(saved.enabled)} />
     </div>
   );
 }
