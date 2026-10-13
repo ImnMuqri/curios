@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 import type { LandingCopy } from './copy.js';
 import type { Demo } from './demo.js';
 import { LeadPhones } from './LeadPhones.js';
@@ -34,19 +34,8 @@ export function PaidStage({
   const onProgress = useCallback((p: number) => setStep(paidStepAt(p)), []);
   useScrub(stage, { scrub: 0.8, onProgress });
 
-  // useScrub switches motion on (and --p to 0) once the motion library has loaded; until the first scroll update the step is the true one for that progress, not the no-motion default.
-  useEffect(() => {
-    const node = stage.current;
-    if (!node) return;
-    const observer = new MutationObserver(() => {
-      if (node.dataset.motion === 'on') setStep(paidStepAt(parseFloat(node.style.getPropertyValue('--p')) || 0));
-    });
-    observer.observe(node, { attributes: true, attributeFilter: ['data-motion'] });
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <div ref={stage} className={styles.stage} data-step={step}>
+    <div ref={stage} className={styles.stage} data-paid-stage data-step={step}>
       <div className={styles.inner}>
         <div className={styles.progress} role="progressbar" aria-label={progressLabel} aria-valuemin={1} aria-valuemax={5} aria-valuenow={step} />
         <div className={`${base.wrap} ${styles.grid}`}>

@@ -7,8 +7,8 @@
  * slide sideways as --p grows while the phones stay put; below that only the
  * current panel shows, under the phone.
  *
- * The 5-panel slide mirrors PAID_TIMELINE (timeline.ts): five equal steps, so
- * the track moves 4 of its 5 panel-widths (-80%).
+ * The wide track follows data-step, which PaidStage takes from PAID_TIMELINE
+ * (timeline.ts), so it shows the panel of the current step (see the step rules below).
  */
 
 .paid {
@@ -511,9 +511,14 @@
     font-size: var(--l-step-3);
   }
 
-  /* Only the current panel: the others leave layout and the tab order. Their text stays in the DOM only for the no-motion list. */
+  /* Only the current panel shows. The others are visually hidden, not removed: their text stays readable to a screen reader. */
   .stage[data-motion='on'] .panel {
-    display: none;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
   }
 
   .stage[data-step='1'][data-motion='on'] .panel[data-panel='1'],
@@ -521,7 +526,12 @@
   .stage[data-step='3'][data-motion='on'] .panel[data-panel='3'],
   .stage[data-step='4'][data-motion='on'] .panel[data-panel='4'],
   .stage[data-step='5'][data-motion='on'] .panel[data-panel='5'] {
-    display: grid;
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
   }
 }
 
@@ -569,13 +579,34 @@
     align-self: center;
   }
 
-  /* Five panels in a row inside the clipped column, sliding left as --p grows. */
+  /* Five panels in a row inside the clipped column. The track follows the step (the same one the phones show, from PAID_TIMELINE), not --p, so a caption and its phone always change together. */
   .stage[data-motion='on'] .track {
     display: flex;
     gap: 0;
     width: 500%;
-    transform: translateX(calc(var(--p) * -80%));
+    transition: transform 0.5s var(--l-ease-out);
   }
+
+  .stage[data-motion='on'][data-step='1'] .track {
+    transform: translateX(0%);
+  }
+
+  .stage[data-motion='on'][data-step='2'] .track {
+    transform: translateX(-20%);
+  }
+
+  .stage[data-motion='on'][data-step='3'] .track {
+    transform: translateX(-40%);
+  }
+
+  .stage[data-motion='on'][data-step='4'] .track {
+    transform: translateX(-60%);
+  }
+
+  .stage[data-motion='on'][data-step='5'] .track {
+    transform: translateX(-80%);
+  }
+
 
   .stage[data-motion='on'] .panel {
     flex: 0 0 20%;

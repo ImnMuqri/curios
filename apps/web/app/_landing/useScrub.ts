@@ -38,6 +38,8 @@ export function useScrub(ref: RefObject<HTMLElement | null>, options: { scrub: n
           onUpdate: (self) => cb.current?.(self.progress),
         },
       });
+      // ScrollTrigger works out its progress from the current scroll on creation: a scene mounted mid-page starts at its true state.
+      cb.current?.(tween.scrollTrigger?.progress ?? 0);
       kill = () => {
         tween.scrollTrigger?.kill();
         tween.kill();

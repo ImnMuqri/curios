@@ -375,6 +375,14 @@ describe('the hero', () => {
     const shown = css.match(/\.caption\[data-caption='2'\] \{[^}]*\}/)![0];
     expect(shown).toMatch(/visibility:\s*visible/);
   });
+
+  it('keeps the text-only captions readable to a screen reader while hidden', () => {
+    const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
+    const textOnly = css.match(/\.caption:not\(\[data-caption='0'\]\) \{[^}]*\}/)![0];
+    expect(textOnly).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(textOnly).toMatch(/visibility:\s*visible/);
+    expect(textOnly).not.toMatch(/display:\s*none/);
+  });
 });
 
 describe('the paid moment', () => {
@@ -391,7 +399,20 @@ describe('the paid moment', () => {
   it('shows the last step without motion: the email and the WhatsApp reply', () => {
     const { container } = render(<LandingPage locale="en" />);
     const paid = container.querySelector('#paid')!;
-    expect(paid.querySelector('[data-step="5"]')).not.toBeNull();
-    expect(paid).toHaveTextContent(DEMO_EN.lead.reply);
+    const stage = paid.querySelector('[data-paid-stage]')!;
+    expect(stage.getAttribute('data-step')).toBe('5');
+    expect(stage.hasAttribute('data-motion')).toBe(false);
+    const reply = within(paid as HTMLElement).getByText(DEMO_EN.lead.reply);
+    expect(reply.closest('[data-shown]')).toHaveAttribute('data-shown', 'yes');
+  });
+
+  // jsdom does not evaluate CSS modules, so the stylesheet is read as text.
+  it('keeps hidden panels readable, and moves the track with the step', () => {
+    const css = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
+    const hidden = css.match(/\.stage\[data-motion='on'\] \.panel \{[^}]*clip-path[^}]*\}/)![0];
+    expect(hidden).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(css).not.toMatch(/\.panel \{\s*display:\s*none/);
+    expect(css).toMatch(/\[data-step='5'\] \.track \{\s*transform: translateX\(-80%\)/);
+    expect(css).not.toMatch(/translateX\(calc\(var\(--p\)/);
   });
 });

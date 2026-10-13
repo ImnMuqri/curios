@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import { useRef } from 'react';
 
-const tween = { kill: vi.fn(), scrollTrigger: { kill: vi.fn() } };
+const tween = { kill: vi.fn(), scrollTrigger: { kill: vi.fn(), progress: 0 } };
 const to = vi.fn((..._args: unknown[]) => tween);
 
 vi.mock('./motion.js', async (importOriginal) => ({ ...(await importOriginal<typeof import('./motion.js')>()), loadMotion: vi.fn(), prefersReducedMotion: vi.fn() }));
@@ -57,6 +57,7 @@ describe('useScrub', () => {
     const second = vi.fn();
     const { rerender } = render(<Scene onProgress={first} />);
     await flush();
+    first.mockClear();
     rerender(<Scene onProgress={second} />);
     await flush();
     expect(to).toHaveBeenCalledTimes(1);
@@ -64,5 +65,15 @@ describe('useScrub', () => {
     vars.scrollTrigger.onUpdate({ progress: 0.5 });
     expect(second).toHaveBeenCalledWith(0.5);
     expect(first).not.toHaveBeenCalled();
+  });
+
+  it('reports the true progress straight away, for a scene mounted mid-page', async () => {
+    allow();
+    tween.scrollTrigger.progress = 0.6;
+    const onProgress = vi.fn();
+    render(<Scene onProgress={onProgress} />);
+    await flush();
+    tween.scrollTrigger.progress = 0;
+    expect(onProgress).toHaveBeenCalledWith(0.6);
   });
 });
