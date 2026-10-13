@@ -38,7 +38,7 @@ export function HowItWorks({ copy }: { copy: LandingCopy }) {
           ratio={21 / 9}
           className={styles.photo}
         />
-        <ol className={styles.steps}>
+        <ol className={styles.steps} role="list">
           {copy.how.steps.map((step, i) => (
             <Reveal as="li" key={step.title} className={styles.card} delay={i * 60}>
               <span className={styles.number} aria-hidden="true">

@@ -64,9 +64,32 @@
   color: var(--band-soft);
 }
 
-/* The snippets sit at the foot of the card so the three line up. */
+/* The body takes the spare height, so the snippets sit at the foot and line up; the gap is real margin. */
+.body {
+  flex: 1;
+}
+
+.card > [data-snippet] {
+  margin: var(--l-space-5) 0 0;
+}
+
+.source,
+.link {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm, 0.875rem);
+  color: var(--ink);
+  overflow-wrap: anywhere;
+  padding: var(--l-space-3) var(--l-space-4);
+}
+
 .source,
 .link,
+.facts > li {
+  border: 1px solid var(--line);
+  border-radius: var(--l-radius-m);
+  background: var(--paper);
+}
+
 .facts {
   margin: auto 0 0;
   padding-top: var(--l-space-5);
@@ -98,7 +121,7 @@
   display: grid;
   gap: var(--l-space-2);
   list-style: none;
-  padding-left: 0;
+  padding: 0;
 }
 
 .facts > li {
@@ -127,7 +150,7 @@
 }
 
 .facts > li[data-ticked='yes']::before {
-  content: '\2713';
+  content: '\2713' / '';
   border-color: var(--biru);
 }
 
