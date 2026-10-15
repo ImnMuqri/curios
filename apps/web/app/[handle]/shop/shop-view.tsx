@@ -57,6 +57,8 @@ export function ShopView(props: {
   initialItemId: string | null;
   /** When given, replaces the WhatsApp link with a button that hands the message here (the landing's demo). */
   onOrder?: (message: string) => void;
+  /** Called whenever the basket's lines change (and once on load), so a host can drop what it showed for the old basket. */
+  onBasketChange?: () => void;
   /** Hide the "Back" link to /handle (the landing's demo has no page to go back to). Default true. */
   showBack?: boolean;
   /** sessionStorage key for the basket. Default `curios-basket:${handle}`. */
@@ -82,6 +84,13 @@ export function ShopView(props: {
   useEffect(() => {
     loaded.current = true;
   }, []);
+
+  // Held in a ref so a host's fresh callback each render never re-fires the effect.
+  const basketChanged = useRef(props.onBasketChange);
+  basketChanged.current = props.onBasketChange;
+  useEffect(() => {
+    basketChanged.current?.();
+  }, [basket]);
 
   const priced = useMemo(() => priceBasket(basket, props.items), [basket, props.items]);
   const count = priced.lines.reduce((sum, line) => sum + line.quantity, 0);
