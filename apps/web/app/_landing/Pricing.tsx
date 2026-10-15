@@ -11,7 +11,7 @@ import styles from './pricing.module.css';
 export function Pricing({ copy }: { copy: LandingCopy }) {
   const { personal, business } = copy.pricing;
   return (
-    <section className={`${base.bandPaper} ${styles.pricing}`} id="pricing" aria-labelledby="pricing-title">
+    <section className={`${base.bandPaper} ${styles.pricing}`} id="pricing" tabIndex={-1} aria-labelledby="pricing-title">
       <div className={base.wrap}>
         <Reveal>
           <h2 id="pricing-title" className={base.h2}>

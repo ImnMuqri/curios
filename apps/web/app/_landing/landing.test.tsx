@@ -297,27 +297,67 @@ describe('the hero', () => {
     expect(bubbles).toEqual(DEMO_MS.storm.slice(0, 12));
   });
 
-  // jsdom does not evaluate CSS modules, so the stylesheet's rule is read as text: with motion, a
-  // caption that is not showing must be visibility:hidden (out of the tab order), not just faded.
-  it('takes hidden captions out of the tab order, not just out of sight', () => {
+  // jsdom does not evaluate CSS modules, so the stylesheets are read as text. MOTION is the selector
+  // the scenes use for "motion is on, or about to be" (see motionPending.ts).
+  const MOTION = String.raw`:is\(\[data-motion='on'\], \[data-motion-pending\] \*\)`;
+  const rule = (css: string, selector: string) => css.match(new RegExp(`${selector} [{][^}]*[}]`))![0];
+  const visibilityRules = (css: string) => [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*visibility:\s*hidden[^}]*\}/g)].map((m) => m[1]!.trim());
+
+  it('takes only the claim form out of the tab order while its caption is hidden', () => {
     const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
-    const hidden = css.match(/\.stage\[data-motion='on'\] \.caption \{[^}]*\}/)![0];
+    const hidden = rule(css, String.raw`\.stage${MOTION} \.claimWrap`);
     expect(hidden).toMatch(/visibility:\s*hidden/);
     expect(hidden).toMatch(/visibility 0s linear 0\.4s/);
-    const shown = css.match(/\.caption\[data-caption='2'\] \{[^}]*\}/)![0];
-    expect(shown).toMatch(/visibility:\s*visible/);
+    expect(rule(css, String.raw`\.stage\[data-caption='0'\] \.claimWrap,\s*\.stage\[data-caption='all'\] \.claimWrap`)).toMatch(/visibility:\s*visible/);
+    // Nothing else in the hero is visibility-hidden: the h1 and the sub stay in the accessibility tree.
+    expect(visibilityRules(css)).toEqual([`.stage:is([data-motion='on'], [data-motion-pending] *) .claimWrap`]);
   });
 
-  it('hides the text-only captions by fading, so a screen reader still reads them', () => {
+  it('hides the captions by fading, so a screen reader still reads all three', () => {
     const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
-    const textOnly = css.match(/\.caption:not\(\[data-caption='0'\]\) \{[^}]*\}/)![0];
-    expect(textOnly).toMatch(/visibility:\s*visible/);
-    expect(textOnly).not.toMatch(/clip-path|display:\s*none|transition:\s*none/);
-    // The base rule they inherit fades them out, and caption 0 alone leaves the tab order.
-    const base = css.match(/\.stage\[data-motion='on'\] \.caption \{[^}]*\}/)![0];
+    const base = rule(css, String.raw`\.stage${MOTION} \.caption`);
     expect(base).toMatch(/opacity:\s*0/);
     expect(base).toMatch(/transition:[^;]*opacity 0\.4s/);
-    expect(css).not.toMatch(/clip-path/);
+    expect(base).not.toMatch(/visibility|clip-path|display:\s*none/);
+    expect(css).not.toMatch(/clip-path:\s*inset\(50%\)[^}]*\}\s*[^{]*\.caption/);
+  });
+
+  it('has one h1, and it is not inside the claim form wrapper that hides', () => {
+    const { container } = render(<LandingPage locale="en" />);
+    const h1s = container.querySelectorAll('h1');
+    expect(h1s).toHaveLength(1);
+    expect(h1s[0]!.closest('[class*="claimWrap"]')).toBeNull();
+    expect(container.querySelector('[class*="claimWrap"] form')).not.toBeNull();
+    // The load-in fades [data-hero-fade] by opacity: the claim form must stay out of it, so it is usable from the first paint.
+    expect(container.querySelector('#hero form')!.closest('[data-hero-fade]')).toBeNull();
+  });
+
+  // Finding 1: under motion on a phone the phone's row must not depend on caption 0's height.
+  it('lays the captions in a fixed band on phones, with the sub and note kept for screen readers', () => {
+    const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
+    const phones = css.slice(css.indexOf('@media (max-width: 959px)'), css.indexOf('@media (min-width: 960px)'));
+    expect(rule(phones, String.raw`\.stage${MOTION} > \.grid`)).toMatch(/grid-template-rows:\s*minmax\(0, 1fr\) min\(38%, 224px\)/);
+    const hiddenText = rule(phones, String.raw`\.stage${MOTION} \.sub,\s*\.stage${MOTION} \.note`);
+    expect(hiddenText).toMatch(/clip-path:\s*inset\(50%\)/);
+    expect(hiddenText).not.toMatch(/display:\s*none/);
+  });
+
+  // Finding 2: the pinned layout applies from the first paint, so nothing reflows when motion arrives.
+  it('gives pending scenes the pinned layout and the start state', () => {
+    const hero = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
+    const paid = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
+    for (const css of [hero, paid]) {
+      expect(css).toMatch(/\[data-motion-pending\] \.stage \{\s*--p: 0;/);
+      expect(rule(css, String.raw`\.stage${MOTION}`)).toMatch(/height: [45]00vh/);
+      expect(css).not.toMatch(/(^|[^(])\[data-motion='on'\](?!, \[data-motion-pending\])/m);
+    }
+  });
+
+  it('puts the pending script first in the landing root', () => {
+    const { container } = render(<LandingPage locale="en" />);
+    const first = container.querySelector('[data-landing]')!.firstElementChild!;
+    expect(first.tagName).toBe('SCRIPT');
+    expect(first.innerHTML).toContain('data-motion-pending');
   });
 });
 
@@ -345,11 +385,19 @@ describe('the paid moment', () => {
   // jsdom does not evaluate CSS modules, so the stylesheet is read as text.
   it('keeps hidden panels readable, and moves the track with the step', () => {
     const css = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
-    const hidden = css.match(/\.stage\[data-motion='on'\] \.panel \{[^}]*clip-path[^}]*\}/)![0];
+    const hidden = css.match(/\.stage:is\(\[data-motion='on'\], \[data-motion-pending\] \*\) \.panel \{[^}]*clip-path[^}]*\}/)![0];
     expect(hidden).toMatch(/clip-path:\s*inset\(50%\)/);
     expect(css).not.toMatch(/\.panel \{\s*display:\s*none/);
     expect(css).toMatch(/\[data-step='5'\] \.track \{\s*transform: translateX\(-80%\)/);
     expect(css).not.toMatch(/translateX\(calc\(var\(--p\)/);
+  });
+
+  // The closing line is text only: it hides by opacity, never visibility, so a screen reader reads it throughout.
+  it('hides the closing line by opacity alone', () => {
+    const css = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
+    const hidden = css.match(/\.stage:is\([^)]*\*\) \.closing \{[^}]*\}/)![0];
+    expect(hidden).toMatch(/opacity:\s*0/);
+    expect(css.match(/\.closing[^{]*\{[^}]*\}/g)!.join('')).not.toMatch(/visibility/);
   });
 });
 
@@ -365,6 +413,40 @@ describe('the shop section', () => {
     const panel = within(shop).getByRole('region', { name: en.shopSection.messageTitle });
     expect(panel).toHaveTextContent('Cookies balang');
     expect(document.activeElement).toBe(panel);
+  });
+
+  async function orderOnce(shop: HTMLElement) {
+    await userEvent.click(within(shop).getByRole('button', { name: /Cookies balang/ }));
+    await userEvent.click(within(shop).getByRole('button', { name: /add to basket/i }));
+    await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
+  }
+
+  it('refocuses the message panel each time the order button is pressed', async () => {
+    render(<LandingPage locale="en" />);
+    const shop = document.querySelector('#shop') as HTMLElement;
+    await orderOnce(shop);
+    const panel = within(shop).getByRole('region', { name: en.shopSection.messageTitle });
+    expect(document.activeElement).toBe(panel);
+    (document.activeElement as HTMLElement).blur();
+    await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
+    expect(document.activeElement).toBe(within(shop).getByRole('region', { name: en.shopSection.messageTitle }));
+  });
+
+  it('drops the message once the basket changes', async () => {
+    render(<LandingPage locale="en" />);
+    const shop = document.querySelector('#shop') as HTMLElement;
+    await orderOnce(shop);
+    expect(within(shop).getByRole('region', { name: en.shopSection.messageTitle })).toBeInTheDocument();
+    await userEvent.click(within(shop).getAllByRole('button', { name: /remove/i })[0]!);
+    expect(within(shop).queryByRole('region', { name: en.shopSection.messageTitle })).toBeNull();
+  });
+});
+
+describe('the in-page link targets', () => {
+  // The header links scroll, then focus the section: it needs tabindex=-1 to take focus.
+  it.each(['how', 'pricing', 'faq'])('#%s can take focus without joining the tab order', (id) => {
+    const { container } = render(<LandingPage locale="en" />);
+    expect(container.querySelector(`#${id}`)).toHaveAttribute('tabindex', '-1');
   });
 });
 

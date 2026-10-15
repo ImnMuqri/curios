@@ -23,7 +23,7 @@ export function HowItWorks({ copy }: { copy: LandingCopy }) {
     </p>,
   ];
   return (
-    <section className={`${base.bandSurface} ${styles.how}`} id="how" aria-labelledby="how-title">
+    <section className={`${base.bandSurface} ${styles.how}`} id="how" tabIndex={-1} aria-labelledby="how-title">
       <div className={base.wrap}>
         <Reveal>
           <h2 id="how-title" className={base.h2}>

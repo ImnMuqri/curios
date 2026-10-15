@@ -34,8 +34,6 @@
   --l-ink-300: #b3b7c1; /* oklch 0.779 0.015 268 -- secondary text on ink; 8.2:1 (--muted is 3.4:1 there, so never used on ink) */
 
   /* ---- Colour: alpha variants (parent named in each) ---- */
-  --l-paper-a08: rgb(250 251 252 / 8%); /* --paper -- question bubbles on ink, fallback scene */
-  --l-paper-a16: rgb(250 251 252 / 16%); /* --paper -- their outline */
 
   /* ---- Colour: semantic roles. Remapped here, never new hues. ---- */
   --l-bg: var(--paper);
@@ -166,4 +164,9 @@ html:has([data-landing]) {
   html:has([data-landing]) {
     scroll-behavior: smooth;
   }
+}
+
+/* A section the in-page links focus (tabindex=-1) is not a control: no ring on the whole band. */
+[data-landing] section[tabindex='-1']:focus {
+  outline: none;
 }

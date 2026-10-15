@@ -15,7 +15,7 @@
   padding-block: var(--l-section-pad);
 }
 
-.paid:has(.stage[data-motion='on']) {
+.paid:has(.stage:is([data-motion='on'], [data-motion-pending] *)) {
   padding: 0;
 }
 
@@ -24,7 +24,12 @@
   position: relative;
 }
 
-.stage[data-motion='on'] {
+/* Set by the landing's inline script before first paint when motion is allowed (see hero.module.css): the tall, pinned layout from the start, at --p: 0. */
+[data-motion-pending] .stage {
+  --p: 0;
+}
+
+.stage:is([data-motion='on'], [data-motion-pending] *) {
   height: 500vh;
 }
 
@@ -36,7 +41,7 @@
   min-width: 0;
 }
 
-.stage[data-motion='on'] > .inner {
+.stage:is([data-motion='on'], [data-motion-pending] *) > .inner {
   position: sticky;
   top: var(--l-header-h);
   height: calc(100svh - var(--l-header-h));
@@ -54,7 +59,7 @@
   min-width: 0;
 }
 
-.stage[data-motion='on'] .grid {
+.stage:is([data-motion='on'], [data-motion-pending] *) .grid {
   height: 100%;
   padding-top: var(--l-space-5);
   padding-bottom: var(--l-space-5);
@@ -80,7 +85,7 @@
 }
 
 /* There is no scrubbing without motion, so the line would claim a position nobody is at. */
-.stage:not([data-motion='on']) .progress {
+.stage:not(:is([data-motion='on'], [data-motion-pending] *)) .progress {
   display: none;
 }
 
@@ -92,7 +97,7 @@
   align-content: center;
 }
 
-.stage[data-motion='on'] .copy {
+.stage:is([data-motion='on'], [data-motion-pending] *) .copy {
   overflow: hidden;
 }
 
@@ -150,19 +155,14 @@
   letter-spacing: var(--l-tracking-display);
 }
 
-/* With motion the closing line waits for the last step; hidden also takes it out of the tab order and focus path. */
-.stage[data-motion='on'] .closing {
+/* With motion the closing line waits for the last step. It is text only, so it hides by opacity alone and a screen reader still reads it. */
+.stage:is([data-motion='on'], [data-motion-pending] *) .closing {
   opacity: 0;
-  visibility: hidden;
-  transition:
-    opacity 0.4s var(--l-ease-out),
-    visibility 0s linear 0.4s;
+  transition: opacity 0.4s var(--l-ease-out);
 }
 
-.stage[data-motion='on'][data-step='5'] .closing {
+.stage:is([data-motion='on'], [data-motion-pending] *)[data-step='5'] .closing {
   opacity: 1;
-  visibility: visible;
-  transition-delay: 0s;
 }
 
 /* ---- The phones ---- */
@@ -485,32 +485,32 @@
 /* ---- Phones (under 960px): with motion, the pinned phone fills the stage and the current panel sits under it ---- */
 
 @media (max-width: 959px) {
-  .stage[data-motion='on'] .grid {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .grid {
     grid-template-rows: minmax(0, 1fr) auto;
     gap: var(--l-space-3);
   }
 
-  .stage[data-motion='on'] .phones {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .phones {
     order: -1;
     container-type: size;
     justify-items: center;
     align-content: start;
   }
 
-  .stage[data-motion='on'] .device {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .device {
     width: min(100%, 300px, calc((100cqh - 36px) * 9 / 19));
   }
 
-  .stage[data-motion='on'] .title {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .title {
     font-size: var(--l-step-1);
   }
 
-  .stage[data-motion='on'] .number {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .number {
     font-size: var(--l-step-3);
   }
 
   /* Only the current panel shows. The others are visually hidden, not removed: their text stays readable to a screen reader. */
-  .stage[data-motion='on'] .panel {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .panel {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -519,11 +519,11 @@
     white-space: nowrap;
   }
 
-  .stage[data-step='1'][data-motion='on'] .panel[data-panel='1'],
-  .stage[data-step='2'][data-motion='on'] .panel[data-panel='2'],
-  .stage[data-step='3'][data-motion='on'] .panel[data-panel='3'],
-  .stage[data-step='4'][data-motion='on'] .panel[data-panel='4'],
-  .stage[data-step='5'][data-motion='on'] .panel[data-panel='5'] {
+  .stage[data-step='1']:is([data-motion='on'], [data-motion-pending] *) .panel[data-panel='1'],
+  .stage[data-step='2']:is([data-motion='on'], [data-motion-pending] *) .panel[data-panel='2'],
+  .stage[data-step='3']:is([data-motion='on'], [data-motion-pending] *) .panel[data-panel='3'],
+  .stage[data-step='4']:is([data-motion='on'], [data-motion-pending] *) .panel[data-panel='4'],
+  .stage[data-step='5']:is([data-motion='on'], [data-motion-pending] *) .panel[data-panel='5'] {
     position: static;
     width: auto;
     height: auto;
@@ -558,54 +558,54 @@
   }
 
   /* One row is the whole sticky height, so container-query sizing resolves against the stage. */
-  .stage[data-motion='on'] .grid {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .grid {
     grid-template-rows: minmax(0, 1fr);
     align-content: stretch;
   }
 
-  .stage[data-motion='on'] .phones {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .phones {
     container-type: size;
     height: 100%;
     align-content: center;
   }
 
-  .stage[data-motion='on'] .phones .device {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .phones .device {
     width: min(100%, 300px, calc((100cqh - 120px) * 9 / 19));
   }
 
-  .stage[data-motion='on'] .copy {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .copy {
     align-self: center;
   }
 
   /* Five panels in a row inside the clipped column. The track follows the step (the same one the phones show, from PAID_TIMELINE), not --p, so a caption and its phone always change together. */
-  .stage[data-motion='on'] .track {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .track {
     display: flex;
     gap: 0;
     width: 500%;
     transition: transform 0.5s var(--l-ease-out);
   }
 
-  .stage[data-motion='on'][data-step='1'] .track {
+  .stage:is([data-motion='on'], [data-motion-pending] *)[data-step='1'] .track {
     transform: translateX(0%);
   }
 
-  .stage[data-motion='on'][data-step='2'] .track {
+  .stage:is([data-motion='on'], [data-motion-pending] *)[data-step='2'] .track {
     transform: translateX(-20%);
   }
 
-  .stage[data-motion='on'][data-step='3'] .track {
+  .stage:is([data-motion='on'], [data-motion-pending] *)[data-step='3'] .track {
     transform: translateX(-40%);
   }
 
-  .stage[data-motion='on'][data-step='4'] .track {
+  .stage:is([data-motion='on'], [data-motion-pending] *)[data-step='4'] .track {
     transform: translateX(-60%);
   }
 
-  .stage[data-motion='on'][data-step='5'] .track {
+  .stage:is([data-motion='on'], [data-motion-pending] *)[data-step='5'] .track {
     transform: translateX(-80%);
   }
 
-  .stage[data-motion='on'] .panel {
+  .stage:is([data-motion='on'], [data-motion-pending] *) .panel {
     flex: 0 0 20%;
     padding-right: var(--l-space-6);
     box-sizing: border-box;

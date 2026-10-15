@@ -31,15 +31,18 @@ export function HeroStage({ children, askedLabels, total }: { children: ReactNod
     const node = stage.current;
     if (!node || prefersReducedMotion()) return;
     let cancelled = false;
+    const tweens: Array<{ kill: () => void }> = [];
     void loadMotion().then(({ gsap }) => {
       if (cancelled) return;
       // A reload half-way down: onProgress sets the true caption on the first scrub update.
       if (node.dataset.caption === 'all') node.dataset.caption = '0';
-      gsap.from(node.querySelectorAll('[data-hero-line]'), { yPercent: 110, duration: 1.3, ease: 'expo.out', stagger: 0.09, delay: 0.15 });
-      gsap.from(node.querySelectorAll('[data-hero-fade]'), { autoAlpha: 0, y: 16, duration: 1, ease: 'power3.out', delay: 0.7, stagger: 0.08 });
+      tweens.push(gsap.from(node.querySelectorAll('[data-hero-line]'), { yPercent: 110, duration: 1.3, ease: 'expo.out', stagger: 0.09, delay: 0.15 }));
+      // The sub fades by opacity only (never visibility, so it stays in the accessibility tree); the claim form is not faded at all, so it is usable from the first paint.
+      tweens.push(gsap.from(node.querySelectorAll('[data-hero-fade]'), { opacity: 0, y: 16, duration: 1, ease: 'power3.out', delay: 0.7, stagger: 0.08 }));
     });
     return () => {
       cancelled = true;
+      for (const tween of tweens) tween.kill();
     };
   }, []);
 

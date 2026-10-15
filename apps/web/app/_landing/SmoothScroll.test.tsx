@@ -71,3 +71,80 @@ describe('scrollToSection with Lenis running', () => {
     document.documentElement.style.removeProperty('--l-header-h');
   });
 });
+
+describe('SmoothScroll with Lenis running', () => {
+  const scrollTo = vi.fn();
+  const ctor = vi.fn();
+  class FakeLenis {
+    constructor(options: unknown) {
+      ctor(options);
+    }
+    on() {}
+    raf() {}
+    destroy() {}
+    scrollTo = scrollTo;
+  }
+  function allowLenis() {
+    vi.mocked(motion.prefersReducedMotion).mockReturnValue(false);
+    vi.mocked(motion.loadMotion).mockResolvedValue({
+      gsap: { ticker: { add: vi.fn(), remove: vi.fn(), lagSmoothing: vi.fn() } },
+      ScrollTrigger: { update: vi.fn() },
+      Lenis: FakeLenis,
+    } as never);
+  }
+  const frames = () => new Promise((r) => setTimeout(r, 60));
+
+  afterEach(() => {
+    window.location.hash = '';
+  });
+
+  // The shop demo's basket list and item sheet scroll on their own.
+  it('lets nested scroll areas take the wheel', async () => {
+    allowLenis();
+    const { unmount } = render(<SmoothScroll />);
+    await act(async () => {});
+    expect(ctor).toHaveBeenCalledWith(expect.objectContaining({ allowNestedScroll: true }));
+    unmount();
+  });
+
+  it('scrolls to the #hash once the scenes are on, once', async () => {
+    allowLenis();
+    const target = document.createElement('section');
+    target.id = 'pricing';
+    document.body.append(target);
+    window.location.hash = '#pricing';
+    const { unmount } = render(<SmoothScroll />);
+    await act(async () => {});
+    expect(scrollTo).not.toHaveBeenCalled();
+    await act(frames);
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(target, expect.objectContaining({ immediate: true }));
+    unmount();
+    target.remove();
+  });
+
+  it('does nothing about the hash when there is none', async () => {
+    allowLenis();
+    const { unmount } = render(<SmoothScroll />);
+    await act(frames);
+    expect(scrollTo).not.toHaveBeenCalled();
+    unmount();
+  });
+});
+
+describe('scrollToSection focus', () => {
+  // Keyboard users: the link scrolls, then focus follows, so the next Tab starts in the section.
+  it('moves focus to the section without scrolling again', () => {
+    vi.mocked(motion.prefersReducedMotion).mockReturnValue(false);
+    const target = document.createElement('section');
+    target.id = 'faq';
+    target.tabIndex = -1;
+    target.scrollIntoView = vi.fn();
+    const focus = vi.spyOn(target, 'focus');
+    document.body.append(target);
+    scrollToSection('#faq');
+    expect(focus).toHaveBeenCalledWith({ preventScroll: true });
+    expect(document.activeElement).toBe(target);
+    target.remove();
+  });
+});

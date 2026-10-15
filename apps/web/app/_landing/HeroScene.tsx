@@ -35,7 +35,7 @@ export function HeroScene({ copy }: { copy: LandingCopy }) {
                 <span className={styles.line} data-hero-line>{copy.hero.title}</span>
               </h1>
               <p className={styles.sub} data-hero-fade>{copy.hero.sub}</p>
-              <div data-hero-fade>
+              <div className={styles.claimWrap}>
                 <ClaimField id="claim-hero" label={copy.claim.label} placeholder={copy.claim.placeholder} button={copy.hero.cta} />
                 <p className={styles.note}>{copy.hero.ctaNote}</p>
               </div>

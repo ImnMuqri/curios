@@ -12,6 +12,7 @@ import { Pricing } from './Pricing.js';
 import { Faq } from './Faq.js';
 import { Closing } from './Closing.js';
 import { SmoothScroll } from './SmoothScroll.js';
+import { motionPendingScript } from './motionPending.js';
 import { SITE_URL, jsonLdScript, structuredData } from './structured-data.js';
 import base from './landing.module.css';
 
@@ -63,6 +64,8 @@ export function LandingPage({ locale }: { locale: Locale }) {
 
   return (
     <div className={base.page} data-landing lang={locale}>
+      {/* First child, so it runs before any scene paints: see motionPending.ts. */}
+      <script dangerouslySetInnerHTML={{ __html: motionPendingScript() }} />
       <a href="#main" className={base.skip}>
         {locale === 'ms' ? 'Langkau ke kandungan' : 'Skip to content'}
       </a>
