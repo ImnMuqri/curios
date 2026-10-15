@@ -10,7 +10,7 @@
   font-family: var(--l-font-body);
   font-size: var(--l-step-0);
   line-height: var(--l-leading-body);
-  /* The storm's 3D canvas and the phones bleed sideways on purpose; the page never does. */
+  /* The phones' bubbles and the pinned scenes bleed sideways on purpose; the page never does. */
   overflow-x: clip;
 }
 

@@ -77,6 +77,7 @@ smooth scroll, landing only.
 |---|---|
 | `motion.ts` | `prefersReducedMotion()` and `loadMotion()`, a dynamic import of `gsap`, `gsap/ScrollTrigger` and `lenis`, so none of them is in the first paint. |
 | `SmoothScroll.tsx` | Starts Lenis when motion is allowed, drives it from GSAP's ticker, and exposes `scrollToSection(id)` for the nav. |
+| `motionPending.ts` | The inline script at the top of the landing root. When motion is allowed it sets `data-motion-pending` before the scenes paint; the scene CSS matches `[data-motion='on']` or that attribute, so the tall pinned layout is there from the first paint and nothing reflows (deep links like `/#pricing` land right). Gives up after 4s if the libraries never arrive. `SmoothScroll` re-scrolls to the `#hash` once the scenes are on. |
 | `timeline.ts` | `HERO_TIMELINE`, `PAID_TIMELINE` and the pure helpers that read them. The one place to tune pace. |
 | `useScrub.ts` | Binds a section's scroll progress to a scene through ScrollTrigger. |
 | `Reveal.tsx`, `InView.tsx` | One-off arrivals (12px, 280ms). |
@@ -162,7 +163,7 @@ Brand colours were never adjusted. Each fix changed the layer instead.
 - `--biru` on ink is 3.1:1, so the focus ring on ink uses `--l-biru-300` (6.6:1).
 - `--kuning` behind white fails (about 2:1), so kuning always carries `--ink` (7.9:1).
 - Kuning as small text on paper fails, so it uses `--l-kuning-700` (5.5:1).
-- On the ink Business card the primary button inverts to paper with biru text (7.7:1).
+- On the biru Business card the primary button inverts to paper with biru text (7.7:1).
 
 ---
 
@@ -171,7 +172,7 @@ Brand colours were never adjusted. Each fix changed the layer instead.
 | What | Where | How |
 |---|---|---|
 | The demo shop | `demo.ts` | Replace `DEMO_PAGE`, `DEMO_QA`, `DEMO_FACTS`, `DEMO_LEAD` with a real owner's page (with their permission). Nothing else changes. |
-| A live ask bar | `HeroStage.tsx` | The hero's phone plays a scripted exchange. Swapping in the real `Ask` component on a seeded page costs inference on every visit. |
+| A live ask bar | `HeroScene.tsx` | The hero's phone scrubs a scripted scene (bubbles fly in, one question, one answer) with CSS. Swapping in the real `Ask` component on a seeded page costs inference on every visit. |
 | Lead email and capture card | `LeadPhones.tsx` | Rebuilt in HTML from the real product strings. Swap for real screenshots if preferred. |
 | Social proof | none yet | There are no real owners to quote, so the page has no proof section and invents nothing. When there is one, put it between the shop and Trust. |
 | Hero photo | `HeroScene.tsx` → `PhotoSlot` | `public/landing/hero-baker.webp`, supplied by the owner on 2026-10-08. A home baker at her counter, smiling at her phone beside a chocolate cake; cropped round `focus`. |
@@ -230,7 +231,7 @@ Against the budget:
 - **LCP under 2.0s: met in real throttling (1.1s), missed in Lighthouse's simulation (2.5s).** The simulation counts every script requested before the paint, including React's 103 kB baseline. The LCP element is the server-rendered `<h1>`.
 - **CLS under 0.05: met (0.035).** The shift comes from the font swap moving the demo phone. See "Font preloading" below.
 - **INP under 200ms: not measurable in a lab.** TBT is the stand-in. It's low on `/` but varied from 150 to 500ms on `/ms` because of one long parse-and-hydrate task. Watch real-user INP after launch.
-- **JS under 100 kB gzipped on the critical path: missed (111 kB).** 103 kB of that is Next and React shared by every route in the app; the landing page's own code is about 8 kB. three.js has since been removed, so the page loads no 3D code at all.
+- **JS under 100 kB gzipped on the critical path: missed (111 kB).** 103 kB of that is Next and React shared by every route in the app; the landing page's own code was about 8 kB in that pre-redesign run (the redesign adds gsap and lenis in a lazy chunk, not re-measured). three.js has since been removed, so the page loads no 3D code at all.
 - **Critical CSS inlined:** `experimental.inlineCss` in `next.config.ts`. It applies app-wide, and the stylesheets are small.
 - **Images:** there are none. Every visual is HTML, CSS or SVG, so there is nothing to lazy-load or size.
 - **The one accessibility audit that doesn't pass:** the demo's AskBar has a fixed `aria-label` while its visible question rotates. That's a deliberate product decision documented in `packages/ui/src/ask-bar/AskBar.tsx`.

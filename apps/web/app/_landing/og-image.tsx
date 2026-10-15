@@ -7,7 +7,7 @@ export const OG_SIZE = { width: 1200, height: 630 };
 
 /**
  * The share card: the promise on the left, and the product doing the thing on
- * the right -- the demo shop's ask bar with its question and answer. Drawn
+ * the right -- Kek Lina's first question and the answer her page gives. Drawn
  * with the same palette as the page, so a link shared on WhatsApp looks like
  * where it leads.
  */
