@@ -247,3 +247,41 @@ describe('DELETE /leads/:id', () => {
     expect(await app.prisma.lead.findUnique({ where: { id: mine.leadId } })).not.toBeNull();
   });
 });
+
+describe('PATCH /leads/:id', () => {
+  const patch = (leadId: string, cookie: string | undefined, status: string) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/leads/${leadId}`,
+      remoteAddress: from(),
+      ...(cookie ? { cookies: { [SESSION_COOKIE]: cookie } } : {}),
+      payload: { status },
+    });
+
+  it('moves a lead the owner owns through contacted and closed, and back', async () => {
+    const mine = await anOwnerWithALead();
+    for (const status of ['CONTACTED', 'CLOSED', 'NEW']) {
+      const res = await patch(mine.leadId, mine.cookie, status);
+      expect(res.statusCode).toBe(200);
+      expect((await app.prisma.lead.findUniqueOrThrow({ where: { id: mine.leadId } })).status).toBe(status);
+    }
+  });
+
+  it('refuses a status that does not exist', async () => {
+    const mine = await anOwnerWithALead();
+    expect((await patch(mine.leadId, mine.cookie, 'SOLD')).statusCode).toBe(400);
+  });
+
+  it("refuses someone else's lead, and leaves it as it was", async () => {
+    const mine = await anOwnerWithALead();
+    const theirs = await anOwnerWithALead();
+    const res = await patch(theirs.leadId, mine.cookie, 'CLOSED');
+    expect(res.statusCode).toBe(404);
+    expect((await app.prisma.lead.findUniqueOrThrow({ where: { id: theirs.leadId } })).status).toBe('NEW');
+  });
+
+  it('refuses an unauthenticated caller', async () => {
+    const mine = await anOwnerWithALead();
+    expect((await patch(mine.leadId, undefined, 'CLOSED')).statusCode).toBe(401);
+  });
+});

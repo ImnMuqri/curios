@@ -192,3 +192,21 @@ export async function deleteLead(
   });
   if (count === 0) throw new LeadNotYoursError();
 }
+
+/**
+ * Where the owner is with a lead: NEW until they reach out, CONTACTED once
+ * they have, CLOSED when it is done with. Scoped through the owner in the
+ * query, like deleteLead, and a 404 for anyone else's.
+ */
+export async function setLeadStatus(
+  prisma: PrismaClient,
+  accountId: string,
+  leadId: string,
+  status: 'NEW' | 'CONTACTED' | 'CLOSED',
+): Promise<void> {
+  const { count } = await prisma.lead.updateMany({
+    where: { id: leadId, page: { accountId } },
+    data: { status },
+  });
+  if (count === 0) throw new LeadNotYoursError();
+}

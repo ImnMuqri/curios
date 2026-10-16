@@ -5,8 +5,9 @@ import { Callout } from '@curios/ui';
 import type { OwnerTopic, OwnerWording } from '@curios/db-read';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
-import { relativeTime } from './relative-time.js';
+import { relativeTime } from '../_ui/relative-time.js';
 import ui from '../_ui/editor.module.css';
+import inbox from '../_ui/inbox.module.css';
 import styles from './questions.module.css';
 
 // Function-typed properties, not method shorthand: they are handed around as
@@ -123,7 +124,7 @@ export function TopicDetail({
   const weekTotal = topic.week.reduce((sum, n) => sum + n, 0);
 
   return (
-    <div className={styles.detailInner}>
+    <div className={inbox.detailInner}>
       {renaming ? (
         <div className={styles.rename}>
           <input ref={titleRef} value={title} aria-label="Topic title" maxLength={titleMax} onChange={(event) => setTitle(event.target.value)} />
@@ -158,7 +159,7 @@ export function TopicDetail({
         </div>
       )}
 
-      <section className={styles.section} aria-labelledby="wordings-title">
+      <section className={inbox.section} aria-labelledby="wordings-title">
         <h3 id="wordings-title">
           How people asked it<span>Hover a wording to split or delete it</span>
         </h3>
@@ -177,7 +178,7 @@ export function TopicDetail({
       </section>
 
       {state === 'conflict' ? (
-        <section className={styles.section} aria-labelledby="conflict-title">
+        <section className={inbox.section} aria-labelledby="conflict-title">
           <h3 id="conflict-title">
             Two answers, pick one<span>Two topics with answers became one</span>
           </h3>
@@ -195,7 +196,7 @@ export function TopicDetail({
           </div>
         </section>
       ) : (
-        <section className={styles.section} aria-labelledby="answer-title">
+        <section className={inbox.section} aria-labelledby="answer-title">
           <h3 id="answer-title">
             Your answer<span>The chat uses it for every wording above</span>
           </h3>
@@ -436,7 +437,7 @@ function FaqRow({
         : 'Answer it and it gets its own FAQ page, found on Google.';
 
   return (
-    <section className={styles.section} aria-label="FAQ page">
+    <section className={inbox.section} aria-label="FAQ page">
       <div className={styles.faq}>
         <span className={styles.faqIcon} data-on={on || undefined} aria-hidden="true">
           <svg viewBox="0 0 24 24" width="17" height="17">

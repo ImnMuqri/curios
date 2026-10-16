@@ -581,7 +581,7 @@
   margin: 14px 0 0;
   padding: 10px 12px;
   border-radius: 10px;
-  background: color-mix(in oklch, var(--biru-muda) 45%, var(--card));
+  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
   color: color-mix(in oklch, var(--biru) 60%, var(--ink));
   font-size: 13px;
 }
@@ -647,7 +647,7 @@
   padding: 18px;
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: linear-gradient(135deg, color-mix(in oklch, var(--biru-muda) 45%, var(--card)), var(--card) 60%);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--biru-muda) 45%, var(--card)), var(--card) 60%);
 }
 
 .qrBox {
@@ -752,7 +752,7 @@
 
 .drop:hover:not(:disabled) {
   border-color: var(--biru);
-  background: color-mix(in oklch, var(--biru-muda) 45%, var(--card));
+  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
   color: var(--biru);
 }
 
@@ -800,7 +800,7 @@
 }
 
 .bank[aria-pressed='true'] {
-  border-color: color-mix(in oklch, var(--biru) 50%, var(--card));
+  border-color: color-mix(in srgb, var(--biru) 50%, var(--card));
   background: var(--biru-muda);
   color: color-mix(in oklch, var(--biru) 70%, var(--ink));
 }

@@ -30,3 +30,15 @@ export function normalizeMalaysianPhone(raw: string): string | null {
 
   return `+60${national}`;
 }
+
+/**
+ * A stored number the way people write it: +60 12-781 4402, and for an 011
+ * number +60 11-2345 6789. Anything that is not a stored Malaysian mobile
+ * comes back as it was, rather than half-formatted.
+ */
+export function formatMalaysianPhone(e164: string): string {
+  const match = /^\+60(1\d)(\d{3,4})(\d{4})$/.exec(e164);
+  if (!match) return e164;
+  const [, prefix, middle, last] = match;
+  return `+60 ${prefix}-${middle} ${last}`;
+}

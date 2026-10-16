@@ -7,8 +7,9 @@ import { apiFetch } from '../../../lib/api.js';
 import { PageHead } from '../_ui/page-head.js';
 import ui from '../_ui/editor.module.css';
 import panel from '../panel.module.css';
-import { relativeTime } from './relative-time.js';
+import { relativeTime } from '../_ui/relative-time.js';
 import { CHIP_WORDS, plural, TopicDetail, topicState, type ChatLook, type TopicActions } from './topic-detail.js';
+import inbox from '../_ui/inbox.module.css';
 import styles from './questions.module.css';
 
 type Filter = 'all' | 'needs' | 'answered';
@@ -90,9 +91,9 @@ export function QuestionsScreen({
         ) : null}
       </PageHead>
 
-      <ul className={styles.stats} aria-label="This week">
-        <li className={styles.kpi}>
-          <span className={styles.kpiIcon} aria-hidden="true">
+      <ul className={inbox.stats} aria-label="This week">
+        <li className={inbox.kpi}>
+          <span className={inbox.kpiIcon} aria-hidden="true">
             <svg viewBox="0 0 24 24" width="19" height="19">
               <path d="M4 5h16v11H9l-5 4zM8 9h8M8 12h5" />
             </svg>
@@ -102,8 +103,8 @@ export function QuestionsScreen({
             <span>Questions asked this week</span>
           </span>
         </li>
-        <li className={styles.kpi}>
-          <span className={styles.kpiIcon} data-tone="amber" aria-hidden="true">
+        <li className={inbox.kpi}>
+          <span className={inbox.kpiIcon} data-tone="amber" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="19" height="19">
               <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01" />
             </svg>
@@ -113,8 +114,8 @@ export function QuestionsScreen({
             <span>Topics waiting for your answer</span>
           </span>
         </li>
-        <li className={styles.kpi}>
-          <span className={styles.kpiIcon} data-tone="hijau" aria-hidden="true">
+        <li className={inbox.kpi}>
+          <span className={inbox.kpiIcon} data-tone="hijau" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="19" height="19">
               <path d="M5 12.5l4.5 4.5L19 7.5" />
             </svg>
@@ -131,8 +132,8 @@ export function QuestionsScreen({
       </ul>
 
       {topics.length === 0 ? (
-        <div className={styles.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          <div className={styles.detail} style={{ display: 'grid', placeItems: 'center', minHeight: 420 }}>
+        <div className={inbox.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
+          <div className={inbox.detail} style={{ display: 'grid', placeItems: 'center', minHeight: 420 }}>
             <div className={ui.empty} style={{ border: 0 }}>
               <div className={ui.emptyArt} aria-hidden="true">
                 <span className={ui.ghostRows}>
@@ -160,9 +161,9 @@ export function QuestionsScreen({
           </div>
         </div>
       ) : (
-        <div className={styles.board}>
-          <div className={styles.list}>
-            <div className={styles.filters} role="tablist" aria-label="Show topics" style={{ '--at': FILTERS.findIndex((f) => f.id === filter) } as CSSProperties}>
+        <div className={inbox.board}>
+          <div className={inbox.list}>
+            <div className={inbox.filters} role="tablist" aria-label="Show topics" style={{ '--at': FILTERS.findIndex((f) => f.id === filter), '--n': FILTERS.length } as CSSProperties}>
               {FILTERS.map((f) => (
                 <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
                   {f.label}
@@ -171,21 +172,20 @@ export function QuestionsScreen({
               ))}
             </div>
             {shown.length === 0 ? (
-              <p className={styles.listEmpty}>
+              <p className={inbox.listEmpty}>
                 <b>{filter === 'needs' ? 'All answered' : 'Nothing answered yet'}</b>
                 {filter === 'needs' ? 'New questions land here as visitors ask them.' : 'Answer a topic and it moves here.'}
               </p>
             ) : (
-              <ul className={styles.rows} aria-label="Topics">
+              <ul className={inbox.rows} aria-label="Topics">
                 {shown.map((topic, i) => {
                   const state = topicState(topic);
                   return (
                     <li key={topic.id}>
                       <button
                         type="button"
-                        className={styles.row}
+                        className={inbox.row}
                         aria-current={chosen?.id === topic.id}
-                        data-needs={state === 'answered' ? undefined : ''}
                         style={{ animationDelay: `${Math.min(i, 12) * 40}ms` }}
                         onClick={() => setSelected(topic.id)}
                       >
@@ -198,7 +198,12 @@ export function QuestionsScreen({
                         <span className={styles.rowMeta}>
                           {plural(topic.askCount, 'ask')} · {plural(topic.wordings.length, 'wording')} · {relativeTime(topic.lastAskedAt, now)}
                         </span>
-                        <span className={styles.bar} aria-hidden="true">
+                        <span
+                          className={styles.bar}
+                          data-needs={state === 'answered' ? undefined : ''}
+                          data-current={chosen?.id === topic.id ? '' : undefined}
+                          aria-hidden="true"
+                        >
                           <i style={{ width: `${Math.round((topic.askCount / most) * 100)}%` }} />
                         </span>
                       </button>
@@ -208,7 +213,7 @@ export function QuestionsScreen({
               </ul>
             )}
           </div>
-          <div className={styles.detail}>
+          <div className={inbox.detail}>
             {chosen ? (
               <TopicDetail
                 key={chosen.id}

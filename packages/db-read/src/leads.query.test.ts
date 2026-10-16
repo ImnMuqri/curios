@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { getLeads } from './leads.query.js';
+import { getLeadStats, getLeads } from './leads.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -99,5 +99,22 @@ describe('getLeads', () => {
 
   it('does not write, so the read-only role can run it', async () => {
     await expect(getLeads(mine)).resolves.toBeDefined();
+  });
+});
+
+describe('getLeadStats', () => {
+  it('counts what is waiting, what is closed, and each of the last seven days', async () => {
+    const now = new Date('2026-10-17T12:00:00Z');
+    const ago = (hours: number) => new Date(now.getTime() - hours * 3600 * 1000);
+    const owner = await anOwnerWithAPage();
+    const other = await anOwnerWithAPage();
+    await aLead(owner.pageId, '+60120000001', { createdAt: ago(1) });
+    await aLead(owner.pageId, '+60120000002', { createdAt: ago(2), status: 'CONTACTED' });
+    await aLead(owner.pageId, '+60120000003', { createdAt: ago(30), status: 'CLOSED' });
+    await aLead(owner.pageId, '+60120000004', { createdAt: ago(6 * 24 + 20) });
+    await aLead(owner.pageId, '+60120000005', { createdAt: ago(9 * 24), status: 'CLOSED' });
+    await aLead(other.pageId, '+60120000006', { createdAt: ago(1) });
+
+    expect(await getLeadStats(owner.accountId, now)).toEqual({ waiting: 2, week: [1, 0, 0, 0, 0, 1, 2], closed: 2 });
   });
 });

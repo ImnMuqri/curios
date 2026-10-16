@@ -46,3 +46,8 @@ a row **Resolved** rather than deleting it.
 | 37 | Questions: the sparkline | (sample week) | Real asks per day, logged from 2026-10-17 (QuestionAsk); older asks show only in the totals | Nothing recorded when each ask happened before | Fills in over a week |
 | 38 | Questions: answer saved | Typewriter reply, sparks, a toast | The reply shows at once; a quiet status line says what happened | Kept simple; the status is read out | Motion pass |
 | 39 | Questions: FAQ row rule | "once it is asked 3 times" | "once it is asked 3 times and you have answered it" | Both are the rule (qualifiesForFaq) | Accepted |
+| 40 | Leads: third figure | "Closed into a sale" | "Marked closed" | Closed is the owner's own mark; nothing records whether it became a sale | If sales are ever recorded |
+| 41 | Leads: the first message | "Hi! This is Lina from Kek Lina... Yes, I can deliver to Klang for RM15. Shall I put you down?" | Says back only what the lead asked for, from the page's display name, and offers to talk; Malay on a Malay page | A drafted price or promise would be words the owner never wrote | Accepted |
+| 42 | Leads: "Left their number" chip | At the end of the conversation | At the end of the conversation, whatever turn the number was left after | The capture card is not a message, so where it came is not stored | If the capture's turn is ever stored |
+| 43 | Leads: saving a status | Toasts ("Marked contacted.") | A quiet status line under the lead | One way of saying what happened, as on Questions | Motion pass |
+| 44 | Leads: the trial notice | (not on the board) | The free-lead notice stays above the figures | It explains why capture stops; the Alerts module restyles it | Alerts module |

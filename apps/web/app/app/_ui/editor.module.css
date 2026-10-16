@@ -465,7 +465,7 @@
 .tile[aria-pressed='true'] {
   border-color: var(--biru);
   box-shadow: 0 0 0 1px var(--biru);
-  background: color-mix(in oklch, var(--biru-muda) 45%, var(--card));
+  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
 }
 
 .tile:focus-visible {

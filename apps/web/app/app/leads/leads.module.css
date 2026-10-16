@@ -1,136 +1,706 @@
-/* Each lead a white card on a hairline, the same card the rest of the dashboard is built from. */
-.list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 10px;
+/*
+ * Leads, from the design handoff's Leads board. The frame (figures, the
+ * filtered list, the detail column) is ../_ui/inbox.module.css; this is
+ * what is only Leads': the number rows, the number on its own, its status,
+ * what they are after, the conversation and the first message.
+ */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.item {
-  padding: 20px 22px;
-  background: var(--card);
-  border: 1px solid var(--line);
+.notice {
+  padding: 16px 32px 0;
+}
+
+/* Seven days of numbers, today last and darker. */
+.week {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 38px;
+  margin-left: auto;
+}
+
+.week i {
+  display: block;
+  width: 8px;
+  border-radius: 3px;
+  background: var(--blob-mint);
+  transition: height 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.week i:last-child {
+  background: var(--hijau);
+}
+
+/* ---- A number in the list ---- */
+
+.lead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* The phone square, in the lead's status colours. */
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--biru-muda);
+  color: var(--biru);
+}
+
+.avatar[data-status='CONTACTED'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+.avatar[data-status='CLOSED'] {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+.avatar svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.leadMid {
+  flex: 1;
+  min-width: 0;
+}
+
+.phone {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.newDot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--biru);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--biru-muda) 70%, var(--biru));
+}
+
+.wants {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.leadEnd {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 5px;
+}
+
+.leadEnd > span:first-child {
+  font-size: 12px;
+  color: var(--faint);
+}
+
+/* How many of the three details they gave: three bars, warmer as they fill. */
+.heat {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.heat i {
+  display: block;
+  width: 6px;
+  height: 14px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.heat[data-score='1'] i:nth-child(-n + 1) {
+  background: color-mix(in srgb, var(--rose) 40%, var(--card));
+}
+
+.heat[data-score='2'] i:nth-child(-n + 2) {
+  background: color-mix(in srgb, var(--rose) 65%, var(--card));
+}
+
+.heat[data-score='3'] i {
+  background: var(--rose);
+}
+
+/* ---- The number on its own ---- */
+
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+}
+
+.head .avatar {
+  width: 52px;
+  height: 52px;
   border-radius: 16px;
 }
 
-/* Score, status and when: quiet, sentence case, not the conversation. */
-.meta {
-  margin: 0 0 6px;
-  font-size: var(--text-sm);
+.head h2 {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.head p {
+  margin: 2px 0 0;
+  font-size: 13px;
   color: var(--muted);
 }
 
-/*
- * The one thing this screen exists to show, so it is the loudest text on the
- * card -- mono because a phone number is data, the way DESIGN.md treats
- * counts and timestamps, not conversation.
- */
-.phone {
-  margin: 0 0 8px;
-  font-family: var(--font-mono);
-  font-size: var(--text-lg);
-  font-weight: 600;
-  letter-spacing: -0.01em;
-}
-
-.slots {
-  list-style: none;
-  padding: 0;
-  margin: 0 0 12px;
-}
-
-.slots li {
-  margin: 0 0 2px;
-  font-size: var(--text-base);
-  color: var(--ink);
-}
-
-.slots li::before {
-  content: '';
-  display: inline-block;
-  width: 5px;
-  height: 5px;
-  margin: 0 10px 2px 0;
-  border-radius: 50%;
-  background: var(--kuning);
-}
-
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-/*
- * FRONTEND.md's one primary action for this screen: "WhatsApp them". Shaped
- * like Button's .primary so it reads as the thing to press, styled here
- * rather than through Button because it must render as a real <a> -- an
- * external deep link, not a client action.
- */
 .whatsapp {
   display: inline-flex;
   align-items: center;
-  min-height: var(--button-height, 44px);
-  padding: var(--button-padding, 11px 18px);
-  border: 1.5px solid transparent;
-  border-radius: var(--button-radius, 10px);
-  background: var(--biru);
-  color: var(--paper);
-  font-family: var(--font-body);
-  font-size: var(--button-size, var(--text-body));
-  font-weight: var(--button-weight, 500);
+  gap: 8px;
+  height: 42px;
+  margin-left: auto;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--hijau);
+  color: var(--card);
+  font: inherit;
+  font-weight: 600;
   text-decoration: none;
-  transition: background 120ms ease;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.whatsapp:hover {
+  background: color-mix(in oklch, var(--hijau) 82%, var(--ink));
+  color: var(--card);
 }
 
 .whatsapp:active {
-  background: var(--ink);
+  transform: scale(0.97);
 }
 
-.confirm {
-  margin-top: 12px;
-  padding: 12px 14px;
-  border: 1.5px solid var(--merah);
-  border-radius: 12px;
-  background: var(--card);
+.whatsapp svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
-.confirmText {
-  margin: 0 0 8px;
-  font-size: var(--text-base);
-  color: var(--ink);
+.whatsapp[data-small] {
+  height: 36px;
+  margin-left: 0;
+  padding: 0 14px;
+  font-size: 13px;
 }
 
-.transcript {
-  list-style: none;
+/* New, Contacted, Closed: a sliding thumb in the status's colour. */
+.status {
+  position: relative;
+  display: inline-grid;
+  grid-template-columns: repeat(3, 120px);
+  margin-top: 22px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.status::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: 120px;
+  border-radius: 999px;
+  background: var(--biru);
+  transform: translateX(calc(var(--at, 0) * 100%));
+  transition: transform 420ms cubic-bezier(0.34, 1.3, 0.64, 1), background-color 300ms ease;
+}
+
+.status[data-status='CONTACTED']::before {
+  background: var(--amber-ink);
+}
+
+.status[data-status='CLOSED']::before {
+  background: var(--hijau);
+}
+
+.status button {
+  position: relative;
+  z-index: 1;
+  height: 34px;
   padding: 0;
-  margin: 12px 0 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 250ms ease;
+}
+
+.status button[aria-checked='true'] {
+  color: var(--card);
+}
+
+.status button:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+  border-radius: 999px;
+}
+
+/* What they're after: three slots and how ready the lead is. */
+.slots {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) 150px;
+  gap: 10px;
+}
+
+.slot {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--paper);
+  animation: fadeUp 360ms ease both;
 }
 
-.transcript li {
-  max-width: 80%;
-  padding: 10px 14px;
-  border-radius: 16px;
-  font-size: var(--text-base);
+.slot[data-missing] {
+  border: 1.5px dashed var(--edge);
+  background: var(--card);
+}
+
+.slotIcon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: var(--rose-muda);
+  color: var(--rose);
+}
+
+.slotIcon[data-tone='biru'] {
+  background: var(--biru-muda);
+  color: var(--biru);
+}
+
+.slotIcon[data-tone='hijau'] {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+.slot[data-missing] .slotIcon {
+  background: var(--surface);
+  color: var(--faint);
+}
+
+.slotIcon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.slot small {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.slot b {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.slot[data-missing] b {
+  color: var(--faint);
+  font-weight: 400;
+}
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
+  text-align: center;
+}
+
+.meter circle {
+  fill: none;
+  stroke-width: 5;
+}
+
+.meter circle:first-child {
+  stroke: var(--biru-muda);
+}
+
+.meter circle:last-child {
+  stroke: var(--biru);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.meter b {
+  color: color-mix(in oklch, var(--biru) 70%, var(--ink));
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.meter span {
+  color: var(--ink-soft);
+  font-size: 11.5px;
+}
+
+/* The conversation beside the first message. */
+.pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.convo {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 300px;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 18px;
+  background: var(--page-bg, var(--ink));
+  color: var(--page-fg, var(--paper));
+  font-family: var(--font-inter), sans-serif;
+}
+
+.fromVisitor {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 16px 16px 5px 16px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
   white-space: pre-wrap;
 }
 
-/* The customer's own words, set apart on the neutral surface. */
-.fromCustomer {
+.fromPage {
   align-self: flex-start;
-  background: var(--surface);
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 16px 16px 16px 5px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
   color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
 }
 
-/* The reply the page sent back -- quiet emphasis, the same --biru-muda AnswerBubble
-   uses for an answer arriving on the public page. */
-.fromOwner {
-  align-self: flex-end;
-  background: var(--biru-muda);
+.leftNumber {
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-family: var(--font-plex-sans), sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+}
+
+.leftNumber svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.reply {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  border-radius: 18px;
+  background: var(--card);
+  transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.reply:focus-within {
+  border-color: var(--hijau);
+  box-shadow: 0 0 0 3px rgb(29 111 95 / 12%);
+}
+
+.replyHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-soft);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.replyHead svg {
+  fill: none;
+  stroke: var(--hijau);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.replyHead span {
+  margin-left: auto;
+  color: var(--faint);
+  font-weight: 400;
+}
+
+.reply textarea {
+  flex: 1;
+  min-height: 170px;
+  padding: 14px;
+  border: 0;
+  background: color-mix(in srgb, var(--hijau-muda) 60%, var(--card));
+  color: color-mix(in oklch, var(--hijau) 50%, var(--ink));
+  font: inherit;
+  line-height: 1.55;
+  resize: none;
+  outline: none;
+}
+
+.replyFoot {
+  display: flex;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.outline {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
   color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.outline:hover {
+  border-color: var(--faint);
+  background: var(--paper);
+}
+
+.pairTitle {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  color: var(--ink-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pairTitle span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+/* Consent, and the one way to let the number go. */
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 26px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.foot > svg {
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.foot > span:first-of-type {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.footEnd {
+  margin-left: auto;
+}
+
+.ghost {
+  height: 34px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--merah-deep);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ghost:hover {
+  background: var(--merah-muda);
+}
+
+.confirm {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  color: var(--merah-deep);
+  font-size: 12.5px;
+}
+
+.confirm button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.confirm button:first-of-type {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.error {
+  margin-top: 12px;
+}
+
+.said {
+  margin: 12px 0 0;
+  color: var(--hijau);
+  font-size: 13px;
+}
+
+.said:empty {
+  margin: 0;
+}
+
+/* ---- Narrower ---- */
+
+@container (max-width: 760px) {
+  .slots {
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  }
+
+  .meter {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    gap: 12px;
+    padding: 12px;
+  }
+
+  .pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 520px) {
+  .head h2 {
+    font-size: 23px;
+  }
+
+  .whatsapp {
+    margin-left: 0;
+  }
+
+  .status {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .status::before {
+    width: calc((100% - 8px) / 3);
+  }
+}
+
+@media (max-width: 1000px) {
+  .week {
+    display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .notice {
+    padding: 14px 16px 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slot {
+    animation: none;
+  }
+
+  .week i,
+  .status::before,
+  .meter circle:last-child {
+    transition: none;
+  }
 }

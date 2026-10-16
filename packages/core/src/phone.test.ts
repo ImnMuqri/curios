@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeMalaysianPhone } from './phone.js';
+import { formatMalaysianPhone, normalizeMalaysianPhone } from './phone.js';
 
 describe('normalizeMalaysianPhone', () => {
   it.each([
@@ -34,5 +34,17 @@ describe('normalizeMalaysianPhone', () => {
     const spellings = ['0123456789', '012-345 6789', '+60123456789', '60123456789'];
     const stored = new Set(spellings.map(normalizeMalaysianPhone));
     expect(stored.size).toBe(1);
+  });
+});
+
+describe('formatMalaysianPhone', () => {
+  it('writes a stored number the way people do', () => {
+    expect(formatMalaysianPhone('+60127814402')).toBe('+60 12-781 4402');
+    expect(formatMalaysianPhone('+601123456789')).toBe('+60 11-2345 6789');
+  });
+
+  it('leaves anything else as it was', () => {
+    expect(formatMalaysianPhone('+6512345678')).toBe('+6512345678');
+    expect(formatMalaysianPhone('not a number')).toBe('not a number');
   });
 });
