@@ -5,7 +5,7 @@
  * pricing page, not an operational dial. A Payment stores the amount it was billed
  * at, so changing these never alters a bill already issued.
  */
-export const PLAN_PRICES_CENTS = { MONTHLY: 3900, ANNUAL: 39000 } as const;
+export const PLAN_PRICES_CENTS = { MONTHLY: 4900, ANNUAL: 49000 } as const;
 
 export type BillingPlan = keyof typeof PLAN_PRICES_CENTS;
 

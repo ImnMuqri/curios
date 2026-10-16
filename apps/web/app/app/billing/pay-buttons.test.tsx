@@ -5,8 +5,8 @@ import { ApiError } from '../../../lib/api.js';
 import { PayButtonsForm, payError } from './pay-buttons.js';
 
 const options = [
-  { plan: 'MONTHLY' as const, label: 'Pay RM39 for a month' },
-  { plan: 'ANNUAL' as const, label: 'Pay RM390 for a year' },
+  { plan: 'MONTHLY' as const, label: 'Pay RM49 for a month' },
+  { plan: 'ANNUAL' as const, label: 'Pay RM490 for a year' },
 ];
 
 describe('PayButtonsForm', () => {
@@ -15,7 +15,7 @@ describe('PayButtonsForm', () => {
     const navigate = vi.fn();
     render(<PayButtonsForm options={options} onPay={onPay} navigate={navigate} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Pay RM390 for a year' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM490 for a year' }));
 
     expect(onPay).toHaveBeenCalledWith('ANNUAL');
     expect(navigate).toHaveBeenCalledWith('https://www.billplz-sandbox.com/bills/abc');
@@ -31,10 +31,10 @@ describe('PayButtonsForm', () => {
     );
     render(<PayButtonsForm options={options} onPay={onPay} navigate={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Pay RM39 for a month' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49 for a month' }));
 
     // Two bills raised by a double press would leave two pending payments for one owner.
-    expect(screen.getByRole('button', { name: 'Pay RM390 for a year' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Pay RM490 for a year' })).toBeDisabled();
     finish();
   });
 
@@ -46,7 +46,7 @@ describe('PayButtonsForm', () => {
     });
     render(<PayButtonsForm options={options} onPay={onPay} navigate={vi.fn()} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Pay RM39 for a month' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49 for a month' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Billplz is not answering right now. Try again in a few minutes.',

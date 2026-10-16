@@ -822,7 +822,7 @@ about RM2 in Opus, mostly once.
 These are estimates from the prompt's shape, not measurements — `ModelCall` exists to
 replace them, and the first real numbers should overwrite this paragraph rather than sit
 beside it. But they are close enough to settle two things. Pricing cannot be derived from
-cost at this margin; RM39 is anchored on what an extra customer is worth, not on what a
+cost at this margin; the price (RM49 since 2026-10-16) is anchored on what an extra customer is worth, not on what a
 conversation costs. And the conversation cap is not really protecting margin at RM4.50 —
 it is protecting against a pathological page, which is a smaller claim than the one the
 spec originally made for it.

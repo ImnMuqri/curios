@@ -175,13 +175,13 @@ describe('POST /billing/bills', () => {
       where: { pageId: owner.pageId },
       select: { id: true, status: true, amountCents: true, billplzCollectionId: true, billplzBillId: true },
     });
-    expect(payment).toMatchObject({ status: 'PENDING', amountCents: 3900, billplzCollectionId: COLLECTION });
+    expect(payment).toMatchObject({ status: 'PENDING', amountCents: 4900, billplzCollectionId: COLLECTION });
     expect(payment.billplzBillId).toMatch(/^bill-/);
     expect(client.createBill).toHaveBeenCalledWith({
       collectionId: COLLECTION,
       email: owner.email,
       name: 'Nadia Bakes',
-      amountCents: 3900,
+      amountCents: 4900,
       description: 'Curios Business, 1 month — Nadia Bakes',
       callbackUrl: 'http://localhost:3001/billing/billplz/callback',
       redirectUrl: 'http://localhost:3001/billing/billplz/return',

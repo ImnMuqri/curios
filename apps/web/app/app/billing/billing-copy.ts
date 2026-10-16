@@ -16,7 +16,7 @@ export function formatDate(date: Date): string {
   return date.toLocaleDateString('en-MY', MALAYSIAN_DATE);
 }
 
-/** Whole ringgit without decimals, the way the prices are published: RM39, RM390. */
+/** Whole ringgit without decimals, the way the prices are published: RM49, RM490. */
 export function ringgit(cents: number): string {
   return cents % 100 === 0 ? `RM${cents / 100}` : `RM${(cents / 100).toFixed(2)}`;
 }

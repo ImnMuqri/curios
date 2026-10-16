@@ -8,9 +8,9 @@ import styles from './billing.module.css';
 
 export interface PayOption {
   plan: BillingPlan;
-  /** The button's words, which say exactly what happens: "Pay RM39 for a month". */
+  /** The button's words, which say exactly what happens: "Pay RM49 for a month". */
   label: string;
-  /** The card around the button, when there is one: "Monthly", "RM39", "a month". */
+  /** The card around the button, when there is one: "Monthly", "RM49", "a month". */
   name?: string;
   price?: string;
   per?: string;

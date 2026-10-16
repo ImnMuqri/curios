@@ -75,8 +75,8 @@ describe('BillingPage', () => {
     expect(PayButtons).toHaveBeenCalledTimes(1);
     // Each a plan card now, the yearly one featured; the button words still say exactly what happens.
     expect(PayButtons.mock.calls[0]?.[0].options).toEqual([
-      expect.objectContaining({ plan: 'MONTHLY', label: 'Pay RM39 for a month', price: 'RM39', per: 'a month' }),
-      expect.objectContaining({ plan: 'ANNUAL', label: 'Pay RM390 for a year', price: 'RM390', per: 'a year', featured: true }),
+      expect.objectContaining({ plan: 'MONTHLY', label: 'Pay RM49 for a month', price: 'RM49', per: 'a month' }),
+      expect.objectContaining({ plan: 'ANNUAL', label: 'Pay RM490 for a year', price: 'RM490', per: 'a year', featured: true }),
     ]);
   });
 
