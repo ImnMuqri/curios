@@ -19,8 +19,11 @@ const FaqEntryPage = (await import('./page.js')).default;
 const entry: FaqAnswer = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
+  theme: { accentColor: '#2340c8', headingFont: 'JAKARTA', background: 'PAPER', backgroundColor: null },
   question: 'Berapa harga kek lapis?',
   answer: 'RM12 sekotak, RM60 lima kotak.',
+  askCount: 14,
+  related: [{ slug: 'ada-halal', question: 'Ada sertifikasi halal?' }],
 };
 
 const params = (handle: string, slug: string) => ({
@@ -35,6 +38,17 @@ describe('one FAQ answer', () => {
 
     expect(screen.getByRole('heading', { name: 'Berapa harga kek lapis?' })).toBeInTheDocument();
     expect(screen.getByText('RM12 sekotak, RM60 lima kotak.')).toBeInTheDocument();
+    expect(screen.getByText(/Answered by Nadia Bakes · asked 14 times/)).toBeInTheDocument();
+  });
+
+  it('offers the conversation, and the page\'s other answers', async () => {
+    getFaqEntry.mockResolvedValueOnce(entry);
+
+    render(await FaqEntryPage(params('nadia', 'berapa-harga')));
+
+    expect(screen.getByRole('link', { name: 'Ask' })).toHaveAttribute('href', '/nadia#ask');
+    expect(screen.getByRole('link', { name: 'Ada sertifikasi halal?' })).toHaveAttribute('href', '/nadia/faq/ada-halal');
+    expect(screen.getByRole('link', { name: 'All questions' })).toHaveAttribute('href', '/nadia/faq');
   });
 
   it('carries FAQPage structured data holding the pair', async () => {

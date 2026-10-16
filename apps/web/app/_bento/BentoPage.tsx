@@ -1,18 +1,16 @@
 import type { CSSProperties, ReactNode } from 'react';
 import {
-  arrangeTiles,
   isHexColor,
-  linkKind,
   readableOn,
   type HeadingFont,
   type PageBackground,
   type PageStyle,
   type TileSize,
-  withShopTile,
 } from '@curios/core/bento';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
 import { Cover } from './Cover.js';
+import { pageCopy } from './page-copy.js';
 import styles from './Bento.module.css';
 
 export interface BentoPageProps {
@@ -20,11 +18,12 @@ export interface BentoPageProps {
   handle: string;
   bio: string | null;
   avatarUrl: string | null;
+  /** In the order visitors see them. `size` is kept on the rows but no longer drawn: every link is a pill. */
   links: { id: string; label: string; url: string; size: TileSize | null }[];
   style: PageStyle;
   accentColor: string;
   headingFont: HeadingFont;
-  /** False in the editor's live preview: tiles become boxes that cannot navigate. */
+  /** False in the editor's live preview: links and tabs become boxes that cannot navigate. */
   interactive?: boolean;
   /**
    * The element the owner's name renders as. h1 on the page itself; the landing
@@ -32,16 +31,16 @@ export interface BentoPageProps {
    */
   nameAs?: 'h1' | 'p';
   /**
-   * The shop's tile, at its place among the links, when the shop is open.
-   * Words arrive ready-made (shopCopy) so this stays a renderer that does not
-   * know the page's language.
+   * Present when the shop is open, which is what gives the page its Shop tab.
+   * The other fields are the old tile's words, still passed by callers that
+   * show a shop elsewhere; the tab only needs to know the shop is there.
    */
   shop?: { position: number; size: TileSize | null; label: string; caption: string; photoUrl: string | null } | null;
   /**
-   * Drawn already in chat mode -- bio and tiles folded away, room for a
-   * conversation -- for a page shown mid-chat (the landing page's storm). The
-   * public page leaves this out: ChatMode sets the same attribute at runtime.
-   * `'shop'` folds the bio and tiles away the same way, for /handle/shop.
+   * Which tab the page is drawn on. Left out, it is Links; the public page's
+   * Ask flips to chat at runtime by setting the same attribute (ChatMode).
+   * `'chat'` draws a page already mid-conversation (the landing's demos);
+   * `'shop'` is /handle/shop. Either way the links and the FAQ fold away.
    */
   mode?: 'chat' | 'shop';
   /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
@@ -50,111 +49,184 @@ export interface BentoPageProps {
   backgroundColor?: string | null;
   /** The cover photo's URL (stock or uploaded), or null for none. */
   coverUrl?: string | null;
-  /** The ask bar, on the public page. */
+  /** The page's language, for its own words (tabs, FAQ, footer). Anything but 'ms' reads English. */
+  language?: string;
+  /** The most asked answered questions, opened in place, and how many there are in all. */
+  faq?: { entries: { slug: string; question: string; answer: string }[]; total: number } | null;
+  /**
+   * The page on its own, at a URL: a 460px column over a darker field of its
+   * own colour on a wide screen. Left out wherever the page sits inside
+   * something else (the editor's phone, the landing's demos).
+   */
+  stage?: boolean;
+  /** The ask bar, on the public page; the shop's shelf on /handle/shop. */
   children?: ReactNode;
 }
 
+/** How many FAQ entries open in place under the links; the rest are a tap away. */
+export const FAQ_SHOWN = 3;
+
 /**
- * A My Curios page, for visitors and for the editor's preview alike -- one
- * renderer, so the preview cannot disagree with the page.
+ * The attributes that carry a page's look -- its band, the text that reads on
+ * it, its accent and heading font -- for any element that should wear it. The
+ * page itself, its stage, and `PageTheme` (the FAQ pages) all spread these.
+ */
+export function themeAttrs(theme: {
+  accentColor: string;
+  headingFont: HeadingFont;
+  background?: PageBackground;
+  backgroundColor?: string | null;
+}) {
+  // Custom only with a colour to show; otherwise the look every page had before.
+  const custom = theme.background === 'CUSTOM' && theme.backgroundColor && isHexColor(theme.backgroundColor) ? theme.backgroundColor : null;
+  const background = theme.background === 'CUSTOM' ? (custom ? 'CUSTOM' : 'PAPER') : (theme.background ?? 'PAPER');
+  return {
+    'data-bg': background,
+    // Which text reads on the owner's colour: the same test the accent uses.
+    'data-bg-text': custom ? readableOn(custom) : undefined,
+    'data-on-accent': readableOn(theme.accentColor),
+    style: {
+      '--accent': theme.accentColor,
+      '--font-heading': HEADING_FONT_VAR[theme.headingFont],
+      ...(custom ? { '--custom-bg': custom } : {}),
+    } as CSSProperties,
+  };
+}
+
+/** A page's colours and heading font as custom properties, with no page layout: for its FAQ pages. */
+export function PageTheme({ theme, className, children }: { theme: Parameters<typeof themeAttrs>[0]; className?: string; children: ReactNode }) {
+  return (
+    <div className={`${styles.theme} ${className ?? ''}`} {...themeAttrs(theme)}>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * A Curios page, for visitors and for the editor's preview alike -- one
+ * renderer, so the preview cannot disagree with the page. (Named for the bento
+ * grid it used to draw; since the design handoff it is a centred profile, a
+ * row of tabs and a column of pill links.)
  *
  * Server-safe: no hooks. The accent and heading font arrive as inline custom
  * properties, because they are the owner's data, not the design system's; the
  * stylesheet only ever reads var(--accent) and var(--font-heading).
  *
  * `data-bento-page` is a stable hook for a client descendant to find this
- * root through `closest()` -- `Ask`/`ChatMode` toggle `data-mode="chat"` on
- * it directly by DOM mutation, since this component itself stays server-only
- * and takes no chat-mode prop or state. `data-foldaway` marks the block that
- * CSS collapses in that mode (Bento.module.css, keyed on the same
- * attribute); the client side additionally marks it `inert`/`aria-hidden`
- * while collapsed, which is why it is its own wrapper rather than two
- * separately-collapsing pieces.
+ * root through `closest()`: `Ask`/`ChatMode` toggle `data-mode="chat"` on it
+ * and move `aria-current` between the `[data-tab]` links, since this component
+ * stays server-only and holds no state. `data-foldaway` marks the block that
+ * CSS collapses on the Ask and Shop tabs; the client side also marks it
+ * `inert`/`aria-hidden` while it is collapsed.
  */
 export function BentoPage(props: BentoPageProps) {
   const { interactive = true, nameAs: Name = 'h1' } = props;
-  const tiles = arrangeTiles(withShopTile(props.links, props.shop ?? null));
-  // Custom only with a colour to show; otherwise the look every page had before.
-  const custom = props.background === 'CUSTOM' && props.backgroundColor && isHexColor(props.backgroundColor) ? props.backgroundColor : null;
-  const background = props.background === 'CUSTOM' ? (custom ? 'CUSTOM' : 'PAPER') : (props.background ?? 'PAPER');
-  const vars = {
-    '--accent': props.accentColor,
-    '--font-heading': HEADING_FONT_VAR[props.headingFont],
-    ...(custom ? { '--custom-bg': custom } : {}),
-  } as CSSProperties;
+  const copy = pageCopy(props.language);
+  const theme = themeAttrs(props);
 
-  return (
+  const home = `/${props.handle}`;
+  const tabs: { id: 'links' | 'ask' | 'shop'; label: string; href: string; current: boolean }[] = [
+    { id: 'links', label: copy.links, href: home, current: props.mode === undefined },
+    { id: 'ask', label: copy.ask, href: `${home}#ask`, current: props.mode === 'chat' },
+    ...(props.shop ? [{ id: 'shop' as const, label: copy.shop, href: `${home}/shop`, current: props.mode === 'shop' }] : []),
+  ];
+  const faqHref = `${home}/faq`;
+
+  const page = (
     <div
       className={styles.page}
       data-bento-page
       data-style={props.style}
-      data-bg={background}
-      // Which text reads on the owner's colour: the same test the accent uses.
-      data-bg-text={custom ? readableOn(custom) : undefined}
       data-cover={props.coverUrl ? 'yes' : 'no'}
       data-mode={props.mode}
-      data-on-accent={readableOn(props.accentColor)}
-      style={vars}
+      {...theme}
     >
       {props.coverUrl ? <Cover src={props.coverUrl} /> : null}
       <header className={styles.head}>
         {props.avatarUrl ? <Avatar src={props.avatarUrl} name={props.displayName} /> : null}
-        <div>
-          <Name className={styles.name}>{props.displayName}</Name>
-          <p className={styles.handle}>curios.my/{props.handle}</p>
-        </div>
+        <Name className={styles.name}>{props.displayName}</Name>
+        <p className={styles.handle}>curios.my/{props.handle}</p>
+        {props.bio ? <p className={styles.bio}>{props.bio}</p> : null}
+        <nav className={styles.tabs} aria-label={copy.sections} data-tabs style={{ '--tabs': tabs.length } as CSSProperties}>
+          {tabs.map((tab) =>
+            interactive ? (
+              <a key={tab.id} className={styles.tab} href={tab.href} data-tab={tab.id} aria-current={tab.current ? 'page' : undefined}>
+                {tab.label}
+              </a>
+            ) : (
+              <span key={tab.id} className={styles.tab} data-tab={tab.id} aria-current={tab.current ? 'page' : undefined}>
+                {tab.label}
+              </span>
+            ),
+          )}
+        </nav>
       </header>
 
       <div className={styles.foldaway} data-foldaway>
         <div className={styles.foldawayInner}>
-          {props.bio ? <p className={styles.bio}>{props.bio}</p> : null}
-
-          {tiles.length > 0 ? (
-            <div className={styles.grid} data-bento-grid>
-              {tiles.map(({ link: entry, size, tone }) => {
-                if (entry.kind === 'shop' && props.shop) {
-                  const shop = props.shop;
-                  const body = (
-                    <>
-                      {shop.photoUrl ? <img className={styles.shopPhoto} src={shop.photoUrl} alt="" /> : null}
-                      <span className={styles.kind}>{shop.caption}</span>
-                      <span className={styles.label}>{shop.label}</span>
-                    </>
-                  );
-                  return interactive ? (
-                    <a key={entry.id} className={styles.tile} data-size={size} data-tone={tone} data-shop href={`/${props.handle}/shop`}>
-                      {body}
+          {props.links.length > 0 ? (
+            <ul className={styles.links} role="list">
+              {props.links.map((link) => (
+                <li key={link.id}>
+                  {interactive ? (
+                    <a className={styles.link} href={link.url} rel="noopener">
+                      <span>{link.label}</span>
                     </a>
                   ) : (
-                    <div key={entry.id} className={styles.tile} data-size={size} data-tone={tone} data-shop>
-                      {body}
-                    </div>
-                  );
-                }
-                if (entry.kind !== 'link') return null;
-                const link = entry.link;
-                const body = (
-                  <>
-                    <span className={styles.kind}>{linkKind(link.url)}</span>
-                    <span className={styles.label}>{link.label}</span>
-                  </>
-                );
-                return interactive ? (
-                  <a key={link.id} className={styles.tile} data-size={size} data-tone={tone} href={link.url} rel="noopener">
-                    {body}
-                  </a>
-                ) : (
-                  <div key={link.id} className={styles.tile} data-size={size} data-tone={tone}>
-                    {body}
-                  </div>
-                );
-              })}
-            </div>
+                    <span className={styles.link}>
+                      <span>{link.label}</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {props.faq && props.faq.entries.length > 0 ? (
+            <section className={styles.faq} aria-labelledby="often-ask">
+              <h2 id="often-ask" className={styles.faqTitle}>
+                {copy.oftenAsk}
+                <a href={faqHref}>{copy.seeAll(props.faq.total)}</a>
+              </h2>
+              {props.faq.entries.slice(0, FAQ_SHOWN).map((entry, index) => (
+                // <details>, so the accordion works before (and without) JavaScript.
+                <details key={entry.slug} className={styles.faqItem} open={index === 0}>
+                  <summary>
+                    {entry.question}
+                    <span className={styles.faqSign} aria-hidden="true" />
+                  </summary>
+                  <p>{entry.answer}</p>
+                </details>
+              ))}
+            </section>
+          ) : null}
+
+          {interactive ? (
+            <p className={styles.foot}>
+              {props.faq && props.faq.entries.length > 0 ? (
+                <>
+                  <a href={faqHref}>{copy.questions}</a> ·{' '}
+                </>
+              ) : null}
+              <a href="/">{copy.madeWith}</a>
+            </p>
           ) : null}
         </div>
       </div>
 
       {props.children}
+    </div>
+  );
+
+  if (!props.stage) return page;
+  return (
+    <div className={styles.stage} {...theme}>
+      {props.coverUrl ? (
+        <div className={styles.backdrop} aria-hidden="true">
+          <img src={props.coverUrl} alt="" />
+        </div>
+      ) : null}
+      {page}
     </div>
   );
 }

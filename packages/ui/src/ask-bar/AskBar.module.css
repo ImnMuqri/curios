@@ -1,24 +1,29 @@
 /*
- * 1.5px, solid, never a shadow. DESIGN.md wants this to read like a stamped
- * field on a form -- something you are meant to fill in.
- *
- * The border colour is BentoPage's `--ask-border` (soft: none; high
- * contrast: ink), with `--biru` as the fallback so this still looks like it
- * always has anywhere the variable is not set. The press state's tint
- * follows the page's accent the same way, via `--ask-tint`, falling back to
- * the same `--biru-muda` this used before there was a page accent to follow.
+ * A white pill held at the foot of the window, across the page's own 460px
+ * column, with the accent's send circle at its end. The ring is the page's
+ * `--ask-border` (soft: none; high contrast: the page's text colour), and the
+ * send circle is the page's `--accent`, each with a fallback so the bar keeps
+ * a look anywhere those are not set.
  */
 .bar {
-  position: sticky;
-  bottom: 16px;
-  display: block;
-  width: 100%;
-  padding: 14px 16px;
-  border: 1.5px solid var(--ask-border, var(--biru));
-  border-radius: 12px;
+  position: fixed;
+  left: 50%;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(min(460px, 100%) - 28px);
+  transform: translateX(-50%);
+  padding: 5px 5px 5px 18px;
+  border: 0;
+  border-radius: 999px;
   background: var(--paper);
+  box-shadow:
+    inset 0 0 0 1.5px var(--ask-border, var(--biru)),
+    0 14px 30px -14px rgb(0 0 0 / 60%);
   font-family: var(--font-body);
-  font-size: var(--text-body);
+  font-size: 14px;
   color: var(--muted);
   text-align: left;
   cursor: pointer;
@@ -32,6 +37,32 @@
 
 .question {
   display: block;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.go {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--accent, var(--biru));
+  color: var(--on-accent, var(--paper));
+}
+
+.go svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /*

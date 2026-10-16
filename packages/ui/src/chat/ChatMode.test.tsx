@@ -495,8 +495,11 @@ describe('ChatMode, leaving', () => {
     expect(screen.queryByText('Nadia Bakes')).not.toBeInTheDocument();
     expect(screen.queryByRole('img')).not.toBeInTheDocument();
 
+    // Only the composer is held at the foot of the window, as the ask bar
+    // is; the conversation itself flows in the page.
     const css = readFileSync(join(import.meta.dirname, 'ChatMode.module.css'), 'utf8');
-    expect(css).not.toMatch(/position:\s*fixed/);
+    const fixed = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*position:\s*fixed/g)].map((m) => m[1]!.trim());
+    expect(fixed).toEqual(['.composer']);
   });
 
   it('keeps the thread across a close and reopen', async () => {

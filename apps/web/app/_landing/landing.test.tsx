@@ -281,12 +281,12 @@ describe('the hero', () => {
     expect(hero.querySelector('form[action="/signup"]')).not.toBeNull();
   });
 
-  it('shows the finished phone without motion: one question, asked forty times, answered, and the shop tile', () => {
+  it('shows the finished phone without motion: one question, asked forty times, answered, and the Shop tab', () => {
     const { container } = render(<LandingPage locale="en" />);
     const hero = container.querySelector('#hero')!;
     expect(hero).toHaveTextContent(en.storm.asked(40));
     expect(hero).toHaveTextContent(DEMO_EN.qa[0]!.a);
-    expect(hero.querySelector('[data-shop]')).not.toBeNull();
+    expect(hero.querySelector('[data-tab="shop"]')).not.toBeNull();
     expect(hero.querySelector('[data-motion="on"]')).toBeNull();
   });
 

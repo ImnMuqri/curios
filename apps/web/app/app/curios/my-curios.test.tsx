@@ -69,21 +69,6 @@ describe('MyCuriosEditor', () => {
     expect(within(preview).getByText('Portfolio!')).toBeInTheDocument();
   });
 
-  it('shows a chosen tile size in the live preview immediately, before the save resolves', async () => {
-    const stuck = api();
-    stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
-    render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
-
-    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
-
-    const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
-
-    const preview = screen.getByRole('region', { name: 'Live preview' });
-    const tile = within(preview).getByText('Portfolio').closest('[data-size]');
-    expect(tile).toHaveAttribute('data-size', 'BIG');
-  });
-
   it('restyles the preview the moment a style is chosen', async () => {
     const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
     await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
@@ -158,12 +143,11 @@ describe('the icon rail', () => {
     expect(screen.getByLabelText('Display name')).toHaveValue(`${initial.displayName}!`);
   });
 
-  it('previews the shop tile, as a box not a link', () => {
+  it('previews the Shop tab, as a box not a link', () => {
     const shop = { position: 0, size: null, itemCount: 2, photoKey: null };
     render(<MyCuriosEditor initial={{ ...initial, shop }} api={api()} uploadsEnabled={false} />);
     const preview = screen.getByRole('region', { name: 'Live preview' });
-    expect(within(preview).getByText('Visit shop')).toBeInTheDocument();
-    expect(within(preview).getByText('2 items')).toBeInTheDocument();
+    expect(within(preview).getByText('Shop')).toBeInTheDocument();
     expect(within(preview).queryByRole('link')).toBeNull();
   });
 });

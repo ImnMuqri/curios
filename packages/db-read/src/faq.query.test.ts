@@ -65,8 +65,24 @@ describe('getFaqIndex', () => {
     // Most asked first, the same order the owner sees on /app/questions, so the
     // public page and the dashboard agree about which question matters.
     expect(index!.entries.map((e) => e.slug)).toEqual(['ada-halal', 'berapa-harga']);
-    expect(index!.entries[0]).toEqual({ slug: 'ada-halal', question: 'Ada halal?' });
+    // The answer and the count ride along: the public page opens the top few
+    // in place ("People often ask"), and the index shows how often each was asked.
+    expect(index!.entries[0]).toEqual({ slug: 'ada-halal', question: 'Ada halal?', answer: 'RM12 sekotak.', askCount: 9 });
     expect(index!.displayName).toBe('Nadia Bakes');
+    expect(index!.theme.accentColor).toBe('#2340c8');
+  });
+
+  it('counts every entry, not just the ones a limit returned', async () => {
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });
+    await seedAnswered(page.id, { text: 'Ada halal?', slug: 'ada-halal' });
+    await seedAnswered(page.id, { text: 'Tiada slug?', slug: null });
+
+    const index = await getFaqIndex(page.handle, { limit: 1 });
+
+    expect(index!.entries).toHaveLength(1);
+    // "See all 2": the same filter as the entries, so the number and the index page agree.
+    expect(index!.total).toBe(2);
   });
 
   it('puts the more recently asked first when ask counts tie', async () => {
@@ -183,12 +199,31 @@ describe('getFaqEntry', () => {
 
     const entry = await getFaqEntry(page.handle, 'berapa-harga');
 
-    expect(entry).toEqual({
+    expect(entry).toMatchObject({
       handle: page.handle,
       displayName: 'Nadia Bakes',
       question: 'Berapa harga?',
       answer: 'RM12 sekotak, RM60 lima kotak.',
+      askCount: 5,
+      related: [],
     });
+    // The page's own look, so the answer page reads as part of it.
+    expect(entry!.theme).toEqual({ accentColor: '#2340c8', headingFont: 'JAKARTA', background: 'PAPER', backgroundColor: null });
+  });
+
+  it("lists the page's other answers, most asked first, as related", async () => {
+    const page = await seedPage();
+    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga', askCount: 9 });
+    await seedAnswered(page.id, { text: 'Ada halal?', slug: 'ada-halal', askCount: 4 });
+    await seedAnswered(page.id, { text: 'Hantar Klang?', slug: 'hantar-klang', askCount: 7 });
+    await seedAnswered(page.id, { text: 'Tiada jawapan?', slug: 'tiada', answer: null });
+
+    const entry = await getFaqEntry(page.handle, 'ada-halal');
+
+    expect(entry!.related).toEqual([
+      { slug: 'berapa-harga', question: 'Berapa harga?' },
+      { slug: 'hantar-klang', question: 'Hantar Klang?' },
+    ]);
   });
 
   it('returns null once the answer is withdrawn, though the slug remains', async () => {

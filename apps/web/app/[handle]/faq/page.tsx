@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getFaqIndex } from '@curios/db-read';
+import { PageTheme } from '../../_bento/BentoPage.js';
+import { FaqList } from './faq-list.js';
 import styles from './faq.module.css';
 
 // Node, not edge: this reads Postgres through the read-only role, like
@@ -54,21 +56,21 @@ export default async function FaqIndexPage({
   // markup. The entry pages, where the answer is actually visible, carry
   // FAQPage -- and a specific question is what should rank there anyway.
   return (
-    <main className={styles.page}>
-      <p className={styles.shop}>{index.displayName}</p>
-      <h1 className={styles.heading}>What people ask</h1>
-      <ul className={styles.list}>
-        {index.entries.map((entry) => (
-          <li key={entry.slug}>
-            <a className={styles.question} href={`/${index.handle}/faq/${entry.slug}`}>
-              {entry.question}
-            </a>
-          </li>
-        ))}
-      </ul>
-      <a className={styles.back} href={`/${index.handle}`}>
-        Back to {index.displayName}
-      </a>
-    </main>
+    <PageTheme theme={index.theme} className={styles.stage}>
+      <main className={styles.page}>
+        <div className={styles.top}>
+          <a className={styles.back} href={`/${index.handle}`} aria-label={`Back to ${index.displayName}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </a>
+          <a className={styles.who} href={`/${index.handle}`}>
+            {index.displayName}
+          </a>
+        </div>
+        <h1 className={styles.heading}>What people ask {index.displayName}</h1>
+        <FaqList handle={index.handle} displayName={index.displayName} entries={index.entries} />
+      </main>
+    </PageTheme>
   );
 }

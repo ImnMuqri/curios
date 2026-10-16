@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { FaqIndex } from '@curios/db-read';
 
 const getFaqIndex = vi.fn();
@@ -17,10 +17,12 @@ const FaqIndexPage = (await import('./page.js')).default;
 const index: FaqIndex = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
+  theme: { accentColor: '#2340c8', headingFont: 'JAKARTA', background: 'PAPER', backgroundColor: null },
   entries: [
-    { slug: 'berapa-harga', question: 'Berapa harga kek lapis?' },
-    { slug: 'ada-halal', question: 'Ada sertifikasi halal?' },
+    { slug: 'berapa-harga', question: 'Berapa harga kek lapis?', answer: 'RM12 sekotak.', askCount: 9 },
+    { slug: 'ada-halal', question: 'Ada sertifikasi halal?', answer: 'Ya.', askCount: 4 },
   ],
+  total: 2,
 };
 
 const params = (handle: string) => ({ params: Promise.resolve({ handle }) });
@@ -33,12 +35,25 @@ describe('the FAQ index', () => {
 
     // Real anchors, so this works before any JavaScript and is what a crawler
     // follows.
-    expect(screen.getByRole('link', { name: 'Berapa harga kek lapis?' })).toHaveAttribute(
-      'href',
-      '/nadia/faq/berapa-harga',
-    );
-    // One per entry, plus the link back to the page itself.
-    expect(screen.getAllByRole('link')).toHaveLength(3);
+    const first = screen.getByRole('link', { name: /Berapa harga kek lapis\?/ });
+    expect(first).toHaveAttribute('href', '/nadia/faq/berapa-harga');
+    // How often each was asked, beside it.
+    expect(first).toHaveTextContent('9 asked');
+    // One per entry, plus the two ways back to the page itself (the arrow and the name).
+    expect(screen.getAllByRole('link')).toHaveLength(4);
+  });
+
+  it('narrows the list as the visitor searches, and offers to ask when nothing matches', async () => {
+    getFaqIndex.mockResolvedValueOnce(index);
+    render(await FaqIndexPage(params('nadia')));
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search questions' }), { target: { value: 'halal' } });
+    expect(screen.queryByRole('link', { name: /Berapa harga/ })).toBeNull();
+    expect(screen.getByRole('link', { name: /Ada sertifikasi halal/ })).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Search questions' }), { target: { value: 'delivery' } });
+    expect(screen.getByText('Nothing matches')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Ask Nadia Bakes' })).toHaveAttribute('href', '/nadia#ask');
   });
 
   it('links back to the page itself, like the entry page does', async () => {

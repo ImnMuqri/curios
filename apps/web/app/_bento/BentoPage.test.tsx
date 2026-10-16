@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { BentoPage, type BentoPageProps } from './BentoPage.js';
 
 const base: BentoPageProps = {
@@ -20,11 +20,11 @@ const base: BentoPageProps = {
 };
 
 describe('BentoPage', () => {
-  it('renders every link as a real link, in order, with its kind', () => {
+  it('renders every link as a real link, in order', () => {
     render(<BentoPage {...base} />);
-    const links = screen.getAllByRole('link');
+    const links = within(screen.getByRole('list')).getAllByRole('link');
     expect(links.map((a) => a.getAttribute('href'))).toEqual(['https://iman.dev', 'https://wa.me/60123', 'https://github.com/iman']);
-    expect(screen.getByText('WhatsApp')).toBeInTheDocument();
+    expect(links.map((a) => a.textContent)).toEqual(['Portfolio', 'Chat', 'Code']);
   });
 
   it("renders the owner's name as the page heading unless told otherwise", () => {
@@ -40,13 +40,13 @@ describe('BentoPage', () => {
     expect(screen.getByText('Iman Muqri').tagName).toBe('P');
   });
 
-  it('gives each tile its arranged size and tone', () => {
-    render(<BentoPage {...base} />);
-    const [first, second, third] = screen.getAllByRole('link');
-    expect(first).toHaveAttribute('data-size', 'TALL');
-    expect(first).toHaveAttribute('data-tone', 'accent');
-    expect(second).toHaveAttribute('data-tone', 'warm');
-    expect(third).toHaveAttribute('data-size', 'SMALL');
+  // Every link is a pill now; the first is the one the owner most wants
+  // pressed, so it alone wears the accent. Read from the stylesheet: this
+  // package's vitest config has no `css: true`.
+  it('draws every link as a pill, the first in the accent', () => {
+    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.link > span\s*\{[^}]*border-radius:\s*999px;/s);
+    expect(css).toMatch(/\.links > li:first-child \.link > span\s*\{[^}]*background:\s*var\(--accent\);/s);
   });
 
   it('carries the style, accent and readable text colour to the stylesheet', () => {
@@ -83,13 +83,13 @@ describe('BentoPage', () => {
   });
 
   // Review Focus 5.
-  it('renders no empty grid for a page with no links', () => {
-    const { container } = render(<BentoPage {...base} links={[]} />);
-    expect(container.querySelector('[data-bento-grid]')).toBeNull();
+  it('renders no empty list for a page with no links', () => {
+    render(<BentoPage {...base} links={[]} />);
+    expect(screen.queryByRole('list')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Iman Muqri' })).toBeInTheDocument();
   });
 
-  it('renders tiles as plain boxes in the editor preview, so they cannot navigate', () => {
+  it('renders links and tabs as plain boxes in the editor preview, so they cannot navigate', () => {
     render(<BentoPage {...base} interactive={false} />);
     expect(screen.queryAllByRole('link')).toHaveLength(0);
     expect(screen.getByText('Portfolio')).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('BentoPage', () => {
   it('sets --ask-border per style, so the ask bar it wraps can be borderless in Soft and ink-outlined in High contrast', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/--ask-border:\s*transparent;/);
-    expect(css).toMatch(/\[data-style='CONTRAST'\][^}]*--ask-border:\s*var\(--ink\);/s);
+    expect(css).toMatch(/\[data-style='CONTRAST'\][^}]*--ask-border:\s*var\(--page-fg\);/s);
   });
 
   // M1: the editor's live preview renders this same `.page` nested inside
@@ -137,15 +137,17 @@ describe('BentoPage', () => {
   // wherever it is nested inside `children`. `data-bento-page` is the only
   // thing that makes that reachable at all -- without it, `closest()` would
   // walk straight past this div and find nothing.
-  it('marks its own root as the page chat mode looks for, and the bio/grid block it collapses', () => {
+  // The header -- name, bio and tabs -- stays on every tab; only the links
+  // (and the FAQ under them) fold away.
+  it('marks its own root as the page chat mode looks for, and the links block it collapses', () => {
     const { container } = render(<BentoPage {...base} />);
     const page = container.firstElementChild as HTMLElement;
     expect(page).toHaveAttribute('data-bento-page');
 
     const foldaway = page.querySelector('[data-foldaway]');
     expect(foldaway).not.toBeNull();
-    expect(foldaway?.textContent).toContain(base.bio);
-    expect(foldaway?.querySelector('[data-bento-grid]')).not.toBeNull();
+    expect(foldaway?.querySelector('ul')).not.toBeNull();
+    expect(foldaway?.textContent).not.toContain(base.bio);
   });
 
   // Read the way every other stylesheet test in this file does: no `css: true`
@@ -175,46 +177,33 @@ describe('BentoPage', () => {
     expect(css).toMatch(/\[data-has-turns\]\s*\[data-ask-prompt\]\s*\{[^}]*display:\s*none;/s);
   });
 
-  // Fix round: the owner saw the back arrow render "in the middle" -- caused
-  // by ChatMode.module.css's `.panel` claiming `position: relative` for
-  // itself, which made it the containing block for `.back`'s `position:
-  // absolute` instead of letting it skip through to this `.page`. Half of
-  // that fix lives in ChatMode.module.css (its own test pins `.panel`
-  // declaring no position); this half is the room `.head` makes for the
-  // arrow once it does correctly anchor here. Pinned together so the two
-  // sides of this cross-package pairing cannot drift apart silently again.
-  // Once the window is wider than the 520px column, it reads as a card --
-  // space above and below and rounded corners -- while a phone keeps it edge
-  // to edge, so the rule must live inside a min-width query, not on .page.
-  it('spaces and rounds the column on wide screens only', () => {
+  // Only the page at its own URL sits on a stage: inside the editor's phone
+  // or a landing demo, the column is the whole thing.
+  it('sits the 460px column on a stage only when asked to', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
-    const wide = css.match(/@media \(min-width: 560px\)\s*\{\s*\.page\s*\{([^}]*)\}/)?.[1] ?? '';
-    expect(wide).toMatch(/margin:\s*24px auto;/);
-    expect(wide).toMatch(/border-radius:\s*20px;/);
-    expect(wide).toMatch(/min-height:\s*calc\(100vh - 48px\);/);
-    const base = css.match(/^\.page\s*\{([^}]*)\}/m)?.[1] ?? '';
-    expect(base).toMatch(/margin:\s*0 auto;/);
-    expect(base).not.toMatch(/border-radius/);
-  });
+    expect(css).toMatch(/^\.page\s*\{[^}]*max-width:\s*460px;/m);
 
-  it("keeps .head's room for the back button, so a fixed .panel elsewhere does not leave it stranded with nowhere to sit", () => {
-    const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
-    expect(css).toMatch(/\[data-mode='chat'\]\s*\.head\s*\{[^}]*padding-left:\s*44px;/s);
+    const staged = render(<BentoPage {...base} stage coverUrl="/covers/teh.webp" />);
+    const stage = staged.container.firstElementChild as HTMLElement;
+    expect(stage).not.toHaveAttribute('data-bento-page');
+    expect(stage.querySelector('[data-bento-page]')).not.toBeNull();
+    // The blurred cover behind the column is decoration only.
+    expect(stage.querySelector('[aria-hidden="true"] img')).toHaveAttribute('alt', '');
+    staged.unmount();
+
+    const { container } = render(<BentoPage {...base} />);
+    expect(container.firstElementChild).toHaveAttribute('data-bento-page');
   });
 });
 
-describe('BentoPage High contrast follows the accent', () => {
-  // The owner saw only the first tile change colour in High contrast: the
-  // second was fixed kuning and the rest fixed ink. Every tile now takes the
-  // accent: the second as a deep shade, the ink tiles in their label.
-  it("derives the second tile and the ink tiles' labels from the accent, not a fixed colour", () => {
+describe('BentoPage High contrast', () => {
+  // Solid pills in the page's own text colour, with a bold ring: on a pale
+  // page that is ink, on a dark one paper, so it never needs a fixed colour.
+  it("draws solid pills in the page's text colour", () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     const contrast = css.match(/\.page\[data-style='CONTRAST'\]\s*\{([^}]*)\}/)?.[1] ?? '';
-    expect(contrast).toMatch(/--warm:\s*color-mix\([^;]*var\(--accent\)/);
-    expect(contrast).not.toMatch(/--warm:\s*var\(--kuning\)/);
-    expect(contrast).toMatch(/--warm-fg:\s*var\(--paper\)/);
-    expect(contrast).toMatch(/--plain-kind:\s*color-mix\([^;]*var\(--accent\)/);
-    expect(css).toMatch(/\.tile\[data-tone='warm'\]\s*\{[^}]*color:\s*var\(--warm-fg\)/);
+    expect(contrast).toMatch(/--pill:\s*var\(--page-fg\)/);
+    expect(contrast).toMatch(/--pill-fg:\s*var\(--page-bg\)/);
   });
 });
 
@@ -261,7 +250,8 @@ describe('BentoPage, a custom background', () => {
   it('gives a dark custom colour the dark bands\' treatment, read from the stylesheet', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\[data-bg='CUSTOM'\]\[data-bg-text='light'\]\s*\{[^}]*--page-fg:\s*var\(--paper\)/);
-    expect(css).toMatch(/\[data-bg-text='light'\] \.tile\[data-tone='accent'\]/);
+    // A dark page's soft pills are its own text, faintly, not white.
+    expect(css).toMatch(/\[data-bg-text='light'\]\)\s*\{[^}]*--pill:\s*var\(--veil-3\)/s);
   });
 });
 
@@ -278,30 +268,58 @@ describe('BentoPage, drawn in chat mode', () => {
   });
 });
 
-describe('the shop tile', () => {
-  const shop = { position: 1, size: null, label: 'Visit shop', caption: '8 items', photoUrl: null };
+describe('the tabs', () => {
+  const shop = { position: 0, size: null, label: '', caption: '', photoUrl: null };
+  const tabs = () => within(screen.getByRole('navigation', { name: 'Page sections' }));
 
-  it('links to the shop at its position among the links', () => {
-    render(<BentoPage {...base} links={[{ id: 'a', label: 'A', url: 'https://a.com', size: null }, { id: 'b', label: 'B', url: 'https://b.com', size: null }]} shop={shop} />);
-    const tiles = screen.getAllByRole('link');
-    expect(tiles.map((t) => t.textContent)).toEqual([expect.stringContaining('A'), expect.stringContaining('Visit shop'), expect.stringContaining('B')]);
-    expect(tiles[1]).toHaveAttribute('href', `/${base.handle}/shop`);
-    expect(tiles[1]).toHaveTextContent('8 items');
+  it('offers Links and Ask, Links current', () => {
+    render(<BentoPage {...base} />);
+    expect(tabs().getAllByRole('link').map((a) => [a.textContent, a.getAttribute('href')])).toEqual([
+      ['Links', '/imnmuqri'],
+      ['Ask', '/imnmuqri#ask'],
+    ]);
+    expect(tabs().getByRole('link', { name: 'Links' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('is a box, not a link, in the editor preview', () => {
-    render(<BentoPage {...base} links={[]} shop={shop} interactive={false} />);
-    expect(screen.queryByRole('link')).toBeNull();
-    expect(screen.getByText('Visit shop')).toBeInTheDocument();
+  it('adds a Shop tab when the shop is open, current on the shop page', () => {
+    render(<BentoPage {...base} shop={shop} mode="shop" />);
+    expect(tabs().getByRole('link', { name: 'Shop' })).toHaveAttribute('href', '/imnmuqri/shop');
+    expect(tabs().getByRole('link', { name: 'Shop' })).toHaveAttribute('aria-current', 'page');
+    expect(tabs().getByRole('link', { name: 'Links' })).not.toHaveAttribute('aria-current');
   });
 
-  it("draws the shop's photo behind the words when it has one", () => {
-    const { container } = render(<BentoPage {...base} links={[]} shop={{ ...shop, photoUrl: 'https://cdn.example/i.jpg' }} />);
-    expect(container.querySelector('[data-shop] img')).toHaveAttribute('src', 'https://cdn.example/i.jpg');
+  it("speaks the page's language", () => {
+    render(<BentoPage {...base} language="ms" shop={shop} />);
+    expect(screen.getByRole('navigation', { name: 'Bahagian halaman' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Kedai' })).toBeInTheDocument();
+  });
+});
+
+describe('People often ask', () => {
+  const faq = {
+    total: 5,
+    entries: [
+      { slug: 'klang', question: 'Do you deliver to Klang?', answer: 'Yes, RM15.' },
+      { slug: 'halal', question: 'Is it halal?', answer: 'Yes.' },
+      { slug: 'sweet', question: 'Less sweet?', answer: 'Yes, say so.' },
+      { slug: 'last', question: 'How long does it last?', answer: 'Three days.' },
+    ],
+  };
+
+  it('opens the first few answers in place, the first already open, with the way to all of them', () => {
+    const { container } = render(<BentoPage {...base} faq={faq} />);
+    const items = container.querySelectorAll('details');
+    expect(items).toHaveLength(3);
+    expect(items[0]).toHaveAttribute('open');
+    expect(items[1]).not.toHaveAttribute('open');
+    expect(screen.getByRole('link', { name: 'See all 5' })).toHaveAttribute('href', '/imnmuqri/faq');
+    expect(screen.getByRole('link', { name: 'Questions' })).toHaveAttribute('href', '/imnmuqri/faq');
   });
 
-  it('shows no tile without a shop', () => {
-    render(<BentoPage {...base} links={[]} />);
-    expect(screen.queryByText('Visit shop')).toBeNull();
+  it('is not there without answers, and neither is the Questions link', () => {
+    render(<BentoPage {...base} faq={null} />);
+    expect(screen.queryByText('People often ask')).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Questions' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'Made with Curios' })).toBeInTheDocument();
   });
 });

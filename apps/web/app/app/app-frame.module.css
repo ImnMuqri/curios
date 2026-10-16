@@ -12,9 +12,7 @@
   --font-body: var(--font-plex-sans), system-ui, sans-serif;
   /* Biru, a step deeper: text on biru-muda, 11:1. */
   --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--ink));
-  --soft: #4b5060;
-  --faint: #9aa0ab;
-  --edge: #dfe1e6;
+  --soft: var(--ink-soft);
 
   /* The shared components, in the dashboard's voice (see the hooks in @curios/ui). */
   --button-height: 38px;

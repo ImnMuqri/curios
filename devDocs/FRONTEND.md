@@ -191,6 +191,12 @@ row moves in the same list as the links, and the one reorder request sends it as
 
 ---
 
+**The tabs (amended 2026-10-16).** The public page's *Links · Ask · Shop* are server-rendered links
+(`/handle`, `/handle#ask`, `/handle/shop`), so they work without JavaScript. With it, `Ask` opens
+chat mode in place from the Ask tab, the Links tab closes it through `history.back()` (so the
+entry chat mode pushed is the one consumed), `aria-current` follows, and arriving at `#ask` opens
+chat mode: the shop page's Ask tab and the FAQ pages' *Ask* buttons link there.
+
 ## The ask bar
 
 The signature component. Read DESIGN.md before touching it.

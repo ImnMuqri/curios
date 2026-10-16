@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { serialiseJsonLd } from '@curios/core';
 import { getFaqEntry, getFaqRedirect } from '@curios/db-read';
+import { PageTheme } from '../../../_bento/BentoPage.js';
 import styles from '../faq.module.css';
 
 export const runtime = 'nodejs';
@@ -88,14 +89,56 @@ export default async function FaqEntryPage({
   });
 
   return (
-    <main className={styles.page}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
-      <p className={styles.shop}>{entry.displayName}</p>
-      <h1 className={styles.heading}>{entry.question}</h1>
-      <p className={styles.answer}>{entry.answer}</p>
-      <a className={styles.back} href={`/${entry.handle}`}>
-        Back to {entry.displayName}
-      </a>
-    </main>
+    <PageTheme theme={entry.theme} className={styles.stage}>
+      <main className={styles.page}>
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
+        <div className={styles.top}>
+          <a className={styles.back} href={`/${entry.handle}/faq`} aria-label="All questions">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 6l-6 6 6 6" />
+            </svg>
+          </a>
+          <span className={styles.crumb}>
+            <a href={`/${entry.handle}`}>{entry.displayName}</a> / <a href={`/${entry.handle}/faq`}>Questions</a>
+          </span>
+        </div>
+        <h1 className={styles.heading}>{entry.question}</h1>
+        <div className={styles.answer}>
+          <p>{entry.answer}</p>
+          <small className={styles.by}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+            Answered by {entry.displayName} · asked {entry.askCount} {entry.askCount === 1 ? 'time' : 'times'}
+          </small>
+        </div>
+        <div className={styles.askMore}>
+          <span>
+            <b>Still wondering?</b>
+            <span>Ask {entry.displayName}&rsquo;s page anything.</span>
+          </span>
+          <a className={styles.lite} href={`/${entry.handle}#ask`}>
+            Ask
+          </a>
+        </div>
+        {entry.related.length > 0 ? (
+          <>
+            <h2 className={styles.also}>People also ask</h2>
+            <ul className={styles.list}>
+              {entry.related.map((other) => (
+                <li key={other.slug}>
+                  <a className={styles.question} href={`/${entry.handle}/faq/${other.slug}`}>
+                    <b>{other.question}</b>
+                    <svg className={styles.chev} viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 6l6 6-6 6" />
+                    </svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+      </main>
+    </PageTheme>
   );
 }

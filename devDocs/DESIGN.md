@@ -165,6 +165,18 @@ and its actions on the right. Under 1100px the sidebar is an icon rail; on a pho
 of icons across the top. IBM Plex Sans is the face for all app and auth UI, numbers included;
 Bricolage is for the wordmark and the landing's display headings only.
 
+The same handoff redrew the public page. The bento grid is gone: a page is a cover, a centred
+profile (picture, name, address, bio), a row of tabs (*Links · Ask · Shop*, Shop only with the
+shop open), a column of pill links with the first in the accent, and "People often ask" (the
+three most asked FAQ answers, opened in place, with *See all N*). Soft draws white (or, on a dark
+band, faint) pills; High contrast draws solid pills in the page's text colour. At its own URL
+the page is a 460px column on a darker field of its own colour, with its cover blurred behind;
+inside a phone mockup it compacts by container query. Tile sizes stay on the rows but are no
+longer drawn. The ask bar and chat mode's composer are white pills held at the foot of the
+window, the accent's send circle at their end. The FAQ pages wear the page's accent as a faint
+tint. Type sizes follow the boards' CSS, which uses more than the six steps under **Type**; the
+check in `packages/ui/src/design-rules.ts` now lists the boards' sizes instead.
+
 ---
 
 ## Components worth naming

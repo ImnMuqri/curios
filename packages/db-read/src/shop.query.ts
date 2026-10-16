@@ -61,6 +61,8 @@ export function shopTileOf(row: {
 export interface PublicShop {
   handle: string;
   displayName: string;
+  /** The page's header is the same on every tab, bio included. */
+  bio: string | null;
   language: string;
   style: PageStyle;
   accentColor: string;
@@ -92,6 +94,7 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       storeEnabled: true,
       handle: true,
       displayName: true,
+      bio: true,
       language: true,
       style: true,
       accentColor: true,

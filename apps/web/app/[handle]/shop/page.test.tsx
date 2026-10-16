@@ -17,6 +17,7 @@ const { default: ShopPage, generateMetadata } = await import('./page.js');
 const shop: PublicShop = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
+  bio: null,
   language: 'ms',
   style: 'SOFT',
   accentColor: '#2340c8',

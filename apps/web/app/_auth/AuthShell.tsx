@@ -65,7 +65,7 @@ export function AuthShell({
         <div className={styles.asidePhone}>
           <Device time="3:15" chrome="browser" url={`curios.my/${DEMO_PAGE.handle}`}>
             <div className={styles.asideScreen}>
-              <BentoPage {...DEMO_PAGE}>
+              <BentoPage {...DEMO_PAGE} mode="chat">
                 <div className={styles.asideThread}>
                   <p className={styles.asideAsked}>{qa.q}</p>
                   <AnswerBubble text={qa.a} />

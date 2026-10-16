@@ -118,17 +118,24 @@ export function ShopView(props: {
       </ul>
 
       {props.items.length === 0 ? <p className={styles.empty}>{copy.empty}</p> : null}
-      <ul className={styles.grid}>
+      <ul className={styles.rows}>
         {props.items.map((item) => {
           const from = fromPrice(item);
+          const inBasket = basket.filter((line) => line.itemId === item.id).reduce((sum, line) => sum + line.quantity, 0);
           return (
             <li key={item.id}>
-              <button type="button" className={styles.card} onClick={() => setOpenId(item.id)}>
-                {item.photoUrl ? <img className={styles.photo} src={item.photoUrl} alt="" /> : <span className={styles.photo} data-empty-photo aria-hidden="true" />}
-                <span className={styles.name}>{item.name}</span>
-                <span className={styles.price}>
-                  {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}
+              <button type="button" className={styles.row} onClick={() => setOpenId(item.id)}>
+                <span className={styles.thumb} aria-hidden="true">
+                  {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
                 </span>
+                <span className={styles.text}>
+                  <span className={styles.name}>{item.name}</span>
+                  <span className={styles.price}>
+                    {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}
+                  </span>
+                </span>
+                {inBasket > 0 ? <span className={styles.count}>{inBasket}×</span> : null}
+                <span className={styles.plus} aria-hidden="true">+</span>
               </button>
             </li>
           );
@@ -156,6 +163,7 @@ export function ShopView(props: {
               </li>
             ))}
           </ul>
+          <div className={styles.bar}>
           <p className={styles.total}>{copy.basket(count, formatRinggit(priced.totalCents))}</p>
           {props.onOrder ? (
             <button type="button" className={styles.order} onClick={() => props.onOrder?.(basketMessage(props.displayName, priced, copy))}>
@@ -168,6 +176,7 @@ export function ShopView(props: {
           ) : (
             <p className={styles.noWhatsApp}>{copy.noWhatsApp(props.displayName)}</p>
           )}
+          </div>
         </div>
       ) : null}
     </section>

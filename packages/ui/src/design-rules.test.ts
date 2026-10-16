@@ -31,9 +31,9 @@ describe('findOffScaleFontSizes', () => {
     expect(findOffScaleFontSizes(css)).toEqual([]);
   });
 
-  it('flags a seventh size', () => {
-    // DESIGN.md: "Six sizes. Adding a seventh is a smell."
-    expect(findOffScaleFontSizes('.a { font-size: 18px; }')).toEqual(['18px']);
+  it('flags a size nobody designed', () => {
+    // The scale is the approved boards' sizes; anything else is a stray.
+    expect(findOffScaleFontSizes('.a { font-size: 15.7px; }')).toEqual(['15.7px']);
   });
 
   it('ignores relative and keyword sizes, which are not new steps', () => {

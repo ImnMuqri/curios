@@ -84,7 +84,7 @@ describe('public page', () => {
     });
     const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    const bento = container.querySelector('main > *') as HTMLElement;
+    const bento = container.querySelector('[data-bento-page]') as HTMLElement;
     expect(bento).toHaveAttribute('data-style', 'CONTRAST');
     expect(bento.style.getPropertyValue('--accent')).toBe('#6d3fb3');
     expect(bento.style.getPropertyValue('--font-heading')).toBe('var(--font-fraunces)');
@@ -94,7 +94,7 @@ describe('public page', () => {
     vi.mocked(getPublicPage).mockResolvedValue({ ...page, background: 'INK', backgroundColor: null, coverKey: 'stock/kopi' });
     const { container } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    const bento = container.querySelector('main > *') as HTMLElement;
+    const bento = container.querySelector('[data-bento-page]') as HTMLElement;
     expect(bento).toHaveAttribute('data-bg', 'INK');
     // A stock cover needs no storage: it is served by the web app itself.
     expect(container.querySelector('[data-cover-photo] img')).toHaveAttribute('src', '/covers/kopi.webp');
@@ -126,62 +126,43 @@ describe('public page', () => {
   });
 });
 
-describe('the link to /[handle]/faq', () => {
-  it('appears when the page has FAQ entries', async () => {
+describe('People often ask, and the way to /[handle]/faq', () => {
+  it('opens the most asked answers in place, and links to all of them', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
     vi.mocked(getFaqIndex).mockResolvedValue({
       handle: 'nadia',
       displayName: 'Nadia Bakes',
-      entries: [{ slug: 'berapa-harga', question: 'Berapa harga?' }],
+      theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null },
+      entries: [{ slug: 'berapa-harga', question: 'Berapa harga?', answer: 'RM95 sekilo.', askCount: 4 }],
+      total: 7,
     });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(screen.getByRole('link', { name: /every question/i })).toHaveAttribute(
-      'href',
-      '/nadia/faq',
-    );
+    expect(screen.getByText('RM95 sekilo.')).toBeInTheDocument();
+    // The page is in Malay, so its own words are too.
+    expect(screen.getByRole('link', { name: 'Lihat semua 7' })).toHaveAttribute('href', '/nadia/faq');
+    expect(screen.getByRole('link', { name: 'Soalan' })).toHaveAttribute('href', '/nadia/faq');
+    // Only as many as the page shows: the rest are a tap away.
+    expect(getFaqIndex).toHaveBeenLastCalledWith('nadia', { limit: 3 });
   });
 
-  // Fix round 1: the spec's top-to-bottom order (devDocs/slice-13-build-spec.md,
-  // "The public page") is bento grid, ask bar, then -- on a business page with
-  // entries -- the FAQ link. The brief's own sample had them reversed; the spec
-  // wins. `Ask` normally renders null here (see the file-level mock), so this
-  // test gives it a one-time real marker to find in the DOM.
-  it('places the ask bar before the FAQ link, per the spec', async () => {
-    vi.mocked(Ask).mockImplementationOnce(() => <div data-testid="ask-bar" />);
+  it('tells the ask bar how many answers there are to browse', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
-    vi.mocked(getFaqIndex).mockResolvedValue({
-      handle: 'nadia',
-      displayName: 'Nadia Bakes',
-      entries: [{ slug: 'berapa-harga', question: 'Berapa harga?' }],
-    });
+    vi.mocked(getFaqIndex).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null }, entries: [{ slug: 'berapa-harga', question: 'Berapa harga?', answer: 'RM95 sekilo.', askCount: 4 }], total: 7 });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    const askBar = screen.getByTestId('ask-bar');
-    const faqLink = screen.getByRole('link', { name: /every question/i });
-    expect(askBar.compareDocumentPosition(faqLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(vi.mocked(Ask).mock.lastCall?.[0]).toMatchObject({ faqTotal: 7 });
   });
-
-  // The prompt ("What do you want to know?") moved into `Ask` itself in the
-  // in-place chat mode rework -- it now doubles as chat mode's own
-  // empty-state greeting, which needs client state (`Ask`, mocked to a stub
-  // here) that page.tsx cannot hold. ask.test.tsx proves it sits above the
-  // ask bar; this file only ever proved page.tsx's own wiring, and page.tsx
-  // no longer renders this text at all.
 
   it('is absent when the FAQ index has no entries, so nothing links to a 404', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
-    vi.mocked(getFaqIndex).mockResolvedValue({
-      handle: 'nadia',
-      displayName: 'Nadia Bakes',
-      entries: [],
-    });
+    vi.mocked(getFaqIndex).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', theme: { accentColor: '#2340c8', headingFont: 'JAKARTA' as const, background: 'PAPER' as const, backgroundColor: null }, entries: [], total: 0 });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(screen.queryByRole('link', { name: /every question/i })).toBeNull();
+    expect(document.querySelector('a[href="/nadia/faq"]')).toBeNull();
   });
 
   it('is absent, and never queried, for a personal page', async () => {
@@ -193,7 +174,7 @@ describe('the link to /[handle]/faq', () => {
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 
-    expect(screen.queryByRole('link', { name: /every question/i })).toBeNull();
+    expect(document.querySelector('a[href="/nadia/faq"]')).toBeNull();
     expect(getFaqIndex).not.toHaveBeenCalled();
   });
 });
@@ -298,13 +279,11 @@ describe('indexing', () => {
   });
 });
 
-describe('the shop tile on the public page', () => {
-  it("links to the shop in the page's language, with the item count", async () => {
+describe('the Shop tab on the public page', () => {
+  it("links to the shop in the page's language", async () => {
     vi.mocked(getPublicPage).mockResolvedValue({ ...page, language: 'ms', shop: { position: 0, size: null, itemCount: 3, photoKey: null } });
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-    const tile = screen.getByRole('link', { name: /Lawati kedai/ });
-    expect(tile.getAttribute('href')).toBe('/nadia/shop');
-    expect(tile.textContent).toContain('3 barang');
+    expect(screen.getByRole('link', { name: 'Kedai' })).toHaveAttribute('href', '/nadia/shop');
   });
 
   it('has no such link without a shop', async () => {

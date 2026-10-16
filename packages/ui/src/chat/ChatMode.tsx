@@ -420,6 +420,7 @@ export function ChatMode({
             id="chat-input"
             ref={input}
             className={styles.input}
+            placeholder={`Ask ${displayName} anything`}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
           />
@@ -430,7 +431,7 @@ export function ChatMode({
             aria-busy={busy || undefined}
           >
             {/* The arrow is what shows; "Send" is still the button's name. */}
-            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
               <path d="M12 19V5M5 12l7-7 7 7" />
             </svg>
             <span className={styles.srOnly}>Send</span>

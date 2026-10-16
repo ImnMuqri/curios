@@ -2,11 +2,10 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
-import { BentoPage } from '../_bento/BentoPage.js';
+import { BentoPage, FAQ_SHOWN } from '../_bento/BentoPage.js';
 import { avatarUrl, coverUrl } from '../../lib/avatar-url.js';
 import { Ask } from './ask.js';
 import { shopCopy } from './shop/copy.js';
-import styles from './page.module.css';
 
 // Node, not edge: this reads Postgres directly through the read-only role.
 export const runtime = 'nodejs';
@@ -65,24 +64,19 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
     .map((fact) => fact.question)
     .filter((question): question is string => question !== null);
 
-  // One extra small indexed read, deliberate: this page is otherwise the only
-  // route in the product that never points at /[handle]/faq, which orphans it
-  // for both visitors and crawlers. The index itself 404s when a page has no
-  // qualifying questions, so linking there unconditionally would sometimes
-  // link to a 404 -- worse than not linking. `limit: 1` because only whether
-  // any entry exists matters here; skipped entirely for a personal page,
-  // which the index gates on anyway.
-  const hasFaq =
-    page.mode === 'BUSINESS'
-      ? ((await getFaqIndex(page.handle, { limit: 1 }))?.entries.length ?? 0) > 0
-      : false;
+  // The FAQ's most asked few, opened in place under the links ("People often
+  // ask"), and the way into /[handle]/faq -- without it this page is the only
+  // route in the product that never points there, which orphans the index
+  // for visitors and crawlers alike. Skipped for a personal page, which the
+  // index gates on anyway.
+  const faq = page.mode === 'BUSINESS' ? await getFaqIndex(page.handle, { limit: FAQ_SHOWN }) : null;
 
   const copy = shopCopy(page.language);
   const shop = page.shop
     ? { position: page.shop.position, size: page.shop.size, label: copy.visit, caption: copy.itemCount(page.shop.itemCount), photoUrl: avatarUrl(page.shop.photoKey) }
     : null;
 
-  // Server-rendered into real DOM: with JavaScript disabled the tiles are
+  // Server-rendered into real DOM: with JavaScript disabled the links are
   // still a working link list, which is also the SEO artifact.
   return (
     <main>
@@ -103,6 +97,9 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         background={page.background}
         backgroundColor={page.backgroundColor}
         coverUrl={coverUrl(page.coverKey)}
+        language={page.language}
+        faq={faq}
+        stage
       >
         {/* The "What do you want to know?" prompt now lives inside Ask
             (ask.tsx) -- it doubles as chat mode's own empty-state greeting,
@@ -118,12 +115,8 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
             leadsCaptured: page.leadsCaptured,
             now: new Date(),
           })}
+          faqTotal={faq?.total ?? 0}
         />
-        {hasFaq ? (
-          <a className={styles.faqLink} href={`/${page.handle}/faq`}>
-            See every question we&apos;ve answered
-          </a>
-        ) : null}
       </BentoPage>
     </main>
   );

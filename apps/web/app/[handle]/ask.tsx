@@ -31,12 +31,15 @@ export function Ask({
   questions,
   displayName,
   canCapture,
+  faqTotal = 0,
 }: {
   handle: string;
   questions: string[];
   displayName: string;
   /** False for a personal page. The server refuses anyway; this stops the card being offered at all. */
   canCapture: boolean;
+  /** How many answered questions the FAQ holds; with any, chat mode's greeting offers to browse them. */
+  faqTotal?: number;
 }) {
   const [open, setOpen] = useState(false);
   // Chat mode is mounted the first time it is opened, and never removed
@@ -45,6 +48,12 @@ export function Ask({
   // throw the conversation away along with the DOM.
   const [everOpened, setEverOpened] = useState(false);
   const askBarRef = useRef<HTMLButtonElement>(null);
+  const promptRef = useRef<HTMLDivElement>(null);
+  // Read by the tab listeners, which are attached once and would otherwise see the first render's value.
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  }, [open]);
 
   const onOpen = useCallback(() => {
     setEverOpened(true);
@@ -52,6 +61,48 @@ export function Ask({
   }, []);
 
   const onClose = useCallback(() => setOpen(false), []);
+
+  /**
+   * The page's Ask and Links tabs are server-rendered links (BentoPage), so
+   * without JavaScript they still go somewhere. With it, Ask opens chat mode
+   * in place and Links, while chat mode is open, goes back to the links --
+   * through history.back(), so the entry chat mode pushed is the one consumed
+   * and ChatMode's own popstate handler does the closing. `#ask` in the
+   * address opens chat mode on arrival: the shop's Ask tab links here with it.
+   */
+  useEffect(() => {
+    const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
+    if (!page) return;
+    const askTab = page.querySelector<HTMLAnchorElement>('[data-tab="ask"]');
+    const linksTab = page.querySelector<HTMLAnchorElement>('[data-tab="links"]');
+    const toAsk = (event: MouseEvent) => {
+      event.preventDefault();
+      onOpen();
+    };
+    const toLinks = (event: MouseEvent) => {
+      if (!openRef.current) return;
+      event.preventDefault();
+      history.back();
+    };
+    askTab?.addEventListener('click', toAsk);
+    linksTab?.addEventListener('click', toLinks);
+    if (window.location.hash === '#ask') onOpen();
+    return () => {
+      askTab?.removeEventListener('click', toAsk);
+      linksTab?.removeEventListener('click', toLinks);
+    };
+  }, [onOpen]);
+
+  // The current tab follows chat mode, for the eye (the filled pill) and for a screen reader alike.
+  useEffect(() => {
+    const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
+    if (!page) return;
+    for (const tab of page.querySelectorAll<HTMLElement>('[data-tab]')) {
+      const current = tab.dataset.tab === (open ? 'ask' : 'links');
+      if (current) tab.setAttribute('aria-current', 'page');
+      else tab.removeAttribute('aria-current');
+    }
+  }, [open]);
 
   /**
    * Focus follows the visitor back to what they tapped -- without this, Tab
@@ -127,9 +178,18 @@ export function Ask({
         server-rendered regardless, so a no-JS visitor still sees it, same as
         before.
       */}
-      <p className={styles.askPrompt} data-ask-prompt>
-        What do you want to know?
-      </p>
+      <div ref={promptRef} className={styles.greeting} data-ask-prompt>
+        <p className={styles.askPrompt}>What do you want to know?</p>
+        {faqTotal > 0 ? (
+          <a className={styles.browse} href={`/${handle}/faq`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" />
+            </svg>
+            Browse {faqTotal} answered {faqTotal === 1 ? 'question' : 'questions'}
+            <span aria-hidden="true">→</span>
+          </a>
+        ) : null}
+      </div>
       <AskBar ref={askBarRef} questions={questions} onOpen={onOpen} />
       {everOpened ? (
         <ChatMode
