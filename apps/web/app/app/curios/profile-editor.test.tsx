@@ -144,8 +144,24 @@ const base = { displayName: 'Iman', bio: null, onChange: vi.fn(), save: vi.fn(as
 describe('ProfileEditor picture', () => {
   it('shows the upload disabled, with the reason, when storage is off', () => {
     render(<ProfileEditor {...base} uploadsEnabled={false} uploadAvatar={vi.fn()} />);
-    expect(screen.getByLabelText('Upload a picture')).toBeDisabled();
-    expect(screen.getByText(/switched off here/i)).toBeInTheDocument();
+    const picture = screen.getByRole('button', { name: 'Upload a picture' });
+    expect(picture).toBeDisabled();
+    expect(picture).toHaveAttribute('title', expect.stringMatching(/switched off here/i));
+    expect(screen.queryByLabelText('Picture file')).toBeNull();
+  });
+
+  // The circle is the control: it says Add with no picture, Change with one.
+  it('names the picture button for what clicking it does', () => {
+    const { rerender } = render(<ProfileEditor {...base} uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Upload a picture' })).toHaveTextContent('Add');
+
+    rerender(<ProfileEditor {...base} avatarUrl="https://cdn.example/old.webp" uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Change profile picture' })).toHaveTextContent('Change');
+  });
+
+  it('counts the bio against its limit', () => {
+    render(<ProfileEditor {...base} bio="Homemade cakes." uploadsEnabled uploadAvatar={vi.fn()} />);
+    expect(screen.getByText('15/160')).toBeInTheDocument();
   });
 
   it('uploads a chosen file and shows the new picture', async () => {
@@ -153,7 +169,7 @@ describe('ProfileEditor picture', () => {
     const uploadAvatar = vi.fn(async () => 'https://cdn.example/a.webp');
     render(<ProfileEditor {...base} onAvatar={onAvatar} uploadsEnabled uploadAvatar={uploadAvatar} />);
 
-    await userEvent.upload(screen.getByLabelText('Upload a picture'), new File(['x'], 'me.png', { type: 'image/png' }));
+    await userEvent.upload(screen.getByLabelText('Picture file'), new File(['x'], 'me.png', { type: 'image/png' }));
 
     expect(uploadAvatar).toHaveBeenCalled();
     expect(onAvatar).toHaveBeenCalledWith('https://cdn.example/a.webp');
@@ -164,7 +180,7 @@ describe('ProfileEditor picture', () => {
     const uploadAvatar = vi.fn(async () => { throw new Error('That picture could not be used.'); });
     render(<ProfileEditor {...base} avatarUrl="https://cdn.example/old.webp" onAvatar={onAvatar} uploadsEnabled uploadAvatar={uploadAvatar} />);
 
-    await userEvent.upload(screen.getByLabelText('Upload a picture'), new File(['x'], 'me.png', { type: 'image/png' }));
+    await userEvent.upload(screen.getByLabelText('Picture file'), new File(['x'], 'me.png', { type: 'image/png' }));
 
     expect(onAvatar).not.toHaveBeenCalled();
     expect(screen.getByRole('alert')).toHaveTextContent(/could not be used/i);

@@ -79,11 +79,12 @@ Built 2026-10-03 as "Tanya page ni", reworked through a band layout, a motion
 pass and the 2026-10-13 Berkira pass (pinned hero, the paid moment, GSAP and
 Lenis), then replaced on 2026-10-16 by the TanyaJe board. What survives: the
 claim field's behaviour (a real GET form to `/signup` that keeps the typed handle
-for the claim screen, `apps/web/lib/wanted-handle.ts`), the `Device` phone and
-`demo.ts` (still used by the sign-in screens and My Curios), the wordmark, and
-the structured data.
+for the claim screen, `apps/web/lib/wanted-handle.ts`), the wordmark, and the
+structured data. The old `Device` phone, `demo.ts` and `landing.module.css` went
+once the sign-in screens and My Curios were rebuilt from their own boards.
 
 ## Sign-in screens (2026-10-04)
 
 Sign in, sign up, forgot, reset and verify share `app/_auth/AuthShell.tsx`, which
-still reads `landing.module.css`, `Device` and `demo.ts` from here.
+reads the wordmark, `landing-tokens.css`, the personas and `useReducedMotion`
+from here.

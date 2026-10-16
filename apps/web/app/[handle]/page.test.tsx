@@ -48,6 +48,7 @@ const page: PublicPage = {
   avatarKey: null,
   coverKey: null,
   background: 'PAPER' as const, backgroundColor: null, shop: null,
+  socials: [],
 };
 
 describe('public page', () => {

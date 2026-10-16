@@ -2,10 +2,13 @@
 
 import { useRef, useState } from 'react';
 import { Callout } from '@curios/ui';
-import { STOCK_COVERS, stockCoverName, type StockCover } from '@curios/core/bento';
+import { STOCK_COVERS, stockCoverName, type HeadingFont, type PageBackground, type StockCover } from '@curios/core/bento';
+import { themeAttrs } from '../../_bento/BentoPage.js';
+import bento from '../../_bento/Bento.module.css';
+import { SectionHead } from './section-head.js';
 import styles from './curios.module.css';
 
-/** What each stock cover shows, for a screen reader and the hover title. */
+/** What each stock cover shows, for a screen reader and the chosen tile's caption. */
 const STOCK_NAMES: Record<StockCover, string> = {
   kedai: 'Shopfront',
   kopi: 'Coffee',
@@ -16,15 +19,17 @@ const STOCK_NAMES: Record<StockCover, string> = {
 };
 
 /**
- * The cover photo at the top of the page: one of the covers that ship with
- * Curios, the owner's own upload, or none. Every choice saves at once, like
- * the rest of Appearance. A stock cover needs no storage, so it works even
- * where uploads are switched off.
+ * The cover photo at the top of the page, as one strip of tiles: no photo
+ * (drawn in the page's own colours), the owner's upload if there is one, the
+ * covers that ship with Curios, then a tile to upload. The chosen tile widens
+ * and names itself. Every choice saves at once. A stock cover needs no
+ * storage, so it works even where uploads are switched off.
  */
 export function CoverEditor({
   coverKey,
   coverUrl,
   uploadsEnabled,
+  look,
   onCover,
   chooseStock,
   uploadCover,
@@ -33,6 +38,8 @@ export function CoverEditor({
   coverKey: string | null;
   coverUrl: string | null;
   uploadsEnabled: boolean;
+  /** The page's colours, for the no-photo tile. */
+  look: { accentColor: string; headingFont: HeadingFont; background: PageBackground; backgroundColor: string | null };
   onCover: (cover: { coverKey: string | null; coverUrl: string | null }) => void;
   chooseStock: (name: StockCover) => Promise<{ coverKey: string; coverUrl: string | null }>;
   uploadCover: (file: File) => Promise<{ coverKey: string; coverUrl: string | null }>;
@@ -42,6 +49,7 @@ export function CoverEditor({
   const [busy, setBusy] = useState(false);
   const file = useRef<HTMLInputElement>(null);
   const chosenStock = stockCoverName(coverKey);
+  const ownPhoto = coverKey && !chosenStock && coverUrl ? coverUrl : null;
 
   const run = async (work: () => Promise<{ coverKey: string | null; coverUrl: string | null }>, fallback: string) => {
     if (busy) return;
@@ -58,14 +66,14 @@ export function CoverEditor({
 
   return (
     <section className={styles.section} aria-labelledby="cover-title">
-      <h2 id="cover-title" className={styles.sectionTitle}>Cover photo</h2>
+      <SectionHead id="cover-title" icon="image" tone="rose" title="Cover photo" note="Optional. Pick one, upload your own, or go with a solid colour" />
 
-      {/* One compact row: none, your own upload if there is one, then ours. The preview beside this shows the result. */}
-      <div className={styles.coverRow} role="group" aria-labelledby="cover-title">
+      <div className={styles.gallery} role="group" aria-labelledby="cover-title" aria-busy={busy}>
         <button
           type="button"
-          className={`${styles.coverTile} ${styles.coverNone}`}
+          className={styles.galleryTile}
           aria-pressed={!coverKey}
+          aria-label="No photo"
           disabled={busy}
           onClick={() =>
             coverKey
@@ -76,37 +84,46 @@ export function CoverEditor({
               : undefined
           }
         >
-          None
+          <span className={`${bento.theme} ${styles.solid}`} {...themeAttrs(look)} aria-hidden="true">
+            <i />
+            <em />
+            <em />
+          </span>
+          <span className={styles.caption} aria-hidden="true">No photo</span>
         </button>
-        {coverKey && !chosenStock && coverUrl ? (
-          <button type="button" className={styles.coverTile} aria-pressed title="Your own photo" disabled={busy}>
-            <img src={coverUrl} alt="Your own photo" width={72} height={45} />
+        {ownPhoto ? (
+          <button type="button" className={styles.galleryTile} aria-pressed aria-label="Your own photo" disabled={busy}>
+            <img src={ownPhoto} alt="" />
+            <span className={styles.caption} aria-hidden="true">Your photo</span>
           </button>
         ) : null}
         {STOCK_COVERS.map((name) => (
           <button
             key={name}
             type="button"
-            className={styles.coverTile}
+            className={styles.galleryTile}
             aria-pressed={chosenStock === name}
-            title={STOCK_NAMES[name]}
+            aria-label={STOCK_NAMES[name]}
             disabled={busy}
-            onClick={() => void run(() => chooseStock(name), 'That did not save. Try again.')}
+            onClick={() => (chosenStock === name ? undefined : void run(() => chooseStock(name), 'That did not save. Try again.'))}
           >
-            <img src={`/covers/${name}.webp`} alt={STOCK_NAMES[name]} loading="lazy" width={72} height={45} />
+            <img src={`/covers/${name}.webp`} alt="" loading="lazy" />
+            <span className={styles.caption} aria-hidden="true">{STOCK_NAMES[name]}</span>
           </button>
         ))}
-      </div>
-
-      {/* Always shown, so owners know their own photo is possible; disabled, with the reason, where storage is off. */}
-      <div className={styles.coverFoot}>
-        <button type="button" className={styles.avatarUpload} data-disabled={!uploadsEnabled} disabled={busy || !uploadsEnabled} onClick={() => file.current?.click()}>
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-            <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
+        {/* Always shown, so owners know their own photo is possible; disabled, with the reason, where storage is off. */}
+        <button
+          type="button"
+          className={`${styles.galleryTile} ${styles.galleryUpload}`}
+          aria-label="Upload your own"
+          title={uploadsEnabled ? 'A wide photo, 2 MB at most' : 'Uploading your own is switched off here'}
+          disabled={busy || !uploadsEnabled}
+          onClick={() => file.current?.click()}
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M12 16V5M7 10l5-5 5 5M5 20h14" />
           </svg>
-          {busy ? 'Saving…' : 'Upload your own'}
         </button>
-        <p className={styles.note}>{uploadsEnabled ? 'A wide photo, 2 MB at most.' : 'Uploading your own is switched off here.'}</p>
       </div>
       {uploadsEnabled ? (
         <input

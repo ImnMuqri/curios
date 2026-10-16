@@ -1,10 +1,9 @@
 'use client';
 
-import type { MyCurios as MyCuriosData } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { coverUrlFrom, joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { resizeCover, resizeImage } from './resize-image.js';
-import { MyCuriosEditor, type CuriosApi } from './my-curios.js';
+import { MyCuriosEditor, type CuriosApi, type EditorPage } from './my-curios.js';
 import type { LinkItem } from './links-editor.js';
 
 /**
@@ -20,10 +19,12 @@ export function MyCurios({
   initial,
   uploadsEnabled,
   publicBase,
+  publicUrl,
 }: {
-  initial: MyCuriosData & { avatarUrl: string | null; coverUrl: string | null; shopPhotoUrl: string | null };
+  initial: EditorPage;
   uploadsEnabled: boolean;
   publicBase: string;
+  publicUrl: string;
 }) {
   const avatarUrlFromKey = (key: string) => joinAvatarUrl(publicBase, key);
 
@@ -32,7 +33,7 @@ export function MyCurios({
     updateLink: async (id, patch) => (await apiFetch<{ link: LinkItem }>(`/links/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).link,
     removeLink: async (id) => { await apiFetch(`/links/${id}`, { method: 'DELETE' }); },
     reorder: async (ids) => { await apiFetch('/links/order', { method: 'PUT', body: JSON.stringify({ ids }) }); },
-    saveShopSize: async (tileSize) => { await apiFetch('/store/settings', { method: 'PATCH', body: JSON.stringify({ tileSize }) }); },
+    setShopOpen: async (enabled) => { await apiFetch('/store/settings', { method: 'PATCH', body: JSON.stringify({ enabled }) }); },
     saveAppearance: (patch) => apiFetch('/pages/appearance', { method: 'PATCH', body: JSON.stringify(patch) }),
     uploadAvatar: async (file) => {
       const image = await resizeImage(file);
@@ -51,5 +52,5 @@ export function MyCurios({
     },
     removeCover: async () => { await apiFetch('/pages/cover', { method: 'DELETE' }); },
   };
-  return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} />;
+  return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} publicUrl={publicUrl} />;
 }

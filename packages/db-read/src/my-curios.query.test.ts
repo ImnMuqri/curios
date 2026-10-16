@@ -17,6 +17,7 @@ beforeAll(async () => {
           displayName: 'Iman Muqri',
           bio: 'Software developer.',
           accentColor: '#6d3fb3',
+          socials: { instagram: 'iman', youtube: 'iman', myspace: 'ignored' },
           links: {
             create: [
               { label: 'GitHub', url: 'https://github.com/iman', position: 1, size: 'WIDE' },
@@ -56,11 +57,53 @@ describe('getMyCurios', () => {
       avatarKey: null,
       coverKey: null,
       background: 'PAPER', backgroundColor: null,
+      // Known kinds only, in display order.
+      socials: [{ kind: 'instagram', value: 'iman' }, { kind: 'youtube', value: 'iman' }],
     });
     expect(page?.links.map((l) => [l.label, l.size])).toEqual([
       ['Portfolio', null],
       ['GitHub', 'WIDE'],
     ]);
+  });
+
+  it('gives a business page its Shop switch, counting what is for sale even while the shop is closed', async () => {
+    const personal = await write.account.create({
+      data: { email: 'personal@example.com', pages: { create: { handle: 'personal', skeleton: 'personal', displayName: 'Personal', mode: 'PERSONAL' } } },
+      select: { id: true },
+    });
+    expect((await getMyCurios(personal.id))?.shopTab).toBeNull();
+
+    const account = await write.account.create({
+      data: {
+        email: 'shop-switch@example.com',
+        pages: {
+          create: {
+            handle: 'shopswitch',
+            skeleton: 'shopswitch',
+            displayName: 'Shop Switch',
+            mode: 'BUSINESS',
+            items: {
+              create: [
+                { name: 'Kek coklat', position: 0, priceCents: 9500 },
+                { name: 'Kek batik', position: 1 },
+                { name: 'Sold out', position: 2, available: false },
+              ],
+            },
+          },
+        },
+      },
+      select: { id: true },
+    });
+    const page = await getMyCurios(account.id);
+    expect(page?.shopTab).toEqual({
+      open: false,
+      itemCount: 2,
+      preview: [
+        { name: 'Kek coklat', priceCents: 9500, photoKey: null },
+        { name: 'Kek batik', priceCents: null, photoKey: null },
+      ],
+    });
+    expect(page?.shop).toBeNull();
   });
 
   it('is null for an account with no page', async () => {

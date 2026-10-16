@@ -98,6 +98,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         backgroundColor={page.backgroundColor}
         coverUrl={coverUrl(page.coverKey)}
         language={page.language}
+        socials={page.socials}
         faq={faq}
         stage
       >

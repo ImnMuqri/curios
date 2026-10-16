@@ -62,3 +62,5 @@ export {
   TOPIC_TITLE_MAX,
 } from './topics.js';
 export type { GroupJobData } from './topics.js';
+export { SOCIAL_KINDS, normalizeSocial, socialUrl, tidySocials } from './socials.js';
+export type { SocialKind, Socials } from './socials.js';

@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, type ChangeEvent } from 'react';
-import { Button, Callout, Field } from '@curios/ui';
+import { useRef, useState, type ChangeEvent } from 'react';
+import { Button, Callout } from '@curios/ui';
 import { BIO_MAX } from '@curios/core/bento';
 import { ApiError } from '../../../lib/api.js';
 import { useAutosave } from './use-autosave.js';
+import { SectionHead } from './section-head.js';
 import styles from './curios.module.css';
 
-const STATUS = { idle: '', saving: 'Saving…', saved: 'Saved', error: '' } as const;
-
-/** Name, bio and the optional picture, saved as the owner types or chooses. */
+/**
+ * The picture, name and bio, saved as the owner chooses or types. The picture
+ * is the circle itself: click it to upload or change. The header's pill says
+ * when a save is under way; a failed one is said here, under its field.
+ */
 export function ProfileEditor({
   displayName,
   bio,
@@ -41,18 +44,20 @@ export function ProfileEditor({
   // showing a broken-image icon, never re-shown for the same URL once it has
   // failed once.
   const [avatarFailed, setAvatarFailed] = useState(false);
+  const file = useRef<HTMLInputElement>(null);
+  const bioLength = [...(bio ?? '')].length;
 
   const handleUpload = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
+    const picked = event.target.files?.[0];
     // Cleared immediately, not after the upload settles: choosing the same
     // file again must fire another change event, and the browser only does
     // that once the input's value has actually changed in between.
     event.target.value = '';
-    if (!file) return;
+    if (!picked) return;
     try {
       // Awaited before onAvatar is ever called -- the picture that lands in
       // state is the one storage actually confirmed, not a guess.
-      const url = await uploadAvatar(file);
+      const url = await uploadAvatar(picked);
       setAvatarError('');
       setAvatarFailed(false);
       onAvatar(url);
@@ -70,87 +75,105 @@ export function ProfileEditor({
     }
   };
 
+  const hasPicture = Boolean(avatarUrl && !avatarFailed);
+
   return (
     <section className={styles.section} aria-labelledby="profile-title">
-      <h2 id="profile-title" className={styles.sectionTitle}>Profile</h2>
-      {/* Always shown, so the owner knows a picture is possible; where storage is off the upload is there but disabled, and says why. */}
-      <div className={styles.avatarRow}>
-        {avatarUrl && !avatarFailed ? (
-          <img src={avatarUrl} alt="" className={styles.avatarPreview} onError={() => setAvatarFailed(true)} />
-        ) : (
-          <div className={styles.avatarPlaceholder} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="22" height="22">
-              <circle cx="12" cy="9" r="4" />
-              <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
-            </svg>
-          </div>
-        )}
-        <div className={styles.avatarText}>
-          <p className={styles.avatarTitle}>Profile picture</p>
-          <p className={styles.avatarHint}>
-            {uploadsEnabled ? 'Optional. A square photo works best. No picture? Your page shows just your name.' : 'Uploading pictures is switched off here.'}
-          </p>
-        </div>
-        <div className={styles.avatarActions}>
-          <label className={styles.avatarUpload} data-disabled={!uploadsEnabled}>
-            <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-              <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
-            </svg>
-            <span aria-hidden="true">{avatarUrl ? 'Change' : 'Upload a picture'}</span>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              aria-label="Upload a picture"
-              disabled={!uploadsEnabled}
-              className={styles.visuallyHidden}
-              onChange={(event) => { void handleUpload(event); }}
-            />
-          </label>
-          {avatarUrl && uploadsEnabled ? (
-            <button type="button" className={styles.avatarRemove} onClick={() => { void handleRemove(); }}>
-              Remove picture
+      <SectionHead id="profile-title" icon="user" tone="hijau" title="You" note="Picture, name and a line about you" />
+      <div className={styles.idRow}>
+        <div className={styles.avatarCell}>
+          <button
+            type="button"
+            className={styles.avatar}
+            aria-label={hasPicture ? 'Change profile picture' : 'Upload a picture'}
+            title={uploadsEnabled ? undefined : 'Uploading pictures is switched off here'}
+            disabled={!uploadsEnabled}
+            onClick={() => file.current?.click()}
+          >
+            {hasPicture ? (
+              <img src={avatarUrl ?? ''} alt="" onError={() => setAvatarFailed(true)} />
+            ) : (
+              <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true">
+                <circle cx="12" cy="9" r="4" />
+                <path d="M4.5 20a7.5 7.5 0 0 1 15 0" />
+              </svg>
+            )}
+            <span aria-hidden="true">{hasPicture ? 'Change' : 'Add'}</span>
+          </button>
+          {hasPicture && uploadsEnabled ? (
+            <button type="button" className={styles.quietButton} aria-label="Remove picture" onClick={() => void handleRemove()}>
+              Remove
             </button>
           ) : null}
+          {uploadsEnabled ? (
+            <input
+              ref={file}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              aria-label="Picture file"
+              onChange={(event) => void handleUpload(event)}
+            />
+          ) : null}
         </div>
-        {avatarError ? <div className={styles.avatarError}><Callout tone="error">{avatarError}</Callout></div> : null}
+        <div className={styles.idField}>
+          <label className={styles.float}>
+            <em>Display name</em>
+            <input
+              value={displayName}
+              autoComplete="off"
+              onChange={(event) => {
+                onChange({ displayName: event.target.value });
+                name.schedule(event.target.value);
+              }}
+            />
+          </label>
+          <SaveState status={name.status} error={name.error} retry={name.retry} />
+        </div>
       </div>
-      <Field
-        id="display-name"
-        label="Display name"
-        value={displayName}
-        onChange={(value) => { onChange({ displayName: value }); name.schedule(value); }}
-      />
-      <SaveState status={name.status} error={name.error} retry={name.retry} />
-      <Field
-        id="bio"
-        label="Bio"
-        multiline
-        value={bio ?? ''}
-        hint={`${[...(bio ?? '')].length} of ${BIO_MAX}`}
-        onChange={(value) => { onChange({ bio: value }); about.schedule(value); }}
-      />
+      {avatarError ? <Callout tone="error">{avatarError}</Callout> : null}
+      {/* The count sits beside the label, not in it, so the field is named "Bio" and nothing more. */}
+      <div className={`${styles.float} ${styles.bio}`}>
+        <label>
+          <em>Bio</em>
+          <textarea
+            value={bio ?? ''}
+            onChange={(event) => {
+              onChange({ bio: event.target.value });
+              about.schedule(event.target.value);
+            }}
+          />
+        </label>
+        <small aria-hidden="true" data-over={bioLength > BIO_MAX || undefined}>
+          {bioLength}/{BIO_MAX}
+        </small>
+      </div>
       <SaveState status={about.status} error={about.error} retry={about.retry} />
     </section>
   );
 }
 
 /**
- * A failed save's own words when it has them (the empty-name or
- * bio-too-long reason from the API, for example) rather than always the
+ * A failed save, said under its field: the API's own words when it has them
+ * (the empty-name or bio-too-long reason, for example) rather than always the
  * same generic sentence -- and a 4xx never offers Retry, because sending the
  * same rejected value again cannot succeed. Anything else (a dropped
  * connection, a 5xx) keeps the generic message and the Retry, since trying
- * again might actually work.
+ * again might actually work. While saving or saved it shows nothing: the
+ * header's pill says that for the whole screen.
  */
-export function SaveState({ status, error, retry }: { status: keyof typeof STATUS; error?: unknown; retry: () => void }) {
-  if (status === 'error') {
-    const message = error instanceof ApiError ? error.message : 'That did not save.';
-    const canRetry = !(error instanceof ApiError && error.status >= 400 && error.status < 500);
-    return (
-      <p className={styles.saveError} role="alert">
-        {message} {canRetry ? <Button type="button" variant="secondary" onClick={retry}>Retry</Button> : null}
-      </p>
-    );
-  }
-  return <p className={styles.saveState} aria-live="polite">{STATUS[status]}</p>;
+export function SaveState({ status, error, retry }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: unknown; retry: () => void }) {
+  if (status !== 'error') return null;
+  const message = error instanceof ApiError ? error.message : 'That did not save.';
+  const canRetry = !(error instanceof ApiError && error.status >= 400 && error.status < 500);
+  return (
+    <p className={styles.saveError} role="alert">
+      {message}{' '}
+      {canRetry ? (
+        <Button type="button" variant="secondary" onClick={retry}>
+          Retry
+        </Button>
+      ) : null}
+    </p>
+  );
 }

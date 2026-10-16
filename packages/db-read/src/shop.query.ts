@@ -34,7 +34,8 @@ export const SHOP_TILE_SELECT = {
   storeEnabled: true,
   shopTilePosition: true,
   shopTileSize: true,
-  items: { where: { available: true }, orderBy: { position: 'asc' }, select: { photoKey: true } },
+  // Name and price as well, for the editor's preview of the Shop tab.
+  items: { where: { available: true }, orderBy: { position: 'asc' }, select: { photoKey: true, name: true, priceCents: true } },
 } as const;
 
 /**

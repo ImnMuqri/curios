@@ -7,6 +7,7 @@ import {
   type PageStyle,
   type TileSize,
 } from '@curios/core/bento';
+import { socialUrl, type SocialKind } from '@curios/core/socials';
 import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
 import { Cover } from './Cover.js';
@@ -59,9 +60,21 @@ export interface BentoPageProps {
    * something else (the editor's phone, the landing's demos).
    */
   stage?: boolean;
+  /** Social profiles, shown as icons under the handle. */
+  socials?: { kind: SocialKind; value: string }[];
   /** The ask bar, on the public page; the shop's shelf on /handle/shop. */
   children?: ReactNode;
 }
+
+/** One stroke icon per profile kind, from the boards. */
+const SOCIAL_ICON: Record<SocialKind, { label: string; d: string }> = {
+  instagram: { label: 'Instagram', d: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17.5 6.5h.01' },
+  whatsapp: { label: 'WhatsApp', d: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z' },
+  tiktok: { label: 'TikTok', d: 'M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.6 2.6 2.4 4 5 4' },
+  email: { label: 'Email', d: 'M3 5h18v14H3zM3 7l9 6 9-6' },
+  facebook: { label: 'Facebook', d: 'M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z' },
+  youtube: { label: 'YouTube', d: 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9l5 3-5 3z' },
+};
 
 /** How many FAQ entries open in place under the links; the rest are a tap away. */
 export const FAQ_SHOWN = 3;
@@ -146,6 +159,27 @@ export function BentoPage(props: BentoPageProps) {
         {props.avatarUrl ? <Avatar src={props.avatarUrl} name={props.displayName} /> : null}
         <Name className={styles.name}>{props.displayName}</Name>
         <p className={styles.handle}>curios.my/{props.handle}</p>
+        {props.socials && props.socials.length > 0 ? (
+          <ul className={styles.socials} aria-label="Profiles">
+            {props.socials.map(({ kind, value }) => (
+              <li key={kind}>
+                {interactive ? (
+                  <a href={socialUrl(kind, value)} rel="noopener" aria-label={SOCIAL_ICON[kind].label}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d={SOCIAL_ICON[kind].d} />
+                    </svg>
+                  </a>
+                ) : (
+                  <span aria-label={SOCIAL_ICON[kind].label}>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d={SOCIAL_ICON[kind].d} />
+                    </svg>
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        ) : null}
         {props.bio ? <p className={styles.bio}>{props.bio}</p> : null}
         <nav className={styles.tabs} aria-label={copy.sections} data-tabs style={{ '--tabs': tabs.length } as CSSProperties}>
           {tabs.map((tab) =>

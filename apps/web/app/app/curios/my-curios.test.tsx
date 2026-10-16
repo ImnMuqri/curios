@@ -1,153 +1,320 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MyCuriosEditor } from './my-curios.js';
+import { MyCuriosEditor, type EditorPage } from './my-curios.js';
 
-const initial = {
+const initial: EditorPage = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
-  style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, avatarKey: null,
-  coverKey: null, coverUrl: null, background: 'PAPER' as const, backgroundColor: null, language: 'en', shop: null, shopPhotoUrl: null,
+  style: 'SOFT', accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null,
+  coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
+  socials: [], shop: null, shopTab: null, shopItems: [],
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
+};
+
+const business: EditorPage = {
+  ...initial,
+  shopTab: { open: false, itemCount: 2, preview: [] },
+  shopItems: [
+    { name: 'Kek coklat', priceCents: 9500, photoUrl: null },
+    { name: 'Kek batik', priceCents: null, photoUrl: null },
+  ],
 };
 
 const api = () => ({
   addLink: vi.fn(async (i: { label: string; url: string }) => ({ id: 'n', label: i.label, url: `https://${i.url}`, size: null })),
-  updateLink: vi.fn(async (id: string, p: object) => ({ ...initial.links[0]!, ...p })),
+  updateLink: vi.fn(async (_id: string, p: object) => ({ ...initial.links[0]!, ...p })),
   removeLink: vi.fn(async () => undefined),
   reorder: vi.fn(async () => undefined),
-  saveShopSize: vi.fn(async () => undefined),
+  setShopOpen: vi.fn(async () => undefined),
   saveAppearance: vi.fn(async () => undefined),
   uploadAvatar: vi.fn(async () => null),
   removeAvatar: vi.fn(async () => undefined),
   chooseStockCover: vi.fn(async (name: string) => ({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` })),
-  uploadCover: vi.fn(async () => ({ coverKey: "covers/p1/a.webp", coverUrl: null })),
+  uploadCover: vi.fn(async () => ({ coverKey: 'covers/p1/a.webp', coverUrl: null })),
   removeCover: vi.fn(async () => undefined),
+});
+
+const show = (page: EditorPage = initial, calls = api()) => {
+  const view = render(<MyCuriosEditor initial={page} api={calls} uploadsEnabled={false} publicUrl="https://curios.my/imnmuqri" />);
+  return { ...view, calls };
+};
+const preview = () => screen.getByRole('region', { name: 'Live preview' });
+/** The editor's own tabs; the preview has a Links tab of its own. */
+const editTab = (name: string) => within(screen.getByRole('tablist', { name: 'Edit' })).getByRole('tab', { name });
+/** The editor's header bar; the page in the phone has a header too. */
+const header = () => screen.getByRole('heading', { name: 'My Curios' }).closest('header')!;
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('MyCuriosEditor', () => {
   // The preview updates from local state, before any save returns.
   it('shows a new link in the live preview as soon as it is added', async () => {
-    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
-    await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
+    show();
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Shop');
     await userEvent.type(screen.getByLabelText('Address'), 'shopee.com.my/iman');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
 
-    const preview = screen.getByRole('region', { name: 'Live preview' });
-    expect(within(preview).getByText('Shop')).toBeInTheDocument();
+    expect(within(preview()).getByText('Shop')).toBeInTheDocument();
   });
 
   it('shows the name in the preview while it is being typed', async () => {
-    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    show();
     const name = screen.getByLabelText('Display name');
     await userEvent.clear(name);
     await userEvent.type(name, 'Iman M.');
 
-    expect(within(screen.getByRole('region', { name: 'Live preview' })).getByRole('heading', { name: 'Iman M.' })).toBeInTheDocument();
+    expect(within(preview()).getByText('Iman M.')).toBeInTheDocument();
+    expect(within(preview()).getByText(/Ask Iman M\. anything/)).toBeInTheDocument();
   });
 
-  // Fix round 1, Important #1: a link edit (label or size) must reach the
-  // preview from local state, on every keystroke/click, independent of
-  // whether the save behind it ever resolves. `updateLink` never resolving
-  // is what proves that -- if the preview waited on the save, it would never
-  // update at all here.
+  // A link edit must reach the preview from local state, on every keystroke,
+  // independent of whether the save behind it ever resolves. `updateLink`
+  // never resolving is what proves that.
   it('shows a link label change in the live preview immediately, before the save resolves', async () => {
     const stuck = api();
     stuck.updateLink = vi.fn(() => new Promise<never>(() => {}));
-    render(<MyCuriosEditor initial={initial} api={stuck} uploadsEnabled={false} />);
+    show(initial, stuck);
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
-
+    await userEvent.click(editTab('Links'));
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     await userEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
     await userEvent.type(within(row).getByLabelText('Name'), '!');
 
-    const preview = screen.getByRole('region', { name: 'Live preview' });
-    expect(within(preview).getByText('Portfolio!')).toBeInTheDocument();
+    expect(within(preview()).getByText('Portfolio!')).toBeInTheDocument();
   });
 
   it('restyles the preview the moment a style is chosen', async () => {
-    const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
-    await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
-    expect(container.querySelector('[aria-label="Live preview"] [data-style]')).toHaveAttribute('data-style', 'CONTRAST');
+    show();
+    await userEvent.click(editTab('Appearance'));
+    await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
+    expect(preview().querySelector('[data-style]')).toHaveAttribute('data-style', 'CONTRAST');
   });
 });
 
-// The preview reuses BentoPage, which fills the screen on the public page
-// (min-height: 100vh). Inside the preview box that forced a scrollbar even for
-// three links; the owner asked for none. jsdom has no layout, so this pins the
-// two halves that make it fit: BentoPage's root is the box's direct child, and
-// the stylesheet undoes the full-screen height for exactly that child.
-describe('the live preview fits its box', () => {
-  it("renders BentoPage inside the same phone the landing page shows, at the page's own address", () => {
-    const { container } = render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    const preview = container.querySelector('[aria-label="Live preview"]');
-    expect(preview?.querySelector('[data-tone] [data-bento-page]')).not.toBeNull();
-    expect(preview?.textContent).toContain(`curios.my/${initial.handle}`);
+describe('the header', () => {
+  it('says Saved, then Saving… while a save is out, then Saved again', async () => {
+    let finish!: () => void;
+    const calls = api();
+    calls.chooseStockCover = vi.fn(
+      (name: string) => new Promise((resolve) => { finish = () => resolve({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` }); }),
+    );
+    show(initial, calls);
+    expect(within(header()).getByText('Saved')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
+    expect(within(header()).getByText('Saving…')).toBeInTheDocument();
+
+    await act(async () => finish());
+    expect(within(header()).getByText('Saved')).toBeInTheDocument();
   });
 
-  // The phone is as tall as the window allows below the top bar (its width
-  // follows from 9:19); the page fills the phone's screen rather than forcing
-  // a full screen of its own inside it.
-  it('fills a full-height frame without forcing its own screen height', () => {
-    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
-    expect(css).toMatch(/\.device\s*\{[^}]*width:\s*min\(100%, calc\(\(100vh/);
-    expect(css).toMatch(/\.phone\s*\{[^}]*height:\s*100%/);
-    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
+  it('says Not saved after a save fails, until the next one lands', async () => {
+    const calls = api();
+    calls.chooseStockCover = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce({ coverKey: 'stock/teh', coverUrl: '/covers/teh.webp' });
+    show(initial, calls);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Coffee' }));
+    expect(await within(header()).findByText('Not saved')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tea and flowers' }));
+    expect(await within(header()).findByText('Saved')).toBeInTheDocument();
   });
 
-  // The public page's column gets a margin and rounded corners on wide
-  // screens (Bento.module.css); inside the preview's own phone frame both
-  // would show as a gap and a second set of corners, so the preview turns
-  // them back off.
-  it('turns off the public page column’s margin and rounding inside the preview frame', () => {
-    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
-    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*margin:\s*0;/);
-    expect(css).toMatch(/\.phone > \[data-bento-page\]\s*\{[^}]*border-radius:\s*0;/);
+  it("copies the page's full address", async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(screen.getByRole('button', { name: 'Copy link' }));
+    expect(await navigator.clipboard.readText()).toBe('https://curios.my/imnmuqri');
+    expect(screen.getByText('Link copied')).toBeInTheDocument();
+  });
+
+  it('opens the page itself from View page', () => {
+    show();
+    expect(screen.getByRole('link', { name: 'View page' })).toHaveAttribute('href', '/imnmuqri');
   });
 });
 
-
-describe('the icon rail', () => {
-  it('shows one part at a time, Profile first, and the rail says which', async () => {
-    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    expect(screen.getByRole('tab', { name: 'Profile' })).toHaveAttribute('aria-selected', 'true');
+describe('the tabs', () => {
+  it('shows one part at a time, Profile first', async () => {
+    show();
+    expect(editTab('Profile')).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Display name')).toBeVisible();
-    expect(screen.queryByRole('button', { name: '+ Add a link' })).toBeNull();
+    // The Links panel is hidden, so its controls are out of the accessibility tree.
+    expect(screen.queryByRole('button', { name: '+ Add link' })).toBeNull();
 
-    await userEvent.click(screen.getByRole('tab', { name: 'Appearance' }));
-    expect(screen.getByRole('radio', { name: 'High contrast' })).toBeInTheDocument();
+    await userEvent.click(editTab('Appearance'));
+    expect(screen.getByRole('button', { name: /^High contrast/ })).toBeVisible();
     expect(screen.getByLabelText('Display name')).not.toBeVisible();
   });
 
-  it('moves between parts with the arrow keys, as a tab list does', async () => {
-    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
-    screen.getByRole('tab', { name: 'Profile' }).focus();
-    await userEvent.keyboard('{ArrowDown}');
-    expect(screen.getByRole('tab', { name: 'Links' })).toHaveFocus();
-    expect(screen.getByRole('tab', { name: 'Links' })).toHaveAttribute('aria-selected', 'true');
-    await userEvent.keyboard('{ArrowUp}{ArrowUp}');
-    expect(screen.getByRole('tab', { name: 'Appearance' })).toHaveAttribute('aria-selected', 'true');
+  it('moves between parts with the arrow keys, Home and End, as a tab list does', async () => {
+    show();
+    editTab('Profile').focus();
+    await userEvent.keyboard('{ArrowRight}');
+    expect(editTab('Links')).toHaveFocus();
+    expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
+    expect(editTab('Appearance')).toHaveAttribute('aria-selected', 'true');
+    await userEvent.keyboard('{Home}');
+    expect(editTab('Profile')).toHaveFocus();
+    await userEvent.keyboard('{End}');
+    expect(editTab('Appearance')).toHaveFocus();
   });
 
   // A hidden part keeps its state, so a name typed a moment ago still saves after switching away.
   it('keeps a part mounted while another is shown', async () => {
-    render(<MyCuriosEditor initial={initial} api={api()} uploadsEnabled={false} />);
+    show();
     await userEvent.type(screen.getByLabelText('Display name'), '!');
-    await userEvent.click(screen.getByRole('tab', { name: 'Links' }));
-    await userEvent.click(screen.getByRole('tab', { name: 'Profile' }));
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(editTab('Profile'));
     expect(screen.getByLabelText('Display name')).toHaveValue(`${initial.displayName}!`);
   });
+});
 
-  it('previews the Shop tab, as a box not a link', () => {
-    const shop = { position: 0, size: null, itemCount: 2, photoKey: null };
-    render(<MyCuriosEditor initial={{ ...initial, shop }} api={api()} uploadsEnabled={false} />);
-    const preview = screen.getByRole('region', { name: 'Live preview' });
-    expect(within(preview).getByText('Shop')).toBeInTheDocument();
-    expect(within(preview).queryByRole('link')).toBeNull();
+describe('the preview tabs', () => {
+  const previewTabs = () => within(screen.getByRole('tablist', { name: 'Preview tab' }));
+
+  it('offers Links and Ask, and Shop only while the shop is open', () => {
+    show(business);
+    expect(previewTabs().getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Links', 'Ask']);
+  });
+
+  it('draws the page on the tab chosen, as boxes not links', async () => {
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null } });
+    const page = preview().querySelector('[data-bento-page]');
+    expect(page).not.toHaveAttribute('data-mode');
+
+    await userEvent.click(previewTabs().getByRole('tab', { name: 'Ask' }));
+    expect(page).toHaveAttribute('data-mode', 'chat');
+    expect(within(preview()).getByText('What do you want to know?')).toBeInTheDocument();
+
+    await userEvent.click(previewTabs().getByRole('tab', { name: 'Shop' }));
+    expect(page).toHaveAttribute('data-mode', 'shop');
+    expect(within(preview()).getByText('Kek coklat')).toBeInTheDocument();
+    expect(within(preview()).getByText('RM95')).toBeInTheDocument();
+    expect(within(preview()).queryByRole('link')).toBeNull();
+  });
+
+  it('says where links will show on a page with none', () => {
+    show({ ...initial, links: [] });
+    expect(within(preview()).getByText('Your links show here')).toBeInTheDocument();
+  });
+});
+
+describe('the Shop tab switch', () => {
+  it('is not offered on a personal page', async () => {
+    show();
+    await userEvent.click(editTab('Links'));
+    expect(screen.queryByRole('switch', { name: 'Show the Shop tab' })).toBeNull();
+  });
+
+  it('opens the shop, and the preview gains its Shop tab', async () => {
+    const { calls } = show(business);
+    await userEvent.click(editTab('Links'));
+    expect(screen.getByText(/Sits next to Links and Ask · 2 items/)).toBeInTheDocument();
+
+    const toggle = screen.getByRole('switch', { name: 'Show the Shop tab' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await userEvent.click(toggle);
+
+    expect(calls.setShopOpen).toHaveBeenCalledWith(true);
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(within(screen.getByRole('tablist', { name: 'Preview tab' })).getByRole('tab', { name: 'Shop' })).toBeInTheDocument();
+  });
+
+  it('stays off and says why when the shop cannot open', async () => {
+    const calls = api();
+    calls.setShopOpen = vi.fn(async () => { throw new Error('Add a way to be paid before opening your shop.'); });
+    show(business, calls);
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop tab' }));
+
+    expect(screen.getByRole('switch', { name: 'Show the Shop tab' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('alert')).toHaveTextContent('Add a way to be paid before opening your shop.');
+  });
+
+  it('closing the shop takes the preview back to Links', async () => {
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null } });
+    await userEvent.click(within(screen.getByRole('tablist', { name: 'Preview tab' })).getByRole('tab', { name: 'Shop' }));
+    await userEvent.click(editTab('Links'));
+    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop tab' }));
+
+    expect(preview().querySelector('[data-bento-page]')).not.toHaveAttribute('data-mode');
+    expect(within(screen.getByRole('tablist', { name: 'Preview tab' })).queryByRole('tab', { name: 'Shop' })).toBeNull();
+  });
+});
+
+describe('social profiles', () => {
+  it('saves a profile once typing stops, and the preview shows its icon', async () => {
+    vi.useFakeTimers();
+    const { calls } = show();
+    fireEvent.click(editTab('Links'));
+    fireEvent.change(screen.getByLabelText('Instagram'), { target: { value: '@KekLina' } });
+
+    expect(within(preview()).getByLabelText('Instagram')).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(calls.saveAppearance).toHaveBeenCalledWith({ socials: { instagram: 'keklina' } });
+  });
+
+  it('settles a pasted profile link into its handle', () => {
+    show();
+    fireEvent.click(editTab('Links'));
+    const field = screen.getByLabelText('TikTok');
+    fireEvent.change(field, { target: { value: 'https://www.tiktok.com/@keklina.bakes' } });
+    fireEvent.blur(field);
+    expect(field).toHaveValue('keklina.bakes');
+  });
+
+  it('says so, on leaving the field, when it cannot be read, and sends nothing', async () => {
+    vi.useFakeTimers();
+    const { calls } = show();
+    fireEvent.click(editTab('Links'));
+    const field = screen.getByLabelText('WhatsApp');
+    fireEvent.change(field, { target: { value: '12345' } });
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    fireEvent.blur(field);
+    expect(screen.getByRole('alert')).toHaveTextContent('That doesn’t look like a WhatsApp number.');
+    expect(field).toHaveAttribute('aria-invalid', 'true');
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(calls.saveAppearance).not.toHaveBeenCalled();
+  });
+
+  it('clears a profile when its field is emptied', async () => {
+    vi.useFakeTimers();
+    const { calls } = show({ ...initial, socials: [{ kind: 'email', value: 'iman@example.com' }] });
+    fireEvent.click(editTab('Links'));
+    expect(within(preview()).getByLabelText('Email')).toBeInTheDocument();
+
+    // The preview's icon is labelled Email too; the field is the one in the Links panel.
+    fireEvent.change(within(screen.getByRole('tabpanel', { name: 'Links' })).getByLabelText('Email'), { target: { value: '' } });
+    expect(within(preview()).queryByLabelText('Email')).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(calls.saveAppearance).toHaveBeenCalledWith({ socials: { email: '' } });
+  });
+});
+
+// The preview reuses BentoPage, which fills the screen on the public page
+// (min-height: 100vh). jsdom has no layout, so this pins what makes it fit
+// the phone: BentoPage's root is the scroller's direct child, and the
+// stylesheet undoes the full-screen height, margin and rounding for it.
+describe('the live preview fits its phone', () => {
+  it('renders BentoPage inside the phone, at the page’s own address', () => {
+    show();
+    expect(preview().querySelector('[data-bento-page]')).not.toBeNull();
+    expect(preview().textContent).toContain(`curios.my/${initial.handle}`);
+  });
+
+  it('fills the phone without forcing its own screen height, margin or rounding', () => {
+    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
+    expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
+    expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*margin:\s*0;/);
+    expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*border-radius:\s*0;/);
   });
 });

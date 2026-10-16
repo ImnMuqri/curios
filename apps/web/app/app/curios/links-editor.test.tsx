@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LinksEditor, type LinkItem } from './links-editor.js';
+import { LinksEditor, linkKind, type LinkItem } from './links-editor.js';
 
 const three: LinkItem[] = [
   { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null },
@@ -19,18 +19,22 @@ function setup(links = three, overrides: Partial<Parameters<typeof LinksEditor>[
     removeLink: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
     shop: null,
-    onShopChange: vi.fn(),
-    saveShopSize: vi.fn(async () => undefined),
     ...overrides,
   };
   render(<LinksEditor {...props} />);
   return props;
 }
 
+/** A caller that feeds `onChange` back into `links`, as MyCuriosEditor does. */
+function Harness(props: Omit<Parameters<typeof LinksEditor>[0], 'links' | 'onChange'>) {
+  const [links, setLinks] = useState(three);
+  return <LinksEditor {...props} links={links} onChange={setLinks} />;
+}
+
 describe('LinksEditor', () => {
   it('adds a link and hands the new list up', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Shop');
     await userEvent.type(screen.getByLabelText('Address'), 'shopee.com.my/iman');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -39,9 +43,19 @@ describe('LinksEditor', () => {
     expect(props.onChange).toHaveBeenLastCalledWith([...three, expect.objectContaining({ label: 'Shop' })]);
   });
 
+  it('closes the add form on Cancel without sending anything', async () => {
+    const props = setup();
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
+    await userEvent.type(screen.getByLabelText('Name'), 'Shop');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    expect(props.addLink).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText('Name')).toBeNull();
+  });
+
   it('says what is wrong with an address before sending it', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Bad');
     await userEvent.type(screen.getByLabelText('Address'), 'javascript:alert(1)');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -50,14 +64,11 @@ describe('LinksEditor', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/does not look right/i);
   });
 
-  it('sets a tile size, and automatic clears it', async () => {
-    const props = setup();
-    const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
-    expect(props.updateLink).toHaveBeenLastCalledWith('a', { size: 'BIG' });
-
-    await userEvent.click(within(row).getByRole('button', { name: 'Automatic size' }));
-    expect(props.updateLink).toHaveBeenLastCalledWith('a', { size: null });
+  it('shows each link with its address, without the scheme', () => {
+    setup();
+    const row = screen.getByRole('listitem', { name: 'WhatsApp' });
+    expect(row).toHaveTextContent('wa.me/60123');
+    expect(row).not.toHaveTextContent('https://');
   });
 
   it('moves a link down with the keyboard-reachable button', async () => {
@@ -65,6 +76,12 @@ describe('LinksEditor', () => {
     await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
     expect(props.reorder).toHaveBeenCalledWith(['b', 'a', 'c']);
     expect(props.onChange).toHaveBeenLastCalledWith([three[1], three[0], three[2]]);
+  });
+
+  it('cannot move the first link up or the last link down', () => {
+    setup();
+    expect(screen.getByRole('button', { name: 'Move Portfolio up' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Move GitHub down' })).toBeDisabled();
   });
 
   // Review Focus 1, on the client: a refused reorder must not leave the screen lying.
@@ -81,25 +98,34 @@ describe('LinksEditor', () => {
     const row = screen.getByRole('listitem', { name: 'GitHub' });
     await userEvent.click(within(row).getByRole('button', { name: 'Remove GitHub' }));
     expect(props.removeLink).not.toHaveBeenCalled();
+    expect(row).toHaveTextContent('Remove?');
 
     await userEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
     expect(props.removeLink).toHaveBeenCalledWith('c');
   });
 
   // Review Focus 5.
-  it('invites the first link on an empty page', () => {
-    setup([]);
-    expect(screen.getByText(/add your first link/i)).toBeInTheDocument();
+  it('offers the first link from an empty state, and adds it', async () => {
+    const props = setup([]);
+    expect(screen.getByRole('heading', { name: 'Add your first link' })).toBeInTheDocument();
+    expect(screen.queryByRole('list')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
+    expect(screen.getByLabelText('Name')).toHaveFocus();
+    await userEvent.type(screen.getByLabelText('Name'), 'Shop');
+    await userEvent.type(screen.getByLabelText('Address'), 'shop.example{Enter}');
+
+    expect(props.addLink).toHaveBeenCalledWith({ label: 'Shop', url: 'shop.example' });
   });
 
   it('stops offering to add at the limit', () => {
     setup(Array.from({ length: 30 }, (_u, i) => ({ id: `${i}`, label: `L${i}`, url: 'https://a.co', size: null })));
-    expect(screen.queryByRole('button', { name: '+ Add a link' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '+ Add link' })).toBeNull();
     expect(screen.getByText(/30 links is the most/i)).toBeInTheDocument();
   });
 
-  // Step 5's inline editing: a tap on the link text swaps it for Name/Address
-  // fields wired to useAutosave, which is what actually calls updateLink.
+  // A tap on the link text swaps it for Name/Address fields wired to
+  // useAutosave, which is what actually calls updateLink.
   it('edits a label inline, saving after typing stops', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const props = setup();
@@ -136,7 +162,7 @@ describe('LinksEditor', () => {
 
   it('will not add a link with no name, or one over the character limit', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
     await userEvent.type(screen.getByLabelText('Address'), 'example.com');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
 
@@ -148,7 +174,7 @@ describe('LinksEditor', () => {
     const props = setup(three, {
       addLink: vi.fn(async () => { throw new Error('Could not reach the server.'); }),
     });
-    await userEvent.click(screen.getByRole('button', { name: '+ Add a link' }));
+    await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
     await userEvent.type(screen.getByLabelText('Name'), 'Shop');
     await userEvent.type(screen.getByLabelText('Address'), 'shop.example');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
@@ -157,30 +183,8 @@ describe('LinksEditor', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/could not reach the server/i);
   });
 
-  // Fix round 1, Important #1: the preview reflects a size choice
-  // immediately (from local state), independent of whether the save behind
-  // it succeeds -- so a failed save shows the error but does not un-choose
-  // the tile the owner just picked.
-  //
-  // Fix round 2: this is now the size group's own SaveState, not a
-  // section-level Callout, and SaveState only surfaces an ApiError's own
-  // message -- a plain Error (a dropped connection, here) gets the generic
-  // sentence, with Retry.
-  it('keeps a chosen tile size on screen, but says so, when the save fails', async () => {
-    const props = setup(three, {
-      updateLink: vi.fn(async () => { throw new Error('Could not reach the server.'); }),
-    });
-    const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    await userEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
-
-    expect(props.onChange).toHaveBeenCalledWith(three.map((link) => (link.id === 'a' ? { ...link, size: 'BIG' } : link)));
-    expect(await screen.findByRole('alert')).toHaveTextContent(/that did not save/i);
-    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument();
-  });
-
-  // Fix round 1, Important #3 (the removal half): removal is optimistic, the
-  // same way `move` already is -- the row disappears immediately, and only
-  // snaps back if `removeLink` itself is refused.
+  // Removal is optimistic, the same way `move` is -- the row disappears
+  // immediately, and only snaps back if `removeLink` itself is refused.
   it('says so and restores the link when removing it fails to save', async () => {
     const props = setup(three, {
       removeLink: vi.fn(async () => { throw new Error('Could not reach the server.'); }),
@@ -193,8 +197,7 @@ describe('LinksEditor', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(/could not reach the server/i);
   });
 
-  // Fix round 1, Important #2: the inline editor must be reachable without a
-  // pointer.
+  // The inline editor must be reachable without a pointer.
   it('opens the inline editor from the keyboard', async () => {
     setup();
     const editButton = screen.getByRole('button', { name: 'Edit Portfolio' });
@@ -204,42 +207,25 @@ describe('LinksEditor', () => {
     expect(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByLabelText('Name')).toBeInTheDocument();
   });
 
-  // Fix round 1, Important #3 (the coordination half): a save scheduled a
-  // moment before removal must not land afterwards and report a spurious
-  // failure for a link that is already gone.
-  //
-  // This needs a real stateful harness, not `setup()`'s static `links` prop
-  // and no-op `onChange` spy: what actually cancels the pending debounce is
-  // `LinkRow` unmounting when the link leaves the array, and a spy that never
-  // feeds back into a re-render would leave the row (and its timer) alive no
-  // matter what `remove` does. `fireEvent` (synchronous, no per-interaction
-  // real-time cost) drives it, because a handful of `userEvent` interactions
-  // with `shouldAdvanceTime: true` can themselves burn past 600ms of
-  // simulated time in this environment before the assertion even runs -- and
-  // without `shouldAdvanceTime`, userEvent hangs against fake timers here.
+  // A save scheduled a moment before removal must not land afterwards and
+  // report a spurious failure for a link that is already gone. Needs the
+  // stateful harness: what cancels the pending debounce is LinkRow
+  // unmounting when the link leaves the array. `fireEvent` drives it, because
+  // userEvent with `shouldAdvanceTime` can burn past 600ms of simulated time
+  // before the assertion runs.
   it('drops a pending inline save when the link is removed before it fires', async () => {
     vi.useFakeTimers();
     const updateLink = vi.fn(async (id: string, patch: Partial<LinkItem>) => ({ ...three.find((l) => l.id === id)!, ...patch }));
-    const removeLink = vi.fn(async () => undefined);
-
-    function Harness() {
-      const [links, setLinks] = useState(three);
-      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={removeLink} reorder={vi.fn()} />;
-    }
-    render(<Harness />);
+    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    // Captured before typing: the live update (Fix #1) renames "Remove
-    // Portfolio" to "Remove Work" the instant the field changes, same as the
-    // row's own accessible name.
-    const removeButton = within(row).getByRole('button', { name: 'Remove Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
     fireEvent.change(within(row).getByLabelText('Name'), { target: { value: 'Work' } });
-    fireEvent.click(removeButton);
+    fireEvent.click(within(row).getByRole('button', { name: 'Done' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove Work' }));
     fireEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
 
-    // The row is gone already -- proof the removal itself is optimistic and
-    // did not wait on `removeLink` to unmount it.
+    // The row is gone already -- proof the removal itself did not wait on `removeLink`.
     expect(row).not.toBeInTheDocument();
 
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
@@ -249,53 +235,37 @@ describe('LinksEditor', () => {
     vi.useRealTimers();
   });
 
-  // Fix round 1, Important #3 (the guard, exercised on its own): a save that
-  // was already in flight -- not merely scheduled -- when removal happened
-  // must not resurrect the link or report a failure once it settles. A size
-  // click persists immediately (no debounce), which is what makes it easy to
-  // catch mid-flight with a promise this test controls by hand.
-  //
-  // The exact wording of the bug ("updateLink can land after removeLink and
-  // show a spurious 'did not save'") is about the FAILURE branch: a success
-  // reconciles via `.map()`, which cannot resurrect an id that is no longer
-  // in the array either way, so only a rejected in-flight save actually
-  // exercises the guard.
+  // The guard on its own: a save already in flight -- not merely scheduled --
+  // when removal happened must not resurrect the link or report a failure
+  // once it settles. Only a rejected save exercises it: a success reconciles
+  // via `.map()`, which cannot resurrect an id no longer in the array.
   it('does not report a stale save failure for a link that was removed while it was in flight', async () => {
+    vi.useFakeTimers();
     let rejectUpdate!: (failure: Error) => void;
     const updateLink = vi.fn(() => new Promise<LinkItem>((_resolve, reject) => { rejectUpdate = reject; }));
-    const removeLink = vi.fn(async () => undefined);
-
-    function Harness() {
-      const [links, setLinks] = useState(three);
-      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={removeLink} reorder={vi.fn()} />;
-    }
-    render(<Harness />);
+    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn(async () => undefined)} reorder={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    fireEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
+    fireEvent.change(within(row).getByLabelText('Name'), { target: { value: 'Work' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(updateLink).toHaveBeenCalled();
 
-    fireEvent.click(within(row).getByRole('button', { name: 'Remove Portfolio' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Done' }));
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove Work' }));
     fireEvent.click(within(row).getByRole('button', { name: 'Yes, remove' }));
     expect(row).not.toBeInTheDocument();
 
     // The stale save fails only now -- after the link is already gone.
     await act(async () => { rejectUpdate(new Error('Could not reach the server.')); });
 
-    expect(screen.queryByText('Portfolio')).toBeNull();
+    expect(screen.queryByText('Work')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
+    vi.useRealTimers();
   });
 
-  // Fix round 1, Folded Minor: reopening the editor must show what the
-  // server actually saved (e.g. a normalised address), not the last-typed
-  // value from before that save resolved.
-  //
-  // `setup()` renders `LinksEditor` with a static `links` prop and a spy for
-  // `onChange` -- exactly right for asserting what was PASSED UP, but the
-  // component never re-renders with the reconciled array, so it cannot show
-  // whether a later prop change is what the editor displays. This test needs
-  // a real round trip, so it wires `onChange` back into state itself, the
-  // same shape `MyCuriosEditor` uses in production.
+  // Reopening the editor must show what the server actually saved (e.g. a
+  // normalised address), not the last-typed value.
   it('shows the normalised address after reopening the inline editor', async () => {
     vi.useFakeTimers();
     const updateLink = vi.fn(async (id: string, patch: Partial<LinkItem>) => ({
@@ -303,12 +273,7 @@ describe('LinksEditor', () => {
       ...patch,
       url: 'https://wa.me/60123',
     }));
-
-    function Harness() {
-      const [links, setLinks] = useState(three);
-      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />;
-    }
-    render(<Harness />);
+    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
 
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
@@ -324,11 +289,7 @@ describe('LinksEditor', () => {
     vi.useRealTimers();
   });
 
-  // Fix round 2, Important #1: a failed label save must show Retry beside
-  // the field (not "Saved"), and Retry must resend exactly the same label --
-  // proving `onPersist` now hands useAutosave a promise it can actually see
-  // reject, instead of the old `Promise.resolve(void persist(...))` that
-  // always resolved regardless of what `persist` did.
+  // A failed label save shows Retry beside the field, and Retry resends exactly the same label.
   it('offers Retry beside a failed label save, and Retry sends the same label again', async () => {
     vi.useFakeTimers();
     const updateLink = vi.fn(async () => { throw new Error('offline'); });
@@ -340,7 +301,7 @@ describe('LinksEditor', () => {
 
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(updateLink).toHaveBeenCalledWith('a', { label: 'Work' });
-    expect(screen.queryByText('Saved')).toBeNull();
+    expect(within(row).getByRole('alert')).toHaveTextContent('That did not save.');
 
     const retry = within(row).getByRole('button', { name: 'Retry' });
     updateLink.mockClear();
@@ -350,186 +311,101 @@ describe('LinksEditor', () => {
     vi.useRealTimers();
   });
 
-  // The size half of the same fix: its own SaveState, its own Retry, and
-  // Retry resends the size the owner actually chose (read off the current
-  // `link.size`, which the optimistic `onLiveChange` already applied). Needs
-  // the stateful harness, not `setup()`'s static `links` prop and no-op
-  // `onChange` spy: Retry reads `link.size` off the CURRENT prop, and only a
-  // caller that actually echoes `onChange` back into `links` (as
-  // `MyCuriosEditor` does) ever updates it away from the value `setup()`
-  // renders it with.
-  it('offers Retry beside a failed size save, and Retry sends the same size again', async () => {
-    const updateLink = vi.fn(async () => { throw new Error('offline'); });
-
-    function Harness() {
-      const [links, setLinks] = useState(three);
-      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />;
-    }
-    render(<Harness />);
-
-    const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    await act(async () => { fireEvent.click(within(row).getByRole('button', { name: 'Big tile' })); });
-    expect(updateLink).toHaveBeenCalledWith('a', { size: 'BIG' });
-
-    const retry = await within(row).findByRole('button', { name: 'Retry' });
-    updateLink.mockClear();
-    await act(async () => { fireEvent.click(retry); });
-
-    expect(updateLink).toHaveBeenCalledWith('a', { size: 'BIG' });
-  });
-
-  // Fix round 2, Important #1's merge rule: `persist` must apply only the
-  // keys a given call actually sent (`pick(saved, keys(change))`), not the
-  // server's whole row -- otherwise a size save that lands while a label
-  // save is still pending would overwrite that label with the stale copy
-  // the size response happens to carry for it.
-  it('does not let a size save that succeeds overwrite a label save still pending', async () => {
+  // `persist` applies only the keys a call actually sent, not the server's
+  // whole row -- otherwise an address save that lands while a label save is
+  // still pending would put back the stale label its response carries.
+  it('does not let an address save that succeeds overwrite a label save still pending', async () => {
     let resolveLabelSave!: (link: LinkItem) => void;
     const updateLink = vi.fn((id: string, patch: Partial<LinkItem>) => {
       if ('label' in patch) return new Promise<LinkItem>((resolve) => { resolveLabelSave = resolve; });
       return Promise.resolve({ ...three.find((l) => l.id === id)!, ...patch });
     });
-
-    function Harness() {
-      const [links, setLinks] = useState(three);
-      return <LinksEditor links={links} onChange={setLinks} addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />;
-    }
     vi.useFakeTimers();
-    render(<Harness />);
+    render(<Harness addLink={vi.fn()} updateLink={updateLink} removeLink={vi.fn()} reorder={vi.fn()} />);
 
-    // `aria-label` on the row is bound straight to the `link.label` prop,
-    // in or out of edit mode -- unlike the Name field's value, which is
-    // local state that only re-syncs from the prop when the editor reopens.
-    // It is what actually proves whether the prop itself got clobbered.
+    // The row's aria-label is bound to the `link.label` prop -- unlike the
+    // Name field's value, which is local state -- so it shows whether the
+    // prop itself got clobbered.
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
     fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
     fireEvent.change(within(row).getByLabelText('Name'), { target: { value: 'Work' } });
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(updateLink).toHaveBeenCalledWith('a', { label: 'Work' });
 
-    // The size click saves at once, no debounce, and its response --
-    // `{ ...original row (label: 'Portfolio'), size: 'BIG' }` -- lands
-    // before the label save above (still in flight) ever resolves. A merge
-    // that applies the whole response wholesale reverts the label to its
-    // stale "Portfolio" right here, before the label save even settles.
-    fireEvent.click(within(row).getByRole('button', { name: 'Big tile' }));
-    await act(async () => {});
+    // Its response, `{ ...original row (label: 'Portfolio'), url }`, lands first.
+    fireEvent.change(within(row).getByLabelText('Address'), { target: { value: 'https://work.example' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(updateLink).toHaveBeenCalledWith('a', { url: 'https://work.example' });
 
     expect(row).toHaveAttribute('aria-label', 'Work');
 
-    // And once the label save itself resolves -- with a server copy whose
-    // own `label` field agrees, since this is the response to the label
-    // request -- the prop still correctly reads 'Work'.
-    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: three[0]!.url, size: 'BIG' }); });
+    await act(async () => { resolveLabelSave({ id: 'a', label: 'Work', url: 'https://work.example', size: null }); });
 
     expect(row).toHaveAttribute('aria-label', 'Work');
     vi.useRealTimers();
   });
 
-  // Fix round 2, Minor #7: focus follows the inline editor open and closed --
-  // into the first field when it appears, back to the button that opened it
-  // once it is gone.
+  // Focus follows the inline editor open and closed.
   it('moves focus into the inline editor on open, and back to the Edit button on close', () => {
     setup();
     const row = screen.getByRole('listitem', { name: 'Portfolio' });
-    const editButton = within(row).getByRole('button', { name: 'Edit Portfolio' });
 
-    fireEvent.click(editButton);
+    fireEvent.click(within(row).getByRole('button', { name: 'Edit Portfolio' }));
     expect(within(row).getByLabelText('Name')).toHaveFocus();
 
     fireEvent.click(within(row).getByRole('button', { name: 'Done' }));
     expect(within(row).getByRole('button', { name: 'Edit Portfolio' })).toHaveFocus();
   });
 
-  // The confirm half of the same fix: focus goes to "Keep" -- the safer
-  // default -- when the confirm appears, and back to the Remove button that
-  // triggered it once the owner keeps the link after all.
+  // Focus goes to "Keep" -- the safer default -- when the confirm appears,
+  // and back to the Remove button once the owner keeps the link.
   it('moves focus to Keep when the remove confirm appears, and back to Remove once kept', () => {
     setup();
     const row = screen.getByRole('listitem', { name: 'GitHub' });
-    const removeButton = within(row).getByRole('button', { name: 'Remove GitHub' });
 
-    fireEvent.click(removeButton);
+    fireEvent.click(within(row).getByRole('button', { name: 'Remove GitHub' }));
     expect(within(row).getByRole('button', { name: 'Keep' })).toHaveFocus();
 
     fireEvent.click(within(row).getByRole('button', { name: 'Keep' }));
     expect(within(row).getByRole('button', { name: 'Remove GitHub' })).toHaveFocus();
   });
 
-  describe('with the shop tile', () => {
+  // The shop is a tab now, not a row, but the API still keeps its place
+  // among the links and wants it in every new order while the shop is open.
+  describe('with the shop open', () => {
     const shop = { position: 1, size: null };
-    const rowNames = () => screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'));
 
-    it('lists the shop between the links, with a size picker, a note, and no Remove', () => {
+    it('lists only the links', () => {
       setup(three.slice(0, 2), { shop });
-      expect(rowNames()).toEqual(['Portfolio', 'Shop', 'WhatsApp']);
-      const row = screen.getByRole('listitem', { name: 'Shop' });
-      expect(within(row).getByRole('group', { name: 'Tile size' })).toBeInTheDocument();
-      expect(within(row).queryByRole('button', { name: /remove/i })).toBeNull();
-      expect(row).toHaveTextContent('Turn your shop off in Store to remove this tile.');
-      expect(within(row).getByRole('link', { name: /Store/ })).toHaveAttribute('href', '/app/store');
+      expect(screen.getAllByRole('listitem').map((li) => li.getAttribute('aria-label'))).toEqual(['Portfolio', 'WhatsApp']);
     });
 
-    it('moves the shop up, and puts both back when that is refused', async () => {
-      const ok = setup(three.slice(0, 2), { shop });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Shop' })).getByRole('button', { name: 'Move Shop up' }));
-      expect(ok.reorder).toHaveBeenCalledWith(['shop', 'a', 'b']);
-      expect(ok.onShopChange).toHaveBeenLastCalledWith({ position: 0, size: null });
+    it('sends the shop along, unseen, at its place in the new order', async () => {
+      const props = setup(three, { shop });
+      await userEvent.click(screen.getByRole('button', { name: 'Move GitHub up' }));
+      expect(props.reorder).toHaveBeenCalledWith(['a', 'shop', 'c', 'b']);
+      expect(props.onChange).toHaveBeenLastCalledWith([three[0], three[2], three[1]]);
     });
 
-    it('rolls the links and the shop position back on a refused reorder', async () => {
-      const props = setup(three.slice(0, 2), { shop, reorder: vi.fn(async () => { throw new Error('No.'); }) });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Shop' })).getByRole('button', { name: 'Move Shop up' }));
-      expect(props.onShopChange).toHaveBeenNthCalledWith(1, { position: 0, size: null });
-      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 1, size: null });
-      expect(props.onChange).toHaveBeenLastCalledWith(three.slice(0, 2));
-    });
-
-    it('sends the combined order when a link moves past the shop', async () => {
-      const props = setup(three.slice(0, 2), { shop });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
-      expect(props.reorder).toHaveBeenCalledWith(['shop', 'a', 'b']);
-      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 0, size: null });
-    });
-
-    it('saves the shop size and hands it up', async () => {
-      const props = setup(three.slice(0, 2), { shop });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Shop' })).getByRole('button', { name: 'Big tile' }));
-      expect(props.saveShopSize).toHaveBeenCalledWith('BIG');
-      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 1, size: 'BIG' });
-      expect(props.updateLink).not.toHaveBeenCalled();
-    });
-
-    it('keeps the shop beside the same neighbour when a link above it is removed', async () => {
-      const props = setup(three.slice(0, 2), { shop });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Remove Portfolio' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
-      expect(props.onChange).toHaveBeenLastCalledWith([three[1]]);
-      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 0, size: null });
-    });
-
-    it('leaves the shop where it is when a link below it is removed', async () => {
-      const props = setup(three.slice(0, 2), { shop });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'WhatsApp' })).getByRole('button', { name: 'Remove WhatsApp' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
-      expect(props.onShopChange).not.toHaveBeenCalled();
-    });
-
-    it('puts the shop back when removing a link above it is refused', async () => {
-      const props = setup(three.slice(0, 2), { shop, removeLink: vi.fn(async () => { throw new Error('No.'); }) });
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Remove Portfolio' }));
-      await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
-      expect(props.onShopChange).toHaveBeenNthCalledWith(1, { position: 0, size: null });
-      expect(props.onShopChange).toHaveBeenLastCalledWith({ position: 1, size: null });
-      expect(props.onChange).toHaveBeenLastCalledWith(three.slice(0, 2));
-    });
-
-    it('sends link ids only when there is no shop', async () => {
+    it('sends link ids only when the shop is closed', async () => {
       const props = setup(three.slice(0, 2), { shop: null });
-      expect(screen.queryByRole('listitem', { name: 'Shop' })).toBeNull();
-      await userEvent.click(within(screen.getByRole('listitem', { name: 'Portfolio' })).getByRole('button', { name: 'Move Portfolio down' }));
+      await userEvent.click(screen.getByRole('button', { name: 'Move Portfolio down' }));
       expect(props.reorder).toHaveBeenCalledWith(['b', 'a']);
-      expect(props.onShopChange).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('linkKind', () => {
+  it('reads what a link is off its address, for its icon', () => {
+    expect(linkKind('https://wa.me/60123')).toBe('whatsapp');
+    expect(linkKind('tel:+60123')).toBe('whatsapp');
+    expect(linkKind('https://www.instagram.com/keklina')).toBe('instagram');
+    expect(linkKind('mailto:a@b.co')).toBe('email');
+    expect(linkKind('https://keklina.example/menu')).toBe('web');
+  });
+
+  it('is not fooled by a host that only starts like one', () => {
+    expect(linkKind('https://instagram.com.evil.example/x')).toBe('web');
+    expect(linkKind('https://wa.me.evil.example')).toBe('web');
   });
 });

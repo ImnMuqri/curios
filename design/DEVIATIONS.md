@@ -23,3 +23,10 @@ a row **Resolved** rather than deleting it.
 | 14 | Landing: click sparks, magnet button | On the claim buttons | Left out | The form navigates away at once, so they would never be seen | Accepted |
 | 15 | Landing: nav | Frosted glass | Frosted, with near-opaque paper where a browser cannot blur | DESIGN.md amended to allow this one frosted surface | **Resolved** (owner chose frosted) |
 | 16 | Landing: refrain | "Tanya je · just ask", close "Tanya je." | "Curious? Just ask" (close too); "Curious? Tanya je" on /ms | Owner's change | **Resolved** |
+| 17 | My Curios: preview's Ask tab | A sample exchange ("Do you deliver to Klang?" and an answer with prices) | The page's own empty Ask prompt, "What do you want to know?" | An invented answer would show the owner facts their page does not have | If the preview ever runs a real question |
+| 18 | My Curios: preview's tab switch | Links, Ask, Shop always | Shop only while the shop is open | A Shop tab that shows nothing is a dead end | Accepted unless the board changes |
+| 19 | My Curios: cover gallery | Four stock covers | All six that ship | Hiding two would take choices away | Accepted |
+| 20 | My Curios: You | The picture circle only | A quiet "Remove" under the circle when there is a picture | Owners could remove a picture before; the board has no way to | Board adds a remove |
+| 21 | My Curios: Links | Rows move and remove only | A row's name opens it to edit in place (Name, Address, Done) | Owners could edit a link before; the board has no way to | Board adds an edit |
+| 22 | My Curios: Social profiles | No validation shown | "That doesn't look like a WhatsApp number." etc., on leaving a field | The API refuses what it cannot read as a profile | Accepted |
+| 23 | My Curios: uploads switched off | (not drawn) | Upload tile and picture circle disabled, the reason in their tooltip | Storage can be off in a deployment | Accepted |

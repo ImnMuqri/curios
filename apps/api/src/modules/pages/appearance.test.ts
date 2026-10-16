@@ -126,3 +126,32 @@ describe('a custom background', () => {
     }
   });
 });
+
+describe('social profiles', () => {
+  it('stores each as a handle, merged into what was there, and clears one left blank', async () => {
+    const cookie = await anOwner();
+    await patch(cookie, { socials: { instagram: 'https://instagram.com/KekLina/', whatsapp: '012-345 6789' } });
+
+    const res = await patch(cookie, { socials: { tiktok: '@keklina.bakes', whatsapp: '' } });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().appearance.socials).toEqual({ instagram: 'keklina', tiktok: 'keklina.bakes' });
+  });
+
+  it('refuses one it cannot read, naming which, and saves nothing from that request', async () => {
+    const cookie = await anOwner();
+    await patch(cookie, { socials: { instagram: 'keklina' } });
+
+    const res = await patch(cookie, { socials: { instagram: 'other', whatsapp: '12345' } });
+
+    expect(res.json().error).toMatchObject({ code: 'INVALID_APPEARANCE', message: expect.stringMatching(/WhatsApp/) });
+    const again = await patch(cookie, {});
+    expect(again.json().appearance.socials).toEqual({ instagram: 'keklina' });
+  });
+
+  it('refuses a profile kind it does not know', async () => {
+    const cookie = await anOwner();
+    const res = await patch(cookie, { socials: { myspace: 'keklina' } });
+    expect(res.statusCode).toBe(400);
+  });
+});

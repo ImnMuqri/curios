@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { SOCIAL_KINDS, type SocialKind } from '@curios/core/socials';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverKey, stockCoverName } from '@curios/core/bento';
@@ -99,6 +100,11 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
           headingFont: z.enum(HEADING_FONTS).optional(),
           displayName: z.string().max(400).optional(),
           bio: z.string().max(2000).nullable().optional(),
+          // Strict, so a kind this does not know is refused rather than stored.
+          socials: z
+            .object(Object.fromEntries(SOCIAL_KINDS.map((kind) => [kind, z.string().max(300).optional()])) as Record<SocialKind, z.ZodOptional<z.ZodString>>)
+            .strict()
+            .optional(),
         }),
       },
     },

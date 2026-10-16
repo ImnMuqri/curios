@@ -44,6 +44,24 @@
   --edge: #dfe1e6;
   --hijau: #1d6f5f;
   --hijau-muda: #e8f3ef;
+  /*
+   * The dashboard's section chips (My Curios and on): a pale ground with its
+   * ink, one pair per kind of section. Labels, never states: --kuning and
+   * --merah keep their jobs.
+   */
+  --rose: #b5294e;
+  --rose-muda: #fbeef1;
+  --amber-ink: #8f5c15;
+  --amber-muda: #fdf0dc;
+  /* A destructive confirm's quiet button ("Yes, remove"), and its text. */
+  --merah-muda: #fdecea;
+  --merah-deep: #b3261e;
+  /* The soft colour field behind the editor's phone preview. */
+  --blob-blue: #bfd1f9;
+  --blob-pink: #f6c9d5;
+  --blob-peach: #ffe2b8;
+  --blob-mint: #bfe3d6;
+  --field: #f6f7fb;
 
   /* The original six steps. The handoff's screens use more; see SCALE in design-rules.ts. */
   --text-xs: 11px;

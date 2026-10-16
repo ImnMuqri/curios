@@ -181,6 +181,8 @@ model Page {
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.
   backgroundColor String?
+  /// Social profiles shown as icons under the name: { instagram, whatsapp, tiktok, email, facebook, youtube }, each a handle. @curios/core/socials reads and writes it.
+  socials         Json         @default("{}")
   /// The shop. Off until the owner opens it, and it can only be opened with a
   /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
   storeEnabled      Boolean      @default(false)

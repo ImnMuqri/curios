@@ -10,6 +10,7 @@
     "./cookie": "./src/cookie.ts",
     "./bento": "./src/bento.ts",
     "./billing": "./src/billing.ts",
+    "./socials": "./src/socials.ts",
     "./store": "./src/store.ts"
   },
   "scripts": {

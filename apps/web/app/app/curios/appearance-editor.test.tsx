@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AppearanceEditor } from './appearance-editor.js';
 import type { AppearancePatch } from './my-curios.js';
 
 const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }> = {}) => {
-  const props = { background: 'PAPER' as const, backgroundColor: null, style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
+  const props = { displayName: 'Kek Lina', background: 'PAPER' as const, backgroundColor: null, style: 'SOFT' as const, accentColor: '#2340c8', headingFont: 'JAKARTA' as const, onChange: vi.fn(), save: vi.fn(async () => undefined), ...overrides };
   render(<AppearanceEditor {...props} />);
   return props;
 };
+
+// "Biru" is both a background and an accent; each group's name tells them apart.
+const accents = () => screen.getByRole('group', { name: 'Accent colour' });
 
 /** AppearanceEditor is controlled; a real caller (MyCuriosEditor) keeps the
  * choice in state and feeds it back through `onChange`, which is what lets
@@ -25,6 +28,7 @@ function Controlled({ save }: { save: (patch: AppearancePatch) => Promise<unknow
   });
   return (
     <AppearanceEditor
+      displayName="Kek Lina"
       {...state}
       onChange={(change) => setState((s) => ({ ...s, ...change }))}
       save={save}
@@ -35,14 +39,14 @@ function Controlled({ save }: { save: (patch: AppearancePatch) => Promise<unknow
 describe('AppearanceEditor', () => {
   it('switches style and saves it at once', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
+    await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
     expect(props.onChange).toHaveBeenCalledWith({ style: 'CONTRAST' });
     expect(props.save).toHaveBeenCalledWith({ style: 'CONTRAST' });
   });
 
   it('picks a preset accent', async () => {
     const props = setup();
-    await userEvent.click(screen.getByRole('radio', { name: 'Purple' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Purple' }));
     expect(props.save).toHaveBeenCalledWith({ accentColor: '#6d3fb3' });
   });
 
@@ -55,28 +59,32 @@ describe('AppearanceEditor', () => {
     setup();
     const names = ['Biru', 'Hijau', 'Purple', 'Magenta', 'Red', 'Amber', 'Forest', 'Ink'];
     for (const name of names) {
-      expect(screen.getByRole('radio', { name })).toBeInTheDocument();
+      expect(within(accents()).getByRole('button', { name })).toBeInTheDocument();
     }
-    expect(screen.getByRole('radio', { name: 'Biru' }).closest('label')).toHaveAttribute('title', '#2340c8');
+    expect(within(accents()).getByRole('button', { name: 'Biru' })).toHaveAttribute('title', '#2340c8');
   });
 
   it('takes a custom colour typed as hex, and refuses one that is not', async () => {
     const props = setup();
-    const custom = screen.getByLabelText('Custom colour');
+    const custom = screen.getByLabelText('Accent colour as hex');
     await userEvent.clear(custom);
     await userEvent.type(custom, 'banana');
+    // Only hex digits go in: "banana" leaves "baaa", which is not a colour yet.
+    expect(custom).toHaveValue('baaa');
     expect(screen.getByRole('alert')).toHaveTextContent(/six-digit hex/i);
     expect(props.save).not.toHaveBeenCalled();
 
     await userEvent.clear(custom);
     await userEvent.type(custom, '#123abc');
+    expect(custom).toHaveValue('123abc');
     expect(props.save).toHaveBeenLastCalledWith({ accentColor: '#123abc' });
   });
 
   it('picks a heading font, each shown in itself', async () => {
     const props = setup();
-    const fraunces = screen.getByRole('radio', { name: 'Fraunces' });
-    expect(fraunces.closest('label')).toHaveStyle({ fontFamily: 'var(--font-fraunces)' });
+    const fraunces = screen.getByRole('button', { name: 'Fraunces' });
+    const sample = within(fraunces).getByText('Kek Lina');
+    expect(sample).toHaveStyle({ fontFamily: 'var(--font-fraunces)' });
     await userEvent.click(fraunces);
     expect(props.save).toHaveBeenCalledWith({ headingFont: 'FRAUNCES' });
   });
@@ -85,7 +93,7 @@ describe('AppearanceEditor', () => {
   // dropped `.catch` would still show every test above green.
   it('shows an error when a save fails', async () => {
     setup({ save: vi.fn(async () => { throw new Error('nope'); }) });
-    await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
+    await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/did not save/i);
   });
 
@@ -93,9 +101,9 @@ describe('AppearanceEditor', () => {
   // hex, so a dropped `.toLowerCase()` would still show it green.
   it('takes a custom colour typed in upper case, and saves it lower-cased', async () => {
     const props = setup();
-    const custom = screen.getByLabelText('Custom colour');
+    const custom = screen.getByLabelText('Accent colour as hex');
     await userEvent.clear(custom);
-    await userEvent.type(custom, '#ABCDEF');
+    await userEvent.type(custom, 'ABCDEF');
     expect(props.save).toHaveBeenLastCalledWith({ accentColor: '#abcdef' });
   });
 
@@ -104,8 +112,8 @@ describe('AppearanceEditor', () => {
   // test read the custom field's value after a preset click.
   it('syncs the custom colour field to a chosen preset', async () => {
     setup();
-    await userEvent.click(screen.getByRole('radio', { name: 'Purple' }));
-    expect(screen.getByLabelText('Custom colour')).toHaveValue('#6d3fb3');
+    await userEvent.click(screen.getByRole('button', { name: 'Purple' }));
+    expect(screen.getByLabelText('Accent colour as hex')).toHaveValue('6d3fb3');
   });
 
   // Fix round 1: a failed save left the choice showing with an error and no
@@ -115,7 +123,7 @@ describe('AppearanceEditor', () => {
     const save = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValueOnce(undefined);
     render(<Controlled save={save} />);
 
-    await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
+    await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
     expect(await screen.findByRole('alert')).toHaveTextContent(/did not save/i);
 
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
@@ -128,14 +136,14 @@ describe('AppearanceEditor', () => {
   // Fix round 1, controller ruling: do not roll back. The chosen radio must
   // stay checked through a failed save -- the owner's input is kept, not
   // reverted, while the error and Retry give them a way to act on it.
-  it('keeps the chosen radio checked after a failed save', async () => {
+  it('keeps the chosen style chosen after a failed save', async () => {
     const save = vi.fn(async () => { throw new Error('offline'); });
     render(<Controlled save={save} />);
 
-    await userEvent.click(screen.getByRole('radio', { name: 'High contrast' }));
+    await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
     await screen.findByRole('alert');
 
-    expect(screen.getByRole('radio', { name: 'High contrast' })).toBeChecked();
+    expect(screen.getByRole('button', { name: /^High contrast/ })).toHaveAttribute('aria-pressed', 'true');
   });
 });
 
@@ -143,8 +151,8 @@ describe('AppearanceEditor background', () => {
   it('saves the background band the owner picks', async () => {
     const save = vi.fn(async () => undefined);
     const onChange = vi.fn();
-    render(<AppearanceEditor background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
-    await userEvent.click(screen.getByRole('radio', { name: /dark/i }));
+    render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Dark' }));
     expect(save).toHaveBeenCalledWith({ background: 'INK' });
     expect(onChange).toHaveBeenCalledWith({ background: 'INK' });
   });
@@ -154,9 +162,9 @@ describe('AppearanceEditor, a custom background', () => {
   it("starts Custom as a light tint of the accent, saves it, and offers a picker and a hex box", async () => {
     const onChange = vi.fn();
     const save = vi.fn(async () => undefined);
-    render(<AppearanceEditor background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
+    render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={onChange} save={save} />);
 
-    await userEvent.click(screen.getByRole('radio', { name: 'Custom' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Custom' }));
 
     expect(onChange).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#d7ddf5' });
     await vi.waitFor(() => expect(save).toHaveBeenCalledWith({ background: 'CUSTOM', backgroundColor: '#d7ddf5' }));
@@ -165,17 +173,40 @@ describe('AppearanceEditor, a custom background', () => {
   it('shows the picker and hex box only while Custom is chosen, and refuses bad hex without saving', async () => {
     const save = vi.fn(async () => undefined);
     const first = render(
-      <AppearanceEditor background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />,
+      <AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />,
     );
     expect(screen.queryByLabelText('Pick a background colour')).toBeNull();
     first.unmount();
 
-    render(<AppearanceEditor background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
+    render(<AppearanceEditor displayName="Kek Lina" background="CUSTOM" backgroundColor="#f4d9c8" style="SOFT" accentColor="#2340c8" headingFont="JAKARTA" onChange={vi.fn()} save={save} />);
     expect(screen.getByLabelText('Pick a background colour')).toHaveValue('#f4d9c8');
     const hex = screen.getByLabelText('Background colour as hex');
     await userEvent.clear(hex);
     await userEvent.type(hex, 'pink');
     expect(screen.getByRole('alert')).toHaveTextContent(/six-digit hex/);
     expect(save).not.toHaveBeenCalled();
+  });
+});
+
+describe('AppearanceEditor, the owner\u2019s own accent', () => {
+  it('joins the swatches, chosen, when it is not one of the presets', () => {
+    render(<AppearanceEditor displayName="Kek Lina" background="PAPER" backgroundColor={null} style="SOFT" accentColor="#b5294e" headingFont="FRAUNCES" onChange={vi.fn()} save={vi.fn(async () => undefined)} />);
+    expect(screen.getByRole('button', { name: 'Your colour' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByLabelText('Accent colour as hex')).toHaveValue('b5294e');
+  });
+
+  it('is not repeated when the accent is a preset', () => {
+    setup();
+    expect(screen.queryByRole('button', { name: 'Your colour' })).toBeNull();
+    expect(within(accents()).getByRole('button', { name: 'Biru' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('does not save again when the chosen option is clicked', async () => {
+    const props = setup();
+    await userEvent.click(screen.getByRole('button', { name: /^Soft/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Paper' }));
+    await userEvent.click(within(accents()).getByRole('button', { name: 'Biru' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Jakarta' }));
+    expect(props.save).not.toHaveBeenCalled();
   });
 });
