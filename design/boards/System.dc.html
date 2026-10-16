@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: account and system pages</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,800&amp;display=swap">
+<style>
+body{margin:0;background:#fafbfc}
+a{color:#2340c8}a:hover{color:#122686}
+.sy{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;--soft:#696e7b;position:relative;display:flex;flex-direction:column;min-height:100vh;overflow:hidden;background:#fafbfc;color:#191f2c;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.55}
+.sy *{box-sizing:border-box}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.blob{position:absolute;width:55%;aspect-ratio:1;border-radius:50%;filter:blur(40px);opacity:.35;animation:b1 18s ease-in-out infinite alternate}
+@keyframes b1{to{transform:translate(18%,14%) scale(1.15)}}
+@keyframes b2{to{transform:translate(-20%,16%) scale(.9)}}
+.grain{position:absolute;inset:0;width:100%;height:100%;opacity:.1;mix-blend-mode:multiply}
+.top{position:relative;display:flex;align-items:center;padding:28px 40px}
+.mark{display:inline-block;font-family:var(--d);font-size:26px;font-weight:700;line-height:1;letter-spacing:-.03em;color:#191f2c;text-decoration:none}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+.mid{position:relative;flex:1;display:flex;align-items:center;justify-content:center;padding:20px 20px 80px}
+.box{width:100%;max-width:420px;animation:fadeUp 420ms cubic-bezier(.22,1,.36,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.h{margin:0;font-family:var(--d);font-size:42px;font-weight:800;letter-spacing:-.035em;line-height:1.04}
+.l{margin:10px 0 0;color:#4b5060}
+.fld{display:block;margin-top:24px}
+.fld>span{display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;font-weight:600}
+.inp{display:flex;align-items:center;height:52px;padding:0 6px 0 16px;border-radius:14px;background:#ffffff;box-shadow:inset 0 0 0 1.5px #dfe1e6;transition:box-shadow 160ms}
+.inp:focus-within{box-shadow:inset 0 0 0 2px #2340c8}
+.inp input{flex:1;min-width:0;width:0;height:48px;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.eye{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:#4b5060;cursor:pointer}
+.meter{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;margin-top:8px}
+.meter i{height:4px;border-radius:2px;transition:background 250ms}
+.mtx{margin:6px 0 0;font-size:12.5px;color:var(--soft)}
+.go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:54px;margin-top:22px;border:0;border-radius:999px;background:#2340c8;color:#fafbfc;font:inherit;font-weight:600;text-decoration:none;cursor:pointer;transition:background 160ms,opacity 160ms}
+.go:hover{background:#1a31a8;color:#fafbfc}
+.ghost{display:flex;align-items:center;justify-content:center;width:100%;height:50px;margin-top:10px;border:0;border-radius:999px;background:transparent;box-shadow:inset 0 0 0 1.5px #dfe1e6;font:inherit;font-weight:600;color:#191f2c;text-decoration:none;cursor:pointer}
+.ghost:hover{box-shadow:inset 0 0 0 1.5px #191f2c;color:#191f2c}
+.sw{margin:22px 0 0;text-align:center;color:#4b5060;font-size:15px}
+.sw a{font-weight:600}
+.badge{display:grid;place-items:center;width:84px;height:84px;margin-bottom:22px;border-radius:26px;animation:pop 560ms cubic-bezier(.34,1.5,.64,1) both}
+.badge svg{width:38px;height:38px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@keyframes pop{from{opacity:0;transform:scale(.6) rotate(-8deg)}}
+.spin{width:44px;height:44px;margin-bottom:22px;border-radius:50%;border:4px solid #dfe8fd;border-top-color:#2340c8;animation:spin 800ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert{display:flex;gap:10px;margin-top:18px;padding:12px 14px;border-radius:14px;background:#fdecea;color:#8a2a1a;font-size:14px}
+.again{margin:14px 0 0;text-align:center;font-size:14px;color:var(--soft)}
+.again button{border:0;background:none;padding:0;font:inherit;font-weight:600;color:#2340c8;cursor:pointer}
+.again button[disabled]{color:#9aa0ab;cursor:default}
+/* centred card + illustrations */
+.card2{max-width:420px;padding:8px 8px 0;text-align:center}
+.card2 .h{font-size:30px;font-weight:700;letter-spacing:-.03em}
+.card2 .l{margin-left:auto;margin-right:auto;max-width:28em}
+.card2 .fld{text-align:left}
+.card2 .mtx{text-align:left}
+.ill{display:block;width:150px;height:105px;margin:0 auto 18px}
+.sway{transform-origin:100px 74px;animation:sway 3.4s ease-in-out infinite}
+@keyframes sway{50%{transform:rotate(-3deg)}}
+.blinkd{animation:blinkd 1.2s steps(1) infinite}
+@keyframes blinkd{50%{opacity:0}}
+.keyfly{transform-origin:150px 40px;animation:keyfly 3.4s ease-in-out infinite}
+@keyframes keyfly{50%{transform:translate(-6px,6px) rotate(-14deg)}}
+.letter{animation:letter 2.6s cubic-bezier(.34,1.3,.64,1) infinite alternate}
+@keyframes letter{from{transform:translateY(26px)}to{transform:translateY(0)}}
+.twk{animation:twk 2s ease-in-out infinite}.twk.d2{animation-delay:.5s}.twk.d3{animation-delay:1s}
+@keyframes twk{50%{transform:scale(1.6);opacity:.4}}
+.shackle{animation:shackle 2.4s cubic-bezier(.34,1.5,.64,1) infinite alternate}
+@keyframes shackle{from{transform:translateY(0)}to{transform:translateY(-10px)}}
+.lnkL{animation:lnkL 2.2s ease-in-out infinite alternate}.lnkR{animation:lnkR 2.2s ease-in-out infinite alternate}
+@keyframes lnkL{to{transform:translate(-10px,4px) rotate(-6deg)}}
+@keyframes lnkR{to{transform:translate(10px,-4px) rotate(6deg)}}
+.zap{animation:zap 1.1s steps(2) infinite}
+@keyframes zap{50%{opacity:.15}}
+.pop2{transform-origin:138px 62px;animation:pop3 700ms 200ms cubic-bezier(.34,1.7,.64,1) both}
+@keyframes pop3{from{transform:scale(0)}}
+.orbit2{transform-origin:100px 72px;animation:spin 1.1s linear infinite}
+.flipg{transform-origin:100px 72px;animation:flipg 3.2s cubic-bezier(.65,0,.35,1) infinite}
+@keyframes flipg{0%,40%{transform:rotate(0)}60%,100%{transform:rotate(180deg)}}
+.plugL{animation:plugL 2.4s ease-in-out infinite alternate}
+@keyframes plugL{to{transform:translateX(10px)}}
+@media (max-width:520px){.card2{padding:26px 20px;border-radius:24px}.card2 .h{font-size:28px}.ill{width:170px;height:119px}}
+@media (prefers-reduced-motion: reduce){.sway,.blinkd,.keyfly,.letter,.twk,.shackle,.lnkL,.lnkR,.zap,.pop2,.orbit2,.flipg,.plugL{animation:none}}
+/* 404 */
+.nf{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:56px;align-items:center;width:100%;max-width:920px;animation:fadeUp 420ms ease both}
+.addr{display:inline-flex;align-items:center;gap:2px;margin-top:18px;padding:8px 14px;border-radius:999px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb;font-family:var(--m);font-size:14px;color:#4b5060}
+.addr b{font-weight:400;color:#191f2c;text-decoration:line-through;text-decoration-color:#d8452f;text-decoration-thickness:2px}
+.btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.btns .go,.btns .ghost{width:auto;margin:0;padding:0 24px}
+.ghostcard{position:relative;width:300px;height:520px;padding:8px;border-radius:44px;background:#ffffff;box-shadow:0 0 0 1px #e1e4e9,0 40px 80px -40px rgba(25,31,44,.45);transform:rotate(3deg)}
+.gscr{position:relative;width:100%;height:100%;overflow:hidden;border-radius:36px;background:repeating-linear-gradient(135deg,#f3f4f7 0 10px,#eef0f4 10px 20px)}
+.gscr .gb{position:absolute;inset:auto 0 0 0;top:30%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 18px 18px}
+.gav{width:62px;height:62px;border-radius:50%;border:2px dashed #c9ccd3;background:#fafbfc}
+.gl{height:12px;border-radius:6px;background:#e4e7eb}
+.bub{position:absolute;left:-46px;top:120px;max-width:220px;padding:10px 14px;border-radius:18px 18px 18px 6px;background:#191f2c;color:#fafbfc;font-family:'Inter',sans-serif;font-size:13.5px;line-height:1.4;box-shadow:0 14px 30px -14px rgba(0,0,0,.6);transform:rotate(-3deg);animation:bob 4s ease-in-out infinite}
+@keyframes bob{50%{transform:rotate(-3deg) translateY(-6px)}}
+/* limit */
+.lim{display:grid;grid-template-columns:300px minmax(0,1fr);gap:56px;align-items:center;width:100%;max-width:900px;animation:fadeUp 420ms ease both}
+.phone{width:300px;height:600px;padding:8px;border-radius:46px;background:#ffffff;box-shadow:0 0 0 1px #e1e4e9,0 40px 80px -40px rgba(25,31,44,.45)}
+.pscr{position:relative;display:flex;flex-direction:column;width:100%;height:100%;overflow:hidden;border-radius:38px;background:#542339;color:#fafbfc;font-family:'Inter',sans-serif}
+.phd{display:flex;flex-direction:column;align-items:center;gap:6px;padding:34px 16px 14px}
+.phd b{font-family:'Fraunces',serif;font-size:26px;font-weight:800}
+.phd span{font-family:var(--m);font-size:10.5px;opacity:.7}
+.ptb{display:grid;grid-template-columns:1fr 1fr;padding:3px;border-radius:999px;background:rgba(250,251,252,.14);font-size:12px;font-weight:600}
+.ptb>span{padding:6px 16px;border-radius:999px}
+.pchat{display:flex;flex-direction:column;gap:8px;padding:6px 14px}
+.pchat .q{align-self:flex-end;max-width:86%;padding:8px 12px;border-radius:16px 16px 5px 16px;background:#fafbfc;color:#191f2c;font-size:12.5px}
+.pchat .a{align-self:flex-start;max-width:92%;padding:9px 12px;border-radius:16px 16px 16px 5px;background:rgba(250,251,252,.12);font-size:12px;line-height:1.45;white-space:pre-line}
+.plinks{display:grid;gap:6px;margin-top:auto;padding:10px 14px 16px}
+.plinks span{display:block;padding:10px;border-radius:999px;background:#b5294e;font-size:12.5px;font-weight:600;text-align:center}
+.plinks span+span{background:rgba(250,251,252,.14)}
+.owner{margin-top:22px;padding:16px;border-radius:18px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb}
+.owner b{display:block;font-size:14px}
+.owner p{margin:4px 0 0;font-size:13.5px;color:#4b5060}
+.owner .bar{height:8px;margin-top:12px;overflow:hidden;border-radius:4px;background:#f0f1f4}
+.owner .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#f2a33c,#d8452f)}
+.kick{margin:0 0 10px;font-family:var(--m);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#2340c8}
+.routes{position:fixed;top:14px;left:50%;z-index:30;display:flex;gap:2px;max-width:calc(100% - 24px);padding:4px;overflow-x:auto;border-radius:999px;background:rgba(25,31,44,.94);font-size:12px;transform:translateX(-50%);box-shadow:0 12px 30px -12px rgba(0,0,0,.6);scrollbar-width:none}
+.routes button{flex:none;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:#d5d8de;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.routes button[aria-pressed="true"]{background:#fafbfc;color:#191f2c}
+@media (max-width:860px){.nf,.lim{grid-template-columns:minmax(0,1fr);gap:40px;justify-items:center}.nf>div:first-child,.lim>div:last-child{text-align:center}.btns{justify-content:center}.ghostcard{transform:none;height:440px}.bub{left:-10px}.top{padding:70px 20px 10px}.h{font-size:34px}}
+@media (max-width:860px){.routes{left:12px;right:12px;max-width:none;transform:none}}
+@media (prefers-reduced-motion: reduce){.box,.nf,.lim,.badge,.blob,.bub{animation:none}.spin{animation-duration:2s}}
+</style>
+</helmet>
+
+<div class="sy">
+<div class="blobs" aria-hidden="true"><span class="blob" style="left: -15%; top: -20%; background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span><span class="blob" style="right: -15%; bottom: -25%; background: radial-gradient(circle, #f6c9d5 0%, transparent 65%); animation-name: b2; animation-duration: 22s"></span><span class="blob" style="right: 20%; top: -30%; width: 35%; background: radial-gradient(circle, #ffe2b8 0%, transparent 65%); animation-duration: 20s"></span><svg class="grain"><filter id="sgn"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#sgn)"></rect></svg></div>
+<div class="top"><a class="mark" href="/" aria-label="Curios home"><span aria-hidden="true">cur<span class="i">ı</span>os</span></a></div>
+<div class="mid">
+
+<sc-if value="{{ rForgot }}" hint-placeholder-val="{{ true }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#eaf0ff"></circle><g class="sway"><rect x="58" y="52" width="84" height="44" rx="14" fill="#ffffff" stroke="#dfe1e6" stroke-width="2"></rect><circle cx="78" cy="74" r="4" fill="#2340c8"></circle><circle cx="92" cy="74" r="4" fill="#2340c8"></circle><circle cx="106" cy="74" r="4" fill="#2340c8"></circle><circle cx="120" cy="74" r="4" fill="#86a2ea" class="blinkd"></circle></g><g class="keyfly"><circle cx="150" cy="40" r="12" fill="none" stroke="#f2a33c" stroke-width="5"></circle><path d="M141 49l-18 18M128 62l6 6M123 67l5 5" stroke="#f2a33c" stroke-width="5" stroke-linecap="round" fill="none"></path></g></svg>
+
+<h1 class="h">Reset your password</h1>
+<p class="l">We will email you a link to choose a new one.</p>
+<label class="fld"><span>Email</span><span class="inp"><input type="email" value="{{ email }}" onChange="{{ setEmail }}" autocomplete="email" placeholder="you@example.com"></span></label>
+<button type="button" class="go" onClick="{{ sendReset }}" style="opacity: {{sendO}}">Send reset link</button>
+<p class="sw">Remembered it? <a href="#signin">Sign in</a></p>
+</div></sc-if>
+
+<sc-if value="{{ rSent }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="74" r="58" fill="#eaf0ff"></circle><g class="letter"><rect x="70" y="34" width="60" height="58" rx="6" fill="#ffffff" stroke="#dfe1e6" stroke-width="2"></rect><rect x="80" y="46" width="34" height="5" rx="2.5" fill="#2340c8"></rect><rect x="80" y="57" width="40" height="4" rx="2" fill="#dfe1e6"></rect><rect x="80" y="66" width="30" height="4" rx="2" fill="#dfe1e6"></rect></g><path d="M56 70h88v42a8 8 0 0 1-8 8H64a8 8 0 0 1-8-8z" fill="#2340c8"></path><path d="M56 72l44 28 44-28" fill="none" stroke="#1a31a8" stroke-width="3" stroke-linejoin="round"></path></svg>
+
+<h1 class="h">Check your email</h1>
+<p class="l">If <b>{{email}}</b> has a Curios account, a link to choose a new password is on its way. It works for one hour.</p>
+<a class="ghost" href="#signin" style="margin-top: 26px">Back to sign in</a>
+<p class="again">Nothing yet? Check spam, or <button type="button" onClick="{{ resend }}" disabled="{{ waitOn }}">{{resendText}}</button></p>
+</div></sc-if>
+
+<sc-if value="{{ rReset }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="74" r="58" fill="#efe7fb"></circle><path class="shackle" d="M80 66V52a20 20 0 0 1 40 0v14" fill="none" stroke="#6d3fb3" stroke-width="9" stroke-linecap="round"></path><rect x="66" y="64" width="68" height="52" rx="12" fill="#6d3fb3"></rect><circle cx="100" cy="86" r="7" fill="#ffffff"></circle><rect x="97" y="88" width="6" height="14" rx="3" fill="#ffffff"></rect></svg>
+
+<h1 class="h">Choose a new password</h1>
+<p class="l">For lina@keklina.example. You’ll stay signed in on this device.</p>
+<label class="fld"><span>New password</span><span class="inp"><input type="{{pwType}}" value="{{ pw }}" onChange="{{ setPw }}" autocomplete="new-password"><button type="button" class="eye" aria-label="Show password" onClick="{{ togglePw }}"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg></button></span></label>
+<div class="meter" aria-hidden="true"><sc-for list="{{ bars }}" as="b" hint-placeholder-count="4"><i style="background: {{b}}"></i></sc-for></div>
+<p class="mtx">{{pwText}}</p>
+<button type="button" class="go" onClick="{{ changePw }}" style="opacity: {{pwO}}">Change my password</button>
+</div></sc-if>
+
+<sc-if value="{{ rBadLink }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#fdecea"></circle><g class="lnkL"><rect x="40" y="56" width="64" height="32" rx="16" fill="none" stroke="#d8452f" stroke-width="9"></rect></g><g class="lnkR"><rect x="96" y="56" width="64" height="32" rx="16" fill="none" stroke="#f08a74" stroke-width="9"></rect></g><path class="zap" d="M100 34l-4 10M112 38l-6 8M88 38l6 8M100 110l-4-10M112 106l-6-8M88 106l6-8" stroke="#f2a33c" stroke-width="3" stroke-linecap="round"></path></svg>
+
+<h1 class="h">That link doesn’t work</h1>
+<p class="l">It’s either incomplete or more than an hour old. Copy the whole link from the email, or ask for a new one.</p>
+<a class="go" href="#forgot" style="margin-top: 26px">Send me a new link</a>
+<a class="ghost" href="#signin">Back to sign in</a>
+</div></sc-if>
+
+<sc-if value="{{ rChanged }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#e8f3ef"></circle><path d="M80 64V52a20 20 0 0 1 40 0" fill="none" stroke="#1d6f5f" stroke-width="9" stroke-linecap="round"></path><rect x="66" y="62" width="68" height="52" rx="12" fill="#1d6f5f"></rect><g class="pop2"><circle cx="138" cy="62" r="20" fill="#f2a33c"></circle><path d="M129 62l6 6 12-12" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"></path></g></svg>
+
+<h1 class="h">Password changed</h1>
+<p class="l">You can sign in with it now, on any device.</p>
+<a class="go" href="#app" style="margin-top: 26px">Go to my page</a>
+</div></sc-if>
+
+<sc-if value="{{ rVerifying }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#eaf0ff"></circle><circle cx="100" cy="72" r="46" fill="none" stroke="#2340c8" stroke-width="5" stroke-linecap="round" stroke-dasharray="70 220" class="orbit2"></circle><path d="M72 56h56v34a6 6 0 0 1-6 6H78a6 6 0 0 1-6-6z" fill="#2340c8"></path><path d="M72 58l28 18 28-18" fill="none" stroke="#86a2ea" stroke-width="3" stroke-linejoin="round"></path></svg>
+
+<h1 class="h">Verify your email</h1>
+<p class="l" role="status">Confirming your address…</p>
+</div></sc-if>
+
+<sc-if value="{{ rVerified }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="74" r="58" fill="#e8f3ef"></circle><g class="letter"><rect x="70" y="30" width="60" height="58" rx="6" fill="#ffffff" stroke="#cfe5dd" stroke-width="2"></rect><circle cx="100" cy="56" r="14" fill="#1d6f5f"></circle><path d="M93 56l5 5 10-10" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path></g><path d="M56 70h88v42a8 8 0 0 1-8 8H64a8 8 0 0 1-8-8z" fill="#1d6f5f"></path><path d="M56 72l44 28 44-28" fill="none" stroke="#155a4d" stroke-width="3" stroke-linejoin="round"></path></svg>
+
+<h1 class="h">Your email is confirmed</h1>
+<p class="l">Thanks, Lina. Receipts, new orders and leads will come to lina@keklina.example.</p>
+<a class="go" href="#onboarding" style="margin-top: 26px">Set up my page</a>
+</div></sc-if>
+
+<sc-if value="{{ rExpired }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#fdf0dc"></circle><g class="flipg"><path d="M78 30h44M78 114h44" stroke="#8f5c15" stroke-width="7" stroke-linecap="round"></path><path d="M82 34c0 22 36 22 36 38s-36 16-36 38M118 34c0 22-36 22-36 38s36 16 36 38" fill="none" stroke="#8f5c15" stroke-width="4"></path><path d="M90 44h20l-10 14z" fill="#f2a33c"></path><path d="M88 108h24l-12-12z" fill="#f2a33c"></path></g></svg>
+
+<h1 class="h">This link has expired</h1>
+<p class="l">Confirmation links last 24 hours. We can send a fresh one to lina@keklina.example.</p>
+<button type="button" class="go" onClick="{{ resend }}" disabled="{{ waitOn }}" style="margin-top: 26px; opacity: {{waitO}}">{{verifyBtn}}</button>
+<a class="ghost" href="#app">I’ll do it later</a>
+</div></sc-if>
+
+<sc-if value="{{ rNotFound }}" hint-placeholder-val="{{ false }}"><div class="nf">
+<div>
+<p class="kick">404 · not found</p>
+<h1 class="h" style="font-size: 52px">Nobody lives here yet.</h1>
+<p class="l" style="max-width: 30em">There’s no Curios page at this address. It might be a typo, or the page was renamed.</p>
+<span class="addr">curios.my/<b>kekklina</b></span>
+<div class="btns"><a class="go" href="#signup">Claim curios.my/kekklina</a><a class="ghost" href="/">Go to Curios</a></div>
+<p class="l" style="margin-top: 18px; font-size: 14px">Looking for someone? Did you mean <a href="#keklina" style="font-weight: 600">curios.my/keklina</a>?</p>
+</div>
+<div style="position: relative" aria-hidden="true"><div class="ghostcard"><div class="gscr"><div class="gb"><span class="gav"></span><span class="gl" style="width: 60%; height: 18px"></span><span class="gl" style="width: 40%"></span><span class="gl" style="width: 100%; height: 38px; margin-top: 18px; border-radius: 999px"></span><span class="gl" style="width: 100%; height: 38px; border-radius: 999px"></span></div></div></div><span class="bub">Hmm. Nobody’s claimed this page yet.</span></div>
+</div></sc-if>
+
+<sc-if value="{{ rError }}" hint-placeholder-val="{{ false }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#fdecea"></circle><path d="M20 72h44" stroke="#191f2c" stroke-width="6" stroke-linecap="round"></path><g class="plugL"><rect x="60" y="56" width="26" height="32" rx="6" fill="#191f2c"></rect><path d="M86 64h10M86 80h10" stroke="#191f2c" stroke-width="5" stroke-linecap="round"></path></g><g><rect x="114" y="54" width="28" height="36" rx="6" fill="#d8452f"></rect><path d="M142 72h38" stroke="#d8452f" stroke-width="6" stroke-linecap="round"></path><path d="M114 64h-6M114 80h-6" stroke="#d8452f" stroke-width="5" stroke-linecap="round"></path></g><path class="zap" d="M100 40l-6 14h10l-6 14" fill="none" stroke="#f2a33c" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+
+<h1 class="h">Something broke on our side</h1>
+<p class="l">Not you, us. Nothing you did was lost. Try again in a moment.</p>
+<button type="button" class="go" onClick="{{ retry }}" style="margin-top: 26px">{{retryText}}</button>
+<a class="ghost" href="/">Go to Curios</a>
+<p class="again" style="font-family: var(--m); font-size: 12px">Error ref 7F3K-21Q</p>
+</div></sc-if>
+
+<sc-if value="{{ rLimit }}" hint-placeholder-val="{{ false }}"><div class="lim">
+<div class="phone" aria-label="What a visitor sees"><div class="pscr">
+<div class="phd"><b>Kek Lina</b><span>curios.my/keklina</span><span class="ptb"><span>Links</span><span style="background: #fafbfc; color: #191f2c">Ask</span></span></div>
+<div class="pchat"><span class="q">boleh hantar ke Klang?</span><span class="a">{{capReply}}</span></div>
+<div class="plinks"><span>Order on WhatsApp</span><span>Menu &amp; prices</span></div>
+</div></div>
+<div>
+<p class="kick">Monthly limit reached</p>
+<h1 class="h" style="font-size: 38px">The chat rests. Your links don’t.</h1>
+<p class="l">When a page answers its whole month’s conversations, the chat gives this short reply in Malay and English, and points people to your links. Nothing is charged extra.</p>
+<div class="owner"><b>What Lina sees in her dashboard</b><p>2,000 of 2,000 conversations used. It resets on 1 Nov.</p><div class="bar"><i style="width: 100%"></i></div></div>
+</div>
+</div></sc-if>
+
+</div>
+<div class="routes" role="group" aria-label="Design preview: screen"><sc-for list="{{ routes }}" as="r" hint-placeholder-count="8"><button type="button" aria-pressed="{{ r.on }}" onClick="{{ r.go }}">{{r.label}}</button></sc-for></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":840}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { route: 'forgot', email: 'lina@keklina.example', pw: '', showPw: false, wait: 0, retrying: false };
+  }
+  componentWillUnmount() { clearInterval(this.wt); clearTimeout(this.rt); }
+  startWait() {
+    clearInterval(this.wt);
+    this.setState({ wait: 45 });
+    this.wt = setInterval(() => { const w = this.state.wait - 1; this.setState({ wait: Math.max(0, w) }); if (w <= 0) clearInterval(this.wt); }, 1000);
+  }
+  renderVals() {
+    const self = this, st = this.state, r = st.route, p = st.pw;
+    const strength = !p ? 0 : p.length < 8 ? 1 : (/[0-9]/.test(p) && /[A-Za-z]/.test(p) ? (p.length >= 12 ? 4 : 3) : 2);
+    const sc = ['#e4e7eb', '#d8452f', '#f2a33c', '#2340c8', '#1d6f5f'][strength];
+    const R = [['forgot', 'Forgot password'], ['sent', 'Email sent'], ['reset', 'New password'], ['bad', 'Broken link'], ['changed', 'Changed'], ['verifying', 'Verifying'], ['verified', 'Verified'], ['expired', 'Expired link'], ['404', 'Not found'], ['error', 'Error'], ['limit', 'Limit reached']];
+    return {
+      routes: R.map((x) => ({ label: x[1], on: r === x[0], go: () => self.setState({ route: x[0] }) })),
+      rForgot: r === 'forgot', rSent: r === 'sent', rReset: r === 'reset', rBadLink: r === 'bad', rChanged: r === 'changed', rVerifying: r === 'verifying', rVerified: r === 'verified', rExpired: r === 'expired', rNotFound: r === '404', rError: r === 'error', rLimit: r === 'limit',
+      email: st.email, setEmail: (e) => self.setState({ email: String(e.target.value || '').trim() }),
+      sendO: /.+@.+\..+/.test(st.email) ? '1' : '0.5',
+      sendReset: () => { if (!/.+@.+\..+/.test(st.email)) return; self.setState({ route: 'sent' }); self.startWait(); },
+      waitOn: st.wait > 0, waitO: st.wait > 0 ? '0.5' : '1',
+      resendText: st.wait > 0 ? 'send again in 0:' + String(st.wait).padStart(2, '0') : 'send it again',
+      verifyBtn: st.wait > 0 ? 'Sent. Check your inbox' : 'Send a new link',
+      resend: () => { if (st.wait > 0) return; self.startWait(); },
+      pw: p, setPw: (e) => self.setState({ pw: String(e.target.value || '') }), pwType: st.showPw ? 'text' : 'password', togglePw: () => self.setState({ showPw: !st.showPw }),
+      bars: [1, 2, 3, 4].map((i) => (i <= strength ? sc : '#e4e7eb')),
+      pwText: ['8 characters or more.', 'Too short. 8 characters or more.', 'Okay. A number makes it stronger.', 'Good.', 'Strong.'][strength],
+      pwO: p.length >= 8 ? '1' : '0.5', changePw: () => { if (p.length >= 8) self.setState({ route: 'changed', pw: '' }); },
+      retryText: st.retrying ? 'Trying…' : 'Try again',
+      retry: () => { self.setState({ retrying: true }); clearTimeout(self.rt); self.rt = setTimeout(() => self.setState({ retrying: false }), 1400); },
+      capReply: 'Kami dah jawab banyak soalan bulan ini dan sampai had. Anda masih boleh hubungi kami terus melalui pautan di atas.\n\nWe’ve answered a lot of questions this month and reached the limit. You can still reach us directly using the links on this page.'
+    };
+  }
+}
+</script>
+</body>
+</html>
