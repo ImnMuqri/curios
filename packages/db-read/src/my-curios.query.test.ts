@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { countPendingFacts, getMyCurios } from './my-curios.query.js';
+import { countNavBadges, countPendingFacts, getMyCurios } from './my-curios.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 let accountId = '';
@@ -111,5 +111,25 @@ describe('countPendingFacts', () => {
   // it links to disagree.
   it('counts only facts still waiting for review', async () => {
     expect(await countPendingFacts(accountId)).toBe(1);
+  });
+});
+
+describe('countNavBadges', () => {
+  // Each count is the filter of the screen it sits beside: Review's queue,
+  // Questions' "Needs you" (a topic with no answer) and Leads' "New".
+  it('counts pending facts, unanswered topics and new leads', async () => {
+    const page = await write.page.findFirstOrThrow({ where: { accountId }, select: { id: true } });
+    await write.topic.createMany({
+      data: [
+        { pageId: page.id, title: 'Open Sunday?' },
+        { pageId: page.id, title: 'Halal?', answer: 'Yes.', answeredAt: new Date() },
+      ],
+    });
+    for (const [n, status] of [[1, 'NEW'], [2, 'NEW'], [3, 'CONTACTED']] as const) {
+      const conversation = await write.conversation.create({ data: { pageId: page.id }, select: { id: true } });
+      await write.lead.create({ data: { pageId: page.id, conversationId: conversation.id, phone: `+6012000000${n}`, status } });
+    }
+
+    expect(await countNavBadges(accountId)).toEqual({ review: 1, questions: 1, leads: 2 });
   });
 });
