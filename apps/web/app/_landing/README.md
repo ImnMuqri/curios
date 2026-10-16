@@ -39,11 +39,13 @@ also what a visitor without JavaScript gets; motion starts only once the browser
 says it may. GSAP and Lenis are gone: what moves is CSS, `requestAnimationFrame`
 and native scroll-driven animations.
 
-**Photos.** A persona's card shows `photo` (in `personas.ts`) across its top,
-fading into the owner's colour; without one it is drawn in the colour alone.
-Kek Lina uses `/landing/hero-baker.webp`. The others need photos: put them in
-`public/landing/personas/` as WebP, portrait, about 700 x 900, with the subject
-in the upper half, and set `photo: { src, focus }`.
+**Photos.** Each persona's card shows `photo` (in `personas.ts`) across its top
+half, fading into the owner's colour, with the name dropped below the face; a
+persona without one is drawn in the colour alone. They are in
+`public/landing/personas/` (WebP, 700 wide; supplied by the owner on
+2026-10-16), and Kek Lina uses `/landing/hero-baker.webp`. `face` is a square
+head-and-shoulders for the small round faces (How it works, the pricing chip);
+only Aisyah has one. All are made-up people, as the footer says.
 
 **Claims that wait on slice 18.** The For business section and two Business
 pricing lines show checkout, paying by the owner's QR with proof, and Orders.

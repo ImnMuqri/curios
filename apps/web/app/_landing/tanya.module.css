@@ -332,7 +332,21 @@
   position: absolute;
   inset: 0 0 auto 0;
   display: block;
-  height: 64%;
+  height: 52%;
+}
+
+/* With a photo, the name sits under the face, on the photo's faded foot, as the public page's name sits under its cover. */
+.pc[data-photo] .pcBody {
+  top: 37%;
+}
+
+.pc[data-photo] .pcName {
+  text-shadow: 0 2px 16px color-mix(in srgb, var(--pc-deep) 70%, transparent);
+}
+
+.pc[data-photo] .pcLinks,
+.pc[data-photo] .pcChat {
+  min-height: 0;
 }
 
 .pcPhoto img {
@@ -924,7 +938,8 @@
 }
 
 .floatQ {
-  top: 84px;
+  /* Above the card's top edge, clear of the owner's face. */
+  top: -26px;
   right: calc(50% - 174px);
   max-width: 220px;
   border-radius: 20px 20px 6px 20px;
@@ -1328,6 +1343,9 @@
 .ringFace {
   position: absolute;
   inset: 36px;
+  width: calc(100% - 72px);
+  height: calc(100% - 72px);
+  object-fit: cover;
   display: grid;
   place-items: center;
   border-radius: 50%;
@@ -1370,6 +1388,7 @@
 }
 
 .bioFace {
+  object-fit: cover;
   display: grid;
   place-items: center;
   width: 44px;
@@ -1619,6 +1638,13 @@
   height: 100%;
   object-fit: cover;
   mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
+}
+
+/* Legible over the bright photo without a gradient behind the name (DESIGN.md bans that). */
+.custName,
+.custHandle,
+.custNote {
+  text-shadow: 0 1px 12px rgb(25 31 44 / 55%), 0 0 2px rgb(25 31 44 / 40%);
 }
 
 .custName {
@@ -2684,6 +2710,14 @@
 
 .chipRow span:first-child {
   padding: 5px 12px 5px 5px;
+}
+
+.chipFace {
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .chipRow i {

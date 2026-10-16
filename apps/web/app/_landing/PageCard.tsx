@@ -44,6 +44,7 @@ export function PageCard({
       className={`${styles.pc} ${className ?? ''}`}
       style={{ ...style, '--pc-deep': persona.deep, '--pc-accent': persona.accent, '--pc-warm': persona.warm } as CSSProperties}
       aria-hidden="true"
+      data-photo={persona.photo ? '' : undefined}
     >
       {persona.photo ? (
         <span className={styles.pcPhoto}>
