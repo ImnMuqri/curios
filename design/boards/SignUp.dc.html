@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: create your page</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,800&amp;display=swap">
+<style>
+body{margin:0;background:#fafbfc}
+a{color:#2340c8}a:hover{color:#122686}
+.au{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;display:flex;flex-wrap:nowrap;height:100vh;height:100dvh;min-height:560px;overflow:hidden;background:#fafbfc;color:#191f2c;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:16px;line-height:1.55}
+.au *{box-sizing:border-box}
+.au-form{flex:1 1 50%;min-width:0;display:flex;flex-direction:column;padding:clamp(20px,4vh,36px) 56px;overflow-y:auto}
+.au-body{width:100%;max-width:400px;margin:auto;padding:clamp(12px,3vh,40px) 0}
+.mark{display:inline-block;font-family:var(--d);font-size:28px;font-weight:700;line-height:1;letter-spacing:-.03em;color:#191f2c}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.au-title{margin:0;font-family:var(--d);font-size:clamp(32px,5.2vh,44px);font-weight:800;letter-spacing:-.035em;line-height:1.02}
+.au-lede{margin:10px 0 0;color:#4b5060}
+.g-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:52px;margin-top:clamp(18px,3.6vh,32px);border:0;border-radius:999px;background:#ffffff;box-shadow:inset 0 0 0 1.5px #e4e7eb;color:#191f2c;font:inherit;font-weight:600;text-decoration:none;cursor:pointer;transition:box-shadow 160ms ease}
+.g-btn:hover{box-shadow:inset 0 0 0 1.5px #191f2c;color:#191f2c}
+.or{display:flex;align-items:center;gap:12px;margin:clamp(12px,2.4vh,22px) 0;color:#8a8f9b;font-size:13px}
+.or::before,.or::after{content:'';flex:1;height:1px;background:#e4e7eb}
+.fld{display:block;margin-top:14px}
+.fld>span{display:flex;justify-content:space-between;margin-bottom:6px;font-size:14px;font-weight:600}
+.fld>span a{font-weight:500;font-size:13.5px}
+.inp{display:flex;align-items:center;height:52px;padding:0 6px 0 16px;border-radius:14px;background:#ffffff;box-shadow:inset 0 0 0 1.5px #dfe1e6;transition:box-shadow 160ms ease}
+.inp:focus-within{box-shadow:inset 0 0 0 2px #2340c8}
+.inp input{flex:1;min-width:0;height:48px;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.eye{display:grid;place-items:center;width:40px;height:40px;border:0;border-radius:10px;background:transparent;color:#4b5060;cursor:pointer}
+.eye:hover{background:#f0f1f4}
+.go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;height:54px;margin-top:22px;border:0;border-radius:999px;background:#2340c8;color:#fafbfc;font:inherit;font-weight:600;cursor:pointer;transition:background 160ms ease}
+.go:hover{background:#1a31a8}
+.go[disabled]{opacity:.75;cursor:progress}
+.spin{width:16px;height:16px;border-radius:50%;border:2px solid rgba(250,251,252,.4);border-top-color:#fafbfc;animation:spin 700ms linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.switch{margin:24px 0 0;text-align:center;color:#4b5060;font-size:15px}
+.switch a{font-weight:600}
+.note{margin:16px 0 0;font-size:12.5px;color:#8a8f9b;text-align:center}
+.claim-chip{display:inline-flex;align-items:center;gap:8px;margin-top:18px;padding:6px 14px 6px 6px;border-radius:999px;background:#eaf0ff;color:#122686;font-size:13.5px;font-weight:600}
+.claim-chip i{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#2340c8;color:#fafbfc;font-style:normal;font-size:13px}
+/* the visual panel */
+.au-art{position:relative;flex:1 1 50%;min-width:0;height:calc(100% - 28px);margin:14px 14px 14px 0;border-radius:32px;overflow:hidden;background:#141a2e}
+.blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.blob{position:absolute;width:75%;aspect-ratio:1;border-radius:50%;filter:blur(30px);animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.b1{left:-20%;top:-20%;animation-name:bl1;animation-duration:17s}
+.b2{right:-25%;top:5%;animation-name:bl2;animation-duration:21s}
+.b3{left:5%;bottom:-35%;animation-name:bl3;animation-duration:19s}
+.b4{right:-10%;bottom:-30%;width:55%;animation-name:bl4;animation-duration:24s}
+@keyframes bl1{to{transform:translate(25%,20%) scale(1.15)}}
+@keyframes bl2{to{transform:translate(-25%,25%) scale(.9)}}
+@keyframes bl3{to{transform:translate(20%,-25%) scale(1.2)}}
+@keyframes bl4{to{transform:translate(-30%,-15%) scale(1.1)}}
+.grain{position:absolute;inset:0;width:100%;height:100%;opacity:.12;mix-blend-mode:multiply}
+.art-inner{position:relative;height:100%;min-height:812px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;padding:48px}
+.art-line{margin:0;max-width:16ch;text-align:center;font-family:var(--d);font-size:34px;font-weight:800;letter-spacing:-.03em;line-height:1.08;color:#191f2c}
+.pc{position:relative;width:300px;height:520px;overflow:hidden;border-radius:36px;color:#fafbfc;font-family:'Inter',system-ui,sans-serif;transform:rotate(-2deg)}
+.pc-photo{position:absolute;inset:0 0 auto 0;height:62%}
+.pc-photo img{display:block;width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 40%,transparent 100%);mask-image:linear-gradient(to bottom,#000 40%,transparent 100%)}
+.pc-body{position:absolute;inset:auto 0 0 0;top:30%;display:flex;flex-direction:column;align-items:center;gap:10px;padding:0 18px 18px;text-align:center}
+.pc-name{margin:0;font-size:36px;font-weight:800;line-height:1;letter-spacing:-.03em}
+.pc-handle{margin:-4px 0 0;font-family:var(--m);font-size:11px;opacity:.7}
+.pc-tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:rgba(250,251,252,.14);font-size:13px;font-weight:600}
+.pc-tabs>span{padding:7px 20px;border-radius:999px}
+.pc-tabs .on{background:#fafbfc;color:#191f2c}
+.pc-chat{display:flex;flex-direction:column;gap:8px;width:100%;min-height:150px;text-align:left}
+.pc-q{align-self:flex-end;max-width:88%;padding:9px 13px;border-radius:18px 18px 6px 18px;background:#fafbfc;color:#191f2c;font-size:13.5px;line-height:1.4}
+.pc-a{align-self:flex-start;max-width:92%;padding:9px 13px;border-radius:18px 18px 18px 6px;color:#191f2c;font-size:13.5px;line-height:1.4}
+.pc-ask{display:flex;align-items:center;gap:8px;width:100%;margin-top:auto;padding:5px 5px 5px 16px;border-radius:999px;background:#fafbfc;color:#696e7b;font-size:13px;text-align:left}
+.pc-send{display:grid;place-items:center;width:30px;height:30px;margin-left:auto;border-radius:50%}
+.caret{display:inline-block;width:2px;height:1em;margin-left:2px;background:currentColor;vertical-align:-.15em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.mail{display:grid;place-items:center;width:84px;height:84px;margin-bottom:22px;border-radius:24px;background:#eaf0ff;animation:pop 520ms cubic-bezier(.34,1.5,.64,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.6) rotate(-8deg)}to{opacity:1;transform:none}}
+@media (max-width:980px){.au{height:auto;min-height:100dvh}.au-art{display:none}.au-form{padding:28px 20px}}
+@media (prefers-reduced-motion: reduce){.blob,.caret,.spin,.mail{animation:none}}
+
+
+/* the film panel */
+.film{position:absolute;inset:0;transition:background 1200ms ease}
+.stars{position:absolute;inset:0;transition:opacity 1200ms ease;background-image:radial-gradient(1.5px 1.5px at 12% 22%,#fff,transparent),radial-gradient(1px 1px at 30% 12%,#fff,transparent),radial-gradient(1.5px 1.5px at 66% 18%,#fff,transparent),radial-gradient(1px 1px at 84% 30%,#fff,transparent),radial-gradient(1px 1px at 48% 34%,#fff,transparent),radial-gradient(1.5px 1.5px at 22% 48%,#fff,transparent),radial-gradient(1px 1px at 90% 52%,#fff,transparent),radial-gradient(1px 1px at 8% 70%,#fff,transparent),radial-gradient(1.5px 1.5px at 76% 74%,#fff,transparent)}
+.hills{position:absolute;left:-5%;right:-5%;bottom:-2px;height:150px;border-radius:50% 50% 0 0/100% 100% 0 0;transition:background 1200ms ease}
+.film-inner{position:relative;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(10px,2.6vh,26px);padding:clamp(24px,5vh,56px) 40px clamp(44px,7vh,70px)}
+.clock{display:flex;flex-direction:column;align-items:center;text-align:center;transition:color 1200ms ease}
+.clock-t{display:flex;align-items:baseline;gap:8px;font-family:var(--d);font-weight:800;letter-spacing:-.04em;line-height:1}
+.clock-t b{font-size:clamp(44px,8.4vh,72px)}.clock-t span{font-size:26px;font-weight:700;letter-spacing:-.01em}
+.clock-c{margin-top:8px;font-size:17px;transition:color 1200ms ease}
+.phone{position:relative;flex:none;width:290px;height:540px;padding:9px;border-radius:46px;background:#191f2c;box-shadow:inset 0 0 0 1.5px #3a4050,0 30px 60px -30px rgba(25,31,44,.45)}
+@keyframes float{50%{transform:translateY(-8px)}}
+.phone-scr{position:relative;width:100%;height:100%;overflow:hidden;border-radius:38px}
+.island{position:absolute;top:10px;left:50%;z-index:5;width:86px;height:24px;margin-left:-43px;border-radius:999px;background:#191f2c}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;gap:9px;padding:48px 14px 16px;animation:scrIn 520ms cubic-bezier(.22,1,.36,1) both}
+@keyframes scrIn{from{opacity:0;transform:scale(1.04)}to{opacity:1;transform:none}}
+.scr-h{margin:0 0 8px;display:flex;align-items:center;gap:10px}
+.scr-h img{width:38px;height:38px;border-radius:50%;object-fit:cover}
+.scr-h b{display:block;font-size:15px}.scr-h span span{display:block;font-family:var(--m);font-size:10.5px;opacity:.7}
+.scr-title{margin:0 0 4px;font-family:var(--d);font-size:26px;font-weight:800;letter-spacing:-.02em}
+.scr.lock{background:#191f2c;color:#fafbfc;align-items:stretch}
+.lock-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.4}
+.lock-d{position:relative;margin:4px 0 0;text-align:center;font-size:13px;font-weight:500;opacity:.85}
+.lock-t{position:relative;margin:0 0 14px;text-align:center;font-family:var(--d);font-size:68px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.focus{position:relative;align-self:center;display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:999px;background:rgba(250,251,252,.18);font-size:12.5px;font-weight:600}
+.enter{animation:enter 560ms cubic-bezier(.22,1,.36,1) both}
+.d1{animation-delay:350ms}.d2{animation-delay:1000ms}.d3{animation-delay:1700ms}.d4{animation-delay:2400ms}
+@keyframes enter{from{opacity:0;transform:translateY(14px) scale(.97)}to{opacity:1;transform:none}}
+.bq{align-self:flex-end;max-width:86%;padding:9px 13px;border-radius:18px 18px 6px 18px;background:#fafbfc;color:#191f2c;font-size:13px;line-height:1.4}
+.ba{align-self:flex-start;max-width:90%;padding:9px 13px;border-radius:18px 18px 18px 6px;color:#191f2c;font-size:13px;line-height:1.4}
+.tag{align-self:center;margin-top:auto;padding:6px 12px;border-radius:999px;background:rgba(250,251,252,.16);font-size:11.5px;font-weight:600}
+.nt{position:relative;display:flex;gap:10px;align-items:center;padding:10px 11px;border-radius:18px;background:rgba(250,251,252,.94);color:#191f2c}
+.nt-ic{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:9px;background:#2340c8;color:#fafbfc;font-family:var(--d);font-weight:700}
+.nt-top{display:flex;justify-content:space-between;font-size:10.5px;color:#696e7b}.nt-top b{color:#191f2c}
+.nt-b{display:block;font-size:12px;line-height:1.35}
+.oc{display:grid;gap:4px;padding:14px;border-radius:20px;background:#ffffff}
+.oc.dim{background:#e9ebef}
+.oc.dim b{font-size:13px}.oc.dim span{font-size:11.5px;color:#696e7b}
+.oc-r{margin:0;display:flex;align-items:center;gap:10px}
+.oc-r b{display:block;font-size:14px}.oc-r span span{display:block;font-size:11px;color:#696e7b}
+.oc-av{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:50%;background:#f6c9d5;font-weight:700;font-size:13px}
+.oc-amt{font-family:var(--d);font-size:19px;letter-spacing:-.02em}
+.oc-i{margin:6px 0 6px;font-size:12.5px;line-height:1.55;color:#4b5060}
+.oc-btn{position:relative;display:grid;place-items:center;height:40px;border-radius:999px;background:#2340c8;color:#fafbfc;font-size:13px;font-weight:600;overflow:hidden;animation:okBg 3.4s ease forwards}
+.oc-btn>span{position:absolute}
+.ob-a{animation:okA 3.4s ease forwards}.ob-b{opacity:0;animation:okB 3.4s ease forwards}
+@keyframes okBg{0%,60%{background:#2340c8}72%,100%{background:#1d6f5f}}
+@keyframes okA{0%,60%{opacity:1;transform:none}72%,100%{opacity:0;transform:translateY(-12px)}}
+@keyframes okB{0%,60%{opacity:0;transform:translateY(12px)}72%,100%{opacity:1;transform:none}}
+.biz{padding:3px 9px;border-radius:999px;background:#191f2c;color:#fafbfc;font-size:10.5px;font-weight:700}
+.dots{position:absolute;left:0;right:0;bottom:28px;display:flex;justify-content:center;gap:8px}
+.dots span{display:block;width:30px;height:4px;border-radius:2px;overflow:hidden;transition:background 1200ms ease}
+.dots i{display:block;height:100%;border-radius:2px}
+@media (prefers-reduced-motion: reduce){.enter,.scr,.oc-btn,.ob-a,.ob-b,.phone{animation:none}.ob-a{opacity:0}.ob-b{opacity:1}}
+
+/* sun and moon */
+.orb{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;transition:left 1500ms cubic-bezier(.45,0,.2,1),top 1500ms cubic-bezier(.45,0,.2,1)}
+.halo{position:absolute;inset:-70px;border-radius:50%;transition:background 1200ms ease;animation:breathe 5s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.08);opacity:.85}}
+.moon,.sun{position:absolute;inset:0;width:100%;height:100%;transition:opacity 1200ms ease}
+.moon{inset:10px;width:auto;height:auto;filter:drop-shadow(0 0 14px rgba(255,250,230,.35))}
+.rays{transform-origin:80px 80px;animation:rays 40s linear infinite}
+@keyframes rays{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.halo,.rays{animation:none}}
+
+.phone-fit{display:flex;justify-content:center;align-items:flex-start}
+.phone{transform-origin:50% 0}
+</style>
+</helmet>
+<div class="au">
+<main class="au-form">
+<a href="TanyaJe.dc.html" style="align-self: flex-start; text-decoration: none"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios home</span></a>
+<div class="au-body">
+<sc-if value="{{ notSent }}" hint-placeholder-val="{{ true }}">
+<h1 class="au-title">Create your free page</h1>
+<p class="au-lede">Answering is free on every plan. No card needed.</p>
+<span class="claim-chip"><i aria-hidden="true">✓</i>Saving curios.my/aisyahdraws for you</span>
+<a class="g-btn" href="#google" style="margin-top: 24px"><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M22.6 12.2c0-.8-.1-1.5-.2-2.2H12v4.2h5.9a5 5 0 0 1-2.2 3.3v2.7h3.6c2.1-1.9 3.3-4.8 3.3-8z"></path><path fill="#34A853" d="M12 23c3 0 5.5-1 7.3-2.7l-3.6-2.7c-1 .7-2.2 1.1-3.7 1.1-2.9 0-5.3-1.9-6.2-4.5H2.1v2.8A11 11 0 0 0 12 23z"></path><path fill="#FBBC05" d="M5.8 14.2a6.6 6.6 0 0 1 0-4.3V7.1H2.1a11 11 0 0 0 0 9.9z"></path><path fill="#EA4335" d="M12 5.4c1.6 0 3.1.6 4.2 1.7l3.2-3.2A11 11 0 0 0 2.1 7.1l3.7 2.8C6.7 7.3 9.1 5.4 12 5.4z"></path></svg>Continue with Google</a>
+<p class="or">or with email</p>
+<form onSubmit="{{ submit }}">
+<label class="fld"><span>Email</span><span class="inp"><input type="email" autocomplete="email" placeholder="you@example.com" value="{{ email }}" onChange="{{ setEmail }}" required></span></label>
+<label class="fld" for="pw-up"><span>Password</span><span class="inp"><input id="pw-up" type="{{pwType}}" autocomplete="new-password" required><button type="button" class="eye" aria-label="{{eyeLabel}}" onClick="{{ toggleEye }}"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button></span></label>
+<button type="submit" class="go" disabled="{{ busy }}"><sc-if value="{{ busy }}" hint-placeholder-val="{{ false }}"><span class="spin" aria-hidden="true"></span></sc-if>{{goLabel}}</button>
+</form>
+<p class="note">By creating a page you agree to the Terms and Privacy Policy.</p>
+<p class="switch">Already have a page? <a href="SignIn.dc.html">Sign in</a></p>
+</sc-if>
+<sc-if value="{{ sent }}" hint-placeholder-val="{{ false }}">
+<span class="mail" aria-hidden="true"><svg viewBox="0 0 24 24" width="38" height="38" fill="none" stroke="#2340c8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"></rect><path d="M3.5 7l8.5 6 8.5-6"></path></svg></span>
+<h1 class="au-title">Check your email</h1>
+<p class="au-lede">Check your email to confirm your address and finish signing up.</p>
+<p style="margin: 18px 0 0; padding: 14px 16px; border-radius: 14px; background: #f0f1f4; font-size: 14.5px">Sent to <b>{{sentTo}}</b>. The link opens your new page, with curios.my/aisyahdraws waiting.</p>
+<p class="switch" style="text-align: left">Wrong address? <a href="#back" onClick="{{ back }}">Go back</a></p>
+</sc-if>
+</div>
+</main>
+<aside class="au-art" aria-hidden="true">
+<div class="film" style="background: {{sky.bg}}">
+<span class="stars" style="opacity: {{sky.stars}}"></span>
+<span class="orb" style="left: {{sky.ox}}; top: {{sky.oy}}">
+<span class="halo" style="background: radial-gradient(circle, {{sky.og}} 0%, transparent 68%)"></span>
+<svg class="moon" viewBox="0 0 120 120" style="opacity: {{sky.moonO}}">
+<defs>
+<radialGradient id="mg" cx="40%" cy="35%" r="70%"><stop offset="0%" stop-color="#fffdf5"></stop><stop offset="70%" stop-color="#ece8da"></stop><stop offset="100%" stop-color="#d9d4c3"></stop></radialGradient>
+<mask id="mm"><rect width="120" height="120" fill="#fff"></rect><circle cx="82" cy="46" r="40" fill="#000"></circle></mask>
+</defs>
+<g mask="url(#mm)">
+<circle cx="60" cy="60" r="40" fill="url(#mg)"></circle>
+<circle cx="44" cy="70" r="7" fill="#c9c3b0" opacity="0.55"></circle>
+<circle cx="36" cy="50" r="4" fill="#c9c3b0" opacity="0.5"></circle>
+<circle cx="52" cy="88" r="4.5" fill="#c9c3b0" opacity="0.45"></circle>
+</g>
+</svg>
+<svg class="sun" viewBox="0 0 160 160" style="opacity: {{sky.sunO}}">
+<defs><radialGradient id="sg" cx="45%" cy="40%" r="60%"><stop offset="0%" stop-color="#fffbe8"></stop><stop offset="55%" stop-color="{{sky.sunA}}"></stop><stop offset="100%" stop-color="{{sky.sunB}}"></stop></radialGradient></defs>
+<g class="rays" stroke="{{sky.sunB}}" stroke-width="5" stroke-linecap="round" opacity="0.55">
+<path d="M80 8v16M80 136v16M8 80h16M136 80h16M29 29l11 11M120 120l11 11M29 131l11-11M120 40l11-11"></path>
+</g>
+<circle cx="80" cy="80" r="40" fill="url(#sg)"></circle>
+</svg>
+</span>
+<span class="hills" style="background: {{sky.hill}}"></span>
+</div>
+<div class="film-inner">
+<sc-if value="{{ s0 }}" hint-placeholder-val="{{ true }}"><div class="clock enter" style="color: {{sky.fg}}"><span class="clock-t"><b>2:15</b><span>pm</span></span><span class="clock-c" style="color: {{sky.soft}}">You’re deep in a project.</span></div></sc-if><sc-if value="{{ s1 }}" hint-placeholder-val="{{ false }}"><div class="clock enter" style="color: {{sky.fg}}"><span class="clock-t"><b>2:16</b><span>pm</span></span><span class="clock-c" style="color: {{sky.soft}}">Someone finds your bio and asks.</span></div></sc-if><sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}"><div class="clock enter" style="color: {{sky.fg}}"><span class="clock-t"><b>5:30</b><span>pm</span></span><span class="clock-c" style="color: {{sky.soft}}">Done for the day. A new client is waiting.</span></div></sc-if>
+<div class="phone-fit" style="height: {{phoneH}}px"><div class="phone" style="transform: scale({{phoneK}})"><div class="phone-scr"><span class="island"></span>
+<sc-if value="{{ s0 }}" hint-placeholder-val="{{ true }}"><div class="scr lock">
+<img class="lock-bg" src="/_blob/712a5adabc653230800c5a21396b0117" alt="" style="opacity: 0.5; object-position: 40% 45%">
+<p class="lock-d">Thursday, 16 October</p>
+<p class="lock-t">2:15</p>
+<span class="focus enter d1"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg>Focus · Working</span>
+</div></sc-if>
+<sc-if value="{{ s1 }}" hint-placeholder-val="{{ false }}"><div class="scr" style="background: #123b33; color: #fafbfc">
+<p class="scr-h"><img src="/_blob/712a5adabc653230800c5a21396b0117" alt="" style="object-position: 28% 40%"><span><b>Aisyah</b><span>curios.my/aisyahdraws</span></span></p>
+<span class="bq enter d1">Do you do book covers? Need one by December.</span>
+<span class="ba enter d2" style="background: #d3e8e1">Yes, book covers start at RM900. Two slots left in November.</span>
+<span class="bq enter d3">Great. Here’s my number: 012-345 6789</span>
+<span class="tag enter d4">Answered while Aisyah worked</span>
+</div></sc-if>
+<sc-if value="{{ s2 }}" hint-placeholder-val="{{ false }}"><div class="scr" style="background: #f3f4f7; color: #191f2c">
+<p class="scr-title">Leads</p>
+<div class="oc enter d1">
+<p class="oc-r"><span class="oc-av" style="background: #d3e8e1">B</span><span style="flex: 1"><b>Book cover</b><span>2:17 pm · from your page</span></span><span class="biz">New</span></p>
+<p class="oc-i">Needed by December<br><b style="color: #191f2c; font-variant-numeric: tabular-nums">012-345 6789</b> · whole chat attached</p>
+<span class="oc-btn" style="background: #1d6f5f; animation: none"><span style="position: static">WhatsApp them</span></span>
+</div>
+<div class="oc dim enter d2"><b>Portrait · family of 4</b><span>Yesterday · replied</span></div>
+</div></sc-if>
+</div></div></div>
+</div>
+<div class="dots"><sc-for list="{{ dots }}" as="d" hint-placeholder-count="3"><span style="background: {{d.track}}"><i style="width: {{d.w}}; background: {{d.c}}; transition: width {{d.tr}} linear"></i></span></sc-for></div>
+</aside>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":840}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.full = 'Yes, two slots left for November. Portraits start at RM250.';
+    this.state = { vh: 900, sc: 0, fill: false, n: 0, show: false, busy: false, sent: false, email: '' };
+  }
+  componentDidMount() {
+    this.onResize = () => this.setState({ vh: window.innerHeight });
+    window.addEventListener('resize', this.onResize);
+    this.onResize();
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    this.play();
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); clearTimeout(this.ts); clearTimeout(this.tf); clearTimeout(this.tb); }
+  play() {
+    this.setState({ fill: false });
+    this.tf = setTimeout(() => this.setState({ fill: true }), 40);
+    this.ts = setTimeout(() => { this.setState({ sc: (this.state.sc + 1) % 3 }); this.play(); }, 4900);
+  }
+  loop() {
+    this.setState({ n: 0 });
+    this.th = setTimeout(() => {
+      this.ti = setInterval(() => {
+        const n = this.state.n + 1;
+        this.setState({ n: n });
+        if (n >= this.full.length) { clearInterval(this.ti); this.th = setTimeout(() => this.loop(), 3200); }
+      }, 32);
+    }, 700);
+  }
+  renderVals() {
+    const self = this;
+    return {
+      sky: [{"bg": "#eef3ff", "fg": "#191f2c", "soft": "#4b5060", "ox": "38%", "oy": "8%", "oc": "#ffd66b", "og": "rgba(255,200,90,0.42)", "stars": "0", "hill": "rgba(255,255,255,0.55)", "moonO": "0", "sunO": "1", "sunA": "#ffd45c", "sunB": "#f7b733"}, {"bg": "#eaf4ef", "fg": "#191f2c", "soft": "#4b5060", "ox": "52%", "oy": "9%", "oc": "#ffd66b", "og": "rgba(255,200,90,0.42)", "stars": "0", "hill": "rgba(255,255,255,0.55)", "moonO": "0", "sunO": "1", "sunA": "#ffd45c", "sunB": "#f7b733"}, {"bg": "#ffe1cc", "fg": "#191f2c", "soft": "#4b5060", "ox": "82%", "oy": "22%", "oc": "#f28b3c", "og": "rgba(242,132,60,0.38)", "stars": "0", "hill": "rgba(255,255,255,0.55)", "moonO": "0", "sunO": "1", "sunA": "#ffb648", "sunB": "#f2843c"}][this.state.sc],
+      phoneK: Math.max(0.5, Math.min(1, (this.state.vh - 330) / 540)).toFixed(3),
+      phoneH: Math.round(540 * Math.max(0.5, Math.min(1, (this.state.vh - 330) / 540))),
+      s0: this.state.sc === 0, s1: this.state.sc === 1, s2: this.state.sc === 2,
+      dots: [0, 1, 2].map((i) => { const night = false; return { w: i < this.state.sc ? '100%' : (i === this.state.sc && this.state.fill ? '100%' : '0%'), tr: i === this.state.sc && this.state.fill ? '4800ms' : '0ms', c: night ? '#fafbfc' : '#191f2c', track: night ? 'rgba(250,251,252,0.2)' : 'rgba(25,31,44,0.14)' }; }),
+      pwType: this.state.show ? 'text' : 'password',
+      eyeLabel: this.state.show ? 'Hide password' : 'Show password',
+      toggleEye: () => self.setState({ show: !self.state.show }),
+      busy: this.state.busy,
+      goLabel: this.state.busy ? 'Creating…' : 'Create my page',
+      email: this.state.email,
+      setEmail: (e) => self.setState({ email: e.target.value }),
+      notSent: !this.state.sent, sent: this.state.sent,
+      sentTo: this.state.email || 'you@example.com',
+      back: (e) => { e.preventDefault(); self.setState({ sent: false }); },
+      submit: (e) => {
+        e.preventDefault();
+        self.setState({ busy: true });
+        self.tb = setTimeout(() => self.setState({ busy: false, sent: true }), 1100);
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

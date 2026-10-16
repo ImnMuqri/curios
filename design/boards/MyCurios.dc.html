@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: My Curios</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,800&amp;family=DM+Serif+Display&amp;family=Plus+Jakarta+Sans:wght@800&amp;family=Outfit:wght@800&amp;family=Space+Grotesk:wght@700&amp;display=swap">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#2340c8}a:hover{color:#122686}
+.app{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;--line:#e9ebef;--soft:#696e7b;display:flex;min-height:100vh;background:#ffffff;color:#191f2c;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
+.app *{box-sizing:border-box}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.mark{display:inline-block;font-family:var(--d);font-size:22px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+/* sidebar */
+.side{position:sticky;top:0;align-self:flex-start;display:flex;flex-direction:column;flex:none;width:232px;height:100vh;min-height:900px;padding:18px 12px 14px;background:#fafbfc;border-right:1px solid var(--line)}
+.brand{padding:6px 10px 20px}
+.grp{margin:14px 10px 6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:8px;color:#4b5060;font-weight:500;text-decoration:none}
+.nav a:hover{background:#f0f1f4;color:#191f2c}
+.nav a.on{background:#eaf0ff;color:#122686;font-weight:600}
+.nav svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav .ct{margin-left:auto;font-size:12px;font-weight:600;color:#2340c8}
+.acct{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--line)}
+.acct .lg{width:30px;height:30px;flex:none}
+.acct b{display:block;font-size:13px;font-weight:600}
+.acct span span{display:block;font-size:12px;color:var(--soft)}
+/* main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.head{display:flex;align-items:center;gap:14px;height:64px;padding:0 32px;border-bottom:1px solid var(--line)}
+.head h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.status{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;transition:background 200ms,color 200ms}
+.status svg{width:12px;height:12px}
+.url{margin-left:auto;display:flex;align-items:center;gap:2px;font-size:13px;color:var(--soft)}
+.icb{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4b5060;cursor:pointer}
+.icb:hover{background:#f0f1f4;color:#191f2c}
+.icb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icb[disabled]{opacity:.3;cursor:default;background:transparent}
+.sec-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border:0;border-radius:999px;background:#2340c8;color:#ffffff;font:inherit;font-weight:500;text-decoration:none}
+.sec-btn:hover{background:#1a31a8;color:#ffffff}
+.body{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 440px}
+@media (max-width:1200px){.body{grid-template-columns:minmax(0,1fr)}.pv{display:none}}
+.edit{padding:0 36px 56px;min-width:0}
+/* sliding underline tabs */
+.utabs{position:relative;display:flex;border-bottom:1px solid var(--line)}
+.utabs button{width:116px;height:48px;padding:0;border:0;background:transparent;font:inherit;font-weight:500;color:var(--soft);cursor:pointer;transition:color 200ms}
+.utabs button[aria-selected="true"]{color:#2340c8}
+.uline{position:absolute;bottom:-1px;left:0;width:116px;height:2px;border-radius:2px;background:#2340c8;transition:transform 380ms cubic-bezier(.34,1.3,.64,1)}
+.wrapc{max-width:720px;padding-top:8px;animation:fadeUp 360ms cubic-bezier(.22,1,.36,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sec{padding:26px 0;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:0}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 14px}
+.sec-h b{display:inline-flex;align-items:center;gap:10px;font-size:14.5px;font-weight:600}
+.chipi{display:grid;place-items:center;width:28px;height:28px;border-radius:8px}
+.chipi svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.sec-h span{font-size:13px;color:var(--soft)}
+/* expanding cover gallery */
+.gal{display:flex;gap:6px;height:132px}
+.gi{position:relative;flex:1 1 0;min-width:0;padding:0;border:0;border-radius:12px;overflow:hidden;background:#f0f1f4;cursor:pointer;transition:flex-grow 520ms cubic-bezier(.22,1,.36,1)}
+.gi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gi:hover img{filter:brightness(1.05)}
+.gi .cap{position:absolute;left:10px;bottom:9px;padding:3px 9px;border-radius:999px;background:rgba(25,31,44,.62);color:#ffffff;font-size:12px;font-weight:500;white-space:nowrap;transition:opacity 300ms}
+.gi .solid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:background 300ms ease}
+.gi .solid i{width:22px;height:22px;border-radius:50%;opacity:.9}
+.gi .solid em{width:34px;height:4px;border-radius:2px;opacity:.55}
+.gi .solid em+em{width:22px;margin-top:-2px}
+.gi.up{display:grid;place-items:center;flex:0 0 72px;border:1px dashed #c9ccd3;background:#ffffff;color:var(--soft);font:inherit;font-size:12px}
+.gi.up svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+/* profile */
+.idrow{display:flex;align-items:center;gap:18px}
+.avw{position:relative;width:72px;height:72px;flex:none;border-radius:50%;overflow:hidden;cursor:pointer}
+.avw svg.lg{width:100%;height:100%}
+.avw span{position:absolute;inset:0;display:grid;place-items:center;background:rgba(25,31,44,.55);color:#fff;font-size:12px;font-weight:600;opacity:0;transition:opacity 160ms}
+.avw:hover span{opacity:1}
+.fl{position:relative;display:block}
+.fl input,.fl textarea{display:block;width:100%;padding:20px 12px 7px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;font:inherit;color:#191f2c;outline:none;transition:border-color 160ms,box-shadow 160ms}
+.fl textarea{height:92px;resize:none}
+.fl input:focus,.fl textarea:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.fl em{position:absolute;left:13px;top:7px;font-style:normal;font-size:11.5px;font-weight:500;color:var(--soft);pointer-events:none}
+.fl small{position:absolute;right:12px;bottom:8px;font-size:11.5px;color:#9aa0ab}
+/* animated reorder list */
+.rlist{position:relative;border:1px solid var(--line);border-radius:12px;background:#ffffff;transition:height 300ms ease}
+.ri{position:absolute;left:0;right:0;display:flex;align-items:center;gap:12px;height:60px;padding:0 8px 0 12px;transition:transform 420ms cubic-bezier(.34,1.25,.64,1),background 160ms}
+.ri:hover{background:#fafbfc}
+.ri+.ri::before{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line)}
+.ki{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;background:#f3f4f7;color:#4b5060}
+.ki svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ri b{display:block;font-weight:500}
+.ri span span{display:block;font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acts{display:flex;gap:2px;opacity:0;transition:opacity 140ms}
+.ri:hover .acts,.ri:focus-within .acts{opacity:1}
+.confirm{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--soft)}
+.confirm button{height:30px;padding:0 10px;border:0;border-radius:7px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.addrow{display:inline-flex;align-items:center;gap:6px;height:36px;margin-top:10px;padding:0 10px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#2340c8;cursor:pointer}
+.addrow:hover{background:#eef2ff}
+.addform{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;margin-top:10px;animation:fadeUp 300ms ease both}
+.inp{display:block;width:100%;height:38px;padding:0 12px;border:1px solid #dfe1e6;border-radius:8px;background:#ffffff;font:inherit;color:#191f2c;outline:none}
+.inp:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.prim{height:38px;padding:0 16px;border:0;border-radius:8px;background:#2340c8;color:#ffffff;font:inherit;font-weight:500;cursor:pointer}
+.shoprow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.switch{position:relative;width:38px;height:22px;flex:none;border:0;border-radius:999px;cursor:pointer;transition:background 200ms}
+.switch i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform 260ms cubic-bezier(.34,1.5,.64,1)}
+/* visual pickers */
+.tiles{display:grid;gap:12px}
+.tile{position:relative;padding:10px;border:1px solid #dfe1e6;border-radius:14px;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:border-color 160ms,box-shadow 160ms,transform 260ms cubic-bezier(.34,1.4,.64,1)}
+.tile:hover{border-color:#c9ccd3}
+.tile.on{border-color:#2340c8;box-shadow:0 0 0 1px #2340c8;background:#f6f8ff}
+.tile .tick{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#2340c8;transform:scale(0);transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
+.tile.on .tick{transform:scale(1)}
+.tile .nm{display:block;margin-top:8px;font-size:12.5px;font-weight:500}
+.mini{display:flex;flex-direction:column;align-items:center;gap:5px;height:96px;padding:12px 10px;border-radius:10px;transition:background 300ms}
+.mini i{display:block;width:100%;height:12px;border-radius:999px}
+.mini b{display:block;width:44%;height:7px;margin-bottom:3px;border-radius:4px}
+.swatches{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.sw{position:relative;display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:50%;cursor:pointer;transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
+.sw:hover{transform:scale(1.1)}
+.sw svg{transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
+.hex{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border:1px solid #dfe1e6;border-radius:999px;font-family:var(--m);font-size:12.5px;color:var(--soft)}
+.hex input{width:62px;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.flist{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fr{display:flex;align-items:center;gap:14px;width:100%;height:58px;padding:0 16px;border:0;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:background 160ms}
+.fr+.fr{border-top:1px solid var(--line)}
+.fr:hover{background:#fafbfc}
+.fr b{flex:1;font-size:22px;line-height:1;color:#191f2c}
+.fr span{font-size:12.5px;color:var(--soft)}
+.fr .rd{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;transition:background 200ms,box-shadow 200ms}
+.socials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.soc{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 6px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;cursor:text;transition:border-color 160ms,box-shadow 160ms}
+.soc:focus-within{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.soc-ic{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:8px;transition:background 200ms,color 200ms}
+.soc-ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.soc-pre{font-size:13px;color:#9aa0ab;white-space:nowrap}
+.soc input{flex:1;min-width:0;height:100%;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.pv-icons{display:flex;gap:16px;margin-top:-2px}
+.pv-icons svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;animation:fadeUp 300ms ease both}
+/* preview */
+.pv{position:sticky;top:0;align-self:start;height:calc(100vh - 64px);min-height:836px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden;background:#f6f7fb;border-left:1px solid var(--line)}
+.pv>*{position:relative}
+.pv .blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.pv .blob{position:absolute;width:80%;aspect-ratio:1;border-radius:50%;filter:blur(30px);animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.pv .b1{left:-30%;top:-15%;animation-name:pb1;animation-duration:18s}
+.pv .b2{right:-35%;top:15%;animation-name:pb2;animation-duration:22s}
+.pv .b3{left:-10%;bottom:-30%;animation-name:pb3;animation-duration:20s}
+.pv .b4{right:-20%;bottom:-25%;width:60%;animation-name:pb4;animation-duration:25s}
+@keyframes pb1{to{transform:translate(25%,20%) scale(1.15)}}
+@keyframes pb2{to{transform:translate(-25%,20%) scale(.9)}}
+@keyframes pb3{to{transform:translate(20%,-20%) scale(1.2)}}
+@keyframes pb4{to{transform:translate(-25%,-15%) scale(1.1)}}
+.pv .grain{position:absolute;inset:0;width:100%;height:100%;opacity:.1;mix-blend-mode:multiply}
+@media (prefers-reduced-motion: reduce){.pv .blob{animation:none}}
+.phone{width:310px;height:630px;padding:8px;border-radius:46px;background:#ffffff;box-shadow:0 0 0 1px #e1e4e9,0 30px 60px -32px rgba(25,31,44,.3)}
+.scr{position:relative;width:100%;height:100%;overflow:hidden;border-radius:38px;font-family:'Inter',system-ui,sans-serif;transition:background 300ms ease,color 300ms ease}
+.pv-photo{position:absolute;inset:0 0 auto 0;height:54%;transition:opacity 300ms ease}
+.pv-photo img{display:block;width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 38%,transparent 100%);mask-image:linear-gradient(to bottom,#000 38%,transparent 100%)}
+.pv-body{position:absolute;inset:auto 0 0 0;top:22%;transition:top 420ms cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;align-items:center;gap:9px;padding:0 16px 16px;text-align:center}
+.pv-av{width:58px;height:58px;border-radius:50%}
+.pv-name{margin:0;font-size:31px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.pv-handle{margin:-4px 0 0;font-family:var(--m);font-size:10.5px;opacity:.7}
+.pv-bio{margin:0;font-size:12px;line-height:1.45;opacity:.8}
+.pv-tabs{display:grid;padding:3px;border-radius:999px;font-size:12px;font-weight:600}
+.pv-tabs>span{padding:6px 15px;border-radius:999px;transition:background 200ms,color 200ms}
+.pv-links{display:grid;gap:6px;width:100%}
+.pv-links>span{display:block;padding:4px;border-radius:999px}
+.pv-links>span>span{display:block;padding:9px 12px;border-radius:999px;font-size:13px;font-weight:600}
+.pv-chat{display:flex;flex-direction:column;gap:7px;width:100%;text-align:left}
+.pv-q{align-self:flex-end;max-width:86%;padding:8px 12px;border-radius:16px 16px 5px 16px;background:#ffffff;color:#191f2c;font-size:12.5px}
+.pv-a{align-self:flex-start;max-width:90%;padding:8px 12px;border-radius:16px 16px 16px 5px;font-size:12.5px}
+.pv-shop{display:grid;gap:6px;width:100%}
+.pv-shop>span{display:flex;align-items:center;gap:10px;padding:5px;border-radius:999px;text-align:left;font-size:12.5px;font-weight:600}
+.pv-shop img,.pv-shop i{width:30px;height:30px;flex:none;border-radius:50%;object-fit:cover}
+.pv-shop em{margin-left:auto;margin-right:8px;font-style:normal;font-weight:500;opacity:.8}
+.pv-ask{display:flex;align-items:center;gap:8px;width:100%;margin-top:auto;padding:4px 4px 4px 14px;border-radius:999px;background:#ffffff;color:#696e7b;font-size:12.5px;text-align:left}
+.pv-send{display:grid;place-items:center;width:28px;height:28px;margin-left:auto;border-radius:50%}
+.seg{position:relative;display:grid;grid-template-columns:repeat(3,76px);padding:3px;border-radius:999px;background:#ffffff;box-shadow:0 0 0 1px #e1e4e9}
+.seg-th{position:absolute;top:3px;bottom:3px;left:3px;width:76px;border-radius:999px;background:#2340c8;transition:transform 360ms cubic-bezier(.34,1.3,.64,1)}
+.seg button{position:relative;z-index:1;height:30px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:color 200ms}
+@media (prefers-reduced-motion: reduce){.wrapc,.addform{animation:none}.gi,.ri,.uline,.seg-th,.tile,.sw,.switch i{transition:none}}
+/* empty states + preview toggle */
+.es{display:flex;flex-direction:column;align-items:center;gap:6px;padding:44px 24px 40px;text-align:center;animation:fadeUp 420ms cubic-bezier(.22,1,.36,1) both}
+.es-art{position:relative;width:236px;height:124px;margin-bottom:16px}
+.es-rows{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;-webkit-mask-image:linear-gradient(to bottom,#000 30%,transparent 100%);mask-image:linear-gradient(to bottom,#000 30%,transparent 100%)}
+.gr{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:12px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef,0 8px 16px -12px rgba(25,31,44,.3);animation:ghost 3.4s ease-in-out infinite}
+.gr i{width:20px;height:20px;flex:none;border-radius:6px}
+.gr b{width:46%;height:7px;border-radius:4px;background:#e4e7eb}
+.gr em{width:16%;height:7px;margin-left:auto;border-radius:4px;background:#eef0f4}
+.gr:nth-child(2){margin:0 14px;animation-delay:.25s}
+.gr:nth-child(3){margin:0 28px;animation-delay:.5s}
+@keyframes ghost{50%{transform:translateY(-3px)}}
+.es-badge{position:absolute;right:-16px;top:-14px;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;color:#ffffff;box-shadow:0 12px 24px -12px rgba(25,31,44,.6);transform:rotate(8deg);animation:esbob 3.6s ease-in-out infinite}
+.es-badge svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes esbob{50%{transform:rotate(4deg) translateY(-4px)}}
+.es h3{margin:0;font-size:17px;font-weight:600;color:#191f2c}
+.es p{max-width:32em;margin:0;font-size:13.5px;line-height:1.55;color:var(--soft)}
+.es-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.es.sm{padding:28px 16px}
+.es.sm .es-art{width:190px;height:96px;margin-bottom:10px}
+.es.sm .gr{height:30px}
+.demo{position:fixed;left:248px;bottom:16px;z-index:26;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:rgba(25,31,44,.94);box-shadow:0 12px 30px -12px rgba(0,0,0,.55);font-family:'IBM Plex Sans',sans-serif;font-size:12px}
+.is-new .nav .ct{display:none}
+.demo>span{padding:0 8px 0 10px;color:#9aa0ab}
+.demo button{height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:#d5d8de;font:inherit;font-weight:600;cursor:pointer;transition:background 160ms,color 160ms}
+.demo button[aria-pressed="true"]{background:#fafbfc;color:#191f2c}
+@media (max-width:1100px){.demo{left:88px}}
+@media (max-width:760px){.demo{left:16px}}
+@media (prefers-reduced-motion: reduce){.es,.gr,.es-badge{animation:none}}
+/* responsive: tablet and phone */
+@media (hover: none){.acts,.it .acts,.kr .acts,.ri .acts{opacity:1}.word .wa2{max-width:200px;opacity:1}}
+@media (max-width:1200px){
+.body{grid-template-columns:minmax(0,1fr)}
+.body>.pv{display:flex;position:relative;top:auto;height:auto;min-height:0;padding:40px 16px;border-left:0;border-top:1px solid var(--line)}
+}
+@media (max-width:1100px){
+.side{width:72px;padding:18px 10px 14px}
+.brand{padding:4px 0 18px;text-align:center}
+.brand .mark{font-size:16px}
+.nav .grp{height:1px;margin:10px 8px;overflow:hidden;font-size:0;background:var(--line)}
+.nav a{position:relative;justify-content:center;gap:0;padding:0;font-size:0}
+.nav a svg{width:18px;height:18px}
+.nav .ct{position:absolute;top:3px;right:5px;display:grid;place-items:center;min-width:15px;height:15px;margin:0;padding:0 4px;border-radius:8px;background:#2340c8;color:#ffffff;font-size:9.5px}
+.acct{justify-content:center;padding:10px 0}
+.acct>span{display:none}
+.ob{grid-template-columns:minmax(0,1fr)}
+.ocol{border-right:0;border-bottom:1px solid var(--line)}
+.olist{max-height:380px;overflow-y:auto}
+.rv,.kb{grid-template-columns:minmax(0,1fr)}
+.side2,.tester{border-left:0;border-top:1px solid var(--line)}
+.bl-top{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:900px){
+.dgrid,.ansgrid,.lgrid,.conf2{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+.app{flex-direction:column}
+.side{position:sticky;top:0;z-index:15;flex-direction:row;align-items:center;gap:4px;width:100%;height:auto;min-height:0;padding:8px 10px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);scrollbar-width:none}
+.side::-webkit-scrollbar{display:none}
+.brand{flex:none;padding:0 10px 0 4px}
+.nav{display:flex;flex:none;gap:2px}
+.nav .grp{width:1px;height:22px;margin:0 4px;align-self:center}
+.nav a{flex:none;width:42px;height:40px}
+.acct{display:none}
+.head{flex-wrap:wrap;height:auto;min-height:56px;padding:10px 16px;gap:8px 10px}
+.head .url{display:none}
+.stats{grid-template-columns:minmax(0,1fr);gap:8px;padding:14px 16px 0}
+.kpi{padding:12px 14px}
+.ob{margin-top:14px}
+.edit,.dcol,.kmain{padding-left:16px;padding-right:16px}
+.dcol{padding-top:20px}
+.utabs,.ktabs{overflow-x:auto;scrollbar-width:none}
+.utabs::-webkit-scrollbar,.ktabs::-webkit-scrollbar{display:none}
+.utabs button,.ktabs button{flex:none}
+.sec-h{flex-direction:column;align-items:flex-start;gap:4px}
+.gal{height:110px}
+.socials,.grid2{grid-template-columns:minmax(0,1fr)}
+.tiles{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))!important}
+.addform{grid-template-columns:minmax(0,1fr)}
+.ready{grid-template-columns:minmax(0,1fr)}
+.it .avl{width:auto;font-size:0}
+.ed{padding:16px}
+.ed-top{grid-template-columns:minmax(0,1fr)}
+.ph{width:100%;height:180px}
+.opt{grid-template-columns:minmax(0,1fr) 112px 34px}
+.ed-foot{flex-wrap:wrap}
+.qrcard{flex-direction:column;align-items:flex-start}
+.days{grid-template-columns:repeat(5,minmax(0,1fr))}
+.ftabs button{font-size:12px;gap:4px}
+.dh,.lh{flex-wrap:wrap}
+.dh h2{font-size:23px}
+.wa,.wa-btn{margin-left:0}
+.actbar{flex-wrap:wrap}
+.rc{flex-direction:column;align-items:flex-start}
+.qh{flex-direction:column;gap:12px}
+.qh h2{font-size:23px}
+.qspark{margin-left:0}
+.ren{flex-wrap:wrap}
+.lh .big-ph{font-size:23px}
+.sseg{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}
+.sseg .thm{width:calc((100% - 8px) / 3)}
+.stage{padding:20px 16px 32px}
+.prog{flex-wrap:wrap}
+.deck{height:620px}
+.fc{height:600px;padding:20px 18px}
+.claim{font-size:21px}
+.facts{flex-wrap:wrap}
+.rj,.ed2{padding:0 16px}
+.ac{flex:1 1 100%;margin-left:0}
+.ktool{flex-wrap:wrap}
+.search{flex:1 1 100%}
+.kr{flex-wrap:wrap}
+.kr .ko{max-width:100%}
+.sc2{flex-wrap:wrap}
+.tester{padding:20px 16px}
+.bl,.swrap{padding:20px 16px 40px}
+.bl-big b{font-size:36px}
+.bl-pay{flex-direction:column;align-items:stretch}
+.bl-pay .go{justify-content:center}
+.bl-r{grid-template-columns:minmax(0,1fr) auto auto;padding:10px 16px}
+.bl-r.hd2{display:none}
+.bl-r>span:nth-child(2),.bl-r>span:nth-child(5){display:none}
+.bl-box,.mbox{width:calc(100vw - 32px);max-width:420px}
+.setr{flex-wrap:wrap}
+.pwf{flex-wrap:wrap;padding-left:16px}
+.meterpw{padding-left:16px}
+}
+/* the content column can be narrow on a wide screen, so the inner layouts follow their own width */
+.dcol,.kmain,.edit,.bl,.swrap,.stage,.side2,.tester{container-type:inline-size}
+.lh .big-ph{white-space:nowrap}
+@media (min-width:1101px) and (max-width:1400px){.ob{grid-template-columns:340px minmax(0,1fr)}}
+@media (max-width:1000px){.kpi .spark{display:none}}
+.slots{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.slots .meter{grid-column:1 / -1;flex-direction:row;gap:12px;padding:12px}
+@container (max-width:760px){
+.dgrid,.ansgrid,.lgrid,.conf2,.bl-top{grid-template-columns:minmax(0,1fr)}
+.slots .meter svg{width:40px;height:40px}
+.dh,.lh{flex-wrap:wrap}
+.wa,.wa-btn{margin-left:0}
+.actbar{flex-wrap:wrap}
+.actbar p{flex:1 1 100%}
+.rc{flex-direction:column;align-items:flex-start}
+.qh{flex-direction:column;gap:12px}
+.qspark{margin-left:0}
+.ed-top{grid-template-columns:minmax(0,1fr)}
+.ph{width:100%;height:180px}
+}
+@container (max-width:520px){
+.lh .big-ph,.dh h2,.qh h2{font-size:23px}
+.sseg{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}
+.sseg .thm{width:calc((100% - 8px) / 3)}
+.socials,.grid2,.bl-pick{grid-template-columns:minmax(0,1fr)}
+.opt{grid-template-columns:minmax(0,1fr) 112px 34px}
+.days{grid-template-columns:repeat(5,minmax(0,1fr))}
+.reply .rh{flex-wrap:wrap}
+}
+@media (min-width:1201px) and (max-width:1400px){.rv,.kb{grid-template-columns:minmax(0,1fr) 360px}.body{grid-template-columns:minmax(0,1fr) 380px}}
+@media (max-width:1200px){.rv,.kb{grid-template-columns:minmax(0,1fr)}.side2,.tester{border-left:0;border-top:1px solid var(--line)}}
+.ktabs{overflow-x:auto;scrollbar-width:none}
+.ktabs button{flex:none;white-space:nowrap}
+.avl{white-space:nowrap}
+@container (max-width:680px){
+.kr .kc{flex:1 1 100%}
+.kr .ko{margin-right:auto}
+.it .avl{width:auto;font-size:0}
+.ready{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+</helmet>
+
+<div class="app {{appCls}}">
+<aside class="side" aria-label="Main navigation">
+<div class="brand"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios</span></div>
+<nav class="nav">
+<p class="grp">Page</p>
+<a href="#" class="on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6"></path></svg> My Curios</a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path></svg> Store</a>
+<p class="grp">Inbox</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4"></path></svg> Orders<span class="ct">1</span></a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01"></path></svg> Questions<span class="ct">1</span></a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z"></path></svg> Leads</a>
+<p class="grp">Knowledge</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg> Review<span class="ct">3</span></a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg> Facts &amp; sources</a>
+<p class="grp">Account</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v13H3zM3 10h18"></path></svg> Billing</a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg> Settings</a>
+</nav>
+<div class="acct"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span style="min-width: 0"><b>Kek Lina</b><span>Business plan</span></span></div>
+</aside>
+
+<main class="main">
+<div class="head">
+<h1>My Curios</h1>
+<span class="status" aria-live="polite" style="background: {{stBg}}; color: {{stFg}}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"></animateTransform></path></svg></sc-if><sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>{{saveText}}</span>
+<span class="url">curios.my/keklina<button type="button" class="icb" aria-label="Copy link" title="{{copyText}}" onClick="{{ copy }}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"></path></svg></button></span>
+<a class="sec-btn" href="#view">View page</a>
+</div>
+
+<div class="body">
+<div class="edit">
+<div class="utabs" role="tablist" aria-label="Edit">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}">{{t.label}}</button></sc-for>
+<span class="uline" style="transform: translateX({{ulineX}}px)"></span>
+</div>
+
+<sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
+<div class="wrapc" role="tabpanel" aria-label="Profile">
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01"></path></svg></span>Cover photo</b><span>Optional. Pick one, upload your own, or go with a solid colour</span></p>
+<div class="gal">
+<sc-for list="{{ covers }}" as="c" hint-placeholder-count="8"><button type="button" class="gi" aria-pressed="{{c.on}}" aria-label="{{c.label}}" onClick="{{ c.pick }}" style="flex-grow: {{c.grow}}"><sc-if value="{{ c.isNone }}" hint-placeholder-val="{{ false }}"><span class="solid" aria-hidden="true" style="background: {{c.swatch}}"><i style="background: {{c.dot}}"></i><em style="background: {{c.ink}}"></em><em style="background: {{c.ink}}"></em></span></sc-if><sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ true }}"><img src="{{c.src}}" alt="" style="object-position: {{c.focus}}"></sc-if><span class="cap" style="opacity: {{c.capO}}">{{c.label}}</span></button></sc-for>
+<button type="button" class="gi up" aria-label="Upload your own"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg></button>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0"></path></svg></span>You</b><span>Picture, name and a line about you</span></p>
+<div class="idrow">
+<button type="button" class="avw" aria-label="Change profile picture" style="padding: 0; border: 0; background: none"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span>Change</span></button>
+<label class="fl" style="flex: 1"><em>Display name</em><input value="{{ name }}" onChange="{{ setName }}" maxlength="40"></label>
+</div>
+<label class="fl" style="margin-top: 12px"><em>Bio</em><textarea maxlength="160" onChange="{{ setBio }}" value="{{ bio }}"></textarea><small>{{bioCount}}/160</small></label>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLinks }}" hint-placeholder-val="{{ false }}">
+<div class="wrapc" role="tabpanel" aria-label="Links">
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"></path></svg></span>Social profiles</b><span>Shown as icons under your name</span></p>
+<div class="socials">
+<sc-for list="{{ socials }}" as="so" hint-placeholder-count="6">
+<label class="soc" style="border-color: {{so.border}}">
+<span class="soc-ic" style="background: {{so.icBg}}; color: {{so.icFg}}"><svg viewBox="0 0 24 24"><path d="{{so.icon}}"></path></svg></span>
+<span class="sr">{{so.label}}</span>
+<span class="soc-pre">{{so.pre}}</span><input value="{{ so.val }}" placeholder="{{so.ph}}" onChange="{{ so.set }}" aria-label="{{so.label}}">
+</label>
+</sc-for>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span>Links</b><span>Top to bottom, as they appear</span></p>
+<sc-if value="{{ noLinks }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 14px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #eaf0ff"></i><b></b><em></em></span><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #2340c8"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span></div><h3>Add your first link</h3><p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ startAdd }}">+ Add a link</button></div></div></div></sc-if>
+<sc-if value="{{ hasLinks }}" hint-placeholder-val="{{ true }}"><div class="rlist" style="height: {{listH}}px">
+<sc-for list="{{ links }}" as="l" hint-placeholder-count="3">
+<div class="ri" style="transform: translateY({{l.y}}px)">
+<span class="ki" style="background: {{l.tint}}; color: {{l.ink}}"><svg viewBox="0 0 24 24"><path d="{{l.icon}}"></path></svg></span>
+<span style="flex: 1; min-width: 0"><b>{{l.name}}</b><span>{{l.url}}</span></span>
+<sc-if value="{{ l.confirming }}" hint-placeholder-val="{{ false }}"><span class="confirm">Remove?<button type="button" onClick="{{ l.remove }}" style="background: #fdecea; color: #b3261e">Yes, remove</button><button type="button" onClick="{{ l.keep }}" style="background: #f0f1f4">Keep</button></span></sc-if>
+<sc-if value="{{ l.idle }}" hint-placeholder-val="{{ true }}"><span class="acts">
+<button type="button" class="icb" title="Move up" aria-label="Move {{l.name}} up" disabled="{{ l.first }}" onClick="{{ l.up }}"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"></path></svg></button>
+<button type="button" class="icb" title="Move down" aria-label="Move {{l.name}} down" disabled="{{ l.last }}" onClick="{{ l.down }}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"></path></svg></button>
+<button type="button" class="icb" title="Remove" aria-label="Remove {{l.name}}" onClick="{{ l.ask }}"><svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12"></path></svg></button>
+</span></sc-if>
+</div>
+</sc-for>
+</div></sc-if>
+<sc-if value="{{ adding }}" hint-placeholder-val="{{ false }}">
+<div class="addform">
+<input class="inp" aria-label="Name" placeholder="Name" value="{{ newName }}" onChange="{{ setNewName }}">
+<input class="inp" aria-label="Address" placeholder="https://" value="{{ newUrl }}" onChange="{{ setNewUrl }}">
+<span style="display: flex; gap: 4px"><button type="button" class="prim" onClick="{{ addLink }}">Add</button><button type="button" class="icb" aria-label="Cancel" onClick="{{ cancelAdd }}" style="width: 38px; height: 38px"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></span>
+</div>
+</sc-if>
+<sc-if value="{{ showAddRow }}" hint-placeholder-val="{{ true }}"><button type="button" class="addrow" onClick="{{ startAdd }}">+ Add link</button></sc-if>
+</section>
+<section class="sec">
+<div class="shoprow">
+<span class="ki" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path></svg></span>
+<span style="flex: 1"><b style="display: block; font-weight: 600">Shop tab</b><span style="font-size: 13px; color: #696e7b">Sits next to Links and Ask · 4 items</span></span>
+<button type="button" class="switch" role="switch" aria-checked="{{ shopOn }}" aria-label="Show the Shop tab" onClick="{{ toggleShop }}" style="background: {{shopBg}}"><i style="transform: translateX({{shopX}})"></i></button>
+</div>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ isLook }}" hint-placeholder-val="{{ false }}">
+<div class="wrapc" role="tabpanel" aria-label="Appearance">
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"></path></svg></span>Style</b><span>How your buttons look</span></p>
+<div class="tiles" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+<sc-for list="{{ styles }}" as="s" hint-placeholder-count="2"><button type="button" class="tile {{s.cls}}" aria-pressed="{{s.on}}" onClick="{{ s.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: #f3f4f7; height: 84px"><i style="background: {{s.p1}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i></span><span class="nm">{{s.label}} <span style="color: #696e7b; font-weight: 400">· {{s.note}}</span></span></button></sc-for>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 15l5-5 4 4 3-3 4 4"></path></svg></span>Background</b><span>Behind your whole page</span></p>
+<div class="tiles" style="grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{ bgs }}" as="b" hint-placeholder-count="6"><button type="button" class="tile {{b.cls}}" aria-pressed="{{b.on}}" onClick="{{ b.pick }}" style="padding: 6px"><span class="tick" style="top: 4px; right: 4px; width: 18px; height: 18px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: {{b.swatch}}; height: 76px"><b style="background: {{b.ink}}"></b><i style="background: {{accent}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i></span><span class="nm" style="text-align: center; margin-top: 6px">{{b.label}}</span></button></sc-for>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.7 0 2-1.3 1.4-2.3-.6-1-.2-2.7 1.6-2.7H17a4 4 0 0 0 4-4 9 9 0 0 0-9-9zM7.5 11h.01M10 7h.01M15 7.5h.01"></path></svg></span>Accent colour</b><span>Your first link and the send button</span></p>
+<div class="swatches">
+<sc-for list="{{ accents }}" as="a" hint-placeholder-count="9"><button type="button" class="sw" aria-label="{{a.label}}" aria-pressed="{{a.on}}" onClick="{{ a.pick }}" style="background: {{a.hex}}; box-shadow: 0 0 0 {{a.gap}} #ffffff, 0 0 0 {{a.ring}} {{a.hex}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="{{a.tickC}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transform: scale({{a.tickS}})"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-for>
+<span class="hex">#<input aria-label="Accent colour as hex" value="{{ hexText }}" onChange="{{ setHex }}" maxlength="6"></span>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M5 19L10.5 5h3L19 19M7.5 13.5h9"></path></svg></span>Heading font</b><span>Used for your name</span></p>
+<div class="flist">
+<sc-for list="{{ fonts }}" as="f" hint-placeholder-count="6"><button type="button" class="fr" aria-pressed="{{f.on}}" onClick="{{ f.pick }}"><b style="font-family: {{f.css}}">{{name}}</b><span>{{f.label}}</span><span class="rd" style="background: {{f.rdBg}}; box-shadow: inset 0 0 0 {{f.rdRing}} {{f.rdC}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{f.tickO}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button></sc-for>
+</div>
+</section>
+</div>
+</sc-if>
+</div>
+
+<div class="pv" aria-label="Live preview">
+<div class="blobs" aria-hidden="true" style="position: absolute"><span class="blob b1" style="background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span><span class="blob b2" style="background: radial-gradient(circle, #f6c9d5 0%, transparent 65%)"></span><span class="blob b3" style="background: radial-gradient(circle, #ffe2b8 0%, transparent 65%)"></span><span class="blob b4" style="background: radial-gradient(circle, #bfe3d6 0%, transparent 65%)"></span><svg class="grain"><filter id="pgn"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#pgn)"></rect></svg></div>
+<div class="phone">
+<div class="scr" style="background: {{pv.bg}}; color: {{pv.fg}}">
+<div class="pv-photo" style="opacity: {{pv.coverO}}"><sc-if value="{{ pv.hasCover }}" hint-placeholder-val="{{ true }}"><img src="{{pv.cover}}" alt="" style="object-position: {{pv.focus}}"></sc-if></div>
+<div class="pv-body" style="top: {{pv.bodyTop}}">
+<svg viewBox="0 0 120 120" aria-hidden="true" class="pv-av" style="box-shadow: 0 0 0 4px {{pv.bg}}"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg>
+<p class="pv-name" style="font-family: {{pv.font}}">{{name}}</p>
+<p class="pv-handle">curios.my/keklina</p>
+<sc-if value="{{ hasSocial }}" hint-placeholder-val="{{ true }}"><span class="pv-icons" aria-label="Social profiles"><sc-for list="{{ pvSocial }}" as="ps" hint-placeholder-count="3"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ps.icon}}"></path></svg></sc-for></span></sc-if>
+<p class="pv-bio">{{bio}}</p>
+<span class="pv-tabs" style="grid-template-columns: {{pv.tabCols}}; background: {{pv.tabTrack}}">
+<sc-for list="{{ pv.tabs }}" as="pt" hint-placeholder-count="3"><span style="background: {{pt.bg}}; color: {{pt.fg}}">{{pt.label}}</span></sc-for>
+</span>
+<sc-if value="{{ pv.noLinksShown }}" hint-placeholder-val="{{ false }}"><span style="display: block; width: 100%; padding: 14px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px; font-size: 12px; opacity: 0.8">Your links show here</span></sc-if><sc-if value="{{ pv.showLinks }}" hint-placeholder-val="{{ true }}"><span class="pv-links"><sc-for list="{{ pv.links }}" as="p" hint-placeholder-count="3"><span style="background: {{p.outer}}"><span style="background: {{p.inner}}; color: {{p.fg}}">{{p.name}}</span></span></sc-for></span></sc-if>
+<sc-if value="{{ pv.showAsk }}" hint-placeholder-val="{{ false }}"><span class="pv-chat"><span class="pv-q">Do you deliver to Klang?</span><span class="pv-a" style="background: {{pv.tint}}; color: #191f2c">Yes, delivery to Klang is RM15. Shah Alam is RM10.</span></span></sc-if>
+<sc-if value="{{ pv.showShop }}" hint-placeholder-val="{{ false }}"><span class="pv-shop">
+<span style="background: {{pv.rowBg}}"><img src="/_blob/63d877cef1ea5c67a363dfd5ea183c12" alt="">Kek coklat<em>RM95</em></span>
+<span style="background: {{pv.rowBg}}"><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="object-position: 72% 80%">Kek batik<em>RM45</em></span>
+<span style="background: {{pv.rowBg}}"><i style="background: #f6c9d5"></i>Cookies balang<em>RM25</em></span>
+</span></sc-if>
+<span class="pv-ask" style="box-shadow: inset 0 0 0 1.5px {{pv.askRing}}">Ask {{name}} anything<span class="pv-send" style="background: {{accent}}"><svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></span>
+</div>
+</div>
+</div>
+<div class="seg" role="tablist" aria-label="Preview tab">
+<span class="seg-th" style="transform: translateX({{segX}}px)"></span>
+<sc-for list="{{ segs }}" as="g" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{g.on}}" onClick="{{ g.go }}" style="color: {{g.fg}}">{{g.label}}</button></sc-for>
+</div>
+</div>
+</div>
+</main>
+<div class="demo" role="group" aria-label="Design preview"><span>Preview</span><button type="button" aria-pressed="{{ demoFull }}" onClick="{{ showFull }}">Sample data</button><button type="button" aria-pressed="{{ demoEmpty }}" onClick="{{ showEmpty }}">New account</button></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.coverList = [
+      { id: 'none', label: 'No photo', src: '', focus: '50% 50%' },
+      { id: 'kedai', label: 'Shopfront', src: '/_blob/00f6c0818827d90d83c2cd9e3342676e', focus: '55% 50%' },
+      { id: 'kopi', label: 'Coffee', src: '/_blob/70c73e99a20a4b61f68d0a9c487e932b', focus: '30% 50%' },
+      { id: 'bunga', label: 'Flowers', src: '/_blob/8c12272a54670861ce6afc463dd85cd0', focus: '50% 50%' },
+      { id: 'cyber', label: 'Cyber', src: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAwIDYwMCIgcHJlc2VydmVBc3BlY3RSYXRpbz0ieE1pZFlNaWQgc2xpY2UiPgo8ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9InMiIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiMwYjBhMjQiLz48c3RvcCBvZmZzZXQ9Ii41NSIgc3RvcC1jb2xvcj0iIzNhMTQ2OCIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iI2QwMzU5YSIvPjwvbGluZWFyR3JhZGllbnQ+CjxsaW5lYXJHcmFkaWVudCBpZD0iZyIgeDE9IjAiIHkxPSIwIiB4Mj0iMCIgeTI9IjEiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iIzJhMGU0ZiIvPjxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzA3MDYxYSIvPjwvbGluZWFyR3JhZGllbnQ+CjxyYWRpYWxHcmFkaWVudCBpZD0ic3VuIiBjeD0iLjUiIGN5PSIuNSIgcj0iLjUiPjxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2ZmZDM2ZSIvPjxzdG9wIG9mZnNldD0iLjYiIHN0b3AtY29sb3I9IiNmZjRmZDgiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNmZjRmZDgiIHN0b3Atb3BhY2l0eT0iMCIvPjwvcmFkaWFsR3JhZGllbnQ+CjxmaWx0ZXIgaWQ9ImIiPjxmZUdhdXNzaWFuQmx1ciBzdGREZXZpYXRpb249IjMiLz48L2ZpbHRlcj48L2RlZnM+CjxyZWN0IHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjM2MCIgZmlsbD0idXJsKCNzKSIvPgo8Y2lyY2xlIGN4PSI3NjAiIGN5PSIyNTAiIHI9IjE3MCIgZmlsbD0idXJsKCNzdW4pIiBvcGFjaXR5PSIuODUiLz4KPHJlY3QgeD0iMCIgeT0iMjQyIiB3aWR0aD0iNTYiIGhlaWdodD0iMTE4IiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iNjEiIHk9IjI2OCIgd2lkdGg9Ijc3IiBoZWlnaHQ9IjkyIiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iMTQwIiB5PSIxNDMiIHdpZHRoPSI4OCIgaGVpZ2h0PSIyMTciIGZpbGw9IiMxNDBiMmUiLz48cmVjdCB4PSIyMzAiIHk9IjEzMSIgd2lkdGg9IjU5IiBoZWlnaHQ9IjIyOSIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9IjI5MSIgeT0iMjI2IiB3aWR0aD0iNjgiIGhlaWdodD0iMTM0IiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iMzYxIiB5PSIxNjkiIHdpZHRoPSI0MSIgaGVpZ2h0PSIxOTEiIGZpbGw9IiMxNDBiMmUiLz48cmVjdCB4PSI0MDciIHk9IjIxOSIgd2lkdGg9IjQwIiBoZWlnaHQ9IjE0MSIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9IjQ0OSIgeT0iMTcyIiB3aWR0aD0iNzEiIGhlaWdodD0iMTg4IiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iNTIyIiB5PSIxMzYiIHdpZHRoPSI4OCIgaGVpZ2h0PSIyMjQiIGZpbGw9IiMxNDBiMmUiLz48cmVjdCB4PSI2MTIiIHk9IjEzMSIgd2lkdGg9IjUwIiBoZWlnaHQ9IjIyOSIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9IjY2NCIgeT0iMTMxIiB3aWR0aD0iNzIiIGhlaWdodD0iMjI5IiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iNzQxIiB5PSIyMjQiIHdpZHRoPSIzOSIgaGVpZ2h0PSIxMzYiIGZpbGw9IiMxNDBiMmUiLz48cmVjdCB4PSI3ODIiIHk9IjI0NiIgd2lkdGg9IjcxIiBoZWlnaHQ9IjExNCIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9Ijg1NyIgeT0iMjQ0IiB3aWR0aD0iNjIiIGhlaWdodD0iMTE2IiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iOTI1IiB5PSIxMzQiIHdpZHRoPSI0MyIgaGVpZ2h0PSIyMjYiIGZpbGw9IiMxNDBiMmUiLz48cmVjdCB4PSI5NzIiIHk9IjIzNCIgd2lkdGg9IjcxIiBoZWlnaHQ9IjEyNiIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9IjEwNDUiIHk9IjEzNCIgd2lkdGg9IjczIiBoZWlnaHQ9IjIyNiIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9IjExMjUiIHk9IjE4NSIgd2lkdGg9IjQ4IiBoZWlnaHQ9IjE3NSIgZmlsbD0iIzE0MGIyZSIvPjxyZWN0IHg9IjExNzUiIHk9IjI2NCIgd2lkdGg9IjcxIiBoZWlnaHQ9Ijk2IiBmaWxsPSIjMTQwYjJlIi8+PHJlY3QgeD0iNiIgeT0iMjU0IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjc1Ii8+PHJlY3QgeD0iMjYiIHk9IjI2OCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC41NCIvPjxyZWN0IHg9IjM2IiB5PSIyODIiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNTgiLz48cmVjdCB4PSIzNiIgeT0iMjk2IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjY3Ii8+PHJlY3QgeD0iMjYiIHk9IjMxMCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC45NyIvPjxyZWN0IHg9IjYiIHk9IjMyNCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC44MiIvPjxyZWN0IHg9IjE2IiB5PSIzMzgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNjgiLz48cmVjdCB4PSIxMTciIHk9IjI4MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43NyIvPjxyZWN0IHg9IjY3IiB5PSIzMDgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNTgiLz48cmVjdCB4PSI4NyIgeT0iMzA4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjYzIi8+PHJlY3QgeD0iOTciIHk9IjMwOCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43NyIvPjxyZWN0IHg9IjEyNyIgeT0iMzA4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjczIi8+PHJlY3QgeD0iMTA3IiB5PSIzMzYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNTUiLz48cmVjdCB4PSIxNjYiIHk9IjE1NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC44MSIvPjxyZWN0IHg9IjE3NiIgeT0iMTU1IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjk4Ii8+PHJlY3QgeD0iMjA2IiB5PSIxNTUiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjEuMDAiLz48cmVjdCB4PSIxNTYiIHk9IjE2OSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC44NyIvPjxyZWN0IHg9IjIwNiIgeT0iMTgzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjc2Ii8+PHJlY3QgeD0iMTU2IiB5PSIyMzkiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNjEiLz48cmVjdCB4PSIxNjYiIHk9IjI1MyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC45NSIvPjxyZWN0IHg9IjIwNiIgeT0iMjUzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjU0Ii8+PHJlY3QgeD0iMTc2IiB5PSIyNjciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNTkiLz48cmVjdCB4PSIxODYiIHk9IjI2NyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC44MCIvPjxyZWN0IHg9IjE3NiIgeT0iMjgxIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjUxIi8+PHJlY3QgeD0iMjA2IiB5PSIyODEiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNzIiLz48cmVjdCB4PSIxNDYiIHk9IjMwOSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC45NSIvPjxyZWN0IHg9IjIwNiIgeT0iMzA5IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjc2Ii8+PHJlY3QgeD0iMjE2IiB5PSIzMDkiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuODkiLz48cmVjdCB4PSIxNjYiIHk9IjMyMyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC43NCIvPjxyZWN0IHg9IjE1NiIgeT0iMzM3IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjYyIi8+PHJlY3QgeD0iMjQ2IiB5PSIxODUiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNzAiLz48cmVjdCB4PSIyNTYiIHk9IjE5OSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC45NyIvPjxyZWN0IHg9IjI0NiIgeT0iMjEzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjODZhMmVhIiBvcGFjaXR5PSIwLjYxIi8+PHJlY3QgeD0iMjU2IiB5PSIyMjciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjEuMDAiLz48cmVjdCB4PSIyNDYiIHk9IjI0MSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC41MSIvPjxyZWN0IHg9IjI3NiIgeT0iMjQxIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjc2Ii8+PHJlY3QgeD0iMjU2IiB5PSIyNTUiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuOTkiLz48cmVjdCB4PSIyNjYiIHk9IjI1NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42NCIvPjxyZWN0IHg9IjI0NiIgeT0iMzExIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjkwIi8+PHJlY3QgeD0iMjU2IiB5PSIzMTEiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNTMiLz48cmVjdCB4PSIyNzYiIHk9IjMyNSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC45NyIvPjxyZWN0IHg9IjMwNyIgeT0iMjUyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjg3Ii8+PHJlY3QgeD0iMjk3IiB5PSIyNjYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuODMiLz48cmVjdCB4PSIzMzciIHk9IjI4MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC45OSIvPjxyZWN0IHg9IjI5NyIgeT0iMjk0IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjcyIi8+PHJlY3QgeD0iMzA3IiB5PSIyOTQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuOTQiLz48cmVjdCB4PSIzMDciIHk9IjMwOCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC41MCIvPjxyZWN0IHg9IjI5NyIgeT0iMzIyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjYxIi8+PHJlY3QgeD0iMzI3IiB5PSIzMjIiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjAuNzUiLz48cmVjdCB4PSIyOTciIHk9IjMzNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC45MSIvPjxyZWN0IHg9IjMwNyIgeT0iMzM2IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjcwIi8+PHJlY3QgeD0iMzM3IiB5PSIzMzYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuODMiLz48cmVjdCB4PSIzNzciIHk9IjE5NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC41MiIvPjxyZWN0IHg9IjM3NyIgeT0iMjIzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjkxIi8+PHJlY3QgeD0iMzc3IiB5PSIyNTEiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuODIiLz48cmVjdCB4PSIzODciIHk9IjI2NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC44MSIvPjxyZWN0IHg9IjM4NyIgeT0iMjc5IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjg3Ii8+PHJlY3QgeD0iMzY3IiB5PSIzMDciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNjMiLz48cmVjdCB4PSIzNzciIHk9IjMwNyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42MiIvPjxyZWN0IHg9IjM3NyIgeT0iMzM1IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjg4Ii8+PHJlY3QgeD0iMzc3IiB5PSIzNDkiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNjciLz48cmVjdCB4PSI0MzMiIHk9IjIzMSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC41MyIvPjxyZWN0IHg9IjQzMyIgeT0iMjczIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjY2Ii8+PHJlY3QgeD0iNDEzIiB5PSIyODciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNTEiLz48cmVjdCB4PSI0MjMiIHk9IjMyOSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC45OCIvPjxyZWN0IHg9IjQzMyIgeT0iMzI5IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjk0Ii8+PHJlY3QgeD0iNDY1IiB5PSIxODQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuOTciLz48cmVjdCB4PSI0NjUiIHk9IjE5OCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC41MCIvPjxyZWN0IHg9IjQ5NSIgeT0iMTk4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjg2Ii8+PHJlY3QgeD0iNDc1IiB5PSIyMjYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNTMiLz48cmVjdCB4PSI1MDUiIHk9IjIyNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC43MiIvPjxyZWN0IHg9IjQ5NSIgeT0iMjQwIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjODZhMmVhIiBvcGFjaXR5PSIwLjk2Ii8+PHJlY3QgeD0iNDc1IiB5PSIyNTQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNzMiLz48cmVjdCB4PSI0NTUiIHk9IjI2OCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC41OSIvPjxyZWN0IHg9IjQ5NSIgeT0iMjgyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjU0Ii8+PHJlY3QgeD0iNDc1IiB5PSIzMTAiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNjYiLz48cmVjdCB4PSI0NTUiIHk9IjMyNCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC42OSIvPjxyZWN0IHg9IjUyOCIgeT0iMTQ4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjY5Ii8+PHJlY3QgeD0iNTg4IiB5PSIxNDgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuODUiLz48cmVjdCB4PSI1NDgiIHk9IjE2MiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC45NyIvPjxyZWN0IHg9IjUzOCIgeT0iMTc2IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjk3Ii8+PHJlY3QgeD0iNTk4IiB5PSIxNzYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNjIiLz48cmVjdCB4PSI1NTgiIHk9IjE5MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC43NiIvPjxyZWN0IHg9IjU4OCIgeT0iMTkwIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjc2Ii8+PHJlY3QgeD0iNTU4IiB5PSIyMDQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjEuMDAiLz48cmVjdCB4PSI1NDgiIHk9IjIxOCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC44NSIvPjxyZWN0IHg9IjU2OCIgeT0iMjE4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjODZhMmVhIiBvcGFjaXR5PSIwLjk0Ii8+PHJlY3QgeD0iNTg4IiB5PSIyMTgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuODMiLz48cmVjdCB4PSI1MzgiIHk9IjIzMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC44NiIvPjxyZWN0IHg9IjU2OCIgeT0iMjMyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjg3Ii8+PHJlY3QgeD0iNTc4IiB5PSIyNjAiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNTMiLz48cmVjdCB4PSI1ODgiIHk9IjI2MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC43MSIvPjxyZWN0IHg9IjU2OCIgeT0iMjc0IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjk3Ii8+PHJlY3QgeD0iNTM4IiB5PSIyODgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuOTIiLz48cmVjdCB4PSI1NjgiIHk9IjI4OCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC42NCIvPjxyZWN0IHg9IjU5OCIgeT0iMjg4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjY5Ii8+PHJlY3QgeD0iNTU4IiB5PSIzMDIiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNjAiLz48cmVjdCB4PSI1MjgiIHk9IjMzMCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC44NyIvPjxyZWN0IHg9IjU0OCIgeT0iMzQ0IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjUxIi8+PHJlY3QgeD0iNjM4IiB5PSIxODUiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNzAiLz48cmVjdCB4PSI2NDgiIHk9IjE4NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC41MyIvPjxyZWN0IHg9IjYxOCIgeT0iMTk5IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjU4Ii8+PHJlY3QgeD0iNjM4IiB5PSIxOTkiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNjMiLz48cmVjdCB4PSI2NDgiIHk9IjE5OSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC43MSIvPjxyZWN0IHg9IjYzOCIgeT0iMjEzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjcxIi8+PHJlY3QgeD0iNjE4IiB5PSIyNDEiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjAuNjUiLz48cmVjdCB4PSI2NDgiIHk9IjI1NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC42NiIvPjxyZWN0IHg9IjY0OCIgeT0iMjgzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjODZhMmVhIiBvcGFjaXR5PSIwLjk0Ii8+PHJlY3QgeD0iNjI4IiB5PSIzMTEiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuOTciLz48cmVjdCB4PSI2MTgiIHk9IjMzOSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42MSIvPjxyZWN0IHg9IjYzOCIgeT0iMzM5IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIxLjAwIi8+PHJlY3QgeD0iNjQ4IiB5PSIzMzkiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuOTEiLz48cmVjdCB4PSI3MTAiIHk9IjE0MyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC45MCIvPjxyZWN0IHg9IjY3MCIgeT0iMTU3IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjkwIi8+PHJlY3QgeD0iNjkwIiB5PSIxNTciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuODMiLz48cmVjdCB4PSI2OTAiIHk9IjE3MSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC43MSIvPjxyZWN0IHg9IjcwMCIgeT0iMTcxIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjgyIi8+PHJlY3QgeD0iNjkwIiB5PSIxODUiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuOTEiLz48cmVjdCB4PSI2NzAiIHk9IjE5OSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC41MyIvPjxyZWN0IHg9IjY4MCIgeT0iMTk5IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjODZhMmVhIiBvcGFjaXR5PSIwLjU0Ii8+PHJlY3QgeD0iNzIwIiB5PSIxOTkiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjAuNTgiLz48cmVjdCB4PSI2NzAiIHk9IjIxMyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC41NSIvPjxyZWN0IHg9IjcyMCIgeT0iMjEzIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjk5Ii8+PHJlY3QgeD0iNjgwIiB5PSIyMjciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNTQiLz48cmVjdCB4PSI2NzAiIHk9IjI1NSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC42OSIvPjxyZWN0IHg9IjY4MCIgeT0iMjU1IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjk5Ii8+PHJlY3QgeD0iNjgwIiB5PSIyOTciIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuODEiLz48cmVjdCB4PSI2ODAiIHk9IjMxMSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43MCIvPjxyZWN0IHg9IjY5MCIgeT0iMzExIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjcyIi8+PHJlY3QgeD0iNzAwIiB5PSIzMTEiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNzUiLz48cmVjdCB4PSI3MjAiIHk9IjMxMSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC41NCIvPjxyZWN0IHg9IjcwMCIgeT0iMzI1IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjODZhMmVhIiBvcGFjaXR5PSIwLjgzIi8+PHJlY3QgeD0iNzIwIiB5PSIzMjUiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjEuMDAiLz48cmVjdCB4PSI3NTciIHk9IjIzNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC41MyIvPjxyZWN0IHg9Ijc1NyIgeT0iMjUwIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjk1Ii8+PHJlY3QgeD0iNzU3IiB5PSIzMzQiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjAuOTgiLz48cmVjdCB4PSI3OTgiIHk9IjI3MiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC44OCIvPjxyZWN0IHg9IjgxOCIgeT0iMjcyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjY1Ii8+PHJlY3QgeD0iODM4IiB5PSIzMDAiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM4NmEyZWEiIG9wYWNpdHk9IjAuNjEiLz48cmVjdCB4PSI3OTgiIHk9IjMxNCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC43OCIvPjxyZWN0IHg9Ijc5OCIgeT0iMzI4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjgxIi8+PHJlY3QgeD0iODE4IiB5PSIzMjgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuODUiLz48cmVjdCB4PSI4MzgiIHk9IjMyOCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC45NCIvPjxyZWN0IHg9IjgxOCIgeT0iMzQyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjgwIi8+PHJlY3QgeD0iODgzIiB5PSIyNTYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNTIiLz48cmVjdCB4PSI4NzMiIHk9IjI3MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC41MSIvPjxyZWN0IHg9IjkwMyIgeT0iMjcwIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjc2Ii8+PHJlY3QgeD0iODYzIiB5PSIyOTgiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjEuMDAiLz48cmVjdCB4PSI4ODMiIHk9IjMxMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC41OSIvPjxyZWN0IHg9Ijg3MyIgeT0iMzI2IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjg2Ii8+PHJlY3QgeD0iOTUxIiB5PSIxNDYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjAuOTUiLz48cmVjdCB4PSI5NDEiIHk9IjE2MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42MCIvPjxyZWN0IHg9IjkzMSIgeT0iMjAyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjcyIi8+PHJlY3QgeD0iOTUxIiB5PSIyMTYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuNTciLz48cmVjdCB4PSI5NjEiIHk9IjIxNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC44MSIvPjxyZWN0IHg9IjkzMSIgeT0iMjMwIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmY0ZmQ4IiBvcGFjaXR5PSIwLjg1Ii8+PHJlY3QgeD0iOTQxIiB5PSIyMzAiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuODUiLz48cmVjdCB4PSI5NDEiIHk9IjI0NCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42MCIvPjxyZWN0IHg9Ijk2MSIgeT0iMjcyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjkxIi8+PHJlY3QgeD0iOTUxIiB5PSIyODYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuOTAiLz48cmVjdCB4PSI5NDEiIHk9IjMxNCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC45NiIvPjxyZWN0IHg9IjkzMSIgeT0iMzQyIiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjNWVlN2ZmIiBvcGFjaXR5PSIwLjY3Ii8+PHJlY3QgeD0iOTg4IiB5PSIyNDYiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZmQzNmUiIG9wYWNpdHk9IjAuNTkiLz48cmVjdCB4PSI5OTgiIHk9IjI0NiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC42NCIvPjxyZWN0IHg9IjEwMTgiIHk9IjI0NiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC43NSIvPjxyZWN0IHg9IjEwMjgiIHk9IjI3NCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC43NSIvPjxyZWN0IHg9Ijk5OCIgeT0iMjg4IiB3aWR0aD0iNCIgaGVpZ2h0PSI2IiBmaWxsPSIjZmZkMzZlIiBvcGFjaXR5PSIwLjY4Ii8+PHJlY3QgeD0iOTc4IiB5PSIzMDIiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNjkiLz48cmVjdCB4PSIxMDE4IiB5PSIzMDIiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiNmZjRmZDgiIG9wYWNpdHk9IjAuOTciLz48cmVjdCB4PSIxMDI4IiB5PSIzMDIiIHdpZHRoPSI0IiBoZWlnaHQ9IjYiIGZpbGw9IiM1ZWU3ZmYiIG9wYWNpdHk9IjAuNjciLz48cmVjdCB4PSI5ODgiIHk9IjMxNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC44MyIvPjxyZWN0IHg9IjEwMDgiIHk9IjMxNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC44NCIvPjxyZWN0IHg9IjExMTEiIHk9IjE0NiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC42MCIvPjxyZWN0IHg9IjEwNTEiIHk9IjE2MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC45MCIvPjxyZWN0IHg9IjExMDEiIHk9IjE2MCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC45NCIvPjxyZWN0IHg9IjEwNTEiIHk9IjE3NCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC44NSIvPjxyZWN0IHg9IjEwOTEiIHk9IjE3NCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC41MCIvPjxyZWN0IHg9IjEwOTEiIHk9IjIwMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC42NiIvPjxyZWN0IHg9IjExMTEiIHk9IjIwMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC42MiIvPjxyZWN0IHg9IjEwNzEiIHk9IjIxNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43NCIvPjxyZWN0IHg9IjEwODEiIHk9IjIxNiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43NiIvPjxyZWN0IHg9IjEwNjEiIHk9IjIzMCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC45NSIvPjxyZWN0IHg9IjEwNzEiIHk9IjIzMCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC43NyIvPjxyZWN0IHg9IjEwODEiIHk9IjIzMCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC43NiIvPjxyZWN0IHg9IjEwOTEiIHk9IjIzMCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43NyIvPjxyZWN0IHg9IjEwNzEiIHk9IjI1OCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC44MiIvPjxyZWN0IHg9IjExMDEiIHk9IjI1OCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC43MSIvPjxyZWN0IHg9IjEwOTEiIHk9IjI4NiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC45MCIvPjxyZWN0IHg9IjEwODEiIHk9IjMxNCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC42OCIvPjxyZWN0IHg9IjEwODEiIHk9IjMyOCIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42OCIvPjxyZWN0IHg9IjEwNjEiIHk9IjM0MiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC41OCIvPjxyZWN0IHg9IjEwOTEiIHk9IjM0MiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC44OSIvPjxyZWN0IHg9IjExMDEiIHk9IjM0MiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC44MiIvPjxyZWN0IHg9IjExMTEiIHk9IjM0MiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC42MCIvPjxyZWN0IHg9IjExMzEiIHk9IjE5NyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42MyIvPjxyZWN0IHg9IjExNDEiIHk9IjE5NyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmNGZkOCIgb3BhY2l0eT0iMC45MyIvPjxyZWN0IHg9IjExNjEiIHk9IjIyNSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC42MCIvPjxyZWN0IHg9IjExMzEiIHk9IjI2NyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43OCIvPjxyZWN0IHg9IjExNDEiIHk9IjI4MSIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC41OCIvPjxyZWN0IHg9IjExNDEiIHk9IjMyMyIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzVlZTdmZiIgb3BhY2l0eT0iMC44NCIvPjxyZWN0IHg9IjExODEiIHk9IjI3NiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC44MSIvPjxyZWN0IHg9IjEyMTEiIHk9IjMzMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC43NyIvPjxyZWN0IHg9IjEyMjEiIHk9IjMzMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iI2ZmZDM2ZSIgb3BhY2l0eT0iMC41NSIvPjxyZWN0IHg9IjEyMzEiIHk9IjMzMiIgd2lkdGg9IjQiIGhlaWdodD0iNiIgZmlsbD0iIzg2YTJlYSIgb3BhY2l0eT0iMC44MCIvPgo8cmVjdCB5PSIzNTgiIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjQiIGZpbGw9IiM1ZWU3ZmYiIGZpbHRlcj0idXJsKCNiKSIvPgo8cmVjdCB5PSIzNjAiIHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjI0MCIgZmlsbD0idXJsKCNnKSIvPgo8ZyBzdHJva2U9IiNmZjRmZDgiIHN0cm9rZS13aWR0aD0iMS42IiBvcGFjaXR5PSIuNzUiPjxsaW5lIHgxPSIwIiB5MT0iMzYwIiB4Mj0iLTQ2MDAiIHkyPSI2MDAiLz48bGluZSB4MT0iMzAiIHkxPSIzNjAiIHgyPSItNDM0MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI2MCIgeTE9IjM2MCIgeDI9Ii00MDgwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9IjkwIiB5MT0iMzYwIiB4Mj0iLTM4MjAiIHkyPSI2MDAiLz48bGluZSB4MT0iMTIwIiB5MT0iMzYwIiB4Mj0iLTM1NjAiIHkyPSI2MDAiLz48bGluZSB4MT0iMTUwIiB5MT0iMzYwIiB4Mj0iLTMzMDAiIHkyPSI2MDAiLz48bGluZSB4MT0iMTgwIiB5MT0iMzYwIiB4Mj0iLTMwNDAiIHkyPSI2MDAiLz48bGluZSB4MT0iMjEwIiB5MT0iMzYwIiB4Mj0iLTI3ODAiIHkyPSI2MDAiLz48bGluZSB4MT0iMjQwIiB5MT0iMzYwIiB4Mj0iLTI1MjAiIHkyPSI2MDAiLz48bGluZSB4MT0iMjcwIiB5MT0iMzYwIiB4Mj0iLTIyNjAiIHkyPSI2MDAiLz48bGluZSB4MT0iMzAwIiB5MT0iMzYwIiB4Mj0iLTIwMDAiIHkyPSI2MDAiLz48bGluZSB4MT0iMzMwIiB5MT0iMzYwIiB4Mj0iLTE3NDAiIHkyPSI2MDAiLz48bGluZSB4MT0iMzYwIiB5MT0iMzYwIiB4Mj0iLTE0ODAiIHkyPSI2MDAiLz48bGluZSB4MT0iMzkwIiB5MT0iMzYwIiB4Mj0iLTEyMjAiIHkyPSI2MDAiLz48bGluZSB4MT0iNDIwIiB5MT0iMzYwIiB4Mj0iLTk2MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI0NTAiIHkxPSIzNjAiIHgyPSItNzAwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9IjQ4MCIgeTE9IjM2MCIgeDI9Ii00NDAiIHkyPSI2MDAiLz48bGluZSB4MT0iNTEwIiB5MT0iMzYwIiB4Mj0iLTE4MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI1NDAiIHkxPSIzNjAiIHgyPSI4MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI1NzAiIHkxPSIzNjAiIHgyPSIzNDAiIHkyPSI2MDAiLz48bGluZSB4MT0iNjAwIiB5MT0iMzYwIiB4Mj0iNjAwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9IjYzMCIgeTE9IjM2MCIgeDI9Ijg2MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI2NjAiIHkxPSIzNjAiIHgyPSIxMTIwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9IjY5MCIgeTE9IjM2MCIgeDI9IjEzODAiIHkyPSI2MDAiLz48bGluZSB4MT0iNzIwIiB5MT0iMzYwIiB4Mj0iMTY0MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI3NTAiIHkxPSIzNjAiIHgyPSIxOTAwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9Ijc4MCIgeTE9IjM2MCIgeDI9IjIxNjAiIHkyPSI2MDAiLz48bGluZSB4MT0iODEwIiB5MT0iMzYwIiB4Mj0iMjQyMCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI4NDAiIHkxPSIzNjAiIHgyPSIyNjgwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9Ijg3MCIgeTE9IjM2MCIgeDI9IjI5NDAiIHkyPSI2MDAiLz48bGluZSB4MT0iOTAwIiB5MT0iMzYwIiB4Mj0iMzIwMCIgeTI9IjYwMCIvPjxsaW5lIHgxPSI5MzAiIHkxPSIzNjAiIHgyPSIzNDYwIiB5Mj0iNjAwIi8+PGxpbmUgeDE9Ijk2MCIgeTE9IjM2MCIgeDI9IjM3MjAiIHkyPSI2MDAiLz48bGluZSB4MT0iOTkwIiB5MT0iMzYwIiB4Mj0iMzk4MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMDIwIiB5MT0iMzYwIiB4Mj0iNDI0MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMDUwIiB5MT0iMzYwIiB4Mj0iNDUwMCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMDgwIiB5MT0iMzYwIiB4Mj0iNDc2MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMTEwIiB5MT0iMzYwIiB4Mj0iNTAyMCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMTQwIiB5MT0iMzYwIiB4Mj0iNTI4MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMTcwIiB5MT0iMzYwIiB4Mj0iNTU0MCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIxMjAwIiB5MT0iMzYwIiB4Mj0iNTgwMCIgeTI9IjYwMCIvPjxsaW5lIHgxPSIwIiB5MT0iMzYwLjAiIHgyPSIxMjAwIiB5Mj0iMzYwLjAiLz48bGluZSB4MT0iMCIgeTE9IjM2Ni4wIiB4Mj0iMTIwMCIgeTI9IjM2Ni4wIi8+PGxpbmUgeDE9IjAiIHkxPSIzNzMuNyIgeDI9IjEyMDAiIHkyPSIzNzMuNyIvPjxsaW5lIHgxPSIwIiB5MT0iMzgzLjUiIHgyPSIxMjAwIiB5Mj0iMzgzLjUiLz48bGluZSB4MT0iMCIgeTE9IjM5Ni4xIiB4Mj0iMTIwMCIgeTI9IjM5Ni4xIi8+PGxpbmUgeDE9IjAiIHkxPSI0MTIuMiIgeDI9IjEyMDAiIHkyPSI0MTIuMiIvPjxsaW5lIHgxPSIwIiB5MT0iNDMyLjgiIHgyPSIxMjAwIiB5Mj0iNDMyLjgiLz48bGluZSB4MT0iMCIgeTE9IjQ1OS4yIiB4Mj0iMTIwMCIgeTI9IjQ1OS4yIi8+PGxpbmUgeDE9IjAiIHkxPSI0OTMuMCIgeDI9IjEyMDAiIHkyPSI0OTMuMCIvPjxsaW5lIHgxPSIwIiB5MT0iNTM2LjIiIHgyPSIxMjAwIiB5Mj0iNTM2LjIiLz48bGluZSB4MT0iMCIgeTE9IjU5MS42IiB4Mj0iMTIwMCIgeTI9IjU5MS42Ii8+PC9nPgo8ZyBzdHJva2U9IiM1ZWU3ZmYiIHN0cm9rZS13aWR0aD0iNSIgb3BhY2l0eT0iLjI1IiBmaWx0ZXI9InVybCgjYikiPjxsaW5lIHgxPSIwIiB5MT0iMzYwIiB4Mj0iMTIwMCIgeTI9IjM2MCIvPjwvZz4KPC9zdmc+', focus: '60% 50%' }
+    ];
+    this.accentList = [['#2340c8', 'Biru'], ['#0c7a62', 'Hijau'], ['#6d3fb3', 'Purple'], ['#c2185b', 'Magenta'], ['#d8452f', 'Red'], ['#e08a1e', 'Amber'], ['#2d6a4f', 'Forest'], ['#191f2c', 'Ink']];
+    this.bgList = [['PAPER', 'Paper', '#fafbfc'], ['MUDA', 'Pale blue', '#eaf0ff'], ['KUNING', 'Warm', '#fdf0dc'], ['BIRU', 'Biru', '#2340c8'], ['INK', 'Dark', '#191f2c'], ['CUSTOM', 'Custom', 'conic-gradient(#f6c9d5, #bfd1f9, #bfe3d6, #ffe2b8, #f6c9d5)']];
+    this.fontList = [['BRICOLAGE', 'Bricolage', "'Bricolage Grotesque', sans-serif"], ['FRAUNCES', 'Fraunces', "'Fraunces', serif"], ['DM_SERIF', 'DM Serif', "'DM Serif Display', serif"], ['JAKARTA', 'Jakarta', "'Plus Jakarta Sans', sans-serif"], ['OUTFIT', 'Outfit', "'Outfit', sans-serif"], ['SPACE', 'Space Grotesk', "'Space Grotesk', sans-serif"]];
+    this.icons = {
+      WhatsApp: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
+      Web: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
+      Instagram: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17.5 6.5h.01'
+    };
+    this.socialList = [
+      ['instagram', 'Instagram', 'instagram.com/', 'yourname', 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17.5 6.5h.01', '#fbeef1', '#b5294e'],
+      ['whatsapp', 'WhatsApp', 'wa.me/', '601xxxxxxxx', 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z', '#e8f3ef', '#1d6f5f'],
+      ['tiktok', 'TikTok', 'tiktok.com/@', 'yourname', 'M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5M14 3c.6 2.6 2.4 4 5 4', '#191f2c', '#ffffff'],
+      ['email', 'Email', '', 'you@example.com', 'M3 5h18v14H3zM3 7l9 6 9-6', '#eaf0ff', '#2340c8'],
+      ['facebook', 'Facebook', 'facebook.com/', 'yourpage', 'M14 8h3V4h-3a4 4 0 0 0-4 4v3H7v4h3v6h4v-6h3l1-4h-4V8z', '#eaf0ff', '#1a31a8'],
+      ['youtube', 'YouTube', 'youtube.com/@', 'yourchannel', 'M3 8a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM10 9l5 3-5 3z', '#fdecea', '#c0392b']
+    ];
+    this.state = {
+      socials: { instagram: 'keklina', whatsapp: '60123456789', tiktok: 'keklina.bakes', email: 'lina@keklina.example', facebook: '', youtube: '' },
+      pvTab: 'links', tab: 0, cover: 'bunga', name: 'Kek Lina', bio: 'Homemade cakes and desserts in Shah Alam. Order 2 days ahead.',
+      shopOn: true, style: 'SOFT', bg: 'CUSTOM', accent: '#b5294e', hexText: 'b5294e', font: 'FRAUNCES',
+      links: [
+        { id: 1, kind: 'WhatsApp', name: 'Order on WhatsApp', url: 'wa.me/60123456789' },
+        { id: 2, kind: 'Web', name: 'Menu & prices', url: 'keklina.example/menu' },
+        { id: 3, kind: 'Instagram', name: 'Cake photos', url: 'instagram.com/keklina' }
+      ],
+      confirmId: null, adding: false, newName: '', newUrl: '', save: 'saved', copied: false, toast: '', toastKey: 0
+    };
+  }
+  componentWillUnmount() { clearTimeout(this.st); clearTimeout(this.tt); clearTimeout(this.ct); }
+  change(patch, toast) {
+    clearTimeout(this.st);
+    this.setState(Object.assign({}, patch, { save: 'saving' }));
+    this.st = setTimeout(() => this.setState({ save: 'saved' }), 650);
+    if (toast) {
+      clearTimeout(this.tt);
+      this.setState({ toast: '' });
+      requestAnimationFrame(() => this.setState({ toast: toast }));
+      this.tt = setTimeout(() => this.setState({ toast: '' }), 2200);
+    }
+  }
+  mix(hex, other, t) {
+    const a = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)), b = [1, 3, 5].map((i) => parseInt(other.slice(i, i + 2), 16));
+    return '#' + a.map((v, i) => Math.round(v * (1 - t) + b[i] * t).toString(16).padStart(2, '0')).join('');
+  }
+  isLight(hex) {
+    const c = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255).map((v) => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2] > 0.35;
+  }
+  renderVals0() {
+    const self = this, st = this.state;
+    const pageBg = st.bg === 'CUSTOM' ? this.mix(st.accent, '#191f2c', 0.62) : this.bgList.find((b) => b[0] === st.bg)[2];
+    const dark = !this.isLight(pageBg);
+    const fg = dark ? '#fafbfc' : '#191f2c';
+    const accentText = this.isLight(st.accent) ? '#191f2c' : '#fafbfc';
+    const contrast = st.style === 'CONTRAST';
+    const cov = this.coverList.find((c) => c.id === st.cover) || this.coverList[0];
+    const noCover = cov.id === 'none';
+    const font = this.fontList.find((f) => f.id === st.font) || this.fontList.find((f) => f[0] === st.font);
+    const pvLinks = st.links.map((l, i) => {
+      if (i === 0) return { name: l.name, outer: contrast ? fg : (dark ? 'rgba(250,251,252,0.1)' : 'rgba(25,31,44,0.06)'), inner: st.accent, fg: accentText };
+      if (contrast) return { name: l.name, outer: dark ? 'rgba(250,251,252,0.25)' : 'rgba(25,31,44,0.2)', inner: dark ? '#fafbfc' : '#191f2c', fg: dark ? '#191f2c' : '#fafbfc' };
+      return { name: l.name, outer: dark ? 'rgba(250,251,252,0.08)' : 'rgba(25,31,44,0.05)', inner: dark ? 'rgba(250,251,252,0.15)' : '#ffffff', fg: fg };
+    });
+    return {
+      socials: this.socialList.map((so) => { const v = st.socials[so[0]] || ''; return {
+        label: so[1], pre: so[2], ph: so[3], icon: so[4], val: v,
+        icBg: v ? so[5] : '#f3f4f7', icFg: v ? so[6] : '#9aa0ab', border: '#dfe1e6',
+        set: (e) => { const next = Object.assign({}, self.state.socials); next[so[0]] = String(e.target.value || '').trim(); self.change({ socials: next }); }
+      }; }),
+      pvSocial: this.socialList.filter((so) => st.socials[so[0]]).map((so) => ({ icon: so[4] })),
+      hasSocial: this.socialList.some((so) => st.socials[so[0]]),
+      saving: st.save === 'saving', saved: st.save !== 'saving',
+      stBg: st.save === 'saving' ? '#f3f4f7' : '#e8f3ef', stFg: st.save === 'saving' ? '#4b5060' : '#123b33',
+      ulineX: st.tab * 116,
+      listH: st.links.length * 60,
+      segX: (['links', 'ask', 'shop'].indexOf(st.pvTab)) * 76,
+      segs: [['links', 'Links'], ['ask', 'Ask'], ['shop', 'Shop']].map((g) => ({ label: g[1], on: st.pvTab === g[0], fg: st.pvTab === g[0] ? '#ffffff' : '#4b5060', go: () => self.setState({ pvTab: g[0], shopOn: g[0] === 'shop' ? true : st.shopOn }) })),
+      statusDot: st.save === 'saving' ? '#f2a33c' : '#1d6f5f',
+      saveText: st.save === 'saving' ? 'Saving…' : 'Saved',
+      coverName: (this.coverList.find((c) => c.id === st.cover) || {}).label,
+      shopText: st.shopOn ? 'Showing' : 'Hidden',
+      saveBg: st.save === 'saving' ? '#e6e8ed' : '#d3e8e1', saveFg: st.save === 'saving' ? '#4b5060' : '#123b33',
+      copyText: st.copied ? 'Copied ✓' : 'Copy',
+      copy: () => { self.setState({ copied: true }); clearTimeout(self.ct); self.ct = setTimeout(() => self.setState({ copied: false }), 1600); },
+      tabX: (st.tab * 100) + '%',
+      tabs: ['Profile', 'Links', 'Appearance'].map((label, i) => ({ label: label, on: st.tab === i, go: () => self.setState({ tab: i }) })),
+      isProfile: st.tab === 0, isLinks: st.tab === 1, isLook: st.tab === 2,
+      covers: this.coverList.map((c) => ({ isNone: c.id === 'none', hasImg: c.id !== 'none', swatch: pageBg, dot: st.accent, ink: fg, src: c.src, focus: c.focus, label: c.label, on: st.cover === c.id, cls: st.cover === c.id ? 'on' : '', grow: st.cover === c.id ? 5 : 1, capO: st.cover === c.id ? '1' : '0', pick: () => self.change({ cover: c.id }) })),
+      name: st.name, bio: st.bio, bioCount: st.bio.length,
+      setName: (e) => self.change({ name: e.target.value || '' }),
+      setBio: (e) => self.change({ bio: (e.target.value || '').slice(0, 160) }),
+      shopOn: st.shopOn, shopBg: st.shopOn ? '#2340c8' : '#d5d8de', shopX: st.shopOn ? '14px' : '0px',
+      toggleShop: () => self.change({ shopOn: !st.shopOn, pvTab: st.shopOn && st.pvTab === 'shop' ? 'links' : st.pvTab }),
+      links: st.links.map((l, i) => ({
+        y: i * 60, name: l.name, url: l.url, tint: l.kind === 'WhatsApp' ? '#e8f3ef' : l.kind === 'Instagram' ? '#fbeef1' : '#eaf0ff', ink: l.kind === 'WhatsApp' ? '#1d6f5f' : l.kind === 'Instagram' ? '#b5294e' : '#2340c8', icon: self.icons[l.kind], color: l.kind === 'WhatsApp' ? '#1d6f5f' : l.kind === 'Instagram' ? '#c2185b' : '#2340c8',
+        first: i === 0, last: i === st.links.length - 1,
+        confirming: st.confirmId === l.id, idle: st.confirmId !== l.id,
+        up: () => { const a = st.links.slice(); [a[i - 1], a[i]] = [a[i], a[i - 1]]; self.change({ links: a }); },
+        down: () => { const a = st.links.slice(); [a[i + 1], a[i]] = [a[i], a[i + 1]]; self.change({ links: a }); },
+        ask: () => self.setState({ confirmId: l.id }),
+        keep: () => self.setState({ confirmId: null }),
+        remove: () => self.change({ links: st.links.filter((x) => x.id !== l.id), confirmId: null }, null)
+      })),
+      adding: st.adding, notAdding: !st.adding,
+      startAdd: () => self.setState({ adding: true, newName: '', newUrl: '' }),
+      cancelAdd: () => self.setState({ adding: false }),
+      newName: st.newName, newUrl: st.newUrl,
+      setNewName: (e) => self.setState({ newName: e.target.value }),
+      setNewUrl: (e) => self.setState({ newUrl: e.target.value }),
+      addLink: () => {
+        const name = st.newName.trim() || 'New link', url = (st.newUrl.trim() || 'keklina.example').replace(/^https?:\/\//, '');
+        const kind = /instagram/.test(url) ? 'Instagram' : /wa\.me|whatsapp/.test(url) ? 'WhatsApp' : 'Web';
+        self.change({ links: st.links.concat([{ id: Date.now(), kind: kind, name: name, url: url }]), adding: false }, null);
+      },
+      styles: [['SOFT', 'Soft', 'Light pills, gentle edges'], ['CONTRAST', 'High contrast', 'Solid pills, bold edges']].map((s) => ({
+        label: s[1], note: s[2], on: st.style === s[0], cls: st.style === s[0] ? 'on' : '', p1: st.accent, p2: s[0] === 'SOFT' ? '#ffffff' : '#191f2c', ring: s[0] === 'SOFT' ? '0 0 0 3px rgba(25,31,44,0.06)' : '0 0 0 2px #191f2c', ring: st.style === s[0] ? '2px' : '0px', border: st.style === s[0] ? '#191f2c' : '#dfe1e6', dot: st.style === s[0] ? '5px solid #191f2c' : '1.5px solid #c9ccd3',
+        demoBg: s[0] === 'SOFT' ? '#eef0f4' : '#191f2c', d1: st.accent, d2: s[0] === 'SOFT' ? '#ffffff' : '#fafbfc',
+        pick: () => self.change({ style: s[0] })
+      })),
+      bgs: this.bgList.map((b) => { const sw = b[0] === 'CUSTOM' ? this.mix(st.accent, '#191f2c', 0.62) : b[2]; const dk = !this.isLight(sw); return { label: b[1], swatch: sw, ink: dk ? 'rgba(250,251,252,0.85)' : '#191f2c', pill: dk ? 'rgba(250,251,252,0.22)' : '#ffffff', cls: st.bg === b[0] ? 'on' : '', on: st.bg === b[0], ring: st.bg === b[0] ? '3px' : '0px', border: st.bg === b[0] ? '#191f2c' : '#dfe1e6', s: st.bg === b[0] ? '1.04' : '1', pick: () => self.change({ bg: b[0] }) }; }),
+      accents: this.accentList.concat([['#b5294e', 'Raspberry']]).map((a) => ({ hex: a[0], label: a[1], on: st.accent === a[0], gap: st.accent === a[0] ? '3px' : '0px', ring: st.accent === a[0] ? '5px' : '0px', tickS: st.accent === a[0] ? '1' : '0', tickC: this.isLight(a[0]) ? '#191f2c' : '#ffffff', pick: () => self.change({ accent: a[0], hexText: a[0].slice(1) }) })),
+      hexText: st.hexText, accent: st.accent,
+      setHex: (e) => {
+        const v = String(e.target.value || '').replace(/[^0-9a-fA-F]/g, '').slice(0, 6);
+        if (v.length === 6) self.change({ hexText: v, accent: '#' + v.toLowerCase() }); else self.setState({ hexText: v });
+      },
+      fonts: this.fontList.map((f) => ({ label: f[1], css: f[2], on: st.font === f[0], tickO: st.font === f[0] ? '1' : '0', rdBg: st.font === f[0] ? '#2340c8' : '#ffffff', rdRing: st.font === f[0] ? '0px' : '1.5px', rdC: '#c9ccd3', pick: () => self.change({ font: f[0] }) })),
+      pv: {
+        bg: pageBg, fg: fg, cover: cov.src, focus: cov.focus, hasCover: !noCover, coverO: noCover ? '0' : '1', bodyTop: noCover ? '9%' : '22%', font: font[2],
+        tabCols: st.shopOn ? '1fr 1fr 1fr' : '1fr 1fr',
+        tabTrack: dark ? 'rgba(250,251,252,0.14)' : 'rgba(25,31,44,0.07)',
+        tabOn: dark ? '#fafbfc' : '#191f2c', tabOnFg: dark ? '#191f2c' : '#fafbfc',
+        askRing: contrast ? '#191f2c' : 'transparent',
+        tint: this.mix(st.accent, '#ffffff', 0.8),
+        rowBg: dark ? 'rgba(250,251,252,0.1)' : 'rgba(25,31,44,0.05)',
+        showLinks: st.pvTab === 'links', showAsk: st.pvTab === 'ask', showShop: st.pvTab === 'shop' && st.shopOn,
+        tabs: ['Links', 'Ask'].concat(st.shopOn ? ['Shop'] : []).map((t) => { const on = t.toLowerCase() === st.pvTab; return { label: t, bg: on ? (dark ? '#fafbfc' : '#191f2c') : 'transparent', fg: on ? (dark ? '#191f2c' : '#fafbfc') : fg }; }),
+        links: pvLinks
+      },
+      toastOn: !!st.toast, toastText: st.toast
+    };
+  }
+  renderVals() {
+    const self = this, v = this.renderVals0(), isEmpty = this.state.demo === "empty";
+    v.demoFull = !isEmpty; v.demoEmpty = isEmpty; v.appCls = isEmpty ? 'is-new' : '';
+    v.obStyle = isEmpty ? 'grid-template-columns: minmax(0, 1fr)' : ''; v.ocolDisp = isEmpty ? 'none' : 'block';
+    v.showFull = () => { if (self.seedState) self.setState(Object.assign({}, self.seedState, { demo: "full" })); };
+    v.showEmpty = () => { if (!self.seedState) self.seedState = Object.assign({}, self.state); self.setState(Object.assign({}, { links: [], socials: { instagram: '', whatsapp: '', tiktok: '', email: '', facebook: '', youtube: '' }, bio: '', cover: 'none', shopOn: false, pvTab: 'links', tab: 1, adding: false }, { demo: "empty" })); };
+    v.hasLinks = self.state.links.length > 0; v.noLinks = !v.hasLinks;
+    v.pv.noLinksShown = v.pv.showLinks && v.noLinks;
+    v.showAddRow = v.notAdding && v.hasLinks;
+    return v;
+  }
+}
+</script>
+</body>
+</html>

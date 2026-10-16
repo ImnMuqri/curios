@@ -1,0 +1,1492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: Tanya je</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&amp;display=swap">
+<style>
+body{margin:0;background:#fafbfc}
+a{color:#191f2c}a:hover{color:#2340c8}
+.tj{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:17px;line-height:1.55;color:#191f2c;background:#fafbfc;overflow-x:clip}
+.tj *{box-sizing:border-box}
+.wrap{width:100%;max-width:1200px;margin:0 auto;padding:0 24px}
+.eyebrow{margin:0 0 16px;font-family:var(--m);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#2340c8}
+.h2{margin:0;max-width:16ch;font-family:var(--d);font-size:clamp(36px,24px + 2.6vw,60px);font-weight:800;line-height:1.02;letter-spacing:-.035em;text-wrap:balance}
+.lede{margin:20px 0 0;max-width:34em;color:#4b5060;text-wrap:pretty}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 24px;border:0;border-radius:12px;background:#2340c8;color:#fafbfc;font:inherit;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#1a31a8;color:#fafbfc}
+.mark{display:inline-block;font-family:var(--d);font-size:28px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.caret{display:inline-block;width:2px;height:1em;margin-left:2px;background:currentColor;vertical-align:-.15em;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.spk{position:absolute;width:2px;height:14px;margin:-7px 0 0 -1px;border-radius:1px;background:#2340c8;animation:spk 520ms cubic-bezier(.2,.7,.2,1) forwards;pointer-events:none}
+@keyframes spk{from{opacity:1;translate:0 0}to{opacity:0;translate:var(--dx) var(--dy)}}
+
+/* ---- The Curios page card: photo fading into a deep colour, big name, icons, tabs, pill links ---- */
+.pc{position:absolute;width:300px;height:590px;overflow:hidden;border-radius:36px;color:#fafbfc;font-family:'Inter',system-ui,sans-serif}
+.pc-photo{position:absolute;inset:0 0 auto 0;height:64%}
+.pc-photo img{display:block;width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 40%,transparent 100%);mask-image:linear-gradient(to bottom,#000 40%,transparent 100%)}
+.pc-body{position:absolute;inset:auto 0 0 0;display:flex;flex-direction:column;align-items:center;gap:12px;padding:0 18px 18px;text-align:center}
+.pc-name{margin:0;font-size:40px;font-weight:800;line-height:1;letter-spacing:-.03em}
+.pc-handle{margin:-6px 0 0;font-family:var(--m);font-size:11px;opacity:.7}
+.pc-icons{display:flex;gap:16px;opacity:.95}
+.pc-icons svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.pc-tabs{display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:rgba(250,251,252,.14);font-size:13px;font-weight:600}
+.pc-tabs > span{padding:7px 20px;border-radius:999px}
+.pc-tabs .on{background:#fafbfc;color:#191f2c}
+.pc-links{display:grid;gap:7px;width:100%}
+.pc-links > span{display:block;padding:6px;border-radius:999px;background:rgba(250,251,252,.08)}
+.pc-links .in{display:block;padding:10px 14px;border-radius:999px;background:rgba(250,251,252,.14);font-size:13.5px;font-weight:600}
+.pc-ask{display:flex;align-items:center;gap:8px;width:100%;padding:5px 5px 5px 16px;border-radius:999px;background:#fafbfc;color:#696e7b;font-size:13px;text-align:left}
+.pc-send{display:grid;place-items:center;width:30px;height:30px;margin-left:auto;border-radius:50%;flex:none}
+/* floats around the front card */
+.fl{position:absolute;z-index:20;transition:opacity 360ms ease}
+.bob{animation:bob 5s ease-in-out infinite}
+.bob.b2{animation-delay:-1.6s}.bob.b3{animation-delay:-3.2s}
+@keyframes bob{50%{transform:translateY(-8px)}}
+
+/* Flowing Menu */
+.fm-row{position:relative;display:block;width:100%;overflow:hidden;padding:0;border:0;border-top:1px solid #e4e7eb;background:transparent;font:inherit;text-align:left;cursor:pointer;color:#191f2c}
+.fm-label{display:flex;align-items:center;justify-content:space-between;gap:16px;height:117px;padding:0 8px;font-family:var(--d);font-size:clamp(30px,20px + 2vw,48px);font-weight:700;letter-spacing:-.03em}
+.fm-band{position:absolute;inset:0;display:flex;align-items:center;transition:transform 480ms cubic-bezier(.22,1,.36,1)}
+.fm-track{display:flex;align-items:center;gap:28px;width:max-content;padding-left:28px;animation:fm 22s linear infinite;font-family:var(--d);font-size:clamp(26px,18px + 1.6vw,40px);font-weight:700;letter-spacing:-.025em;white-space:nowrap}
+@keyframes fm{to{transform:translateX(-50%)}}
+.fm-dot{width:10px;height:10px;border-radius:50%;background:currentColor;opacity:.5;flex:none}
+
+/* the cursor that taps Ask on the first card */
+.cur{position:absolute;left:50%;top:40%;z-index:5;width:24px;height:24px;pointer-events:none;transform-origin:5px 3px;transition:transform 950ms cubic-bezier(.22,1,.36,1),opacity 300ms ease}
+.cur svg{display:block}
+.ripple{position:absolute;inset:-3px;border-radius:999px;border:2px solid #fafbfc;pointer-events:none;animation:ripple 520ms ease-out forwards}
+@keyframes ripple{from{opacity:.9;transform:scale(.7)}to{opacity:0;transform:scale(1.6)}}
+/* chat inside the card (Ask tab open) */
+.pc-chat{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
+.pc-q{align-self:flex-end;max-width:88%;margin:0;padding:9px 13px;border-radius:18px 18px 6px 18px;background:#fafbfc;color:#191f2c;font-size:13.5px;line-height:1.4}
+.pc-a{align-self:flex-start;max-width:92%;min-height:56px;margin:0;padding:9px 13px;border-radius:18px 18px 18px 6px;font-size:13.5px;line-height:1.4;color:#191f2c}
+
+/* How it works: steps slide sideways as the page scrolls (pinned horizontal track) */
+.hs-view{overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.hs-view::-webkit-scrollbar{display:none}
+.hs-track{display:flex;width:300%}
+.hs-slide{flex:none;width:33.3333%;scroll-snap-align:start;padding-right:24px}
+.hs-dots{position:relative;display:flex;justify-content:space-between;width:260px}
+.hs-rail{position:absolute;left:18px;right:18px;top:17px;height:3px;border-radius:2px;background:#dfe1e6}
+.hs-fill{position:absolute;inset:0;border-radius:2px;background:#2340c8;transform:scaleX(0);transform-origin:left}
+.hs-dot{position:relative;display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#ffffff;color:#191f2c;font-size:14px;font-weight:600}
+.hs-dot.on{background:#2340c8;color:#fafbfc}
+@media (prefers-reduced-motion: no-preference){
+@supports (animation-timeline: view()){
+.hs{height:2600px;view-timeline-name:--hs}
+.hs-pin{position:sticky;top:0;height:820px;display:flex;flex-direction:column;justify-content:center}
+.hs-view{overflow:hidden}
+.hs-track{animation:hsMove linear both;animation-timeline:--hs;animation-range:contain 0% contain 100%}
+@keyframes hsMove{0%,14%{transform:translateX(0)}36%,64%{transform:translateX(-33.3333%)}86%,100%{transform:translateX(-66.6667%)}}
+.hs-fill{animation:hsFill linear both;animation-timeline:--hs;animation-range:contain 0% contain 100%}
+@keyframes hsFill{0%,14%{transform:scaleX(0)}36%,64%{transform:scaleX(.5)}86%,100%{transform:scaleX(1)}}
+.hs-d2{animation:dotOn linear both;animation-timeline:--hs;animation-range:contain 28% contain 32%}
+.hs-d3{animation:dotOn linear both;animation-timeline:--hs;animation-range:contain 78% contain 82%}
+@keyframes dotOn{from{background:#ffffff;color:#191f2c}to{background:#2340c8;color:#fafbfc}}
+}
+}
+
+/* How it works rooms */
+.room{position:relative;display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:40px;align-items:center;min-height:500px;padding:48px;border-radius:32px;overflow:hidden}
+.room-n{position:absolute;right:24px;top:-34px;font-family:var(--d);font-size:220px;font-weight:800;line-height:1;letter-spacing:-.06em;opacity:.16;pointer-events:none}
+.room-text{position:relative;display:flex;flex-direction:column;gap:12px}
+.room-h{margin:0;font-family:var(--d);font-size:42px;font-weight:800;letter-spacing:-.03em;line-height:1.02}
+.room-stage{position:relative}
+.pop{animation:pop 420ms cubic-bezier(.34,1.4,.64,1) both}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.96)}to{opacity:1;transform:none}}
+.spin{animation:spin 18s linear infinite;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Shop basket total: rolling digits */
+.dg{display:inline-block;height:1em;width:.62em;overflow:hidden;line-height:1;vertical-align:-.14em}
+.dg-strip{display:flex;flex-direction:column;transition:transform 520ms cubic-bezier(.34,1.25,.64,1)}
+.dg-strip span{display:block;height:1em;text-align:center}
+.grid-shop{display:grid;grid-template-columns:minmax(0,1fr);gap:56px;align-items:center}
+@media (min-width:1000px){.grid-shop{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
+@media (max-width:900px){.room{grid-template-columns:minmax(0,1fr);padding:28px}}
+@media (prefers-reduced-motion: reduce){.pop,.spin{animation:none}.dg-strip{transition:none}}
+.tiers{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+@media (min-width:1000px){.tiers{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}}
+.ticks{padding:0;list-style:none;display:grid;gap:10px;font-size:15px}
+.ticks li{display:flex;gap:10px}
+.ticks li::before{content:'✓';font-weight:700;color:#1d6f5f}
+.ticks.dark li::before{color:#86a2ea}
+.ticks li:has(b)::before{content:'';width:0}
+/* Business: shop rows inside the card */
+.shop-meta{font-size:11.5px;opacity:.75}
+.shop-list{display:flex;flex-direction:column;gap:6px;width:100%}
+.shop-list .shop-row{display:flex;flex-direction:row;align-items:center;gap:10px;width:100%;padding:6px;border-radius:999px;background:rgba(250,251,252,.08);text-align:left}
+.shop-row b,.shop-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shop-thumb{display:block;width:38px;height:38px;flex:none;overflow:hidden;border-radius:50%}
+.shop-add{display:grid;place-items:center;width:34px;height:34px;flex:none;border:0;border-radius:50%;background:#fafbfc;color:#3d0f1e;font:inherit;font-size:18px;font-weight:600;cursor:pointer}
+.biz-row{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:22px 4px;border-top:1px solid #e4e7eb}
+.biz-n{font-family:var(--m);font-size:13px;color:#b5294e;padding-top:6px}
+.biz-h{display:block;font-family:var(--d);font-size:24px;font-weight:700;letter-spacing:-.02em}
+.biz-p{display:block;margin-top:4px;max-width:30em;color:#4b5060;font-size:15px}
+/* Business: order flow played by scroll */
+.of{position:relative;background:#fbeef1}
+.of-pin{padding:96px 0}
+.of-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:48px;align-items:center}
+@media (min-width:1000px){.of-grid{grid-template-columns:minmax(0,4fr) minmax(0,7fr)}}
+.of-caps{display:grid;gap:22px;margin-top:36px}
+.of-cap{display:grid;grid-template-columns:44px 1fr;gap:10px}
+.of-n{font-family:var(--m);font-size:13px;color:#b5294e;padding-top:8px}
+.of-h{display:block;font-family:var(--d);font-size:30px;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+.of-p{display:block;margin-top:6px;max-width:26em;color:#4b5060;font-size:16px}
+.of-bar{display:none;margin-top:28px;height:3px;width:220px;border-radius:2px;background:#ecd3da;overflow:hidden}
+.of-fill{display:block;height:100%;background:#b5294e;transform-origin:left}
+.of-stage{position:relative;display:flex;justify-content:center;align-items:flex-start;gap:72px;flex-wrap:wrap}
+.of-label{font-family:var(--m);font-size:12px;color:#4b5060}
+.lay{position:absolute;inset:0}
+.lay-inline{position:absolute;left:16px;top:50%;transform:translateY(-50%);white-space:nowrap}
+.sr-txt{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left}
+.sr-txt b{font-size:13px}.sr-txt span{font-size:11.5px;opacity:.75}
+.qty{flex:none;padding:3px 8px;border-radius:999px;background:#fafbfc;color:#3d0f1e;font-size:12px;font-weight:700}
+.shop-list .shop-row.on{background:rgba(250,251,252,.18)}
+.compose{position:absolute;left:0;right:0;bottom:0;z-index:4;padding:18px 16px 20px;border-radius:24px 24px 0 0;background:#fafbfc;color:#191f2c}
+.notif{position:absolute;left:10px;right:10px;top:40px;z-index:4;padding:12px 14px;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 0 0 1px rgba(25,31,44,.08);opacity:0}
+.fly{position:absolute;left:50%;top:44%;z-index:5;display:grid;place-items:center;width:44px;height:44px;margin-left:-22px;border-radius:50%;background:#2340c8;opacity:0}
+.st-a{opacity:0}.st-b{opacity:1}.home{opacity:0}.chat{opacity:1}.send{opacity:0}.sent{opacity:1}
+@media (prefers-reduced-motion: no-preference){
+@supports (animation-timeline: view()){
+.of{height:3600px;view-timeline-name:--of}
+.of-pin{position:sticky;top:0;height:900px;display:flex;align-items:center}
+.of-pin>.wrap{width:100%}
+.of-caps{position:relative;display:block;height:160px}
+.of-cap{position:absolute;inset:0 0 auto 0}
+.of-bar{display:block}
+.of-fill{animation:ofGrow linear both;animation-timeline:--of;animation-range:contain 0% contain 100%}
+@keyframes ofGrow{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+.c1,.c2,.c3,.c4,.st-a,.st-b,.home,.chat,.reply,.notif,.compose,.sent,.send,.fly{animation-timing-function:linear;animation-fill-mode:both;animation-timeline:--of}
+.c1{animation-name:capFirst;animation-range:contain 0% contain 25%}
+.c2{animation-name:cap;animation-range:contain 25% contain 50%}
+.c3{animation-name:cap;animation-range:contain 50% contain 75%}
+.c4{animation-name:capLast;animation-range:contain 75% contain 100%}
+@keyframes cap{0%{opacity:0;transform:translateY(18px)}15%,85%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-18px)}}
+@keyframes capFirst{0%,85%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-18px)}}
+@keyframes capLast{0%{opacity:0;transform:translateY(18px)}15%,100%{opacity:1;transform:none}}
+.st-a{animation-name:fadeOut;animation-range:contain 24% contain 30%}
+.st-b{animation-name:fadeIn;animation-range:contain 24% contain 30%}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes fadeOut{from{opacity:1}to{opacity:0}}
+.compose{animation-name:sheetUp;animation-range:contain 48% contain 55%}
+@keyframes sheetUp{from{transform:translateY(105%)}to{transform:none}}
+.send{animation-name:fadeOut;animation-range:contain 58% contain 61%}
+.sent{animation-name:fadeIn;animation-range:contain 58% contain 61%}
+.fly{animation-name:flyAcross;animation-range:contain 57% contain 68%}
+@keyframes flyAcross{0%{opacity:0;transform:translateX(-170px) scale(.5)}15%,85%{opacity:1}100%{opacity:0;transform:translateX(170px) scale(1)}}
+.notif{animation-name:notif;animation-range:contain 66% contain 80%}
+@keyframes notif{0%{opacity:0;transform:translateY(-140%)}20%,80%{opacity:1;transform:none}100%{opacity:0;transform:translateY(-20%)}}
+.home{animation-name:fadeOut;animation-range:contain 76% contain 80%}
+.chat{animation-name:fadeIn;animation-range:contain 76% contain 80%}
+.reply{animation-name:replyIn;animation-range:contain 86% contain 92%}
+@keyframes replyIn{from{opacity:0;transform:translateY(12px) scale(.96)}to{opacity:1;transform:none}}
+}
+}
+/* Business v2: full order, scroll-scrubbed */
+.of2{position:relative;background:#fbeef1}
+.of2-pin{position:sticky;top:0;min-height:860px;display:flex;align-items:center;padding:72px 0}
+.of2-pin>.wrap{width:100%}
+.of2-steps{list-style:none;margin:36px 0 0;padding:0;display:grid;gap:16px}
+.of2-steps li{display:grid;grid-template-columns:36px 1fr;gap:14px;align-items:start}
+.of2-dot{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;font-size:13px;font-weight:700;transition:background 300ms ease,color 300ms ease}
+.of2-h{display:block;font-family:var(--d);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.2;padding-top:3px}
+.of2-p{display:block;overflow:hidden;margin-top:4px;max-width:26em;color:#4b5060;font-size:15px;transition:max-height 360ms ease,opacity 360ms ease}
+.of2-stage{position:relative;width:652px;height:640px;margin:0 auto}
+.abs{position:absolute}
+.cust{position:absolute;left:0;top:0;width:300px;height:600px;overflow:hidden;border-radius:36px;background:#3d0f1e;color:#fafbfc;font-family:'Inter',system-ui,sans-serif}
+.cust-photo{position:absolute;inset:0 0 auto 0;height:58%}
+.cust-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:62% 22%;-webkit-mask-image:linear-gradient(to bottom,#000 35%,transparent 100%);mask-image:linear-gradient(to bottom,#000 35%,transparent 100%)}
+.crow{left:18px;right:18px;height:48px;display:flex;align-items:center;gap:10px;padding:5px;border-radius:999px;transition:background 200ms ease}
+.cbar{left:18px;right:18px;top:542px;height:44px;display:flex;align-items:center;padding:0 5px 0 16px;border-radius:999px;background:#fafbfc}
+.sheet{position:absolute;left:0;right:0;top:170px;bottom:0;border-radius:26px 26px 0 0;background:#fafbfc;color:#191f2c}
+.flabel{left:18px;margin:0;font-size:11.5px;color:#4b5060}
+.field{left:18px;right:18px;height:42px;margin:0;display:flex;align-items:center;padding:0 14px;border-radius:12px;background:#ffffff;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
+.seg{left:18px;right:18px;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#f0f1f4;font-size:12.5px;font-weight:600}
+.seg span{display:flex;align-items:center;justify-content:center;height:34px;border-radius:9px}
+.cta{left:18px;right:18px;height:44px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:#191f2c;color:#fafbfc;font-size:13.5px;font-weight:600}
+.upload{left:18px;right:18px;height:46px;display:flex;align-items:center;justify-content:center;gap:8px;border-radius:14px;border:1.5px dashed #b5294e;color:#b5294e;font-size:13px;font-weight:600}
+.proof{left:18px;right:18px;height:56px;display:flex;align-items:center;gap:12px;padding:6px 12px 6px 6px;border-radius:14px;background:#f0f1f4}
+.proof-thumb{display:block;width:34px;height:44px;flex:none;border-radius:6px;background:#ffffff;box-shadow:0 0 0 1px #dfe1e6}
+.succ{position:absolute;inset:170px 0 0 0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:26px 26px 0 0;background:#fafbfc;color:#191f2c;pointer-events:none}
+.bit{position:absolute;left:56px;top:56px;width:8px;height:8px;border-radius:2px}
+.ccur{position:absolute;z-index:6;width:26px;height:26px;margin:-3px 0 0 -5px;pointer-events:none}
+.ccur svg{display:block}
+.cring{position:absolute;left:-10px;top:-12px;width:30px;height:30px;border-radius:50%;border:2px solid #fafbfc;box-shadow:0 0 0 1px rgba(25,31,44,.3);animation:cring 420ms ease-out forwards}
+@keyframes cring{from{opacity:1;transform:scale(.5)}to{opacity:0;transform:scale(1.5)}}
+.token{position:absolute;left:150px;top:300px;z-index:8;display:inline-flex;gap:6px;align-items:center;margin:-16px 0 0 -48px;padding:7px 12px;border-radius:999px;background:#1d6f5f;color:#fafbfc;font-size:12.5px;white-space:nowrap;pointer-events:none}
+.own{position:absolute;left:372px;top:0;width:280px;height:600px;padding:8px;border-radius:46px;background:#191f2c;box-shadow:inset 0 0 0 1.5px #3a4050}
+.own-screen{position:relative;width:100%;height:100%;overflow:hidden;border-radius:38px;background:#f3f4f7;color:#191f2c;font-family:'Inter',system-ui,sans-serif}
+.ocard{padding:12px;border-radius:16px;background:#ffffff}
+.ocard.dim{background:#eef0f3}
+.notif2{position:absolute;left:8px;right:8px;top:40px;z-index:4;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.98);box-shadow:0 0 0 1px rgba(25,31,44,.1)}
+/* Owner Orders screen */
+.os-status{margin:0;height:40px;padding:14px 22px 0;display:flex;justify-content:space-between;font-size:12px;font-weight:600}
+.os-head{display:flex;align-items:center;gap:10px;height:36px;margin:6px 14px 0}
+.os-bell{position:relative;display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb}
+.os-bell span{position:absolute;top:7px;right:8px;width:8px;height:8px;border-radius:50%;background:#b5294e;box-shadow:0 0 0 2px #ffffff;transition:opacity 200ms}
+.os-stat{display:flex;align-items:flex-end;gap:12px;height:84px;margin:12px 12px 0;padding:12px 14px;border-radius:20px;background:#191f2c;color:#fafbfc}
+.os-bars{display:flex;align-items:flex-end;gap:5px;height:44px}
+.os-bars span{display:block;width:10px;border-radius:3px;background:rgba(250,251,252,.28)}
+.os-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;height:34px;margin:12px 12px 0;padding:3px;border-radius:999px;background:#e9ebef;font-size:11.5px;font-weight:600}
+.os-tabs span{display:flex;align-items:center;justify-content:center;gap:5px;border-radius:999px;color:#4b5060}
+.os-tabs .on{background:#ffffff;color:#191f2c}
+.os-tabs i{font-style:normal;display:inline-grid;place-items:center;min-width:16px;height:16px;padding:0 4px;border-radius:999px;background:#b5294e;color:#fafbfc;font-size:10px}
+.os-list{display:flex;flex-direction:column;gap:8px;margin:12px 12px 0}
+.os-card{padding:14px;border-radius:22px;transition:background 400ms ease}
+.os-row1{margin:0;display:flex;align-items:center;gap:10px;height:36px}
+.os-av{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;font-size:13px;font-weight:700;color:#191f2c}
+.os-av.sm{width:30px;height:30px;font-size:12px}
+.os-item{margin:10px 0 0;display:flex;align-items:center;gap:10px;font-size:12.5px}
+.os-item img{width:28px;height:28px;flex:none;border-radius:8px;object-fit:cover}
+.os-item span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-item b{font-weight:600;font-variant-numeric:tabular-nums}
+.os-total{margin:10px 0 0;padding-top:10px;border-top:1px dashed #dfe1e6;display:flex;align-items:center;gap:10px;font-size:11.5px;color:#4b5060}
+.os-total b{margin-left:auto;font-family:var(--d);font-size:17px;color:#191f2c;letter-spacing:-.02em}
+.os-proof{display:inline-block;width:11px;height:14px;border-radius:2px;background:#ffffff;box-shadow:0 0 0 1px #c9ccd3}
+.os-actions{margin:12px 0 0;display:flex;gap:8px}
+.os-actions span{flex:1;display:flex;align-items:center;justify-content:center;height:40px;border-radius:999px;color:#fafbfc;font-size:13px;font-weight:600;transition:background 300ms ease}
+.os-actions i{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:50%;background:#e9ebef}
+.os-mini{display:flex;align-items:center;gap:10px;height:52px;padding:0 12px;border-radius:16px;background:#ffffff}
+.os-mini b{display:block;font-size:12.5px}
+.os-mini span span{display:block;font-size:11px;color:#696e7b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.os-amt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
+.os-amt i{width:7px;height:7px;border-radius:50%}
+/* Owner Orders v2: calm and readable */
+.o2-head{display:flex;align-items:flex-start;gap:12px;margin:10px 18px 0}
+.o2-title{display:block;font-family:var(--d);font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1}
+.o2-sub{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:#4b5060}
+.o2-plus{padding:2px 7px;border-radius:999px;background:#f2a33c;color:#191f2c;font-size:10.5px;font-weight:700}
+.o2-tabs{display:flex;gap:18px;margin:22px 18px 0;padding-bottom:10px;border-bottom:1px solid #e4e7eb;font-size:13px;font-weight:600;color:#8a8f9b}
+.o2-tabs span{display:inline-flex;align-items:center;gap:6px}
+.o2-tabs .on{color:#191f2c;position:relative}
+.o2-tabs .on::after{content:'';position:absolute;left:0;right:0;bottom:-11px;height:2px;border-radius:1px;background:#191f2c}
+.o2-tabs i{font-style:normal;display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;background:#b5294e;color:#fafbfc;font-size:10px}
+.o2-list{display:flex;flex-direction:column;gap:10px;margin:14px 14px 0}
+.o2-card{padding:14px 16px;border-radius:22px;transition:background 400ms ease,box-shadow 400ms ease}
+.o2-r1{margin:0;display:flex;align-items:center;gap:10px}
+.o2-r1 b{display:block;font-size:14.5px}
+.o2-r1 span span{display:block;font-size:11px;color:#696e7b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.o2-av{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;font-size:13px;font-weight:700;color:#191f2c}
+.o2-badge{flex:none;margin-left:8px;padding:3px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.o2-items{margin:10px 0 0;font-size:13px;line-height:1.5;color:#191f2c}
+.o2-meta{margin:5px 0 0;display:flex;gap:6px;font-size:11.5px;color:#696e7b}
+.o2-total{margin:10px 0 0;padding-top:10px;border-top:1px solid #e9ebef;display:flex;align-items:baseline;justify-content:space-between;font-size:12px;color:#696e7b}
+.o2-total b{font-family:var(--d);font-size:20px;letter-spacing:-.02em;color:#191f2c}
+.o2-btn{display:flex;align-items:center;justify-content:center;height:40px;margin-top:12px;border-radius:999px;color:#fafbfc;font-size:13.5px;font-weight:600;transition:background 300ms ease}
+.o2-row{display:flex;align-items:center;gap:12px;height:58px;padding:0 16px;border-radius:18px;background:#ffffff}
+.o2-row b{display:block;font-size:13.5px}
+.o2-row span span{display:block;font-size:11.5px;color:#696e7b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.o2-amt{display:grid;justify-items:end;gap:2px}
+.o2-amt b{font-size:13.5px;font-variant-numeric:tabular-nums}
+.o2-amt span{font-size:11px;color:#8a8f9b}
+/* Pricing v2 */
+.tog{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border-radius:999px;background:#eceef2}
+.tog-thumb{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:#191f2c;transition:transform 420ms cubic-bezier(.34,1.35,.64,1)}
+.tog button{position:relative;z-index:1;min-height:44px;padding:0 22px;border:0;background:transparent;font:inherit;font-size:15px;font-weight:600;cursor:pointer;transition:color 300ms ease}
+.tog em{font-style:normal;margin-left:4px;padding:2px 7px;border-radius:999px;background:#f2a33c;color:#191f2c;font-size:11px;transition:opacity 300ms}
+.pr-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+@media (min-width:1000px){.pr-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.spot{position:relative;display:flex;flex-direction:column;height:100%;padding:36px;border-radius:30px;overflow:hidden;isolation:isolate}
+.spot::before{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(420px circle at var(--sx,50%) var(--sy,0%),var(--spot),transparent 60%);opacity:0;transition:opacity 300ms ease}
+.spot:hover::before{opacity:1}
+.star{position:relative;padding:2px;border-radius:32px;overflow:hidden;background:#2a3142}
+.star>.spot{border-radius:30px}
+.star-a,.star-b{position:absolute;width:300%;height:50%;border-radius:50%;opacity:.8;pointer-events:none}
+.star-a{bottom:-12px;right:-250%;background:radial-gradient(circle,#86a2ea,transparent 12%);animation:starB 6s linear infinite alternate}
+.star-b{top:-12px;left:-250%;background:radial-gradient(circle,#f2a33c,transparent 12%);animation:starT 6s linear infinite alternate}
+@keyframes starB{0%{transform:translateX(0);opacity:1}100%{transform:translateX(-100%);opacity:0}}
+@keyframes starT{0%{transform:translateX(0);opacity:1}100%{transform:translateX(100%);opacity:0}}
+.shiny{background:linear-gradient(110deg,#fafbfc 40%,#bfd1f9 50%,#fafbfc 60%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 3.5s linear infinite}
+@keyframes shine{from{background-position:100% 0}to{background-position:-100% 0}}
+.pr-chip-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:22px}
+.pr-chip-row span{display:inline-flex;align-items:center;gap:8px;padding:5px 12px 5px 5px;border-radius:999px;background:#ffffff;font-size:12.5px;font-weight:600}
+.pr-chip-row span:not(:first-child){padding:7px 14px}
+.pr-chip-row.dark span{background:rgba(250,251,252,.1);color:#fafbfc}
+.calc{display:grid;grid-template-columns:minmax(0,1fr);gap:40px;margin-top:20px;padding:40px;border-radius:30px;background:#141925;color:#fafbfc}
+@media (min-width:1000px){.calc{grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:64px}}
+.el{position:relative;height:56px;margin-top:6px}
+.el-track{position:absolute;left:0;right:0;top:26px;height:6px;border-radius:3px;background:rgba(250,251,252,.14);transform:scaleY(var(--stretch));transition:transform 500ms cubic-bezier(.34,1.8,.64,1)}
+.el-fill{position:absolute;left:0;top:0;bottom:0;width:var(--fill);border-radius:3px;background:#86a2ea;transition:width 380ms cubic-bezier(.34,1.45,.64,1)}
+.el input{position:absolute;inset:0;width:100%;margin:0;opacity:0;cursor:grab}
+.el input:active{cursor:grabbing}
+.el-bubble{position:absolute;top:10px;display:grid;place-items:center;min-width:38px;height:38px;padding:0 8px;border-radius:999px;background:#fafbfc;color:#191f2c;font-weight:700;font-size:14px;pointer-events:none;transition:left 380ms cubic-bezier(.34,1.45,.64,1),transform 260ms cubic-bezier(.34,1.8,.64,1)}
+.el:focus-within .el-bubble{box-shadow:0 0 0 3px #86a2ea}
+.aov{display:flex;gap:8px}
+.aov button{min-height:44px;padding:0 18px;border:0;border-radius:999px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;transition:background 200ms,color 200ms}
+.calc-out{padding:28px;border-radius:24px;background:#1d2433}
+.bars{display:grid;gap:12px;margin-top:22px}
+.bar{position:relative;display:block;height:34px;border-radius:10px;background:rgba(250,251,252,.06);overflow:hidden}
+.bar>span{position:absolute;left:0;top:0;bottom:0;border-radius:10px;transition:width 600ms cubic-bezier(.34,1.3,.64,1)}
+.bar em{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-style:normal;font-size:12.5px;font-weight:600;color:#191f2c}
+@media (prefers-reduced-motion: reduce){.star-a,.star-b,.shiny{animation:none}.shiny{color:#fafbfc;background:none}}
+/* Closing v2 + footer */
+.cl2{position:relative;overflow:hidden;padding:150px 0 140px;background:#191f2c;color:#fafbfc}
+.cl2-front{position:relative;z-index:1;display:flex;flex-direction:column;align-items:center;text-align:center}
+.split{margin:0;display:flex;justify-content:center;font-family:var(--d);font-size:clamp(88px,36px + 10vw,200px);font-weight:800;line-height:.95;letter-spacing:-.05em;color:#bfd1f9}
+.sl{display:inline-block;overflow:hidden;padding-bottom:.06em}
+.sl>span{display:inline-block;white-space:pre;transition:transform 700ms cubic-bezier(.22,1,.36,1),opacity 500ms ease}
+.cl2-rot{margin:14px 0 0;display:flex;align-items:center;gap:.3em;font-family:var(--d);font-size:clamp(24px,16px + 1.4vw,36px);font-weight:700;letter-spacing:-.02em;color:#b3b7c1}
+.cl2-reel{display:inline-flex;height:1.2em;overflow:hidden;padding:0 .3em;border-radius:.25em;background:#2340c8;color:#fafbfc;line-height:1.2}
+.cl2-reel>span{display:flex;flex-direction:column}
+.cl2-reel>span>span{display:block;height:1.2em;white-space:nowrap}
+.cl2-claim{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 4px;width:100%;max-width:680px;margin-top:34px}
+.cl2-field{flex:1 1 320px;display:flex;align-items:center;min-height:68px;padding:0 24px;border-radius:999px;background:#fafbfc;color:#191f2c;font-size:19px}
+.cl2-field>span{color:#696e7b}
+.cl2-field input{flex:1;min-width:0;height:64px;border:0;background:transparent;font:inherit;font-weight:700;color:#191f2c;outline:none}
+.cl2-field:focus-within{box-shadow:0 0 0 3px #86a2ea}
+.ft{position:relative;overflow:hidden;padding:40px 0 0;background:#191f2c;color:#b3b7c1;border-top:1px solid rgba(250,251,252,.1)}
+.ft-row{display:flex;flex-wrap:wrap;align-items:center;gap:16px 32px}
+.ft-links{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px}
+.ft-links a{color:#fafbfc;text-decoration:none}
+.ft-links a:hover{color:#bfd1f9}
+.ft-note{margin:16px 0 0;font-size:13px}
+.ft-mark{display:block;margin:28px 0 -0.16em;font-family:var(--d);font-size:31vw;font-weight:800;line-height:.8;letter-spacing:-.06em;text-align:center;white-space:nowrap;color:transparent;background:linear-gradient(100deg,#252c3d 35%,#4a5677 50%,#252c3d 65%);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;animation:shineMark 6s linear infinite}
+@keyframes shineMark{from{background-position:120% 0}to{background-position:-120% 0}}
+.ft-mark .i{position:relative}
+.ft-mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid #303850;border-radius:.08em;transform:translateX(-50%)}
+@media (prefers-reduced-motion: reduce){.ft-mark{animation:none}.ft-mark{color:#252c3d;background:none}.sl>span{transition:none}}
+/* Moving colour backgrounds: soft blobs in the palette, with grain */
+.blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.blob{position:absolute;width:62%;aspect-ratio:1;border-radius:50%;filter:blur(30px);opacity:.95;animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.blob.b1{left:-12%;top:-30%;animation-name:bl1;animation-duration:19s}
+.blob.b2{right:-14%;top:-20%;animation-name:bl2;animation-duration:23s}
+.blob.b3{left:22%;bottom:-45%;animation-name:bl3;animation-duration:21s}
+.blob.b4{right:4%;bottom:-40%;width:48%;animation-name:bl4;animation-duration:26s}
+@keyframes bl1{to{transform:translate(28%,22%) scale(1.15)}}
+@keyframes bl2{to{transform:translate(-26%,30%) scale(.9)}}
+@keyframes bl3{to{transform:translate(-20%,-30%) scale(1.2)}}
+@keyframes bl4{to{transform:translate(-34%,-18%) scale(1.1)}}
+.blobs.dark .blob{opacity:.42;filter:blur(50px)}
+.grain{position:absolute;inset:0;width:100%;height:100%;opacity:.12;mix-blend-mode:multiply}
+.blobs.dark .grain{opacity:.14;mix-blend-mode:screen}
+@media (prefers-reduced-motion: reduce){.blob{animation:none}}
+/* Floating glass pill nav */
+.navwrap{position:sticky;top:0;z-index:40;height:0;padding:0 32px}
+.navpill{display:flex;align-items:center;gap:18px;max-width:1120px;height:68px;margin:0 auto;padding:0 14px 0 36px;border-radius:999px;transform:translateY(14px);background:rgba(250,251,252,.5);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 0 0 1px rgba(25,31,44,.06)}
+.navlinks{display:flex;gap:2px}
+.navlinks a,.navright a{display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:999px;color:#191f2c;font-size:15px;font-weight:500;text-decoration:none;white-space:nowrap;transition:background 180ms ease}
+.navlinks a:hover,.navright a:not(.navcta):hover{background:rgba(25,31,44,.07);color:#191f2c}
+.navright{margin-left:auto;display:flex;align-items:center;gap:2px}
+.navright .navcta{height:46px;margin-left:8px;padding:0 22px;background:#2340c8;color:#fafbfc;font-weight:600}
+.navright .navcta:hover{background:#1a31a8;color:#fafbfc}
+@media (max-width:1100px){.navlinks a:nth-child(n+4){display:none}}
+@media (max-width:760px){.navpill{gap:6px;padding:0 10px 0 20px}.navlinks{display:none}}
+/* Pricing: rolling price */
+.roll{display:inline-block;height:1em;overflow:hidden;line-height:1;vertical-align:bottom}
+.roll-strip{display:flex;flex-direction:column;transition:transform 560ms cubic-bezier(.34,1.25,.64,1)}
+.roll-strip span{display:block;height:1em}
+@supports (animation-timeline: view()){
+.reveal{animation:reveal linear both;animation-timeline:view();animation-range:entry 5% cover 35%}
+@keyframes reveal{from{opacity:.08;filter:blur(6px);transform:translateY(18px)}to{opacity:1;filter:none;transform:none}}
+}
+.grid-hero{display:grid;grid-template-columns:minmax(0,1fr);gap:56px;align-items:center}
+.grid-who{display:grid;grid-template-columns:minmax(0,1fr);gap:48px;align-items:start}
+.grid-step{display:grid;grid-template-columns:minmax(0,1fr);gap:40px}
+.plans{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.faq{display:grid;grid-template-columns:minmax(0,1fr);gap:48px}
+@media (min-width:1000px){
+.grid-hero{grid-template-columns:minmax(0,6fr) minmax(0,5fr)}
+.grid-who{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.grid-step{grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+.plans{grid-template-columns:repeat(2,minmax(0,1fr))}
+.faq{grid-template-columns:minmax(0,4fr) minmax(0,7fr)}
+.sticky{position:sticky;top:40px}
+}
+@media (max-width:760px){.navlinks{display:none}}
+details.q{border-bottom:1px solid #e4e7eb}
+details.q summary{list-style:none;display:flex;justify-content:space-between;gap:16px;align-items:center;min-height:68px;cursor:pointer;font-family:var(--d);font-size:21px;font-weight:700;letter-spacing:-.015em}
+details.q summary::-webkit-details-marker{display:none}
+details.q summary::after{content:'+';font-family:var(--m);font-size:22px;font-weight:400;color:#2340c8}
+details.q[open] summary::after{content:'–'}
+@media (prefers-reduced-motion: reduce){.caret,.spk,.fm-track,.st-panel,.bob{animation:none}.fm-band,.ct-strip,.st-fill,.step{transition:none}.reveal{animation:none}}
+/* responsive: phone */
+@media (max-width:960px){.navlinks{display:none}.navright{margin-left:auto}}
+#claim-tj{width:0}
+@media (max-width:560px){
+.navwrap{padding:0 12px}
+.navpill{gap:4px;padding:0 6px 0 16px}
+.navright a[hreflang]{display:none}
+.navcta{height:42px;margin-left:2px;padding:0 16px}
+.deckstage{width:470px;margin:0 auto;zoom:.72}
+.spot{padding:26px}
+.spot [style*="font-size: 88px"]{font-size:64px!important}
+.room-stage{grid-template-columns:minmax(0,1fr)!important}
+.room-h{font-size:34px}
+.room-n{font-size:150px}
+.cl2-field{flex:1 1 100%;min-height:58px;padding:0 18px;font-size:16px}
+.cl2-field input{width:0;height:54px}
+.pr-toggle em,button em{white-space:nowrap}
+}
+@media (max-width:380px){.deckstage{zoom:.66}}
+</style>
+</helmet>
+
+<div class="tj">
+
+<header class="navwrap">
+<div class="navpill">
+<a href="/" style="color: #191f2c; text-decoration: none; margin-right: 8px"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios home</span></a>
+<nav class="navlinks" aria-label="Sections">
+<a href="#who">Who it’s for</a>
+<a href="#how">How it works</a>
+<a href="#business">For business</a>
+<a href="#pricing">Pricing</a>
+<a href="#faq">FAQ</a>
+</nav>
+<div class="navright">
+<a href="/ms" hreflang="ms">BM</a>
+<a href="/signin">Sign in</a>
+<a href="/signup" class="navcta">Make your page</a>
+</div>
+</div>
+</header>
+
+<main>
+
+<!-- HERO -->
+<section onMouseMove="{{ onHeroMove }}" onMouseLeave="{{ onHeroLeave }}" style="position: relative; overflow: hidden; padding: 148px 0 96px; background: #fafbfc">
+<div class="blobs" aria-hidden="true">
+<span class="blob b1" style="background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span>
+<span class="blob b2" style="background: radial-gradient(circle, #f6c9d5 0%, transparent 65%)"></span>
+<span class="blob b3" style="background: radial-gradient(circle, #ffe2b8 0%, transparent 65%)"></span>
+<span class="blob b4" style="background: radial-gradient(circle, #bfe3d6 0%, transparent 65%)"></span>
+<svg class="grain" aria-hidden="true"><filter id="gh"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#gh)"></rect></svg>
+</div>
+<div class="wrap grid-hero" style="position: relative; z-index: 1">
+
+<div>
+<p class="eyebrow">Tanya je · just ask</p>
+<h1 style="margin: 0; font-family: var(--d); font-size: clamp(46px, 26px + 4.4vw, 88px); font-weight: 800; line-height: 1; letter-spacing: -0.04em; color: #191f2c">Don’t read the bio.<br>Ask
+<span style="display: inline-flex; vertical-align: bottom; height: 1.08em; overflow: hidden; padding: 0 0.16em; border-radius: 0.14em; background: {{rotBg}}; color: #fafbfc; transition: background 400ms ease">
+<span style="display: flex; flex-direction: column; transform: translateY(-{{rotY}}em); transition: {{rotTransition}}">
+<sc-for list="{{ rotNames }}" as="n" hint-placeholder-count="6"><span style="display: block; height: 1.08em; line-height: 1.08; white-space: nowrap">{{ n }}</span></sc-for>
+</span>
+</span>.</h1>
+<p style="margin: 28px 0 0; max-width: 31em; font-size: 19px; color: #4b5060">Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English, and never makes anything up.</p>
+
+<form onSubmit="{{ onClaim }}" style="position: relative; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 32px; max-width: 540px">
+<label for="claim-tj" class="sr">The address you want for your page</label>
+<span style="flex: 1 1 240px; display: flex; align-items: center; min-height: 56px; padding: 0 16px; border: 1.5px solid #191f2c; border-radius: 12px; background: #ffffff"><span aria-hidden="true" style="color: #696e7b">curios.my/</span><input id="claim-tj" name="handle" placeholder="yourname" autocomplete="off" style="flex: 1; min-width: 0; height: 52px; border: 0; background: transparent; font: inherit; font-weight: 600; color: #191f2c; outline: none"></span>
+<button type="submit" class="btn" onClick="{{ onSpark }}">Claim it, free</button>
+<sc-if value="{{ sparkOn }}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="position: absolute; left: {{sparkX}}px; top: {{sparkY}}px; width: 0; height: 0">
+<sc-for list="{{ sparkRays }}" as="r" hint-placeholder-count="8"><span class="spk" style="rotate: {{r.deg}}deg; --dx: {{r.dx}}px; --dy: {{r.dy}}px"></span></sc-for>
+</span>
+</sc-if>
+</form>
+<p style="margin: 14px 0 0; font-size: 14px; color: #696e7b">Free for anyone. Business pages also get every ready buyer’s number.</p>
+</div>
+
+<!-- The deck: Card Swap of Curios pages, with the front page's conversation floating off it -->
+<div role="group" class="deckstage" aria-label="Curios pages answering questions" style="position: relative; height: 680px">
+<button type="button" aria-label="Show the next page" onClick="{{ nextPersona }}" style="position: absolute; inset: 0; padding: 0; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer">
+<sc-for list="{{ deck }}" as="c" hint-placeholder-count="5">
+<article class="pc" style="left: 60px; top: 14px; width: 330px; height: 636px; background: {{c.deep}}; transform: {{c.tf}}; transform-origin: 50% 100%; z-index: {{c.z}}; opacity: {{c.op}}; transition: transform 680ms cubic-bezier(0.34, 1.2, 0.64, 1), opacity 420ms ease">
+<div class="pc-photo" style="height: 66%"><img src="{{c.photo}}" alt="" style="object-position: {{c.focus}}"></div>
+<span style="position: absolute; top: 16px; right: 16px; padding: 4px 10px; border-radius: 999px; background: rgba(250,251,252,0.9); color: #191f2c; font-size: 11.5px; font-weight: 600">{{c.kind}}</span>
+<div class="pc-body" style="gap: 10px; top: 27%; justify-content: flex-start">
+<p class="pc-name" style="font-family: {{c.font}}; font-size: 36px">{{c.name}}</p>
+<p class="pc-handle">curios.my/{{c.handle}}</p>
+<span class="pc-icons" aria-hidden="true">
+<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><circle cx="17.5" cy="6.5" r="0.6"></circle></svg>
+<svg viewBox="0 0 24 24"><path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z"></path></svg>
+<svg viewBox="0 0 24 24"><path d="M14 3v11.5a3.5 3.5 0 1 1-3.5-3.5"></path><path d="M14 3c.6 2.6 2.4 4 5 4"></path></svg>
+<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg>
+</span>
+<span class="pc-tabs" aria-hidden="true"><span style="background: {{c.linksBg}}; color: {{c.linksFg}}; transition: background 240ms ease, color 240ms ease">Links</span><span style="position: relative; background: {{c.askBg}}; color: {{c.askFg}}; transition: background 240ms ease, color 240ms ease">Ask<sc-if value="{{ c.showRipple }}" hint-placeholder-val="{{ false }}"><span class="ripple"></span></sc-if><sc-if value="{{ c.showCursor }}" hint-placeholder-val="{{ false }}"><span class="cur" style="transform: translate({{c.curX}}px, {{c.curY}}px) scale({{c.curS}}); opacity: {{c.curO}}"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M5 3l14 8-6.2 1.6L10 19z" fill="#191f2c" stroke="#fafbfc" stroke-width="1.6" stroke-linejoin="round"></path></svg></span></sc-if></span></span>
+<sc-if value="{{ c.askOpen }}" hint-placeholder-val="{{ true }}">
+<span class="pc-chat" style="min-height: 168px; justify-content: flex-start">
+<span class="pc-q">{{c.q}}</span>
+<span class="pc-a" style="background: {{c.warm}}">{{c.aShown}}<sc-if value="{{ c.typing }}" hint-placeholder-val="{{ false }}"><span class="caret" aria-hidden="true"></span></sc-if></span>
+</span>
+</sc-if>
+<sc-if value="{{ c.linksOpen }}" hint-placeholder-val="{{ false }}">
+<span class="pc-links" style="min-height: 168px"><span><span class="in">{{c.l1}}</span></span><span><span class="in">{{c.l2}}</span></span><span><span class="in">{{c.l3}}</span></span></span>
+</sc-if>
+<span class="pc-ask" style="margin-top: auto">Ask {{c.short}} anything<span class="pc-send" style="background: {{c.accent}}"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></span>
+</div>
+</article>
+</sc-for>
+</button>
+</div>
+
+</div>
+</section>
+
+<!-- True Focus -->
+<section aria-label="What people ask" style="padding: 88px 0; background: #191f2c; color: #fafbfc">
+<div class="wrap" style="display: flex; flex-direction: column; gap: 22px">
+<p class="eyebrow" style="color: #86a2ea">What people ask a Curios page</p>
+<p style="margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2em 0.32em; font-family: var(--d); font-size: clamp(34px, 22px + 3vw, 64px); font-weight: 700; line-height: 1.1; letter-spacing: -0.035em">
+<span style="color: #bfd1f9">Ask about my</span>
+<sc-for list="{{ focusWords }}" as="w" hint-placeholder-count="5"><span style="padding: 0 0.08em; filter: {{w.blur}}; opacity: {{w.op}}; transition: filter 420ms ease, opacity 420ms ease, box-shadow 420ms ease; box-shadow: {{w.ring}}; border-radius: 0.12em">{{w.text}}</span></sc-for>
+</p>
+<p style="margin: 6px 0 0; max-width: 40em; color: #b3b7c1">Whatever you put in, it can answer. Whatever you didn’t, it says it’ll check with you, and the question waits on your list.</p>
+</div>
+</section>
+
+<!-- Curved Loop -->
+<div aria-hidden="true" style="background: #eaf0ff; overflow: hidden">
+<svg viewBox="0 0 1440 180" preserveAspectRatio="none" style="display: block; width: 100%; height: 150px">
+<path id="loopPath" d="M -200 120 Q 360 10 720 90 T 1640 70" fill="none"></path>
+<text style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 56px; font-weight: 800; letter-spacing: -1.5px; fill: #122686">
+<textPath href="#loopPath" startOffset="{{loopOffset}}">tanya je · just ask · tanya je · just ask · tanya je · just ask · tanya je · just ask · tanya je · just ask ·</textPath>
+</text>
+</svg>
+</div>
+
+<!-- WHO IT'S FOR · Flowing Menu + the page -->
+<section id="who" style="padding: 112px 0 120px">
+<div class="wrap">
+<p class="eyebrow">Who it’s for</p>
+<h2 class="h2 reveal">One page for whoever’s asking.</h2>
+<p class="lede reveal">Pick who you are. Each page knows its owner, and nothing else.</p>
+
+<div class="grid-who" style="margin-top: 56px">
+<div role="list" style="border-bottom: 1px solid #e4e7eb">
+<sc-for list="{{ who }}" as="r" hint-placeholder-count="5">
+<button type="button" role="listitem" class="fm-row" onMouseEnter="{{ r.pick }}" onFocus="{{ r.pick }}" onClick="{{ r.pick }}" aria-pressed="{{ r.on }}">
+<span class="fm-label"><span>{{r.label}}</span><span style="font-family: var(--m); font-size: 13px; font-weight: 400; letter-spacing: 0; color: #696e7b">{{r.example}}</span></span>
+<span class="fm-band" aria-hidden="true" style="background: {{r.accent}}; color: #fafbfc; transform: translateY({{r.y}})">
+<span class="fm-track"><sc-for list="{{ r.qs }}" as="q" hint-placeholder-count="8"><span style="display: inline-flex; align-items: center; gap: 28px">{{q}}<span class="fm-dot"></span></span></sc-for></span>
+</span>
+</button>
+</sc-for>
+</div>
+
+<div style="position: relative; height: 590px">
+<article class="pc" aria-label="{{ sel.name }}'s Curios page" style="left: 50%; top: 0; margin-left: -150px; background: {{sel.deep}}">
+<div class="pc-photo"><img src="{{sel.photo}}" alt="" style="object-position: {{sel.focus}}"></div>
+<div class="pc-body" style="top: 27%; justify-content: flex-start">
+<p class="pc-name" style="font-family: {{sel.font}}">{{sel.name}}</p>
+<p class="pc-handle">curios.my/{{sel.handle}}</p>
+<span class="pc-tabs" aria-hidden="true"><span class="on">Links</span><span>Ask</span></span>
+<span class="pc-links"><span><span class="in">{{sel.l1}}</span></span><span><span class="in">{{sel.l2}}</span></span><span><span class="in">{{sel.l3}}</span></span></span>
+<span class="pc-ask" style="margin-top: auto">Ask {{sel.short}} anything<span class="pc-send" style="background: {{sel.accent}}"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></span>
+</div>
+</article>
+<p class="fl" style="top: 84px; right: calc(50% - 174px); max-width: 220px; margin: 0; padding: 12px 16px; border-radius: 20px 20px 6px 20px; background: #ffffff; box-shadow: 0 0 0 1px #e4e7eb; font-size: 15px">{{sel.q}}</p>
+<p class="fl" style="top: 300px; left: calc(50% - 174px); max-width: 230px; margin: 0; padding: 12px 16px; border-radius: 20px 20px 20px 6px; background: {{sel.warm}}; font-size: 15px">{{sel.a}}</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- HOW IT WORKS · pinned sideways track; each step is its own coloured room with a live component -->
+<section id="how" class="hs" style="position: relative; background: #fafbfc">
+<div class="hs-pin" style="padding: 88px 0">
+<div class="wrap">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div>
+<p class="eyebrow">How it works</p>
+<h2 class="h2">Ten minutes from blank to bio link.</h2>
+</div>
+<div class="hs-dots" aria-hidden="true">
+<span class="hs-rail"><span class="hs-fill"></span></span>
+<span class="hs-dot on">1</span><span class="hs-dot hs-d2">2</span><span class="hs-dot hs-d3">3</span>
+</div>
+</div>
+
+<div class="hs-view" style="margin-top: 40px">
+<ol class="hs-track" style="list-style: none; margin: 0; padding: 0">
+
+<!-- 01 · Animated List + Decrypted Text: facts surface out of what you pasted -->
+<li class="hs-slide">
+<div class="room" style="background: #eaf0ff; color: #191f2c">
+<span class="room-n" aria-hidden="true" style="color: #2340c8">01</span>
+<div class="room-text">
+<h3 class="room-h">Tell it about you.</h3>
+<p style="margin: 0; max-width: 24em; color: #4b5060">Paste your website, your Linktree, or just a few honest paragraphs. It reads them and pulls out the facts.</p>
+</div>
+<div class="room-stage" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start">
+<div style="padding: 18px; border-radius: 20px; background: #ffffff; font-size: 14px; line-height: 1.65; color: #4b5060">
+<p style="margin: 0 0 10px; font-family: var(--m); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #696e7b">You pasted</p>
+I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; border-radius: 4px; transition: background 300ms ease">Portraits from RM250</mark>, <mark style="background: {{hl1}}; color: inherit; border-radius: 4px; transition: background 300ms ease">book covers from RM900</mark>. I take <mark style="background: {{hl2}}; color: inherit; border-radius: 4px; transition: background 300ms ease">four commissions a month</mark> and <mark style="background: {{hl3}}; color: inherit; border-radius: 4px; transition: background 300ms ease">reply within two days</mark>.
+</div>
+<div aria-live="polite" style="display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0 0 2px; font-family: var(--m); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #122686">It found</p>
+<sc-for list="{{ found }}" as="f" hint-placeholder-count="4">
+<span class="pop" style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #2340c8; color: #fafbfc; font-size: 14px; font-weight: 600"><span aria-hidden="true" style="display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; background: #fafbfc; color: #2340c8; font-size: 11px">✓</span><span style="font-family: {{f.font}}">{{f.text}}</span></span>
+</sc-for>
+</div>
+</div>
+</div>
+</li>
+
+<!-- 02 · Stack: swipe facts right to approve -->
+<li class="hs-slide">
+<div class="room" style="background: #191f2c; color: #fafbfc">
+<span class="room-n" aria-hidden="true" style="color: #86a2ea">02</span>
+<div class="room-text">
+<h3 class="room-h" style="color: #bfd1f9">Approve what’s right.</h3>
+<p style="margin: 0; max-width: 24em; color: #b3b7c1">Each fact comes up as a card. Keep the right ones, fix the rest. It never says anything you didn’t approve.</p>
+<p style="margin: 8px 0 0; font-family: var(--m); font-size: 13px; color: #86a2ea">{{approvedCount}} approved</p>
+</div>
+<div class="room-stage" style="display: flex; flex-direction: column; align-items: center; gap: 22px">
+<div style="position: relative; width: 320px; height: 210px">
+<sc-for list="{{ stack }}" as="s" hint-placeholder-count="4">
+<div style="position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: space-between; padding: 22px; border-radius: 22px; background: #fafbfc; color: #191f2c; transform: {{s.tf}}; opacity: {{s.op}}; z-index: {{s.z}}; transition: transform 460ms cubic-bezier(0.22, 1, 0.36, 1), opacity 460ms ease">
+<p style="margin: 0; display: flex; justify-content: space-between; font-family: var(--m); font-size: 11.5px; color: #696e7b"><span>Fact {{s.n}} of 4</span><span>from aisyahdraws.com</span></p>
+<p style="margin: 0; font-family: var(--d); font-size: 28px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.1">{{s.text}}</p>
+<p style="margin: 0; font-size: 13px; color: #4b5060">Used when someone asks about {{s.topic}}.</p>
+<sc-if value="{{ s.stamp }}" hint-placeholder-val="{{ false }}"><span style="position: absolute; top: 18px; right: 18px; padding: 6px 12px; border: 2.5px solid {{s.stampColor}}; border-radius: 10px; color: {{s.stampColor}}; font-family: var(--d); font-size: 18px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; transform: rotate(8deg)">{{s.stampText}}</span></sc-if>
+</div>
+</sc-for>
+</div>
+<div style="display: flex; gap: 10px">
+<button type="button" onClick="{{ stackEdit }}" style="min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; background: rgba(250,251,252,0.12); color: #fafbfc; font: inherit; font-weight: 600; cursor: pointer">← Fix it</button>
+<button type="button" onClick="{{ stackApprove }}" style="min-height: 48px; padding: 0 22px; border: 0; border-radius: 999px; background: #eaf0ff; color: #191f2c; font: inherit; font-weight: 600; cursor: pointer">Approve →</button>
+</div>
+</div>
+</div>
+</li>
+
+<!-- 03 · Circular Text + Tilted Card: the link, ready for your bio -->
+<li class="hs-slide">
+<div class="room" style="background: #2340c8; color: #fafbfc">
+<span class="room-n" aria-hidden="true" style="color: #bfd1f9">03</span>
+<div class="room-text">
+<h3 class="room-h" style="color: #eaf0ff">Put the link in your bio.</h3>
+<p style="margin: 0; max-width: 24em; color: #dfe8fd">Share curios.my/yourname on Instagram, TikTok or WhatsApp. Anyone who taps it can ask, day or night.</p>
+</div>
+<div class="room-stage" style="display: flex; align-items: center; justify-content: center; gap: 28px; flex-wrap: wrap">
+<div aria-hidden="true" style="position: relative; width: 190px; height: 190px; flex: none">
+<svg class="spin" viewBox="0 0 200 200" style="position: absolute; inset: 0; width: 100%; height: 100%">
+<path id="circ" d="M100,100 m-82,0 a82,82 0 1,1 164,0 a82,82 0 1,1 -164,0" fill="none"></path>
+<text style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 3px; fill: #eaf0ff"><textPath href="#circ">CURIOS.MY/AISYAHDRAWS · TANYA JE · JUST ASK ·</textPath></text>
+</svg>
+<img src="/_blob/712a5adabc653230800c5a21396b0117" alt="" style="position: absolute; inset: 36px; width: 118px; height: 118px; border-radius: 50%; object-fit: cover; object-position: 30% 40%">
+</div>
+<div onMouseMove="{{ tiltMove }}" onMouseLeave="{{ tiltLeave }}" style="perspective: 900px">
+<div style="width: 300px; padding: 20px; border-radius: 22px; background: #fafbfc; color: #191f2c; transform: rotateX({{tiltX}}deg) rotateY({{tiltY}}deg); transition: transform {{tiltDur}} cubic-bezier(0.22, 1, 0.36, 1)">
+<p style="margin: 0; display: flex; align-items: center; gap: 12px"><img src="/_blob/712a5adabc653230800c5a21396b0117" alt="" style="width: 44px; height: 44px; border-radius: 50%; object-fit: cover; object-position: 30% 40%"><span><b style="display: block">aisyahdraws</b><span style="font-size: 13px; color: #4b5060">Illustrator · Ipoh</span></span></p>
+<p style="margin: 14px 0 0; font-size: 14px; line-height: 1.5">Portraits, book covers, editorial. Commissions open for November.</p>
+<p style="margin: 10px 0 0; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 10px; background: #eaf0ff; font-size: 14px; font-weight: 600; color: #122686"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg>curios.my/aisyahdraws</p>
+</div>
+</div>
+</div>
+</div>
+</li>
+
+</ol>
+</div>
+<p style="margin: 20px 0 0; font-family: var(--m); font-size: 12px; color: #696e7b">Keep scrolling →</p>
+</div>
+</div>
+</section>
+
+<!-- HAVE A BUSINESS? · the full order, driven by scroll: add, checkout, details, pay + proof, received, lands in your Orders -->
+<section id="business" class="of2" style="height: {{of.secH}}">
+<div class="of2-pin">
+<div class="wrap of-grid">
+
+<div>
+<p class="eyebrow" style="color: #b5294e">For business</p>
+<h2 class="h2">Have a business? Your page becomes a shop.</h2>
+<ol class="of2-steps">
+<sc-for list="{{ of.caps }}" as="c" hint-placeholder-count="5">
+<li style="opacity: {{c.op}}; transition: opacity 300ms ease">
+<span class="of2-dot" style="background: {{c.dot}}; color: {{c.dotFg}}">{{c.n}}</span>
+<span><b class="of2-h">{{c.title}}</b><span class="of2-p" style="max-height: {{c.bodyH}}; opacity: {{c.bodyO}}">{{c.body}}</span></span>
+</li>
+</sc-for>
+</ol>
+</div>
+
+<div class="of2-stage" role="img" aria-label="A customer adds items, checks out, pays with Kek Lina's QR and uploads proof; the order arrives in Lina's Curios Orders">
+
+<!-- THE CUSTOMER'S PHONE -->
+<div class="cust">
+<div class="cust-photo"><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt=""></div>
+<p class="abs" style="top: 100px; left: 0; right: 0; margin: 0; text-align: center; font-family: 'Fraunces', serif; font-size: 34px; font-weight: 800; letter-spacing: -0.03em">Kek Lina</p>
+<p class="abs" style="top: 142px; left: 0; right: 0; margin: 0; text-align: center; font-family: var(--m); font-size: 11px; opacity: 0.7">curios.my/keklina</p>
+<span class="abs pc-tabs" style="top: 164px; left: 50%; transform: translateX(-50%); grid-template-columns: 1fr 1fr 1fr"><span>Links</span><span>Ask</span><span class="on">Shop</span></span>
+<p class="abs" style="top: 210px; left: 18px; right: 18px; margin: 0; text-align: center; font-size: 11.5px; white-space: nowrap; opacity: 0.75">Order 2 days ahead · Pickup or delivery</p>
+<sc-for list="{{ of.rows }}" as="r" hint-placeholder-count="4">
+<div class="abs crow" style="top: {{r.top}}px; background: {{r.bg}}">
+<span class="shop-thumb" style="background: {{r.tone}}"><sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{r.photo}}" alt="" style="width: 100%; height: 100%; object-fit: cover; object-position: {{r.focus}}"></sc-if></span>
+<span class="sr-txt"><b>{{r.name}}</b><span>{{r.price}}</span></span>
+<sc-if value="{{ r.hasQ }}" hint-placeholder-val="{{ false }}"><span class="qty">{{r.q}}×</span></sc-if>
+<span class="shop-add" style="transform: scale({{r.addS}})">+</span>
+</div>
+</sc-for>
+<div class="abs cbar">
+<span style="font-size: 13px; font-weight: 600; color: {{of.barFg}}">{{of.barText}}</span>
+<span style="margin-left: auto; padding: 9px 16px; border-radius: 999px; background: #b5294e; color: #fafbfc; font-size: 12.5px; font-weight: 600">Checkout</span>
+</div>
+
+<!-- checkout sheet -->
+<div class="sheet" style="transform: translateY({{of.sheetY}}%)">
+<sc-if value="{{ of.formView }}" hint-placeholder-val="{{ true }}">
+<p class="abs" style="top: 18px; left: 18px; margin: 0; font-family: var(--d); font-size: 20px; font-weight: 800; letter-spacing: -0.02em">Checkout</p>
+<p class="abs" style="top: 22px; right: 18px; margin: 0; font-size: 12.5px; color: #4b5060">3 items · RM235</p>
+<p class="abs flabel" style="top: 50px">Your name</p>
+<p class="abs field" style="top: 66px; box-shadow: inset 0 0 0 1.5px {{of.nameRing}}">{{of.name}}<sc-if value="{{ of.nameCaret }}" hint-placeholder-val="{{ false }}"><span class="caret" aria-hidden="true"></span></sc-if></p>
+<p class="abs flabel" style="top: 118px">WhatsApp number</p>
+<p class="abs field" style="top: 134px; box-shadow: inset 0 0 0 1.5px {{of.phoneRing}}">{{of.phone}}<sc-if value="{{ of.phoneCaret }}" hint-placeholder-val="{{ false }}"><span class="caret" aria-hidden="true"></span></sc-if></p>
+<div class="abs seg" style="top: 190px"><span style="background: {{of.pickBg}}; color: {{of.pickFg}}">Pickup · Sat</span><span>Delivery RM10</span></div>
+<span class="abs cta" style="top: 360px">Continue to pay</span>
+</sc-if>
+<sc-if value="{{ of.payView }}" hint-placeholder-val="{{ false }}">
+<p class="abs" style="top: 18px; left: 18px; margin: 0; font-family: var(--d); font-size: 20px; font-weight: 800; letter-spacing: -0.02em">Order #1042</p>
+<span class="abs" style="top: 20px; right: 18px; padding: 4px 10px; border-radius: 999px; background: {{of.payChipBg}}; color: {{of.payChipFg}}; font-size: 11px; font-weight: 600; transition: background 300ms ease, color 300ms ease">{{of.payChip}}</span>
+<div class="abs" style="top: 56px; left: 18px; right: 18px; padding: 10px 14px; border-radius: 16px; background: #f0f1f4; font-size: 12px">
+<p style="margin: 0; display: flex; justify-content: space-between; line-height: 1.75"><span style="color: #4b5060">2× Kek coklat · 1kg</span><b style="font-weight: 500">RM190</b></p>
+<p style="margin: 0; display: flex; justify-content: space-between; line-height: 1.75"><span style="color: #4b5060">1× Kek batik</span><b style="font-weight: 500">RM45</b></p>
+<p style="margin: 6px 0 0; padding-top: 8px; border-top: 1px solid #dfe1e6; display: flex; justify-content: space-between; align-items: baseline"><span style="color: #4b5060">Pickup · Sat</span><b style="font-family: var(--d); font-size: 20px; letter-spacing: -0.02em">RM235</b></p>
+</div>
+<div class="abs" style="top: 164px; left: 18px; right: 18px; display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e4e7eb">
+<svg viewBox="-1 -1 27 27" width="88" height="88" role="img" aria-label="Kek Lina payment QR, sample" style="display: block; flex: none"><path d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM10 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM11 2h1v1h-1zM15 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM15 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM10 7h1v1h-1zM14 7h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM0 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM20 8h1v1h-1zM24 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM7 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM15 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM12 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM0 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM0 12h1v1h-1zM3 12h1v1h-1zM6 12h1v1h-1zM8 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM23 12h1v1h-1zM1 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM24 14h1v1h-1zM0 15h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM13 15h1v1h-1zM17 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM24 15h1v1h-1zM0 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM8 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM18 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM12 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM6 20h1v1h-1zM9 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM15 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM0 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM6 21h1v1h-1zM11 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM23 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM17 23h1v1h-1zM20 23h1v1h-1zM22 23h1v1h-1zM24 23h1v1h-1zM0 24h1v1h-1zM1 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM15 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1z" fill="#191f2c"></path></svg>
+<span style="display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 11.5px"><span style="color: #696e7b">Scan, or transfer to</span><b style="font-size: 12.5px">Maybank</b><span style="color: #696e7b">Lina binti Kamal</span><code style="font-family: var(--m); font-size: 12px; color: #191f2c">1642 3378 9021</code></span>
+</div>
+<sc-if value="{{ of.noProof }}" hint-placeholder-val="{{ true }}">
+<span class="abs upload" style="top: 282px">
+<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>Upload payment proof
+</span>
+</sc-if>
+<sc-if value="{{ of.hasProof }}" hint-placeholder-val="{{ false }}">
+<span class="abs proof" style="top: 282px">
+<span class="proof-thumb"><span style="display: block; width: 60%; height: 3px; margin: 8px auto 4px; border-radius: 2px; background: #1d6f5f"></span><span style="display: block; width: 80%; height: 2px; margin: 3px auto; background: #dfe1e6"></span><span style="display: block; width: 70%; height: 2px; margin: 3px auto; background: #dfe1e6"></span><span style="display: block; width: 50%; height: 2px; margin: 3px auto; background: #dfe1e6"></span></span>
+<span style="flex: 1; display: grid; gap: 4px"><b style="font-size: 12.5px">receipt-rm235.jpg</b><span style="display: block; height: 4px; border-radius: 2px; background: #dfe1e6; overflow: hidden"><span style="display: block; height: 100%; width: {{of.upPct}}%; background: #1d6f5f"></span></span></span>
+<span style="font-size: 12px; font-weight: 600; color: #1d6f5f; opacity: {{of.upDoneO}}">✓</span>
+</span>
+</sc-if>
+<span class="abs cta" style="top: 360px; opacity: {{of.placeO}}">Place order</span>
+</sc-if>
+</div>
+
+<!-- order received: a small success -->
+<div class="succ" style="opacity: {{of.succO}}">
+<div style="position: relative; width: 120px; height: 120px">
+<sc-for list="{{ of.burst }}" as="b" hint-placeholder-count="12"><span class="bit" style="transform: translate({{b.x}}px, {{b.y}}px) rotate({{b.r}}deg); opacity: {{b.o}}; background: {{b.c}}"></span></sc-for>
+<svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" style="position: relative">
+<circle cx="60" cy="60" r="44" fill="#1d6f5f" style="transform-origin: 60px 60px; transform: scale({{of.circS}})"></circle>
+<path d="M40 61l13 13 27-29" fill="none" stroke="#fafbfc" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="70" stroke-dashoffset="{{of.checkOff}}"></path>
+</svg>
+</div>
+<p style="margin: 18px 0 0; font-family: var(--d); font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Order received</p>
+<p style="margin: 6px 0 0; font-size: 13.5px; color: #4b5060">#1042 · RM235 · proof sent to Lina</p>
+</div>
+
+<!-- the customer's cursor -->
+<span class="ccur" style="left: {{of.cx}}px; top: {{of.cy}}px; opacity: {{of.cO}}">
+<sc-if value="{{ of.click }}" hint-placeholder-val="{{ false }}"><span class="cring"></span></sc-if>
+<svg viewBox="0 0 24 24" width="26" height="26" style="transform: scale({{of.cS}}); transform-origin: 5px 3px"><path d="M5 3l14 8-6.2 1.6L10 19z" fill="#191f2c" stroke="#fafbfc" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+</span>
+</div>
+
+<!-- the order, flying across -->
+<span class="token" style="transform: translate({{of.tx}}px, {{of.ty}}px) scale({{of.tS}}); opacity: {{of.tO}}"><b>#1042</b> RM235</span>
+
+<!-- YOUR PHONE: Curios Orders -->
+<div class="own">
+<div class="own-screen">
+<p class="os-status"><span>11:42</span><span aria-hidden="true">●●●</span></p>
+
+<div class="o2-head">
+<span style="flex: 1; min-width: 0">
+<b class="o2-title">Orders</b>
+<span class="o2-sub"><span style="font-variant-numeric: tabular-nums">RM{{of.today}}</span> paid today<span class="o2-plus" style="opacity: {{of.plusO}}">+RM235</span></span>
+</span>
+<span class="os-bell" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#191f2c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="opacity: {{of.dotO}}"></span></span>
+</div>
+
+<div class="o2-tabs" aria-hidden="true">
+<span class="on">New<sc-if value="{{ of.hasNew }}" hint-placeholder-val="{{ false }}"><i>1</i></sc-if></span>
+<span>Confirmed</span>
+<span>Done</span>
+</div>
+
+<div class="o2-list">
+<div style="display: grid; grid-template-rows: {{of.newFr}}fr; opacity: {{of.newO}}; transform: translateY({{of.newY}}px)">
+<div style="min-height: 0; overflow: hidden; padding: 2px">
+<div class="o2-card" style="background: {{of.cardBg}}; box-shadow: 0 0 0 1.5px {{of.cardRing}}">
+<p class="o2-r1"><span class="o2-av" style="background: #f6c9d5">M</span><span style="flex: 1; min-width: 0"><b>Mira</b><span>#1042 · now</span></span><span class="o2-badge" style="background: {{of.stBg}}; color: {{of.stFg}}">{{of.status}}</span></p>
+<p class="o2-items">2× Kek coklat 1kg<br>1× Kek batik</p>
+<p class="o2-meta"><span>Pickup · Sat</span><span>·</span><span>Proof attached</span></p>
+<p class="o2-total"><span>Total</span><b>RM235</b></p>
+<span class="o2-btn" style="background: {{of.confBg}}">{{of.confText}}</span>
+</div>
+</div>
+</div>
+<div class="o2-row"><span class="o2-av" style="background: #e9dfd6">H</span><span style="flex: 1; min-width: 0"><b>Hakim</b><span>2 items · Delivery</span></span><span class="o2-amt"><b>RM50</b><span style="color: #1d6f5f">Confirmed</span></span></div>
+<div class="o2-row"><span class="o2-av" style="background: #e3e9fb">W</span><span style="flex: 1; min-width: 0"><b>Wei Ling</b><span>1 item · Pickup</span></span><span class="o2-amt"><b>RM30</b><span>Collected</span></span></div>
+</div>
+
+<div class="notif2" style="transform: translateY({{of.notifY}}%); opacity: {{of.notifO}}">
+<p style="margin: 0; display: flex; align-items: center; gap: 10px">
+<span style="display: grid; place-items: center; width: 30px; height: 30px; flex: none; border-radius: 8px; background: #2340c8; color: #fafbfc; font-family: var(--d); font-size: 14px; font-weight: 700">c</span>
+<span style="flex: 1; min-width: 0"><span style="display: flex; justify-content: space-between; font-size: 11px; color: #696e7b"><b style="color: #191f2c">Curios</b><span>now</span></span><span style="display: block; font-size: 12.5px; line-height: 1.35"><b>New order · RM235</b></span></span>
+</p>
+</div>
+
+<span class="ccur" style="left: {{of.ox}}px; top: {{of.oy}}px; opacity: {{of.oO}}">
+<sc-if value="{{ of.oClick }}" hint-placeholder-val="{{ false }}"><span class="cring"></span></sc-if>
+<svg viewBox="0 0 24 24" width="26" height="26" style="transform: scale({{of.oS}}); transform-origin: 5px 3px"><path d="M5 3l14 8-6.2 1.6L10 19z" fill="#191f2c" stroke="#fafbfc" stroke-width="1.6" stroke-linejoin="round"></path></svg>
+</span>
+</div>
+</div>
+
+<p class="of-label abs" style="left: 0; width: 300px; top: 612px; margin: 0; text-align: center">The customer’s phone</p>
+<p class="of-label abs" style="left: 372px; width: 280px; top: 612px; margin: 0; text-align: center">Your phone</p>
+</div>
+
+</div>
+</div>
+</section>
+
+<!-- PRICING · Spotlight cards, Star Border, sliding toggle, and an Elastic Slider calculator -->
+<section id="pricing" style="padding: 120px 0; background: #fafbfc">
+<div class="wrap">
+<div style="display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px">
+<div>
+<p class="eyebrow">Pricing</p>
+<h2 class="h2 reveal">Free to be asked. RM49 when you’re selling.</h2>
+</div>
+<div role="group" aria-label="Business billing" class="tog">
+<span class="tog-thumb" style="transform: translateX({{pr.thumbX}})"></span>
+<button type="button" aria-pressed="{{ monthly }}" onClick="{{ setMonthly }}" style="color: {{pr.mFg}}">Monthly</button>
+<button type="button" aria-pressed="{{ yearly }}" onClick="{{ setYearly }}" style="color: {{pr.yFg}}">Yearly <em style="opacity: {{pr.badgeO}}">−2 months</em></button>
+</div>
+</div>
+
+<div class="pr-grid" style="margin-top: 48px">
+
+<!-- PERSONAL · Spotlight Card -->
+<article class="spot" onMouseMove="{{ spot }}" style="--spot: rgba(29,111,95,0.14); background: #eef6f3">
+<p style="margin: 0; display: flex; align-items: center; justify-content: space-between"><span style="font-family: var(--d); font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Personal</span><span style="padding: 5px 12px; border-radius: 999px; background: #ffffff; font-size: 13px; font-weight: 600">For you</span></p>
+<p style="margin: 20px 0 0; display: flex; align-items: baseline; gap: 10px"><span style="font-family: var(--d); font-size: 88px; font-weight: 800; letter-spacing: -0.05em; line-height: 0.9">RM0</span><span style="color: #4b5060">forever</span></p>
+<p style="margin: 14px 0 0; max-width: 24em; color: #4b5060">A page people can ask about you. For freelancers, job seekers and creators.</p>
+<div aria-hidden="true" class="pr-chip-row">
+<span><img src="/_blob/712a5adabc653230800c5a21396b0117" alt="" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: 30% 40%">curios.my/aisyahdraws</span>
+<span>Links</span><span style="background: #123b33; color: #fafbfc">Ask</span>
+</div>
+<ul class="ticks" style="margin: 28px 0 36px">
+<li>Answers in Malay, English or both</li>
+<li>Only from facts you approve</li>
+<li>Your cover, colours and fonts</li>
+<li>Hidden from Google unless you switch it on</li>
+</ul>
+<a href="/signup" class="btn" style="margin-top: auto; align-self: stretch; background: #191f2c; color: #fafbfc">Make your free page</a>
+</article>
+
+<!-- BUSINESS · Star Border + Spotlight Card + rolling price -->
+<div class="star">
+<span class="star-a" aria-hidden="true"></span><span class="star-b" aria-hidden="true"></span>
+<article class="spot" onMouseMove="{{ spot }}" style="--spot: rgba(134,162,234,0.18); background: #191f2c; color: #fafbfc">
+<p style="margin: 0; display: flex; align-items: center; justify-content: space-between; gap: 12px"><span class="shiny" style="font-family: var(--d); font-size: 24px; font-weight: 800; letter-spacing: -0.02em">Business</span><span style="padding: 5px 12px; border-radius: 999px; background: #f2a33c; color: #191f2c; font-size: 13px; font-weight: 600">One RM95 order pays for it</span></p>
+<p style="margin: 20px 0 0; display: flex; align-items: baseline; gap: 10px">
+<span class="sr">{{priceLabel}}</span>
+<span aria-hidden="true" class="roll" style="font-family: var(--d); font-size: 88px; font-weight: 800; letter-spacing: -0.05em; height: 0.92em; line-height: 0.92"><span class="roll-strip" style="transform: translateY(-{{pr.rollY}}em)"><span style="height: 0.92em">RM49</span><span style="height: 0.92em">RM490</span></span></span>
+<span style="color: #b3b7c1">{{per}}</span>
+</p>
+<p style="margin: 14px 0 0; color: #b3b7c1">{{pr.note}}</p>
+<div aria-hidden="true" class="pr-chip-row dark">
+<span><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="width: 26px; height: 26px; border-radius: 50%; object-fit: cover; object-position: 62% 22%">curios.my/keklina</span>
+<span>Links</span><span>Ask</span><span style="background: #b5294e">Shop</span>
+</div>
+<ul class="ticks dark" style="margin: 28px 0 36px">
+<li><b>Everything in Personal, plus</b></li>
+<li>A shop with QR payment and payment proof</li>
+<li>Orders land in your dashboard</li>
+<li>Every lead emailed with their number and chat</li>
+<li>FAQ pages Google can find</li>
+<li>Your first three leads are free</li>
+</ul>
+<a href="/signup" class="btn" style="margin-top: auto; align-self: stretch; background: #eaf0ff; color: #191f2c">Start with 3 free leads</a>
+</article>
+</div>
+</div>
+
+<!-- WILL IT PAY FOR ITSELF? · Elastic Slider + Count Up -->
+<div class="calc">
+<div>
+<p class="eyebrow" style="color: #86a2ea">Will it pay for itself?</p>
+<p style="margin: 0; font-family: var(--d); font-size: 32px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1">Drag to your usual month.</p>
+<label for="orders-range" style="display: flex; justify-content: space-between; margin-top: 28px; font-size: 14px; color: #b3b7c1"><span>Orders a month</span><b style="color: #fafbfc; font-variant-numeric: tabular-nums">{{pr.orders}}</b></label>
+<div class="el" style="--fill: {{pr.fillPct}}%; --stretch: {{pr.stretch}}">
+<div class="el-track"><span class="el-fill"></span></div>
+<input id="orders-range" type="range" min="1" max="40" step="1" value="{{pr.orders}}" onChange="{{ setOrders }}" onPointerUp="{{ relax }}" onPointerLeave="{{ relax }}">
+<span class="el-bubble" style="left: {{pr.fillPct}}%; transform: translateX(-50%) scale({{pr.bubbleS}})">{{pr.orders}}</span>
+</div>
+<p style="margin: 22px 0 10px; font-size: 14px; color: #b3b7c1">A typical order</p>
+<div class="aov" role="group" aria-label="Typical order value">
+<sc-for list="{{ pr.aovs }}" as="a" hint-placeholder-count="3"><button type="button" onClick="{{ a.pick }}" aria-pressed="{{ a.on }}" style="background: {{a.bg}}; color: {{a.fg}}">RM{{a.v}}</button></sc-for>
+</div>
+</div>
+
+<div class="calc-out" aria-live="polite">
+<p style="margin: 0; font-size: 14px; color: #b3b7c1">You’d take in</p>
+<p style="margin: 2px 0 0; font-family: var(--d); font-size: 64px; font-weight: 800; letter-spacing: -0.045em; line-height: 1; font-variant-numeric: tabular-nums">RM{{pr.revShown}}</p>
+<div class="bars" aria-hidden="true">
+<span class="bar"><span style="width: 100%; background: #86a2ea"></span><em>Your orders</em></span>
+<span class="bar"><span style="width: {{pr.costPct}}%; background: #f2a33c"></span><em>Curios Business · RM{{pr.cost}}</em></span>
+</div>
+<p style="margin: 18px 0 0; font-size: 17px; line-height: 1.45">{{pr.verdict}}</p>
+</div>
+</div>
+
+<p style="margin: 24px 0 0; font-size: 14px; color: #696e7b">Business is paid by FPX online banking. No card and no automatic charge, so nothing renews without you. The calculator is an illustration, not a forecast.</p>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" style="padding: 0 0 112px">
+<div class="wrap faq">
+<h2 class="h2 reveal">Asked before. Answered here.</h2>
+<div style="border-top: 1px solid #e4e7eb">
+<details class="q" open><summary>Can I use it for myself, not a business?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">Yes. Personal is free: a page with an AI that answers questions about you, your work and your rates. It stays hidden from Google unless you switch it on.</p></details>
+<details class="q"><summary>What if it says something wrong?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">It only answers from facts you approved. If nothing you approved answers the question, it says it will check with you. It never guesses, and never rounds a number.</p></details>
+<details class="q"><summary>Can it read my Instagram?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">Not yet. Instagram and TikTok don’t let us read profiles. Paste your bio or a few paragraphs instead, or a website or Linktree link.</p></details>
+<details class="q"><summary>Does it reply in Malay?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">It answers in the language the person used: Malay, English, Manglish or a mix.</p></details>
+<details class="q"><summary>Can I switch from Personal to Business later?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">Yes, from Billing, whenever you start selling. It is a one-way switch: a business page can’t go back to personal.</p></details>
+</div>
+</div>
+</section>
+
+</main>
+
+<!-- CLOSING · Circular Gallery ring of pages + Split Text + Rotating Text + Click Spark + Magnet -->
+<section class="cl2" aria-labelledby="cl2-title">
+<div class="blobs dark" aria-hidden="true">
+<span class="blob b1" style="background: radial-gradient(circle, #2340c8 0%, transparent 62%)"></span>
+<span class="blob b2" style="background: radial-gradient(circle, #b5294e 0%, transparent 62%)"></span>
+<span class="blob b3" style="background: radial-gradient(circle, #f2a33c 0%, transparent 62%)"></span>
+<span class="blob b4" style="background: radial-gradient(circle, #1d6f5f 0%, transparent 62%)"></span>
+<svg class="grain" aria-hidden="true"><filter id="gc"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#gc)"></rect></svg>
+</div>
+<div class="wrap cl2-front">
+<h2 id="cl2-title" class="split" aria-label="Tanya je.">
+<sc-for list="{{ splitLetters }}" as="l" hint-placeholder-count="9"><span class="sl" aria-hidden="true"><span style="transform: translateY({{l.y}}); opacity: {{l.o}}; transition-delay: {{l.delay}}ms">{{l.ch}}</span></span></sc-for>
+</h2>
+<p class="cl2-rot">One page for
+<span class="cl2-reel"><span style="transform: translateY(-{{clRotY}}em); transition: {{clRotTr}}"><sc-for list="{{ clWords }}" as="w" hint-placeholder-count="7"><span>{{w}}</span></sc-for></span></span>
+</p>
+
+<form onSubmit="{{ onClaim }}" class="cl2-claim">
+<label for="claim-end" class="sr">The address you want for your page</label>
+<span class="cl2-field"><span aria-hidden="true">curios.my/</span><input id="claim-end" name="handle" placeholder="yourname" autocomplete="off" maxlength="24"></span>
+<span onMouseMove="{{ magnetMove }}" onMouseLeave="{{ magnetLeave }}" style="position: relative; display: inline-block; padding: 12px">
+<button type="submit" class="btn" onClick="{{ onSpark2 }}" style="min-height: 64px; padding: 0 32px; font-size: 18px; background: #eaf0ff; color: #191f2c; transform: translate({{magX}}px, {{magY}}px); transition: transform {{magDur}} cubic-bezier(0.34, 1.4, 0.64, 1)">Claim it, free</button>
+<sc-if value="{{ spark2On }}" hint-placeholder-val="{{ false }}">
+<span aria-hidden="true" style="position: absolute; left: {{spark2X}}px; top: {{spark2Y}}px; width: 0; height: 0">
+<sc-for list="{{ sparkRays }}" as="r" hint-placeholder-count="8"><span class="spk" style="rotate: {{r.deg}}deg; --dx: {{r.dx}}px; --dy: {{r.dy}}px; background: #eaf0ff"></span></sc-for>
+</span>
+</sc-if>
+</span>
+</form>
+<p style="margin: 6px 0 0; font-size: 14px; color: #8a8f9b">Free. No card. About ten minutes to set up.</p>
+</div>
+</section>
+
+<footer class="ft">
+<div class="wrap">
+<div class="ft-row">
+<nav aria-label="Footer" class="ft-links">
+<a href="#who">Who it’s for</a><a href="#how">How it works</a><a href="#business">For business</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a>
+</nav>
+<div class="ft-links" style="margin-left: auto">
+<a href="/signin">Sign in</a><a href="/ms" hreflang="ms" lang="ms">Bahasa Melayu</a>
+</div>
+</div>
+<p class="ft-note">Every person, shop and order on this page is a made-up sample. Photos from Unsplash.</p>
+</div>
+<p class="ft-mark" aria-hidden="true">cur<span class="i">ı</span>os</p>
+</footer>
+
+
+
+
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":10000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const B = "'Bricolage Grotesque', sans-serif";
+    this.people = {
+      aisyah: { name: 'Aisyah', short: 'Aisyah', handle: 'aisyahdraws', kind: 'Personal', accent: '#1d6f5f', deep: '#123b33', warm: '#d3e8e1', chip: '#bfe3d6', font: B, photo: '/_blob/712a5adabc653230800c5a21396b0117', focus: '28% 40%', l1: 'Portfolio', l2: 'Commission rates', l3: 'Book a slot', q: 'Are you taking commissions in November?', a: 'Yes, two slots left for November. Portraits start at RM250.' },
+      lina: { name: 'Kek Lina', short: 'Kek Lina', handle: 'keklina', kind: 'Business', accent: '#b5294e', deep: '#3d0f1e', warm: '#f3dde3', chip: '#f6c9d5', font: "'Fraunces', serif", photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '62% 22%', l1: 'Order on WhatsApp', l2: 'Menu & prices', l3: 'Cake photos', q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.' },
+      hana: { name: 'Studio Hana', short: 'Studio Hana', handle: 'studiohana', kind: 'Business', accent: '#c58a12', deep: '#2b2209', warm: '#f6e7c3', chip: '#f4dc9e', font: B, photo: '/_blob/00f6c0818827d90d83c2cd9e3342676e', focus: '55% 50%', l1: 'Case studies', l2: 'Packages', l3: 'Start a project', q: 'What’s in your branding package?', a: 'Logo, colour and type system, and social templates. Two weeks, from RM3,800.' },
+      daniel: { name: 'Daniel Tan', short: 'Daniel', handle: 'danieltan', kind: 'Personal', accent: '#8a5a2b', deep: '#2a1a0e', warm: '#efe0cf', chip: '#e8cfb3', font: B, photo: '/_blob/70c73e99a20a4b61f68d0a9c487e932b', focus: '30% 50%', l1: 'Resume', l2: 'GitHub', l3: 'LinkedIn', q: 'Are you open to hybrid roles?', a: 'Yes, hybrid in KL or Petaling Jaya, or fully remote.' },
+      aina: { name: 'Klinik Aina', short: 'Klinik Aina', handle: 'klinikaina', kind: 'Business', accent: '#2340c8', deep: '#0f1b4d', warm: '#d6e1fd', chip: '#bfd1f9', font: B, photo: '/_blob/92c05b3b823a434633375b043cf67b7a', focus: '70% 50%', l1: 'Book on WhatsApp', l2: 'Directions', l3: 'Panel companies', q: 'Are you open on Saturday?', a: 'Yes, 9am to 1pm on Saturdays. Walk-ins welcome.' },
+      farah: { name: 'Coach Farah', short: 'Farah', handle: 'coachfarah', kind: 'Creator', accent: '#c2410c', deep: '#3a1405', warm: '#f8dcc9', chip: '#f7c9aa', font: B, photo: '/_blob/2e293493991ae3a84ed494a8aa6f4aec', focus: '40% 50%', l1: 'Online plans', l2: 'Class schedule', l3: 'Meal guides', q: 'Do you do online coaching?', a: 'Yes, monthly online plans with weekly check-ins on WhatsApp.' }
+    };
+    this.order = ['aisyah', 'lina', 'hana', 'daniel', 'aina'];
+    this.clWords = ['freelancers', 'home bakers', 'job seekers', 'clinics', 'coaches', 'studios'];
+    this.whoRows = [
+      { key: 'aisyah', label: 'Freelancers', example: 'aisyahdraws', qs: ['taking commissions?', 'rate for a portrait?', 'ada slot Disember?', 'how long does it take?'] },
+      { key: 'daniel', label: 'Job seekers', example: 'danieltan', qs: ['open to hybrid?', 'notice period?', 'what stack do you use?', 'expected salary range?'] },
+      { key: 'farah', label: 'Creators & coaches', example: 'coachfarah', qs: ['online coaching ada?', 'beginner friendly?', 'collab rates?', 'class schedule?'] },
+      { key: 'lina', label: 'Home businesses', example: 'keklina', qs: ['hantar Klang tak?', 'berapa harga 1kg?', 'boleh tulis nama?', 'buka hari Ahad?'] },
+      { key: 'hana', label: 'Studios & services', example: 'studiohana', qs: ['what’s in the package?', 'how long does it take?', 'boleh buat logo je?', 'do you work remote?'] }
+    ];
+    this.stepsData = [
+      { title: 'Tell it about you', body: 'Paste a link to your website or Linktree, or just a few paragraphs about yourself, your work or your shop.' },
+      { title: 'Approve what’s right', body: 'It turns what you gave it into facts. Approve the right ones, fix the rest. It never says anything you didn’t approve.' },
+      { title: 'Put the link in your bio', body: 'Share curios.my/yourname on Instagram, TikTok or WhatsApp. Anyone who taps it can ask, day or night.' }
+    ];
+    this.focus = ['rates', 'services', 'hours', 'experience', 'prices'];
+    this.facts = [
+      { text: 'Portraits from RM250', topic: 'portrait prices' },
+      { text: 'Book covers from RM900', topic: 'book covers' },
+      { text: 'Four commissions a month', topic: 'availability' },
+      { text: 'Replies within two days', topic: 'reply times' }
+    ];
+    this.items = [
+      { id: 'coklat', name: 'Kek coklat', line: 'Kek coklat (1kg)', price: 'from RM95', cents: 9500, photo: '/_blob/63d877cef1ea5c67a363dfd5ea183c12', focus: '50% 50%', tone: '#f3dde3' },
+      { id: 'batik', name: 'Kek batik', line: 'Kek batik', price: 'RM45', cents: 4500, photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '72% 80%', tone: '#e9d6c9' },
+      { id: 'cookies', name: 'Cookies balang', line: 'Cookies balang', price: 'RM25', cents: 2500, photo: null, focus: '', tone: '#f6c9d5' },
+      { id: 'brownies', name: 'Brownies, box of 9', line: 'Brownies, box of 9', price: 'RM30', cents: 3000, photo: null, focus: '', tone: '#dcc6b8' }
+    ];
+    this.decHold = 0;
+    this.state = { clIn: false, clRot: 0, clRotAnim: true, spark2On: false, spark2X: 0, spark2Y: 0, prOrders: 5, prAov: 95, prRev: 475, prDrag: false, ofP: 0, ofMode: 'auto', decI: 0, decN: 0, stackTop: 0, fly: null, approved: 0, tiltX: 0, tiltY: 0, tiltDur: '500ms', qty: {}, orderOpen: false, intro: 0, p: 0, rotI: 0, rotAnim: true, typed: 0, f: 0, loop: 0, t: 0, wx: -999, wy: -999, sparkOn: false, sparkX: 0, sparkY: 0, who: 0, step: 0, yearly: false, magX: 0, magY: 0, magDur: '500ms' };
+  }
+  reduced() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  componentDidMount() {
+    this.ofDriver();
+    this.clWatch();
+    if (this.reduced()) { this.setState({ typed: 999, intro: 3, decI: this.facts.length }); return; }
+    this.decTimer = setInterval(() => this.decTick(), 40);
+    this.stackTimer = setInterval(() => this.fling('right'), 2600);
+    this.startCycle();
+    this.focusTimer = setInterval(() => this.setState({ f: (this.state.f + 1) % this.focus.length }), 1500);
+    let last = 0;
+    const tick = (now) => {
+      if (now - last > 33) { last = now; this.setState({ t: now / 1000, loop: (this.state.loop + 0.12) % 50 }); }
+      this.raf = requestAnimationFrame(tick);
+    };
+    this.raf = requestAnimationFrame(tick);
+  }
+  watchSteps() {
+    if (!('IntersectionObserver' in window)) return;
+    const attach = () => {
+      const blocks = document.querySelectorAll('[data-step]');
+      if (!blocks.length) { this.attachTimer = setTimeout(attach, 200); return; }
+      this.io = new IntersectionObserver((entries) => {
+        entries.forEach((en) => {
+          if (en.isIntersecting) {
+            const i = Number(en.target.getAttribute('data-step'));
+            if (i !== this.state.step) this.setState({ step: i });
+          }
+        });
+      }, { rootMargin: '-45% 0px -45% 0px' });
+      blocks.forEach((b) => this.io.observe(b));
+    };
+    attach();
+  }
+  componentWillUnmount() {
+    clearInterval(this.typeTimer); clearTimeout(this.holdTimer); clearTimeout(this.snapTimer); clearInterval(this.focusTimer); clearTimeout(this.attachTimer);
+    if (this.raf) cancelAnimationFrame(this.raf);
+    (this.introTimers || []).forEach(clearTimeout);
+    clearInterval(this.decTimer); clearInterval(this.stackTimer); clearTimeout(this.flyTimer);
+    if (this.ofIO) this.ofIO.disconnect(); clearTimeout(this.ofAttach);
+    if (this.prRaf) cancelAnimationFrame(this.prRaf);
+    clearInterval(this.clTimer); clearTimeout(this.clSnap); clearTimeout(this.clAttach); if (this.clIO) this.clIO.disconnect();
+    if (this.ofLoop) cancelAnimationFrame(this.ofLoop);
+  }
+  ofVals(p) {
+    const cl = (v) => Math.max(0, Math.min(1, v));
+    const seg = (a, b) => cl((p - a) / (b - a));
+    const ease = (t) => t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    const back = (t) => { const c = 1.7; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+    const path = (W) => {
+      if (p <= W[0][0]) return [W[0][1], W[0][2]];
+      for (let i = 0; i < W.length - 1; i++) {
+        const a = W[i], b = W[i + 1];
+        if (p >= a[0] && p <= b[0]) { const t = ease((p - a[0]) / ((b[0] - a[0]) || 1)); return [a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+      }
+      const z = W[W.length - 1]; return [z[1], z[2]];
+    };
+    const near = (ts) => ts.some((t) => p >= t && p < t + 0.012);
+    const C = path([[0, 200, 470], [0.05, 260, 268], [0.13, 260, 268], [0.17, 260, 324], [0.2, 260, 324], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.52, 150, 552], [0.555, 150, 475], [0.58, 150, 475], [0.62, 150, 552], [0.66, 150, 552]]);
+    const clicks = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.565, 0.635];
+    const qc = p >= 0.12 ? 2 : (p >= 0.09 ? 1 : 0), qb = p >= 0.19 ? 1 : 0;
+    const n = qc + qb, total = qc * 95 + qb * 45;
+    const items = [
+      { name: 'Kek coklat · 1kg', price: 'RM95', photo: '/_blob/63d877cef1ea5c67a363dfd5ea183c12', focus: '50% 50%', tone: '#f3dde3', q: qc, tap: [0.09, 0.12] },
+      { name: 'Kek batik', price: 'RM45', photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '72% 80%', tone: '#e9d6c9', q: qb, tap: [0.19] },
+      { name: 'Cookies balang', price: 'RM25', photo: null, focus: '', tone: '#f6c9d5', q: 0, tap: [] },
+      { name: 'Brownies, box of 9', price: 'RM30', photo: null, focus: '', tone: '#dcc6b8', q: 0, tap: [] }
+    ];
+    const name = 'Mira', phone = '012-345 6789';
+    const nameN = Math.round(seg(0.32, 0.355) * name.length), phoneN = Math.round(seg(0.375, 0.435) * phone.length);
+    const t = seg(0.7, 0.78);
+    const burstT = seg(0.665, 0.72);
+    const cur = p < 0.24 ? 0 : p < 0.5 ? 1 : p < 0.64 ? 2 : p < 0.76 ? 3 : 4;
+    const caps = [
+      ['Tap to add', 'Items with pictures, prices and sizes, right in the Shop tab.'],
+      ['Check out', 'Name, WhatsApp number, pickup or delivery. No account needed.'],
+      ['Pay with your QR', 'No payment gateway? Upload your bank QR once. Customers scan it with the total, then upload their receipt.'],
+      ['Order received', 'They get a confirmation with the order number.'],
+      ['It lands in your Orders', 'Paid, with the proof attached. Confirm it in one tap.']
+    ].map((c, i) => ({
+      n: i + 1, title: c[0], body: c[1],
+      op: i === cur ? '1' : (i < cur ? '0.55' : '0.35'),
+      dot: i <= cur ? '#b5294e' : '#ffffff', dotFg: i <= cur ? '#fafbfc' : '#191f2c',
+      bodyH: i === cur ? '90px' : '0px', bodyO: i === cur ? '1' : '0'
+    }));
+    const O = path([[0.86, 200, 540], [0.91, 132, 366]]);
+    const confirmed = p >= 0.93;
+    const ins = ease(seg(0.78, 0.84));
+    return {
+      secH: 'auto',
+      caps: caps,
+      rows: items.map((it, i) => ({
+        top: 244 + i * 56, name: it.name, price: it.price, photo: it.photo, hasPhoto: !!it.photo, focus: it.focus, tone: it.tone,
+        q: it.q, hasQ: it.q > 0, bg: it.q > 0 ? 'rgba(250,251,252,0.2)' : 'rgba(250,251,252,0.08)',
+        addS: it.tap.some((x) => p >= x && p < x + 0.012) ? '1.18' : '1'
+      })),
+      barText: n ? n + ' in basket · RM' + total : 'Basket is empty', barFg: n ? '#191f2c' : '#696e7b',
+      sheetY: (100 - 100 * ease(seg(0.26, 0.3))).toFixed(1),
+      formView: p < 0.505, payView: p >= 0.505,
+      name: name.slice(0, nameN), nameCaret: p >= 0.31 && p < 0.365, nameRing: p >= 0.31 && p < 0.365 ? '#2340c8' : '#dfe1e6',
+      phone: phone.slice(0, phoneN), phoneCaret: p >= 0.37 && p < 0.445, phoneRing: p >= 0.37 && p < 0.445 ? '#2340c8' : '#dfe1e6',
+      pickBg: p >= 0.465 ? '#191f2c' : 'transparent', pickFg: p >= 0.465 ? '#fafbfc' : '#191f2c',
+      payChip: p >= 0.59 ? 'Receipt uploaded' : 'Waiting for payment', payChipBg: p >= 0.59 ? '#d3e8e1' : '#ffebd6', payChipFg: p >= 0.59 ? '#123b33' : '#7a4a0c',
+      noProof: p < 0.565, hasProof: p >= 0.565, upPct: Math.round(seg(0.565, 0.59) * 100), upDoneO: p >= 0.59 ? '1' : '0',
+      placeO: p >= 0.59 ? '1' : '0.4',
+      succO: seg(0.64, 0.66).toFixed(2), circS: back(seg(0.645, 0.668)).toFixed(3), checkOff: (70 - 70 * seg(0.655, 0.685)).toFixed(1),
+      burst: Array.from({ length: 12 }, (_, i) => {
+        const a = (i / 12) * Math.PI * 2, d = 18 + 62 * (1 - Math.pow(1 - burstT, 3));
+        return { x: Math.round(Math.cos(a) * d), y: Math.round(Math.sin(a) * d), r: Math.round(burstT * 180 + i * 30), o: burstT > 0 && burstT < 1 ? (1 - burstT).toFixed(2) : '0', c: ['#b5294e', '#2340c8', '#f2a33c', '#1d6f5f'][i % 4] };
+      }),
+      cx: Math.round(C[0]), cy: Math.round(C[1]), cO: p < 0.66 ? seg(0, 0.02).toFixed(2) : (1 - seg(0.66, 0.68)).toFixed(2),
+      click: near(clicks), cS: near(clicks) ? '0.82' : '1',
+      tx: Math.round(362 * t), ty: Math.round(-60 * t - 130 * Math.sin(Math.PI * t)), tS: (1 - 0.3 * t).toFixed(2),
+      tO: t > 0 && t < 1 ? (t < 0.1 ? t * 10 : t > 0.9 ? (1 - t) * 10 : 1).toFixed(2) : '0',
+      notifY: p < 0.76 ? -130 : p < 0.78 ? Math.round(-130 + 130 * ease(seg(0.76, 0.78))) : p < 0.82 ? 0 : Math.round(-130 * ease(seg(0.82, 0.84))),
+      notifO: p >= 0.76 && p < 0.84 ? '1' : '0',
+      newFr: ins.toFixed(3), cardBg: '#ffffff', cardRing: confirmed ? 'transparent' : '#2340c8', hasNew: p >= 0.8 && !confirmed, plusO: seg(0.8, 0.83).toFixed(2), bar3: Math.round(4 + 40 * ease(seg(0.8, 0.88))), dotO: p >= 0.78 && !confirmed ? '1' : '0', newO: ins.toFixed(2), newY: Math.round(-12 + 12 * ins), newS: (0.96 + 0.04 * ins).toFixed(3),
+      ringW: p >= 0.78 && !confirmed ? 2 : 0,
+      today: 80 + Math.round(235 * ease(seg(0.8, 0.88))), newCount: p >= 0.8 && !confirmed ? 1 : 0,
+      status: confirmed ? 'Confirmed' : 'New', stBg: confirmed ? '#d3e8e1' : '#eaf0ff', stFg: confirmed ? '#123b33' : '#122686',
+      confBg: confirmed ? '#1d6f5f' : '#2340c8', confText: confirmed ? 'Confirmed ✓' : 'Confirm',
+      ox: Math.round(O[0]), oy: Math.round(O[1]), oO: p < 0.97 ? seg(0.86, 0.875).toFixed(2) : (1 - seg(0.97, 0.99)).toFixed(2),
+      oClick: p >= 0.93 && p < 0.942, oS: p >= 0.93 && p < 0.942 ? '0.82' : '1'
+    };
+  }
+  ofDriver() {
+    if (this.reduced()) { this.setState({ ofP: 1 }); return; }
+    const run = () => {
+      if (this.ofLoop) return;
+      let last = performance.now(), hold = 0;
+      this.setState({ ofP: 0 });
+      const step = (now) => {
+        const dt = Math.min(64, now - last); last = now;
+        if (hold > 0) { hold -= dt; if (hold <= 0) this.setState({ ofP: 0 }); }
+        else {
+          const np = this.state.ofP + dt / 12000;
+          if (np >= 1) { this.setState({ ofP: 1 }); hold = 2200; } else this.setState({ ofP: np });
+        }
+        this.ofLoop = requestAnimationFrame(step);
+      };
+      this.ofLoop = requestAnimationFrame(step);
+    };
+    const stop = () => { if (this.ofLoop) cancelAnimationFrame(this.ofLoop); this.ofLoop = null; this.setState({ ofP: 0 }); };
+    const attach = () => {
+      const stage = document.querySelector('.of2-stage');
+      if (!stage) { this.ofAttach = setTimeout(attach, 200); return; }
+      if (!('IntersectionObserver' in window)) { run(); return; }
+      this.ofIO = new IntersectionObserver((entries) => {
+        entries.forEach((en) => {
+          if (en.intersectionRatio >= 0.92) run();
+          else if (en.intersectionRatio < 0.15) stop();
+        });
+      }, { threshold: [0, 0.15, 0.92, 1] });
+      this.ofIO.observe(stage);
+    };
+    attach();
+  }
+  prTween(target) {
+    if (this.prRaf) cancelAnimationFrame(this.prRaf);
+    const from = this.state.prRev, start = performance.now(), dur = 520;
+    const step = (now) => {
+      const t = Math.min(1, (now - start) / dur), e = 1 - Math.pow(1 - t, 3);
+      this.setState({ prRev: Math.round(from + (target - from) * e) });
+      if (t < 1) this.prRaf = requestAnimationFrame(step);
+    };
+    this.prRaf = requestAnimationFrame(step);
+  }
+  clWatch() {
+    if (this.reduced()) { this.setState({ clIn: true }); return; }
+    this.clTimer = setInterval(() => {
+      const n = this.clWords.length, next = this.state.clRot + 1;
+      this.setState({ clRot: next, clRotAnim: true });
+      if (next === n) this.clSnap = setTimeout(() => this.setState({ clRot: 0, clRotAnim: false }), 560);
+    }, 1900);
+    const attach = () => {
+      const el = document.querySelector('.cl2');
+      if (!el) { this.clAttach = setTimeout(attach, 200); return; }
+      if (!('IntersectionObserver' in window)) { this.setState({ clIn: true }); return; }
+      this.clIO = new IntersectionObserver((es) => es.forEach((en) => {
+        if (en.intersectionRatio > 0.35) this.setState({ clIn: true });
+        else if (en.intersectionRatio === 0) this.setState({ clIn: false });
+      }), { threshold: [0, 0.35] });
+      this.clIO.observe(el);
+    };
+    attach();
+  }
+  decTick() {
+    if (this.decHold > 0) { this.decHold--; return; }
+    const F = this.facts, i = this.state.decI;
+    if (i >= F.length) { this.decHold = 60; this.setState({ decI: 0, decN: 0 }); return; }
+    const n = this.state.decN + 1;
+    if (n >= F[i].text.length) { this.decHold = 14; this.setState({ decI: i + 1, decN: 0 }); }
+    else this.setState({ decN: n });
+  }
+  fling(dir) {
+    if (this.state.fly) return;
+    this.setState({ fly: dir });
+    this.flyTimer = setTimeout(() => {
+      const next = (this.state.stackTop + 1) % this.facts.length;
+      const approved = next === 0 ? 0 : this.state.approved + (dir === 'right' ? 1 : 0);
+      this.setState({ stackTop: next, fly: null, approved: approved });
+    }, 480);
+  }
+  startTyping() {
+    clearInterval(this.typeTimer); clearTimeout(this.holdTimer);
+    const full = this.people[this.order[this.state.p]].a.length;
+    this.setState({ typed: 0 });
+    this.typeTimer = setInterval(() => {
+      const t = this.state.typed + 1;
+      this.setState({ typed: t });
+      if (t >= full) { clearInterval(this.typeTimer); this.holdTimer = setTimeout(() => this.advance(), 2600); }
+    }, 26);
+  }
+  advance() {
+    const n = this.order.length;
+    const nextRot = this.state.rotI + 1;
+    this.setState({ p: (this.state.p + 1) % n, rotI: nextRot, rotAnim: true });
+    if (nextRot === n) this.snapTimer = setTimeout(() => this.setState({ rotI: 0, rotAnim: false }), 560);
+    if (this.reduced()) this.setState({ typed: 999, intro: 3 }); else this.startCycle();
+  }
+  startCycle() {
+    (this.introTimers || []).forEach(clearTimeout);
+    clearInterval(this.typeTimer); clearTimeout(this.holdTimer);
+    this.setState({ intro: 0, typed: 0 });
+    this.introTimers = [
+      setTimeout(() => this.setState({ intro: 1 }), 600),
+      setTimeout(() => this.setState({ intro: 2 }), 1650),
+      setTimeout(() => { this.setState({ intro: 3 }); this.startTyping(); }, 2050)
+    ];
+  }
+  wavePaths() {
+    const lines = 18, out = [];
+    const t = this.state.t, mx = this.state.wx, my = this.state.wy;
+    for (let i = 0; i < lines; i++) {
+      const base = 60 + i * 40;
+      let d = '';
+      for (let x = -40; x <= 1320; x += 40) {
+        let y = base + Math.sin(x * 0.006 + t * 0.6 + i * 0.35) * 14 + Math.sin(x * 0.013 - t * 0.4 + i * 0.6) * 6;
+        const dx = x - mx, dy = base - my;
+        y += (dy > 0 ? 1 : -1) * 36 * Math.exp(-(dx * dx + dy * dy) / 22000);
+        d += (x === -40 ? 'M' : ' L') + x + ' ' + y.toFixed(1);
+      }
+      out.push({ d: d, o: (0.08 + 0.1 * Math.sin(i * 0.5) ** 2).toFixed(3) });
+    }
+    return out;
+  }
+  renderVals() {
+    const self = this;
+    const n = this.order.length;
+    const cur = this.people[this.order[this.state.p]];
+    const deck = this.order.map((key, k) => {
+      const c = this.people[key];
+      const pos = (k - this.state.p + n) % n;
+      const front = pos === 0;
+      const intro = front && this.state.intro < 3;
+      const askOpen = front && this.state.intro >= 3;
+      return Object.assign({}, c, {
+        askOpen: askOpen, linksOpen: !askOpen,
+        linksBg: askOpen ? 'transparent' : '#fafbfc', linksFg: askOpen ? '#fafbfc' : '#191f2c',
+        askBg: askOpen ? '#fafbfc' : 'transparent', askFg: askOpen ? '#191f2c' : '#fafbfc',
+        showCursor: intro,
+        curX: this.state.intro >= 1 ? -4 : 70, curY: this.state.intro >= 1 ? -2 : 150,
+        curS: this.state.intro === 2 ? '0.82' : '1', curO: this.state.intro >= 1 ? '1' : '0',
+        showRipple: intro && this.state.intro === 2,
+        aShown: front ? c.a.slice(0, this.state.typed) : c.a,
+        typing: front && this.state.typed < c.a.length,
+        tf: 'translate(' + (pos * 30) + 'px, ' + (-pos * 6) + 'px) rotate(' + (pos * 4.5) + 'deg) scale(' + (1 - pos * 0.05).toFixed(3) + ')',
+        z: String(n - pos),
+        op: pos >= 3 ? '0' : '1'
+      });
+    });
+    const steps = this.stepsData.map((s, i) => ({
+      i: i, n: i + 1, title: s.title, body: s.body,
+      op: i === this.state.step ? '1' : '0.35',
+      dotBg: i <= this.state.step ? '#2340c8' : '#ffffff',
+      dotFg: i <= this.state.step ? '#fafbfc' : '#191f2c',
+      hasLine: i < 2, fill: i < this.state.step ? '100%' : '0%'
+    }));
+    const price = this.state.yearly ? [3, 9, 0] : [10, 3, 9];
+    return {
+      onHeroMove: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        self.setState({ wx: (e.clientX - r.left) / r.width * 1280, wy: (e.clientY - r.top) / r.height * 760 });
+      },
+      onHeroLeave: () => self.setState({ wx: -999, wy: -999 }),
+      rotNames: this.order.map((k) => this.people[k].short).concat([this.people[this.order[0]].short]),
+      rotY: (this.state.rotI * 1.08).toFixed(2),
+      rotTransition: this.state.rotAnim ? 'transform 520ms cubic-bezier(0.34, 1.35, 0.64, 1)' : 'none',
+      rotBg: cur.accent,
+      deck: deck,
+      cur: cur,
+      answerShown: cur.a.slice(0, this.state.typed),
+      answerTyping: this.state.typed < cur.a.length,
+      nextPersona: () => {
+        clearTimeout(self.holdTimer);
+        (self.introTimers || []).forEach(clearTimeout);
+        self.advance();
+      },
+      sparkOn: this.state.sparkOn, sparkX: this.state.sparkX, sparkY: this.state.sparkY,
+      sparkRays: [0, 45, 90, 135, 180, 225, 270, 315].map((deg) => {
+        const rad = (deg - 90) * Math.PI / 180;
+        return { deg: deg, dx: Math.round(Math.cos(rad) * 34), dy: Math.round(Math.sin(rad) * 34) };
+      }),
+      onSpark: (e) => {
+        const f = e.currentTarget.parentElement.getBoundingClientRect();
+        const x = Math.round(e.clientX - f.left), y = Math.round(e.clientY - f.top);
+        self.setState({ sparkOn: false });
+        requestAnimationFrame(() => self.setState({ sparkOn: true, sparkX: x, sparkY: y }));
+      },
+      onClaim: (e) => { e.preventDefault(); },
+      focusWords: this.focus.map((w, i) => ({
+        text: i === this.focus.length - 1 ? w + '.' : w + ',',
+        blur: i === this.state.f ? 'none' : 'blur(3px)',
+        op: i === this.state.f ? '1' : '0.45',
+        ring: i === this.state.f ? '0 0 0 3px #2340c8' : '0 0 0 0 transparent'
+      })),
+      loopOffset: '-' + this.state.loop.toFixed(2) + '%',
+      who: this.whoRows.map((r, i) => ({
+        label: r.label, example: 'curios.my/' + r.example, accent: this.people[r.key].accent,
+        qs: r.qs.concat(r.qs), on: i === this.state.who,
+        y: i === this.state.who ? '0%' : '101%',
+        pick: () => { if (self.state.who !== i) self.setState({ who: i }); }
+      })),
+      sel: this.people[this.whoRows[this.state.who].key],
+      steps: steps,
+      isStep1: this.state.step === 0, isStep2: this.state.step === 1, isStep3: this.state.step === 2,
+      monthly: !this.state.yearly, yearly: this.state.yearly,
+      setMonthly: () => self.setState({ yearly: false }),
+      setYearly: () => self.setState({ yearly: true }),
+      mBg: this.state.yearly ? 'transparent' : '#ffffff',
+      yBg: this.state.yearly ? '#ffffff' : 'transparent',
+      rollY: this.state.yearly ? 1 : 0,
+      per: this.state.yearly ? 'a year' : 'a month',
+      priceLabel: this.state.yearly ? 'RM490 a year' : 'RM49 a month',
+      magX: this.state.magX, magY: this.state.magY, magDur: this.state.magDur,
+      magnetMove: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - (r.left + r.width / 2), y = e.clientY - (r.top + r.height / 2);
+        self.setState({ magX: Math.round(x * 0.18), magY: Math.round(y * 0.3), magDur: '160ms' });
+      },
+      pr: (function () {
+        const st = self.state, orders = st.prOrders, aov = st.prAov;
+        const cost = st.yearly ? 40.83 : 49, rev = orders * aov;
+        const times = rev / cost;
+        return {
+          thumbX: st.yearly ? '100%' : '0%', mFg: st.yearly ? '#4b5060' : '#fafbfc', yFg: st.yearly ? '#fafbfc' : '#4b5060', badgeO: st.yearly ? '1' : '0.6',
+          rollY: st.yearly ? 0.92 : 0,
+          note: st.yearly ? 'RM40.83 a month, paid once a year.' : 'Or RM490 a year: two months free.',
+          orders: orders, fillPct: ((orders - 1) / 39 * 100).toFixed(1), stretch: st.prDrag ? '1.8' : '1', bubbleS: st.prDrag ? '1.15' : '1',
+          aovs: [50, 95, 150].map((v) => ({ v: v, on: v === aov, bg: v === aov ? '#fafbfc' : 'rgba(250,251,252,0.1)', fg: v === aov ? '#191f2c' : '#fafbfc', pick: () => { self.setState({ prAov: v }); self.prTween(self.state.prOrders * v); } })),
+          revShown: st.prRev.toLocaleString('en-MY'),
+          cost: st.yearly ? '40.83' : '49',
+          costPct: Math.max(1.5, Math.min(100, cost / Math.max(rev, 1) * 100)).toFixed(1),
+          verdict: rev >= cost ? 'Business costs about ' + Math.max(1, Math.round(cost / rev * 100)) + '% of that. It pays for itself ' + (times >= 2 ? Math.floor(times) + ' times over.' : 'once.') : 'That’s less than Business costs. Stay on Personal until orders pick up.'
+        };
+      })(),
+      spot: (e) => { const r = e.currentTarget.getBoundingClientRect(); e.currentTarget.style.setProperty('--sx', (e.clientX - r.left) + 'px'); e.currentTarget.style.setProperty('--sy', (e.clientY - r.top) + 'px'); },
+      setOrders: (e) => { const v = Number(e.target.value); self.setState({ prOrders: v, prDrag: true }); self.prTween(v * self.state.prAov); },
+      relax: () => { if (self.state.prDrag) self.setState({ prDrag: false }); },
+      splitLetters: 'Tanya je.'.split('').map((ch, i) => ({ ch: ch === ' ' ? '\u00a0' : ch, y: self.state.clIn ? '0%' : '110%', o: self.state.clIn ? '1' : '0', delay: i * 60 })),
+      clWords: self.clWords.concat([self.clWords[0]]),
+      clRotY: (self.state.clRot * 1.2).toFixed(2),
+      clRotTr: self.state.clRotAnim ? 'transform 520ms cubic-bezier(0.34, 1.35, 0.64, 1)' : 'none',
+      spark2On: self.state.spark2On, spark2X: self.state.spark2X, spark2Y: self.state.spark2Y,
+      onSpark2: (e) => {
+        const f = e.currentTarget.parentElement.getBoundingClientRect();
+        const x = Math.round(e.clientX - f.left), y = Math.round(e.clientY - f.top);
+        self.setState({ spark2On: false });
+        requestAnimationFrame(() => self.setState({ spark2On: true, spark2X: x, spark2Y: y }));
+      },
+      of: this.ofVals(this.state.ofP),
+      magnetLeave: () => self.setState({ magX: 0, magY: 0, magDur: '600ms' }),
+      // How it works 01: Animated List + Decrypted Text
+      found: this.facts.slice(0, Math.min(this.state.decI + (this.state.decN > 0 ? 1 : 0), this.facts.length)).map((f, i) => {
+        if (i < this.state.decI) return { text: f.text, font: 'inherit' };
+        const glyphs = 'ABCDEFGHJKLMNPRSTUVWXYZ0123456789';
+        let rest = '';
+        for (let j = this.state.decN; j < f.text.length; j++) rest += f.text[j] === ' ' ? ' ' : glyphs[Math.floor(Math.random() * glyphs.length)];
+        return { text: f.text.slice(0, this.state.decN) + rest, font: 'inherit' };
+      }),
+      hl0: this.state.decI > 0 ? '#bfd1f9' : (this.state.decI === 0 ? '#dfe8fd' : 'transparent'),
+      hl1: this.state.decI > 1 ? '#bfd1f9' : (this.state.decI === 1 ? '#dfe8fd' : 'transparent'),
+      hl2: this.state.decI > 2 ? '#bfd1f9' : (this.state.decI === 2 ? '#dfe8fd' : 'transparent'),
+      hl3: this.state.decI > 3 ? '#bfd1f9' : (this.state.decI === 3 ? '#dfe8fd' : 'transparent'),
+      // How it works 02: Stack
+      stack: this.facts.map((f, k) => {
+        const m = this.facts.length;
+        const pos = (k - this.state.stackTop + m) % m;
+        const flying = pos === 0 && this.state.fly;
+        const dir = this.state.fly === 'right' ? 1 : -1;
+        return {
+          n: k + 1, text: f.text, topic: f.topic,
+          tf: flying ? 'translateX(' + (dir * 420) + 'px) rotate(' + (dir * 16) + 'deg)' : 'translateY(' + (pos * 12) + 'px) scale(' + (1 - pos * 0.05).toFixed(2) + ') rotate(' + (pos === 0 ? 0 : (pos % 2 ? -3 : 3)) + 'deg)',
+          op: flying ? '0' : (pos < 3 ? '1' : '0'),
+          z: String(m - pos),
+          stamp: !!flying,
+          stampText: this.state.fly === 'right' ? 'Approved' : 'Fix',
+          stampColor: this.state.fly === 'right' ? '#2340c8' : '#c2410c'
+        };
+      }),
+      approvedCount: this.state.approved,
+      stackApprove: () => { clearInterval(self.stackTimer); self.fling('right'); },
+      stackEdit: () => { clearInterval(self.stackTimer); self.fling('left'); },
+      // How it works 03: Tilted Card
+      tiltX: this.state.tiltX, tiltY: this.state.tiltY, tiltDur: this.state.tiltDur,
+      tiltMove: (e) => {
+        const r = e.currentTarget.getBoundingClientRect();
+        const px = (e.clientX - r.left) / r.width - 0.5, py = (e.clientY - r.top) / r.height - 0.5;
+        self.setState({ tiltX: (-py * 16).toFixed(2), tiltY: (px * 16).toFixed(2), tiltDur: '120ms' });
+      },
+      tiltLeave: () => self.setState({ tiltX: 0, tiltY: 0, tiltDur: '600ms' }),
+      // Shop
+      shopItems: this.items.map((it) => {
+        const q = this.state.qty[it.id] || 0;
+        return {
+          name: it.name, price: it.price, photo: it.photo, hasPhoto: !!it.photo, focus: it.focus, tone: it.tone, q: q, hasQty: q > 0,
+          btnLabel: q > 0 ? q + ' in basket' : 'Add', btnBg: q > 0 ? '#191f2c' : '#b5294e', btnFg: '#fafbfc',
+          add: () => { const next = Object.assign({}, self.state.qty); next[it.id] = (next[it.id] || 0) + 1; self.setState({ qty: next }); }
+        };
+      }),
+      basketCount: this.items.reduce((s, it) => s + (this.state.qty[it.id] || 0), 0),
+      totalDigits: String(Math.round(this.items.reduce((s, it) => s + (this.state.qty[it.id] || 0) * it.cents, 0) / 100)).split('').map(Number),
+      basketTotalText: String(Math.round(this.items.reduce((s, it) => s + (this.state.qty[it.id] || 0) * it.cents, 0) / 100)),
+      orderOpen: this.state.orderOpen,
+      openOrder: () => self.setState({ orderOpen: true }),
+      closeOrder: () => self.setState({ orderOpen: false }),
+      orderText: (function () {
+        const lines = self.items.filter((it) => self.state.qty[it.id]).map((it) => self.state.qty[it.id] + '× ' + it.line + ' · RM' + (self.state.qty[it.id] * it.cents / 100));
+        const total = self.items.reduce((s, it) => s + (self.state.qty[it.id] || 0) * it.cents, 0) / 100;
+        if (!lines.length) return 'Hi Kek Lina, I’d like to order:\n(add something to the basket first)';
+        return 'Hi Kek Lina, I’d like to order:\n' + lines.join('\n') + '\nTotal: RM' + total;
+      })()
+    };
+  }
+}
+</script>
+</body>
+</html>
