@@ -17,10 +17,10 @@ Rebuilt from the design handoff's TanyaJe board (`design/boards/TanyaJe.dc.html`
 
 | Section | File | What it does |
 |---|---|---|
-| Nav | `Nav.tsx` | A pill over the page. Solid, not the board's frosted glass: DESIGN.md bans frosted surfaces. |
+| Nav | `Nav.tsx` | A frosted pill over the page, as the board draws it: the one frosted surface DESIGN.md allows. Opaque where a browser cannot blur. |
 | Hero | `Hero.tsx`, `PageCard.tsx` | "Don't read the bio. Ask Aisyah." The name rolls to the front page of a deck of five sample pages; a cursor taps Ask and the answer types out. Pressing the deck moves it on. |
 | What people ask | `AskStrip.tsx` | "Ask about my rates, services…", one word in focus at a time. |
-| The loop | `Loop.tsx` | "tanya je · just ask" along a curve (SVG `textPath`). |
+| The loop | `Loop.tsx` | "curious? just ask" along a curve (SVG `textPath`), scaled, never stretched. |
 | Who it's for | `Who.tsx` | Five kinds of owner; pointing at one slides its band in and shows its page. |
 | How it works | `How.tsx`, `HowParts.tsx` | Three rooms. Where the browser has scroll-driven animations they slide sideways as the page scrolls; elsewhere they are a row to swipe. |
 | For business | `Business.tsx`, `order-scene.ts` | The order played out between two phones, from the board's frame function, plays once the stage is fully in view. |
@@ -39,8 +39,11 @@ also what a visitor without JavaScript gets; motion starts only once the browser
 says it may. GSAP and Lenis are gone: what moves is CSS, `requestAnimationFrame`
 and native scroll-driven animations.
 
-**Photos.** The board's persona photos are not in the repo, and its screenshots
-render the cards without them, so the cards are drawn in each owner's colours.
+**Photos.** A persona's card shows `photo` (in `personas.ts`) across its top,
+fading into the owner's colour; without one it is drawn in the colour alone.
+Kek Lina uses `/landing/hero-baker.webp`. The others need photos: put them in
+`public/landing/personas/` as WebP, portrait, about 700 x 900, with the subject
+in the upper half, and set `photo: { src, focus }`.
 
 **Claims that wait on slice 18.** The For business section and two Business
 pricing lines show checkout, paying by the owner's QR with proof, and Orders.

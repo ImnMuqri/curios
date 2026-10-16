@@ -190,7 +190,7 @@
   mix-blend-mode: screen;
 }
 
-/* ---- Nav: a pill floating over the page. Solid, not frosted: DESIGN.md bans frosted surfaces. ---- */
+/* ---- Nav: a frosted pill floating over the page (the one frosted surface DESIGN.md allows) ---- */
 
 .navwrap {
   position: sticky;
@@ -210,10 +210,19 @@
   padding: 0 14px 0 36px;
   border-radius: 999px;
   transform: translateY(14px);
-  background: var(--paper);
+  /* Opaque enough to read on its own where a browser cannot blur behind it. */
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
   box-shadow:
-    0 0 0 1px var(--line),
-    0 10px 30px -18px rgb(25 31 44 / 35%);
+    inset 0 0 0 1px rgb(255 255 255 / 70%),
+    0 0 0 1px rgb(25 31 44 / 6%);
+}
+
+@supports (backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px)) {
+  .navpill {
+    background: color-mix(in srgb, var(--paper) 50%, transparent);
+    -webkit-backdrop-filter: blur(18px) saturate(170%);
+    backdrop-filter: blur(18px) saturate(170%);
+  }
 }
 
 .brand {
@@ -317,6 +326,21 @@
   background: var(--pc-deep);
   color: var(--paper);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.pcPhoto {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: block;
+  height: 64%;
+}
+
+.pcPhoto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
 }
 
 .pcKind {
@@ -588,6 +612,11 @@
   outline: none;
 }
 
+.claimField input:focus-visible,
+.endField input:focus-visible {
+  outline: none;
+}
+
 .claimField:focus-within {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--biru) 25%, transparent);
 }
@@ -750,6 +779,12 @@
   display: block;
   width: 100%;
   height: 150px;
+}
+
+@media (max-width: 760px) {
+  .loop svg {
+    height: 110px;
+  }
 }
 
 .loop text {
@@ -983,11 +1018,6 @@
   font-weight: 600;
 }
 
-.howDotOn {
-  background: var(--biru);
-  color: var(--paper);
-}
-
 .howView {
   margin-top: 40px;
   overflow-x: auto;
@@ -1002,6 +1032,7 @@
 .howTrack {
   display: flex;
   width: 300%;
+  will-change: transform;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -1009,7 +1040,8 @@
 
 .howSlide {
   flex: none;
-  width: 33.3333%;
+  /* An exact third, so a neighbouring room never shows a sliver at the edge. */
+  width: calc(100% / 3);
   padding-right: 24px;
   scroll-snap-align: start;
 }
@@ -1394,67 +1426,39 @@
   color: var(--muted);
 }
 
+/*
+ * Pinned: the section is tall and its inner frame sticks, while How.tsx turns
+ * the scroll into the track's position, the rail's fill and the current dot.
+ * Laid out by the media query, not by script, so the page does not jump when
+ * JavaScript arrives; with reduced motion the rooms are a row to swipe.
+ */
 @media (prefers-reduced-motion: no-preference) {
-  @supports (animation-timeline: view()) {
-    .how {
-      height: 2600px;
-      view-timeline-name: --how;
-    }
+  .how {
+    height: 2600px;
+  }
 
-    .howPin {
-      position: sticky;
-      top: 0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      height: 820px;
-    }
+  .howPin {
+    position: sticky;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    height: 820px;
+    max-height: 100vh;
+  }
 
-    .howView {
-      overflow: hidden;
-    }
-
-    .howTrack {
-      animation: howMove linear both;
-      animation-timeline: --how;
-      animation-range: contain 0% contain 100%;
-    }
-
-    .howFill {
-      animation: howFill linear both;
-      animation-timeline: --how;
-      animation-range: contain 0% contain 100%;
-    }
-
-    .howD2 {
-      animation: dotOn linear both;
-      animation-timeline: --how;
-      animation-range: contain 28% contain 32%;
-    }
-
-    .howD3 {
-      animation: dotOn linear both;
-      animation-timeline: --how;
-      animation-range: contain 78% contain 82%;
-    }
+  .howView {
+    overflow: hidden;
   }
 }
 
-@keyframes howMove {
-  0%, 14% { transform: translateX(0); }
-  36%, 64% { transform: translateX(-33.3333%); }
-  86%, 100% { transform: translateX(-66.6667%); }
+.howDot[data-on] {
+  background: var(--biru);
+  color: var(--paper);
 }
 
-@keyframes howFill {
-  0%, 14% { transform: scaleX(0); }
-  36%, 64% { transform: scaleX(0.5); }
-  86%, 100% { transform: scaleX(1); }
-}
-
-@keyframes dotOn {
-  from { background: var(--card); color: var(--ink); }
-  to { background: var(--biru); color: var(--paper); }
+.howDot {
+  transition: background-color 240ms ease, color 240ms ease;
 }
 
 @media (max-width: 900px) {
@@ -1600,6 +1604,21 @@
   background: var(--tj-rose-deep);
   color: var(--paper);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.custPhoto {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: block;
+  height: 58%;
+}
+
+.custPhoto img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  mask-image: linear-gradient(to bottom, black 35%, transparent 100%);
 }
 
 .custName {

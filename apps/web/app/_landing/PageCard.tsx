@@ -45,6 +45,11 @@ export function PageCard({
       style={{ ...style, '--pc-deep': persona.deep, '--pc-accent': persona.accent, '--pc-warm': persona.warm } as CSSProperties}
       aria-hidden="true"
     >
+      {persona.photo ? (
+        <span className={styles.pcPhoto}>
+          <img src={persona.photo.src} alt="" style={{ objectPosition: persona.photo.focus }} loading="lazy" />
+        </span>
+      ) : null}
       {kind ? <span className={styles.pcKind}>{kind}</span> : null}
       <span className={styles.pcBody}>
         <span className={styles.pcName} style={{ fontFamily: persona.font }}>

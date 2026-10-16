@@ -4,13 +4,17 @@ import { useId } from 'react';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
-/** "tanya je · just ask", running along a curve between sections. Decoration; it stops for reduced motion. */
+/**
+ * The page's refrain running along a curve between sections. Scaled, never
+ * stretched (`slice`), so the letters keep their shape at any width; a narrow
+ * screen sees less of the curve. Decoration; it stops for reduced motion.
+ */
 export function Loop({ text }: { text: string }) {
   const reduced = useReducedMotion();
   const id = useId().replace(/:/g, '');
   return (
     <div className={styles.loop} aria-hidden="true">
-      <svg viewBox="0 0 1440 180" preserveAspectRatio="none">
+      <svg viewBox="0 0 1440 180" preserveAspectRatio="xMidYMid slice">
         <path id={`loop-${id}`} d="M -200 120 Q 360 10 720 90 T 1640 70" fill="none" />
         <text>
           <textPath href={`#loop-${id}`} startOffset="0%">

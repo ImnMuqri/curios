@@ -206,7 +206,7 @@ const EN: LandingCopy = {
     other: { href: '/ms', short: 'BM', name: 'Bahasa Melayu', lang: 'ms' },
   },
   hero: {
-    eyebrow: 'Tanya je · just ask',
+    eyebrow: 'Curious? Just ask',
     line: 'Don’t read the bio.',
     ask: 'Ask',
     title: 'Don’t read the bio. Ask Aisyah.',
@@ -228,7 +228,7 @@ const EN: LandingCopy = {
     words: ['rates', 'services', 'hours', 'experience', 'prices'],
     body: 'Whatever you put in, it can answer. Whatever you didn’t, it says it’ll check with you, and the question waits on your list.',
   },
-  loop: 'tanya je · just ask · ',
+  loop: 'curious? just ask · ',
   who: {
     eyebrow: 'Who it’s for',
     title: 'One page for whoever’s asking.',
@@ -277,7 +277,7 @@ const EN: LandingCopy = {
     fix: '← Fix it',
     approve: 'Approve →',
     approvedStamp: 'Approved',
-    ring: 'CURIOS.MY/AISYAHDRAWS · TANYA JE · JUST ASK · ',
+    ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? JUST ASK · ',
     card: { name: 'aisyahdraws', role: 'Illustrator · Ipoh', bio: 'Portraits, book covers, editorial. Commissions open for November.' },
   },
   business: {
@@ -430,7 +430,7 @@ const MS: LandingCopy = {
     other: { href: '/', short: 'EN', name: 'English', lang: 'en' },
   },
   hero: {
-    eyebrow: 'Tanya je · just ask',
+    eyebrow: 'Curious? Tanya je',
     line: 'Tak payah baca bio.',
     ask: 'Tanya',
     title: 'Tak payah baca bio. Tanya Aisyah.',
@@ -452,7 +452,7 @@ const MS: LandingCopy = {
     words: ['harga', 'servis', 'waktu buka', 'pengalaman', 'pakej'],
     body: 'Apa yang anda masukkan, ia boleh jawab. Apa yang tiada, ia kata akan semak dengan anda, dan soalan itu tunggu dalam senarai anda.',
   },
-  loop: 'tanya je · just ask · ',
+  loop: 'curious? tanya je · ',
   who: {
     eyebrow: 'Untuk siapa',
     title: 'Satu halaman untuk sesiapa yang bertanya.',
@@ -501,7 +501,7 @@ const MS: LandingCopy = {
     fix: '← Betulkan',
     approve: 'Luluskan →',
     approvedStamp: 'Lulus',
-    ring: 'CURIOS.MY/AISYAHDRAWS · TANYA JE · JUST ASK · ',
+    ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? TANYA JE · ',
     card: { name: 'aisyahdraws', role: 'Ilustrator · Ipoh', bio: 'Potret, kulit buku, editorial. Tempahan dibuka untuk November.' },
   },
   business: {

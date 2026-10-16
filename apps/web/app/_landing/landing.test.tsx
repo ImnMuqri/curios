@@ -9,6 +9,7 @@ import { COPY } from './copy.js';
 import { BRAND } from './brand-colors.js';
 import { scene } from './order-scene.js';
 import { payback } from './Pricing.js';
+import { howAt } from './How.js';
 
 const LOCALES = ['en', 'ms'] as const;
 const { en, ms } = COPY;
@@ -164,6 +165,19 @@ describe('the order, played out', () => {
   });
 });
 
+describe('how it works, pinned', () => {
+  it('holds each room, slides to the next, and marks the dot of the room in view', () => {
+    expect(howAt(0)).toEqual({ at: 0, step: 0 });
+    expect(howAt(0.1)).toEqual({ at: 0, step: 0 });
+    expect(howAt(0.5)).toEqual({ at: 1, step: 1 });
+    expect(howAt(1)).toEqual({ at: 2, step: 2 });
+    // The dot only moves on once the next room is mostly in.
+    expect(howAt(0.29).at).toBeGreaterThan(0.5);
+    expect(howAt(0.29).step).toBe(0);
+    expect(howAt(0.31).step).toBe(1);
+  });
+});
+
 describe('metadata', () => {
   it.each(LOCALES)('%s: title and description fit in a search result', (locale) => {
     const meta = landingMetadata(locale);
@@ -240,8 +254,9 @@ describe('brand colours', () => {
 describe('the stylesheet', () => {
   const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
 
-  it('keeps the nav solid: DESIGN.md bans frosted surfaces', () => {
-    expect(css).not.toMatch(/backdrop-filter/);
+  it('frosts the nav pill and nothing else (DESIGN.md allows that one surface)', () => {
+    const frosted = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^{}]*backdrop-filter/g)].map((m) => m[1]!.trim());
+    expect(frosted).toEqual(['.navpill']);
   });
 
   it('runs every looping animation only for visitors who have not asked for less motion', () => {

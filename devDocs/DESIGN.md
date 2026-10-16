@@ -179,8 +179,9 @@ check in `packages/ui/src/design-rules.ts` now lists the boards' sizes instead.
 
 The landing (`/`, `/ms`) is rebuilt from the TanyaJe board: "Don't read the bio. Ask", for
 anyone, with business as one section. It keeps the landing's motion exemption, drawn still for
-reduced motion and before JavaScript, without GSAP or Lenis. Its nav pill is solid paper where
-the board drew frosted glass: frosted surfaces stay banned. See `apps/web/app/_landing/README.md`.
+reduced motion and before JavaScript, without GSAP or Lenis. Its nav pill is frosted, as the board
+draws it: the owner chose to allow that one frosted surface (it falls back to near-opaque
+paper where a browser cannot blur). See `apps/web/app/_landing/README.md`.
 
 ---
 
@@ -264,7 +265,8 @@ like the picture.
 Delete on sight, no discussion:
 
 - Purple to blue gradients. Any gradient behind a headline.
-- Glassmorphism, frosted panels, floating 3D blobs, mesh backgrounds.
+- Glassmorphism, frosted panels, floating 3D blobs, mesh backgrounds. *(One exception since
+  2026-10-16: the landing's nav pill is frosted, at the owner's request.)*
 - "Supercharge", "Unleash", "Effortlessly", "in seconds", "10x".
 - A hero with a big number, a small label, and a gradient accent.
 - Emoji used as an icon system anywhere in the dashboard. Owner-chosen link icons are

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { scene } from './order-scene.js';
+import { PERSONAS } from './personas.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
@@ -114,6 +115,11 @@ export function Business({ locale }: { locale: Locale }) {
 
           <div ref={stage} className={styles.bizStage} role="img" aria-label={copy.stage}>
             <div className={styles.cust}>
+              {PERSONAS.lina.photo ? (
+                <span className={styles.custPhoto}>
+                  <img src={PERSONAS.lina.photo.src} alt="" style={{ objectPosition: PERSONAS.lina.photo.focus }} loading="lazy" />
+                </span>
+              ) : null}
               <p className={`${styles.abs} ${styles.custName}`}>Kek Lina</p>
               <p className={`${styles.abs} ${styles.custHandle}`}>curios.my/keklina</p>
               <span className={`${styles.abs} ${styles.pcTabs} ${styles.custTabs}`}>
