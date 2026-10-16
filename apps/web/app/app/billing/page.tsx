@@ -136,7 +136,7 @@ export default async function BillingPage({
                 ]}
               />
               <ul className={styles.points}>
-                {COPY.en.pricing.business.points.map((point) => (
+                {COPY.en.pricing.business.pointsToday.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
               </ul>

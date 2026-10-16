@@ -1,20 +1,19 @@
 import type { Metadata } from 'next';
 import './landing-tokens.css';
 import { COPY, type Locale } from './copy.js';
-import { Header } from './Header.js';
-import { HeroScene } from './HeroScene.js';
-import { PaidMoment } from './PaidMoment.js';
-import { ShopSection } from './ShopSection.js';
-import { Trust } from './Trust.js';
-import { QuietParts } from './QuietParts.js';
-import { HowItWorks } from './HowItWorks.js';
+import { Nav } from './Nav.js';
+import { Hero } from './Hero.js';
+import { AskStrip } from './AskStrip.js';
+import { Loop } from './Loop.js';
+import { Who } from './Who.js';
+import { How } from './How.js';
+import { Business } from './Business.js';
 import { Pricing } from './Pricing.js';
 import { Faq } from './Faq.js';
 import { Closing } from './Closing.js';
-import { SmoothScroll } from './SmoothScroll.js';
-import { motionPendingScript } from './motionPending.js';
+import { Footer } from './Footer.js';
 import { SITE_URL, jsonLdScript, structuredData } from './structured-data.js';
-import base from './landing.module.css';
+import styles from './tanya.module.css';
 
 const HOME: Record<Locale, string> = { en: '/', ms: '/ms' };
 
@@ -47,11 +46,10 @@ export function landingMetadata(locale: Locale): Metadata {
 }
 
 /**
- * The landing page, in either language. Section order follows the owner's
- * objections, not a template: what it is and the problem it removes (the pinned
- * hero), how it gets set up (How it works), what you pay for (the paid moment),
- * what else it does (the shop), "it'll get prices wrong" (trust), the quiet
- * parts, "is it worth RM39" (pricing), the rest (FAQ), then the close.
+ * The landing page, in either language, from the design handoff's TanyaJe
+ * board: who can ask what (the hero and the strip under it), who it is for,
+ * how it works, what a business gets, what it costs, the questions, then the
+ * close.
  *
  * The root layout fixes <html lang="en">, so the Malay page declares its
  * language on its own outermost element; screen readers and browsers honour
@@ -59,29 +57,26 @@ export function landingMetadata(locale: Locale): Metadata {
  */
 export function LandingPage({ locale }: { locale: Locale }) {
   const copy = COPY[locale];
-  const other: Locale = locale === 'ms' ? 'en' : 'ms';
   const url = `${SITE_URL}${HOME[locale] === '/' ? '' : HOME[locale]}`;
 
   return (
-    <div className={base.page} data-landing lang={locale}>
-      {/* First child, so it runs before any scene paints: see motionPending.ts. */}
-      <script dangerouslySetInnerHTML={{ __html: motionPendingScript() }} />
-      <a href="#main" className={base.skip}>
-        {locale === 'ms' ? 'Langkau ke kandungan' : 'Skip to content'}
+    <div className={styles.page} data-landing lang={locale}>
+      <a href="#main" className={styles.skip}>
+        {copy.skip}
       </a>
-      <SmoothScroll />
-      <Header copy={copy} home={HOME[locale]} otherHome={HOME[other]} />
+      <Nav copy={copy} home={HOME[locale]} />
       <main id="main">
-        <HeroScene copy={copy} />
-        <HowItWorks copy={copy} />
-        <PaidMoment copy={copy} />
-        <ShopSection copy={copy} />
-        <Trust copy={copy} />
-        <QuietParts copy={copy} />
-        <Pricing copy={copy} />
-        <Faq copy={copy} />
+        <Hero locale={locale} />
+        <AskStrip locale={locale} />
+        <Loop text={copy.loop} />
+        <Who locale={locale} />
+        <How locale={locale} />
+        <Business locale={locale} />
+        <Pricing locale={locale} />
+        <Faq copy={copy.faq} />
       </main>
-      <Closing copy={copy} otherHome={HOME[other]} />
+      <Closing locale={locale} />
+      <Footer copy={copy} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData(copy, url)) }} />
     </div>
   );

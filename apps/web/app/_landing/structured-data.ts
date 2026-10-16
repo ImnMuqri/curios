@@ -1,3 +1,4 @@
+import { PLAN_PRICES_CENTS } from '@curios/core/billing';
 import type { LandingCopy } from './copy.js';
 
 export const SITE_URL = 'https://curios.my';
@@ -52,11 +53,11 @@ export function structuredData(copy: LandingCopy, url: string) {
           {
             '@type': 'Offer',
             name: `${copy.pricing.business.name} (monthly)`,
-            price: '39',
+            price: String(PLAN_PRICES_CENTS.MONTHLY / 100),
             priceCurrency: 'MYR',
             priceSpecification: {
               '@type': 'UnitPriceSpecification',
-              price: '39',
+              price: String(PLAN_PRICES_CENTS.MONTHLY / 100),
               priceCurrency: 'MYR',
               billingDuration: 'P1M',
             },
@@ -64,11 +65,11 @@ export function structuredData(copy: LandingCopy, url: string) {
           {
             '@type': 'Offer',
             name: `${copy.pricing.business.name} (yearly)`,
-            price: '390',
+            price: String(PLAN_PRICES_CENTS.ANNUAL / 100),
             priceCurrency: 'MYR',
             priceSpecification: {
               '@type': 'UnitPriceSpecification',
-              price: '390',
+              price: String(PLAN_PRICES_CENTS.ANNUAL / 100),
               priceCurrency: 'MYR',
               billingDuration: 'P1Y',
             },

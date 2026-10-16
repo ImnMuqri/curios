@@ -1,30 +1,17 @@
 import type { LandingCopy } from './copy.js';
-import { Reveal } from './Reveal.js';
-import base from './landing.module.css';
-import styles from './faq.module.css';
+import styles from './tanya.module.css';
 
-/**
- * Native details/summary: keyboard and screen-reader behaviour for free, and
- * every answer is in the HTML for search engines and for the FAQPage
- * structured data, which is built from this same list.
- */
-export function Faq({ copy }: { copy: LandingCopy }) {
+/** Questions an owner asks before signing up. The same items feed the page's FAQPage structured data. */
+export function Faq({ copy }: { copy: LandingCopy['faq'] }) {
   return (
-    <section className={`${base.bandSurface} ${styles.faq}`} id="faq" tabIndex={-1} aria-labelledby="faq-title">
-      <div className={`${base.wrap} ${styles.grid}`}>
-        <Reveal>
-          <h2 id="faq-title" className={base.h2}>
-            {copy.faq.title}
-          </h2>
-        </Reveal>
-        <div className={styles.list}>
-          {copy.faq.items.map((item) => (
-            <details key={item.q} className={styles.item}>
-              <summary className={styles.q}>
-                <span>{item.q}</span>
-                <span className={styles.sign} aria-hidden="true" />
-              </summary>
-              <p className={styles.a}>{item.a}</p>
+    <section id="faq" className={styles.faq}>
+      <div className={`${styles.wrap} ${styles.faqGrid}`}>
+        <h2 className={styles.h2}>{copy.title}</h2>
+        <div className={styles.faqList}>
+          {copy.items.map((item, i) => (
+            <details key={item.q} className={styles.q} open={i === 0}>
+              <summary>{item.q}</summary>
+              <p>{item.a}</p>
             </details>
           ))}
         </div>

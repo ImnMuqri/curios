@@ -177,6 +177,11 @@ window, the accent's send circle at their end. The FAQ pages wear the page's acc
 tint. Type sizes follow the boards' CSS, which uses more than the six steps under **Type**; the
 check in `packages/ui/src/design-rules.ts` now lists the boards' sizes instead.
 
+The landing (`/`, `/ms`) is rebuilt from the TanyaJe board: "Don't read the bio. Ask", for
+anyone, with business as one section. It keeps the landing's motion exemption, drawn still for
+reduced motion and before JavaScript, without GSAP or Lenis. Its nav pill is solid paper where
+the board drew frosted glass: frosted surfaces stay banned. See `apps/web/app/_landing/README.md`.
+
 ---
 
 ## Components worth naming

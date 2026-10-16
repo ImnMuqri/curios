@@ -2,8 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { rememberWantedHandle } from '../../lib/wanted-handle.js';
-import base from './landing.module.css';
-import styles from './claim.module.css';
+import styles from './tanya.module.css';
 
 /**
  * The `curios.my/` field: type the address you want, then sign up. The handle
@@ -13,43 +12,44 @@ import styles from './claim.module.css';
  * A real GET form to /signup, so it still goes somewhere with no JavaScript;
  * it just arrives without the pre-fill.
  */
-export function ClaimField({
+export function Claim({
   id,
   label,
   placeholder,
   button,
+  variant = 'hero',
 }: {
   id: string;
   label: string;
   placeholder: string;
   button: string;
+  /** The hero's boxed field, or the closing's large pill. */
+  variant?: 'hero' | 'end';
 }) {
   function remember(event: FormEvent<HTMLFormElement>) {
     const handle = new FormData(event.currentTarget).get('handle');
     rememberWantedHandle(typeof handle === 'string' ? handle : '');
   }
 
+  const end = variant === 'end';
   return (
-    <form className={styles.claim} action="/signup" method="get" onSubmit={remember}>
-      <label htmlFor={id} className={base.srOnly}>
+    <form className={end ? styles.endClaim : styles.claim} action="/signup" method="get" onSubmit={remember}>
+      <label htmlFor={id} className={styles.srOnly}>
         {label}
       </label>
-      <div className={styles.field}>
-        <span className={styles.prefix} aria-hidden="true">
-          curios.my/
-        </span>
+      <span className={end ? styles.endField : styles.claimField}>
+        <span aria-hidden="true">curios.my/</span>
         <input
           id={id}
           name="handle"
-          className={styles.input}
           placeholder={placeholder}
           autoComplete="off"
           autoCapitalize="none"
           spellCheck={false}
           maxLength={30}
         />
-      </div>
-      <button type="submit" className={`${base.button} ${styles.button}`}>
+      </span>
+      <button type="submit" className={`${styles.btn} ${end ? styles.endButton : ''}`}>
         {button}
       </button>
     </form>
