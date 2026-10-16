@@ -2,10 +2,12 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { planState, SESSION_COOKIE } from '@curios/core';
 import { getLeads, getOwnerPage } from '@curios/db-read';
-import { Callout, Shell } from '@curios/ui';
+import { Callout } from '@curios/ui';
 import { resolveOwner } from '../session.js';
 import { Leads } from './lead-list.js';
 import { TrialNotice } from './trial-notice.js';
+import { PageHead } from '../_ui/page-head.js';
+import panel from '../panel.module.css';
 
 /**
  * The number, the conversation behind it, and one way to get rid of either.
@@ -30,27 +32,30 @@ export default async function LeadsPage() {
   // -- a Server Component may not pass a function here, and doing so is a
   // 500 at request time that no gate catches.
   return (
-    <Shell as="div" title="Leads" lede="People who left their number while chatting with your page.">
-      {page ? (
-        <TrialNotice
-          state={planState({
-            mode: page.mode,
-            paidUntil: page.paidUntil,
-            leadsCaptured: page.leadsCaptured,
-            now: new Date(),
-          })}
-        />
-      ) : null}
-      {page?.mode === 'PERSONAL' ? (
-        // A personal page never offers the capture card, so there will never
-        // be a list here. Say why, and where that changes.
-        <Callout tone="info">
-          Personal pages don't collect phone numbers. Visitors can still chat with your page. If
-          you start selling, you can make this a business page from <a href="/app/billing">Billing</a>.
-        </Callout>
-      ) : (
-        <Leads leads={leads} />
-      )}
-    </Shell>
+    <>
+      <PageHead title="Leads" note="Numbers visitors left in the chat" />
+      <div className={panel.body}>
+        {page ? (
+          <TrialNotice
+            state={planState({
+              mode: page.mode,
+              paidUntil: page.paidUntil,
+              leadsCaptured: page.leadsCaptured,
+              now: new Date(),
+            })}
+          />
+        ) : null}
+        {page?.mode === 'PERSONAL' ? (
+          // A personal page never offers the capture card, so there will never
+          // be a list here. Say why, and where that changes.
+          <Callout tone="info">
+            Personal pages don't collect phone numbers. Visitors can still chat with your page. If
+            you start selling, you can make this a business page from <a href="/app/billing">Billing</a>.
+          </Callout>
+        ) : (
+          <Leads leads={leads} />
+        )}
+      </div>
+    </>
   );
 }

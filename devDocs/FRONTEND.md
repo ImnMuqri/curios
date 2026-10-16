@@ -26,7 +26,9 @@ people, not operators. Build them as two different products in one codebase.
 /app/settings             sign-in methods, the search-engine switch
 ```
 
-**The sidebar's first group is *My Curios · Review · Knowledge*.** Add a source lives on the
+**The sidebar groups the modules as *Page* (My Curios, Store), *Inbox* (Questions, Leads),
+*Knowledge* (Review, Facts & sources) and *Account* (Billing, Settings)** (amended 2026-10-16;
+sign-out lives in Settings). Add a source lives on the
 Knowledge screen's Sources tab, not in the sidebar. `/app/onboarding` remains the first-run
 claim-and-first-source screen. `?tab=` is `facts` (the default), `sources`, `pinned` or
 `never-say`. Dates on the Sources tab are formatted in Asia/Kuala_Lumpur, so the server and

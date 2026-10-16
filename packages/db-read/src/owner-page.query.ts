@@ -14,6 +14,8 @@ export interface OwnerPage {
   trialResetAt: Date | null;
   /** Whether this page, if personal, may appear in search results. Settings' switch. */
   allowSearchIndexing: boolean;
+  /** The owner's picture, for the sidebar's account row. */
+  avatarKey: string | null;
 }
 
 /**
@@ -48,6 +50,7 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       leadsCaptured: true,
       trialResetAt: true,
       allowSearchIndexing: true,
+      avatarKey: true,
     },
   });
 }

@@ -21,8 +21,8 @@ import type { OwnerPage } from '@curios/db-read';
  * the gate is on the page and not on the route.
  */
 const getOwnerPage = vi.fn();
-const countPendingFacts = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, countPendingFacts }));
+const countNavBadges = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges }));
 
 const resolveOwner = vi.fn();
 vi.mock('./session.js', () => ({ resolveOwner }));
@@ -51,6 +51,7 @@ const page: OwnerPage = {
   leadsCaptured: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
+  avatarKey: null,
 };
 
 describe('the dashboard layout', () => {
@@ -74,11 +75,22 @@ describe('the dashboard layout', () => {
   it('keeps the frame for an owner revisiting onboarding to add sources', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
-    countPendingFacts.mockResolvedValueOnce(0);
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
 
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
     expect(screen.getByRole('navigation', { name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  it("names the owner's plan under their name", async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce(page);
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+
+    render(await AppLayout({ children: <p>Add more sources</p> }));
+
+    // A business page that has never paid and has captured nothing is on its trial.
+    expect(screen.getByText('Free trial')).toBeInTheDocument();
   });
 
   it('refuses a session the database does not recognise, before asking for a page', async () => {

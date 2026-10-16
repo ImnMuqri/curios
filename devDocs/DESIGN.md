@@ -157,6 +157,14 @@ Billing. (Warm was tried on Review and Leads; the owner did not like it, so no b
 warm and kuning keeps to its one job.) Set in `app-frame.tsx` (BANDS) and drawn by `app-frame.module.css`; each
 band sets the title and lede colours through Shell's hooks. Flat colour, no gradient.
 
+*Amended 2026-10-16: the design handoff (`design/HANDOFF.md`).* The bands are retired. The
+dashboard is a white workspace beside a pale sidebar grouped *Page · Inbox · Knowledge ·
+Account*, with what is waiting counted beside Questions, Leads and Review. Each screen has a
+64px header bar (`app/app/_ui/page-head.tsx`): its title in Plex Sans 600, then a short note
+and its actions on the right. Under 1100px the sidebar is an icon rail; on a phone it is a row
+of icons across the top. IBM Plex Sans is the face for all app and auth UI, numbers included;
+Bricolage is for the wordmark and the landing's display headings only.
+
 ---
 
 ## Components worth naming

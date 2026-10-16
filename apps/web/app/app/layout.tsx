@@ -5,8 +5,11 @@ import { redirect } from 'next/navigation';
 // barrel's transitive node:crypto import is fine. The split between the two
 // is deliberate -- see the comment in middleware.ts.
 import { SESSION_COOKIE } from '@curios/core';
-import { countPendingFacts, getOwnerPage } from '@curios/db-read';
+import { countNavBadges, getOwnerPage } from '@curios/db-read';
+import { avatarUrl } from '../../lib/avatar-url.js';
+import { plexSans } from '../_landing/plex.js';
 import { AppFrame } from './app-frame.js';
+import { planLabel } from './plan-label.js';
 import { resolveOwner } from './session.js';
 
 /**
@@ -42,9 +45,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Onboarding brings its own frame (AuthShell) before a page exists.
   if (!page) return <>{children}</>;
 
-  const pendingReview = await countPendingFacts(owner.accountId);
+  const badges = await countNavBadges(owner.accountId);
   return (
-    <AppFrame displayName={page.displayName} handle={page.handle} pendingReview={pendingReview} mode={page.mode}>
+    <AppFrame
+      displayName={page.displayName}
+      avatarUrl={avatarUrl(page.avatarKey)}
+      planLabel={planLabel({ ...page, now: new Date() })}
+      badges={badges}
+      mode={page.mode}
+      fontClass={plexSans.variable}
+    >
       {children}
     </AppFrame>
   );

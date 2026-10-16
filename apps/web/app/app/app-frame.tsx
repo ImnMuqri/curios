@@ -1,155 +1,133 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
-import { plexSans } from '../_landing/plex.js';
-import { SignOutButton } from './sign-out-button.js';
 import styles from './app-frame.module.css';
 
-type Item = { href: string; label: string; icon: ReactNode };
+type Item = { href: string; label: string; icon: ReactNode; count?: keyof NavBadges; business?: true };
 
-const svg = (path: ReactNode) => (
+const svg = (d: string) => (
   <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.icon}>
-    {path}
+    <path d={d} />
   </svg>
 );
 
 const GROUPS: { title: string; items: Item[] }[] = [
   {
-    title: 'Your page',
+    title: 'Page',
     items: [
-      { href: '/app/curios', label: 'My Curios', icon: svg(<><rect x="3" y="3" width="8" height="10" rx="2" /><rect x="13" y="3" width="8" height="6" rx="2" /><rect x="13" y="11" width="8" height="10" rx="2" /><rect x="3" y="15" width="8" height="6" rx="2" /></>) },
-      { href: '/app/store', label: 'Store', icon: svg(<><path d="M3 9l1.5-5h15L21 9" /><path d="M4 9v11h16V9" /><path d="M3 9h18" /><path d="M9 20v-6h6v6" /></>) },
-      { href: '/app/review', label: 'Review', icon: svg(<><path d="M9 11l3 3 8-8" /><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9" /></>) },
-      { href: '/app/knowledge', label: 'Knowledge', icon: svg(<><path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2z" /><path d="M8 7h8M8 11h6" /></>) },
+      { href: '/app/curios', label: 'My Curios', icon: svg('M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6') },
+      { href: '/app/store', label: 'Store', icon: svg('M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z'), business: true },
     ],
   },
   {
-    title: 'Visitors',
+    title: 'Inbox',
     items: [
-      { href: '/app/questions', label: 'Questions', icon: svg(<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />) },
-      { href: '/app/leads', label: 'Leads', icon: svg(<><circle cx="9" cy="7" r="4" /><path d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2" /></>) },
+      { href: '/app/questions', label: 'Questions', count: 'questions', icon: svg('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01') },
+      { href: '/app/leads', label: 'Leads', count: 'leads', icon: svg('M4 20l1.4-4.2A8 8 0 1 1 8.6 19z') },
+    ],
+  },
+  {
+    title: 'Knowledge',
+    items: [
+      { href: '/app/review', label: 'Review', count: 'review', icon: svg('M5 12.5l4.5 4.5L19 7.5') },
+      { href: '/app/knowledge', label: 'Facts & sources', icon: svg('M4 5h16v11H8l-4 4zM8 9h8M8 12h5') },
     ],
   },
   {
     title: 'Account',
     items: [
-      { href: '/app/billing', label: 'Billing', icon: svg(<><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" /></>) },
-      { href: '/app/settings', label: 'Settings', icon: svg(<><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" /></>) },
+      { href: '/app/billing', label: 'Billing', icon: svg('M3 6h18v13H3zM3 10h18') },
+      { href: '/app/settings', label: 'Settings', icon: svg('M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1') },
     ],
   },
 ];
 
-const TITLES: Record<string, string> = {
-  ...Object.fromEntries(GROUPS.flatMap((group) => group.items.map((item) => [item.href, `${group.title} / ${item.label}`]))),
-  // Not in the sidebar (Knowledge's Sources tab is the way back to it), but still somewhere.
-  '/app/onboarding': 'Your page / Add a source',
-};
-
 /**
- * Each screen's colour band, behind its title -- the landing page's bands,
- * from the same palette. Cobalt for your own page and for leads, pale blue
- * for the rest, dark for billing. (Warm was tried on Review and Leads; the
- * owner did not like it.)
- */
-const BANDS: Record<string, 'BIRU' | 'KUNING' | 'MUDA' | 'INK'> = {
-  '/app/curios': 'BIRU',
-  '/app/store': 'BIRU',
-  '/app/review': 'MUDA',
-  '/app/knowledge': 'MUDA',
-  '/app/questions': 'MUDA',
-  '/app/leads': 'BIRU',
-  '/app/billing': 'INK',
-  '/app/settings': 'MUDA',
-  '/app/onboarding': 'BIRU',
-};
-
-/**
- * The dashboard's frame: a sidebar of grouped modules, a top bar with where
- * you are and a way to see your page, and the screen itself.
+ * The dashboard's frame: a sidebar of grouped modules with what is waiting in
+ * each, and the screen itself. Each screen draws its own header (PageHead),
+ * because what sits beside the title differs from screen to screen.
  *
- * A client component for two reasons: it reads the pathname to mark the
- * current module, and on a phone the sidebar folds behind a menu button with
- * its own open state. The layout (a Server Component) passes plain values.
+ * The sidebar narrows to an icon rail under 1100px and becomes a scrolling
+ * row of icons across the top on a phone; the labels stay in the DOM, so a
+ * screen reader still hears every link by name.
+ *
+ * A client component because it reads the pathname to mark the current
+ * module. The layout (a Server Component) passes plain values, the font's
+ * class among them: next/font read inside a client component names its class
+ * differently on the server and in the browser, and the page fails hydration.
  */
 export function AppFrame({
   displayName,
-  handle,
-  pendingReview,
+  avatarUrl,
+  planLabel,
+  badges,
   mode,
+  fontClass = '',
   children,
 }: {
   displayName: string;
-  handle: string;
-  pendingReview: number;
+  avatarUrl: string | null;
+  /** Under the owner's name: "Business plan", "Free trial" and so on. */
+  planLabel: string;
+  badges: NavBadges;
   /** The Store module is a business page's; a personal page's nav leaves it out. */
   mode: 'PERSONAL' | 'BUSINESS';
+  /** The body face's next/font class, from the server. */
+  fontClass?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
-  const [open, setOpen] = useState(false);
   const initials = displayName.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className={`${styles.frame} ${plexSans.variable}`}>
-      <aside className={styles.side} data-open={open}>
+    <div className={`${styles.frame} ${fontClass}`}>
+      <aside className={styles.side}>
         <a href="/app/curios" className={styles.brand}>
           <Wordmark />
           <span className={styles.srOnly}>Curios dashboard</span>
         </a>
-        <nav aria-label="Dashboard" id="dashboard-nav">
-          {GROUPS.map((group) => ({ ...group, items: group.items.filter((item) => item.href !== '/app/store' || mode === 'BUSINESS') })).map((group) => (
-            <div key={group.title}>
-              <p className={styles.group}>{group.title}</p>
-              {group.items.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className={styles.item}
-                  aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
-                >
-                  {item.icon}
-                  {item.label}
-                  {item.href === '/app/review' && pendingReview > 0 ? (
-                    <span className={styles.count}>{pendingReview}</span>
-                  ) : null}
-                </a>
-              ))}
-            </div>
-          ))}
+        <nav aria-label="Dashboard" className={styles.nav}>
+          {GROUPS.map((group) => {
+            const items = group.items.filter((item) => !item.business || mode === 'BUSINESS');
+            return (
+              <div key={group.title} className={styles.group}>
+                <p className={styles.groupTitle}>{group.title}</p>
+                {items.map((item) => {
+                  const count = item.count ? badges[item.count] : 0;
+                  return (
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      className={styles.item}
+                      aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
+                    >
+                      {item.icon}
+                      <span className={styles.label}>{item.label}</span>
+                      {count > 0 ? <span className={styles.count}>{count}</span> : null}
+                    </a>
+                  );
+                })}
+              </div>
+            );
+          })}
         </nav>
         <div className={styles.who}>
-          <span className={styles.avatar} aria-hidden="true">{initials}</span>
-          <span>
-            {displayName}
-            <small>curios.my/{handle}</small>
+          {avatarUrl ? (
+            <img className={styles.avatar} src={avatarUrl} alt="" width={30} height={30} />
+          ) : (
+            <span className={styles.avatar} aria-hidden="true">{initials}</span>
+          )}
+          <span className={styles.whoText}>
+            <b>{displayName}</b>
+            <span>{planLabel}</span>
           </span>
         </div>
-        <SignOutButton />
       </aside>
 
-      <div className={styles.main} data-band={BANDS[Object.keys(BANDS).find((href) => pathname.startsWith(href)) ?? '']}>
-        <header className={styles.top}>
-          <button
-            type="button"
-            className={styles.menu}
-            aria-expanded={open}
-            aria-controls="dashboard-nav"
-            onClick={() => setOpen((shown) => !shown)}
-          >
-            Menu
-          </button>
-          <span className={styles.crumb}>{TITLES[Object.keys(TITLES).find((href) => pathname.startsWith(href)) ?? ''] ?? ''}</span>
-          <a className={styles.view} href={`/${handle}`} target="_blank" rel="noreferrer">
-            View page
-            <svg viewBox="0 0 24 24" aria-hidden="true" className={styles.viewIcon}>
-              <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
-            </svg>
-          </a>
-        </header>
-        <main className={styles.content}>{children}</main>
-      </div>
+      <main className={styles.main}>{children}</main>
     </div>
   );
 }

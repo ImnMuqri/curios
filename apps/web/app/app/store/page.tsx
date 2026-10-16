@@ -2,10 +2,12 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
 import { getOwnerPage, getOwnerStore } from '@curios/db-read';
-import { Callout, Shell } from '@curios/ui';
+import { Callout } from '@curios/ui';
 import { avatarUrl } from '../../../lib/avatar-url.js';
 import { resolveOwner } from '../session.js';
 import { StoreScreen } from './store-screen.js';
+import { PageHead } from '../_ui/page-head.js';
+import panel from '../panel.module.css';
 
 export default async function StorePage() {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
@@ -15,25 +17,31 @@ export default async function StorePage() {
 
   if (store.mode === 'PERSONAL') {
     return (
-      <Shell as="div" title="Store">
-        <Callout tone="info">
-          Shops are part of business pages. If you start selling, you can make this a business page from{' '}
-          <a href="/app/billing">Billing</a>.
-        </Callout>
-      </Shell>
+      <>
+        <PageHead title="Store" />
+        <div className={panel.body}>
+          <Callout tone="info">
+            Shops are part of business pages. If you start selling, you can make this a business page from{' '}
+            <a href="/app/billing">Billing</a>.
+          </Callout>
+        </div>
+      </>
     );
   }
 
   return (
-    <Shell as="div" title="Store" lede="Open a shop on your page: how customers pay, and how they get their order.">
-      <StoreScreen
-        initial={store.settings}
-        handle={page.handle}
-        uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
-        publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
-        qrUrl={avatarUrl(store.settings.paymentQrKey)}
-        items={store.items.map((item) => ({ ...item, photoUrl: avatarUrl(item.photoKey) }))}
-      />
-    </Shell>
+    <>
+      <PageHead title="Store" note="Open a shop on your page: how customers pay, and how they get their order." />
+      <div className={panel.body}>
+        <StoreScreen
+          initial={store.settings}
+          handle={page.handle}
+          uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
+          publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
+          qrUrl={avatarUrl(store.settings.paymentQrKey)}
+          items={store.items.map((item) => ({ ...item, photoUrl: avatarUrl(item.photoKey) }))}
+        />
+      </div>
+    </>
   );
 }

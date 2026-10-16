@@ -35,6 +35,7 @@ const personal: OwnerPage = {
   leadsCaptured: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
+  avatarKey: null,
 };
 
 describe('LeadsPage', () => {

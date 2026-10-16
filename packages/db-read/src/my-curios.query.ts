@@ -55,3 +55,23 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
 export async function countPendingFacts(accountId: string): Promise<number> {
   return prismaRead.fact.count({ where: { page: { accountId }, verified: false, rejectedAt: null } });
 }
+
+export interface NavBadges {
+  review: number;
+  questions: number;
+  leads: number;
+}
+
+/**
+ * The sidebar's counts, each the filter of the screen it sits beside: facts
+ * waiting in Review, topics with no answer yet (Questions' "Needs you"), and
+ * leads nobody has contacted (Leads' "New").
+ */
+export async function countNavBadges(accountId: string): Promise<NavBadges> {
+  const [review, questions, leads] = await Promise.all([
+    countPendingFacts(accountId),
+    prismaRead.topic.count({ where: { page: { accountId }, answer: null } }),
+    prismaRead.lead.count({ where: { page: { accountId }, status: 'NEW' } }),
+  ]);
+  return { review, questions, leads };
+}

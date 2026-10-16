@@ -9,13 +9,15 @@ import {
   SESSION_COOKIE,
 } from '@curios/core';
 import { getKnowledge, getOwnerPage } from '@curios/db-read';
-import { Shell } from '@curios/ui';
+
 import { resolveOwner } from '../session.js';
 import { KnowledgeTabs, parseTab } from './tabs.js';
 import { Sources } from './sources-tab.js';
 import { Facts } from './facts-tab.js';
 import { Pinned } from './pinned-tab.js';
 import { NeverSay } from './never-say-tab.js';
+import { PageHead } from '../_ui/page-head.js';
+import panel from '../panel.module.css';
 
 /**
  * Everything the chat answers from, in one place, and the way to remove any
@@ -36,17 +38,20 @@ export default async function KnowledgePage({
   const tab = parseTab((await searchParams).tab);
 
   return (
-    <Shell as="div" title="Knowledge" lede="Everything your page knows, and where it learned it.">
-      <KnowledgeTabs current={tab} />
-      {tab === 'facts' ? (
-        <Facts facts={knowledge.facts} categories={[...FACT_CATEGORIES]} ownerFactMax={OWNER_FACT_MAX} />
-      ) : tab === 'sources' ? (
-        <Sources sources={knowledge.sources} pageId={page.id} mode={page.mode} pastedTextMax={PASTED_TEXT_MAX} />
-      ) : tab === 'pinned' ? (
-        <Pinned pinned={knowledge.pinned} />
-      ) : (
-        <NeverSay entries={knowledge.neverSay} max={NEVER_SAY_MAX} maxChars={NEVER_SAY_MAX_CHARS} />
-      )}
-    </Shell>
+    <>
+      <PageHead title="Facts & sources" note="Everything your page knows, and where it learned it" />
+      <div className={panel.body}>
+        <KnowledgeTabs current={tab} />
+        {tab === 'facts' ? (
+          <Facts facts={knowledge.facts} categories={[...FACT_CATEGORIES]} ownerFactMax={OWNER_FACT_MAX} />
+        ) : tab === 'sources' ? (
+          <Sources sources={knowledge.sources} pageId={page.id} mode={page.mode} pastedTextMax={PASTED_TEXT_MAX} />
+        ) : tab === 'pinned' ? (
+          <Pinned pinned={knowledge.pinned} />
+        ) : (
+          <NeverSay entries={knowledge.neverSay} max={NEVER_SAY_MAX} maxChars={NEVER_SAY_MAX_CHARS} />
+        )}
+      </div>
+    </>
   );
 }

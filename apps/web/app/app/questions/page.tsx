@@ -2,9 +2,11 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
 import { getOwnerPage, getTopics } from '@curios/db-read';
-import { Shell } from '@curios/ui';
+
 import { resolveOwner } from '../session.js';
 import { Topics } from './topic-list.js';
+import { PageHead } from '../_ui/page-head.js';
+import panel from '../panel.module.css';
 
 /**
  * What customers actually ask, and the one screen that changes what the
@@ -29,13 +31,16 @@ export default async function QuestionsPage() {
   // Server Component may not pass a function here, and doing so is a 500 at
   // request time that no gate catches.
   return (
-    <Shell as="div" title="Questions" lede="What visitors ask your page, grouped by topic.">
-      <Topics
-        topics={topics}
-        publishesFaq={page?.mode === 'BUSINESS'}
-        answerMax={ANSWER_MAX}
-        titleMax={TOPIC_TITLE_MAX}
-      />
-    </Shell>
+    <>
+      <PageHead title="Questions" note="What visitors ask your page, grouped by topic" />
+      <div className={panel.body}>
+        <Topics
+          topics={topics}
+          publishesFaq={page?.mode === 'BUSINESS'}
+          answerMax={ANSWER_MAX}
+          titleMax={TOPIC_TITLE_MAX}
+        />
+      </div>
+    </>
   );
 }

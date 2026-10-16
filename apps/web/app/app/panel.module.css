@@ -1,8 +1,8 @@
 /*
  * The dashboard's one container, shared by the screens that have no
  * stylesheet of their own (Settings, Billing): a white card on a hairline,
- * the same card My Curios is built from. Titles in Bricolage, text in the
- * frame's Plex Sans, buttons in a row.
+ * the same card My Curios is built from. Everything in the frame's Plex
+ * Sans, buttons in a row.
  */
 .stack {
   display: grid;
@@ -22,9 +22,8 @@
 
 .panelTitle {
   margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-size: var(--text-body);
-  font-weight: 700;
+  font-size: 15px;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
@@ -97,4 +96,56 @@
 .buttons > p {
   margin: 0 0 4px;
   font-size: var(--text-base);
+}
+
+/* A screen's content under its PageHead. */
+.body {
+  container-type: inline-size;
+  padding: 28px 32px 56px;
+}
+
+@media (max-width: 760px) {
+  .body {
+    padding: 20px 16px 40px;
+  }
+}
+
+/* The one solid outbound link in a header: "View page". */
+.primaryLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--biru);
+  color: var(--paper);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.primaryLink:hover {
+  background: color-mix(in oklch, var(--biru) 85%, var(--ink));
+  color: var(--paper);
+}
+
+/* The secondary one: "See your FAQ", "Add another source". */
+.secondaryLink {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--edge, var(--line));
+  color: var(--ink);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.secondaryLink:hover {
+  background: var(--surface);
+  color: var(--ink);
 }

@@ -51,6 +51,7 @@ const page: OwnerPage = {
   leadsCaptured: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
+  avatarKey: null,
 };
 
 const unreviewed: ReviewFact[] = [
