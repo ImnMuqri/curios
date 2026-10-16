@@ -132,8 +132,14 @@
 
 /* ---- Header ---- */
 
+/*
+ * The landing's page cards set the proportions: the photo is as tall as the
+ * page is wide (52% of a 300 by 590 card), and the name starts under the
+ * face, 73% of the width down (37% of the card). Measured in the page's own
+ * width (cqi), so the public page, the editor's phone and the landing agree.
+ */
 .cover {
-  height: 300px;
+  height: 102cqi;
   overflow: hidden;
 }
 
@@ -156,7 +162,7 @@
 }
 
 .cover + .head {
-  margin-top: -120px;
+  margin-top: -29cqi;
   padding-top: 0;
 }
 
@@ -455,14 +461,6 @@
  * demos): the board's preview phone, at about 300px. Everything a step smaller.
  */
 @container page (max-width: 320px) {
-  .cover {
-    height: 170px;
-  }
-
-  .cover + .head {
-    margin-top: -64px;
-  }
-
   .head {
     gap: 8px;
     padding: 48px 16px 0;

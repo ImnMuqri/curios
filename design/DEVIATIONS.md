@@ -30,3 +30,4 @@ a row **Resolved** rather than deleting it.
 | 21 | My Curios: Links | Rows move and remove only | A row's name opens it to edit in place (Name, Address, Done) | Owners could edit a link before; the board has no way to | Board adds an edit |
 | 22 | My Curios: Social profiles | No validation shown | "That doesn't look like a WhatsApp number." etc., on leaving a field | The API refuses what it cannot read as a profile | Accepted |
 | 23 | My Curios: uploads switched off | (not drawn) | Upload tile and picture circle disabled, the reason in their tooltip | Storage can be off in a deployment | Accepted |
+| 24 | Public page and My Curios preview: cover | A 300px cover (Public), 54% of the preview phone (MyCurios) | The landing card's proportions everywhere: the photo as tall as the page is wide, the name starting 73% of the width down | Owner's change, so the page, its preview and the landing read alike | **Resolved** (owner chose the landing's ratio) |
