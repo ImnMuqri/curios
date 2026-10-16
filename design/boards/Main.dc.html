@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: a link in bio that answers your customers</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&amp;display=swap">
+<style>
+body{margin:0;background:#fafbfc}
+a{color:#191f2c}a:hover{color:#2340c8}
+.lp{--disp:'Bricolage Grotesque',system-ui,sans-serif;--body:'IBM Plex Sans',system-ui,sans-serif;font-family:var(--body);font-size:17px;line-height:1.55;color:#191f2c;background:#fafbfc;overflow-x:clip}
+.lp *{box-sizing:border-box}
+.wrap{width:100%;max-width:1296px;margin:0 auto;padding:0 16px}
+@media (min-width:768px){.wrap{padding:0 32px}}
+@media (min-width:1280px){.wrap{padding:0 48px}}
+.h2{margin:0;max-width:16ch;font-family:var(--disp);font-size:clamp(33.2px,25px + 2.1vw,51.9px);font-weight:800;line-height:1.06;letter-spacing:-0.03em;text-wrap:balance}
+.lede{margin:24px 0 0;max-width:34em;font-size:17px;text-wrap:pretty}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 32px;border:0;border-radius:999px;font:inherit;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+.mark{display:inline-block;font-family:var(--disp);font-size:28px;font-weight:700;line-height:1;letter-spacing:-0.03em}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:0.06em;width:0.42em;height:0.26em;border:0.065em solid currentColor;border-radius:0.08em;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sections{display:none}
+.ctaLong{display:none}
+@media (min-width:768px){.ctaLong{display:inline}.ctaShort{display:none}}
+@media (min-width:1024px){.sections{display:flex}}
+.two{display:grid;grid-template-columns:minmax(0,1fr);gap:48px}
+@media (min-width:1024px){
+.hero-grid{grid-template-columns:minmax(0,6fr) minmax(0,5fr);align-items:center;gap:96px}
+.storm-grid{grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);align-items:center;gap:64px}
+.leads-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:start;gap:64px}
+.trust-grid{grid-template-columns:minmax(0,5fr) minmax(0,6fr);align-items:center;gap:96px}
+.setup-grid{grid-template-columns:minmax(0,6fr) minmax(0,5fr);align-items:center;gap:96px}
+.price-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:24px}
+.faq-grid{grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:64px}
+.foot-grid{grid-template-columns:auto 1fr auto;align-items:center}
+}
+.claim{display:flex;flex-wrap:wrap;gap:8px;max-width:560px}
+.field{flex:1 1 260px;display:flex;align-items:center;min-height:56px;padding:0 8px 0 24px;border-radius:999px;background:#ffffff;box-shadow:inset 0 0 0 1.5px #191f2c}
+.field input{flex:1;min-width:0;height:52px;border:0;background:transparent;font:inherit;font-weight:600;color:#191f2c;outline:none}
+.field input::placeholder{color:#696e7b;font-weight:400}
+.phones{display:flex;gap:24px;justify-content:center;flex-wrap:wrap}
+.faq-item{border-bottom:1.5px solid #e4e7eb}
+.faq-item summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;min-height:64px;cursor:pointer;font-family:var(--disp);font-size:21px;font-weight:700;letter-spacing:-0.01em}
+.faq-item summary::-webkit-details-marker{display:none}
+.sign{position:relative;flex:none;width:18px;height:18px}
+.sign::before,.sign::after{content:'';position:absolute;left:0;top:8px;width:18px;height:2px;border-radius:1px;background:currentColor}
+.sign::after{transform:rotate(90deg)}
+.faq-item[open] .sign::after{transform:none}
+.storm-scene{position:relative;display:grid;place-items:center;min-height:640px}
+.bubble{position:absolute;margin:0;padding:10px 16px;border-radius:18px 18px 6px 18px;background:#ffffff;color:#191f2c;font-size:15px;white-space:nowrap}
+@media (max-width:700px){.bubble{display:none}}
+</style>
+</helmet>
+
+<div class="lp">
+
+<!-- Header: a white pill floating over the hero band -->
+<header style="position: sticky; top: 0; z-index: 20; height: 88px; margin-bottom: -88px; padding-top: 12px">
+<div class="wrap">
+<div style="display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 0 8px 0 32px; border-radius: 999px; background: #ffffff; color: #191f2c">
+<a href="/" style="display: inline-flex; margin-top: 2px; color: #191f2c; text-decoration: none"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios home</span></a>
+<nav class="sections" aria-label="Sections" style="gap: 4px; margin-left: 24px">
+<a href="#how" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">How it works</a>
+<a href="#pricing" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">Pricing</a>
+<a href="#faq" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">FAQ</a>
+</nav>
+<nav aria-label="Account" style="display: flex; align-items: center; gap: 4px; margin-left: auto">
+<a href="/ms" hreflang="ms" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">BM<span class="sr"> Baca dalam Bahasa Melayu</span></a>
+<a href="/signin" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; background: #f0f1f4; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">Sign in</a>
+<a href="/signup" class="btn" style="min-height: 48px; padding: 0 24px; background: #2340c8; color: #fafbfc; font-size: 13.6px"><span class="ctaLong">Create your free page</span><span class="ctaShort">Create page</span></a>
+</nav>
+</div>
+</div>
+</header>
+
+<main id="main">
+
+<!-- Hero: biru-muda band -->
+<section aria-labelledby="hero-title" style="background: #eaf0ff; color: #191f2c; padding: 152px 0 128px">
+<div class="wrap two hero-grid">
+<div>
+<h1 id="hero-title" style="margin: 0; max-width: 11ch; font-family: var(--disp); font-size: clamp(41.5px, 24.16px + 4.445vw, 81.06px); font-weight: 800; line-height: 0.98; letter-spacing: -0.04em; color: #122686">{{heroTitle}}</h1>
+<p style="margin: 24px 0 0; max-width: 32em; font-size: 17px; color: #191f2c">For shops that sell on Instagram and WhatsApp. Curios answers your customers in Malay or English from the prices and details you approve, and sends you the number of anyone ready to order.</p>
+<div style="margin-top: 32px">
+<form class="claim" action="/signup" method="get">
+<label for="claim-hero" class="sr">The address you want for your page</label>
+<div class="field"><span aria-hidden="true" style="color: #696e7b">curios.my/</span><input id="claim-hero" name="handle" placeholder="yourshop" autocomplete="off"></div>
+<button type="submit" class="btn" style="background: #2340c8; color: #fafbfc">Create your free page</button>
+</form>
+<p style="margin: 12px 0 0; font-size: 13.6px; color: #191f2c">Answering is free on every plan. No card needed.</p>
+</div>
+</div>
+
+<figure style="position: relative; margin: 0; display: grid; justify-items: end">
+<div style="width: 100%; aspect-ratio: 4 / 5; border-radius: 28px; overflow: hidden">
+<img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="A home baker at her kitchen counter, smiling at her phone beside a chocolate cake and cake boxes" style="display: block; width: 100%; height: 100%; object-fit: cover; object-position: 62% 22%">
+</div>
+
+<!-- The demo phone: Kek Lina's real page -->
+<div role="group" aria-label="Demo of a Curios page for a home bakery" style="position: absolute; left: -56px; bottom: -40px; width: 280px">
+<div style="position: relative; width: 100%; aspect-ratio: 9 / 19; padding: 7px; border-radius: 48px; background: #191f2c; box-shadow: inset 0 0 0 1.5px #4a4f5b">
+<div style="position: relative; display: flex; flex-direction: column; height: 100%; overflow: hidden; border-radius: 41px; background: #fbeef1; color: #191f2c; font-family: 'Inter', system-ui, sans-serif">
+<div aria-hidden="true" style="position: relative; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 4px 26px 0 30px; font-size: 14px; font-weight: 600"><span>3:15</span><span style="position: absolute; top: 10px; left: 50%; width: 30%; height: 26px; border-radius: 999px; background: #191f2c; transform: translateX(-50%)"></span><span style="display: inline-flex; gap: 5px"><svg viewBox="0 0 18 12" width="17" height="11" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg viewBox="0 0 27 12" width="25" height="11" fill="currentColor"><rect x="0.5" y="0.5" width="22" height="11" rx="3" fill="none" stroke="currentColor" opacity="0.4"></rect><rect x="2" y="2" width="16" height="8" rx="1.5"></rect></svg></span></div>
+<div aria-hidden="true" style="padding: 2px 12px 8px"><span style="display: flex; align-items: center; justify-content: center; gap: 6px; height: 34px; border-radius: 12px; background: #ffffff; font-size: 12.5px; font-weight: 500">curios.my/keklina</span></div>
+<div style="flex: 1; display: flex; flex-direction: column; padding: 0 14px; overflow: hidden">
+<div style="margin: 0 -14px; height: 118px; overflow: hidden"><img src="/_blob/63d877cef1ea5c67a363dfd5ea183c12" alt="" style="display: block; width: 100%; height: 100%; object-fit: cover; -webkit-mask-image: linear-gradient(to bottom, black 38%, transparent 86%); mask-image: linear-gradient(to bottom, black 38%, transparent 86%)"></div>
+<div style="position: relative; margin-top: -34px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px">
+<svg aria-hidden="true" viewBox="0 0 120 120" style="width: 56px; height: 56px; flex: none; border-radius: 50%; box-shadow: 0 0 0 3px #fbeef1"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg>
+<div><p style="margin: 0; font-family: 'Fraunces', Georgia, serif; font-size: 24px; font-weight: 800; line-height: 1.05; letter-spacing: -0.03em">Kek Lina</p><p style="margin: 2px 0 0; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #54555f">curios.my/keklina</p></div>
+</div>
+<p style="margin: 0 0 12px; font-size: 12.5px; line-height: 1.45; color: #54555f">Homemade cakes and desserts in Shah Alam. Order 2 days ahead.</p>
+<div style="display: grid; grid-template-columns: 1fr 1fr; grid-auto-rows: 64px; gap: 8px">
+<div style="grid-row: span 2; display: flex; flex-direction: column; justify-content: space-between; padding: 12px; border-radius: 16px; background: #b5294e; color: #fafbfc"><span style="font-family: 'Fraunces', serif; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8">WhatsApp</span><span style="font-family: 'Fraunces', serif; font-size: 13px; font-weight: 700">Order on WhatsApp</span></div>
+<div style="display: flex; flex-direction: column; justify-content: space-between; padding: 12px; border-radius: 16px; background: #f3dde3"><span style="font-family: 'Fraunces', serif; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8">Web</span><span style="font-family: 'Fraunces', serif; font-size: 13px; font-weight: 700">Menu &amp; prices</span></div>
+<div style="display: flex; flex-direction: column; justify-content: space-between; padding: 12px; border-radius: 16px; background: #ffffff"><span style="font-family: 'Fraunces', serif; font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.8">Instagram</span><span style="font-family: 'Fraunces', serif; font-size: 13px; font-weight: 700">Cake photos</span></div>
+</div>
+</div>
+<div style="padding: 10px 14px 24px">
+<button type="button" aria-label="Ask: Do you deliver to Klang?" style="display: flex; align-items: center; gap: 8px; width: 100%; padding: 5px 5px 5px 16px; border: 1.5px solid #b5294e; border-radius: 999px; background: #ffffff; font: inherit; font-size: 14px; color: #191f2c; text-align: left; cursor: pointer"><span style="flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Do you deliver to Klang?</span><span aria-hidden="true" style="display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #b5294e"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></button>
+</div>
+<span aria-hidden="true" style="position: absolute; bottom: 8px; left: 50%; width: 36%; height: 4px; border-radius: 2px; background: #191f2c; transform: translateX(-50%)"></span>
+</div>
+</div>
+<p aria-hidden="true" style="margin: 12px auto 0; width: max-content; padding: 4px 12px; border-radius: 999px; background: #191f2c; color: #fafbfc; font-size: 13.6px">Tap to ask it</p>
+</div>
+<figcaption style="position: absolute; right: 0; bottom: -48px; margin: 0; font-size: 13.6px; color: #191f2c">A demo page. Kek Lina is not a real shop.</figcaption>
+</figure>
+</div>
+</section>
+
+<!-- Storm: ink band -->
+<section id="storm" aria-labelledby="storm-title" style="background: #191f2c; color: #fafbfc; padding: 96px 0">
+<div class="wrap two storm-grid">
+<div>
+<h2 id="storm-title" class="h2" style="color: #bfd1f9">You answer each question once.</h2>
+<p class="lede" style="color: #b3b7c1">Customers ask the price forty different ways. Curios groups them by meaning, and every version gets the answer you wrote.</p>
+</div>
+<div class="storm-scene">
+<p class="bubble" aria-hidden="true" style="top: 6%; left: 4%">how much?</p>
+<p class="bubble" aria-hidden="true" style="top: 14%; right: 2%">price pls</p>
+<p class="bubble" aria-hidden="true" style="top: 30%; left: 0">how much for 1kg?</p>
+<p class="bubble" aria-hidden="true" style="top: 40%; right: 0">chocolate 1kg price</p>
+<p class="bubble" aria-hidden="true" style="top: 58%; left: 6%">how much ah sis</p>
+<p class="bubble" aria-hidden="true" style="top: 66%; right: 4%">may i know the price</p>
+<p class="bubble" aria-hidden="true" style="bottom: 8%; left: 10%">price??</p>
+<p class="bubble" aria-hidden="true" style="bottom: 4%; right: 12%">pm price</p>
+<div style="position: relative; width: 260px">
+<div style="width: 100%; aspect-ratio: 9 / 19; padding: 7px; border-radius: 48px; background: #191f2c; box-shadow: inset 0 0 0 1.5px #4a4f5b">
+<div style="display: flex; flex-direction: column; height: 100%; overflow: hidden; border-radius: 41px; background: #fbeef1; color: #191f2c; font-family: 'Inter', system-ui, sans-serif">
+<div aria-hidden="true" style="position: relative; display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 4px 26px 0 30px; font-size: 14px; font-weight: 600"><span>3:15</span><span style="position: absolute; top: 10px; left: 50%; width: 30%; height: 26px; border-radius: 999px; background: #191f2c; transform: translateX(-50%)"></span><span>●●●</span></div>
+<div aria-hidden="true" style="padding: 2px 12px 8px"><span style="display: flex; align-items: center; justify-content: center; height: 34px; border-radius: 12px; background: #ffffff; font-size: 12.5px; font-weight: 500">curios.my/keklina</span></div>
+<div style="padding: 8px 14px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 40px; height: 40px; border-radius: 50%; background: #b5294e"></span><p style="margin: 0; font-family: 'Fraunces', serif; font-size: 22px; font-weight: 800; letter-spacing: -0.03em">Kek Lina</p></div>
+<p style="align-self: flex-end; max-width: 85%; margin: 8px 0 0; padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: #ffffff; font-size: 14px">How much is a 1kg chocolate cake?</p>
+<p style="align-self: flex-end; margin: 0; padding: 4px 10px; border-radius: 999px; background: #191f2c; color: #fafbfc; font-size: 13.6px">asked 40×</p>
+<p style="align-self: flex-start; max-width: 85%; margin: 0; padding: 10px 14px; border-radius: 18px 18px 18px 6px; background: #f3dde3; font-size: 14px">A 1kg chocolate cake is RM95. Please order 2 days ahead.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Leads: biru band -->
+<section aria-labelledby="leads-title" style="background: #2340c8; color: #fafbfc; padding: 96px 0 128px">
+<div class="wrap">
+<h2 id="leads-title" class="h2" style="color: #eaf0ff">Business sends you every customer who leaves a number.</h2>
+<p class="lede" style="color: #dfe8fd">This is one lead from question to reply. The customer asks at 11:42 at night, and by morning you have their number, their order and a reply ready to send.</p>
+
+<div class="two leads-grid" style="margin-top: 64px">
+<ol style="list-style: none; margin: 0; padding: 0; display: grid; gap: 4px">
+<li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 12px; border-radius: 16px"><span style="display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(250,251,252,0.18); font-size: 14px; font-weight: 600">1</span><span><strong style="display: block; font-family: var(--disp); font-size: 19px">They ask, any time</strong><span style="font-size: 14px; color: #dfe8fd">A customer asks at 11:42 at night and gets an answer straight away.</span></span></li>
+<li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 12px; border-radius: 16px"><span style="display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(250,251,252,0.18); font-size: 14px; font-weight: 600">2</span><span><strong style="display: block; font-family: var(--disp); font-size: 19px">It answers from your facts</strong><span style="font-size: 14px; color: #dfe8fd">It quotes the RM95 price and RM10 delivery charge you approved.</span></span></li>
+<li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 12px; border-radius: 16px"><span style="display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(250,251,252,0.18); font-size: 14px; font-weight: 600">3</span><span><strong style="display: block; font-family: var(--disp); font-size: 19px">It asks for their number</strong><span style="font-size: 14px; color: #dfe8fd">It shows one field for their WhatsApp number.</span></span></li>
+<li style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 12px; border-radius: 16px"><span style="display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: rgba(250,251,252,0.18); font-size: 14px; font-weight: 600">4</span><span><strong style="display: block; font-family: var(--disp); font-size: 19px">You get an email with everything</strong><span style="font-size: 14px; color: #dfe8fd">The email has their number, the order, the day, the area and the full chat.</span></span></li>
+<li aria-current="step" style="display: grid; grid-template-columns: 32px 1fr; gap: 12px; padding: 12px; border-radius: 16px; background: rgba(250,251,252,0.10)"><span style="display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: #fafbfc; color: #2340c8; font-size: 14px; font-weight: 600">5</span><span><strong style="display: block; font-family: var(--disp); font-size: 19px">One tap to reply on WhatsApp</strong><span style="font-size: 14px; color: #dfe8fd">WhatsApp opens with a greeting already typed in the language they used.</span></span></li>
+<li style="margin-top: 16px; display: flex; gap: 8px; align-items: center"><button type="button" style="min-height: 44px; padding: 0 16px; border: 1.5px solid #fafbfc; border-radius: 999px; background: #fafbfc; color: #2340c8; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Play it again</button><span style="font-size: 14px; color: #dfe8fd">Step 5 of 5</span></li>
+</ol>
+
+<div class="phones">
+<figure style="margin: 0; width: 240px; text-align: center">
+<div style="width: 100%; aspect-ratio: 9 / 19; padding: 7px; border-radius: 48px; background: #191f2c; box-shadow: inset 0 0 0 1.5px #4a4f5b">
+<div style="display: flex; flex-direction: column; gap: 10px; height: 100%; overflow: hidden; border-radius: 41px; background: #fbeef1; color: #191f2c; font-family: 'Inter', system-ui, sans-serif; text-align: left; padding: 52px 12px 12px">
+<p style="align-self: flex-end; max-width: 88%; margin: 0; padding: 10px 12px; border-radius: 18px 18px 6px 18px; background: #ffffff; font-size: 13px">Do you have a 1kg chocolate cake? Need it delivered to Shah Alam on Saturday.</p>
+<p style="align-self: flex-start; max-width: 88%; margin: 0; padding: 10px 12px; border-radius: 18px 18px 18px 6px; background: #f3dde3; font-size: 13px">Yes, RM95. Delivery to Shah Alam is RM10. Please order by Thursday.</p>
+<div style="margin-top: 4px; padding: 12px; border-radius: 16px; background: #ffffff; font-size: 12.5px">
+<p style="margin: 0 0 8px; font-weight: 600">WhatsApp number</p>
+<p style="margin: 0; padding: 8px 10px; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #e4e7eb; font-variant-numeric: tabular-nums">012-345 6789</p>
+</div>
+</div>
+</div>
+<figcaption style="margin-top: 12px; font-size: 14px; color: #dfe8fd">The customer’s phone</figcaption>
+</figure>
+<figure style="margin: 0; width: 240px; text-align: center">
+<div style="width: 100%; aspect-ratio: 9 / 19; padding: 7px; border-radius: 48px; background: #191f2c; box-shadow: inset 0 0 0 1.5px #4a4f5b">
+<div style="display: flex; flex-direction: column; height: 100%; overflow: hidden; border-radius: 41px; background: #ffffff; color: #191f2c; font-family: 'Inter', system-ui, sans-serif; text-align: left">
+<div style="padding: 52px 18px 10px; border-bottom: 1px solid #e4e7eb"><span style="font-size: 12.5px; color: #2340c8">‹ Inbox</span><p style="margin: 4px 0 0; font-size: 15px; font-weight: 600">New lead: 1kg chocolate cake</p><p style="margin: 2px 0 0; font-size: 11px; color: #696e7b">11:43 pm</p></div>
+<dl style="margin: 0; padding: 12px 18px; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 12.5px">
+<dt style="color: #696e7b">Number</dt><dd style="margin: 0; font-weight: 600">012-345 6789</dd>
+<dt style="color: #696e7b">Order</dt><dd style="margin: 0">1kg chocolate cake</dd>
+<dt style="color: #696e7b">When</dt><dd style="margin: 0">Saturday</dd>
+<dt style="color: #696e7b">Where</dt><dd style="margin: 0">Shah Alam</dd>
+</dl>
+<div style="margin: auto 14px 22px; padding: 12px; border-radius: 16px; background: #eaf0ff; font-size: 12.5px"><p style="margin: 0 0 10px">Hi! Kek Lina here. About the 1kg chocolate cake you asked about,</p><span style="display: flex; align-items: center; justify-content: center; min-height: 40px; border-radius: 999px; background: #2340c8; color: #fafbfc; font-weight: 600">Reply on WhatsApp</span></div>
+</div>
+</div>
+<figcaption style="margin-top: 12px; font-size: 14px; color: #dfe8fd">Your phone</figcaption>
+</figure>
+</div>
+</div>
+
+<p style="margin: 48px 0 0; max-width: 34em; font-size: 14px; color: #dfe8fd">Your first three leads are free. After that, Business is RM39 a month. The answering never stops, on any plan.</p>
+</div>
+</section>
+
+<!-- Trust: kuning-100 band -->
+<section aria-labelledby="trust-title" style="background: #ffebd6; color: #191f2c; padding: 128px 0 96px">
+<div class="wrap two trust-grid">
+<div>
+<h2 id="trust-title" class="h2" style="color: #563505">It only quotes prices you approved.</h2>
+<p class="lede" style="color: #191f2c">The same goes for dates and addresses. When it doesn’t know, it tells the customer it will check with you, and the question waits on your list until you answer. You can also give it words it must never use about your shop.</p>
+</div>
+<div style="display: grid; gap: 24px">
+<div style="padding: 32px 32px 24px; border-radius: 28px; background: #ffffff">
+<p style="margin: 0; font-family: var(--disp); font-size: clamp(26.6px, 23.65px + 0.746vw, 33.2px); font-weight: 800; letter-spacing: -0.03em; line-height: 1.1">Kek Lina</p>
+<p style="margin: 4px 0 16px; font-size: 14px; color: #696e7b">Price list</p>
+<dl style="margin: 0; display: grid; gap: 10px; font-size: 17px">
+<div style="display: flex; gap: 8px; align-items: baseline"><dt>1kg chocolate cake</dt><span aria-hidden="true" style="flex: 1; border-bottom: 2px dotted #e4e7eb"></span><dd style="margin: 0; font-weight: 600">RM95</dd></div>
+<div style="display: flex; gap: 8px; align-items: baseline"><dt>Delivery, Shah Alam</dt><span aria-hidden="true" style="flex: 1; border-bottom: 2px dotted #e4e7eb"></span><dd style="margin: 0; font-weight: 600">RM10</dd></div>
+<div style="display: flex; gap: 8px; align-items: baseline"><dt>Delivery, Klang</dt><span aria-hidden="true" style="flex: 1; border-bottom: 2px dotted #e4e7eb"></span><dd style="margin: 0; font-weight: 600">RM15</dd></div>
+<div style="display: flex; gap: 8px; align-items: baseline"><dt>Order</dt><span aria-hidden="true" style="flex: 1; border-bottom: 2px dotted #e4e7eb"></span><dd style="margin: 0; font-weight: 600">2 days ahead</dd></div>
+</dl>
+<p style="margin: 20px 0 0; font-size: 12.5px; color: #696e7b">Every line approved by you</p>
+</div>
+<div role="group" aria-label="Ada kek tanpa gula? Tak pasti. Saya check dengan Lina dulu ya." style="display: grid; gap: 10px">
+<p lang="ms" style="justify-self: end; margin: 0; padding: 12px 18px; border-radius: 20px; background: #ffffff; font-size: 17px">Ada kek tanpa gula?</p>
+<p lang="ms" style="justify-self: start; margin: 0; padding: 12px 18px; border-radius: 20px; background: #191f2c; color: #fafbfc; font-size: 17px">Tak pasti. Saya check dengan Lina dulu ya.</p>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Setup: paper band -->
+<section id="how" aria-labelledby="setup-title" style="background: #fafbfc; color: #191f2c; padding: 128px 0 96px">
+<div class="wrap two setup-grid">
+<div>
+<h2 id="setup-title" class="h2">Set it up from your website or your bio.</h2>
+<ol style="list-style: none; margin: 48px 0 0; padding: 0; display: grid; gap: 32px">
+<li style="display: grid; grid-template-columns: 56px 1fr; gap: 4px 20px"><span aria-hidden="true" style="grid-row: span 3; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: #eaf0ff; color: #122686; font-family: var(--disp); font-size: 26.6px; font-weight: 800">1</span><h3 style="margin: 0; font-family: var(--disp); font-size: 21.25px; font-weight: 700; letter-spacing: -0.01em">Pick your address</h3><p style="margin: 0; font-size: 14px; color: #696e7b">This is the link you put in your bio.</p><p style="justify-self: start; margin: 8px 0 0; padding: 8px 16px; border-radius: 999px; background: #f0f1f4; font-family: 'IBM Plex Mono', monospace; font-size: 14px">curios.my/keklina</p></li>
+<li style="display: grid; grid-template-columns: 56px 1fr; gap: 4px 20px"><span aria-hidden="true" style="grid-row: span 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: #eaf0ff; color: #122686; font-family: var(--disp); font-size: 26.6px; font-weight: 800">2</span><h3 style="margin: 0; font-family: var(--disp); font-size: 21.25px; font-weight: 700; letter-spacing: -0.01em">Paste a link, or a few paragraphs</h3><p style="margin: 0; font-size: 14px; color: #696e7b">Your website or Linktree. Instagram and TikTok don’t let us read them, so paste your bio from there instead.</p></li>
+<li style="display: grid; grid-template-columns: 56px 1fr; gap: 4px 20px"><span aria-hidden="true" style="grid-row: span 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: #eaf0ff; color: #122686; font-family: var(--disp); font-size: 26.6px; font-weight: 800">3</span><h3 style="margin: 0; font-family: var(--disp); font-size: 21.25px; font-weight: 700; letter-spacing: -0.01em">Check what it found</h3><p style="margin: 0; font-size: 14px; color: #696e7b">Approve the facts that are right. Fix the ones that aren’t.</p></li>
+<li style="display: grid; grid-template-columns: 56px 1fr; gap: 4px 20px"><span aria-hidden="true" style="grid-row: span 2; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 999px; background: #eaf0ff; color: #122686; font-family: var(--disp); font-size: 26.6px; font-weight: 800">4</span><h3 style="margin: 0; font-family: var(--disp); font-size: 21.25px; font-weight: 700; letter-spacing: -0.01em">Put the link in your bio</h3><p style="margin: 0; font-size: 14px; color: #696e7b">Customers who tap it can ask and get answers from your facts.</p></li>
+</ol>
+</div>
+<div style="aspect-ratio: 4 / 5; border-radius: 28px; overflow: hidden">
+<img src="/_blob/712a5adabc653230800c5a21396b0117" alt="A shop owner at her kitchen table, typing on a laptop, her phone and a cup of teh tarik beside it" style="display: block; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%">
+</div>
+</div>
+</section>
+
+<!-- Pricing: surface band -->
+<section id="pricing" aria-labelledby="pricing-title" style="background: #f0f1f4; color: #191f2c; padding: 96px 0 128px">
+<div class="wrap">
+<h2 id="pricing-title" class="h2">Answering is free. Leads are RM39 a month.</h2>
+<div class="two price-grid" style="margin-top: 48px">
+<div style="display: flex; flex-direction: column; padding: 48px 32px; border-radius: 28px; background: #ffffff">
+<h3 style="margin: 0; font-size: 17px; font-weight: 600">Personal</h3>
+<p style="margin: 8px 0 0; font-family: var(--disp); font-size: clamp(41.5px, 24.16px + 4.445vw, 81.06px); font-weight: 800; line-height: 1; letter-spacing: -0.04em">Free</p>
+<p style="margin: 16px 0 0; color: #696e7b">A page with an AI that answers questions about you.</p>
+<ul style="margin: 24px 0 32px; padding: 0 0 0 18px; display: grid; gap: 10px; font-size: 14px">
+<li>Answers in Malay, English or both</li>
+<li>Hidden from Google unless you switch it on</li>
+<li>Switch to Business when you start selling</li>
+</ul>
+<a href="/signup" class="btn" style="margin-top: auto; background: transparent; color: #191f2c; box-shadow: inset 0 0 0 1.5px currentColor">Create your free page</a>
+</div>
+<div style="display: flex; flex-direction: column; padding: 48px 32px; border-radius: 28px; background: #2340c8; color: #fafbfc">
+<h3 style="margin: 0; font-size: 17px; font-weight: 600">Business</h3>
+<div role="group" aria-label="Billing" style="margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr; width: max-content; padding: 4px; border-radius: 999px; background: rgba(250,251,252,0.14)">
+<button type="button" aria-pressed="true" style="min-height: 40px; padding: 0 24px; border: 0; border-radius: 999px; background: #fafbfc; color: #2340c8; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Monthly</button>
+<button type="button" aria-pressed="false" style="min-height: 40px; padding: 0 24px; border: 0; border-radius: 999px; background: transparent; color: #fafbfc; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Yearly</button>
+</div>
+<p style="margin: 16px 0 0; display: flex; align-items: baseline; gap: 10px"><span style="font-family: var(--disp); font-size: clamp(41.5px, 24.16px + 4.445vw, 81.06px); font-weight: 800; line-height: 1; letter-spacing: -0.04em; color: #eaf0ff">RM39</span><span style="color: #dfe8fd">a month</span></p>
+<p style="margin: 8px 0 0; font-size: 14px; color: #dfe8fd">or RM390 a year, two months free</p>
+<p style="margin: 16px 0 0; font-weight: 600">Your first three leads are free.</p>
+<ul style="margin: 24px 0 32px; padding: 0 0 0 18px; display: grid; gap: 10px; font-size: 14px">
+<li>Every lead emailed to you with their number and the whole chat</li>
+<li>Reply on WhatsApp in one tap</li>
+<li>FAQ pages Google can find, built from what customers ask</li>
+<li>Questions grouped by meaning, so you answer each one once</li>
+</ul>
+<a href="/signup" class="btn" style="margin-top: auto; background: #fafbfc; color: #2340c8">Create a page with 3 free leads</a>
+</div>
+</div>
+<div style="margin-top: 48px; display: grid; gap: 8px">
+<p style="margin: 0; font-family: var(--disp); font-size: clamp(26.6px, 23.65px + 0.746vw, 33.2px); font-weight: 800; letter-spacing: -0.03em">One RM95 order a month pays for it.</p>
+<p style="margin: 0; max-width: 40em; font-size: 14px; color: #696e7b">Paid by FPX online banking. No card and no automatic charge, so nothing renews without you.</p>
+</div>
+</div>
+</section>
+
+<!-- FAQ: paper band -->
+<section id="faq" aria-labelledby="faq-title" style="background: #fafbfc; color: #191f2c; padding: 96px 0 128px">
+<div class="wrap two faq-grid">
+<h2 id="faq-title" class="h2">Questions owners ask</h2>
+<div style="border-top: 1.5px solid #e4e7eb">
+<details class="faq-item" open><summary><span>Is answering really free?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">Yes. The AI answers your customers on every plan, for as long as you have a page. Business pays for the leads: the number, the chat, and the email that brings them to you.</p></details>
+<details class="faq-item"><summary><span>What if it gives a wrong price?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">It can only quote prices, dates and addresses that you approved. If nothing you approved answers the question, it tells the customer it will check with you. It never guesses, and never rounds a number.</p></details>
+<details class="faq-item"><summary><span>Can it read my Instagram?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">Not yet. Instagram and TikTok don’t let us read profiles. Paste your bio or a few paragraphs about your shop, or a website or Linktree link if you have one.</p></details>
+<details class="faq-item"><summary><span>Does it reply in Malay?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">It answers in the language the customer used: Malay, English, Manglish or a mix.</p></details>
+<details class="faq-item"><summary><span>How do I pay?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">By FPX online banking, RM39 a month or RM390 a year. There is no card on file and no automatic charge.</p></details>
+<details class="faq-item"><summary><span>What happens after my three free leads?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">Your page keeps answering. To keep receiving leads, switch on Business.</p></details>
+<details class="faq-item"><summary><span>Can I start with a personal page and switch later?</span><span class="sign" aria-hidden="true"></span></summary><p style="margin: 0; padding: 0 48px 24px 0">Yes, from Billing, whenever you start selling. It is a one-way switch: a business page can’t go back to personal.</p></details>
+</div>
+</div>
+</section>
+
+</main>
+
+<!-- Closing + footer: deep biru band -->
+<div style="background: #122686; color: #fafbfc; padding-bottom: 48px">
+<section aria-labelledby="final-title" style="padding: 128px 0 96px">
+<div class="wrap">
+<h2 id="final-title" style="margin: 0; max-width: 14ch; font-family: var(--disp); font-size: clamp(41.5px, 24.16px + 4.445vw, 81.06px); font-weight: 800; line-height: 0.98; letter-spacing: -0.04em; color: #eaf0ff">Put your price list in your bio link.</h2>
+<p style="margin: 24px 0 40px; max-width: 30em; font-size: 21.25px; color: #bfd1f9">Paste your website or a few paragraphs about your shop, approve the facts it finds, and share the link.</p>
+<form class="claim" action="/signup" method="get">
+<label for="claim-final" class="sr">The address you want for your page</label>
+<div class="field" style="box-shadow: none"><span aria-hidden="true" style="color: #696e7b">curios.my/</span><input id="claim-final" name="handle" placeholder="yourshop" autocomplete="off"></div>
+<button type="submit" class="btn" style="background: #eaf0ff; color: #122686">Create your free page</button>
+</form>
+</div>
+</section>
+<footer class="wrap">
+<div class="two foot-grid" style="gap: 24px; padding: 32px 48px; border-radius: 28px; background: #ffffff; color: #191f2c; font-size: 14px">
+<span class="mark" aria-hidden="true" style="color: #191f2c">cur<span class="i">ı</span>os</span>
+<nav aria-label="Footer" style="display: flex; flex-wrap: wrap; gap: 8px 24px">
+<a href="/signup" style="color: #191f2c; font-weight: 600">Create your free page</a>
+<a href="/signin" style="color: #191f2c; font-weight: 600">Sign in</a>
+<a href="/ms" hreflang="ms" lang="ms" style="color: #191f2c; font-weight: 600">Bahasa Melayu</a>
+</nav>
+<p style="margin: 0; font-size: 12.5px; color: #696e7b">Kek Lina is a demo shop made up for this page.</p>
+</div>
+</footer>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"heroTitle":{"editor":"text","default":"Your link in bio answers “berapa harga” for you."},"$preview":{"width":1280,"height":7400}}'>
+class Component extends DCLogic {
+renderVals() {
+return { heroTitle: this.props.heroTitle ?? 'Your link in bio answers “berapa harga” for you.' };
+}
+}
+</script>
+</body>
+</html>

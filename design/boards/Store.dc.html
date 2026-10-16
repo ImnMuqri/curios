@@ -1,0 +1,993 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: Store</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,800&amp;family=DM+Serif+Display&amp;family=Plus+Jakarta+Sans:wght@800&amp;family=Outfit:wght@800&amp;family=Space+Grotesk:wght@700&amp;display=swap">
+<style>
+body{margin:0;background:#ffffff}
+a{color:#2340c8}a:hover{color:#122686}
+.app{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;--line:#e9ebef;--soft:#696e7b;display:flex;min-height:100vh;background:#ffffff;color:#191f2c;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
+.app *{box-sizing:border-box}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.mark{display:inline-block;font-family:var(--d);font-size:22px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+/* sidebar */
+.side{position:sticky;top:0;align-self:flex-start;display:flex;flex-direction:column;flex:none;width:232px;height:100vh;min-height:900px;padding:18px 12px 14px;background:#fafbfc;border-right:1px solid var(--line)}
+.brand{padding:6px 10px 20px}
+.grp{margin:14px 10px 6px;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:#9aa0ab}
+.nav a{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:8px;color:#4b5060;font-weight:500;text-decoration:none}
+.nav a:hover{background:#f0f1f4;color:#191f2c}
+.nav a.on{background:#eaf0ff;color:#122686;font-weight:600}
+.nav svg{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.nav .ct{margin-left:auto;font-size:12px;font-weight:600;color:#2340c8}
+.acct{margin-top:auto;display:flex;align-items:center;gap:10px;padding:10px;border-top:1px solid var(--line)}
+.acct .lg{width:30px;height:30px;flex:none}
+.acct b{display:block;font-size:13px;font-weight:600}
+.acct span span{display:block;font-size:12px;color:var(--soft)}
+/* main */
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.head{display:flex;align-items:center;gap:14px;height:64px;padding:0 32px;border-bottom:1px solid var(--line)}
+.head h1{margin:0;font-size:17px;font-weight:600;letter-spacing:-.01em}
+.status{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:500;transition:background 200ms,color 200ms}
+.status svg{width:12px;height:12px}
+.url{margin-left:auto;display:flex;align-items:center;gap:2px;font-size:13px;color:var(--soft)}
+.icb{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:8px;background:transparent;color:#4b5060;cursor:pointer}
+.icb:hover{background:#f0f1f4;color:#191f2c}
+.icb svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.icb[disabled]{opacity:.3;cursor:default;background:transparent}
+.sec-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 16px;border:0;border-radius:999px;background:#2340c8;color:#ffffff;font:inherit;font-weight:500;text-decoration:none}
+.sec-btn:hover{background:#1a31a8;color:#ffffff}
+.body{flex:1;display:grid;grid-template-columns:minmax(0,1fr) 440px}
+@media (max-width:1200px){.body{grid-template-columns:minmax(0,1fr)}.pv{display:none}}
+.edit{padding:0 36px 56px;min-width:0}
+/* sliding underline tabs */
+.utabs{position:relative;display:flex;border-bottom:1px solid var(--line)}
+.utabs button{width:116px;height:48px;padding:0;border:0;background:transparent;font:inherit;font-weight:500;color:var(--soft);cursor:pointer;transition:color 200ms}
+.utabs button[aria-selected="true"]{color:#2340c8}
+.uline{position:absolute;bottom:-1px;left:0;width:116px;height:2px;border-radius:2px;background:#2340c8;transition:transform 380ms cubic-bezier(.34,1.3,.64,1)}
+.wrapc{max-width:720px;padding-top:8px;animation:fadeUp 360ms cubic-bezier(.22,1,.36,1) both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.sec{padding:26px 0;border-bottom:1px solid var(--line)}
+.sec:last-child{border-bottom:0}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 0 14px}
+.sec-h b{display:inline-flex;align-items:center;gap:10px;font-size:14.5px;font-weight:600}
+.chipi{display:grid;place-items:center;width:28px;height:28px;border-radius:8px}
+.chipi svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.sec-h span{font-size:13px;color:var(--soft)}
+/* expanding cover gallery */
+.gal{display:flex;gap:6px;height:132px}
+.gi{position:relative;flex:1 1 0;min-width:0;padding:0;border:0;border-radius:12px;overflow:hidden;background:#f0f1f4;cursor:pointer;transition:flex-grow 520ms cubic-bezier(.22,1,.36,1)}
+.gi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.gi:hover img{filter:brightness(1.05)}
+.gi .cap{position:absolute;left:10px;bottom:9px;padding:3px 9px;border-radius:999px;background:rgba(25,31,44,.62);color:#ffffff;font-size:12px;font-weight:500;white-space:nowrap;transition:opacity 300ms}
+.gi .solid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;transition:background 300ms ease}
+.gi .solid i{width:22px;height:22px;border-radius:50%;opacity:.9}
+.gi .solid em{width:34px;height:4px;border-radius:2px;opacity:.55}
+.gi .solid em+em{width:22px;margin-top:-2px}
+.gi.up{display:grid;place-items:center;flex:0 0 72px;border:1px dashed #c9ccd3;background:#ffffff;color:var(--soft);font:inherit;font-size:12px}
+.gi.up svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+/* profile */
+.idrow{display:flex;align-items:center;gap:18px}
+.avw{position:relative;width:72px;height:72px;flex:none;border-radius:50%;overflow:hidden;cursor:pointer}
+.avw svg.lg{width:100%;height:100%}
+.avw span{position:absolute;inset:0;display:grid;place-items:center;background:rgba(25,31,44,.55);color:#fff;font-size:12px;font-weight:600;opacity:0;transition:opacity 160ms}
+.avw:hover span{opacity:1}
+.fl{position:relative;display:block}
+.fl input,.fl textarea{display:block;width:100%;padding:20px 12px 7px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;font:inherit;color:#191f2c;outline:none;transition:border-color 160ms,box-shadow 160ms}
+.fl textarea{height:92px;resize:none}
+.fl input:focus,.fl textarea:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.fl em{position:absolute;left:13px;top:7px;font-style:normal;font-size:11.5px;font-weight:500;color:var(--soft);pointer-events:none}
+.fl small{position:absolute;right:12px;bottom:8px;font-size:11.5px;color:#9aa0ab}
+/* animated reorder list */
+.rlist{position:relative;border:1px solid var(--line);border-radius:12px;background:#ffffff;transition:height 300ms ease}
+.ri{position:absolute;left:0;right:0;display:flex;align-items:center;gap:12px;height:60px;padding:0 8px 0 12px;transition:transform 420ms cubic-bezier(.34,1.25,.64,1),background 160ms}
+.ri:hover{background:#fafbfc}
+.ri+.ri::before{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line)}
+.ki{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:10px;background:#f3f4f7;color:#4b5060}
+.ki svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ri b{display:block;font-weight:500}
+.ri span span{display:block;font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acts{display:flex;gap:2px;opacity:0;transition:opacity 140ms}
+.ri:hover .acts,.ri:focus-within .acts{opacity:1}
+.confirm{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--soft)}
+.confirm button{height:30px;padding:0 10px;border:0;border-radius:7px;font:inherit;font-size:12.5px;font-weight:500;cursor:pointer}
+.addrow{display:inline-flex;align-items:center;gap:6px;height:36px;margin-top:10px;padding:0 10px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#2340c8;cursor:pointer}
+.addrow:hover{background:#eef2ff}
+.addform{display:grid;grid-template-columns:1fr 1.3fr auto;gap:8px;margin-top:10px;animation:fadeUp 300ms ease both}
+.inp{display:block;width:100%;height:38px;padding:0 12px;border:1px solid #dfe1e6;border-radius:8px;background:#ffffff;font:inherit;color:#191f2c;outline:none}
+.inp:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.prim{height:38px;padding:0 16px;border:0;border-radius:8px;background:#2340c8;color:#ffffff;font:inherit;font-weight:500;cursor:pointer}
+.shoprow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.switch{position:relative;width:38px;height:22px;flex:none;border:0;border-radius:999px;cursor:pointer;transition:background 200ms}
+.switch i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform 260ms cubic-bezier(.34,1.5,.64,1)}
+/* visual pickers */
+.tiles{display:grid;gap:12px}
+.tile{position:relative;padding:10px;border:1px solid #dfe1e6;border-radius:14px;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:border-color 160ms,box-shadow 160ms,transform 260ms cubic-bezier(.34,1.4,.64,1)}
+.tile:hover{border-color:#c9ccd3}
+.tile.on{border-color:#2340c8;box-shadow:0 0 0 1px #2340c8;background:#f6f8ff}
+.tile .tick{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#2340c8;transform:scale(0);transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
+.tile.on .tick{transform:scale(1)}
+.tile .nm{display:block;margin-top:8px;font-size:12.5px;font-weight:500}
+.mini{display:flex;flex-direction:column;align-items:center;gap:5px;height:96px;padding:12px 10px;border-radius:10px;transition:background 300ms}
+.mini i{display:block;width:100%;height:12px;border-radius:999px}
+.mini b{display:block;width:44%;height:7px;margin-bottom:3px;border-radius:4px}
+.swatches{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.sw{position:relative;display:grid;place-items:center;width:34px;height:34px;padding:0;border:0;border-radius:50%;cursor:pointer;transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
+.sw:hover{transform:scale(1.1)}
+.sw svg{transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
+.hex{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border:1px solid #dfe1e6;border-radius:999px;font-family:var(--m);font-size:12.5px;color:var(--soft)}
+.hex input{width:62px;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.flist{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.fr{display:flex;align-items:center;gap:14px;width:100%;height:58px;padding:0 16px;border:0;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:background 160ms}
+.fr+.fr{border-top:1px solid var(--line)}
+.fr:hover{background:#fafbfc}
+.fr b{flex:1;font-size:22px;line-height:1;color:#191f2c}
+.fr span{font-size:12.5px;color:var(--soft)}
+.fr .rd{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;transition:background 200ms,box-shadow 200ms}
+.socials{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.soc{display:flex;align-items:center;gap:8px;height:44px;padding:0 10px 0 6px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;cursor:text;transition:border-color 160ms,box-shadow 160ms}
+.soc:focus-within{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.soc-ic{display:grid;place-items:center;width:32px;height:32px;flex:none;border-radius:8px;transition:background 200ms,color 200ms}
+.soc-ic svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.soc-pre{font-size:13px;color:#9aa0ab;white-space:nowrap}
+.soc input{flex:1;min-width:0;height:100%;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.pv-icons{display:flex;gap:16px;margin-top:-2px}
+.pv-icons svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;animation:fadeUp 300ms ease both}
+/* preview */
+.pv{position:sticky;top:0;align-self:start;height:calc(100vh - 64px);min-height:836px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;overflow:hidden;background:#f6f7fb;border-left:1px solid var(--line)}
+.pv>*{position:relative}
+.pv .blobs{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.pv .blob{position:absolute;width:80%;aspect-ratio:1;border-radius:50%;filter:blur(30px);animation-timing-function:ease-in-out;animation-iteration-count:infinite;animation-direction:alternate}
+.pv .b1{left:-30%;top:-15%;animation-name:pb1;animation-duration:18s}
+.pv .b2{right:-35%;top:15%;animation-name:pb2;animation-duration:22s}
+.pv .b3{left:-10%;bottom:-30%;animation-name:pb3;animation-duration:20s}
+.pv .b4{right:-20%;bottom:-25%;width:60%;animation-name:pb4;animation-duration:25s}
+@keyframes pb1{to{transform:translate(25%,20%) scale(1.15)}}
+@keyframes pb2{to{transform:translate(-25%,20%) scale(.9)}}
+@keyframes pb3{to{transform:translate(20%,-20%) scale(1.2)}}
+@keyframes pb4{to{transform:translate(-25%,-15%) scale(1.1)}}
+.pv .grain{position:absolute;inset:0;width:100%;height:100%;opacity:.1;mix-blend-mode:multiply}
+@media (prefers-reduced-motion: reduce){.pv .blob{animation:none}}
+.phone{width:310px;height:630px;padding:8px;border-radius:46px;background:#ffffff;box-shadow:0 0 0 1px #e1e4e9,0 30px 60px -32px rgba(25,31,44,.3)}
+.scr{position:relative;width:100%;height:100%;overflow:hidden;border-radius:38px;font-family:'Inter',system-ui,sans-serif;transition:background 300ms ease,color 300ms ease}
+.pv-photo{position:absolute;inset:0 0 auto 0;height:54%;transition:opacity 300ms ease}
+.pv-photo img{display:block;width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 38%,transparent 100%);mask-image:linear-gradient(to bottom,#000 38%,transparent 100%)}
+.pv-body{position:absolute;inset:auto 0 0 0;top:22%;transition:top 420ms cubic-bezier(.22,1,.36,1);display:flex;flex-direction:column;align-items:center;gap:9px;padding:0 16px 16px;text-align:center}
+.pv-av{width:58px;height:58px;border-radius:50%}
+.pv-name{margin:0;font-size:31px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.pv-handle{margin:-4px 0 0;font-family:var(--m);font-size:10.5px;opacity:.7}
+.pv-bio{margin:0;font-size:12px;line-height:1.45;opacity:.8}
+.pv-tabs{display:grid;padding:3px;border-radius:999px;font-size:12px;font-weight:600}
+.pv-tabs>span{padding:6px 15px;border-radius:999px;transition:background 200ms,color 200ms}
+.pv-links{display:grid;gap:6px;width:100%}
+.pv-links>span{display:block;padding:4px;border-radius:999px}
+.pv-links>span>span{display:block;padding:9px 12px;border-radius:999px;font-size:13px;font-weight:600}
+.pv-chat{display:flex;flex-direction:column;gap:7px;width:100%;text-align:left}
+.pv-q{align-self:flex-end;max-width:86%;padding:8px 12px;border-radius:16px 16px 5px 16px;background:#ffffff;color:#191f2c;font-size:12.5px}
+.pv-a{align-self:flex-start;max-width:90%;padding:8px 12px;border-radius:16px 16px 16px 5px;font-size:12.5px}
+.pv-shop{display:grid;gap:6px;width:100%}
+.pv-shop>span{display:flex;align-items:center;gap:10px;padding:5px;border-radius:999px;text-align:left;font-size:12.5px;font-weight:600}
+.pv-shop img,.pv-shop i{width:30px;height:30px;flex:none;border-radius:50%;object-fit:cover}
+.pv-shop em{margin-left:auto;margin-right:8px;font-style:normal;font-weight:500;opacity:.8}
+.pv-ask{display:flex;align-items:center;gap:8px;width:100%;margin-top:auto;padding:4px 4px 4px 14px;border-radius:999px;background:#ffffff;color:#696e7b;font-size:12.5px;text-align:left}
+.pv-send{display:grid;place-items:center;width:28px;height:28px;margin-left:auto;border-radius:50%}
+.seg{position:relative;display:grid;grid-template-columns:repeat(3,76px);padding:3px;border-radius:999px;background:#ffffff;box-shadow:0 0 0 1px #e1e4e9}
+.seg-th{position:absolute;top:3px;bottom:3px;left:3px;width:76px;border-radius:999px;background:#2340c8;transition:transform 360ms cubic-bezier(.34,1.3,.64,1)}
+.seg button{position:relative;z-index:1;height:30px;border:0;background:transparent;font:inherit;font-size:12.5px;font-weight:600;cursor:pointer;transition:color 200ms}
+@media (prefers-reduced-motion: reduce){.wrapc,.addform{animation:none}.gi,.ri,.uline,.seg-th,.tile,.sw,.switch i{transition:none}}
+/* store */
+.head .open{display:inline-flex;align-items:center;gap:10px;height:34px;padding:0 6px 0 12px;border:1px solid var(--line);border-radius:999px;font-size:13px;font-weight:500}
+.pulse{position:relative;width:8px;height:8px;border-radius:50%}
+.pulse.live::after{content:'';position:absolute;inset:0;border-radius:50%;background:inherit;animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite}
+@keyframes ping{75%,100%{transform:scale(2.6);opacity:0}}
+.ready{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:24px 0 6px;padding:6px;border:1px solid var(--line);border-radius:16px;background:#fafbfc}
+.rstep{position:relative;display:flex;align-items:center;gap:11px;padding:10px 12px;border:0;border-radius:11px;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background 160ms}
+.rstep:hover{background:#ffffff}
+.rdot{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;transition:background 300ms,color 300ms}
+.rdot svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;animation:popin 420ms cubic-bezier(.34,1.6,.64,1) both}
+@keyframes popin{from{transform:scale(0)}to{transform:scale(1)}}
+.rstep b{display:block;font-size:13px;font-weight:600}
+.rstep span span{display:block;font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* items */
+.ilist{position:relative;border:1px solid var(--line);border-radius:14px;background:#ffffff;transition:height 300ms ease}
+.it{position:absolute;left:0;right:0;display:flex;align-items:center;gap:14px;height:76px;padding:0 10px 0 12px;transition:transform 420ms cubic-bezier(.34,1.25,.64,1),background 160ms}
+.it:hover{background:#fafbfc}
+.it+.it::before{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line)}
+.thumb{position:relative;display:grid;place-items:center;width:52px;height:52px;flex:none;overflow:hidden;border-radius:14px;font-family:'Fraunces',serif;font-size:22px;font-weight:800;transition:opacity 250ms,filter 250ms}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.it .nm2{flex:1;min-width:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.it .nm2 b{display:block;font-weight:600}
+.it .nm2 span{display:block;font-size:12.5px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.it .nm2 small{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:#f3f4f7;color:#4b5060;font-size:11.5px;font-weight:500}
+.avl{display:flex;align-items:center;gap:8px;width:118px;flex:none;font-size:12.5px;color:var(--soft)}
+/* item editor */
+.ed{padding:22px;border:1px solid var(--line);border-radius:18px;background:#ffffff;animation:fadeUp 360ms cubic-bezier(.22,1,.36,1) both}
+.back{display:inline-flex;align-items:center;gap:6px;height:30px;margin:-4px 0 16px -8px;padding:0 10px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#4b5060;cursor:pointer}
+.back:hover{background:#f0f1f4;color:#191f2c}
+.back svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ed-top{display:grid;grid-template-columns:148px minmax(0,1fr);gap:18px}
+.ph{position:relative;display:grid;place-items:center;width:148px;height:148px;padding:0;border:0;overflow:hidden;border-radius:16px;font-family:'Fraunces',serif;font-size:52px;font-weight:800;cursor:pointer}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph .ov{position:absolute;inset:auto 8px 8px 8px;display:flex;align-items:center;justify-content:center;gap:6px;height:30px;border-radius:999px;background:rgba(25,31,44,.62);color:#ffffff;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;opacity:0;transform:translateY(6px);transition:opacity 180ms,transform 220ms}
+.ph:hover .ov,.ph:focus-visible .ov{opacity:1;transform:none}
+.flds{display:grid;gap:10px;align-content:start}
+.sub{display:flex;align-items:baseline;justify-content:space-between;margin:22px 0 10px}
+.sub b{font-size:13.5px;font-weight:600}
+.sub span{font-size:12.5px;color:var(--soft)}
+.seg2{position:relative;display:inline-grid;grid-template-columns:repeat(2,124px);padding:3px;border-radius:10px;background:#f0f1f4}
+.seg2-th{position:absolute;top:3px;bottom:3px;left:3px;width:124px;border-radius:8px;background:#ffffff;box-shadow:0 1px 2px rgba(25,31,44,.12),0 0 0 1px rgba(25,31,44,.04);transition:transform 360ms cubic-bezier(.34,1.3,.64,1)}
+.seg2 button{position:relative;z-index:1;height:32px;border:0;background:transparent;font:inherit;font-size:13px;font-weight:500;cursor:pointer;transition:color 200ms}
+.money{display:flex;align-items:center;gap:6px;height:42px;padding:0 12px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;transition:border-color 160ms,box-shadow 160ms}
+.money:focus-within{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.money span{font-size:13px;font-weight:500;color:#9aa0ab}
+.money input,.olab{flex:1;min-width:0;height:100%;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
+.opts{display:grid;gap:8px;margin-top:12px}
+.opt{display:grid;grid-template-columns:minmax(0,1fr) 150px 34px;gap:8px;align-items:center;animation:fadeUp 300ms ease both}
+.opt .olab{height:42px;padding:0 12px;border:1px solid #dfe1e6;border-radius:10px;transition:border-color 160ms,box-shadow 160ms}
+.opt .olab:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.pl{display:flex;align-items:center;gap:8px;margin:14px 0 0;padding:10px 12px;border-radius:10px;font-size:13px;transition:background 200ms,color 200ms}
+.pl svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.ed-foot{display:flex;align-items:center;gap:10px;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}
+.ghost{height:38px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#b3261e;cursor:pointer}
+.ghost:hover{background:#fdecea}
+/* payment */
+.qrcard{display:flex;align-items:center;gap:22px;padding:18px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,#f6f8ff,#ffffff 60%)}
+.qrbox{position:relative;flex:none;padding:10px;overflow:hidden;border-radius:14px;background:#ffffff;box-shadow:0 0 0 1px var(--line),0 12px 24px -16px rgba(35,64,200,.4)}
+.qrbox svg{display:block}
+.scan{position:absolute;left:0;right:0;top:0;height:34px;background:linear-gradient(to bottom,transparent,rgba(35,64,200,.18) 70%,rgba(35,64,200,.6) 100%);border-bottom:1.5px solid #2340c8;animation:scan 2.6s cubic-bezier(.65,0,.35,1) infinite alternate}
+@keyframes scan{from{transform:translateY(-34px)}to{transform:translateY(124px)}}
+.qrcard b{display:block;font-size:15px;font-weight:600}
+.qrcard p{margin:4px 0 14px;font-size:13px;color:var(--soft)}
+.btns{display:flex;gap:8px}
+.btn2{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:1px solid #dfe1e6;border-radius:999px;background:#ffffff;font:inherit;font-size:13px;font-weight:500;color:#191f2c;cursor:pointer}
+.btn2:hover{border-color:#c9ccd3;background:#fafbfc}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;height:150px;border:1.5px dashed #c9ccd3;border-radius:16px;background:#fafbfc;font:inherit;color:#4b5060;cursor:pointer;transition:border-color 160ms,background 160ms}
+.drop:hover{border-color:#2340c8;background:#f6f8ff;color:#2340c8}
+.drop svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.drop small{font-size:12px;color:#9aa0ab}
+.banks{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.bk{height:30px;padding:0 12px;border:1px solid #dfe1e6;border-radius:999px;background:#ffffff;font:inherit;font-size:12.5px;font-weight:500;color:#4b5060;cursor:pointer;transition:background 160ms,color 160ms,border-color 160ms}
+.bk:hover{border-color:#c9ccd3}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+/* pickup and delivery */
+.dtile{display:flex;flex-direction:column;gap:10px;padding:14px}
+.dic{display:grid;place-items:center;width:36px;height:36px;border-radius:10px}
+.dic svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dtile b{display:block;font-size:13.5px;font-weight:600}
+.dtile span span{display:block;margin-top:2px;font-size:12px;color:var(--soft)}
+.stepper{display:inline-flex;align-items:center;gap:4px;padding:4px;border:1px solid #dfe1e6;border-radius:999px}
+.stepper button{display:grid;place-items:center;width:32px;height:32px;border:0;border-radius:50%;background:#f3f4f7;font:inherit;font-size:17px;color:#191f2c;cursor:pointer}
+.stepper button:hover{background:#eaf0ff;color:#2340c8}
+.stepper button[disabled]{opacity:.35;cursor:default;background:#f3f4f7;color:#191f2c}
+.stepper output{min-width:74px;text-align:center;font-weight:600}
+.days{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin-top:16px}
+.day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:62px;border-radius:12px;font-size:11px;transition:background 300ms,color 300ms,transform 300ms cubic-bezier(.34,1.5,.64,1)}
+.day b{font-size:17px;font-weight:600;line-height:1.1}
+.noteline{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-size:13px;color:#4b5060}
+/* phone: shop page, same as the landing card */
+.sb{position:absolute;inset:0;top:88px;display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 14px;text-align:center}
+.sb .nm{margin:0;font-family:'Fraunces',serif;font-size:31px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.sb .hd{margin:-5px 0 0;font-family:var(--m);font-size:10.5px;opacity:.7}
+.sb .tb{display:grid;grid-template-columns:1fr 1fr 1fr;padding:3px;border-radius:999px;background:rgba(250,251,252,.14);font-size:12px;font-weight:600}
+.sb .tb>span{padding:6px 15px;border-radius:999px}
+.sb .tb .on{background:#fafbfc;color:#191f2c}
+.sb .ds{margin:4px 0 0;font-size:12px;line-height:1.45;opacity:.85;animation:fadeUp 300ms ease both}
+.sb .nt{margin:0;font-size:11px;opacity:.65}
+.srows{display:flex;flex-direction:column;gap:6px;width:100%;margin-top:4px}
+.srow{display:flex;align-items:center;gap:10px;width:100%;padding:5px;border:0;border-radius:999px;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background 200ms;animation:fadeUp 300ms ease both}
+.srow .th{position:relative;display:grid;place-items:center;width:36px;height:36px;flex:none;overflow:hidden;border-radius:50%;font-family:'Fraunces',serif;font-size:15px;font-weight:800}
+.srow .th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.srow .tx{flex:1;min-width:0;display:flex;flex-direction:column}
+.srow .tx b{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srow .tx>span{font-size:11px;opacity:.75}
+.srow .ad{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%;background:#fafbfc;color:#542339;font-size:17px;font-weight:600}
+.isheet .bar{left:14px;right:14px;bottom:16px}
+.dim{position:absolute;inset:0 0 140px 0;background:rgba(25,31,44,.45);animation:fadeIn 260ms ease both}
+@keyframes fadeIn{from{opacity:0}}
+.isheet{position:absolute;left:-2px;right:-2px;bottom:-4px;display:flex;flex-direction:column;gap:10px;padding:10px 20px 74px;border-radius:26px 26px 0 0;background:#fafbfc;color:#191f2c;animation:sheetUp 420ms cubic-bezier(.22,1,.36,1) both}
+@keyframes sheetUp{from{transform:translateY(100%)}}
+.isheet .grab{align-self:center;width:36px;height:4px;border-radius:2px;background:#dfe1e6}
+.isheet .ihead{display:flex;align-items:center;gap:12px}
+.isheet .iph{position:relative;display:grid;place-items:center;width:64px;height:64px;flex:none;overflow:hidden;border-radius:16px;font-family:'Fraunces',serif;font-size:26px;font-weight:800}
+.isheet .iph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.isheet h4{margin:0;font-family:'Fraunces',serif;font-size:21px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.isheet .pr{display:block;margin-top:2px;font-size:12.5px;color:#4b5060}
+.isheet p{margin:0;font-size:12px;line-height:1.45;color:#4b5060}
+.isheet .pills>span{background:#f0f1f4;color:#191f2c}
+/* phone: other screens */
+.sp{position:absolute;inset:0;background:#542339;display:flex;flex-direction:column;animation:fadeUp 320ms cubic-bezier(.22,1,.36,1) both}
+.sp-top{display:flex;align-items:center;gap:8px;padding:18px 16px 0}
+.circ{position:relative;display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%}
+.circ svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.badge{position:absolute;top:-3px;right:-3px;display:grid;place-items:center;min-width:15px;height:15px;padding:0 4px;border-radius:999px;font-size:9px;font-weight:700}
+.sp-title{margin:16px 16px 0;font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.sp-sub{margin:6px 16px 0;font-size:11.5px;opacity:.7}
+.sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;padding:16px 16px 0}
+.sc{display:flex;flex-direction:column;gap:6px;animation:fadeUp 320ms ease both}
+.sc-ph{position:relative;display:grid;place-items:center;aspect-ratio:1;overflow:hidden;border-radius:16px;font-family:'Fraunces',serif;font-size:30px;font-weight:800}
+.sc-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sc b{font-size:12.5px;font-weight:600;line-height:1.25}
+.sc span{margin-top:-4px;font-size:11.5px;opacity:.72}
+.bar{position:absolute;left:12px;right:12px;bottom:12px;display:flex;align-items:center;gap:8px;height:44px;padding:0 6px 0 16px;border-radius:999px;font-size:12.5px;font-weight:600}
+.bar em{margin-left:auto;padding:7px 12px;border-radius:999px;font-style:normal}
+.ip{position:absolute;inset:0 0 auto 0;height:46%}
+.ip img{width:100%;height:100%;object-fit:cover;-webkit-mask-image:linear-gradient(to bottom,#000 55%,transparent);mask-image:linear-gradient(to bottom,#000 55%,transparent)}
+.ip .ini{display:grid;place-items:center;width:100%;height:100%;font-family:'Fraunces',serif;font-size:72px;font-weight:800}
+.ib{position:absolute;inset:auto 0 0 0;top:40%;display:flex;flex-direction:column;gap:8px;padding:0 18px 70px}
+.ib h4{margin:0;font-size:26px;font-weight:800;line-height:1.05;letter-spacing:-.02em}
+.ib p{margin:0;font-size:12px;line-height:1.45;opacity:.78}
+.ib .pr{font-size:15px;font-weight:600}
+.pills{display:flex;flex-wrap:wrap;gap:6px}
+.pills>span{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.4;transition:background 200ms,color 200ms}
+.hidden-chip{align-self:flex-start;padding:4px 10px;border-radius:999px;background:#ffebd6;color:#7a4a0c;font-size:11px;font-weight:600}
+.pay{display:flex;flex-direction:column;gap:10px;padding:14px 16px 70px}
+.pay-card{padding:12px 14px;border-radius:16px}
+.ln{display:flex;justify-content:space-between;gap:8px;font-size:12px;line-height:1.7}
+.ln span{opacity:.75}
+.tot{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;padding-top:8px;font-size:12px}
+.tot b{font-size:20px;font-weight:700}
+.payto{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;background:#ffffff;color:#191f2c}
+.payto .bkl{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11.5px}
+.payto .bkl b{font-size:12.5px}
+.payto .bkl span{color:#696e7b}
+.payto .bkl code{font-family:var(--m);font-size:12px;color:#191f2c}
+.stat{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;background:#ffebd6;color:#7a4a0c;font-size:11px;font-weight:600}
+@media (prefers-reduced-motion: reduce){.scan,.pulse.live::after,.sp,.sc,.ed,.opt{animation:none}.it,.seg2-th,.day{transition:none}}
+.it .acts{opacity:0}
+.it:hover .acts,.it:focus-within .acts{opacity:1}
+/* empty states + preview toggle */
+.es{display:flex;flex-direction:column;align-items:center;gap:6px;padding:44px 24px 40px;text-align:center;animation:fadeUp 420ms cubic-bezier(.22,1,.36,1) both}
+.es-art{position:relative;width:236px;height:124px;margin-bottom:16px}
+.es-rows{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;-webkit-mask-image:linear-gradient(to bottom,#000 30%,transparent 100%);mask-image:linear-gradient(to bottom,#000 30%,transparent 100%)}
+.gr{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:12px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef,0 8px 16px -12px rgba(25,31,44,.3);animation:ghost 3.4s ease-in-out infinite}
+.gr i{width:20px;height:20px;flex:none;border-radius:6px}
+.gr b{width:46%;height:7px;border-radius:4px;background:#e4e7eb}
+.gr em{width:16%;height:7px;margin-left:auto;border-radius:4px;background:#eef0f4}
+.gr:nth-child(2){margin:0 14px;animation-delay:.25s}
+.gr:nth-child(3){margin:0 28px;animation-delay:.5s}
+@keyframes ghost{50%{transform:translateY(-3px)}}
+.es-badge{position:absolute;right:-16px;top:-14px;display:grid;place-items:center;width:46px;height:46px;border-radius:15px;color:#ffffff;box-shadow:0 12px 24px -12px rgba(25,31,44,.6);transform:rotate(8deg);animation:esbob 3.6s ease-in-out infinite}
+.es-badge svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+@keyframes esbob{50%{transform:rotate(4deg) translateY(-4px)}}
+.es h3{margin:0;font-size:17px;font-weight:600;color:#191f2c}
+.es p{max-width:32em;margin:0;font-size:13.5px;line-height:1.55;color:var(--soft)}
+.es-acts{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin-top:14px}
+.es.sm{padding:28px 16px}
+.es.sm .es-art{width:190px;height:96px;margin-bottom:10px}
+.es.sm .gr{height:30px}
+.demo{position:fixed;left:248px;bottom:16px;z-index:26;display:flex;align-items:center;gap:2px;padding:4px;border-radius:999px;background:rgba(25,31,44,.94);box-shadow:0 12px 30px -12px rgba(0,0,0,.55);font-family:'IBM Plex Sans',sans-serif;font-size:12px}
+.is-new .nav .ct{display:none}
+.demo>span{padding:0 8px 0 10px;color:#9aa0ab}
+.demo button{height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:#d5d8de;font:inherit;font-weight:600;cursor:pointer;transition:background 160ms,color 160ms}
+.demo button[aria-pressed="true"]{background:#fafbfc;color:#191f2c}
+@media (max-width:1100px){.demo{left:88px}}
+@media (max-width:760px){.demo{left:16px}}
+@media (prefers-reduced-motion: reduce){.es,.gr,.es-badge{animation:none}}
+/* responsive: tablet and phone */
+@media (hover: none){.acts,.it .acts,.kr .acts,.ri .acts{opacity:1}.word .wa2{max-width:200px;opacity:1}}
+@media (max-width:1200px){
+.body{grid-template-columns:minmax(0,1fr)}
+.body>.pv{display:flex;position:relative;top:auto;height:auto;min-height:0;padding:40px 16px;border-left:0;border-top:1px solid var(--line)}
+}
+@media (max-width:1100px){
+.side{width:72px;padding:18px 10px 14px}
+.brand{padding:4px 0 18px;text-align:center}
+.brand .mark{font-size:16px}
+.nav .grp{height:1px;margin:10px 8px;overflow:hidden;font-size:0;background:var(--line)}
+.nav a{position:relative;justify-content:center;gap:0;padding:0;font-size:0}
+.nav a svg{width:18px;height:18px}
+.nav .ct{position:absolute;top:3px;right:5px;display:grid;place-items:center;min-width:15px;height:15px;margin:0;padding:0 4px;border-radius:8px;background:#2340c8;color:#ffffff;font-size:9.5px}
+.acct{justify-content:center;padding:10px 0}
+.acct>span{display:none}
+.ob{grid-template-columns:minmax(0,1fr)}
+.ocol{border-right:0;border-bottom:1px solid var(--line)}
+.olist{max-height:380px;overflow-y:auto}
+.rv,.kb{grid-template-columns:minmax(0,1fr)}
+.side2,.tester{border-left:0;border-top:1px solid var(--line)}
+.bl-top{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:900px){
+.dgrid,.ansgrid,.lgrid,.conf2{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:760px){
+.app{flex-direction:column}
+.side{position:sticky;top:0;z-index:15;flex-direction:row;align-items:center;gap:4px;width:100%;height:auto;min-height:0;padding:8px 10px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);scrollbar-width:none}
+.side::-webkit-scrollbar{display:none}
+.brand{flex:none;padding:0 10px 0 4px}
+.nav{display:flex;flex:none;gap:2px}
+.nav .grp{width:1px;height:22px;margin:0 4px;align-self:center}
+.nav a{flex:none;width:42px;height:40px}
+.acct{display:none}
+.head{flex-wrap:wrap;height:auto;min-height:56px;padding:10px 16px;gap:8px 10px}
+.head .url{display:none}
+.stats{grid-template-columns:minmax(0,1fr);gap:8px;padding:14px 16px 0}
+.kpi{padding:12px 14px}
+.ob{margin-top:14px}
+.edit,.dcol,.kmain{padding-left:16px;padding-right:16px}
+.dcol{padding-top:20px}
+.utabs,.ktabs{overflow-x:auto;scrollbar-width:none}
+.utabs::-webkit-scrollbar,.ktabs::-webkit-scrollbar{display:none}
+.utabs button,.ktabs button{flex:none}
+.sec-h{flex-direction:column;align-items:flex-start;gap:4px}
+.gal{height:110px}
+.socials,.grid2{grid-template-columns:minmax(0,1fr)}
+.tiles{grid-template-columns:repeat(auto-fill,minmax(100px,1fr))!important}
+.addform{grid-template-columns:minmax(0,1fr)}
+.ready{grid-template-columns:minmax(0,1fr)}
+.it .avl{width:auto;font-size:0}
+.ed{padding:16px}
+.ed-top{grid-template-columns:minmax(0,1fr)}
+.ph{width:100%;height:180px}
+.opt{grid-template-columns:minmax(0,1fr) 112px 34px}
+.ed-foot{flex-wrap:wrap}
+.qrcard{flex-direction:column;align-items:flex-start}
+.days{grid-template-columns:repeat(5,minmax(0,1fr))}
+.ftabs button{font-size:12px;gap:4px}
+.dh,.lh{flex-wrap:wrap}
+.dh h2{font-size:23px}
+.wa,.wa-btn{margin-left:0}
+.actbar{flex-wrap:wrap}
+.rc{flex-direction:column;align-items:flex-start}
+.qh{flex-direction:column;gap:12px}
+.qh h2{font-size:23px}
+.qspark{margin-left:0}
+.ren{flex-wrap:wrap}
+.lh .big-ph{font-size:23px}
+.sseg{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}
+.sseg .thm{width:calc((100% - 8px) / 3)}
+.stage{padding:20px 16px 32px}
+.prog{flex-wrap:wrap}
+.deck{height:620px}
+.fc{height:600px;padding:20px 18px}
+.claim{font-size:21px}
+.facts{flex-wrap:wrap}
+.rj,.ed2{padding:0 16px}
+.ac{flex:1 1 100%;margin-left:0}
+.ktool{flex-wrap:wrap}
+.search{flex:1 1 100%}
+.kr{flex-wrap:wrap}
+.kr .ko{max-width:100%}
+.sc2{flex-wrap:wrap}
+.tester{padding:20px 16px}
+.bl,.swrap{padding:20px 16px 40px}
+.bl-big b{font-size:36px}
+.bl-pay{flex-direction:column;align-items:stretch}
+.bl-pay .go{justify-content:center}
+.bl-r{grid-template-columns:minmax(0,1fr) auto auto;padding:10px 16px}
+.bl-r.hd2{display:none}
+.bl-r>span:nth-child(2),.bl-r>span:nth-child(5){display:none}
+.bl-box,.mbox{width:calc(100vw - 32px);max-width:420px}
+.setr{flex-wrap:wrap}
+.pwf{flex-wrap:wrap;padding-left:16px}
+.meterpw{padding-left:16px}
+}
+/* the content column can be narrow on a wide screen, so the inner layouts follow their own width */
+.dcol,.kmain,.edit,.bl,.swrap,.stage,.side2,.tester{container-type:inline-size}
+.lh .big-ph{white-space:nowrap}
+@media (min-width:1101px) and (max-width:1400px){.ob{grid-template-columns:340px minmax(0,1fr)}}
+@media (max-width:1000px){.kpi .spark{display:none}}
+.slots{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.slots .meter{grid-column:1 / -1;flex-direction:row;gap:12px;padding:12px}
+@container (max-width:760px){
+.dgrid,.ansgrid,.lgrid,.conf2,.bl-top{grid-template-columns:minmax(0,1fr)}
+.slots .meter svg{width:40px;height:40px}
+.dh,.lh{flex-wrap:wrap}
+.wa,.wa-btn{margin-left:0}
+.actbar{flex-wrap:wrap}
+.actbar p{flex:1 1 100%}
+.rc{flex-direction:column;align-items:flex-start}
+.qh{flex-direction:column;gap:12px}
+.qspark{margin-left:0}
+.ed-top{grid-template-columns:minmax(0,1fr)}
+.ph{width:100%;height:180px}
+}
+@container (max-width:520px){
+.lh .big-ph,.dh h2,.qh h2{font-size:23px}
+.sseg{display:grid;width:100%;grid-template-columns:repeat(3,minmax(0,1fr))}
+.sseg .thm{width:calc((100% - 8px) / 3)}
+.socials,.grid2,.bl-pick{grid-template-columns:minmax(0,1fr)}
+.opt{grid-template-columns:minmax(0,1fr) 112px 34px}
+.days{grid-template-columns:repeat(5,minmax(0,1fr))}
+.reply .rh{flex-wrap:wrap}
+}
+@media (min-width:1201px) and (max-width:1400px){.rv,.kb{grid-template-columns:minmax(0,1fr) 360px}.body{grid-template-columns:minmax(0,1fr) 380px}}
+@media (max-width:1200px){.rv,.kb{grid-template-columns:minmax(0,1fr)}.side2,.tester{border-left:0;border-top:1px solid var(--line)}}
+.ktabs{overflow-x:auto;scrollbar-width:none}
+.ktabs button{flex:none;white-space:nowrap}
+.avl{white-space:nowrap}
+@container (max-width:680px){
+.kr .kc{flex:1 1 100%}
+.kr .ko{margin-right:auto}
+.it .avl{width:auto;font-size:0}
+.ready{grid-template-columns:minmax(0,1fr)}
+}
+</style>
+</helmet>
+
+<div class="app {{appCls}}">
+<aside class="side" aria-label="Main navigation">
+<div class="brand"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios</span></div>
+<nav class="nav">
+<p class="grp">Page</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6"></path></svg> My Curios</a>
+<a href="#" class="on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path></svg> Store</a>
+<p class="grp">Inbox</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4"></path></svg> Orders<span class="ct">1</span></a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01"></path></svg> Questions<span class="ct">1</span></a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z"></path></svg> Leads</a>
+<p class="grp">Knowledge</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg> Review<span class="ct">3</span></a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg> Facts &amp; sources</a>
+<p class="grp">Account</p>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v13H3zM3 10h18"></path></svg> Billing</a>
+<a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg> Settings</a>
+</nav>
+<div class="acct"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span style="min-width: 0"><b>Kek Lina</b><span>Business plan</span></span></div>
+</aside>
+
+<main class="main">
+<div class="head">
+<h1>Store</h1>
+<span class="status" aria-live="polite" style="background: {{stBg}}; color: {{stFg}}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"></animateTransform></path></svg></sc-if><sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>{{saveText}}</span>
+<span class="url">curios.my/keklina/shop</span>
+<span class="open"><span class="pulse {{openPulse}}" style="background: {{openDot}}"></span><span style="color: {{openFg}}">{{openText}}</span><button type="button" class="switch" role="switch" aria-checked="{{ isOpen }}" aria-label="Shop open" disabled="{{ cantOpen }}" onClick="{{ toggleOpen }}" style="background: {{openBg}}; cursor: {{openCursor}}"><i style="transform: translateX({{openX}})"></i></button></span>
+<a class="sec-btn" href="#shop">See your shop</a>
+</div>
+
+<div class="body">
+<div class="edit">
+<div class="ready" role="list" aria-label="Ready to take orders">
+<sc-for list="{{ steps }}" as="r" hint-placeholder-count="3"><button type="button" role="listitem" class="rstep" onClick="{{ r.go }}"><span class="rdot" style="background: {{r.bg}}; color: {{r.fg}}"><sc-if value="{{ r.ok }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if><sc-if value="{{ r.bad }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"></path></svg></sc-if></span><span style="min-width: 0"><b>{{r.title}}</b><span>{{r.note}}</span></span></button></sc-for>
+</div>
+
+<div class="utabs" role="tablist" aria-label="Store" style="margin-top: 14px">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}" style="width: 150px">{{t.label}}</button></sc-for>
+<span class="uline" style="width: 150px; transform: translateX({{ulineX}}px)"></span>
+</div>
+
+<sc-if value="{{ isItemsList }}" hint-placeholder-val="{{ true }}">
+<div class="wrapc" role="tabpanel" aria-label="Items">
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg></span>About your shop</b><span>Shown above your items, before the notice</span></p>
+<label class="fl"><em>Shop description</em><textarea maxlength="160" onChange="{{ setShopDesc }}" value="{{ shopDesc }}" placeholder="What you sell, and anything customers should know first" style="height: 76px"></textarea><small>{{shopDescCount}}/160</small></label>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM9 13h6"></path></svg></span>Items</b><span>{{itemsNote}}</span></p>
+<sc-if value="{{ noItems }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 14px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #ffebd6"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5M9 13h6"></path></svg></span></div><h3>Your shelf is empty</h3><p>Add what you sell, with a photo and a price or sizes. It shows in your Shop tab, and the chat can quote it exactly.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ addItem }}">+ Add your first item</button></div></div></div></sc-if>
+<sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}"><div class="ilist" style="height: {{ilistH}}px">
+<sc-for list="{{ items }}" as="i" hint-placeholder-count="4">
+<div class="it" style="transform: translateY({{i.y}}px)">
+<span class="thumb" aria-hidden="true" style="background: {{i.tint}}; color: {{i.ink}}; opacity: {{i.dim}}; filter: grayscale({{i.gray}})"><sc-if value="{{ i.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{i.photo}}" alt="" style="object-position: {{i.focus}}"></sc-if>{{i.initial}}</span>
+<button type="button" class="nm2" onClick="{{ i.edit }}"><b>{{i.name}}</b><span>{{i.line}}</span></button>
+<span class="avl"><button type="button" class="switch" role="switch" aria-checked="{{ i.available }}" aria-label="In your shop: {{i.name}}" onClick="{{ i.toggle }}" style="background: {{i.swBg}}"><i style="transform: translateX({{i.swX}})"></i></button>{{i.avText}}</span>
+<span class="acts">
+<button type="button" class="icb" title="Move up" aria-label="Move {{i.name}} up" disabled="{{ i.first }}" onClick="{{ i.up }}"><svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"></path></svg></button>
+<button type="button" class="icb" title="Move down" aria-label="Move {{i.name}} down" disabled="{{ i.last }}" onClick="{{ i.down }}"><svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"></path></svg></button>
+<button type="button" class="icb" title="Edit" aria-label="Edit {{i.name}}" onClick="{{ i.edit }}"><svg viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4"></path></svg></button>
+</span>
+</div>
+</sc-for>
+</div>
+<button type="button" class="addrow" onClick="{{ addItem }}">+ Add item</button></sc-if>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ isEditing }}" hint-placeholder-val="{{ false }}">
+<div class="wrapc" role="tabpanel" aria-label="Edit item" style="padding-top: 22px">
+<div class="ed">
+<button type="button" class="back" onClick="{{ closeEdit }}"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg>All items</button>
+<div class="ed-top">
+<button type="button" class="ph" aria-label="Change picture" onClick="{{ ed.nextPhoto }}" style="background: {{ed.tint}}; color: {{ed.ink}}"><sc-if value="{{ ed.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{ed.photo}}" alt="" style="object-position: {{ed.focus}}"></sc-if>{{ed.initial}}<span class="ov"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>{{ed.photoAct}}</span></button>
+<div class="flds">
+<label class="fl"><em>Name</em><input value="{{ ed.name }}" onChange="{{ ed.setName }}" maxlength="60"></label>
+<label class="fl"><em>Description</em><textarea maxlength="280" onChange="{{ ed.setDesc }}" value="{{ ed.desc }}" style="height: 84px"></textarea><small>{{ed.descCount}}/280</small></label>
+</div>
+</div>
+
+<div class="sub"><b>Price</b><span>Options suit sizes, like 1kg and 2kg</span></div>
+<div class="seg2" role="tablist" aria-label="How it is priced">
+<span class="seg2-th" style="transform: translateX({{ed.segX}}px)"></span>
+<sc-for list="{{ ed.modes }}" as="m" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{m.on}}" onClick="{{ m.go }}" style="color: {{m.fg}}">{{m.label}}</button></sc-for>
+</div>
+<sc-if value="{{ ed.single }}" hint-placeholder-val="{{ false }}">
+<label class="money" style="width: 200px; margin-top: 12px"><span>RM</span><input value="{{ ed.price }}" onChange="{{ ed.setPrice }}" inputmode="decimal" aria-label="Price in ringgit" placeholder="0.00"></label>
+</sc-if>
+<sc-if value="{{ ed.multi }}" hint-placeholder-val="{{ true }}">
+<div class="opts">
+<sc-for list="{{ ed.options }}" as="o" hint-placeholder-count="2">
+<div class="opt">
+<input class="olab" value="{{ o.label }}" onChange="{{ o.setLabel }}" placeholder="Option {{o.n}}, like 1kg" aria-label="Option {{o.n}} name" maxlength="30">
+<label class="money"><span>RM</span><input value="{{ o.price }}" onChange="{{ o.setPrice }}" inputmode="decimal" aria-label="Option {{o.n}} price in ringgit" placeholder="0.00"></label>
+<button type="button" class="icb" aria-label="Remove option {{o.n}}" disabled="{{ o.only }}" onClick="{{ o.remove }}" style="width: 34px; height: 34px"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></button>
+</div>
+</sc-for>
+</div>
+<button type="button" class="addrow" onClick="{{ ed.addOption }}" style="margin-top: 6px">+ Add option</button>
+</sc-if>
+<p class="pl" aria-live="polite" style="background: {{ed.plBg}}; color: {{ed.plFg}}"><sc-if value="{{ ed.ok }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"></path></svg></sc-if><sc-if value="{{ ed.bad }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M12 8v5M12 16.5h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg></sc-if>{{ed.plText}}</p>
+
+<div class="ed-foot">
+<span class="avl" style="width: auto; color: #191f2c"><button type="button" class="switch" role="switch" aria-checked="{{ ed.available }}" aria-label="In your shop" onClick="{{ ed.toggle }}" style="background: {{ed.swBg}}"><i style="transform: translateX({{ed.swX}})"></i></button>{{ed.avText}}</span>
+<span style="margin-left: auto; display: flex; align-items: center; gap: 6px">
+<sc-if value="{{ ed.confirming }}" hint-placeholder-val="{{ false }}"><span class="confirm">Remove it from your shop and the chat?<button type="button" onClick="{{ ed.remove }}" style="background: #fdecea; color: #b3261e">Yes, remove</button><button type="button" onClick="{{ ed.keep }}" style="background: #f0f1f4">Keep</button></span></sc-if>
+<sc-if value="{{ ed.idle }}" hint-placeholder-val="{{ true }}"><button type="button" class="ghost" onClick="{{ ed.ask }}">Remove item</button><button type="button" class="prim" onClick="{{ closeEdit }}">Done</button></sc-if>
+</span>
+</div>
+</div>
+</div>
+</sc-if>
+
+<sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
+<div class="wrapc" role="tabpanel" aria-label="Payment">
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"></path></svg></span>DuitNow QR</b><span>Customers scan it on their order page</span></p>
+<sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}">
+<div class="qrcard">
+<span class="qrbox"><svg viewBox="-1 -1 27 27" width="124" height="124" role="img" aria-label="Your DuitNow QR, sample"><path d="{{qrPath}}" fill="#191f2c"></path></svg><span class="scan" aria-hidden="true"></span></span>
+<span><b>Your QR is ready</b><p>Kek Lina · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.</p><span class="btns"><button type="button" class="btn2" onClick="{{ swapQr }}">Change QR</button><button type="button" class="btn2" onClick="{{ removeQr }}" style="color: #b3261e">Remove</button></span></span>
+</div>
+</sc-if>
+<sc-if value="{{ noQr }}" hint-placeholder-val="{{ false }}">
+<button type="button" class="drop" onClick="{{ addQr }}"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg><b style="font-weight: 600">Upload your DuitNow QR</b><small>A screenshot from your bank app works. PNG or JPG, up to 5 MB.</small></button>
+</sc-if>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18"></path></svg></span>Bank account</b><span>{{bankNote}}</span></p>
+<div class="banks"><sc-for list="{{ banks }}" as="bk" hint-placeholder-count="6"><button type="button" class="bk" aria-pressed="{{bk.on}}" onClick="{{ bk.pick }}" style="background: {{bk.bg}}; color: {{bk.fg}}; border-color: {{bk.bd}}">{{bk.label}}</button></sc-for></div>
+<div class="grid2">
+<label class="fl" style="grid-column: 1 / -1"><em>Bank name</em><input value="{{ bankName }}" onChange="{{ setBankName }}" maxlength="60"></label>
+<label class="fl"><em>Account name</em><input value="{{ accName }}" onChange="{{ setAccName }}" maxlength="80"></label>
+<label class="fl"><em>Account number</em><input value="{{ accNo }}" onChange="{{ setAccNo }}" inputmode="numeric" style="font-family: var(--m)"></label>
+</div>
+<p class="noteline"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#696e7b" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"></path></svg>Money goes straight to you. Curios never holds it.</p>
+</section>
+</div>
+</sc-if>
+
+<sc-if value="{{ isDel }}" hint-placeholder-val="{{ false }}">
+<div class="wrapc" role="tabpanel" aria-label="Pickup and delivery">
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg></span>Pickup</b><span>Customers collect from you</span></p>
+<div class="shoprow">
+<span style="flex: 1"><b style="display: block; font-weight: 600">Allow pickup</b><span style="font-size: 13px; color: #696e7b">{{pickupText}}</span></span>
+<button type="button" class="switch" role="switch" aria-checked="{{ pickup }}" aria-label="Allow pickup" onClick="{{ togglePickup }}" style="background: {{pickBg}}"><i style="transform: translateX({{pickX}})"></i></button>
+</div>
+<sc-if value="{{ pickup }}" hint-placeholder-val="{{ true }}"><label class="fl" style="margin-top: 10px; animation: fadeUp 300ms ease both"><em>Where and when</em><input value="{{ pickupNote }}" onChange="{{ setPickupNote }}" maxlength="120"><small>{{pickupCount}}/120</small></label></sc-if>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg></span>Delivery</b><span>How orders reach customers who can't come</span></p>
+<div class="tiles" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+<sc-for list="{{ dmodes }}" as="d" hint-placeholder-count="3"><button type="button" class="tile dtile {{d.cls}}" aria-pressed="{{d.on}}" onClick="{{ d.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="dic" style="background: {{d.bg}}; color: {{d.fg}}"><svg viewBox="0 0 24 24"><path d="{{d.icon}}"></path></svg></span><span><b>{{d.label}}</b><span>{{d.note}}</span></span></button></sc-for>
+</div>
+<sc-if value="{{ isFlat }}" hint-placeholder-val="{{ true }}"><div style="display: flex; align-items: center; gap: 12px; margin-top: 12px; animation: fadeUp 300ms ease both"><label class="money" style="width: 180px"><span>RM</span><input value="{{ fee }}" onChange="{{ setFee }}" inputmode="decimal" aria-label="Delivery fee in ringgit"></label><span style="font-size: 13px; color: #696e7b">{{feeNote}}</span></div></sc-if>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg></span>Notice</b><span>How far ahead customers must order</span></p>
+<span class="stepper"><button type="button" aria-label="One day less" disabled="{{ noLess }}" onClick="{{ less }}">−</button><output aria-live="polite">{{noticeText}}</output><button type="button" aria-label="One day more" disabled="{{ noMore }}" onClick="{{ more }}">+</button></span>
+<div class="days" aria-hidden="true"><sc-for list="{{ days }}" as="dy" hint-placeholder-count="10"><span class="day" style="background: {{dy.bg}}; color: {{dy.fg}}; transform: scale({{dy.s}}); text-decoration: {{dy.strike}}"><span>{{dy.wd}}</span><b>{{dy.d}}</b></span></sc-for></div>
+<p class="noteline"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#2340c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>{{earliestText}}</p>
+</section>
+</div>
+</sc-if>
+</div>
+
+<div class="pv" aria-label="Live preview of your shop">
+<div class="blobs" aria-hidden="true" style="position: absolute"><span class="blob b1" style="background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span><span class="blob b2" style="background: radial-gradient(circle, #f6c9d5 0%, transparent 65%)"></span><span class="blob b3" style="background: radial-gradient(circle, #ffe2b8 0%, transparent 65%)"></span><span class="blob b4" style="background: radial-gradient(circle, #bfe3d6 0%, transparent 65%)"></span><svg class="grain"><filter id="pgn"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#pgn)"></rect></svg></div>
+<div class="phone">
+<div class="scr" style="background: {{scrBg}}; color: #fafbfc">
+
+<sc-if value="{{ pvBase }}" hint-placeholder-val="{{ true }}">
+<div class="sp" style="bottom: {{spBottom}}">
+<div class="pv-photo"><img src="/_blob/8c12272a54670861ce6afc463dd85cd0" alt="" style="object-position: 50% 50%"></div>
+<div class="sb">
+<p class="nm">Kek Lina</p>
+<p class="hd">curios.my/keklina</p>
+<span class="tb" aria-hidden="true"><span>Links</span><span>Ask</span><span class="on">Shop</span></span>
+<sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><p class="ds">{{shopDesc}}</p></sc-if>
+<p class="nt">{{noticeLine}}</p>
+<div class="srows">
+<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="srow" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="th" style="background: {{s.tint}}; color: {{s.ink}}"><sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if>{{s.initial}}</span><span class="tx"><b>{{s.name}}</b><span>{{s.from}}</span></span><span class="ad" aria-hidden="true">+</span></button></sc-for>
+</div>
+<sc-if value="{{ pvEmpty }}" hint-placeholder-val="{{ false }}"><p class="nt" style="width: 100%; margin-top: 8px; padding: 18px 12px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px">New items are coming soon.</p></sc-if>
+</div>
+<div class="bar" style="background: #fafbfc; color: #191f2c"><span style="color: #696e7b">Basket is empty</span><em style="background: #b5294e; color: #fafbfc">Checkout</em></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ pvItem }}" hint-placeholder-val="{{ false }}">
+<div class="dim"></div>
+<div class="isheet">
+<span class="grab"></span>
+<sc-if value="{{ pi.hidden }}" hint-placeholder-val="{{ false }}"><span class="hidden-chip">Hidden from your shop</span></sc-if>
+<div class="ihead"><span class="iph" style="background: {{pi.tint}}; color: {{pi.ink}}"><sc-if value="{{ pi.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{pi.photo}}" alt="" style="object-position: {{pi.focus}}"></sc-if>{{pi.initial}}</span><span style="min-width: 0"><h4>{{pi.name}}</h4><span class="pr">{{pi.price}}</span></span></div>
+<p>{{pi.desc}}</p>
+<sc-if value="{{ pi.hasOpts }}" hint-placeholder-val="{{ true }}"><span class="pills"><sc-for list="{{ pi.opts }}" as="po" hint-placeholder-count="2"><span style="background: {{po.bg}}; color: {{po.fg}}">{{po.label}}</span></sc-for></span></sc-if>
+<div class="bar" style="background: #b5294e; color: #fafbfc"><span style="display: inline-flex; align-items: center; gap: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(250,251,252,0.16)">−<b>1</b>+</span><span style="margin-left: auto; padding-right: 10px">Add to basket · {{pi.addPrice}}</span></div>
+</div>
+</sc-if>
+
+<sc-if value="{{ pvPay }}" hint-placeholder-val="{{ false }}">
+<div class="sp">
+<div class="sp-top"><span class="circ" style="background: rgba(250,251,252,0.12)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span><span style="flex: 1; font-weight: 600; font-size: 13px">Order #13</span></div>
+<div class="pay">
+<span class="stat">Waiting for payment</span>
+<div class="pay-card" style="background: rgba(250,251,252,0.08)">
+<sc-for list="{{ payLines }}" as="pl" hint-placeholder-count="3"><div class="ln"><span>{{pl.label}}</span><b style="font-weight: 500">{{pl.amt}}</b></div></sc-for>
+<div class="tot" style="border-top: 1px solid rgba(250,251,252,0.14)"><span style="opacity: .75">{{payWhen}}</span><b>{{payTotal}}</b></div>
+</div>
+<sc-if value="{{ canPay }}" hint-placeholder-val="{{ true }}">
+<div class="payto">
+<sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}"><svg viewBox="-1 -1 27 27" width="{{qrSize}}" height="{{qrSize}}" aria-label="DuitNow QR" role="img" style="flex: none"><path d="{{qrPath}}" fill="#191f2c"></path></svg></sc-if>
+<sc-if value="{{ bankOk }}" hint-placeholder-val="{{ true }}"><span class="bkl"><span>Or transfer to</span><b>{{bankName}}</b><span>{{accName}}</span><code>{{accNo}}</code></span></sc-if>
+<sc-if value="{{ qrOnly }}" hint-placeholder-val="{{ false }}"><span class="bkl"><b>Scan to pay</b><span>DuitNow QR, any bank app</span></span></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ cantPay }}" hint-placeholder-val="{{ false }}"><div class="payto" style="background: #ffebd6; color: #7a4a0c; font-size: 12px">No way to pay yet. Add a QR or your bank account.</div></sc-if>
+</div>
+<div class="bar" style="background: #fafbfc; color: #191f2c; justify-content: center; padding: 0"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>Upload receipt</div>
+</div>
+</sc-if>
+
+</div>
+</div>
+<div class="seg" role="tablist" aria-label="Preview screen">
+<span class="seg-th" style="transform: translateX({{segX}}px)"></span>
+<sc-for list="{{ segs }}" as="g" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{g.on}}" onClick="{{ g.go }}" style="color: {{g.fg}}">{{g.label}}</button></sc-for>
+</div>
+</div>
+</div>
+</main>
+<div class="demo" role="group" aria-label="Design preview"><span>Preview</span><button type="button" aria-pressed="{{ demoFull }}" onClick="{{ showFull }}">Sample data</button><button type="button" aria-pressed="{{ demoEmpty }}" onClick="{{ showEmpty }}">New account</button></div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.photos = [
+      ['/_blob/63d877cef1ea5c67a363dfd5ea183c12', '50% 50%'],
+      ['/_blob/0791b6197dd4490d1b3e6683114d06d7', '72% 80%'],
+      ['/_blob/2e293493991ae3a84ed494a8aa6f4aec', '40% 50%'],
+      ['/_blob/92c05b3b823a434633375b043cf67b7a', '70% 50%'],
+      ['', '']
+    ];
+    this.tints = [['#f6c9d5', '#7a1f3a'], ['#ffe2b8', '#7a4a0c'], ['#bfe3d6', '#123b33'], ['#bfd1f9', '#122686']];
+    this.bankList = ['Maybank', 'CIMB', 'Public Bank', 'RHB', 'Bank Islam', 'Hong Leong'];
+    this.qrPath = 'M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM10 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM11 2h1v1h-1zM15 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM15 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM10 7h1v1h-1zM14 7h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM0 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM20 8h1v1h-1zM24 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM7 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM15 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM12 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM0 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM0 12h1v1h-1zM3 12h1v1h-1zM6 12h1v1h-1zM8 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM23 12h1v1h-1zM1 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM24 14h1v1h-1zM0 15h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM13 15h1v1h-1zM17 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM24 15h1v1h-1zM0 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM8 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM18 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM12 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM6 20h1v1h-1zM9 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM15 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM0 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM6 21h1v1h-1zM11 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM23 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM17 23h1v1h-1zM20 23h1v1h-1zM22 23h1v1h-1zM24 23h1v1h-1zM0 24h1v1h-1zM1 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM15 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1z';
+    this.keySeq = 100;
+    this.state = {
+      tab: 0, editId: null, confirmDel: false, pv: 'shop', pvId: 1,
+      open: true, qr: true, bankName: 'Maybank', accName: 'Lina binti Kamal', accNo: '1642 3378 9021',
+      shopDesc: 'Homemade cakes and desserts, baked fresh for every order. Raya orders are open.', pickup: true, pickupNote: 'Seksyen 7, Shah Alam. 10am to 6pm.', delivery: 'FLAT', fee: '10', notice: 2,
+      save: 'saved',
+      items: [
+        { id: 1, name: 'Kek coklat moist', desc: 'Our bestseller. Rich, soft and not too sweet, with a thick ganache on top.', photo: 0, tint: 0, mode: 'options', price: '', options: [{ k: 1, label: '1kg', price: '95' }, { k: 2, label: '2kg', price: '170' }], available: true },
+        { id: 2, name: 'Kek batik', desc: 'Old school, with Marie biscuits and plenty of chocolate. Cut into 12 slices.', photo: 1, tint: 1, mode: 'single', price: '45', options: [{ k: 3, label: '', price: '' }], available: true },
+        { id: 3, name: 'Cookies balang', desc: 'A jar of 40 chocolate chip cookies. Good for Raya and open houses.', photo: 4, tint: 0, mode: 'single', price: '25', options: [{ k: 4, label: '', price: '' }], available: true },
+        { id: 4, name: 'Burnt cheesecake', desc: 'Creamy in the middle, caramelised outside. Back in December.', photo: 4, tint: 1, mode: 'options', price: '', options: [{ k: 5, label: '6 inch', price: '85' }, { k: 6, label: '8 inch', price: '120' }], available: false }
+      ]
+    };
+  }
+  componentWillUnmount() { clearTimeout(this.st); }
+  change(patch) {
+    clearTimeout(this.st);
+    this.setState(Object.assign({}, patch, { save: 'saving' }));
+    this.st = setTimeout(() => this.setState({ save: 'saved' }), 650);
+  }
+  cents(text) {
+    const c = String(text || '').trim().replace(/^rm\s*/i, '').replace(/,/g, '');
+    if (!/^\d{1,7}(\.\d{1,2})?$/.test(c)) return null;
+    const parts = c.split('.');
+    return Number(parts[0]) * 100 + Number((parts[1] || '').padEnd(2, '0'));
+  }
+  rm(cents) {
+    const r = Math.floor(cents / 100), s = cents % 100;
+    const w = String(r).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return s === 0 ? 'RM' + w : 'RM' + w + '.' + String(s).padStart(2, '0');
+  }
+  pricing(it) {
+    if (it.mode === 'single') {
+      if (!String(it.price || '').trim()) return { error: 'Add a price, like 95 or 95.50.' };
+      const c = this.cents(it.price);
+      if (c === null) return { error: 'That price does not look right. Use ringgit and sen, like 95 or 95.50.' };
+      if (c <= 0 || c > 1000000) return { error: 'Give it a price above RM0, up to RM10,000.' };
+      return { line: this.rm(c), from: c, opts: [] };
+    }
+    const seen = {};
+    const opts = [];
+    for (const o of it.options) {
+      const label = o.label.trim();
+      if (!label) return { error: 'Give each option a name, up to 30 characters.' };
+      if (seen[label.toLowerCase()]) return { error: '"' + label + '" is listed twice. Give each option its own name.' };
+      seen[label.toLowerCase()] = 1;
+      const c = this.cents(o.price);
+      if (c === null || c <= 0) return { error: '"' + label + '": give it a price above RM0, like 95 or 95.50.' };
+      opts.push({ label: label, c: c });
+    }
+    return { line: opts.map((o) => o.label + ' ' + this.rm(o.c)).join(' · '), from: Math.min.apply(null, opts.map((o) => o.c)), opts: opts };
+  }
+  updItem(id, patch) {
+    this.change({ items: this.state.items.map((x) => x.id === id ? Object.assign({}, x, patch) : x) });
+  }
+  look(it) {
+    const ph = this.photos[it.photo];
+    const t = this.tints[it.tint % this.tints.length];
+    return { hasPhoto: !!ph[0], photo: ph[0], focus: ph[1], tint: t[0], ink: t[1], initial: ph[0] ? '' : (it.name.trim()[0] || '?').toUpperCase() };
+  }
+  renderVals0() {
+    const self = this, st = this.state;
+    const bankOk = !!(st.bankName.trim() && st.accName.trim() && st.accNo.replace(/\D/g, '').length >= 6);
+    const payOk = st.qr || bankOk;
+    const fulfilOk = st.pickup || st.delivery !== 'NONE';
+    const live = st.items.filter((x) => x.available && !self.pricing(x).error);
+    const itemsOk = live.length > 0;
+    const cantOpen = !payOk || !fulfilOk;
+    const isOpen = st.open && !cantOpen;
+    const today = new Date(2026, 9, 15);
+    const wd = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'], mo = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const earliest = new Date(2026, 9, 15 + st.notice);
+    const earliestLabel = wd[earliest.getDay()] + ' ' + earliest.getDate() + ' ' + mo[earliest.getMonth()];
+    const tabIx = st.tab;
+    const editing = st.items.find((x) => x.id === st.editId);
+    const pvIt = editing || st.items.find((x) => x.id === st.pvId) || live[0] || st.items[0];
+    const feeC = this.cents(st.fee);
+    const step = (ok, title, okNote, badNote, tab) => ({ ok: ok, bad: !ok, title: title, note: ok ? okNote : badNote, bg: ok ? '#e8f3ef' : '#ffebd6', fg: ok ? '#1d6f5f' : '#7a4a0c', go: () => self.setState({ tab: tab, editId: null, pv: tab === 0 ? 'shop' : 'pay' }) });
+    const payLines = [];
+    let sub = 0;
+    live.slice(0, 2).forEach((x) => { const p = self.pricing(x); const o = p.opts[0]; payLines.push({ label: x.name + (o ? ' · ' + o.label : '') + ' × 1', amt: self.rm(p.from) }); sub += p.from; });
+    let when = 'Pickup · ' + earliestLabel, total = sub;
+    if (st.delivery === 'FLAT') { const f = feeC || 0; payLines.push({ label: 'Delivery', amt: self.rm(f) }); total += f; when = 'Delivery · ' + earliestLabel; }
+    else if (st.delivery === 'RIDER') { payLines.push({ label: 'Rider fee', amt: 'Paid separately' }); when = 'Delivery · ' + earliestLabel; }
+    const pvKey = st.pv;
+    const out = {
+      qrPath: this.qrPath,
+      saving: st.save === 'saving', saved: st.save !== 'saving',
+      stBg: st.save === 'saving' ? '#f3f4f7' : '#e8f3ef', stFg: st.save === 'saving' ? '#4b5060' : '#123b33',
+      saveText: st.save === 'saving' ? 'Saving…' : 'Saved',
+      isOpen: isOpen, cantOpen: cantOpen,
+      openText: cantOpen ? (!payOk ? 'Add a way to pay to open' : 'Turn on pickup or delivery') : isOpen ? 'Open for orders' : 'Closed',
+      openFg: cantOpen ? '#7a4a0c' : '#191f2c',
+      openDot: cantOpen ? '#f2a33c' : isOpen ? '#1d9a6c' : '#b3b7c1', openPulse: isOpen ? 'live' : '',
+      openBg: isOpen ? '#2340c8' : '#d5d8de', openX: isOpen ? '14px' : '0px', openCursor: cantOpen ? 'not-allowed' : 'pointer',
+      toggleOpen: () => { if (!cantOpen) self.change({ open: !st.open }); },
+      steps: [
+        step(itemsOk, 'Items', live.length + ' in your shop', 'Switch an item on', 0),
+        step(payOk, 'A way to pay', st.qr && bankOk ? 'QR and bank account' : st.qr ? 'DuitNow QR' : 'Bank account', 'Add a QR or bank account', 1),
+        step(fulfilOk, 'Getting it to them', [st.pickup ? 'Pickup' : '', st.delivery === 'FLAT' ? 'delivery ' + self.rm(feeC || 0) : st.delivery === 'RIDER' ? 'rider delivery' : ''].filter(Boolean).join(' and ').replace(/^./, (c) => c.toUpperCase()) || '', 'Turn on pickup or delivery', 2)
+      ],
+      tabs: ['Items', 'Payment', 'Pickup & delivery'].map((label, i) => ({ label: label, on: tabIx === i, go: () => self.setState({ tab: i, editId: null, confirmDel: false, pv: i === 0 ? 'shop' : 'pay' }) })),
+      ulineX: tabIx * 150,
+      isItemsList: tabIx === 0 && !editing, isEditing: tabIx === 0 && !!editing, isPay: tabIx === 1, isDel: tabIx === 2,
+      itemsNote: st.items.length + ' items · ' + live.length + ' in your shop',
+      ilistH: st.items.length * 76,
+      items: st.items.map((x, i) => {
+        const lk = self.look(x), p = self.pricing(x);
+        return Object.assign(lk, {
+          y: i * 76, name: x.name || 'Untitled item', line: p.error ? 'Needs a price' : p.line,
+          dim: x.available ? '1' : '0.5', gray: x.available ? '0' : '0.8',
+          available: x.available, swBg: x.available ? '#2340c8' : '#d5d8de', swX: x.available ? '14px' : '0px', avText: x.available ? 'In your shop' : 'Hidden',
+          first: i === 0, last: i === st.items.length - 1,
+          toggle: () => self.updItem(x.id, { available: !x.available }),
+          edit: () => self.setState({ editId: x.id, pvId: x.id, pv: 'item', confirmDel: false }),
+          up: () => { const a = st.items.slice(); [a[i - 1], a[i]] = [a[i], a[i - 1]]; self.change({ items: a }); },
+          down: () => { const a = st.items.slice(); [a[i + 1], a[i]] = [a[i], a[i + 1]]; self.change({ items: a }); }
+        });
+      }),
+      addItem: () => {
+        const id = Date.now();
+        self.keySeq += 1;
+        self.change({ items: st.items.concat([{ id: id, name: 'New item', desc: '', photo: 4, tint: st.items.length, mode: 'single', price: '', options: [{ k: self.keySeq, label: '', price: '' }], available: true }]), editId: id, pvId: id, pv: 'item' });
+      },
+      closeEdit: () => self.setState({ editId: null, confirmDel: false, pv: 'shop' }),
+      ed: {},
+      hasQr: st.qr, noQr: !st.qr,
+      addQr: () => self.change({ qr: true }), removeQr: () => self.change({ qr: false }), swapQr: () => self.change({ qr: true }),
+      bankName: st.bankName, accName: st.accName, accNo: st.accNo, bankOk: bankOk,
+      bankNote: bankOk ? 'Shown under your QR' : 'Fill in all three to show it',
+      banks: this.bankList.map((b) => { const on = st.bankName === b; return { label: b, on: on, bg: on ? '#eaf0ff' : '#ffffff', fg: on ? '#122686' : '#4b5060', bd: on ? '#86a2ea' : '#dfe1e6', pick: () => self.change({ bankName: b }) }; }),
+      setBankName: (e) => self.change({ bankName: String(e.target.value || '').slice(0, 60) }),
+      setAccName: (e) => self.change({ accName: String(e.target.value || '').slice(0, 80) }),
+      setAccNo: (e) => self.change({ accNo: String(e.target.value || '').replace(/[^\d\s-]/g, '').slice(0, 24) }),
+      pickup: st.pickup, pickBg: st.pickup ? '#2340c8' : '#d5d8de', pickX: st.pickup ? '14px' : '0px',
+      pickupText: st.pickup ? 'Shown at checkout and on the order page' : 'Customers can only get it delivered',
+      togglePickup: () => self.change({ pickup: !st.pickup }),
+      pickupNote: st.pickupNote, pickupCount: st.pickupNote.length,
+      setPickupNote: (e) => self.change({ pickupNote: String(e.target.value || '').slice(0, 120) }),
+      dmodes: [
+        ['NONE', 'No delivery', 'Pickup only', '#f3f4f7', '#4b5060', 'M5 5l14 14M9 7h5v6M14 10h4l3 3v3h-3M3 7h2M3 16h8M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z'],
+        ['FLAT', 'Flat fee', 'Added to the total', '#eaf0ff', '#2340c8', 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z'],
+        ['RIDER', 'Rider paid separately', 'Customer pays the rider', '#e8f3ef', '#1d6f5f', 'M5 17a3 3 0 1 0 0-.01M19 17a3 3 0 1 0 0-.01M5 17l4-7h5l3 7M9 10l-1-3H6M14 10l2-3h2']
+      ].map((d) => ({ label: d[1], note: d[2], bg: d[3], fg: d[4], icon: d[5], on: st.delivery === d[0], cls: st.delivery === d[0] ? 'on' : '', pick: () => self.change({ delivery: d[0] }) })),
+      isFlat: st.delivery === 'FLAT', fee: st.fee,
+      feeNote: feeC && feeC > 0 && feeC <= 50000 ? 'Added to every delivery order' : 'Give flat delivery a fee above RM0, up to RM500.',
+      setFee: (e) => self.change({ fee: String(e.target.value || '') }),
+      noticeText: st.notice === 0 ? 'Same day' : st.notice === 1 ? '1 day' : st.notice + ' days',
+      noLess: st.notice <= 0, noMore: st.notice >= 30,
+      less: () => self.change({ notice: Math.max(0, st.notice - 1) }),
+      more: () => self.change({ notice: Math.min(30, st.notice + 1) }),
+      days: Array.from({ length: 10 }, (_, i) => {
+        const d = new Date(2026, 9, 15 + i);
+        const before = i < st.notice, first = i === st.notice;
+        return { wd: i === 0 ? 'Today' : wd[d.getDay()], d: d.getDate(), bg: first ? '#2340c8' : before ? '#f3f4f7' : '#eaf0ff', fg: first ? '#ffffff' : before ? '#b3b7c1' : '#122686', s: first ? '1.06' : '1', strike: before ? 'line-through' : 'none' };
+      }),
+      earliestText: st.notice === 0 ? 'Customers can order for today.' : 'The earliest date a customer can pick is ' + earliestLabel + '.',
+      shopSub: st.notice === 0 ? 'Same day orders welcome' : 'Order ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + ' ahead',
+      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.2)' : 'rgba(250,251,252,0.08)', name: x.name, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
+      pvEmpty: live.length === 0,
+      spBottom: pvKey === 'item' ? '140px' : '0px',
+      scrBg: pvKey === 'item' ? '#fafbfc' : '#542339',
+      pvBase: pvKey !== 'pay', pvItem: pvKey === 'item', pvPay: pvKey === 'pay',
+      shopDesc: st.shopDesc, hasShopDesc: !!st.shopDesc.trim(), shopDescCount: st.shopDesc.length,
+      setShopDesc: (e) => self.change({ shopDesc: String(e.target.value || '').slice(0, 160) }),
+      noticeLine: (st.notice === 0 ? 'Same day orders' : 'Order ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + ' ahead') + ' · ' + (st.pickup && st.delivery !== 'NONE' ? 'Pickup or delivery' : st.pickup ? 'Pickup only' : st.delivery !== 'NONE' ? 'Delivery only' : 'Closed for now'),
+      payLines: payLines, payWhen: when, payTotal: self.rm(total),
+      canPay: payOk, cantPay: !payOk, qrOnly: st.qr && !bankOk, qrSize: bankOk ? 96 : 110,
+      segX: ['shop', 'item', 'pay'].indexOf(pvKey) * 76,
+      segs: [['shop', 'Shop'], ['item', 'Item'], ['pay', 'Pay']].map((g) => ({ label: g[1], on: pvKey === g[0], fg: pvKey === g[0] ? '#ffffff' : '#4b5060', go: () => self.setState({ pv: g[0] }) }))
+    };
+    if (pvIt) {
+      const lk = self.look(pvIt), p = self.pricing(pvIt);
+      out.pi = Object.assign(lk, {
+        noPhoto: !lk.hasPhoto, name: pvIt.name || 'Untitled item', desc: pvIt.desc, hidden: !pvIt.available,
+        price: p.error ? 'Price to come' : (pvIt.mode === 'options' ? 'from ' : '') + self.rm(p.from),
+        hasOpts: !p.error && p.opts.length > 0,
+        opts: (p.opts || []).map((o, i) => ({ label: o.label + ' · ' + self.rm(o.c), bg: i === 0 ? '#191f2c' : '#f0f1f4', fg: i === 0 ? '#fafbfc' : '#191f2c' })),
+        addPrice: p.error ? 'RM0' : self.rm(p.from)
+      });
+    } else out.pi = {};
+    if (editing) {
+      const x = editing, lk = self.look(x), p = self.pricing(x);
+      out.ed = Object.assign(lk, {
+        name: x.name, desc: x.desc, descCount: x.desc.length, price: x.price,
+        photoAct: lk.hasPhoto ? 'Change picture' : 'Add a picture',
+        nextPhoto: () => self.updItem(x.id, { photo: (x.photo + 1) % self.photos.length }),
+        setName: (e) => self.updItem(x.id, { name: String(e.target.value || '').slice(0, 60) }),
+        setDesc: (e) => self.updItem(x.id, { desc: String(e.target.value || '').slice(0, 280) }),
+        setPrice: (e) => self.updItem(x.id, { price: String(e.target.value || '') }),
+        single: x.mode === 'single', multi: x.mode === 'options',
+        segX: x.mode === 'single' ? 0 : 124,
+        modes: [['single', 'One price'], ['options', 'Options']].map((m) => ({ label: m[1], on: x.mode === m[0], fg: x.mode === m[0] ? '#191f2c' : '#696e7b', go: () => self.updItem(x.id, { mode: m[0], price: x.price || (x.options[0] || {}).price || '', options: m[0] === 'options' && !x.options[0].label && x.price ? [{ k: x.options[0].k, label: 'Regular', price: x.price }] : x.options }) })),
+        options: x.options.map((o, i) => ({
+          n: i + 1, label: o.label, price: o.price, only: x.options.length === 1,
+          setLabel: (e) => self.updItem(x.id, { options: x.options.map((y) => y.k === o.k ? Object.assign({}, y, { label: String(e.target.value || '').slice(0, 30) }) : y) }),
+          setPrice: (e) => self.updItem(x.id, { options: x.options.map((y) => y.k === o.k ? Object.assign({}, y, { price: String(e.target.value || '') }) : y) }),
+          remove: () => self.updItem(x.id, { options: x.options.filter((y) => y.k !== o.k) })
+        })),
+        addOption: () => { if (x.options.length >= 10) return; self.keySeq += 1; self.updItem(x.id, { options: x.options.concat([{ k: self.keySeq, label: '', price: '' }]) }); },
+        ok: !p.error, bad: !!p.error,
+        plText: p.error ? p.error : 'Customers see ' + p.line,
+        plBg: p.error ? '#fdecea' : '#f6f8ff', plFg: p.error ? '#b3261e' : '#122686',
+        available: x.available, swBg: x.available ? '#2340c8' : '#d5d8de', swX: x.available ? '14px' : '0px',
+        avText: x.available ? 'In your shop and known to the chat' : 'Hidden from your shop and the chat',
+        toggle: () => self.updItem(x.id, { available: !x.available }),
+        confirming: st.confirmDel, idle: !st.confirmDel,
+        ask: () => self.setState({ confirmDel: true }),
+        keep: () => self.setState({ confirmDel: false }),
+        remove: () => self.change({ items: st.items.filter((y) => y.id !== x.id), editId: null, confirmDel: false, pv: 'shop' })
+      });
+    }
+    return out;
+  }
+  renderVals() {
+    const self = this, v = this.renderVals0(), isEmpty = this.state.demo === "empty";
+    v.demoFull = !isEmpty; v.demoEmpty = isEmpty; v.appCls = isEmpty ? 'is-new' : '';
+    v.obStyle = isEmpty ? 'grid-template-columns: minmax(0, 1fr)' : ''; v.ocolDisp = isEmpty ? 'none' : 'block';
+    v.showFull = () => { if (self.seedState) self.setState(Object.assign({}, self.seedState, { demo: "full" })); };
+    v.showEmpty = () => { if (!self.seedState) self.seedState = Object.assign({}, self.state); self.setState(Object.assign({}, { items: [], shopDesc: '', editId: null, pv: 'shop', tab: 0 }, { demo: "empty" })); };
+    v.hasItems = self.state.items.length > 0; v.noItems = !v.hasItems;
+    return v;
+  }
+}
+</script>
+</body>
+</html>

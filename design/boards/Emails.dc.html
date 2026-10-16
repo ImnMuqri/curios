@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios: Emails</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0;background:#ffffff}
+.em-app{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;--line:#e9ebef;--soft:#696e7b;display:grid;grid-template-columns:340px minmax(0,1fr);min-height:100vh;background:#ffffff;color:#191f2c;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.5}
+.em-list{border-right:1px solid var(--line);background:#fafbfc}
+.em-lh{display:flex;align-items:center;gap:10px;height:64px;padding:0 20px;border-bottom:1px solid var(--line)}
+.em-lh b{font-size:15px;font-weight:600}
+.em-lh>span{margin-left:auto;font-size:12.5px;color:var(--soft)}
+.em-item{display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;width:100%;padding:14px 20px;border:0;border-bottom:1px solid var(--line);background:transparent;text-align:left;font:inherit;color:inherit;cursor:pointer}
+.em-item:hover{background:#f3f5f9}
+.em-item[aria-current="true"]{background:#ffffff;box-shadow:inset 3px 0 0 #2340c8}
+.em-av{display:grid;place-items:center;width:34px;height:34px;border-radius:10px}
+.em-av svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.em-it{min-width:0}
+.em-it>span{display:flex;align-items:baseline;gap:8px}
+.em-it>span>b{font-size:13px;font-weight:600}
+.em-it>span>em{margin-left:auto;font-style:normal;font-size:12px;color:var(--soft)}
+.em-it>strong{display:block;margin-top:1px;overflow:hidden;font-size:13.5px;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+.em-it>small{display:block;overflow:hidden;font-size:12.5px;color:var(--soft);white-space:nowrap;text-overflow:ellipsis}
+.em-kind{display:block;padding:14px 20px 6px;font-size:11.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#8a8f9b}
+.em-view{min-width:0;background:#f1f3f6}
+.em-meta{display:flex;align-items:center;gap:12px;min-height:64px;padding:12px 32px;border-bottom:1px solid var(--line);background:#ffffff}
+.em-meta .em-from{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:50%;background:#191f2c;color:#fafbfc;font-family:var(--d);font-weight:700;font-size:15px}
+.em-mt{min-width:0}
+.em-mt>b{display:block;overflow:hidden;font-size:15px;font-weight:600;white-space:nowrap;text-overflow:ellipsis}
+.em-mt>span{display:block;font-size:12.5px;color:var(--soft)}
+.em-meta>em{margin-left:auto;font-style:normal;font-size:12.5px;color:var(--soft);white-space:nowrap}
+.em-scroll{padding:36px 24px 120px}
+.em-paper{max-width:600px;margin:0 auto;border-radius:18px;background:#ffffff;box-shadow:0 1px 2px rgba(25,31,44,.06),0 20px 40px -28px rgba(25,31,44,.25);animation:emIn 380ms cubic-bezier(.22,1,.36,1) both}
+@keyframes emIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.em-top{display:flex;align-items:center;padding:28px 36px 0}
+.mark{display:inline-block;font-family:var(--d);font-size:22px;font-weight:700;line-height:1;letter-spacing:-.03em;color:#191f2c}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+.em-top>span:last-child{margin-left:auto;font-size:12.5px;color:var(--soft)}
+.em-body{padding:28px 36px 32px}
+.em-tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12px;font-weight:600}
+.em-tag i{width:6px;height:6px;border-radius:50%;background:currentColor}
+.em-body h2{margin:14px 0 6px;font-size:24px;font-weight:600;line-height:1.25;letter-spacing:-.015em}
+.em-body>p{margin:0 0 12px;font-size:15px;line-height:1.6;color:#3c4150}
+.em-cta{display:inline-flex;align-items:center;justify-content:center;height:46px;margin:10px 0 4px;padding:0 24px;border-radius:999px;background:#2340c8;color:#ffffff;font-size:15px;font-weight:600;text-decoration:none}
+.em-cta2{display:inline-flex;align-items:center;height:46px;margin:10px 0 4px 6px;padding:0 20px;border-radius:999px;box-shadow:inset 0 0 0 1px #d5d9e1;color:#191f2c;font-size:15px;font-weight:600;text-decoration:none}
+.em-small{margin:18px 0 0;font-size:13px;line-height:1.55;color:var(--soft)}
+.em-link{display:block;margin-top:6px;padding:10px 12px;overflow-wrap:anywhere;border-radius:10px;background:#f5f6f9;font-family:var(--m);font-size:12px;color:#1a31a8}
+.em-box{margin:18px 0 8px;border:1px solid var(--line);border-radius:14px}
+.em-ln{display:flex;align-items:center;gap:12px;padding:12px 14px}
+.em-ln+.em-ln{border-top:1px solid var(--line)}
+.em-ln>i{width:38px;height:38px;flex:none;border-radius:10px}
+.em-ln>span{flex:1;min-width:0}
+.em-ln>span>b{display:block;font-size:14px;font-weight:500}
+.em-ln>span>small{display:block;font-size:12.5px;color:var(--soft)}
+.em-ln>em{font-style:normal;font-size:14px;font-weight:500;white-space:nowrap}
+.em-sum{display:flex;justify-content:space-between;padding:12px 14px;border-top:1px solid var(--line);background:#fafbfc;border-radius:0 0 14px 14px;font-weight:600}
+.em-sum>span:last-child{font-size:16px}
+.em-dl{display:grid;grid-template-columns:120px minmax(0,1fr);gap:8px 12px;margin:14px 0 6px;font-size:14px}
+.em-dl dt{color:var(--soft)}
+.em-dl dd{margin:0;font-weight:500}
+.em-rc{display:flex;gap:18px;align-items:center;margin:18px 0 8px;padding:16px;border-radius:14px;background:#f5f6f9}
+.em-shot{width:118px;flex:none;padding:14px 10px 12px;border-radius:12px;background:#ffffff;box-shadow:0 0 0 1px var(--line);text-align:center;transform:rotate(-2deg)}
+.em-shot>i{display:grid;place-items:center;width:28px;height:28px;margin:0 auto 6px;border-radius:50%;background:#1d6f5f;color:#fff;font-style:normal;font-size:14px}
+.em-shot>b{display:block;font-size:15px}
+.em-shot>small{display:block;font-size:10px;color:var(--soft)}
+.em-shot>span{display:block;height:5px;margin:7px 8px 0;border-radius:3px;background:#eef0f4}
+.em-rc dl{flex:1;min-width:0;margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:13.5px}
+.em-rc dt{color:var(--soft)}
+.em-rc dd{margin:0;font-weight:500}
+.em-num{display:flex;align-items:center;gap:12px;margin:16px 0 8px;padding:14px 16px;border-radius:14px;background:#e8f3ef}
+.em-num>b{font-family:var(--m);font-size:20px;font-weight:500;color:#123b33;letter-spacing:.01em}
+.em-num>span{margin-left:auto;font-size:12.5px;color:#1d6f5f}
+.em-chat{display:flex;flex-direction:column;gap:6px;margin:10px 0 8px;padding:14px;border-radius:14px;background:#f5f6f9}
+.em-chat>span{max-width:86%;padding:8px 12px;font-size:13.5px;line-height:1.45}
+.em-chat .v{align-self:flex-end;border-radius:14px 14px 4px 14px;background:#191f2c;color:#fafbfc}
+.em-chat .p{align-self:flex-start;border-radius:14px 14px 14px 4px;background:#ffffff;box-shadow:0 0 0 1px var(--line)}
+.em-foot{padding:20px 36px 26px;border-top:1px solid var(--line);font-size:12.5px;line-height:1.6;color:#8a8f9b}
+.em-foot a{color:#4b5060}
+.em-routes{position:fixed;left:12px;right:12px;bottom:16px;z-index:30;display:none;gap:2px;padding:4px;overflow-x:auto;border-radius:999px;background:rgba(25,31,44,.94);font-size:12px;box-shadow:0 12px 30px -12px rgba(0,0,0,.6);scrollbar-width:none}
+.em-routes button{flex:none;height:28px;padding:0 12px;border:0;border-radius:999px;background:transparent;color:#d5d8de;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap}
+.em-routes button[aria-pressed="true"]{background:#fafbfc;color:#191f2c}
+@media (max-width:1000px){.em-app{grid-template-columns:280px minmax(0,1fr)}}
+@media (max-width:760px){
+.em-app{grid-template-columns:minmax(0,1fr)}
+.em-list{display:none}
+.em-routes{display:flex}
+.em-meta{padding:12px 16px}
+.em-meta>em{display:none}
+.em-scroll{padding:0 0 90px}
+.em-paper{border-radius:0;box-shadow:none}
+.em-top{padding:24px 20px 0}
+.em-body{padding:22px 20px 26px}
+.em-body h2{font-size:21px}
+.em-foot{padding:18px 20px 24px}
+.em-dl{grid-template-columns:96px minmax(0,1fr)}
+.em-rc{flex-direction:column;align-items:stretch}
+.em-shot{margin:0 auto}
+.em-cta,.em-cta2{display:flex;justify-content:center;width:100%;margin-left:0}
+.em-view{background:#ffffff}
+}
+</style>
+</helmet>
+
+<div class="em-app">
+<aside class="em-list" aria-label="Inbox">
+<div class="em-lh"><b>Inbox</b><span>lina@keklina.example</span></div>
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="2"><div><span class="em-kind">{{g.label}}</span><sc-for list="{{ g.items }}" as="m" hint-placeholder-count="3"><button type="button" class="em-item" aria-current="{{ m.on }}" onClick="{{ m.go }}"><span class="em-av" style="background: {{m.bg}}; color: {{m.fg}}"><svg viewBox="0 0 24 24"><path d="{{m.icon}}"></path></svg></span><span class="em-it"><span><b>Curios</b><em>{{m.time}}</em></span><strong>{{m.subject}}</strong><small>{{m.preview}}</small></span></button></sc-for></div></sc-for>
+</aside>
+
+<main class="em-view">
+<div class="em-meta"><span class="em-from" aria-hidden="true">c</span><span class="em-mt"><b>{{e.subject}}</b><span>Curios &lt;hello@curios.my&gt; to {{e.to}}</span></span><em>{{e.time}}</em></div>
+<div class="em-scroll">
+<article class="em-paper">
+<div class="em-top"><span class="mark" aria-label="Curios"><span aria-hidden="true">cur<span class="i">ı</span>os</span></span><span>{{e.topRight}}</span></div>
+<div class="em-body">
+
+<sc-if value="{{ is.order }}" hint-placeholder-val="{{ true }}"><div>
+<span class="em-tag" style="background: #fdf0dc; color: #8f5c15"><i></i>Waiting for payment</span>
+<h2>Aisyah ordered RM190 from your shop</h2>
+<p>She’s paying by DuitNow QR. We’ll email you again when her receipt comes in.</p>
+<div class="em-box">
+<div class="em-ln"><i style="background: #f6c9d5"></i><span><b>Kek coklat moist</b><small>2kg · 1×</small></span><em>RM170</em></div>
+<div class="em-ln"><i style="background: #ffe2b8"></i><span><b>Tart nenas</b><small>Balang · 1×</small></span><em>RM20</em></div>
+<div class="em-sum"><span>Total</span><span>RM190</span></div>
+</div>
+<dl class="em-dl"><dt>Getting it</dt><dd>Pickup · Sat 17 Oct</dd><dt>Customer</dt><dd>Aisyah · +60 12-345 6789</dd><dt>Note</dt><dd>Tulis “Selamat Hari Jadi Mak” please</dd></dl>
+<a class="em-cta" href="#">Open order #12</a>
+</div></sc-if>
+
+<sc-if value="{{ is.receipt }}" hint-placeholder-val="{{ false }}"><div>
+<span class="em-tag" style="background: #eaf0ff; color: #2340c8"><i></i>Receipt to check</span>
+<h2>Aisyah sent a receipt for order #12</h2>
+<p>Check that RM190 reached your account, then confirm the order. Aisyah sees the update on her order page.</p>
+<div class="em-rc">
+<div class="em-shot" aria-hidden="true"><i>✓</i><b>RM190.00</b><small>Successful · DuitNow</small><span></span><span style="width: 60%; margin-left: auto; margin-right: auto"></span></div>
+<dl><dt>Order</dt><dd>#12 · RM190</dd><dt>From</dt><dd>Aisyah</dd><dt>Sent</dt><dd>Thu 15 Oct, 3:42pm</dd><dt>File</dt><dd>receipt-12.jpg</dd></dl>
+</div>
+<a class="em-cta" href="#">Check the receipt</a>
+<p class="em-small">Didn’t get the money? Open the order and mark it as not received. Aisyah will be asked to try again.</p>
+</div></sc-if>
+
+<sc-if value="{{ is.lead }}" hint-placeholder-val="{{ false }}"><div>
+<span class="em-tag" style="background: #e8f3ef; color: #1d6f5f"><i></i>New lead</span>
+<h2>Someone wants you to message them</h2>
+<p>Your page couldn’t answer this one, so it asked for their number.</p>
+<div class="em-num"><b>+60 17-882 4410</b><span>Left 2:15pm</span></div>
+<div class="em-chat" aria-label="The chat"><span class="v">Boleh buat kek kahwin 3 tingkat? Untuk 200 orang</span><span class="p">I’m not sure about that one, and I won’t guess. Leave your number and Lina will WhatsApp you.</span><span class="v">0178824410</span></div>
+<a class="em-cta" href="#" style="background: #1d6f5f">Reply on WhatsApp</a><a class="em-cta2" href="#">See in Leads</a>
+<p class="em-small">Lead 2 of your 3 free leads. After 3, the capture card stops appearing until you subscribe.</p>
+</div></sc-if>
+
+<sc-if value="{{ is.verify }}" hint-placeholder-val="{{ false }}"><div>
+<h2>Confirm your email</h2>
+<p>Confirm your address to finish setting up Curios.</p>
+<a class="em-cta" href="#">Confirm my email</a>
+<p class="em-small">Button not working? Paste this into your browser:<span class="em-link">https://curios.my/verify?token=8f2c1a…e7</span></p>
+<p class="em-small">If you didn’t sign up for Curios, you can ignore this message.</p>
+</div></sc-if>
+
+<sc-if value="{{ is.reset }}" hint-placeholder-val="{{ false }}"><div>
+<h2>Reset your password</h2>
+<p>Someone asked to reset the password for {{e.to}}. If that was you, choose a new one.</p>
+<a class="em-cta" href="#">Choose a new password</a>
+<p class="em-small">This link works once and expires in an hour. If you did not ask for it, ignore this message. Your password stays the same.</p>
+<p class="em-small">Button not working? Paste this into your browser:<span class="em-link">https://curios.my/reset?token=b41d09…3a</span></p>
+</div></sc-if>
+
+<sc-if value="{{ is.exists }}" hint-placeholder-val="{{ false }}"><div>
+<h2>You already have a Curios account</h2>
+<p>Someone tried to sign up with this address. You already have an account, so sign in instead.</p>
+<a class="em-cta" href="#">Sign in</a><a class="em-cta2" href="#">Forgot password</a>
+<p class="em-small">If that was not you, you can ignore this message. Nothing has changed on your account.</p>
+</div></sc-if>
+
+</div>
+<div class="em-foot">{{e.foot}}<br>Curios · curios.my · Kuala Lumpur</div>
+</article>
+</div>
+</main>
+<div class="em-routes" role="group" aria-label="Design preview: email"><sc-for list="{{ picks }}" as="r" hint-placeholder-count="6"><button type="button" aria-pressed="{{ r.on }}" onClick="{{ r.go }}">{{r.l}}</button></sc-for></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { m: 'order' };
+  }
+  renderVals() {
+    const self = this, k = this.state.m;
+    const I = {
+      order: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4',
+      receipt: 'M12 16V4M7 9l5-5 5 5M5 20h14',
+      lead: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
+      mail: 'M3 5h18v14H3zM3 7l9 6 9-6',
+      key: 'M15 7a4 4 0 1 1-3.9 5H4v3h3v3h3v-3h1.1A4 4 0 0 1 15 7z',
+      user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0'
+    };
+    const ownerFoot = 'You get this because this email is on in Settings, under Notifications.';
+    const authFoot = 'You get this because someone used this address on Curios.';
+    const M = [
+      { id: 'order', grp: 'Your shop', l: 'New order', subject: 'New order #12 · RM190', preview: 'Aisyah · Pickup Sat 17 Oct · waiting for payment', time: '3:20pm', icon: I.order, bg: '#fdf0dc', fg: '#8f5c15', top: 'Order #12', foot: ownerFoot },
+      { id: 'receipt', grp: 'Your shop', l: 'Receipt', subject: 'Receipt uploaded for #12', preview: 'Check RM190 reached your account, then confirm', time: '3:42pm', icon: I.receipt, bg: '#eaf0ff', fg: '#2340c8', top: 'Order #12', foot: ownerFoot },
+      { id: 'lead', grp: 'Your shop', l: 'New lead', subject: 'New lead · +60 17-882 4410', preview: 'Asked: Boleh buat kek kahwin 3 tingkat?', time: '2:15pm', icon: I.lead, bg: '#e8f3ef', fg: '#1d6f5f', top: 'From your page', foot: ownerFoot },
+      { id: 'verify', grp: 'Your account', l: 'Confirm email', subject: 'Confirm your email', preview: 'Confirm your address to finish setting up Curios', time: 'Mon', icon: I.mail, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot },
+      { id: 'reset', grp: 'Your account', l: 'Reset password', subject: 'Reset your password', preview: 'This link works once and expires in an hour', time: 'Tue', icon: I.key, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot },
+      { id: 'exists', grp: 'Your account', l: 'Already signed up', subject: 'You already have a Curios account', preview: 'Someone tried to sign up with this address', time: 'Tue', icon: I.user, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot }
+    ];
+    const cur = M.find((x) => x.id === k);
+    const go = (id) => () => self.setState({ m: id });
+    const groups = ['Your shop', 'Your account'].map((g) => ({ label: g, items: M.filter((x) => x.grp === g).map((x) => ({ subject: x.subject, preview: x.preview, time: x.time, icon: x.icon, bg: x.bg, fg: x.fg, on: x.id === k, go: go(x.id) })) }));
+    const is = {}; M.forEach((x) => { is[x.id] = x.id === k; });
+    return {
+      groups, is,
+      e: { subject: cur.subject, to: 'lina@keklina.example', time: cur.time, topRight: cur.top, foot: cur.foot },
+      picks: M.map((x) => ({ l: x.l, on: x.id === k, go: go(x.id) }))
+    };
+  }
+}
+</script>
+</body>
+</html>
