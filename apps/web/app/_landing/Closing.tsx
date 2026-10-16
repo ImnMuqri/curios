@@ -7,7 +7,7 @@ import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
 /**
- * The close: "Tanya je." rising letter by letter as it comes into view, the
+ * The close: "Curious? Just ask" rising letter by letter as it comes into view, the
  * kinds of owner rolling past, and the claim field once more.
  */
 export function Closing({ locale }: { locale: Locale }) {
@@ -68,11 +68,19 @@ export function Closing({ locale }: { locale: Locale }) {
       </div>
       <div className={`${styles.wrap} ${styles.closingFront}`}>
         <h2 id="closing-title" className={styles.split} aria-label={copy.title} data-in={reduced || inView || undefined}>
-          {copy.title.split('').map((ch, i) => (
-            <span key={i} className={styles.sl} aria-hidden="true">
-              <span style={{ transitionDelay: `${i * 60}ms` }}>{ch === ' ' ? ' ' : ch}</span>
-            </span>
-          ))}
+          {/* Letters rise one by one. The line may only break after the question, never inside "Just ask". */}
+          {copy.title.split(/(?<=\?)\s/).map((phrase, w, phrases) => {
+            const before = phrases.slice(0, w).join(' ').length + (w > 0 ? 1 : 0);
+            return (
+              <span key={w} className={styles.word} aria-hidden="true">
+                {phrase.split('').map((ch, i) => (
+                  <span key={i} className={styles.sl}>
+                    <span style={{ transitionDelay: `${(before + i) * 45}ms` }}>{ch === ' ' ? ' ' : ch}</span>
+                  </span>
+                ))}
+              </span>
+            );
+          })}
         </h2>
         <p className={styles.rot}>
           {copy.onePageFor}

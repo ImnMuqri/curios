@@ -391,7 +391,7 @@ const EN: LandingCopy = {
     ],
   },
   closing: {
-    title: 'Tanya je.',
+    title: 'Curious? Just ask',
     onePageFor: 'One page for',
     words: ['freelancers', 'home bakers', 'job seekers', 'clinics', 'coaches', 'studios'],
     button: 'Claim it, free',
@@ -615,7 +615,7 @@ const MS: LandingCopy = {
     ],
   },
   closing: {
-    title: 'Tanya je.',
+    title: 'Curious? Tanya je',
     onePageFor: 'Satu halaman untuk',
     words: ['freelancer', 'pembuat kek', 'pencari kerja', 'klinik', 'jurulatih', 'studio'],
     button: 'Ambil, percuma',

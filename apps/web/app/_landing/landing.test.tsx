@@ -95,8 +95,8 @@ describe('motion', () => {
     expect(hero).toHaveTextContent(en.personas.aisyah.a);
     // The order has landed and been confirmed.
     expect(container.querySelector('#business')).toHaveTextContent(en.business.confirmed);
-    // "Tanya je." is up, not waiting to rise.
-    expect(screen.getByRole('heading', { name: 'Tanya je.' })).toHaveAttribute('data-in');
+    // The closing line is up, not waiting to rise.
+    expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
   });
 
   it('types the answer out on the front page of the deck', async () => {

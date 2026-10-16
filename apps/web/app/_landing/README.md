@@ -26,7 +26,7 @@ Rebuilt from the design handoff's TanyaJe board (`design/boards/TanyaJe.dc.html`
 | For business | `Business.tsx`, `order-scene.ts` | The order played out between two phones, from the board's frame function, plays once the stage is fully in view. |
 | Pricing | `Pricing.tsx` | Personal free, Business from `PLAN_PRICES_CENTS`, monthly or yearly, and a "will it pay for itself" calculator. |
 | FAQ | `Faq.tsx` | The same items feed the FAQPage structured data. |
-| Close and footer | `Closing.tsx`, `Footer.tsx` | "Tanya je." rising letter by letter, the claim field again, the wordmark at full width. |
+| Close and footer | `Closing.tsx`, `Footer.tsx` | "Curious? Just ask" rising letter by letter, the claim field again, the wordmark at full width. |
 
 Every word is in `copy.ts`, both languages in one shape; the sample owners' looks
 are in `personas.ts`. Styles are one module, `tanya.module.css`, reading the

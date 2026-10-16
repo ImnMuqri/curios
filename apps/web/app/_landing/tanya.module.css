@@ -3174,14 +3174,21 @@
 
 .split {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 0 0.24em;
   margin: 0;
   font-family: var(--d);
-  font-size: clamp(5.5rem, 2.25rem + 10vw, 12.5rem);
+  font-size: clamp(3.5rem, 1.5rem + 7vw, 8.5rem);
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -0.05em;
   color: var(--l-biru-200);
+}
+
+.word {
+  display: inline-flex;
+  white-space: nowrap;
 }
 
 .sl {
