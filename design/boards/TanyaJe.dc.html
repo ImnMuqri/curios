@@ -469,7 +469,7 @@ details.q[open] summary::after{content:'–'}
 <h1 style="margin: 0; font-family: var(--d); font-size: clamp(46px, 26px + 4.4vw, 88px); font-weight: 800; line-height: 1; letter-spacing: -0.04em; color: #191f2c">Don’t read the bio.<br>Ask
 <span style="display: inline-flex; vertical-align: bottom; width: {{rotW}}em; height: 1.08em; overflow: hidden; padding: 0 0.16em; border-radius: 0.14em; background: {{rotBg}}; color: #fafbfc; transition: background 400ms ease, width 520ms cubic-bezier(0.34, 1.2, 0.64, 1)">
 <span style="display: flex; flex-direction: column; transform: translateY(-{{rotY}}em); transition: {{rotTransition}}">
-<sc-for list="{{ rotNames }}" as="n" hint-placeholder-count="6"><span style="display: block; height: 1.08em; line-height: 1.08; white-space: nowrap">{{ n }}</span></sc-for>
+<sc-for list="{{ rotNames }}" as="n" hint-placeholder-count="6"><span class="rotn" style="display: block; height: 1.08em; line-height: 1.08; white-space: nowrap"><span style="display: inline-block">{{ n }}</span></span></sc-for>
 </span>
 </span>.</h1>
 <p style="margin: 28px 0 0; max-width: 31em; font-size: 19px; color: #4b5060">Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English, and never makes anything up.</p>
@@ -1054,27 +1054,23 @@ class Component extends DCLogic {
     this.state = { clIn: false, clRot: 0, clRotAnim: true, spark2On: false, spark2X: 0, spark2Y: 0, prOrders: 5, prAov: 95, prRev: 475, prDrag: false, ofP: 0, ofMode: 'auto', decI: 0, decN: 0, stackTop: 0, fly: null, approved: 0, tiltX: 0, tiltY: 0, tiltDur: '500ms', qty: {}, orderOpen: false, intro: 0, p: 0, rotI: 0, rotAnim: true, typed: 0, f: 0, loop: 0, t: 0, wx: -999, wy: -999, sparkOn: false, sparkX: 0, sparkY: 0, who: 0, step: 0, yearly: false, magX: 0, magY: 0, magDur: '500ms' };
   }
   reduced() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
-  nameW(t) {
-    this._nw = this._nw || {};
-    if (this._nw[t]) return this._nw[t];
-    let w = t.length * 0.5;
+  nameW(t, i) {
+    let w = t.length * 0.52;
     try {
       const h = document.querySelector('.grid-hero h1');
-      if (h) {
-        const m = document.createElement('span');
-        m.style.cssText = 'position:absolute;visibility:hidden;white-space:nowrap;left:-9999px;top:0';
-        m.textContent = t;
-        h.appendChild(m);
-        w = m.getBoundingClientRect().width / parseFloat(getComputedStyle(h).fontSize);
-        h.removeChild(m);
-        this._nw[t] = w;
+      const el = h && h.querySelectorAll('.rotn > span')[i];
+      if (el) {
+        const px = el.getBoundingClientRect().width;
+        if (px > 0) w = px / parseFloat(getComputedStyle(h).fontSize) + 0.02;
       }
     } catch (e) {}
     return w;
   }
   componentDidMount() {
     this.setState({});
-    try { document.fonts.ready.then(() => { this._nw = {}; this.setState({}); }); } catch (e) {}
+    try { document.fonts.ready.then(() => this.setState({})); document.fonts.addEventListener('loadingdone', () => this.setState({})); } catch (e) {}
+    this._rz = () => this.setState({});
+    window.addEventListener('resize', this._rz);
     this.ofDriver();
     this.clWatch();
     if (this.reduced()) { this.setState({ typed: 999, intro: 3, decI: this.facts.length }); return; }
@@ -1107,6 +1103,7 @@ class Component extends DCLogic {
     attach();
   }
   componentWillUnmount() {
+    try { window.removeEventListener("resize", this._rz); } catch (e) {}
     clearInterval(this.typeTimer); clearTimeout(this.holdTimer); clearTimeout(this.snapTimer); clearInterval(this.focusTimer); clearTimeout(this.attachTimer);
     if (this.raf) cancelAnimationFrame(this.raf);
     (this.introTimers || []).forEach(clearTimeout);
@@ -1361,7 +1358,7 @@ class Component extends DCLogic {
       rotY: (this.state.rotI * 1.08).toFixed(2),
       rotTransition: this.state.rotAnim ? 'transform 520ms cubic-bezier(0.34, 1.35, 0.64, 1)' : 'none',
       rotBg: cur.accent,
-      rotW: (() => { const ns = this.order.map((k) => this.people[k].short).concat([this.people[this.order[0]].short]); return this.nameW(ns[Math.min(this.state.rotI, ns.length - 1)]).toFixed(3); })(),
+      rotW: (() => { const ns = this.order.map((k) => this.people[k].short).concat([this.people[this.order[0]].short]); const i = Math.min(this.state.rotI, ns.length - 1); return this.nameW(ns[i], i).toFixed(3); })(),
       deck: deck,
       cur: cur,
       answerShown: cur.a.slice(0, this.state.typed),
