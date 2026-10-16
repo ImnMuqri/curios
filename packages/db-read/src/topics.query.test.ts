@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { getTopics } from './topics.query.js';
+import { countQuestionsThisWeek, getTopics } from './topics.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -122,5 +122,51 @@ describe('getTopics', () => {
 
   it('defaults to 50', async () => {
     expect(await getTopics(ownerBig)).toHaveLength(50);
+  });
+});
+
+describe('the week of asks', () => {
+  const now = new Date('2026-10-17T12:00:00Z');
+  const ago = (hours: number) => new Date(now.getTime() - hours * 3600 * 1000);
+
+  it('counts each topic’s asks in each of the last seven days, oldest first, today last', async () => {
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const t = await topic(pageId, 'Ada delivery?', 5, '2026-10-17T11:00:00Z');
+    const one = await wording(pageId, t.id, 'Ada delivery?', 3, '2026-10-10T00:00:00Z');
+    const two = await wording(pageId, t.id, 'delivery ada', 2, '2026-10-10T00:00:00Z');
+    const quiet = await topic(pageId, 'Ada halal?', 1, '2026-10-01T00:00:00Z');
+    const old = await wording(pageId, quiet.id, 'Ada halal?', 1, '2026-10-01T00:00:00Z');
+    await write.questionAsk.createMany({
+      data: [
+        { questionId: one.id, askedAt: ago(1) },
+        { questionId: two.id, askedAt: ago(2) },
+        { questionId: one.id, askedAt: ago(25) },
+        { questionId: two.id, askedAt: ago(6 * 24 + 23) },
+        // Older than a week, and after now: neither counts.
+        { questionId: one.id, askedAt: ago(8 * 24) },
+        { questionId: one.id, askedAt: new Date(now.getTime() + 3600 * 1000) },
+        { questionId: old.id, askedAt: ago(10 * 24) },
+      ],
+    });
+
+    const topics = await getTopics(accountId, { now });
+    expect(topics.find((x) => x.id === t.id)?.week).toEqual([1, 0, 0, 0, 0, 1, 2]);
+    expect(topics.find((x) => x.id === quiet.id)?.week).toEqual([0, 0, 0, 0, 0, 0, 0]);
+  });
+
+  it('counts every visitor turn on the page this week, and nobody else’s', async () => {
+    const mine = await anOwnerWithAPage();
+    const theirs = await anOwnerWithAPage();
+    const say = async (pageId: string, turns: { role: 'USER' | 'ASSISTANT'; createdAt: Date }[]) =>
+      write.conversation.create({ data: { pageId, messages: { create: turns.map((turn) => ({ ...turn, content: 'x' })) } } });
+    await say(mine.pageId, [
+      { role: 'USER', createdAt: ago(1) },
+      { role: 'ASSISTANT', createdAt: ago(1) },
+      { role: 'USER', createdAt: ago(48) },
+      { role: 'USER', createdAt: ago(8 * 24) },
+    ]);
+    await say(theirs.pageId, [{ role: 'USER', createdAt: ago(1) }]);
+
+    expect(await countQuestionsThisWeek(mine.accountId, now)).toBe(2);
   });
 });

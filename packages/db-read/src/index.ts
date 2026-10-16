@@ -9,7 +9,7 @@ export { getOwnerPage } from './owner-page.query.js';
 export type { OwnerPage } from './owner-page.query.js';
 export { getSignInMethods } from './sign-in-methods.query.js';
 export type { SignInMethods } from './sign-in-methods.query.js';
-export { getTopics } from './topics.query.js';
+export { countQuestionsThisWeek, getTopics } from './topics.query.js';
 export type { OwnerTopic, OwnerWording } from './topics.query.js';
 export { getLeads } from './leads.query.js';
 export type { OwnerLead, LeadSlots, LeadTranscriptLine } from './leads.query.js';

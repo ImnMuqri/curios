@@ -570,6 +570,18 @@ describe('threading a conversation', () => {
     expect(questions[0]?.askCount).toBe(2);
   });
 
+  it('logs when each ask happened, new wording or repeat, for the week of asks', async () => {
+    const deps = depsSaying();
+    const before = new Date();
+    await ask(deps, 'Berapa harga kek butter?');
+    await ask(deps, 'berapa harga kek butter');
+
+    const question = await prisma.question.findFirstOrThrow({});
+    const asks = await prisma.questionAsk.findMany({ where: { questionId: question.id } });
+    expect(asks).toHaveLength(2);
+    expect(asks.every((a) => a.askedAt >= before)).toBe(true);
+  });
+
   it('keeps genuinely different questions apart', async () => {
     const deps = depsSaying();
     await ask(deps, 'berapa harga kek butter?');

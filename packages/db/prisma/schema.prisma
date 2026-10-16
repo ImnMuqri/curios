@@ -514,6 +514,7 @@ model Question {
   pinnedByOwner      Boolean  @default(false)
   firstAskedAt       DateTime @default(now())
   lastAskedAt        DateTime @default(now())
+  asks               QuestionAsk[]
 
   @@unique([pageId, normalizedQuestion])
   @@index([topicId])
@@ -524,6 +525,18 @@ model Question {
 /// One thing visitors ask, in however many wordings. Owns the single pinned
 /// answer, the FAQ slug and the combined count. Aggregates are recomputed from
 /// its wordings by refreshTopic (packages/db/src/topics.ts), never incremented.
+/// One row each time a wording is asked, for the Questions screen's week of
+/// asks. Follows its wording through a merge or split; goes with it on delete.
+/// Asks before this table existed are only in Question.askCount.
+model QuestionAsk {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  askedAt    DateTime @default(now())
+
+  @@index([questionId, askedAt])
+}
+
 model Topic {
   id              String        @id @default(cuid())
   pageId          String

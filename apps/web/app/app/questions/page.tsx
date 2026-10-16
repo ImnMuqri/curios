@@ -1,12 +1,9 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { ANSWER_MAX, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
-import { getOwnerPage, getTopics } from '@curios/db-read';
-
+import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
+import { countQuestionsThisWeek, getMyCurios, getOwnerPage, getTopics } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
-import { Topics } from './topic-list.js';
-import { PageHead } from '../_ui/page-head.js';
-import panel from '../panel.module.css';
+import { Questions } from './questions-screen.js';
 
 /**
  * What customers actually ask, and the one screen that changes what the
@@ -21,26 +18,34 @@ export default async function QuestionsPage() {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
-  const [topics, page] = await Promise.all([
-    getTopics(owner.accountId),
+  // One moment for the whole screen, handed down, so "12 min ago" and the
+  // week of asks read the same on the server and in the browser.
+  const now = new Date();
+  const [topics, askedThisWeek, owned, page] = await Promise.all([
+    getTopics(owner.accountId, { now }),
+    countQuestionsThisWeek(owner.accountId, now),
     getOwnerPage(owner.accountId),
+    // For the chat preview's colours.
+    getMyCurios(owner.accountId),
   ]);
+  if (!owned || !page) redirect('/app/onboarding');
 
   // Plain data across the boundary: strings, numbers, booleans and Dates all
-  // cross fine. The handler lives inside `Topics`, a client component -- a
+  // cross fine. The handlers live inside `Questions`, a client component -- a
   // Server Component may not pass a function here, and doing so is a 500 at
   // request time that no gate catches.
   return (
-    <>
-      <PageHead title="Questions" note="What visitors ask your page, grouped by topic" />
-      <div className={panel.body}>
-        <Topics
-          topics={topics}
-          publishesFaq={page?.mode === 'BUSINESS'}
-          answerMax={ANSWER_MAX}
-          titleMax={TOPIC_TITLE_MAX}
-        />
-      </div>
-    </>
+    <Questions
+      topics={topics}
+      askedThisWeek={askedThisWeek}
+      publishesFaq={owned.mode === 'BUSINESS'}
+      faqMinAsks={FAQ_MIN_ASKS}
+      handle={page.handle}
+      publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`}
+      answerMax={ANSWER_MAX}
+      titleMax={TOPIC_TITLE_MAX}
+      look={{ accentColor: page.accentColor, headingFont: page.headingFont, background: page.background, backgroundColor: page.backgroundColor }}
+      now={now.toISOString()}
+    />
   );
 }

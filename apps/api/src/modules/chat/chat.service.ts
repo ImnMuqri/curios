@@ -418,6 +418,14 @@ export async function* answer(
   // involved. See faq-slug.ts on why both sites exist.
   await assignTopicSlug(prisma, wording.topicId, deps.log);
 
+  // When it was asked, for the Questions screen's week of asks. Never the
+  // visitor's problem: the wording can be deleted by its owner at any moment.
+  try {
+    await prisma.questionAsk.create({ data: { questionId: wording.id } });
+  } catch (error) {
+    deps.log?.warn?.({ questionId: wording.id, err: error instanceof Error ? error.message : String(error) }, 'could not log the ask');
+  }
+
   /** After the reply: decide this wording's topic in the background. Never fails the visitor. */
   const queueGrouping = async () => {
     if (!newWording || !deps.groupQueue) return;

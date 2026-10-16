@@ -4,7 +4,9 @@ import type { OwnerPage } from '@curios/db-read';
 
 const getTopics = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage }));
+const getMyCurios = vi.fn();
+const countQuestionsThisWeek = vi.fn();
+vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -18,10 +20,10 @@ const redirect = vi.fn((url: string) => {
 });
 vi.mock('next/navigation', () => ({ redirect }));
 
-// The list closes over apiFetch and the router. These tests are about what the
-// page tells it, so the list records its props instead.
-const Topics = vi.fn((_props: { topics: unknown[]; publishesFaq: boolean; answerMax: number; titleMax: number }) => null);
-vi.mock('./topic-list.js', () => ({ Topics }));
+// The screen closes over apiFetch and the router. These tests are about what
+// the page tells it, so the screen records its props instead.
+const Topics = vi.fn((_props: Record<string, unknown>) => null);
+vi.mock('./questions-screen.js', () => ({ Questions: Topics }));
 
 const QuestionsPage = (await import('./page.js')).default;
 
@@ -46,6 +48,8 @@ describe('QuestionsPage', () => {
     Topics.mockClear();
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getTopics.mockResolvedValue([]);
+    countQuestionsThisWeek.mockResolvedValue(23);
+    getMyCurios.mockResolvedValue({ handle: 'nadia', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null });
   });
 
   it('tells the list a personal page publishes no FAQ pages', async () => {
@@ -70,8 +74,25 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage());
 
-    expect(getTopics).toHaveBeenCalledWith('acc1');
-    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200 });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date) });
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3 });
+  });
+
+  it('hands over this week, the page, and one moment for the whole screen', async () => {
+    getOwnerPage.mockResolvedValue(business);
+
+    render(await QuestionsPage());
+
+    const props = Topics.mock.calls[0]![0];
+    const now = getTopics.mock.calls[0]![1].now as Date;
+    expect(countQuestionsThisWeek).toHaveBeenCalledWith('acc1', now);
+    expect(props).toMatchObject({
+      askedThisWeek: 23,
+      handle: 'nadia',
+      now: now.toISOString(),
+      look: { accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null },
+    });
+    expect(props.publicUrl).toMatch(/\/nadia$/);
   });
 
   // Fix round 2, Important #3: AppFrame renders its own main around every
