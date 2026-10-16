@@ -53,4 +53,30 @@ describe('useAutosave', () => {
     expect(result.current.status).toBe('saved');
     vi.useRealTimers();
   });
+
+  it('flushPending sends a waiting save at once, and only once', async () => {
+    vi.useFakeTimers();
+    const save = vi.fn(async () => undefined);
+    const { result } = renderHook(() => useAutosave(save, 600));
+
+    act(() => result.current.schedule('Kek'));
+    await act(async () => { await result.current.flushPending(); });
+    expect(save).toHaveBeenCalledWith('Kek');
+
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(save).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
+
+  it('flushPending sends nothing when nothing is waiting', async () => {
+    vi.useFakeTimers();
+    const save = vi.fn(async () => undefined);
+    const { result } = renderHook(() => useAutosave(save, 600));
+
+    act(() => result.current.schedule('Kek'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    await act(async () => { await result.current.flushPending(); });
+    expect(save).toHaveBeenCalledTimes(1);
+    vi.useRealTimers();
+  });
 });

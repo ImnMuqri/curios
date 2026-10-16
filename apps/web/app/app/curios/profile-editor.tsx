@@ -1,11 +1,12 @@
 'use client';
 
 import { useRef, useState, type ChangeEvent } from 'react';
-import { Button, Callout } from '@curios/ui';
+import { Callout } from '@curios/ui';
 import { BIO_MAX } from '@curios/core/bento';
-import { ApiError } from '../../../lib/api.js';
-import { useAutosave } from './use-autosave.js';
-import { SectionHead } from './section-head.js';
+import { SaveState } from '../_ui/save-state.js';
+import { useAutosave } from '../_ui/use-autosave.js';
+import { SectionHead } from '../_ui/section-head.js';
+import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
 /**
@@ -78,7 +79,7 @@ export function ProfileEditor({
   const hasPicture = Boolean(avatarUrl && !avatarFailed);
 
   return (
-    <section className={styles.section} aria-labelledby="profile-title">
+    <section className={ui.section} aria-labelledby="profile-title">
       <SectionHead id="profile-title" icon="user" tone="hijau" title="You" note="Picture, name and a line about you" />
       <div className={styles.idRow}>
         <div className={styles.avatarCell}>
@@ -117,7 +118,7 @@ export function ProfileEditor({
           ) : null}
         </div>
         <div className={styles.idField}>
-          <label className={styles.float}>
+          <label className={ui.float}>
             <em>Display name</em>
             <input
               value={displayName}
@@ -133,7 +134,7 @@ export function ProfileEditor({
       </div>
       {avatarError ? <Callout tone="error">{avatarError}</Callout> : null}
       {/* The count sits beside the label, not in it, so the field is named "Bio" and nothing more. */}
-      <div className={`${styles.float} ${styles.bio}`}>
+      <div className={`${ui.float} ${styles.bio}`}>
         <label>
           <em>Bio</em>
           <textarea
@@ -150,30 +151,5 @@ export function ProfileEditor({
       </div>
       <SaveState status={about.status} error={about.error} retry={about.retry} />
     </section>
-  );
-}
-
-/**
- * A failed save, said under its field: the API's own words when it has them
- * (the empty-name or bio-too-long reason, for example) rather than always the
- * same generic sentence -- and a 4xx never offers Retry, because sending the
- * same rejected value again cannot succeed. Anything else (a dropped
- * connection, a 5xx) keeps the generic message and the Retry, since trying
- * again might actually work. While saving or saved it shows nothing: the
- * header's pill says that for the whole screen.
- */
-export function SaveState({ status, error, retry }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: unknown; retry: () => void }) {
-  if (status !== 'error') return null;
-  const message = error instanceof ApiError ? error.message : 'That did not save.';
-  const canRetry = !(error instanceof ApiError && error.status >= 400 && error.status < 500);
-  return (
-    <p className={styles.saveError} role="alert">
-      {message}{' '}
-      {canRetry ? (
-        <Button type="button" variant="secondary" onClick={retry}>
-          Retry
-        </Button>
-      ) : null}
-    </p>
   );
 }

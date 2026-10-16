@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Callout } from '@curios/ui';
+import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
 /**
@@ -38,7 +39,7 @@ export function ShopSwitch({
   }
 
   return (
-    <section className={styles.section} aria-label="Shop tab">
+    <section className={ui.section} aria-label="Shop tab">
       <div className={styles.shopRow}>
         <span className={styles.kind} data-kind="shop" aria-hidden="true">
           <svg viewBox="0 0 24 24" width="16" height="16">
@@ -56,7 +57,7 @@ export function ShopSwitch({
           role="switch"
           aria-checked={open}
           aria-label="Show the Shop tab"
-          className={styles.switch}
+          className={ui.switch}
           disabled={busy}
           onClick={() => void toggle()}
         >

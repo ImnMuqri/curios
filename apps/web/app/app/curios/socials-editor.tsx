@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { SOCIAL_KINDS, normalizeSocial, type SocialKind, type Socials } from '@curios/core/socials';
 import type { MyCurios } from '@curios/db-read';
-import { useAutosave } from './use-autosave.js';
-import { SaveState } from './profile-editor.js';
-import { SectionHead } from './section-head.js';
+import { useAutosave } from '../_ui/use-autosave.js';
+import { SaveState } from '../_ui/save-state.js';
+import { SectionHead } from '../_ui/section-head.js';
+import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
 type Profiles = MyCurios['socials'];
@@ -71,7 +72,7 @@ export function SocialsEditor({
   save: (patch: { socials: Socials }) => Promise<unknown>;
 }) {
   return (
-    <section className={styles.section} aria-labelledby="socials-title">
+    <section className={ui.section} aria-labelledby="socials-title">
       <SectionHead id="socials-title" icon="at" tone="biru" title="Social profiles" note="Shown as icons under your name" />
       <div className={styles.socials}>
         {SOCIAL_KINDS.map((kind) => (
@@ -141,7 +142,7 @@ function SocialField({
         />
       </label>
       {refused ? (
-        <p className={styles.saveError} role="alert">
+        <p className={ui.saveError} role="alert">
           {field.refused}
         </p>
       ) : (

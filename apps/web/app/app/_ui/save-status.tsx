@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
-import styles from './curios.module.css';
+import styles from './editor.module.css';
 
 export type SaveTrack = <T>(work: Promise<T>) => Promise<T>;
 

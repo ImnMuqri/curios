@@ -1,20 +1,23 @@
 'use client';
 
-import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import type { HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { formatRinggit } from '@curios/core/store';
 import { BentoPage } from '../../_bento/BentoPage.js';
 import { PageHead } from '../_ui/page-head.js';
+import { PreviewFrame } from '../_ui/preview-frame.js';
+import { SaveStatus, useSaveStatus } from '../_ui/save-status.js';
+import { UnderlineTabs } from '../_ui/underline-tabs.js';
 import panel from '../panel.module.css';
 import { AppearanceEditor } from './appearance-editor.js';
 import { CoverEditor } from './cover-editor.js';
 import { LinksEditor, type LinkItem } from './links-editor.js';
 import { ProfileEditor } from './profile-editor.js';
-import { SaveStatus, useSaveStatus } from './save-status.js';
 import { ShopSwitch } from './shop-switch.js';
 import { SocialsEditor } from './socials-editor.js';
+import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
 export type AppearancePatch = Partial<{
@@ -109,33 +112,12 @@ export function MyCuriosEditor({
   const { state, track } = useSaveStatus();
   const api = useMemo(() => trackedApi(rawApi, track), [rawApi, track]);
   const [tab, setTab] = useState<Tab>('profile');
-  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [previewTab, setPreviewTab] = useState<PreviewTab>('links');
   const [copied, setCopied] = useState(false);
 
   const shopOpen = page.shopTab?.open ?? false;
   const previewTabs: PreviewTab[] = shopOpen ? ['links', 'ask', 'shop'] : ['links', 'ask'];
   const shownPreview: PreviewTab = previewTab === 'shop' && !shopOpen ? 'links' : previewTab;
-  const tabIndex = TABS.findIndex((t) => t.id === tab);
-
-  // A tab list's keys: left and right move between tabs and select, Home and End jump.
-  function onTabKey(event: KeyboardEvent<HTMLButtonElement>) {
-    const next =
-      event.key === 'ArrowRight'
-        ? (tabIndex + 1) % TABS.length
-        : event.key === 'ArrowLeft'
-          ? (tabIndex - 1 + TABS.length) % TABS.length
-          : event.key === 'Home'
-            ? 0
-            : event.key === 'End'
-              ? TABS.length - 1
-              : null;
-    if (next === null) return;
-    event.preventDefault();
-    const id = TABS[next]!.id;
-    setTab(id);
-    tabRefs.current[id]?.focus();
-  }
 
   async function copyLink() {
     try {
@@ -150,53 +132,32 @@ export function MyCuriosEditor({
   return (
     <>
       <PageHead title="My Curios" beside={<SaveStatus state={state} />}>
-        <span className={styles.url}>
+        <span className={ui.url}>
           curios.my/{page.handle}
-          <button type="button" className={styles.iconButton} aria-label="Copy link" title={copied ? 'Copied' : 'Copy'} onClick={() => void copyLink()}>
+          <button type="button" className={ui.iconButton} aria-label="Copy link" title={copied ? 'Copied' : 'Copy'} onClick={() => void copyLink()}>
             {copied ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={styles.toolIcon}>
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
                 <path d="M5 12.5l4.5 4.5L19 7.5" />
               </svg>
             ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={styles.toolIcon}>
+              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
                 <rect x="8" y="8" width="12" height="12" rx="2" />
                 <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
               </svg>
             )}
           </button>
-          <span className={styles.srOnly} aria-live="polite">{copied ? 'Link copied' : ''}</span>
+          <span className={ui.srOnly} aria-live="polite">{copied ? 'Link copied' : ''}</span>
         </span>
         <a className={panel.primaryLink} href={`/${page.handle}`} target="_blank" rel="noreferrer">
           View page
         </a>
       </PageHead>
 
-      <div className={styles.body}>
-        <div className={styles.edit}>
-          <div className={styles.tabs} role="tablist" aria-label="Edit" style={{ '--at': tabIndex } as CSSProperties}>
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                ref={(el) => {
-                  tabRefs.current[t.id] = el;
-                }}
-                type="button"
-                role="tab"
-                id={`tab-${t.id}`}
-                aria-selected={tab === t.id}
-                aria-controls={`panel-${t.id}`}
-                tabIndex={tab === t.id ? 0 : -1}
-                className={styles.tab}
-                onClick={() => setTab(t.id)}
-                onKeyDown={onTabKey}
-              >
-                {t.label}
-              </button>
-            ))}
-            <span className={styles.underline} aria-hidden="true" />
-          </div>
+      <div className={ui.body}>
+        <div className={ui.edit}>
+          <UnderlineTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} />
 
-          <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden={tab !== 'profile'} className={styles.panel}>
+          <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden={tab !== 'profile'} className={ui.panel}>
             <CoverEditor
               coverKey={page.coverKey}
               coverUrl={page.coverUrl}
@@ -223,7 +184,7 @@ export function MyCuriosEditor({
             />
           </div>
 
-          <div role="tabpanel" id="panel-links" aria-labelledby="tab-links" hidden={tab !== 'links'} className={styles.panel}>
+          <div role="tabpanel" id="panel-links" aria-labelledby="tab-links" hidden={tab !== 'links'} className={ui.panel}>
             <SocialsEditor socials={page.socials} onChange={(socials) => update({ socials })} save={api.saveAppearance} />
             <LinksEditor
               links={page.links}
@@ -251,7 +212,7 @@ export function MyCuriosEditor({
             ) : null}
           </div>
 
-          <div role="tabpanel" id="panel-appearance" aria-labelledby="tab-appearance" hidden={tab !== 'appearance'} className={styles.panel}>
+          <div role="tabpanel" id="panel-appearance" aria-labelledby="tab-appearance" hidden={tab !== 'appearance'} className={ui.panel}>
             <AppearanceEditor
               displayName={page.displayName}
               background={page.background}
@@ -265,45 +226,33 @@ export function MyCuriosEditor({
           </div>
         </div>
 
-        <section className={styles.preview} aria-label="Live preview">
-          <span className={styles.blobs} aria-hidden="true">
-            <span />
-            <span />
-            <span />
-            <span />
-          </span>
-          <div className={styles.phone}>
-            <div className={styles.screen}>
-              <div className={styles.scroll}>
-                <BentoPage
-                  {...page}
-                  shop={shopOpen ? { position: 0, size: null, label: '', caption: '', photoUrl: null } : null}
-                  mode={shownPreview === 'ask' ? 'chat' : shownPreview === 'shop' ? 'shop' : undefined}
-                  interactive={false}
-                  nameAs="p"
-                >
-                  <PreviewTabBody tab={shownPreview} hasLinks={page.links.length > 0} items={page.shopItems} />
-                </BentoPage>
-              </div>
-              <span className={styles.askBar} style={{ '--accent': page.accentColor } as CSSProperties} aria-hidden="true">
-                Ask {page.displayName} anything
-                <i>
-                  <svg viewBox="0 0 24 24" width="13" height="13">
-                    <path d="M12 19V5M5 12l7-7 7 7" />
-                  </svg>
-                </i>
-              </span>
-            </div>
-          </div>
-          <div className={styles.seg} role="tablist" aria-label="Preview tab" style={{ '--n': previewTabs.length, '--at': previewTabs.indexOf(shownPreview) } as CSSProperties}>
-            <span className={styles.segThumb} aria-hidden="true" />
-            {previewTabs.map((id) => (
-              <button key={id} type="button" role="tab" aria-selected={shownPreview === id} onClick={() => setPreviewTab(id)}>
-                {id === 'links' ? 'Links' : id === 'ask' ? 'Ask' : 'Shop'}
-              </button>
-            ))}
-          </div>
-        </section>
+        <PreviewFrame
+          label="Live preview"
+          tabsLabel="Preview tab"
+          tabs={previewTabs.map((id) => ({ id, label: id === 'links' ? 'Links' : id === 'ask' ? 'Ask' : 'Shop' }))}
+          selected={shownPreview}
+          onSelect={setPreviewTab}
+          overlay={
+            <span className={styles.askBar} style={{ '--accent': page.accentColor } as CSSProperties} aria-hidden="true">
+              Ask {page.displayName} anything
+              <i>
+                <svg viewBox="0 0 24 24" width="13" height="13">
+                  <path d="M12 19V5M5 12l7-7 7 7" />
+                </svg>
+              </i>
+            </span>
+          }
+        >
+          <BentoPage
+            {...page}
+            shop={shopOpen ? { position: 0, size: null, label: '', caption: '', photoUrl: null } : null}
+            mode={shownPreview === 'ask' ? 'chat' : shownPreview === 'shop' ? 'shop' : undefined}
+            interactive={false}
+            nameAs="p"
+          >
+            <PreviewTabBody tab={shownPreview} hasLinks={page.links.length > 0} items={page.shopItems} />
+          </BentoPage>
+        </PreviewFrame>
       </div>
     </>
   );

@@ -43,4 +43,9 @@
   .note {
     display: none;
   }
+
+  /* The actions flow after the title one by one, wrapping as they need to. */
+  .actions {
+    display: contents;
+  }
 }

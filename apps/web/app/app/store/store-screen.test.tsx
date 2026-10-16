@@ -1,11 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import type { OwnerStore } from '@curios/db-read';
-import type { EditorItem } from './items-editor.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { EditorItem, ShopLook, StoreSettings } from './store-types.js';
 
 const apiFetch = vi.fn();
-vi.mock('../../../lib/api.js', () => ({ apiFetch }));
+vi.mock('../../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
 vi.mock('../curios/resize-image.js', () => ({
   resizeImage: vi.fn(async () => ({ contentType: 'image/webp', data: 'AAAA' })),
   // The QR goes through the uncropped, lossless path, so its bytes differ from an item photo's.
@@ -14,103 +13,92 @@ vi.mock('../curios/resize-image.js', () => ({
 
 const { StoreScreen } = await import('./store-screen.js');
 
-const settings: OwnerStore['settings'] = {
-  enabled: false, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
+const settings: StoreSettings = {
+  enabled: false, shopDescription: null, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
   deliveryFeeCents: null, minNoticeDays: 0, paymentQrKey: null, bankName: null,
-  bankAccountName: null, bankAccountNumber: null, tileSize: 'WIDE',
+  bankAccountName: null, bankAccountNumber: null, tileSize: null,
 };
 
 const items: EditorItem[] = [
   { id: 'a', name: 'Kek Batik', description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
 ];
 
-const screenWith = (over: Partial<OwnerStore['settings']> = {}, list: EditorItem[] = items) =>
-  render(<StoreScreen initial={{ ...settings, ...over }} handle="nadia" uploadsEnabled publicBase="https://files.example/" qrUrl={null} items={list} />);
+const look: ShopLook = {
+  handle: 'nadia', displayName: 'Nadia Bakes', bio: null, language: 'en', avatarUrl: null, coverUrl: null,
+  style: 'SOFT', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null, socials: [], whatsapp: '60123456789',
+};
 
-describe('StoreScreen', () => {
+const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items) =>
+  render(
+    <StoreScreen initial={{ ...settings, ...over }} items={list} look={look} uploadsEnabled publicBase="https://files.example/" qrUrl={null} today="2026-10-16" />,
+  );
+
+const tab = (name: string) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
+
+describe('StoreScreen, against the API', () => {
   beforeEach(() => apiFetch.mockReset());
+  afterEach(() => vi.useRealTimers());
 
-  it('links to the shop only when it is open', () => {
-    screenWith({ enabled: true, paymentQrKey: 'k', pickupEnabled: true });
-    expect(screen.getByRole('link', { name: /see your shop/i })).toHaveAttribute('href', '/nadia/shop');
-  });
-
-  it('offers no link to a closed shop', () => {
-    screenWith();
-    expect(screen.queryByRole('link', { name: /see your shop/i })).toBeNull();
-  });
-
-  it('shows the link once a save opens the shop', async () => {
-    apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true, paymentQrKey: 'k', enabled: true } });
-    screenWith({ pickupEnabled: true, paymentQrKey: 'k' });
-    expect(screen.queryByRole('link', { name: /see your shop/i })).toBeNull();
-    await userEvent.click(screen.getByRole('checkbox', { name: /open shop/i }));
-    await userEvent.click(screen.getByRole('button', { name: /^save/i }));
-    expect(await screen.findByRole('link', { name: /see your shop/i })).toHaveAttribute('href', '/nadia/shop');
-  });
-
-  it('drops the link once a save closes the shop', async () => {
-    apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true, paymentQrKey: 'k', enabled: false } });
-    screenWith({ enabled: true, pickupEnabled: true, paymentQrKey: 'k' });
-    await userEvent.click(screen.getByRole('checkbox', { name: /open shop/i }));
-    await userEvent.click(screen.getByRole('button', { name: /^save/i }));
-    await screen.findByText(/^saved/i);
-    expect(screen.queryByRole('link', { name: /see your shop/i })).toBeNull();
-  });
-
-  it('saves with PATCH /store/settings and unwraps the settings', async () => {
+  it('saves a setting with PATCH /store/settings and unwraps the settings', async () => {
     apiFetch.mockResolvedValue({ settings: { ...settings, pickupEnabled: true } });
     screenWith();
-    await userEvent.click(screen.getByRole('checkbox', { name: /offer pickup/i }));
-    await userEvent.click(screen.getByRole('button', { name: /^save/i }));
+    await userEvent.click(tab('Pickup & delivery'));
+    await userEvent.click(screen.getByRole('switch', { name: 'Allow pickup' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/settings', { method: 'PATCH', body: JSON.stringify({ pickupEnabled: true }) });
-    expect(await screen.findByText(/^saved/i)).toBeInTheDocument();
+    expect(await screen.findByText(/Pickup/, { selector: 'li' })).toBeInTheDocument();
   });
 
   it('uploads a QR to /store/payment-qr and shows it from the public base', async () => {
     apiFetch.mockResolvedValue({ paymentQrKey: 'qr/abc.webp' });
     screenWith();
-    await userEvent.upload(screen.getByLabelText(/upload a payment qr/i), new File(['x'], 'qr.png', { type: 'image/png' }));
+    await userEvent.click(tab('Payment'));
+    await userEvent.upload(screen.getByLabelText('QR file'), new File(['x'], 'qr.png', { type: 'image/png' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/payment-qr', { method: 'POST', body: JSON.stringify({ contentType: 'image/png', data: 'QQQQ' }) });
-    expect(await screen.findByAltText(/payment qr/i)).toHaveAttribute('src', 'https://files.example/qr/abc.webp');
+    expect(await screen.findByAltText('Your DuitNow QR')).toHaveAttribute('src', 'https://files.example/qr/abc.webp');
   });
 
   it('removes the QR with DELETE /store/payment-qr', async () => {
     apiFetch.mockResolvedValue({ paymentQrKey: null });
     screenWith({ paymentQrKey: 'k' });
-    await userEvent.click(screen.getByRole('button', { name: /remove qr/i }));
+    await userEvent.click(tab('Payment'));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/payment-qr', { method: 'DELETE' });
   });
 
-  it('lists the items under the settings and removes with DELETE /store/items/:id', async () => {
+  it('removes an item with DELETE /store/items/:id, from its editor', async () => {
     apiFetch.mockResolvedValue({ status: 'removed' });
     screenWith();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove Kek Batik' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove item' }));
     await userEvent.click(screen.getByRole('button', { name: 'Yes, remove' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/items/a', { method: 'DELETE' });
+    expect(screen.queryByRole('listitem', { name: 'Kek Batik' })).toBeNull();
   });
 
-  it('adds with POST /store/items and unwraps the item', async () => {
+  it('adds with POST /store/items once the new item has a name and a price', async () => {
+    vi.useFakeTimers();
     apiFetch.mockResolvedValue({ item: { id: 'n', name: 'Tart', description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
     screenWith();
-    await userEvent.click(screen.getByRole('button', { name: '+ Add an item' }));
-    await userEvent.type(screen.getByLabelText('Name'), 'Tart');
-    await userEvent.type(screen.getByLabelText('Price (RM)'), '9');
-    await userEvent.click(screen.getByRole('button', { name: 'Add' }));
+    fireEvent.click(screen.getByRole('button', { name: '+ Add item' }));
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
+    fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '9' } });
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(apiFetch).toHaveBeenCalledWith('/store/items', {
       method: 'POST',
       body: JSON.stringify({ name: 'Tart', description: null, pricing: { kind: 'single', priceCents: 900 } }),
     });
-    expect(await screen.findByRole('listitem', { name: 'Tart' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'All items' }));
+    expect(screen.getByRole('listitem', { name: 'Tart' })).toBeInTheDocument();
   });
 
   it('uploads an item picture to /store/items/:id/photo and shows it from the public base', async () => {
     apiFetch.mockResolvedValue({ photoKey: 'items/a.webp' });
-    screenWith();
+    const { container } = screenWith();
     await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
-    await userEvent.upload(screen.getByLabelText('Upload a picture for Kek Batik'), new File(['x'], 'k.png', { type: 'image/png' }));
+    await userEvent.upload(screen.getByLabelText('Picture file'), new File(['x'], 'k.png', { type: 'image/png' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/items/a/photo', { method: 'POST', body: JSON.stringify({ contentType: 'image/webp', data: 'AAAA' }) });
-    expect(await screen.findByAltText('Picture of Kek Batik')).toHaveAttribute('src', 'https://files.example/items/a.webp');
+    await screen.findByRole('button', { name: 'Change picture' });
+    expect(container.querySelector('img[src="https://files.example/items/a.webp"]')).not.toBeNull();
   });
 
   it('reorders with PUT /store/items/order', async () => {

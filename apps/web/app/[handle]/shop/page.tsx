@@ -56,6 +56,7 @@ export default async function ShopPage({
           items={shop.items.map((i) => ({ ...i, photoUrl: avatarUrl(i.photoKey) }))}
           whatsapp={whatsappNumber(shop.links)}
           pickupEnabled={shop.pickupEnabled}
+          description={shop.shopDescription}
           pickupNote={shop.pickupNote}
           deliveryMode={shop.deliveryMode}
           deliveryFeeCents={shop.deliveryFeeCents}

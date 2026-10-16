@@ -67,6 +67,14 @@ export function ShopView(props: {
   orderLabel?: string;
   /** 'embedded' keeps the basket bar inside its container (sticky) instead of fixed to the viewport. Default 'page'. */
   variant?: 'page' | 'embedded';
+  /** "About your shop", above the terms. */
+  description?: string | null;
+  /**
+   * 'inline' opens an item as a sheet inside the shop rather than as a modal
+   * over the whole window: for the Store editor's phone preview, where a modal
+   * would cover the editor itself. Default 'modal'.
+   */
+  sheet?: 'modal' | 'inline';
 }) {
   const copy = shopCopy(props.language);
   const [basket, setBasket] = useState<BasketLine[]>([]);
@@ -109,6 +117,7 @@ export function ShopView(props: {
   return (
     <section className={styles.shop} data-variant={props.variant === 'embedded' ? 'embedded' : undefined}>
       {props.showBack !== false ? <a className={styles.back} href={`/${props.handle}`}>← {copy.back}</a> : null}
+      {props.description ? <p className={styles.about}>{props.description}</p> : null}
       <ul className={styles.terms}>
         {props.pickupEnabled ? <li>{copy.pickup(props.pickupNote)}</li> : null}
         {props.deliveryMode !== 'NONE' ? (
@@ -142,7 +151,7 @@ export function ShopView(props: {
         })}
       </ul>
 
-      {open ? <ItemSheet key={open.id} item={open} copy={copy} onAdd={add} onClose={() => setOpenId(null)} /> : null}
+      {open ? <ItemSheet key={open.id} item={open} copy={copy} inline={props.sheet === 'inline'} onAdd={add} onClose={() => setOpenId(null)} /> : null}
 
       {priced.lines.length > 0 ? (
         <div className={styles.basket}>
@@ -186,11 +195,13 @@ export function ShopView(props: {
 function ItemSheet({
   item,
   copy,
+  inline,
   onAdd,
   onClose,
 }: {
   item: ViewItem;
   copy: ShopCopy;
+  inline: boolean;
   onAdd: (line: BasketLine) => void;
   onClose: () => void;
 }) {
@@ -200,6 +211,11 @@ function ItemSheet({
   useEffect(() => {
     const dialog = ref.current;
     if (!dialog || dialog.open) return;
+    // Inline: shown in place, not in the top layer, so it stays inside whatever holds the shop.
+    if (inline) {
+      dialog.setAttribute('open', '');
+      return;
+    }
     // Opened as a modal so Escape closes it and focus stays inside. jsdom has
     // no showModal; the open attribute is the same sheet without the extras.
     if (typeof dialog.showModal === 'function') dialog.showModal();
@@ -211,7 +227,7 @@ function ItemSheet({
   // event (Escape) and the Close button both end in the same idempotent
   // setOpenId(null); an unmount fires no close event, so nothing runs twice.
   return (
-    <dialog ref={ref} className={styles.sheet} aria-labelledby="item-name" onClose={onClose}>
+    <dialog ref={ref} className={styles.sheet} data-inline={inline || undefined} aria-labelledby="item-name" onClose={onClose}>
       {item.photoUrl ? <img className={styles.sheetPhoto} src={item.photoUrl} alt="" /> : null}
       <h2 id="item-name" className={styles.sheetName}>{item.name}</h2>
       {item.description ? <p className={styles.description}>{item.description}</p> : null}

@@ -83,7 +83,7 @@ describe('GET /store', () => {
     const res = await call(app, 'GET', '/store', owner.cookie);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
-      settings: { enabled: false, pickupEnabled: false, deliveryMode: 'NONE', deliveryFeeCents: null, minNoticeDays: 1, paymentQrKey: null, tileSize: null },
+      settings: { enabled: false, shopDescription: null, pickupEnabled: false, deliveryMode: 'NONE', deliveryFeeCents: null, minNoticeDays: 1, paymentQrKey: null, tileSize: null },
       items: [],
     });
   });
@@ -128,9 +128,17 @@ describe('PATCH /store/settings', () => {
     expect(rider.json().settings).toMatchObject({ deliveryMode: 'RIDER', deliveryFeeCents: null });
   });
 
-  it('refuses a bad account number, an over-long note, and an impossible notice', async () => {
+  it('saves a shop description, tidied, and clears it when blank', async () => {
     const owner = await anOwner(app);
-    for (const patch of [{ bankAccountNumber: '12ab' }, { pickupNote: 'x'.repeat(121) }, { minNoticeDays: 31 }, { minNoticeDays: -1 }]) {
+    const set = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopDescription: '  Homemade cakes,\n baked fresh.  ' });
+    expect(set.json().settings.shopDescription).toBe('Homemade cakes, baked fresh.');
+    const cleared = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopDescription: '   ' });
+    expect(cleared.json().settings.shopDescription).toBeNull();
+  });
+
+  it('refuses a bad account number, an over-long note or description, and an impossible notice', async () => {
+    const owner = await anOwner(app);
+    for (const patch of [{ bankAccountNumber: '12ab' }, { pickupNote: 'x'.repeat(121) }, { shopDescription: 'x'.repeat(161) }, { minNoticeDays: 31 }, { minNoticeDays: -1 }]) {
       expect((await call(app, 'PATCH', '/store/settings', owner.cookie, patch)).json().error.code).toBe('INVALID_STORE_SETTING');
     }
   });

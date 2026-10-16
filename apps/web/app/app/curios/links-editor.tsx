@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Callout } from '@curios/ui';
 import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, withShopTile, type ShopTilePlacement, type TileSize } from '@curios/core/bento';
-import { useAutosave } from './use-autosave.js';
-import { SaveState } from './profile-editor.js';
-import { SectionHead } from './section-head.js';
+import { useAutosave } from '../_ui/use-autosave.js';
+import { SaveState } from '../_ui/save-state.js';
+import { SectionHead } from '../_ui/section-head.js';
+import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
 export type LinkItem = { id: string; label: string; url: string; size: TileSize | null };
@@ -33,7 +34,7 @@ const shown = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(
 
 function Icon({ d }: { d: string }) {
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={styles.toolIcon}>
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
       <path d={d} />
     </svg>
   );
@@ -181,18 +182,18 @@ export function LinksEditor({
   const full = links.length >= MAX_LINKS;
 
   return (
-    <section className={styles.section} aria-labelledby="links-title">
+    <section className={ui.section} aria-labelledby="links-title">
       <SectionHead id="links-title" icon="link" tone="amber" title="Links" note="Top to bottom, as they appear" />
 
       {links.length === 0 && !adding ? (
-        <div className={styles.empty}>
-          <div className={styles.emptyArt} aria-hidden="true">
-            <span className={styles.ghostRows}>
+        <div className={ui.empty}>
+          <div className={ui.emptyArt} aria-hidden="true">
+            <span className={ui.ghostRows}>
               <span data-tone="biru"><i /><b /><em /></span>
               <span data-tone="rose"><i /><b /><em /></span>
               <span data-tone="hijau"><i /><b /><em /></span>
             </span>
-            <span className={styles.emptyBadge}>
+            <span className={ui.emptyBadge}>
               <svg viewBox="0 0 24 24" width="21" height="21">
                 <path d={'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7'} />
               </svg>
@@ -200,7 +201,7 @@ export function LinksEditor({
           </div>
           <h3>Add your first link</h3>
           <p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p>
-          <button type="button" className={styles.primaryButton} onClick={() => setAdding(true)}>
+          <button type="button" className={ui.primaryButton} onClick={() => setAdding(true)}>
             + Add a link
           </button>
         </div>
@@ -233,23 +234,23 @@ export function LinksEditor({
             void add();
           }}
         >
-          <input ref={nameRef} className={styles.input} aria-label="Name" placeholder="Name" value={label} onChange={(event) => setLabel(event.target.value)} />
-          <input className={styles.input} aria-label="Address" placeholder="https://" autoComplete="off" value={url} onChange={(event) => setUrl(event.target.value)} />
+          <input ref={nameRef} className={ui.input} aria-label="Name" placeholder="Name" value={label} onChange={(event) => setLabel(event.target.value)} />
+          <input className={ui.input} aria-label="Address" placeholder="https://" autoComplete="off" value={url} onChange={(event) => setUrl(event.target.value)} />
           <span className={styles.addActions}>
-            <button type="submit" className={styles.primaryButton}>
+            <button type="submit" className={ui.primaryButton}>
               Add
             </button>
-            <button type="button" className={styles.iconButton} aria-label="Cancel" onClick={() => setAdding(false)}>
+            <button type="button" className={ui.iconButton} aria-label="Cancel" onClick={() => setAdding(false)}>
               <Icon d={CLOSE} />
             </button>
           </span>
         </form>
       ) : full ? (
-        <p className={styles.note}>
+        <p className={ui.note}>
           {MAX_LINKS} links is the most a page holds. Remove one to add another.
         </p>
       ) : links.length > 0 ? (
-        <button type="button" className={styles.addRow} onClick={() => setAdding(true)}>
+        <button type="button" className={ui.addRow} onClick={() => setAdding(true)}>
           + Add link
         </button>
       ) : null}
@@ -320,7 +321,7 @@ function LinkRow({
           <span>
             <input
               id={`label-${link.id}`}
-              className={styles.input}
+              className={ui.input}
               aria-label="Name"
               value={label}
               onChange={(event) => {
@@ -334,7 +335,7 @@ function LinkRow({
           <span>
             <input
               id={`url-${link.id}`}
-              className={styles.input}
+              className={ui.input}
               aria-label="Address"
               autoComplete="off"
               value={url}
@@ -346,7 +347,7 @@ function LinkRow({
             />
             <SaveState status={urlSave.status} error={urlSave.error} retry={urlSave.retry} />
           </span>
-          <button type="button" className={styles.primaryButton} onClick={() => setEditing(false)}>
+          <button type="button" className={ui.primaryButton} onClick={() => setEditing(false)}>
             Done
           </button>
         </div>
@@ -366,9 +367,9 @@ function LinkRow({
         <span>{shown(link.url)}</span>
       </button>
       {confirming ? (
-        <span className={styles.confirm}>
+        <span className={ui.confirm}>
           Remove?
-          <button type="button" className={styles.confirmRemove} onClick={onRemove}>
+          <button type="button" className={ui.confirmRemove} onClick={onRemove}>
             Yes, remove
           </button>
           <button type="button" ref={keepButtonRef} onClick={() => setConfirming(false)}>
@@ -377,13 +378,13 @@ function LinkRow({
         </span>
       ) : (
         <span className={styles.tools}>
-          <button type="button" className={styles.iconButton} aria-label={`Move ${link.label} up`} title="Move up" disabled={first} onClick={() => onMove(-1)}>
+          <button type="button" className={ui.iconButton} aria-label={`Move ${link.label} up`} title="Move up" disabled={first} onClick={() => onMove(-1)}>
             <Icon d={UP} />
           </button>
-          <button type="button" className={styles.iconButton} aria-label={`Move ${link.label} down`} title="Move down" disabled={last} onClick={() => onMove(1)}>
+          <button type="button" className={ui.iconButton} aria-label={`Move ${link.label} down`} title="Move down" disabled={last} onClick={() => onMove(1)}>
             <Icon d={DOWN} />
           </button>
-          <button type="button" ref={removeButtonRef} className={styles.iconButton} aria-label={`Remove ${link.label}`} title="Remove" onClick={() => setConfirming(true)}>
+          <button type="button" ref={removeButtonRef} className={ui.iconButton} aria-label={`Remove ${link.label}`} title="Remove" onClick={() => setConfirming(true)}>
             <Icon d={BIN} />
           </button>
         </span>

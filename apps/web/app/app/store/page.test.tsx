@@ -2,8 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 
 const getOwnerStore = vi.fn();
-const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerStore, getOwnerPage }));
+const getMyCurios = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -24,9 +24,15 @@ vi.mock('./store-screen.js', () => ({ StoreScreen }));
 const StorePage = (await import('./page.js')).default;
 
 const settings = {
-  enabled: true, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE', deliveryFeeCents: null,
+  enabled: true, shopDescription: null, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE', deliveryFeeCents: null,
   minNoticeDays: 0, paymentQrKey: 'qr/key.webp', bankName: null, bankAccountName: null,
   bankAccountNumber: null, tileSize: 'WIDE',
+};
+
+const page = {
+  handle: 'nadia', displayName: 'Nadia Bakes', bio: 'Cakes.', language: 'ms', avatarKey: 'avatars/n.webp', coverKey: 'stock/bunga',
+  style: 'SOFT', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null, socials: [],
+  links: [{ id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null }],
 };
 
 describe('StorePage', () => {
@@ -36,7 +42,7 @@ describe('StorePage', () => {
       throw new Error(`NEXT_REDIRECT:${url}`);
     });
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
-    getOwnerPage.mockResolvedValue({ handle: 'nadia' });
+    getMyCurios.mockResolvedValue(page);
     vi.stubEnv('STORAGE_PUBLIC_URL', 'https://files.example/');
   });
 
@@ -58,12 +64,35 @@ describe('StorePage', () => {
     expect(StoreScreen).toHaveBeenCalledTimes(1);
     const props = StoreScreen.mock.calls[0]![0];
     expect(props).toMatchObject({
-      handle: 'nadia',
       uploadsEnabled: true,
       publicBase: 'https://files.example/',
       qrUrl: 'https://files.example/qr/key.webp',
     });
     expect(props.initial).toEqual(settings);
+  });
+
+  it("hands the preview the page's look and the number the basket goes to", async () => {
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [] });
+    render(await StorePage());
+    expect(StoreScreen.mock.calls[0]![0].look).toEqual({
+      handle: 'nadia', displayName: 'Nadia Bakes', bio: 'Cakes.', language: 'ms',
+      avatarUrl: 'https://files.example/avatars/n.webp', coverUrl: '/covers/bunga.webp',
+      style: 'SOFT', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null, socials: [],
+      whatsapp: '60123456789',
+    });
+  });
+
+  it("counts the notice from today in Malaysia", async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    // 17:00 UTC on the 16th is 01:00 on the 17th in Kuala Lumpur.
+    vi.setSystemTime(new Date('2026-10-16T17:00:00Z'));
+    try {
+      getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [] });
+      render(await StorePage());
+      expect(StoreScreen.mock.calls[0]![0].today).toBe('2026-10-17');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('hands the items over with their picture URLs worked out here', async () => {

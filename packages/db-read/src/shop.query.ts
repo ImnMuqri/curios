@@ -74,6 +74,8 @@ export interface PublicShop {
   backgroundColor: string | null;
   /** For the WhatsApp the basket is sent to. */
   links: { label: string; url: string }[];
+  /** "About your shop", above the items. */
+  shopDescription: string | null;
   pickupEnabled: boolean;
   pickupNote: string | null;
   deliveryMode: DeliveryMode;
@@ -105,6 +107,7 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       background: true,
       backgroundColor: true,
       links: { orderBy: { position: 'asc' }, select: { label: true, url: true } },
+      shopDescription: true,
       pickupEnabled: true,
       pickupNote: true,
       deliveryMode: true,
@@ -122,6 +125,7 @@ export interface OwnerStore {
   mode: 'PERSONAL' | 'BUSINESS';
   settings: {
     enabled: boolean;
+    shopDescription: string | null;
     pickupEnabled: boolean;
     pickupNote: string | null;
     deliveryMode: DeliveryMode;
@@ -143,6 +147,7 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
     select: {
       mode: true,
       storeEnabled: true,
+      shopDescription: true,
       pickupEnabled: true,
       pickupNote: true,
       deliveryMode: true,

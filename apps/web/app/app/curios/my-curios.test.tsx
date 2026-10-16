@@ -312,7 +312,7 @@ describe('the live preview fits its phone', () => {
   });
 
   it('fills the phone without forcing its own screen height, margin or rounding', () => {
-    const css = readFileSync(join(import.meta.dirname, 'curios.module.css'), 'utf8');
+    const css = readFileSync(join(import.meta.dirname, '../_ui/editor.module.css'), 'utf8');
     expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*min-height:\s*100%/);
     expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*margin:\s*0;/);
     expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*border-radius:\s*0;/);

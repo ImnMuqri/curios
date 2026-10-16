@@ -186,6 +186,8 @@ model Page {
   /// The shop. Off until the owner opens it, and it can only be opened with a
   /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
   storeEnabled      Boolean      @default(false)
+  /// "About your shop": shown above the items, before the notice.
+  shopDescription   String?
   pickupEnabled     Boolean      @default(false)
   /// Where pickup happens, as the owner wants it said: "Seksyen 7, Shah Alam".
   pickupNote        String?

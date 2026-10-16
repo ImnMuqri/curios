@@ -10,7 +10,8 @@ import type { AppearancePatch as FullPatch } from './my-curios.js';
 
 /** What this tab changes: the look, never the socials (the Links tab's). */
 type AppearancePatch = Omit<FullPatch, 'socials'>;
-import { SectionHead } from './section-head.js';
+import { SectionHead } from '../_ui/section-head.js';
+import ui from '../_ui/editor.module.css';
 import styles from './curios.module.css';
 
 const FONT_NAMES: Record<HeadingFont, string> = {
@@ -51,7 +52,7 @@ const STYLES: { value: PageStyle; name: string; note: string }[] = [
 
 function Tick() {
   return (
-    <span className={styles.tick} aria-hidden="true">
+    <span className={ui.tick} aria-hidden="true">
       <svg viewBox="0 0 24 24" width="12" height="12">
         <path d="M5 12.5l4.5 4.5L19 7.5" />
       </svg>
@@ -143,14 +144,14 @@ export function AppearanceEditor({
 
   return (
     <>
-      <section className={styles.section} aria-labelledby="style-title">
+      <section className={ui.section} aria-labelledby="style-title">
         <SectionHead id="style-title" icon="style" tone="biru" title="Style" note="How your buttons look" />
         <div className={styles.styleTiles} role="group" aria-labelledby="style-title">
           {STYLES.map((option) => (
             <button
               key={option.value}
               type="button"
-              className={styles.tile}
+              className={ui.tile}
               aria-pressed={style === option.value}
               onClick={() => (style === option.value ? undefined : choose({ style: option.value }))}
             >
@@ -160,7 +161,7 @@ export function AppearanceEditor({
                 <i />
                 <i />
               </span>
-              <span className={styles.tileName}>
+              <span className={ui.tileName}>
                 {option.name} <span>· {option.note}</span>
               </span>
             </button>
@@ -168,7 +169,7 @@ export function AppearanceEditor({
         </div>
       </section>
 
-      <section className={styles.section} aria-labelledby="background-title">
+      <section className={ui.section} aria-labelledby="background-title">
         <SectionHead id="background-title" icon="layers" tone="hijau" title="Background" note="Behind your whole page" />
         <div className={styles.backgroundTiles} role="group" aria-labelledby="background-title">
           {PAGE_BACKGROUNDS.map((value) => {
@@ -177,7 +178,7 @@ export function AppearanceEditor({
               <button
                 key={value}
                 type="button"
-                className={`${styles.tile} ${styles.backgroundTile}`}
+                className={`${ui.tile} ${styles.backgroundTile}`}
                 aria-pressed={background === value}
                 onClick={() =>
                   value === 'CUSTOM'
@@ -194,7 +195,7 @@ export function AppearanceEditor({
                   <i />
                   <i />
                 </span>
-                <span className={styles.tileName}>{BACKGROUND_NAMES[value]}</span>
+                <span className={ui.tileName}>{BACKGROUND_NAMES[value]}</span>
               </button>
             );
           })}
@@ -215,7 +216,7 @@ export function AppearanceEditor({
         ) : null}
       </section>
 
-      <section className={styles.section} aria-labelledby="accent-title">
+      <section className={ui.section} aria-labelledby="accent-title">
         <SectionHead id="accent-title" icon="palette" tone="rose" title="Accent colour" note="Your first link and the send button" />
         <div className={styles.swatches} role="group" aria-labelledby="accent-title">
           {/* The owner's own colour joins the row, chosen, so the row always shows what the page wears. */}
@@ -261,7 +262,7 @@ export function AppearanceEditor({
         </div>
       </section>
 
-      <section className={styles.section} aria-labelledby="font-title">
+      <section className={ui.section} aria-labelledby="font-title">
         <SectionHead id="font-title" icon="type" tone="amber" title="Heading font" note="Used for your name" />
         <div className={styles.fonts} role="group" aria-labelledby="font-title">
           {HEADING_FONTS.map((font) => (

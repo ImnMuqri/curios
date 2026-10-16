@@ -6,8 +6,10 @@ export const SAVE_DEBOUNCE_MS = 600;
 
 /**
  * Saves the latest value once the owner stops typing, and says how it went.
- * No Save button in My Curios -- this is what stands in for it. A failure
- * keeps the value, so retry() sends exactly what the owner last typed.
+ * No Save button in My Curios or Store -- this is what stands in for it. A
+ * failure keeps the value, so retry() sends exactly what the owner last
+ * typed. flushPending() sends a save that is still waiting, at once (an item
+ * editor's Done).
  */
 export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAVE_DEBOUNCE_MS) {
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
@@ -20,17 +22,20 @@ export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAV
   const saveRef = useRef(save);
   saveRef.current = save;
 
+  /** Resolves true once saved, false when the save failed. */
   const flush = useCallback(async () => {
-    if (!latest.current) return;
+    if (!latest.current) return true;
     const { value } = latest.current;
     setStatus('saving');
     try {
       await saveRef.current(value);
       setStatus('saved');
       setError(null);
+      return true;
     } catch (failure) {
       setStatus('error');
       setError(failure);
+      return false;
     }
   }, []);
 
@@ -38,12 +43,23 @@ export function useAutosave<T>(save: (value: T) => Promise<unknown>, delay = SAV
     (value: T) => {
       latest.current = { value };
       if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void flush(), delay);
+      timer.current = setTimeout(() => {
+        timer.current = null;
+        void flush();
+      }, delay);
     },
     [delay, flush],
   );
 
+  /** Null when nothing was waiting; otherwise whether the waiting save went through. */
+  const flushPending = useCallback(async (): Promise<boolean | null> => {
+    if (!timer.current) return null;
+    clearTimeout(timer.current);
+    timer.current = null;
+    return flush();
+  }, [flush]);
+
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
 
-  return { status, error, schedule, retry: () => void flush() };
+  return { status, error, schedule, retry: () => void flush(), flushPending };
 }
