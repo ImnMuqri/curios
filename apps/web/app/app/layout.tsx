@@ -7,7 +7,6 @@ import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
 import { countNavBadges, getOwnerPage } from '@curios/db-read';
 import { avatarUrl } from '../../lib/avatar-url.js';
-import { plexSans } from '../_landing/plex.js';
 import { AppFrame } from './app-frame.js';
 import { planLabel } from './plan-label.js';
 import { resolveOwner } from './session.js';
@@ -53,7 +52,6 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       planLabel={planLabel({ ...page, now: new Date() })}
       badges={badges}
       mode={page.mode}
-      fontClass={plexSans.variable}
     >
       {children}
     </AppFrame>

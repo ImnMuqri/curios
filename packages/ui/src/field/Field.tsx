@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useState } from 'react';
+import { useId, useState, type ReactNode } from 'react';
 import styles from './Field.module.css';
 
 /**
@@ -28,6 +28,8 @@ export function Field({
   required = false,
   hint,
   multiline = false,
+  placeholder,
+  labelAside,
 }: {
   id: string;
   label: string;
@@ -38,6 +40,10 @@ export function Field({
   required?: boolean;
   hint?: string;
   multiline?: boolean;
+  /** An example of the expected shape ("you@example.com"). Never a stand-in for the label. */
+  placeholder?: string;
+  /** Beside the label, at its far end: "Forgot your password?" on sign-in. */
+  labelAside?: ReactNode;
 }) {
   const hintId = useId();
   const [revealed, setRevealed] = useState(false);
@@ -45,9 +51,18 @@ export function Field({
 
   return (
     <div className={styles.field}>
-      <label className={styles.label} htmlFor={id}>
-        {label}
-      </label>
+      {labelAside ? (
+        <div className={styles.labelRow}>
+          <label className={styles.label} htmlFor={id}>
+            {label}
+          </label>
+          {labelAside}
+        </div>
+      ) : (
+        <label className={styles.label} htmlFor={id}>
+          {label}
+        </label>
+      )}
       {multiline ? (
         <textarea
           id={id}
@@ -68,6 +83,7 @@ export function Field({
             value={value}
             required={required}
             autoComplete={autoComplete}
+            placeholder={placeholder}
             aria-describedby={hint ? hintId : undefined}
             className={styles.control}
             onChange={(event) => onChange(event.target.value)}
@@ -84,8 +100,13 @@ export function Field({
               aria-pressed={revealed}
               onClick={() => setRevealed((shown) => !shown)}
             >
-              {revealed ? 'Hide' : 'Show'}
-              <span className={styles.visuallyHidden}> password</span>
+              {/* An eye, crossed out while the password shows; the words are for a screen reader. */}
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z" />
+                <circle cx="12" cy="12" r="3" />
+                {revealed ? <path d="M4 4l16 16" /> : null}
+              </svg>
+              <span className={styles.visuallyHidden}>{revealed ? 'Hide' : 'Show'} password</span>
             </button>
           ) : null}
         </div>

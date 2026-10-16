@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { SITE_URL } from '../_landing/structured-data.js';
-import { plexSans } from '../_landing/plex.js';
 
 /*
  * Here and not on the pages: Next resolves file-based metadata (the
@@ -12,5 +11,5 @@ import { plexSans } from '../_landing/plex.js';
 export const metadata: Metadata = { metadataBase: new URL(SITE_URL) };
 
 export default function LandingLayout({ children }: { children: ReactNode }) {
-  return <div className={plexSans.variable}>{children}</div>;
+  return children;
 }

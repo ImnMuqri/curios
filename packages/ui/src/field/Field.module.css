@@ -49,36 +49,61 @@
   color: var(--muted);
 }
 
+/* The label at one end, something about it ("Forgot your password?") at the other. */
+.labelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.labelRow .label {
+  margin-bottom: var(--field-label-gap, 6px);
+}
+
+.control::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+
 /* Room on the right of a password input for its show/hide toggle. */
 .revealable {
   position: relative;
 }
 
 .revealable .control {
-  padding-right: 72px;
+  padding-right: 52px;
 }
 
-/* The label's utility voice again: it is a control about the slot, not content. */
+/* An eye at the field's end: a control about the slot, not content. */
 .reveal {
   position: absolute;
-  top: 0;
-  right: 0;
-  height: 100%;
-  min-width: 64px;
-  padding: 0 14px;
+  top: 50%;
+  right: 6px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border: 0;
+  border-radius: 10px;
   background: none;
-  font-family: var(--field-label-font, var(--font-mono));
-  font-size: var(--text-sm);
-  font-weight: var(--field-label-weight, 400);
-  text-transform: var(--field-label-case, uppercase);
-  letter-spacing: var(--field-label-tracking, 0.13em);
-  color: var(--muted);
+  color: var(--ink-soft);
   cursor: pointer;
+  transform: translateY(-50%);
+}
+
+.reveal svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .reveal:hover,
 .reveal:focus-visible {
+  background: var(--surface);
   color: var(--biru);
 }
 

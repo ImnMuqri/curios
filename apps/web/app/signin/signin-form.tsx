@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Callout, Field } from '@curios/ui';
-import { AuthShell } from '../_auth/AuthShell.js';
+import { AuthShell, GoogleButton, OrWithEmail } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
 import styles from '../auth.module.css';
 import { oauthErrorMessage } from '../../lib/oauth-errors.js';
@@ -52,17 +52,21 @@ export function SignInForm({
       lede="Sign in to see your leads and what customers keep asking."
       switchTo={{ prompt: 'New to Curios?', label: 'Create your free page', href: '/signup' }}
     >
-      <form onSubmit={(event) => void submit(event)}>
-        {cancelled ? (
-          <Callout tone="info">Sign-in was cancelled. Try again when you are ready.</Callout>
-        ) : null}
-        {oauthError ? <Callout tone="error">{oauthErrorMessage(oauthError)}</Callout> : null}
+      {cancelled ? (
+        <Callout tone="info">Sign-in was cancelled. Try again when you are ready.</Callout>
+      ) : null}
+      {oauthError ? <Callout tone="error">{oauthErrorMessage(oauthError)}</Callout> : null}
 
+      <GoogleButton />
+      <OrWithEmail />
+
+      <form onSubmit={(event) => void submit(event)}>
         <Field
           id="email"
           label="Email"
           type="email"
           autoComplete="email"
+          placeholder="you@example.com"
           required
           value={email}
           onChange={setEmail}
@@ -75,10 +79,12 @@ export function SignInForm({
           required
           value={password}
           onChange={setPassword}
+          labelAside={
+            <a className={styles.aside} href="/forgot">
+              Forgot your password?
+            </a>
+          }
         />
-        <a className={styles.inline} href="/forgot">
-          Forgot your password?
-        </a>
 
         {/* Rendered verbatim. The API returns one message for every cause on
             purpose -- wrong password, unknown address, unverified -- and
@@ -89,16 +95,6 @@ export function SignInForm({
         <Button type="submit" busy={busy}>
           {busy ? 'Signing in…' : 'Sign in'}
         </Button>
-
-        {/* An anchor, never a button: this must leave the app for the API
-            origin, and a fetch would follow that redirect in the background
-            and hand back Google's HTML. */}
-        <a
-          className={styles.alternative}
-          href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google`}
-        >
-          Continue with Google
-        </a>
       </form>
     </AuthShell>
   );

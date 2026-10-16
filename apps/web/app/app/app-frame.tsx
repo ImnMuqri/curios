@@ -55,9 +55,9 @@ const GROUPS: { title: string; items: Item[] }[] = [
  * screen reader still hears every link by name.
  *
  * A client component because it reads the pathname to mark the current
- * module. The layout (a Server Component) passes plain values, the font's
- * class among them: next/font read inside a client component names its class
- * differently on the server and in the browser, and the page fails hydration.
+ * module. The layout (a Server Component) passes plain values. IBM Plex Sans
+ * comes from the root layout (lib/fonts.ts): next/font read inside a client
+ * component names its class differently on the server and in the browser.
  */
 export function AppFrame({
   displayName,
@@ -65,7 +65,6 @@ export function AppFrame({
   planLabel,
   badges,
   mode,
-  fontClass = '',
   children,
 }: {
   displayName: string;
@@ -75,15 +74,13 @@ export function AppFrame({
   badges: NavBadges;
   /** The Store module is a business page's; a personal page's nav leaves it out. */
   mode: 'PERSONAL' | 'BUSINESS';
-  /** The body face's next/font class, from the server. */
-  fontClass?: string;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
   const initials = displayName.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className={`${styles.frame} ${fontClass}`}>
+    <div className={styles.frame}>
       <aside className={styles.side}>
         <a href="/app/curios" className={styles.brand}>
           <Wordmark />

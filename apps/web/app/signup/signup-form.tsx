@@ -1,24 +1,34 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Button, Callout, Field } from '@curios/ui';
-import { AuthShell } from '../_auth/AuthShell.js';
+import { AuthShell, GoogleButton, OrWithEmail } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
+import { readWantedHandle } from '../../lib/wanted-handle.js';
 import styles from '../auth.module.css';
 
 export function SignUpForm({
   onSubmit,
+  wantedHandle,
 }: {
   onSubmit: (input: { email: string; password: string }) => Promise<unknown>;
+  /** The address typed on the landing page, if any. Read from browser storage when left out. */
+  wantedHandle?: string;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [handle, setHandle] = useState(wantedHandle ?? '');
   // Success is a state, not a redirect: the API answers 202 and issues no
   // session, because an unverified account is inert -- there is nothing to
   // redirect to yet.
   const [done, setDone] = useState(false);
+
+  // Browser storage only exists in the browser, so it is read after the first render.
+  useEffect(() => {
+    if (wantedHandle === undefined) setHandle(readWantedHandle());
+  }, [wantedHandle]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -39,12 +49,31 @@ export function SignUpForm({
   if (done) {
     // Identical whether or not the address already had an account -- the
     // API's response is byte-identical in both cases, and this screen must
-    // not leak what the API refuses to.
+    // not leak what the API refuses to. It names only what was typed.
     return (
-      <AuthShell title="Check your email">
-        <Callout tone="info">
-          Check your email to confirm your address and finish signing up.
-        </Callout>
+      <AuthShell title="Check your email" lede="Check your email to confirm your address and finish signing up." film="signup">
+        <span className={styles.mail} aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="38" height="38">
+            <rect x="3" y="5" width="18" height="14" rx="3" />
+            <path d="M3.5 7l8.5 6 8.5-6" />
+          </svg>
+        </span>
+        <p className={styles.sentTo}>
+          Sent to <b>{email}</b>.{handle ? <> Once you confirm, curios.my/{handle} is filled in for you.</> : null}
+        </p>
+        <p className={styles.footnote}>
+          Wrong address?{' '}
+          <a
+            href="/signup"
+            onClick={(event) => {
+              event.preventDefault();
+              setDone(false);
+              setBusy(false);
+            }}
+          >
+            Go back
+          </a>
+        </p>
       </AuthShell>
     );
   }
@@ -54,13 +83,25 @@ export function SignUpForm({
       title="Create your free page"
       lede="Answering is free on every plan. No card needed."
       switchTo={{ prompt: 'Already have a page?', label: 'Sign in', href: '/signin' }}
+      film="signup"
     >
+      {handle ? (
+        <p className={styles.claimChip}>
+          <i aria-hidden="true">✓</i>
+          We’ll fill in curios.my/{handle} for you
+        </p>
+      ) : null}
+
+      <GoogleButton />
+      <OrWithEmail />
+
       <form onSubmit={(event) => void submit(event)}>
         <Field
           id="email"
           label="Email"
           type="email"
           autoComplete="email"
+          placeholder="you@example.com"
           required
           value={email}
           onChange={setEmail}
@@ -80,15 +121,6 @@ export function SignUpForm({
         <Button type="submit" busy={busy}>
           {busy ? 'Creating…' : 'Create my page'}
         </Button>
-
-        {/* An anchor, never a button: it must leave the app for the API
-            origin, and a fetch would follow that redirect in the background. */}
-        <a
-          className={styles.alternative}
-          href={`${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/auth/google`}
-        >
-          Continue with Google
-        </a>
       </form>
     </AuthShell>
   );
