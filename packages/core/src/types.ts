@@ -86,6 +86,8 @@ export interface MailJobData {
   to: string;
   subject: string;
   text: string;
+  /** The same email laid out (renderMailHtml). Optional, so a job queued before it existed still sends. */
+  html?: string;
 }
 
 /**

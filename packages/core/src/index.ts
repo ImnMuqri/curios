@@ -64,3 +64,5 @@ export {
 export type { GroupJobData } from './topics.js';
 export { SOCIAL_KINDS, normalizeSocial, socialUrl, tidySocials } from './socials.js';
 export type { SocialKind, Socials } from './socials.js';
+export { ACCOUNT_MAIL_FOOTER, escapeHtml, OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
+export type { MailBlock, MailButton, MailContent, MailTone } from './mail.js';

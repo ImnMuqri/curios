@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@curios/db';
 import type { Mailer } from '../../lib/mailer.js';
+import { alreadySignedUpMail, resetMail, verifyMail } from './auth-mail.js';
 import {
   burnTime,
   hashPassword,
@@ -177,21 +178,11 @@ export async function signUpWithPassword(
     // rather than a takeover.
     if (!existing.emailVerifiedAt && existing.password) {
       const retry = await issueToken(deps.prisma, existing.id, 'EMAIL_VERIFICATION');
-      await deps.mailer.send({
-        to: email,
-        subject: 'Confirm your email',
-        text: `Confirm your address to finish setting up Curios:
-
-${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
-      });
+      await deps.mailer.send({ to: email, ...verifyMail(retry) });
       return;
     }
 
-    await deps.mailer.send({
-      to: email,
-      subject: 'You already have a Curios account',
-      text: 'Someone tried to sign up with this address. You already have an account -- sign in instead. If that was not you, you can ignore this message.',
-    });
+    await deps.mailer.send({ to: email, ...alreadySignedUpMail() });
     return;
   }
 
@@ -215,11 +206,7 @@ ${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
   }
 
   const token = await issueToken(deps.prisma, account.id, 'EMAIL_VERIFICATION');
-  await deps.mailer.send({
-    to: email,
-    subject: 'Confirm your email',
-    text: `Confirm your address to finish setting up Curios:\n\n${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${token}`,
-  });
+  await deps.mailer.send({ to: email, ...verifyMail(token) });
 }
 
 /**
@@ -306,11 +293,7 @@ export async function requestPasswordReset(
   });
 
   const token = await issueToken(deps.prisma, account.id, 'PASSWORD_RESET');
-  await deps.mailer.send({
-    to: normalised,
-    subject: 'Reset your password',
-    text: `Choose a new password:\n\n${process.env.APP_URL ?? 'http://localhost:3000'}/reset?token=${token}\n\nThis link works once and expires in an hour. If you did not ask for it, ignore this message.`,
-  });
+  await deps.mailer.send({ to: normalised, ...resetMail(token) });
 }
 
 export async function resetPassword(
