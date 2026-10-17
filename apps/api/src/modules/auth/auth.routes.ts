@@ -9,6 +9,7 @@ import {
   findOrCreateAccountForGoogle,
   linkGoogleIdentity,
   requestPasswordReset,
+  resendVerification,
   resetPassword,
   signInWithPassword,
   signUpWithPassword,
@@ -137,6 +138,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
  * unguessable state value is not the attack a per-address budget defends.
  */
 export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, options) => {
+  const mailer = options.mailer ?? createQueueMailer(app.mailQueue);
   const fetcher = options.fetcher;
   const exchange = options.exchange;
 
@@ -150,11 +152,23 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
   );
 
   app.post(
+    '/auth/verify-email/resend',
+    { schema: { body: z.object({ token }) } },
+    async (request, reply) => {
+      await resendVerification({ prisma: app.prisma, mailer }, request.body.token);
+      return reply.send({ status: 'check_your_email' });
+    },
+  );
+
+  app.post(
     '/auth/reset-password',
     { schema: { body: z.object({ token, password: z.string().min(1).max(200) }) } },
     async (request, reply) => {
-      await resetPassword(app.prisma, request.body, fetcher);
-      return reply.send({ status: 'password_changed' });
+      const { accountId } = await resetPassword(app.prisma, request.body, fetcher);
+      // Every other session has just ended; this device, which proved the
+      // inbox, stays signed in ("You'll stay signed in on this device").
+      const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
+      return reply.setCookie(SESSION_COOKIE, value, cookie).send({ status: 'password_changed' });
     },
   );
 

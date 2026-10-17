@@ -23,13 +23,14 @@ export function findHexLiterals(css: string): string[] {
  * (11 / 12.5 / 14 / 17 / 22 / 32); the design handoff of 2026-10-16
  * (design/boards) is denser, and its CSS is the source of truth for sizes, so
  * this is every size those boards use on product screens. A size not here is
- * one nobody designed: the check still catches a stray 15.7px. (54 is the
+ * one nobody designed: the check still catches a stray 15.7px. (52 is the
+ * System board's 404 headline, set inline there; 54 is the
  * Onboarding board's "facts found" count.)
  */
 const SCALE = new Set(
   [
     9, 9.5, 10, 10.5, 11, 11.5, 12, 12.5, 13, 13.5, 14, 14.5, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 26, 28, 30, 31,
-    32, 34, 36, 38, 40, 42, 44, 54,
+    32, 34, 36, 38, 40, 42, 44, 52, 54,
   ].map((px) => `${px}px`),
 );
 

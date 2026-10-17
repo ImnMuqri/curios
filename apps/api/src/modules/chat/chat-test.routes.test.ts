@@ -172,7 +172,7 @@ describe('POST /chat/test', () => {
     const res = await ask(mine.cookie, { question: 'Berapa kek butter?' });
 
     expect(res.json()).toMatchObject({ from: 'limit' });
-    expect(res.json().reply).toContain("We've answered a lot of questions this month");
+    expect(res.json().reply).toContain('We’ve answered a lot of questions this month');
     expect(calls).toHaveLength(0);
     // Read, not counted.
     expect((await app.prisma.usageCounter.findFirstOrThrow({ where: { pageId: mine.pageId } })).count).toBe(conversationCap());

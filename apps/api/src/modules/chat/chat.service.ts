@@ -245,7 +245,7 @@ export function currentPeriod(now = new Date()): string {
 export const CAP_REACHED_REPLY =
   'Kami dah jawab banyak soalan bulan ini dan sampai had. Anda masih boleh ' +
   'hubungi kami terus melalui pautan di atas.\n\n' +
-  "We've answered a lot of questions this month and reached the limit. " +
+  'We’ve answered a lot of questions this month and reached the limit. ' +
   'You can still reach us directly using the links on this page.';
 
 /**

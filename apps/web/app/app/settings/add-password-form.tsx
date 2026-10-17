@@ -2,20 +2,12 @@
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiFetch } from '../../../lib/api.js';
+import { strength } from '../../../lib/password-strength.js';
 import { Done, SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
 
-/**
- * How strong a password looks, 0 to 4, for the four bars under the field: a
- * hint while typing, nothing more. The API decides (length, and the public
- * breach list), and says why when it refuses.
- */
-export function strength(password: string): number {
-  if (!password) return 0;
-  if (password.length < 8) return 1;
-  if (!(/[0-9]/.test(password) && /[A-Za-z]/.test(password))) return 2;
-  return password.length >= 12 ? 4 : 3;
-}
+// The reset screen draws the same meter; the rule lives in lib/.
+export { strength };
 
 /**
  * The Password row for an account without one: "Add password" opens a field

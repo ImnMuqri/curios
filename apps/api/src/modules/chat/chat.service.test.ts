@@ -925,7 +925,7 @@ describe('the monthly cap', () => {
       .join('');
     expect(text).toBe(CAP_REACHED_REPLY);
     // Malay first, then English, not the other way around.
-    expect(text.indexOf('Kami dah jawab')).toBeLessThan(text.indexOf("We've answered"));
+    expect(text.indexOf('Kami dah jawab')).toBeLessThan(text.indexOf('We’ve answered'));
 
     const assistantMessage = await prisma.message.findFirstOrThrow({
       where: { role: 'ASSISTANT' },

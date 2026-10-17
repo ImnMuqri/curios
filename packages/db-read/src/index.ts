@@ -25,3 +25,5 @@ export { getKnowledge, sourceLabel } from './knowledge.query.js';
 export type { Knowledge, KnowledgeSource, KnowledgeFact, KnowledgePinned, KnowledgeNeverSay } from './knowledge.query.js';
 export { getNotifications } from './notifications.query.js';
 export type { OwnerNotifications } from './notifications.query.js';
+export { getAuthLink } from './auth-link.query.js';
+export type { AuthLink } from './auth-link.query.js';
