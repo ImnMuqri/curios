@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import styles from './knowledge.module.css';
 
 export const KNOWLEDGE_TABS = ['facts', 'sources', 'pinned', 'never-say'] as const;
@@ -17,21 +18,30 @@ export function parseTab(raw: string | string[] | undefined): KnowledgeTab {
 }
 
 /**
- * Plain links, not buttons: the tab lives in the address, so it can be shared,
- * reloaded, and reached with Back. Rendered on the server.
+ * Links, not buttons: the tab lives in the address, so it can be shared,
+ * reloaded, and reached with Back. Next's Link keeps the screen mounted
+ * between tabs, so "Ask your page" keeps its conversation. Each tab carries
+ * how many things it holds.
  */
-export function KnowledgeTabs({ current }: { current: KnowledgeTab }) {
+export function KnowledgeTabs({ current, counts }: { current: KnowledgeTab; counts?: Partial<Record<KnowledgeTab, number>> }) {
   return (
     <nav aria-label="Knowledge" className={styles.tabs}>
       {KNOWLEDGE_TABS.map((tab) => (
-        <a
+        <Link
           key={tab}
           href={`/app/knowledge?tab=${tab}`}
           className={styles.tab}
           aria-current={tab === current ? 'page' : undefined}
+          scroll={false}
         >
           {LABELS[tab]}
-        </a>
+          {counts?.[tab] !== undefined ? (
+            <em>
+              <span className={styles.sr}>, </span>
+              {counts[tab]}
+            </em>
+          ) : null}
+        </Link>
       ))}
     </nav>
   );

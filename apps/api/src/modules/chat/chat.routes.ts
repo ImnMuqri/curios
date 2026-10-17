@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { conversationCap } from '@curios/core';
 import { createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { createOpenAiEmbedder, type Embedder } from '@curios/embeddings';
-import { answer } from './chat.service.js';
+import { answer, MAX_HISTORY_MESSAGES } from './chat.service.js';
+import { testAnswer } from './chat-test.service.js';
+import { UnauthenticatedError } from '../../plugins/session.js';
 
 export interface ChatRouteOptions {
   /**
@@ -20,7 +22,12 @@ export interface ChatRouteOptions {
   embedder?: Embedder | null;
 }
 
-export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
+/**
+ * The gateway and embedder both chat routes use, from the options or the
+ * environment. Built at registration, so a missing key fails the deploy
+ * rather than one person's question.
+ */
+export function chatDependencies(options: ChatRouteOptions): { gateway: Gateway; embedder: Embedder | null } {
   let gateway = options.gateway;
   if (!gateway) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -28,16 +35,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
     gateway = createAnthropicGateway(apiKey);
   }
 
-  // Resolved once here, at registration -- the same moment the API key above
-  // is checked, and for the same reason: this route already builds its
-  // dependencies from the environment at boot rather than per request, which
-  // is what lets a bad value fail the deploy instead of one visitor's chat.
-  // `conversationCap()` throws on a malformed CONVERSATION_CAP_PER_MONTH; see
-  // ChatDeps.cap in chat.service.ts for what calling it per request used to
-  // cost.
-  const cap = conversationCap();
-
-  // Resolved at registration for the reason the API key and the cap above are:
+  // Resolved at registration for the reason the API key above is:
   // a missing key should fail the deploy, not one visitor's question. It is
   // required rather than optional-with-a-warning because the failure is
   // invisible from outside -- every page would quietly answer from every fact
@@ -48,6 +46,21 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
     if (!openAiKey) throw new Error('OPENAI_API_KEY is not set');
     embedder = createOpenAiEmbedder(openAiKey);
   }
+
+  return { gateway, embedder };
+}
+
+export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
+  const { gateway, embedder } = chatDependencies(options);
+
+  // Resolved once here, at registration -- the same moment the API key above
+  // is checked, and for the same reason: this route already builds its
+  // dependencies from the environment at boot rather than per request, which
+  // is what lets a bad value fail the deploy instead of one visitor's chat.
+  // `conversationCap()` throws on a malformed CONVERSATION_CAP_PER_MONTH; see
+  // ChatDeps.cap in chat.service.ts for what calling it per request used to
+  // cost.
+  const cap = conversationCap();
 
   app.post(
     '/chat/:handle',
@@ -123,6 +136,39 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       } finally {
         reply.raw.end();
       }
+    },
+  );
+};
+
+/**
+ * The owner asking their own page a question (Facts & sources' "Ask your
+ * page"). Signed in, and registered in its own scope with a per-account
+ * limit; see chat-test.service.ts for what it does and does not write.
+ * Plain JSON rather than a stream: the reply is short and the tester shows
+ * it whole.
+ */
+export const chatTestRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
+  const { gateway, embedder } = chatDependencies(options);
+
+  app.post(
+    '/chat/test',
+    {
+      schema: {
+        body: z.object({
+          question: z.string().trim().min(1).max(500),
+          history: z
+            .array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().min(1).max(2000) }))
+            .max(MAX_HISTORY_MESSAGES)
+            .default([]),
+        }),
+      },
+    },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      return testAnswer(
+        { prisma: app.prisma, gateway, embedder, log: request.log },
+        { accountId: request.account.id, question: request.body.question, history: request.body.history },
+      );
     },
   );
 };

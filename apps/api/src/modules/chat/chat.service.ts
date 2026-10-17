@@ -1,5 +1,5 @@
 import { GROUP_QUEUE, isOverCap, normalizeClaim, qualifies, type GroupJobData } from '@curios/core';
-import { recordModelCall, refreshTopic, shortlistTopics, type PrismaClient } from '@curios/db';
+import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
@@ -88,10 +88,11 @@ function isMissingParent(error: unknown): boolean {
  * recorded like any other; it runs before the cap check on purpose, because
  * the answer it unlocks is free and a capped page should still give it.
  */
-async function answeredTopicFor(
-  deps: ChatDeps,
+export async function answeredTopicFor(
+  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log'>,
   page: { id: string; displayName: string; mode: 'PERSONAL' | 'BUSINESS' },
-  conversationId: string,
+  // Null for the owner's tester, which has no conversation to charge.
+  conversationId: string | null,
   text: string,
 ): Promise<string | null> {
   const { prisma, gateway, embedder } = deps;
@@ -128,7 +129,7 @@ async function answeredTopicFor(
     });
     await recordModelCall(prisma, {
       pageId: page.id,
-      conversationId,
+      conversationId: conversationId ?? undefined,
       model: verdict.model,
       usage: verdict.usage,
       latencyMs: verdict.latencyMs,
@@ -139,7 +140,7 @@ async function answeredTopicFor(
   } catch (error) {
     await recordModelCall(prisma, {
       pageId: page.id,
-      conversationId,
+      conversationId: conversationId ?? undefined,
       model: CHAT_MODEL,
       usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 },
       latencyMs: 0,
@@ -213,6 +214,102 @@ export const CAP_REACHED_REPLY =
   "We've answered a lot of questions this month and reached the limit. " +
   'You can still reach us directly using the links on this page.';
 
+/**
+ * What answering a question reads from a page: the live chat and the owner's
+ * tester read the same, so the tester cannot say something the chat would not.
+ */
+export const ANSWER_PAGE_SELECT = {
+  id: true,
+  displayName: true,
+  // Read for qualification: a personal page never offers the capture card.
+  mode: true,
+  // The structured profile: small, always sent, so "how do I reach you?"
+  // and "what's your Instagram?" are answered from the page's own links.
+  bio: true,
+  links: { select: { label: true, url: true }, orderBy: { position: 'asc' } },
+  facts: {
+    where: { verified: true },
+    select: { id: true, category: true, claim: true },
+    orderBy: { createdAt: 'asc' },
+  },
+  neverSay: { select: { phrase: true } },
+  // The shop's shelf, for the SHOP block. Read only while the shop is open:
+  // a closed shop's items must not be offered for sale by the chat.
+  storeEnabled: true,
+  items: {
+    where: { available: true },
+    orderBy: { position: 'asc' },
+    select: {
+      name: true,
+      description: true,
+      priceCents: true,
+      options: { orderBy: { position: 'asc' }, select: { label: true, priceCents: true } },
+    },
+  },
+} satisfies Prisma.PageSelect;
+
+/** The page as `ANSWER_PAGE_SELECT` reads it. */
+export type AnswerPage = Prisma.PageGetPayload<{ select: typeof ANSWER_PAGE_SELECT }>;
+
+/**
+ * The system prompt for one question, from the facts and owner answers this
+ * question needs. Shared by the live chat and the owner's tester, so the two
+ * cannot drift. `cachePrompt` is true only when both halves are the page's
+ * stable whole, the one case where the prefix repeats between visitors.
+ */
+export async function promptFor(
+  deps: Pick<ChatDeps, 'prisma' | 'embedder' | 'log'>,
+  page: AnswerPage,
+  input: { question: string; previousUserTurn: string | null },
+): Promise<{ systemPrompt: string; cachePrompt: boolean; factIds: string[] }> {
+  const { prisma } = deps;
+  // What this question needs, or everything, and always a correct answer
+  // either way. See retrieval.ts for the order of the checks and why it is
+  // the order.
+  const selection = await selectForQuestion(
+    { prisma, embedder: deps.embedder, log: deps.log },
+    { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn: input.previousUserTurn },
+  );
+
+  // The owner's own answers, retrieved like the facts: every one when they
+  // all fit the budget, otherwise only the ones this question is about.
+  const answered = await prisma.topic.findMany({
+    where: { pageId: page.id, answer: { not: null } },
+    select: { id: true, title: true, answer: true },
+    orderBy: [{ askCount: 'desc' }, { id: 'asc' }],
+    take: OWNER_ANSWERS_MAX,
+  });
+  const answers = await selectOwnerAnswers(
+    { prisma, embedder: deps.embedder, log: deps.log },
+    {
+      pageId: page.id,
+      answers: answered.flatMap((t) => (t.answer ? [{ id: t.id, question: t.title, answer: t.answer }] : [])),
+      question: input.question,
+      previousUserTurn: input.previousUserTurn,
+    },
+  );
+
+  const systemPrompt = buildSystemPrompt({
+    displayName: page.displayName,
+    mode: page.mode,
+    profile: { bio: page.bio, links: page.links },
+    facts: selection.facts,
+    neverSay: page.neverSay.map((n) => n.phrase),
+    ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
+    shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
+  });
+
+  return {
+    systemPrompt,
+    // Cached only in fallback, where the prefix is the page's whole fact list
+    // and is the same for every visitor between owner edits. In retrieval mode
+    // the prefix is built for this one question, so a cache entry would be
+    // written at a 25% premium and read by nobody.
+    cachePrompt: selection.mode === 'fallback' && answers.mode === 'all',
+    factIds: selection.facts.map((fact) => fact.id),
+  };
+}
+
 export async function* answer(
   deps: ChatDeps,
   input: { handle: string; question: string; conversationId?: string },
@@ -224,35 +321,7 @@ export async function* answer(
     // answer visitor questions -- doing so both shows unreviewed facts and
     // spends tokens on a page nobody was supposed to be able to reach yet.
     where: { handle: input.handle.toLowerCase(), published: true },
-    select: {
-      id: true,
-      displayName: true,
-      // Read for qualification: a personal page never offers the capture card.
-      mode: true,
-      // The structured profile: small, always sent, so "how do I reach you?"
-      // and "what's your Instagram?" are answered from the page's own links.
-      bio: true,
-      links: { select: { label: true, url: true }, orderBy: { position: 'asc' } },
-      facts: {
-        where: { verified: true },
-        select: { id: true, category: true, claim: true },
-        orderBy: { createdAt: 'asc' },
-      },
-      neverSay: { select: { phrase: true } },
-      // The shop's shelf, for the SHOP block. Read only while the shop is open:
-      // a closed shop's items must not be offered for sale by the chat.
-      storeEnabled: true,
-      items: {
-        where: { available: true },
-        orderBy: { position: 'asc' },
-        select: {
-          name: true,
-          description: true,
-          priceCents: true,
-          options: { orderBy: { position: 'asc' }, select: { label: true, priceCents: true } },
-        },
-      },
-    },
+    select: ANSWER_PAGE_SELECT,
   });
 
   if (!page) throw new PageNotFoundError();
@@ -517,53 +586,17 @@ export async function* answer(
     const previousUserTurn =
       history.filter((message) => message.role === 'USER').at(-2)?.content ?? null;
 
-    // What this question needs, or everything, and always a correct answer
-    // either way. See retrieval.ts for the order of the checks and why it is
-    // the order.
-    const selection = await selectForQuestion(
-      { prisma, embedder: deps.embedder, log: deps.log },
-      { pageId: page.id, facts: page.facts, question: input.question, previousUserTurn },
-    );
-
-    // The owner's own answers, retrieved like the facts: every one when they
-    // all fit the budget, otherwise only the ones this question is about.
-    const answered = await prisma.topic.findMany({
-      where: { pageId: page.id, answer: { not: null } },
-      select: { id: true, title: true, answer: true },
-      orderBy: [{ askCount: 'desc' }, { id: 'asc' }],
-      take: OWNER_ANSWERS_MAX,
-    });
-    const answers = await selectOwnerAnswers(
-      { prisma, embedder: deps.embedder, log: deps.log },
-      {
-        pageId: page.id,
-        answers: answered.flatMap((t) => (t.answer ? [{ id: t.id, question: t.title, answer: t.answer }] : [])),
-        question: input.question,
-        previousUserTurn,
-      },
-    );
-
-    const systemPrompt = buildSystemPrompt({
-      displayName: page.displayName,
-      mode: page.mode,
-      profile: { bio: page.bio, links: page.links },
-      facts: selection.facts,
-      neverSay: page.neverSay.map((n) => n.phrase),
-      ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
-      shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
+    const prompt = await promptFor({ prisma, embedder: deps.embedder, log: deps.log }, page, {
+      question: input.question,
+      previousUserTurn,
     });
 
     let text = '';
     try {
-      // Cached only in fallback, where the prefix is the page's whole fact list
-      // and is the same for every visitor between owner edits. In retrieval mode
-      // the prefix is built for this one question, so a cache entry would be
-      // written at a 25% premium and read by nobody.
       for await (const event of gateway.chat({
-        systemPrompt,
+        systemPrompt: prompt.systemPrompt,
         messages,
-        // Both halves must be the page's stable whole for the prefix to repeat.
-        cachePrompt: selection.mode === 'fallback' && answers.mode === 'all',
+        cachePrompt: prompt.cachePrompt,
       })) {
         if (event.type === 'text') {
           text += event.text;
@@ -611,7 +644,7 @@ export async function* answer(
         // message ever sent and useless as a signal -- see the `intent` comment
         // above, which still holds: qualification is computed from the visitor's
         // turns, never from this.
-        citedFactIds: selection.facts.map((fact) => fact.id),
+        citedFactIds: prompt.factIds,
       },
     });
 

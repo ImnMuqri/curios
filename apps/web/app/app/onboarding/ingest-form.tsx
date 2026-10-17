@@ -3,25 +3,9 @@
 import { useState, type FormEvent } from 'react';
 import { Button, Callout, Field } from '@curios/ui';
 import { apiFetch } from '../../../lib/api.js';
-import { loginWalledSite } from '../../../lib/social-links.js';
 import { JobStatus, type IngestionResult } from './job-status.js';
+import { checkSource, FILE_ACCEPT, fileSize, ingestSource, type Source } from './source-input.js';
 import styles from './onboarding.module.css';
-
-type Source =
-  | { pageId: string; sourceUrl: string }
-  | { pageId: string; pastedText: string }
-  | { pageId: string; file: File };
-
-/** The API's ceiling (file-text.ts), checked here too so a 40 MB scan fails before it uploads. */
-const FILE_MAX_BYTES = 5 * 1024 * 1024;
-
-/** What the picker offers. The API decides from the file's bytes, not from this. */
-const FILE_ACCEPT =
-  '.pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown';
-
-function fileSize(bytes: number): string {
-  return bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 /**
  * A link, or text pasted straight in -- for anyone whose presence is a social
@@ -76,33 +60,14 @@ export function IngestForm({
     setError('');
     // Caught before sending: a login wall can only come back as "we found
     // nothing", after spending an ingestion and a rate-limit token.
-    const walled = using === 'link' ? loginWalledSite(sourceUrl) : null;
-    if (walled) {
+    const problem = checkSource(using, { sourceUrl, pastedText, file }, pastedTextMax);
+    if (problem && 'paste' in problem) {
       setUsing('text');
-      setNotice(`${walled} does not let us read profiles. Paste your bio or About section from it instead.`);
+      setNotice(problem.paste);
       return;
     }
-    // `required` is satisfied by whitespace, and the API's own answer to an
-    // all-whitespace paste is Fastify's raw validation wording -- catch it
-    // here so the owner hears it from us instead.
-    if (using === 'file' && !file) {
-      setError('Choose a file first: a PDF, a Word document or a text file.');
-      return;
-    }
-    if (using === 'file' && file && file.size > FILE_MAX_BYTES) {
-      setError('That file is over 5 MB. Try a smaller one, or paste the text instead.');
-      return;
-    }
-    if (using === 'text' && pastedText.trim() === '') {
-      setError('Paste something first — a bio, captions, an About section, whatever says it best.');
-      return;
-    }
-    // Checked here so the owner is told before anything is sent; the API's
-    // schema is what actually enforces it. The API trims before measuring, so
-    // this compares trimmed length too -- trailing whitespace should not
-    // fail someone the API would have accepted.
-    if (using === 'text' && pastedText.trim().length > pastedTextMax) {
-      setError(`That is more than ${count(pastedTextMax)} characters. Paste the part that says the most.`);
+    if (problem) {
+      setError(problem.error);
       return;
     }
     setBusy(true);
@@ -273,16 +238,6 @@ export function IngestForm({
   );
 }
 
-/** A file's bytes as base64, the way the picture uploads travel. Chunked: a spread of 5 MB overflows the stack. */
-async function asBase64(file: File): Promise<string> {
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  let binary = '';
-  for (let from = 0; from < bytes.length; from += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(from, from + 0x8000));
-  }
-  return btoa(binary);
-}
-
 /**
  * Supplies the real `onIngest` and `fetchStatus`. Thin on purpose, same shape
  * as `Claim` in `claim-form.tsx`: a Server Component cannot hand a closure to a
@@ -306,14 +261,7 @@ export function Ingest({
       pageId={pageId}
       mode={mode}
       pastedTextMax={pastedTextMax}
-      onIngest={async (input) =>
-        'file' in input
-          ? apiFetch<{ ingestionId: string; truncated: boolean }>('/ingest/file', {
-              method: 'POST',
-              body: JSON.stringify({ pageId: input.pageId, fileName: input.file.name, data: await asBase64(input.file) }),
-            })
-          : apiFetch<{ ingestionId: string }>('/ingest', { method: 'POST', body: JSON.stringify(input) })
-      }
+      onIngest={ingestSource}
       fetchStatus={(ingestionId) => apiFetch(`/ingest/${ingestionId}`)}
     />
   );

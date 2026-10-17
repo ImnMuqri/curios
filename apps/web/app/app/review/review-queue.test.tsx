@@ -127,8 +127,8 @@ describe('ReviewQueue', () => {
     render(<ReviewQueue facts={[]} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
 
     expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Add a source' })).toHaveAttribute('href', '/app/knowledge?tab=sources');
-    expect(screen.getByRole('link', { name: 'Write a fact yourself' })).toHaveAttribute('href', '/app/knowledge?tab=facts');
+    expect(screen.getByRole('link', { name: 'Add a source' })).toHaveAttribute('href', '/app/knowledge?tab=sources&add=1');
+    expect(screen.getByRole('link', { name: 'Write a fact yourself' })).toHaveAttribute('href', '/app/knowledge?tab=facts&add=1');
   });
 
   it('says so when the last fact has been checked', async () => {

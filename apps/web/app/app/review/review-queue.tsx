@@ -261,10 +261,10 @@ export function ReviewQueue({
               <h2>Nothing to review yet</h2>
               <p>Add your website, your Instagram or a few honest paragraphs. Every fact Curios finds waits here until you accept it, one at a time.</p>
               <div className={styles.esActs}>
-                <a className={styles.prim} href="/app/knowledge?tab=sources">
+                <a className={styles.prim} href="/app/knowledge?tab=sources&add=1">
                   Add a source
                 </a>
-                <a className={styles.btn2} href="/app/knowledge?tab=facts">
+                <a className={styles.btn2} href="/app/knowledge?tab=facts&add=1">
                   Write a fact yourself
                 </a>
               </div>

@@ -119,7 +119,7 @@ describe('the review screen, assembled', () => {
 
     expect(screen.getByRole('link', { name: 'Add another source' })).toHaveAttribute(
       'href',
-      '/app/knowledge?tab=sources',
+      '/app/knowledge?tab=sources&add=1',
     );
   });
 

@@ -4,7 +4,7 @@ import styles from './review.module.css';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api.js';
-import { sourcePlace } from './fact-card.js';
+import { sourcePlace } from '../_ui/source-place.js';
 
 /**
  * The one primary action this task adds: a deliberate owner action that sets

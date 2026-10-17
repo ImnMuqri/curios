@@ -3,7 +3,9 @@ import { render, screen } from '@testing-library/react';
 
 const getKnowledge = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getKnowledge, getOwnerPage }));
+const getMyCurios = vi.fn();
+const getTopics = vi.fn();
+vi.mock('@curios/db-read', () => ({ getKnowledge, getOwnerPage, getMyCurios, getTopics }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -23,12 +25,14 @@ vi.mock('./sources-tab.js', () => ({ Sources }));
 vi.mock('./facts-tab.js', () => ({ Facts }));
 vi.mock('./pinned-tab.js', () => ({ Pinned }));
 vi.mock('./never-say-tab.js', () => ({ NeverSay }));
+const Ask = vi.fn((_p: object) => null);
+vi.mock('./ask-panel.js', () => ({ Ask }));
 
 const KnowledgePage = (await import('./page.js')).default;
 
 const knowledge = { sources: [], facts: [], pinned: [], neverSay: [] };
 const page = { id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'BUSINESS' };
-const open = (tab?: string) => KnowledgePage({ searchParams: Promise.resolve(tab ? { tab } : {}) });
+const open = (tab?: string, more: Record<string, string> = {}) => KnowledgePage({ searchParams: Promise.resolve({ ...(tab ? { tab } : {}), ...more }) });
 
 describe('KnowledgePage', () => {
   beforeEach(() => {
@@ -36,6 +40,8 @@ describe('KnowledgePage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockResolvedValue(page);
     getKnowledge.mockResolvedValue(knowledge);
+    getMyCurios.mockResolvedValue(null);
+    getTopics.mockResolvedValue([]);
   });
 
   it('sends a signed-out visitor to sign in', async () => {
@@ -69,7 +75,7 @@ describe('KnowledgePage', () => {
     render(await open());
     expect(Facts).toHaveBeenCalled();
     expect(Sources).not.toHaveBeenCalled();
-    expect(screen.getByRole('link', { name: 'Facts' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Facts , 0' })).toHaveAttribute('aria-current', 'page');
   });
 
   it('opens the tab in the address, with what it needs', async () => {
@@ -79,7 +85,7 @@ describe('KnowledgePage', () => {
 
   it('gives the Sources tab the page it adds sources to', async () => {
     render(await open('sources'));
-    expect(Sources.mock.calls[0]?.[0]).toMatchObject({ pageId: 'p1', mode: 'BUSINESS', pastedTextMax: 20_000 });
+    expect(Sources.mock.calls[0]?.[0]).toMatchObject({ pageId: 'p1', pastedTextMax: 20_000, startAdding: false });
   });
 
   it('gives the Facts tab the categories and the limit', async () => {
@@ -110,6 +116,38 @@ describe('KnowledgePage', () => {
 
     render(await open('never-say'));
     expect(NeverSay.mock.calls[0]?.[0]).toMatchObject({ entries: [{ id: 'never-1' }] });
+  });
+
+  it('opens a tab with its add form when the address asks', async () => {
+    render(await open('facts', { add: '1' }));
+    expect(Facts.mock.calls[0]?.[0]).toMatchObject({ startAdding: true });
+  });
+
+  it('counts each tab', async () => {
+    getKnowledge.mockResolvedValue({ sources: [{ id: 's' }], facts: [{ id: 'a' }, { id: 'b' }], pinned: [], neverSay: [{ id: 'n' }] });
+    render(await open());
+    expect(screen.getByRole('link', { name: 'Facts , 2' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Sources , 1' })).toBeInTheDocument();
+  });
+
+  // What customers ask most, to try; a page nobody has asked yet gets starters for its kind.
+  it('suggests what customers ask most in Ask your page', async () => {
+    getTopics.mockResolvedValue([{ title: 'Berapa kek coklat 2kg?' }, { title: 'Ada delivery?' }]);
+    render(await open());
+    expect(getTopics).toHaveBeenCalledWith('acc1', { limit: 4 });
+    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['Berapa kek coklat 2kg?', 'Ada delivery?'] });
+  });
+
+  it('suggests starters when nobody has asked yet', async () => {
+    getOwnerPage.mockResolvedValue({ ...page, mode: 'PERSONAL' });
+    render(await open());
+    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['What do you do?', 'How can I reach you?', 'Where are you based?', 'What have you worked on?'] });
+  });
+
+  it('gives Ask your page the page colours', async () => {
+    getMyCurios.mockResolvedValue({ accentColor: '#b5294e', headingFont: 'SERIF', background: 'CUSTOM', backgroundColor: '#542339' });
+    render(await open());
+    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ look: { accentColor: '#b5294e', background: 'CUSTOM', backgroundColor: '#542339' } });
   });
 
   // AppFrame renders its own main around every screen it wraps, this one

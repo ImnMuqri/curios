@@ -1,85 +1,1603 @@
 /*
- * Knowledge, in the dashboard's voice: the four tabs as one pill switch, the
- * add form on its own white card, and each fact, source or answer as a white
- * row on a hairline -- the same card My Curios is built from.
+ * Facts & sources, from the design handoff's Knowledge board: four tabs
+ * (Facts, Sources, Pinned answers, Never say) over a column of rows, and
+ * beside them "Ask your page", a chat in the page's own colours that answers
+ * only from what is here.
  */
-.tabs {
-  display: inline-flex;
-  gap: 2px;
-  max-width: 100%;
-  margin: 0 0 20px;
-  padding: 4px;
-  overflow-x: auto;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line);
-  border-radius: 999px;
-  scrollbar-width: none;
-}
 
-/*
- * Centred on the colour band's bottom edge, half on the band and half on white:
- * the band ends 172px down (200px on a phone, where the lede wraps), and the
- * switch is 45px tall.
- */
-.tabs {
-  margin-top: 24px;
-}
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 
-@media (max-width: 760px) {
-  .tabs {
-    margin-top: 38px;
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes slide {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes popin {
+  from {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+}
+
+@keyframes dot {
+  0%,
+  80%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes ghost {
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes bob {
+  50% {
+    transform: rotate(4deg) translateY(-4px);
+  }
+}
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- The two columns ---- */
+
+.kb {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  min-height: 0;
+}
+
+.kmain {
+  min-width: 0;
+  padding: 0 36px 56px;
+}
+
+/* ---- Tabs ---- */
+
+.tabs {
+  display: flex;
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
 .tab {
-  padding: 8px 16px;
-  border-radius: 999px;
-  font-size: var(--text-base);
-  font-weight: 600;
+  position: relative;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 160px;
+  height: 52px;
   color: var(--muted);
+  font-weight: 500;
   text-decoration: none;
   white-space: nowrap;
-  transition: color 120ms ease, background-color 120ms ease;
+  transition: color 200ms;
 }
 
 .tab:hover {
   color: var(--ink);
 }
 
-/* The current tab, drawn like the sidebar's current item. */
+.tab em {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 20px;
+  text-align: center;
+}
+
 .tab[aria-current='page'] {
+  color: var(--biru);
+}
+
+.tab[aria-current='page'] em {
   background: var(--biru-muda);
-  color: var(--biru-deep, var(--biru));
+  color: var(--biru);
 }
 
-.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-.row { padding: 16px 18px; background: var(--card); border: 1px solid var(--line); border-radius: 14px; transition: border-color 120ms ease; }
-.row:hover { border-color: color-mix(in oklch, var(--line) 50%, var(--muted)); }
-.label { margin: 0; font-size: var(--text-base); font-weight: 500; color: var(--ink); overflow-wrap: anywhere; }
-.meta { margin: 4px 0 12px; font-size: var(--text-sm); color: var(--muted); }
-.row > .meta:first-child { margin: 0 0 4px; font-weight: 600; color: var(--ink); }
-.row > :last-child { margin-bottom: 0; }
-.actions, .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.confirm p { flex-basis: 100%; margin: 0 0 4px; font-size: var(--text-base); }
-.recheck { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 10px; }
-.recheck small { font-size: var(--text-sm); color: var(--muted); }
-
-/* Adding: its own white card, fields stacked, the button at the foot. */
-.add { display: grid; gap: 4px; margin: 0 0 20px; padding: 22px 24px; background: var(--card); border: 1px solid var(--line); border-radius: 16px; }
-.add > button { justify-self: start; }
-.select { display: grid; gap: 8px; margin-bottom: 16px; font-size: var(--text-base); font-weight: 600; }
-.select select { min-height: 44px; padding: 0 12px; font: inherit; font-size: var(--text-base); font-weight: 400; border: 1.5px solid var(--surface); border-radius: 10px; background: var(--paper); }
-.search { width: 100%; min-height: 44px; padding: 0 18px; margin-bottom: 20px; font: inherit; font-size: var(--text-base); border: 1px solid var(--line); border-radius: 999px; background: var(--card); }
-.search:focus-visible { outline: none; border-color: var(--biru); box-shadow: 0 0 0 3px var(--biru-muda); }
-.group { margin: 24px 0 10px; font-family: var(--font-display); font-size: var(--text-body); font-weight: 700; letter-spacing: -0.01em; }
-
-@media (max-width: 480px) {
-  .add { padding: 18px 16px; }
+.tab[aria-current='page']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--biru);
 }
 
-/* The Sources tab opens with its Add button, its form or a status card; the list keeps its distance. */
-button + .list,
-form + .list,
-div + .list {
+.wrap {
+  max-width: 820px;
+  padding-top: 22px;
+  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.intro {
+  margin: 0 0 14px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+
+.introRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin: 0 0 14px;
+}
+
+.introRow .intro {
+  margin: 0;
+}
+
+/* ---- Shared controls ---- */
+
+.prim {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--biru);
+  color: var(--card);
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.prim:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  color: var(--card);
+}
+
+.prim:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn2:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.inp {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--card);
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.inp:focus {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+}
+
+/* An icon button that shows on a row's hover, and always on touch. */
+.icb {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.icb:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.icb:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.icb svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.acts {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 140ms;
+}
+
+/* A destructive confirm on a row: the sentence, then Remove and Keep. */
+.confirm {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+}
+
+.confirm button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.confirm button:first-child {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.confirm button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.warn {
+  color: var(--merah-deep);
+}
+
+.error {
+  margin: 8px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+  font-size: 12.5px;
+}
+
+.note {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ---- Facts ---- */
+
+.tool {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+  transition: border-color 160ms, box-shadow 160ms;
+}
+
+.search:focus-within {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+}
+
+.search svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.tool .prim {
+  height: 40px;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 160ms, color 160ms, border-color 160ms;
+}
+
+.chip i {
+  font-size: 11.5px;
+  font-style: normal;
+  opacity: 0.7;
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--card);
+}
+
+/* In the add panel, a chosen kind wears its own colour. */
+.add .chip {
+  height: 26px;
+}
+
+.add .chip[aria-checked='true'] {
+  border-color: var(--dot);
+  background: var(--dot);
+  color: var(--card);
+}
+
+.add {
+  display: grid;
+  gap: 8px;
   margin-top: 16px;
+  padding: 10px;
+  border: 1.5px dashed color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
+  border-radius: 14px;
+  background: var(--paper);
+  animation: fadeUp 280ms ease both;
+}
+
+.add .chips {
+  margin-top: 0;
+}
+
+.addRow {
+  display: flex;
+  gap: 8px;
+}
+
+.addRow .inp {
+  flex: 1;
+}
+
+.addRow .prim,
+.addRow .btn2 {
+  height: 40px;
+}
+
+.add > span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* The kinds' colours, on the group dots and the chosen add chip. */
+:is(.group, .chip)[data-kind='PRICE'] {
+  --dot: var(--kuning);
+}
+
+:is(.group, .chip)[data-kind='HOURS'] {
+  --dot: var(--biru);
+}
+
+:is(.group, .chip)[data-kind='LOCATION'] {
+  --dot: var(--hijau);
+}
+
+:is(.group, .chip)[data-kind='POLICY'] {
+  --dot: var(--ungu);
+}
+
+:is(.group, .chip)[data-kind='PRODUCT'] {
+  --dot: var(--rose);
+}
+
+:is(.group, .chip)[data-kind='PERSON'] {
+  --dot: var(--jingga);
+}
+
+:is(.group, .chip)[data-kind='MISC'] {
+  --dot: var(--muted);
+}
+
+.group {
+  margin-top: 22px;
+}
+
+.group > h2 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.group > h2 i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--dot);
+}
+
+.rows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.rows > li + li {
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 58px;
+  padding: 10px 10px 10px 16px;
+  animation: fadeUp 300ms ease both;
+}
+
+.row:hover .acts,
+.row:focus-within .acts {
+  opacity: 1;
+}
+
+.claim {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+/* Where a fact came from: a quiet pill. */
+.origin {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  max-width: 210px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.origin span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.origin svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.edit {
+  flex: 1;
+  min-width: 0;
+  height: 38px;
+  padding: 0 12px;
+  border: 1.5px solid var(--biru);
+  border-radius: 9px;
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.row > .prim {
+  height: 38px;
+}
+
+.row > .btn2 {
+  height: 38px;
+}
+
+.row > .error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.noMatch {
+  margin: 48px 24px;
+  font-size: 13.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.noMatch b {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+}
+
+/* ---- An empty tab ---- */
+
+.es {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 28px 16px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 16px;
+  text-align: center;
+  animation: fadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.wrap > .es:first-child,
+.introRow + .es {
+  margin-top: 0;
+}
+
+.esArt {
+  position: relative;
+  width: 190px;
+  height: 96px;
+  margin-bottom: 10px;
+}
+
+.esRows {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+}
+
+.esRows > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 8px 16px -12px rgb(25 31 44 / 30%);
+  animation: ghost 3.4s ease-in-out infinite;
+}
+
+.esRows > span:nth-child(2) {
+  margin: 0 14px;
+  animation-delay: 0.25s;
+}
+
+.esRows > span:nth-child(3) {
+  margin: 0 28px;
+  animation-delay: 0.5s;
+}
+
+.esRows i {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
+}
+
+.esRows b {
+  width: 46%;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.esRows em {
+  width: 16%;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.esRows > [data-tone='amber'] > i {
+  background: var(--amber-muda);
+}
+
+.esRows > [data-tone='biru'] > i {
+  background: var(--biru-muda);
+}
+
+.esRows > [data-tone='hijau'] > i {
+  background: var(--hijau-muda);
+}
+
+.esRows > [data-tone='rose'] > i {
+  background: var(--rose-muda);
+}
+
+.esBadge {
+  position: absolute;
+  right: -16px;
+  top: -14px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--biru);
+  color: var(--card);
+  box-shadow: 0 12px 24px -12px rgb(25 31 44 / 60%);
+  transform: rotate(8deg);
+  animation: bob 3.6s ease-in-out infinite;
+}
+
+.esBadge[data-tone='jingga'] {
+  background: var(--jingga);
+}
+
+.esBadge svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.es h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.es p {
+  max-width: 32em;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.esActs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* ---- Sources ---- */
+
+.addSrc {
+  margin-bottom: 12px;
+  padding: 16px;
+  border: 1.5px solid var(--biru);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
+  animation: fadeUp 300ms ease both;
+}
+
+.seg {
+  display: inline-grid;
+  grid-template-columns: repeat(3, minmax(0, 110px));
+  max-width: 100%;
+  padding: 3px;
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.seg button {
+  height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 200ms, background 200ms;
+}
+
+.seg button[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.addSrc .inp,
+.addSrc textarea {
+  margin-top: 12px;
+}
+
+.addSrc .inp {
+  height: 42px;
+  border-radius: 10px;
+}
+
+.addSrc textarea {
+  display: block;
+  width: 100%;
+  height: 110px;
+  padding: 12px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+  font: inherit;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+}
+
+.addSrc textarea:focus {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+}
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 18px 12px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 10px;
+  background: var(--card);
+  text-align: center;
+  cursor: pointer;
+}
+
+.drop[data-dragging] {
+  border-color: var(--biru);
+}
+
+.drop input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.drop:focus-within {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+}
+
+.drop b {
+  font-weight: 600;
+}
+
+.drop span {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.addActs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.srcs {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.src {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  padding: 16px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  animation: fadeUp 320ms ease both;
+}
+
+.src:hover .acts,
+.src:focus-within .acts {
+  opacity: 1;
+}
+
+/* Room for both buttons on every card, so the fact counts line up. */
+.src .acts {
+  width: 66px;
+  justify-content: flex-end;
+}
+
+.sic {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--biru-muda);
+  color: var(--biru);
+}
+
+.sic[data-kind='instagram'] {
+  background: var(--rose-muda);
+  color: var(--rose);
+}
+
+.sic[data-kind='tiktok'] {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.sic[data-kind='text'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+.sic svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sm {
+  flex: 1;
+  min-width: 0;
+}
+
+.sm b {
+  display: block;
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sm > span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.sfc {
+  display: grid;
+  flex: none;
+  justify-items: end;
+}
+
+.sfc b {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sfc span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Being read: a shimmer across the card and a bar along its foot. */
+.scan {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgb(35 64 200 / 8%) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+  pointer-events: none;
+}
+
+.sprog {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  overflow: hidden;
+}
+
+.sprog::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 40%;
+  background: var(--biru);
+  animation: slide 1.4s ease-in-out infinite;
+}
+
+.newFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-top: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--biru-muda);
+  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
+  font-size: 12.5px;
+  font-weight: 500;
+  animation: fadeUp 300ms ease both;
+}
+
+.newFacts a {
+  margin-left: auto;
+  color: var(--biru);
+}
+
+.src .confirm {
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* ---- Pinned answers ---- */
+
+.pins {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pin {
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+  animation: fadeUp 300ms ease both;
+}
+
+.pin:hover .acts,
+.pin:focus-within .acts {
+  opacity: 1;
+}
+
+.pinQ {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.pinQ > svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pinQ > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.pinQ .acts {
+  margin-left: auto;
+}
+
+.pin > p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.pin textarea {
+  display: block;
+  width: 100%;
+  min-height: 90px;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--biru);
+  border-radius: 10px;
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+}
+
+.pinActs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 10px;
+}
+
+.pinActs > p {
+  flex-basis: 100%;
+  margin: 0 0 2px;
+  font-size: 13px;
+  color: var(--merah-deep);
+}
+
+.pinActs .confirm {
+  flex-wrap: wrap;
+}
+
+.pinLink {
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.pinLink a {
+  color: var(--biru);
+  font-weight: 500;
+}
+
+/* ---- Never say ---- */
+
+.nsNote {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--amber-muda);
+  color: color-mix(in srgb, var(--amber-ink) 75%, var(--ink));
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.nsNote svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  margin-top: 1px;
+  fill: none;
+  stroke: var(--amber-ink);
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.nsAdd {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.nsAdd .inp {
+  flex: 1;
+}
+
+.nsAdd .prim {
+  height: 40px;
+}
+
+.nsCount {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.nsEmpty {
+  margin: 18px 0 0;
+  padding: 18px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 14px;
+  font-size: 13.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.nsl {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.nsl > li {
+  display: contents;
+}
+
+.nsp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  min-height: 34px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 500;
+  animation: popin 300ms cubic-bezier(0.34, 1.5, 0.64, 1) both;
+}
+
+.nsp s {
+  overflow-wrap: anywhere;
+  text-decoration-thickness: 1.5px;
+  text-decoration-color: var(--merah);
+}
+
+.nsp button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(250 251 252 / 14%);
+  color: var(--paper);
+  cursor: pointer;
+}
+
+.nsp button:hover:not(:disabled) {
+  background: var(--merah);
+}
+
+.nsp button svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+
+.nsl .error {
+  flex-basis: 100%;
+}
+
+/* ---- Ask your page ---- */
+
+.tester {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+  padding: 24px;
+  border-left: 1px solid var(--line);
+  background: var(--paper);
+}
+
+/* The send button is the page's accent, with whichever text reads on it. */
+.tester[data-on-accent='dark'] {
+  --on-accent: var(--ink);
+}
+
+.tester[data-on-accent='light'] {
+  --on-accent: var(--paper);
+}
+
+.tester h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tester > p {
+  margin: -8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.tchat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 320px;
+  max-height: 440px;
+  padding: 16px;
+  overflow: auto;
+  border-radius: 20px;
+  background: var(--page-bg, var(--ink));
+  color: var(--page-fg, var(--paper));
+  font-family: var(--font-inter), sans-serif;
+}
+
+/* Bottom-aligned while short, scrollable once it is long. */
+.tchat > :first-child {
+  margin-top: auto;
+}
+
+.tchatEmpty {
+  margin: auto;
+  font-family: var(--font-plex-sans), sans-serif;
+  font-size: 13px;
+  text-align: center;
+  opacity: 0.7;
+}
+
+.u {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 8px 12px;
+  border-radius: 16px 16px 5px 16px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  animation: fadeUp 260ms ease both;
+}
+
+.a {
+  align-self: flex-start;
+  max-width: 90%;
+  padding: 8px 12px;
+  border-radius: 16px 16px 16px 5px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  animation: fadeUp 260ms ease both;
+}
+
+.from {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px 0 4px 4px;
+  font-family: var(--font-plex-sans), sans-serif;
+  font-size: 11.5px;
+  opacity: 0.7;
+  animation: fadeUp 260ms ease both;
+}
+
+.from svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dots {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px 0;
+}
+
+.dots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent, var(--biru));
+  animation: dot 1s ease-in-out infinite;
+}
+
+.dots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.dots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+.sugg {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sugg button {
+  max-width: 100%;
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms, background 160ms;
+}
+
+.sugg button:hover:not(:disabled) {
+  border-color: var(--biru);
+  background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
+}
+
+.tin {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 5px 5px 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  transition: border-color 160ms, box-shadow 160ms;
+}
+
+.tin:focus-within {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+}
+
+.tin input {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.tin button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent, var(--biru));
+  color: var(--on-accent, var(--card));
+  cursor: pointer;
+}
+
+.tin button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tin button svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.tester .error {
+  margin: -6px 0 0;
+}
+
+/* ---- Narrower ---- */
+
+@media (hover: none) {
+  .acts {
+    opacity: 1;
+  }
+}
+
+@media (min-width: 1201px) and (max-width: 1400px) {
+  .kb {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .kb {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .tester {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 760px) {
+  .kmain {
+    padding: 0 16px 40px;
+  }
+
+  .tester {
+    padding: 20px 16px;
+  }
+}
+
+/* The column can be narrow on a wide screen too. */
+.kmain {
+  container-type: inline-size;
+}
+
+@container (max-width: 680px) {
+  .tool {
+    flex-wrap: wrap;
+  }
+
+  .search {
+    flex: 1 1 100%;
+  }
+
+  .claim {
+    flex: 1 1 100%;
+  }
+
+  .origin {
+    max-width: 100%;
+    margin-right: auto;
+  }
+
+  .src {
+    flex-wrap: wrap;
+  }
+
+  .addRow,
+  .nsAdd {
+    flex-wrap: wrap;
+  }
+
+  .addRow .inp {
+    flex: 1 1 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wrap,
+  .row,
+  .add,
+  .es,
+  .esRows > span,
+  .esBadge,
+  .addSrc,
+  .src,
+  .scan,
+  .sprog::after,
+  .newFacts,
+  .pin,
+  .nsp,
+  .u,
+  .a,
+  .from,
+  .dots i {
+    animation: none;
+  }
 }

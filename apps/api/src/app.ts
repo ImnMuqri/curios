@@ -15,6 +15,7 @@ import {
   authPerEmailLimit,
   authPerIpLimit,
   billingPerAccountLimit,
+  chatTestPerAccountLimit,
   chatPerIpLimit,
   chatPerPageLimit,
   ingestPerIpLimit,
@@ -22,7 +23,7 @@ import {
   rateLimitPlugin,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
-import { chatRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
+import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
@@ -117,6 +118,15 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, chatPerPageLimit(app.rateLimitRedis));
     await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
     await scope.register(chatRoutes, overrides.chat ?? {});
+  });
+
+  // The owner asking their own page, from Facts & sources. Signed in, so the
+  // session hook goes first and the limit keys on the account, as billing's
+  // does: the per-page and per-IP chat limits would share a visitor's budget.
+  await app.register(async (scope) => {
+    scope.addHook('onRequest', requireSession);
+    await scope.register(rateLimit, chatTestPerAccountLimit(app.rateLimitRedis));
+    await scope.register(chatTestRoutes, overrides.chat ?? {});
   });
 
   // Its own scope, with the per-IP limiter only. It cannot join the chat scope

@@ -53,6 +53,9 @@
   --rose-muda: #fbeef1;
   --amber-ink: #8f5c15;
   --amber-muda: #fdf0dc;
+  /* Two more labels, for the kinds of fact on Facts & sources (Policy, About you). */
+  --ungu: #6d3fb3;
+  --jingga: #e08a1e;
   /* A destructive confirm's quiet button ("Yes, remove"), and its text. */
   --merah-muda: #fdecea;
   --merah-deep: #b3261e;

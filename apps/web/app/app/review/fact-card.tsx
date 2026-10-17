@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from 'react';
 import type { FactCategory } from '@curios/core';
 import type { ReviewFact } from '@curios/db-read';
+import { sourcePlace } from '../_ui/source-place.js';
 import styles from './review.module.css';
 
 /**
@@ -28,17 +29,6 @@ export function readingOf(confidence: number): { text: string; tone: string } {
   if (confidence >= 0.85) return { text: 'Read clearly', tone: 'hijau' };
   if (confidence >= 0.7) return { text: 'Fairly sure', tone: 'kuning' };
   return { text: 'Check closely', tone: 'merah' };
-}
-
-/** "keklina.example/menu" from a source address: no scheme, no www, no trailing slash. */
-export function sourcePlace(url: string): string {
-  try {
-    const parsed = new URL(url);
-    const path = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
-    return parsed.host.replace(/^www\./, '') + path;
-  } catch {
-    return url;
-  }
 }
 
 /** The chip, the reading, the question and where the claim was found: what every card in the stack shows. */
