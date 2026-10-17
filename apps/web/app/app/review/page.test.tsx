@@ -21,7 +21,9 @@ import type { OwnerPage, ReviewFact } from '@curios/db-read';
  */
 const getOwnerPage = vi.fn();
 const getReviewQueue = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getReviewQueue }));
+const countPendingFacts = vi.fn();
+const getMyCurios = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getReviewQueue, countPendingFacts, getMyCurios }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -74,6 +76,8 @@ describe('the review screen, assembled', () => {
   // keeps `redirect`'s throwing implementation.
   beforeEach(() => {
     vi.clearAllMocks();
+    countPendingFacts.mockResolvedValue(0);
+    getMyCurios.mockResolvedValue(null);
   });
 
   it('offers Publish while facts are still waiting to be reviewed', async () => {
@@ -90,10 +94,10 @@ describe('the review screen, assembled', () => {
     expect(screen.getByRole('button', { name: /^publish$/i })).toBeInTheDocument();
     // And the queue is genuinely non-empty, so this is not passing because
     // the empty state happened to render.
-    expect(screen.getByText(/kuih lapis is rm12 a box/i)).toBeInTheDocument();
+    expect(screen.getByRole('article', { name: 'Fact to check' })).toHaveTextContent(/kuih lapis is rm12 a box/i);
   });
 
-  it('offers Publish when there is nothing left to review', async () => {
+  it('offers Publish when there is nothing to review', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
     getReviewQueue.mockResolvedValueOnce([]);
@@ -101,7 +105,7 @@ describe('the review screen, assembled', () => {
     render(await ReviewPage());
 
     expect(screen.getByRole('button', { name: /^publish$/i })).toBeInTheDocument();
-    expect(screen.getByText(/nothing left to review/i)).toBeInTheDocument();
+    expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
   });
 
   // A second source -- a shop, a LinkedIn bio -- can arrive at any time, not
@@ -131,6 +135,7 @@ describe('the review screen, assembled', () => {
 
     expect(screen.queryByRole('button', { name: /^publish$/i })).toBeNull();
     expect(screen.getByRole('link', { name: /nadia/i }).getAttribute('href')).toMatch(/\/nadia$/);
+    expect(screen.getByText(/there is nothing to publish/i)).toBeInTheDocument();
   });
 
   it('sends an owner with no page back to claim one', async () => {

@@ -1,120 +1,1095 @@
 /*
- * Review, in the dashboard's voice: each fact a white card on a hairline, the
- * question it answers in Bricolage, the claim under it, and where it came
- * from set apart with a rule. Publish sits at the foot with the way to add
- * another source.
+ * Review, from the design handoff's Review board: the facts as a stack of
+ * cards on a soft colour field, one at a time, with how far through you are
+ * above them; beside it what the chat can say once a fact is accepted, this
+ * session's decisions, and whether the page is live.
  */
-.card {
-  padding: 20px 22px;
-  margin-bottom: 12px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--card);
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-/* What kind of fact this is: a small pill, sentence case (the category arrives in capitals), not shouted. */
-.category {
-  display: inline-block;
-  margin: 0 0 10px;
-  padding: 2px 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  text-transform: lowercase;
-  color: var(--muted);
+@keyframes drift1 { to { transform: translate(25%, 20%) scale(1.15); } }
+@keyframes drift2 { to { transform: translate(-25%, 20%) scale(0.9); } }
+@keyframes drift3 { to { transform: translate(20%, -20%) scale(1.2); } }
+
+@keyframes stampIn {
+  from {
+    opacity: 0;
+    transform: rotate(-10deg) scale(1.6);
+  }
 }
 
-/*
- * The question a customer will be shown, above the claim that answers it.
- * The owner is verifying the pair, not the claim alone.
- */
-.question {
-  margin: 0 0 4px;
-  font-family: var(--font-display);
-  font-size: var(--text-body);
-  font-weight: 700;
-  letter-spacing: -0.01em;
+@keyframes burst {
+  from {
+    transform: rotate(var(--a)) translateY(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: rotate(var(--a)) translateY(-62px) rotate(200deg);
+    opacity: 0;
+  }
 }
 
-.claim {
-  margin: 0 0 14px;
-  font-size: var(--text-base);
-  color: var(--ink);
+@keyframes ghost {
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
-.source {
-  margin: 0 0 4px;
-  padding-left: 12px;
-  border-left: 2px solid var(--line);
-  font-size: var(--text-sm);
-  color: var(--muted);
+@keyframes bob {
+  50% {
+    transform: rotate(4deg) translateY(-4px);
+  }
 }
 
-.sourceLink {
-  font-size: var(--text-sm);
-  font-weight: 600;
-  color: var(--biru);
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.actions {
+/* ---- The two columns ---- */
+
+.rv {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  min-height: 0;
+}
+
+.stage {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-/* The foot: publish (or where the page lives) first, then the way to add more. */
-.footer {
-  display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
-  gap: 12px 20px;
-  margin-top: 20px;
-  padding: 18px 22px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--card);
+  padding: 30px 40px 48px;
+  overflow: hidden;
+  background: var(--field);
+  container-type: inline-size;
 }
 
-/* Publish's own block: its note and the address side by side. */
-.footer > div {
+.stage > *:not(.blobs) {
+  position: relative;
+}
+
+.blobs {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.blobs > span {
+  position: absolute;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.7;
+  animation: drift1 20s ease-in-out infinite alternate;
+}
+
+.blobs > span:nth-child(1) {
+  left: -15%;
+  top: -20%;
+  background: radial-gradient(circle, var(--blob-blue) 0%, transparent 65%);
+}
+
+.blobs > span:nth-child(2) {
+  right: -20%;
+  bottom: -25%;
+  background: radial-gradient(circle, var(--blob-peach) 0%, transparent 65%);
+  animation-name: drift3;
+}
+
+.blobs > span:nth-child(3) {
+  right: 10%;
+  top: -30%;
+  width: 40%;
+  background: radial-gradient(circle, var(--blob-pink) 0%, transparent 65%);
+  animation-name: drift2;
+}
+
+/* ---- How far through ---- */
+
+.prog {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 640px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.prog b {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.doneText {
+  white-space: nowrap;
+}
+
+.pbar {
+  flex: 1;
+  display: flex;
+  gap: 6px;
+  min-width: 60px;
+}
+
+.pbar > i {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--edge);
+  transition: background 400ms;
+}
+
+.pbar > i[data-state='accept'],
+.track > i[data-state='accept'] {
+  background: var(--hijau);
+}
+
+.pbar > i[data-state='reject'],
+.track > i[data-state='reject'] {
+  background: var(--merah);
+}
+
+.pbar > i[data-state='now'] {
+  background: var(--biru);
+}
+
+/* Past a couple of dozen facts: one bar, accepted then rejected. */
+.track {
+  flex: 1;
+  display: flex;
+  height: 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--edge);
+}
+
+.track > i {
+  transition: width 400ms;
+}
+
+/* ---- The stack ---- */
+
+/* Every card in one grid cell, so the stack is as tall as its tallest card. */
+.deck {
+  display: grid;
+  width: 100%;
+  max-width: 640px;
+  margin-top: 22px;
+  padding-bottom: 40px;
+}
+
+.fc {
+  grid-area: 1 / 1;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 500px;
+  padding: 26px 28px 22px;
+  border-radius: 24px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px rgb(25 31 44 / 6%), 0 30px 60px -36px rgb(25 31 44 / 45%);
+  transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1), opacity 420ms ease;
+}
+
+.fc:focus {
+  outline: none;
+}
+
+.behind {
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.top {
+  display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.footer > div > * {
-  margin: 0;
-}
-
-.footer > a {
-  margin-left: auto;
-}
-
-.published {
-  margin: 0;
-  padding: 8px 16px;
+.cat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
   border-radius: 999px;
   background: var(--surface);
-  font-family: var(--font-mono);
-  font-size: var(--text-base);
-  word-break: break-all;
-}
-
-.addSource {
-  color: var(--biru);
-  font-size: var(--text-base);
+  color: var(--ink-soft);
+  font-size: 12px;
   font-weight: 600;
-  text-underline-offset: 3px;
 }
 
-.category::first-letter {
-  text-transform: uppercase;
+.cat[data-tone='amber'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
 }
 
-.published a {
+.cat[data-tone='biru'] {
+  background: var(--biru-muda);
+  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
+}
+
+.cat[data-tone='hijau'] {
+  background: var(--hijau-muda);
+  color: color-mix(in srgb, var(--hijau) 65%, var(--ink));
+}
+
+.cat[data-tone='rose'] {
+  background: var(--rose-muda);
+  color: var(--rose);
+}
+
+.cat svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* How clearly the claim was read: a word and a short meter. */
+.conf {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.conf > i {
+  position: relative;
+  display: block;
+  width: 60px;
+  height: 5px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--surface);
+}
+
+.conf > i > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--hijau);
+}
+
+.conf[data-tone='kuning'] > i > i {
+  background: var(--kuning);
+}
+
+.conf[data-tone='merah'] > i > i {
+  background: var(--merah);
+}
+
+.fq {
+  margin: 22px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.fq b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.claim {
+  margin: 8px 0 0;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.top + .claim {
+  margin-top: 22px;
+}
+
+.edited {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  margin-left: 8px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--biru-muda);
+  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+.ced {
+  margin-top: 12px;
+}
+
+.top + .ced {
+  margin-top: 22px;
+}
+
+.ced textarea {
+  display: block;
+  width: 100%;
+  height: 110px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--biru);
+  border-radius: 14px;
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+  resize: none;
+  font: inherit;
+  font-size: 17px;
+  line-height: 1.45;
+  color: var(--ink);
+  outline: none;
+}
+
+/* Where it was found, and the line itself. */
+.src {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.sl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.sl svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sl a {
+  margin-left: auto;
+  padding-left: 12px;
+  font-weight: 500;
   color: var(--biru);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.sl a:hover {
+  text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.src p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  overflow-wrap: anywhere;
+}
+
+.error {
+  margin: 14px 0 0;
+  font-size: 13px;
+  color: var(--merah-deep);
+}
+
+/* ---- The three things to do ---- */
+
+.facts {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 22px;
+}
+
+.rj,
+.ed2,
+.ac {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms, transform 160ms, box-shadow 160ms;
+}
+
+.rj {
+  background: var(--card);
+  color: var(--merah-deep);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--merah) 35%, var(--card));
+}
+
+.rj:hover:not(:disabled) {
+  background: var(--merah-muda);
+}
+
+.ed2 {
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--edge);
+}
+
+.ed2:hover:not(:disabled) {
+  background: var(--paper);
+}
+
+.ac {
+  margin-left: auto;
+  padding: 0 28px;
+  background: var(--hijau);
+  color: var(--card);
+}
+
+.ac:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--hijau) 85%, var(--ink));
+}
+
+/* Saving a correction is not accepting it: blue, not green. */
+.save {
+  background: var(--biru);
+}
+
+.save:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+}
+
+.rj:active:not(:disabled),
+.ed2:active:not(:disabled),
+.ac:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.facts button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.facts svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.facts .ed2 svg {
+  stroke-width: 2;
+}
+
+.stamp {
+  position: absolute;
+  top: 30px;
+  left: 28px;
+  padding: 6px 14px;
+  border: 3px solid currentColor;
+  border-radius: 10px;
+  color: var(--hijau);
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  transform: rotate(-10deg);
+  animation: stampIn 260ms cubic-bezier(0.34, 1.6, 0.64, 1) both;
+}
+
+.stamp[data-kind='reject'] {
+  left: auto;
+  right: 28px;
+  color: var(--merah);
+}
+
+.rule {
+  max-width: 640px;
+  margin: 14px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* ---- Everything checked ---- */
+
+.alldone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 70px;
+  text-align: center;
+  animation: fadeUp 420ms ease both;
+}
+
+.alldone h2 {
+  margin: 12px 0 0;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+.alldone p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.burst {
+  position: relative;
+  width: 110px;
+  height: 110px;
+}
+
+.burst svg {
+  position: relative;
+}
+
+.burst circle {
+  fill: var(--hijau);
+}
+
+.burst path {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.burst span {
+  position: absolute;
+  left: 51px;
+  top: 51px;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--rose);
+  animation: burst 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.burst span[data-tone='1'] {
+  background: var(--biru);
+}
+
+.burst span[data-tone='2'] {
+  background: var(--kuning);
+}
+
+.burst span[data-tone='3'] {
+  background: var(--hijau);
+}
+
+/* ---- Nothing yet: a new account ---- */
+
+.esCard {
+  width: 100%;
+  max-width: 640px;
+  margin-top: 40px;
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 70%, transparent);
+  box-shadow: 0 0 0 1px rgb(25 31 44 / 6%);
+}
+
+.es {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 44px 24px 40px;
+  text-align: center;
+  animation: fadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.esArt {
+  position: relative;
+  width: 236px;
+  height: 124px;
+  margin-bottom: 16px;
+}
+
+.esRows {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+}
+
+.esRows > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 8px 16px -12px rgb(25 31 44 / 30%);
+  animation: ghost 3.4s ease-in-out infinite;
+}
+
+.esRows > span:nth-child(2) {
+  margin: 0 14px;
+  animation-delay: 0.25s;
+}
+
+.esRows > span:nth-child(3) {
+  margin: 0 28px;
+  animation-delay: 0.5s;
+}
+
+.esRows i {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
+  background: var(--hijau-muda);
+}
+
+.esRows [data-tone='amber'] i {
+  background: var(--amber-muda);
+}
+
+.esRows [data-tone='biru'] i {
+  background: var(--biru-muda);
+}
+
+.esRows b {
+  width: 46%;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.esRows em {
+  width: 16%;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.esBadge {
+  position: absolute;
+  right: -16px;
+  top: -14px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--hijau);
+  color: var(--card);
+  box-shadow: 0 12px 24px -12px rgb(25 31 44 / 60%);
+  transform: rotate(8deg);
+  animation: bob 3.6s ease-in-out infinite;
+}
+
+.esBadge svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.es h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.es p {
+  max-width: 32em;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.esActs {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.prim {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 8px;
+  background: var(--biru);
+  color: var(--card);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.prim:hover {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+  color: var(--card);
+}
+
+.btn2 {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.btn2:hover {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ---- Beside the stack ---- */
+
+.side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding: 26px 24px 40px;
+  border-left: 1px solid var(--line);
+}
+
+.side h3 {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.side h3 span {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* The chat on the page, in the page's own colours (themeAttrs). */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--page-bg, var(--ink));
+  color: var(--page-fg, var(--paper));
+  font-family: var(--font-inter), sans-serif;
+}
+
+.chatLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  font-family: var(--font-plex-sans), sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  opacity: 0.7;
+}
+
+.chatLabel i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--blob-mint);
+}
+
+.asked {
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 16px 16px 5px 16px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.reply {
+  align-self: flex-start;
+  max-width: 92%;
+  min-height: 20px;
+  padding: 8px 12px;
+  border-radius: 16px 16px 16px 5px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.log li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--paper);
+  font-size: 13px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+  animation: fadeUp 320ms ease both;
+}
+
+.log li b {
+  font-weight: 600;
+}
+
+.log i {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  flex: none;
+  margin-top: 1px;
+  border-radius: 50%;
+  background: var(--hijau);
+  color: var(--card);
+}
+
+.log i[data-kind='reject'] {
+  background: var(--merah);
+}
+
+.log svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.noLog {
+  margin: 0;
+  padding: 12px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+}
+
+/* Whether the page is live, at the foot of the panel. */
+.golive {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.gl1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gl1 i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--hijau);
+  box-shadow: 0 0 0 3px var(--hijau-muda);
+}
+
+.gl1[data-off] i {
+  background: var(--faint);
+  box-shadow: 0 0 0 3px var(--surface);
+}
+
+.gl1 a {
+  margin-left: auto;
+  font-weight: 500;
+  color: var(--biru);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+}
+
+.gl1 a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.golive p {
+  margin: 6px 0 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.golive .error {
+  color: var(--merah-deep);
+}
+
+.publish {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  margin-top: 12px;
+  padding: 0 18px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--biru);
+  color: var(--card);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.publish:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+}
+
+.publish:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+/* ---- Narrower ---- */
+
+@media (min-width: 1201px) and (max-width: 1400px) {
+  .rv {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .rv {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .side {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 760px) {
+  .stage {
+    padding: 20px 16px 32px;
+  }
+
+  .side {
+    padding: 20px 16px 32px;
+  }
+}
+
+/* The stage can be narrow on a wide screen too, so the card follows its own width. */
+@container (max-width: 600px) {
+  .prog {
+    flex-wrap: wrap;
+  }
+
+  .fc {
+    padding: 20px 18px;
+  }
+
+  .claim {
+    font-size: 21px;
+  }
+
+  .facts {
+    flex-wrap: wrap;
+  }
+
+  .rj,
+  .ed2 {
+    padding: 0 16px;
+  }
+
+  .ac {
+    flex: 1 1 100%;
+    margin-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fc,
+  .pbar > i,
+  .track > i {
+    transition: none;
+  }
+
+  .stamp,
+  .burst span,
+  .log li,
+  .alldone,
+  .es,
+  .esRows > span,
+  .esBadge,
+  .blobs > span {
+    animation: none;
+  }
 }
