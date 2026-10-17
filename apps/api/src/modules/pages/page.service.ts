@@ -68,6 +68,26 @@ function violatedFields(error: unknown): string[] {
  * because "taken", "too similar" and "you already have a page" are three
  * different facts and only one of them is fixed by choosing another handle.
  */
+/**
+ * Whether an address could be claimed, for onboarding's live "Yours" /
+ * "Taken" / "Not quite": the same rule claimHandle applies, and taken when
+ * a page already has it or one that looks the same (its skeleton). A hint
+ * only: claimHandle still decides, so a race between the check and the
+ * claim is caught there.
+ */
+export async function handleAvailability(
+  prisma: PrismaClient,
+  raw: string,
+): Promise<'available' | 'invalid' | 'reserved' | 'taken'> {
+  const checked = checkHandle(raw);
+  if (!checked.ok) return checked.reason === 'RESERVED' ? 'reserved' : 'invalid';
+  const clash = await prisma.page.findFirst({
+    where: { OR: [{ handle: checked.handle }, { skeleton: checked.skeleton }] },
+    select: { id: true },
+  });
+  return clash ? 'taken' : 'available';
+}
+
 export async function claimHandle(
   prisma: PrismaClient,
   accountId: string,

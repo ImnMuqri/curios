@@ -38,7 +38,8 @@ vi.mock('next/headers', () => ({
 const redirect = vi.fn((url: string) => {
   throw new Error(`NEXT_REDIRECT:${url}`);
 });
-vi.mock('next/navigation', () => ({ redirect, usePathname: () => '/app/onboarding' }));
+let pathname = '/app/curios';
+vi.mock('next/navigation', () => ({ redirect, usePathname: () => pathname }));
 
 const AppLayout = (await import('./layout.js')).default;
 
@@ -74,7 +75,7 @@ describe('the dashboard layout', () => {
     expect(screen.getByText('Claim your handle')).toBeInTheDocument();
   });
 
-  it('keeps the frame for an owner revisiting onboarding to add sources', async () => {
+  it('puts an owner with a page in the frame', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
     countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
@@ -116,5 +117,21 @@ describe('the dashboard layout', () => {
     expect(frame.props.alerts).toEqual([expect.objectContaining({ id: 'spent', where: '/app/leads' })]);
     expect(frame.props.billingDot).toBe(true);
     expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('leaves onboarding full screen, without the frame, once the page exists', async () => {
+    pathname = '/app/onboarding';
+    try {
+      resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+      getOwnerPage.mockResolvedValueOnce(page);
+      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+
+      render(await AppLayout({ children: <p>onboarding</p> }));
+
+      expect(screen.getByText('onboarding')).toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name: 'Dashboard' })).toBeNull();
+    } finally {
+      pathname = '/app/curios';
+    }
   });
 });

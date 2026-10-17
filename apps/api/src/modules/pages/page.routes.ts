@@ -6,7 +6,7 @@ import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverK
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
-import { claimHandle, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { claimHandle, handleAvailability, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { resolveStore, type AvatarStore } from './storage.js';
 
 export interface PageRouteOptions {
@@ -60,6 +60,18 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
 
       const result = await claimHandle(app.prisma, request.account.id, request.body);
       return reply.status(201).send(result);
+    },
+  );
+
+  // Onboarding's live check while an owner types an address. Signed in, like
+  // the claim it previews; what it reveals (that a page exists at an
+  // address) is what visiting the address reveals anyway.
+  app.get(
+    '/pages/handle-check',
+    { schema: { querystring: z.object({ handle: z.string().max(200) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      return reply.send({ status: await handleAvailability(app.prisma, request.query.handle) });
     },
   );
 

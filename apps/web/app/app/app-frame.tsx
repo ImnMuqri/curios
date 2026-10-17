@@ -69,6 +69,7 @@ export function AppFrame({
   mode,
   alerts = [],
   billingDot = false,
+  bare = false,
   children,
 }: {
   displayName: string;
@@ -82,9 +83,16 @@ export function AppFrame({
   alerts?: Alert[];
   /** A red dot on Billing: a trial used up, or a plan that ended. */
   billingDot?: boolean;
+  /** No page yet: no frame, only the screen. */
+  bare?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
+  // Onboarding is its own full screen, as the design handoff's Onboarding
+  // board draws it, before and after the page exists. Both of those return
+  // the screen in the same place, so claiming the page mid-onboarding does
+  // not remount it and lose where the owner is.
+  if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
   const initials = displayName.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
 
   return (

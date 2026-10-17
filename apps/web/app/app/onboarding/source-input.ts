@@ -1,6 +1,13 @@
 import { apiFetch } from '../../../lib/api.js';
 import { loginWalledSite } from '../../../lib/social-links.js';
 
+/** How a read is going, as GET /ingest/:id answers. */
+export type IngestionResult = {
+  status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  extractedCount: number;
+  error: string | null;
+};
+
 /** One source to read, as the ingest API takes it. */
 export type Source =
   | { pageId: string; sourceUrl: string }

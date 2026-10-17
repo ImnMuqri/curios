@@ -43,7 +43,16 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // No page yet: onboarding, full width, no frame -- the modules would all be
   // unreachable (the reason the old nav was gated on the page, kept).
   // Onboarding brings its own frame (AuthShell) before a page exists.
-  if (!page) return <>{children}</>;
+  // Through AppFrame all the same (bare), so the tree has one shape either
+  // side of claiming: onboarding claims the page part way through and must
+  // not be remounted when the server side re-reads.
+  if (!page) {
+    return (
+      <AppFrame bare displayName="" avatarUrl={null} planLabel="" badges={{ review: 0, questions: 0, leads: 0 }} mode="PERSONAL">
+        {children}
+      </AppFrame>
+    );
+  }
 
   const now = new Date();
   const [badges, usage] = await Promise.all([countNavBadges(owner.accountId), getConversationUsage(page.id, now)]);
