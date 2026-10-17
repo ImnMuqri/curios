@@ -1,5 +1,5 @@
 import type { MailJobData } from '@curios/core';
-import { MAIL_QUEUE } from '@curios/core';
+import { MAIL_QUEUE, planEndedMail, planEndingMail } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import type { BillingLog } from './pending-check.js';
 
@@ -22,49 +22,15 @@ export interface MailQueueLike {
   add(name: string, data: MailJobData, opts?: unknown): Promise<{ id?: string }>;
 }
 
-/** The plan's end date as an owner in Malaysia reads it. */
-function malaysianDate(date: Date): string {
-  return date.toLocaleDateString('en-MY', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: 'Asia/Kuala_Lumpur',
-  });
-}
-
 /**
- * The reminder itself. Pure, like `buildNotification` in the lead worker, so the
- * wording is testable without a queue or a database.
- *
- * English, because the dashboard is: the lead notification mirrors the visitor's
- * own language because it quotes their conversation back to the owner, and this
- * email quotes nobody.
- *
- * The one thing this email must not do is imply an automatic charge. FPX cannot
- * auto-charge, so nothing will be taken -- and an owner who believes otherwise
- * finds out by losing their capture card.
+ * The reminder itself: planEndingMail in @curios/core, laid out as the
+ * Emails board draws its emails. English, because the dashboard is; and the
+ * one thing it must not do is imply an automatic charge, since FPX cannot
+ * auto-charge and an owner who believes otherwise finds out by losing their
+ * capture card.
  */
-export function buildRenewalReminder(input: {
-  displayName: string;
-  paidUntil: Date;
-  appUrl: string;
-}): { subject: string; text: string } {
-  const ends = malaysianDate(input.paidUntil);
-  const billing = `${input.appUrl.replace(/\/+$/, '')}/app/billing`;
-
-  return {
-    subject: `Your Curios plan for ${input.displayName} ends on ${ends}`,
-    text: [
-      `Your Curios plan for ${input.displayName} ends on ${ends}.`,
-      '',
-      'We do not charge you automatically — FPX payments need your approval each time, so nothing will be taken from your account.',
-      '',
-      'To keep the capture card on your page, pay for another month or year here:',
-      billing,
-      '',
-      'If you do nothing, your page, your FAQ pages and chat all keep working. Only the capture card stops.',
-    ].join('\n'),
-  };
+export function buildRenewalReminder(input: { displayName: string; paidUntil: Date; appUrl: string }): { subject: string; text: string; html: string } {
+  return planEndingMail(input);
 }
 
 /**
@@ -130,11 +96,7 @@ export async function runRenewalReminders(deps: {
       appUrl: deps.appUrl,
     });
     try {
-      await deps.mailQueue.add(MAIL_QUEUE, {
-        to: page.account.email,
-        subject: mail.subject,
-        text: mail.text,
-      });
+      await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
     } catch (error) {
       // One page's email failing -- Redis briefly unreachable, say -- must not
       // stop the rest. The claim above already stands, so this page stays
@@ -151,4 +113,62 @@ export async function runRenewalReminders(deps: {
   }
 
   return { reminded };
+}
+
+/**
+ * How long after a plan ends it may still be told so. The job runs once a
+ * day, so a day and a bit covers a missed run without reaching back to a
+ * plan that ended long ago (one that lapsed before this email existed).
+ */
+export const ENDED_WINDOW_MS = 2 * DAY_MS;
+
+/**
+ * Tells owners whose plan has just ended, once per period: the on-the-day
+ * sibling of the reminder above, claimed the same way on planEndedMailFor.
+ * A page that renewed in time has a later paidUntil and is never picked.
+ */
+export async function runPlanEndedMails(deps: {
+  prisma: PrismaClient;
+  mailQueue: MailQueueLike;
+  now: Date;
+  appUrl: string;
+  log?: BillingLog;
+}): Promise<{ told: number }> {
+  const ended = await deps.prisma.page.findMany({
+    where: {
+      mode: 'BUSINESS',
+      paidUntil: { lte: deps.now, gt: new Date(deps.now.getTime() - ENDED_WINDOW_MS) },
+    },
+    select: { id: true, displayName: true, paidUntil: true, account: { select: { email: true } } },
+    orderBy: { paidUntil: 'asc' },
+  });
+
+  let told = 0;
+  for (const page of ended) {
+    const paidUntil = page.paidUntil;
+    if (paidUntil === null) continue;
+
+    const claim = await deps.prisma.page.updateMany({
+      where: {
+        id: page.id,
+        paidUntil,
+        OR: [{ planEndedMailFor: null }, { planEndedMailFor: { not: paidUntil } }],
+      },
+      data: { planEndedMailFor: paidUntil },
+    });
+    if (claim.count === 0) continue;
+
+    const mail = planEndedMail({ displayName: page.displayName, paidUntil, appUrl: deps.appUrl });
+    try {
+      await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
+    } catch (error) {
+      // As above: the claim stands, and losing one is the accepted failure.
+      deps.log?.error({ pageId: page.id, err: String(error) }, 'plan-ended email could not be queued');
+      continue;
+    }
+    told += 1;
+    deps.log?.info({ pageId: page.id, paidUntil: paidUntil.toISOString() }, 'plan-ended email queued');
+  }
+
+  return { told };
 }

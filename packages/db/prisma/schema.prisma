@@ -167,6 +167,9 @@ model Page {
   /// default: a lead nobody hears about is the one thing this product exists
   /// to prevent.
   notifyLeads Boolean @default(true)
+  /// The paidUntil the owner was last told had ended, the on-the-day sibling
+  /// of renewalReminderFor and claimed the same way.
+  planEndedMailFor DateTime?
   /// Whether a personal page may appear in search results. Off by default:
   /// most people do not want an AI page about themselves ranking for their own
   /// name. Business pages are always indexed, so this is read only for personal
@@ -383,6 +386,9 @@ model UsageCounter {
   page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
   period String
   count  Int    @default(0)
+  /// When "Your page reached its monthly limit" went out for this period.
+  /// One counter row per month, so null-then-set is once a month by itself.
+  capMailedAt DateTime?
 
   @@unique([pageId, period])
 }

@@ -149,4 +149,14 @@ describe('runLeadJob', () => {
     // Still filled in and scored: it waits in Leads.
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: leadId } })).score).toBe(1);
   });
+
+  it('also says the page stopped taking numbers when this lead used the last free one, even with the lead email off', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 3, notifyLeads: false } });
+    const mailQueue = aMailQueue();
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue }, { leadId, lastFreeLead: true });
+
+    expect(mailQueue.add).toHaveBeenCalledOnce();
+    expect(mailQueue.add.mock.calls[0]?.[1]).toMatchObject({ to: 'n@example.com', subject: 'Your page stopped taking numbers' });
+  });
 });

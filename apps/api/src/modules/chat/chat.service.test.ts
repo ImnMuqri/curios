@@ -891,6 +891,20 @@ describe('the monthly cap', () => {
     expect(counter.count).toBe(501);
   });
 
+  it('emails the owner once a month when the limit is reached, and never twice', async () => {
+    await usageAt(500);
+    const { gateway } = chatSpyGateway();
+    const mailQueue = { add: vi.fn(async (_name: string, _data: { subject: string; html?: string }, _opts?: unknown) => ({})) };
+
+    await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'harga?' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'ada delivery?' }));
+
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const mail = mailQueue.add.mock.calls[0]?.[1];
+    expect(mail?.subject).toBe('Your page reached its monthly limit');
+    expect(mail?.html).toContain('Limit reached');
+  });
+
   it('answers in Malay first, then English, and persists that reply as an assistant message', async () => {
     // #4/#5 of the fix wave: the degraded reply used to be English-only,
     // contradicting prompt.ts's own rule that the model answers in the

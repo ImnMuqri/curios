@@ -1,4 +1,4 @@
-import { GROUP_QUEUE, isOverCap, normalizeClaim, qualifies, type GroupJobData } from '@curios/core';
+import { capReachedMail, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, type GroupJobData, type MailJobData } from '@curios/core';
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
@@ -56,6 +56,40 @@ export interface ChatDeps {
    * without it simply never groups, and the wording keeps its own topic.
    */
   groupQueue?: { add(name: string, data: GroupJobData, opts?: unknown): Promise<unknown> };
+  /**
+   * Where the owner's "Your page reached its monthly limit" goes, the first
+   * time a month's conversations run out. Optional, like groupQueue.
+   */
+  mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
+}
+
+/**
+ * Tells the owner, once a month, that their page reached its limit. Claimed
+ * on the month's counter row (capMailedAt), so two visitors arriving at the
+ * limit together send one email. Never fails the visitor: their fixed reply
+ * goes out whatever happens here.
+ */
+async function mailCapReached(deps: ChatDeps, page: { id: string; displayName: string }): Promise<void> {
+  if (!deps.mailQueue) return;
+  try {
+    const claim = await deps.prisma.usageCounter.updateMany({
+      where: { pageId: page.id, period: currentPeriod(), capMailedAt: null },
+      data: { capMailedAt: new Date() },
+    });
+    if (claim.count === 0) return;
+    const owner = await deps.prisma.page.findUnique({ where: { id: page.id }, select: { account: { select: { email: true } } } });
+    if (!owner) return;
+    const now = new Date();
+    const mail = capReachedMail({
+      displayName: page.displayName,
+      cap: deps.cap,
+      resets: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
+      appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+    });
+    await deps.mailQueue.add(MAIL_QUEUE, { to: owner.account.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true });
+  } catch (error) {
+    deps.log?.warn?.({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'could not queue the monthly-limit email');
+  }
 }
 
 function isUniqueViolation(error: unknown): boolean {
@@ -572,6 +606,7 @@ export async function* answer(
         { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
         'conversation cap reached; chat degraded to the fixed reply',
       );
+      await mailCapReached(deps, page);
       yield { type: 'text', text: CAP_REACHED_REPLY };
       await prisma.message.create({
         data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },

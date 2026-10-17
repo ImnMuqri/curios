@@ -66,3 +66,4 @@ export { SOCIAL_KINDS, normalizeSocial, socialUrl, tidySocials } from './socials
 export type { SocialKind, Socials } from './socials.js';
 export { ACCOUNT_MAIL_FOOTER, escapeHtml, OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
 export type { MailBlock, MailButton, MailContent, MailTone } from './mail.js';
+export { capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, planEndingMail, trialSpentMail } from './plan-mail.js';

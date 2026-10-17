@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { buildRenewalReminder, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
+import { buildRenewalReminder, runPlanEndedMails, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -199,3 +199,36 @@ describe('buildRenewalReminder', () => {
     expect(mail.text).toContain('Only the capture card stops');
   });
 });
+
+describe('runPlanEndedMails', () => {
+  const run = (mailQueue: ReturnType<typeof aMailQueue>, now = NOW) => runPlanEndedMails({ prisma, mailQueue, now, appUrl: APP_URL });
+
+  it('tells an owner whose plan ended in the last day, laid out, once', async () => {
+    const page = await aPage({ paidUntil: inDays(-0.5) });
+    const mailQueue = aMailQueue();
+
+    expect(await run(mailQueue)).toEqual({ told: 1 });
+    expect(await run(mailQueue)).toEqual({ told: 0 });
+
+    expect(mailQueue.add).toHaveBeenCalledOnce();
+    const mail = mailQueue.add.mock.calls[0]?.[1];
+    expect(mail?.to).toBe(page.email);
+    expect(mail?.subject).toBe('Your Curios plan for Nadia Bakes has ended');
+    expect(mail?.html).toContain('Plan ended');
+    expect(mail?.text).toContain(`${APP_URL}/app/billing`);
+  });
+
+  it('says nothing to a plan still running, or one that ended long before', async () => {
+    await aPage({ paidUntil: inDays(1) });
+    await aPage({ paidUntil: inDays(-5) });
+    const mailQueue = aMailQueue();
+
+    expect(await run(mailQueue)).toEqual({ told: 0 });
+  });
+
+  it('says nothing to a personal page', async () => {
+    await aPage({ paidUntil: inDays(-0.5), mode: 'PERSONAL' });
+    expect(await run(aMailQueue())).toEqual({ told: 0 });
+  });
+});
+
