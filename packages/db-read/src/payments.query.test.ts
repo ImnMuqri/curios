@@ -36,6 +36,7 @@ beforeAll(async () => {
         plan: 'MONTHLY',
         amountCents: 3900,
         billplzCollectionId: 'col-test',
+        billplzBillId: `bill-${pageId}-${index}`,
         status: 'PAID',
         paidAt: new Date(Date.UTC(2026, 2, index + 1)),
         grantedUntil: new Date(Date.UTC(2026, 3, index + 1)),
@@ -81,6 +82,8 @@ describe('getRecentPayments', () => {
       status: 'PAID',
       paidAt: new Date(Date.UTC(2026, 2, 7)),
       grantedUntil: new Date(Date.UTC(2026, 3, 7)),
+      // For the receipt link: Billplz's page for a paid bill is its receipt.
+      billplzBillId: `bill-${pageId}-6`,
       createdAt: new Date(Date.UTC(2026, 2, 7)),
     });
   });

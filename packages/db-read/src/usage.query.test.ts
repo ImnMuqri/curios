@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
-import { getConversationUsage } from './usage.query.js';
+import { countLeadsThisMonth, getConversationUsage } from './usage.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -56,5 +56,36 @@ describe('getConversationUsage', () => {
     });
 
     expect((await getConversationUsage(other.pages[0]?.id ?? '', NOW)).used).toBe(0);
+  });
+});
+
+describe('countLeadsThisMonth', () => {
+  it('counts the leads captured this month, by the same UTC month as the conversations', async () => {
+    const at = (iso: string) => new Date(iso);
+    let n = 0;
+    const lead = async (createdAt: Date, page = pageId) => {
+      n += 1;
+      const conversation = await write.conversation.create({ data: { pageId: page }, select: { id: true } });
+      await write.lead.create({ data: { pageId: page, conversationId: conversation.id, phone: `+6012345${String(n).padStart(4, '0')}`, createdAt } });
+    };
+    await lead(at('2026-09-01T00:00:00.000Z'));
+    await lead(at('2026-09-16T23:00:00.000Z'));
+    // Last month, and after now: neither is this month's so far.
+    await lead(at('2026-08-31T23:59:59.000Z'));
+    await lead(at('2026-09-20T00:00:00.000Z'));
+
+    expect(await countLeadsThisMonth(pageId, NOW)).toBe(2);
+  });
+
+  it('counts nothing for another page', async () => {
+    const other = await write.account.create({
+      data: {
+        email: 'usage-leads-other@example.com',
+        pages: { create: { handle: 'usage-leads-other', skeleton: 'usageleadsother', displayName: 'Someone Else' } },
+      },
+      select: { pages: { select: { id: true } } },
+    });
+
+    expect(await countLeadsThisMonth(other.pages[0]?.id ?? '', NOW)).toBe(0);
   });
 });

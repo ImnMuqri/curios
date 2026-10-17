@@ -1,5 +1,5 @@
 import { FREE_LEADS, type PlanState } from '@curios/core';
-import type { ConversationUsage, OwnerPayment } from '@curios/db-read';
+import type { OwnerPayment } from '@curios/db-read';
 
 const MALAYSIAN_DATE: Intl.DateTimeFormatOptions = {
   day: 'numeric',
@@ -14,6 +14,36 @@ const MALAYSIAN_DATE: Intl.DateTimeFormatOptions = {
  */
 export function formatDate(date: Date): string {
   return date.toLocaleDateString('en-MY', MALAYSIAN_DATE);
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * "14 Nov", or "14 Nov 2026" with the year: the board's short dates, on the
+ * Malaysian calendar. Built from the parts because every locale's short month
+ * writes September as "Sept".
+ */
+export function shortDate(date: Date, withYear = false): string {
+  const parts = new Intl.DateTimeFormat('en-MY', { day: 'numeric', month: 'numeric', year: 'numeric', timeZone: 'Asia/Kuala_Lumpur' }).formatToParts(date);
+  const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  const day = `${Number(part('day'))} ${MONTHS[Number(part('month')) - 1]}`;
+  return withYear ? `${day} ${part('year')}` : day;
+}
+
+/** A short date, with its year only when that is not this year's. */
+export function shortDateFrom(date: Date, now: Date): string {
+  const withYear = shortDate(date, true);
+  return withYear.endsWith(shortDate(now, true).slice(-4)) ? shortDate(date) : withYear;
+}
+
+/** Whole days left until `until`, counting a part day as one; never below zero. */
+export function daysLeft(until: Date, now: Date): number {
+  return Math.max(0, Math.ceil((until.getTime() - now.getTime()) / 86_400_000));
+}
+
+/** When this month's conversations start again: the first of next month, as the counter keys it (UTC). */
+export function usageResets(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
 /** Whole ringgit without decimals, the way the prices are published: RM49, RM490. */
@@ -41,7 +71,7 @@ export function planSummary(state: PlanState): string {
   }
 }
 
-/** The plan in two words, for the badge over the summary, and how loudly to say it. */
+/** The plan as its tag says it, and how loudly: amber once it has run out. */
 export function planBadge(state: PlanState): { text: string; tone: 'biru' | 'muda' | 'kuning' } {
   switch (state.kind) {
     case 'personal':
@@ -49,20 +79,25 @@ export function planBadge(state: PlanState): { text: string; tone: 'biru' | 'mud
     case 'paid':
       return { text: 'Business', tone: 'biru' };
     case 'trial':
-      return state.lapsedOn ? { text: 'Plan ended', tone: 'kuning' } : { text: 'Free trial', tone: 'muda' };
+      return state.lapsedOn ? { text: 'Business · plan ended', tone: 'kuning' } : { text: 'Business · free trial', tone: 'biru' };
     case 'trialSpent':
-      return { text: 'Trial used up', tone: 'kuning' };
+      return { text: 'Business · trial used up', tone: 'kuning' };
     case 'lapsed':
-      return { text: 'Plan ended', tone: 'kuning' };
+      return { text: 'Business · plan ended', tone: 'kuning' };
   }
 }
 
-/** One payment as the payments table shows it: when, what, and whether it went through. */
-export function paymentParts(payment: OwnerPayment): { date: string; what: string; paid: boolean; until: string | null } {
+/**
+ * One payment as the payments table shows it. A paid one is dated by when it
+ * was paid; one that never completed by when it was started, because it has no
+ * payment date and the owner remembers starting it.
+ */
+export function paymentParts(payment: OwnerPayment): { date: string; what: string; amount: string; paid: boolean; until: string | null } {
   const paid = payment.status === 'PAID' && payment.paidAt !== null;
   return {
-    date: formatDate(paid && payment.paidAt ? payment.paidAt : payment.createdAt),
-    what: `${ringgit(payment.amountCents)} for ${payment.plan === 'ANNUAL' ? 'a year' : 'a month'}`,
+    date: shortDate(paid && payment.paidAt ? payment.paidAt : payment.createdAt, true),
+    what: `Business, 1 ${payment.plan === 'ANNUAL' ? 'year' : 'month'}`,
+    amount: ringgit(payment.amountCents),
     paid,
     until: paid && payment.grantedUntil ? formatDate(payment.grantedUntil) : null,
   };
@@ -95,35 +130,4 @@ export function paymentBanner(value: string | undefined): PaymentBanner | null {
     default:
       return null;
   }
-}
-
-/**
- * Conversations this month against the cap in force.
- *
- * Over the cap, chat answers with a short fixed reply rather than the model --
- * that has already happened by the time an owner reads this, so the number
- * alone would understate it.
- */
-export function usageSummary(usage: ConversationUsage): string {
-  const counted = `${usage.used} of ${usage.cap} conversations used this month.`;
-  return usage.used > usage.cap
-    ? `${counted} Chat is answering with a short fixed reply until next month.`
-    : counted;
-}
-
-/**
- * One line of payment history.
- *
- * A paid payment is dated by when it was paid; one that never completed is
- * dated by when it was started, because it has no payment date and the owner
- * remembers starting it. "Not completed" rather than "failed": most of these
- * are a bill someone opened and closed, not a payment that went wrong.
- */
-export function paymentLine(payment: OwnerPayment): string {
-  const period = payment.plan === 'ANNUAL' ? 'a year' : 'a month';
-  const amount = ringgit(payment.amountCents);
-
-  return payment.status === 'PAID' && payment.paidAt !== null
-    ? `${formatDate(payment.paidAt)} — ${amount} for ${period}, paid`
-    : `${formatDate(payment.createdAt)} — ${amount} for ${period}, not completed`;
 }

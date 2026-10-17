@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_LEADS, planState } from '@curios/core';
-import { formatDate, paymentBanner, paymentLine, paymentParts, planBadge, planSummary, ringgit, usageSummary } from './billing-copy.js';
+import { daysLeft, formatDate, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 
 const NOW = new Date('2026-09-14T08:00:00.000Z');
 
@@ -87,30 +87,6 @@ describe('paymentBanner', () => {
   });
 });
 
-describe('usageSummary', () => {
-  it('counts this month against the cap in force', () => {
-    expect(usageSummary({ used: 12, cap: 200, period: '2026-09' })).toBe(
-      '12 of 200 conversations used this month.',
-    );
-  });
-
-  it('adds nothing at exactly the cap, where chat still answers normally', () => {
-    // The API refuses only above the cap (isOverCap is `>`), so the 200th
-    // conversation of 200 was answered by the model like any other.
-    expect(usageSummary({ used: 200, cap: 200, period: '2026-09' })).toBe(
-      '200 of 200 conversations used this month.',
-    );
-  });
-
-  it('says what happens past the cap, because chat has already changed', () => {
-    // Over the cap the API answers with a fixed reply instead of the model. An
-    // owner seeing "201 of 200" without that sentence would think nothing had.
-    expect(usageSummary({ used: 201, cap: 200, period: '2026-09' })).toBe(
-      '201 of 200 conversations used this month. Chat is answering with a short fixed reply until next month.',
-    );
-  });
-});
-
 describe('planSummary, after a lapse', () => {
   it('tells a page that lapsed with free leads left that its plan ended', () => {
     // The leads screen says both halves of this (trial-notice.tsx). This
@@ -123,60 +99,58 @@ describe('planSummary, after a lapse', () => {
   });
 });
 
-describe('paymentLine', () => {
-  const base = {
-    id: 'pay-1',
-    plan: 'MONTHLY' as const,
-    amountCents: 3900,
-    status: 'PAID' as const,
-    paidAt: new Date('2026-09-11T20:00:00.000Z'), // the 12th in Kuala Lumpur
-    grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-    createdAt: new Date('2026-09-11T10:00:00.000Z'), // still the 11th in Kuala Lumpur
-  };
-
-  it('dates a paid payment by when it was paid, in Malaysian time', () => {
-    // 20:00 UTC is already the 12th in Kuala Lumpur.
-    expect(paymentLine(base)).toBe('12 September 2026 — RM39 for a month, paid');
-  });
-
-  it('dates an unfinished payment by when it was started, and says so', () => {
-    expect(paymentLine({ ...base, status: 'PENDING', paidAt: null, grantedUntil: null })).toBe(
-      '11 September 2026 — RM39 for a month, not completed',
-    );
-  });
-
-  it('names the annual plan by its period, not its price', () => {
-    expect(paymentLine({ ...base, plan: 'ANNUAL', amountCents: 39000 })).toBe(
-      '12 September 2026 — RM390 for a year, paid',
-    );
-  });
-});
-
 describe('planBadge', () => {
-  it('names each plan in two words, loud only when the plan has run out', () => {
+  it('names each plan as its tag says it, loud only when the plan has run out', () => {
     expect(planBadge(stateOf({ mode: 'PERSONAL' }))).toEqual({ text: 'Personal', tone: 'muda' });
-    expect(planBadge(stateOf({ leadsCaptured: 1 }))).toEqual({ text: 'Free trial', tone: 'muda' });
+    expect(planBadge(stateOf({ leadsCaptured: 1 }))).toEqual({ text: 'Business · free trial', tone: 'biru' });
     expect(planBadge(stateOf({ paidUntil: new Date('2099-01-01T00:00:00.000Z') }))).toEqual({ text: 'Business', tone: 'biru' });
-    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS }))).toEqual({ text: 'Trial used up', tone: 'kuning' });
-    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2020-01-01T00:00:00.000Z') }))).toEqual({ text: 'Plan ended', tone: 'kuning' });
+    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS }))).toEqual({ text: 'Business · trial used up', tone: 'kuning' });
+    expect(planBadge(stateOf({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2020-01-01T00:00:00.000Z') }))).toEqual({ text: 'Business · plan ended', tone: 'kuning' });
   });
 });
 
 describe('paymentParts', () => {
-  const base = { id: 'p', plan: 'ANNUAL' as const, amountCents: 39000, createdAt: new Date('2026-09-11T10:00:00.000Z') };
+  const base = { id: 'p', plan: 'ANNUAL' as const, amountCents: 39000, billplzBillId: 'bill-1', createdAt: new Date('2026-09-11T10:00:00.000Z') };
 
   it('dates a paid payment by when it was paid, and says how long it covers', () => {
     expect(
       paymentParts({ ...base, status: 'PAID', paidAt: new Date('2026-09-11T20:00:00.000Z'), grantedUntil: new Date('2027-09-12T00:00:00.000Z') }),
-    ).toEqual({ date: '12 September 2026', what: 'RM390 for a year', paid: true, until: '12 September 2027' });
+    ).toEqual({ date: '12 Sep 2026', what: 'Business, 1 year', amount: 'RM390', paid: true, until: '12 September 2027' });
   });
 
   it('dates an unfinished one by when it was started, and promises nothing', () => {
     expect(paymentParts({ ...base, status: 'PENDING', paidAt: null, grantedUntil: null })).toEqual({
-      date: '11 September 2026',
-      what: 'RM390 for a year',
+      date: '11 Sep 2026',
+      what: 'Business, 1 year',
+      amount: 'RM390',
       paid: false,
       until: null,
     });
+  });
+});
+
+describe('the board’s short dates', () => {
+  it('writes September as Sep, on the Malaysian calendar', () => {
+    // 20:00 UTC on the 13th is already the 14th in Kuala Lumpur.
+    expect(shortDate(new Date('2026-09-13T20:00:00.000Z'))).toBe('14 Sep');
+    expect(shortDate(new Date('2026-09-13T20:00:00.000Z'), true)).toBe('14 Sep 2026');
+  });
+
+  it('adds the year only when it is not this year', () => {
+    const now = new Date('2026-10-15T04:00:00.000Z');
+    expect(shortDateFrom(new Date('2026-12-14T04:00:00.000Z'), now)).toBe('14 Dec');
+    expect(shortDateFrom(new Date('2027-10-15T04:00:00.000Z'), now)).toBe('15 Oct 2027');
+  });
+
+  it('counts a part day as a day left, and never below none', () => {
+    const now = new Date('2026-10-15T04:00:00.000Z');
+    expect(daysLeft(new Date('2026-11-14T04:00:00.000Z'), now)).toBe(30);
+    expect(daysLeft(new Date('2026-10-15T05:00:00.000Z'), now)).toBe(1);
+    expect(daysLeft(new Date('2026-10-01T00:00:00.000Z'), now)).toBe(0);
+  });
+
+  it('resets conversations on the first of next month, as the counter keys it', () => {
+    expect(usageResets(new Date('2026-10-31T20:00:00.000Z')).toISOString()).toBe('2026-11-01T00:00:00.000Z');
+    expect(usageResets(new Date('2026-12-15T00:00:00.000Z')).toISOString()).toBe('2027-01-01T00:00:00.000Z');
   });
 });
