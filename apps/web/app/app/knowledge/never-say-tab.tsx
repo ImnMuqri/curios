@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Callout, Field } from '@curios/ui';
 import type { KnowledgeNeverSay } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import styles from './knowledge.module.css';
-import { EmptyState } from '../_ui/empty-state.js';
 
-const NEVER_SAY_ID = 'never-say';
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
 
+/**
+ * Words and topics the chat is told never to bring up, as struck-through
+ * chips. Honest about what it is: an instruction to the model, very
+ * reliable, not a filter.
+ */
 export function NeverSayList({
   entries,
   max,
@@ -30,6 +32,9 @@ export function NeverSayList({
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
+  const field = useRef<HTMLInputElement>(null);
+  // As the API counts: an emoji is one.
+  const typed = [...phrase].length;
 
   async function add(event: FormEvent) {
     event.preventDefault();
@@ -41,8 +46,8 @@ export function NeverSayList({
       onChanged();
     } catch (failure) {
       setError(toMessage(failure));
-      // Add is natively disabled while busy, which drops focus; Field takes no ref, so find the input by id.
-      document.getElementById(NEVER_SAY_ID)?.focus();
+      // Add is disabled while busy, which drops focus.
+      field.current?.focus();
     } finally {
       setBusy(null);
     }
@@ -62,49 +67,61 @@ export function NeverSayList({
   }
 
   return (
-    <section>
-      <Callout tone="info">
-        The chat is told never to bring these up. It’s very reliable, but not a guarantee — don’t put anything here that must never appear.
-      </Callout>
+    <div className={styles.wrap}>
+      <div className={styles.nsNote}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 9v4M12 17h.01M10.3 3.9L2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z" />
+        </svg>
+        <span>The chat is told never to bring these up. It’s very reliable, but not a guarantee, so don’t put anything here that must never appear.</span>
+      </div>
 
-      <form className={styles.add} onSubmit={(event) => void add(event)}>
-        <Field
-          id={NEVER_SAY_ID}
-          label="Never mention"
+      <form className={styles.nsAdd} onSubmit={(event) => void add(event)}>
+        <input
+          ref={field}
+          className={styles.inp}
+          aria-label="Never mention"
+          placeholder="A word or topic, like: home address"
           value={phrase}
-          onChange={setPhrase}
-          hint={`${[...phrase].length} of ${maxChars} characters`}
+          onChange={(event) => setPhrase(event.target.value)}
         />
-        <Button type="submit" busy={busy === 'add'}>Add</Button>
-        {error ? <Callout tone="error">{error}</Callout> : null}
+        <button type="submit" className={styles.prim} disabled={busy === 'add'}>
+          Add
+        </button>
       </form>
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+      <p className={styles.nsCount}>
+        <span>{`${entries.length} of ${max}`}</span>
+        {typed > 0 ? <span>{` · ${typed} of ${maxChars} characters`}</span> : null}
+      </p>
 
       {entries.length === 0 ? (
-        <EmptyState icon="never" title="Nothing off-limits yet">
-          Add a word or topic above, and your page will never bring it up.
-        </EmptyState>
+        <p className={styles.nsEmpty}>Nothing off-limits yet. Add a word or topic above, like your home address, and your page won’t bring it up.</p>
       ) : (
-        <p className={styles.meta}>{`${entries.length} of ${max}`}</p>
+        <ul className={styles.nsl}>
+          {entries.map((entry) => (
+            <li key={entry.id}>
+              <span className={styles.nsp}>
+                <s>{entry.phrase}</s>
+                <button type="button" aria-label={`Remove ${entry.phrase}`} disabled={busy === entry.id} onClick={() => void remove(entry.id)}>
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </span>
+              {rowErrors[entry.id] ? (
+                <p className={styles.error} role="alert">
+                  {rowErrors[entry.id]}
+                </p>
+              ) : null}
+            </li>
+          ))}
+        </ul>
       )}
-      <ul className={styles.list}>
-        {entries.map((entry) => (
-          <li key={entry.id} className={styles.row}>
-            <div className={styles.actions}>
-              <span className={styles.label}>{entry.phrase}</span>
-              <Button
-                variant="secondary"
-                busy={busy === entry.id}
-                aria-label={`Remove ${entry.phrase}`}
-                onClick={() => void remove(entry.id)}
-              >
-                Remove
-              </Button>
-            </div>
-            {rowErrors[entry.id] ? <Callout tone="error">{rowErrors[entry.id]}</Callout> : null}
-          </li>
-        ))}
-      </ul>
-    </section>
+    </div>
   );
 }
 

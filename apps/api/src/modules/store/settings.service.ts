@@ -6,6 +6,7 @@ import {
   MIN_NOTICE_DAYS_MAX,
   normalizeBankAccountNumber,
   PICKUP_NOTE_MAX,
+  SHOP_DESCRIPTION_MAX,
   storeGapMessage,
   storeGaps,
   type DeliveryMode,
@@ -16,6 +17,8 @@ import { storePageFor } from './store-page.js';
 
 export interface StoreSettings {
   enabled: boolean;
+  /** "About your shop", shown above the items. */
+  shopDescription: string | null;
   pickupEnabled: boolean;
   pickupNote: string | null;
   deliveryMode: DeliveryMode;
@@ -32,6 +35,7 @@ export type StoreSettingsPatch = Partial<Omit<StoreSettings, 'paymentQrKey'>>;
 
 const SELECT = {
   storeEnabled: true,
+  shopDescription: true,
   pickupEnabled: true,
   pickupNote: true,
   deliveryMode: true,
@@ -77,6 +81,7 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
   const next: StoreSettings = { ...current };
 
   if (patch.pickupEnabled !== undefined) next.pickupEnabled = patch.pickupEnabled;
+  if (patch.shopDescription !== undefined) next.shopDescription = optionalText(patch.shopDescription, SHOP_DESCRIPTION_MAX, 'the shop description');
   if (patch.pickupNote !== undefined) next.pickupNote = optionalText(patch.pickupNote, PICKUP_NOTE_MAX, 'the pickup note');
   if (patch.bankName !== undefined) next.bankName = optionalText(patch.bankName, BANK_NAME_MAX, 'the bank name');
   if (patch.bankAccountName !== undefined) next.bankAccountName = optionalText(patch.bankAccountName, BANK_ACCOUNT_NAME_MAX, 'the account name');

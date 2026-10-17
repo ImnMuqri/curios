@@ -18,6 +18,8 @@ export const OPTION_LABEL_MAX = 30;
 /** RM10,000. A cake shop's whole catalogue sits far below it; a typo of three extra zeros does not. */
 export const PRICE_MAX_CENTS = 1_000_000;
 export const PICKUP_NOTE_MAX = 120;
+/** "About your shop": a line or two above the shelf. */
+export const SHOP_DESCRIPTION_MAX = 160;
 export const BANK_NAME_MAX = 60;
 export const BANK_ACCOUNT_NAME_MAX = 80;
 export const DELIVERY_FEE_MAX_CENTS = 50_000;

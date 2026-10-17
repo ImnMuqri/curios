@@ -1,0 +1,333 @@
+/*
+ * The inbox screens' shared frame (Questions, Leads; Orders later), from the
+ * design handoff: three figures across the top, a filtered list down the
+ * left, the chosen item on the right. Each screen's own stylesheet holds
+ * what is only its own. --n on .filters is how many filters there are.
+ */
+/*
+ * Questions, from the design handoff's Questions board: three figures across
+ * the top, the topics down the left (filtered, most asked first), and the
+ * chosen topic on the right: how people asked it, your answer, what the chat
+ * says with it, its FAQ page, and what else can be done with it. Shared
+ * parts (buttons, the empty state, switches) are in ../_ui/editor.module.css.
+ */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ---- The figures ---- */
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 20px 32px 0;
+  list-style: none;
+}
+
+.kpi {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.kpiIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--biru-muda);
+  color: var(--biru);
+}
+
+.kpiIcon[data-tone='amber'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+.kpiIcon[data-tone='rose'] {
+  background: var(--rose-muda);
+  color: var(--rose);
+}
+
+.kpiIcon[data-tone='hijau'] {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+.kpiIcon svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.kpi b {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.kpi b + span {
+  display: block;
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---- The two columns ---- */
+
+.board {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 430px minmax(0, 1fr);
+  min-height: 0;
+  margin-top: 20px;
+  border-top: 1px solid var(--line);
+}
+
+.list {
+  border-right: 1px solid var(--line);
+  background: var(--paper);
+}
+
+/* All, Needs you, Answered: a light switch with a sliding thumb. */
+.filters {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), 1fr);
+  margin: 16px 16px 0;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.filters::before {
+  content: '';
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n, 3));
+  border-radius: 9px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(25 31 44 / 12%);
+  transform: translateX(calc(var(--at, 0) * 100%));
+  transition: transform 380ms cubic-bezier(0.34, 1.3, 0.64, 1);
+}
+
+.filters button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 200ms ease;
+}
+
+.filters button[aria-selected='true'] {
+  color: var(--ink);
+}
+
+.filters button:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: -2px;
+  border-radius: 9px;
+}
+
+.filters i {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--kuning);
+  color: var(--ink);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.filters i[data-tone='biru'] {
+  background: var(--biru);
+  color: var(--card);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 12px 24px;
+  list-style: none;
+}
+
+.row {
+  display: block;
+  width: 100%;
+  padding: 12px 14px 14px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 160ms ease, box-shadow 160ms ease;
+  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.row:hover {
+  background: var(--card);
+}
+
+.row[aria-current='true'] {
+  background: var(--card);
+  box-shadow: 0 0 0 1.5px var(--biru), 0 8px 18px -12px rgb(35 64 200 / 50%);
+}
+
+.row:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+
+.listEmpty {
+  margin: 48px 24px;
+  color: var(--muted);
+  font-size: 13.5px;
+  text-align: center;
+}
+
+.listEmpty b {
+  display: block;
+  margin-bottom: 4px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--ink);
+}
+
+/* ---- The chosen topic ---- */
+
+.detail {
+  min-width: 0;
+  padding: 26px 40px 48px;
+  container-type: inline-size;
+}
+
+.detailInner {
+  max-width: 760px;
+  animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.section {
+  margin-top: 26px;
+}
+
+.section > h3 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.section > h3 span {
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+@media (min-width: 1101px) and (max-width: 1400px) {
+  .board {
+    grid-template-columns: 340px minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 1100px) {
+  .board {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .list {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .rows {
+    max-height: 380px;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .stats {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 14px 16px 0;
+  }
+
+  .kpi {
+    padding: 12px 14px;
+  }
+
+  .board {
+    margin-top: 14px;
+  }
+
+  .detail {
+    padding: 20px 16px 40px;
+  }
+
+  .filters button {
+    gap: 4px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row,
+  .detailInner {
+    animation: none;
+  }
+
+  .filters::before {
+    transition: none;
+  }
+}

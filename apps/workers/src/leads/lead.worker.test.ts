@@ -114,4 +114,49 @@ describe('runLeadJob', () => {
     await expect(runLeadJob({ prisma, gateway, mailQueue }, { leadId: 'gone' })).resolves.toBeUndefined();
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
+
+  it('lays the email out, with the number, the reply button and the conversation', async () => {
+    const mailQueue = aMailQueue();
+    const gateway = gatewayReturning({ product: 'kek butter 2kg', date: null, location: 'Klang' });
+
+    await runLeadJob({ prisma, gateway, mailQueue, appUrl: 'https://curios.my' }, { leadId });
+
+    const html = mailQueue.add.mock.calls[0]?.[1].html ?? '';
+    expect(html).toContain('+60 12-345 6789');
+    expect(html).toContain('>Reply on WhatsApp</a>');
+    expect(html).toContain('href="https://curios.my/app/leads"');
+    expect(html).toContain('nak kek butter 2kg');
+    expect(html).toContain('Settings, under Notifications');
+  });
+
+  it('says which free lead this is on a trial', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 2 } });
+    const mailQueue = aMailQueue();
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue }, { leadId });
+
+    expect(mailQueue.add.mock.calls[0]?.[1].html).toContain('Lead 2 of your 3 free leads.');
+  });
+
+  it('keeps the lead but sends nothing when the owner switched the email off', async () => {
+    await prisma.page.updateMany({ data: { notifyLeads: false } });
+    const mailQueue = aMailQueue();
+    const gateway = gatewayReturning({ product: 'kek butter 2kg', date: null, location: null });
+
+    await runLeadJob({ prisma, gateway, mailQueue }, { leadId });
+
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    // Still filled in and scored: it waits in Leads.
+    expect((await prisma.lead.findUniqueOrThrow({ where: { id: leadId } })).score).toBe(1);
+  });
+
+  it('also says the page stopped taking numbers when this lead used the last free one, even with the lead email off', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 3, notifyLeads: false } });
+    const mailQueue = aMailQueue();
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue }, { leadId, lastFreeLead: true });
+
+    expect(mailQueue.add).toHaveBeenCalledOnce();
+    expect(mailQueue.add.mock.calls[0]?.[1]).toMatchObject({ to: 'n@example.com', subject: 'Your page stopped taking numbers' });
+  });
 });

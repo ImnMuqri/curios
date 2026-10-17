@@ -1,7 +1,9 @@
 import {
   canCapture,
+  FREE_LEADS,
   LEAD_QUEUE,
   normalizeMalaysianPhone,
+  planState,
   qualifies,
   type LeadJobData,
 } from '@curios/core';
@@ -132,7 +134,7 @@ export async function captureLead(
   // One transaction. The counter is what the trial is measured against, so a
   // stored lead that was never counted is a free fourth lead, and a count
   // without a lead spends a page's trial on nothing.
-  const [lead] = await deps.prisma.$transaction([
+  const [lead, counted] = await deps.prisma.$transaction([
     deps.prisma.lead.create({
       data: { pageId: conversation.pageId, conversationId: conversation.id, phone },
       select: { id: true },
@@ -140,13 +142,21 @@ export async function captureLead(
     deps.prisma.page.update({
       where: { id: conversation.pageId },
       data: { leadsCaptured: { increment: 1 } },
+      select: { leadsCaptured: true },
     }),
   ]);
+
+  // Whether this lead used the last free one: the count it produced, read
+  // back from the same increment, so two captures at once cannot both claim
+  // it. A paid page is not on the trial, so it never qualifies.
+  const lastFreeLead =
+    counted.leadsCaptured === FREE_LEADS &&
+    planState({ mode: conversation.page.mode, paidUntil: conversation.page.paidUntil, leadsCaptured: counted.leadsCaptured, now: new Date() }).kind === 'trialSpent';
 
   // Slots and the notification are the job's business. Extraction is a model
   // call and nothing generative runs inside a request -- and doing it in that
   // order means the owner never gets a second email correcting the first.
-  await deps.queue.add(LEAD_QUEUE, { leadId: lead.id }, { jobId: lead.id, attempts: 3 });
+  await deps.queue.add(LEAD_QUEUE, { leadId: lead.id, ...(lastFreeLead ? { lastFreeLead: true } : {}) }, { jobId: lead.id, attempts: 3 });
 
   return { leadId: lead.id };
 }
@@ -189,6 +199,24 @@ export async function deleteLead(
 ): Promise<void> {
   const { count } = await prisma.lead.deleteMany({
     where: { id: leadId, page: { accountId } },
+  });
+  if (count === 0) throw new LeadNotYoursError();
+}
+
+/**
+ * Where the owner is with a lead: NEW until they reach out, CONTACTED once
+ * they have, CLOSED when it is done with. Scoped through the owner in the
+ * query, like deleteLead, and a 404 for anyone else's.
+ */
+export async function setLeadStatus(
+  prisma: PrismaClient,
+  accountId: string,
+  leadId: string,
+  status: 'NEW' | 'CONTACTED' | 'CLOSED',
+): Promise<void> {
+  const { count } = await prisma.lead.updateMany({
+    where: { id: leadId, page: { accountId } },
+    data: { status },
   });
   if (count === 0) throw new LeadNotYoursError();
 }

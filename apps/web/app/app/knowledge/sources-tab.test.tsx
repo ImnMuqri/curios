@@ -1,7 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { KnowledgeSource } from '@curios/db-read';
 import { SourceList } from './sources-tab.js';
 
@@ -15,85 +14,145 @@ const failed: KnowledgeSource = { ...site, id: 's5', status: 'FAILED', error: 'W
 function list(sources: KnowledgeSource[], handlers: Partial<Parameters<typeof SourceList>[0]> = {}) {
   const props = {
     sources,
-    addForm: <p>the add form</p>,
+    pageId: 'p1',
+    pastedTextMax: 20_000,
+    onAdd: vi.fn().mockResolvedValue({ ingestionId: 'new-1' }),
     onRemove: vi.fn().mockResolvedValue({ removedFacts: 12 }),
     onRecheck: vi.fn().mockResolvedValue(undefined),
     fetchStatus: vi.fn().mockResolvedValue({ status: 'RUNNING', extractedCount: 0, error: null }),
     onChanged: vi.fn(),
     ...handlers,
   };
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  render(<QueryClientProvider client={client}><SourceList {...props} /></QueryClientProvider>);
+  render(<SourceList {...props} />);
   return props;
 }
 
 const row = (label: string) => screen.getByText(label).closest('li') as HTMLElement;
 
 describe('SourceList', () => {
-  it('opens the add form from its button', async () => {
-    list([site]);
-    expect(screen.queryByText('the add form')).toBeNull();
-    await userEvent.click(screen.getByRole('button', { name: 'Add a source' }));
-    expect(screen.getByText('the add form')).toBeInTheDocument();
+  it('reads a link from the add form', async () => {
+    const { onAdd, onChanged } = list([site]);
+    await userEvent.click(screen.getByRole('button', { name: '+ Add a source' }));
+    await userEvent.type(screen.getByLabelText('Link to read'), 'https://nadia.example/menu');
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(onAdd).toHaveBeenCalledWith({ pageId: 'p1', sourceUrl: 'https://nadia.example/menu' });
+    expect(onChanged).toHaveBeenCalled();
+    expect(screen.queryByLabelText('Link to read')).toBeNull();
+    expect(screen.getByRole('status')).toHaveTextContent(/reading it now/i);
   });
 
-  it('shows each source with its fact count', () => {
-    list([site, pasted]);
-    expect(within(row('https://nadia.example/')).getByText(/12 facts/)).toBeInTheDocument();
-    expect(within(row('About Nadia Bakes')).getByText(/3 facts/)).toBeInTheDocument();
+  it('reads pasted text, and refuses an empty paste before sending it', async () => {
+    const { onAdd } = list([site]);
+    await userEvent.click(screen.getByRole('button', { name: '+ Add a source' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Paste text' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/paste something first/i);
+    expect(onAdd).not.toHaveBeenCalled();
+
+    await userEvent.type(screen.getByLabelText('Text to read'), 'Kek butter RM95.');
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(onAdd).toHaveBeenCalledWith({ pageId: 'p1', pastedText: 'Kek butter RM95.' });
   });
 
-  it('offers Check for new facts on links only, and says what it does not do', () => {
+  it('turns a login-walled link into a paste, and says why', async () => {
+    const { onAdd } = list([site]);
+    await userEvent.click(screen.getByRole('button', { name: '+ Add a source' }));
+    await userEvent.type(screen.getByLabelText('Link to read'), 'https://www.instagram.com/nadia');
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(onAdd).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Text to read')).toBeInTheDocument();
+    expect(screen.getByText(/does not let us read profiles/i)).toBeInTheDocument();
+  });
+
+  it('keeps the form and says why when starting fails', async () => {
+    const onAdd = vi.fn().mockRejectedValue(new Error('Too many reads today. Try again tomorrow.'));
+    const { onChanged } = list([site], { onAdd });
+    await userEvent.click(screen.getByRole('button', { name: '+ Add a source' }));
+    await userEvent.type(screen.getByLabelText('Link to read'), 'https://nadia.example/menu');
+    await userEvent.click(screen.getByRole('button', { name: 'Read it' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Too many reads today.');
+    expect(screen.getByLabelText('Link to read')).toHaveValue('https://nadia.example/menu');
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('can open with the form showing', () => {
+    list([site], { startAdding: true });
+    expect(screen.getByLabelText('Link to read')).toHaveFocus();
+  });
+
+  it('shows each source with what it is, when it came, and its fact count', () => {
     list([site, pasted]);
-    expect(within(row('https://nadia.example/')).getByRole('button', { name: 'Check for new facts' })).toBeInTheDocument();
-    expect(within(row('https://nadia.example/')).getByText(/doesn’t remove ones the site has dropped/i)).toBeInTheDocument();
-    expect(within(row('About Nadia Bakes')).queryByRole('button', { name: 'Check for new facts' })).toBeNull();
+    const s = row('nadia.example');
+    expect(within(s).getByText(/^Link · added 28 Sep/)).toBeInTheDocument();
+    expect(within(s).getByText('12')).toBeInTheDocument();
+    expect(within(row('About Nadia Bakes')).getByText(/^Pasted text · added/)).toBeInTheDocument();
+  });
+
+  it('says "1 fact", not "1 facts"', () => {
+    list([{ ...site, factCount: 1 }]);
+    expect(within(row('nadia.example')).getByText('fact')).toBeInTheDocument();
+  });
+
+  it('offers to read links again, never pasted text', () => {
+    list([site, pasted]);
+    expect(within(row('nadia.example')).getByRole('button', { name: 'Read nadia.example again' })).toBeInTheDocument();
+    expect(within(row('About Nadia Bakes')).queryByRole('button', { name: /again/ })).toBeNull();
+  });
+
+  it('reads a link again, shows it being read, and says what it does not do', async () => {
+    const { onRecheck, onChanged } = list([site]);
+    await userEvent.click(screen.getByRole('button', { name: 'Read nadia.example again' }));
+    expect(onRecheck).toHaveBeenCalledWith('s1');
+    expect(onChanged).toHaveBeenCalled();
+    expect(within(row('nadia.example')).getByText(/^Reading…/)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent(/facts the site has dropped stay until you remove them/i);
   });
 
   it('asks before removing, naming the count and the shared-fact loss', async () => {
-    const { onRemove } = list([site]);
-    await userEvent.click(within(row('https://nadia.example/')).getByRole('button', { name: 'Remove' }));
-
-    expect(screen.getByText(/remove this source and its 12 facts\?/i)).toBeInTheDocument();
+    const { onRemove, onChanged } = list([site]);
+    await userEvent.click(within(row('nadia.example')).getByRole('button', { name: 'Remove nadia.example' }));
+    expect(screen.getByText(/remove it and its 12 facts\?/i)).toBeInTheDocument();
     expect(screen.getByText(/facts another source also says are removed too/i)).toBeInTheDocument();
     expect(onRemove).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Remove source' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(onRemove).toHaveBeenCalledWith('s1');
+    expect(onChanged).toHaveBeenCalled();
   });
 
-  it('cancels a removal', async () => {
+  it('keeps a source when Keep is chosen', async () => {
     const { onRemove } = list([site]);
-    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove nadia.example' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Keep' }));
     expect(onRemove).not.toHaveBeenCalled();
-    expect(screen.queryByText(/remove this source/i)).toBeNull();
+    expect(screen.queryByText(/remove it and its/i)).toBeNull();
   });
 
   it('says a pre-tracking source removes only its entry', async () => {
     list([old]);
-    expect(within(row('https://old.example/')).getByText(/facts from before tracking are listed under facts/i)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    expect(screen.getByText(/removes the entry only/i)).toBeInTheDocument();
+    expect(within(row('old.example')).getByText(/facts from before tracking are listed under facts/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Remove old.example' }));
+    expect(screen.getByText(/its older facts stay under facts/i)).toBeInTheDocument();
   });
 
   it('shows a source being read, with no actions on it', () => {
     list([reading]);
-    const r = row('https://nadia.example/');
-    expect(within(r).getByText(/reading/i)).toBeInTheDocument();
-    expect(within(r).queryByRole('button', { name: 'Remove' })).toBeNull();
-    expect(within(r).queryByRole('button', { name: 'Check for new facts' })).toBeNull();
+    const r = row('nadia.example');
+    expect(within(r).getByText(/^Reading…/)).toBeInTheDocument();
+    expect(within(r).queryByRole('button')).toBeNull();
   });
 
-  it('re-reads the list when a reading row settles', async () => {
+  it('re-reads the list when a reading row finishes, and says what it found', async () => {
     const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 3, error: null });
     const { onChanged } = list([reading], { fetchStatus });
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
+    expect(screen.getByText('3 new facts are waiting for you.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to Review' })).toHaveAttribute('href', '/app/review');
   });
 
   it('does not re-read while a row is still reading', async () => {
-    const { onChanged } = list([reading]);
-    await screen.findByText(/reading what you gave us/i);
+    const { onChanged, fetchStatus } = list([reading]);
+    await vi.waitFor(() => expect(fetchStatus).toHaveBeenCalled());
     await new Promise((r) => setTimeout(r, 50));
     expect(onChanged).not.toHaveBeenCalled();
   });
@@ -102,73 +161,59 @@ describe('SourceList', () => {
     const none = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null });
     list([reading, { ...reading, id: 's6', sourceUrl: 'https://first.example/', label: 'https://first.example/', tracked: true, factCount: 5 }], { fetchStatus: none });
     expect(await screen.findByText(/no new facts/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/could not find anything to use there/i)).toHaveLength(1);
+    expect(screen.getAllByText(/nothing to use there/i)).toHaveLength(1);
   });
 
   it('shows why a source failed, and still lets it be removed', () => {
     list([failed]);
-    const r = row('https://nadia.example/');
+    const r = row('nadia.example');
     expect(within(r).getByText('We could not reach that site.')).toBeInTheDocument();
-    expect(within(r).getByRole('button', { name: 'Remove' })).toBeInTheDocument();
+    expect(within(r).getByText(/^Could not read it/)).toBeInTheDocument();
+    expect(within(r).getByRole('button', { name: 'Remove nadia.example' })).toBeInTheDocument();
   });
 
-  it('refreshes after a removal', async () => {
-    const { onChanged } = list([site]);
-    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Remove source' }));
-    expect(onChanged).toHaveBeenCalled();
-  });
-
-  it('shows a failure on its row, and keeps focus there', async () => {
+  it('shows a failure on its row', async () => {
     const onRecheck = vi.fn().mockRejectedValue(new Error('This source is still being read. Try again when it finishes.'));
     list([site], { onRecheck });
-    const button = within(row('https://nadia.example/')).getByRole('button', { name: 'Check for new facts' });
-    await userEvent.click(button);
-    expect(within(row('https://nadia.example/')).getByText(/still being read/)).toBeInTheDocument();
-    expect(button).toHaveFocus();
-  });
-
-  it('has an empty state that points at adding one', () => {
-    list([]);
-    expect(screen.getByText(/no sources yet/i)).toBeInTheDocument();
-  });
-
-  it('says "1 fact", not "1 facts"', () => {
-    list([{ ...site, factCount: 1 }]);
-    expect(within(row('https://nadia.example/')).getByText(/ 1 fact(?!s)/)).toBeInTheDocument();
+    await userEvent.click(within(row('nadia.example')).getByRole('button', { name: 'Read nadia.example again' }));
+    expect(within(row('nadia.example')).getByRole('alert')).toHaveTextContent(/still being read/);
   });
 
   it('keeps the confirmation open and shows the reason when a removal fails', async () => {
     const onRemove = vi.fn().mockRejectedValue(new Error('This source is still being read. Try again when it finishes.'));
     const { onChanged } = list([site], { onRemove });
+    await userEvent.click(screen.getByRole('button', { name: 'Remove nadia.example' }));
     await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Remove source' }));
-    expect(within(row('https://nadia.example/')).getByText(/still being read/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Remove source' })).toBeInTheDocument();
+    expect(within(row('nadia.example')).getByText(/still being read/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Remove' })).toBeInTheDocument();
     expect(onChanged).not.toHaveBeenCalled();
   });
 
   it('clears an earlier failure when the action is tried again', async () => {
     const onRecheck = vi.fn().mockRejectedValueOnce(new Error('Not now.')).mockResolvedValueOnce(undefined);
     list([site], { onRecheck });
-    const button = within(row('https://nadia.example/')).getByRole('button', { name: 'Check for new facts' });
-    await userEvent.click(button);
+    await userEvent.click(within(row('nadia.example')).getByRole('button', { name: 'Read nadia.example again' }));
     expect(await screen.findByText('Not now.')).toBeInTheDocument();
-    await userEvent.click(button);
+    await userEvent.click(within(row('nadia.example')).getByRole('button', { name: 'Read nadia.example again' }));
     expect(screen.queryByText('Not now.')).toBeNull();
+  });
+
+  it('has an empty state that points at adding one', async () => {
+    list([]);
+    expect(screen.getByText(/no sources yet/i)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: '+ Add a source' }));
+    expect(screen.getByLabelText('Link to read')).toBeInTheDocument();
   });
 
   it('shows the Malaysian date, not the UTC one the server ran in', () => {
     // 2026-09-27T20:00Z is 04:00 on 28 Sep in Malaysia. Unpinned, a UTC server
-    // prints 27 Sep and the browser prints 28 Sep: a hydration mismatch. TZ is
-    // forced to UTC, the production server's zone, so this does not depend on
-    // the zone of whatever machine runs the suite (same as lead-list's test).
+    // prints 27 Sep and the browser prints 28 Sep: a hydration mismatch.
     const originalTz = process.env.TZ;
     process.env.TZ = 'UTC';
     try {
       list([{ ...site, createdAt: new Date('2026-09-27T20:00:00Z') }]);
-      const r = row('https://nadia.example/');
-      expect(within(r).getByText(/Added 28 Sep(t)? 2026/)).toBeInTheDocument();
+      const r = row('nadia.example');
+      expect(within(r).getByText(/added 28 Sep(t)? 2026/)).toBeInTheDocument();
       expect(within(r).queryByText(/27 Sep(t)? 2026/)).toBeNull();
     } finally {
       // `= undefined` would store the string "undefined".

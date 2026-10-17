@@ -5,7 +5,7 @@ const at = (iso: string) => new Date(iso);
 
 describe('PLAN_PRICES_CENTS', () => {
   it('holds the published prices, in cents', () => {
-    expect(PLAN_PRICES_CENTS).toEqual({ MONTHLY: 3900, ANNUAL: 39000 });
+    expect(PLAN_PRICES_CENTS).toEqual({ MONTHLY: 4900, ANNUAL: 49000 });
   });
 });
 

@@ -32,7 +32,7 @@ export {
   requirePublicAddresses,
 } from './source-url.js';
 export type { ResolvedAddress, SourceUrlVerdict } from './source-url.js';
-export { normalizeMalaysianPhone } from './phone.js';
+export { formatMalaysianPhone, normalizeMalaysianPhone } from './phone.js';
 export { MIN_VISITOR_TURNS, qualifies } from './qualify.js';
 export { conversationCap, FREE_CONVERSATIONS_PER_MONTH, isOverCap } from './cap.js';
 export { canCapture, FREE_LEADS, planState } from './plan.js';
@@ -62,3 +62,8 @@ export {
   TOPIC_TITLE_MAX,
 } from './topics.js';
 export type { GroupJobData } from './topics.js';
+export { SOCIAL_KINDS, normalizeSocial, socialUrl, tidySocials } from './socials.js';
+export type { SocialKind, Socials } from './socials.js';
+export { ACCOUNT_MAIL_FOOTER, escapeHtml, OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
+export type { MailBlock, MailButton, MailContent, MailTone } from './mail.js';
+export { capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, planEndingMail, trialSpentMail } from './plan-mail.js';

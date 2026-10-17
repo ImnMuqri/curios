@@ -570,6 +570,18 @@ describe('threading a conversation', () => {
     expect(questions[0]?.askCount).toBe(2);
   });
 
+  it('logs when each ask happened, new wording or repeat, for the week of asks', async () => {
+    const deps = depsSaying();
+    const before = new Date();
+    await ask(deps, 'Berapa harga kek butter?');
+    await ask(deps, 'berapa harga kek butter');
+
+    const question = await prisma.question.findFirstOrThrow({});
+    const asks = await prisma.questionAsk.findMany({ where: { questionId: question.id } });
+    expect(asks).toHaveLength(2);
+    expect(asks.every((a) => a.askedAt >= before)).toBe(true);
+  });
+
   it('keeps genuinely different questions apart', async () => {
     const deps = depsSaying();
     await ask(deps, 'berapa harga kek butter?');
@@ -879,6 +891,20 @@ describe('the monthly cap', () => {
     expect(counter.count).toBe(501);
   });
 
+  it('emails the owner once a month when the limit is reached, and never twice', async () => {
+    await usageAt(500);
+    const { gateway } = chatSpyGateway();
+    const mailQueue = { add: vi.fn(async (_name: string, _data: { subject: string; html?: string }, _opts?: unknown) => ({})) };
+
+    await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'harga?' }));
+    await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'ada delivery?' }));
+
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const mail = mailQueue.add.mock.calls[0]?.[1];
+    expect(mail?.subject).toBe('Your page reached its monthly limit');
+    expect(mail?.html).toContain('Limit reached');
+  });
+
   it('answers in Malay first, then English, and persists that reply as an assistant message', async () => {
     // #4/#5 of the fix wave: the degraded reply used to be English-only,
     // contradicting prompt.ts's own rule that the model answers in the
@@ -899,7 +925,7 @@ describe('the monthly cap', () => {
       .join('');
     expect(text).toBe(CAP_REACHED_REPLY);
     // Malay first, then English, not the other way around.
-    expect(text.indexOf('Kami dah jawab')).toBeLessThan(text.indexOf("We've answered"));
+    expect(text.indexOf('Kami dah jawab')).toBeLessThan(text.indexOf('We’ve answered'));
 
     const assistantMessage = await prisma.message.findFirstOrThrow({
       where: { role: 'ASSISTANT' },

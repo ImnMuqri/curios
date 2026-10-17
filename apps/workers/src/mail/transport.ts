@@ -8,7 +8,7 @@ export interface Mailer {
 }
 
 export type Transport = {
-  sendMail(options: { from: string; to: string; subject: string; text: string }): Promise<unknown>;
+  sendMail(options: { from: string; to: string; subject: string; text: string; html?: string }): Promise<unknown>;
 };
 
 /** Mailpit's SMTP port in docker-compose.yml, offset from the default for the
@@ -63,9 +63,9 @@ export function smtpOptions(): SmtpOptions {
  * Production points the same variables at a hosted sender, and nothing above
  * this line knows which, so the choice stays reversible.
  *
- * Plain text only, deliberately: three transactional messages carrying one link
- * each. An HTML template is a rendering dependency and a phishing-shaped email
- * for no gain.
+ * Plain text always, and HTML alongside when the sender laid the email out
+ * (renderMailHtml in @curios/core, the design handoff's Emails board). The
+ * text is the whole message, so a client that shows only text loses nothing.
  */
 export function createMailer(transport?: Transport): Mailer {
   const resolved: Transport = transport ?? createTransport(smtpOptions());
@@ -77,6 +77,7 @@ export function createMailer(transport?: Transport): Mailer {
         to: message.to,
         subject: message.subject,
         text: message.text,
+        ...(message.html ? { html: message.html } : {}),
       });
     },
   };

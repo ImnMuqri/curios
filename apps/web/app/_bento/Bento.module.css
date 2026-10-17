@@ -1,176 +1,146 @@
-.page {
-  --tile-radius: 16px;
-  --warm: color-mix(in srgb, var(--accent) 16%, var(--card));
-  --warm-fg: var(--ink);
-  --plain-bg: var(--card);
-  --plain-fg: var(--ink);
-  --page-bg: var(--soft-page);
-  /* Text on the page itself (not on a tile): set again by each background band below. */
+/*
+ * A Curios page: the owner's colours on a single column. Every surface on it
+ * is the page's own text colour laid over its own background at a low
+ * strength (--veil-*), so one rule set reads on a pale page and a dark one
+ * alike. The accent paints the first link and the send button; text on it is
+ * whichever of ink or paper reads (data-on-accent, from readableOn).
+ */
+.page,
+.stage,
+.theme {
+  --page-bg: var(--paper);
   --page-fg: var(--ink);
-  --page-soft: var(--muted);
-  --shadow: 0 1px 3px var(--soft-shadow);
-  /* The spec: the ask bar is "a white pill, soft" here -- no ink outline --
-     and "outlined in ink" in High contrast, below. AskBar and AskSheet read
-     these with a fallback, so nothing outside this page (there is no such
-     caller today, but the components do not assume it) loses its look. */
-  --ask-border: transparent;
-  --ask-tint: color-mix(in srgb, var(--accent) 16%, var(--paper));
-  /* M1: the dashboard's own `.frame` (app-frame.module.css) sets --font-body
-     and --font-display to Plus Jakarta Sans for its own chrome, and My
-     Curios' live preview renders this page nested inside that frame. Reset
-     both back to what the public page -- which never nests inside .frame --
-     actually uses, so the preview cannot show a different typeface than
-     /:handle does. */
+  --page-soft: color-mix(in oklch, var(--ink) 72%, var(--paper));
+  /* Body text stays Inter whatever the owner picks; the heading font is theirs. */
   --font-body: var(--font-inter);
   --font-display: var(--font-bricolage, 'Bricolage Grotesque', system-ui, sans-serif);
-  /* Anchors chat mode's back button (position: absolute in ChatMode.module.css)
-     to this column rather than the viewport, and keeps it inside the same
-     max-width -- "nothing goes full-bleed" -- regardless of which stylesheet
-     the button's own rules live in. */
+}
+
+.page {
+  --veil-1: color-mix(in srgb, var(--page-fg) 6%, transparent);
+  --veil-2: color-mix(in srgb, var(--page-fg) 10%, transparent);
+  --veil-3: color-mix(in srgb, var(--page-fg) 14%, transparent);
+  /* A pale page's pills are white; a dark page's are its own text, faintly. */
+  --pill: var(--card);
+  --pill-fg: var(--page-fg);
+  --pill-ring: var(--veil-1);
+  --warm: color-mix(in srgb, var(--accent) 20%, var(--card));
+  --ask-border: transparent;
+  --ask-tint: color-mix(in srgb, var(--accent) 16%, var(--paper));
   position: relative;
-  max-width: 520px;
-  margin: 0 auto;
-  padding: var(--pad-top, 32px) var(--pad-x, 16px) 120px;
+  /* Sized by its own width, so the same page reads in a phone mockup and on a phone. */
+  container: page / inline-size;
+  max-width: 460px;
   min-height: 100vh;
+  margin: 0 auto;
+  padding: 0 0 110px;
   background: var(--page-bg);
   color: var(--page-fg);
   font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-/* Once the window is wider than the column, the column reads as a card:
-   room above and below, rounded corners. On a phone it stays edge to edge --
-   margins there only take width the page does not have to spare. The My
-   Curios preview turns both back off (curios.module.css), because its own
-   phone frame already supplies the edge and the rounding. */
-@media (min-width: 560px) {
-  .page {
-    margin: 24px auto;
-    min-height: calc(100vh - 48px);
-    border-radius: 20px;
-  }
-}
-
-/*
- * High contrast: every tile follows the accent, not just the first. The
- * second is the accent taken deep (40% into ink, mixed in oklab so the hue
- * holds -- oklch would swing a yellow round to plum -- light enough of any accent
- * to stay a colour, dark enough under paper text: about 5:1 even for a
- * near-white accent), and the ink tiles carry it in their label. It was
- * kuning here once, which no accent could change, and which DESIGN.md keeps
- * for "a human needs to act", never decoration.
- */
-.page[data-style='CONTRAST'] {
-  --tile-radius: 14px;
-  --warm: color-mix(in oklab, var(--accent) 40%, var(--ink));
-  --warm-fg: var(--paper);
-  --plain-kind: color-mix(in oklab, var(--accent) 45%, var(--paper));
-  --plain-bg: var(--ink);
-  --plain-fg: var(--paper);
-  --page-bg: var(--paper);
-  --shadow: none;
-  --ask-border: var(--ink);
-}
-
-/*
- * The background band the owner picked (PAGE_BACKGROUNDS in @curios/core).
- * Every colour comes from the palette or a mix of two palette colours; text
- * on the page follows the band, text on tiles follows the tile. PAPER sets
- * nothing: it is each style's own page colour, the look before bands existed.
- *
- * Contrast of the page's own text: MUDA ink 14.5:1, soft about 7:1; KUNING
- * ink about 14:1; BIRU paper 7.7:1, soft about 5.5:1; INK paper 15.9:1, soft
- * about 8:1. --muted is never used on a band where it would fail.
- */
-.page[data-bg='MUDA'] {
+:is(.page, .stage, .theme)[data-bg='MUDA'] {
   --page-bg: var(--biru-muda);
   --page-soft: color-mix(in oklch, var(--ink) 78%, var(--biru-muda));
 }
 
-.page[data-bg='KUNING'] {
+:is(.page, .stage, .theme)[data-bg='KUNING'] {
   --page-bg: color-mix(in oklch, var(--kuning) 20%, var(--paper));
   --page-soft: color-mix(in oklch, var(--ink) 78%, var(--kuning));
 }
 
-.page[data-bg='BIRU'] {
+:is(.page, .stage, .theme)[data-bg='BIRU'] {
   --page-bg: var(--biru);
   --page-fg: var(--paper);
   --page-soft: color-mix(in oklch, var(--paper) 82%, var(--biru));
 }
 
-.page[data-bg='INK'] {
+:is(.page, .stage, .theme)[data-bg='INK'] {
   --page-bg: var(--ink);
   --page-fg: var(--paper);
   --page-soft: color-mix(in oklch, var(--paper) 72%, var(--ink));
 }
 
-/*
- * The owner's own colour. Its text follows readableOn (data-bg-text), so no
- * pick can make the page unreadable: ink and a soft ink on a light colour,
- * paper and a soft paper on a dark one -- the soft tone mixed from the page's
- * own colour, as the bands do.
- */
-.page[data-bg='CUSTOM'] {
+:is(.page, .stage, .theme)[data-bg='CUSTOM'] {
   --page-bg: var(--custom-bg);
   --page-soft: color-mix(in oklab, var(--ink) 74%, var(--custom-bg));
 }
 
-.page[data-bg='CUSTOM'][data-bg-text='light'] {
+:is(.page, .stage, .theme)[data-bg='CUSTOM'][data-bg-text='light'] {
   --page-fg: var(--paper);
   --page-soft: color-mix(in oklab, var(--paper) 76%, var(--custom-bg));
 }
 
-/* High contrast's ink tiles would vanish into an ink page: lift them a step. */
-.page[data-bg='CUSTOM'][data-bg-text='light'][data-style='CONTRAST'],
-.page[data-bg='INK'][data-style='CONTRAST'] {
-  --plain-bg: color-mix(in oklch, var(--paper) 12%, var(--ink));
+/* On a dark page the pills are the page's own text at low strength, not white. */
+.page:is([data-bg='BIRU'], [data-bg='INK'], [data-bg-text='light']) {
+  --veil-1: color-mix(in srgb, var(--page-fg) 8%, transparent);
+  --pill: var(--veil-3);
+  --pill-ring: var(--veil-1);
 }
 
-/* On a dark band the accent tile can match the page (a biru accent on a biru page), and High contrast's deep tile can sink into it: a fine edge keeps each a tile. */
-.page[data-bg='BIRU'] .tile[data-tone='accent'],
-.page[data-bg='INK'] .tile[data-tone='accent'],
-.page[data-bg-text='light'] .tile[data-tone='accent'],
-.page[data-bg-text='light'][data-style='CONTRAST'] .tile[data-tone='warm'],
-.page[data-bg='BIRU'][data-style='CONTRAST'] .tile[data-tone='warm'],
-.page[data-bg='INK'][data-style='CONTRAST'] .tile[data-tone='warm'] {
-  box-shadow: inset 0 0 0 1.5px color-mix(in oklch, var(--paper) 40%, transparent);
+/* High contrast: solid pills in the page's text colour, bold rings. */
+.page[data-style='CONTRAST'] {
+  --pill: var(--page-fg);
+  --pill-fg: var(--page-bg);
+  --pill-ring: color-mix(in srgb, var(--page-fg) 22%, transparent);
+  --ask-border: var(--page-fg);
 }
 
-.page[data-on-accent='dark'] { --on-accent: var(--ink); }
-.page[data-on-accent='light'] { --on-accent: var(--paper); }
+:is(.page, .theme)[data-on-accent='dark'] { --on-accent: var(--ink); }
+:is(.page, .theme)[data-on-accent='light'] { --on-accent: var(--paper); }
 
-.head {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  margin-bottom: 10px;
+/* ---- The page at its own URL, on a wide screen ---- */
+
+.stage {
+  --stage-bg: color-mix(in oklch, var(--page-bg) 88%, var(--ink));
+  position: relative;
+  min-height: 100vh;
+  background: var(--stage-bg);
 }
 
-/* Room for chat mode's back button, which sits absolutely positioned at the
-   page's own top-left corner -- see .back in ChatMode.module.css. Left alone
-   otherwise, so the header sits exactly where it always has. */
-.page[data-mode='chat'] .head {
-  padding-left: 44px;
+.stage:is([data-bg='BIRU'], [data-bg='INK'], [data-bg-text='light']) {
+  --stage-bg: color-mix(in oklch, var(--page-bg) 50%, black);
 }
 
-/* With a cover the back button sits on the photo, above the header, so the
-   header keeps its full width and a short name stays on one line. */
-.page[data-mode='chat'][data-cover='yes'] .head {
-  padding-left: 0;
+.backdrop {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
 }
+
+.backdrop img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: blur(40px) saturate(1.2);
+  transform: scale(1.2);
+  opacity: 0.55;
+}
+
+.backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--stage-bg) 70%, transparent);
+}
+
+.stage > .page {
+  box-shadow: 0 0 80px rgb(0 0 0 / 35%);
+}
+
+/* ---- Header ---- */
 
 /*
- * The cover photo: full width at the top of the page, bleeding past the
- * page's padding, fading into the page's own background at its foot (an
- * alpha mask, so it fades into whichever band is behind it). The header then
- * rides up onto the faded part.
+ * The landing's page cards set the proportions: the photo is as tall as the
+ * page is wide (52% of a 300 by 590 card), and the name starts under the
+ * face, 73% of the width down (37% of the card). Measured in the page's own
+ * width (cqi), so the public page, the editor's phone and the landing agree.
  */
 .cover {
-  margin: calc(-1 * var(--pad-top, 32px)) calc(-1 * var(--pad-x, 16px)) 0;
-  height: 180px;
+  height: 102cqi;
   overflow: hidden;
-  border-radius: inherit;
-  border-bottom-left-radius: 0;
-  border-bottom-right-radius: 0;
 }
 
 .cover img {
@@ -178,73 +148,113 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  /* Gone by 86%: the name, which rides up onto the last stretch, always sits on the page colour, not on the photo. */
-  mask-image: linear-gradient(to bottom, black 38%, transparent 86%);
+  mask-image: linear-gradient(black 40%, transparent);
 }
 
-/* Only when a cover actually rendered: the header steps up onto its faded foot. */
-.cover + .head {
+.head {
   position: relative;
-  margin-top: -40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 56px 22px 0;
+  text-align: center;
 }
 
-@media (min-width: 560px) {
-  .cover {
-    height: 210px;
-  }
-}
-
-/* On a cover, the picture sits on a ring of the page's own colour, so it reads against the photo. */
-.cover + .head .avatar {
-  width: 72px;
-  height: 72px;
-  box-shadow: 0 0 0 3px var(--page-bg);
+.cover + .head {
+  margin-top: -29cqi;
+  padding-top: 0;
 }
 
 .avatar {
-  width: 56px;
-  height: 56px;
+  width: 74px;
+  height: 74px;
   flex: none;
   border-radius: 50%;
   object-fit: cover;
+  box-shadow: 0 0 0 5px var(--page-bg);
 }
 
 .name {
   margin: 0;
   color: var(--page-fg);
   font-family: var(--font-heading), var(--font-display);
-  font-size: var(--text-display);
+  font-size: 44px;
   font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
 }
 
 .handle {
-  margin: 2px 0 0;
+  margin: -4px 0 0;
   font-family: var(--font-mono);
-  font-size: var(--text-xs);
+  font-size: 12px;
   color: var(--page-soft);
+}
+
+.socials {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.socials a,
+.socials span {
+  display: grid;
+  place-items: center;
+  color: var(--page-fg);
+}
+
+.socials svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .bio {
-  margin: 0 0 18px;
-  font-size: var(--text-base);
-  line-height: 1.5;
+  max-width: 30em;
+  margin: 0;
+  font-size: 14px;
   color: var(--page-soft);
 }
 
-/*
- * Chat mode is a state of this same page, not a layer over it (the owner's
- * words: "it looks like it opened another page" was the whole reason this
- * changed). The bio and the grid fold upward to make room for the
- * conversation, in place, rather than being covered by anything.
- *
- * The outer grid is what actually animates -- a single-row CSS grid whose
- * row track goes 1fr -> 0fr, which (unlike height: auto) is genuinely
- * animatable. The inner wrapper clips its own content as that row shrinks;
- * without it the bio and tiles would overflow the collapsing row instead of
- * disappearing into it.
- */
+/* Links, Ask and Shop: a pill track with the current one filled in. */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(var(--tabs, 2), auto);
+  margin-top: 6px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--veil-3);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tab {
+  display: grid;
+  place-items: center;
+  height: 36px;
+  padding: 0 22px;
+  border-radius: 999px;
+  color: var(--page-fg);
+  text-decoration: none;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.tab[aria-current='page'] {
+  background: var(--page-fg);
+  color: var(--page-bg);
+}
+
+/* ---- Links tab ---- */
+
 .foldaway {
   display: grid;
   grid-template-rows: 1fr;
@@ -253,6 +263,7 @@
 .foldawayInner {
   overflow: hidden;
   min-height: 0;
+  padding: 20px 18px 0;
   opacity: 1;
 }
 
@@ -276,90 +287,239 @@
   }
 }
 
-/*
- * The ask bar becomes the composer, in the same sticky-bottom spot -- not a
- * second control appearing somewhere else. `[data-ask-bar]` is a plain
- * attribute, not a CSS-module class, so this rule can reach into AskBar's own
- * markup (packages/ui) without either stylesheet knowing the other's
- * (hashed) class names.
- */
+.links {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: block;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--pill-ring);
+  color: var(--pill-fg);
+  text-decoration: none;
+}
+
+.link > span {
+  display: block;
+  padding: 14px 18px;
+  border-radius: 999px;
+  background: var(--pill);
+  font-weight: 600;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+/* The first link is the one the owner most wants pressed: it wears the accent. */
+.links > li:first-child .link {
+  background: var(--veil-2);
+  color: var(--on-accent);
+}
+
+.page[data-style='CONTRAST'] .links > li:first-child .link {
+  background: var(--page-fg);
+}
+
+.links > li:first-child .link > span {
+  background: var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a.link {
+    transition: transform 200ms ease;
+  }
+
+  a.link:hover {
+    transform: scale(1.015);
+  }
+}
+
+/* "People often ask": the top few answers, opened in place. */
+.faq {
+  margin-top: 22px;
+  padding: 14px;
+  border-radius: 24px;
+  background: var(--veil-1);
+}
+
+.faqTitle {
+  display: flex;
+  align-items: center;
+  margin: 0 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--page-soft);
+}
+
+.faqTitle a {
+  margin-left: auto;
+  color: var(--page-fg);
+  text-decoration: none;
+}
+
+.faqItem {
+  border-top: 1px solid var(--veil-2);
+}
+
+.faqItem summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 6px;
+  font-size: 14px;
+  font-weight: 600;
+  list-style: none;
+  cursor: pointer;
+}
+
+.faqItem summary::-webkit-details-marker {
+  display: none;
+}
+
+/* A plus that turns to a cross when the answer is open. */
+.faqSign {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 3px 0 0 auto;
+  opacity: 0.7;
+  transition: transform 260ms ease;
+}
+
+.faqSign::before,
+.faqSign::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 0;
+  width: 14px;
+  height: 2px;
+  border-radius: 1px;
+  background: currentColor;
+}
+
+.faqSign::after {
+  transform: rotate(90deg);
+}
+
+.faqItem[open] .faqSign {
+  transform: rotate(45deg);
+}
+
+.faqItem p {
+  margin: -6px 6px 12px;
+  font-size: 13.5px;
+  color: var(--page-soft);
+}
+
+.foot {
+  margin: 24px 0 0;
+  font-size: 12.5px;
+  color: var(--page-soft);
+  text-align: center;
+}
+
+.foot a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.foot a:hover {
+  text-decoration: underline;
+}
+
+/* ---- Ask tab ---- */
+
+/* The ask bar gives way to chat mode's composer. */
 .page[data-mode='chat'] [data-ask-bar] {
   display: none;
 }
 
-/*
- * "What do you want to know?" doubles as chat mode's own empty-state
- * greeting (see FRONTEND.md's amendment), so it stays exactly where it was
- * until the first turn exists, then makes room for the transcript.
- * `[data-has-turns]` is set alongside `[data-mode='chat']`, once there is
- * something to show instead.
- */
+/* "What do you want to know?" is chat mode's greeting, until there is a thread to show. */
+.page:not([data-mode='chat']) [data-ask-prompt],
 .page[data-has-turns] [data-ask-prompt] {
   display: none;
 }
 
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  grid-auto-rows: minmax(76px, auto);
-  grid-auto-flow: dense;
-  gap: 10px;
-  margin-bottom: 18px;
+@container page (max-width: 380px) {
+  .name {
+    font-size: 36px;
+  }
+
+  .tab {
+    padding: 0 16px;
+  }
 }
 
-.tile {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 14px;
-  border-radius: var(--tile-radius);
-  background: var(--plain-bg);
-  color: var(--plain-fg);
-  box-shadow: var(--shadow);
-  text-decoration: none;
-  transition: transform 120ms ease;
-}
+/*
+ * A phone drawn inside another screen (the editor's preview, the landing's
+ * demos): the board's preview phone, at about 300px. Everything a step smaller.
+ */
+@container page (max-width: 320px) {
+  .head {
+    gap: 8px;
+    padding: 48px 16px 0;
+  }
 
-/* The shop's tile: the shop's own photo behind the words, dimmed into the ink (no gradient behind text). */
-.tile[data-shop] { position: relative; overflow: hidden; }
-.tile[data-shop] .kind,
-.tile[data-shop] .label { position: relative; z-index: 1; }
-.shopPhoto {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  /* At 0.30 even a white photo stays dark enough over the ink to keep the 12px paper caption above 4.5:1. */
-  opacity: 0.3;
-}
-.tile[data-shop]:has(.shopPhoto) { background: var(--ink); color: var(--paper); }
-.tile[data-shop]:has(.shopPhoto) .kind { opacity: 1; }
+  .avatar {
+    width: 58px;
+    height: 58px;
+    box-shadow: 0 0 0 4px var(--page-bg);
+  }
 
-a.tile:active { transform: scale(0.98); }
+  .name {
+    font-size: 31px;
+    line-height: 1.05;
+  }
 
-.tile[data-size='WIDE'] { grid-column: span 2; }
-.tile[data-size='TALL'] { grid-row: span 2; }
-.tile[data-size='BIG'] { grid-column: span 2; grid-row: span 2; }
+  .handle {
+    font-size: 10.5px;
+  }
 
-.tile[data-tone='accent'] { background: var(--accent); color: var(--on-accent); }
-.tile[data-tone='warm'] { background: var(--warm); color: var(--warm-fg); }
-/* High contrast's ink tiles: the label in a light tint of the accent, full strength. */
-.page[data-style='CONTRAST'] .tile[data-tone='plain'] .kind { color: var(--plain-kind); opacity: 1; }
+  .bio {
+    font-size: 12px;
+  }
 
-/* The small "what this is" label on a tile. In the owner's heading font, like everything else on their page; still a label by size, case and spacing. */
-.kind {
-  font-family: var(--font-heading), var(--font-display);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.8;
-}
+  .tabs {
+    margin-top: 2px;
+    padding: 3px;
+    font-size: 12px;
+  }
 
-.label {
-  font-family: var(--font-heading), var(--font-display);
-  font-size: var(--text-base);
-  font-weight: 700;
+  .tab {
+    height: 28px;
+    padding: 0 15px;
+  }
+
+  .foldawayInner {
+    padding: 12px 16px 0;
+  }
+
+  .links {
+    gap: 6px;
+  }
+
+  .link {
+    padding: 4px;
+  }
+
+  .link > span {
+    padding: 9px 12px;
+    font-size: 13px;
+  }
+
+  .faq {
+    margin-top: 14px;
+    padding: 10px;
+    border-radius: 18px;
+  }
+
+  .foot {
+    margin-top: 16px;
+  }
 }

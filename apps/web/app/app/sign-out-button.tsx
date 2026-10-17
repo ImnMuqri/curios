@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { apiFetch } from '../../lib/api.js';
-import styles from './app-frame.module.css';
+import styles from './sign-out-button.module.css';
 
 /**
  * Ends this session and leaves the dashboard.

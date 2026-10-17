@@ -1,3 +1,5 @@
+import { formatMalaysianPhone, OWNER_MAIL_FOOTER, renderMailHtml, type MailBlock } from '@curios/core';
+
 export interface LeadSlots {
   product: string | null;
   date: string | null;
@@ -106,7 +108,13 @@ export function buildNotification(input: {
   phone: string;
   transcript: TranscriptLine[];
   slots: LeadSlots;
-}): { subject: string; text: string } {
+  /** The dashboard's address, for "See in Leads". */
+  appUrl?: string;
+  /** When the number was left, for the note beside it. */
+  leftAt?: Date;
+  /** On a free trial: which free lead this is, and of how many. */
+  freeLead?: { nth: number; of: number } | null;
+}): { subject: string; text: string; html: string } {
   const { displayName, phone, transcript, slots } = input;
 
   // Digits only. wa.me refuses a plus and refuses separators, and a link that
@@ -144,7 +152,7 @@ export function buildNotification(input: {
   );
 
   const text = [
-    `Someone asked about your page and left their number.`,
+    `Your page couldn’t answer this one, so it asked for their number.`,
     ``,
     `Number: ${phone}`,
     ...(known.length > 0 ? [``, ...known] : []),
@@ -157,5 +165,58 @@ export function buildNotification(input: {
     ``,
   ].join('\n');
 
-  return { subject: `New lead for ${displayName}`, text };
+  // The Emails board's subject: the number itself, so the inbox line alone is enough to call back.
+  const subject = `New lead · ${formatMalaysianPhone(phone)}`;
+
+  // The same email laid out, and worded, as the design handoff's Emails board
+  // draws it: the number, what they are after, the conversation, and one tap
+  // to reply.
+  const leads = `${(input.appUrl ?? 'http://localhost:3000').replace(/\/+$/, '')}/app/leads`;
+  const leftAt = input.leftAt
+    ? `Left ${input.leftAt.toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kuala_Lumpur' }).replace(/\s/g, '').toLowerCase()}`
+    : undefined;
+  const blocks: MailBlock[] = [
+    { kind: 'p', text: 'Your page couldn’t answer this one, so it asked for their number.' },
+    { kind: 'number', value: formatMalaysianPhone(phone), note: leftAt },
+    ...(known.length > 0
+      ? [
+          {
+            kind: 'facts' as const,
+            rows: [
+              ...(slots.product ? [['Product', slots.product] as [string, string]] : []),
+              ...(slots.date ? [['When', slots.date] as [string, string]] : []),
+              ...(slots.location ? [['Where', slots.location] as [string, string]] : []),
+            ],
+          },
+        ]
+      : []),
+    {
+      kind: 'chat',
+      lines: transcript.map((line) => ({ from: line.role === 'USER' ? ('visitor' as const) : ('page' as const), text: line.content })),
+    },
+    {
+      kind: 'buttons',
+      primary: { label: 'Reply on WhatsApp', href: waLink, tone: 'hijau' },
+      secondary: { label: 'See in Leads', href: leads },
+    },
+    ...(input.freeLead
+      ? [
+          {
+            kind: 'small' as const,
+            text: `Lead ${input.freeLead.nth} of your ${input.freeLead.of} free leads. After ${input.freeLead.of}, the capture card stops appearing until you subscribe.`,
+          },
+        ]
+      : []),
+  ];
+
+  const html = renderMailHtml({
+    subject,
+    topRight: 'From your page',
+    tag: { label: 'New lead', tone: 'hijau' },
+    heading: 'Someone wants you to message them',
+    blocks,
+    footer: OWNER_MAIL_FOOTER,
+  });
+
+  return { subject, text, html };
 }

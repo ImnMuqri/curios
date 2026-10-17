@@ -1,29 +1,397 @@
 /*
- * Connect Google: a secondary pill, as the landing page draws one, with the
- * Google mark it promises. The four mark colours are Google's own, set as
- * tokens here because they are a logo, not a palette (the same exception
- * brand-colors.ts makes for the landing page).
+ * Settings, from the design handoff's Settings board: groups of rows on one
+ * card each, every row an icon, what it is with a line under it, and on the
+ * right what it is set to or the one thing to do about it.
  */
-.google {
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.wrap {
+  max-width: 820px;
+  padding: 28px 36px 56px;
+  container-type: inline-size;
+}
+
+/* How the screen was reached: back from linking Google, or not. */
+.banner {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--hijau-muda);
+  color: color-mix(in srgb, var(--hijau) 65%, var(--ink));
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.banner[data-tone='error'] {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.group {
+  margin-top: 28px;
+}
+
+.wrap > .group:first-child,
+.banner + .group {
+  margin-top: 0;
+}
+
+.group > h2 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.group > p {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.rowWrap + .rowWrap {
+  border-top: 1px solid var(--line);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 64px;
+  padding: 12px 16px;
+}
+
+.icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--biru-muda);
+  color: var(--biru);
+}
+
+.icon[data-tone='rose'] {
+  background: var(--rose-muda);
+  color: var(--rose);
+}
+
+.icon[data-tone='amber'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+.icon[data-tone='grey'] {
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.icon[data-tone='google'] {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.icon svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* The Google mark's four colours are Google's own: a logo, not a palette. */
+.icon svg.gmark {
   --g-blue: oklch(0.6 0.19 259);
   --g-green: oklch(0.63 0.17 149);
   --g-yellow: oklch(0.8 0.17 85);
   --g-red: oklch(0.58 0.21 29);
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  padding: 0 18px;
-  border-radius: 999px;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line);
-  color: var(--ink);
-  font-size: var(--text-base);
-  font-weight: 600;
-  text-decoration: none;
-  transition: background-color 120ms ease;
+  stroke: none;
 }
 
-.google:hover {
-  background: var(--surface);
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
+.text b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.text > span {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.action {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  max-width: 100%;
+}
+
+/* The sign-out button's own failure line takes its own line, on the right. */
+.action > p {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: right;
+}
+
+.ok {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--hijau-muda);
+  color: color-mix(in srgb, var(--hijau) 65%, var(--ink));
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ok svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.btn2 {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.btn2:hover:not(:disabled) {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.prim {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--biru);
+  color: var(--card);
+  font: inherit;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.prim:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+}
+
+.prim:disabled,
+.btn2:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.inp {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--card);
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.inp:focus {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
+}
+
+/* ---- The password, opened under its row ---- */
+
+.pwf {
+  padding: 0 16px 14px 66px;
+  animation: fadeUp 260ms ease both;
+}
+
+.pwRow {
+  display: flex;
+  gap: 8px;
+}
+
+.pwRow .btn2 {
+  height: 40px;
+}
+
+.meter {
+  display: flex;
+  gap: 4px;
+  margin-top: 10px;
+}
+
+.meter i {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  transition: background 250ms;
+}
+
+.meter[data-level='1'] i:nth-child(-n + 1) {
+  background: var(--merah);
+}
+
+.meter[data-level='2'] i:nth-child(-n + 2) {
+  background: var(--kuning);
+}
+
+.meter[data-level='3'] i:nth-child(-n + 3) {
+  background: var(--biru);
+}
+
+.meter[data-level='4'] i {
+  background: var(--hijau);
+}
+
+.error {
+  margin: 10px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+  font-size: 12.5px;
+}
+
+.rowError {
+  margin: 0 16px 14px 66px;
+}
+
+/* ---- A switch ---- */
+
+.switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: none;
+  border: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--edge) 80%, var(--ink-soft));
+  cursor: pointer;
+  transition: background 200ms;
+}
+
+.switch[aria-checked='true'] {
+  background: var(--biru);
+}
+
+.switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 20%);
+  transition: transform 260ms cubic-bezier(0.34, 1.5, 0.64, 1);
+}
+
+.switch[aria-checked='true'] i {
+  transform: translateX(16px);
+}
+
+.switch:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ---- Narrower ---- */
+
+@media (max-width: 760px) {
+  .wrap {
+    padding: 20px 16px 40px;
+  }
+}
+
+@container (max-width: 520px) {
+  .row {
+    flex-wrap: wrap;
+  }
+
+  .text {
+    flex: 1 1 0;
+  }
+
+  .pwf {
+    padding-left: 16px;
+  }
+
+  .pwRow {
+    flex-wrap: wrap;
+  }
+
+  .pwRow .inp {
+    flex: 1 1 100%;
+  }
+
+  .rowError {
+    margin-left: 16px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pwf {
+    animation: none;
+  }
+
+  .switch,
+  .switch i,
+  .meter i {
+    transition: none;
+  }
 }

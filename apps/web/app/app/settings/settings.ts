@@ -5,6 +5,10 @@ export interface SettingsView {
   email: string;
   showAddPassword: boolean;
   showConnectGoogle: boolean;
+  /** The Google account's own address, shown on the Google row once connected. */
+  googleEmail: string | null;
+  /** The line under "Signing in". */
+  signNote: string;
 }
 
 /**
@@ -15,14 +19,19 @@ export interface SettingsView {
  * No "Add a password" for an account that already has one; no
  * "Connect Google" for one already connected. An account with both gets
  * neither form and must still be told something useful -- empty states are
- * instructions, not moods -- which `page.tsx` handles by falling back to a
- * plain sentence when both flags here are false.
+ * instructions, not moods -- so `signNote` says both ways work.
  */
 export function decideSettingsView(methods: SignInMethods): SettingsView {
+  const google = methods.providers.includes('GOOGLE');
   return {
     email: methods.email,
     showAddPassword: !methods.hasPassword,
-    showConnectGoogle: !methods.providers.includes('GOOGLE'),
+    showConnectGoogle: !google,
+    googleEmail: google ? (methods.googleEmail ?? methods.email) : null,
+    signNote:
+      methods.hasPassword && google
+        ? 'You can sign in with your password or with Google.'
+        : 'Add a second way in, for the day the first one fails you.',
   };
 }
 

@@ -1,50 +1,281 @@
+/*
+ * The FAQ pages: light pages in the owner's colours. A 460px column on a
+ * darker field of the page's own band (as the page itself sits on a wide
+ * screen), white cards on a faint tint of the accent, the accent on the
+ * chevrons, and the owner's heading font on their name.
+ */
+.stage {
+  --stage-bg: color-mix(in oklch, var(--page-bg) 88%, var(--ink));
+  --lp-bg: color-mix(in srgb, var(--accent) 4%, var(--card));
+  --lp-line: color-mix(in srgb, var(--accent) 12%, var(--card));
+  --lp-soft: color-mix(in oklab, var(--accent) 22%, var(--muted));
+  min-height: 100vh;
+  background: var(--stage-bg);
+}
+
+.stage:is([data-bg='BIRU'], [data-bg='INK'], [data-bg-text='light']) {
+  --stage-bg: color-mix(in oklch, var(--page-bg) 50%, black);
+}
+
 .page {
-  max-width: 560px;
+  max-width: 460px;
+  min-height: 100vh;
   margin: 0 auto;
-  padding: 32px 16px 64px;
-}
-
-.shop {
-  font-size: var(--text-base);
-  color: var(--muted);
-  margin: 0 0 4px;
-}
-
-.heading {
-  font-size: var(--text-lg);
-  line-height: 1.3;
-  margin: 0 0 24px;
-}
-
-.list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.question {
-  display: block;
-  padding: 14px 0;
-  font-size: var(--text-body);
+  padding: 18px 18px 120px;
+  background: var(--lp-bg);
+  color: var(--ink);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 15px;
   line-height: 1.5;
-  color: inherit;
-  text-decoration: none;
-  /* --surface, because there is no --rule token. The public page's own sheet
-     draws its dividers the same way. */
-  border-bottom: 1px solid var(--surface);
 }
 
-.answer {
-  font-size: var(--text-body);
-  line-height: 1.6;
-  white-space: pre-wrap;
-  margin: 0 0 32px;
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
 }
 
 .back {
-  font-size: var(--text-base);
-  color: var(--muted);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--lp-line);
+  color: var(--ink);
+}
+
+.back svg,
+.chev {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.who {
+  font-family: var(--font-heading), var(--font-display);
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.crumb {
+  font-size: 12.5px;
+  color: var(--lp-soft);
+}
+
+.crumb a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.crumb a:hover {
+  text-decoration: underline;
+}
+
+.heading {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 48px;
+  margin-top: 16px;
+  padding: 0 14px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--lp-line);
+}
+
+.search:focus-within {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.search svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: var(--lp-soft);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: var(--ink);
+  outline: none;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.question {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--lp-line);
+  color: var(--ink);
+  text-decoration: none;
+  transition: box-shadow 200ms;
+}
+
+.question:hover {
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 30%, var(--card));
+}
+
+.question b {
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.count {
+  font-size: 12px;
+  color: var(--lp-soft);
+  white-space: nowrap;
+}
+
+.chev {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--accent);
+}
+
+.answer {
+  margin-top: 16px;
+  padding: 20px;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--lp-line);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.answer p {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.by {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--lp-soft);
+}
+
+.by svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  fill: none;
+  stroke: var(--hijau);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* "Still wondering?": the way back into the conversation, in the page's own colour. */
+.askMore {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 22px;
+  background: var(--page-bg);
+  color: var(--page-fg);
+}
+
+.askMore b {
+  display: block;
+  font-size: 15px;
+}
+
+.askMore span span {
+  display: block;
+  font-size: 13px;
+  color: var(--page-soft);
+}
+
+.lite {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  margin-left: auto;
+  padding: 0 18px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.also {
+  margin: 24px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--lp-soft);
+}
+
+.none {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 20px;
+  padding: 34px 20px;
+  border: 1.5px dashed var(--lp-line);
+  border-radius: 24px;
+  text-align: center;
+}
+
+.none b {
+  font-size: 17px;
+}
+
+.none p {
+  max-width: 26em;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--lp-soft);
+}
+
+.none .lite {
+  margin: 8px 0 0;
+  background: var(--accent);
+  color: var(--on-accent);
 }

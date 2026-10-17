@@ -17,6 +17,7 @@ const { default: ShopPage, generateMetadata } = await import('./page.js');
 const shop: PublicShop = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
+  bio: null,
   language: 'ms',
   style: 'SOFT',
   accentColor: '#2340c8',
@@ -30,6 +31,7 @@ const shop: PublicShop = {
     { label: 'WA', url: 'https://wa.me/60123456789' },
   ],
   pickupEnabled: true,
+  shopDescription: 'Cakes for every Raya.',
   pickupNote: 'Shah Alam',
   deliveryMode: 'FLAT',
   deliveryFeeCents: 800,
@@ -66,6 +68,7 @@ describe('/[handle]/shop', () => {
     expect(props.handle).toBe('nadia');
     expect(props.displayName).toBe('Nadia Bakes');
     expect(props.pickupNote).toBe('Shah Alam');
+    expect(props.description).toBe('Cakes for every Raya.');
     expect(props.deliveryFeeCents).toBe(800);
     expect(props.minNoticeDays).toBe(2);
     expect((props.items as { id: string; photoUrl: string | null }[]).map((i) => [i.id, i.photoUrl])).toEqual([

@@ -4,7 +4,7 @@ import { decideSettingsBanner, decideSettingsView } from './settings.js';
 
 describe('decideSettingsView', () => {
   it('offers to add a password for a Google-only account', () => {
-    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: false, providers: ['GOOGLE'] });
+    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: false, providers: ['GOOGLE'], googleEmail: 'lina.bakes@gmail.example' });
 
     expect(view.showAddPassword).toBe(true);
     expect(view.showConnectGoogle).toBe(false);
@@ -12,7 +12,7 @@ describe('decideSettingsView', () => {
   });
 
   it('offers to connect Google for a password-only account', () => {
-    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: true, providers: [] });
+    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: true, providers: [], googleEmail: null });
 
     expect(view.showAddPassword).toBe(false);
     expect(view.showConnectGoogle).toBe(true);
@@ -21,10 +21,19 @@ describe('decideSettingsView', () => {
   it('offers neither form to an account that already has both', () => {
     // Empty states are instructions, not moods -- an account with both must
     // still be told something useful, not shown a blank screen.
-    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: true, providers: ['GOOGLE'] });
+    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: true, providers: ['GOOGLE'], googleEmail: 'lina.bakes@gmail.example' });
 
     expect(view.showAddPassword).toBe(false);
     expect(view.showConnectGoogle).toBe(false);
+    expect(view.signNote).toBe('You can sign in with your password or with Google.');
+    expect(view.googleEmail).toBe('lina.bakes@gmail.example');
+  });
+
+  it('asks for a second way in while there is only one', () => {
+    const view = decideSettingsView({ email: 'nadia@example.com', hasPassword: true, providers: [], googleEmail: null });
+
+    expect(view.signNote).toBe('Add a second way in, for the day the first one fails you.');
+    expect(view.googleEmail).toBeNull();
   });
 });
 

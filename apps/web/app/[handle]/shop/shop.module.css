@@ -6,8 +6,7 @@
 .shop {
   display: block;
   min-width: 0;
-  /* Room so the last card clears the fixed basket bar. */
-  padding-bottom: 160px;
+  padding: 20px 18px 180px;
 }
 
 .back {
@@ -19,52 +18,66 @@
   text-decoration: none;
 }
 
+/* Pickup, delivery and notice: one quiet centred line each, above the shelf. */
+/* "About your shop": the owner's own words, above the terms. */
+.about {
+  margin: 0 0 8px;
+  color: var(--page-fg);
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  opacity: 0.85;
+}
+
 .terms {
-  margin: 8px 0 16px;
+  margin: 0 0 14px;
   padding: 0;
   list-style: none;
   color: var(--page-soft);
-  font-size: var(--text-sm);
-  line-height: 1.5;
+  font-size: 12.5px;
+  line-height: 1.6;
+  text-align: center;
 }
 
 .empty {
-  margin: 24px 0;
+  margin: 0;
+  padding: 34px 20px;
+  border: 1.5px dashed color-mix(in srgb, var(--page-fg) 25%, transparent);
+  border-radius: 24px;
   color: var(--page-soft);
-  font-size: var(--text-base);
+  font-size: 13.5px;
+  text-align: center;
 }
 
-.grid {
+.rows {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.card {
+.row {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  gap: 12px;
   width: 100%;
-  padding: 8px 8px 12px;
+  padding: 6px;
   border: 0;
-  border-radius: var(--tile-radius);
-  background: var(--card);
-  color: var(--ink);
-  box-shadow: var(--shadow);
+  border-radius: 999px;
+  background: var(--veil-1, var(--surface));
+  color: var(--page-fg);
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 120ms;
+  transition: background-color 200ms;
 }
 
-.card:hover {
-  background: var(--warm);
+.row:hover {
+  background: var(--veil-3, var(--line));
 }
 
-.card:focus-visible,
+.row:focus-visible,
 .add:focus-visible,
 .close:focus-visible,
 .remove:focus-visible,
@@ -74,66 +87,111 @@
   outline-offset: 2px;
 }
 
-.photo {
-  display: block;
+.thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--warm);
+  color: var(--ink);
+  font-family: var(--font-heading, var(--font-display));
+  font-weight: 800;
+}
+
+.thumb img {
+  position: absolute;
+  inset: 0;
   width: 100%;
-  aspect-ratio: 1;
-  border-radius: calc(var(--tile-radius) - 6px);
-  background: var(--surface);
+  height: 100%;
   object-fit: cover;
 }
 
+.text {
+  flex: 1;
+  min-width: 0;
+}
+
 .name {
-  padding: 0 4px;
-  font-family: var(--font-heading, var(--font-display));
-  font-size: var(--text-body);
+  display: block;
+  font-size: 14px;
   font-weight: 600;
-  line-height: 1.25;
   overflow-wrap: anywhere;
 }
 
-/* Ink, not the accent: an owner's accent may be pale, and the price must read on a white card. */
 .price {
-  padding: 0 4px;
+  display: block;
+  font-size: 12.5px;
+  color: var(--page-soft);
+}
+
+/* In the sheet the price sits on the white card, not on the page's own colour. */
+.sheet .price {
+  margin: 0 0 12px;
   color: var(--ink);
-  font-size: var(--text-base);
+  font-size: 16px;
   font-weight: 600;
 }
 
+.count {
+  flex: none;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plus {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 19px;
+  font-weight: 600;
+}
+
+/* The basket: a white card held at the foot of the column, its order button in the accent. */
 .basket {
   position: fixed;
   right: 0;
-  bottom: 0;
+  bottom: 16px;
   left: 0;
   z-index: 5;
   box-sizing: border-box;
-  max-width: 520px;
+  width: calc(min(460px, 100%) - 28px);
   margin: 0 auto;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  border-top: 1px solid var(--line);
-  background: var(--card);
+  padding: 10px 6px 6px;
+  border-radius: 26px;
+  background: var(--paper);
   color: var(--ink);
-  box-shadow: 0 -1px 3px var(--soft-shadow);
+  box-shadow: 0 14px 30px -14px rgb(0 0 0 / 60%);
 }
 
-/* Embedded (the landing's demo): the bar stays inside its card instead of the viewport. */
 .shop[data-variant='embedded'] .basket {
   position: sticky;
   right: auto;
   left: auto;
-  max-width: none;
-  margin: 16px -8px 0;
-  border-radius: 12px;
+  width: auto;
+  margin: 16px 0 0;
 }
 
 .shop[data-variant='embedded'] {
-  padding-bottom: 0;
+  padding: 0;
 }
 
 .lines {
   max-height: 96px;
-  margin: 0 0 8px;
-  padding: 0;
+  margin: 0 0 6px;
+  padding: 0 12px;
   overflow-y: auto;
   list-style: none;
   font-size: var(--text-sm);
@@ -159,52 +217,77 @@
   cursor: pointer;
 }
 
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+}
+
 .total {
-  margin: 0 0 8px;
-  font-size: var(--text-base);
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
   font-weight: 600;
 }
 
 .order {
-  display: block;
-  width: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 16px;
   border: 0;
-  font-family: inherit;
-  cursor: pointer;
-  padding: 12px 16px;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
-  font-size: var(--text-base);
+  background: var(--accent, var(--biru));
+  color: var(--on-accent, var(--paper));
+  font: inherit;
+  font-size: 14px;
   font-weight: 600;
-  text-align: center;
   text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 .noWhatsApp {
+  flex: 1;
   margin: 0;
+  padding: 6px 12px 6px 0;
   color: var(--muted);
   font-size: var(--text-sm);
   line-height: 1.5;
 }
 
-/* Bottom sheet on a phone; centred from 720px. */
 .sheet {
   box-sizing: border-box;
   width: 100%;
-  max-width: 520px;
+  max-width: 460px;
   max-height: 90vh;
   margin: auto auto 0;
-  padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
+  padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
   overflow-y: auto;
   border: 0;
-  border-radius: 20px 20px 0 0;
+  border-radius: 28px 28px 0 0;
   background: var(--card);
   color: var(--ink);
 }
 
 .sheet::backdrop {
   background: var(--scrim);
+}
+
+/*
+ * The inline sheet (the Store editor's preview): held at the foot of the
+ * page it sits in, with the scrim drawn as a spread shadow, since only a
+ * modal gets a ::backdrop. Whatever holds it clips the shadow to its edges.
+ */
+.sheet[data-inline] {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 6;
+  max-height: 86%;
+  margin: 0;
+  box-shadow: 0 0 0 100vmax var(--scrim);
 }
 
 .sheetPhoto {
@@ -219,8 +302,9 @@
 .sheetName {
   margin: 0 0 8px;
   font-family: var(--font-heading, var(--font-display));
-  font-size: var(--text-lg);
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 800;
+  line-height: 1.1;
 }
 
 .description {
@@ -269,11 +353,11 @@
 .add {
   display: block;
   width: 100%;
-  min-height: 48px;
+  min-height: 50px;
   border: 0;
   border-radius: 999px;
-  background: var(--biru);
-  color: var(--paper);
+  background: var(--accent, var(--biru));
+  color: var(--on-accent, var(--paper));
   font: inherit;
   font-weight: 600;
   cursor: pointer;
@@ -292,10 +376,6 @@
 }
 
 @media (min-width: 720px) {
-  .grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .sheet {
     margin: auto;
     padding-bottom: 16px;

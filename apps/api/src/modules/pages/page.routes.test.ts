@@ -45,7 +45,7 @@ const claimAs = (cookie: string, handle: string, mode: 'PERSONAL' | 'BUSINESS') 
     payload: { handle, displayName: 'Nadia', mode },
   });
 
-const call = (cookie: string | undefined, method: 'POST' | 'PATCH', url: string, payload?: object) =>
+const call = (cookie: string | undefined, method: 'GET' | 'POST' | 'PATCH', url: string, payload?: object) =>
   app.inject({
     method,
     url,
@@ -316,5 +316,57 @@ describe('PATCH /pages/search-indexing', () => {
 
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ error: { code: 'NO_PAGE' } });
+  });
+});
+
+describe('PATCH /pages/notifications', () => {
+  const notifies = async (handle: string) =>
+    (await app.prisma.page.findUniqueOrThrow({ where: { handle }, select: { notifyLeads: true } })).notifyLeads;
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await call(undefined, 'PATCH', '/pages/notifications', { leads: false });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('starts on, turns the lead email off, and on again', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'BUSINESS');
+    expect(await notifies(handle)).toBe(true);
+
+    const off = await call(cookie, 'PATCH', '/pages/notifications', { leads: false });
+    expect(off.json()).toEqual({ leads: false });
+    expect(await notifies(handle)).toBe(false);
+
+    await call(cookie, 'PATCH', '/pages/notifications', { leads: true });
+    expect(await notifies(handle)).toBe(true);
+  });
+
+  it('answers NO_PAGE for an owner with no page yet', async () => {
+    const res = await call(await anOwner(), 'PATCH', '/pages/notifications', { leads: true });
+    expect(res.statusCode).toBe(404);
+  });
+});
+
+describe('GET /pages/handle-check', () => {
+  const check = async (cookie: string | undefined, handle: string) =>
+    (await call(cookie, 'GET', `/pages/handle-check?handle=${encodeURIComponent(handle)}`)).json();
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await call(undefined, 'GET', '/pages/handle-check?handle=abc');
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('says an address is free, taken, too like a taken one, reserved, or not a handle', async () => {
+    const cookie = await anOwner();
+    const taken = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(await anOwner(), taken, 'BUSINESS');
+
+    expect(await check(cookie, `h${randomUUID().slice(0, 8)}`)).toEqual({ status: 'available' });
+    expect(await check(cookie, taken)).toEqual({ status: 'taken' });
+    expect(await check(cookie, taken.toUpperCase())).toEqual({ status: 'taken' });
+    expect(await check(cookie, 'admin')).toEqual({ status: 'reserved' });
+    expect(await check(cookie, 'a b')).toEqual({ status: 'invalid' });
+    expect(await check(cookie, 'ab')).toEqual({ status: 'invalid' });
   });
 });

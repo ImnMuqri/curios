@@ -1,7 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { captureLead, deleteLead } from './lead.service.js';
+import { captureLead, deleteLead, setLeadStatus } from './lead.service.js';
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
@@ -46,6 +46,23 @@ export const leadRoutes: FastifyPluginAsyncZod = async (app) => {
  * and different scope; Fastify routes on both.
  */
 export const ownerLeadRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.patch(
+    '/leads/:id',
+    {
+      schema: {
+        params: z.object({ id: z.string().min(1).max(64) }),
+        body: z.object({ status: z.enum(['NEW', 'CONTACTED', 'CLOSED']) }),
+      },
+    },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await setLeadStatus(app.prisma, request.account.id, request.params.id, request.body.status);
+      request.log.info({ leadId: request.params.id, status: request.body.status }, 'lead status set');
+      return reply.send({ status: request.body.status });
+    },
+  );
+
   app.delete(
     '/leads/:id',
     { schema: { params: z.object({ id: z.string().min(1).max(64) }) } },

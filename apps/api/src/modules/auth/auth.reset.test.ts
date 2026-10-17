@@ -266,3 +266,77 @@ describe('reset as a recovery path', () => {
     expect(breachChecks).toBe(0);
   });
 });
+
+describe('staying signed in after a reset', () => {
+  it('signs in the device that reset, while every other session ends', async () => {
+    const account = await anAccount(true);
+    const existing = await createSession(app.prisma, account.id);
+    const token = await issueToken(app.prisma, account.id, 'PASSWORD_RESET');
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/reset-password',
+      remoteAddress: from(),
+      payload: { token, password: NEW_PASSWORD },
+    });
+    const fresh = res.cookies.find((cookie) => cookie.name === SESSION_COOKIE);
+    expect(fresh?.httpOnly).toBe(true);
+
+    const me = await app.inject({ method: 'GET', url: '/auth/me', remoteAddress: from(), cookies: { [SESSION_COOKIE]: fresh?.value ?? '' } });
+    expect(me.statusCode).toBe(200);
+    const old = await app.inject({ method: 'GET', url: '/auth/me', remoteAddress: from(), cookies: { [SESSION_COOKIE]: existing.value } });
+    expect(old.statusCode).toBe(401);
+  });
+
+  it('signs nobody in when the link is refused', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/reset-password',
+      remoteAddress: from(),
+      payload: { token: 'never-issued', password: NEW_PASSWORD },
+    });
+    expect(res.cookies.find((cookie) => cookie.name === SESSION_COOKIE)).toBeUndefined();
+  });
+});
+
+describe('POST /auth/verify-email/resend', () => {
+  const resend = (token: string) =>
+    app.inject({ method: 'POST', url: '/auth/verify-email/resend', remoteAddress: from(), payload: { token } });
+
+  it('sends a fresh link for an expired one, and the old one stays dead', async () => {
+    const account = await anAccount(false);
+    const old = await issueToken(app.prisma, account.id, 'EMAIL_VERIFICATION');
+    await app.prisma.authToken.updateMany({ where: { accountId: account.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
+    sent.length = 0;
+
+    expect((await resend(old)).statusCode).toBe(200);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.to).toBe(account.email);
+    const fresh = tokenFrom(sent[0]?.text ?? '');
+    expect(fresh).not.toBe(old);
+
+    const verified = await app.inject({ method: 'POST', url: '/auth/verify-email', remoteAddress: from(), payload: { token: fresh } });
+    expect(verified.statusCode).toBe(200);
+  });
+
+  it('answers the same, and sends nothing, for a confirmed account or a link never issued', async () => {
+    const account = await anAccount(true);
+    const old = await issueToken(app.prisma, account.id, 'EMAIL_VERIFICATION');
+    sent.length = 0;
+
+    const confirmed = await resend(old);
+    const invented = await resend('never-issued');
+    expect(confirmed.statusCode).toBe(200);
+    expect(invented.json()).toEqual(confirmed.json());
+    expect(sent).toHaveLength(0);
+  });
+
+  it('will not resend from a reset link', async () => {
+    const account = await anAccount(false);
+    const reset = await issueToken(app.prisma, account.id, 'PASSWORD_RESET');
+    sent.length = 0;
+
+    await resend(reset);
+    expect(sent).toHaveLength(0);
+  });
+});

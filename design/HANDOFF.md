@@ -4,7 +4,7 @@ This folder is the approved design for Curios. It covers the landing page, auth,
 customer side, the account and system pages, owner emails, the dashboard stop states, and every
 dashboard module.
 
-Implement **one module at a time** and compare against the screenshots after each one.
+Implement **one module at a time** and compare against the screenshots after each one. Where the build departs from a board, it is recorded in `DEVIATIONS.md`.
 
 ## What is in here
 

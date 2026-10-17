@@ -33,3 +33,13 @@ export async function getConversationUsage(pageId: string, now: Date): Promise<C
 
   return { used: counter?.count ?? 0, cap: conversationCap(), period };
 }
+
+/**
+ * Leads this page captured this month, for the billing screen's meter. The
+ * same month as the conversation counter above (UTC, `YYYY-MM`), so the two
+ * meters beside each other reset together.
+ */
+export async function countLeadsThisMonth(pageId: string, now: Date): Promise<number> {
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  return prismaRead.lead.count({ where: { pageId, createdAt: { gte: start, lte: now } } });
+}

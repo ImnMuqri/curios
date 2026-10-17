@@ -14,7 +14,7 @@ not the thing a person would actually see. **Yes** means only Billplz itself can
 
 | # | Check | Proven by | Still needs a person |
 |---|---|---|---|
-| 1 | Paying monthly on a business page lands on Billplz's bill for RM39.00 | `billing.routes.test.ts` — 'raises a bill for the owner's page, bound to a new pending payment'; `pay-buttons.test.tsx` — 'raises a bill for the plan pressed, and sends the browser to it' | **Partly** — the real Billplz bill page |
+| 1 | Paying monthly on a business page lands on Billplz's bill for RM49.00 | `billing.routes.test.ts` — 'raises a bill for the owner's page, bound to a new pending payment'; `pay-buttons.test.tsx` — 'raises a bill for the plan pressed, and sends the browser to it' | **Partly** — the real Billplz bill page |
 | 2 | The sandbox payment's callback verifies and grants | `signature.test.ts` — 'accepts a correctly signed callback'; `billing.routes.test.ts` — 'grants a signed, paid callback sent as a form' | **Yes** — only a real Billplz signature proves we verify the way Billplz signs |
 | 3 | The redirect verifies and shows the paid banner | `signature.test.ts` — 'verifies a correctly signed redirect'; `billing.routes.test.ts` — 'fetches the bill, grants it, and sends the owner back to the paid banner'; `page.test.tsx` — 'shows the banner the API redirected back with' | **Yes** — same reason, and the redirect's key format is the docs' claim, not a tested one |
 | 4 | The payment is granted once, extending `paidUntil` by a calendar month | `grant.test.ts` — 'grants a paid bill: the payment is paid and paidUntil moves a month from now'; 'grants once when the same bill arrives twice at once' | **Partly** — the rows after a real payment |
@@ -62,8 +62,8 @@ not the thing a person would actually see. **Yes** means only Billplz itself can
 
 ### 1. Paying lands on Billplz's bill
 
-On `http://localhost:3000/app/billing`, press **Pay RM39 for a month**. The browser must arrive at a
-`billplz-sandbox.com` bill showing **RM39.00**, the page's display name, and a description of
+On `http://localhost:3000/app/billing`, press **Pay RM49 for a month**. The browser must arrive at a
+`billplz-sandbox.com` bill showing **RM49.00**, the page's display name, and a description of
 `Curios Business, 1 month — <display name>`.
 
 Note **whether Billplz also emails the bill to the payer**. If it does, an orphaned bill (see
@@ -101,13 +101,13 @@ docker exec -i curios-postgres psql -U curios -d curios -c \
   "SELECT p.status, p.\"amountCents\", p.\"paidAt\", p.\"grantedUntil\", g.\"paidUntil\" FROM \"Payment\" p JOIN \"Page\" g ON g.id = p.\"pageId\" WHERE g.handle = 'YOURHANDLE' ORDER BY p.\"createdAt\" DESC LIMIT 3;"
 ```
 
-The newest row must be `PAID`, `3900`, with `grantedUntil` equal to the page's `paidUntil` — and that
+The newest row must be `PAID`, `4900`, with `grantedUntil` equal to the page's `paidUntil` — and that
 `paidUntil` exactly one calendar month after whichever was later: the moment of payment, or the
 `paidUntil` you noted before starting. Both the callback and the redirect ran; the value moved once.
 
 ### 5. A failed payment grants nothing
 
-Press **Pay RM39 for a month** again, and this time choose failure in the sandbox bank. The browser
+Press **Pay RM49 for a month** again, and this time choose failure in the sandbox bank. The browser
 must land on `/app/billing?payment=failed`, and the query from check 4 must show the new row still
 `PENDING`, with `paidUntil` unchanged.
 

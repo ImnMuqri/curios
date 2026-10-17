@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@curios/db';
 import type { Mailer } from '../../lib/mailer.js';
+import { alreadySignedUpMail, resetMail, verifyMail } from './auth-mail.js';
 import {
   burnTime,
   hashPassword,
@@ -10,6 +11,7 @@ import {
   type Fetcher,
 } from './password.service.js';
 import { consumeToken, issueToken, tokenIsClaimable } from './token.service.js';
+import { hashToken } from '../../lib/tokens.js';
 
 export interface GoogleProfile {
   sub: string;
@@ -177,21 +179,11 @@ export async function signUpWithPassword(
     // rather than a takeover.
     if (!existing.emailVerifiedAt && existing.password) {
       const retry = await issueToken(deps.prisma, existing.id, 'EMAIL_VERIFICATION');
-      await deps.mailer.send({
-        to: email,
-        subject: 'Confirm your email',
-        text: `Confirm your address to finish setting up Curios:
-
-${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
-      });
+      await deps.mailer.send({ to: email, ...verifyMail(retry) });
       return;
     }
 
-    await deps.mailer.send({
-      to: email,
-      subject: 'You already have a Curios account',
-      text: 'Someone tried to sign up with this address. You already have an account -- sign in instead. If that was not you, you can ignore this message.',
-    });
+    await deps.mailer.send({ to: email, ...alreadySignedUpMail() });
     return;
   }
 
@@ -215,11 +207,7 @@ ${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${retry}`,
   }
 
   const token = await issueToken(deps.prisma, account.id, 'EMAIL_VERIFICATION');
-  await deps.mailer.send({
-    to: email,
-    subject: 'Confirm your email',
-    text: `Confirm your address to finish setting up Curios:\n\n${process.env.APP_URL ?? 'http://localhost:3000'}/verify?token=${token}`,
-  });
+  await deps.mailer.send({ to: email, ...verifyMail(token) });
 }
 
 /**
@@ -273,6 +261,35 @@ export async function verifyEmail(prisma: PrismaClient, token: string): Promise<
   });
 }
 
+/**
+ * A fresh confirmation link, asked for from an expired one ("This link has
+ * expired" on the System board).
+ *
+ * The old link is what identifies the account: it came from that inbox, and
+ * the new one goes back to the same inbox, so holding it buys nothing but a
+ * second email to the owner. Always resolves, whether the link was ours, the
+ * account is already confirmed, or nothing matched, so the answer says
+ * nothing about any of that.
+ */
+export async function resendVerification(
+  deps: { prisma: PrismaClient; mailer: Mailer },
+  token: string,
+): Promise<void> {
+  const old = await deps.prisma.authToken.findUnique({
+    where: { id: hashToken(token) },
+    select: { kind: true, account: { select: { id: true, email: true, emailVerifiedAt: true } } },
+  });
+  if (!old || old.kind !== 'EMAIL_VERIFICATION' || old.account.emailVerifiedAt) return;
+
+  // As a reset does: the newest link is the only one that should still work.
+  await deps.prisma.authToken.updateMany({
+    where: { accountId: old.account.id, kind: 'EMAIL_VERIFICATION', usedAt: null },
+    data: { usedAt: new Date() },
+  });
+  const fresh = await issueToken(deps.prisma, old.account.id, 'EMAIL_VERIFICATION');
+  await deps.mailer.send({ to: old.account.email, ...verifyMail(fresh) });
+}
+
 /** Always resolves, for the same enumeration reason signup does. */
 export async function requestPasswordReset(
   deps: { prisma: PrismaClient; mailer: Mailer },
@@ -306,18 +323,14 @@ export async function requestPasswordReset(
   });
 
   const token = await issueToken(deps.prisma, account.id, 'PASSWORD_RESET');
-  await deps.mailer.send({
-    to: normalised,
-    subject: 'Reset your password',
-    text: `Choose a new password:\n\n${process.env.APP_URL ?? 'http://localhost:3000'}/reset?token=${token}\n\nThis link works once and expires in an hour. If you did not ask for it, ignore this message.`,
-  });
+  await deps.mailer.send({ to: normalised, ...resetMail(token, normalised) });
 }
 
 export async function resetPassword(
   prisma: PrismaClient,
   input: { token: string; password: string },
   fetcher?: Fetcher,
-): Promise<void> {
+): Promise<{ accountId: string }> {
   if (input.password.length < MIN_PASSWORD_LENGTH) {
     throw new WeakPasswordError(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
   }
@@ -361,6 +374,8 @@ export async function resetPassword(
     // recovery, and this is the one place revocation is not optional.
     prisma.session.deleteMany({ where: { accountId: consumed.accountId } }),
   ]);
+
+  return { accountId: consumed.accountId };
 }
 
 export class PasswordAlreadySetError extends Error {

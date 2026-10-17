@@ -1,22 +1,44 @@
+import type { HeadingFont, PageBackground } from '@curios/core/bento';
 import { prismaRead } from './client.js';
+
+/** The page's own look, so its FAQ pages read as part of it. */
+export interface FaqTheme {
+  accentColor: string;
+  headingFont: HeadingFont;
+  background: PageBackground;
+  backgroundColor: string | null;
+}
 
 export interface FaqListEntry {
   slug: string;
   question: string;
+  answer: string;
+  /** How many times visitors asked it, in any wording. */
+  askCount: number;
 }
 
 export interface FaqIndex {
   handle: string;
   displayName: string;
+  theme: FaqTheme;
   entries: FaqListEntry[];
+  /** Every entry the index would list without a limit. */
+  total: number;
 }
 
 export interface FaqAnswer {
   handle: string;
   displayName: string;
+  theme: FaqTheme;
   question: string;
   answer: string;
+  askCount: number;
+  /** The page's other answers, most asked first ("People also ask"). */
+  related: { slug: string; question: string }[];
 }
+
+/** How many other answers an entry page offers under its own. */
+const RELATED = 3;
 
 /** Enough for any real page; a bound so one owner cannot make a huge document. */
 const DEFAULT_LIMIT = 50;
@@ -31,8 +53,12 @@ const MAX_LIMIT = 100;
 function publishedBusinessPage(handle: string) {
   return prismaRead.page.findFirst({
     where: { handle: handle.toLowerCase(), published: true, mode: 'BUSINESS' },
-    select: { id: true, handle: true, displayName: true },
+    select: { id: true, handle: true, displayName: true, accentColor: true, headingFont: true, background: true, backgroundColor: true },
   });
+}
+
+function themeOf(page: FaqTheme): FaqTheme {
+  return { accentColor: page.accentColor, headingFont: page.headingFont, background: page.background, backgroundColor: page.backgroundColor };
 }
 
 /**
@@ -53,18 +79,24 @@ export async function getFaqIndex(
   const page = await publishedBusinessPage(handle);
   if (!page) return null;
 
-  const topics = await prismaRead.topic.findMany({
-    where: { pageId: page.id, faqSlug: { not: null }, faqSuppressed: false, answer: { not: null } },
-    orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
-    take: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
-    select: { faqSlug: true, title: true },
-  });
+  const where = { pageId: page.id, faqSlug: { not: null }, faqSuppressed: false, answer: { not: null } };
+  const [topics, total] = await Promise.all([
+    prismaRead.topic.findMany({
+      where,
+      orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
+      take: Math.min(options.limit ?? DEFAULT_LIMIT, MAX_LIMIT),
+      select: { faqSlug: true, title: true, answer: true, askCount: true },
+    }),
+    prismaRead.topic.count({ where }),
+  ]);
 
   return {
     handle: page.handle,
     displayName: page.displayName,
-    // The slug is non-null by the query above; this narrows it for the type.
-    entries: topics.map((t) => ({ slug: t.faqSlug as string, question: t.title })),
+    theme: themeOf(page),
+    // The slug and answer are non-null by the query above; this narrows them for the type.
+    entries: topics.map((t) => ({ slug: t.faqSlug as string, question: t.title, answer: t.answer as string, askCount: t.askCount })),
+    total,
   };
 }
 
@@ -85,11 +117,26 @@ export async function getFaqEntry(handle: string, slug: string): Promise<FaqAnsw
   // of this slice.
   const topic = await prismaRead.topic.findFirst({
     where: { pageId: page.id, faqSlug: slug.toLowerCase(), faqSuppressed: false, answer: { not: null } },
-    select: { title: true, answer: true },
+    select: { id: true, title: true, answer: true, askCount: true },
   });
   if (!topic || topic.answer === null) return null;
 
-  return { handle: page.handle, displayName: page.displayName, question: topic.title, answer: topic.answer };
+  const related = await prismaRead.topic.findMany({
+    where: { pageId: page.id, id: { not: topic.id }, faqSlug: { not: null }, faqSuppressed: false, answer: { not: null } },
+    orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
+    take: RELATED,
+    select: { faqSlug: true, title: true },
+  });
+
+  return {
+    handle: page.handle,
+    displayName: page.displayName,
+    theme: themeOf(page),
+    question: topic.title,
+    answer: topic.answer,
+    askCount: topic.askCount,
+    related: related.map((t) => ({ slug: t.faqSlug as string, question: t.title })),
+  };
 }
 
 /** Where a retired slug now lives: its topic's slug, or null if the topic is gone or the slug unknown. */

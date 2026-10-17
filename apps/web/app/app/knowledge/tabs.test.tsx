@@ -26,4 +26,10 @@ describe('KnowledgeTabs', () => {
     expect(screen.getByRole('link', { name: 'Pinned answers' })).toHaveAttribute('aria-current', 'page');
     expect(screen.getByRole('link', { name: 'Facts' })).not.toHaveAttribute('aria-current');
   });
+
+  it('says how many each tab holds', () => {
+    render(<KnowledgeTabs current="facts" counts={{ facts: 12, sources: 5, pinned: 0, 'never-say': 3 }} />);
+    expect(screen.getByRole('link', { name: 'Facts , 12' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pinned answers , 0' })).toBeInTheDocument();
+  });
 });

@@ -76,3 +76,30 @@ export async function getLeads(
     })),
   }));
 }
+
+export interface LeadStats {
+  /** Leads still NEW: nobody has reached out yet. */
+  waiting: number;
+  /** Leads left in each of the last seven days, oldest first, today (the last 24 hours) last. */
+  week: number[];
+  /** Leads the owner marked CLOSED. */
+  closed: number;
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The Leads screen's three figures, counted in the database rather than from the newest fifty. */
+export async function getLeadStats(accountId: string, now = new Date()): Promise<LeadStats> {
+  const scope = { page: { accountId } };
+  const [waiting, closed, recent] = await Promise.all([
+    prismaRead.lead.count({ where: { ...scope, status: 'NEW' } }),
+    prismaRead.lead.count({ where: { ...scope, status: 'CLOSED' } }),
+    prismaRead.lead.findMany({
+      where: { ...scope, createdAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now } },
+      select: { createdAt: true },
+    }),
+  ]);
+  const week = [0, 0, 0, 0, 0, 0, 0];
+  for (const lead of recent) week[6 - Math.floor((now.getTime() - lead.createdAt.getTime()) / DAY_MS)]! += 1;
+  return { waiting, week, closed };
+}

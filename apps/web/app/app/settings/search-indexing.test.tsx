@@ -9,17 +9,17 @@ describe('SearchIndexingForm', () => {
   it('starts a personal page out of search results', () => {
     render(<SearchIndexingForm mode="PERSONAL" allowed={false} onChange={vi.fn()} />);
 
-    expect(screen.getByRole('checkbox', SWITCH)).not.toBeChecked();
+    expect(screen.getByRole('switch', SWITCH)).toHaveAttribute('aria-checked', 'false');
   });
 
   it('sends the owner’s choice, and shows it straight away', async () => {
     const onChange = vi.fn(async () => undefined);
     render(<SearchIndexingForm mode="PERSONAL" allowed={false} onChange={onChange} />);
 
-    await userEvent.click(screen.getByRole('checkbox', SWITCH));
+    await userEvent.click(screen.getByRole('switch', SWITCH));
 
     expect(onChange).toHaveBeenCalledWith(true);
-    expect(screen.getByRole('checkbox', SWITCH)).toBeChecked();
+    expect(screen.getByRole('switch', SWITCH)).toHaveAttribute('aria-checked', 'true');
   });
 
   it('puts the switch back, and says so, when the change could not be saved', async () => {
@@ -28,16 +28,17 @@ describe('SearchIndexingForm', () => {
     });
     render(<SearchIndexingForm mode="PERSONAL" allowed={false} onChange={onChange} />);
 
-    await userEvent.click(screen.getByRole('checkbox', SWITCH));
+    await userEvent.click(screen.getByRole('switch', SWITCH));
 
     expect(await screen.findByRole('alert')).toHaveTextContent('Something failed');
-    expect(screen.getByRole('checkbox', SWITCH)).not.toBeChecked();
+    expect(screen.getByRole('switch', SWITCH)).toHaveAttribute('aria-checked', 'false');
   });
 
   it('tells a business page it is always in search results, with nothing to switch', () => {
     render(<SearchIndexingForm mode="BUSINESS" allowed={false} onChange={vi.fn()} />);
 
     expect(screen.getByText('Business pages always appear in search results.')).toBeInTheDocument();
-    expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument();
+    expect(screen.getByText('Always on')).toBeInTheDocument();
   });
 });

@@ -26,7 +26,9 @@ people, not operators. Build them as two different products in one codebase.
 /app/settings             sign-in methods, the search-engine switch
 ```
 
-**The sidebar's first group is *My Curios · Review · Knowledge*.** Add a source lives on the
+**The sidebar groups the modules as *Page* (My Curios, Store), *Inbox* (Questions, Leads),
+*Knowledge* (Review, Facts & sources) and *Account* (Billing, Settings)** (amended 2026-10-16;
+sign-out lives in Settings). Add a source lives on the
 Knowledge screen's Sources tab, not in the sidebar. `/app/onboarding` remains the first-run
 claim-and-first-source screen. `?tab=` is `facts` (the default), `sources`, `pinned` or
 `never-say`. Dates on the Sources tab are formatted in Asia/Kuala_Lumpur, so the server and
@@ -188,6 +190,12 @@ draggable and sizable like a link, with a note to turn the shop off in Store to 
 row moves in the same list as the links, and the one reorder request sends it as `'shop'`.
 
 ---
+
+**The tabs (amended 2026-10-16).** The public page's *Links · Ask · Shop* are server-rendered links
+(`/handle`, `/handle#ask`, `/handle/shop`), so they work without JavaScript. With it, `Ask` opens
+chat mode in place from the Ask tab, the Links tab closes it through `history.back()` (so the
+entry chat mode pushed is the one consumed), `aria-current` follows, and arriving at `#ask` opens
+chat mode: the shop page's Ask tab and the FAQ pages' *Ask* buttons link there.
 
 ## The ask bar
 

@@ -82,7 +82,7 @@ describe('PinnedList', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Remove answer to Berapa harga kek?' }));
     expect(screen.getByText(/goes back to questions as unanswered/i)).toBeInTheDocument();
     expect(onWithdraw).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Remove answer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(onWithdraw).toHaveBeenCalledWith('q1');
     expect(onChanged).toHaveBeenCalled();
   });
@@ -90,7 +90,7 @@ describe('PinnedList', () => {
   it('cancelling the confirm withdraws nothing', async () => {
     const { onWithdraw } = list();
     await userEvent.click(screen.getByRole('button', { name: 'Remove answer to Berapa harga kek?' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Keep' }));
     expect(onWithdraw).not.toHaveBeenCalled();
     expect(screen.queryByText(/goes back to questions/i)).not.toBeInTheDocument();
   });
@@ -98,15 +98,16 @@ describe('PinnedList', () => {
   it('says why when withdrawing fails, and drops the message on cancel', async () => {
     const { onChanged } = list({ onWithdraw: vi.fn().mockRejectedValue(new Error('Could not remove it.')) });
     await userEvent.click(screen.getByRole('button', { name: 'Remove answer to Berapa harga kek?' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Remove answer' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(screen.getByText('Could not remove it.')).toBeInTheDocument();
     expect(onChanged).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Keep' }));
     expect(screen.queryByText('Could not remove it.')).not.toBeInTheDocument();
   });
 
   it('points to Questions when there are none', () => {
     list({ pinned: [] });
-    expect(screen.getByRole('link', { name: /questions/i })).toHaveAttribute('href', '/app/questions');
+    expect(screen.getByText(/no pinned answers yet/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Go to Questions' })).toHaveAttribute('href', '/app/questions');
   });
 });

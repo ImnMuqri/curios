@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
+import { SOCIAL_KINDS, type SocialKind } from '@curios/core/socials';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverKey, stockCoverName } from '@curios/core/bento';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
-import { claimHandle, NoPageError, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { claimHandle, handleAvailability, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { resolveStore, type AvatarStore } from './storage.js';
 
 export interface PageRouteOptions {
@@ -62,6 +63,18 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
     },
   );
 
+  // Onboarding's live check while an owner types an address. Signed in, like
+  // the claim it previews; what it reveals (that a page exists at an
+  // address) is what visiting the address reveals anyway.
+  app.get(
+    '/pages/handle-check',
+    { schema: { querystring: z.object({ handle: z.string().max(200) }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      return reply.send({ status: await handleAvailability(app.prisma, request.query.handle) });
+    },
+  );
+
   app.post('/publish', async (request, reply) => {
     if (!request.account) throw new UnauthenticatedError();
 
@@ -88,6 +101,17 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
   );
 
   app.patch(
+    '/pages/notifications',
+    { schema: { body: z.object({ leads: z.boolean() }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await setNotifications(app.prisma, request.account.id, { leads: request.body.leads });
+      return reply.send({ leads: request.body.leads });
+    },
+  );
+
+  app.patch(
     '/pages/appearance',
     {
       schema: {
@@ -99,6 +123,11 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
           headingFont: z.enum(HEADING_FONTS).optional(),
           displayName: z.string().max(400).optional(),
           bio: z.string().max(2000).nullable().optional(),
+          // Strict, so a kind this does not know is refused rather than stored.
+          socials: z
+            .object(Object.fromEntries(SOCIAL_KINDS.map((kind) => [kind, z.string().max(300).optional()])) as Record<SocialKind, z.ZodOptional<z.ZodString>>)
+            .strict()
+            .optional(),
         }),
       },
     },

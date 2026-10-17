@@ -4,7 +4,9 @@ import type { OwnerPage } from '@curios/db-read';
 
 const getLeads = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getLeads, getOwnerPage }));
+const getLeadStats = vi.fn();
+const getMyCurios = vi.fn();
+vi.mock('@curios/db-read', () => ({ getLeads, getOwnerPage, getLeadStats, getMyCurios }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -20,8 +22,8 @@ vi.mock('next/navigation', () => ({ redirect }));
 
 // The list closes over apiFetch and the router. These tests are about what the
 // page decides to show, so the list records that it was rendered instead.
-const Leads = vi.fn((_props: { leads: unknown[] }) => null);
-vi.mock('./lead-list.js', () => ({ Leads }));
+const Leads = vi.fn((_props: Record<string, unknown>) => null);
+vi.mock('./leads-screen.js', () => ({ Leads }));
 
 const LeadsPage = (await import('./page.js')).default;
 
@@ -35,6 +37,7 @@ const personal: OwnerPage = {
   leadsCaptured: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
+  avatarKey: null,
 };
 
 describe('LeadsPage', () => {
@@ -45,6 +48,9 @@ describe('LeadsPage', () => {
     Leads.mockClear();
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getLeads.mockResolvedValue([]);
+    getLeadStats.mockClear();
+    getLeadStats.mockResolvedValue({ waiting: 1, week: [0, 0, 0, 0, 0, 0, 1], closed: 0 });
+    getMyCurios.mockResolvedValue({ language: 'ms', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null });
   });
 
   it('tells a personal page why it has no leads, and where that changes', async () => {
@@ -64,6 +70,23 @@ describe('LeadsPage', () => {
     render(await LeadsPage());
 
     expect(Leads).toHaveBeenCalledTimes(1);
+  });
+
+  it('hands over the figures, the page, and one moment for the whole screen', async () => {
+    getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS', paidUntil: new Date('2099-01-01') });
+
+    render(await LeadsPage());
+
+    const props = Leads.mock.calls[0]![0];
+    const now = getLeadStats.mock.calls[0]![1] as Date;
+    expect(props).toMatchObject({
+      stats: { waiting: 1, week: [0, 0, 0, 0, 0, 0, 1], closed: 0 },
+      handle: 'nadia',
+      displayName: 'Nadia',
+      language: 'ms',
+      now: now.toISOString(),
+      look: { accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null },
+    });
   });
 
   // Fix round 2, Important #3: AppFrame renders its own main around every

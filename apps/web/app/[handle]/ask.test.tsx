@@ -84,7 +84,7 @@ describe('Ask, opening chat mode', () => {
     // page.tsx no longer renders this text at all.
     const prompt = screen.getByText('What do you want to know?');
     const askBar = screen.getByRole('button', { name: /ask a question/i });
-    expect(prompt).toHaveAttribute('data-ask-prompt');
+    expect(prompt.closest('[data-ask-prompt]')).not.toBeNull();
     expect(prompt.compareDocumentPosition(askBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -177,5 +177,76 @@ describe('Ask, once a conversation qualifies', () => {
       expect(screen.getByRole('button', { name: 'Send' })).not.toHaveAttribute('aria-busy'),
     );
     expect(screen.queryByRole('button', { name: /send my number/i })).not.toBeInTheDocument();
+  });
+});
+
+/** BentoPage's tabs, as server-rendered links, around Ask. */
+function TabbedPage({ children }: { children: React.ReactNode }) {
+  return (
+    <div data-bento-page>
+      <nav aria-label="Page sections">
+        <a href="/nadia" data-tab="links" aria-current="page">Links</a>
+        <a href="/nadia#ask" data-tab="ask">Ask</a>
+      </nav>
+      <div data-foldaway>links go here</div>
+      {children}
+    </div>
+  );
+}
+
+describe('Ask, and the page tabs', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('opens chat mode in place from the Ask tab, and makes it the current tab', async () => {
+    stubQualifyingFetch();
+    const { container } = render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
+
+    expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-mode', 'chat');
+    expect(screen.getByRole('link', { name: 'Ask' })).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('link', { name: 'Links' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('goes back to the links from the Links tab while chat mode is open', async () => {
+    stubQualifyingFetch();
+    const back = vi.spyOn(window.history, 'back').mockImplementation(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+    const { container } = render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
+    await userEvent.click(screen.getByRole('link', { name: 'Links' }));
+
+    // Through history, so the entry chat mode pushed is the one consumed.
+    expect(back).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(container.querySelector('[data-bento-page]')).not.toHaveAttribute('data-mode'));
+    expect(screen.getByRole('link', { name: 'Links' })).toHaveAttribute('aria-current', 'page');
+    back.mockRestore();
+  });
+
+  it('opens chat mode on arrival at #ask, where the shop page and the FAQ send a visitor', async () => {
+    stubQualifyingFetch();
+    window.history.replaceState(null, '', '/nadia#ask');
+    const { container } = render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+
+    await waitFor(() => expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-mode', 'chat'));
+  });
+
+  it('offers to browse the answered questions when there are any', () => {
+    render(<Ask handle="nadia" questions={[]} displayName="Nadia Bakes" canCapture={true} faqTotal={5} />);
+    expect(screen.getByRole('link', { name: /Browse 5 answered questions/ })).toHaveAttribute('href', '/nadia/faq');
   });
 });

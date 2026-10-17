@@ -1,477 +1,635 @@
-import { DEMO_EN, DEMO_MS, type Demo } from './demo.js';
+import { PLAN_PRICES_CENTS } from '@curios/core/billing';
+
 /**
- * Every word on the landing page, in both languages, in one shape.
+ * Every word on the landing page, in both languages, in one shape. From the
+ * design handoff's TanyaJe board (design/boards/TanyaJe.dc.html), which
+ * replaced the shop-first landing on 2026-10-16.
  *
- * The Malay is written to be read, not translated from the English -- but it
- * was drafted by an AI, and DESIGN.md is clear that Malay copy comes from a
- * Malay speaker. It needs a native read before launch (README.md, "Before
- * launch").
+ * The Malay was drafted by an AI. DESIGN.md is clear that Malay copy comes
+ * from a Malay speaker: it needs a native read before launch.
  *
- * Every claim here is one the product makes true today, checked against the
- * code on 2026-10-03: the lead notification is an email with a WhatsApp reply
- * link (apps/workers/src/leads/notify.ts), the AI refuses to guess a price
- * (apps/api/src/modules/chat/prompt.ts), Instagram cannot be read
- * (apps/workers/src/sources/instagram.adapter.ts), three leads are free
- * (packages/core/src/plan.ts), and Business is RM39/RM390 by FPX with no
- * auto-renew (devDocs/README.md). Change the product, change this file.
+ * Every claim should be one the product makes true today. Two are not yet,
+ * and are marked SLICE 18 where they appear: checkout, paying by the owner's
+ * QR with proof attached, and orders landing in the dashboard. They come from
+ * the board and describe store-design.md's next slice. Until it ships, they
+ * promise something the product does not do.
+ *
+ * Client-safe: the price comes from the @curios/core/billing subpath, which
+ * imports nothing, so the client sections read their words from here by
+ * locale (several are functions, which cannot cross from a server component).
  */
 
 export type Locale = 'en' | 'ms';
-
-export interface Step {
-  title: string;
-  body: string;
-}
 
 export interface Faq {
   q: string;
   a: string;
 }
 
+const MONTHLY = PLAN_PRICES_CENTS.MONTHLY / 100;
+const ANNUAL = PLAN_PRICES_CENTS.ANNUAL / 100;
+/** The annual price a month, to the sen: RM40.83 at RM490. */
+const ANNUAL_A_MONTH = (PLAN_PRICES_CENTS.ANNUAL / 12 / 100).toFixed(2);
+
+export interface PersonaWords {
+  q: string;
+  a: string;
+  links: [string, string, string];
+}
+
 export interface LandingCopy {
   locale: Locale;
   meta: { title: string; description: string; ogAlt: string; ogLocale: string };
+  skip: string;
   nav: {
-    home: string;
+    sections: string;
+    who: string;
+    how: string;
+    business: string;
+    pricing: string;
+    faq: string;
     signIn: string;
-    otherLocaleLabel: string;
-    otherLocaleName: string;
     cta: string;
-    /** The header button on a phone, where the full label does not fit beside the name. */
-    ctaShort: string;
-    /** In-page links in the header, wide screens only. */
-    sections: { href: '#how' | '#pricing' | '#faq'; label: string }[];
+    other: { href: string; short: string; name: string; lang: Locale };
   };
-  /** The curios.my/ field in the hero and the closing band. */
-  claim: { label: string; placeholder: string };
-  /** What each photograph should show, until the real ones arrive. */
-  photos: { hero: string; setup: string };
-  heroScene: {
-    /** Caption 2 and 3; caption 1 is hero.title + hero.sub. */
-    problem: string;
-    fix: string;
-    scrollCue: string;
-  };
-  how: { title: string; steps: Step[] };
-  paid: {
-    title: string;
-    closing: string;
-    /** Accessible name for the progress line. */
-    progressLabel: string;
-  };
-  shopSection: {
-    title: string;
-    points: string[];
-    demoNote: string;
-    /** Heading over the message panel. */
-    messageTitle: string;
-    /** The demo's order button. */
-    orderButton: string;
-  };
-  quiet: { title: string; tiles: Step[] };
   hero: {
+    eyebrow: string;
+    line: string;
+    ask: string;
+    /** The whole headline with the first page's name, for the share card. */
     title: string;
-    sub: string;
-    cta: string;
-    ctaNote: string;
-    demoNote: string;
+    lede: string;
+    claimLabel: string;
+    placeholder: string;
+    button: string;
+    note: string;
+    deck: string;
+    next: string;
+    kinds: { personal: string; business: string; creator: string };
+    askAnything: (name: string) => string;
+    linksTab: string;
+    askTab: string;
   };
-  storm: {
-    /** Beside the merged question, the way the Questions screen counts: "asked 40×". */
-    asked: (n: number) => string;
-  };
-  leads: {
-    steps: Step[];
-    visitorPhone: string;
-    ownerPhone: string;
-    asleep: string;
-    lockDate: string;
-  };
-  trust: {
+  askStrip: { eyebrow: string; lead: string; words: string[]; body: string };
+  loop: string;
+  who: {
+    eyebrow: string;
     title: string;
-    body: string;
-    /** The line under the price list card. */
-    approvedBy: string;
-    unsureQuestion: string;
-    unsureAnswer: string;
+    lede: string;
+    rows: { key: PersonaKey; label: string; qs: string[] }[];
+    pageOf: (name: string) => string;
+  };
+  how: {
+    eyebrow: string;
+    title: string;
+    keep: string;
+    steps: { title: string; body: string }[];
+    pasted: string;
+    /** What the illustrator pasted, with the four facts it finds marked. */
+    pastedText: (string | { fact: number; text: string })[];
+    found: string;
+    facts: { text: string; topic: string }[];
+    approved: (n: number) => string;
+    factOf: (n: number, total: number) => string;
+    from: string;
+    usedFor: (topic: string) => string;
+    fix: string;
+    approve: string;
+    approvedStamp: string;
+    ring: string;
+    card: { name: string; role: string; bio: string };
+  };
+  business: {
+    eyebrow: string;
+    title: string;
+    caps: { title: string; body: string }[];
+    stage: string;
+    customer: string;
+    yours: string;
+    shopNote: string;
+    items: { name: string; price: string }[];
+    basketEmpty: string;
+    basket: (n: number, total: number) => string;
+    checkout: string;
+    name: string;
+    phone: string;
+    pickup: string;
+    delivery: string;
+    continueToPay: string;
+    waiting: string;
+    receipt: string;
+    scan: string;
+    upload: string;
+    place: string;
+    received: string;
+    receivedNote: string;
+    orders: string;
+    paidToday: string;
+    tabs: [string, string, string];
+    confirm: string;
+    confirmed: string;
+    proof: string;
+    total: string;
+    newOrder: string;
+    now: string;
   };
   pricing: {
+    eyebrow: string;
     title: string;
-    personal: { name: string; price: string; blurb: string; points: string[]; cta: string };
+    billing: string;
+    monthly: string;
+    yearly: string;
+    twoMonths: string;
+    personal: { name: string; tag: string; price: string; per: string; body: string; ticks: string[]; cta: string };
     business: {
       name: string;
-      price: string;
-      per: string;
-      annual: string;
-      /** The Monthly / Yearly switch. */
-      billing: { label: string; monthly: string; yearly: string; yearPrice: string; perYear: string; yearNote: string };
-      trial: string;
+      tag: string;
+      monthly: string;
+      yearly: string;
+      perMonth: string;
+      perYear: string;
+      noteMonthly: string;
+      noteYearly: string;
+      plus: string;
+      /** Business's features, as the landing sells them. */
       points: string[];
+      /** The ones the product has today, which Billing lists before an owner pays. */
+      pointsToday: string[];
       cta: string;
     };
+    calc: {
+      eyebrow: string;
+      title: string;
+      orders: string;
+      typical: string;
+      takeIn: string;
+      yours: string;
+      cost: (amount: string) => string;
+      pays: (percent: number, times: number) => string;
+      under: string;
+      typicalLabel: string;
+    };
+    /** How Business is paid. Billing shows this line too. */
     payment: string;
-    math: string;
+    disclaimer: string;
+    /** Numbers the calculator needs, from PLAN_PRICES_CENTS. */
+    monthlyRinggit: number;
+    annualAMonth: string;
   };
   faq: { title: string; items: Faq[] };
-  final: { title: string; sub: string; cta: string };
-  footer: { signIn: string; start: string; demoNote: string };
-  demo: { label: string };
-  /** Kek Lina, the demo shop, in this page's language (demo.ts). */
-  shop: Demo;
+  closing: { title: string; onePageFor: string; words: string[]; button: string; note: string };
+  footer: { note: string; signIn: string };
+  personas: Record<PersonaKey, PersonaWords>;
 }
 
-export const en: LandingCopy = {
+export type PersonaKey = 'aisyah' | 'lina' | 'hana' | 'daniel' | 'aina' | 'farah';
+
+const EN: LandingCopy = {
   locale: 'en',
   meta: {
-    title: 'Curios: a link in bio that answers your customers',
+    title: 'Curios: a link in bio people can ask',
     description:
-      'Your link in bio answers “berapa harga” in Malay or English, from prices you approved. Free to answer. Business gets every lead by email. RM39 a month.',
-    ogAlt: 'A Curios page answering “Berapa harga kek coklat 1kg?” with “RM95”.',
+      'Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English. Free for anyone.',
+    ogAlt: 'Aisyah’s Curios page, asked if she is taking commissions, answering that two November slots are left.',
     ogLocale: 'en_MY',
   },
+  skip: 'Skip to content',
   nav: {
-    home: 'Curios home',
+    sections: 'Sections',
+    who: 'Who it’s for',
+    how: 'How it works',
+    business: 'For business',
+    pricing: 'Pricing',
+    faq: 'FAQ',
     signIn: 'Sign in',
-    otherLocaleLabel: 'Baca dalam Bahasa Melayu',
-    otherLocaleName: 'BM',
-    cta: 'Create your free page',
-    ctaShort: 'Create page',
-    sections: [
-      { href: '#how', label: 'How it works' },
-      { href: '#pricing', label: 'Pricing' },
-      { href: '#faq', label: 'FAQ' },
-    ],
-  },
-  claim: { label: 'The address you want for your page', placeholder: 'yourshop' },
-  photos: {
-    hero: 'A home baker at her counter, holding her phone with her Curios page open',
-    setup: 'An owner pasting her shop’s link into Curios on a laptop, phone beside her',
-  },
-  heroScene: {
-    problem: 'Forty people. One question.',
-    fix: 'Answer it once. Your page answers the rest.',
-    scrollCue: 'Scroll to see it answer',
-  },
-  how: {
-    title: 'Three steps from your price list to answers.',
-    steps: [
-      { title: 'Paste your link, or your price list', body: 'It reads your website or the text you paste. Instagram can’t be read, so paste what’s on it instead.' },
-      { title: 'Tick what’s right', body: 'Every fact it found waits for you. Nothing is said until you approve it.' },
-      { title: 'Put one link in your bio', body: 'curios.my/keklina answers from then on, day and night.' },
-    ],
-  },
-  paid: {
-    title: 'What Business does at 11:42 at night.',
-    closing: 'That’s what RM39 pays for.',
-    progressLabel: 'How far through the lead you are',
-  },
-  shopSection: {
-    title: 'Your prices on a shelf. Their order in your WhatsApp.',
-    points: [
-      'One price, or sizes with their own prices',
-      'The chat quotes your shelf’s prices',
-      'The basket arrives as a WhatsApp message',
-    ],
-    demoNote: 'A demo shop. Kek Lina is not a real shop.',
-    messageTitle: 'This is what Lina would get on WhatsApp',
-    orderButton: 'See the order message',
-  },
-  quiet: {
-    title: 'The quiet parts that save you later.',
-    tiles: [
-      { title: 'Malay, English or rojak', body: 'It answers in the language the customer used.' },
-      { title: 'FAQ pages from real questions', body: 'Questions asked three times or more, with your answer, become pages Google can find.' },
-      { title: 'Works with any bio link', body: 'Instagram, TikTok, WhatsApp Business, a QR on your counter.' },
-    ],
+    cta: 'Make your page',
+    other: { href: '/ms', short: 'BM', name: 'Bahasa Melayu', lang: 'ms' },
   },
   hero: {
-    title: 'Your link in bio answers “berapa harga” for you.',
-    sub: 'For shops that sell on Instagram and WhatsApp. Curios answers your customers in Malay or English from the prices and details you approve, and sends you the number of anyone ready to order.',
-    cta: 'Create your free page',
-    ctaNote: 'Answering is free on every plan. No card needed.',
-    demoNote: 'A demo page. Kek Lina is not a real shop.',
+    eyebrow: 'Curious? Just ask',
+    line: 'Don’t read the bio.',
+    ask: 'Ask',
+    title: 'Don’t read the bio. Ask Aisyah.',
+    lede: 'Curios is a link in bio people can ask. About you, your work, your rates, your shop. It answers from facts you approve, in Malay or English, and never makes anything up.',
+    claimLabel: 'The address you want for your page',
+    placeholder: 'yourname',
+    button: 'Claim it, free',
+    note: 'Free for anyone. Business pages also get every ready buyer’s number.',
+    deck: 'Curios pages answering questions',
+    next: 'Show the next page',
+    kinds: { personal: 'Personal', business: 'Business', creator: 'Creator' },
+    askAnything: (name) => `Ask ${name} anything`,
+    linksTab: 'Links',
+    askTab: 'Ask',
   },
-  storm: {
-    asked: (n) => `asked ${n}×`,
+  askStrip: {
+    eyebrow: 'What people ask a Curios page',
+    lead: 'Ask about my',
+    words: ['rates', 'services', 'hours', 'experience', 'prices'],
+    body: 'Whatever you put in, it can answer. Whatever you didn’t, it says it’ll check with you, and the question waits on your list.',
   },
-  leads: {
-    steps: [
-      { title: 'They ask, any time', body: 'A customer asks at 11:42 at night and gets an answer straight away.' },
-      { title: 'It answers from your facts', body: 'It quotes the RM95 price and RM10 delivery charge you approved.' },
-      { title: 'It asks for their number', body: 'It shows one field for their WhatsApp number.' },
-      { title: 'You get an email with everything', body: 'The email has their number, the order, the day, the area and the full chat.' },
-      { title: 'One tap to reply on WhatsApp', body: 'WhatsApp opens with a greeting already typed in the language they used.' },
+  loop: 'curious? just ask · ',
+  who: {
+    eyebrow: 'Who it’s for',
+    title: 'One page for whoever’s asking.',
+    lede: 'Pick who you are. Each page knows its owner, and nothing else.',
+    rows: [
+      { key: 'aisyah', label: 'Freelancers', qs: ['taking commissions?', 'rate for a portrait?', 'ada slot Disember?', 'how long does it take?'] },
+      { key: 'daniel', label: 'Job seekers', qs: ['open to hybrid?', 'notice period?', 'what stack do you use?', 'expected salary range?'] },
+      { key: 'farah', label: 'Creators & coaches', qs: ['online coaching ada?', 'beginner friendly?', 'collab rates?', 'class schedule?'] },
+      { key: 'lina', label: 'Home businesses', qs: ['hantar Klang tak?', 'berapa harga 1kg?', 'boleh tulis nama?', 'buka hari Ahad?'] },
+      { key: 'hana', label: 'Studios & services', qs: ['what’s in the package?', 'how long does it take?', 'boleh buat logo je?', 'do you work remote?'] },
     ],
-    visitorPhone: 'The customer’s phone',
-    ownerPhone: 'Your phone',
-    asleep: 'You, asleep',
-    lockDate: 'Friday',
+    pageOf: (name) => `${name}’s Curios page`,
   },
-  trust: {
-    title: 'It only quotes prices you approved.',
-    body: 'The same goes for dates and addresses. When it doesn’t know, it tells the customer it will check with you, and the question waits on your list until you answer. You can also give it words it must never use about your shop.',
-    approvedBy: 'Every line approved by you',
-    unsureQuestion: 'Ada kek tanpa gula?',
-    unsureAnswer: 'Tak pasti. Saya check dengan Lina dulu ya.',
+  how: {
+    eyebrow: 'How it works',
+    title: 'Ten minutes from blank to bio link.',
+    keep: 'Keep scrolling →',
+    steps: [
+      { title: 'Tell it about you.', body: 'Paste your website, your Linktree, or just a few honest paragraphs. It reads them and pulls out the facts.' },
+      { title: 'Approve what’s right.', body: 'Each fact comes up as a card. Keep the right ones, fix the rest. It never says anything you didn’t approve.' },
+      { title: 'Put the link in your bio.', body: 'Share curios.my/yourname on Instagram, TikTok or WhatsApp. Anyone who taps it can ask, day or night.' },
+    ],
+    pasted: 'You pasted',
+    pastedText: [
+      'I’m an illustrator in Ipoh. ',
+      { fact: 0, text: 'Portraits from RM250' },
+      ', ',
+      { fact: 1, text: 'book covers from RM900' },
+      '. I take ',
+      { fact: 2, text: 'four commissions a month' },
+      ' and ',
+      { fact: 3, text: 'reply within two days' },
+      '.',
+    ],
+    found: 'It found',
+    facts: [
+      { text: 'Portraits from RM250', topic: 'portrait prices' },
+      { text: 'Book covers from RM900', topic: 'book covers' },
+      { text: 'Four commissions a month', topic: 'availability' },
+      { text: 'Replies within two days', topic: 'reply times' },
+    ],
+    approved: (n) => `${n} approved`,
+    factOf: (n, total) => `Fact ${n} of ${total}`,
+    from: 'from aisyahdraws.com',
+    usedFor: (topic) => `Used when someone asks about ${topic}.`,
+    fix: '← Fix it',
+    approve: 'Approve →',
+    approvedStamp: 'Approved',
+    ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? JUST ASK · ',
+    card: { name: 'aisyahdraws', role: 'Illustrator · Ipoh', bio: 'Portraits, book covers, editorial. Commissions open for November.' },
+  },
+  business: {
+    eyebrow: 'For business',
+    title: 'Have a business? Your page becomes a shop.',
+    caps: [
+      { title: 'Tap to add', body: 'Items with pictures, prices and sizes, right in the Shop tab.' },
+      // SLICE 18: checkout, QR payment with proof, and Orders are not built yet.
+      { title: 'Check out', body: 'Name, WhatsApp number, pickup or delivery. No account needed.' },
+      { title: 'Pay with your QR', body: 'No payment gateway? Upload your bank QR once. Customers scan it with the total, then upload their receipt.' },
+      { title: 'Order received', body: 'They get a confirmation with the order number.' },
+      { title: 'It lands in your Orders', body: 'Paid, with the proof attached. Confirm it in one tap.' },
+    ],
+    stage: 'A customer adds items, checks out, pays with Kek Lina’s QR and uploads proof; the order arrives in Lina’s Curios Orders',
+    customer: 'The customer’s phone',
+    yours: 'Your phone',
+    shopNote: 'Order 2 days ahead · Pickup or delivery',
+    items: [
+      { name: 'Kek coklat · 1kg', price: 'RM95' },
+      { name: 'Kek batik', price: 'RM45' },
+      { name: 'Cookies balang', price: 'RM25' },
+      { name: 'Brownies, box of 9', price: 'RM30' },
+    ],
+    basketEmpty: 'Basket is empty',
+    basket: (n, total) => `${n} in basket · RM${total}`,
+    checkout: 'Checkout',
+    name: 'Your name',
+    phone: 'WhatsApp number',
+    pickup: 'Pickup · Sat',
+    delivery: 'Delivery RM10',
+    continueToPay: 'Continue to pay',
+    waiting: 'Waiting for payment',
+    receipt: 'Receipt uploaded',
+    scan: 'Scan, or transfer to',
+    upload: 'Upload payment proof',
+    place: 'Place order',
+    received: 'Order received',
+    receivedNote: '#1042 · RM235 · proof sent to Lina',
+    orders: 'Orders',
+    paidToday: 'paid today',
+    tabs: ['New', 'Confirmed', 'Done'],
+    confirm: 'Confirm',
+    confirmed: 'Confirmed ✓',
+    proof: 'Proof attached',
+    total: 'Total',
+    newOrder: 'New order · RM235',
+    now: 'now',
   },
   pricing: {
-    title: 'Answering is free. Leads are RM39 a month.',
+    eyebrow: 'Pricing',
+    title: `Free to be asked. RM${MONTHLY} when you’re selling.`,
+    billing: 'Business billing',
+    monthly: 'Monthly',
+    yearly: 'Yearly',
+    twoMonths: '−2 months',
     personal: {
       name: 'Personal',
-      price: 'Free',
-      blurb: 'A page with an AI that answers questions about you.',
-      points: [
-        'Answers in Malay, English or both',
-        'Hidden from Google unless you switch it on',
-        'Switch to Business when you start selling',
-      ],
-      cta: 'Create your free page',
+      tag: 'For you',
+      price: 'RM0',
+      per: 'forever',
+      body: 'A page people can ask about you. For freelancers, job seekers and creators.',
+      ticks: ['Answers in Malay, English or both', 'Only from facts you approve', 'Your cover, colours and fonts', 'Hidden from Google unless you switch it on'],
+      cta: 'Make your free page',
     },
     business: {
       name: 'Business',
-      price: 'RM39',
-      per: 'a month',
-      annual: 'or RM390 a year, two months free',
-      billing: { label: 'Billing', monthly: 'Monthly', yearly: 'Yearly', yearPrice: 'RM390', perYear: 'a year', yearNote: 'Two months free, paid once a year' },
-      trial: 'Your first three leads are free.',
+      tag: 'One RM95 order pays for it',
+      monthly: `RM${MONTHLY}`,
+      yearly: `RM${ANNUAL}`,
+      perMonth: 'a month',
+      perYear: 'a year',
+      noteMonthly: `Or RM${ANNUAL} a year: two months free.`,
+      noteYearly: `RM${ANNUAL_A_MONTH} a month, paid once a year.`,
+      plus: 'Everything in Personal, plus',
       points: [
-        'Every lead emailed to you with their number and the whole chat',
-        'Reply on WhatsApp in one tap',
-        'FAQ pages Google can find, built from what customers ask',
-        'Questions grouped by meaning, so you answer each one once',
-        'Your own shop on your page, orders to your WhatsApp',
+        // SLICE 18: the first two are store-design.md's next slice.
+        'A shop with QR payment and payment proof',
+        'Orders land in your dashboard',
+        'Every lead emailed with their number and chat',
+        'FAQ pages Google can find',
+        'Your first three leads are free',
       ],
-      cta: 'Create a page with 3 free leads',
+      pointsToday: ['Every lead emailed with their number and chat', 'FAQ pages Google can find', 'Your own shop, with orders sent to your WhatsApp', 'Your first three leads are free'],
+      cta: 'Start with 3 free leads',
     },
-    payment: 'Paid by FPX online banking. No card and no automatic charge, so nothing renews without you.',
-    math: 'One RM95 order a month pays for it.',
+    calc: {
+      eyebrow: 'Will it pay for itself?',
+      title: 'Drag to your usual month.',
+      orders: 'Orders a month',
+      typical: 'A typical order',
+      typicalLabel: 'Typical order value',
+      takeIn: 'You’d take in',
+      yours: 'Your orders',
+      cost: (amount) => `Curios Business · RM${amount}`,
+      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself ${times >= 2 ? `${times} times over.` : 'once.'}`,
+      under: 'That’s less than Business costs. Stay on Personal until orders pick up.',
+    },
+    payment: 'Business is paid by FPX online banking. No card and no automatic charge, so nothing renews without you.',
+    disclaimer: 'The calculator is an illustration, not a forecast.',
+    monthlyRinggit: MONTHLY,
+    annualAMonth: ANNUAL_A_MONTH,
   },
   faq: {
-    title: 'Questions owners ask',
+    title: 'Asked before. Answered here.',
     items: [
-      {
-        q: 'Is answering really free?',
-        a: 'Yes. The AI answers your customers on every plan, for as long as you have a page. Business pays for the leads: the number, the chat, and the email that brings them to you.',
-      },
-      {
-        q: 'What if it gives a wrong price?',
-        a: 'It can only quote prices, dates and addresses that you approved. If nothing you approved answers the question, it tells the customer it will check with you. It never guesses, and never rounds a number.',
-      },
-      {
-        q: 'Can it read my Instagram?',
-        a: 'Not yet. Instagram and TikTok don’t let us read profiles. Paste your bio or a few paragraphs about your shop, or a website or Linktree link if you have one.',
-      },
-      {
-        q: 'Does it reply in Malay?',
-        a: 'It answers in the language the customer used: Malay, English, Manglish or a mix.',
-      },
-      {
-        q: 'How do I pay?',
-        a: 'By FPX online banking, RM39 a month or RM390 a year. There is no card on file and no automatic charge.',
-      },
-      {
-        q: 'What happens after my three free leads?',
-        a: 'Your page keeps answering. To keep receiving leads, switch on Business.',
-      },
-      {
-        q: 'Can I sell on my page?',
-        a: 'Yes, on a business page. Add your items with their prices, and a Visit shop tile appears on your page. Customers fill a basket and send it to your WhatsApp.',
-      },
-      {
-        q: 'Can I start with a personal page and switch later?',
-        a: 'Yes, from Billing, whenever you start selling. It is a one-way switch: a business page can’t go back to personal.',
-      },
+      { q: 'Can I use it for myself, not a business?', a: 'Yes. Personal is free: a page with an AI that answers questions about you, your work and your rates. It stays hidden from Google unless you switch it on.' },
+      { q: 'What if it says something wrong?', a: 'It only answers from facts you approved. If nothing you approved answers the question, it says it will check with you. It never guesses, and never rounds a number.' },
+      { q: 'Can it read my Instagram?', a: 'Not yet. Instagram and TikTok don’t let us read profiles. Paste your bio or a few paragraphs instead, or a website or Linktree link.' },
+      { q: 'Does it reply in Malay?', a: 'It answers in the language the person used: Malay, English, Manglish or a mix.' },
+      { q: 'Can I switch from Personal to Business later?', a: 'Yes, from Billing, whenever you start selling. It is a one-way switch: a business page can’t go back to personal.' },
     ],
   },
-  final: {
-    title: 'Put your price list in your bio link.',
-    sub: 'Paste your website or a few paragraphs about your shop, approve the facts it finds, and share the link.',
-    cta: 'Create your free page',
+  closing: {
+    title: 'Curious? Just ask',
+    onePageFor: 'One page for',
+    words: ['freelancers', 'home bakers', 'job seekers', 'clinics', 'coaches', 'studios'],
+    button: 'Claim it, free',
+    note: 'Free. No card. About ten minutes to set up.',
   },
-  footer: {
-    signIn: 'Sign in',
-    start: 'Create your free page',
-    demoNote: 'Kek Lina is a demo shop made up for this page.',
+  footer: { note: 'Every person, shop and order on this page is a made-up sample.', signIn: 'Sign in' },
+  personas: {
+    aisyah: { q: 'Are you taking commissions in November?', a: 'Yes, two slots left for November. Portraits start at RM250.', links: ['Portfolio', 'Commission rates', 'Book a slot'] },
+    lina: { q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.', links: ['Order on WhatsApp', 'Menu & prices', 'Cake photos'] },
+    hana: { q: 'What’s in your branding package?', a: 'Logo, colour and type system, and social templates. Two weeks, from RM3,800.', links: ['Case studies', 'Packages', 'Start a project'] },
+    daniel: { q: 'Are you open to hybrid roles?', a: 'Yes, hybrid in KL or Petaling Jaya, or fully remote.', links: ['Resume', 'GitHub', 'LinkedIn'] },
+    aina: { q: 'Are you open on Saturday?', a: 'Yes, 9am to 1pm on Saturdays. Walk-ins welcome.', links: ['Book on WhatsApp', 'Directions', 'Panel companies'] },
+    farah: { q: 'Do you do online coaching?', a: 'Yes, monthly online plans with weekly check-ins on WhatsApp.', links: ['Online plans', 'Class schedule', 'Meal guides'] },
   },
-  demo: { label: 'Demo of a Curios page for a home bakery' },
-  shop: DEMO_EN,
 };
 
-export const ms: LandingCopy = {
+const MS: LandingCopy = {
   locale: 'ms',
   meta: {
-    title: 'Curios: link bio yang jawab soalan pelanggan',
+    title: 'Curios: link bio yang orang boleh tanya',
     description:
-      'Link bio anda jawab “berapa harga” dalam BM atau English, ikut harga yang anda luluskan. Menjawab percuma. Bisnes dapat setiap lead lewat emel, RM39.',
-    ogAlt: 'Page Curios menjawab “Berapa harga kek coklat 1kg?” dengan “RM95”.',
+      'Curios ialah link bio yang orang boleh tanya. Tentang anda, kerja anda, harga anda, kedai anda. Ia jawab ikut fakta yang anda luluskan, dalam BM atau English. Percuma untuk semua.',
+    ogAlt: 'Halaman Curios Aisyah, ditanya sama ada dia ambil tempahan, menjawab tinggal dua slot November.',
     ogLocale: 'ms_MY',
   },
+  skip: 'Langkau ke kandungan',
   nav: {
-    home: 'Laman utama Curios',
+    sections: 'Bahagian',
+    who: 'Untuk siapa',
+    how: 'Cara ia berfungsi',
+    business: 'Untuk bisnes',
+    pricing: 'Harga',
+    faq: 'Soalan lazim',
     signIn: 'Log masuk',
-    otherLocaleLabel: 'Read in English',
-    otherLocaleName: 'EN',
-    cta: 'Buat page percuma',
-    ctaShort: 'Buat page',
-    sections: [
-      { href: '#how', label: 'Cara guna' },
-      { href: '#pricing', label: 'Harga' },
-      { href: '#faq', label: 'Soalan' },
-    ],
-  },
-  claim: { label: 'Alamat yang anda nak untuk page anda', placeholder: 'kedaianda' },
-  photos: {
-    hero: 'A home baker at her counter, holding her phone with her Curios page open',
-    setup: 'An owner pasting her shop’s link into Curios on a laptop, phone beside her',
-  },
-  heroScene: {
-    problem: 'Empat puluh orang. Satu soalan.',
-    fix: 'Jawab sekali. Page anda jawab selebihnya.',
-    scrollCue: 'Scroll untuk tengok ia jawab',
-  },
-  how: {
-    title: 'Tiga langkah dari senarai harga ke jawapan.',
-    steps: [
-      { title: 'Tampal link, atau senarai harga', body: 'Ia baca laman web anda atau teks yang anda tampal. Instagram tak boleh dibaca, jadi tampal apa yang ada di situ.' },
-      { title: 'Tanda yang betul', body: 'Setiap fakta yang dijumpai tunggu anda. Tiada apa disebut sampai anda luluskan.' },
-      { title: 'Letak satu link di bio', body: 'curios.my/keklina jawab lepas tu, siang dan malam.' },
-    ],
-  },
-  paid: {
-    title: 'Apa Bisnes buat pukul 11:42 malam.',
-    closing: 'Itulah yang RM39 bayar.',
-    progressLabel: 'Sejauh mana anda dalam cerita lead ini',
-  },
-  shopSection: {
-    title: 'Harga anda di rak. Tempahan mereka di WhatsApp anda.',
-    points: [
-      'Satu harga, atau saiz dengan harga sendiri',
-      'Chat sebut harga dari rak anda',
-      'Bakul sampai sebagai mesej WhatsApp',
-    ],
-    demoNote: 'Kedai demo. Kek Lina bukan kedai sebenar.',
-    messageTitle: 'Ini yang Lina akan dapat di WhatsApp',
-    orderButton: 'Tengok mesej tempahan',
-  },
-  quiet: {
-    title: 'Benda kecil yang selamatkan anda nanti.',
-    tiles: [
-      { title: 'BM, English atau rojak', body: 'Ia jawab dalam bahasa yang pelanggan guna.' },
-      { title: 'Page FAQ dari soalan sebenar', body: 'Soalan yang ditanya tiga kali atau lebih, dengan jawapan anda, jadi page yang Google boleh jumpa.' },
-      { title: 'Guna dengan mana-mana link bio', body: 'Instagram, TikTok, WhatsApp Business, QR di kaunter.' },
-    ],
+    cta: 'Buat halaman anda',
+    other: { href: '/', short: 'EN', name: 'English', lang: 'en' },
   },
   hero: {
-    title: 'Biar link bio yang jawab “berapa harga”.',
-    sub: 'Untuk kedai yang berniaga di Instagram dan WhatsApp. Curios jawab pelanggan dalam BM atau English ikut harga dan maklumat yang anda luluskan, dan hantar nombor sesiapa yang nak order.',
-    cta: 'Buat page percuma',
-    ctaNote: 'Menjawab percuma untuk semua pelan. Tak perlu kad.',
-    demoNote: 'Page demo. Kek Lina bukan kedai sebenar.',
+    eyebrow: 'Curious? Tanya je',
+    line: 'Tak payah baca bio.',
+    ask: 'Tanya',
+    title: 'Tak payah baca bio. Tanya Aisyah.',
+    lede: 'Curios ialah link bio yang orang boleh tanya. Tentang anda, kerja anda, harga anda, kedai anda. Ia jawab ikut fakta yang anda luluskan, dalam BM atau English, dan tak pernah reka jawapan.',
+    claimLabel: 'Alamat yang anda mahu untuk halaman anda',
+    placeholder: 'namaanda',
+    button: 'Ambil, percuma',
+    note: 'Percuma untuk semua. Halaman bisnes juga dapat nombor setiap pembeli yang sedia beli.',
+    deck: 'Halaman Curios yang menjawab soalan',
+    next: 'Tunjuk halaman seterusnya',
+    kinds: { personal: 'Peribadi', business: 'Bisnes', creator: 'Kreator' },
+    askAnything: (name) => `Tanya ${name} apa saja`,
+    linksTab: 'Pautan',
+    askTab: 'Tanya',
   },
-  storm: {
-    asked: (n) => `ditanya ${n}×`,
+  askStrip: {
+    eyebrow: 'Apa orang tanya halaman Curios',
+    lead: 'Tanya pasal',
+    words: ['harga', 'servis', 'waktu buka', 'pengalaman', 'pakej'],
+    body: 'Apa yang anda masukkan, ia boleh jawab. Apa yang tiada, ia kata akan semak dengan anda, dan soalan itu tunggu dalam senarai anda.',
   },
-  leads: {
-    steps: [
-      { title: 'Dia tanya, bila-bila masa', body: 'Pelanggan tanya pukul 11:42 malam dan terus dapat jawapan.' },
-      { title: 'Page jawab ikut fakta anda', body: 'Dia sebut harga RM95 dan caj hantar RM10 yang anda luluskan.' },
-      { title: 'Page minta nombor dia', body: 'Dia tunjuk satu ruang untuk nombor WhatsApp.' },
-      { title: 'Anda dapat emel yang lengkap', body: 'Emel tu ada nombor, order, hari, kawasan dan seluruh chat.' },
-      { title: 'Sekali tekan, balas di WhatsApp', body: 'WhatsApp buka dengan ucapan yang dah ditaip dalam bahasa dia.' },
+  loop: 'curious? tanya je · ',
+  who: {
+    eyebrow: 'Untuk siapa',
+    title: 'Satu halaman untuk sesiapa yang bertanya.',
+    lede: 'Pilih siapa anda. Setiap halaman kenal pemiliknya, dan tiada yang lain.',
+    rows: [
+      { key: 'aisyah', label: 'Freelancer', qs: ['ambil tempahan lagi?', 'harga potret berapa?', 'ada slot Disember?', 'berapa lama siap?'] },
+      { key: 'daniel', label: 'Pencari kerja', qs: ['ok kerja hybrid?', 'notis berapa lama?', 'guna stack apa?', 'gaji yang diharap?'] },
+      { key: 'farah', label: 'Kreator & jurulatih', qs: ['online coaching ada?', 'sesuai untuk baru mula?', 'kadar collab?', 'jadual kelas?'] },
+      { key: 'lina', label: 'Bisnes dari rumah', qs: ['hantar Klang tak?', 'berapa harga 1kg?', 'boleh tulis nama?', 'buka hari Ahad?'] },
+      { key: 'hana', label: 'Studio & servis', qs: ['pakej ada apa?', 'berapa lama siap?', 'boleh buat logo je?', 'boleh kerja remote?'] },
     ],
-    visitorPhone: 'Telefon pelanggan',
-    ownerPhone: 'Telefon anda',
-    asleep: 'Anda, tengah tidur',
-    lockDate: 'Jumaat',
+    pageOf: (name) => `Halaman Curios ${name}`,
   },
-  trust: {
-    title: 'Dia cuma sebut harga yang anda luluskan.',
-    body: 'Begitu juga tarikh dan alamat. Kalau tak tahu, dia beritahu pelanggan dia akan tanya anda dulu, dan soalan tu tunggu dalam senarai anda sampai anda jawab. Anda juga boleh senaraikan perkataan yang dia tak boleh guna pasal kedai anda.',
-    approvedBy: 'Setiap baris diluluskan oleh anda',
-    unsureQuestion: 'Ada kek tanpa gula?',
-    unsureAnswer: 'Tak pasti. Saya check dengan Lina dulu ya.',
+  how: {
+    eyebrow: 'Cara ia berfungsi',
+    title: 'Sepuluh minit dari kosong ke link bio.',
+    keep: 'Terus skrol →',
+    steps: [
+      { title: 'Ceritakan tentang anda.', body: 'Tampal laman web anda, Linktree anda, atau beberapa perenggan jujur. Ia baca dan keluarkan faktanya.' },
+      { title: 'Luluskan yang betul.', body: 'Setiap fakta keluar sebagai kad. Simpan yang betul, betulkan yang lain. Ia tak cakap apa yang anda tak luluskan.' },
+      { title: 'Letak link dalam bio.', body: 'Kongsi curios.my/namaanda di Instagram, TikTok atau WhatsApp. Sesiapa yang tekan boleh tanya, siang atau malam.' },
+    ],
+    pasted: 'Anda tampal',
+    pastedText: [
+      'Saya ilustrator di Ipoh. ',
+      { fact: 0, text: 'Potret dari RM250' },
+      ', ',
+      { fact: 1, text: 'kulit buku dari RM900' },
+      '. Saya ambil ',
+      { fact: 2, text: 'empat tempahan sebulan' },
+      ' dan ',
+      { fact: 3, text: 'balas dalam dua hari' },
+      '.',
+    ],
+    found: 'Ia jumpa',
+    facts: [
+      { text: 'Potret dari RM250', topic: 'harga potret' },
+      { text: 'Kulit buku dari RM900', topic: 'kulit buku' },
+      { text: 'Empat tempahan sebulan', topic: 'kekosongan' },
+      { text: 'Balas dalam dua hari', topic: 'masa balas' },
+    ],
+    approved: (n) => `${n} diluluskan`,
+    factOf: (n, total) => `Fakta ${n} daripada ${total}`,
+    from: 'dari aisyahdraws.com',
+    usedFor: (topic) => `Digunakan bila orang tanya pasal ${topic}.`,
+    fix: '← Betulkan',
+    approve: 'Luluskan →',
+    approvedStamp: 'Lulus',
+    ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? TANYA JE · ',
+    card: { name: 'aisyahdraws', role: 'Ilustrator · Ipoh', bio: 'Potret, kulit buku, editorial. Tempahan dibuka untuk November.' },
+  },
+  business: {
+    eyebrow: 'Untuk bisnes',
+    title: 'Ada bisnes? Halaman anda jadi kedai.',
+    caps: [
+      { title: 'Tekan untuk tambah', body: 'Barang dengan gambar, harga dan saiz, terus dalam tab Kedai.' },
+      // SLICE 18: checkout, QR payment with proof, and Orders are not built yet.
+      { title: 'Daftar keluar', body: 'Nama, nombor WhatsApp, ambil sendiri atau hantar. Tak perlu akaun.' },
+      { title: 'Bayar dengan QR anda', body: 'Tiada payment gateway? Muat naik QR bank anda sekali. Pelanggan imbas dengan jumlahnya, kemudian muat naik resit.' },
+      { title: 'Tempahan diterima', body: 'Mereka dapat pengesahan dengan nombor tempahan.' },
+      { title: 'Masuk dalam Tempahan anda', body: 'Sudah dibayar, dengan bukti dilampirkan. Sahkan dengan satu tekan.' },
+    ],
+    stage: 'Pelanggan tambah barang, daftar keluar, bayar dengan QR Kek Lina dan muat naik bukti; tempahan sampai dalam Tempahan Curios Lina',
+    customer: 'Telefon pelanggan',
+    yours: 'Telefon anda',
+    shopNote: 'Tempah 2 hari awal · Ambil sendiri atau hantar',
+    items: [
+      { name: 'Kek coklat · 1kg', price: 'RM95' },
+      { name: 'Kek batik', price: 'RM45' },
+      { name: 'Cookies balang', price: 'RM25' },
+      { name: 'Brownies, kotak 9', price: 'RM30' },
+    ],
+    basketEmpty: 'Bakul kosong',
+    basket: (n, total) => `${n} dalam bakul · RM${total}`,
+    checkout: 'Bayar',
+    name: 'Nama anda',
+    phone: 'Nombor WhatsApp',
+    pickup: 'Ambil · Sabtu',
+    delivery: 'Hantar RM10',
+    continueToPay: 'Teruskan bayar',
+    waiting: 'Menunggu bayaran',
+    receipt: 'Resit dimuat naik',
+    scan: 'Imbas, atau pindah ke',
+    upload: 'Muat naik bukti bayaran',
+    place: 'Hantar tempahan',
+    received: 'Tempahan diterima',
+    receivedNote: '#1042 · RM235 · bukti dihantar kepada Lina',
+    orders: 'Tempahan',
+    paidToday: 'dibayar hari ini',
+    tabs: ['Baru', 'Disahkan', 'Selesai'],
+    confirm: 'Sahkan',
+    confirmed: 'Disahkan ✓',
+    proof: 'Bukti dilampirkan',
+    total: 'Jumlah',
+    newOrder: 'Tempahan baru · RM235',
+    now: 'baru',
   },
   pricing: {
-    title: 'Menjawab percuma. Lead RM39 sebulan.',
+    eyebrow: 'Harga',
+    title: `Percuma untuk ditanya. RM${MONTHLY} bila anda menjual.`,
+    billing: 'Bayaran bisnes',
+    monthly: 'Bulanan',
+    yearly: 'Tahunan',
+    twoMonths: '−2 bulan',
     personal: {
       name: 'Peribadi',
-      price: 'Percuma',
-      blurb: 'Page dengan AI yang jawab soalan pasal anda.',
-      points: [
-        'Jawab dalam BM, English atau campur',
-        'Tersembunyi daripada Google kecuali anda buka',
-        'Tukar ke Bisnes bila anda mula berniaga',
-      ],
-      cta: 'Buat page percuma',
+      tag: 'Untuk anda',
+      price: 'RM0',
+      per: 'selamanya',
+      body: 'Halaman yang orang boleh tanya tentang anda. Untuk freelancer, pencari kerja dan kreator.',
+      ticks: ['Jawab dalam BM, English atau campur', 'Hanya dari fakta yang anda luluskan', 'Kulit, warna dan fon anda sendiri', 'Tersembunyi dari Google kecuali anda hidupkan'],
+      cta: 'Buat halaman percuma',
     },
     business: {
       name: 'Bisnes',
-      price: 'RM39',
-      per: 'sebulan',
-      annual: 'atau RM390 setahun, percuma dua bulan',
-      billing: { label: 'Bayaran', monthly: 'Bulanan', yearly: 'Tahunan', yearPrice: 'RM390', perYear: 'setahun', yearNote: 'Percuma dua bulan, bayar sekali setahun' },
-      trial: 'Tiga lead pertama percuma.',
+      tag: 'Satu tempahan RM95 dah cukup bayar',
+      monthly: `RM${MONTHLY}`,
+      yearly: `RM${ANNUAL}`,
+      perMonth: 'sebulan',
+      perYear: 'setahun',
+      noteMonthly: `Atau RM${ANNUAL} setahun: percuma dua bulan.`,
+      noteYearly: `RM${ANNUAL_A_MONTH} sebulan, bayar sekali setahun.`,
+      plus: 'Semua dalam Peribadi, dan',
       points: [
-        'Setiap lead diemel pada anda, dengan nombor dan seluruh chat',
-        'Balas di WhatsApp dengan sekali tekan',
-        'Page FAQ yang Google boleh jumpa, dari soalan pelanggan',
-        'Soalan dikumpul ikut maksud, jadi anda jawab sekali sahaja',
-        'Kedai sendiri di page anda, tempahan ke WhatsApp anda',
+        // SLICE 18: the first two are store-design.md's next slice.
+        'Kedai dengan bayaran QR dan bukti bayaran',
+        'Tempahan masuk dalam dashboard anda',
+        'Setiap lead diemel dengan nombor dan perbualan mereka',
+        'Halaman soalan lazim yang Google boleh jumpa',
+        'Tiga lead pertama percuma',
       ],
-      cta: 'Buat page dengan 3 lead percuma',
+      pointsToday: ['Setiap lead diemel dengan nombor dan perbualan mereka', 'Halaman soalan lazim yang Google boleh jumpa', 'Kedai anda sendiri, tempahan dihantar ke WhatsApp anda', 'Tiga lead pertama percuma'],
+      cta: 'Mula dengan 3 lead percuma',
     },
-    payment: 'Bayar dengan FPX perbankan online. Tak ada kad dan tak ada caj automatik, jadi tiada apa yang diperbaharui tanpa anda.',
-    math: 'Satu order RM95 sebulan dah cukup bayar.',
+    calc: {
+      eyebrow: 'Berbaloi tak?',
+      title: 'Seret ke bulan biasa anda.',
+      orders: 'Tempahan sebulan',
+      typical: 'Tempahan biasa',
+      typicalLabel: 'Nilai tempahan biasa',
+      takeIn: 'Anda akan terima',
+      yours: 'Tempahan anda',
+      cost: (amount) => `Curios Bisnes · RM${amount}`,
+      pays: (percent, times) => `Bisnes kosnya kira-kira ${percent}% daripada itu. Ia bayar balik ${times >= 2 ? `${times} kali ganda.` : 'sekali.'}`,
+      under: 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.',
+    },
+    payment: 'Bisnes dibayar dengan FPX perbankan online. Tiada kad dan tiada caj automatik, jadi tiada yang diperbaharui tanpa anda.',
+    disclaimer: 'Kalkulator ini contoh, bukan ramalan.',
+    monthlyRinggit: MONTHLY,
+    annualAMonth: ANNUAL_A_MONTH,
   },
   faq: {
-    title: 'Soalan yang pemilik kedai tanya',
+    title: 'Pernah ditanya. Dijawab di sini.',
     items: [
-      {
-        q: 'Betul ke menjawab percuma?',
-        a: 'Betul. AI jawab pelanggan anda untuk semua pelan, selagi anda ada page. Bisnes bayar untuk lead: nombor, chat, dan emel yang bawa mereka pada anda.',
-      },
-      {
-        q: 'Kalau dia bagi harga salah?',
-        a: 'Dia cuma boleh sebut harga, tarikh dan alamat yang anda luluskan. Kalau tiada fakta yang menjawab, dia beritahu pelanggan dia akan tanya anda dulu. Dia tak pernah teka, dan tak pernah bundarkan nombor.',
-      },
-      {
-        q: 'Boleh dia baca Instagram saya?',
-        a: 'Belum lagi. Instagram dan TikTok tak bagi kami baca profil. Tampal bio anda atau beberapa perenggan pasal kedai, atau link website atau Linktree kalau ada.',
-      },
-      {
-        q: 'Dia jawab dalam BM?',
-        a: 'Dia jawab dalam bahasa yang pelanggan guna: BM, English, Manglish atau campur.',
-      },
-      {
-        q: 'Macam mana nak bayar?',
-        a: 'Dengan FPX perbankan online, RM39 sebulan atau RM390 setahun. Tak ada kad disimpan dan tak ada caj automatik.',
-      },
-      {
-        q: 'Apa jadi lepas tiga lead percuma?',
-        a: 'Page anda terus menjawab. Untuk terus terima lead, buka Bisnes.',
-      },
-      {
-        q: 'Boleh saya jual di page saya?',
-        a: 'Boleh, di page bisnes. Masukkan barang dengan harganya, dan tile Lawati kedai muncul di page anda. Pelanggan isi bakul dan hantar ke WhatsApp anda.',
-      },
-      {
-        q: 'Boleh saya mula dengan page peribadi, dan tukar kemudian?',
-        a: 'Boleh, dari Billing, bila anda mula berniaga. Tukar sekali sahaja: page bisnes tak boleh balik jadi peribadi.',
-      },
+      { q: 'Boleh guna untuk diri sendiri, bukan bisnes?', a: 'Boleh. Peribadi percuma: halaman dengan AI yang jawab soalan tentang anda, kerja anda dan harga anda. Ia tersembunyi dari Google kecuali anda hidupkan.' },
+      { q: 'Kalau ia cakap benda yang salah?', a: 'Ia hanya jawab dari fakta yang anda luluskan. Kalau tiada fakta yang menjawab, ia kata akan semak dengan anda. Ia tak meneka, dan tak bundarkan nombor.' },
+      { q: 'Boleh ia baca Instagram saya?', a: 'Belum. Instagram dan TikTok tak benarkan kami baca profil. Tampal bio anda atau beberapa perenggan, atau link laman web atau Linktree.' },
+      { q: 'Ia balas dalam BM?', a: 'Ia jawab dalam bahasa yang orang itu guna: BM, English, Manglish atau campur.' },
+      { q: 'Boleh tukar dari Peribadi ke Bisnes nanti?', a: 'Boleh, dari Bayaran, bila-bila anda mula menjual. Ia sehala: halaman bisnes tak boleh kembali ke peribadi.' },
     ],
   },
-  final: {
-    title: 'Letak senarai harga dalam link bio anda.',
-    sub: 'Tampal website atau beberapa perenggan pasal kedai anda, luluskan fakta yang dia jumpa, dan kongsi link.',
-    cta: 'Buat page percuma',
+  closing: {
+    title: 'Curious? Tanya je',
+    onePageFor: 'Satu halaman untuk',
+    words: ['freelancer', 'pembuat kek', 'pencari kerja', 'klinik', 'jurulatih', 'studio'],
+    button: 'Ambil, percuma',
+    note: 'Percuma. Tiada kad. Lebih kurang sepuluh minit.',
   },
-  footer: {
-    signIn: 'Log masuk',
-    start: 'Buat page percuma',
-    demoNote: 'Kek Lina ialah kedai demo yang direka untuk page ini.',
+  footer: { note: 'Setiap orang, kedai dan tempahan di halaman ini hanyalah contoh rekaan.', signIn: 'Log masuk' },
+  personas: {
+    aisyah: { q: 'Ambil tempahan untuk November?', a: 'Ya, tinggal dua slot untuk November. Potret dari RM250.', links: ['Portfolio', 'Harga tempahan', 'Tempah slot'] },
+    lina: { q: 'Boleh hantar ke Klang?', a: 'Boleh, hantar ke Klang RM15. Shah Alam RM10.', links: ['Tempah di WhatsApp', 'Menu & harga', 'Gambar kek'] },
+    hana: { q: 'Pakej branding ada apa?', a: 'Logo, sistem warna dan fon, dan templat media sosial. Dua minggu, dari RM3,800.', links: ['Kajian kes', 'Pakej', 'Mula projek'] },
+    daniel: { q: 'Terbuka untuk kerja hybrid?', a: 'Ya, hybrid di KL atau Petaling Jaya, atau remote sepenuhnya.', links: ['Resume', 'GitHub', 'LinkedIn'] },
+    aina: { q: 'Buka hari Sabtu?', a: 'Buka, 9 pagi hingga 1 tengah hari pada Sabtu. Walk-in dialu-alukan.', links: ['Tempah di WhatsApp', 'Arah ke klinik', 'Syarikat panel'] },
+    farah: { q: 'Ada coaching online?', a: 'Ada, pelan online bulanan dengan semakan mingguan di WhatsApp.', links: ['Pelan online', 'Jadual kelas', 'Panduan makan'] },
   },
-  demo: { label: 'Demo page Curios untuk kedai kek dari rumah' },
-  shop: DEMO_MS,
 };
 
-export const COPY: Record<Locale, LandingCopy> = { en, ms };
+export const COPY: Record<Locale, LandingCopy> = { en: EN, ms: MS };

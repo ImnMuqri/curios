@@ -1,21 +1,27 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
-import { getOwnerPage, getSignInMethods } from '@curios/db-read';
-import { Callout, Shell } from '@curios/ui';
+import { getNotifications, getOwnerPage, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { decideSettingsBanner, decideSettingsView } from './settings.js';
 import { AddPassword } from './add-password-form.js';
 import { ConnectGoogle } from './connect-google.js';
+import { CopyAddress } from './copy-address.js';
+import { NotifyLeads } from './notify-leads.js';
 import { SearchIndexing } from './search-indexing.js';
-import panel from '../panel.module.css';
+import { Done, SettingRow } from './setting-row.js';
+import { SignOutButton } from '../sign-out-button.js';
+import { sourcePlace } from '../_ui/source-place.js';
+import { PageHead } from '../_ui/page-head.js';
+import styles from './settings.module.css';
 
 /**
- * The second way into an account, and the redirect target both a successful
- * and a failed Google link land on -- C2, C3.
+ * The account and the page, from the design handoff's Settings board: the
+ * page's address and kind, the ways to sign in, and signing out. Also the
+ * redirect target a successful and a failed Google link both land on (C2,
+ * C3).
  *
- * `searchParams` is a `Promise` in Next 15 and must be awaited, the pattern
- * already in `signin/page.tsx`, `verify/page.tsx` and `reset/page.tsx`.
+ * `searchParams` is a `Promise` in Next 15 and must be awaited.
  */
 export default async function SettingsPage({
   searchParams,
@@ -26,48 +32,102 @@ export default async function SettingsPage({
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
-  const [methods, page] = await Promise.all([
+  const [methods, page, notifications] = await Promise.all([
     getSignInMethods(owner.accountId),
     getOwnerPage(owner.accountId),
+    getNotifications(owner.accountId),
   ]);
   // The layout already proved the session is real, which means the account
-  // it names exists -- this is belt and braces for a direct render, narrowing
-  // the type rather than guarding against a real path.
+  // it names exists -- this narrows the type rather than guarding a real path.
   if (!methods) redirect('/signin');
 
   const view = decideSettingsView(methods);
   const banner = decideSettingsBanner(params);
+  const publicUrl = page ? `${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}` : null;
 
-  // Plain data across the boundary -- `view` and `banner` are strings and
-  // booleans, so both cross fine. `AddPassword` and `ConnectGoogle` build
-  // their own handlers on the client side of the RSC boundary; a Server
-  // Component may not pass a function here.
+  // Plain data across the boundary. The client parts build their own
+  // handlers; a Server Component may not pass a function here.
   return (
-    <Shell as="div" title="Settings" lede={<>Signed in as {view.email}.</>}>
+    <>
+      <PageHead title="Settings" note={<>Signed in as {view.email}</>} />
+      <div className={styles.wrap}>
+        {banner ? (
+          <p className={styles.banner} data-tone={banner.kind === 'error' ? 'error' : undefined} role={banner.kind === 'error' ? 'alert' : 'status'}>
+            {banner.kind === 'linked' ? 'Google is now connected to your account.' : banner.message}
+          </p>
+        ) : null}
 
-      {banner?.kind === 'linked' ? (
-        <Callout tone="info">Google is now connected to your account.</Callout>
-      ) : null}
-      {banner?.kind === 'error' ? <Callout tone="error">{banner.message}</Callout> : null}
+        {/* An account with no page yet has no address and nothing to index. */}
+        {page && publicUrl ? (
+          <section className={styles.group} aria-labelledby="page-title">
+            <h2 id="page-title">Your page</h2>
+            <p>The address people visit, and what kind of page it is.</p>
+            <div className={styles.card}>
+              <SettingRow icon="link" tone="biru" title="Address" note={sourcePlace(publicUrl)} action={<CopyAddress url={publicUrl} />} />
+              {page.mode === 'BUSINESS' ? (
+                <SettingRow
+                  icon="shop"
+                  tone="rose"
+                  title="Business page"
+                  note="Takes numbers, runs a shop and has FAQ pages. It can't be switched back to personal."
+                  action={<Done>Business</Done>}
+                />
+              ) : (
+                <SettingRow
+                  icon="person"
+                  tone="rose"
+                  title="Personal page"
+                  note="Answers questions about you. Selling something? A business page takes numbers and runs a shop."
+                  action={
+                    <a className={styles.btn2} href="/app/billing">
+                      See Business
+                    </a>
+                  }
+                />
+              )}
+              <SearchIndexing mode={page.mode} allowed={page.allowSearchIndexing} />
+            </div>
+          </section>
+        ) : null}
 
-      <div className={panel.stack}>
-        <section className={panel.panel} aria-labelledby="sign-in-title">
-          <h2 id="sign-in-title" className={panel.panelTitle}>Signing in</h2>
-          {!view.showAddPassword && !view.showConnectGoogle ? (
-            // Empty states are instructions, not moods -- an account with both
-            // sign-in methods must still be told something, not shown a blank
-            // screen with nothing to click.
-            <p className={panel.text}>You can already sign in with your password or with Google.</p>
-          ) : (
-            <p className={panel.text}>Add a second way in, for the day the first one fails you.</p>
-          )}
-          {view.showAddPassword ? <AddPassword /> : null}
-          {view.showConnectGoogle ? <ConnectGoogle /> : null}
+        <section className={styles.group} aria-labelledby="sign-in-title">
+          <h2 id="sign-in-title">Signing in</h2>
+          <p>{view.signNote}</p>
+          <div className={styles.card}>
+            <SettingRow
+              icon="google"
+              tone="google"
+              title="Google"
+              note={view.googleEmail ?? 'Not connected.'}
+              action={view.showConnectGoogle ? <ConnectGoogle /> : <Done>Connected</Done>}
+            />
+            {view.showAddPassword ? (
+              <AddPassword />
+            ) : (
+              <SettingRow icon="lock" tone="grey" title="Password" note="Set. To change it, use “Forgot your password?” when you sign in." action={<Done>Added</Done>} />
+            )}
+          </div>
         </section>
 
-        {/* An account with no page yet has nothing to index. */}
-        {page ? <SearchIndexing mode={page.mode} allowed={page.allowSearchIndexing} /> : null}
+        {/* The owner emails that exist today. Orders and receipts join with
+            slice 18; until then a switch for them would control nothing. */}
+        {page?.mode === 'BUSINESS' && notifications ? (
+          <section className={styles.group} aria-labelledby="email-title">
+            <h2 id="email-title">Email me when</h2>
+            <p>Sent to {view.email}. Everything also shows in the app.</p>
+            <div className={styles.card}>
+              <NotifyLeads on={notifications.leads} />
+            </div>
+          </section>
+        ) : null}
+
+        <section className={styles.group} aria-labelledby="session-title">
+          <h2 id="session-title">Session</h2>
+          <div className={styles.card}>
+            <SettingRow icon="out" tone="grey" title="Sign out" note="On this device. Your page stays live." action={<SignOutButton />} />
+          </div>
+        </section>
       </div>
-    </Shell>
+    </>
   );
 }

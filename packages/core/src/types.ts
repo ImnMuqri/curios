@@ -80,12 +80,16 @@ export const LEAD_QUEUE = 'lead';
  */
 export interface LeadJobData {
   leadId: string;
+  /** This lead used the last free one: the worker also sends "Your page stopped taking numbers". */
+  lastFreeLead?: boolean;
 }
 
 export interface MailJobData {
   to: string;
   subject: string;
   text: string;
+  /** The same email laid out (renderMailHtml). Optional, so a job queued before it existed still sends. */
+  html?: string;
 }
 
 /**

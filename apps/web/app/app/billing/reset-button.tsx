@@ -1,10 +1,9 @@
 'use client';
 
-import { Button, Callout } from '@curios/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ApiError, apiFetch } from '../../../lib/api.js';
-import panel from '../panel.module.css';
+import styles from './billing.module.css';
 
 /**
  * The API's 409 already says exactly what happened and what to do instead, and
@@ -17,7 +16,7 @@ export function resetError(failure: unknown): string {
 }
 
 /**
- * Presentational half of the wrapper split, the shape of `PayButtonsForm` and
+ * Presentational half of the wrapper split, the shape of `PlanPay` and
  * `AddPasswordForm`. Refreshing is the caller's, so a test can watch for it.
  */
 export function ResetTrialForm({
@@ -46,11 +45,15 @@ export function ResetTrialForm({
   }
 
   return (
-    <div className={panel.buttons}>
-      <Button busy={busy} onClick={() => void reset()}>
-        Reset my free trial
-      </Button>
-      {error ? <Callout tone="error">{error}</Callout> : null}
+    <div className={styles.buttons}>
+      <button type="button" className={styles.btn2} disabled={busy} onClick={() => void reset()}>
+        {busy ? 'Resetting…' : 'Reset my free trial'}
+      </button>
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }

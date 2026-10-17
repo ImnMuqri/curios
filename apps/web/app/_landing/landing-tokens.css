@@ -18,6 +18,31 @@
  * Scoped to [data-landing] so none of it leaks into the product's own pages.
  */
 [data-landing] {
+  /*
+   * ---- The TanyaJe board's own colours (design handoff, 2026-10-16) ----
+   * Taken as drawn, not derived: the deep inks of the dark sections, the rose
+   * of the sample bakery's business section, the pale green of the Personal
+   * card, and the four soft blob colours behind the hero and the close.
+   */
+  --tj-ink-950: #141925;
+  --tj-ink-850: #1d2433;
+  --tj-ink-700: #2a3142;
+  --tj-ink-600: #3a4050;
+  --tj-ink-500: #8a8f9b;
+  --tj-grey-50: #f3f4f7;
+  --tj-toggle: #eceef2;
+  --tj-rose: #b5294e;
+  --tj-rose-deep: #3d0f1e;
+  --tj-rose-100: #fbeef1;
+  --tj-rose-200: #ecd3da;
+  --tj-hijau-50: #eef6f3;
+  --tj-hijau-200: #d3e8e1;
+  --tj-hijau-900: #123b33;
+  --tj-blob-blue: #bfd1f9;
+  --tj-blob-pink: #f6c9d5;
+  --tj-blob-peach: #ffe2b8;
+  --tj-blob-mint: #bfe3d6;
+
   /* ---- Colour: biru ramp (parent --biru #2340c8, oklch 0.450 0.212 267) ---- */
   --l-biru-800: #122686; /* oklch 0.331 0.160 267 -- primary button pressed; paper on it 12.3:1 */
   --l-biru-700: #1a31a8; /* oklch 0.389 0.190 267 -- primary button hover; paper on it 9.9:1 */

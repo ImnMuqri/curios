@@ -163,6 +163,13 @@ model Page {
   /// which makes the next period eligible by itself: no reminders table, and no
   /// way to send the same reminder twice.
   renewalReminderFor DateTime?
+  /// Whether the owner is emailed each lead (Settings, "Email me when"). On by
+  /// default: a lead nobody hears about is the one thing this product exists
+  /// to prevent.
+  notifyLeads Boolean @default(true)
+  /// The paidUntil the owner was last told had ended, the on-the-day sibling
+  /// of renewalReminderFor and claimed the same way.
+  planEndedMailFor DateTime?
   /// Whether a personal page may appear in search results. Off by default:
   /// most people do not want an AI page about themselves ranking for their own
   /// name. Business pages are always indexed, so this is read only for personal
@@ -181,9 +188,13 @@ model Page {
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.
   backgroundColor String?
+  /// Social profiles shown as icons under the name: { instagram, whatsapp, tiktok, email, facebook, youtube }, each a handle. @curios/core/socials reads and writes it.
+  socials         Json         @default("{}")
   /// The shop. Off until the owner opens it, and it can only be opened with a
   /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
   storeEnabled      Boolean      @default(false)
+  /// "About your shop": shown above the items, before the notice.
+  shopDescription   String?
   pickupEnabled     Boolean      @default(false)
   /// Where pickup happens, as the owner wants it said: "Seksyen 7, Shah Alam".
   pickupNote        String?
@@ -375,6 +386,9 @@ model UsageCounter {
   page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
   period String
   count  Int    @default(0)
+  /// When "Your page reached its monthly limit" went out for this period.
+  /// One counter row per month, so null-then-set is once a month by itself.
+  capMailedAt DateTime?
 
   @@unique([pageId, period])
 }
@@ -510,6 +524,7 @@ model Question {
   pinnedByOwner      Boolean  @default(false)
   firstAskedAt       DateTime @default(now())
   lastAskedAt        DateTime @default(now())
+  asks               QuestionAsk[]
 
   @@unique([pageId, normalizedQuestion])
   @@index([topicId])
@@ -520,6 +535,18 @@ model Question {
 /// One thing visitors ask, in however many wordings. Owns the single pinned
 /// answer, the FAQ slug and the combined count. Aggregates are recomputed from
 /// its wordings by refreshTopic (packages/db/src/topics.ts), never incremented.
+/// One row each time a wording is asked, for the Questions screen's week of
+/// asks. Follows its wording through a merge or split; goes with it on delete.
+/// Asks before this table existed are only in Question.askCount.
+model QuestionAsk {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  askedAt    DateTime @default(now())
+
+  @@index([questionId, askedAt])
+}
+
 model Topic {
   id              String        @id @default(cuid())
   pageId          String

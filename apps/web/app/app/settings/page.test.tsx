@@ -15,7 +15,8 @@ import { oauthErrorMessage } from '../../../lib/oauth-errors.js';
  */
 const getSignInMethods = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getSignInMethods, getOwnerPage }));
+const getNotifications = vi.fn();
+vi.mock('@curios/db-read', () => ({ getSignInMethods, getOwnerPage, getNotifications }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -48,6 +49,7 @@ const methods = (overrides: Partial<SignInMethods>): SignInMethods => ({
   email: 'nadia@example.com',
   hasPassword: true,
   providers: [],
+  googleEmail: null,
   ...overrides,
 });
 
@@ -63,6 +65,7 @@ describe('SettingsPage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockReset();
     getOwnerPage.mockResolvedValue(null);
+    getNotifications.mockResolvedValue({ leads: true });
     SearchIndexing.mockClear();
   });
 
@@ -71,12 +74,12 @@ describe('SettingsPage', () => {
     // has just connected Google, and lands back here with ?linked=google. So
     // the banner, the both-methods sentence and the missing link all hold at
     // once, from one render.
-    await renderWith({ linked: 'google' }, methods({ providers: ['GOOGLE'] }));
+    await renderWith({ linked: 'google' }, methods({ providers: ['GOOGLE'], googleEmail: 'nadia.bakes@gmail.example' }));
 
     expect(screen.getByText('Google is now connected to your account.')).toBeInTheDocument();
-    expect(
-      screen.getByText('You can already sign in with your password or with Google.'),
-    ).toBeInTheDocument();
+    expect(screen.getByText('You can sign in with your password or with Google.')).toBeInTheDocument();
+    expect(screen.getByText('nadia.bakes@gmail.example')).toBeInTheDocument();
+    expect(screen.getByText('Connected')).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Connect Google' })).not.toBeInTheDocument();
   });
 
@@ -87,9 +90,8 @@ describe('SettingsPage', () => {
 
     expect(screen.getByRole('link', { name: 'Connect Google' })).toBeInTheDocument();
     expect(screen.queryByText('Google is now connected to your account.')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('You can already sign in with your password or with Google.'),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText('Add a second way in, for the day the first one fails you.')).toBeInTheDocument();
+    expect(screen.getByText('Not connected.')).toBeInTheDocument();
   });
 
   it('paints the session-ended message when a link attempt outlived its session', async () => {
@@ -116,5 +118,80 @@ describe('SettingsPage', () => {
     await renderWith({}, methods({}));
 
     expect(SearchIndexing.mock.calls[0]?.[0]).toEqual({ mode: 'PERSONAL', allowed: false });
+  });
+
+  it('shows the page’s address to copy, and what kind of page it is', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1',
+      handle: 'nadia',
+      displayName: 'Nadia',
+      published: true,
+      mode: 'BUSINESS',
+      paidUntil: null,
+      leadsCaptured: 0,
+      trialResetAt: null,
+      allowSearchIndexing: false,
+    });
+
+    await renderWith({}, methods({}));
+
+    expect(screen.getByText(/\/nadia$/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
+    expect(screen.getByText(/can't be switched back to personal/)).toBeInTheDocument();
+  });
+
+  it('points a personal page at Business, where the switch is', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1',
+      handle: 'nadia',
+      displayName: 'Nadia',
+      published: true,
+      mode: 'PERSONAL',
+      paidUntil: null,
+      leadsCaptured: 0,
+      trialResetAt: null,
+      allowSearchIndexing: false,
+    });
+
+    await renderWith({}, methods({}));
+
+    expect(screen.getByRole('link', { name: 'See Business' })).toHaveAttribute('href', '/app/billing');
+  });
+
+  it('says how to change a password that is already set', async () => {
+    await renderWith({}, methods({ hasPassword: true }));
+
+    expect(screen.getByText(/forgot your password\?/i)).toBeInTheDocument();
+  });
+
+  it('lets the owner sign out', async () => {
+    await renderWith({}, methods({}));
+
+    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('offers a business page the lead email switch, set as it is', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'BUSINESS',
+      paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
+    });
+    getNotifications.mockResolvedValue({ leads: false });
+
+    await renderWith({}, methods({}));
+
+    expect(screen.getByRole('heading', { name: 'Email me when' })).toBeInTheDocument();
+    expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app.')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Email me when someone leaves their number' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('offers a personal page no email switches, since it takes no leads', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'PERSONAL',
+      paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
+    });
+
+    await renderWith({}, methods({}));
+
+    expect(screen.queryByRole('heading', { name: 'Email me when' })).toBeNull();
   });
 });

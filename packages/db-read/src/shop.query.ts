@@ -34,7 +34,8 @@ export const SHOP_TILE_SELECT = {
   storeEnabled: true,
   shopTilePosition: true,
   shopTileSize: true,
-  items: { where: { available: true }, orderBy: { position: 'asc' }, select: { photoKey: true } },
+  // Name and price as well, for the editor's preview of the Shop tab.
+  items: { where: { available: true }, orderBy: { position: 'asc' }, select: { photoKey: true, name: true, priceCents: true } },
 } as const;
 
 /**
@@ -61,6 +62,8 @@ export function shopTileOf(row: {
 export interface PublicShop {
   handle: string;
   displayName: string;
+  /** The page's header is the same on every tab, bio included. */
+  bio: string | null;
   language: string;
   style: PageStyle;
   accentColor: string;
@@ -71,6 +74,8 @@ export interface PublicShop {
   backgroundColor: string | null;
   /** For the WhatsApp the basket is sent to. */
   links: { label: string; url: string }[];
+  /** "About your shop", above the items. */
+  shopDescription: string | null;
   pickupEnabled: boolean;
   pickupNote: string | null;
   deliveryMode: DeliveryMode;
@@ -92,6 +97,7 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       storeEnabled: true,
       handle: true,
       displayName: true,
+      bio: true,
       language: true,
       style: true,
       accentColor: true,
@@ -101,6 +107,7 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       background: true,
       backgroundColor: true,
       links: { orderBy: { position: 'asc' }, select: { label: true, url: true } },
+      shopDescription: true,
       pickupEnabled: true,
       pickupNote: true,
       deliveryMode: true,
@@ -118,6 +125,7 @@ export interface OwnerStore {
   mode: 'PERSONAL' | 'BUSINESS';
   settings: {
     enabled: boolean;
+    shopDescription: string | null;
     pickupEnabled: boolean;
     pickupNote: string | null;
     deliveryMode: DeliveryMode;
@@ -139,6 +147,7 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
     select: {
       mode: true,
       storeEnabled: true,
+      shopDescription: true,
       pickupEnabled: true,
       pickupNote: true,
       deliveryMode: true,

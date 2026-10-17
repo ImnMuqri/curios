@@ -3,6 +3,7 @@ import {
   DM_Serif_Display,
   Fraunces,
   IBM_Plex_Mono,
+  IBM_Plex_Sans,
   Inter,
   Outfit,
   Plus_Jakarta_Sans,
@@ -24,6 +25,8 @@ import {
  */
 const bricolage = Bricolage_Grotesque({ subsets: ['latin'], variable: '--font-bricolage', display: 'swap' });
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
+// The face for everything read in the app, the auth screens and the landing (design handoff, 2026-10-16).
+const plexSans = IBM_Plex_Sans({ subsets: ['latin'], weight: ['400', '500', '600'], variable: '--font-plex-sans', display: 'swap' });
 const plexMono = IBM_Plex_Mono({ subsets: ['latin'], weight: ['400', '500'], variable: '--font-plex-mono', display: 'swap' });
 const jakarta = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-jakarta', display: 'swap', preload: false });
 const fraunces = Fraunces({ subsets: ['latin'], variable: '--font-fraunces', display: 'swap', preload: false });
@@ -31,6 +34,6 @@ const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-space
 const dmSerif = DM_Serif_Display({ subsets: ['latin'], weight: '400', variable: '--font-dm-serif', display: 'swap', preload: false });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit', display: 'swap', preload: false });
 
-export const fontVariables = [bricolage, inter, plexMono, jakarta, fraunces, spaceGrotesk, dmSerif, outfit]
+export const fontVariables = [bricolage, inter, plexSans, plexMono, jakarta, fraunces, spaceGrotesk, dmSerif, outfit]
   .map((font) => font.variable)
   .join(' ');

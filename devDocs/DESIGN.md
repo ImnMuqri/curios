@@ -157,6 +157,32 @@ Billing. (Warm was tried on Review and Leads; the owner did not like it, so no b
 warm and kuning keeps to its one job.) Set in `app-frame.tsx` (BANDS) and drawn by `app-frame.module.css`; each
 band sets the title and lede colours through Shell's hooks. Flat colour, no gradient.
 
+*Amended 2026-10-16: the design handoff (`design/HANDOFF.md`).* The bands are retired. The
+dashboard is a white workspace beside a pale sidebar grouped *Page · Inbox · Knowledge ·
+Account*, with what is waiting counted beside Questions, Leads and Review. Each screen has a
+64px header bar (`app/app/_ui/page-head.tsx`): its title in Plex Sans 600, then a short note
+and its actions on the right. Under 1100px the sidebar is an icon rail; on a phone it is a row
+of icons across the top. IBM Plex Sans is the face for all app and auth UI, numbers included;
+Bricolage is for the wordmark and the landing's display headings only.
+
+The same handoff redrew the public page. The bento grid is gone: a page is a cover, a centred
+profile (picture, name, address, bio), a row of tabs (*Links · Ask · Shop*, Shop only with the
+shop open), a column of pill links with the first in the accent, and "People often ask" (the
+three most asked FAQ answers, opened in place, with *See all N*). Soft draws white (or, on a dark
+band, faint) pills; High contrast draws solid pills in the page's text colour. At its own URL
+the page is a 460px column on a darker field of its own colour, with its cover blurred behind;
+inside a phone mockup it compacts by container query. Tile sizes stay on the rows but are no
+longer drawn. The ask bar and chat mode's composer are white pills held at the foot of the
+window, the accent's send circle at their end. The FAQ pages wear the page's accent as a faint
+tint. Type sizes follow the boards' CSS, which uses more than the six steps under **Type**; the
+check in `packages/ui/src/design-rules.ts` now lists the boards' sizes instead.
+
+The landing (`/`, `/ms`) is rebuilt from the TanyaJe board: "Don't read the bio. Ask", for
+anyone, with business as one section. It keeps the landing's motion exemption, drawn still for
+reduced motion and before JavaScript, without GSAP or Lenis. Its nav pill is frosted, as the board
+draws it: the owner chose to allow that one frosted surface (it falls back to near-opaque
+paper where a browser cannot blur). See `apps/web/app/_landing/README.md`.
+
 ---
 
 ## Components worth naming
@@ -239,7 +265,8 @@ like the picture.
 Delete on sight, no discussion:
 
 - Purple to blue gradients. Any gradient behind a headline.
-- Glassmorphism, frosted panels, floating 3D blobs, mesh backgrounds.
+- Glassmorphism, frosted panels, floating 3D blobs, mesh backgrounds. *(One exception since
+  2026-10-16: the landing's nav pill is frosted, at the owner's request.)*
 - "Supercharge", "Unleash", "Effortlessly", "in seconds", "10x".
 - A hero with a big number, a small label, and a gradient accent.
 - Emoji used as an icon system anywhere in the dashboard. Owner-chosen link icons are

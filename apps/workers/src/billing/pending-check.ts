@@ -4,7 +4,7 @@ import { BILLING_QUEUE, PENDING_CHECK_JOB, RENEWAL_REMINDER_JOB } from '@curios/
 import type { PrismaClient } from '@curios/db';
 import { evidenceFromBill, grantPayment, type BillplzClient } from '@curios/billing';
 import { QUEUE_CONCURRENCY } from '../queues.js';
-import { runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
+import { runPlanEndedMails, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -93,6 +93,14 @@ export function createBillingWorker(deps: {
       }
       if (job.name === RENEWAL_REMINDER_JOB) {
         await runRenewalReminders({
+          prisma: deps.prisma,
+          mailQueue: deps.mailQueue,
+          now: new Date(),
+          appUrl: deps.appUrl,
+          log: deps.log,
+        });
+        // The same daily run tells owners whose plan has just ended.
+        await runPlanEndedMails({
           prisma: deps.prisma,
           mailQueue: deps.mailQueue,
           now: new Date(),

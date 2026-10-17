@@ -5,6 +5,8 @@ export interface SignInMethods {
   email: string;
   hasPassword: boolean;
   providers: AuthProvider[];
+  /** The Google account's own address, which can differ from the account's; null when Google is not connected. */
+  googleEmail: string | null;
 }
 
 /**
@@ -32,7 +34,7 @@ export async function getSignInMethods(accountId: string): Promise<SignInMethods
     select: {
       email: true,
       password: { select: { id: true } },
-      identities: { select: { provider: true } },
+      identities: { select: { provider: true, email: true } },
     },
   });
 
@@ -42,5 +44,6 @@ export async function getSignInMethods(accountId: string): Promise<SignInMethods
     email: account.email,
     hasPassword: account.password !== null,
     providers: account.identities.map((identity) => identity.provider),
+    googleEmail: account.identities.find((identity) => identity.provider === 'GOOGLE')?.email ?? null,
   };
 }

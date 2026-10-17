@@ -33,7 +33,53 @@
    */
   --scrim: rgb(25 31 44 / 45%);
 
-  /* Six steps. A seventh is a smell -- see DESIGN.md, and the test. */
+  /*
+   * From the design handoff (design/HANDOFF.md): the dashboard's two quieter
+   * greys and its field edge, and the green for WhatsApp and paid states with
+   * its pale. Green is never the brand (that is --biru); it means "WhatsApp"
+   * or "paid", nothing else.
+   */
+  --ink-soft: #4b5060;
+  --faint: #9aa0ab;
+  --edge: #dfe1e6;
+  --hijau: #1d6f5f;
+  --hijau-muda: #e8f3ef;
+  /*
+   * The dashboard's section chips (My Curios and on): a pale ground with its
+   * ink, one pair per kind of section. Labels, never states: --kuning and
+   * --merah keep their jobs.
+   */
+  --rose: #b5294e;
+  --rose-muda: #fbeef1;
+  --amber-ink: #8f5c15;
+  --amber-muda: #fdf0dc;
+  /* Two more labels, for the kinds of fact on Facts & sources (Policy, About you). */
+  --ungu: #6d3fb3;
+  --jingga: #e08a1e;
+  /* A destructive confirm's quiet button ("Yes, remove"), and its text. */
+  --merah-muda: #fdecea;
+  --merah-deep: #b3261e;
+  /* The soft colour field behind the editor's phone preview. */
+  --blob-blue: #bfd1f9;
+  --blob-pink: #f6c9d5;
+  --blob-peach: #ffe2b8;
+  --blob-mint: #bfe3d6;
+  --field: #f6f7fb;
+  /* The System board's drawings and its hover. */
+  --biru-deep: #1a31a8;
+  --biru-lembut: #86a2ea;
+  --biru-ring: #dfe8fd;
+  --ungu-muda: #efe7fb;
+  --merah-lembut: #f08a74;
+  --merah-ink: #8a2a1a;
+  --hijau-deep: #155a4d;
+  --hijau-line: #cfe5dd;
+  --ghost-a: #f3f4f7;
+  --ghost-b: #eef0f4;
+  --ghost-line: #c9ccd3;
+  --phone-edge: #e1e4e9;
+
+  /* The original six steps. The handoff's screens use more; see SCALE in design-rules.ts. */
   --text-xs: 11px;
   --text-sm: 12.5px;
   --text-base: 14px;

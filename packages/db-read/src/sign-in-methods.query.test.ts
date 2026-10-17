@@ -5,7 +5,7 @@ import { getSignInMethods } from './sign-in-methods.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
-async function anAccount(options: { password?: boolean; google?: boolean }): Promise<{
+async function anAccount(options: { password?: boolean; google?: boolean; googleEmail?: string }): Promise<{
   id: string;
   email: string;
 }> {
@@ -17,7 +17,7 @@ async function anAccount(options: { password?: boolean; google?: boolean }): Pro
       ...(options.google
         ? {
             identities: {
-              create: { provider: 'GOOGLE', providerUserId: randomUUID(), email },
+              create: { provider: 'GOOGLE', providerUserId: randomUUID(), email: options.googleEmail ?? email },
             },
           }
         : {}),
@@ -43,6 +43,7 @@ describe('getSignInMethods', () => {
       email: account.email,
       hasPassword: true,
       providers: [],
+      googleEmail: null,
     });
   });
 
@@ -53,16 +54,18 @@ describe('getSignInMethods', () => {
       email: account.email,
       hasPassword: false,
       providers: ['GOOGLE'],
+      googleEmail: account.email,
     });
   });
 
-  it('reports an account with both', async () => {
-    const account = await anAccount({ password: true, google: true });
+  it('reports an account with both, and the Google account’s own address', async () => {
+    const account = await anAccount({ password: true, google: true, googleEmail: 'lina.bakes@gmail.example' });
 
     expect(await getSignInMethods(account.id)).toEqual({
       email: account.email,
       hasPassword: true,
       providers: ['GOOGLE'],
+      googleEmail: 'lina.bakes@gmail.example',
     });
   });
 

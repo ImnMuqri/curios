@@ -34,7 +34,7 @@ export default async function ShopPage({
       <BentoPage
         displayName={shop.displayName}
         handle={shop.handle}
-        bio={null}
+        bio={shop.bio}
         avatarUrl={avatarUrl(shop.avatarKey)}
         links={[]}
         style={shop.style}
@@ -43,7 +43,11 @@ export default async function ShopPage({
         background={shop.background}
         backgroundColor={shop.backgroundColor}
         coverUrl={coverUrl(shop.coverKey)}
+        language={shop.language}
+        // Only its presence matters here: it is what gives the page its Shop tab.
+        shop={{ position: 0, size: null, label: '', caption: '', photoUrl: null }}
         mode="shop"
+        stage
       >
         <ShopView
           handle={shop.handle}
@@ -52,11 +56,14 @@ export default async function ShopPage({
           items={shop.items.map((i) => ({ ...i, photoUrl: avatarUrl(i.photoKey) }))}
           whatsapp={whatsappNumber(shop.links)}
           pickupEnabled={shop.pickupEnabled}
+          description={shop.shopDescription}
           pickupNote={shop.pickupNote}
           deliveryMode={shop.deliveryMode}
           deliveryFeeCents={shop.deliveryFeeCents}
           minNoticeDays={shop.minNoticeDays}
           initialItemId={item ?? null}
+          // The page's Links tab is the way back.
+          showBack={false}
         />
       </BentoPage>
     </main>

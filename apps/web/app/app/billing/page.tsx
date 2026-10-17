@@ -1,43 +1,85 @@
+import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { FREE_LEADS, PLAN_PRICES_CENTS, planState, SESSION_COOKIE } from '@curios/core';
-import { getConversationUsage, getOwnerPage, getRecentPayments } from '@curios/db-read';
-import { Callout, Shell } from '@curios/ui';
+import { extendPaidUntil, FREE_LEADS, PLAN_PRICES_CENTS, planState, SESSION_COOKIE, type BillingPlan, type PlanState } from '@curios/core';
+import { countLeadsThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
-import { COPY } from '../../_landing/copy.js';
-import { paymentBanner, paymentParts, planBadge, planSummary, ringgit, usageSummary } from './billing-copy.js';
-import { PayButtons } from './pay-buttons.js';
+import { daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { PayButtons, type PayOption } from './pay-buttons.js';
 import { ResetTrial } from './reset-button.js';
 import { UpgradeToBusiness } from './upgrade-button.js';
-import panel from '../panel.module.css';
 import styles from './billing.module.css';
+import { PageHead } from '../_ui/page-head.js';
+import { NEAR_SHARE } from '../alerts.js';
 
-/** A thing used out of a limit, as a bar: biru for what is routine, kuning when it is leads (money). */
-function Meter({ label, used, of, tone, children }: { label: string; used: number; of: number; tone: 'biru' | 'kuning'; children: string }) {
-  const share = of > 0 ? Math.min(100, Math.round((used / of) * 100)) : 0;
+/** What Business includes, as the board lists it: everything here exists today. */
+const INCLUDED = ['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search'];
+
+const PLANS: { plan: BillingPlan; name: string; note: string; period: string; unit: string; save?: string }[] = [
+  { plan: 'MONTHLY', name: 'Monthly', note: 'One month at a time', period: 'a month', unit: 'month' },
+  { plan: 'ANNUAL', name: 'Yearly', note: 'Paid once a year', period: 'a year', unit: 'year', save: '2 months free' },
+];
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+/** The big number on the plan card, the words beside it, and the sentence under it. */
+function planHead(state: PlanState, now: Date): { big: number; unit: string; sub: ReactNode } | null {
+  switch (state.kind) {
+    case 'personal':
+      return null;
+    case 'paid': {
+      const days = daysLeft(state.paidUntil, now);
+      return {
+        big: days,
+        unit: plural(days, 'day left', 'days left'),
+        sub: (
+          <>
+            Paid until <b>{shortDate(state.paidUntil, true)}</b>. No auto-renew, so nothing is charged without you.
+          </>
+        ),
+      };
+    }
+    case 'trial':
+      return {
+        big: state.remaining,
+        unit: plural(state.remaining, 'free lead left', 'free leads left'),
+        sub: state.lapsedOn
+          ? planSummary(state)
+          : `Answering is free forever. Your first ${FREE_LEADS} numbers are free too. After that, the capture card on your page needs a plan.`,
+      };
+    case 'trialSpent':
+      return { big: 0, unit: 'free leads left', sub: planSummary(state) };
+    case 'lapsed':
+      return { big: 0, unit: 'days left', sub: planSummary(state) };
+  }
+}
+
+/** A thing used this month, as the board's meter: the count, what it is out of, a bar, a line. */
+function Meter({ label, used, of, share, tone, children }: { label: string; used: number; of: string; share: number; tone: 'biru' | 'kuning' | 'merah' | 'hijau' | 'rose'; children: ReactNode }) {
   return (
-    <div className={styles.meter} data-tone={tone}>
-      <p className={styles.meterLabel}>
-        {label}
+    <div className={styles.meter}>
+      <p className={styles.mh}>
+        <span>{label}</span>
         <span>
-          {used} / {of}
+          <b>{used.toLocaleString('en-MY')}</b> {of}
         </span>
       </p>
-      <div className={styles.bar} role="meter" aria-label={label} aria-valuemin={0} aria-valuemax={of} aria-valuenow={Math.min(used, of)}>
-        <span style={{ width: `${share}%` }} />
+      <div className={styles.mbar} data-tone={tone} aria-hidden="true">
+        <i style={{ width: `${Math.max(0, Math.min(100, share))}%` }} />
       </div>
-      <p className={styles.meterText}>{children}</p>
+      <small>{children}</small>
     </div>
   );
 }
 
 /**
- * Where the plan stands, what the month has used, what has been paid, and the
- * two things an owner can do about any of it: pay, or -- once, and only for a
- * page that never paid -- take back a trial they spent testing their own page.
+ * Where the plan stands, what the month has used, and what has been paid, from
+ * the design handoff's Billing board; and the things an owner can do about it:
+ * pay for more time, or -- once, and only for a page that never paid -- take
+ * back a trial they spent testing their own page. A personal page has nothing
+ * to pay for, and is offered the switch to business instead.
  *
- * `searchParams` is a Promise in Next 15 and must be awaited, as in
- * settings/page.tsx.
+ * `searchParams` is a Promise in Next 15 and must be awaited.
  */
 export default async function BillingPage({
   searchParams,
@@ -52,138 +94,238 @@ export default async function BillingPage({
   if (!page) redirect('/app/onboarding');
 
   const now = new Date();
-  const state = planState({
-    mode: page.mode,
-    paidUntil: page.paidUntil,
-    leadsCaptured: page.leadsCaptured,
-    now,
-  });
+  const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
   const banner = paymentBanner(params.payment);
   const badge = planBadge(state);
+  const personal = state.kind === 'personal';
 
-  // A personal page pays nothing and is capped like any other, but has no
-  // billing story to tell -- so it is asked for neither number.
-  const usage = state.kind === 'personal' ? null : await getConversationUsage(page.id, now);
-  const payments = state.kind === 'personal' ? [] : await getRecentPayments(page.id);
+  // A personal page pays nothing and has no billing story to tell, so it is
+  // asked for none of these.
+  const [usage, leads, payments, account] = personal
+    ? [null, 0, [], null]
+    : await Promise.all([
+        getConversationUsage(page.id, now),
+        countLeadsThisMonth(page.id, now),
+        getRecentPayments(page.id),
+        getSignInMethods(owner.accountId),
+      ]);
 
   // Exactly the conditions the API enforces (billing.service.ts, resetTrial).
   // A button that leads to a 409 is worse than no button.
-  const canReset =
-    page.mode === 'BUSINESS' &&
-    page.paidUntil === null &&
-    page.trialResetAt === null &&
-    page.leadsCaptured >= 1;
+  const canReset = page.mode === 'BUSINESS' && page.paidUntil === null && page.trialResetAt === null && page.leadsCaptured >= 1;
+
+  const head = planHead(state, now);
+  const paidUntil = state.kind === 'paid' ? state.paidUntil : null;
+  const options: PayOption[] = PLANS.map((p) => {
+    const after = extendPaidUntil({ paidUntil: page.paidUntil, now, plan: p.plan });
+    const span = after.getTime() - now.getTime();
+    return {
+      ...p,
+      price: ringgit(PLAN_PRICES_CENTS[p.plan]),
+      afterShort: shortDateFrom(after, now),
+      afterLong: shortDate(after, true),
+      paidPct: paidUntil && span > 0 ? ((paidUntil.getTime() - now.getTime()) / span) * 100 : 0,
+    };
+  });
+  // Billplz's page for a paid bill is its receipt.
+  const billplz = process.env.BILLPLZ_BASE_URL?.replace(/\/+$/, '');
+  const trialUsed = state.kind === 'trial' ? state.used : state.kind === 'trialSpent' ? FREE_LEADS : null;
 
   return (
-    <Shell as="div" title="Billing" lede="Your plan, what this month has used, and what you have paid.">
-      {banner ? <Callout tone={banner.tone}>{banner.text}</Callout> : null}
-      <div className={panel.stack}>
-        <section className={`${panel.panel} ${styles.hero}`} aria-labelledby="plan-title">
-          <div className={styles.heroMain}>
-            <h2 id="plan-title" className={styles.kicker}>
-              Your plan <span className={styles.badge} data-tone={badge.tone}>{badge.text}</span>
-            </h2>
-            <p className={styles.summary}>{planSummary(state)}</p>
-          </div>
-          {state.kind === 'trial' || state.kind === 'trialSpent' || usage ? (
-            <div className={styles.meters}>
-              {state.kind === 'trial' || state.kind === 'trialSpent' ? (
-                <Meter label="Free leads" used={state.kind === 'trial' ? state.used : FREE_LEADS} of={FREE_LEADS} tone="kuning">
-                  {state.kind === 'trial' ? `${state.remaining} left before the capture card needs a plan.` : 'All used. Pay to keep taking numbers.'}
-                </Meter>
-              ) : null}
-              {usage ? (
-                <Meter label="Conversations this month" used={usage.used} of={usage.cap} tone="biru">
-                  {usageSummary(usage)}
-                </Meter>
-              ) : null}
-            </div>
-          ) : null}
-        </section>
+    <>
+      <PageHead title="Billing" note="Your plan, what this month has used, and what you have paid" />
+      <div className={styles.bl}>
+        {banner ? (
+          <p className={styles.banner} data-tone={banner.tone} role="status">
+            {banner.text}
+          </p>
+        ) : null}
 
-        {state.kind === 'personal' ? null : (
-          <section className={panel.panel} aria-labelledby="pay-title">
-            <h2 id="pay-title" className={panel.panelTitle}>
-              {state.kind === 'paid' ? 'Add more time' : 'Choose a plan'}
+        <div className={styles.top} data-personal={personal || undefined}>
+          <section className={styles.card} aria-labelledby="plan-title">
+            <h2 id="plan-title" className={styles.lab}>
+              Your plan
+              <span className={styles.tag} data-tone={badge.tone}>
+                {badge.text}
+              </span>
             </h2>
-            <p className={panel.text}>
-              {state.kind === 'paid'
-                ? 'Paying now adds to the time you already have.'
-                : 'Business keeps the capture card on your page, so customers can leave their number.'}
-            </p>
-            <PayButtons
-              options={[
-                {
-                  plan: 'MONTHLY',
-                  label: `Pay ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} for a month`,
-                  name: 'Monthly',
-                  price: ringgit(PLAN_PRICES_CENTS.MONTHLY),
-                  per: 'a month',
-                  note: 'Pay again when you want another month.',
-                },
-                {
-                  plan: 'ANNUAL',
-                  label: `Pay ${ringgit(PLAN_PRICES_CENTS.ANNUAL)} for a year`,
-                  name: 'Yearly',
-                  price: ringgit(PLAN_PRICES_CENTS.ANNUAL),
-                  per: 'a year',
-                  note: 'Two months free, paid once a year.',
-                  featured: true,
-                },
-              ]}
-            />
-            <ul className={styles.points}>
-              {COPY.en.pricing.business.points.map((point) => (
-                <li key={point}>{point}</li>
-              ))}
-            </ul>
-            <p className={styles.fine}>{COPY.en.pricing.payment}</p>
+
+            {head ? (
+              <>
+                <p className={styles.big}>
+                  <b>{head.big}</b>
+                  <span>{head.unit}</span>
+                </p>
+                <p className={styles.sub}>{head.sub}</p>
+              </>
+            ) : (
+              <p className={styles.sub}>{planSummary(state)}</p>
+            )}
+
+            {trialUsed !== null ? (
+              <>
+                <div className={styles.segs} aria-hidden="true">
+                  {Array.from({ length: FREE_LEADS }, (_, i) => (
+                    <span key={i} data-used={i < trialUsed || undefined} />
+                  ))}
+                </div>
+                <p className={styles.segNote}>
+                  {trialUsed} of {FREE_LEADS} used
+                </p>
+              </>
+            ) : null}
+
+            {personal ? (
+              <div className={styles.upgrade}>
+                <h3>Selling something?</h3>
+                <p>
+                  A business page can take customers&apos; phone numbers: {FREE_LEADS} free leads, then {ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month. Questions asked
+                  three or more times get their own FAQ pages, and the page appears in search results.
+                </p>
+                <UpgradeToBusiness />
+              </div>
+            ) : (
+              <PayButtons
+                options={options}
+                timeline={state.kind === 'paid' || state.kind === 'lapsed' ? { today: shortDate(now), paidUntil: paidUntil ? shortDate(paidUntil) : null } : undefined}
+              />
+            )}
+
+            {canReset ? (
+              <div className={styles.reset}>
+                <p>
+                  <b>Spent your trial testing your own page?</b> Every lead counts, including the ones you captured yourself. You can put the counter back to zero
+                  once, and only while the page has never paid.
+                </p>
+                <ResetTrial />
+              </div>
+            ) : null}
+          </section>
+
+          {usage ? (
+            <section className={`${styles.card} ${styles.use}`} aria-labelledby="month-title">
+              <h2 id="month-title" className={styles.lab}>
+                This month
+              </h2>
+              <Meter
+                label="Conversations"
+                used={usage.used}
+                of={`of ${usage.cap.toLocaleString('en-MY')}`}
+                share={usage.cap > 0 ? (usage.used / usage.cap) * 100 : 0}
+                tone={usage.used > usage.cap ? 'merah' : usage.used >= usage.cap * NEAR_SHARE ? 'kuning' : 'biru'}
+              >
+                {usage.used > usage.cap
+                  ? `Past the limit: the chat is giving a short fixed reply until ${shortDate(usageResets(now))}.`
+                  : `Resets ${shortDate(usageResets(now))}. Past the limit, the chat gives a short fixed reply.`}
+              </Meter>
+              <Meter
+                label="Leads"
+                used={leads}
+                of={state.kind === 'paid' ? 'no limit' : 'this month'}
+                share={state.kind === 'paid' ? 100 : 0}
+                tone="rose"
+              >
+                {state.kind === 'paid'
+                  ? 'The capture card stays on your page.'
+                  : state.kind === 'trial'
+                    ? `${state.remaining} of your ${FREE_LEADS} free leads left. After that, the capture card needs a plan.`
+                    : 'The capture card is off until you pay.'}
+              </Meter>
+              <div className={styles.inc}>
+                <h3 className={styles.lab}>Included in Business</h3>
+                <ul>
+                  {INCLUDED.map((item) => (
+                    <li key={item}>
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12.5l4.5 4.5L19 7.5" />
+                      </svg>
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </section>
+          ) : null}
+        </div>
+
+        {personal ? null : (
+          <section aria-labelledby="payments-title">
+            <div className={styles.h}>
+              <h2 id="payments-title">Payments</h2>
+              {account ? <span>Receipts go to {account.email}</span> : null}
+            </div>
+            {payments.length === 0 ? (
+              <div className={styles.es}>
+                <div className={styles.esArt} aria-hidden="true">
+                  <div className={styles.esRows}>
+                    <span data-tone="biru">
+                      <i />
+                      <b />
+                      <em />
+                    </span>
+                    <span data-tone="hijau">
+                      <i />
+                      <b />
+                      <em />
+                    </span>
+                    <span data-tone="amber">
+                      <i />
+                      <b />
+                      <em />
+                    </span>
+                  </div>
+                  <span className={styles.esBadge}>
+                    <svg viewBox="0 0 24 24">
+                      <path d="M3 6h18v13H3zM3 10h18" />
+                    </svg>
+                  </span>
+                </div>
+                <h3>No payments yet</h3>
+                <p>When you pay for Business, the receipt shows up here and goes to your email.</p>
+              </div>
+            ) : (
+              <table className={styles.tab}>
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">What for</th>
+                    <th scope="col">Amount</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">
+                      <span className={styles.sr}>Receipt</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.map((payment) => {
+                    const row = paymentParts(payment);
+                    return (
+                      <tr key={payment.id}>
+                        <td>{row.date}</td>
+                        <td title={row.until ? `Covers you until ${row.until}` : undefined}>{row.what}</td>
+                        <td className={styles.am}>{row.amount}</td>
+                        <td>
+                          <span className={styles.st} data-paid={row.paid || undefined}>
+                            <i aria-hidden="true" />
+                            {row.paid ? 'Paid' : 'Not completed'}
+                          </span>
+                        </td>
+                        <td>
+                          {row.paid && payment.billplzBillId && billplz ? (
+                            <a href={`${billplz}/bills/${payment.billplzBillId}`} target="_blank" rel="noopener noreferrer">
+                              Receipt
+                            </a>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
           </section>
         )}
-        {canReset ? (
-          <section className={panel.panel}>
-            <h2 className={panel.panelTitle}>Spent your trial testing your own page?</h2>
-            <p className={panel.text}>
-              Every lead counts, including the ones you captured yourself. You can put the counter
-              back to zero once, and only while the page has never paid.
-            </p>
-            <ResetTrial />
-          </section>
-        ) : null}
-        {state.kind === 'personal' ? (
-          <section className={`${panel.panel} ${styles.upgrade}`}>
-            <h2 className={panel.panelTitle}>Selling something?</h2>
-            <p className={panel.text}>
-              A business page can take customers' phone numbers: three free leads, then{' '}
-              {ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month. Questions asked three or more times get
-              their own FAQ pages, and the page appears in search results.
-            </p>
-            <UpgradeToBusiness />
-          </section>
-        ) : null}
-        {payments.length > 0 ? (
-          <section className={panel.panel}>
-            <h2 className={panel.panelTitle}>Recent payments</h2>
-            <ul className={styles.payments}>
-              {payments.map((payment) => {
-                const row = paymentParts(payment);
-                return (
-                  <li key={payment.id}>
-                    <span className={styles.payDate}>{row.date}</span>
-                    <span className={styles.payWhat}>
-                      {row.what}
-                      {row.until ? <small>Covers you until {row.until}</small> : null}
-                    </span>
-                    <span className={styles.payStatus} data-paid={row.paid}>
-                      {row.paid ? 'Paid' : 'Not completed'}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        ) : null}
       </div>
-    </Shell>
+    </>
   );
 }

@@ -8,6 +8,7 @@ import {
   type PageBackground,
   type PageStyle,
 } from '@curios/core/bento';
+import { normalizeSocial, SOCIAL_KINDS, tidySocials, type SocialKind, type Socials } from '@curios/core/socials';
 import { NoPageError } from './page.service.js';
 
 export class InvalidAppearanceError extends Error {
@@ -27,14 +28,29 @@ export interface Appearance {
   headingFont: HeadingFont;
   displayName: string;
   bio: string | null;
+  /** The filled-in profiles, by kind. */
+  socials: Socials;
+}
+
+const SOCIAL_NAMES: Record<SocialKind, string> = {
+  instagram: 'Instagram handle',
+  whatsapp: 'WhatsApp number',
+  tiktok: 'TikTok handle',
+  email: 'email address',
+  facebook: 'Facebook page name',
+  youtube: 'YouTube handle',
+};
+
+function asSocials(stored: unknown): Socials {
+  return Object.fromEntries(tidySocials(stored).map(({ kind, value }) => [kind, value]));
 }
 
 export async function updateAppearance(
   prisma: PrismaClient,
   accountId: string,
-  input: Partial<Omit<Appearance, 'bio'>> & { bio?: string | null },
+  input: Partial<Omit<Appearance, 'bio' | 'socials'>> & { bio?: string | null; socials?: Socials },
 ): Promise<Appearance> {
-  const data: Partial<Appearance> = {};
+  const data: Partial<Omit<Appearance, 'socials'>> & { socials?: Socials } = {};
   if (input.style !== undefined) data.style = input.style;
   if (input.background !== undefined) data.background = input.background;
   if (input.backgroundColor !== undefined && input.backgroundColor !== null) {
@@ -64,10 +80,31 @@ export async function updateAppearance(
     data.bio = bio === '' ? null : bio;
   }
 
-  const updated = await prisma.page.updateMany({ where: { accountId }, data });
-  if (updated.count !== 1) throw new NoPageError();
-  return prisma.page.findUniqueOrThrow({
+  if (input.socials !== undefined) {
+    // Merged into what is stored: the editor sends a field at a time. Every
+    // field is checked before anything is written, so one bad value saves none.
+    const stored = await prisma.page.findUnique({ where: { accountId }, select: { socials: true } });
+    const next = asSocials(stored?.socials);
+    for (const kind of SOCIAL_KINDS) {
+      const raw = input.socials[kind];
+      if (raw === undefined) continue;
+      const value = normalizeSocial(kind, raw);
+      if (value === null) throw new InvalidAppearanceError(`That doesn't look like a ${SOCIAL_NAMES[kind]}.`);
+      if (value === '') delete next[kind];
+      else next[kind] = value;
+    }
+    data.socials = next;
+  }
+
+  // Prisma reports zero rows for an update with nothing in it, which would read as "no page".
+  if (Object.keys(data).length > 0) {
+    const updated = await prisma.page.updateMany({ where: { accountId }, data });
+    if (updated.count !== 1) throw new NoPageError();
+  }
+  const page = await prisma.page.findUnique({
     where: { accountId },
-    select: { style: true, background: true, backgroundColor: true, accentColor: true, headingFont: true, displayName: true, bio: true },
+    select: { style: true, background: true, backgroundColor: true, accentColor: true, headingFont: true, displayName: true, bio: true, socials: true },
   });
+  if (!page) throw new NoPageError();
+  return { ...page, socials: asSocials(page.socials) };
 }

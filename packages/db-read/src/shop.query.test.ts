@@ -33,7 +33,7 @@ async function seed(handle: string, page: Record<string, unknown>) {
 
 beforeAll(async () => {
   await write.account.deleteMany({ where: { email: { endsWith: EMAIL } } });
-  openAccountId = await seed('sq-open', {});
+  openAccountId = await seed('sq-open', { shopDescription: 'Homemade cakes, baked fresh.' });
   await seed('sq-closed', { storeEnabled: false });
   await seed('sq-personal', { mode: 'PERSONAL' });
   await seed('sq-draft', { published: false });
@@ -70,6 +70,11 @@ describe('getPublicShop', () => {
   });
 
   // Review Focus 3.
+  it('carries the shop description, for above the items', async () => {
+    expect((await getPublicShop('sq-open'))?.shopDescription).toBe('Homemade cakes, baked fresh.');
+    expect((await getPublicShop('sq-order'))?.shopDescription).toBeNull();
+  });
+
   it('is null for a closed shop, a personal page, and an unpublished page', async () => {
     expect(await getPublicShop('sq-closed')).toBeNull();
     expect(await getPublicShop('sq-personal')).toBeNull();
@@ -101,6 +106,6 @@ describe('getOwnerStore', () => {
   it('returns every item, unavailable ones included, with the settings', async () => {
     const store = await getOwnerStore(openAccountId);
     expect(store?.items.map((item) => [item.name, item.available])).toEqual([['A', true], ['B', false], ['C', true]]);
-    expect(store?.settings).toMatchObject({ enabled: true, pickupEnabled: true, paymentQrKey: 'qr/p/x.png', tileSize: null });
+    expect(store?.settings).toMatchObject({ enabled: true, shopDescription: 'Homemade cakes, baked fresh.', pickupEnabled: true, paymentQrKey: 'qr/p/x.png', tileSize: null });
   });
 });

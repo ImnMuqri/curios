@@ -43,6 +43,27 @@ beforeEach(async () => {
 });
 
 describe('captureLead', () => {
+  it('flags the lead that used the last free one, and only that one', async () => {
+    await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 2 } });
+    const add = aQueue();
+
+    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+
+    expect(add.mock.calls[0]?.[1]).toMatchObject({ lastFreeLead: true });
+  });
+
+  it('does not flag a lead before the last free one, nor one on a paid page', async () => {
+    await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 1 } });
+    const add = aQueue();
+    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+    expect(add.mock.calls[0]?.[1]).not.toHaveProperty('lastFreeLead');
+
+    await prisma.page.update({ where: { id: pageId }, data: { leadsCaptured: 2, paidUntil: new Date('2099-01-01T00:00:00.000Z') } });
+    const paid = aQueue();
+    await captureLead({ prisma, queue: { add: paid } }, { conversationId: await aQualifyingConversation(), phone: '0129999999' });
+    expect(paid.mock.calls[0]?.[1]).not.toHaveProperty('lastFreeLead');
+  });
+
   it('stores the number in one form and queues the extraction', async () => {
     const add = aQueue();
 

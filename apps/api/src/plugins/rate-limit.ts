@@ -138,6 +138,24 @@ export function chatPerPageLimit(redis: IORedis): RateLimitPluginOptions {
   };
 }
 
+/**
+ * Per owner, for "Ask your page" on Facts & sources. Each question can be a
+ * model call that no conversation cap counts, so this is what bounds it.
+ */
+export function chatTestPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('chat-test-account:'),
+    max: limit('RATE_LIMIT_CHAT_TEST_PER_ACCOUNT', 60),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => request.account?.id ?? caller(request),
+    errorResponseBuilder: tooMany(CHAT_MESSAGE),
+  };
+}
+
 /** Per visitor, across every page: stops spraying where no one page fills up. */
 export function chatPerIpLimit(redis: IORedis): RateLimitPluginOptions {
   return {

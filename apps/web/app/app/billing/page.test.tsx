@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 
 const getOwnerPage = vi.fn();
 const getConversationUsage = vi.fn();
 const getRecentPayments = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getConversationUsage, getRecentPayments }));
+const countLeadsThisMonth = vi.fn();
+const getSignInMethods = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getConversationUsage, getRecentPayments, countLeadsThisMonth, getSignInMethods }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -23,7 +25,7 @@ vi.mock('next/navigation', () => ({ redirect }));
 
 // Both client components are recorded rather than rendered: these tests are
 // about what the page decides to offer, not about what those two do with it.
-const PayButtons = vi.fn((_props: { options: { plan: string; label: string }[] }) => null);
+const PayButtons = vi.fn((_props: { options: Record<string, unknown>[]; timeline?: { today: string; paidUntil: string | null } }) => null);
 vi.mock('./pay-buttons.js', () => ({ PayButtons }));
 const ResetTrial = vi.fn(() => null);
 vi.mock('./reset-button.js', () => ({ ResetTrial }));
@@ -43,6 +45,7 @@ const page: OwnerPage = {
   leadsCaptured: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
+  avatarKey: null,
 };
 
 async function renderWith(owned: OwnerPage | null, payment?: string) {
@@ -61,6 +64,9 @@ describe('BillingPage', () => {
     getRecentPayments.mockReset();
     getConversationUsage.mockResolvedValue({ used: 12, cap: 200, period: '2026-09' });
     getRecentPayments.mockResolvedValue([]);
+    countLeadsThisMonth.mockReset();
+    countLeadsThisMonth.mockResolvedValue(2);
+    getSignInMethods.mockResolvedValue({ email: 'nadia@example.com' });
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
   });
 
@@ -72,11 +78,40 @@ describe('BillingPage', () => {
     // screen it wraps, this one included, so a second one here would nest.
     expect(screen.queryByRole('main')).toBeNull();
     expect(PayButtons).toHaveBeenCalledTimes(1);
-    // Each a plan card now, the yearly one featured; the button words still say exactly what happens.
     expect(PayButtons.mock.calls[0]?.[0].options).toEqual([
-      expect.objectContaining({ plan: 'MONTHLY', label: 'Pay RM39 for a month', price: 'RM39', per: 'a month' }),
-      expect.objectContaining({ plan: 'ANNUAL', label: 'Pay RM390 for a year', price: 'RM390', per: 'a year', featured: true }),
+      expect.objectContaining({ plan: 'MONTHLY', name: 'Monthly', price: 'RM49', note: 'One month at a time', period: 'a month' }),
+      expect.objectContaining({ plan: 'ANNUAL', name: 'Yearly', price: 'RM490', note: 'Paid once a year', period: 'a year', save: '2 months free' }),
     ]);
+  });
+
+  it('counts the days a paid plan has left, and draws the line to where paying takes it', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-15T04:00:00.000Z'), toFake: ['Date'] });
+    try {
+      await renderWith({ ...page, paidUntil: new Date('2026-11-14T04:00:00.000Z') });
+    } finally {
+      vi.useRealTimers();
+    }
+
+    expect(screen.getByText('30')).toBeInTheDocument();
+    expect(screen.getByText('days left')).toBeInTheDocument();
+    expect(screen.getByText('14 Nov 2026')).toBeInTheDocument();
+    expect(screen.getByText(/no auto-renew/i)).toBeInTheDocument();
+    const props = PayButtons.mock.calls[0]?.[0];
+    expect(props?.timeline).toEqual({ today: '15 Oct', paidUntil: '14 Nov' });
+    // Paying adds to the time already paid for.
+    expect(props?.options[0]).toMatchObject({ afterShort: '14 Dec', afterLong: '14 Dec 2026' });
+    expect(props?.options[1]).toMatchObject({ afterShort: '14 Nov 2027' });
+    expect(Number(props?.options[0]?.paidPct)).toBeCloseTo(50, 0);
+  });
+
+  it('counts the free leads left on a trial, one segment each', async () => {
+    await renderWith({ ...page, leadsCaptured: 1 });
+
+    expect(screen.getByText('Business · free trial')).toBeInTheDocument();
+    expect(screen.getByText('free leads left').previousSibling).toHaveTextContent('2');
+    expect(screen.getByText('1 of 3 used')).toBeInTheDocument();
+    // No paid-until, so no line.
+    expect(PayButtons.mock.calls[0]?.[0].timeline).toBeUndefined();
   });
 
   it('offers nothing to pay for on a personal page', async () => {
@@ -99,31 +134,79 @@ describe('BillingPage', () => {
   it('shows this month’s usage against the cap', async () => {
     await renderWith(page);
 
-    expect(screen.getByText('12 of 200 conversations used this month.')).toBeInTheDocument();
+    const month = screen.getByRole('region', { name: 'This month' });
+    expect(within(month).getByText('12')).toBeInTheDocument();
+    expect(within(month).getByText(/of 200/)).toBeInTheDocument();
+    expect(within(month).getByText(/past the limit, the chat gives a short fixed reply/i)).toBeInTheDocument();
     expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
   });
 
-  it('lists what has been paid', async () => {
+  it('says what happens past the cap, because the chat has already changed', async () => {
+    getConversationUsage.mockResolvedValue({ used: 201, cap: 200, period: '2026-09' });
+    await renderWith(page);
+
+    expect(screen.getByText(/past the limit: the chat is giving a short fixed reply until/i)).toBeInTheDocument();
+  });
+
+  it('counts this month’s leads, and says the capture card stays on a paid page', async () => {
+    await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z') });
+
+    const month = screen.getByRole('region', { name: 'This month' });
+    expect(within(month).getByText('2')).toBeInTheDocument();
+    expect(within(month).getByText('no limit')).toBeInTheDocument();
+    expect(within(month).getByText('The capture card stays on your page.')).toBeInTheDocument();
+    expect(countLeadsThisMonth).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('lists what has been paid, with a receipt for a paid one', async () => {
+    process.env.BILLPLZ_BASE_URL = 'https://www.billplz-sandbox.com/';
     getRecentPayments.mockResolvedValue([
       {
         id: 'pay-1',
         plan: 'MONTHLY',
-        amountCents: 3900,
+        amountCents: 4900,
         status: 'PAID',
         paidAt: new Date('2026-09-11T20:00:00.000Z'),
         grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
+        billplzBillId: 'abc123',
         createdAt: new Date('2026-09-11T10:00:00.000Z'),
+      },
+      {
+        id: 'pay-2',
+        plan: 'MONTHLY',
+        amountCents: 4900,
+        status: 'PENDING',
+        paidAt: null,
+        grantedUntil: null,
+        billplzBillId: 'def456',
+        createdAt: new Date('2026-09-10T10:00:00.000Z'),
       },
     ]);
 
+    try {
+      await renderWith(page);
+    } finally {
+      delete process.env.BILLPLZ_BASE_URL;
+    }
+
+    expect(screen.getByText('Receipts go to nadia@example.com')).toBeInTheDocument();
+    const paid = screen.getByText('12 Sep 2026').closest('tr')!;
+    expect(paid).toHaveTextContent('Business, 1 month');
+    expect(paid).toHaveTextContent('RM49');
+    expect(paid).toHaveTextContent('Paid');
+    expect(within(paid).getByRole('link', { name: 'Receipt' })).toHaveAttribute('href', 'https://www.billplz-sandbox.com/bills/abc123');
+    // A bill never paid has no receipt.
+    const open = screen.getByText('10 Sep 2026').closest('tr')!;
+    expect(open).toHaveTextContent('Not completed');
+    expect(within(open).queryByRole('link')).toBeNull();
+  });
+
+  it('says there are no payments yet', async () => {
     await renderWith(page);
 
-    // A table row: when, what, and whether it went through.
-    const row = screen.getByText('12 September 2026').closest('li')!;
-    expect(row).toHaveTextContent('RM39 for a month');
-    expect(row).toHaveTextContent('Covers you until 12 October 2026');
-    expect(row).toHaveTextContent('Paid');
+    expect(screen.getByText('No payments yet')).toBeInTheDocument();
   });
+
 
   it('offers the reset to a page that never paid and spent leads testing itself', async () => {
     await renderWith({ ...page, leadsCaptured: 3 });
@@ -164,6 +247,7 @@ describe('BillingPage', () => {
     // Nothing to show, so nothing to ask the database for.
     expect(getConversationUsage).not.toHaveBeenCalled();
     expect(getRecentPayments).not.toHaveBeenCalled();
+    expect(countLeadsThisMonth).not.toHaveBeenCalled();
   });
 
   it('offers a personal page the upgrade, and says what changes', async () => {

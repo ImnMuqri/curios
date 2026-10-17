@@ -82,6 +82,29 @@ describe('ShopView', () => {
     }
   });
 
+  // The Store editor's preview: a modal there would cover the editor itself.
+  it('opens the sheet in place, not as a modal, when asked to', () => {
+    const showModal = vi.fn();
+    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, writable: true, value: showModal });
+    try {
+      render(<ShopView {...base} initialItemId="cake" sheet="inline" />);
+      expect(showModal).not.toHaveBeenCalled();
+      const dialog = screen.getByRole('dialog');
+      expect(dialog).toHaveAttribute('open');
+      expect(dialog).toHaveAttribute('data-inline');
+    } finally {
+      delete (HTMLDialogElement.prototype as unknown as Record<string, unknown>).showModal;
+    }
+  });
+
+  it('says what the shop is about, above the terms, when the owner has written it', () => {
+    const { unmount } = render(<ShopView {...base} description="Homemade cakes, baked fresh." />);
+    expect(screen.getByText('Homemade cakes, baked fresh.')).toBeInTheDocument();
+    unmount();
+    const { container } = render(<ShopView {...base} description={null} />);
+    expect(container.querySelector('p')).toBeNull();
+  });
+
   it('closes the sheet from its Close button without adding anything', async () => {
     const user = userEvent.setup();
     render(<ShopView {...base} initialItemId="cookie" />);

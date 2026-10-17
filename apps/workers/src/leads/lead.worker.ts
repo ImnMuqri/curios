@@ -1,6 +1,6 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
-import { LEAD_QUEUE, MAIL_QUEUE, type LeadJobData, type MailJobData } from '@curios/core';
+import { FREE_LEADS, LEAD_QUEUE, MAIL_QUEUE, planState, trialSpentMail, type LeadJobData, type MailJobData } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import type { Gateway } from '@curios/gateway';
 import { QUEUE_CONCURRENCY } from '../queues.js';
@@ -14,6 +14,8 @@ export interface LeadJobDeps {
   prisma: PrismaClient;
   gateway: Gateway;
   mailQueue: MailQueueLike;
+  /** The dashboard's address, for the email's "See in Leads". */
+  appUrl?: string;
   log?: { warn: (details: object, message: string) => void };
 }
 
@@ -33,7 +35,17 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
     select: {
       id: true,
       phone: true,
-      page: { select: { displayName: true, account: { select: { email: true } } } },
+      createdAt: true,
+      page: {
+        select: {
+          displayName: true,
+          notifyLeads: true,
+          mode: true,
+          paidUntil: true,
+          leadsCaptured: true,
+          account: { select: { email: true } },
+        },
+      },
       conversation: {
         select: {
           messages: { select: { role: true, content: true }, orderBy: { createdAt: 'asc' } },
@@ -76,18 +88,38 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
     data: { slots: { ...slots }, score },
   });
 
-  const mail = buildNotification({
-    displayName: lead.page.displayName,
-    phone: lead.phone,
-    transcript,
-    slots,
-  });
+  // Switched off in Settings ("Email me when"): the lead is saved and
+  // scored above, and waits in Leads; only the email is skipped.
+  if (lead.page.notifyLeads) {
+    // On a free trial, which free lead this is, so the email can say how many
+    // are left before the capture card stops.
+    const plan = planState({ mode: lead.page.mode, paidUntil: lead.page.paidUntil, leadsCaptured: lead.page.leadsCaptured, now: new Date() });
+    const onTrial = plan.kind === 'trial' || plan.kind === 'trialSpent';
 
-  await deps.mailQueue.add(MAIL_QUEUE, {
-    to: lead.page.account.email,
-    subject: mail.subject,
-    text: mail.text,
-  });
+    const mail = buildNotification({
+      displayName: lead.page.displayName,
+      phone: lead.phone,
+      transcript,
+      slots,
+      appUrl: deps.appUrl,
+      leftAt: lead.createdAt,
+      freeLead: onTrial ? { nth: Math.min(lead.page.leadsCaptured, FREE_LEADS), of: FREE_LEADS } : null,
+    });
+    await deps.mailQueue.add(MAIL_QUEUE, {
+      to: lead.page.account.email,
+      subject: mail.subject,
+      text: mail.text,
+      html: mail.html,
+    });
+  }
+
+  // This lead used the last free one (decided by the API from the count its
+  // own increment produced): "Your page stopped taking numbers". A plan
+  // email, so it goes whether or not the lead email is on.
+  if (data.lastFreeLead) {
+    const spent = trialSpentMail({ displayName: lead.page.displayName, appUrl: deps.appUrl ?? 'http://localhost:3000' });
+    await deps.mailQueue.add(MAIL_QUEUE, { to: lead.page.account.email, ...spent });
+  }
 }
 
 export function createLeadWorker(deps: {
@@ -95,6 +127,7 @@ export function createLeadWorker(deps: {
   prisma: PrismaClient;
   gateway: Gateway;
   mailQueue: MailQueueLike;
+  appUrl?: string;
   log?: { warn: (details: object, message: string) => void };
 }): Worker<LeadJobData> {
   return new Worker<LeadJobData>(
@@ -105,6 +138,7 @@ export function createLeadWorker(deps: {
           prisma: deps.prisma,
           gateway: deps.gateway,
           mailQueue: deps.mailQueue,
+          appUrl: deps.appUrl,
           log: deps.log,
         },
         job.data,

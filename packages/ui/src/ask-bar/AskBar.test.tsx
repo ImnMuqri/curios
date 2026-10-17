@@ -113,7 +113,8 @@ describe('AskBar', () => {
   // in this package's vitest config).
   it('reads its border and press-state tint from BentoPage-supplied variables, with a fallback', () => {
     const css = readFileSync(join(import.meta.dirname, 'AskBar.module.css'), 'utf8');
-    expect(css).toMatch(/border:[^;]*var\(--ask-border,\s*var\(--biru\)\)/);
+    // The ring is an inset shadow, so it adds no width to the pill.
+    expect(css).toMatch(/box-shadow:[^;]*inset 0 0 0 1\.5px var\(--ask-border,\s*var\(--biru\)\)/s);
     expect(css).toMatch(/background:\s*var\(--ask-tint,\s*var\(--biru-muda\)\)/);
   });
 });

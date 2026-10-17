@@ -1,70 +1,151 @@
 /*
- * Shared by the five screens outside the dashboard (sign in, sign up, forgot,
- * reset, verify). They are one screen with five contents, so they get one
- * stylesheet rather than five near-copies that drift apart.
+ * Shared by the screens outside the dashboard (sign in, sign up, forgot,
+ * reset, verify, and claiming a page). They are one screen with several
+ * contents, so they get one stylesheet rather than near-copies that drift.
  *
- * The look is the landing page's (tokens from _landing/landing-tokens.css,
- * scoped by AuthShell's data-landing): heavy Bricolage heading, Plex Sans
- * body, pill fields and buttons, and a biru band beside the form on wide
- * screens. The product's own Field, Button and Callout components keep their
+ * From the design handoff's SignIn and SignUp boards: the form on paper
+ * beside a film panel (_auth/film.module.css), Bricolage 800 for the title,
+ * IBM Plex Sans for everything else, white fields with a soft edge, a biru
+ * pill to submit. The product's Field, Button and Callout keep their
  * behaviour; only their look is restyled inside .content.
  */
-
 .auth {
-  display: grid;
-  min-height: 100svh;
+  display: flex;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- The form side ---- */
 
 .panel {
   display: flex;
+  flex: 1 1 50%;
   flex-direction: column;
-  width: 100%;
-  max-width: 480px;
-  margin: 0 auto;
-  padding: var(--l-space-5) var(--l-gutter) var(--l-space-8);
+  min-width: 0;
+  padding: 28px 20px;
 }
 
 .brand {
-  display: inline-flex;
+  --l-wordmark: 28px;
   align-self: flex-start;
-  margin-top: 2px;
   color: var(--ink);
   text-decoration: none;
 }
 
 .body {
-  margin: auto 0;
-  padding-top: var(--l-space-8);
+  width: 100%;
+  max-width: 400px;
+  margin: auto;
+  padding: clamp(12px, 3vh, 40px) 0;
 }
 
 .title {
   margin: 0;
-  color: var(--l-biru-800);
   font-family: var(--font-display);
-  font-size: var(--l-step-5);
-  font-weight: var(--l-weight-display);
-  line-height: var(--l-leading-snug);
-  letter-spacing: var(--l-tracking-heading);
-  text-wrap: balance;
+  font-size: clamp(2rem, 5.2vh, 2.75rem);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.035em;
 }
 
 .lede {
-  margin: var(--l-space-3) 0 0;
-  color: var(--l-text-soft);
+  margin: 10px 0 0;
+  color: var(--ink-soft);
 }
 
 .content {
-  margin-top: var(--l-space-6);
+  margin-top: clamp(18px, 3.6vh, 32px);
 }
 
-/* Fields: a quiet label, then a pill input with the product's stamped 1.5px edge. */
-.content label {
-  margin-bottom: var(--l-space-2);
+/* The handle typed on the landing page, waiting to be filled in after sign-up. */
+.claimChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 6px 14px 6px 6px;
+  border-radius: 999px;
+  background: var(--biru-muda);
+  color: var(--l-biru-800);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.claimChip i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--biru);
+  color: var(--paper);
+  font-size: 13px;
+  font-style: normal;
+}
+
+.google {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--line);
   color: var(--ink);
-  font-family: var(--l-font-body);
-  font-size: var(--text-base);
+  font-weight: 600;
+  text-decoration: none;
+  transition: box-shadow 160ms ease;
+}
+
+.google:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  color: var(--ink);
+}
+
+.or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: clamp(12px, 2.4vh, 22px) 0;
+  color: var(--tj-ink-500);
+  font-size: 13px;
+}
+
+.or::before,
+.or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Fields: the label above, a white field with a soft edge that turns biru on focus. */
+.content form > div {
+  margin-bottom: 14px;
+}
+
+.content label {
+  margin-bottom: 6px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 0;
   text-transform: none;
@@ -73,112 +154,76 @@
 .content input[type='email'],
 .content input[type='password'],
 .content input[type='text'] {
-  min-height: 56px;
-  padding: 0 var(--l-space-5);
-  border: 1.5px solid var(--line);
-  border-radius: var(--l-radius-pill);
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
   background: var(--card);
-  font-family: var(--l-font-body);
-  font-size: var(--l-step-0);
+  box-shadow: inset 0 0 0 1.5px var(--edge);
+  font-family: inherit;
+  font-size: 16px;
+  transition: box-shadow 160ms ease;
 }
 
-.content input:focus {
-  border-color: var(--biru);
+.content input:focus,
+.content input:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px var(--biru-muda);
+  box-shadow: inset 0 0 0 2px var(--biru);
 }
 
-/* The show/hide control sits inside the pill, in the page's own voice. */
 .content input + button {
-  border-radius: var(--l-radius-pill);
-  font-family: var(--l-font-body);
-  font-size: var(--text-base);
-  font-weight: 600;
-  letter-spacing: 0;
-  text-transform: capitalize;
-  color: var(--biru);
+  right: 6px;
 }
 
-/* The submit: the landing page's primary pill, full width. */
+/* A second way on, as an outlined pill (verify's "Sign in"). */
+.alternative {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 52px;
+  margin-top: 16px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  color: var(--ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.alternative:hover {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  color: var(--ink);
+}
+
+/* A link beside a field's label: "Forgot your password?". */
+.aside {
+  color: var(--biru);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+/* The submit: a biru pill, full width. */
 .content button[type='submit'] {
   width: 100%;
-  min-height: 56px;
-  margin-top: var(--l-space-2);
+  min-height: 54px;
+  margin-top: 8px;
   border: 0;
-  border-radius: var(--l-radius-pill);
+  border-radius: 999px;
   background: var(--biru);
   color: var(--paper);
-  font-family: var(--l-font-body);
-  font-size: var(--l-step-0);
+  font-family: inherit;
+  font-size: 16px;
   font-weight: 600;
-  transition:
-    background var(--l-dur-press) ease,
-    transform var(--l-dur-press) ease;
+  transition: background-color 160ms ease;
 }
 
 .content button[type='submit']:hover {
   background: var(--l-biru-700);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .content button[type='submit']:active {
-    transform: scale(0.98);
-  }
-}
-
-/* The other way in (Google): an outlined pill after an "or" rule. */
-.alternative {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 56px;
-  margin-top: calc(var(--l-space-7) + 4px);
-  border-radius: var(--l-radius-pill);
-  box-shadow: inset 0 0 0 1.5px var(--line);
-  color: var(--ink);
-  font-size: var(--l-step-0);
-  font-weight: 600;
-  text-decoration: none;
-  transition: background var(--l-dur-press) ease;
-}
-
-.alternative:hover {
-  background: var(--surface);
-}
-
-.alternative::before {
-  content: 'or';
-  position: absolute;
-  top: calc(-1 * var(--l-space-7) + 6px);
-  left: 0;
-  right: 0;
-  color: var(--l-text-soft);
-  font-size: var(--text-base);
-  font-weight: 500;
-  text-align: center;
-  background: linear-gradient(var(--line), var(--line)) left center / calc(50% - 24px) 1px no-repeat,
-    linear-gradient(var(--line), var(--line)) right center / calc(50% - 24px) 1px no-repeat;
-}
-
-.footnote {
-  margin-top: var(--l-space-5);
-  font-size: var(--text-base);
-  color: var(--l-text-soft);
-}
-
-/* A link that belongs to the field above it, not to the whole form. */
-.inline {
-  display: inline-block;
-  margin: -6px 0 var(--l-space-4) var(--l-space-5);
-  color: var(--biru);
-  font-size: var(--text-base);
-  font-weight: 500;
-}
-
 .switch {
-  margin: var(--l-space-6) 0 0;
-  color: var(--l-text-soft);
+  margin: 24px 0 0;
+  color: var(--ink-soft);
+  font-size: 15px;
   text-align: center;
 }
 
@@ -187,105 +232,57 @@
   font-weight: 600;
 }
 
-/* ---- The band beside it, wide screens only ---- */
-
-.aside {
-  display: none;
+/* "Check your email": the envelope, then where it went. */
+.mail {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 22px;
+  border-radius: 24px;
+  background: var(--biru-muda);
 }
 
-@media (min-width: 960px) {
+.mail svg {
+  fill: none;
+  stroke: var(--biru);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sentTo {
+  margin: 18px 0 0;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 14.5px;
+}
+
+.footnote {
+  margin-top: 20px;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+
+/* A link that belongs to the field above it, not to the whole form. */
+.inline {
+  display: inline-block;
+  margin: -6px 0 16px;
+  color: var(--biru);
+  font-size: 14px;
+  font-weight: 500;
+}
+
+@media (min-width: 981px) {
   .auth {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    height: 100dvh;
+    min-height: 560px;
+    overflow: hidden;
   }
 
   .panel {
-    padding-top: var(--l-space-6);
-  }
-
-  .aside {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: var(--l-space-7);
-    margin: var(--l-space-3);
-    padding: var(--l-space-8) var(--l-space-7);
-    overflow: hidden;
-    border-radius: var(--l-radius-card);
-  }
-
-  .asideTitle {
-    max-width: 14ch;
-    margin: 0;
-    color: var(--band-head);
-    font-family: var(--font-display);
-    font-size: var(--l-step-3);
-    font-weight: var(--l-weight-display);
-    line-height: var(--l-leading-tight);
-    letter-spacing: var(--l-tracking-display);
-    text-align: center;
-  }
-
-  /* Sized from the screen's height, so the whole phone always fits the band. */
-  .asidePhone {
-    width: min(270px, calc((100svh - 260px) * 9 / 19));
-  }
-
-  /*
-   * The top of the page, cover and logo first, as a visitor lands on it; the
-   * latest question and answer float at the foot of the screen like the newest
-   * messages of a chat, so the answer always shows.
-   */
-  .asideScreen {
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    height: 100%;
-    overflow: hidden;
-  }
-
-  .asideScreen > [data-bento-page] {
-    flex: none;
-  }
-
-  .asideScreen > [data-bento-page] {
-    display: flex;
-    flex-direction: column;
-    min-height: 100%;
-    margin: 0;
-    padding: 12px 14px 26px;
-    border-radius: 0;
-  }
-
-  /* A phone mockup draws the page at a phone's width, where the public page's cover takes too much of the screen: shorter here. */
-  .asideScreen [data-cover-photo] {
-    height: 120px;
-  }
-
-  .asideThread {
-    position: sticky;
-    bottom: 14px;
-    z-index: 1;
-    margin-top: auto;
-    --bubble-max: 85%;
-    --bubble-width: fit-content;
-    --bubble-margin: 8px 0 0;
-    --bubble-padding: 10px 14px;
-    --bubble-radius: 18px 18px 18px 6px;
-    --bubble-bg: var(--ask-tint, var(--biru-muda));
-    --bubble-size: var(--text-base);
-    --bubble-leading: 1.5;
-  }
-
-  .asideAsked {
-    margin: 0 0 0 auto;
-    width: fit-content;
-    max-width: 85%;
-    padding: 10px 14px;
-    border-radius: 18px 18px 6px 18px;
-    background: var(--card);
-    box-shadow: 0 2px 8px var(--soft-shadow);
-    font-size: var(--text-base);
-    line-height: 1.5;
+    padding: clamp(20px, 4vh, 36px) 56px;
+    overflow-y: auto;
   }
 }

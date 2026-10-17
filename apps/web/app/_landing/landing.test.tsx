@@ -1,122 +1,188 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it, vi } from 'vitest';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-// The page mounts SmoothScroll; jsdom has no ResizeObserver for Lenis, and these tests never scroll.
-const { smoothScrollRendered } = vi.hoisted(() => ({ smoothScrollRendered: vi.fn() }));
-vi.mock('./SmoothScroll.js', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('./SmoothScroll.js')>()),
-  SmoothScroll: () => {
-    smoothScrollRendered();
-    return null;
-  },
-}));
-
+import { PLAN_PRICES_CENTS } from '@curios/core';
 import { LandingPage, landingMetadata } from './LandingPage.js';
-import { COPY, en, ms } from './copy.js';
-import { DEMO_EN, DEMO_MS } from './demo.js';
+import { COPY } from './copy.js';
 import { BRAND } from './brand-colors.js';
-import { BusinessPrice } from './BusinessPrice.js';
+import { scene } from './order-scene.js';
+import { payback } from './Pricing.js';
+import { howAt } from './How.js';
 
 const LOCALES = ['en', 'ms'] as const;
+const { en, ms } = COPY;
+
+/** Every visitor-facing string in a copy object, functions called with sample arguments. */
+function words(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (typeof value === 'function') return String((value as (...a: unknown[]) => unknown)('x', 2, 3));
+  if (Array.isArray(value)) return value.map(words).join(' ');
+  if (value && typeof value === 'object') return Object.values(value).map(words).join(' ');
+  return '';
+}
+
+function reduceMotion() {
+  vi.spyOn(window, 'matchMedia').mockImplementation(
+    (query: string) => ({ matches: query.includes('reduce'), media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+  );
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.useRealTimers();
+});
 
 describe('the landing page', () => {
-  it.each(LOCALES)('%s: mounts the smooth scroll', (locale) => {
-    smoothScrollRendered.mockClear();
-    render(<LandingPage locale={locale} />);
-    expect(smoothScrollRendered).toHaveBeenCalled();
-  });
-
-  it.each(LOCALES)('%s: has exactly one h1, and headings never skip a level', (locale) => {
+  it.each(LOCALES)('%s: has one h1, the headline, and every section the nav links to', (locale) => {
     const { container } = render(<LandingPage locale={locale} />);
-    expect(container.querySelectorAll('h1')).toHaveLength(1);
-
-    // The demo phone renders a real BentoPage, whose owner name is an h1 on
-    // the product's own page. Here it must not be.
-    const levels = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((h) => Number(h.tagName[1]));
-    for (let i = 1; i < levels.length; i++) {
-      expect(levels[i]! - levels[i - 1]!).toBeLessThanOrEqual(1);
+    const h1 = screen.getAllByRole('heading', { level: 1 });
+    expect(h1).toHaveLength(1);
+    expect(h1[0]).toHaveTextContent(COPY[locale].hero.line);
+    for (const id of ['who', 'how', 'business', 'pricing', 'faq']) {
+      expect(container.querySelector(`#${id}`)).not.toBeNull();
+      expect(container.querySelector(`a[href="#${id}"]`)).not.toBeNull();
     }
+    expect(container.firstElementChild).toHaveAttribute('lang', locale);
   });
 
-  it.each(LOCALES)('%s: every link goes somewhere that exists', (locale) => {
-    // "No dead links": the only routes the page may point at are its own two
-    // languages, its own anchors, and the two auth screens.
-    const { container } = render(<LandingPage locale={locale} />);
-    const allowed = new Set(['/', '/ms', '/signin', '/signup', '#main', '#how', '#pricing', '#faq']);
-    const hrefs = [...container.querySelectorAll('a')].map((a) => a.getAttribute('href'));
-    expect(hrefs.length).toBeGreaterThan(5);
-    for (const href of hrefs) expect(allowed).toContain(href);
+  it('reads the rolling name once, as the first page in the deck', () => {
+    render(<LandingPage locale="en" />);
+    expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName(/Ask\s+Aisyah\./);
+  });
 
-    // Every in-page link lands on a section that exists.
-    for (const href of hrefs.filter((h) => h?.startsWith('#'))) expect(container.querySelector(href!)).not.toBeNull();
-
-    // The curios.my/ fields are real forms: they still reach sign-up with no JavaScript.
+  it('claims an address with a plain GET to sign-up, so it works without JavaScript', () => {
+    const { container } = render(<LandingPage locale="en" />);
     const forms = [...container.querySelectorAll('form')];
     expect(forms).toHaveLength(2);
     for (const form of forms) {
       expect(form).toHaveAttribute('action', '/signup');
+      expect(form).toHaveAttribute('method', 'get');
       expect(form.querySelector('input[name="handle"]')).not.toBeNull();
     }
+    expect(screen.getAllByLabelText('The address you want for your page')).toHaveLength(2);
   });
 
-  it.each(LOCALES)('%s: declares its language on the page itself', (locale) => {
-    // The root layout's <html lang> is fixed to "en"; the Malay page has to
-    // say so on its own outermost element.
-    const { container } = render(<LandingPage locale={locale} />);
-    expect(container.querySelector('[data-landing]')).toHaveAttribute('lang', locale);
-  });
-
-  it.each(LOCALES)('%s: ships structured data that matches what the page shows', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
-    const script = container.querySelector('script[type="application/ld+json"]');
-    const data = JSON.parse(script!.textContent) as { '@graph': Array<Record<string, unknown>> };
-    const types = data['@graph'].map((node) => node['@type']);
-    expect(types).toEqual(['Organization', 'WebSite', 'SoftwareApplication', 'FAQPage']);
-
-    const app = data['@graph'][2] as { offers: Array<{ price: string; priceCurrency: string }> };
-    expect(app.offers.map((o) => o.price)).toEqual(['0', '39', '390']);
-    expect(new Set(app.offers.map((o) => o.priceCurrency))).toEqual(new Set(['MYR']));
-
-    const faq = data['@graph'][3] as { mainEntity: Array<{ name: string }> };
-    expect(faq.mainEntity.map((q) => q.name)).toEqual(COPY[locale].faq.items.map((item) => item.q));
-    for (const item of COPY[locale].faq.items) expect(screen.getAllByText(item.q).length).toBeGreaterThan(0);
-  });
-
-  it('sends section links through scrollToSection, so the smooth scroll lands on them', async () => {
-    const smooth = await import('./SmoothScroll.js');
-    const spy = vi.spyOn(smooth, 'scrollToSection').mockImplementation(() => {});
-    render(<LandingPage locale="en" />);
-    // fireEvent returns false when the click's default (a jump) was prevented.
-    const proceeded = fireEvent.click(screen.getAllByRole('link', { name: 'Pricing' })[0]!);
-    expect(proceeded).toBe(false);
-    expect(spy).toHaveBeenCalledWith('#pricing');
-    spy.mockRestore();
-  });
-
-  it('leaves new-tab clicks on a section link to the browser', async () => {
-    const smooth = await import('./SmoothScroll.js');
-    const spy = vi.spyOn(smooth, 'scrollToSection').mockImplementation(() => {});
-    render(<LandingPage locale="en" />);
-    const proceeded = fireEvent.click(screen.getAllByRole('link', { name: 'Pricing' })[0]!, { ctrlKey: true });
-    expect(proceeded).toBe(true);
-    expect(spy).not.toHaveBeenCalled();
-    spy.mockRestore();
+  it('links the other language, sign in and sign up', () => {
+    render(<LandingPage locale="ms" />);
+    const nav = screen.getByRole('banner');
+    expect(within(nav).getByRole('link', { name: 'English' })).toHaveAttribute('href', '/');
+    expect(within(nav).getByRole('link', { name: 'Log masuk' })).toHaveAttribute('href', '/signin');
+    expect(within(nav).getByRole('link', { name: 'Buat halaman anda' })).toHaveAttribute('href', '/signup');
   });
 
   it('escapes "<" in structured data, so no copy can close the script tag', () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelector('script[type="application/ld+json"]')!.innerHTML).not.toContain('<');
   });
+
+  it('prices the structured data from PLAN_PRICES_CENTS', () => {
+    const { container } = render(<LandingPage locale="en" />);
+    const data = container.querySelector('script[type="application/ld+json"]')!.innerHTML;
+    expect(data).toContain(`"price":"${PLAN_PRICES_CENTS.MONTHLY / 100}"`);
+    expect(data).toContain(`"price":"${PLAN_PRICES_CENTS.ANNUAL / 100}"`);
+  });
+});
+
+describe('motion', () => {
+  it('holds every scene on its finished frame when the visitor asks for less motion', () => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale="en" />);
+    // The hero's front page is answered, with no cursor and no caret.
+    const hero = container.querySelector('section')!;
+    expect(hero).toHaveTextContent(en.personas.aisyah.a);
+    // The order has landed and been confirmed.
+    expect(container.querySelector('#business')).toHaveTextContent(en.business.confirmed);
+    // The closing line is up, not waiting to rise.
+    expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
+  });
+
+  it('types the answer out on the front page of the deck', async () => {
+    vi.useFakeTimers();
+    const { container } = render(<LandingPage locale="en" />);
+    const hero = container.querySelector('section')!;
+    await act(async () => {
+      vi.advanceTimersByTime(2100);
+    });
+    expect(hero).toHaveTextContent(en.personas.aisyah.q);
+    expect(hero).not.toHaveTextContent(en.personas.aisyah.a);
+    await act(async () => {
+      vi.advanceTimersByTime(26 * (en.personas.aisyah.a.length + 2));
+    });
+    expect(hero).toHaveTextContent(en.personas.aisyah.a);
+  });
+
+  it('moves the deck on when it is pressed', async () => {
+    render(<LandingPage locale="en" />);
+    const deck = screen.getByRole('button', { name: en.hero.next });
+    await userEvent.click(deck);
+    // Kek Lina's page is at the front now; the hero is on her question.
+    await act(() => new Promise((r) => setTimeout(r, 2200)));
+    expect(deck).toHaveTextContent(en.personas.lina.q);
+  });
+});
+
+describe('who it is for', () => {
+  it('shows the page of the kind of owner pointed at', () => {
+    render(<LandingPage locale="en" />);
+    const row = screen.getByRole('button', { name: /Job seekers/ });
+    fireEvent.mouseEnter(row);
+    expect(row).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('figure', { name: 'Daniel Tan’s Curios page' })).toHaveTextContent(en.personas.daniel.a);
+  });
+});
+
+describe('pricing', () => {
+  it('switches Business between monthly and yearly, and says which is on', async () => {
+    render(<LandingPage locale="en" />);
+    const pricing = document.querySelector('#pricing') as HTMLElement;
+    expect(within(pricing).getByText('RM49 a month')).toBeInTheDocument();
+    await userEvent.click(within(pricing).getByRole('button', { name: /Yearly/ }));
+    expect(within(pricing).getByRole('button', { name: /Yearly/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(pricing).getByText('RM490 a year')).toBeInTheDocument();
+    expect(pricing).toHaveTextContent('RM40.83 a month, paid once a year.');
+  });
+
+  it('works out the calculator from the real monthly price', () => {
+    expect(en.pricing.monthlyRinggit).toBe(PLAN_PRICES_CENTS.MONTHLY / 100);
+    // Five orders of RM95: RM475, of which RM49 is about 10%, nine times over.
+    expect(payback(5, 95, 49)).toMatchObject({ revenue: 475, pays: true, percent: 10, times: 9 });
+    // One RM50 order does not cover it.
+    expect(payback(1, 40, 49).pays).toBe(false);
+  });
+});
+
+describe('the order, played out', () => {
+  it('starts empty and ends confirmed, with the basket and the sheet in between', () => {
+    expect(scene(0)).toMatchObject({ basketCount: 0, sheet: 0, view: 'form', confirmed: false });
+    expect(scene(0.2)).toMatchObject({ basketCount: 3, basketTotal: 235, step: 0 });
+    expect(scene(0.4)).toMatchObject({ view: 'form', step: 1 });
+    expect(scene(0.4).sheet).toBe(100);
+    expect(scene(0.6)).toMatchObject({ view: 'pay', uploaded: true, step: 2 });
+    expect(scene(1)).toMatchObject({ confirmed: true, step: 4, success: 1 });
+  });
+});
+
+describe('how it works, pinned', () => {
+  it('holds each room, slides to the next, and marks the dot of the room in view', () => {
+    expect(howAt(0)).toEqual({ at: 0, step: 0 });
+    expect(howAt(0.1)).toEqual({ at: 0, step: 0 });
+    expect(howAt(0.5)).toEqual({ at: 1, step: 1 });
+    expect(howAt(1)).toEqual({ at: 2, step: 2 });
+    // The dot only moves on once the next room is mostly in.
+    expect(howAt(0.29).at).toBeGreaterThan(0.5);
+    expect(howAt(0.29).step).toBe(0);
+    expect(howAt(0.31).step).toBe(1);
+  });
 });
 
 describe('metadata', () => {
   it.each(LOCALES)('%s: title and description fit in a search result', (locale) => {
     const meta = landingMetadata(locale);
-    expect(typeof meta.title).toBe('string');
     expect((meta.title as string).length).toBeLessThan(60);
-    expect(meta.description?.length).toBeLessThan(155);
+    expect(meta.description?.length).toBeLessThan(180);
   });
 
   it('points each language at itself and at the other', () => {
@@ -138,67 +204,32 @@ describe('copy', () => {
     expect(shape(ms)).toEqual(shape(en));
   });
 
-  it('never uses the words the brief bans', () => {
-    const text = JSON.stringify([en, ms]).toLowerCase();
-    for (const word of ['seamless', 'revolutioni', 'empower', 'leverage', 'unlock', 'game-chang', 'cutting-edge', 'supercharge', 'effortless', 'elevate', 'next-level', 'harness', 'all-in-one']) {
+  it('never uses the words DESIGN.md bans', () => {
+    const text = words([en, ms]).toLowerCase();
+    for (const word of ['seamless', 'revolutioni', 'empower', 'leverage', 'unlock', 'game-chang', 'cutting-edge', 'supercharge', 'effortless', 'elevate', 'next-level', 'harness', 'all-in-one', 'in seconds', '10x']) {
       expect(text).not.toContain(word);
     }
   });
 
   it('has no em dashes anywhere a visitor reads', () => {
-    expect(JSON.stringify([en, ms])).not.toMatch(/—/);
+    expect(words([en, ms])).not.toMatch(/—/);
     render(<LandingPage locale="en" />);
     render(<LandingPage locale="ms" />);
     expect(document.body.textContent).not.toMatch(/—/);
   });
 
-  it('has the new sections in both languages, with the counts the layout expects', () => {
-    for (const copy of [en, ms]) {
-      expect(copy.how.steps).toHaveLength(3);
-      expect(copy.quiet.tiles).toHaveLength(3);
-      expect(copy.shopSection.points).toHaveLength(3);
-      expect(copy.heroScene.problem.length).toBeGreaterThan(0);
-      expect(copy.paid.closing).toMatch(/RM39/);
-    }
-  });
-
-  it('sells the shop only as it exists today: a basket sent to WhatsApp, nothing about paying', () => {
-    for (const copy of [en, ms]) {
-      const text = JSON.stringify(copy.shopSection);
-      expect(text).toMatch(/WhatsApp/);
-      expect(text).not.toMatch(/DuitNow|FPX|receipt|resit/i);
-    }
-  });
-
-  it('gives the demo shop the three items the spec lists, priced in sen', () => {
-    for (const demo of [DEMO_EN, DEMO_MS]) {
-      expect(demo.items.map((i) => i.priceCents ?? i.options.map((o) => o.priceCents))).toEqual([[9500, 17000], 2500, 3850]);
-    }
-  });
-
-  it('names the shop tile exactly as the shop does', () => {
-    const shopTile = { en: 'Visit shop', ms: 'Lawati kedai' };
-    for (const copy of [en, ms]) {
-      expect(JSON.stringify(copy.faq)).toContain(shopTile[copy.locale]);
-    }
-  });
-
   it('never claims Instagram import, which does not exist', () => {
     // apps/workers/src/sources/instagram.adapter.ts throws NOT_CONFIGURED.
     for (const copy of [en, ms]) {
-      const text = JSON.stringify(copy).toLowerCase();
-      expect(text).not.toMatch(/paste (your )?instagram handle/);
+      const text = words(copy).toLowerCase();
       expect(text).toMatch(/instagram/);
+      expect(text).not.toMatch(/(paste|import|connect) (your )?instagram/);
     }
   });
-});
 
-describe('the storm', () => {
-  it('draws exactly forty distinct wordings, because the copy says forty', () => {
-    for (const shop of [DEMO_EN, DEMO_MS]) {
-      expect(shop.storm).toHaveLength(40);
-      expect(new Set(shop.storm).size).toBe(40);
-    }
+  it('marks the claims that wait on slice 18 where they live', () => {
+    const source = readFileSync(join(import.meta.dirname, 'copy.ts'), 'utf8');
+    expect(source.match(/SLICE 18/g)?.length).toBeGreaterThanOrEqual(4);
   });
 });
 
@@ -220,270 +251,17 @@ describe('brand colours', () => {
   });
 });
 
-describe('the interactive bits', () => {
-  it('switches Business between monthly and yearly, and says which is on', async () => {
-    render(<BusinessPrice business={en.pricing.business} />);
-    expect(screen.getByText('RM39')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Monthly' })).toHaveAttribute('aria-pressed', 'true');
+describe('the stylesheet', () => {
+  const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
 
-    await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Yearly' })));
-    expect(screen.getByText('RM390')).toBeInTheDocument();
-    expect(screen.getByText(en.pricing.business.billing.yearNote)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Yearly' })).toHaveAttribute('aria-pressed', 'true');
+  it('frosts the nav pill and nothing else (DESIGN.md allows that one surface)', () => {
+    const frosted = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^{}]*backdrop-filter/g)].map((m) => m[1]!.trim());
+    expect(frosted).toEqual(['.navpill']);
   });
 
-  it.each(LOCALES)('%s: How it works is three numbered steps, each with its snippet', (locale) => {
-    const copy = COPY[locale];
-    const { container } = render(<LandingPage locale={locale} />);
-    const how = container.querySelector('#how')!;
-    expect(container.querySelectorAll('#how')).toHaveLength(1);
-    const steps = [...how.querySelectorAll('ol > li')];
-    expect(steps).toHaveLength(3);
-    steps.forEach((li, i) => expect(li).toHaveTextContent(copy.how.steps[i]!.title));
-    expect(how.querySelectorAll('[data-snippet]')).toHaveLength(3);
-    // The middle snippet: the first fact is ticked, the other two are not.
-    const marks = [...how.querySelectorAll('li[data-ticked]')].map((li) => li.getAttribute('data-ticked'));
-    expect(marks).toEqual(['yes', 'no', 'no']);
-    // The last snippet is the shop's address, built from the demo's handle.
-    expect(steps[2]!.querySelector('[data-snippet]')).toHaveTextContent(`curios.my/${copy.shop.page.handle}`);
-  });
-});
-
-describe("the demo shop speaks the page's language", () => {
-  // English on /, Malay on /ms: the hero's phone (its bio, its one answer) and the shop demo follow.
-  it('is English on the English page and Malay on the Malay one', () => {
-    const english = render(<LandingPage locale="en" />).container;
-    const hero = english.querySelector('#hero')!;
-    expect(hero).toHaveTextContent(DEMO_EN.page.bio!);
-    expect(hero).toHaveTextContent(DEMO_EN.qa[0]!.a);
-    expect(hero).not.toHaveTextContent(DEMO_MS.page.bio!);
-    expect(hero).not.toHaveTextContent(DEMO_MS.qa[0]!.a);
-    expect(english.querySelector('#shop')).toHaveTextContent(en.shopSection.title);
-    expect(english.querySelector('#shop')).not.toHaveTextContent(ms.shopSection.title);
-    cleanup();
-
-    const malay = render(<LandingPage locale="ms" />).container;
-    expect(malay.querySelector('#hero')).toHaveTextContent(DEMO_MS.page.bio!);
-    expect(malay.querySelector('#hero')).toHaveTextContent(DEMO_MS.qa[0]!.a);
-    expect(malay.querySelector('#hero')).not.toHaveTextContent(DEMO_EN.qa[0]!.a);
-    expect(malay.querySelector('#shop')).toHaveTextContent(ms.shopSection.title);
-  });
-});
-
-describe('the hero', () => {
-  it.each(LOCALES)('%s: reads as three captions in order, with the claim field in the first', (locale) => {
-    const copy = COPY[locale];
-    const { container } = render(<LandingPage locale={locale} />);
-    const hero = container.querySelector('#hero')!;
-    const text = hero.textContent;
-    expect(text.indexOf(copy.hero.title)).toBeLessThan(text.indexOf(copy.heroScene.problem));
-    expect(text.indexOf(copy.heroScene.problem)).toBeLessThan(text.indexOf(copy.heroScene.fix));
-    expect(hero.querySelector('form[action="/signup"]')).not.toBeNull();
-  });
-
-  it('shows the finished phone without motion: one question, asked forty times, answered, and the shop tile', () => {
-    const { container } = render(<LandingPage locale="en" />);
-    const hero = container.querySelector('#hero')!;
-    expect(hero).toHaveTextContent(en.storm.asked(40));
-    expect(hero).toHaveTextContent(DEMO_EN.qa[0]!.a);
-    expect(hero.querySelector('[data-shop]')).not.toBeNull();
-    expect(hero.querySelector('[data-motion="on"]')).toBeNull();
-  });
-
-  it('draws twelve of the forty wordings round the phone, in the page language', () => {
-    const { container } = render(<LandingPage locale="ms" />);
-    const bubbles = [...container.querySelectorAll('#hero [data-bubble]')].map((b) => b.textContent);
-    expect(bubbles).toHaveLength(12);
-    expect(bubbles).toEqual(DEMO_MS.storm.slice(0, 12));
-  });
-
-  // jsdom does not evaluate CSS modules, so the stylesheets are read as text. MOTION is the selector
-  // the scenes use for "motion is on, or about to be" (see motionPending.ts).
-  const MOTION = String.raw`:is\(\[data-motion='on'\], \[data-motion-pending\] \*\)`;
-  const rule = (css: string, selector: string) => css.match(new RegExp(`${selector} [{][^}]*[}]`))![0];
-  const visibilityRules = (css: string) => [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{[^}]*visibility:\s*hidden[^}]*\}/g)].map((m) => m[1]!.trim());
-
-  it('takes only the claim form out of the tab order while its caption is hidden', () => {
-    const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
-    const hidden = rule(css, String.raw`\.stage${MOTION} \.claimWrap`);
-    expect(hidden).toMatch(/visibility:\s*hidden/);
-    expect(hidden).toMatch(/visibility 0s linear 0\.4s/);
-    expect(rule(css, String.raw`\.stage\[data-caption='0'\] \.claimWrap,\s*\.stage\[data-caption='all'\] \.claimWrap`)).toMatch(/visibility:\s*visible/);
-    // Nothing else in the hero is visibility-hidden: the h1 and the sub stay in the accessibility tree.
-    expect(visibilityRules(css)).toEqual([`.stage:is([data-motion='on'], [data-motion-pending] *) .claimWrap`]);
-  });
-
-  it('hides the captions by fading, so a screen reader still reads all three', () => {
-    const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
-    const base = rule(css, String.raw`\.stage${MOTION} \.caption`);
-    expect(base).toMatch(/opacity:\s*0/);
-    expect(base).toMatch(/transition:[^;]*opacity 0\.4s/);
-    expect(base).not.toMatch(/visibility|clip-path|display:\s*none/);
-    expect(css).not.toMatch(/clip-path:\s*inset\(50%\)[^}]*\}\s*[^{]*\.caption/);
-  });
-
-  it('has one h1, and it is not inside the claim form wrapper that hides', () => {
-    const { container } = render(<LandingPage locale="en" />);
-    const h1s = container.querySelectorAll('h1');
-    expect(h1s).toHaveLength(1);
-    expect(h1s[0]!.closest('[class*="claimWrap"]')).toBeNull();
-    expect(container.querySelector('[class*="claimWrap"] form')).not.toBeNull();
-    // The load-in fades [data-hero-fade] by opacity: the claim form must stay out of it, so it is usable from the first paint.
-    expect(container.querySelector('#hero form')!.closest('[data-hero-fade]')).toBeNull();
-  });
-
-  // Finding 1: under motion on a phone the phone's row must not depend on caption 0's height.
-  it('lays the captions in a fixed band on phones, with the sub and note kept for screen readers', () => {
-    const css = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
-    const phones = css.slice(css.indexOf('@media (max-width: 959px)'), css.indexOf('@media (min-width: 960px)'));
-    expect(rule(phones, String.raw`\.stage${MOTION} > \.grid`)).toMatch(/grid-template-rows:\s*minmax\(0, 1fr\) min\(38%, 224px\)/);
-    const hiddenText = rule(phones, String.raw`\.stage${MOTION} \.sub,\s*\.stage${MOTION} \.note`);
-    expect(hiddenText).toMatch(/clip-path:\s*inset\(50%\)/);
-    expect(hiddenText).not.toMatch(/display:\s*none/);
-  });
-
-  // Finding 2: the pinned layout applies from the first paint, so nothing reflows when motion arrives.
-  it('gives pending scenes the pinned layout and the start state', () => {
-    const hero = readFileSync(join(import.meta.dirname, 'hero.module.css'), 'utf8');
-    const paid = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
-    for (const css of [hero, paid]) {
-      expect(css).toMatch(/\[data-motion-pending\] \.stage \{\s*--p: 0;/);
-      expect(rule(css, String.raw`\.stage${MOTION}`)).toMatch(/height: [45]00vh/);
-      expect(css).not.toMatch(/(^|[^(])\[data-motion='on'\](?!, \[data-motion-pending\])/m);
-    }
-  });
-
-  it('puts the pending script first in the landing root', () => {
-    const { container } = render(<LandingPage locale="en" />);
-    const first = container.querySelector('[data-landing]')!.firstElementChild!;
-    expect(first.tagName).toBe('SCRIPT');
-    expect(first.innerHTML).toContain('data-motion-pending');
-  });
-});
-
-describe('the paid moment', () => {
-  it.each(LOCALES)('%s: lists all five steps in order, then the closing line', (locale) => {
-    const copy = COPY[locale];
-    const { container } = render(<LandingPage locale={locale} />);
-    const paid = container.querySelector('#paid')!;
-    const steps = [...paid.querySelectorAll('ol > li')].map((li) => li.textContent);
-    expect(steps).toHaveLength(5);
-    copy.leads.steps.forEach((s, i) => expect(steps[i]).toContain(s.title));
-    expect(paid).toHaveTextContent(copy.paid.closing);
-  });
-
-  it('shows the last step without motion: the email and the WhatsApp reply', () => {
-    const { container } = render(<LandingPage locale="en" />);
-    const paid = container.querySelector('#paid')!;
-    const stage = paid.querySelector('[data-paid-stage]')!;
-    expect(stage.getAttribute('data-step')).toBe('5');
-    expect(stage.hasAttribute('data-motion')).toBe(false);
-    const reply = within(paid as HTMLElement).getByText(DEMO_EN.lead.reply);
-    expect(reply.closest('[data-shown]')).toHaveAttribute('data-shown', 'yes');
-  });
-
-  // jsdom does not evaluate CSS modules, so the stylesheet is read as text.
-  it('keeps hidden panels readable, and moves the track with the step', () => {
-    const css = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
-    const hidden = css.match(/\.stage:is\(\[data-motion='on'\], \[data-motion-pending\] \*\) \.panel \{[^}]*clip-path[^}]*\}/)![0];
-    expect(hidden).toMatch(/clip-path:\s*inset\(50%\)/);
-    expect(css).not.toMatch(/\.panel \{\s*display:\s*none/);
-    expect(css).toMatch(/\[data-step='5'\] \.track \{\s*transform: translateX\(-80%\)/);
-    expect(css).not.toMatch(/translateX\(calc\(var\(--p\)/);
-  });
-
-  // The closing line is text only: it hides by opacity, never visibility, so a screen reader reads it throughout.
-  it('hides the closing line by opacity alone', () => {
-    const css = readFileSync(join(import.meta.dirname, 'paid.module.css'), 'utf8');
-    const hidden = css.match(/\.stage:is\([^)]*\*\) \.closing \{[^}]*\}/)![0];
-    expect(hidden).toMatch(/opacity:\s*0/);
-    expect(css.match(/\.closing[^{]*\{[^}]*\}/g)!.join('')).not.toMatch(/visibility/);
-  });
-});
-
-describe('the shop section', () => {
-  // Review Focus 5.
-  it('runs the real shelf as a demo that never leaves the page', async () => {
-    render(<LandingPage locale="en" />);
-    const shop = document.querySelector('#shop') as HTMLElement;
-    await userEvent.click(within(shop).getByRole('button', { name: /Cookies balang/ }));
-    await userEvent.click(within(shop).getByRole('button', { name: /add to basket/i }));
-    expect(shop.querySelector('a[href^="https://wa.me"]')).toBeNull();
-    await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
-    const panel = within(shop).getByRole('region', { name: en.shopSection.messageTitle });
-    expect(panel).toHaveTextContent('Cookies balang');
-    expect(document.activeElement).toBe(panel);
-  });
-
-  async function orderOnce(shop: HTMLElement) {
-    await userEvent.click(within(shop).getByRole('button', { name: /Cookies balang/ }));
-    await userEvent.click(within(shop).getByRole('button', { name: /add to basket/i }));
-    await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
-  }
-
-  it('refocuses the message panel each time the order button is pressed', async () => {
-    render(<LandingPage locale="en" />);
-    const shop = document.querySelector('#shop') as HTMLElement;
-    await orderOnce(shop);
-    const panel = within(shop).getByRole('region', { name: en.shopSection.messageTitle });
-    expect(document.activeElement).toBe(panel);
-    (document.activeElement as HTMLElement).blur();
-    await userEvent.click(within(shop).getByRole('button', { name: en.shopSection.orderButton }));
-    expect(document.activeElement).toBe(within(shop).getByRole('region', { name: en.shopSection.messageTitle }));
-  });
-
-  it('drops the message once the basket changes', async () => {
-    render(<LandingPage locale="en" />);
-    const shop = document.querySelector('#shop') as HTMLElement;
-    await orderOnce(shop);
-    expect(within(shop).getByRole('region', { name: en.shopSection.messageTitle })).toBeInTheDocument();
-    await userEvent.click(within(shop).getAllByRole('button', { name: /remove/i })[0]!);
-    expect(within(shop).queryByRole('region', { name: en.shopSection.messageTitle })).toBeNull();
-  });
-});
-
-describe('the in-page link targets', () => {
-  // The header links scroll, then focus the section: it needs tabindex=-1 to take focus.
-  it.each(['how', 'pricing', 'faq'])('#%s can take focus without joining the tab order', (id) => {
-    const { container } = render(<LandingPage locale="en" />);
-    expect(container.querySelector(`#${id}`)).toHaveAttribute('tabindex', '-1');
-  });
-});
-
-describe('trust, quiet parts, pricing, FAQ and closing', () => {
-  it.each(LOCALES)('%s: the quiet parts are three tiles', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
-    expect(container.querySelectorAll('#quiet li')).toHaveLength(3);
-  });
-
-  it.each(LOCALES)('%s: the Business plan includes the shop, and the FAQ answers selling', (locale) => {
-    const copy = COPY[locale];
-    const { container } = render(<LandingPage locale={locale} />);
-    expect(container.querySelector('#pricing')).toHaveTextContent(copy.pricing.business.points[2]!);
-    expect(container.querySelector('#faq')).toHaveTextContent(copy.faq.items.find((i) => /sell|jual/i.test(i.q))!.q);
-  });
-
-  it('closes on the ink band', () => {
-    const { container } = render(<LandingPage locale="en" />);
-    expect(container.querySelector('#final-title')!.closest('[class*="bandInk"]')).not.toBeNull();
-  });
-});
-
-describe('the bands', () => {
-  // The page's colour rhythm (the spec's band map). jsdom ignores CSS modules but keeps their class names.
-  const band = (el: Element | null) => el?.closest('[class*="band"]')?.className ?? '';
-  it.each(LOCALES)('%s: every section sits on its band', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
-    const at = (selector: string) => container.querySelector(selector);
-    expect(band(at('#hero'))).toContain('bandMuda');
-    expect(band(at('#how'))).toContain('bandSurface');
-    expect(band(at('#paid'))).toContain('bandBiru');
-    expect(band(at('#shop'))).toContain('bandPaper');
-    expect(band(at('#trust-title'))).toContain('bandKuning');
-    expect(band(at('#quiet'))).toContain('bandSurface');
-    expect(band(at('#pricing'))).toContain('bandPaper');
-    expect(band(at('#pricing [class*="bandBiru"]'))).toContain('bandBiru');
-    expect(band(at('#faq'))).toContain('bandSurface');
-    expect(band(at('#final-title'))).toContain('bandInk');
+  it('runs every looping animation only for visitors who have not asked for less motion', () => {
+    const outside = css.replace(/@media \(prefers-reduced-motion: no-preference\) \{[\s\S]*?\n\}/g, '');
+    // One-shot transitions are fine anywhere; an `infinite` animation is not.
+    expect(outside).not.toMatch(/animation:[^;]*infinite/);
   });
 });

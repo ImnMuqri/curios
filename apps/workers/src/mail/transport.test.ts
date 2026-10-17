@@ -53,6 +53,17 @@ describe('createMailer', () => {
     });
   });
 
+  it('sends the laid-out HTML alongside the text when there is one, and none when there is not', async () => {
+    const { sent, transport } = recordingTransport();
+    const mailer = createMailer(transport);
+
+    await mailer.send({ to: 'nadia@example.com', subject: 'Confirm your email', text: 'plain', html: '<p>laid out</p>' });
+    await mailer.send({ to: 'nadia@example.com', subject: 'Confirm your email', text: 'plain' });
+
+    expect(sent[0]).toMatchObject({ text: 'plain', html: '<p>laid out</p>' });
+    expect(sent[1]).not.toHaveProperty('html');
+  });
+
   it('surfaces a transport failure rather than swallowing it', async () => {
     const transport = {
       async sendMail() {

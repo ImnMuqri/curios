@@ -1,9 +1,10 @@
 'use client';
 
-import { Button, Callout } from '@curios/ui';
 import styles from './review.module.css';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api.js';
+import { sourcePlace } from '../_ui/source-place.js';
 
 /**
  * The one primary action this task adds: a deliberate owner action that sets
@@ -59,25 +60,37 @@ export function PublishButton({
   }
 
   if (published || done) {
+    // The address without its scheme, as an owner would write it in a bio.
     return (
-      <div>
-        <Callout tone="info">Your page is live.</Callout>
-        {/* Mono and selectable: this is an address to copy into a bio, so it
-            is presented as data rather than as a sentence. */}
-        <p className={styles.published}>
-          <a href={publicUrl}>{publicUrl}</a>
-        </p>
-      </div>
+      <>
+        <div className={styles.gl1}>
+          <i aria-hidden="true" />
+          Your page is live
+          <a href={publicUrl}>{sourcePlace(publicUrl)}</a>
+        </div>
+        <p>Accepted facts show up on it straight away. There is nothing to publish.</p>
+      </>
     );
   }
 
+  // Not on the board, which only draws a page that is already public. Before
+  // that, this is the one place an owner makes it public.
   return (
-    <div>
-      {error ? <Callout tone="error">{error}</Callout> : null}
-      <Button busy={busy} onClick={() => void handlePublish()}>
+    <>
+      <div className={styles.gl1} data-off="">
+        <i aria-hidden="true" />
+        Your page is not public yet
+      </div>
+      <p>Publish it when you are ready. After that, facts you accept show up on it straight away.</p>
+      {error ? (
+        <p className={styles.error} role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button type="button" className={styles.publish} disabled={busy} onClick={() => void handlePublish()}>
         {busy ? 'Publishing…' : 'Publish'}
-      </Button>
-    </div>
+      </button>
+    </>
   );
 }
 
@@ -92,12 +105,16 @@ export function PublishButton({
  * empty body -- see the comment in `lib/api.ts`. Do not add a body here.
  */
 export function Publish({ publicUrl, published }: { publicUrl: string; published: boolean }) {
+  const router = useRouter();
   return (
     <PublishButton
       publicUrl={publicUrl}
       published={published}
       onPublish={async () => {
         await apiFetch('/publish', { method: 'POST' });
+        // The review stack's last words read `published` too ("already live
+        // on your page"), so the server side re-reads it.
+        router.refresh();
       }}
     />
   );

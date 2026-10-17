@@ -9,6 +9,8 @@ export interface OwnerPayment {
   paidAt: Date | null;
   /** The paidUntil this payment produced. */
   grantedUntil: Date | null;
+  /** Billplz's bill, whose page is the receipt once it is paid. Null if Billplz never answered. */
+  billplzBillId: string | null;
   createdAt: Date;
 }
 
@@ -41,6 +43,7 @@ export async function getRecentPayments(pageId: string): Promise<OwnerPayment[]>
       status: true,
       paidAt: true,
       grantedUntil: true,
+      billplzBillId: true,
       createdAt: true,
     },
   });

@@ -1,0 +1,199 @@
+/*
+ * The dashboard's stop states, from the design handoff's Alerts board: a
+ * banner under a screen's header. Blue says what is coming, amber that
+ * something has stopped, red that the plan has ended.
+ */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+.slot {
+  padding: 24px 32px 0;
+}
+
+.ban {
+  --ban-bg: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
+  --ban-edge: color-mix(in srgb, var(--biru-muda) 60%, var(--blob-blue));
+  --ban-ink: color-mix(in srgb, var(--biru) 70%, var(--ink));
+  --ban-icon-bg: var(--biru-muda);
+  --ban-icon: var(--biru);
+  --ban-btn-bg: var(--card);
+  --ban-btn: var(--ban-ink);
+  --ban-on: var(--biru);
+  --ban-off: color-mix(in srgb, var(--biru-muda) 60%, var(--blob-blue));
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 764px;
+  padding: 16px 16px 16px 18px;
+  border-radius: 16px;
+  background: var(--ban-bg);
+  box-shadow: inset 0 0 0 1px var(--ban-edge);
+  animation: fadeUp 300ms ease both;
+}
+
+.ban[data-tone='warn'] {
+  --ban-bg: color-mix(in srgb, var(--amber-muda) 45%, var(--card));
+  --ban-edge: color-mix(in srgb, var(--amber-muda) 60%, var(--kuning));
+  --ban-ink: color-mix(in srgb, var(--amber-ink) 70%, var(--ink));
+  --ban-icon-bg: var(--amber-muda);
+  --ban-icon: var(--amber-ink);
+  --ban-btn-bg: var(--ink);
+  --ban-btn: var(--card);
+  --ban-on: var(--kuning);
+  --ban-off: var(--amber-muda);
+}
+
+.ban[data-tone='stop'] {
+  --ban-bg: color-mix(in srgb, var(--merah-muda) 45%, var(--card));
+  --ban-edge: color-mix(in srgb, var(--merah) 25%, var(--merah-muda));
+  --ban-ink: var(--merah-deep);
+  --ban-icon-bg: var(--merah-muda);
+  --ban-icon: var(--merah);
+  --ban-btn-bg: var(--merah);
+  --ban-btn: var(--card);
+  --ban-on: var(--merah);
+  --ban-off: var(--merah-muda);
+}
+
+.bi {
+  display: grid;
+  place-items: center;
+  align-self: flex-start;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 10px;
+  background: var(--ban-icon-bg);
+  color: var(--ban-icon);
+}
+
+.bi svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bt {
+  flex: 1;
+  min-width: 0;
+}
+
+.bt b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ban-ink);
+}
+
+.bt > span {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.bt > .bm {
+  display: flex;
+  gap: 4px;
+  max-width: 220px;
+  margin-top: 10px;
+}
+
+.bm i {
+  flex: 1;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--ban-off);
+}
+
+.bm i[data-on] {
+  background: var(--ban-on);
+}
+
+.acts {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--ban-btn-bg);
+  color: var(--ban-btn);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.ban[data-tone='info'] .btn {
+  box-shadow: 0 1px 2px rgb(25 31 44 / 8%);
+}
+
+.btn:hover {
+  filter: brightness(0.95);
+  color: var(--ban-btn);
+}
+
+.x {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.x:hover {
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+
+.x svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+}
+
+@media (max-width: 760px) {
+  .slot {
+    padding: 16px 16px 0;
+  }
+
+  .ban {
+    flex-wrap: wrap;
+  }
+
+  .bt {
+    flex: 1 1 calc(100% - 60px);
+  }
+
+  .acts {
+    margin-left: 50px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ban {
+    animation: none;
+  }
+}

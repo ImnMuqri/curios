@@ -1,284 +1,983 @@
 /*
- * Billing, in the landing page's pricing voice: the plan you are on in big
- * type with its meters, the two ways to pay as plan cards (the yearly one in
- * cobalt, as the landing page draws Business), and payments as a short table.
+ * Billing, from the design handoff's Billing board: your plan (what is left,
+ * a line from today to where this payment takes you, the two plans and one
+ * Pay button) beside what this month has used, then the payments as a table.
  */
 
-/* ---- Your plan ---- */
-.hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-  gap: 24px 40px;
-  align-items: center;
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
-.heroMain {
-  min-width: 0;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
 }
 
-.kicker {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin: 0 0 10px;
-  font-size: var(--text-base);
-  font-weight: 600;
-  color: var(--muted);
+@keyframes popin {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
 }
 
-.badge {
-  padding: 3px 10px;
-  border-radius: 999px;
-  font-size: var(--text-sm);
-  font-weight: 700;
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-.badge[data-tone='biru'] {
-  background: var(--biru);
-  color: var(--paper);
+@keyframes ghost {
+  50% {
+    transform: translateY(-3px);
+  }
 }
 
-.badge[data-tone='muda'] {
-  background: var(--biru-muda);
-  color: var(--biru-deep, var(--biru));
+@keyframes bob {
+  50% {
+    transform: rotate(4deg) translateY(-4px);
+  }
 }
 
-/* Kuning: the plan has run out, and a human needs to act. */
-.badge[data-tone='kuning'] {
-  background: var(--kuning);
-  color: var(--ink);
-}
-
-.summary {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
-  color: var(--ink);
-}
-
-.meters {
-  display: grid;
-  gap: 18px;
-}
-
-.meterLabel {
-  display: flex;
-  justify-content: space-between;
-  margin: 0 0 8px;
-  font-size: var(--text-base);
-  font-weight: 600;
-}
-
-.meterLabel span {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--muted);
-}
-
-.bar {
-  height: 10px;
-  border-radius: 999px;
-  background: var(--surface);
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
   overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.bar span {
-  display: block;
-  height: 100%;
-  min-width: 4px;
-  border-radius: inherit;
-  background: var(--biru);
+.bl {
+  max-width: 1100px;
+  padding: 28px 36px 56px;
+  container-type: inline-size;
 }
 
-.meter[data-tone='kuning'] .bar span {
-  background: var(--kuning);
+/* What the screen says on coming back from Billplz. */
+.banner {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: var(--biru-muda);
+  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
+  font-size: 13.5px;
+  font-weight: 500;
 }
 
-.meterText {
-  margin: 6px 0 0;
-  font-size: var(--text-sm);
-  color: var(--muted);
+.banner[data-tone='error'] {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
 }
 
-/* ---- Two ways to pay ---- */
-.plans {
+.top {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 4px 0 16px;
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
 }
 
-.plan {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 22px;
+.top[data-personal] {
+  grid-template-columns: minmax(0, 640px);
+}
+
+.card {
+  min-width: 0;
+  padding: 24px;
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--paper);
+  border-radius: 22px;
+  background: var(--card);
 }
 
-.plan > button {
-  margin-top: auto;
-}
-
-.planName {
-  margin: 0 0 6px;
-  font-size: var(--text-base);
+.lab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--biru-muda);
+  color: color-mix(in srgb, var(--biru) 70%, var(--ink));
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.tag[data-tone='muda'] {
+  background: var(--surface);
+  color: var(--ink-soft);
+}
+
+.tag[data-tone='kuning'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+/* ---- Your plan ---- */
+
+.big {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.big b {
+  font-size: 44px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.big span {
+  font-size: 15px;
   color: var(--muted);
 }
 
-.planPrice {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--text-display);
-  font-weight: 800;
-  line-height: 1.05;
-  letter-spacing: -0.03em;
+.sub {
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.sub b {
+  font-weight: 600;
   color: var(--ink);
 }
 
-.planPrice span {
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  font-weight: 500;
-  letter-spacing: 0;
+/* The free leads, one segment each: solid once used. */
+.segs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 22px;
+}
+
+.segs span {
+  height: 10px;
+  border-radius: 5px;
+  background: repeating-linear-gradient(135deg, var(--blob-pink) 0 6px, var(--rose-muda) 6px 12px);
+}
+
+.segs span[data-used] {
+  background: var(--rose);
+}
+
+.segNote {
+  margin: 8px 0 0;
+  font-size: 12px;
   color: var(--muted);
 }
 
-.planNote {
-  margin: 6px 0 18px;
-  font-size: var(--text-sm);
-  color: var(--muted);
+/* Today, paid until, and where this payment takes it. */
+.tl {
+  margin-top: 26px;
 }
 
-/* The yearly plan, featured: cobalt, its button turned paper so it still reads as the action. */
-.plan[data-featured] {
-  border-color: var(--biru);
+.trk {
+  display: flex;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--surface);
+}
+
+.tsegPaid,
+.tsegAdd {
+  height: 100%;
+  transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.tsegPaid {
   background: var(--biru);
 }
 
-.plan[data-featured] .planName,
-.plan[data-featured] .planNote,
-.plan[data-featured] .planPrice span {
-  color: color-mix(in oklch, var(--paper) 80%, var(--biru));
+.tsegAdd {
+  background: repeating-linear-gradient(135deg, var(--blob-blue) 0 6px, var(--biru-muda) 6px 12px);
 }
 
-.plan[data-featured] .planPrice {
-  color: var(--paper);
+.lbls {
+  position: relative;
+  height: 34px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
 }
 
-.plan[data-featured] > button {
-  background: var(--paper);
+.lbls > span {
+  position: absolute;
+  top: 0;
+  white-space: nowrap;
+  transition: left 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lbls b {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.lbls b.after {
   color: var(--biru);
 }
 
-.points {
+.pick {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px 24px;
-  margin: 0 0 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.opt {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--edge);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 160ms, background 160ms, box-shadow 160ms;
+}
+
+.opt:hover {
+  border-color: color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
+}
+
+.opt[aria-checked='true'] {
+  border-color: var(--biru);
+  background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
+  box-shadow: 0 0 0 1px var(--biru);
+}
+
+.on {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
+  transition: background 200ms, box-shadow 200ms;
+}
+
+.on svg {
+  width: 11px;
+  height: 11px;
+  fill: none;
+  stroke: var(--card);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+
+.opt[aria-checked='true'] .on {
+  background: var(--biru);
+  box-shadow: none;
+}
+
+.opt[aria-checked='true'] .on svg {
+  opacity: 1;
+}
+
+.opt small {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.opt b {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.opt > span:not(.on) {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.opt em {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.pay {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.go {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--biru);
+  color: var(--card);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 160ms, transform 160ms;
+}
+
+.go:hover {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+}
+
+.go:active {
+  transform: scale(0.97);
+}
+
+.go svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.pay p {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The one-time trial reset, and the switch to business: quiet, under the plan. */
+.reset,
+.upgrade {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.reset p,
+.upgrade p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.reset b {
+  color: var(--ink);
+}
+
+.upgrade h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.buttons > p {
+  flex-basis: 100%;
+}
+
+.prim {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--biru);
+  color: var(--card);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.prim:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--biru) 85%, var(--ink));
+}
+
+.btn2 {
+  display: inline-flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.btn2:hover:not(:disabled) {
+  background: var(--paper);
+}
+
+.prim:disabled,
+.btn2:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.error {
+  flex-basis: 100%;
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+  font-size: 12.5px;
+}
+
+/* ---- This month ---- */
+
+.use {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.meter small {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 0;
+  font-size: 13.5px;
+}
+
+.mh span:last-child {
+  color: var(--muted);
+}
+
+.mh b {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.mbar {
+  position: relative;
+  height: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.mbar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--biru);
+  transition: width 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.mbar[data-tone='kuning'] i {
+  background: var(--kuning);
+}
+
+.mbar[data-tone='merah'] i {
+  background: var(--merah);
+}
+
+.mbar[data-tone='rose'] i {
+  background: repeating-linear-gradient(135deg, var(--blob-pink) 0 6px, var(--rose-muda) 6px 12px);
+}
+
+.inc {
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.inc .lab {
+  font-size: 12.5px;
+}
+
+.inc ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 0;
   padding: 0;
   list-style: none;
 }
 
-.points li {
-  position: relative;
-  padding-left: 24px;
-  font-size: var(--text-base);
+.inc li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 12.5px;
+  color: var(--ink-soft);
 }
 
-.points li::before {
-  content: '';
-  position: absolute;
-  left: 2px;
-  top: 4px;
-  width: 11px;
-  height: 6px;
-  border-left: 2px solid var(--biru);
-  border-bottom: 2px solid var(--biru);
-  transform: rotate(-45deg);
-}
-
-.fine {
-  margin: 0;
-  font-size: var(--text-sm);
-  color: var(--muted);
-}
-
-/* ---- A personal page's way up ---- */
-.upgrade {
-  border-color: var(--biru);
-  background: var(--biru-muda);
+.inc svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--hijau);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 /* ---- Payments ---- */
-.payments {
+
+.h {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  margin: 30px 0 10px;
+}
+
+.h h2 {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font-size: 15px;
+  font-weight: 600;
 }
 
-.payments li {
-  display: grid;
-  grid-template-columns: 160px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 4px 16px;
-  padding: 12px 0;
+.h span {
+  font-size: 12.5px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+
+.tab {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  background: var(--card);
+  font-size: 13.5px;
+}
+
+.tab th,
+.tab td {
+  height: 54px;
+  padding: 0 18px;
+  text-align: left;
+}
+
+.tab th {
+  height: 40px;
+  background: var(--paper);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tab tbody tr {
+  animation: fadeUp 360ms ease both;
+}
+
+.tab tbody td {
   border-top: 1px solid var(--line);
-  font-size: var(--text-base);
 }
 
-.payments li:first-child {
-  border-top: 0;
+.tab th:nth-child(1) {
+  width: 140px;
 }
 
-.payDate {
-  color: var(--muted);
+.tab th:nth-child(3) {
+  width: 100px;
 }
 
-.payWhat {
+.tab th:nth-child(4) {
+  width: 140px;
+}
+
+.tab th:nth-child(5) {
+  width: 80px;
+}
+
+.am {
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
-.payWhat small {
-  display: block;
-  font-size: var(--text-sm);
-  font-weight: 400;
-  color: var(--muted);
-}
-
-.payStatus {
-  padding: 3px 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  font-size: var(--text-sm);
+.st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--faint);
+  white-space: nowrap;
 }
 
-.payStatus[data-paid='true'] {
+.st i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.st[data-paid] {
+  color: var(--hijau);
+}
+
+.tab a {
+  font-size: 13px;
+  color: var(--biru);
+  text-decoration: none;
+}
+
+.tab a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* No payments yet. */
+.es {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 28px 16px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 16px;
+  text-align: center;
+}
+
+.esArt {
+  position: relative;
+  width: 190px;
+  height: 96px;
+  margin-bottom: 10px;
+}
+
+.esRows {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  mask-image: linear-gradient(to bottom, black 30%, transparent 100%);
+}
+
+.esRows > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 8px 16px -12px rgb(25 31 44 / 30%);
+  animation: ghost 3.4s ease-in-out infinite;
+}
+
+.esRows > span:nth-child(2) {
+  margin: 0 14px;
+  animation-delay: 0.25s;
+}
+
+.esRows > span:nth-child(3) {
+  margin: 0 28px;
+  animation-delay: 0.5s;
+}
+
+.esRows i {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
   background: var(--biru-muda);
-  color: var(--biru-deep, var(--biru));
 }
+
+.esRows > [data-tone='hijau'] i {
+  background: var(--hijau-muda);
+}
+
+.esRows > [data-tone='amber'] i {
+  background: var(--amber-muda);
+}
+
+.esRows b {
+  width: 46%;
+  height: 7px;
+  border-radius: 4px;
+  background: var(--line);
+}
+
+.esRows em {
+  width: 16%;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 4px;
+  background: var(--surface);
+}
+
+.esBadge {
+  position: absolute;
+  right: -16px;
+  top: -14px;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 15px;
+  background: var(--biru);
+  color: var(--card);
+  box-shadow: 0 12px 24px -12px rgb(25 31 44 / 60%);
+  transform: rotate(8deg);
+  animation: bob 3.6s ease-in-out infinite;
+}
+
+.esBadge svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.es h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.es p {
+  max-width: 32em;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+/* ---- Before Billplz ---- */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--scrim);
+  animation: fadeIn 200ms ease both;
+}
+
+.box {
+  width: 100%;
+  max-width: 420px;
+  padding: 26px;
+  border-radius: 22px;
+  background: var(--card);
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 40%);
+  animation: popin 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+.box h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.box > p {
+  margin: 8px 0 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
+  font-size: 14px;
+}
+
+.line small {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.line b {
+  font-size: 18px;
+}
+
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 0 6px;
+  text-align: center;
+}
+
+.wait > span:last-child {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.spin {
+  width: 38px;
+  height: 38px;
+  border: 3px solid var(--biru-muda);
+  border-top-color: var(--biru);
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+/* ---- Narrower ---- */
 
 @media (max-width: 760px) {
-  .hero,
-  .plans,
-  .points {
-    grid-template-columns: 1fr;
+  .bl {
+    padding: 20px 16px 40px;
+  }
+}
+
+@container (max-width: 760px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@container (max-width: 520px) {
+  .big b {
+    font-size: 36px;
   }
 
-  .payments li {
-    grid-template-columns: minmax(0, 1fr) auto;
+  .pick {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .payDate {
-    grid-column: 1 / -1;
-    font-size: var(--text-sm);
+  .pay {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tab thead {
+    display: none;
+  }
+
+  .tab th,
+  .tab td {
+    padding: 0 12px;
+  }
+
+  /* Date, amount and status only, as the board's phone. */
+  .tab td:nth-child(2),
+  .tab td:nth-child(5) {
+    display: none;
+  }
+
+  .tab tbody tr:first-child td {
+    border-top: 0;
+  }
+
+  /* The date takes the room; amount and status shrink to fit, together on the right. */
+  .tab td:nth-child(3),
+  .tab td:nth-child(4) {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  .tab td:nth-child(3) {
+    text-align: right;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tsegPaid,
+  .tsegAdd,
+  .lbls > span,
+  .mbar i,
+  .opt,
+  .go {
+    transition: none;
+  }
+
+  .tab tbody tr,
+  .esRows > span,
+  .esBadge,
+  .modal,
+  .box,
+  .spin {
+    animation: none;
   }
 }

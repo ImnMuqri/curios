@@ -68,6 +68,26 @@ function violatedFields(error: unknown): string[] {
  * because "taken", "too similar" and "you already have a page" are three
  * different facts and only one of them is fixed by choosing another handle.
  */
+/**
+ * Whether an address could be claimed, for onboarding's live "Yours" /
+ * "Taken" / "Not quite": the same rule claimHandle applies, and taken when
+ * a page already has it or one that looks the same (its skeleton). A hint
+ * only: claimHandle still decides, so a race between the check and the
+ * claim is caught there.
+ */
+export async function handleAvailability(
+  prisma: PrismaClient,
+  raw: string,
+): Promise<'available' | 'invalid' | 'reserved' | 'taken'> {
+  const checked = checkHandle(raw);
+  if (!checked.ok) return checked.reason === 'RESERVED' ? 'reserved' : 'invalid';
+  const clash = await prisma.page.findFirst({
+    where: { OR: [{ handle: checked.handle }, { skeleton: checked.skeleton }] },
+    select: { id: true },
+  });
+  return clash ? 'taken' : 'available';
+}
+
 export async function claimHandle(
   prisma: PrismaClient,
   accountId: string,
@@ -161,6 +181,19 @@ export async function upgradeToBusiness(prisma: PrismaClient, accountId: string)
  * Accepted for any page: a business page is indexed regardless (`shouldIndex`
  * in @curios/core), so setting this there changes nothing anyone sees.
  */
+/** Which owner emails are on (Settings, "Email me when"). Today: each lead. */
+export async function setNotifications(
+  prisma: PrismaClient,
+  accountId: string,
+  input: { leads: boolean },
+): Promise<void> {
+  const updated = await prisma.page.updateMany({
+    where: { accountId },
+    data: { notifyLeads: input.leads },
+  });
+  if (updated.count !== 1) throw new NoPageError();
+}
+
 export async function setSearchIndexing(
   prisma: PrismaClient,
   accountId: string,

@@ -21,8 +21,9 @@ import type { OwnerPage } from '@curios/db-read';
  * the gate is on the page and not on the route.
  */
 const getOwnerPage = vi.fn();
-const countPendingFacts = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, countPendingFacts }));
+const countNavBadges = vi.fn();
+const getConversationUsage = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges, getConversationUsage }));
 
 const resolveOwner = vi.fn();
 vi.mock('./session.js', () => ({ resolveOwner }));
@@ -37,7 +38,8 @@ vi.mock('next/headers', () => ({
 const redirect = vi.fn((url: string) => {
   throw new Error(`NEXT_REDIRECT:${url}`);
 });
-vi.mock('next/navigation', () => ({ redirect, usePathname: () => '/app/onboarding' }));
+let pathname = '/app/curios';
+vi.mock('next/navigation', () => ({ redirect, usePathname: () => pathname }));
 
 const AppLayout = (await import('./layout.js')).default;
 
@@ -51,11 +53,13 @@ const page: OwnerPage = {
   leadsCaptured: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
+  avatarKey: null,
 };
 
 describe('the dashboard layout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getConversationUsage.mockResolvedValue({ used: 0, cap: 200, period: '2026-10' });
   });
 
   it('hides the frame from an owner who has not claimed a handle yet', async () => {
@@ -71,14 +75,25 @@ describe('the dashboard layout', () => {
     expect(screen.getByText('Claim your handle')).toBeInTheDocument();
   });
 
-  it('keeps the frame for an owner revisiting onboarding to add sources', async () => {
+  it('puts an owner with a page in the frame', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
-    countPendingFacts.mockResolvedValueOnce(0);
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
 
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
     expect(screen.getByRole('navigation', { name: 'Dashboard' })).toBeInTheDocument();
+  });
+
+  it("names the owner's plan under their name", async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce(page);
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+
+    render(await AppLayout({ children: <p>Add more sources</p> }));
+
+    // A business page that has never paid and has captured nothing is on its trial.
+    expect(screen.getByText('Free trial')).toBeInTheDocument();
   });
 
   it('refuses a session the database does not recognise, before asking for a page', async () => {
@@ -90,5 +105,33 @@ describe('the dashboard layout', () => {
     // Ordering, not just the redirect: proving who you are comes before
     // querying anything on their behalf.
     expect(getOwnerPage).not.toHaveBeenCalled();
+  });
+
+  it('puts a used-up trial’s banner on Leads, and a dot on Billing', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, leadsCaptured: 3 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
+
+    expect(frame.props.alerts).toEqual([expect.objectContaining({ id: 'spent', where: '/app/leads' })]);
+    expect(frame.props.billingDot).toBe(true);
+    expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('leaves onboarding full screen, without the frame, once the page exists', async () => {
+    pathname = '/app/onboarding';
+    try {
+      resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+      getOwnerPage.mockResolvedValueOnce(page);
+      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+
+      render(await AppLayout({ children: <p>onboarding</p> }));
+
+      expect(screen.getByText('onboarding')).toBeInTheDocument();
+      expect(screen.queryByRole('navigation', { name: 'Dashboard' })).toBeNull();
+    } finally {
+      pathname = '/app/curios';
+    }
   });
 });

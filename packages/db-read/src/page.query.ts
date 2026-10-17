@@ -1,3 +1,4 @@
+import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
@@ -45,6 +46,8 @@ export interface PublicPage {
   background: PageBackground;
   /** The owner's own colour, used when background is CUSTOM. */
   backgroundColor: string | null;
+  /** Social profiles to show as icons under the name, in display order. */
+  socials: { kind: SocialKind; value: string }[];
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
 }
@@ -76,6 +79,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       coverKey: true,
       background: true,
       backgroundColor: true,
+      socials: true,
       ...SHOP_TILE_SELECT,
       links: {
         orderBy: { position: 'asc' },
@@ -91,5 +95,5 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
 
   if (!page) return null;
   const { storeEnabled: _open, shopTilePosition: _at, shopTileSize: _size, items: _items, ...rest } = page;
-  return { ...rest, shop: shopTileOf(page) };
+  return { ...rest, socials: tidySocials(rest.socials), shop: shopTileOf(page) };
 }
