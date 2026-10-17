@@ -75,3 +75,8 @@ a row **Resolved** rather than deleting it.
 | 66 | Billing: while the bill is raised | "Waiting for Billplz… This is where your bank's page would open." | "Opening Billplz… Your bank's page opens next." | The board's line is about the canvas | Accepted |
 | 67 | Billing: numbers counting up | Days left and meters count up on load | Shown at their value | Kept simple | Motion pass |
 | 68 | Billing: the conversation limit | "of 2,000" | The cap in force (conversationCap()), 200 here | HANDOFF: "Don't hard-code 200" | **Resolved** |
+| 69 | Settings: Email me when | Four switches (a new order, a receipt, someone leaves their number, a question asked 3 times) | Left out | No owner notification email exists yet (orders and receipts are slice 18; the lead and question emails are the Emails module), so the switches would control nothing | Emails module: build the preferences with the emails |
+| 70 | Settings: a personal page | (not drawn) | A "Personal page" row with "See Business" (the switch lives on Billing), and the search switch, off by default | Personal pages exist | Board adds it |
+| 71 | Settings: Google not connected | (not drawn) | "Not connected." and "Connect Google" | Password-only accounts exist | Accepted |
+| 72 | Settings: a password already set | "Added just now", once added | "Set. To change it, use “Forgot your password?” when you sign in." and "Added" | There is no change-password form; the reset link is the way | Accepted |
+| 73 | Settings: back from linking Google | (not drawn) | A line at the top: connected, or why not | The link's redirect lands here | Accepted |
