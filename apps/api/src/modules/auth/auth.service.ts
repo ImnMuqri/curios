@@ -293,7 +293,7 @@ export async function requestPasswordReset(
   });
 
   const token = await issueToken(deps.prisma, account.id, 'PASSWORD_RESET');
-  await deps.mailer.send({ to: normalised, ...resetMail(token) });
+  await deps.mailer.send({ to: normalised, ...resetMail(token, normalised) });
 }
 
 export async function resetPassword(

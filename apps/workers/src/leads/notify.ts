@@ -152,7 +152,7 @@ export function buildNotification(input: {
   );
 
   const text = [
-    `Someone asked about your page and left their number.`,
+    `Your page couldn’t answer this one, so it asked for their number.`,
     ``,
     `Number: ${phone}`,
     ...(known.length > 0 ? [``, ...known] : []),
@@ -165,17 +165,18 @@ export function buildNotification(input: {
     ``,
   ].join('\n');
 
-  const subject = `New lead for ${displayName}`;
+  // The Emails board's subject: the number itself, so the inbox line alone is enough to call back.
+  const subject = `New lead · ${formatMalaysianPhone(phone)}`;
 
-  // The same email laid out as the design handoff's Emails board draws it,
-  // with this email's own words: the number, what they are after, the
-  // conversation, and one tap to reply.
+  // The same email laid out, and worded, as the design handoff's Emails board
+  // draws it: the number, what they are after, the conversation, and one tap
+  // to reply.
   const leads = `${(input.appUrl ?? 'http://localhost:3000').replace(/\/+$/, '')}/app/leads`;
   const leftAt = input.leftAt
     ? `Left ${input.leftAt.toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kuala_Lumpur' }).replace(/\s/g, '').toLowerCase()}`
     : undefined;
   const blocks: MailBlock[] = [
-    { kind: 'p', text: 'Someone asked about your page and left their number.' },
+    { kind: 'p', text: 'Your page couldn’t answer this one, so it asked for their number.' },
     { kind: 'number', value: formatMalaysianPhone(phone), note: leftAt },
     ...(known.length > 0
       ? [

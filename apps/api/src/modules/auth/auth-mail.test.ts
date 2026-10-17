@@ -22,8 +22,11 @@ describe('the account emails', () => {
     expect(mail.html).toContain('Button not working?');
   });
 
-  it('reset: says it works once and expires in an hour, in both', () => {
-    const mail = resetMail('tok456');
+  it('reset: names the address, and says it works once and expires in an hour, in both', () => {
+    const mail = resetMail('tok456', 'lina@keklina.example');
+
+    expect(mail.text).toContain('Someone asked to reset the password for lina@keklina.example. If that was you, choose a new one.');
+    expect(mail.html).toContain('Your password stays the same.');
 
     expect(mail.text).toContain('https://curios.my/reset?token=tok456');
     expect(mail.text).toContain('This link works once and expires in an hour.');
@@ -38,5 +41,6 @@ describe('the account emails', () => {
     expect(mail.html).toContain('href="https://curios.my/signin"');
     expect(mail.html).toContain('href="https://curios.my/forgot"');
     expect(mail.text).not.toContain('--');
+    expect(mail.html).toContain('Nothing has changed on your account.');
   });
 });
