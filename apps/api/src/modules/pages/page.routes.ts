@@ -6,7 +6,7 @@ import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverK
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
-import { claimHandle, NoPageError, publishPage, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { claimHandle, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { resolveStore, type AvatarStore } from './storage.js';
 
 export interface PageRouteOptions {
@@ -85,6 +85,17 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
 
       await setSearchIndexing(app.prisma, request.account.id, request.body.allow);
       return reply.send({ allowSearchIndexing: request.body.allow });
+    },
+  );
+
+  app.patch(
+    '/pages/notifications',
+    { schema: { body: z.object({ leads: z.boolean() }) } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+
+      await setNotifications(app.prisma, request.account.id, { leads: request.body.leads });
+      return reply.send({ leads: request.body.leads });
     },
   );
 

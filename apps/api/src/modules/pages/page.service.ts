@@ -161,6 +161,19 @@ export async function upgradeToBusiness(prisma: PrismaClient, accountId: string)
  * Accepted for any page: a business page is indexed regardless (`shouldIndex`
  * in @curios/core), so setting this there changes nothing anyone sees.
  */
+/** Which owner emails are on (Settings, "Email me when"). Today: each lead. */
+export async function setNotifications(
+  prisma: PrismaClient,
+  accountId: string,
+  input: { leads: boolean },
+): Promise<void> {
+  const updated = await prisma.page.updateMany({
+    where: { accountId },
+    data: { notifyLeads: input.leads },
+  });
+  if (updated.count !== 1) throw new NoPageError();
+}
+
 export async function setSearchIndexing(
   prisma: PrismaClient,
   accountId: string,

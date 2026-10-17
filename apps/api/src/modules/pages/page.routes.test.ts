@@ -318,3 +318,32 @@ describe('PATCH /pages/search-indexing', () => {
     expect(res.json()).toMatchObject({ error: { code: 'NO_PAGE' } });
   });
 });
+
+describe('PATCH /pages/notifications', () => {
+  const notifies = async (handle: string) =>
+    (await app.prisma.page.findUniqueOrThrow({ where: { handle }, select: { notifyLeads: true } })).notifyLeads;
+
+  it('refuses an unauthenticated caller', async () => {
+    const res = await call(undefined, 'PATCH', '/pages/notifications', { leads: false });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('starts on, turns the lead email off, and on again', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'BUSINESS');
+    expect(await notifies(handle)).toBe(true);
+
+    const off = await call(cookie, 'PATCH', '/pages/notifications', { leads: false });
+    expect(off.json()).toEqual({ leads: false });
+    expect(await notifies(handle)).toBe(false);
+
+    await call(cookie, 'PATCH', '/pages/notifications', { leads: true });
+    expect(await notifies(handle)).toBe(true);
+  });
+
+  it('answers NO_PAGE for an owner with no page yet', async () => {
+    const res = await call(await anOwner(), 'PATCH', '/pages/notifications', { leads: true });
+    expect(res.statusCode).toBe(404);
+  });
+});

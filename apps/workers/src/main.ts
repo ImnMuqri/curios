@@ -56,6 +56,7 @@ const leadConnection = createRedis();
 // the mail queue the mail worker above is already draining.
 const mailProducer = new Queue<MailJobData>(MAIL_QUEUE, { connection: createRedis() });
 const leadWorker = createLeadWorker({
+  appUrl,
   connection: leadConnection,
   prisma,
   gateway,

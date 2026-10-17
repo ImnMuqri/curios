@@ -9,6 +9,7 @@ export const ICONS = {
   search: 'M11 17a6 6 0 1 0 0-12 6 6 0 0 0 0 12zM20 20l-4.5-4.5',
   lock: 'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3',
   out: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
+  chat: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
   check: 'M5 12.5l4.5 4.5L19 7.5',
 } as const;
 

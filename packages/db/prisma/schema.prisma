@@ -163,6 +163,10 @@ model Page {
   /// which makes the next period eligible by itself: no reminders table, and no
   /// way to send the same reminder twice.
   renewalReminderFor DateTime?
+  /// Whether the owner is emailed each lead (Settings, "Email me when"). On by
+  /// default: a lead nobody hears about is the one thing this product exists
+  /// to prevent.
+  notifyLeads Boolean @default(true)
   /// Whether a personal page may appear in search results. Off by default:
   /// most people do not want an AI page about themselves ranking for their own
   /// name. Business pages are always indexed, so this is read only for personal

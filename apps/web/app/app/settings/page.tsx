@@ -1,12 +1,13 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
-import { getOwnerPage, getSignInMethods } from '@curios/db-read';
+import { getNotifications, getOwnerPage, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { decideSettingsBanner, decideSettingsView } from './settings.js';
 import { AddPassword } from './add-password-form.js';
 import { ConnectGoogle } from './connect-google.js';
 import { CopyAddress } from './copy-address.js';
+import { NotifyLeads } from './notify-leads.js';
 import { SearchIndexing } from './search-indexing.js';
 import { Done, SettingRow } from './setting-row.js';
 import { SignOutButton } from '../sign-out-button.js';
@@ -31,7 +32,11 @@ export default async function SettingsPage({
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
-  const [methods, page] = await Promise.all([getSignInMethods(owner.accountId), getOwnerPage(owner.accountId)]);
+  const [methods, page, notifications] = await Promise.all([
+    getSignInMethods(owner.accountId),
+    getOwnerPage(owner.accountId),
+    getNotifications(owner.accountId),
+  ]);
   // The layout already proved the session is real, which means the account
   // it names exists -- this narrows the type rather than guarding a real path.
   if (!methods) redirect('/signin');
@@ -103,6 +108,18 @@ export default async function SettingsPage({
             )}
           </div>
         </section>
+
+        {/* The owner emails that exist today. Orders and receipts join with
+            slice 18; until then a switch for them would control nothing. */}
+        {page?.mode === 'BUSINESS' && notifications ? (
+          <section className={styles.group} aria-labelledby="email-title">
+            <h2 id="email-title">Email me when</h2>
+            <p>Sent to {view.email}. Everything also shows in the app.</p>
+            <div className={styles.card}>
+              <NotifyLeads on={notifications.leads} />
+            </div>
+          </section>
+        ) : null}
 
         <section className={styles.group} aria-labelledby="session-title">
           <h2 id="session-title">Session</h2>

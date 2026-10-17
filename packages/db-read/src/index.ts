@@ -23,3 +23,5 @@ export { getMyCurios, countPendingFacts, countNavBadges } from './my-curios.quer
 export type { MyCurios, NavBadges } from './my-curios.query.js';
 export { getKnowledge, sourceLabel } from './knowledge.query.js';
 export type { Knowledge, KnowledgeSource, KnowledgeFact, KnowledgePinned, KnowledgeNeverSay } from './knowledge.query.js';
+export { getNotifications } from './notifications.query.js';
+export type { OwnerNotifications } from './notifications.query.js';

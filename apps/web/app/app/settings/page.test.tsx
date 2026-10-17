@@ -15,7 +15,8 @@ import { oauthErrorMessage } from '../../../lib/oauth-errors.js';
  */
 const getSignInMethods = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getSignInMethods, getOwnerPage }));
+const getNotifications = vi.fn();
+vi.mock('@curios/db-read', () => ({ getSignInMethods, getOwnerPage, getNotifications }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -64,6 +65,7 @@ describe('SettingsPage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockReset();
     getOwnerPage.mockResolvedValue(null);
+    getNotifications.mockResolvedValue({ leads: true });
     SearchIndexing.mockClear();
   });
 
@@ -166,5 +168,30 @@ describe('SettingsPage', () => {
     await renderWith({}, methods({}));
 
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+  });
+
+  it('offers a business page the lead email switch, set as it is', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'BUSINESS',
+      paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
+    });
+    getNotifications.mockResolvedValue({ leads: false });
+
+    await renderWith({}, methods({}));
+
+    expect(screen.getByRole('heading', { name: 'Email me when' })).toBeInTheDocument();
+    expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app.')).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Email me when someone leaves their number' })).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('offers a personal page no email switches, since it takes no leads', async () => {
+    getOwnerPage.mockResolvedValue({
+      id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'PERSONAL',
+      paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
+    });
+
+    await renderWith({}, methods({}));
+
+    expect(screen.queryByRole('heading', { name: 'Email me when' })).toBeNull();
   });
 });
