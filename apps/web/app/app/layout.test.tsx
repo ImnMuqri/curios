@@ -22,7 +22,8 @@ import type { OwnerPage } from '@curios/db-read';
  */
 const getOwnerPage = vi.fn();
 const countNavBadges = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges }));
+const getConversationUsage = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges, getConversationUsage }));
 
 const resolveOwner = vi.fn();
 vi.mock('./session.js', () => ({ resolveOwner }));
@@ -57,6 +58,7 @@ const page: OwnerPage = {
 describe('the dashboard layout', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    getConversationUsage.mockResolvedValue({ used: 0, cap: 200, period: '2026-10' });
   });
 
   it('hides the frame from an owner who has not claimed a handle yet', async () => {
@@ -102,5 +104,17 @@ describe('the dashboard layout', () => {
     // Ordering, not just the redirect: proving who you are comes before
     // querying anything on their behalf.
     expect(getOwnerPage).not.toHaveBeenCalled();
+  });
+
+  it('puts a used-up trial’s banner on Leads, and a dot on Billing', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, leadsCaptured: 3 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
+
+    expect(frame.props.alerts).toEqual([expect.objectContaining({ id: 'spent', where: '/app/leads' })]);
+    expect(frame.props.billingDot).toBe(true);
+    expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
   });
 });

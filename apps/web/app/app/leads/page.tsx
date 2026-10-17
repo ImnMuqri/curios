@@ -1,11 +1,10 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { planState, SESSION_COOKIE } from '@curios/core';
+import { SESSION_COOKIE } from '@curios/core';
 import { getLeadStats, getLeads, getMyCurios, getOwnerPage } from '@curios/db-read';
 import { Callout } from '@curios/ui';
 import { resolveOwner } from '../session.js';
 import { Leads } from './leads-screen.js';
-import { TrialNotice, trialNotice } from './trial-notice.js';
 import { PageHead } from '../_ui/page-head.js';
 import panel from '../panel.module.css';
 
@@ -25,11 +24,9 @@ export default async function LeadsPage() {
   // One moment for the whole screen, so "25 min ago" and the week read the
   // same on the server and in the browser.
   const now = new Date();
-  // The page as well as the leads, because this screen has to explain an
-  // absence as well as show a list. An owner whose trial is spent sees the
-  // capture card disappear from their public page, and without the notice
-  // the only signal is that leads stopped arriving -- which reads as the
-  // product being broken.
+  // The page as well as the leads: its mode, handle and look. What the free
+  // trial means for capture is the frame's banner (alerts.ts), shown under
+  // this screen's header.
   const [leads, stats, page, look] = await Promise.all([
     getLeads(owner.accountId),
     getLeadStats(owner.accountId, now),
@@ -54,7 +51,6 @@ export default async function LeadsPage() {
     );
   }
 
-  const plan = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
 
   return (
     <Leads
@@ -66,7 +62,6 @@ export default async function LeadsPage() {
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`}
       look={{ accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor }}
       now={now.toISOString()}
-      notice={trialNotice(plan) ? <TrialNotice state={plan} /> : null}
     />
   );
 }

@@ -9,9 +9,10 @@ const frame = ({
   badges = { review: 3, questions: 0, leads: 0 },
   mode = 'PERSONAL',
   avatarUrl = null,
-}: { badges?: NavBadges; mode?: 'PERSONAL' | 'BUSINESS'; avatarUrl?: string | null } = {}) =>
+  billingDot = false,
+}: { badges?: NavBadges; mode?: 'PERSONAL' | 'BUSINESS'; avatarUrl?: string | null; billingDot?: boolean } = {}) =>
   render(
-    <AppFrame displayName="Iman Muqri" avatarUrl={avatarUrl} planLabel="Personal page" badges={badges} mode={mode}>
+    <AppFrame displayName="Iman Muqri" avatarUrl={avatarUrl} planLabel="Personal page" badges={badges} mode={mode} billingDot={billingDot}>
       <p>content</p>
     </AppFrame>,
   );
@@ -88,5 +89,15 @@ describe('AppFrame', () => {
     const { container } = frame({ avatarUrl: 'https://cdn.example/a.webp' });
     expect(container.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/a.webp');
     expect(screen.queryByText('IM')).toBeNull();
+  });
+
+  it('puts a dot on Billing when Billing needs the owner, and says so to a screen reader', () => {
+    frame({ billingDot: true });
+    expect(screen.getByRole('link', { name: /^Billing\s*, needs you$/ })).toBeInTheDocument();
+  });
+
+  it('puts no dot on Billing otherwise', () => {
+    frame();
+    expect(screen.queryByText(/needs you/)).toBeNull();
   });
 });

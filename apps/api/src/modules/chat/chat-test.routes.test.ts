@@ -161,4 +161,32 @@ describe('POST /chat/test', () => {
     const res = await ask(mine.cookie, { question: '   ' });
     expect(res.statusCode).toBe(400);
   });
+
+  it('gives the limit’s fixed reply once a new visitor would get it, and calls no model', async () => {
+    const mine = await anOwner();
+    const { conversationCap } = await import('@curios/core');
+    await app.prisma.usageCounter.create({
+      data: { pageId: mine.pageId, period: new Date().toISOString().slice(0, 7), count: conversationCap() },
+    });
+
+    const res = await ask(mine.cookie, { question: 'Berapa kek butter?' });
+
+    expect(res.json()).toMatchObject({ from: 'limit' });
+    expect(res.json().reply).toContain("We've answered a lot of questions this month");
+    expect(calls).toHaveLength(0);
+    // Read, not counted.
+    expect((await app.prisma.usageCounter.findFirstOrThrow({ where: { pageId: mine.pageId } })).count).toBe(conversationCap());
+  });
+
+  it('still answers one under the limit', async () => {
+    const mine = await anOwner();
+    const { conversationCap } = await import('@curios/core');
+    await app.prisma.usageCounter.create({
+      data: { pageId: mine.pageId, period: new Date().toISOString().slice(0, 7), count: conversationCap() - 1 },
+    });
+
+    const res = await ask(mine.cookie, { question: 'Berapa kek butter?' });
+
+    expect(res.json()).toMatchObject({ from: 'facts' });
+  });
 });

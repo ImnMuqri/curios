@@ -1,9 +1,11 @@
-import { normalizeClaim } from '@curios/core';
+import { isOverCap, normalizeClaim } from '@curios/core';
 import { recordModelCall } from '@curios/db';
 import { CHAT_MODEL } from '@curios/gateway';
 import {
   ANSWER_PAGE_SELECT,
   answeredTopicFor,
+  CAP_REACHED_REPLY,
+  currentPeriod,
   MAX_HISTORY_MESSAGES,
   PageNotFoundError,
   promptFor,
@@ -15,10 +17,10 @@ export interface TestTurn {
   content: string;
 }
 
-/** What the page would say, and whether it came from the owner's own answer or from the facts. */
+/** What the page would say, and where it came from: the owner's own answer, the facts, or the month's limit. */
 export interface TestReply {
   reply: string;
-  from: 'answer' | 'facts';
+  from: 'answer' | 'facts' | 'limit';
 }
 
 /**
@@ -33,8 +35,10 @@ export interface TestReply {
  *   browser, and goes nowhere.
  * - No Question, QuestionAsk or Topic: the owner testing "Do you deliver?"
  *   must not show up on Questions as a customer asking it.
- * - No usage counter, so testing never spends the month's conversations, and
- *   no cap: an owner checking their facts gets an answer even over the cap.
+ * - No usage counter, so testing never spends the month's conversations.
+ *   But it reads the counter: once a new visitor would get the limit's fixed
+ *   reply, so does the tester (the Alerts board: "the tester shows the fixed
+ *   reply too"), and no model is called.
  * - No `intent`, so the lead card is never offered.
  * - Works before the page is published: checking it is the point.
  *
@@ -42,7 +46,7 @@ export interface TestReply {
  * their cost is visible; the per-account rate limit is what bounds them.
  */
 export async function testAnswer(
-  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log'>,
+  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'cap'>,
   input: { accountId: string; question: string; history: TestTurn[] },
 ): Promise<TestReply> {
   const { prisma, gateway } = deps;
@@ -68,6 +72,15 @@ export async function testAnswer(
     }
   }
   if (pinned) return { reply: pinned, from: 'answer' };
+
+  // As on the live chat, the limit falls where the spend starts: after the
+  // owner's free answers. A new visitor's conversation would be one more on
+  // the counter, so that is what is checked.
+  const used = await prisma.usageCounter.findUnique({
+    where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
+    select: { count: true },
+  });
+  if (isOverCap({ used: (used?.count ?? 0) + 1, cap: deps.cap })) return { reply: CAP_REACHED_REPLY, from: 'limit' };
 
   // The last turns, starting on the visitor's side as the model expects.
   const earlier = input.history.slice(-(MAX_HISTORY_MESSAGES - 1));

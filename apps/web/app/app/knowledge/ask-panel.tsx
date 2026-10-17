@@ -12,8 +12,8 @@ export type ChatLook = Parameters<typeof themeAttrs>[0];
 export interface Turn {
   role: 'user' | 'assistant';
   content: string;
-  /** Where an answer came from, when it was the owner's own words. */
-  from?: 'answer' | 'facts';
+  /** Where an answer came from: the owner's own words, the facts, or the month's limit. */
+  from?: 'answer' | 'facts' | 'limit';
 }
 
 /** How many earlier turns go with a question: the API takes ten. */
@@ -32,7 +32,7 @@ export function AskPanel({
 }: {
   look?: ChatLook;
   suggestions: string[];
-  onAsk: (question: string, history: Turn[]) => Promise<{ reply: string; from: 'answer' | 'facts' }>;
+  onAsk: (question: string, history: Turn[]) => Promise<{ reply: string; from: 'answer' | 'facts' | 'limit' }>;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [ask, setAsk] = useState('');
@@ -94,12 +94,12 @@ export function AskPanel({
           ) : (
             <span key={i} style={{ display: 'contents' }}>
               <span className={styles.a}>{turn.content}</span>
-              {turn.from === 'answer' ? (
+              {turn.from === 'answer' || turn.from === 'limit' ? (
                 <span className={styles.from}>
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M5 12.5l4.5 4.5L19 7.5" />
                   </svg>
-                  Your answer on Questions
+                  {turn.from === 'answer' ? 'Your answer on Questions' : 'The fixed reply: this month’s limit is reached'}
                 </span>
               ) : null}
             </span>
@@ -156,7 +156,7 @@ export function Ask({ look, suggestions }: { look?: ChatLook; suggestions: strin
       look={look}
       suggestions={suggestions}
       onAsk={(question, history) =>
-        apiFetch<{ reply: string; from: 'answer' | 'facts' }>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history }) })
+        apiFetch<{ reply: string; from: 'answer' | 'facts' | 'limit' }>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history }) })
       }
     />
   );

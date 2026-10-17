@@ -10,6 +10,7 @@ import { ResetTrial } from './reset-button.js';
 import { UpgradeToBusiness } from './upgrade-button.js';
 import styles from './billing.module.css';
 import { PageHead } from '../_ui/page-head.js';
+import { NEAR_SHARE } from '../alerts.js';
 
 /** What Business includes, as the board lists it: everything here exists today. */
 const INCLUDED = ['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search'];
@@ -54,7 +55,7 @@ function planHead(state: PlanState, now: Date): { big: number; unit: string; sub
 }
 
 /** A thing used this month, as the board's meter: the count, what it is out of, a bar, a line. */
-function Meter({ label, used, of, share, tone, children }: { label: string; used: number; of: string; share: number; tone: 'biru' | 'merah' | 'hijau' | 'rose'; children: ReactNode }) {
+function Meter({ label, used, of, share, tone, children }: { label: string; used: number; of: string; share: number; tone: 'biru' | 'kuning' | 'merah' | 'hijau' | 'rose'; children: ReactNode }) {
   return (
     <div className={styles.meter}>
       <p className={styles.mh}>
@@ -211,7 +212,7 @@ export default async function BillingPage({
                 used={usage.used}
                 of={`of ${usage.cap.toLocaleString('en-MY')}`}
                 share={usage.cap > 0 ? (usage.used / usage.cap) * 100 : 0}
-                tone={usage.used > usage.cap ? 'merah' : 'biru'}
+                tone={usage.used > usage.cap ? 'merah' : usage.used >= usage.cap * NEAR_SHARE ? 'kuning' : 'biru'}
               >
                 {usage.used > usage.cap
                   ? `Past the limit: the chat is giving a short fixed reply until ${shortDate(usageResets(now))}.`

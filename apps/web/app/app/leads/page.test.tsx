@@ -87,16 +87,6 @@ describe('LeadsPage', () => {
       now: now.toISOString(),
       look: { accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null },
     });
-    // A paid page has nothing to say about the trial.
-    expect(props.notice).toBeNull();
-  });
-
-  it('passes the trial notice while the free leads last', async () => {
-    getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS', leadsCaptured: 1 });
-
-    render(await LeadsPage());
-
-    expect(Leads.mock.calls[0]![0].notice).not.toBeNull();
   });
 
   // Fix round 2, Important #3: AppFrame renders its own main around every

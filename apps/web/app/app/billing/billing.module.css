@@ -529,6 +529,10 @@
   transition: width 1000ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.mbar[data-tone='kuning'] i {
+  background: var(--kuning);
+}
+
 .mbar[data-tone='merah'] i {
   background: var(--merah);
 }

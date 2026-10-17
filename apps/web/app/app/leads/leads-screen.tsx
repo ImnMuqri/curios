@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import type { LeadStats, OwnerLead } from '@curios/db-read';
@@ -34,7 +34,6 @@ export function LeadsScreen({
   publicUrl,
   look,
   now,
-  notice,
   actions,
   onChanged,
 }: {
@@ -47,8 +46,6 @@ export function LeadsScreen({
   publicUrl: string;
   look: Parameters<typeof LeadDetail>[0]['look'];
   now: Date;
-  /** The free trial's word on capture, when it has one. */
-  notice?: ReactNode;
   actions: LeadActions;
   onChanged: () => void;
 }) {
@@ -90,7 +87,6 @@ export function LeadsScreen({
   return (
     <>
       <PageHead title="Leads" note="Numbers visitors left in the chat" />
-      {notice ? <div className={styles.notice}>{notice}</div> : null}
 
       <ul className={inbox.stats} aria-label="Your leads">
         <li className={inbox.kpi}>

@@ -4,10 +4,11 @@ import { redirect } from 'next/navigation';
 // The barrel here, unlike middleware.ts. This file runs on Node, so the
 // barrel's transitive node:crypto import is fine. The split between the two
 // is deliberate -- see the comment in middleware.ts.
-import { SESSION_COOKIE } from '@curios/core';
-import { countNavBadges, getOwnerPage } from '@curios/db-read';
+import { planState, SESSION_COOKIE } from '@curios/core';
+import { countNavBadges, getConversationUsage, getOwnerPage } from '@curios/db-read';
 import { avatarUrl } from '../../lib/avatar-url.js';
 import { AppFrame } from './app-frame.js';
+import { alertsFor, billingNeedsYou } from './alerts.js';
 import { planLabel } from './plan-label.js';
 import { resolveOwner } from './session.js';
 
@@ -44,14 +45,20 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Onboarding brings its own frame (AuthShell) before a page exists.
   if (!page) return <>{children}</>;
 
-  const badges = await countNavBadges(owner.accountId);
+  const now = new Date();
+  const [badges, usage] = await Promise.all([countNavBadges(owner.accountId), getConversationUsage(page.id, now)]);
+  // The stop states (trial, limit, plan ended), decided once here for every
+  // screen; each screen's header shows the one that is about it.
+  const plan = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
   return (
     <AppFrame
       displayName={page.displayName}
       avatarUrl={avatarUrl(page.avatarKey)}
-      planLabel={planLabel({ ...page, now: new Date() })}
+      planLabel={planLabel({ ...page, now })}
       badges={badges}
       mode={page.mode}
+      alerts={alertsFor({ plan, usage, now })}
+      billingDot={billingNeedsYou(plan)}
     >
       {children}
     </AppFrame>

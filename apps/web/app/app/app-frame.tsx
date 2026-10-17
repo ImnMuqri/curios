@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
+import type { Alert } from './alerts.js';
+import { AlertsProvider } from './_ui/alert-slot.js';
 import styles from './app-frame.module.css';
 
 type Item = { href: string; label: string; icon: ReactNode; count?: keyof NavBadges; business?: true };
@@ -65,6 +67,8 @@ export function AppFrame({
   planLabel,
   badges,
   mode,
+  alerts = [],
+  billingDot = false,
   children,
 }: {
   displayName: string;
@@ -74,6 +78,10 @@ export function AppFrame({
   badges: NavBadges;
   /** The Store module is a business page's; a personal page's nav leaves it out. */
   mode: 'PERSONAL' | 'BUSINESS';
+  /** The stop states, for each screen's header to show (alerts.ts). */
+  alerts?: Alert[];
+  /** A red dot on Billing: a trial used up, or a plan that ended. */
+  billingDot?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
@@ -104,6 +112,11 @@ export function AppFrame({
                       {item.icon}
                       <span className={styles.label}>{item.label}</span>
                       {count > 0 ? <span className={styles.count}>{count}</span> : null}
+                      {billingDot && item.href === '/app/billing' ? (
+                        <span className={styles.dot}>
+                          <span className={styles.srOnly}>, needs you</span>
+                        </span>
+                      ) : null}
                     </a>
                   );
                 })}
@@ -124,7 +137,9 @@ export function AppFrame({
         </div>
       </aside>
 
-      <main className={styles.main}>{children}</main>
+      <main className={styles.main}>
+        <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
+      </main>
     </div>
   );
 }

@@ -149,6 +149,8 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
  */
 export const chatTestRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
   const { gateway, embedder } = chatDependencies(options);
+  // Resolved at registration, as chatRoutes does, so a malformed value fails the deploy.
+  const cap = conversationCap();
 
   app.post(
     '/chat/test',
@@ -166,7 +168,7 @@ export const chatTestRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (ap
     async (request) => {
       if (!request.account) throw new UnauthenticatedError();
       return testAnswer(
-        { prisma: app.prisma, gateway, embedder, log: request.log },
+        { prisma: app.prisma, gateway, embedder, log: request.log, cap },
         { accountId: request.account.id, question: request.body.question, history: request.body.history },
       );
     },

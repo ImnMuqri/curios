@@ -89,7 +89,7 @@ describe('paymentBanner', () => {
 
 describe('planSummary, after a lapse', () => {
   it('tells a page that lapsed with free leads left that its plan ended', () => {
-    // The leads screen says both halves of this (trial-notice.tsx). This
+    // The plan-ended banner says both halves of this (alerts.ts). This
     // screen saying only "free trial" would tell the same owner otherwise.
     expect(
       planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: 1 })),

@@ -17,10 +17,6 @@
   }
 }
 
-.notice {
-  padding: 16px 32px 0;
-}
-
 /* Seven days of numbers, today last and darker. */
 .week {
   display: flex;
@@ -684,12 +680,6 @@
 @media (max-width: 1000px) {
   .week {
     display: none;
-  }
-}
-
-@media (max-width: 760px) {
-  .notice {
-    padding: 14px 16px 0;
   }
 }
 

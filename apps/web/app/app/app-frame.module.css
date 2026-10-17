@@ -135,6 +135,15 @@
   color: var(--biru);
 }
 
+/* Billing needs the owner: a trial used up, or a plan that ended (Alerts). */
+.dot {
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--merah);
+}
+
 .who {
   display: flex;
   align-items: center;
@@ -246,6 +255,13 @@
     background: var(--biru);
     color: var(--paper);
     font-size: 9.5px;
+  }
+
+  .dot {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    margin: 0;
   }
 
   .who {

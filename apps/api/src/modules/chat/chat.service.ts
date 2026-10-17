@@ -188,7 +188,7 @@ export class ConversationNotFoundError extends Error {
 export const OWNER_ANSWERS_MAX = 200;
 
 /** Billing period. The anniversary rule arrives with billing; the shape does not change. */
-function currentPeriod(now = new Date()): string {
+export function currentPeriod(now = new Date()): string {
   return now.toISOString().slice(0, 7);
 }
 

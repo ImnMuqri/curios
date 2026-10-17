@@ -60,7 +60,7 @@ export function planSummary(state: PlanState): string {
     case 'trial':
       // A trial can outlive a subscription -- planState's `lapsedOn`. Calling it
       // a plain free trial would tell an owner who has paid that they never did,
-      // and the leads screen, which says both halves, would disagree with this.
+      // and the plan-ended banner (alerts.ts), which says both halves, would disagree.
       return state.lapsedOn
         ? `Your plan ended on ${formatDate(state.lapsedOn)}. You have ${state.remaining} free leads left before the capture card stops.`
         : `You are on the free trial: ${state.used} of ${FREE_LEADS} free leads used.`;

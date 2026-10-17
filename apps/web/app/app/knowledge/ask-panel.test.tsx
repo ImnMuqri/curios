@@ -70,4 +70,10 @@ describe('AskPanel', () => {
     await userEvent.type(screen.getByRole('textbox', { name: 'Ask your page' }), '   {enter}');
     expect(onAsk).not.toHaveBeenCalled();
   });
+
+  it('says when the reply is the month’s fixed one', async () => {
+    panel({ onAsk: vi.fn().mockResolvedValue({ reply: 'We’ve answered a lot of questions this month.', from: 'limit' }) });
+    await userEvent.click(screen.getByRole('button', { name: 'Ada delivery?' }));
+    expect(await within(log()).findByText(/this month’s limit is reached/)).toBeInTheDocument();
+  });
 });
