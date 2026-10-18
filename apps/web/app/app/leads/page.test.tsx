@@ -35,6 +35,8 @@ const personal: OwnerPage = {
   mode: 'PERSONAL',
   paidUntil: null,
   leadsCaptured: 0,
+  ordersPlaced: 0,
+  ordersAtTrialReset: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
   avatarKey: null,

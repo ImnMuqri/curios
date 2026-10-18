@@ -43,6 +43,8 @@ const page: OwnerPage = {
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,
+  ordersPlaced: 0,
+  ordersAtTrialReset: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
   avatarKey: null,
@@ -233,6 +235,18 @@ describe('BillingPage', () => {
     await renderWith({ ...page, leadsCaptured: 3 });
 
     expect(ResetTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('offers the reset to a page that spent its orders and captured no leads', async () => {
+    await renderWith({ ...page, ordersPlaced: 3 });
+
+    expect(ResetTrial).toHaveBeenCalledTimes(1);
+  });
+
+  it('withholds the reset when every order is already counted by a reset', async () => {
+    await renderWith({ ...page, ordersPlaced: 3, ordersAtTrialReset: 3 });
+
+    expect(ResetTrial).not.toHaveBeenCalled();
   });
 
   it('withholds the reset once it has been used', async () => {

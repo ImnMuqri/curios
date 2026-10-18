@@ -36,6 +36,8 @@ const business: OwnerPage = {
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,
+  ordersPlaced: 0,
+  ordersAtTrialReset: 0,
   trialResetAt: null,
   allowSearchIndexing: false,
   avatarKey: null,

@@ -118,3 +118,13 @@ export class OrderCancelledError extends Error {
     this.name = 'OrderCancelledError';
   }
 }
+
+/** An owner's move on an order that is no longer in the state it needs: someone (or another tab) moved it first. */
+export class OrderStateError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ORDER_STATE';
+  constructor() {
+    super('This order has already moved on. Refresh to see where it is.');
+    this.name = 'OrderStateError';
+  }
+}

@@ -101,7 +101,9 @@ export async function createBillForOwner(
 }
 
 /**
- * Gives an owner their free trial back, once.
+ * Gives an owner their free trial back, once: the lead count goes to zero, and
+ * the order allowance restarts from the orders placed so far (`ordersPlaced` itself
+ * is never lowered; order numbers come from it).
  *
  * One conditional update, and no read before it. Two clicks a moment apart both
  * reach the database; the first matches its `where` and the second does not,
@@ -112,8 +114,8 @@ export async function createBillForOwner(
  * BUSINESS, because a personal page never captures; `paidUntil` null, because a
  * page that has paid owes a renewal rather than a second trial -- and null is
  * what "never paid" means on this column; `trialResetAt` null, because there is
- * exactly one; and at least one lead captured, because resetting at zero would
- * spend the reset on nothing and leave the owner without it when it mattered.
+ * exactly one; and at least one lead captured or one order placed since the last baseline, because
+ * resetting at zero would spend the reset on nothing and leave the owner without it when it mattered.
  *
  * Zero rows changed cannot tell us which condition failed, and deliberately does
  * not try: one message covering all of them is honest, where a read to find out
@@ -123,16 +125,16 @@ export async function resetTrial(
   deps: { prisma: PrismaClient },
   input: { accountId: string; now: Date },
 ): Promise<void> {
-  const reset = await deps.prisma.page.updateMany({
-    where: {
-      accountId: input.accountId,
-      mode: 'BUSINESS',
-      paidUntil: null,
-      trialResetAt: null,
-      leadsCaptured: { gte: 1 },
-    },
-    data: { leadsCaptured: 0, trialResetAt: input.now },
-  });
+  // Raw, because the order condition compares two columns, which updateMany
+  // cannot say. Still the one statement: the `where` is the whole policy.
+  const reset = await deps.prisma.$executeRaw`
+    UPDATE "Page"
+    SET "leadsCaptured" = 0, "ordersAtTrialReset" = "ordersPlaced", "trialResetAt" = ${input.now}
+    WHERE "accountId" = ${input.accountId}
+      AND "mode" = 'BUSINESS'
+      AND "paidUntil" IS NULL
+      AND "trialResetAt" IS NULL
+      AND ("leadsCaptured" >= 1 OR "ordersPlaced" > "ordersAtTrialReset")`;
 
-  if (reset.count === 0) throw new TrialResetUsedError();
+  if (reset === 0) throw new TrialResetUsedError();
 }

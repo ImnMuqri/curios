@@ -5,6 +5,7 @@ import { hashSessionValue, MAIL_QUEUE, type MailJobData } from '@curios/core';
 import { malaysiaToday, openDays } from '@curios/core/orders';
 import { buildApp } from '../../app.js';
 import type { AvatarStore } from '../pages/storage.js';
+import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
 const mailQueue = { add: vi.fn(async (_name: string, _data: MailJobData, _opts?: unknown) => ({})) };
 const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> } = {
@@ -658,5 +659,147 @@ describe('POST /store/orders/:token/receipt', () => {
     for (let i = 0; i < 21; i++) statuses.push((await upload('no-such-token', { contentType: 'image/jpeg', data: JPEG }, address)).statusCode);
     expect(statuses.slice(0, 20).every((status) => status !== 429)).toBe(true);
     expect(statuses[20]).toBe(429);
+  });
+});
+
+let serial = 100;
+/** anOrder, but each one its own number and code: they are unique per page. */
+const another = (shop: Shop, data: Record<string, unknown> = {}) => anOrder(shop, { number: ++serial, code: `T${serial}`, ...data });
+
+describe("the owner's transitions", () => {
+  const move = (cookie: string | undefined, id: string, action: string) =>
+    app.inject({ method: 'POST', url: `/orders/${id}/${action}`, remoteAddress: from(), cookies: cookie ? { [SESSION_COOKIE]: cookie } : {} });
+
+  async function ownerOf(shop: Shop) {
+    const account = await app.prisma.account.findUniqueOrThrow({ where: { email: shop.email }, select: { id: true } });
+    return (await createSession(app.prisma, account.id)).value;
+  }
+  const row = (id: string) => app.prisma.order.findUniqueOrThrow({ where: { id } });
+  const RECEIPT = { receiptKey: 'receipts/p/abc.jpg', receiptType: 'image/jpeg', receiptUploadedAt: new Date('2026-10-01T00:00:00Z') };
+
+  it('refuses a caller with no session', async () => {
+    const order = await another(await aShop());
+    expect((await move(undefined, order.id, 'paid')).statusCode).toBe(401);
+  });
+
+  it('marks a placed order paid', async () => {
+    const shop = await aShop();
+    const order = await another(shop);
+    const res = await move(await ownerOf(shop), order.id, 'paid');
+    expect(res.statusCode).toBe(204);
+    const after = await row(order.id);
+    expect(after.status).toBe('PAID');
+    expect(after.paidAt).not.toBeNull();
+  });
+
+  it('changes nothing the second time', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const order = await another(shop);
+    expect((await move(cookie, order.id, 'paid')).statusCode).toBe(204);
+    const first = await row(order.id);
+
+    const again = await move(cookie, order.id, 'paid');
+
+    expect(again.statusCode).toBe(409);
+    expect(again.json()).toEqual({ error: { code: 'ORDER_STATE', message: 'This order has already moved on. Refresh to see where it is.' } });
+    expect((await row(order.id)).paidAt).toEqual(first.paidAt);
+  });
+
+  it('completes a paid order, and only a paid one', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const placed = await another(shop);
+    expect((await move(cookie, placed.id, 'completed')).statusCode).toBe(409);
+    const paid = await another(shop, { status: 'PAID', paidAt: new Date() });
+    expect((await move(cookie, paid.id, 'completed')).statusCode).toBe(204);
+    const after = await row(paid.id);
+    expect(after.status).toBe('COMPLETED');
+    expect(after.completedAt).not.toBeNull();
+  });
+
+  it('cancels a placed or paid order, not a completed one', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const placed = await another(shop);
+    const paid = await another(shop, { status: 'PAID', paidAt: new Date() });
+    const done = await another(shop, { status: 'COMPLETED', paidAt: new Date(), completedAt: new Date() });
+    expect((await move(cookie, placed.id, 'cancel')).statusCode).toBe(204);
+    expect((await move(cookie, paid.id, 'cancel')).statusCode).toBe(204);
+    expect((await move(cookie, done.id, 'cancel')).statusCode).toBe(409);
+    const after = await row(paid.id);
+    expect(after.status).toBe('CANCELLED');
+    expect(after.cancelledAt).not.toBeNull();
+    expect((await row(done.id)).status).toBe('COMPLETED');
+  });
+
+  it('marks a paid, cancelled order refunded, once', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const owed = await another(shop, { status: 'CANCELLED', paidAt: new Date(), cancelledAt: new Date() });
+    const unpaid = await another(shop, { status: 'CANCELLED', cancelledAt: new Date() });
+    expect((await move(cookie, unpaid.id, 'refunded')).statusCode).toBe(409);
+    expect((await move(cookie, owed.id, 'refunded')).statusCode).toBe(204);
+    const first = await row(owed.id);
+    expect(first.refundedAt).not.toBeNull();
+    expect((await move(cookie, owed.id, 'refunded')).statusCode).toBe(409);
+    expect((await row(owed.id)).refundedAt).toEqual(first.refundedAt);
+  });
+
+  it('404s another owner\'s order, for every transition', async () => {
+    const mine = await aShop();
+    const theirs = await aShop();
+    const cookie = await ownerOf(mine);
+    const order = await another(theirs, { ...RECEIPT });
+    for (const action of ['paid', 'not-received', 'completed', 'cancel', 'refunded']) {
+      const res = await move(cookie, order.id, action);
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ error: { code: 'ORDER_NOT_FOUND' } });
+    }
+    expect((await move(cookie, 'no-such-order', 'paid')).statusCode).toBe(404);
+    expect((await row(order.id)).status).toBe('PLACED');
+    expect(store.remove).not.toHaveBeenCalled();
+  });
+
+  it('clears a receipt not received, and lets the customer upload again', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const order = await another(shop, { ...RECEIPT });
+
+    const res = await move(cookie, order.id, 'not-received');
+
+    expect(res.statusCode).toBe(204);
+    const after = await row(order.id);
+    expect(after).toMatchObject({ receiptKey: null, receiptType: null, receiptUploadedAt: null, status: 'PLACED' });
+    expect(after.receiptRejectedAt).not.toBeNull();
+    expect(store.remove).toHaveBeenCalledWith('receipts/p/abc.jpg');
+
+    // The customer sends another, which clears the rejection.
+    const token = randomUUID().replace(/-/g, '');
+    await app.prisma.order.update({ where: { id: order.id }, data: { tokenHash: hashSessionValue(token) } });
+    expect((await upload(token, { contentType: 'image/jpeg', data: JPEG })).statusCode).toBe(200);
+    const again = await row(order.id);
+    expect(again.receiptKey).not.toBeNull();
+    expect(again.receiptRejectedAt).toBeNull();
+  });
+
+  it('refuses not received with no receipt in, or once paid', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const bare = await another(shop);
+    const paid = await another(shop, { ...RECEIPT, status: 'PAID', paidAt: new Date() });
+    expect((await move(cookie, bare.id, 'not-received')).statusCode).toBe(409);
+    expect((await move(cookie, paid.id, 'not-received')).statusCode).toBe(409);
+    expect((await row(paid.id)).receiptKey).toBe(RECEIPT.receiptKey);
+    expect(store.remove).not.toHaveBeenCalled();
+  });
+
+  it('still clears the row when the old file cannot be removed', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const order = await another(shop, { ...RECEIPT });
+    store.remove.mockRejectedValueOnce(new Error('bucket down'));
+    expect((await move(cookie, order.id, 'not-received')).statusCode).toBe(204);
+    expect((await row(order.id)).receiptKey).toBeNull();
   });
 });

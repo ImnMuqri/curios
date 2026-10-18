@@ -10,6 +10,10 @@ export interface OwnerPage {
   paidUntil: Date | null;
   /** Leads ever captured. Never decremented -- deleting a lead does not return one. */
   leadsCaptured: number;
+  /** Orders ever placed on this page. Never decremented: order numbers come from it. */
+  ordersPlaced: number;
+  /** `ordersPlaced` as it stood at the trial reset; the free orders count from here. */
+  ordersAtTrialReset: number;
   /** When the owner spent their one trial reset, or null while it is unspent. */
   trialResetAt: Date | null;
   /** Whether this page, if personal, may appear in search results. Settings' switch. */
@@ -48,6 +52,8 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       mode: true,
       paidUntil: true,
       leadsCaptured: true,
+      ordersPlaced: true,
+      ordersAtTrialReset: true,
       trialResetAt: true,
       allowSearchIndexing: true,
       avatarKey: true,

@@ -120,7 +120,8 @@ export default async function BillingPage({
 
   // Exactly the conditions the API enforces (billing.service.ts, resetTrial).
   // A button that leads to a 409 is worse than no button.
-  const canReset = page.mode === 'BUSINESS' && page.paidUntil === null && page.trialResetAt === null && page.leadsCaptured >= 1;
+  const canReset = page.mode === 'BUSINESS' && page.paidUntil === null && page.trialResetAt === null &&
+    (page.leadsCaptured >= 1 || page.ordersPlaced > page.ordersAtTrialReset);
 
   const head = planHead(state, now);
   const paidUntil = state.kind === 'paid' ? state.paidUntil : null;
