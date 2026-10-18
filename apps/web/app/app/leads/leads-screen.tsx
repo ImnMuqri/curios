@@ -128,8 +128,8 @@ export function LeadsScreen({
             </svg>
           </span>
           <span>
-            <b>{stats.closed}</b>
-            <span>Marked closed</span>
+            <b>{stats.sold}</b>
+            <span>Closed into a sale</span>
           </span>
         </li>
       </ul>

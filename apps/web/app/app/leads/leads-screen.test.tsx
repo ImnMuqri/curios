@@ -21,7 +21,7 @@ function show(list = leads, calls?: Partial<LeadActions>) {
   render(
     <LeadsScreen
       leads={list}
-      stats={{ waiting: 1, week: [0, 0, 0, 0, 1, 1, 1], closed: 1 }}
+      stats={{ waiting: 1, week: [0, 0, 0, 0, 1, 1, 1], sold: 1 }}
       handle="keklina"
       displayName="Kek Lina"
       language="en"
@@ -47,11 +47,11 @@ describe('LeadsScreen, the figures', () => {
     expect(screen.getByText('Numbers visitors left in the chat · kept for 12 months')).toBeInTheDocument();
   });
 
-  it('counts what waits, this week’s numbers, and what is closed', () => {
+  it('counts what waits, this week’s numbers, and what became a sale', () => {
     show();
     expect(figures().getByText('New, waiting for you').previousSibling).toHaveTextContent('1');
     expect(figures().getByText('Numbers left this week').previousSibling).toHaveTextContent('3');
-    expect(figures().getByText('Marked closed').previousSibling).toHaveTextContent('1');
+    expect(figures().getByText('Closed into a sale').previousSibling).toHaveTextContent('1');
   });
 });
 
@@ -91,6 +91,14 @@ describe('LeadsScreen, the status', () => {
     expect(within(list().getByRole('button', { name: /\+60 12-781 4402/ })).queryByLabelText('New')).toBeNull();
     expect(onChanged).toHaveBeenCalled();
     expect(screen.getByRole('status')).toHaveTextContent('Marked closed.');
+  });
+
+  it('marks a sale apart from a close', async () => {
+    const { actions } = show();
+    expect(statusSwitch().getAllByRole('radio').map((r) => r.textContent)).toEqual(['New', 'Contacted', 'Sold', 'Closed']);
+    await act(async () => { fireEvent.click(statusSwitch().getByRole('radio', { name: 'Sold' })); });
+    expect(actions.setStatus).toHaveBeenCalledWith('l1', 'SOLD');
+    expect(screen.getByRole('status')).toHaveTextContent('Marked sold.');
   });
 
   it('puts it back, and says why, when the save fails', async () => {

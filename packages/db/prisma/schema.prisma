@@ -51,6 +51,9 @@ enum MessageRole {
 enum LeadStatus {
   NEW
   CONTACTED
+  /// It became a sale. Apart from CLOSED, because a lead is often only an
+  /// enquiry: answered, or a no, and done with.
+  SOLD
   CLOSED
 }
 

@@ -23,6 +23,8 @@ export interface LeadActions {
 export const STATUSES: { id: LeadStatus; label: string }[] = [
   { id: 'NEW', label: 'New' },
   { id: 'CONTACTED', label: 'Contacted' },
+  // Apart from Closed: a lead is often only an enquiry, and ends without a sale.
+  { id: 'SOLD', label: 'Sold' },
   { id: 'CLOSED', label: 'Closed' },
 ];
 
