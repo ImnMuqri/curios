@@ -35,6 +35,7 @@ export function LeadsScreen({
   publicUrl,
   look,
   now,
+  keptMonths,
   actions,
   onChanged,
 }: {
@@ -47,6 +48,8 @@ export function LeadsScreen({
   publicUrl: string;
   look: Parameters<typeof LeadDetail>[0]['look'];
   now: Date;
+  /** How long a lead is kept before the retention sweep deletes it. */
+  keptMonths: number;
   actions: LeadActions;
   onChanged: () => void;
 }) {
@@ -88,7 +91,7 @@ export function LeadsScreen({
 
   return (
     <>
-      <PageHead title="Leads" note="Numbers visitors left in the chat" />
+      <PageHead title="Leads" note={`Numbers visitors left in the chat · kept for ${keptMonths} months`} />
 
       <ul className={inbox.stats} aria-label="Your leads">
         <li className={inbox.kpi}>

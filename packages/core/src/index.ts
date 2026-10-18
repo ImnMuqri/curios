@@ -2,12 +2,15 @@ export { normalizeClaim } from './normalize.js';
 export {
   BILLING_QUEUE,
   FACT_CATEGORIES,
+  HOUSEKEEPING_QUEUE,
   INGEST_QUEUE,
   LEAD_QUEUE,
+  LEAD_RETENTION_MONTHS,
   MAIL_QUEUE,
   PASTED_TEXT_MAX,
   PENDING_CHECK_JOB,
   RENEWAL_REMINDER_JOB,
+  RETENTION_JOB,
 } from './types.js';
 export type {
   FactCategory,
