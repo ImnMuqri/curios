@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition, type ChangeEvent } from 'react';
+import { useId, useState, useTransition, type ChangeEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { RECEIPT_MAX_BYTES } from '@curios/core/orders';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
@@ -9,6 +9,43 @@ import styles from './order.module.css';
 
 /** What the API takes; it checks the first bytes too, so this is only the early word. */
 const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const BY_EXTENSION: Record<string, string> = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+};
+
+/** The first bytes of the four kinds, as the API's decodeReceipt checks them. */
+function sniff(bytes: Uint8Array): string | null {
+  const at = (offset: number, text: string) => [...text].every((ch, i) => bytes[offset + i] === ch.charCodeAt(0));
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes[0] === 0x89 && at(1, 'PNG')) return 'image/png';
+  if (at(0, 'RIFF') && at(8, 'WEBP')) return 'image/webp';
+  if (at(0, '%PDF')) return 'application/pdf';
+  return null;
+}
+
+function head(file: File): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+    reader.onerror = () => reject(reader.error ?? new Error('read failed'));
+    reader.readAsArrayBuffer(file.slice(0, 12));
+  });
+}
+
+/**
+ * The file's type as it is sent. Some Android pickers give no type at all;
+ * then the extension says, and failing that its first bytes. The API checks
+ * the bytes against this label either way, so the server has the last word.
+ */
+async function typeOf(file: File): Promise<string | null> {
+  if (file.type) return ACCEPTED.includes(file.type) ? file.type : null;
+  const ext = file.name.includes('.') ? (file.name.split('.').pop()?.toLowerCase() ?? '') : '';
+  return BY_EXTENSION[ext] ?? sniff(await head(file).catch(() => new Uint8Array()));
+}
 
 /** The file as base64, without the data URL's prefix. */
 function base64(file: File): Promise<string> {
@@ -25,11 +62,14 @@ function base64(file: File): Promise<string> {
  * The board's "Upload your receipt" box. A label around a file input, so the
  * whole box opens the picker and the input keeps its own keyboard handling.
  * On success the page's data is read again, and the box gives way to the
- * "sent" line the server now draws.
+ * "sent" line the server now draws. With `replace`, it is the quiet "Upload a
+ * different receipt" under that line: until the order is paid, a second
+ * receipt replaces the first.
  */
-export function ReceiptUpload(props: { token: string; displayName: string; copy: ShopCopy }) {
+export function ReceiptUpload(props: { token: string; displayName: string; copy: ShopCopy; replace?: boolean }) {
   const { copy } = props;
   const router = useRouter();
+  const problemId = useId();
   const [sending, setSending] = useState(false);
   const [refreshing, startRefresh] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
@@ -40,8 +80,10 @@ export function ReceiptUpload(props: { token: string; displayName: string; copy:
     const file = input.files?.[0];
     // The same file chosen again after a refusal must fire change again.
     input.value = '';
-    if (!file) return;
-    if (!ACCEPTED.includes(file.type) || file.size > RECEIPT_MAX_BYTES) {
+    // aria-disabled rather than disabled, so focus stays on the box while it sends.
+    if (!file || busy) return;
+    const contentType = await typeOf(file);
+    if (!contentType || file.size > RECEIPT_MAX_BYTES) {
       setProblem(copy.receiptInvalid);
       return;
     }
@@ -51,7 +93,7 @@ export function ReceiptUpload(props: { token: string; displayName: string; copy:
       const data = await base64(file);
       await apiFetch(`/store/orders/${encodeURIComponent(props.token)}/receipt`, {
         method: 'POST',
-        body: JSON.stringify({ contentType: file.type, data }),
+        body: JSON.stringify({ contentType, data }),
       });
       startRefresh(() => router.refresh());
     } catch (error) {
@@ -71,27 +113,42 @@ export function ReceiptUpload(props: { token: string; displayName: string; copy:
     }
   }
 
+  const input = (
+    <input
+      type="file"
+      className={styles.file}
+      // No type in the list would refuse a file a picker sends untyped; the check above says why instead.
+      accept={`${ACCEPTED.join(',')},.jpg,.jpeg,.png,.webp,.pdf`}
+      aria-disabled={busy || undefined}
+      onClick={(event) => {
+        if (busy) event.preventDefault();
+      }}
+      onChange={(event) => void choose(event)}
+      aria-describedby={problem ? problemId : undefined}
+    />
+  );
+
   return (
     <>
-      <label className={styles.upload} data-busy={busy || undefined}>
-        <input
-          type="file"
-          className={styles.file}
-          accept={ACCEPTED.join(',')}
-          disabled={busy}
-          onChange={(event) => void choose(event)}
-          aria-describedby={problem ? 'receipt-problem' : undefined}
-        />
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
-        </svg>
-        <span>
-          <b>{copy.uploadReceipt}</b>
-          <span>{busy ? copy.uploading : copy.uploadHint}</span>
-        </span>
-      </label>
+      {props.replace ? (
+        <label className={styles.replace} data-busy={busy || undefined}>
+          {input}
+          <span aria-live="polite">{busy ? copy.uploading : copy.uploadDifferent}</span>
+        </label>
+      ) : (
+        <label className={styles.upload} data-busy={busy || undefined}>
+          {input}
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
+          </svg>
+          <span>
+            <b>{copy.uploadReceipt}</b>
+            <span aria-live="polite">{busy ? copy.uploading : copy.uploadHint}</span>
+          </span>
+        </label>
+      )}
       {problem ? (
-        <p id="receipt-problem" className={styles.problem} role="alert">
+        <p id={problemId} className={styles.problem} role="alert">
           {problem}
         </p>
       ) : null}

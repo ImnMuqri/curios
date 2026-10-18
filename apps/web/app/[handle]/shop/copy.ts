@@ -89,6 +89,10 @@ export interface ShopCopy {
   statusReady: string;
   statusDone: string;
   statusCancelled: string;
+  /** Cancelled after it was paid, and the money not yet marked back. */
+  statusRefundDue: string;
+  /** Said after a finished step's name, to a screen reader. */
+  stepDone: string;
   statusRefunded: string;
   payTitle: (total: string) => string;
   payTo: (name: string) => string;
@@ -103,6 +107,7 @@ export interface ShopCopy {
   copy: string;
   uploadReceipt: string;
   uploadHint: string;
+  uploadDifferent: string;
   uploading: string;
   receiptSent: string;
   checksIt: (name: string) => string;
@@ -229,6 +234,8 @@ const EN: ShopCopy = {
   statusReady: 'Ready',
   statusDone: 'Done',
   statusCancelled: 'Cancelled',
+  statusRefundDue: 'Cancelled · refund due',
+  stepDone: 'done',
   statusRefunded: 'Refunded',
   payTitle: (total) => `Pay ${total}`,
   payTo: (name) => `To ${name}, directly`,
@@ -242,6 +249,7 @@ const EN: ShopCopy = {
   copy: 'Copy',
   uploadReceipt: 'Upload your receipt',
   uploadHint: 'A screenshot from your bank app',
+  uploadDifferent: 'Upload a different receipt',
   uploading: 'Uploading…',
   receiptSent: 'sent',
   checksIt: (name) => `${name} checks it and confirms here`,
@@ -333,6 +341,8 @@ const MS: ShopCopy = {
   statusReady: 'Sedia',
   statusDone: 'Selesai',
   statusCancelled: 'Dibatalkan',
+  statusRefundDue: 'Dibatalkan · wang akan dipulangkan',
+  stepDone: 'selesai',
   statusRefunded: 'Wang dipulangkan',
   payTitle: (total) => `Bayar ${total}`,
   payTo: (name) => `Terus kepada ${name}`,
@@ -346,6 +356,7 @@ const MS: ShopCopy = {
   copy: 'Salin',
   uploadReceipt: 'Muat naik resit anda',
   uploadHint: 'Tangkapan skrin dari aplikasi bank anda',
+  uploadDifferent: 'Muat naik resit lain',
   uploading: 'Sedang dimuat naik…',
   receiptSent: 'dihantar',
   checksIt: (name) => `${name} akan menyemaknya dan mengesahkan di sini`,

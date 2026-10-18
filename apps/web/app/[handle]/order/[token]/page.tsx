@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getOrderByToken, type PublicOrder } from '@curios/db-read';
@@ -16,20 +17,24 @@ const NOT_INDEXED = { index: false, follow: false } as const;
 
 type Params = { params: Promise<{ handle: string; token: string }> };
 
-/** The order, or null when the token is unknown or the order is another page's. */
-async function load(handle: string, token: string): Promise<PublicOrder | null> {
+/**
+ * The order, or null when the token is unknown or the order is another page's.
+ * Cached per request, so the metadata and the page read it once.
+ */
+const load = cache(async (handle: string, token: string): Promise<PublicOrder | null> => {
   const order = await getOrderByToken(token);
   if (!order || order.page.handle !== handle.toLowerCase()) return null;
   return order;
-}
+});
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle, token } = await params;
   const order = await load(handle, token);
-  if (!order) return { robots: NOT_INDEXED };
-  return { title: `Order #${order.number} · ${order.page.displayName}`, robots: NOT_INDEXED };
+  // The URL is the order's whole key: no request from this page sends it on as a referrer.
+  if (!order) return { robots: NOT_INDEXED, referrer: 'no-referrer' };
+  return { title: `Order #${order.number} · ${order.page.displayName}`, robots: NOT_INDEXED, referrer: 'no-referrer' };
 }
 
 export default async function OrderPage({ params }: Params) {

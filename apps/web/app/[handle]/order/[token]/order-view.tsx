@@ -60,8 +60,9 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
       return { text: copy.statusDone, tone: 'ok' };
     case 'refunded':
       return { text: copy.statusRefunded, tone: 'quiet' };
-    case 'cancelled':
     case 'refundOwed':
+      return { text: copy.statusRefundDue, tone: 'stop' };
+    case 'cancelled':
       return { text: copy.statusCancelled, tone: 'stop' };
   }
 }
@@ -86,49 +87,37 @@ function useCopied(): [boolean, (text: string) => void] {
   return [copied, copyText];
 }
 
-/** The board's download button on the QR's corner: a tick for a moment once saved. */
-function SaveQr(props: { url: string; handle: string; copy: ShopCopy }) {
+/**
+ * The board's download button on the QR's corner: a tick for a moment once
+ * pressed. A plain download link to this app's own address (./qr), which
+ * serves the QR as an attachment: a `download` attribute is ignored across
+ * origins, and storage's own address is another origin.
+ */
+function SaveQr(props: { href: string; copy: ShopCopy }) {
   const [saved, setSaved] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
 
-  async function save() {
-    // A `download` attribute is ignored across origins, and the QR lives on storage's:
-    // fetch it and save the bytes from an object URL of this page's own.
-    try {
-      const response = await fetch(props.url);
-      if (!response.ok) throw new Error(String(response.status));
-      const blob = await response.blob();
-      const href = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = href;
-      a.download = `${props.handle}-qr.${EXTENSION[blob.type] ?? 'png'}`;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(href), 1000);
-      clearTimeout(timer.current);
-      setSaved(true);
-      timer.current = setTimeout(() => setSaved(false), 1600);
-    } catch {
-      // Storage refused the read (CORS, offline): open the picture, to be kept by a long press.
-      window.open(props.url, '_blank', 'noopener');
-    }
+  function pressed() {
+    clearTimeout(timer.current);
+    setSaved(true);
+    timer.current = setTimeout(() => setSaved(false), 1600);
   }
 
   return (
-    <button
-      type="button"
+    <a
+      href={props.href}
+      download
       className={styles.save}
       data-saved={saved || undefined}
       aria-label={props.copy.saveQr}
       title={props.copy.saveQrTitle}
-      onClick={() => void save()}
+      onClick={pressed}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d={saved ? 'M5 12.5l4.5 4.5L19 7.5' : 'M12 4v12M7 11l5 5 5-5M5 20h14'} />
       </svg>
-    </button>
+    </a>
   );
 }
 
@@ -195,7 +184,7 @@ export function OrderView(props: OrderViewProps) {
           {stepList.map((step, i) => {
             const state = step.done ? 'done' : i === nowAt ? 'now' : undefined;
             return (
-              <li key={step.label} className={styles.step} data-state={state}>
+              <li key={step.label} className={styles.step} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
                 <i aria-hidden="true">
                   {step.done ? (
                     <svg viewBox="0 0 24 24">
@@ -203,7 +192,11 @@ export function OrderView(props: OrderViewProps) {
                     </svg>
                   ) : null}
                 </i>
-                <span>{step.label}</span>
+                <span>
+                  {step.label}
+                  {/* The tick says it to the eye; this says it to a screen reader. */}
+                  {step.done ? <span className={styles.srOnly}>{`, ${copy.stepDone}`}</span> : null}
+                </span>
               </li>
             );
           })}
@@ -225,8 +218,8 @@ export function OrderView(props: OrderViewProps) {
             <div className={styles.payBox}>
               {props.qrUrl ? (
                 <span className={styles.qr}>
-                  <img src={props.qrUrl} alt={copy.qrLabel(name)} width={104} height={104} />
-                  <SaveQr url={props.qrUrl} handle={props.handle} copy={copy} />
+                  <img src={props.qrUrl} alt={copy.qrLabel(name)} width={104} height={104} referrerPolicy="no-referrer" />
+                  <SaveQr href={`/${props.handle}/order/${encodeURIComponent(props.token)}/qr`} copy={copy} />
                 </span>
               ) : null}
               <span className={styles.bank}>
@@ -264,6 +257,10 @@ export function OrderView(props: OrderViewProps) {
                 <span>{copy.checksIt(name)}</span>
               </span>
             </div>
+          ) : null}
+          {view === 'toCheck' ? (
+            // Until it is marked paid, a second receipt replaces the first.
+            <ReceiptUpload token={props.token} displayName={name} copy={copy} replace />
           ) : (
             <ReceiptUpload token={props.token} displayName={name} copy={copy} />
           )}
@@ -305,7 +302,7 @@ export function OrderView(props: OrderViewProps) {
       </section>
 
       {props.whatsapp ? (
-        <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(order.number, order.code))} rel="noopener">
+        <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(order.number, order.code))} rel="noopener noreferrer">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z" />
           </svg>

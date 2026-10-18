@@ -60,15 +60,26 @@ const withOrder = (patch: Partial<Props['order']>, rest: Partial<Props> = {}): P
   order: { ...base.order, ...patch },
 });
 
+/** Each step as a screen reader has it: its name, ", done" when lit, and ← on the step being waited on (aria-current). */
 const steps = () =>
   within(screen.getByRole('list', { name: copy.orderProgress }))
     .getAllByRole('listitem')
-    .map((li) => `${li.textContent}:${li.getAttribute('data-state') ?? ''}`);
+    .map((li) => `${li.textContent}${li.getAttribute('aria-current') === 'step' ? ' ←' : ''}`);
+
+const fileInput = (name: RegExp) => screen.getByLabelText(name);
+
+const ok = () =>
+  new Response(JSON.stringify({ receiptUploadedAt: '2026-10-15T03:00:00.000Z' }), { status: 200, headers: { 'content-type': 'application/json' } });
+
+// The clipboard is stubbed in some tests; each test starts from the real one.
+const realClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
 
 afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   refresh.mockReset();
+  if (realClipboard) Object.defineProperty(navigator, 'clipboard', realClipboard);
+  else Reflect.deleteProperty(navigator, 'clipboard');
 });
 
 describe('OrderView', () => {
@@ -104,14 +115,15 @@ describe('OrderView', () => {
     render(<OrderView {...base} />);
 
     expect(screen.getByText('Waiting for payment')).toBeInTheDocument();
-    expect(steps()).toEqual(['Placed:done', 'Paid:now', 'Ready:', 'Done:']);
+    expect(steps()).toEqual(['Placed, done', 'Paid ←', 'Ready', 'Done']);
 
     const pay = screen.getByRole('region', { name: 'Pay RM215' });
     expect(within(pay).getByText('To Kek Lina, directly')).toBeInTheDocument();
     const qr = within(pay).getByRole('img', { name: 'Kek Lina DuitNow QR' });
     expect(qr).toHaveAttribute('src', 'https://cdn.test/qr/keklina.png');
+    expect(qr).toHaveAttribute('referrerpolicy', 'no-referrer');
     // The download button sits inside the QR's own box, on its corner.
-    const save = within(pay).getByRole('button', { name: copy.saveQr });
+    const save = within(pay).getByRole('link', { name: copy.saveQr });
     expect(qr.parentElement).toContainElement(save);
     expect(within(pay).getByText('Maybank · Lina binti Kamal')).toBeInTheDocument();
     expect(within(pay).getByText('1642 3378 9021')).toBeInTheDocument();
@@ -126,41 +138,69 @@ describe('OrderView', () => {
     expect(within(pay).getByLabelText(new RegExp(copy.uploadReceipt))).toHaveAttribute('type', 'file');
   });
 
-  it('saves the QR by fetching it, since a cross-origin download attribute is ignored', async () => {
-    const user = userEvent.setup();
-    const blob = new Blob(['png'], { type: 'image/png' });
-    const fetchSpy = vi.fn().mockResolvedValue(new Response(blob));
-    vi.stubGlobal('fetch', fetchSpy);
-    const createObjectURL = vi.fn(() => 'blob:qr');
-    const revokeObjectURL = vi.fn();
-    Object.assign(URL, { createObjectURL, revokeObjectURL });
-    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  it('saves the QR from this app’s own address, a plain download link (a cross-origin download attribute is ignored)', () => {
     render(<OrderView {...base} />);
-
-    await user.click(screen.getByRole('button', { name: copy.saveQr }));
-    expect(fetchSpy).toHaveBeenCalledWith('https://cdn.test/qr/keklina.png');
-    await vi.waitFor(() => expect(click).toHaveBeenCalled());
-    const anchor = click.mock.contexts[0] as HTMLAnchorElement;
-    expect(anchor.href).toBe('blob:qr');
-    expect(anchor.download).toBe('keklina-qr.png');
+    const save = screen.getByRole('link', { name: copy.saveQr });
+    expect(save).toHaveAttribute('href', '/keklina/order/tok_abc/qr');
+    expect(save).toHaveAttribute('download');
   });
 
   it('uploads a receipt, then refreshes the page so its status follows', async () => {
     const user = userEvent.setup();
-    const fetchSpy = vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ receiptUploadedAt: '2026-10-15T03:00:00.000Z' }), { status: 200, headers: { 'content-type': 'application/json' } }),
-    );
+    const fetchSpy = vi.fn().mockResolvedValue(ok());
     vi.stubGlobal('fetch', fetchSpy);
     render(<OrderView {...base} />);
 
     const file = new File(['%PDF-1.4'], 'receipt.pdf', { type: 'application/pdf' });
-    await user.upload(screen.getByLabelText(new RegExp(copy.uploadReceipt)), file);
+    await user.upload(fileInput(new RegExp(copy.uploadReceipt)), file);
 
     await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
     const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
     expect(url).toMatch(/\/store\/orders\/tok_abc\/receipt$/);
     expect(init.method).toBe('POST');
     expect(JSON.parse(init.body as string)).toEqual({ contentType: 'application/pdf', data: btoa('%PDF-1.4') });
+  });
+
+  it('says Uploading… aloud, and keeps focus on the box while it sends', async () => {
+    const user = userEvent.setup();
+    let answer: (response: Response) => void = () => {};
+    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => (answer = resolve))));
+    render(<OrderView {...base} />);
+    const input = fileInput(new RegExp(copy.uploadReceipt));
+    await user.upload(input, new File(['x'], 'r.png', { type: 'image/png' }));
+
+    const status = await screen.findByText(copy.uploading);
+    expect(status).toHaveAttribute('aria-live', 'polite');
+    expect(input).toHaveAttribute('aria-disabled', 'true');
+    expect(input).not.toBeDisabled();
+    answer(ok());
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
+  });
+
+  it('sends a file the picker gave no type by its extension, or else by its first bytes', async () => {
+    // A picker that sends an untyped file is not held to the accept list.
+    const user = userEvent.setup({ applyAccept: false });
+    const fetchSpy = vi.fn().mockImplementation(() => Promise.resolve(ok()));
+    vi.stubGlobal('fetch', fetchSpy);
+    render(<OrderView {...base} />);
+    const input = fileInput(new RegExp(copy.uploadReceipt));
+
+    await user.upload(input, new File(['x'], 'Screenshot.JPG', { type: '' }));
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1));
+    expect(JSON.parse((fetchSpy.mock.calls[0] as [string, RequestInit])[1].body as string).contentType).toBe('image/jpeg');
+
+    await vi.waitFor(() => expect(input).not.toHaveAttribute('aria-disabled'));
+    // No type and no extension: a PNG's first bytes say what it is.
+    const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    await user.upload(input, new File([png], 'receipt', { type: '' }));
+    await vi.waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(2));
+    expect(JSON.parse((fetchSpy.mock.calls[1] as [string, RequestInit])[1].body as string).contentType).toBe('image/png');
+
+    // Nothing says it is a picture or a PDF: refused here, as the server would.
+    await vi.waitFor(() => expect(input).not.toHaveAttribute('aria-disabled'));
+    await user.upload(input, new File(['hello'], 'notes', { type: '' }));
+    expect(await screen.findByText(copy.receiptInvalid)).toBeInTheDocument();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
   it('refuses a receipt over 5 MB before sending it', async () => {
@@ -194,11 +234,22 @@ describe('OrderView', () => {
   it('after upload: Receipt sent, checking', () => {
     render(<OrderView {...withOrder({ receiptUploadedAt: '2026-10-15T03:00:00.000Z', receiptType: 'image/jpeg' }, { receiptUrl: 'https://cdn.test/receipts/p/abc.jpg' })} />);
     expect(screen.getByText('Receipt sent · Kek Lina is checking')).toBeInTheDocument();
-    expect(steps()).toEqual(['Placed:done', 'Paid:now', 'Ready:', 'Done:']);
+    expect(steps()).toEqual(['Placed, done', 'Paid ←', 'Ready', 'Done']);
     const pay = screen.getByRole('region', { name: 'Pay RM215' });
     expect(within(pay).getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p/abc.jpg');
     expect(within(pay).getByText(copy.checksIt('Kek Lina'))).toBeInTheDocument();
     expect(within(pay).queryByLabelText(new RegExp(copy.uploadReceipt))).toBeNull();
+  });
+
+  it('until it is paid, offers a quiet way to send a different receipt in its place', async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.fn().mockResolvedValue(ok());
+    vi.stubGlobal('fetch', fetchSpy);
+    render(<OrderView {...withOrder({ receiptUploadedAt: '2026-10-15T03:00:00.000Z', receiptType: 'image/jpeg' })} />);
+    const pay = screen.getByRole('region', { name: 'Pay RM215' });
+    await user.upload(within(pay).getByLabelText(copy.uploadDifferent), new File(['x'], 'again.png', { type: 'image/png' }));
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
   it('not received: asks to pay and upload again', () => {
@@ -213,7 +264,7 @@ describe('OrderView', () => {
     const { unmount } = render(<OrderView {...paid} />);
     expect(screen.getByText('Paid · Kek Lina is getting it ready')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: /^Pay / })).toBeNull();
-    expect(steps()).toEqual(['Placed:done', 'Paid:done', 'Ready:now', 'Done:']);
+    expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Ready ←', 'Done']);
     unmount();
 
     // Saturday 17 October, 9am in Malaysia: the day has come.
@@ -221,21 +272,26 @@ describe('OrderView', () => {
     // The pill and the step.
     expect(screen.getAllByText('Ready')).toHaveLength(2);
     expect(screen.queryByText('Paid · Kek Lina is getting it ready')).toBeNull();
-    expect(steps()).toEqual(['Placed:done', 'Paid:done', 'Ready:done', 'Done:now']);
+    expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Ready, done', 'Done ←']);
   });
 
   it('done: every step lit', () => {
     render(<OrderView {...withOrder({ status: 'COMPLETED', paidAt: '2026-10-15T03:00:00.000Z' })} />);
-    expect(steps()).toEqual(['Placed:done', 'Paid:done', 'Ready:done', 'Done:done']);
+    expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Ready, done', 'Done, done']);
     expect(screen.getAllByText('Done')).toHaveLength(2);
   });
 
   it('cancelled, and refunded', () => {
-    const { unmount } = render(<OrderView {...withOrder({ status: 'CANCELLED' })} />);
+    let view = render(<OrderView {...withOrder({ status: 'CANCELLED' })} />);
     expect(screen.getByText('Cancelled')).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: copy.orderProgress })).toBeNull();
     expect(screen.queryByRole('region', { name: /^Pay / })).toBeNull();
-    unmount();
+    view.unmount();
+
+    // Cancelled after it was paid, the money not yet back.
+    view = render(<OrderView {...withOrder({ status: 'CANCELLED', paidAt: '2026-10-15T03:00:00.000Z' })} />);
+    expect(screen.getByText('Cancelled · refund due')).toBeInTheDocument();
+    view.unmount();
 
     render(<OrderView {...withOrder({ status: 'CANCELLED', paidAt: '2026-10-15T03:00:00.000Z', refundedAt: '2026-10-16T03:00:00.000Z' })} />);
     expect(screen.getByText('Refunded')).toBeInTheDocument();
@@ -247,6 +303,8 @@ describe('OrderView', () => {
     const link = screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' });
     const url = new URL(link.getAttribute('href') ?? '');
     expect(url.origin + url.pathname).toBe('https://wa.me/60123456789');
+    // The page's URL is the order's key; it never goes on as a referrer.
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer');
     const text = url.searchParams.get('text') ?? '';
     expect(text).toContain('#14');
     expect(text).toContain('7Q4M');
@@ -333,8 +391,12 @@ describe('/[handle]/order/[token]', () => {
 
   it('is never indexed, and titles the tab', async () => {
     vi.mocked(getOrderByToken).mockResolvedValueOnce(order);
-    expect(await generateMetadata(params('keklina', 'tok'))).toEqual({ title: 'Order #14 · Kek Lina', robots: { index: false, follow: false } });
+    expect(await generateMetadata(params('keklina', 'tok'))).toEqual({
+      title: 'Order #14 · Kek Lina',
+      robots: { index: false, follow: false },
+      referrer: 'no-referrer',
+    });
     vi.mocked(getOrderByToken).mockResolvedValueOnce(null);
-    expect(await generateMetadata(params('keklina', 'nope'))).toEqual({ robots: { index: false, follow: false } });
+    expect(await generateMetadata(params('keklina', 'nope'))).toEqual({ robots: { index: false, follow: false }, referrer: 'no-referrer' });
   });
 });

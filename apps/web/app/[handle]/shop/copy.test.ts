@@ -31,6 +31,8 @@ describe('shopCopy', () => {
     expect(shopCopy('en').notReceived('Kek Lina')).toBe('Kek Lina didn’t receive your payment. Pay again and upload the new receipt.');
     expect(shopCopy('ms').statusWaiting).toBe('Menunggu bayaran');
     expect(shopCopy('ms').whatsappAbout('Kek Lina')).toBe('WhatsApp Kek Lina tentang tempahan ini');
+    expect(shopCopy('en').statusRefundDue).toBe('Cancelled · refund due');
+    expect(shopCopy('ms').statusRefundDue).toBe('Dibatalkan · wang akan dipulangkan');
   });
   it('names a day as its pill and its summary show it', () => {
     expect(shopCopy('en').dayPill('2026-10-17')).toBe('Sat 17');
