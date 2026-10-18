@@ -38,6 +38,7 @@ const personal: OwnerPage = {
   ordersPlaced: 0,
   ordersAtTrialReset: 0,
   trialResetAt: null,
+  storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
 };

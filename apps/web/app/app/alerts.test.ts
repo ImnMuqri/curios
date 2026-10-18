@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { FREE_LEADS, planState } from '@curios/core';
+import { FREE_LEADS, FREE_ORDERS, orderState, planState } from '@curios/core';
 import { alertsFor, billingNeedsYou } from './alerts.js';
 
 const NOW = new Date('2026-10-15T04:00:00.000Z');
 const plan = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; leadsCaptured?: number } = {}) =>
   planState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, leadsCaptured: page.leadsCaptured ?? 0, now: NOW });
 const quiet = { used: 10, cap: 200 };
+const shop = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; ordersPlaced?: number; storeEnabled?: boolean } = {}) => ({
+  state: orderState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, ordersPlaced: page.ordersPlaced ?? 0, ordersAtTrialReset: 0, now: NOW }),
+  storeEnabled: page.storeEnabled ?? true,
+});
+const paid = plan({ paidUntil: new Date('2099-01-01T00:00:00.000Z') });
 
 describe('alertsFor', () => {
   it('counts a running trial on Leads, in blue, one segment per free lead', () => {
@@ -105,7 +110,69 @@ describe('alertsFor', () => {
   });
 });
 
+describe('alertsFor, the shop', () => {
+  it('pauses an open shop whose free orders are used, in red, on Orders', () => {
+    const alerts = alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: FREE_ORDERS }) });
+
+    expect(alerts).toEqual([
+      expect.objectContaining({
+        id: 'paused',
+        tone: 'stop',
+        where: '/app/orders',
+        icon: 'shop',
+        title: 'Your shop can’t take orders right now',
+        text: 'Your 3 free orders are used. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+        action: { href: '/app/billing', label: 'Pay to take orders' },
+      }),
+    ]);
+  });
+
+  it('says when the plan ended, for a shop paused by a lapsed plan', () => {
+    const [alert] = alertsFor({
+      plan: paid,
+      usage: quiet,
+      now: NOW,
+      orders: shop({ ordersPlaced: FREE_ORDERS, paidUntil: new Date('2026-10-13T20:00:00.000Z') }),
+    });
+
+    expect(alert).toMatchObject({
+      tone: 'stop',
+      where: '/app/orders',
+      title: 'Your shop can’t take orders right now',
+      text: 'Your Business plan ended on 14 Oct 2026. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+      action: { label: 'Pay to take orders' },
+    });
+  });
+
+  it('counts the free orders on Orders, in blue, while the trial runs', () => {
+    const [alert] = alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: 1 }) });
+
+    expect(alert).toMatchObject({
+      id: 'orders-trial-1',
+      tone: 'info',
+      where: '/app/orders',
+      icon: 'shop',
+      title: '1 of your 3 free orders used',
+      text: 'After 3, checkout pauses and baskets come to you on WhatsApp until you subscribe.',
+      meter: [true, false, false],
+      action: { href: '/app/billing', label: 'See plans' },
+    });
+  });
+
+  it('says nothing about orders for a shop that is off, a paid one, or a personal page', () => {
+    expect(alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: FREE_ORDERS, storeEnabled: false }) })).toEqual([]);
+    expect(alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: 9, paidUntil: new Date('2099-01-01T00:00:00.000Z') }) })).toEqual([]);
+    expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: quiet, now: NOW, orders: shop({ mode: 'PERSONAL' }) })).toEqual([]);
+  });
+});
+
 describe('billingNeedsYou', () => {
+  it('dots Billing for a paused shop too', () => {
+    expect(billingNeedsYou(paid, shop({ ordersPlaced: FREE_ORDERS }))).toBe(true);
+    expect(billingNeedsYou(paid, shop({ ordersPlaced: FREE_ORDERS, storeEnabled: false }))).toBe(false);
+    expect(billingNeedsYou(paid, shop({ ordersPlaced: 1 }))).toBe(false);
+  });
+
   it('dots Billing for a used-up trial or an ended plan, and not otherwise', () => {
     expect(billingNeedsYou(plan({ leadsCaptured: FREE_LEADS }))).toBe(true);
     expect(billingNeedsYou(plan({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2026-10-01T00:00:00.000Z') }))).toBe(true);

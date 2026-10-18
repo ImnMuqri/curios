@@ -46,6 +46,17 @@ describe('AppFrame', () => {
     expect(screen.queryByRole('link', { name: 'Store' })).toBeNull();
   });
 
+  it('puts Orders first in the Inbox for a business page, counting the receipts to check', () => {
+    frame({ mode: 'BUSINESS', badges: { review: 0, questions: 0, leads: 0, orders: 2 } });
+    expect(screen.getByRole('link', { name: /^Orders/ })).toHaveAttribute('href', '/app/orders');
+    expect(links().map((a) => a.textContent).slice(2, 5)).toEqual(['Orders2', 'Questions', 'Leads']);
+  });
+
+  it('shows a personal page no Orders link, whatever the count says', () => {
+    frame({ mode: 'PERSONAL', badges: { review: 0, questions: 0, leads: 0, orders: 2 } });
+    expect(screen.queryByRole('link', { name: /Orders/ })).toBeNull();
+  });
+
   it('sends Facts & sources to the Knowledge screen', () => {
     frame();
     expect(screen.getByRole('link', { name: 'Facts & sources' })).toHaveAttribute('href', '/app/knowledge');

@@ -16,6 +16,7 @@ const ICONS = {
   lead: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
   card: 'M3 6h18v13H3zM3 10h18',
   chat: 'M4 5h16v11H8l-4 4zM8 9h8M8 12h5',
+  shop: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
 } as const;
 
 const KEY = (id: string) => `curios:alert-dismissed:${id}`;

@@ -1,0 +1,969 @@
+/*
+ * Orders, from the design handoff's Orders board. The frame (figures, the
+ * list column, the filters' sliding thumb, the detail column) is the inbox's
+ * (../_ui/inbox.module.css); this is what only Orders has: the 7-day spark,
+ * the order rows and badges, the four steps, the action box, the receipt and
+ * its zoom.
+ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-4deg);
+  }
+}
+
+@keyframes ray {
+  from {
+    opacity: 1;
+    transform: rotate(var(--r)) translateY(-18px) scaleY(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: rotate(var(--r)) translateY(-40px) scaleY(0.2);
+  }
+}
+
+/* ---- The figures ---- */
+
+.kpiCheck {
+  background: var(--kuning-muda);
+  color: var(--amber-ink);
+}
+
+.spark {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 38px;
+  margin-left: auto;
+}
+
+.spark i {
+  display: block;
+  width: 8px;
+  border-radius: 3px;
+  background: var(--blob-mint);
+  transition: height 700ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.spark i[data-today] {
+  background: var(--hijau);
+}
+
+/* ---- The list ---- */
+
+.filterCount[data-tone='merah'] {
+  background: var(--merah);
+  color: var(--card);
+}
+
+.filterCount[data-tone='biru'] {
+  background: var(--biru);
+  color: var(--card);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--blob-pink);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.avatar[data-big] {
+  width: 48px;
+  height: 48px;
+  font-size: 18px;
+}
+
+.avatar[data-tone='blue'] {
+  background: var(--blob-blue);
+}
+
+.avatar[data-tone='mint'] {
+  background: var(--blob-mint);
+}
+
+.avatar[data-tone='peach'] {
+  background: var(--blob-peach);
+}
+
+.avatar[data-tone='sand'] {
+  background: var(--ghost-b);
+}
+
+.avatar[data-tone='sage'] {
+  background: var(--hijau-line);
+}
+
+.avatar[data-tone='sky'] {
+  background: var(--biru-ring);
+}
+
+.rowMid {
+  flex: 1;
+  min-width: 0;
+}
+
+.rowMid > b {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.rowMid > span {
+  display: block;
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kuning);
+  box-shadow: 0 0 0 3px var(--kuning-muda);
+}
+
+.rowEnd {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  flex: none;
+}
+
+.rowEnd > b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background-color 300ms ease, color 300ms ease;
+}
+
+.badge[data-tone='kuning'] {
+  background: var(--kuning-muda);
+  color: var(--kuning-ink);
+}
+
+.badge[data-tone='biru'] {
+  background: var(--biru-muda);
+  color: var(--biru-ink);
+}
+
+.badge[data-tone='hijau'] {
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+}
+
+.badge[data-tone='merah'] {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.badge[data-tone='muted'] {
+  color: var(--muted);
+}
+
+/* ---- Before the first order ---- */
+
+.empty {
+  border: 0;
+  padding: 44px 24px 40px;
+}
+
+.emptyArt {
+  width: 236px;
+  height: 124px;
+  margin-bottom: 16px;
+}
+
+.emptyBadge {
+  background: var(--hijau);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.outlineLink {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 14px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.outlineLink:hover {
+  border-color: var(--ghost-line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+/* ---- The chosen order: who ---- */
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.headText {
+  min-width: 0;
+}
+
+.headText h2 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+.headText p {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.whatsapp {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+  font-weight: 500;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.whatsapp:hover {
+  background: var(--hijau-line);
+  color: var(--hijau-ink);
+}
+
+.whatsapp svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- The four steps ---- */
+
+.progress {
+  position: relative;
+  margin: 26px 0 0;
+}
+
+.rail,
+.fill {
+  position: absolute;
+  top: 13px;
+  left: 12.5%;
+  height: 2px;
+  border-radius: 2px;
+}
+
+.rail {
+  right: 12.5%;
+  background: var(--line);
+}
+
+.fill {
+  background: var(--biru);
+  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.fill[data-cancelled] {
+  background: var(--merah);
+}
+
+.steps {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.step > b {
+  margin-bottom: -6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--hint);
+}
+
+.step[aria-current='step'] > b,
+.step:has(.node[data-state='done']) > b,
+.step:has(.node[data-state='complete']) > b,
+.step:has(.node[data-state='cancel']) > b {
+  color: var(--ink);
+}
+
+.step > span:last-child {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.node {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--biru);
+  color: var(--card);
+  transition: background-color 300ms ease, box-shadow 300ms ease, transform 400ms cubic-bezier(0.34, 1.6, 0.64, 1);
+}
+
+.node svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.node[data-state='complete'] {
+  background: var(--hijau);
+}
+
+.node[data-state='cancel'] {
+  background: var(--merah);
+}
+
+.node[data-state='todo'] {
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--edge);
+}
+
+.node[data-state='next'] {
+  background: var(--card);
+  box-shadow: 0 0 0 2px var(--biru), 0 0 0 6px var(--biru-ring);
+  transform: scale(1.08);
+}
+
+/* ---- What to do next ---- */
+
+.actbar {
+  --act-bg: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
+  --act-ring: var(--biru-ring);
+  --act-ink: var(--biru-ink);
+  --act-btn: var(--biru);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 22px;
+  padding: 14px 14px 14px 18px;
+  border-radius: 16px;
+  background: var(--act-bg);
+  box-shadow: inset 0 0 0 1px var(--act-ring);
+}
+
+.actbar[data-tone='grey'] {
+  --act-bg: var(--paper);
+  --act-ring: var(--line);
+  --act-ink: var(--ink-soft);
+  --act-btn: var(--ink);
+}
+
+.actbar[data-tone='hijau'] {
+  --act-bg: color-mix(in srgb, var(--hijau-muda) 60%, var(--card));
+  --act-ring: var(--hijau-line);
+  --act-ink: var(--hijau-ink);
+  --act-btn: var(--hijau);
+}
+
+.actbar[data-tone='merah'] {
+  --act-bg: color-mix(in srgb, var(--merah-muda) 50%, var(--card));
+  --act-ring: color-mix(in srgb, var(--merah) 20%, var(--merah-muda));
+  --act-ink: var(--merah-ink);
+  --act-btn: var(--merah);
+}
+
+.actText {
+  flex: 1 1 240px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--act-ink);
+}
+
+.actText b {
+  display: block;
+  font-size: 14px;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ghost {
+  height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--merah-deep);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.ghost:hover {
+  background: var(--merah-muda);
+}
+
+.outline {
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.outline:hover {
+  border-color: var(--ghost-line);
+  background: var(--paper);
+}
+
+.big {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--act-btn);
+  color: var(--card);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 160ms ease, transform 160ms ease;
+}
+
+.big:hover {
+  background: color-mix(in srgb, var(--act-btn) 82%, var(--ink));
+}
+
+.big:active {
+  transform: scale(0.97);
+}
+
+.big svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ghost:disabled,
+.outline:disabled,
+.big:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.ray {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 12px;
+  margin: -6px 0 0 -1.5px;
+  border-radius: 2px;
+  background: var(--act-btn);
+  animation: ray 520ms ease-out forwards;
+  pointer-events: none;
+}
+
+.confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.confirm button {
+  height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.confirm button[data-tone='merah'] {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.error {
+  margin-top: 12px;
+}
+
+/* ---- Items, payment, getting it to them ---- */
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 16px;
+  margin-top: 26px;
+}
+
+.side {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+}
+
+.card {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.cardTitle > span:not(.badge) {
+  font-weight: 500;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.line + .line {
+  border-top: 1px dashed var(--line);
+}
+
+.thumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--blob-pink);
+  color: var(--rose);
+  font-family: var(--font-display);
+  font-weight: 800;
+}
+
+.thumb[data-tone='peach'] {
+  background: var(--blob-peach);
+  color: var(--kuning-ink);
+}
+
+.thumb[data-tone='mint'] {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+.thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumb svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.lineName {
+  flex: 1;
+  min-width: 0;
+}
+
+.lineName b {
+  display: block;
+  font-weight: 500;
+}
+
+.lineName span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.amount {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.total {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.total b {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.receipt {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.receiptThumb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 118px;
+  height: 156px;
+  flex: none;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 14px 28px -18px rgb(25 31 44 / 45%);
+  color: var(--merah);
+  text-decoration: none;
+  cursor: zoom-in;
+  transition: transform 320ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+.receiptThumb:hover {
+  transform: rotate(-2deg) scale(1.04);
+}
+
+.receiptThumb[data-pdf] {
+  align-content: center;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.receiptThumb small {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.receiptThumb svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.receiptThumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+}
+
+.receiptText {
+  min-width: 0;
+}
+
+.receiptText > b {
+  display: block;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.receiptText > span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.receiptText > .match {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.match svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.receiptText > .hint {
+  margin-top: 8px;
+  font-size: 12px;
+}
+
+.waitbox {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 156px;
+  padding: 16px;
+  border: 1.5px dashed var(--edge);
+  border-radius: 14px;
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+.waitbox svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.kv {
+  display: flex;
+  gap: 12px;
+}
+
+.kv b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.kv > span:last-child > span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.kvIcon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+.kvIcon[data-method='PICKUP'] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+.kvIcon svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.note {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--amber-muda);
+  color: color-mix(in srgb, var(--amber-ink) 70%, var(--ink));
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.note b {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 12px;
+  color: var(--amber-ink);
+}
+
+/* ---- The receipt, large ---- */
+
+.zoom {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgb(25 31 44 / 55%);
+  cursor: zoom-out;
+  animation: fadeIn 200ms ease both;
+}
+
+.zoomImage {
+  max-width: min(520px, 100%);
+  max-height: calc(100dvh - 48px);
+  border-radius: 20px;
+  background: var(--card);
+  box-shadow: 0 30px 60px -20px rgb(0 0 0 / 50%);
+  object-fit: contain;
+  animation: popIn 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
+}
+
+/* The detail column can be narrow on a wide screen, so the inner layout follows its own width. */
+@container (max-width: 760px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .head {
+    flex-wrap: wrap;
+  }
+
+  .whatsapp {
+    margin-left: 0;
+  }
+
+  .receipt {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@container (max-width: 520px) {
+  .headText h2 {
+    font-size: 23px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .spark {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zoom,
+  .zoomImage,
+  .ray {
+    animation: none;
+  }
+
+  .fill,
+  .node,
+  .spark i,
+  .receiptThumb {
+    transition: none;
+  }
+}

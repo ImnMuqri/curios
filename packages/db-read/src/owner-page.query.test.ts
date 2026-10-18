@@ -122,6 +122,15 @@ describe('getOwnerPage', () => {
     expect((await getOwnerPage(accountId))?.allowSearchIndexing).toBe(true);
   });
 
+  it('carries whether the shop is switched on, for the paused banner', async () => {
+    const accountId = await anAccount({ published: true });
+    expect((await getOwnerPage(accountId))?.storeEnabled).toBe(false);
+
+    await write.page.updateMany({ where: { accountId }, data: { storeEnabled: true } });
+
+    expect((await getOwnerPage(accountId))?.storeEnabled).toBe(true);
+  });
+
   it('does not write, so the read-only role can run it', async () => {
     const accountId = await anAccount({ published: false });
     const before = await write.page.findFirst({ where: { accountId }, select: { published: true } });

@@ -65,6 +65,23 @@ describe('AlertSlot', () => {
     expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
   });
 
+  it('shows a paused shop on Orders, in red, with the way to pay', () => {
+    pathname = '/app/orders';
+    const paused: Alert = {
+      id: 'paused',
+      tone: 'stop',
+      where: '/app/orders',
+      icon: 'shop',
+      title: 'Your shop can’t take orders right now',
+      text: 'Your 3 free orders are used. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+      action: { href: '/app/billing', label: 'Pay to take orders' },
+    };
+    slot([trial, paused]);
+    expect(screen.getByRole('alert')).toHaveTextContent('Your shop can’t take orders right now');
+    expect(screen.getByRole('link', { name: 'Pay to take orders' })).toHaveAttribute('href', '/app/billing');
+    expect(screen.queryByText('1 of your 3 free leads used')).toBeNull();
+  });
+
   it('shows nothing outside the frame', () => {
     render(<AlertSlot />);
     expect(screen.queryByRole('status')).toBeNull();
