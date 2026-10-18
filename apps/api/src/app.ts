@@ -73,13 +73,34 @@ export interface AppOverrides {
   orders?: OrderRouteOptions;
 }
 
+/** `/store/orders/<token>/receipt` -> `/store/orders/:token/receipt`; any other URL is returned as it came. */
+export function maskOrderToken(url: string): string {
+  return url.replace(/^(\/store\/orders\/)[^/?#]+/, '$1:token');
+}
+
 export async function buildApp(overrides: AppOverrides = {}) {
   // Rate limits key off `request.ip`, which is the socket peer unless Fastify
   // is told to trust a proxy. Behind a load balancer or CDN every request
   // would otherwise carry the proxy's address, and the limiters would throttle
   // all visitors as though they were one caller. Off by default so local
   // development is unaffected and nothing can spoof its own address.
-  const options: FastifyServerOptions = { logger: true, trustProxy: resolveTrustProxy() };
+  const options: FastifyServerOptions = {
+    logger: {
+      serializers: {
+        // Fastify's own req serializer, but for the URL. An order link's token
+        // is the order's only credential and it rides in the path, so every
+        // /store/orders/<token>... URL is logged with the token masked.
+        req: (request) => ({
+          method: request.method,
+          url: maskOrderToken(request.url),
+          host: request.host,
+          remoteAddress: request.ip,
+          remotePort: request.socket ? request.socket.remotePort : undefined,
+        }),
+      },
+    },
+    trustProxy: resolveTrustProxy(),
+  };
   const app = Fastify(options).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);
