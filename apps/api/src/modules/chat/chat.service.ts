@@ -2,6 +2,7 @@ import { capReachedMail, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qua
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
+import { lookUpOrder, orderChips, type OrderCard } from './order-lookup.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { unsureFilter } from './unsure.js';
@@ -9,7 +10,15 @@ import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
   | { type: 'text'; text: string }
-  | { type: 'done'; conversationId: string; intent: { qualified: boolean } };
+  // The Public board's order card, after "Thanks. Here’s order 7Q4M:".
+  | { type: 'order'; card: OrderCard }
+  | {
+      type: 'done';
+      conversationId: string;
+      intent: { qualified: boolean };
+      /** "Order <item>" links for the open shop's items the answer named; never with the capture card. */
+      orderChips?: { itemId: string; label: string }[];
+    };
 
 export interface ChatDeps {
   prisma: PrismaClient;
@@ -275,6 +284,8 @@ export const ANSWER_PAGE_SELECT = {
     where: { available: true },
     orderBy: { position: 'asc' },
     select: {
+      // For the "Order <item>" chips' links.
+      id: true,
       name: true,
       description: true,
       priceCents: true,
@@ -365,31 +376,72 @@ export async function* answer(
   // for a thread, so it is scoped to THIS page inside the query rather than
   // checked after the read -- the same shape as every other ownership check in
   // this codebase.
-  let conversationId: string;
-  let isNew = false;
+  let thread: { id: string; pendingOrderId: string | null; _count: { messages: number } } | null = null;
+  if (input.conversationId !== undefined) {
+    thread = await prisma.conversation.findFirst({
+      where: { id: input.conversationId, pageId: page.id },
+      select: { id: true, pendingOrderId: true, _count: { select: { messages: true } } },
+    });
+    if (!thread) throw new ConversationNotFoundError();
+  }
 
-  if (input.conversationId === undefined) {
+  // "Where is my order 7Q4M?", answered from the order before anything else:
+  // no model call, no Question or Topic (it is not a question about the
+  // page), no message rows (the digits of a phone number are not kept), and
+  // no conversation on the meter. The conversation row exists only to hold
+  // which order it is waiting on; the meter counts it when its first real
+  // question is written (below). Free, so it works over the cap too.
+  const lookup = await lookUpOrder(prisma, page, thread?.pendingOrderId ?? null, input.question);
+  if (lookup) {
+    let lookupConversationId: string;
+    if (thread) {
+      lookupConversationId = thread.id;
+      if (thread.pendingOrderId !== lookup.pendingOrderId) {
+        await prisma.conversation.update({ where: { id: thread.id }, data: { pendingOrderId: lookup.pendingOrderId } });
+      }
+    } else {
+      lookupConversationId = (
+        await prisma.conversation.create({
+          data: { pageId: page.id, pendingOrderId: lookup.pendingOrderId },
+          select: { id: true },
+        })
+      ).id;
+    }
+    yield { type: 'text', text: lookup.text };
+    if (lookup.card) yield { type: 'order', card: lookup.card };
+    // Never the capture card on a lookup: the customer has already ordered.
+    yield { type: 'done', conversationId: lookupConversationId, intent: { qualified: false } };
+    return;
+  }
+
+  let conversationId: string;
+  // Whether this turn is the conversation's first real one: a new
+  // conversation, or one that so far held only order lookups.
+  let firstQuestion: boolean;
+
+  if (!thread) {
     const created = await prisma.conversation.create({
       data: { pageId: page.id },
       select: { id: true },
     });
     conversationId = created.id;
-    isNew = true;
+    firstQuestion = true;
   } else {
-    const existing = await prisma.conversation.findFirst({
-      where: { id: input.conversationId, pageId: page.id },
-      select: { id: true },
-    });
-    if (!existing) throw new ConversationNotFoundError();
-    conversationId = existing.id;
+    conversationId = thread.id;
+    firstQuestion = thread._count.messages === 0;
+    // Asked something else instead of the digits: the order is forgotten,
+    // as after a wrong answer.
+    if (thread.pendingOrderId !== null) {
+      await prisma.conversation.update({ where: { id: thread.id }, data: { pendingOrderId: null } });
+    }
   }
 
-  // Only on creation. The meter counts conversations, not messages, so a
-  // chatty visitor costs the owner one unit -- true by accident while every
-  // call created a conversation, and a rule now that threads are real. Atomic
-  // upsert: two visitors opening the sheet at once on a popular page would
-  // otherwise race a read-then-write.
-  if (isNew) {
+  // Only on the first question. The meter counts conversations, not
+  // messages, so a chatty visitor costs the owner one unit -- true by
+  // accident while every call created a conversation, and a rule now that
+  // threads are real. Atomic upsert: two visitors opening the sheet at once
+  // on a popular page would otherwise race a read-then-write.
+  if (firstQuestion) {
     await prisma.usageCounter.upsert({
       where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
       create: { pageId: page.id, period: currentPeriod(), count: 1 },
@@ -711,7 +763,17 @@ export async function* answer(
       },
     });
 
-    yield { type: 'done', conversationId, intent };
+    // "Order <item>" for the open shop's items this answer named (the spec's
+    // Chat section): at most two, and on that turn the capture card is not
+    // also offered -- the shop is the better next step than leaving a number.
+    // Only after a model answer: never on a pinned answer or the cap's reply.
+    const chips =
+      page.mode === 'BUSINESS' && page.storeEnabled && !filter.unsure ? orderChips(text, page.items) : [];
+    if (chips.length > 0) {
+      yield { type: 'done', conversationId, intent: { qualified: false }, orderChips: chips };
+    } else {
+      yield { type: 'done', conversationId, intent };
+    }
   } finally {
     await queueGrouping();
   }

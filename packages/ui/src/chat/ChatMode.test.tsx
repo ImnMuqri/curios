@@ -626,6 +626,79 @@ describe('ChatMode, the capture card', () => {
   });
 });
 
+describe('ChatMode, orders', () => {
+  const card = {
+    number: 14,
+    code: '7Q4M',
+    status: 'Waiting for your payment',
+    pill: 'Waiting for payment',
+    tone: 'wait',
+    steps: { placed: true, paid: false, ready: false, done: false },
+    summary: '1× Kek coklat moist 2kg, 1× Kek batik',
+    when: 'Pickup · Sat 17 Oct',
+    totalCents: 21_550,
+    note: 'Your order page has the full details and how to pay.',
+  };
+
+  async function askOnce(events: string[], props: Partial<ChatModeProps> = {}) {
+    const onAsk = vi.fn().mockResolvedValue(streamOf(...events));
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Kek Lina" questions={[]} {...props} />);
+    await userEvent.type(screen.getByLabelText('Ask a question'), '6789');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    return onAsk;
+  }
+
+  it('renders the order card, with the order page line in place of its button', async () => {
+    await askOnce([
+      `data: ${JSON.stringify({ type: 'text', text: 'Thanks. Here’s order 7Q4M:' })}\n\n`,
+      `data: ${JSON.stringify({ type: 'order', card })}\n\n`,
+      'data: {"type":"done","conversationId":"c1","intent":{"qualified":false}}\n\n',
+    ]);
+
+    const order = await screen.findByRole('group', { name: 'Order #14 · 7Q4M' });
+    expect(screen.getByText('Thanks. Here’s order 7Q4M:')).toBeInTheDocument();
+    expect(order).toHaveTextContent('Waiting for your payment');
+    expect(order).toHaveTextContent('Waiting for payment');
+    expect(order).toHaveTextContent('1× Kek coklat moist 2kg, 1× Kek batik');
+    expect(order).toHaveTextContent('Pickup · Sat 17 Oct');
+    expect(order).toHaveTextContent('RM215.50');
+    expect(order).toHaveTextContent('Your order page has the full details and how to pay.');
+    // The four steps, Placed lit; the chat cannot know the order link, so no button.
+    expect(order.querySelectorAll('li')).toHaveLength(4);
+    expect(order).toHaveTextContent('Placed, done');
+    expect(order.querySelector('button, a')).toBeNull();
+  });
+
+  it('renders order chips as links', async () => {
+    await askOnce(
+      [
+        'data: {"type":"text","text":"Kek batik RM25."}\n\n',
+        `data: ${JSON.stringify({
+          type: 'done',
+          conversationId: 'c1',
+          intent: { qualified: false },
+          orderChips: [
+            { itemId: 'i1', label: 'Order Kek Batik' },
+            { itemId: 'i 2', label: 'Order Tart Nenas' },
+          ],
+        })}\n\n`,
+      ],
+      { shopPath: '/keklina/shop' },
+    );
+
+    expect(await screen.findByRole('link', { name: 'Order Kek Batik' })).toHaveAttribute('href', '/keklina/shop?item=i1');
+    expect(screen.getByRole('link', { name: 'Order Tart Nenas' })).toHaveAttribute('href', '/keklina/shop?item=i%202');
+  });
+
+  it('offers no chips without a shop to link to', async () => {
+    const onAsk = await askOnce([
+      `data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, orderChips: [{ itemId: 'i1', label: 'Order Kek Batik' }] })}\n\n`,
+    ]);
+    await waitFor(() => expect(onAsk).toHaveBeenCalled());
+    expect(screen.queryByRole('link', { name: 'Order Kek Batik' })).not.toBeInTheDocument();
+  });
+});
+
 describe('ChatMode, styling', () => {
   // Fix round 2, Important #2: the spec says the accent paints "the chat
   // sheet's highlights" -- the send button and the composer's focus ring --

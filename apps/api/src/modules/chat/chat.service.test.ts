@@ -1563,3 +1563,194 @@ describe('the owner\'s answers and profile in the prompt', () => {
     expect(captured.call().systemPrompt).toContain('WhatsApp: Order di WhatsApp -- https://wa.me/60123');
   });
 });
+
+describe('"where is my order", by its code', () => {
+  type Event = { type: string; text?: string; conversationId?: string; card?: unknown; orderChips?: unknown; intent?: { qualified: boolean } };
+
+  async function seedOrder(handle = 'nadia', code = '7Q4M') {
+    const pageId = await pageIdFor(handle);
+    await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', storeEnabled: true } });
+    return prisma.order.create({
+      data: {
+        pageId,
+        number: 14,
+        code,
+        tokenHash: `hash-${code}-${handle}`,
+        customerName: 'Mira Hassan',
+        phone: '+60123456789',
+        method: 'PICKUP',
+        day: new Date('2026-12-05T00:00:00Z'),
+        itemsCents: 2_500,
+        deliveryCents: 0,
+        totalCents: 2_500,
+        lines: { create: [{ itemName: 'Kek Batik', optionLabel: null, unitPriceCents: 2_500, quantity: 1, position: 0 }] },
+      },
+    });
+  }
+
+  async function ask(gateway: Gateway, question: string, conversationId?: string): Promise<Event[]> {
+    return collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question, conversationId }));
+  }
+
+  const said = (events: Event[]) => events.filter((e) => e.type === 'text').map((e) => e.text).join('');
+  const idOf = (events: Event[]) => {
+    const id = events.find((e) => e.type === 'done')?.conversationId;
+    if (!id) throw new Error('no conversation id');
+    return id;
+  };
+
+  it('asks for the last 4 digits, then shows the card', async () => {
+    const order = await seedOrder();
+    const gateway = gatewaySaying('unused');
+
+    const first = await ask(gateway, 'Where’s my order 7Q4M?');
+    expect(said(first)).toBe('Found order 7Q4M. To keep it private, what are the last 4 digits of the WhatsApp number on it?');
+    expect(first.some((e) => e.type === 'order')).toBe(false);
+    const conversationId = idOf(first);
+    expect((await prisma.conversation.findUniqueOrThrow({ where: { id: conversationId } })).pendingOrderId).toBe(order.id);
+
+    const second = await ask(gateway, '6789', conversationId);
+    expect(said(second)).toBe('Thanks. Here’s order 7Q4M:');
+    expect(second.map((e) => e.type)).toEqual(['text', 'order', 'done']);
+    expect(second.find((e) => e.type === 'order')?.card).toMatchObject({
+      number: 14,
+      code: '7Q4M',
+      pill: 'Waiting for payment',
+      summary: '1× Kek Batik',
+      when: 'Pickup · Sat 5 Dec',
+      totalCents: 2_500,
+    });
+    expect(second.find((e) => e.type === 'done')).toMatchObject({ conversationId, intent: { qualified: false } });
+    expect((await prisma.conversation.findUniqueOrThrow({ where: { id: conversationId } })).pendingOrderId).toBeNull();
+  });
+
+  it('takes a whole number typed with spaces and dashes', async () => {
+    await seedOrder();
+    const gateway = gatewaySaying('unused');
+    const conversationId = idOf(await ask(gateway, 'status YVA4 or 7q4m'));
+    expect(said(await ask(gateway, '012-345 6789', conversationId))).toBe('Thanks. Here’s order 7Q4M:');
+  });
+
+  it('never shows an order to the wrong digits', async () => {
+    await seedOrder();
+    const gateway = gatewaySaying('a model answer');
+    const chat = vi.spyOn(gateway, 'chat');
+
+    const conversationId = idOf(await ask(gateway, 'where is my order 7Q4M'));
+    const wrong = await ask(gateway, '1234', conversationId);
+    expect(said(wrong)).toBe('Those digits don’t match the number on order 7Q4M. Try again, or message Nadia Bakes on WhatsApp.');
+    expect(wrong.some((e) => e.type === 'order')).toBe(false);
+    expect((await prisma.conversation.findUniqueOrThrow({ where: { id: conversationId } })).pendingOrderId).toBeNull();
+
+    // One try per mention of the code: the right digits now, without the
+    // code again, are just a message for the model.
+    const again = await ask(gateway, '6789', conversationId);
+    expect(again.some((e) => e.type === 'order')).toBe(false);
+    expect(chat).toHaveBeenCalledTimes(1);
+  });
+
+  it('says a code is not this shop’s', async () => {
+    await seedOrder();
+    // Another page's order with the code asked for.
+    await prisma.account.create({
+      data: { email: 'other@example.com', pages: { create: { handle: 'other', skeleton: 'other', displayName: 'Other', published: true } } },
+    });
+    await seedOrder('other', 'ZZ99');
+    const gateway = gatewaySaying('unused');
+    const chat = vi.spyOn(gateway, 'chat');
+
+    const events = await ask(gateway, 'where is my order ZZ99?');
+    expect(said(events)).toBe('I can’t find an order ZZ99 with this shop. Check the code on your order page.');
+    expect(chat).not.toHaveBeenCalled();
+  });
+
+  it('leaves an ordinary four-letter word to the model', async () => {
+    await seedOrder();
+    const gateway = gatewaySaying('We have kek batik.');
+    const chat = vi.spyOn(gateway, 'chat');
+    await ask(gateway, 'what cake do you have?');
+    expect(chat).toHaveBeenCalledTimes(1);
+  });
+
+  it('spends no model call or conversation on a lookup', async () => {
+    await seedOrder();
+    const gateway = gatewaySaying('an answer');
+    const chat = vi.spyOn(gateway, 'chat');
+
+    const conversationId = idOf(await ask(gateway, 'where is my order 7Q4M'));
+    await ask(gateway, '6789', conversationId);
+    await ask(gateway, 'where is my order HXPT');
+
+    expect(chat).not.toHaveBeenCalled();
+    expect(await prisma.modelCall.count()).toBe(0);
+    expect(await prisma.usageCounter.count()).toBe(0);
+    expect(await prisma.question.count()).toBe(0);
+    expect(await prisma.topic.count()).toBe(0);
+    // Not even the digits are kept.
+    expect(await prisma.message.count()).toBe(0);
+
+    // A real question afterwards in the same thread is that thread's first, and counts it once.
+    await ask(gateway, 'ada delivery?', conversationId);
+    await ask(gateway, 'ke Klang?', conversationId);
+    expect((await prisma.usageCounter.findFirstOrThrow()).count).toBe(1);
+  });
+
+  it('still looks an order up over the monthly cap, since it costs nothing', async () => {
+    await seedOrder();
+    await prisma.usageCounter.create({
+      data: { pageId: await pageIdFor('nadia'), period: new Date().toISOString().slice(0, 7), count: cap + 5 },
+    });
+    const gateway = gatewaySaying('unused');
+    const conversationId = idOf(await ask(gateway, 'order 7Q4M'));
+    expect(said(await ask(gateway, '6789', conversationId))).toBe('Thanks. Here’s order 7Q4M:');
+  });
+});
+
+describe('order chips', () => {
+  type Event = { type: string; orderChips?: { itemId: string; label: string }[]; intent?: { qualified: boolean }; conversationId?: string };
+
+  async function seedItems(storeEnabled: boolean) {
+    const pageId = await pageIdFor('nadia');
+    await prisma.page.update({ where: { id: pageId }, data: { storeEnabled, mode: 'BUSINESS' } });
+    const batik = await prisma.item.create({ data: { pageId, name: 'Kek Batik', priceCents: 2500, position: 0, available: true } });
+    const coklat = await prisma.item.create({ data: { pageId, name: 'Kek Coklat Moist', priceCents: 9500, position: 1, available: true } });
+    await prisma.item.create({ data: { pageId, name: 'Tart Nenas', priceCents: 900, position: 2, available: true } });
+    await prisma.item.create({ data: { pageId, name: 'Hidden Tart', priceCents: 900, position: 3, available: false } });
+    return { batik, coklat };
+  }
+
+  async function ask(gateway: Gateway, question: string, conversationId?: string): Promise<Event[]> {
+    return collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question, conversationId }));
+  }
+
+  it('offers at most two order chips, matched from item names, and withholds the capture card on that turn', async () => {
+    const { batik, coklat } = await seedItems(true);
+    const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
+
+    // Three specific turns: the turn that would otherwise offer the capture card.
+    const first = await ask(gatewaySaying('Ya ada.'), 'ada kek butter?');
+    const conversationId = first.find((e) => e.type === 'done')?.conversationId;
+    await ask(gatewaySaying('Ya.'), 'yang 2kg', conversationId);
+    const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
+
+    const done = third.find((e) => e.type === 'done');
+    expect(done?.orderChips).toEqual([
+      { itemId: batik.id, label: 'Order Kek Batik' },
+      { itemId: coklat.id, label: 'Order Kek Coklat Moist' },
+    ]);
+    expect(done?.intent).toEqual({ qualified: false });
+  });
+
+  it('offers no chips while the Store is off', async () => {
+    await seedItems(false);
+    const events = await ask(gatewaySaying('Kek batik RM25.'), 'berapa kek batik?');
+    expect(events.find((e) => e.type === 'done')?.orderChips).toBeUndefined();
+  });
+
+  it('offers no chips on an owner’s pinned answer', async () => {
+    await seedItems(true);
+    await seedTopic(await pageIdFor('nadia'), { answer: 'Kek batik RM25.', wordings: [{ text: 'berapa kek batik?' }] });
+    const events = await ask(gatewaySaying('unused'), 'berapa kek batik?');
+    expect(events.find((e) => e.type === 'done')?.orderChips).toBeUndefined();
+  });
+});

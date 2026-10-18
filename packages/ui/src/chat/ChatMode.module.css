@@ -139,6 +139,213 @@
 }
 
 /*
+ * "Order <item>": drawn like the question chips above (the board's
+ * suggestion chips), but links -- they go to the item in the shop.
+ */
+.orderChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.orderChip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--page-fg, var(--ink)) 12%, transparent);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--page-fg, var(--ink));
+  text-decoration: none;
+  transition: background 120ms ease;
+}
+
+.orderChip:hover,
+.orderChip:active {
+  background: color-mix(in srgb, var(--page-fg, var(--ink)) 20%, transparent);
+}
+
+.orderChip:focus-visible {
+  outline: 2px solid var(--accent, var(--biru));
+  outline-offset: 2px;
+}
+
+/* The order card in the chat: the Public board's `ocard`. */
+.orderCard {
+  align-self: stretch;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--paper);
+  font-family: var(--font-body);
+  color: var(--ink);
+}
+
+.orderHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.orderHead small {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.orderHead b {
+  font-size: 15px;
+}
+
+.orderPill {
+  flex: none;
+  margin-left: auto;
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.orderPill[data-tone='wait'] {
+  background: var(--kuning-muda);
+  color: var(--kuning-ink);
+}
+
+.orderPill[data-tone='check'] {
+  background: var(--biru-muda);
+  color: var(--biru-ink);
+}
+
+.orderPill[data-tone='ok'] {
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+}
+
+.orderPill[data-tone='stop'] {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.orderPill[data-tone='quiet'] {
+  background: var(--ghost-a);
+  color: var(--ink-soft);
+}
+
+.orderSteps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 12px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.orderStep {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.orderStep::before {
+  content: '';
+  position: absolute;
+  top: 9px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--line);
+}
+
+.orderStep:first-child::before {
+  display: none;
+}
+
+.orderStep i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--edge);
+}
+
+.orderStep svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.orderStep[data-state='done']::before {
+  background: var(--hijau);
+}
+
+.orderStep[data-state='done'] i {
+  background: var(--hijau);
+  box-shadow: none;
+}
+
+.orderStep[data-state='now'] i {
+  box-shadow:
+    0 0 0 2px var(--accent, var(--rose)),
+    0 0 0 6px color-mix(in srgb, var(--accent, var(--rose)) 18%, transparent);
+}
+
+.orderSummary {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.orderFoot {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.orderFoot b {
+  font-size: 16px;
+  color: var(--ink);
+}
+
+.orderNote {
+  margin: 10px 0 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .orderCard {
+    animation: orderUp 320ms ease both;
+  }
+
+  @keyframes orderUp {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+
+/*
  * The ask bar's own sticky-bottom spot, taken over -- not the same `bottom`
  * offset as AskBar.module.css's `.bar` (16px), but flush with `bottom: 0`
  * and the gap moved into `padding-bottom` instead, so the composer reads as

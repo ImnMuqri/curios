@@ -197,6 +197,8 @@ export function Ask({
           // Omitted on a personal page, so the card is never offered there.
           // The server refuses one anyway; this stops it being asked for.
           onCapture={canCapture ? onCapture : undefined}
+          // Where "Order <item>" chips go; the server sends them only while the shop is open.
+          shopPath={`/${handle}/shop`}
         />
       ) : null}
     </>
