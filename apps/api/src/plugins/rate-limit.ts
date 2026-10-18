@@ -174,6 +174,24 @@ export function chatPerIpLimit(redis: IORedis): RateLimitPluginOptions {
 }
 
 /**
+ * Per caller, for the 404's "Did you mean". Each lookup reads published page
+ * addresses, so the budget is generous for someone mistyping and tight for
+ * someone walking the list.
+ */
+export function nearPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('near-ip:'),
+    max: limit('RATE_LIMIT_NEAR_PER_IP', 30),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many lookups just now. Try again in ${after}.`),
+  };
+}
+
+/**
  * Per caller. An ingestion runs Opus over a whole site and costs roughly eight
  * times what an answer costs, so this budget is much tighter than chat's.
  */

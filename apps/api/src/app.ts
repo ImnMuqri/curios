@@ -20,12 +20,13 @@ import {
   chatPerPageLimit,
   ingestPerIpLimit,
   ingestPerPageLimit,
+  nearPerIpLimit,
   rateLimitPlugin,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
-import { pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
+import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
@@ -153,6 +154,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, authPerIpLimit(app.rateLimitRedis));
     await scope.register(authFlowRoutes, overrides.auth ?? {});
+  });
+
+  // The 404's "Did you mean": public, so a per-IP budget of its own.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, nearPerIpLimit(app.rateLimitRedis));
+    await scope.register(nearPageRoutes);
   });
 
   // Outside that scope on purpose: these two carry no credential to stuff, and

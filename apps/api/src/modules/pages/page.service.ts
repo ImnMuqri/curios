@@ -60,15 +60,6 @@ function violatedFields(error: unknown): string[] {
 }
 
 /**
- * Claims a handle and creates the owner's one page.
- *
- * The unique indexes on `handle`, `skeleton` and `accountId` are the
- * serialisation point; there is no read-then-write check here, because two
- * simultaneous claims would both pass it. Each index maps to its own error,
- * because "taken", "too similar" and "you already have a page" are three
- * different facts and only one of them is fixed by choosing another handle.
- */
-/**
  * Whether an address could be claimed, for onboarding's live "Yours" /
  * "Taken" / "Not quite": the same rule claimHandle applies, and taken when
  * a page already has it or one that looks the same (its skeleton). A hint
@@ -88,6 +79,62 @@ export async function handleAvailability(
   return clash ? 'taken' : 'available';
 }
 
+/** Edits (insert, delete, change one letter) between two addresses. */
+export function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i += 1) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j += 1) {
+      row[j] = Math.min((prev[j] ?? 0) + 1, (row[j - 1] ?? 0) + 1, (prev[j - 1] ?? 0) + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length] ?? 0;
+}
+
+/** Past this many published pages, the near-address scan stops reading; see nearestPage. */
+const NEAR_SCAN_LIMIT = 5000;
+
+/**
+ * The published page an address was probably meant to be, for the 404's
+ * "Did you mean curios.my/keklina?": one or two letters out (one for a short
+ * address, where two would match half the list), nearest first, then
+ * alphabetical so the answer is the same every time. Null when nothing is
+ * that close, or when the address itself is a live page.
+ *
+ * Reads only addresses within two letters of the same length. At launch
+ * scale that is the whole short list; past NEAR_SCAN_LIMIT it is a sample,
+ * and a trigram index is the next step.
+ */
+export async function nearestPage(prisma: PrismaClient, raw: string): Promise<string | null> {
+  const tried = raw.trim().toLowerCase();
+  if (tried.length < 3 || tried.length > 30) return null;
+  const most = tried.length <= 4 ? 1 : 2;
+
+  const rows = await prisma.$queryRaw<{ handle: string }[]>`
+    SELECT handle FROM "Page"
+    WHERE published AND length(handle) BETWEEN ${tried.length - most} AND ${tried.length + most}
+    LIMIT ${NEAR_SCAN_LIMIT}`;
+  if (rows.some((row) => row.handle === tried)) return null;
+
+  let best: { handle: string; distance: number } | null = null;
+  for (const { handle } of rows) {
+    const distance = editDistance(tried, handle);
+    if (distance > most) continue;
+    if (!best || distance < best.distance || (distance === best.distance && handle < best.handle)) best = { handle, distance };
+  }
+  return best?.handle ?? null;
+}
+
+/**
+ * Claims a handle and creates the owner's one page.
+ *
+ * The unique indexes on `handle`, `skeleton` and `accountId` are the
+ * serialisation point; there is no read-then-write check here, because two
+ * simultaneous claims would both pass it. Each index maps to its own error,
+ * because "taken", "too similar" and "you already have a page" are three
+ * different facts and only one of them is fixed by choosing another handle.
+ */
 export async function claimHandle(
   prisma: PrismaClient,
   accountId: string,

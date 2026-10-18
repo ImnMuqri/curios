@@ -612,6 +612,15 @@
   text-decoration-thickness: 2px;
 }
 
+.l.mean {
+  margin-top: 18px;
+  font-size: 14px;
+}
+
+.mean a {
+  font-weight: 600;
+}
+
 .btns {
   display: flex;
   flex-wrap: wrap;

@@ -6,7 +6,7 @@ import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverK
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
-import { claimHandle, handleAvailability, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { claimHandle, handleAvailability, nearestPage, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { resolveStore, type AvatarStore } from './storage.js';
 
 export interface PageRouteOptions {
@@ -25,6 +25,19 @@ export class StorageNotConfiguredError extends Error {
     this.name = 'StorageNotConfiguredError';
   }
 }
+
+/**
+ * The 404's "Did you mean": the published page a mistyped address was
+ * probably meant to be. No session -- a visitor who mistyped has none -- and
+ * its own per-IP limit (app.ts). It names only pages that are public anyway.
+ */
+export const nearPageRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.get(
+    '/pages/near',
+    { schema: { querystring: z.object({ handle: z.string().max(200) }) } },
+    async (request, reply) => reply.send({ handle: await nearestPage(app.prisma, request.query.handle) }),
+  );
+};
 
 export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, options) => {
   // Resolved at registration, like chat's embedder: production with a missing

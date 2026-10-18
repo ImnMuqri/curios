@@ -3,6 +3,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
+import { editDistance } from './page.service.js';
 
 let app: FastifyInstance;
 
@@ -368,5 +369,43 @@ describe('GET /pages/handle-check', () => {
     expect(await check(cookie, 'admin')).toEqual({ status: 'reserved' });
     expect(await check(cookie, 'a b')).toEqual({ status: 'invalid' });
     expect(await check(cookie, 'ab')).toEqual({ status: 'invalid' });
+  });
+});
+
+describe('GET /pages/near', () => {
+  const near = async (handle: string) => (await call(undefined, 'GET', `/pages/near?handle=${encodeURIComponent(handle)}`)).json();
+  const published = async (handle: string, live = true) => {
+    await claimAs(await anOwner(), handle, 'BUSINESS');
+    await app.prisma.page.update({ where: { handle }, data: { published: live } });
+  };
+
+  it('names the published page a mistyped address was meant to be, with no session', async () => {
+    const real = `n${randomUUID().slice(0, 8)}`;
+    await published(real);
+
+    // One letter doubled, one changed: within two.
+    expect(await near(`${real.slice(0, 3)}${real[3]}${real.slice(3)}`)).toEqual({ handle: real });
+    expect(await near(`${real.slice(0, -1)}${real.endsWith('z') ? 'y' : 'z'}`)).toEqual({ handle: real });
+    expect(await near(real.toUpperCase().slice(0, -1) + (real.endsWith('z') ? 'Y' : 'Z'))).toEqual({ handle: real });
+  });
+
+  it('suggests nothing for a live address, a far one, or a page not published', async () => {
+    const real = `n${randomUUID().slice(0, 8)}`;
+    const hidden = `n${randomUUID().slice(0, 8)}`;
+    await published(real);
+    await published(hidden, false);
+
+    expect(await near(real)).toEqual({ handle: null });
+    expect(await near(`q${randomUUID().slice(0, 8)}`)).toEqual({ handle: null });
+    expect(await near(`${hidden.slice(0, -1)}${hidden.endsWith('z') ? 'y' : 'z'}`)).toEqual({ handle: null });
+  });
+});
+
+describe('editDistance', () => {
+  it('counts the letters added, dropped or changed', () => {
+    expect(editDistance('keklina', 'keklina')).toBe(0);
+    expect(editDistance('kekklina', 'keklina')).toBe(1);
+    expect(editDistance('keklinna', 'kekline')).toBe(2);
+    expect(editDistance('', 'abc')).toBe(3);
   });
 });
