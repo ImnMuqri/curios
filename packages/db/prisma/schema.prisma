@@ -104,9 +104,8 @@ enum HeadingFont {
   OUTFIT
 }
 
-/// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
-/// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
-/// so the fee is never part of what the shop charges.
+/// Where an order stands. Owner transitions are conditional on the current
+/// status, so a double tap changes nothing the second time.
 enum OrderStatus {
   PLACED
   PAID
@@ -114,11 +113,15 @@ enum OrderStatus {
   CANCELLED
 }
 
+/// Whether the customer collects or is sent the order.
 enum OrderMethod {
   PICKUP
   DELIVERY
 }
 
+/// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
+/// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
+/// so the fee is never part of what the shop charges.
 enum DeliveryMode {
   NONE
   FLAT
@@ -126,11 +129,11 @@ enum DeliveryMode {
 }
 
 model Account {
-  id              String               @id @default(cuid())
-  email           String               @unique
+  id              String              @id @default(cuid())
+  email           String              @unique
   name            String?
   emailVerifiedAt DateTime?
-  createdAt       DateTime             @default(now())
+  createdAt       DateTime            @default(now())
   identities      AuthIdentity[]
   pages           Page[]
   sessions        Session[]
@@ -152,123 +155,123 @@ model AuthIdentity {
 }
 
 model Page {
-  id            String         @id @default(cuid())
-  accountId     String
-  account       Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  handle        String         @unique
-  skeleton      String         @unique
-  mode          PageMode       @default(BUSINESS)
-  displayName   String
-  bio           String?
-  language      String         @default("en")
-  published     Boolean        @default(false)
+  id                  String         @id @default(cuid())
+  accountId           String
+  account             Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  handle              String         @unique
+  skeleton            String         @unique
+  mode                PageMode       @default(BUSINESS)
+  displayName         String
+  bio                 String?
+  language            String         @default("en")
+  published           Boolean        @default(false)
   /// Paid through this instant. Null means never paid. A one-off Billplz bill
   /// extends it; there is no subscription to activate, suspend or reconcile,
   /// because a one-off bill has no lifecycle to model. Lapsed is a comparison.
-  paidUntil     DateTime?
+  paidUntil           DateTime?
   /// Leads ever captured, and never decremented. A counter rather than
   /// count(Lead) because slice 5 gave owners a lead delete -- counting rows
   /// would let somebody delete their three trial leads and get three more.
-  leadsCaptured Int            @default(0)
+  leadsCaptured       Int            @default(0)
   /// When the owner spent their one trial reset. Null means unused, and the
   /// reset's conditional update requires null -- so a second click changes no
   /// rows rather than granting a second trial.
-  trialResetAt  DateTime?
+  trialResetAt        DateTime?
   /// The paidUntil this owner was last reminded about. Renewing moves paidUntil,
   /// which makes the next period eligible by itself: no reminders table, and no
   /// way to send the same reminder twice.
-  renewalReminderFor DateTime?
+  renewalReminderFor  DateTime?
   /// Whether the owner is emailed each lead (Settings, "Email me when"). On by
   /// default: a lead nobody hears about is the one thing this product exists
   /// to prevent.
-  notifyLeads Boolean @default(true)
+  notifyLeads         Boolean        @default(true)
   /// The paidUntil the owner was last told had ended, the on-the-day sibling
   /// of renewalReminderFor and claimed the same way.
-  planEndedMailFor DateTime?
+  planEndedMailFor    DateTime?
   /// Whether a personal page may appear in search results. Off by default:
   /// most people do not want an AI page about themselves ranking for their own
   /// name. Business pages are always indexed, so this is read only for personal
   /// pages -- see shouldIndex in @curios/core.
-  allowSearchIndexing Boolean @default(false)
+  allowSearchIndexing Boolean        @default(false)
   /// Soft is the default look; High contrast is the owner's alternative.
-  style       PageStyle   @default(SOFT)
+  style               PageStyle      @default(SOFT)
   /// #rrggbb, validated by isHexColor before it is written.
-  accentColor String      @default("#2340c8")
-  headingFont HeadingFont @default(JAKARTA)
+  accentColor         String         @default("#2340c8")
+  headingFont         HeadingFont    @default(JAKARTA)
   /// The object key of the uploaded picture in storage. Null is no picture.
-  avatarKey   String?
+  avatarKey           String?
   /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
-  coverKey    String?
-  background  PageBackground @default(PAPER)
+  coverKey            String?
+  background          PageBackground @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.
-  backgroundColor String?
+  backgroundColor     String?
   /// Social profiles shown as icons under the name: { instagram, whatsapp, tiktok, email, facebook, youtube }, each a handle. @curios/core/socials reads and writes it.
-  socials         Json         @default("{}")
+  socials             Json           @default("{}")
   /// The shop. Off until the owner opens it, and it can only be opened with a
   /// way to pay and a way to hand over -- storeGaps in @curios/core/store.
-  storeEnabled      Boolean      @default(false)
+  storeEnabled        Boolean        @default(false)
   /// "About your shop": shown above the items, before the notice.
-  shopDescription   String?
-  pickupEnabled     Boolean      @default(false)
+  shopDescription     String?
+  pickupEnabled       Boolean        @default(false)
   /// Where pickup happens, as the owner wants it said: "Seksyen 7, Shah Alam".
-  pickupNote        String?
-  deliveryMode      DeliveryMode @default(NONE)
+  pickupNote          String?
+  deliveryMode        DeliveryMode   @default(NONE)
   /// Sen. Set only while deliveryMode is FLAT.
-  deliveryFeeCents  Int?
-  minNoticeDays     Int          @default(1)
+  deliveryFeeCents    Int?
+  minNoticeDays       Int            @default(1)
   /// The owner's DuitNow QR, an object key in storage.
-  paymentQrKey      String?
-  bankName          String?
-  bankAccountName   String?
+  paymentQrKey        String?
+  bankName            String?
+  bankAccountName     String?
   /// Digits only -- normalizeBankAccountNumber.
-  bankAccountNumber String?
+  bankAccountNumber   String?
   /// The shop tile's index among the page's tiles. Clamped on read by
   /// withShopTile, so a stale value after links are removed still shows it.
-  shopTilePosition  Int          @default(0)
+  shopTilePosition    Int            @default(0)
   /// Null is automatic, as Link.size is.
-  shopTileSize      TileSize?
+  shopTileSize        TileSize?
   /// Orders ever placed, and never decremented: the order number's source and
   /// the trial allowance's count. A counter rather than count(Order) so an
   /// owner cannot delete trial orders to get more, as with leadsCaptured.
-  ordersPlaced      Int          @default(0)
+  ordersPlaced        Int            @default(0)
   /// ordersPlaced as it stood when the owner spent their trial reset, so the
   /// allowance counts only orders since. Zero until then.
-  ordersAtTrialReset Int         @default(0)
+  ordersAtTrialReset  Int            @default(0)
   /// Weekdays the shop does not hand over on, 0 (Sunday) to 6 (Saturday).
   /// Checkout skips them when it offers a day.
-  closedDays        Int[]        @default([])
+  closedDays          Int[]          @default([])
   /// Words about delivery the owner wants the customer to read at checkout:
   /// "Shah Alam only, rider after 5pm". The fee itself is deliveryFeeCents.
-  deliveryNote      String?
+  deliveryNote        String?
   /// Whether the owner is emailed each order, the sibling of notifyLeads. On by
   /// default: an order nobody hears about is a customer left waiting.
-  notifyOrders      Boolean      @default(true)
+  notifyOrders        Boolean        @default(true)
   /// Whether the owner is emailed when a receipt comes in, so Mark paid is not
   /// left until they next open the dashboard.
-  notifyReceipts    Boolean      @default(true)
-  createdAt     DateTime       @default(now())
-  links         Link[]
-  items         Item[]
-  facts         Fact[]
-  topics        Topic[]
-  faqRedirects  FaqRedirect[]
-  neverSay      NeverSay[]
-  conversations Conversation[]
-  ingestions    Ingestion[]
-  usageCounters UsageCounter[]
+  notifyReceipts      Boolean        @default(true)
+  createdAt           DateTime       @default(now())
+  links               Link[]
+  items               Item[]
+  facts               Fact[]
+  topics              Topic[]
+  faqRedirects        FaqRedirect[]
+  neverSay            NeverSay[]
+  conversations       Conversation[]
+  ingestions          Ingestion[]
+  usageCounters       UsageCounter[]
+  leads               Lead[]
+  questions           Question[]
+  payments            Payment[]
+  orders              Order[]
 
   @@unique([accountId])
-  leads         Lead[]
-  questions     Question[]
-  payments      Payment[]
-  orders        Order[]
 }
 
 model Link {
-  id       String @id @default(cuid())
+  id       String    @id @default(cuid())
   pageId   String
-  page     Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page     Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
   label    String
   url      String
   icon     String?
@@ -314,9 +317,9 @@ model ItemOption {
 }
 
 model Fact {
-  id              String       @id @default(cuid())
+  id              String         @id @default(cuid())
   pageId          String
-  page            Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page            Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
   category        FactCategory
   claim           String
   question        String?
@@ -329,17 +332,17 @@ model Fact {
   sourceBefore    String?
   sourceAfter     String?
   confidence      Float
-  verified        Boolean      @default(false)
-  volatile        Boolean      @default(false)
-  flagged         Boolean      @default(false)
+  verified        Boolean        @default(false)
+  volatile        Boolean        @default(false)
+  flagged         Boolean        @default(false)
   rejectedAt      DateTime?
   /// The ingestion that wrote this fact. SetNull, not Cascade: a rejected
   /// fact must outlive its source, because its normalizedClaim is what stops
   /// the next crawl re-asking. Null for OWNER and UNTRACKED facts.
   ingestionId     String?
-  ingestion       Ingestion?   @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
-  origin          FactOrigin   @default(EXTRACTED)
-  createdAt       DateTime     @default(now())
+  ingestion       Ingestion?     @relation(fields: [ingestionId], references: [id], onDelete: SetNull)
+  origin          FactOrigin     @default(EXTRACTED)
+  createdAt       DateTime       @default(now())
   embedding       FactEmbedding?
 
   @@unique([pageId, normalizedClaim])
@@ -389,27 +392,27 @@ model QuestionEmbedding {
 }
 
 model NeverSay {
-  id      String @id @default(cuid())
-  pageId  String
-  page    Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  phrase  String
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  phrase String
 
   @@index([pageId])
 }
 
 model Conversation {
-  id        String    @id @default(cuid())
-  pageId    String
-  page      Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  referrer  String?
-  createdAt DateTime  @default(now())
-  messages  Message[]
-  lead      Lead?
+  id             String    @id @default(cuid())
+  pageId         String
+  page           Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  referrer       String?
+  createdAt      DateTime  @default(now())
+  messages       Message[]
+  lead           Lead?
   /// The order this chat is waiting on, set while a customer asks about it. The
   /// chat looks it up by this rather than by guessing from the transcript.
   /// SetNull: the order going must not take the conversation with it.
   pendingOrderId String?
-  pendingOrder   Order?   @relation(fields: [pendingOrderId], references: [id], onDelete: SetNull)
+  pendingOrder   Order?    @relation(fields: [pendingOrderId], references: [id], onDelete: SetNull)
 
   @@index([pageId, createdAt])
 }
@@ -427,11 +430,11 @@ model Message {
 }
 
 model UsageCounter {
-  id     String @id @default(cuid())
-  pageId String
-  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
-  period String
-  count  Int    @default(0)
+  id          String    @id @default(cuid())
+  pageId      String
+  page        Page      @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  period      String
+  count       Int       @default(0)
   /// When "Your page reached its monthly limit" went out for this period.
   /// One counter row per month, so null-then-set is once a month by itself.
   capMailedAt DateTime?
@@ -556,23 +559,23 @@ model Lead {
 }
 
 model Question {
-  id                 String   @id @default(cuid())
+  id                 String        @id @default(cuid())
   pageId             String
-  page               Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page               Page          @relation(fields: [pageId], references: [id], onDelete: Cascade)
   /// The first phrasing seen, kept verbatim so the owner reads what a customer typed.
   text               String
   /// normalizeClaim(text). The key a repeat of this wording is recognised by.
   normalizedQuestion String
-  askCount           Int      @default(1)
+  askCount           Int           @default(1)
   /// The topic this wording belongs to. Every wording has exactly one.
   topicId            String
-  topic              Topic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  topic              Topic         @relation(fields: [topicId], references: [id], onDelete: Cascade)
   /// Null until the grouping job has decided where this wording belongs.
   groupedAt          DateTime?
   /// Set when the owner split this wording out. The grouping job never moves it.
-  pinnedByOwner      Boolean  @default(false)
-  firstAskedAt       DateTime @default(now())
-  lastAskedAt        DateTime @default(now())
+  pinnedByOwner      Boolean       @default(false)
+  firstAskedAt       DateTime      @default(now())
+  lastAskedAt        DateTime      @default(now())
   asks               QuestionAsk[]
 
   @@unique([pageId, normalizedQuestion])
@@ -669,9 +672,9 @@ model Payment {
 /// the server; the lines below are copies, so a later edit to an Item cannot
 /// rewrite what was sold.
 model Order {
-  id                String      @id @default(cuid())
+  id                String         @id @default(cuid())
   pageId            String
-  page              Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  page              Page           @relation(fields: [pageId], references: [id], onDelete: Cascade)
   /// The page's own running number, from Page.ordersPlaced. What the owner
   /// sees as #12.
   number            Int
@@ -680,13 +683,13 @@ model Order {
   code              String
   /// hashSessionValue of the order link's secret. Only the hash is stored, so
   /// a database read cannot open anybody's order page.
-  tokenHash         String      @unique
+  tokenHash         String         @unique
   customerName      String
   /// E.164, as Lead.phone is.
   phone             String
   method            OrderMethod
   /// The calendar day (Malaysia) of pickup or delivery.
-  day               DateTime    @db.Date
+  day               DateTime       @db.Date
   /// Set only for DELIVERY.
   address           String?
   note              String?
@@ -701,17 +704,18 @@ model Order {
   /// Its content type, sniffed from the first bytes, never the client's word.
   receiptType       String?
   receiptUploadedAt DateTime?
-  /// When the owner said "Not received". Cleared receipt, set here, so the
-  /// order page can ask the customer to pay and upload again.
+  /// When the owner said "Not received": the receipt is cleared (receiptKey and
+  /// receiptType go null) and this time is set, so the order page can ask the
+  /// customer to pay and upload again.
   receiptRejectedAt DateTime?
-  status            OrderStatus @default(PLACED)
+  status            OrderStatus    @default(PLACED)
   paidAt            DateTime?
   completedAt       DateTime?
   cancelledAt       DateTime?
   /// When the owner marked the money returned after a paid order was
   /// cancelled. Null with CANCELLED and paidAt set is a refund still owed.
   refundedAt        DateTime?
-  createdAt         DateTime    @default(now())
+  createdAt         DateTime       @default(now())
   lines             OrderLine[]
   conversations     Conversation[]
 
@@ -733,4 +737,6 @@ model OrderLine {
   unitPriceCents Int
   quantity       Int
   position       Int
+
+  @@index([orderId, position])
 }
