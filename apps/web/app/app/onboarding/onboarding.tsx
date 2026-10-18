@@ -88,7 +88,16 @@ function availability(status: HandleStatus | 'empty' | 'checking' | 'error', han
 }
 
 /** Where a read is: going, done with facts, done with none, or failed. */
-type Reading = { id: string; label: string; icon: string; lines: string[] | null; result: IngestionResult | null };
+type Reading = {
+  id: string;
+  label: string;
+  icon: string;
+  lines: string[] | null;
+  /** The last word on it while it reads: how far, and how many facts so far. */
+  live: IngestionResult | null;
+  /** Its final word, once it has finished. */
+  result: IngestionResult | null;
+};
 
 /**
  * Onboarding, from the design handoff's Onboarding board. Four steps: claim
@@ -160,6 +169,10 @@ export function OnboardingFlow({
 
   // Asking how the read is going until it finishes.
   const readingId = reading?.id;
+  const seenCount = useRef(0);
+  useEffect(() => {
+    seenCount.current = 0;
+  }, [readingId]);
   const settled = reading?.result !== null && reading?.result !== undefined;
   useEffect(() => {
     if (!readingId || settled) return;
@@ -169,11 +182,15 @@ export function OnboardingFlow({
       try {
         const result = await actions.fetchStatus(readingId);
         if (stopped) return;
-        if (result.status === 'SUCCEEDED' || result.status === 'FAILED') {
-          setReading((current) => (current && current.id === readingId ? { ...current, result } : current));
-          if (result.status === 'SUCCEEDED' && result.extractedCount > 0) actions.refresh();
-          return;
+        const over = result.status === 'SUCCEEDED' || result.status === 'FAILED';
+        // Facts are written as they are found: each time the count rises, the
+        // server is asked again so the new ones arrive, one by one.
+        if (result.extractedCount > seenCount.current) {
+          seenCount.current = result.extractedCount;
+          actions.refresh();
         }
+        setReading((current) => (current && current.id === readingId ? { ...current, live: result, result: over ? result : null } : current));
+        if (over) return;
       } catch {
         // Tried again on the next tick.
       }
@@ -231,6 +248,7 @@ export function OnboardingFlow({
                 .filter(Boolean)
                 .slice(0, 6)
             : null,
+        live: null,
         result: null,
       });
       setStep(3);
@@ -265,11 +283,15 @@ export function OnboardingFlow({
   const result = reading?.result ?? null;
   const done = result !== null;
   const foundCount = result?.status === 'SUCCEEDED' ? result.extractedCount : 0;
+  // While it reads, what it has found so far; the list beside the phone grows with it.
+  const soFar = reading?.live?.extractedCount ?? 0;
+  const progress = reading?.live?.progress ?? 0;
   const found = done && result.status === 'SUCCEEDED' && foundCount > 0;
   const quiet = done && result.status === 'SUCCEEDED' && foundCount === 0;
   const failed = done && result.status === 'FAILED';
   // What this read found: the newest facts in the queue, once the refresh brings them.
   const justFound = found ? facts.slice(-foundCount) : [];
+  const arriving = !done && soFar > 0 ? facts.slice(-soFar) : [];
   const ask = justFound.find((fact) => fact.question);
 
   return (
@@ -535,7 +557,16 @@ export function OnboardingFlow({
                       ))
                     : Array.from({ length: 6 }, (_, i) => <p key={i} className={styles.rl} data-skel="" aria-hidden="true" />)}
                 </div>
-                <div className={styles.pbar} aria-hidden="true" />
+                <div
+                  className={styles.pbar}
+                  role="progressbar"
+                  aria-label="How far it has read"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={progress}
+                >
+                  <i style={{ width: `${Math.max(4, progress)}%` }} />
+                </div>
               </>
             ) : null}
             {justFound.length > 0 ? (
@@ -620,7 +651,7 @@ export function OnboardingFlow({
         name={name}
         mode={mode}
         way={way}
-        found={justFound}
+        found={done ? justFound : arriving}
         ask={ask ? { q: ask.question ?? '', a: ask.claim } : null}
         caption={
           [

@@ -409,6 +409,9 @@ model Ingestion {
   fileName       String?
   status         IngestionStatus @default(QUEUED)
   extractedCount Int             @default(0)
+  /// How far through its source the read has got, 0 to 100: where the latest
+  /// fact's excerpt sits in the text, so the bar moves as the source is read.
+  progress       Int             @default(0)
   error          String?
   /// False for ingestions that ran before slice 14. Their facts are UNTRACKED,
   /// so the Sources tab cannot count them and removing the row removes only

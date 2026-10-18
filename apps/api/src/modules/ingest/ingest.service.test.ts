@@ -171,10 +171,10 @@ describe('startIngestion', () => {
 describe('getIngestion', () => {
   it('returns status and counts for polling', async () => {
     const row = await prisma.ingestion.create({
-      data: { pageId, sourceUrl: 'https://nadia.example/', status: 'SUCCEEDED', extractedCount: 7 },
+      data: { pageId, sourceUrl: 'https://nadia.example/', status: 'SUCCEEDED', extractedCount: 7, progress: 100 },
     });
     const result = await getIngestion(prisma, accountId, row.id);
-    expect(result).toMatchObject({ status: 'SUCCEEDED', extractedCount: 7 });
+    expect(result).toMatchObject({ status: 'SUCCEEDED', extractedCount: 7, progress: 100 });
   });
 
   it('returns null for an unknown id', async () => {

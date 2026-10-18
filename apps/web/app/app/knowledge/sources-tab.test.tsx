@@ -19,7 +19,7 @@ function list(sources: KnowledgeSource[], handlers: Partial<Parameters<typeof So
     onAdd: vi.fn().mockResolvedValue({ ingestionId: 'new-1' }),
     onRemove: vi.fn().mockResolvedValue({ removedFacts: 12 }),
     onRecheck: vi.fn().mockResolvedValue(undefined),
-    fetchStatus: vi.fn().mockResolvedValue({ status: 'RUNNING', extractedCount: 0, error: null }),
+    fetchStatus: vi.fn().mockResolvedValue({ status: 'RUNNING', extractedCount: 0, progress: 37, error: null }),
     onChanged: vi.fn(),
     ...handlers,
   };
@@ -107,6 +107,8 @@ describe('SourceList', () => {
     expect(onChanged).toHaveBeenCalled();
     expect(within(row('nadia.example')).getByText(/^Reading…/)).toBeInTheDocument();
     expect(screen.getByRole('status')).toHaveTextContent('Reading nadia.example again. New facts go to Review.');
+    // As far as its poll says it has got.
+    expect(await within(row('nadia.example')).findByText('Reading… 37%')).toBeInTheDocument();
   });
 
   it('asks before removing, naming the count and the shared-fact loss', async () => {
@@ -144,7 +146,7 @@ describe('SourceList', () => {
   });
 
   it('re-reads the list when a reading row finishes, and says what it found', async () => {
-    const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 3, error: null });
+    const fetchStatus = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 3, progress: 100, error: null });
     const { onChanged } = list([reading], { fetchStatus });
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     expect(screen.getByText('3 new facts are waiting for you.')).toBeInTheDocument();
@@ -159,7 +161,7 @@ describe('SourceList', () => {
   });
 
   it('words a re-check that finds nothing new as nothing new, only for a source that had facts', async () => {
-    const none = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, error: null });
+    const none = vi.fn().mockResolvedValue({ status: 'SUCCEEDED', extractedCount: 0, progress: 100, error: null });
     list([reading, { ...reading, id: 's6', sourceUrl: 'https://first.example/', label: 'https://first.example/', tracked: true, factCount: 5 }], { fetchStatus: none });
     expect(await screen.findByText(/no new facts/i)).toBeInTheDocument();
     expect(screen.getAllByText(/nothing to use there/i)).toHaveLength(1);
