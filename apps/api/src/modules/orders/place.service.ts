@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
-import { isOrderDay, orderCode, orderTotals } from '@curios/core/orders';
+import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 import { PageNotFoundError } from '../chat/chat.service.js';
 import { InvalidPhoneError } from '../leads/lead.service.js';
@@ -11,6 +11,7 @@ import {
   MethodOffError,
   OrderDateError,
   OrdersPausedError,
+  OrderTooLargeError,
   PricesChangedError,
   StoreClosedError,
   type ShelfItem,
@@ -105,6 +106,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     const page = await tx.page.findUniqueOrThrow({
       where: { id: found.id },
       select: {
+        published: true,
         mode: true,
         storeEnabled: true,
         paidUntil: true,
@@ -119,6 +121,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         account: { select: { email: true } },
       },
     });
+    if (!page.published) throw new PageNotFoundError();
     if (page.mode !== 'BUSINESS') throw new StoreBusinessOnlyError();
     if (!page.storeEnabled) throw new StoreClosedError();
     if (!canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now })) {
@@ -136,6 +139,8 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     if (input.method === 'DELIVERY' && address === null) throw new AddressRequiredError();
 
     const totals = orderTotals(lines, { method: input.method, mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
+    // Before anything else reads the total: past this it would not fit the Int columns it is stored in.
+    if (totals.totalCents > ORDER_TOTAL_MAX_CENTS) throw new OrderTooLargeError();
     if (totals.totalCents !== input.seenTotalCents) {
       const shelf: ShelfItem[] = await tx.item.findMany({
         where: { pageId: found.id, available: true },
@@ -188,12 +193,17 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     });
 
     return { orderId: order.id, number, code, totals, lines, notify: page.notifyOrders, ownerEmail: page.account.email };
-  });
+    // Above Prisma's 2s/5s defaults: a burst on one shop queues on the row
+    // lock, one placement after another, and the last in line must not be
+    // refused for waiting its turn.
+  }, { maxWait: 10_000, timeout: 10_000 });
 
   // After the commit, never inside it: the order is placed whether or not the
   // email can be queued, and a queued email must never announce an order a
   // rollback took away.
   if (placed.notify) {
+    const warn = (error: unknown) =>
+      deps.log?.warn?.({ orderId: placed.orderId, err: error instanceof Error ? error.message : String(error) }, 'could not queue the new-order email');
     try {
       const mail = newOrderMail({
         number: placed.number,
@@ -211,9 +221,15 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         })),
         url: `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${placed.orderId}`,
       });
-      await deps.mailQueue.add(MAIL_QUEUE, { to: placed.ownerEmail, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true });
+      // Not awaited. The queue's connection retries without limit
+      // (maxRetriesPerRequest: null), so during a Redis reconnect an awaited
+      // add would hold the visitor's 201 open, and a visitor who gives up and
+      // retries places the order twice. The order is already committed.
+      void deps.mailQueue
+        .add(MAIL_QUEUE, { to: placed.ownerEmail, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+        .catch(warn);
     } catch (error) {
-      deps.log?.warn?.({ orderId: placed.orderId, err: error instanceof Error ? error.message : String(error) }, 'could not queue the new-order email');
+      warn(error);
     }
   }
 

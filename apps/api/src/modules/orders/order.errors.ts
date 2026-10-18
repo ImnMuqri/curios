@@ -53,6 +53,16 @@ export class ItemUnavailableError extends Error {
   }
 }
 
+/** Over ORDER_TOTAL_MAX_CENTS: more than one stored total can hold, and more than any real basket. */
+export class OrderTooLargeError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'ORDER_TOO_LARGE';
+  constructor() {
+    super('This order is too big to place here. Send it to the shop on WhatsApp instead.');
+    this.name = 'OrderTooLargeError';
+  }
+}
+
 export class OrderDateError extends Error {
   readonly statusCode = 400;
   readonly code = 'ORDER_DATE';

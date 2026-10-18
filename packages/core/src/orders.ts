@@ -32,6 +32,8 @@ export const NAME_MAX = 60;
 export const ADDRESS_MAX = 240;
 export const ORDER_NOTE_MAX = 280;
 export const RECEIPT_MAX_BYTES = 5_242_880;
+/** RM1,000,000. A total is stored in an Int (at most 2^31 − 1 sen), and no home shop's order comes near this. */
+export const ORDER_TOTAL_MAX_CENTS = 100_000_000;
 
 /** Today's calendar day in Malaysia, `YYYY-MM-DD`. */
 export function malaysiaToday(now: Date): string {

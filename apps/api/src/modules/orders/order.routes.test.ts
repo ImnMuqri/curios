@@ -331,6 +331,33 @@ describe('POST /store/:handle/orders', () => {
     expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
   });
 
+  it('refuses an order too big for one total', async () => {
+    const shop = await aShop();
+    await app.prisma.item.update({ where: { id: shop.tartId }, data: { priceCents: 1_000_000 } });
+    // 50 lines of 99 at RM10,000: RM49.5 million, past what an Int column holds.
+    const lines = Array.from({ length: 50 }, () => ({ itemId: shop.tartId, optionId: null, quantity: 99 }));
+
+    const res = await place(shop.handle, aBasket(shop, { lines, seenTotalCents: 4_950_000_000 }));
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toEqual({
+      code: 'ORDER_TOO_LARGE',
+      message: 'This order is too big to place here. Send it to the shop on WhatsApp instead.',
+    });
+    expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
+    expect(await ordersPlaced(shop.pageId)).toBe(0);
+  });
+
+  it('refuses a page unpublished after the visitor opened it', async () => {
+    const shop = await aShop();
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { published: false } });
+
+    const res = await place(shop.handle, aBasket(shop));
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('PAGE_NOT_FOUND');
+  });
+
   it('refuses a personal page', async () => {
     const shop = await aShop({ mode: 'PERSONAL' });
 
@@ -410,6 +437,17 @@ describe('POST /store/:handle/orders', () => {
     expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(1);
   });
 
+  it('answers without waiting on the email queue', async () => {
+    const shop = await aShop();
+    // A Redis reconnect: the add never settles.
+    mailQueue.add.mockImplementationOnce(() => new Promise(() => {}));
+
+    const res = await place(shop.handle, aBasket(shop));
+
+    expect(res.statusCode).toBe(201);
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+  }, 3_000);
+
   it('limits placements per address', async () => {
     // A handle with no page: each request still spends a token, and nothing is written.
     const address = '198.51.100.77';
@@ -419,5 +457,27 @@ describe('POST /store/:handle/orders', () => {
     }
     expect(statuses.slice(0, 10).every((status) => status !== 429)).toBe(true);
     expect(statuses[10]).toBe(429);
+  });
+
+  it('limits placements per shop, from every address and in any casing', async () => {
+    // The budget is read when the app is built, so a second app with a small one.
+    const original = process.env.RATE_LIMIT_ORDER_PER_PAGE;
+    process.env.RATE_LIMIT_ORDER_PER_PAGE = '3';
+    const tight = await buildApp({ orders: { mailQueue } });
+    await tight.ready();
+    try {
+      const handle = `no-such-shop-${randomUUID().slice(0, 8)}`;
+      const statuses: number[] = [];
+      for (const [i, spelling] of [handle, handle.toUpperCase(), handle, handle.toUpperCase()].entries()) {
+        const res = await tight.inject({ method: 'POST', url: `/store/${spelling}/orders`, remoteAddress: `198.51.100.${10 + i}`, payload: { consent: true } });
+        statuses.push(res.statusCode);
+      }
+      expect(statuses.slice(0, 3).every((status) => status !== 429)).toBe(true);
+      expect(statuses[3]).toBe(429);
+    } finally {
+      await tight.close();
+      if (original === undefined) delete process.env.RATE_LIMIT_ORDER_PER_PAGE;
+      else process.env.RATE_LIMIT_ORDER_PER_PAGE = original;
+    }
   });
 });

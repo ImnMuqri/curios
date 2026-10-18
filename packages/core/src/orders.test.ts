@@ -5,6 +5,7 @@ import {
   malaysiaToday,
   openDays,
   ORDER_CODE_ALPHABET,
+  ORDER_TOTAL_MAX_CENTS,
   orderCode,
   orderTotals,
   orderView,
@@ -80,6 +81,13 @@ describe('orderTotals', () => {
     expect(
       orderTotals(lines, { method: 'DELIVERY', mode: 'RIDER', feeCents: null }).totalCents,
     ).toBe(3800);
+  });
+});
+
+describe('ORDER_TOTAL_MAX_CENTS', () => {
+  it('is RM1,000,000, inside the Int column a total is stored in', () => {
+    expect(ORDER_TOTAL_MAX_CENTS).toBe(100_000_000);
+    expect(ORDER_TOTAL_MAX_CENTS).toBeLessThan(2 ** 31 - 1);
   });
 });
 
