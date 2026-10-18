@@ -1,0 +1,340 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { RECEIPT_MAX_BYTES } from '@curios/core/orders';
+import type { PublicOrder } from '@curios/db-read';
+import { shopCopy } from '../../shop/copy.js';
+
+const refresh = vi.fn();
+vi.mock('next/navigation', () => ({
+  notFound: vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+  useRouter: () => ({ refresh }),
+}));
+vi.mock('@curios/db-read', () => ({ getOrderByToken: vi.fn() }));
+
+const { getOrderByToken } = await import('@curios/db-read');
+const { OrderView } = await import('./order-view.js');
+const { default: OrderPage, generateMetadata } = await import('./page.js');
+
+const copy = shopCopy('en');
+
+type Props = Parameters<typeof OrderView>[0];
+
+const base: Props = {
+  token: 'tok_abc',
+  handle: 'keklina',
+  displayName: 'Kek Lina',
+  language: 'en',
+  order: {
+    number: 14,
+    code: '7Q4M',
+    method: 'PICKUP',
+    day: '2026-10-17',
+    itemsCents: 21500,
+    deliveryCents: 0,
+    totalCents: 21500,
+    status: 'PLACED',
+    receiptType: null,
+    receiptUploadedAt: null,
+    receiptRejectedAt: null,
+    paidAt: null,
+    refundedAt: null,
+    lines: [
+      { itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1 },
+      { itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1 },
+    ],
+  },
+  qrUrl: 'https://cdn.test/qr/keklina.png',
+  receiptUrl: null,
+  bank: { name: 'Maybank', accountName: 'Lina binti Kamal', accountNumber: '1642 3378 9021' },
+  whatsapp: '60123456789',
+  // Thursday 15 October 2026, 10am in Malaysia.
+  now: '2026-10-15T02:00:00.000Z',
+};
+
+const withOrder = (patch: Partial<Props['order']>, rest: Partial<Props> = {}): Props => ({
+  ...base,
+  ...rest,
+  order: { ...base.order, ...patch },
+});
+
+const steps = () =>
+  within(screen.getByRole('list', { name: copy.orderProgress }))
+    .getAllByRole('listitem')
+    .map((li) => `${li.textContent}:${li.getAttribute('data-state') ?? ''}`);
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  refresh.mockReset();
+});
+
+describe('OrderView', () => {
+  it('shows the order, its code and its total', () => {
+    render(<OrderView {...base} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.getByText('7Q4M')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: copy.copyCode })).toBeInTheDocument();
+    expect(screen.getByText(copy.bookmark)).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina')).toBeInTheDocument();
+    const order = screen.getByRole('region', { name: copy.yourOrder });
+    expect(within(order).getByText('Pickup · Sat 17 Oct')).toBeInTheDocument();
+    expect(within(order).getByText('1× Kek coklat moist')).toBeInTheDocument();
+    expect(within(order).getByText('2kg')).toBeInTheDocument();
+    expect(within(order).getByText('RM170')).toBeInTheDocument();
+    expect(within(order).getByText('1× Kek batik')).toBeInTheDocument();
+    expect(within(order).getByText('RM45')).toBeInTheDocument();
+    expect(within(order).getByText(copy.total).nextSibling).toHaveTextContent('RM215');
+  });
+
+  it('adds a flat delivery fee as its own line, so the total adds up', () => {
+    render(<OrderView {...withOrder({ method: 'DELIVERY', deliveryCents: 1000, totalCents: 22500 })} />);
+    const order = screen.getByRole('region', { name: copy.yourOrder });
+    expect(within(order).getByText('Delivery · Sat 17 Oct')).toBeInTheDocument();
+    expect(within(order).getByText(copy.deliveryLabel).closest('li')).toHaveTextContent('RM10');
+    expect(within(order).getByText(copy.total).nextSibling).toHaveTextContent('RM225');
+  });
+
+  it('waiting for payment: the QR (with a download button on its corner), the bank details with Copy, and Upload your receipt', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    render(<OrderView {...base} />);
+
+    expect(screen.getByText('Waiting for payment')).toBeInTheDocument();
+    expect(steps()).toEqual(['Placed:done', 'Paid:now', 'Ready:', 'Done:']);
+
+    const pay = screen.getByRole('region', { name: 'Pay RM215' });
+    expect(within(pay).getByText('To Kek Lina, directly')).toBeInTheDocument();
+    const qr = within(pay).getByRole('img', { name: 'Kek Lina DuitNow QR' });
+    expect(qr).toHaveAttribute('src', 'https://cdn.test/qr/keklina.png');
+    // The download button sits inside the QR's own box, on its corner.
+    const save = within(pay).getByRole('button', { name: copy.saveQr });
+    expect(qr.parentElement).toContainElement(save);
+    expect(within(pay).getByText('Maybank · Lina binti Kamal')).toBeInTheDocument();
+    expect(within(pay).getByText('1642 3378 9021')).toBeInTheDocument();
+
+    await user.click(within(pay).getByRole('button', { name: copy.copy }));
+    expect(writeText).toHaveBeenCalledWith('1642 3378 9021');
+    expect(await within(pay).findByRole('button', { name: copy.copied })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: copy.copyCode }));
+    expect(writeText).toHaveBeenLastCalledWith('7Q4M');
+
+    expect(within(pay).getByLabelText(new RegExp(copy.uploadReceipt))).toHaveAttribute('type', 'file');
+  });
+
+  it('saves the QR by fetching it, since a cross-origin download attribute is ignored', async () => {
+    const user = userEvent.setup();
+    const blob = new Blob(['png'], { type: 'image/png' });
+    const fetchSpy = vi.fn().mockResolvedValue(new Response(blob));
+    vi.stubGlobal('fetch', fetchSpy);
+    const createObjectURL = vi.fn(() => 'blob:qr');
+    const revokeObjectURL = vi.fn();
+    Object.assign(URL, { createObjectURL, revokeObjectURL });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    render(<OrderView {...base} />);
+
+    await user.click(screen.getByRole('button', { name: copy.saveQr }));
+    expect(fetchSpy).toHaveBeenCalledWith('https://cdn.test/qr/keklina.png');
+    await vi.waitFor(() => expect(click).toHaveBeenCalled());
+    const anchor = click.mock.contexts[0] as HTMLAnchorElement;
+    expect(anchor.href).toBe('blob:qr');
+    expect(anchor.download).toBe('keklina-qr.png');
+  });
+
+  it('uploads a receipt, then refreshes the page so its status follows', async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ receiptUploadedAt: '2026-10-15T03:00:00.000Z' }), { status: 200, headers: { 'content-type': 'application/json' } }),
+    );
+    vi.stubGlobal('fetch', fetchSpy);
+    render(<OrderView {...base} />);
+
+    const file = new File(['%PDF-1.4'], 'receipt.pdf', { type: 'application/pdf' });
+    await user.upload(screen.getByLabelText(new RegExp(copy.uploadReceipt)), file);
+
+    await vi.waitFor(() => expect(refresh).toHaveBeenCalled());
+    const [url, init] = fetchSpy.mock.calls[0] as [string, RequestInit];
+    expect(url).toMatch(/\/store\/orders\/tok_abc\/receipt$/);
+    expect(init.method).toBe('POST');
+    expect(JSON.parse(init.body as string)).toEqual({ contentType: 'application/pdf', data: btoa('%PDF-1.4') });
+  });
+
+  it('refuses a receipt over 5 MB before sending it', async () => {
+    const user = userEvent.setup();
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    render(<OrderView {...base} />);
+
+    const big = new File(['x'], 'huge.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(big, 'size', { value: RECEIPT_MAX_BYTES + 1 });
+    await user.upload(screen.getByLabelText(new RegExp(copy.uploadReceipt)), big);
+
+    expect(await screen.findByText(copy.receiptInvalid)).toBeInTheDocument();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('says what the API refused', async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { code: 'STORAGE_NOT_CONFIGURED', message: 'x' } }), { status: 503, headers: { 'content-type': 'application/json' } }),
+      ),
+    );
+    render(<OrderView {...base} />);
+    await user.upload(screen.getByLabelText(new RegExp(copy.uploadReceipt)), new File(['x'], 'r.png', { type: 'image/png' }));
+    expect(await screen.findByText(copy.receiptsOff('Kek Lina'))).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('after upload: Receipt sent, checking', () => {
+    render(<OrderView {...withOrder({ receiptUploadedAt: '2026-10-15T03:00:00.000Z', receiptType: 'image/jpeg' }, { receiptUrl: 'https://cdn.test/receipts/p/abc.jpg' })} />);
+    expect(screen.getByText('Receipt sent · Kek Lina is checking')).toBeInTheDocument();
+    expect(steps()).toEqual(['Placed:done', 'Paid:now', 'Ready:', 'Done:']);
+    const pay = screen.getByRole('region', { name: 'Pay RM215' });
+    expect(within(pay).getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p/abc.jpg');
+    expect(within(pay).getByText(copy.checksIt('Kek Lina'))).toBeInTheDocument();
+    expect(within(pay).queryByLabelText(new RegExp(copy.uploadReceipt))).toBeNull();
+  });
+
+  it('not received: asks to pay and upload again', () => {
+    render(<OrderView {...withOrder({ receiptRejectedAt: '2026-10-15T04:00:00.000Z' })} />);
+    expect(screen.getByText('Waiting for payment')).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina didn’t receive your payment. Pay again and upload the new receipt.')).toBeInTheDocument();
+    expect(screen.getByLabelText(new RegExp(copy.uploadReceipt))).toBeInTheDocument();
+  });
+
+  it('paid: the pay box goes, and Ready lights on the day', () => {
+    const paid = withOrder({ status: 'PAID', paidAt: '2026-10-15T03:00:00.000Z', receiptUploadedAt: '2026-10-15T02:30:00.000Z', receiptType: 'image/png' });
+    const { unmount } = render(<OrderView {...paid} />);
+    expect(screen.getByText('Paid · Kek Lina is getting it ready')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /^Pay / })).toBeNull();
+    expect(steps()).toEqual(['Placed:done', 'Paid:done', 'Ready:now', 'Done:']);
+    unmount();
+
+    // Saturday 17 October, 9am in Malaysia: the day has come.
+    render(<OrderView {...paid} now="2026-10-17T01:00:00.000Z" />);
+    // The pill and the step.
+    expect(screen.getAllByText('Ready')).toHaveLength(2);
+    expect(screen.queryByText('Paid · Kek Lina is getting it ready')).toBeNull();
+    expect(steps()).toEqual(['Placed:done', 'Paid:done', 'Ready:done', 'Done:now']);
+  });
+
+  it('done: every step lit', () => {
+    render(<OrderView {...withOrder({ status: 'COMPLETED', paidAt: '2026-10-15T03:00:00.000Z' })} />);
+    expect(steps()).toEqual(['Placed:done', 'Paid:done', 'Ready:done', 'Done:done']);
+    expect(screen.getAllByText('Done')).toHaveLength(2);
+  });
+
+  it('cancelled, and refunded', () => {
+    const { unmount } = render(<OrderView {...withOrder({ status: 'CANCELLED' })} />);
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: copy.orderProgress })).toBeNull();
+    expect(screen.queryByRole('region', { name: /^Pay / })).toBeNull();
+    unmount();
+
+    render(<OrderView {...withOrder({ status: 'CANCELLED', paidAt: '2026-10-15T03:00:00.000Z', refundedAt: '2026-10-16T03:00:00.000Z' })} />);
+    expect(screen.getByText('Refunded')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /^Pay / })).toBeNull();
+  });
+
+  it('WhatsApp <Name> about this order opens a prefilled message naming the order number and code', () => {
+    const { unmount } = render(<OrderView {...base} />);
+    const link = screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' });
+    const url = new URL(link.getAttribute('href') ?? '');
+    expect(url.origin + url.pathname).toBe('https://wa.me/60123456789');
+    const text = url.searchParams.get('text') ?? '';
+    expect(text).toContain('#14');
+    expect(text).toContain('7Q4M');
+    unmount();
+
+    render(<OrderView {...base} whatsapp={null} />);
+    expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull();
+  });
+
+  it('speaks Malay on a Malay page', () => {
+    render(<OrderView {...base} language="ms" />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Tempahan #14' })).toBeInTheDocument();
+    expect(screen.getByText('Menunggu bayaran')).toBeInTheDocument();
+  });
+});
+
+const order: PublicOrder = {
+  id: 'o1',
+  number: 14,
+  code: '7Q4M',
+  customerName: 'Mira',
+  phone: '60129876543',
+  method: 'PICKUP',
+  day: '2026-10-17',
+  address: null,
+  note: null,
+  itemsCents: 21500,
+  deliveryCents: 0,
+  totalCents: 21500,
+  status: 'PLACED',
+  receiptKey: 'receipts/p1/abc.jpg',
+  receiptType: 'image/jpeg',
+  receiptUploadedAt: new Date('2026-10-15T03:00:00.000Z'),
+  receiptRejectedAt: null,
+  paidAt: null,
+  completedAt: null,
+  cancelledAt: null,
+  refundedAt: null,
+  createdAt: new Date('2026-10-15T02:00:00.000Z'),
+  lines: [{ itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoKey: null }],
+  page: {
+    handle: 'keklina',
+    displayName: 'Kek Lina',
+    language: 'en',
+    style: 'SOFT',
+    accentColor: '#b5294e',
+    headingFont: 'JAKARTA',
+    avatarKey: null,
+    coverKey: null,
+    background: 'PAPER',
+    backgroundColor: null,
+    links: [{ label: 'WA', url: 'https://wa.me/60123456789' }],
+    paymentQrKey: 'qr/keklina.png',
+    bankName: 'Maybank',
+    bankAccountName: 'Lina binti Kamal',
+    bankAccountNumber: '1642 3378 9021',
+  },
+};
+
+const params = (handle: string, token: string) => ({ params: Promise.resolve({ handle, token }) });
+
+describe('/[handle]/order/[token]', () => {
+  beforeEach(() => vi.stubEnv('STORAGE_PUBLIC_URL', 'https://cdn.test'));
+  afterEach(() => vi.unstubAllEnvs());
+
+  it('is a 404 for an unknown token', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(null);
+    await expect(OrderPage(params('keklina', 'nope'))).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('is a 404 when the order belongs to another page', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order);
+    await expect(OrderPage(params('otherpage', 'tok'))).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('draws the order in the page’s theme, with its QR, receipt and WhatsApp', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order);
+    render(await OrderPage(params('KekLina', 'tok')));
+    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p1/abc.jpg');
+    expect(screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
+    expect(screen.getByRole('main').closest('[data-on-accent]')).not.toBeNull();
+  });
+
+  it('is never indexed, and titles the tab', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order);
+    expect(await generateMetadata(params('keklina', 'tok'))).toEqual({ title: 'Order #14 · Kek Lina', robots: { index: false, follow: false } });
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(null);
+    expect(await generateMetadata(params('keklina', 'nope'))).toEqual({ robots: { index: false, follow: false } });
+  });
+});

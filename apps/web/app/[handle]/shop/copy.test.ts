@@ -25,6 +25,13 @@ describe('shopCopy', () => {
     expect(shopCopy('en').consent('Kek Lina')).toBe('Your name and number go to Kek Lina only.');
     expect(shopCopy('ms').consent('Kek Lina')).toBe('Nama dan nombor anda hanya pergi kepada Kek Lina.');
   });
+  it('words the order page’s statuses in both languages, naming the shop', () => {
+    expect(shopCopy('en').statusChecking('Kek Lina')).toBe('Receipt sent · Kek Lina is checking');
+    expect(shopCopy('en').statusPaid('Kek Lina')).toBe('Paid · Kek Lina is getting it ready');
+    expect(shopCopy('en').notReceived('Kek Lina')).toBe('Kek Lina didn’t receive your payment. Pay again and upload the new receipt.');
+    expect(shopCopy('ms').statusWaiting).toBe('Menunggu bayaran');
+    expect(shopCopy('ms').whatsappAbout('Kek Lina')).toBe('WhatsApp Kek Lina tentang tempahan ini');
+  });
   it('names a day as its pill and its summary show it', () => {
     expect(shopCopy('en').dayPill('2026-10-17')).toBe('Sat 17');
     expect(shopCopy('en').dayLong('2026-10-17')).toBe('Sat 17 Oct');

@@ -1,0 +1,441 @@
+/*
+ * The order page (Public board, `order`). It sits in checkout's column on
+ * checkout's stage (checkout.module.css: .stage, .column, .top, .title,
+ * .section, .head); these are the board's o3 pieces on top. The accent is the
+ * owner's (--accent from PageTheme); green means paid, as everywhere.
+ */
+
+/* No fixed bar at the foot here, so none of checkout's room for one. */
+.page:is(main) {
+  padding-bottom: 48px;
+}
+
+.bookmark {
+  margin-left: auto;
+  color: var(--hint);
+  font-size: 12.5px;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.titleRow h1 {
+  margin: 0;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pill[data-tone='wait'] {
+  background: var(--kuning-muda);
+  color: var(--kuning-ink);
+}
+
+.pill[data-tone='check'] {
+  background: var(--biru-muda);
+  color: var(--biru-ink);
+}
+
+.pill[data-tone='ok'] {
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+}
+
+.pill[data-tone='stop'] {
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+}
+
+.pill[data-tone='quiet'] {
+  background: var(--ghost-a);
+  color: var(--ink-soft);
+}
+
+.code {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.code b {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+
+.textButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---- Progress ---- */
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 22px 0 4px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--hint);
+  font-size: 12.5px;
+}
+
+/* The line from the step before, drawn behind this step's circle. */
+.step::before {
+  content: '';
+  position: absolute;
+  top: 10px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--ghost-b);
+}
+
+.step:first-child::before {
+  display: none;
+}
+
+.step i {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--card);
+  box-shadow: inset 0 0 0 2px var(--line);
+}
+
+.step svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.step:is([data-state='done'], [data-state='now']) {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.step:is([data-state='done'], [data-state='now'])::before {
+  background: var(--hijau);
+}
+
+.step[data-state='done'] i {
+  background: var(--hijau);
+  box-shadow: none;
+}
+
+.step[data-state='now'] i {
+  box-shadow: inset 0 0 0 6px var(--accent);
+}
+
+/* ---- Pay ---- */
+
+.rejected {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--kuning-muda);
+  color: var(--kuning-ink);
+  font-size: 13.5px;
+}
+
+.payBox {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 14px 14px 18px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.qr {
+  position: relative;
+  flex: none;
+  line-height: 0;
+}
+
+.qr img {
+  width: 104px;
+  height: 104px;
+  object-fit: contain;
+}
+
+/* The board's download button, on the QR's bottom-right corner. */
+.save {
+  position: absolute;
+  right: -17px;
+  bottom: -14px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent, var(--paper));
+  box-shadow:
+    0 0 0 3px var(--card),
+    0 6px 14px -6px color-mix(in srgb, var(--ink) 50%, transparent);
+  cursor: pointer;
+  transition:
+    background 200ms,
+    transform 160ms;
+}
+
+.save[data-saved] {
+  background: var(--hijau);
+  color: var(--paper);
+}
+
+.save:active {
+  transform: scale(0.92);
+}
+
+.save svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.bank {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.bank b {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.account {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 10px;
+}
+
+.account code {
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.askPay {
+  margin: 0;
+  padding: 14px;
+  border-radius: 16px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font-size: 13.5px;
+}
+
+.upload {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--accent) 6%, var(--card));
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.upload[data-busy] {
+  cursor: progress;
+}
+
+.upload:has(.file:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.upload svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.upload b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.upload > span > span {
+  display: block;
+  color: var(--hint);
+  font-size: 12.5px;
+}
+
+.upload.sent {
+  background: var(--hijau-muda);
+  cursor: default;
+}
+
+.upload.sent svg {
+  stroke: var(--hijau);
+}
+
+.upload.sent a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* The input is the box's own; the label around it is what is seen and pressed. */
+.file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.problem {
+  margin: 8px 0 0;
+  color: var(--merah-deep);
+  font-size: 12.5px;
+}
+
+/* ---- Your order ---- */
+
+.lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+
+.line b {
+  display: block;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.line > span:first-child > span {
+  display: block;
+  color: var(--hint);
+  font-size: 12.5px;
+}
+
+.line > span:last-child {
+  flex: none;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--ghost-b);
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.whatsapp {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 50px;
+  margin-top: 20px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--hijau);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.whatsapp svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.textButton:focus-visible,
+.save:focus-visible,
+.whatsapp:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

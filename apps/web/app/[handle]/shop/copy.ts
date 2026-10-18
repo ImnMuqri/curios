@@ -77,6 +77,41 @@ export interface ShopCopy {
   askLater: (name: string, code: string) => string;
   payNow: (total: string) => string;
   sendLink: string;
+  // The order page.
+  bookmark: string;
+  orderTitle: (number: number) => string;
+  orderCode: string;
+  orderProgress: string;
+  steps: { placed: string; paid: string; ready: string; done: string };
+  statusWaiting: string;
+  statusChecking: (name: string) => string;
+  statusPaid: (name: string) => string;
+  statusReady: string;
+  statusDone: string;
+  statusCancelled: string;
+  statusRefunded: string;
+  payTitle: (total: string) => string;
+  payTo: (name: string) => string;
+  scanOrTransfer: string;
+  scanOnly: string;
+  transferTo: string;
+  /** No QR and no bank details set: the chat is the way to ask. */
+  askHowToPay: (name: string) => string;
+  qrLabel: (name: string) => string;
+  saveQr: string;
+  saveQrTitle: string;
+  copy: string;
+  uploadReceipt: string;
+  uploadHint: string;
+  uploading: string;
+  receiptSent: string;
+  checksIt: (name: string) => string;
+  /** Owner decision 3: the owner marked the payment not received. */
+  notReceived: (name: string) => string;
+  receiptInvalid: string;
+  receiptsOff: (name: string) => string;
+  whatsappAbout: (name: string) => string;
+  whatsappOrderText: (number: number, code: string) => string;
 }
 
 /** `YYYY-MM-DD` read as a calendar day, so its weekday and month never depend on the browser's zone. */
@@ -183,6 +218,38 @@ const EN: ShopCopy = {
   askLater: (name, code) => `Ask ${name}’s page “where is my order ${code}?” any time and it shows you the status.`,
   payNow: (total) => `Pay ${total} now`,
   sendLink: 'Send the link to my WhatsApp',
+  bookmark: 'Bookmark this page',
+  orderTitle: (number) => `Order #${number}`,
+  orderCode: 'Order code',
+  orderProgress: 'Order progress',
+  steps: { placed: 'Placed', paid: 'Paid', ready: 'Ready', done: 'Done' },
+  statusWaiting: 'Waiting for payment',
+  statusChecking: (name) => `Receipt sent · ${name} is checking`,
+  statusPaid: (name) => `Paid · ${name} is getting it ready`,
+  statusReady: 'Ready',
+  statusDone: 'Done',
+  statusCancelled: 'Cancelled',
+  statusRefunded: 'Refunded',
+  payTitle: (total) => `Pay ${total}`,
+  payTo: (name) => `To ${name}, directly`,
+  scanOrTransfer: 'Scan with any bank app, or transfer to',
+  scanOnly: 'Scan with any bank app',
+  transferTo: 'Transfer to',
+  askHowToPay: (name) => `Ask ${name} how to pay, then upload your receipt here.`,
+  qrLabel: (name) => `${name} DuitNow QR`,
+  saveQr: 'Save the QR to your phone',
+  saveQrTitle: 'Save QR',
+  copy: 'Copy',
+  uploadReceipt: 'Upload your receipt',
+  uploadHint: 'A screenshot from your bank app',
+  uploading: 'Uploading…',
+  receiptSent: 'sent',
+  checksIt: (name) => `${name} checks it and confirms here`,
+  notReceived: (name) => `${name} didn’t receive your payment. Pay again and upload the new receipt.`,
+  receiptInvalid: 'Upload a photo or PDF of your receipt, up to 5 MB.',
+  receiptsOff: (name) => `Receipts can’t be uploaded right now. Send yours to ${name} on WhatsApp instead.`,
+  whatsappAbout: (name) => `WhatsApp ${name} about this order`,
+  whatsappOrderText: (number, code) => `Hi, about my order #${number} (code ${code}).`,
 };
 
 const MS: ShopCopy = {
@@ -255,6 +322,38 @@ const MS: ShopCopy = {
   askLater: (name, code) => `Tanya halaman ${name} “mana tempahan saya ${code}?” bila-bila masa dan ia tunjukkan statusnya.`,
   payNow: (total) => `Bayar ${total} sekarang`,
   sendLink: 'Hantar pautan ke WhatsApp saya',
+  bookmark: 'Tandakan halaman ini',
+  orderTitle: (number) => `Tempahan #${number}`,
+  orderCode: 'Kod tempahan',
+  orderProgress: 'Kemajuan tempahan',
+  steps: { placed: 'Dibuat', paid: 'Dibayar', ready: 'Sedia', done: 'Selesai' },
+  statusWaiting: 'Menunggu bayaran',
+  statusChecking: (name) => `Resit dihantar · ${name} sedang menyemak`,
+  statusPaid: (name) => `Dibayar · ${name} sedang menyediakannya`,
+  statusReady: 'Sedia',
+  statusDone: 'Selesai',
+  statusCancelled: 'Dibatalkan',
+  statusRefunded: 'Wang dipulangkan',
+  payTitle: (total) => `Bayar ${total}`,
+  payTo: (name) => `Terus kepada ${name}`,
+  scanOrTransfer: 'Imbas dengan mana-mana aplikasi bank, atau pindahkan ke',
+  scanOnly: 'Imbas dengan mana-mana aplikasi bank',
+  transferTo: 'Pindahkan ke',
+  askHowToPay: (name) => `Tanya ${name} cara membayar, kemudian muat naik resit anda di sini.`,
+  qrLabel: (name) => `DuitNow QR ${name}`,
+  saveQr: 'Simpan QR ke telefon anda',
+  saveQrTitle: 'Simpan QR',
+  copy: 'Salin',
+  uploadReceipt: 'Muat naik resit anda',
+  uploadHint: 'Tangkapan skrin dari aplikasi bank anda',
+  uploading: 'Sedang dimuat naik…',
+  receiptSent: 'dihantar',
+  checksIt: (name) => `${name} akan menyemaknya dan mengesahkan di sini`,
+  notReceived: (name) => `${name} tidak menerima bayaran anda. Bayar semula dan muat naik resit yang baharu.`,
+  receiptInvalid: 'Muat naik foto atau PDF resit anda, sehingga 5 MB.',
+  receiptsOff: (name) => `Resit tidak dapat dimuat naik buat masa ini. Hantar resit anda kepada ${name} di WhatsApp.`,
+  whatsappAbout: (name) => `WhatsApp ${name} tentang tempahan ini`,
+  whatsappOrderText: (number, code) => `Hai, tentang tempahan saya #${number} (kod ${code}).`,
 };
 
 export function shopCopy(language: string): ShopCopy {

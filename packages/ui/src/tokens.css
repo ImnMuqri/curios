@@ -82,6 +82,14 @@
   --toast-tick: #86e0b8;
   /* Checkout's quieter grey (Public board): sub-lines, hints and the small print. */
   --hint: #8a8f9b;
+  /*
+   * The order page's status pills (Public board, `order`): waiting for
+   * payment, a receipt being checked, and paid, each a pale with its ink.
+   */
+  --kuning-muda: #ffebd6;
+  --kuning-ink: #7a4a0c;
+  --biru-ink: #122686;
+  --hijau-ink: #123b33;
 
   /* The original six steps. The handoff's screens use more; see SCALE in design-rules.ts. */
   --text-xs: 11px;
