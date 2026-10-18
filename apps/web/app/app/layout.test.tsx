@@ -80,7 +80,7 @@ describe('the dashboard layout', () => {
   it('puts an owner with a page in the frame', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
-    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
@@ -90,7 +90,7 @@ describe('the dashboard layout', () => {
   it("names the owner's plan under their name", async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
-    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
@@ -112,7 +112,7 @@ describe('the dashboard layout', () => {
   it('puts a used-up trial’s banner on Leads, and a dot on Billing', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce({ ...page, leadsCaptured: 3 });
-    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
     const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
 
@@ -126,7 +126,7 @@ describe('the dashboard layout', () => {
     try {
       resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
       getOwnerPage.mockResolvedValueOnce(page);
-      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
       render(await AppLayout({ children: <p>onboarding</p> }));
 

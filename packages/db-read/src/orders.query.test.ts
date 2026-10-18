@@ -1,0 +1,208 @@
+import { randomUUID } from 'node:crypto';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { PrismaClient } from '@prisma/client';
+import { hashSessionValue } from '@curios/core';
+import { getCheckout, getOrderByToken, getOrderStats, getOwnerOrders } from './orders.query.js';
+import { countNavBadges } from './my-curios.query.js';
+
+const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+
+// Sunday 2026-10-18, 23:30 in Malaysia (15:30Z).
+const NOW = new Date('2026-10-18T15:30:00Z');
+
+interface Owner {
+  accountId: string;
+  pageId: string;
+  handle: string;
+}
+
+const accountIds: string[] = [];
+let mine: Owner;
+let theirs: Owner;
+let counter = 0;
+
+async function anOwner(extra: Record<string, unknown> = {}): Promise<Owner> {
+  const slug = randomUUID().slice(0, 8);
+  const handle = `od-${slug}`;
+  const account = await write.account.create({
+    data: {
+      email: `od-${randomUUID()}@example.com`,
+      pages: { create: { handle, skeleton: handle, displayName: 'Dapur Kak Nor', mode: 'BUSINESS', storeEnabled: true, published: true, ...extra } },
+    },
+    select: { id: true, pages: { select: { id: true } } },
+  });
+  accountIds.push(account.id);
+  return { accountId: account.id, pageId: account.pages[0]?.id ?? '', handle };
+}
+
+async function anOrder(pageId: string, extra: Record<string, unknown> = {}, token = randomUUID()): Promise<string> {
+  counter += 1;
+  const order = await write.order.create({
+    data: {
+      pageId,
+      number: counter,
+      code: `C${counter}`,
+      tokenHash: hashSessionValue(token),
+      customerName: 'Aina',
+      phone: '+60123456789',
+      method: 'PICKUP',
+      day: new Date('2026-10-20T00:00:00Z'),
+      itemsCents: 5000,
+      deliveryCents: 0,
+      totalCents: 5000,
+      lines: { create: [{ itemName: 'Kek', optionLabel: '1kg', unitPriceCents: 5000, quantity: 1, position: 0 }] },
+      ...extra,
+    },
+    select: { id: true },
+  });
+  return order.id;
+}
+
+beforeAll(async () => {
+  mine = await anOwner();
+  theirs = await anOwner();
+});
+
+afterAll(async () => {
+  // Orders and lines go with their page, pages with their account.
+  await write.account.deleteMany({ where: { id: { in: accountIds } } });
+  await write.$disconnect();
+});
+
+describe('getOwnerOrders', () => {
+  it('is newest first, scoped to the owner, with lines and the day as text', async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    await anOrder(owner.pageId, { customerName: 'Old', createdAt: new Date('2026-10-01T00:00:00Z') });
+    await anOrder(owner.pageId, { customerName: 'New', createdAt: new Date('2026-10-10T00:00:00Z') });
+    await anOrder(other.pageId, { customerName: 'Theirs' });
+    const orders = await getOwnerOrders(owner.accountId);
+    expect(orders.map((o) => o.customerName)).toEqual(['New', 'Old']);
+    expect(orders[0]?.day).toBe('2026-10-20');
+    expect(orders[0]?.lines[0]).toMatchObject({ itemName: 'Kek', optionLabel: '1kg', unitPriceCents: 5000, quantity: 1, photoKey: null });
+  });
+
+  it('gives a line its item photo while the item exists', async () => {
+    const owner = await anOwner();
+    const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Kek', photoKey: 'items/kek.jpg', position: 0 } });
+    const id = await anOrder(owner.pageId);
+    await write.orderLine.updateMany({ where: { orderId: id }, data: { itemId: item.id } });
+    const [order] = await getOwnerOrders(owner.accountId);
+    expect(order?.lines[0]?.photoKey).toBe('items/kek.jpg');
+  });
+
+  it('keeps the receipt key and caps the list at 100', async () => {
+    const owner = await anOwner();
+    await write.order.createMany({
+      data: Array.from({ length: 101 }, (_, i) => ({
+        pageId: owner.pageId,
+        number: i + 1,
+        code: `K${i}`,
+        tokenHash: hashSessionValue(randomUUID()),
+        customerName: 'A',
+        phone: '+60123456789',
+        method: 'PICKUP' as const,
+        day: new Date('2026-10-20T00:00:00Z'),
+        itemsCents: 1,
+        deliveryCents: 0,
+        totalCents: 1,
+        receiptKey: i === 0 ? 'receipts/x/a.png' : null,
+      })),
+    });
+    expect(await getOwnerOrders(owner.accountId, { limit: 500 })).toHaveLength(100);
+    expect(await getOwnerOrders(owner.accountId, { limit: 5 })).toHaveLength(5);
+  });
+});
+
+describe('getOrderStats', () => {
+  it('counts to-check (PLACED with a receipt), to-make (PAID) and paid sen per Malaysian day', async () => {
+    const owner = await anOwner();
+    const p = owner.pageId;
+    await anOrder(p, { receiptKey: 'r/a.png', receiptType: 'image/png', receiptUploadedAt: NOW });
+    await anOrder(p); // PLACED, no receipt: not to check
+    // 2026-10-18 23:00 MYT = 15:00Z, today.
+    await anOrder(p, { status: 'PAID', totalCents: 1000, paidAt: new Date('2026-10-18T15:00:00Z') });
+    // 2026-10-17 00:30 MYT = 16 Oct 16:30Z: yesterday in Malaysia, the 16th in UTC.
+    await anOrder(p, { status: 'COMPLETED', totalCents: 2000, paidAt: new Date('2026-10-16T16:30:00Z') });
+    // Seven days back, i.e. 2026-10-11: outside the window (it covers 12th to 18th).
+    await anOrder(p, { status: 'PAID', totalCents: 4000, paidAt: new Date('2026-10-11T04:00:00Z') });
+    // Cancelled after being paid: left out.
+    await anOrder(p, { status: 'CANCELLED', totalCents: 8000, paidAt: new Date('2026-10-18T03:00:00Z'), cancelledAt: NOW });
+    await anOrder(theirs.pageId, { status: 'PAID', totalCents: 16000, paidAt: new Date('2026-10-18T03:00:00Z') });
+
+    const stats = await getOrderStats(owner.accountId, NOW);
+    expect(stats.toCheck).toBe(1);
+    expect(stats.toMake).toBe(2);
+    expect(stats.week).toEqual([0, 0, 0, 0, 0, 2000, 1000]);
+    expect(stats.paidThisWeekCents).toBe(3000);
+  });
+});
+
+describe('getOrderByToken', () => {
+  it('is null for an unknown token', async () => {
+    expect(await getOrderByToken('nope-' + randomUUID())).toBeNull();
+  });
+
+  it('returns the order with its page, payment details and links', async () => {
+    const owner = await anOwner({ bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122334455', paymentQrKey: 'qr/a.png' });
+    await write.link.create({ data: { pageId: owner.pageId, label: 'WhatsApp', url: 'https://wa.me/60123456789', position: 0 } });
+    const token = randomUUID();
+    await anOrder(owner.pageId, { customerName: 'Aina' }, token);
+    const order = await getOrderByToken(token);
+    expect(order).toMatchObject({
+      customerName: 'Aina',
+      day: '2026-10-20',
+      status: 'PLACED',
+      receiptKey: null,
+      page: {
+        handle: owner.handle,
+        displayName: 'Dapur Kak Nor',
+        bankName: 'Maybank',
+        bankAccountName: 'Nor',
+        bankAccountNumber: '1122334455',
+        paymentQrKey: 'qr/a.png',
+        links: [{ label: 'WhatsApp', url: 'https://wa.me/60123456789' }],
+      },
+    });
+    expect(order?.page).toHaveProperty('accentColor');
+    expect(order?.lines).toHaveLength(1);
+  });
+
+  it('does not match on the hash itself', async () => {
+    const token = randomUUID();
+    await anOrder(mine.pageId, {}, token);
+    expect(await getOrderByToken(hashSessionValue(token))).toBeNull();
+  });
+});
+
+describe('getCheckout', () => {
+  it('is null for an unknown handle, a personal page and a closed store', async () => {
+    const personal = await anOwner({ mode: 'PERSONAL' });
+    const closed = await anOwner({ storeEnabled: false });
+    expect(await getCheckout('no-such-' + randomUUID())).toBeNull();
+    expect(await getCheckout(personal.handle)).toBeNull();
+    expect(await getCheckout(closed.handle)).toBeNull();
+  });
+
+  it('carries the shop and checkout settings, with canTakeOrders decided by the core', async () => {
+    const owner = await anOwner({ pickupEnabled: true, deliveryMode: 'FLAT', deliveryFeeCents: 800, minNoticeDays: 2, closedDays: [0], deliveryNote: 'KL only' });
+    const checkout = await getCheckout(owner.handle, NOW);
+    expect(checkout).toMatchObject({ handle: owner.handle, pickupEnabled: true, deliveryMode: 'FLAT', deliveryFeeCents: 800, minNoticeDays: 2, closedDays: [0], deliveryNote: 'KL only', canTakeOrders: true, items: [] });
+
+    const spent = await anOwner({ ordersPlaced: 3 });
+    expect((await getCheckout(spent.handle, NOW))?.canTakeOrders).toBe(false);
+    const paid = await anOwner({ ordersPlaced: 3, paidUntil: new Date('2026-12-01T00:00:00Z') });
+    expect((await getCheckout(paid.handle, NOW))?.canTakeOrders).toBe(true);
+  });
+});
+
+describe('countNavBadges orders', () => {
+  it('counts PLACED orders with a receipt, for this owner only', async () => {
+    const owner = await anOwner();
+    await anOrder(owner.pageId, { receiptKey: 'r/a.png', receiptUploadedAt: NOW });
+    await anOrder(owner.pageId);
+    await anOrder(owner.pageId, { status: 'PAID', receiptKey: 'r/b.png', receiptUploadedAt: NOW, paidAt: NOW });
+    await anOrder(theirs.pageId, { receiptKey: 'r/c.png', receiptUploadedAt: NOW });
+    expect((await countNavBadges(owner.accountId)).orders).toBe(1);
+  });
+});
