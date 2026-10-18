@@ -107,6 +107,18 @@ enum HeadingFont {
 /// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
 /// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
 /// so the fee is never part of what the shop charges.
+enum OrderStatus {
+  PLACED
+  PAID
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderMethod {
+  PICKUP
+  DELIVERY
+}
+
 enum DeliveryMode {
   NONE
   FLAT
@@ -216,6 +228,25 @@ model Page {
   shopTilePosition  Int          @default(0)
   /// Null is automatic, as Link.size is.
   shopTileSize      TileSize?
+  /// Orders ever placed, and never decremented: the order number's source and
+  /// the trial allowance's count. A counter rather than count(Order) so an
+  /// owner cannot delete trial orders to get more, as with leadsCaptured.
+  ordersPlaced      Int          @default(0)
+  /// ordersPlaced as it stood when the owner spent their trial reset, so the
+  /// allowance counts only orders since. Zero until then.
+  ordersAtTrialReset Int         @default(0)
+  /// Weekdays the shop does not hand over on, 0 (Sunday) to 6 (Saturday).
+  /// Checkout skips them when it offers a day.
+  closedDays        Int[]        @default([])
+  /// Words about delivery the owner wants the customer to read at checkout:
+  /// "Shah Alam only, rider after 5pm". The fee itself is deliveryFeeCents.
+  deliveryNote      String?
+  /// Whether the owner is emailed each order, the sibling of notifyLeads. On by
+  /// default: an order nobody hears about is a customer left waiting.
+  notifyOrders      Boolean      @default(true)
+  /// Whether the owner is emailed when a receipt comes in, so Mark paid is not
+  /// left until they next open the dashboard.
+  notifyReceipts    Boolean      @default(true)
   createdAt     DateTime       @default(now())
   links         Link[]
   items         Item[]
@@ -231,6 +262,7 @@ model Page {
   leads         Lead[]
   questions     Question[]
   payments      Payment[]
+  orders        Order[]
 }
 
 model Link {
@@ -265,6 +297,7 @@ model Item {
   position    Int
   createdAt   DateTime     @default(now())
   options     ItemOption[]
+  orderLines  OrderLine[]
 
   @@index([pageId, position])
 }
@@ -372,6 +405,11 @@ model Conversation {
   createdAt DateTime  @default(now())
   messages  Message[]
   lead      Lead?
+  /// The order this chat is waiting on, set while a customer asks about it. The
+  /// chat looks it up by this rather than by guessing from the transcript.
+  /// SetNull: the order going must not take the conversation with it.
+  pendingOrderId String?
+  pendingOrder   Order?   @relation(fields: [pendingOrderId], references: [id], onDelete: SetNull)
 
   @@index([pageId, createdAt])
 }
@@ -625,4 +663,74 @@ model Payment {
   @@index([status, createdAt])
   // Plan 2's "recent payments" reads by page, newest first.
   @@index([pageId, createdAt])
+}
+
+/// One customer's order from a business page's shop. Money is sen, computed by
+/// the server; the lines below are copies, so a later edit to an Item cannot
+/// rewrite what was sold.
+model Order {
+  id                String      @id @default(cuid())
+  pageId            String
+  page              Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  /// The page's own running number, from Page.ordersPlaced. What the owner
+  /// sees as #12.
+  number            Int
+  /// Four characters, unique per page. What a customer says to the chat; never
+  /// a secret on its own, since the chat also asks the last 4 phone digits.
+  code              String
+  /// hashSessionValue of the order link's secret. Only the hash is stored, so
+  /// a database read cannot open anybody's order page.
+  tokenHash         String      @unique
+  customerName      String
+  /// E.164, as Lead.phone is.
+  phone             String
+  method            OrderMethod
+  /// The calendar day (Malaysia) of pickup or delivery.
+  day               DateTime    @db.Date
+  /// Set only for DELIVERY.
+  address           String?
+  note              String?
+  /// Sen. The three are stored, not derived, so the order shows what the
+  /// customer was told even if the delivery fee changes later.
+  itemsCents        Int
+  deliveryCents     Int
+  totalCents        Int
+  /// The uploaded receipt, an object key under receipts/<pageId>/. Null until
+  /// the customer sends one.
+  receiptKey        String?
+  /// Its content type, sniffed from the first bytes, never the client's word.
+  receiptType       String?
+  receiptUploadedAt DateTime?
+  /// When the owner said "Not received". Cleared receipt, set here, so the
+  /// order page can ask the customer to pay and upload again.
+  receiptRejectedAt DateTime?
+  status            OrderStatus @default(PLACED)
+  paidAt            DateTime?
+  completedAt       DateTime?
+  cancelledAt       DateTime?
+  /// When the owner marked the money returned after a paid order was
+  /// cancelled. Null with CANCELLED and paidAt set is a refund still owed.
+  refundedAt        DateTime?
+  createdAt         DateTime    @default(now())
+  lines             OrderLine[]
+  conversations     Conversation[]
+
+  @@unique([pageId, number])
+  @@unique([pageId, code])
+  @@index([pageId, createdAt])
+}
+
+model OrderLine {
+  id             String  @id @default(cuid())
+  orderId        String
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  /// SetNull: deleting an Item must not delete the history of selling it.
+  itemId         String?
+  item           Item?   @relation(fields: [itemId], references: [id], onDelete: SetNull)
+  /// The name and price at the time of the order, copied for the same reason.
+  itemName       String
+  optionLabel    String?
+  unitPriceCents Int
+  quantity       Int
+  position       Int
 }
