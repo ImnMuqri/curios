@@ -6,7 +6,8 @@ const getTopics = vi.fn();
 const getOwnerPage = vi.fn();
 const getMyCurios = vi.fn();
 const countQuestionsThisWeek = vi.fn();
-vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek }));
+const getAnswerRate = vi.fn(async () => ({ answered: 0, recorded: 0 }));
+vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek, getAnswerRate }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));

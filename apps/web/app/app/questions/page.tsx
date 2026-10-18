@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
-import { countQuestionsThisWeek, getMyCurios, getOwnerPage, getTopics } from '@curios/db-read';
+import { countQuestionsThisWeek, getAnswerRate, getMyCurios, getOwnerPage, getTopics } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Questions } from './questions-screen.js';
 
@@ -21,9 +21,10 @@ export default async function QuestionsPage() {
   // One moment for the whole screen, handed down, so "12 min ago" and the
   // week of asks read the same on the server and in the browser.
   const now = new Date();
-  const [topics, askedThisWeek, owned, page] = await Promise.all([
+  const [topics, askedThisWeek, answerRate, owned, page] = await Promise.all([
     getTopics(owner.accountId, { now }),
     countQuestionsThisWeek(owner.accountId, now),
+    getAnswerRate(owner.accountId, now),
     getOwnerPage(owner.accountId),
     // For the chat preview's colours.
     getMyCurios(owner.accountId),
@@ -38,6 +39,7 @@ export default async function QuestionsPage() {
     <Questions
       topics={topics}
       askedThisWeek={askedThisWeek}
+      answerRate={answerRate}
       publishesFaq={owned.mode === 'BUSINESS'}
       faqMinAsks={FAQ_MIN_ASKS}
       handle={page.handle}

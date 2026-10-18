@@ -554,6 +554,10 @@ model QuestionAsk {
   questionId String
   question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   askedAt    DateTime @default(now())
+  /// Whether the chat could answer it: true from the owner's answer or the
+  /// facts, false when it said it was not sure. Null before this was
+  /// recorded, and for the month's fixed reply, which is not an answer either way.
+  answered   Boolean?
 
   @@index([questionId, askedAt])
 }

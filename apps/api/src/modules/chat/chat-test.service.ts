@@ -11,6 +11,7 @@ import {
   promptFor,
   type ChatDeps,
 } from './chat.service.js';
+import { unsureFilter } from './unsure.js';
 
 export interface TestTurn {
   role: 'user' | 'assistant';
@@ -173,6 +174,8 @@ export async function testAnswer(
   const prompt = await promptFor(deps, page, { question: input.question, previousUserTurn });
 
   let reply = '';
+  // The same marker the live chat strips: a "not sure" reply starts with it.
+  const filter = unsureFilter();
   try {
     for await (const event of gateway.chat({
       systemPrompt: prompt.systemPrompt,
@@ -180,7 +183,7 @@ export async function testAnswer(
       cachePrompt: prompt.cachePrompt,
     })) {
       if (event.type === 'text') {
-        reply += event.text;
+        reply += filter.push(event.text);
       } else {
         await recordModelCall(prisma, {
           pageId: page.id,
@@ -204,5 +207,7 @@ export async function testAnswer(
     throw error;
   }
 
-  return { reply, from: 'facts', sources: await citedSources(deps, page.id, prompt.factIds, reply) };
+  reply += filter.end();
+  // "Not sure" rests on no fact, so there is nothing to name.
+  return { reply, from: 'facts', sources: filter.unsure ? [] : await citedSources(deps, page.id, prompt.factIds, reply) };
 }

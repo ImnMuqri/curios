@@ -4,6 +4,7 @@ import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
+import { unsureFilter } from './unsure.js';
 import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
@@ -523,11 +524,25 @@ export async function* answer(
 
   // When it was asked, for the Questions screen's week of asks. Never the
   // visitor's problem: the wording can be deleted by its owner at any moment.
+  let askId: string | null = null;
   try {
-    await prisma.questionAsk.create({ data: { questionId: wording.id } });
+    askId = (await prisma.questionAsk.create({ data: { questionId: wording.id }, select: { id: true } })).id;
   } catch (error) {
     deps.log?.warn?.({ questionId: wording.id, err: error instanceof Error ? error.message : String(error) }, 'could not log the ask');
   }
+
+  /**
+   * Whether the chat could answer this ask, for the Questions screen's "Of
+   * asks the chat can answer". Never the visitor's problem either.
+   */
+  const markAsk = async (answered: boolean) => {
+    if (!askId) return;
+    try {
+      await prisma.questionAsk.update({ where: { id: askId }, data: { answered } });
+    } catch (error) {
+      deps.log?.warn?.({ askId, err: error instanceof Error ? error.message : String(error) }, 'could not mark the ask');
+    }
+  };
 
   /** After the reply: decide this wording's topic in the background. Never fails the visitor. */
   const queueGrouping = async () => {
@@ -563,6 +578,7 @@ export async function* answer(
     });
 
     if (topic?.answer) {
+      await markAsk(true);
       yield { type: 'text', text: topic.answer };
       await prisma.message.create({
         data: { conversationId, role: 'ASSISTANT', content: topic.answer },
@@ -627,6 +643,8 @@ export async function* answer(
     });
 
     let text = '';
+    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts).
+    const filter = unsureFilter();
     try {
       for await (const event of gateway.chat({
         systemPrompt: prompt.systemPrompt,
@@ -634,8 +652,11 @@ export async function* answer(
         cachePrompt: prompt.cachePrompt,
       })) {
         if (event.type === 'text') {
-          text += event.text;
-          yield { type: 'text', text: event.text };
+          const shown = filter.push(event.text);
+          if (shown) {
+            text += shown;
+            yield { type: 'text', text: shown };
+          }
         } else {
           // Persisted after the stream closes, never before the first token.
           // Same helper the worker uses -- one place computes cost, so the margin
@@ -668,6 +689,13 @@ export async function* answer(
       });
       throw error;
     }
+
+    const rest = filter.end();
+    if (rest) {
+      text += rest;
+      yield { type: 'text', text: rest };
+    }
+    await markAsk(!filter.unsure);
 
     await prisma.message.create({
       data: {

@@ -34,6 +34,7 @@ const RING = 2 * Math.PI * 18;
 export function QuestionsScreen({
   topics,
   askedThisWeek,
+  answerRate,
   publishesFaq,
   faqMinAsks,
   handle,
@@ -47,6 +48,8 @@ export function QuestionsScreen({
 }: {
   topics: OwnerTopic[];
   askedThisWeek: number;
+  /** Of the last thirty days' asks with a recorded outcome, how many the chat could answer. */
+  answerRate: { answered: number; recorded: number };
   /** Whether this page publishes /faq pages -- false for a personal page. */
   publishesFaq: boolean;
   faqMinAsks: number;
@@ -68,7 +71,15 @@ export function QuestionsScreen({
   const needs = topics.filter((topic) => topicState(topic) !== 'answered');
   const totalAsks = topics.reduce((sum, topic) => sum + topic.askCount, 0);
   const answeredAsks = topics.filter((topic) => topicState(topic) === 'answered').reduce((sum, topic) => sum + topic.askCount, 0);
-  const pct = totalAsks === 0 ? 0 : Math.round((answeredAsks / totalAsks) * 100);
+  // The board's figure, from what the chat recorded of each ask; until it has
+  // recorded any, the share with the owner's own answer, which is the most
+  // that can be said without guessing (and never more than the true share).
+  const recorded = answerRate.recorded > 0;
+  const pct = recorded
+    ? Math.round((answerRate.answered / answerRate.recorded) * 100)
+    : totalAsks === 0
+      ? 0
+      : Math.round((answeredAsks / totalAsks) * 100);
   const shown = filter === 'all' ? topics : filter === 'needs' ? needs : topics.filter((topic) => topicState(topic) === 'answered');
   const chosen = shown.find((topic) => topic.id === selected) ?? shown[0] ?? null;
   const most = Math.max(1, ...topics.map((topic) => topic.askCount));
@@ -124,7 +135,7 @@ export function QuestionsScreen({
           </span>
           <span>
             <b>{pct}%</b>
-            <span>Of asks with your own answer</span>
+            <span>{recorded ? 'Of asks the chat can answer' : 'Of asks with your own answer'}</span>
           </span>
           <svg className={styles.ring} viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
             <circle cx="22" cy="22" r="18" />

@@ -17,11 +17,12 @@ const actions = (): TopicActions => ({
   answer: vi.fn(), withdraw: vi.fn(), suppress: vi.fn(), rename: vi.fn(), merge: vi.fn(), resolve: vi.fn(), deleteTopic: vi.fn(), split: vi.fn(), deleteWording: vi.fn(),
 });
 
-function show(list = topics, publishesFaq = true) {
+function show(list = topics, publishesFaq = true, answerRate = { answered: 0, recorded: 0 }) {
   render(
     <QuestionsScreen
       topics={list}
       askedThisWeek={23}
+      answerRate={answerRate}
       publishesFaq={publishesFaq}
       faqMinAsks={3}
       handle="keklina"
@@ -46,8 +47,13 @@ describe('QuestionsScreen, the figures', () => {
     expect(stats().getByText('23').nextSibling).toHaveTextContent('Questions asked this week');
     // A topic with two answers is still waiting on you.
     expect(stats().getByText('2').nextSibling).toHaveTextContent('Topics waiting for your answer');
-    // 10 of 30 asks have an answer that stands.
-    expect(stats().getByText('33%')).toBeInTheDocument();
+    // Nothing recorded yet: 10 of 30 asks have an answer that stands.
+    expect(stats().getByText('33%').nextSibling).toHaveTextContent('Of asks with your own answer');
+  });
+
+  it('says what share of asks the chat could answer, once the chat has recorded it', () => {
+    show(topics, true, { answered: 18, recorded: 24 });
+    expect(stats().getByText('75%').nextSibling).toHaveTextContent('Of asks the chat can answer');
   });
 
   it('links the FAQ on a business page only', () => {

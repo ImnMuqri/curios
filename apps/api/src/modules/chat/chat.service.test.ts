@@ -582,6 +582,29 @@ describe('threading a conversation', () => {
     expect(asks.every((a) => a.askedAt >= before)).toBe(true);
   });
 
+  it('records whether the chat could answer each ask, for "Of asks the chat can answer"', async () => {
+    await ask(depsSaying('Kek butter 1kg RM95.'), 'Berapa harga kek butter?');
+    await ask(depsSaying('[?] Tak pasti, saya akan tanya Nadia.'), 'Ada delivery ke Klang?');
+    await seedNadiaPrice();
+    await ask(depsSaying('unused'), 'Berapa harga?');
+
+    const answered = async (text: string) =>
+      (await prisma.questionAsk.findFirstOrThrow({ where: { question: { text } }, select: { answered: true } })).answered;
+    expect(await answered('Berapa harga kek butter?')).toBe(true);
+    expect(await answered('Ada delivery ke Klang?')).toBe(false);
+    // The owner's own answer is an answer.
+    expect(await answered('Berapa harga?')).toBe(true);
+  });
+
+  it('never lets a visitor see the not-sure marker, in the stream or the stored reply', async () => {
+    const events = await ask(depsSaying('[?] Tak pasti, saya akan tanya Nadia.'), 'Ada delivery ke Klang?');
+
+    const said = events.filter((e) => e.type === 'text').map((e) => e.text).join('');
+    expect(said).toBe('Tak pasti, saya akan tanya Nadia.');
+    const stored = await prisma.message.findFirstOrThrow({ where: { role: 'ASSISTANT' }, orderBy: { createdAt: 'desc' } });
+    expect(stored.content).toBe('Tak pasti, saya akan tanya Nadia.');
+  });
+
   it('keeps genuinely different questions apart', async () => {
     const deps = depsSaying();
     await ask(deps, 'berapa harga kek butter?');

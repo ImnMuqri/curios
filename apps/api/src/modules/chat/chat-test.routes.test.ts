@@ -11,6 +11,8 @@ const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
 /** What the stub says when asked which facts an answer used. */
 let attribution = '1';
+/** Whether the stub's answer is a "not sure", marker and all. */
+let unsure = false;
 
 /** What the model was asked, each time. */
 const calls: Array<{ systemPrompt: string; messages: Array<{ role: string; content: string }> }> = [];
@@ -27,6 +29,9 @@ function stubGateway(): Gateway {
       // The tester's second call: which numbered facts the answer used.
       if (request.systemPrompt.startsWith('You are shown numbered facts')) {
         yield { type: 'text' as const, text: attribution };
+      } else if (unsure) {
+        yield { type: 'text' as const, text: '[?] ' };
+        yield { type: 'text' as const, text: 'Tak pasti, saya akan tanya Nadia.' };
       } else {
         yield { type: 'text' as const, text: 'Kek butter 1kg ' };
         yield { type: 'text' as const, text: 'RM95.' };
@@ -56,6 +61,7 @@ afterAll(async () => {
 beforeEach(() => {
   calls.length = 0;
   attribution = '1';
+  unsure = false;
 });
 
 /** An owner whose page is NOT published, with one verified and one unreviewed fact. */
@@ -228,5 +234,16 @@ describe('POST /chat/test, where an answer came from', () => {
     expect(second?.messages[0]?.content).toContain('[1] Kek butter 1kg RM95');
     expect(second?.messages[0]?.content).toContain('<answer>\nKek butter 1kg RM95.\n</answer>');
     expect(second?.messages[0]?.content).not.toContain('Kek lapis RM60');
+  });
+});
+
+describe('POST /chat/test, when the page is not sure', () => {
+  it('says so without the marker, names no source, and asks nothing more', async () => {
+    const mine = await anOwner();
+    unsure = true;
+
+    const res = await ask(mine.cookie, { question: 'Ada delivery?' });
+    expect(res.json()).toEqual({ reply: 'Tak pasti, saya akan tanya Nadia.', from: 'facts', sources: [] });
+    expect(calls).toHaveLength(1);
   });
 });
