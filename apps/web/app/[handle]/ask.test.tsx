@@ -5,7 +5,7 @@ import { Ask } from './ask.js';
 
 /**
  * Step 5's finding: `page.test.tsx` renders `HandlePage` and asserts only
- * that the ask bar appears, which is true whatever `canCapture` is -- opening
+ * that the page renders, which is true whatever `canCapture` is -- opening
  * chat mode and reaching a qualified conversation never happens at that
  * level. Hard-coding `canCapture={false}` in page.tsx left every test there
  * green. `Ask` is the one place that turns the `canCapture` prop into
@@ -34,22 +34,6 @@ function stubQualifyingFetch() {
   vi.stubGlobal('fetch', spy);
 }
 
-/**
- * What `BentoPage` actually renders, reduced to what `ChatMode` looks for --
- * see `ChatMode.test.tsx`'s own `PageHarness` for the fuller version. `Ask`
- * itself never renders this; it is a sibling of `Ask` inside the real
- * `BentoPage`, which is why proving chat mode reaches it at all is a
- * property of this integration, not of `Ask` alone.
- */
-function PageHarness({ children }: { children: React.ReactNode }) {
-  return (
-    <div data-bento-page>
-      <div data-foldaway>bio and links go here</div>
-      {children}
-    </div>
-  );
-}
-
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Ask, opening chat mode', () => {
@@ -74,35 +58,33 @@ describe('Ask, opening chat mode', () => {
     expect(container.querySelector('[aria-label="Back to links"]')).not.toBeInTheDocument();
   });
 
-  it('shows the greeting prompt above the ask bar, with nothing sent, before any tap', () => {
+  it('puts no ask bar on the links, as the Public board has it, and sends nothing before a tap', () => {
     stubQualifyingFetch();
     render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
 
-    // "What do you want to know?" is the one prompt: chat mode's own empty
-    // state reuses it rather than showing a second, personalised greeting.
-    // Moved here from page.tsx (previously proved at that level), since
-    // page.tsx no longer renders this text at all.
-    const prompt = screen.getByText('What do you want to know?');
-    const askBar = screen.getByRole('button', { name: /ask a question/i });
-    expect(prompt.closest('[data-ask-prompt]')).not.toBeNull();
-    expect(prompt.compareDocumentPosition(askBar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // "What do you want to know?" is chat mode's own greeting (shown by CSS
+    // only in chat mode), server-rendered so a no-JS visitor still sees it.
+    expect(screen.getByText('What do you want to know?').closest('[data-ask-prompt]')).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /ask a question/i })).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
 
   it('enters chat mode on the page it is part of, not a layer over it', async () => {
     stubQualifyingFetch();
     const { container } = render(
-      <PageHarness>
+      <TabbedPage>
         <Ask
           handle="nadia"
           questions={['Berapa harga?']}
           displayName="Nadia Bakes"
           canCapture={true}
         />
-      </PageHarness>,
+      </TabbedPage>,
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
+    // Chat mode loads on first use.
+    await screen.findByRole('button', { name: 'Back to links' });
 
     // Set on the ancestor BentoPage renders, not on anything Ask/ChatMode
     // owns themselves -- BentoPage is a server component and holds no chat
@@ -116,43 +98,51 @@ describe('Ask, opening chat mode', () => {
   it('hides the prompt once a turn exists, and marks that on the page too', async () => {
     stubQualifyingFetch();
     const { container } = render(
-      <PageHarness>
+      <TabbedPage>
         <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
-      </PageHarness>,
+      </TabbedPage>,
     );
 
-    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
     expect(screen.getByText('What do you want to know?')).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Berapa harga?' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
 
     await waitFor(() =>
       expect(container.querySelector('[data-bento-page]')).toHaveAttribute('data-has-turns', 'true'),
     );
   });
 
-  it('returns focus to the ask bar once chat mode closes', async () => {
+  it('returns focus to the Ask tab once chat mode closes', async () => {
     stubQualifyingFetch();
     vi.spyOn(history, 'back').mockImplementation(() => {});
-    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
 
-    const askBar = screen.getByRole('button', { name: /ask a question/i });
-    await userEvent.click(askBar);
+    const askTab = screen.getByRole('link', { name: 'Ask' });
+    await userEvent.click(askTab);
     await screen.findByRole('button', { name: 'Back to links' });
 
     await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
 
     expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
-    expect(askBar).toHaveFocus();
+    expect(askTab).toHaveFocus();
   });
 });
 
 describe('Ask, once a conversation qualifies', () => {
   it('offers the capture card when the page can capture', async () => {
     stubQualifyingFetch();
-    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
 
-    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
 
     expect(await screen.findByRole('button', { name: /send my number/i })).toBeInTheDocument();
@@ -160,9 +150,13 @@ describe('Ask, once a conversation qualifies', () => {
 
   it('never offers the capture card when the page cannot capture', async () => {
     stubQualifyingFetch();
-    render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={false} />);
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={false} />
+      </TabbedPage>,
+    );
 
-    await userEvent.click(screen.getByRole('button', { name: /ask a question/i }));
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
     await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
 
     // The same qualifying response as above lands either way; only the prop

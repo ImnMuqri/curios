@@ -104,6 +104,12 @@ loud.
 
 If you cut one thing from this document, do not cut this.
 
+*Amended 2026-10-18, the owner's call following the design handoff's Public board: the
+public page's Links tab no longer carries the bar. The Ask tab is the one way into the
+chat, and its composer is the bar there; the page's real questions are offered as its
+suggestions. The My Curios preview and the onboarding phone still draw it, as their
+boards do.*
+
 ---
 
 ## Motion
