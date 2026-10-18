@@ -13,7 +13,10 @@ const lead: OwnerLead = {
   transcript: [
     { role: 'USER', content: 'nak tanya kek coklat 2kg berapa?' },
     { role: 'ASSISTANT', content: 'Kek coklat moist 2kg is RM170.' },
+    { role: 'USER', content: 'ok terima kasih' },
   ],
+  // The number was left after the second message, before the thanks.
+  capturedAfter: 2,
 };
 
 function show(calls: Partial<LeadActions> = {}) {
@@ -39,6 +42,12 @@ function show(calls: Partial<LeadActions> = {}) {
 }
 
 describe('LeadDetail', () => {
+  it('puts "Left their number" where it happened in the conversation', () => {
+    show();
+    const lines = [...screen.getByLabelText('The conversation').children].map((line) => line.textContent);
+    expect(lines).toEqual(['nak tanya kek coklat 2kg berapa?', 'Kek coklat moist 2kg is RM170.', 'Left their number', 'ok terima kasih']);
+  });
+
   it('says who left the number, when, and where', () => {
     show();
     expect(screen.getByRole('heading', { name: '+60 12-781 4402' })).toBeInTheDocument();
@@ -53,12 +62,12 @@ describe('LeadDetail', () => {
     expect(screen.getByText('Almost there')).toBeInTheDocument();
   });
 
-  it('shows the conversation, ending where they left their number', () => {
+  it('shows the conversation, and how long it was', () => {
     show();
     const convo = within(screen.getByLabelText('The conversation'));
     expect(convo.getByText('nak tanya kek coklat 2kg berapa?')).toBeInTheDocument();
     expect(convo.getByText('Left their number')).toBeInTheDocument();
-    expect(screen.getByText('2 messages')).toBeInTheDocument();
+    expect(screen.getByText('3 messages')).toBeInTheDocument();
   });
 
   it('drafts a first message to edit, and sends what was typed', () => {

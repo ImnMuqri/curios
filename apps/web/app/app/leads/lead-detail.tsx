@@ -203,7 +203,7 @@ export function LeadDetail({
               The conversation<span>{lead.transcript.length} messages</span>
             </h3>
             <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} aria-label="The conversation">
-              {lead.transcript.map((line, i) => (
+              {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
                 <span key={i} className={line.role === 'USER' ? styles.fromVisitor : styles.fromPage}>
                   {line.content}
                 </span>
@@ -214,6 +214,11 @@ export function LeadDetail({
                 </svg>
                 Left their number
               </span>
+              {lead.transcript.slice(lead.capturedAfter).map((line, i) => (
+                <span key={lead.capturedAfter + i} className={line.role === 'USER' ? styles.fromVisitor : styles.fromPage}>
+                  {line.content}
+                </span>
+              ))}
             </div>
           </div>
           <div>

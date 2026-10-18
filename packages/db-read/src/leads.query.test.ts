@@ -70,6 +70,20 @@ describe('getLeads', () => {
     ]);
   });
 
+  it('says how many messages came before the number was left', async () => {
+    const { pageId, accountId } = await anOwnerWithAPage();
+    const conversation = await write.conversation.create({ data: { pageId } });
+    const at = (minute: number) => new Date(Date.UTC(2026, 9, 17, 5, minute));
+    await write.message.create({ data: { conversationId: conversation.id, role: 'USER', content: 'kek coklat?', createdAt: at(1) } });
+    await write.message.create({ data: { conversationId: conversation.id, role: 'ASSISTANT', content: 'RM170.', createdAt: at(2) } });
+    await write.lead.create({ data: { pageId, conversationId: conversation.id, phone: '+60127814402', createdAt: at(3) } });
+    await write.message.create({ data: { conversationId: conversation.id, role: 'USER', content: 'terima kasih', createdAt: at(4) } });
+
+    const [lead] = await getLeads(accountId);
+    expect(lead?.transcript).toHaveLength(3);
+    expect(lead?.capturedAfter).toBe(2);
+  });
+
   it('carries the slots and the score', async () => {
     const leads = await getLeads(mine);
     const withSlots = leads.find((l) => l.phone === '+60123456789');

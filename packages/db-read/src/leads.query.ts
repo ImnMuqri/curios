@@ -20,6 +20,12 @@ export interface OwnerLead {
   status: 'NEW' | 'CONTACTED' | 'CLOSED';
   createdAt: Date;
   transcript: LeadTranscriptLine[];
+  /**
+   * How many of the transcript's messages came before the number was left,
+   * so "Left their number" sits where it happened rather than at the end.
+   * The capture card is not a message; the lead's own time places it.
+   */
+  capturedAfter: number;
 }
 
 /**
@@ -54,7 +60,7 @@ export async function getLeads(
       createdAt: true,
       conversation: {
         select: {
-          messages: { select: { role: true, content: true }, orderBy: { createdAt: 'asc' } },
+          messages: { select: { role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
         },
       },
     },
@@ -74,6 +80,7 @@ export async function getLeads(
       role: message.role,
       content: message.content,
     })),
+    capturedAfter: row.conversation.messages.filter((message) => message.createdAt <= row.createdAt).length,
   }));
 }
 
