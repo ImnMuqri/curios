@@ -36,6 +36,9 @@ export function Placed(props: {
   const [copied, setCopied] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
+  // The form the visitor was on is gone; focus the heading that replaced it, so it is read out.
+  const heading = useRef<HTMLHeadingElement>(null);
+  useEffect(() => heading.current?.focus(), []);
 
   const path = `/${props.handle}/order/${props.token}`;
   // Only ever rendered in the browser, after the order is placed.
@@ -65,7 +68,7 @@ export function Placed(props: {
           <path d="M31 49l11 11 23-24" className={styles.tick} />
         </svg>
       </div>
-      <h1 className={styles.placedTitle}>{copy.orderPlaced}</h1>
+      <h1 ref={heading} className={styles.placedTitle} tabIndex={-1}>{copy.orderPlaced}</h1>
       <p className={styles.placedSub}>{copy.placedSub(props.displayName)}</p>
 
       <div className={styles.codebox}>

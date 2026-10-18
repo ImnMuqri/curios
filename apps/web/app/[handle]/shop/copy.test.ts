@@ -21,6 +21,10 @@ describe('shopCopy', () => {
     expect(shopCopy('ms').dayHint(2, [0])).toBe('Notis 2 hari · tutup hari Ahad');
     expect(shopCopy('ms').dayHint(2, [0, 6])).toBe('Notis 2 hari · tutup hari Sabtu dan Ahad');
   });
+  it('says, as the board does, that the name and number go to the shop only', () => {
+    expect(shopCopy('en').consent('Kek Lina')).toBe('Your name and number go to Kek Lina only.');
+    expect(shopCopy('ms').consent('Kek Lina')).toBe('Nama dan nombor anda hanya pergi kepada Kek Lina.');
+  });
   it('names a day as its pill and its summary show it', () => {
     expect(shopCopy('en').dayPill('2026-10-17')).toBe('Sat 17');
     expect(shopCopy('en').dayLong('2026-10-17')).toBe('Sat 17 Oct');

@@ -675,6 +675,12 @@
   line-height: 1.15;
 }
 
+/* Focused by script when they appear, to be read out; not something the visitor tabbed to. */
+.placedTitle:focus,
+.formError:focus {
+  outline: none;
+}
+
 .placedSub {
   margin: 6px 0 0;
   color: var(--lp-soft);

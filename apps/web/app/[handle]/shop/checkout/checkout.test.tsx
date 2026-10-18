@@ -190,7 +190,8 @@ describe('Checkout', () => {
       seenTotalCents: 21500,
     });
 
-    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+    // Focus moves to the new screen's heading, so a screen reader hears it arrive.
+    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toHaveFocus();
     expect(screen.getByText(copy.placedSub('Kek Lina'))).toBeInTheDocument();
     expect(screen.getByLabelText('Order code 7Q4M')).toHaveTextContent('7Q4M');
     expect(screen.getByRole('button', { name: copy.copyCode })).toBeInTheDocument();
@@ -261,6 +262,75 @@ describe('Checkout', () => {
     // The photo it had is kept: the shelf hands back keys, not URLs.
     expect(screen.getByText('Kek batik').closest('li')?.querySelector('img')?.getAttribute('src')).toBe('https://cdn.test/items/b.webp');
     expect(screen.queryByRole('heading', { name: copy.orderPlaced })).toBeNull();
+  });
+
+  it('reloads the delivery fee when it changed', async () => {
+    const user = userEvent.setup();
+    const shelf = items.map(({ photoUrl: _photoUrl, ...item }) => item);
+    const fetch = reply(409, {
+      error: { code: 'PRICES_CHANGED', message: 'Prices changed since you opened the shop. Check your basket and try again.' },
+      items: shelf,
+      delivery: { mode: 'FLAT', feeCents: 1500 },
+    });
+    const { unmount } = render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.click(screen.getByRole('radio', { name: /Delivery/ }));
+    await user.type(screen.getByLabelText(copy.address), '12 Jalan Mawar');
+    await user.click(placeButton('RM225'));
+    expect(await screen.findByText(copy.pricesChanged)).toBeInTheDocument();
+    expect(within(screen.getByRole('radio', { name: /Delivery/ })).getByText('RM15')).toBeInTheDocument();
+    // The retry sends the total the shop now asks for.
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ number: 2, code: 'ABCD', token: 't', totalCents: 23000 }), { status: 201 }));
+    await user.click(placeButton('RM230'));
+    expect(JSON.parse((fetch.mock.calls[1] as [string, RequestInit])[1].body as string)).toMatchObject({ seenTotalCents: 23000 });
+    unmount();
+
+    // Delivery turned off: back to pickup, and saying so.
+    window.sessionStorage.setItem(KEY, JSON.stringify([{ itemId: 'batik', optionId: null, quantity: 1 }]));
+    reply(409, { error: { code: 'PRICES_CHANGED', message: '' }, items: shelf, delivery: { mode: 'NONE', feeCents: null } });
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek batik');
+    await fillDetails(user);
+    await user.click(screen.getByRole('radio', { name: /Delivery/ }));
+    await user.type(screen.getByLabelText(copy.address), '12 Jalan Mawar');
+    await user.click(placeButton('RM55'));
+    expect(await screen.findByText(copy.deliveryOff)).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: /Delivery/ })).toBeNull();
+    expect(screen.getByRole('radio', { name: /Pickup/ })).toHaveAttribute('aria-checked', 'true');
+    expect(placeButton('RM45')).toBeEnabled();
+  });
+
+  it('takes the visitor to the field the shop refused', async () => {
+    const user = userEvent.setup();
+    const fetch = reply(400, { error: { code: 'INVALID_PHONE', message: 'That number is not a Malaysian mobile.' } });
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.click(placeButton('RM215'));
+    expect(await screen.findByText('That number is not a Malaysian mobile.')).toBeInTheDocument();
+    expect(screen.getByLabelText(copy.whatsappNumber)).toHaveFocus();
+
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'ORDER_DATE', message: 'Pick one of the days shown.' } }), { status: 400 }));
+    await user.click(placeButton('RM215'));
+    expect(await screen.findByText('Pick one of the days shown.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Sat 17' })).toHaveFocus();
+
+    fetch.mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: 'ITEM_UNAVAILABLE', message: 'Kek batik isn’t available any more.' } }), { status: 409 }));
+    await user.click(placeButton('RM215'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Kek batik isn’t available any more.');
+  });
+
+  it('offers WhatsApp for an order too big to place', async () => {
+    const user = userEvent.setup();
+    reply(400, { error: { code: 'ORDER_TOO_LARGE', message: 'This order is too big to place here.' } });
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.click(placeButton('RM215'));
+    expect(await screen.findByText(copy.tooLarge('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: copy.orderOnWhatsApp }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60123456789\?text=/);
+    expect(screen.queryByRole('button', { name: /Place order/ })).toBeNull();
   });
 
   it('falls back to WhatsApp when the shop has just paused', async () => {

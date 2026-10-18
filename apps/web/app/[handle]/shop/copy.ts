@@ -57,8 +57,10 @@ export interface ShopCopy {
   pickADay: string;
   total: string;
   payNote: (name: string) => string;
-  /** The lead capture card's PDPA line, word for word. */
+  /** The board's PDPA line: who the number goes to, and no one else. */
   consent: (name: string) => string;
+  tooLarge: (name: string) => string;
+  deliveryOff: string;
   placeOrder: (total: string) => string;
   emptyBasket: string;
   emptyBasketBody: string;
@@ -163,7 +165,9 @@ const EN: ShopCopy = {
   pickADay: 'Pick a day',
   total: 'Total',
   payNote: (name) => `You pay ${name} directly by DuitNow QR or bank transfer on the next step.`,
-  consent: (name) => `Your number goes to ${name} so they can reply on WhatsApp. Nobody else sees it.`,
+  consent: (name) => `Your name and number go to ${name} only.`,
+  tooLarge: (name) => `This order is too big to place here. Send your basket to ${name} on WhatsApp instead.`,
+  deliveryOff: 'Delivery isn’t offered any more, so this order is for pickup.',
   placeOrder: (total) => `Place order · ${total}`,
   emptyBasket: 'Your basket is empty',
   emptyBasketBody: 'Add something from the shop and it shows up here.',
@@ -233,7 +237,9 @@ const MS: ShopCopy = {
   pickADay: 'Pilih hari',
   total: 'Jumlah',
   payNote: (name) => `Anda bayar terus kepada ${name} melalui DuitNow QR atau pindahan bank pada langkah seterusnya.`,
-  consent: (name) => `Nombor anda pergi kepada ${name} supaya mereka boleh balas di WhatsApp. Tiada orang lain yang melihatnya.`,
+  consent: (name) => `Nama dan nombor anda hanya pergi kepada ${name}.`,
+  tooLarge: (name) => `Tempahan ini terlalu besar untuk dibuat di sini. Hantar bakul anda kepada ${name} di WhatsApp.`,
+  deliveryOff: 'Penghantaran tidak lagi ditawarkan, jadi tempahan ini untuk ambil sendiri.',
   placeOrder: (total) => `Buat tempahan · ${total}`,
   emptyBasket: 'Bakul anda kosong',
   emptyBasketBody: 'Tambah sesuatu dari kedai dan ia akan muncul di sini.',

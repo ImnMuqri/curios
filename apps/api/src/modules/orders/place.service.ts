@@ -147,7 +147,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         orderBy: { position: 'asc' },
         select: SHELF_SELECT,
       });
-      throw new PricesChangedError(shelf);
+      throw new PricesChangedError(shelf, { mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
     }
 
     const number = page.ordersPlaced + 1;

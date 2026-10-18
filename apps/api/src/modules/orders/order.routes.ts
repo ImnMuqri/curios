@@ -62,7 +62,10 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           400: errorSchema,
           403: errorSchema,
           404: errorSchema,
-          409: errorSchema.extend({ items: z.array(shelfItem).optional() }),
+          409: errorSchema.extend({
+            items: z.array(shelfItem).optional(),
+            delivery: z.object({ mode: z.enum(['NONE', 'FLAT', 'RIDER']), feeCents: z.number().nullable() }).optional(),
+          }),
         },
       },
     },
@@ -85,9 +88,11 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
         return reply.status(201).send(placed);
       } catch (error) {
         // Sent here rather than by the errors plugin, which only ever sends
-        // { code, message }: the basket reloads from `items`.
+        // { code, message }: checkout reloads from `items` and `delivery`.
         if (error instanceof PricesChangedError) {
-          return reply.status(409).send({ error: { code: error.code, message: error.message }, items: error.items });
+          return reply
+            .status(409)
+            .send({ error: { code: error.code, message: error.message }, items: error.items, delivery: error.delivery });
         }
         throw error;
       }

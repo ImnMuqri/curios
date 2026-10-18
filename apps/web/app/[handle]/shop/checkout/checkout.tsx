@@ -54,7 +54,22 @@ interface PlacedOrder {
   phone: string;
 }
 
-type Problem = { field: 'phone' | 'address' | 'form'; message: string };
+/** Where a refusal is said: under the field it is about, or above Place order. */
+type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'form'; message: string };
+
+/** The refusals that belong to one field. Anything else is said above Place order. */
+const FIELD_OF: Record<string, Problem['field']> = {
+  INVALID_PHONE: 'phone',
+  ADDRESS_REQUIRED: 'address',
+  ORDER_DATE: 'day',
+  METHOD_OFF: 'method',
+};
+
+/** What PRICES_CHANGED sends back: the shelf and the delivery as they are now. */
+interface Reload {
+  items?: ShopItem[];
+  delivery?: { mode: DeliveryMode; feeCents: number | null };
+}
 
 /**
  * What the visitor typed after the drawn +60, as the API expects it: a number
@@ -70,6 +85,9 @@ export function Checkout(props: CheckoutProps) {
   const copy = shopCopy(props.language);
   const key = defaultStorageKey(props.handle);
   const [items, setItems] = useState(props.items);
+  // State, not props: a PRICES_CHANGED reply can bring a new fee or turn delivery off.
+  const [delivery, setDelivery] = useState({ mode: props.deliveryMode, feeCents: props.deliveryFeeCents });
+  const [deliveryOff, setDeliveryOff] = useState(false);
   const [lines, setLines] = useState<BasketLine[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [method, setMethod] = useState<Method | null>(
@@ -83,9 +101,29 @@ export function Checkout(props: CheckoutProps) {
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
   const [pricesChanged, setPricesChanged] = useState(false);
-  const [paused, setPaused] = useState(false);
+  /** Checkout cannot take this basket: the shop paused, or the order is too big. WhatsApp replaces Place order. */
+  const [fallback, setFallback] = useState<'paused' | 'tooLarge' | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
   const top = useRef<HTMLDivElement>(null);
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLTextAreaElement>(null);
+  const daysRef = useRef<HTMLDivElement>(null);
+  const methodsRef = useRef<HTMLDivElement>(null);
+  const formErrorRef = useRef<HTMLParagraphElement>(null);
+
+  // Place order sits at the foot of the screen; a refusal about a field far
+  // above it would otherwise go unseen. Focusing the field scrolls it in.
+  useEffect(() => {
+    if (!problem) return;
+    const target = {
+      phone: phoneRef.current,
+      address: addressRef.current,
+      day: daysRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]') ?? daysRef.current?.querySelector('button') ?? null,
+      method: methodsRef.current?.querySelector<HTMLElement>('[role="radio"]') ?? null,
+      form: formErrorRef.current,
+    }[problem.field];
+    target?.focus();
+  }, [problem]);
 
   // Read after mount: storage is the browser's, and the server rendered no basket.
   useEffect(() => {
@@ -115,11 +153,11 @@ export function Checkout(props: CheckoutProps) {
   const priced = useMemo(() => priceBasket(lines, items), [lines, items]);
   const totals = orderTotals(priced.lines, {
     method: method ?? 'PICKUP',
-    mode: props.deliveryMode,
-    feeCents: props.deliveryFeeCents,
+    mode: delivery.mode,
+    feeCents: delivery.feeCents,
   });
-  const flatFee = props.deliveryMode === 'FLAT' && props.deliveryFeeCents ? formatRinggit(props.deliveryFeeCents) : null;
-  const deliveryPrice = props.deliveryMode === 'RIDER' ? copy.riderFee : (flatFee ?? copy.free);
+  const flatFee = delivery.mode === 'FLAT' && delivery.feeCents ? formatRinggit(delivery.feeCents) : null;
+  const deliveryPrice = delivery.mode === 'RIDER' ? copy.riderFee : (flatFee ?? copy.free);
 
   const canPlace =
     priced.lines.length > 0 &&
@@ -136,6 +174,7 @@ export function Checkout(props: CheckoutProps) {
     setSending(true);
     setProblem(null);
     setPricesChanged(false);
+    setDeliveryOff(false);
     try {
       const result = await apiFetch<{ number: number; code: string; token: string; totalCents: number }>(
         `/store/${props.handle}/orders`,
@@ -162,7 +201,16 @@ export function Checkout(props: CheckoutProps) {
       if (!(error instanceof ApiError)) {
         setProblem({ field: 'form', message: copy.failed });
       } else if (error.code === 'PRICES_CHANGED') {
-        const shelf = (error.body as { items?: ShopItem[] } | null)?.items;
+        const reload = (error.body ?? {}) as Reload;
+        const shelf = reload.items;
+        if (reload.delivery) {
+          setDelivery(reload.delivery);
+          if (reload.delivery.mode === 'NONE' && method === 'DELIVERY') {
+            // Delivery went away under the visitor: pickup if the shop has it, and say so.
+            setMethod(props.pickupEnabled ? 'PICKUP' : null);
+            setDeliveryOff(props.pickupEnabled);
+          }
+        }
         if (Array.isArray(shelf)) {
           // The shelf comes back with keys, not URLs; a photo that has not changed keeps the URL it had.
           setItems(
@@ -174,13 +222,11 @@ export function Checkout(props: CheckoutProps) {
         }
         setPricesChanged(true);
       } else if (error.code === 'ORDERS_PAUSED') {
-        setPaused(true);
-      } else if (error.code === 'INVALID_PHONE') {
-        setProblem({ field: 'phone', message: error.message });
-      } else if (error.code === 'ADDRESS_REQUIRED') {
-        setProblem({ field: 'address', message: error.message });
+        setFallback('paused');
+      } else if (error.code === 'ORDER_TOO_LARGE') {
+        setFallback('tooLarge');
       } else {
-        setProblem({ field: 'form', message: error.message });
+        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: error.message });
       }
     } finally {
       setSending(false);
@@ -284,7 +330,18 @@ export function Checkout(props: CheckoutProps) {
             <div className={styles.head}>
               <h2 id="ck-getting">{copy.gettingIt}</h2>
             </div>
-            <div className={styles.methods} role="radiogroup" aria-label={copy.pickupOrDelivery}>
+            {deliveryOff ? (
+              <p className={styles.notice} role="status">
+                {copy.deliveryOff}
+              </p>
+            ) : null}
+            <div
+              ref={methodsRef}
+              className={styles.methods}
+              role="radiogroup"
+              aria-label={copy.pickupOrDelivery}
+              aria-describedby={problem?.field === 'method' ? 'ck-method-error' : undefined}
+            >
               {props.pickupEnabled ? (
                 <button type="button" role="radio" aria-checked={method === 'PICKUP'} className={styles.method} onClick={() => setMethod('PICKUP')}>
                   <i className={styles.radio} aria-hidden="true" />
@@ -295,7 +352,7 @@ export function Checkout(props: CheckoutProps) {
                   <em>{copy.free}</em>
                 </button>
               ) : null}
-              {props.deliveryMode !== 'NONE' ? (
+              {delivery.mode !== 'NONE' ? (
                 <button type="button" role="radio" aria-checked={method === 'DELIVERY'} className={styles.method} onClick={() => setMethod('DELIVERY')}>
                   <i className={styles.radio} aria-hidden="true" />
                   <span className={styles.methodText}>
@@ -306,10 +363,16 @@ export function Checkout(props: CheckoutProps) {
                 </button>
               ) : null}
             </div>
+            {problem?.field === 'method' ? (
+              <p id="ck-method-error" className={styles.error}>
+                {problem.message}
+              </p>
+            ) : null}
             {method === 'DELIVERY' ? (
               <div className={styles.field}>
                 <label htmlFor="ck-address">{copy.address}</label>
                 <textarea
+                  ref={addressRef}
                   id="ck-address"
                   value={address}
                   maxLength={ADDRESS_MAX}
@@ -333,13 +396,33 @@ export function Checkout(props: CheckoutProps) {
               <h2 id="ck-day">{copy.day}</h2>
               <span>{copy.dayHint(props.minNoticeDays, props.closedDays)}</span>
             </div>
-            <div className={styles.days} role="group" aria-labelledby="ck-day">
+            <div
+              ref={daysRef}
+              className={styles.days}
+              role="group"
+              aria-labelledby="ck-day"
+              aria-describedby={problem?.field === 'day' ? 'ck-day-error' : undefined}
+            >
               {days.map((d) => (
-                <button key={d} type="button" className={styles.day} aria-pressed={day === d} onClick={() => setDay(d)}>
+                <button
+                  key={d}
+                  type="button"
+                  className={styles.day}
+                  aria-pressed={day === d}
+                  onClick={() => {
+                    setDay(d);
+                    if (problem?.field === 'day') setProblem(null);
+                  }}
+                >
                   {copy.dayPill(d)}
                 </button>
               ))}
             </div>
+            {problem?.field === 'day' ? (
+              <p id="ck-day-error" className={styles.error}>
+                {problem.message}
+              </p>
+            ) : null}
           </section>
 
           <section className={styles.section} aria-labelledby="ck-details">
@@ -355,6 +438,7 @@ export function Checkout(props: CheckoutProps) {
               <div className={styles.tel}>
                 <em>+60</em>
                 <input
+                  ref={phoneRef}
                   id="ck-phone"
                   type="tel"
                   inputMode="tel"
@@ -414,14 +498,15 @@ export function Checkout(props: CheckoutProps) {
           </section>
 
           {problem?.field === 'form' ? (
-            <p className={styles.formError} role="alert">
+            // Focused when it appears (tabIndex -1), so it is scrolled to and read out.
+            <p ref={formErrorRef} className={styles.formError} role="alert" tabIndex={-1}>
               {problem.message}
             </p>
           ) : null}
 
-          {paused ? (
+          {fallback ? (
             <div className={styles.pausedBar} role="status">
-              <p>{copy.paused(props.displayName)}</p>
+              <p>{fallback === 'paused' ? copy.paused(props.displayName) : copy.tooLarge(props.displayName)}</p>
               {props.whatsapp ? (
                 <a className={styles.whatsapp} href={whatsappOrderUrl(props.whatsapp, basketMessage(props.displayName, priced, copy))} rel="noopener">
                   {copy.orderOnWhatsApp}

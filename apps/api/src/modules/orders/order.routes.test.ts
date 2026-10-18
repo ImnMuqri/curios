@@ -239,6 +239,8 @@ describe('POST /store/:handle/orders', () => {
       },
       { id: shop.tartId, name: 'Tart nenas', description: null, photoKey: null, priceCents: 2_000, options: [] },
     ]);
+    // A fee change moves the total too, so checkout reloads the delivery as well.
+    expect(body.delivery).toEqual({ mode: 'FLAT', feeCents: 1_000 });
     expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
     expect(await ordersPlaced(shop.pageId)).toBe(0);
   });

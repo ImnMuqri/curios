@@ -28,15 +28,25 @@ export class OrdersPausedError extends Error {
   }
 }
 
+/** The page's delivery as it is now: a fee change moves the total as much as a price does. */
+export interface ShelfDelivery {
+  mode: 'NONE' | 'FLAT' | 'RIDER';
+  feeCents: number | null;
+}
+
 /**
  * The server's total is not the one the visitor saw. Carries the current shelf
- * so the basket can reload; the order route sends it beside the error itself,
- * because the errors plugin only ever sends `{ code, message }`.
+ * and delivery so checkout can reload both (with only the shelf, a changed fee
+ * would refuse every retry); the order route sends them beside the error
+ * itself, because the errors plugin only ever sends `{ code, message }`.
  */
 export class PricesChangedError extends Error {
   readonly statusCode = 409;
   readonly code = 'PRICES_CHANGED';
-  constructor(readonly items: ShelfItem[]) {
+  constructor(
+    readonly items: ShelfItem[],
+    readonly delivery: ShelfDelivery,
+  ) {
     super('Prices changed since you opened the shop. Check your basket and try again.');
     this.name = 'PricesChangedError';
   }
