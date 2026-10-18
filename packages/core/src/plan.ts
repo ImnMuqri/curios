@@ -97,3 +97,69 @@ export function canCapture(input: PlanInput): boolean {
   const state = planState(input);
   return state.kind === 'paid' || state.kind === 'trial';
 }
+
+/**
+ * How many orders a page may take before it has to pay.
+ *
+ * Three, and counted, for the reason `FREE_LEADS` is: a trial that ends only
+ * once the shop has demonstrably worked never makes an owner pay for nothing.
+ * It is its own allowance and not the lead one, because a page can capture
+ * leads all week and never sell anything, or the other way about.
+ */
+export const FREE_ORDERS = 3;
+
+export interface OrderInput {
+  mode: 'PERSONAL' | 'BUSINESS';
+  paidUntil: Date | null;
+  ordersPlaced: number;
+  /**
+   * The baseline the allowance counts from. `ordersPlaced` is never decremented
+   * or zeroed, because order numbers come from it and would repeat; the one
+   * trial reset moves this up to meet it instead.
+   */
+  ordersAtTrialReset: number;
+  now: Date;
+}
+
+/**
+ * Why a page is or is not allowed to take orders. The same shape as
+ * `PlanState`, without the `lapsedOn` extra: the order screens only need to
+ * know whether the shop is open and what to tell the owner when it is not.
+ */
+export type OrderState =
+  | { kind: 'personal' }
+  | { kind: 'paid'; paidUntil: Date }
+  | { kind: 'trial'; used: number; remaining: number }
+  | { kind: 'trialSpent' }
+  | { kind: 'lapsed'; paidUntil: Date };
+
+export function orderState(input: OrderInput): OrderState {
+  if (input.mode !== 'BUSINESS') return { kind: 'personal' };
+
+  // `>` and not `>=`: the instant a payment expires, it has expired.
+  if (input.paidUntil !== null && input.paidUntil.getTime() > input.now.getTime()) {
+    return { kind: 'paid', paidUntil: input.paidUntil };
+  }
+
+  // Clamped at zero so a baseline ahead of the count can never read as a
+  // negative `used` and hand out more than FREE_ORDERS.
+  const used = Math.max(0, input.ordersPlaced - input.ordersAtTrialReset);
+  if (used < FREE_ORDERS) {
+    return { kind: 'trial', used, remaining: FREE_ORDERS - used };
+  }
+
+  return input.paidUntil === null
+    ? { kind: 'trialSpent' }
+    : { kind: 'lapsed', paidUntil: input.paidUntil };
+}
+
+/**
+ * Whether this page may take an order.
+ *
+ * Derived from `orderState` so the shop, the API, Alerts and Billing cannot
+ * disagree about the same page: nothing else decides it.
+ */
+export function canTakeOrders(input: OrderInput): boolean {
+  const state = orderState(input);
+  return state.kind === 'paid' || state.kind === 'trial';
+}
