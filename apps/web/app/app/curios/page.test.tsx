@@ -3,7 +3,10 @@ import { render } from '@testing-library/react';
 import type { MyCurios as MyCuriosData } from '@curios/db-read';
 
 const getMyCurios = vi.fn();
-vi.mock('@curios/db-read', () => ({ getMyCurios }));
+// No topics yet, and a business page: the preview offers the first business starter.
+const getTopics = vi.fn(async () => [] as { title: string }[]);
+const getOwnerPage = vi.fn(async () => ({ mode: 'BUSINESS' }));
+vi.mock('@curios/db-read', () => ({ getMyCurios, getTopics, getOwnerPage }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -79,7 +82,7 @@ describe('MyCuriosPage', () => {
 
     expect(MyCurios).toHaveBeenCalledTimes(1);
     const props = MyCurios.mock.calls[0]?.[0] as { initial: MyCuriosData & { avatarUrl: string | null }; uploadsEnabled: boolean; publicBase: string };
-    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null, shopItems: [] });
+    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null, shopItems: [], previewQuestion: 'How much is it?' });
     expect(props.uploadsEnabled).toBe(true);
     // The client component cannot read a server-only env var itself, so the
     // wrapper needs it passed down to build an uploaded picture's URL.
@@ -127,5 +130,16 @@ describe('MyCuriosPage', () => {
     expect(props.uploadsEnabled).toBe(false);
     expect(props.initial.avatarUrl).toBeNull();
     expect(props.publicBase).toBe('');
+  });
+
+  it('offers the most-asked question in the preview, once there is one', async () => {
+    resolveOwner.mockResolvedValue({ accountId: 'acc-1' });
+    getMyCurios.mockResolvedValue(page);
+    getTopics.mockResolvedValueOnce([{ title: 'Do you deliver to Klang?' }]);
+
+    render(await MyCuriosPage());
+
+    const props = MyCurios.mock.calls.at(-1)?.[0] as { initial: { previewQuestion: string } };
+    expect(props.initial.previewQuestion).toBe('Do you deliver to Klang?');
   });
 });

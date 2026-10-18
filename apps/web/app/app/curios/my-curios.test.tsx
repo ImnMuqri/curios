@@ -9,7 +9,7 @@ const initial: EditorPage = {
   id: 'p1', handle: 'imnmuqri', displayName: 'Iman Muqri', bio: null, avatarUrl: null,
   style: 'SOFT', accentColor: '#2340c8', headingFont: 'JAKARTA', avatarKey: null,
   coverKey: null, coverUrl: null, background: 'PAPER', backgroundColor: null, language: 'en',
-  socials: [], shop: null, shopTab: null, shopItems: [],
+  socials: [], shop: null, shopTab: null, shopItems: [], previewQuestion: 'Do you deliver to Klang?',
   links: [{ id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null }],
 };
 
@@ -34,6 +34,7 @@ const api = () => ({
   chooseStockCover: vi.fn(async (name: string) => ({ coverKey: `stock/${name}`, coverUrl: `/covers/${name}.webp` })),
   uploadCover: vi.fn(async () => ({ coverKey: 'covers/p1/a.webp', coverUrl: null })),
   removeCover: vi.fn(async () => undefined),
+  askPage: vi.fn(async (_q: string) => ({ reply: 'Yes, delivery to Klang is RM15.' })),
 });
 
 const show = (page: EditorPage = initial, calls = api()) => {
@@ -185,6 +186,18 @@ describe('the preview tabs', () => {
     expect(previewTabs().getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Links', 'Ask']);
   });
 
+  it('shows a real question on the Ask tab, and the page’s real answer only when tapped', async () => {
+    const { calls } = show();
+    await userEvent.click(previewTabs().getByRole('tab', { name: 'Ask' }));
+
+    expect(within(preview()).getByText('Do you deliver to Klang?')).toBeInTheDocument();
+    expect(calls.askPage).not.toHaveBeenCalled();
+
+    await userEvent.click(within(preview()).getByRole('button', { name: 'Tap to hear what your page says' }));
+    expect(calls.askPage).toHaveBeenCalledWith('Do you deliver to Klang?');
+    expect(await within(preview()).findByText('Yes, delivery to Klang is RM15.')).toBeInTheDocument();
+  });
+
   it('draws the page on the tab chosen, as boxes not links', async () => {
     show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null } });
     const page = preview().querySelector('[data-bento-page]');
@@ -192,7 +205,7 @@ describe('the preview tabs', () => {
 
     await userEvent.click(previewTabs().getByRole('tab', { name: 'Ask' }));
     expect(page).toHaveAttribute('data-mode', 'chat');
-    expect(within(preview()).getByText('What do you want to know?')).toBeInTheDocument();
+    expect(within(preview()).getByText('Do you deliver to Klang?')).toBeInTheDocument();
 
     await userEvent.click(previewTabs().getByRole('tab', { name: 'Shop' }));
     expect(page).toHaveAttribute('data-mode', 'shop');

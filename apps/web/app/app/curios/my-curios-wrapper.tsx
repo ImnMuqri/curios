@@ -51,6 +51,7 @@ export function MyCurios({
       return { coverKey, coverUrl: coverUrlFrom(coverKey, publicBase || null) };
     },
     removeCover: async () => { await apiFetch('/pages/cover', { method: 'DELETE' }); },
+    askPage: (question) => apiFetch<{ reply: string }>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history: [] }) }),
   };
   return <MyCuriosEditor initial={initial} api={api} uploadsEnabled={uploadsEnabled} publicUrl={publicUrl} />;
 }

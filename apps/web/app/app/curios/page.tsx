@@ -1,9 +1,10 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
-import { getMyCurios } from '@curios/db-read';
+import { getMyCurios, getOwnerPage, getTopics } from '@curios/db-read';
 import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
 import { resolveOwner } from '../session.js';
+import { STARTERS } from '../_ui/starters.js';
 import { MyCurios } from './my-curios-wrapper.js';
 
 export default async function MyCuriosPage() {
@@ -11,6 +12,9 @@ export default async function MyCuriosPage() {
   if (!owner) redirect('/signin');
   const page = await getMyCurios(owner.accountId);
   if (!page) redirect('/app/onboarding');
+  // The preview's Ask tab offers the page's most-asked question, or a starter
+  // before anyone has asked one, as Facts & sources does.
+  const [[top], owned] = await Promise.all([getTopics(owner.accountId, { limit: 1 }), getOwnerPage(owner.accountId)]);
 
   // The header (title, save status, the page's address) is the editor's own:
   // it says whether the editor's changes have saved, which only the client knows.
@@ -21,6 +25,7 @@ export default async function MyCuriosPage() {
         avatarUrl: avatarUrl(page.avatarKey),
         coverUrl: coverUrl(page.coverKey),
         shopItems: (page.shopTab?.preview ?? []).map((item) => ({ name: item.name, priceCents: item.priceCents, photoUrl: avatarUrl(item.photoKey) })),
+        previewQuestion: top?.title ?? STARTERS[owned?.mode ?? 'BUSINESS'][0],
       }}
       uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
       publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}

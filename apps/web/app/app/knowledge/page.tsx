@@ -18,13 +18,9 @@ import { Pinned } from './pinned-tab.js';
 import { NeverSay } from './never-say-tab.js';
 import { Ask } from './ask-panel.js';
 import { PageHead } from '../_ui/page-head.js';
+import { STARTERS } from '../_ui/starters.js';
 import styles from './knowledge.module.css';
 
-/** What to try asking before any customer has asked anything. */
-const STARTERS = {
-  BUSINESS: ['How much is it?', 'When are you open?', 'Where are you?', 'Can I cancel?'],
-  PERSONAL: ['What do you do?', 'How can I reach you?', 'Where are you based?', 'What have you worked on?'],
-} as const;
 
 /**
  * Everything the chat answers from, in one place, and the way to remove any
