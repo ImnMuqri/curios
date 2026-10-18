@@ -123,6 +123,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   'METHOD_OFF',
   'ADDRESS_REQUIRED',
   'ORDER_TOO_LARGE',
+  // A receipt on the order link (slice 18).
+  'ORDER_NOT_FOUND',
+  'INVALID_RECEIPT',
+  'ORDER_ALREADY_PAID',
+  'ORDER_CANCELLED',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --

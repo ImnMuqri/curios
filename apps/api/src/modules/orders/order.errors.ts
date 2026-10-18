@@ -89,3 +89,32 @@ export class AddressRequiredError extends Error {
     this.name = 'AddressRequiredError';
   }
 }
+
+/** The order link matches no order. The same answer for a wrong token as for a stale one. */
+export class OrderNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'ORDER_NOT_FOUND';
+  constructor() {
+    super("We couldn't find that order.");
+    this.name = 'OrderNotFoundError';
+  }
+}
+
+/** PAID or COMPLETED: the owner has the money, so a receipt can no longer change. */
+export class OrderAlreadyPaidError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ORDER_ALREADY_PAID';
+  constructor() {
+    super('This order is already paid.');
+    this.name = 'OrderAlreadyPaidError';
+  }
+}
+
+export class OrderCancelledError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ORDER_CANCELLED';
+  constructor() {
+    super('This order was cancelled.');
+    this.name = 'OrderCancelledError';
+  }
+}

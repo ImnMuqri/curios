@@ -33,6 +33,35 @@ export function decodeImage(
   return { body, ext: signature.ext };
 }
 
+export class InvalidReceiptError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_RECEIPT';
+  constructor() {
+    super('Upload a photo or PDF of your receipt, up to 5 MB.');
+    this.name = 'InvalidReceiptError';
+  }
+}
+
+const RECEIPT_SIGNATURES = {
+  ...SIGNATURES,
+  'application/pdf': { ext: 'pdf', matches: (b: Buffer) => b.toString('ascii', 0, 5) === '%PDF-' },
+} as const;
+
+/**
+ * An uploaded receipt as bytes: a picture or a PDF, checked as decodeImage
+ * checks a picture -- by its first bytes, which must agree with the claimed type.
+ */
+export function decodeReceipt(
+  input: { contentType: string; data: string },
+  maxBytes: number,
+): { body: Buffer; ext: 'jpg' | 'png' | 'webp' | 'pdf' } {
+  const signature = (RECEIPT_SIGNATURES as Record<string, { ext: 'jpg' | 'png' | 'webp' | 'pdf'; matches: (b: Buffer) => boolean }>)[input.contentType];
+  if (!signature || !Object.hasOwn(RECEIPT_SIGNATURES, input.contentType)) throw new InvalidReceiptError();
+  const body = Buffer.from(input.data, 'base64');
+  if (body.length === 0 || body.length > maxBytes || !signature.matches(body)) throw new InvalidReceiptError();
+  return { body, ext: signature.ext };
+}
+
 /** The profile picture: the same checks, at its own size limit. */
 export function decodeAvatar(input: { contentType: string; data: string }): { body: Buffer; ext: 'jpg' | 'png' | 'webp' } {
   return decodeImage(input, AVATAR_MAX_BYTES);

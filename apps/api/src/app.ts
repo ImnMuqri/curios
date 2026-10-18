@@ -23,6 +23,7 @@ import {
   nearPerIpLimit,
   orderPerIpLimit,
   orderPerPageLimit,
+  receiptPerIpLimit,
   rateLimitPlugin,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
@@ -30,7 +31,7 @@ import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/cha
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
-import { orderRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
+import { orderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
@@ -150,6 +151,13 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, orderPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, orderPerPageLimit(app.rateLimitRedis));
     await scope.register(orderRoutes, overrides.orders ?? {});
+  });
+
+  // The receipt on an order's link: anonymous too, with its own per-IP budget
+  // (the shop budget above keys on a handle this path does not have).
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, receiptPerIpLimit(app.rateLimitRedis));
+    await scope.register(receiptRoutes, overrides.orders ?? {});
   });
 
   // Both limiters, because every route in here carries an email address to

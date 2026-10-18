@@ -3,10 +3,14 @@ import { z } from 'zod';
 import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX } from '@curios/core/orders';
 import { PricesChangedError } from './order.errors.js';
 import { placeOrder, type OrderMailQueue } from './place.service.js';
+import { resolveStore, type AvatarStore } from '../pages/storage.js';
+import { uploadReceipt } from './receipt.service.js';
 
 export interface OrderRouteOptions {
   /** Injected only by tests; production queues on the app's mail queue. */
   mailQueue?: OrderMailQueue;
+  /** As StoreRouteOptions.store: undefined builds from the environment, null is uploads off, tests pass a stub. */
+  store?: AvatarStore | null;
 }
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -85,6 +89,44 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
         }
         throw error;
       }
+    },
+  );
+};
+
+/**
+ * The customer's receipt, on their order link. Its own plugin because it has
+ * its own limiter (app.ts): the per-shop one keys on a `handle` this path lacks.
+ */
+export const receiptRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app, options) => {
+  const store = resolveStore(options.store);
+
+  app.post(
+    '/store/orders/:token/receipt',
+    {
+      // 5 MB of file is about 7 MB of base64.
+      bodyLimit: 7 * 1024 * 1024,
+      schema: {
+        params: z.object({ token: z.string().min(1).max(128) }),
+        body: z.object({ contentType: z.string().max(40), data: z.string().max(7_000_000) }),
+        response: { 200: z.object({ receiptUploadedAt: z.string() }), 400: errorSchema, 403: errorSchema, 404: errorSchema, 409: errorSchema, 503: errorSchema },
+      },
+    },
+    async (request) => {
+      const { receiptUploadedAt } = await uploadReceipt(
+        {
+          prisma: app.prisma,
+          mailQueue: options.mailQueue ?? app.mailQueue,
+          store,
+          log: request.log,
+          appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+        },
+        request.params.token,
+        request.body,
+        new Date(),
+      );
+      // Never the token: it is the order's whole key.
+      request.log.info('receipt uploaded');
+      return { receiptUploadedAt: receiptUploadedAt.toISOString() };
     },
   );
 };

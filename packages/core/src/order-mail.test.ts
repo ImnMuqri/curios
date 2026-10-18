@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OWNER_MAIL_FOOTER } from './mail.js';
-import { newOrderMail } from './order-mail.js';
+import { newOrderMail, receiptMail } from './order-mail.js';
 
 const order = {
   number: 12,
@@ -91,5 +91,53 @@ describe('newOrderMail', () => {
     expect(mail.html).toContain('&lt;b&gt;Ali&lt;/b&gt; ordered RM190');
     expect(mail.html).toContain('&lt;i&gt;Kek&lt;/i&gt;');
     expect(mail.html).toContain('&lt;u&gt;2kg&lt;/u&gt;');
+  });
+});
+
+describe('receiptMail', () => {
+  const receipt = {
+    number: 12,
+    totalCents: 19_000,
+    customerName: 'Aisyah',
+    // 3:42pm in Malaysia, Thu 15 Oct.
+    uploadedAt: new Date('2026-10-15T07:42:00Z'),
+    fileName: 'a1b2c3.jpg',
+    url: 'https://curios.my/app/orders?order=ord_1',
+  };
+
+  it('says the order number in the subject and who sent it in the heading', () => {
+    const mail = receiptMail(receipt);
+    expect(mail.subject).toBe('Receipt uploaded for #12');
+    expect(mail.html).toContain('>Aisyah sent a receipt for order #12</h1>');
+    expect(mail.text).toContain('Aisyah sent a receipt for order #12');
+  });
+
+  it('says what to check, and that not receiving the money is a button away', () => {
+    const mail = receiptMail(receipt);
+    const small = 'Didn’t get the money? Open the order and mark it as not received. Aisyah will be asked to try again.';
+    expect(mail.html).toContain('Check that RM190 reached your account, then confirm the order.');
+    expect(mail.html).toContain(small);
+    expect(mail.text).toContain(small);
+  });
+
+  it('lists the order, sender, time in Malaysia and file', () => {
+    const mail = receiptMail(receipt);
+    expect(mail.html).toContain('#12 · RM190');
+    expect(mail.html).toContain('Thu 15 Oct, 3:42pm');
+    expect(mail.html).toContain('a1b2c3.jpg');
+    expect(mail.text).toContain('Sent: Thu 15 Oct, 3:42pm');
+  });
+
+  it('links the button to the order', () => {
+    const mail = receiptMail(receipt);
+    expect(mail.html).toContain('href="https://curios.my/app/orders?order=ord_1"');
+    expect(mail.html).toContain('>Check the receipt</a>');
+    expect(mail.html).toContain(OWNER_MAIL_FOOTER);
+  });
+
+  it('escapes the customer name', () => {
+    const mail = receiptMail({ ...receipt, customerName: '<b>Ali</b>' });
+    expect(mail.html).not.toContain('<b>Ali');
+    expect(mail.html).toContain('&lt;b&gt;Ali&lt;/b&gt; sent a receipt');
   });
 });

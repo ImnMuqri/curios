@@ -91,3 +91,58 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
     }),
   };
 }
+
+export interface ReceiptMailInput {
+  number: number;
+  totalCents: number;
+  customerName: string;
+  uploadedAt: Date;
+  /** The stored file's name, for the board's "File" row; never its URL. */
+  fileName: string;
+  /** The owner's order screen, opened on this order. */
+  url: string;
+}
+
+/** "Thu 15 Oct, 3:42pm", Malaysian time (UTC+8, no daylight saving). */
+function shortDayTime(at: Date): string {
+  const my = new Date(at.getTime() + 8 * 3_600_000);
+  const hour = my.getUTCHours();
+  const minute = String(my.getUTCMinutes()).padStart(2, '0');
+  const clock = `${hour % 12 === 0 ? 12 : hour % 12}:${minute}${hour < 12 ? 'am' : 'pm'}`;
+  return `${WEEKDAYS[my.getUTCDay()]} ${my.getUTCDate()} ${MONTHS[my.getUTCMonth()]}, ${clock}`;
+}
+
+/** Sent to the owner when a customer uploads a receipt, unless they switched it off. */
+export function receiptMail(o: ReceiptMailInput): Mail {
+  const total = formatRinggit(o.totalCents);
+  const subject = `Receipt uploaded for #${o.number}`;
+  const heading = `${o.customerName} sent a receipt for order #${o.number}`;
+  // The board says "Aisyah sees ... her order page"; we do not know their pronoun (DEVIATIONS 101).
+  const said = `Check that ${total} reached your account, then confirm the order. ${o.customerName} sees the update on their order page.`;
+  const small = `Didn’t get the money? Open the order and mark it as not received. ${o.customerName} will be asked to try again.`;
+  const facts: [string, string][] = [
+    ['Order', `#${o.number} · ${total}`],
+    ['From', o.customerName],
+    ['Sent', shortDayTime(o.uploadedAt)],
+    ['File', o.fileName],
+  ];
+  const button = 'Check the receipt';
+
+  return {
+    subject,
+    text: [`${heading}.`, '', said, '', ...facts.map(([label, value]) => `${label}: ${value}`), '', `${button}: ${o.url}`, '', small].join('\n'),
+    html: renderMailHtml({
+      subject,
+      topRight: `Order #${o.number}`,
+      tag: { label: 'Receipt to check', tone: 'biru' },
+      heading,
+      blocks: [
+        { kind: 'p', text: said },
+        { kind: 'facts', rows: facts },
+        { kind: 'buttons', primary: { label: button, href: o.url } },
+        { kind: 'small', text: small },
+      ],
+      footer: OWNER_MAIL_FOOTER,
+    }),
+  };
+}

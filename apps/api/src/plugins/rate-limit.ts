@@ -194,6 +194,24 @@ export function orderPerIpLimit(redis: IORedis): RateLimitPluginOptions {
 }
 
 /**
+ * Receipt uploads, per visitor across every order. Each one writes a file to
+ * storage and may email an owner, and the order link is the only credential,
+ * so a loop from one address must not fill the bucket or an inbox.
+ */
+export function receiptPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('receipt-ip:'),
+    max: limit('RATE_LIMIT_RECEIPT_PER_IP', 20),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many receipts just now. Try again in ${after}.`),
+  };
+}
+
+/**
  * Per shop, whoever asks: what bounds the junk many addresses can pour into
  * one owner's orders and inbox in a day. Keyed on the `handle` route param,
  * lowercased as the page is looked up, so every casing is the same budget.

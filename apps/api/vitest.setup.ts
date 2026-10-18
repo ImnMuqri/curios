@@ -36,6 +36,7 @@ process.env.RATE_LIMIT_AUTH_PER_IP = '20';
 process.env.RATE_LIMIT_AUTH_PER_EMAIL = '10';
 process.env.RATE_LIMIT_ORDER_PER_IP = '10';
 process.env.RATE_LIMIT_ORDER_PER_PAGE = '100';
+process.env.RATE_LIMIT_RECEIPT_PER_IP = '20';
 
 // Same reasoning, same fix, for the other wallet control chatRoutes resolves
 // at registration time: a developer with CONVERSATION_CAP_PER_MONTH set in

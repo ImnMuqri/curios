@@ -4,8 +4,13 @@ import type { FastifyInstance } from 'fastify';
 import { hashSessionValue, MAIL_QUEUE, type MailJobData } from '@curios/core';
 import { malaysiaToday, openDays } from '@curios/core/orders';
 import { buildApp } from '../../app.js';
+import type { AvatarStore } from '../pages/storage.js';
 
 const mailQueue = { add: vi.fn(async (_name: string, _data: MailJobData, _opts?: unknown) => ({})) };
+const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> } = {
+  put: vi.fn(async () => undefined),
+  remove: vi.fn(async () => undefined),
+};
 
 let app: FastifyInstance;
 let nth = 0;
@@ -13,7 +18,7 @@ let nth = 0;
 const from = () => `203.0.115.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
-  app = await buildApp({ orders: { mailQueue } });
+  app = await buildApp({ orders: { mailQueue, store } });
   await app.ready();
 });
 afterAll(async () => {
@@ -21,6 +26,8 @@ afterAll(async () => {
 });
 beforeEach(() => {
   mailQueue.add.mockClear();
+  store.put.mockClear();
+  store.remove.mockClear();
 });
 
 interface ShopOptions {
@@ -33,6 +40,7 @@ interface ShopOptions {
   closedDays?: number[];
   ordersPlaced?: number;
   notifyOrders?: boolean;
+  notifyReceipts?: boolean;
 }
 
 /** A business page with a shop open: a cake with two sizes, and tarts at one price. */
@@ -57,6 +65,7 @@ async function aShop(options: ShopOptions = {}) {
           closedDays: options.closedDays ?? [],
           ordersPlaced: options.ordersPlaced ?? 0,
           notifyOrders: options.notifyOrders ?? true,
+          notifyReceipts: options.notifyReceipts ?? true,
           items: {
             create: [
               {
@@ -479,5 +488,175 @@ describe('POST /store/:handle/orders', () => {
       if (original === undefined) delete process.env.RATE_LIMIT_ORDER_PER_PAGE;
       else process.env.RATE_LIMIT_ORDER_PER_PAGE = original;
     }
+  });
+});
+
+const JPEG = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]).toString('base64');
+const PDF = Buffer.from('%PDF-1.4\n%fake\n').toString('base64');
+
+/** An order already placed, with its link's secret in hand. */
+async function anOrder(shop: Shop, data: Record<string, unknown> = {}) {
+  const token = randomUUID().replace(/-/g, '');
+  const order = await app.prisma.order.create({
+    data: {
+      pageId: shop.pageId,
+      number: 12,
+      code: 'ABCD',
+      tokenHash: hashSessionValue(token),
+      customerName: 'Aisyah',
+      phone: '+60123456789',
+      method: 'PICKUP',
+      day: new Date(`${firstDay()}T00:00:00Z`),
+      itemsCents: 19_000,
+      deliveryCents: 0,
+      totalCents: 19_000,
+      ...data,
+    },
+    select: { id: true },
+  });
+  return { token, id: order.id };
+}
+
+const upload = (token: string, payload: object, remoteAddress = from()) =>
+  app.inject({ method: 'POST', url: `/store/orders/${token}/receipt`, remoteAddress, payload });
+
+describe('POST /store/orders/:token/receipt', () => {
+  it("takes a receipt by the order's link alone", async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop);
+
+    const res = await upload(order.token, { contentType: 'image/jpeg', data: JPEG });
+
+    expect(res.statusCode).toBe(200);
+    const row = await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(res.json()).toEqual({ receiptUploadedAt: row.receiptUploadedAt!.toISOString() });
+    expect(row.receiptKey).toMatch(new RegExp(`^receipts/${shop.pageId}/[0-9a-f]{32}\\.jpg$`));
+    expect(row.receiptType).toBe('image/jpeg');
+    expect(row.receiptRejectedAt).toBeNull();
+    expect(store.put).toHaveBeenCalledWith(row.receiptKey, expect.any(Buffer), 'image/jpeg');
+    expect(store.remove).not.toHaveBeenCalled();
+  });
+
+  it('takes a PDF', async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop);
+    const res = await upload(order.token, { contentType: 'application/pdf', data: PDF });
+    expect(res.statusCode).toBe(200);
+    expect((await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } })).receiptKey).toMatch(/\.pdf$/);
+  });
+
+  it('replaces an earlier receipt and removes its file', async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop, {
+      receiptKey: `receipts/${randomUUID()}/old.jpg`,
+      receiptType: 'image/jpeg',
+      receiptUploadedAt: new Date('2026-01-01T00:00:00Z'),
+      receiptRejectedAt: new Date('2026-01-02T00:00:00Z'),
+    });
+    const before = await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+
+    const res = await upload(order.token, { contentType: 'application/pdf', data: PDF });
+
+    expect(res.statusCode).toBe(200);
+    const row = await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } });
+    expect(row.receiptKey).not.toBe(before.receiptKey);
+    expect(row.receiptType).toBe('application/pdf');
+    expect(row.receiptRejectedAt).toBeNull();
+    expect(row.receiptUploadedAt!.getTime()).toBeGreaterThan(before.receiptUploadedAt!.getTime());
+    expect(store.remove).toHaveBeenCalledWith(before.receiptKey);
+  });
+
+  it('refuses once the order is paid, keeping the stored receipt', async () => {
+    const shop = await aShop();
+    const key = `receipts/${shop.pageId}/kept.jpg`;
+    const order = await anOrder(shop, { status: 'PAID', paidAt: new Date(), receiptKey: key, receiptType: 'image/jpeg', receiptUploadedAt: new Date() });
+
+    const res = await upload(order.token, { contentType: 'image/jpeg', data: JPEG });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'ORDER_ALREADY_PAID', message: 'This order is already paid.' });
+    expect((await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } })).receiptKey).toBe(key);
+    expect(store.remove).not.toHaveBeenCalled();
+  });
+
+  it('refuses a cancelled order', async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop, { status: 'CANCELLED', cancelledAt: new Date() });
+    const res = await upload(order.token, { contentType: 'image/jpeg', data: JPEG });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_CANCELLED');
+  });
+
+  it('refuses a PDF renamed as an image, and a file over 5 MB', async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop);
+    const message = 'Upload a photo or PDF of your receipt, up to 5 MB.';
+
+    const renamed = await upload(order.token, { contentType: 'image/jpeg', data: PDF });
+    expect(renamed.statusCode).toBe(400);
+    expect(renamed.json().error).toEqual({ code: 'INVALID_RECEIPT', message });
+
+    const big = Buffer.concat([Buffer.from('%PDF-'), Buffer.alloc(5_242_880)]).toString('base64');
+    const tooBig = await upload(order.token, { contentType: 'application/pdf', data: big });
+    expect(tooBig.statusCode).toBe(400);
+    expect(tooBig.json().error.code).toBe('INVALID_RECEIPT');
+
+    const odd = await upload(order.token, { contentType: 'text/html', data: JPEG });
+    expect(odd.json().error.code).toBe('INVALID_RECEIPT');
+    expect(store.put).not.toHaveBeenCalled();
+    expect((await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } })).receiptKey).toBeNull();
+  });
+
+  it('refuses an unknown link', async () => {
+    const res = await upload('not-a-real-token', { contentType: 'image/jpeg', data: JPEG });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('ORDER_NOT_FOUND');
+  });
+
+  it('answers STORAGE_NOT_CONFIGURED when uploads are switched off', async () => {
+    const off = await buildApp({ orders: { mailQueue, store: null } });
+    await off.ready();
+    try {
+      const shop = await aShop();
+      const order = await anOrder(shop);
+      const res = await off.inject({ method: 'POST', url: `/store/orders/${order.token}/receipt`, remoteAddress: from(), payload: { contentType: 'image/jpeg', data: JPEG } });
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error.code).toBe('STORAGE_NOT_CONFIGURED');
+    } finally {
+      await off.close();
+    }
+  });
+
+  it('emails the owner', async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop);
+
+    await upload(order.token, { contentType: 'image/jpeg', data: JPEG });
+
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const [name, data] = mailQueue.add.mock.calls[0]!;
+    expect(name).toBe(MAIL_QUEUE);
+    expect(data.to).toBe(shop.email);
+    expect(data.subject).toBe('Receipt uploaded for #12');
+    expect(data.html).toContain('Aisyah sent a receipt for order #12');
+    expect(data.html).toContain(`/app/orders?order=${order.id}`);
+  });
+
+  it('sends no email when the owner switched receipts off, and never waits on the queue', async () => {
+    const quiet = await anOrder(await aShop({ notifyReceipts: false }));
+    await upload(quiet.token, { contentType: 'image/jpeg', data: JPEG });
+    expect(mailQueue.add).not.toHaveBeenCalled();
+
+    mailQueue.add.mockImplementationOnce(() => new Promise(() => undefined));
+    const stuck = await anOrder(await aShop());
+    expect((await upload(stuck.token, { contentType: 'image/jpeg', data: JPEG })).statusCode).toBe(200);
+  });
+
+  it('limits uploads per visitor', async () => {
+    const address = '198.51.100.250';
+    const statuses: number[] = [];
+    for (let i = 0; i < 21; i++) statuses.push((await upload('no-such-token', { contentType: 'image/jpeg', data: JPEG }, address)).statusCode);
+    expect(statuses.slice(0, 20).every((status) => status !== 429)).toBe(true);
+    expect(statuses[20]).toBe(429);
   });
 });
