@@ -113,6 +113,15 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_ITEM',
   'ITEM_LIMIT',
   'ITEM_ORDER_STALE',
+  // Placing an order (slice 18): each tells the visitor what to do next --
+  // order on WhatsApp, reload the basket, or fix one field.
+  'STORE_CLOSED',
+  'ORDERS_PAUSED',
+  'PRICES_CHANGED',
+  'ITEM_UNAVAILABLE',
+  'ORDER_DATE',
+  'METHOD_OFF',
+  'ADDRESS_REQUIRED',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --
