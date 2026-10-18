@@ -121,7 +121,7 @@ describe('OrdersScreen, the list', () => {
     expect(mira).toHaveTextContent('#13 · 3 items · Pickup Sat');
     expect(mira).toHaveTextContent('RM235');
     expect(mira).toHaveTextContent('To check');
-    expect(within(mira).getByTitle('Receipt to check')).toBeInTheDocument();
+    expect(within(mira).getByLabelText('Receipt to check')).toBeInTheDocument();
     expect(rows().getByRole('button', { name: /Hakim Rahman/ })).toHaveTextContent('#12 · 1 item · Delivery Sat');
     expect(rows().getByRole('button', { name: /Hakim Rahman/ })).toHaveTextContent('Awaiting payment');
     expect(rows().getByRole('button', { name: /Wei Ling/ })).toHaveTextContent('Paid');

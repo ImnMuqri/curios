@@ -32,6 +32,22 @@ describe('pickAlert', () => {
     expect(pickAlert([trial], '/app/leads')).toBe(trial);
     expect(pickAlert([trial], '/app/questions')).toBeNull();
   });
+
+  it('puts a stop alert about this screen before the every-screen one: Orders says checkout is paused', () => {
+    const paused: Alert = {
+      ...ended,
+      id: 'paused-2026-10-13',
+      where: '/app/orders',
+      icon: 'shop',
+      title: 'Your shop can’t take orders right now',
+      text: 'Your Business plan ended on 14 Oct 2026. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+    };
+    expect(pickAlert([ended, paused], '/app/orders')).toBe(paused);
+    expect(pickAlert([ended, paused], '/app/leads')).toBe(ended);
+    expect(pickAlert([ended, paused], '/app/curios')).toBe(ended);
+    // A blue one about the screen does not push a red every-screen one aside.
+    expect(pickAlert([ended, { ...trial, where: '/app/orders' }], '/app/orders')).toBe(ended);
+  });
 });
 
 describe('AlertSlot', () => {
@@ -80,6 +96,31 @@ describe('AlertSlot', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Your shop can’t take orders right now');
     expect(screen.getByRole('link', { name: 'Pay to take orders' })).toHaveAttribute('href', '/app/billing');
     expect(screen.queryByText('1 of your 3 free leads used')).toBeNull();
+  });
+
+  it('tells a lapsed open shop on Orders that checkout is paused, and every other screen that the plan ended', async () => {
+    const { alertsFor } = await import('../alerts.js');
+    const { orderState, planState } = await import('@curios/core');
+    const now = new Date('2026-10-15T04:00:00.000Z');
+    const row = { mode: 'BUSINESS' as const, paidUntil: new Date('2026-10-13T20:00:00.000Z'), now };
+    const alerts = alertsFor({
+      plan: planState({ ...row, leadsCaptured: 1 }),
+      usage: { used: 0, cap: 200 },
+      now,
+      orders: { state: orderState({ ...row, ordersPlaced: 3, ordersAtTrialReset: 0 }), storeEnabled: true },
+    });
+
+    pathname = '/app/orders';
+    const { unmount } = slot(alerts);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Your shop can’t take orders right nowYour Business plan ended on 14 Oct 2026. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+    );
+    unmount();
+
+    pathname = '/app/leads';
+    slot(alerts);
+    expect(screen.getByRole('alert')).toHaveTextContent('Your Business plan ended on 14 Oct 2026');
+    expect(screen.queryByText(/can’t take orders/)).toBeNull();
   });
 
   it('shows nothing outside the frame', () => {

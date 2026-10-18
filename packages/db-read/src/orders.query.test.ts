@@ -91,10 +91,51 @@ describe('getOwnerOrders', () => {
     expect(order?.lines[0]?.photoKey).toBe('items/kek.jpg');
   });
 
-  it('keeps the receipt key and caps the list at 100', async () => {
+  it('keeps every order that still needs the owner, however old, beside the newest 100 of the rest', async () => {
+    const owner = await anOwner();
+    const old = (day: number) => new Date(`2026-01-0${day}T00:00:00Z`);
+    const toCheck = await anOrder(owner.pageId, { customerName: 'To check', receiptKey: 'receipts/x/r.jpg', receiptUploadedAt: old(1), createdAt: old(1) });
+    const toMake = await anOrder(owner.pageId, { customerName: 'To make', status: 'PAID', paidAt: old(2), createdAt: old(2) });
+    const owed = await anOrder(owner.pageId, { customerName: 'Owed', status: 'CANCELLED', paidAt: old(3), cancelledAt: old(3), createdAt: old(3) });
+    const refunded = await anOrder(owner.pageId, { customerName: 'Refunded', status: 'CANCELLED', paidAt: old(4), cancelledAt: old(4), refundedAt: old(4), createdAt: old(4) });
+    await write.order.createMany({
+      data: Array.from({ length: 101 }, (_, i) => ({
+        pageId: owner.pageId,
+        number: 10_000 + i,
+        code: `D${i}`,
+        tokenHash: hashSessionValue(randomUUID()),
+        customerName: 'Done',
+        phone: '+60123456789',
+        method: 'PICKUP' as const,
+        day: new Date('2026-10-20T00:00:00Z'),
+        itemsCents: 1,
+        deliveryCents: 0,
+        totalCents: 1,
+        status: 'COMPLETED' as const,
+        createdAt: new Date(Date.UTC(2026, 5, 1) + i * 60_000),
+      })),
+    });
+
+    // As the Orders screen asks.
+    const orders = await getOwnerOrders(owner.accountId, { limit: 100 });
+    const ids = orders.map((o) => o.id);
+
+    // 100 of the 101 done ones (the oldest drops), and the three that need the owner.
+    expect(orders).toHaveLength(103);
+    expect(ids).toEqual(expect.arrayContaining([toCheck, toMake, owed]));
+    expect(ids).not.toContain(refunded);
+    expect(new Set(ids).size).toBe(ids.length);
+    // Still newest first, the old actionable ones at the end.
+    expect(orders.slice(-3).map((o) => o.customerName)).toEqual(['Owed', 'To make', 'To check']);
+    const times = orders.map((o) => o.createdAt.getTime());
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+  });
+
+  it('keeps the receipt key and caps the finished ones at 100', async () => {
     const owner = await anOwner();
     await write.order.createMany({
       data: Array.from({ length: 101 }, (_, i) => ({
+        status: 'COMPLETED' as const,
         pageId: owner.pageId,
         number: i + 1,
         code: `K${i}`,

@@ -10,7 +10,15 @@ const shop = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; o
   state: orderState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, ordersPlaced: page.ordersPlaced ?? 0, ordersAtTrialReset: 0, now: NOW }),
   storeEnabled: page.storeEnabled ?? true,
 });
-const paid = plan({ paidUntil: new Date('2099-01-01T00:00:00.000Z') });
+/** One page, read the way layout.tsx reads it: the plan and the shop from the same row, so every pairing is a real one. */
+const page = (
+  p: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; leadsCaptured?: number; ordersPlaced?: number; storeEnabled?: boolean } = {},
+) => ({
+  plan: plan(p),
+  usage: quiet,
+  now: NOW,
+  orders: shop(p),
+});
 
 describe('alertsFor', () => {
   it('counts a running trial on Leads, in blue, one segment per free lead', () => {
@@ -112,9 +120,9 @@ describe('alertsFor', () => {
 
 describe('alertsFor, the shop', () => {
   it('pauses an open shop whose free orders are used, in red, on Orders', () => {
-    const alerts = alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: FREE_ORDERS }) });
+    const alerts = alertsFor(page({ ordersPlaced: FREE_ORDERS }));
 
-    expect(alerts).toEqual([
+    expect(alerts).toContainEqual(
       expect.objectContaining({
         id: 'paused',
         tone: 'stop',
@@ -124,20 +132,23 @@ describe('alertsFor, the shop', () => {
         text: 'Your 3 free orders are used. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
         action: { href: '/app/billing', label: 'Pay to take orders' },
       }),
-    ]);
+    );
   });
 
-  it('says when the plan ended, for a shop paused by a lapsed plan', () => {
-    const [alert] = alertsFor({
-      plan: paid,
-      usage: quiet,
-      now: NOW,
-      orders: shop({ ordersPlaced: FREE_ORDERS, paidUntil: new Date('2026-10-13T20:00:00.000Z') }),
-    });
+  // A plan that ended always ends both allowances' paid time at once: either
+  // the leads are used too (lapsed) or some are left (trial with lapsedOn).
+  // Both are real pages; each gets the every-screen plan banner AND, for an
+  // open shop, the orders' own paused banner, which Orders shows first.
+  it.each([
+    ['leads used too', FREE_LEADS],
+    ['free leads left', 1],
+  ])('says when the plan ended, for a shop paused by a lapsed plan (%s)', (_name, leadsCaptured) => {
+    const alerts = alertsFor(page({ leadsCaptured, ordersPlaced: FREE_ORDERS, paidUntil: new Date('2026-10-13T20:00:00.000Z') }));
 
-    expect(alert).toMatchObject({
+    expect(alerts.find((a) => a.where === 'all')).toMatchObject({ tone: 'stop', title: 'Your Business plan ended on 14 Oct 2026' });
+    expect(alerts.find((a) => a.where === '/app/orders')).toMatchObject({
+      id: 'paused-2026-10-13',
       tone: 'stop',
-      where: '/app/orders',
       title: 'Your shop can’t take orders right now',
       text: 'Your Business plan ended on 14 Oct 2026. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
       action: { label: 'Pay to take orders' },
@@ -145,7 +156,7 @@ describe('alertsFor, the shop', () => {
   });
 
   it('counts the free orders on Orders, in blue, while the trial runs', () => {
-    const [alert] = alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: 1 }) });
+    const alert = alertsFor(page({ ordersPlaced: 1 })).find((a) => a.where === '/app/orders');
 
     expect(alert).toMatchObject({
       id: 'orders-trial-1',
@@ -160,17 +171,22 @@ describe('alertsFor, the shop', () => {
   });
 
   it('says nothing about orders for a shop that is off, a paid one, or a personal page', () => {
-    expect(alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: FREE_ORDERS, storeEnabled: false }) })).toEqual([]);
-    expect(alertsFor({ plan: paid, usage: quiet, now: NOW, orders: shop({ ordersPlaced: 9, paidUntil: new Date('2099-01-01T00:00:00.000Z') }) })).toEqual([]);
-    expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: quiet, now: NOW, orders: shop({ mode: 'PERSONAL' }) })).toEqual([]);
+    const aboutOrders = (input: Parameters<typeof alertsFor>[0]) => alertsFor(input).filter((a) => a.where === '/app/orders');
+    expect(aboutOrders(page({ ordersPlaced: FREE_ORDERS, storeEnabled: false }))).toEqual([]);
+    expect(aboutOrders(page({ ordersPlaced: 9, paidUntil: new Date('2099-01-01T00:00:00.000Z') }))).toEqual([]);
+    expect(aboutOrders(page({ mode: 'PERSONAL' }))).toEqual([]);
   });
 });
 
 describe('billingNeedsYou', () => {
-  it('dots Billing for a paused shop too', () => {
-    expect(billingNeedsYou(paid, shop({ ordersPlaced: FREE_ORDERS }))).toBe(true);
-    expect(billingNeedsYou(paid, shop({ ordersPlaced: FREE_ORDERS, storeEnabled: false }))).toBe(false);
-    expect(billingNeedsYou(paid, shop({ ordersPlaced: 1 }))).toBe(false);
+  it('dots Billing for a paused shop too, even with free leads left', () => {
+    const dot = (p: Parameters<typeof page>[0]) => {
+      const { plan: pagePlan, orders } = page(p);
+      return billingNeedsYou(pagePlan, orders);
+    };
+    expect(dot({ ordersPlaced: FREE_ORDERS })).toBe(true);
+    expect(dot({ ordersPlaced: FREE_ORDERS, storeEnabled: false })).toBe(false);
+    expect(dot({ ordersPlaced: 1 })).toBe(false);
   });
 
   it('dots Billing for a used-up trial or an ended plan, and not otherwise', () => {

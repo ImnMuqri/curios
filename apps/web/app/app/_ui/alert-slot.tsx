@@ -29,9 +29,14 @@ function readDismissed(id: string): boolean {
   }
 }
 
-/** The one alert a screen shows: one for every screen first, then the one about this screen. */
+/**
+ * The one alert a screen shows: a red one about this screen first (Orders'
+ * "Your shop can't take orders right now", which says what the plan banner
+ * does not), then one for every screen, then the one about this screen.
+ */
 export function pickAlert(alerts: Alert[], pathname: string): Alert | null {
-  return alerts.find((a) => a.where === 'all') ?? alerts.find((a) => a.where !== 'all' && pathname.startsWith(a.where)) ?? null;
+  const here = alerts.filter((a) => a.where !== 'all' && pathname.startsWith(a.where));
+  return here.find((a) => a.tone === 'stop') ?? alerts.find((a) => a.where === 'all') ?? here[0] ?? null;
 }
 
 /**

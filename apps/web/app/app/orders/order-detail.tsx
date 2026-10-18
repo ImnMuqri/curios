@@ -6,6 +6,7 @@ import { formatMalaysianPhone } from '@curios/core/phone';
 import { formatRinggit } from '@curios/core/store';
 import type { OwnerOrder } from '@curios/db-read';
 import { Callout } from '@curios/ui';
+import { ApiError } from '../../../lib/api.js';
 import inbox from '../_ui/inbox.module.css';
 import { waNumber } from '../leads/first-message.js';
 import styles from './orders.module.css';
@@ -122,6 +123,8 @@ export function OrderDetail({
   const [zoom, setZoom] = useState(false);
   const [sparks, setSparks] = useState(0);
   const inFlight = useRef(false);
+  const zoomTrigger = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
 
   const view = orderView(order);
   const first = firstName(order.customerName);
@@ -130,13 +133,24 @@ export function OrderDetail({
   const hasReceipt = order.receiptUploadedAt !== null;
   const when = (date: Date) => orderWhen(date, now);
 
+  // A fresh read of this order: whatever was in flight has landed, and its buttons are live again.
+  useEffect(() => {
+    inFlight.current = false;
+    setBusy(false);
+  }, [order]);
+
+  // The large receipt takes focus onto its close button and gives it back to the thumbnail.
   useEffect(() => {
     if (!zoom) return;
+    closeRef.current?.focus();
     const close = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setZoom(false);
     };
     document.addEventListener('keydown', close);
-    return () => document.removeEventListener('keydown', close);
+    return () => {
+      document.removeEventListener('keydown', close);
+      zoomTrigger.current?.focus();
+    };
   }, [zoom]);
 
   useEffect(() => {
@@ -215,12 +229,15 @@ export function OrderDetail({
       setConfirming(null);
       setSparks((n) => n + 1);
       say(toast);
+      // Still busy: the buttons on screen are this order's old state until
+      // the server's read arrives (the effect on `order` frees them).
       onChanged();
     } catch (failure) {
-      setError(failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
-    } finally {
       inFlight.current = false;
       setBusy(false);
+      setError(failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
+      // Gone, or moved on elsewhere (another tab): read it again, as the words say.
+      if (failure instanceof ApiError && (failure.status === 404 || failure.status === 409)) onChanged();
     }
   }
 
@@ -396,7 +413,7 @@ export function OrderDetail({
                     <small>PDF</small>
                   </a>
                 ) : order.receiptUrl ? (
-                  <button type="button" className={styles.receiptThumb} aria-label="Open the receipt" onClick={() => setZoom(true)}>
+                  <button ref={zoomTrigger} type="button" className={styles.receiptThumb} aria-label="Open the receipt" onClick={() => setZoom(true)}>
                     <img src={order.receiptUrl} alt="" />
                   </button>
                 ) : (
@@ -458,6 +475,11 @@ export function OrderDetail({
       {zoom && order.receiptUrl ? (
         <div className={styles.zoom} role="dialog" aria-modal="true" aria-label="Receipt" onClick={() => setZoom(false)}>
           <img className={styles.zoomImage} src={order.receiptUrl} alt={`Receipt for order #${order.number}`} />
+          <button ref={closeRef} type="button" className={styles.zoomClose} aria-label="Close" onClick={() => setZoom(false)}>
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path d={CROSS} />
+            </svg>
+          </button>
         </div>
       ) : null}
     </div>

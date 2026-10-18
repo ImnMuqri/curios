@@ -164,12 +164,27 @@ describe('OrderDetail, the receipt', () => {
     expect(screen.getByText('Uploaded today, 10:09am')).toBeInTheDocument();
     expect(screen.getByText('Check it landed in your account before you mark it paid.')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open the receipt' }));
+    const trigger = screen.getByRole('button', { name: 'Open the receipt' });
+    trigger.focus();
+    fireEvent.click(trigger);
     const zoom = screen.getByRole('dialog', { name: 'Receipt' });
     expect(within(zoom).getByRole('img', { name: 'Receipt for order #13' })).toHaveAttribute('src', mira.receiptUrl);
+    // Focus goes into the dialog, onto its close button.
+    expect(within(zoom).getByRole('button', { name: 'Close' })).toHaveFocus();
 
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
+    // And back to the receipt it came from.
+    expect(trigger).toHaveFocus();
+  });
+
+  it('closes the large receipt with its close button too', () => {
+    show(mira);
+    const trigger = screen.getByRole('button', { name: 'Open the receipt' });
+    fireEvent.click(trigger);
+    fireEvent.click(within(screen.getByRole('dialog', { name: 'Receipt' })).getByRole('button', { name: 'Close' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(trigger).toHaveFocus();
   });
 
   it('opens a PDF receipt in its own tab instead of as a picture', () => {
@@ -284,9 +299,48 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(async () => {
       throw new ApiError(409, 'ORDER_STATE', 'This order has already moved on. Refresh to see where it is.');
     });
-    const { say } = show(mira, move);
+    const { say, onChanged } = show(mira, move);
     fireEvent.click(actionBox().getByRole('button', { name: 'Mark paid' }));
     expect(await screen.findByText('This order has already moved on. Refresh to see where it is.')).toBeInTheDocument();
     expect(say).not.toHaveBeenCalled();
+    // The order moved on (or is gone): the list is read again, as the words say.
+    expect(onChanged).toHaveBeenCalledTimes(1);
+    // And the buttons are live again for whatever it is now.
+    expect(actionBox().getByRole('button', { name: 'Mark paid' })).toBeEnabled();
+  });
+
+  it('does not read the list again after a failure that is not about the order', async () => {
+    const move = vi.fn(async () => {
+      throw new ApiError(500, 'INTERNAL_ERROR', 'Something failed. Try again.');
+    });
+    const { onChanged } = show(mira, move);
+    fireEvent.click(actionBox().getByRole('button', { name: 'Mark paid' }));
+    expect(await screen.findByText('Something failed. Try again.')).toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
+
+  it('sends a double tap once, and stays busy until the refreshed order arrives', async () => {
+    let finish: () => void = () => undefined;
+    const move = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
+    const say = vi.fn();
+    const onChanged = vi.fn();
+    const props = { now, pickupNote: null, move, say, onChanged };
+    const { rerender } = render(<OrderDetail order={mira} {...props} />);
+
+    const button = actionBox().getByRole('button', { name: 'Mark paid' });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    finish();
+    await waitFor(() => expect(say).toHaveBeenCalledTimes(1));
+    expect(move).toHaveBeenCalledTimes(1);
+
+    // Moved, but the server's read has not come back: nothing to tap yet.
+    expect(actionBox().getByRole('button', { name: 'Mark paid' })).toBeDisabled();
+    fireEvent.click(actionBox().getByRole('button', { name: 'Mark paid' }));
+    expect(move).toHaveBeenCalledTimes(1);
+
+    // The refreshed order arrives: its own next step, live.
+    rerender(<OrderDetail order={{ ...mira, status: 'PAID', paidAt: new Date('2026-10-16T05:59:00Z') }} {...props} />);
+    expect(actionBox().getByRole('button', { name: 'Mark completed' })).toBeEnabled();
   });
 });

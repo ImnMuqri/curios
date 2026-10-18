@@ -241,7 +241,7 @@ export function OrdersScreen({
                         <span className={styles.rowMid}>
                           <b>
                             {order.customerName}
-                            {matches(order, 'check') ? <span className={styles.dot} title="Receipt to check" /> : null}
+                            {matches(order, 'check') ? <span className={styles.dot} aria-label="Receipt to check" title="Receipt to check" /> : null}
                           </b>
                           <span>
                             #{order.number} · {plural(n, 'item')} · {order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} {dayLabel(order.day).split(' ')[0]}

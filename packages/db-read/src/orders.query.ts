@@ -2,6 +2,7 @@ import { canTakeOrders, hashSessionValue } from '@curios/core';
 import { malaysiaToday } from '@curios/core/orders';
 import type { HeadingFont, PageBackground, PageStyle } from '@curios/core/bento';
 import type { DeliveryMode } from '@curios/core/store';
+import type { Prisma } from '@prisma/client';
 import { prismaRead } from './client.js';
 import { getPublicShop, type PublicShop } from './shop.query.js';
 
@@ -39,14 +40,42 @@ export interface OwnerOrder {
 const dayText = (day: Date): string => day.toISOString().slice(0, 10);
 
 /**
- * This owner's orders, newest first (at most 100), scoped through the page's
- * owner inside the query: an order carries a name, a phone and an address.
+ * What still needs the owner: a receipt to check or a payment to wait for
+ * (PLACED), something to make (PAID), money to send back (CANCELLED after it
+ * was paid, not yet refunded). The same rules as the figures and the nav
+ * badge, so nothing they count can fall off the list.
+ */
+const NEEDS_OWNER = {
+  OR: [{ status: { in: ['PLACED' as const, 'PAID' as const] } }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }],
+};
+
+const newestFirst = (a: { createdAt: Date; number: number }, b: { createdAt: Date; number: number }) =>
+  b.createdAt.getTime() - a.createdAt.getTime() || b.number - a.number;
+
+/**
+ * This owner's orders, newest first, scoped through the page's owner inside
+ * the query: an order carries a name, a phone and an address.
+ *
+ * Every order that still needs the owner, however old, and the newest
+ * `limit` (at most 100) of the rest. Capping the whole list would drop an old
+ * receipt to check off the screen while the figures and the badge still
+ * count it.
  */
 export async function getOwnerOrders(accountId: string, options: { limit?: number } = {}): Promise<OwnerOrder[]> {
+  const scope = { page: { accountId } };
+  const [open, done] = await Promise.all([
+    readOwnerOrders({ AND: [scope, NEEDS_OWNER] }),
+    readOwnerOrders({ AND: [scope, { NOT: NEEDS_OWNER }] }, Math.min(options.limit ?? 50, 100)),
+  ]);
+  // The two halves cannot overlap (one is the other's NOT); merged back into one newest-first list.
+  return [...open, ...done].sort(newestFirst);
+}
+
+async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number): Promise<OwnerOrder[]> {
   const rows = await prismaRead.order.findMany({
-    where: { page: { accountId } },
+    where,
     orderBy: [{ createdAt: 'desc' }, { number: 'desc' }],
-    take: Math.min(options.limit ?? 50, 100),
+    ...(take === undefined ? {} : { take }),
     select: {
       id: true,
       number: true,

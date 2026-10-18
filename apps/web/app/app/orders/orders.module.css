@@ -921,6 +921,33 @@
   animation: popIn 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
 }
 
+.zoomClose {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.zoomClose:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+.zoomClose svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 /* The detail column can be narrow on a wide screen, so the inner layout follows its own width. */
 @container (max-width: 760px) {
   .grid {
