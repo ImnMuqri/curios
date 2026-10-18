@@ -8,6 +8,7 @@ import { PageHead } from '../_ui/page-head.js';
 import ui from '../_ui/editor.module.css';
 import panel from '../panel.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
+import { useToast } from '../_ui/toast.js';
 import { CHIP_WORDS, plural, TopicDetail, topicState, type ChatLook, type TopicActions } from './topic-detail.js';
 import inbox from '../_ui/inbox.module.css';
 import styles from './questions.module.css';
@@ -62,6 +63,7 @@ export function QuestionsScreen({
   const [filter, setFilter] = useState<Filter>('all');
   const [selected, setSelected] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { say, toast } = useToast(2600);
 
   const needs = topics.filter((topic) => topicState(topic) !== 'answered');
   const totalAsks = topics.reduce((sum, topic) => sum + topic.askCount, 0);
@@ -229,11 +231,13 @@ export function QuestionsScreen({
                 actions={actions}
                 onChanged={onChanged}
                 onSelect={setSelected}
+                say={say}
               />
             ) : null}
           </div>
         </div>
       )}
+      {toast}
     </>
   );
 }

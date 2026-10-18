@@ -9,6 +9,7 @@ import { PageHead } from '../_ui/page-head.js';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
+import { useToast } from '../_ui/toast.js';
 import { LeadDetail, PhoneSquare, STATUSES, type LeadActions, type LeadStatus } from './lead-detail.js';
 import styles from './leads.module.css';
 
@@ -53,6 +54,7 @@ export function LeadsScreen({
   const [selected, setSelected] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, LeadStatus>>({});
   const [copied, setCopied] = useState(false);
+  const { say, toast } = useToast();
   // A fresh read from the server is the truth again.
   useEffect(() => setStatuses({}), [leads]);
 
@@ -243,8 +245,10 @@ export function LeadsScreen({
                 now={now}
                 actions={actions}
                 onStatus={(next) => setStatus(chosen, next)}
+                say={say}
                 onDeleted={() => {
                   setSelected(null);
+                  say('Lead deleted.');
                   onChanged();
                 }}
               />
@@ -252,6 +256,7 @@ export function LeadsScreen({
           </div>
         </div>
       )}
+      {toast}
     </>
   );
 }

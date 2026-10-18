@@ -628,15 +628,6 @@
   margin-top: 12px;
 }
 
-.said {
-  margin: 12px 0 0;
-  color: var(--hijau);
-  font-size: 13px;
-}
-
-.said:empty {
-  margin: 0;
-}
 
 /* ---- Narrower ---- */
 

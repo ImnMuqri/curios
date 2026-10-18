@@ -6,6 +6,7 @@ import type { KnowledgeSource } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { checkSource, FILE_ACCEPT, fileSize, ingestSource, type IngestionResult, type Source, type SourceWay } from '../onboarding/source-input.js';
 import { sourcePlace } from '../_ui/source-place.js';
+import { useToast } from '../_ui/toast.js';
 import { ICONS, sourceKind } from './facts-tab.js';
 import styles from './knowledge.module.css';
 
@@ -259,7 +260,9 @@ export function SourceList({
   // just added or just sent to be read again.
   const [started, setStarted] = useState<Record<string, { recheck: boolean; text: boolean }>>({});
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({});
-  const [said, setSaid] = useState('');
+  const { say, toast } = useToast();
+  // A file cut short is worth more than a moment's toast: it stays until the next add.
+  const [cut, setCut] = useState('');
 
   async function act(id: string, run: () => Promise<unknown>, after?: () => void) {
     setBusy(id);
@@ -303,15 +306,18 @@ export function SourceList({
           onDone={(result) => {
             setAdding(false);
             setStarted((prev) => ({ ...prev, [result.ingestionId]: { recheck: false, text: result.text } }));
-            setSaid(result.truncated ? `That file is long, so your page read the first ${pastedTextMax.toLocaleString('en-MY')} characters of it.` : 'Reading it now. New facts go to Review.');
+            setCut(result.truncated ? `That file is long, so your page read the first ${pastedTextMax.toLocaleString('en-MY')} characters of it.` : '');
             onChanged();
           }}
         />
       ) : null}
 
-      <p className={styles.note} role="status">
-        {said}
-      </p>
+      {cut ? (
+        <p className={styles.note} role="status">
+          {cut}
+        </p>
+      ) : null}
+      {toast}
 
       {sources.length === 0 ? (
         adding ? null : (
@@ -419,7 +425,7 @@ export function SourceList({
                         ? `Remove it and its ${facts(source.factCount)}? Facts another source also says are removed too.`
                         : 'Remove this entry? Its older facts stay under Facts.'}
                     </span>
-                    <button type="button" disabled={busy === source.id} onClick={() => void act(source.id, () => onRemove(source.id), () => setSaid('Source removed, with its facts.'))}>
+                    <button type="button" disabled={busy === source.id} onClick={() => void act(source.id, () => onRemove(source.id), () => say('Source removed, with its facts.'))}>
                       Remove
                     </button>
                     <button type="button" onClick={() => setConfirming(null)}>
@@ -442,7 +448,7 @@ export function SourceList({
                             () => {
                               setStarted((prev) => ({ ...prev, [source.id]: { recheck: true, text: false } }));
                               setOutcomes(({ [source.id]: _old, ...rest }) => rest);
-                              setSaid(`Reading ${label} again. New facts go to Review; facts the site has dropped stay until you remove them.`);
+                              say(`Reading ${label} again. New facts go to Review.`);
                             },
                           )
                         }

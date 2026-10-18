@@ -78,6 +78,8 @@
   --ghost-b: #eef0f4;
   --ghost-line: #c9ccd3;
   --phone-edge: #e1e4e9;
+  /* The tick in the dashboard toast. */
+  --toast-tick: #86e0b8;
 
   /* The original six steps. The handoff's screens use more; see SCALE in design-rules.ts. */
   --text-xs: 11px;

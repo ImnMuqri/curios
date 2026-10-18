@@ -101,12 +101,22 @@ describe('LeadsScreen, the status', () => {
     open.addEventListener('click', (event) => event.preventDefault());
     await act(async () => { fireEvent.click(open); });
     expect(actions.setStatus).toHaveBeenCalledWith('l1', 'CONTACTED');
+    expect(screen.getByRole('status')).toHaveTextContent('WhatsApp opened. Marked contacted.');
 
     fireEvent.click(list().getByRole('button', { name: /\+60 13-557 6610/ }));
     const again = screen.getByRole('link', { name: 'Open WhatsApp' });
     again.addEventListener('click', (event) => event.preventDefault());
     await act(async () => { fireEvent.click(again); });
     expect(actions.setStatus).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(/^WhatsApp opened\.$/);
+  });
+
+  it('says a deleted lead is gone, after its panel has closed', async () => {
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete lead' }));
+    const confirm = screen.getByRole('group', { name: 'Confirm deleting this lead' });
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete' })); });
+    expect(screen.getByRole('status')).toHaveTextContent('Lead deleted.');
   });
 });
 

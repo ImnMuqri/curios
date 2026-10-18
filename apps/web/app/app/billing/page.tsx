@@ -10,6 +10,8 @@ import { ResetTrial } from './reset-button.js';
 import { UpgradeToBusiness } from './upgrade-button.js';
 import styles from './billing.module.css';
 import { PageHead } from '../_ui/page-head.js';
+import { CountUp } from '../_ui/count-up.js';
+import { PaidToast } from './paid-toast.js';
 import { NEAR_SHARE } from '../alerts.js';
 
 /** What Business includes, as the board lists it: everything here exists today. */
@@ -61,7 +63,10 @@ function Meter({ label, used, of, share, tone, children }: { label: string; used
       <p className={styles.mh}>
         <span>{label}</span>
         <span>
-          <b>{used.toLocaleString('en-MY')}</b> {of}
+          <b>
+            <CountUp value={used} />
+          </b>{' '}
+          {of}
         </span>
       </p>
       <div className={styles.mbar} data-tone={tone} aria-hidden="true">
@@ -95,7 +100,10 @@ export default async function BillingPage({
 
   const now = new Date();
   const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
-  const banner = paymentBanner(params.payment);
+  // Back from Billplz: a confirmed payment is the board's toast; one Billplz
+  // called paid before its callback reached us still reads as confirming.
+  const paidNow = params.payment === 'paid' && state.kind === 'paid';
+  const banner = paidNow ? null : paymentBanner(params.payment === 'paid' ? 'pending' : params.payment);
   const badge = planBadge(state);
   const personal = state.kind === 'personal';
 
@@ -134,6 +142,7 @@ export default async function BillingPage({
   return (
     <>
       <PageHead title="Billing" note="Your plan, what this month has used, and what you have paid" />
+      {paidNow ? <PaidToast until={shortDate(state.paidUntil, true)} /> : null}
       <div className={styles.bl}>
         {banner ? (
           <p className={styles.banner} data-tone={banner.tone} role="status">
@@ -153,7 +162,9 @@ export default async function BillingPage({
             {head ? (
               <>
                 <p className={styles.big}>
-                  <b>{head.big}</b>
+                  <b>
+                    <CountUp value={head.big} />
+                  </b>
                   <span>{head.unit}</span>
                 </p>
                 <p className={styles.sub}>{head.sub}</p>

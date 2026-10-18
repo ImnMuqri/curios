@@ -38,7 +38,8 @@ describe('SourceList', () => {
     expect(onAdd).toHaveBeenCalledWith({ pageId: 'p1', sourceUrl: 'https://nadia.example/menu' });
     expect(onChanged).toHaveBeenCalled();
     expect(screen.queryByLabelText('Link to read')).toBeNull();
-    expect(screen.getByRole('status')).toHaveTextContent(/reading it now/i);
+    // The board says nothing here: the new source's own row shows it reading.
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
   });
 
   it('reads pasted text, and refuses an empty paste before sending it', async () => {
@@ -99,13 +100,13 @@ describe('SourceList', () => {
     expect(within(row('About Nadia Bakes')).queryByRole('button', { name: /again/ })).toBeNull();
   });
 
-  it('reads a link again, shows it being read, and says what it does not do', async () => {
+  it('reads a link again, shows it being read, and says so', async () => {
     const { onRecheck, onChanged } = list([site]);
     await userEvent.click(screen.getByRole('button', { name: 'Read nadia.example again' }));
     expect(onRecheck).toHaveBeenCalledWith('s1');
     expect(onChanged).toHaveBeenCalled();
     expect(within(row('nadia.example')).getByText(/^Reading…/)).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent(/facts the site has dropped stay until you remove them/i);
+    expect(screen.getByRole('status')).toHaveTextContent('Reading nadia.example again. New facts go to Review.');
   });
 
   it('asks before removing, naming the count and the shared-fact loss', async () => {

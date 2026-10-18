@@ -63,10 +63,6 @@ describe('planSummary', () => {
 });
 
 describe('paymentBanner', () => {
-  it('confirms a paid return', () => {
-    expect(paymentBanner('paid')).toEqual({ tone: 'info', text: 'Payment received. Your plan is active.' });
-  });
-
   it('says a pending return is still being confirmed', () => {
     expect(paymentBanner('pending')).toEqual({
       tone: 'info',

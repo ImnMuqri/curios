@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 
@@ -52,6 +52,15 @@ async function renderWith(owned: OwnerPage | null, payment?: string) {
   getOwnerPage.mockResolvedValueOnce(owned);
   render(await BillingPage({ searchParams: Promise.resolve({ payment }) }));
 }
+
+// These check the figures, not how they count up (count-up.test.tsx does): motion off.
+const motion = window.matchMedia.bind(window);
+beforeAll(() => {
+  window.matchMedia = (query: string) => ({ ...motion(query), matches: query.includes('reduce') });
+});
+afterAll(() => {
+  window.matchMedia = motion;
+});
 
 describe('BillingPage', () => {
   beforeEach(() => {
@@ -121,10 +130,22 @@ describe('BillingPage', () => {
     expect(screen.getByText('Personal pages are free. There is nothing to pay for.')).toBeInTheDocument();
   });
 
-  it('shows the banner the API redirected back with', async () => {
+  it('says a confirmed payment in the board’s toast, with the new date', async () => {
+    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') }, 'paid');
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Paid. You’re covered until 14 Dec 2026.');
+  });
+
+  it('still says confirming when Billplz said paid before its callback reached us', async () => {
     await renderWith(page, 'paid');
 
-    expect(screen.getByRole('status')).toHaveTextContent('Payment received. Your plan is active.');
+    expect(screen.getByRole('status')).toHaveTextContent('We are still confirming your payment with Billplz.');
+  });
+
+  it('shows the banner for a payment that failed', async () => {
+    await renderWith(page, 'failed');
+
+    expect(screen.getByRole('status')).toHaveTextContent('nothing was charged');
   });
 
   it('sends an owner with no page to onboarding', async () => {

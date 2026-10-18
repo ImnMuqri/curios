@@ -19,6 +19,7 @@ const lead: OwnerLead = {
 function show(calls: Partial<LeadActions> = {}) {
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onDeleted = vi.fn();
+  const say = vi.fn();
   render(
     <LeadDetail
       lead={lead}
@@ -31,9 +32,10 @@ function show(calls: Partial<LeadActions> = {}) {
       actions={actions}
       onStatus={vi.fn(async () => undefined)}
       onDeleted={onDeleted}
+      say={say}
     />,
   );
-  return { actions, onDeleted };
+  return { actions, onDeleted, say };
 }
 
 describe('LeadDetail', () => {
