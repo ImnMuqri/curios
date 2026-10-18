@@ -10,6 +10,7 @@ import { EXTRACT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import type { SourceAdapter } from '../sources/types.js';
 import { textAdapter } from '../sources/text.adapter.js';
+import { contextAround } from './excerpt.js';
 import { completedPart, nextProgress, progressAt, PROGRESS_FETCHED } from './progress.js';
 
 export interface ExtractDeps {
@@ -110,7 +111,7 @@ export async function runExtraction(
       written = facts.length;
       // skipDuplicates against @@unique([pageId, normalizedClaim]) is what
       // makes re-running this job produce one set of facts rather than two.
-      const result = await prisma.fact.createMany({ data: fresh.map((fact) => factRow(job, fact)), skipDuplicates: true });
+      const result = await prisma.fact.createMany({ data: fresh.map((fact) => factRow(job, fact, source)), skipDuplicates: true });
       created += result.count;
       for (const fact of fresh) progress = nextProgress(progress, progressAt(source, fact.sourceText));
       await prisma.ingestion.update({ where: { id: job.ingestionId }, data: { extractedCount: created, progress } });
@@ -204,8 +205,10 @@ export async function runExtraction(
  * dropped -- dropping it hides the attack from the owner and teaches us
  * nothing.
  */
-function factRow(job: IngestJobData, fact: ParsedFact) {
+function factRow(job: IngestJobData, fact: ParsedFact, source: string) {
   const flagged = isImperative(fact.claim);
+  // What the source says either side of the excerpt, for Review's line.
+  const around = contextAround(source, fact.sourceText);
   return {
     pageId: job.pageId,
     // Credited to this ingestion so the owner can remove the source and its
@@ -221,6 +224,8 @@ function factRow(job: IngestJobData, fact: ParsedFact) {
     // page, and Review hides the Source link when there is none.
     sourceUrl: job.sourceUrl ?? null,
     sourceText: fact.sourceText,
+    sourceBefore: around?.before ?? null,
+    sourceAfter: around?.after ?? null,
     confidence: flagged ? Math.min(fact.confidence, 0.2) : fact.confidence,
     flagged,
     verified: false,

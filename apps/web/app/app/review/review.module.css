@@ -420,6 +420,16 @@
   overflow-wrap: anywhere;
 }
 
+/* With its line around it: the line faint, the excerpt in ink, as the board has it. */
+.src p[data-picked] {
+  color: var(--faint);
+}
+
+.src p b {
+  font-weight: 500;
+  color: var(--ink);
+}
+
 .error {
   margin: 14px 0 0;
   font-size: 13px;

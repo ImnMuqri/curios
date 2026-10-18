@@ -287,6 +287,11 @@ model Fact {
   normalizedClaim String
   sourceUrl       String?
   sourceText      String?
+  /// Up to a sentence of the source just before and just after sourceText,
+  /// so Review can show the excerpt picked out of its line. Null when the
+  /// excerpt could not be found in the source, and for facts read before this.
+  sourceBefore    String?
+  sourceAfter     String?
   confidence      Float
   verified        Boolean      @default(false)
   volatile        Boolean      @default(false)

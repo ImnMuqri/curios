@@ -418,11 +418,15 @@ describe('runExtraction, as it reads', () => {
     };
     const reading = {
       id: 'website' as const,
-      fetch: async () => [{ url: 'https://nadia.example/', title: 'Nadia', text: 'Kek butter 1kg — RM95\nWe bake to order.\nBuka Isnin hingga Sabtu' }],
+      fetch: async () => [{ url: 'https://nadia.example/', title: 'Nadia', text: 'Our menu: Kek butter 1kg — RM95 each.\nWe bake to order.\nBuka Isnin hingga Sabtu' }],
     };
 
     expect(await runExtraction({ prisma, gateway, adapter: reading, embedder: null }, job())).toEqual({ extractedCount: 2 });
     expect(await facts()).toBe(2);
     expect(await row()).toEqual({ extractedCount: 2, progress: 100, status: 'SUCCEEDED' });
+    // Review's line: the excerpt, with what the page says either side of it.
+    expect(
+      await prisma.fact.findFirst({ where: { ingestionId, category: 'PRICE' }, select: { sourceBefore: true, sourceText: true, sourceAfter: true } }),
+    ).toEqual({ sourceBefore: 'Our menu: ', sourceText: 'Kek butter 1kg — RM95', sourceAfter: ' each.' });
   });
 });

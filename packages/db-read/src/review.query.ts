@@ -8,6 +8,13 @@ export interface ReviewFact {
   /** What a customer would ask to reach this claim. Null for facts written before the column existed. */
   question: string | null;
   sourceText: string | null;
+  /**
+   * What the source says just before and after sourceText, so Review can pick
+   * the excerpt out of its line. Null when it was not found as written, and
+   * for facts read before this was kept.
+   */
+  sourceBefore: string | null;
+  sourceAfter: string | null;
   sourceUrl: string | null;
   confidence: number;
 }
@@ -37,6 +44,8 @@ export async function getReviewQueue(
       claim: true,
       question: true,
       sourceText: true,
+      sourceBefore: true,
+      sourceAfter: true,
       sourceUrl: true,
       confidence: true,
     },

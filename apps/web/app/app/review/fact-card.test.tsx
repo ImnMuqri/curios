@@ -8,6 +8,8 @@ const fact = {
   category: 'PRICE' as const,
   claim: 'Kuih lapis is RM12 a box',
   sourceText: 'Our kuih lapis is RM12 per box, minimum two boxes.',
+  sourceBefore: null,
+  sourceAfter: null,
   sourceUrl: 'https://nadia.example/menu',
   question: 'Berapa harga kuih lapis?',
   confidence: 0.91,
@@ -21,6 +23,21 @@ describe('FactCard', () => {
     // the review screen". Without it the owner is asked to approve a claim
     // with no way to check it against anything.
     expect(screen.getByText(/minimum two boxes/i)).toBeInTheDocument();
+  });
+
+  it('picks the excerpt out of the line around it, when the line was kept', () => {
+    render(
+      <FactCard
+        fact={{ ...fact, sourceBefore: 'Kuih of the day. ', sourceText: 'RM12 per box', sourceAfter: ', minimum two boxes.' }}
+        onAccept={vi.fn()}
+        onEdit={vi.fn()}
+        onReject={vi.fn()}
+      />,
+    );
+
+    const picked = screen.getByText('RM12 per box');
+    expect(picked.tagName).toBe('B');
+    expect(picked.parentElement).toHaveTextContent('“Kuih of the day. RM12 per box, minimum two boxes.”');
   });
 
   it('accepts exactly one fact and says which', async () => {
