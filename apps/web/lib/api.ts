@@ -9,12 +9,15 @@
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
+  /** The whole error body, for the rare route that sends more than { error } (PRICES_CHANGED sends the shelf). */
+  readonly body: unknown;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, body: unknown = null) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.status = status;
+    this.body = body;
   }
 }
 
@@ -62,5 +65,6 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
     response.status,
     body?.error?.code ?? 'INTERNAL_ERROR',
     body?.error?.message ?? 'Something failed. Try again.',
+    body,
   );
 }

@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getPublicShop } from '@curios/db-read';
+import { getCheckout } from '@curios/db-read';
 import { BentoPage } from '../../_bento/BentoPage.js';
 import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
 import { whatsappNumber } from './basket.js';
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
-  const shop = await getPublicShop(handle);
+  const shop = await getCheckout(handle);
   if (!shop) return {};
   return { title: `${shop.displayName} · Shop` };
 }
@@ -26,7 +26,7 @@ export default async function ShopPage({
 }) {
   const { handle } = await params;
   const { item } = await searchParams;
-  const shop = await getPublicShop(handle);
+  const shop = await getCheckout(handle);
   if (!shop) notFound();
 
   return (
@@ -61,6 +61,7 @@ export default async function ShopPage({
           deliveryMode={shop.deliveryMode}
           deliveryFeeCents={shop.deliveryFeeCents}
           minNoticeDays={shop.minNoticeDays}
+          canTakeOrders={shop.canTakeOrders}
           initialItemId={item ?? null}
           // The page's Links tab is the way back.
           showBack={false}

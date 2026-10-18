@@ -122,6 +122,21 @@ describe('ShopView', () => {
     expect(screen.getAllByRole('button', { name: copy.remove })).toHaveLength(1);
   });
 
+  it('offers Checkout when orders are allowed, and Order on WhatsApp when they are not', async () => {
+    const user = userEvent.setup();
+    const open = render(<ShopView {...base} canTakeOrders />);
+    await addCake(user);
+    expect(screen.getByRole('link', { name: copy.checkout })).toHaveAttribute('href', '/nadia/shop/checkout');
+    expect(screen.queryByRole('link', { name: copy.orderOnWhatsApp })).toBeNull();
+    expect(screen.queryByText(copy.paused('Kek Lina'))).toBeNull();
+    open.unmount();
+
+    render(<ShopView {...base} canTakeOrders={false} />);
+    expect(await screen.findByText(copy.paused('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: copy.orderOnWhatsApp }).getAttribute('href')).toMatch(/^https:\/\/wa\.me\/60123456789\?text=/);
+    expect(screen.queryByRole('link', { name: copy.checkout })).toBeNull();
+  });
+
   it('links Order on WhatsApp with the basket as the message', async () => {
     const user = userEvent.setup();
     render(<ShopView {...base} />);

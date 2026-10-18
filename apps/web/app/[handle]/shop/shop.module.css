@@ -249,6 +249,15 @@
   cursor: pointer;
 }
 
+/* Checkout is paused (Alerts board): a quiet line above the bar, pointing at WhatsApp. */
+.paused {
+  margin: 0 0 6px;
+  padding: 0 12px;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+
 .noWhatsApp {
   flex: 1;
   margin: 0;
