@@ -21,8 +21,9 @@ const MODES: { mode: DeliveryMode; name: string; note: string; tone?: 'biru' | '
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FULL_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 /** Monday first, as a shop's week reads; the number is the weekday as `closedDays` stores it. */
-const WEEK: { day: number; name: string }[] = [1, 2, 3, 4, 5, 6, 0].map((day) => ({ day, name: WEEKDAYS[day] ?? '' }));
+const WEEK: { day: number; name: string; full: string }[] = [1, 2, 3, 4, 5, 6, 0].map((day) => ({ day, name: WEEKDAYS[day] ?? '', full: FULL_WEEKDAYS[day] ?? '' }));
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const noticeWords = (days: number) => (days === 0 ? 'Same day' : days === 1 ? '1 day' : `${days} days`);
@@ -189,7 +190,7 @@ export function DeliveryTab({
               <input
                 value={deliveryNote.text}
                 maxLength={DELIVERY_NOTE_MAX}
-                placeholder="Around Shah Alam · 2pm to 6pm"
+                placeholder="Around Shah Alam Â· 2pm to 6pm"
                 autoComplete="off"
                 onChange={(event) => deliveryNote.change(event.target.value)}
               />
@@ -232,8 +233,8 @@ export function DeliveryTab({
         <div className={styles.closedOn} role="group" aria-labelledby="closed-title">
           <b id="closed-title">Closed on</b>
           <div className={styles.weekdays}>
-            {WEEK.map(({ day, name }) => (
-              <button key={day} type="button" className={styles.weekday} aria-pressed={closed.includes(day)} onClick={() => toggleDay(day)}>
+            {WEEK.map(({ day, name, full }) => (
+              <button key={day} type="button" className={styles.weekday} aria-label={`Closed on ${full}`} aria-pressed={closed.includes(day)} onClick={() => toggleDay(day)}>
                 {name}
               </button>
             ))}
