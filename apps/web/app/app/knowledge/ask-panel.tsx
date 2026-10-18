@@ -14,7 +14,12 @@ export interface Turn {
   content: string;
   /** Where an answer came from: the owner's own words, the facts, or the month's limit. */
   from?: 'answer' | 'facts' | 'limit';
+  /** For an answer from the facts: where those facts came from ("keklina.example/menu"). */
+  sources?: string[];
 }
+
+/** What the tester answers with. */
+export type TestAnswer = { reply: string; from: 'answer' | 'facts' | 'limit'; sources?: string[] };
 
 /** How many earlier turns go with a question: the API takes ten. */
 const HISTORY = 10;
@@ -32,7 +37,7 @@ export function AskPanel({
 }: {
   look?: ChatLook;
   suggestions: string[];
-  onAsk: (question: string, history: Turn[]) => Promise<{ reply: string; from: 'answer' | 'facts' | 'limit' }>;
+  onAsk: (question: string, history: Turn[]) => Promise<TestAnswer>;
 }) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [ask, setAsk] = useState('');
@@ -56,7 +61,7 @@ export function AskPanel({
     setThinking(true);
     try {
       const answer = await onAsk(q, history);
-      setTurns((prev) => [...prev, { role: 'assistant', content: answer.reply, from: answer.from }]);
+      setTurns((prev) => [...prev, { role: 'assistant', content: answer.reply, from: answer.from, sources: answer.sources }]);
     } catch (failure) {
       // The question comes back to the box, so it can be sent again.
       setTurns((prev) => prev.slice(0, -1));
@@ -94,12 +99,16 @@ export function AskPanel({
           ) : (
             <span key={i} style={{ display: 'contents' }}>
               <span className={styles.a}>{turn.content}</span>
-              {turn.from === 'answer' || turn.from === 'limit' ? (
+              {turn.from === 'answer' || turn.from === 'limit' || (turn.from === 'facts' && turn.sources?.length) ? (
                 <span className={styles.from}>
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M5 12.5l4.5 4.5L19 7.5" />
                   </svg>
-                  {turn.from === 'answer' ? 'Your answer on Questions' : 'The fixed reply: this month’s limit is reached'}
+                  {turn.from === 'answer'
+                    ? 'Your answer on Questions'
+                    : turn.from === 'limit'
+                      ? 'The fixed reply: this month’s limit is reached'
+                      : (turn.sources ?? []).join(' · ')}
                 </span>
               ) : null}
             </span>
@@ -156,7 +165,7 @@ export function Ask({ look, suggestions }: { look?: ChatLook; suggestions: strin
       look={look}
       suggestions={suggestions}
       onAsk={(question, history) =>
-        apiFetch<{ reply: string; from: 'answer' | 'facts' | 'limit' }>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history }) })
+        apiFetch<TestAnswer>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history }) })
       }
     />
   );

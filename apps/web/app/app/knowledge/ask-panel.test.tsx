@@ -49,6 +49,19 @@ describe('AskPanel', () => {
     ]);
   });
 
+  it('names where the facts it used came from', async () => {
+    panel({ onAsk: vi.fn().mockResolvedValue({ reply: 'Kek coklat 2kg RM170.', from: 'facts', sources: ['keklina.example/menu', 'A fact you added'] }) });
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa kek coklat 2kg?' }));
+    expect(await within(log()).findByText('keklina.example/menu · A fact you added')).toBeInTheDocument();
+  });
+
+  it('names nothing when no fact could be named', async () => {
+    panel();
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa kek coklat 2kg?' }));
+    await within(log()).findByText('Kek coklat 2kg RM170.');
+    expect(log().querySelector('svg')).toBeNull();
+  });
+
   it("names the owner's own answer when that is what it gave", async () => {
     panel({ onAsk: vi.fn().mockResolvedValue({ reply: 'Yes, all halal.', from: 'answer' }) });
     await userEvent.click(screen.getByRole('button', { name: 'Ada delivery?' }));
