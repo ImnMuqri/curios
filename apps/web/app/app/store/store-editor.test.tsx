@@ -5,7 +5,7 @@ import type { EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreS
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
-  deliveryFeeCents: 1000, minNoticeDays: 2, paymentQrKey: null, bankName: 'Maybank',
+  deliveryFeeCents: 1000, minNoticeDays: 2, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: 'Maybank',
   bankAccountName: 'Lina', bankAccountNumber: '1234567890', tileSize: null,
 };
 

@@ -36,6 +36,8 @@ const shop: PublicShop = {
   deliveryMode: 'FLAT',
   deliveryFeeCents: 800,
   minNoticeDays: 2,
+  closedDays: [],
+  deliveryNote: null,
   items: [
     { id: 'cake', name: 'Kek Batik', description: null, photoKey: 'items/cake.webp', priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }] },
     { id: 'cookie', name: 'Cookies', description: null, photoKey: null, priceCents: 2500, options: [] },

@@ -6,7 +6,7 @@ import type { SettingsPatch, StoreSettings } from './store-types.js';
 
 const settings: StoreSettings = {
   enabled: false, shopDescription: null, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE',
-  deliveryFeeCents: null, minNoticeDays: 1, paymentQrKey: null, bankName: null,
+  deliveryFeeCents: null, minNoticeDays: 1, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
 };
 

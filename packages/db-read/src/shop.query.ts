@@ -81,6 +81,9 @@ export interface PublicShop {
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   minNoticeDays: number;
+  /** Weekdays no order can be for, 0 = Sunday to 6 = Saturday. */
+  closedDays: number[];
+  deliveryNote: string | null;
   items: ShopItem[];
 }
 
@@ -113,6 +116,8 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       deliveryMode: true,
       deliveryFeeCents: true,
       minNoticeDays: true,
+      closedDays: true,
+      deliveryNote: true,
       items: { where: { available: true }, orderBy: { position: 'asc' }, select: ITEM_SELECT },
     },
   });
@@ -131,6 +136,8 @@ export interface OwnerStore {
     deliveryMode: DeliveryMode;
     deliveryFeeCents: number | null;
     minNoticeDays: number;
+    closedDays: number[];
+    deliveryNote: string | null;
     paymentQrKey: string | null;
     bankName: string | null;
     bankAccountName: string | null;
@@ -153,6 +160,8 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
       deliveryMode: true,
       deliveryFeeCents: true,
       minNoticeDays: true,
+      closedDays: true,
+      deliveryNote: true,
       paymentQrKey: true,
       bankName: true,
       bankAccountName: true,

@@ -33,7 +33,7 @@ async function seed(handle: string, page: Record<string, unknown>) {
 
 beforeAll(async () => {
   await write.account.deleteMany({ where: { email: { endsWith: EMAIL } } });
-  openAccountId = await seed('sq-open', { shopDescription: 'Homemade cakes, baked fresh.' });
+  openAccountId = await seed('sq-open', { shopDescription: 'Homemade cakes, baked fresh.', closedDays: [0, 3], deliveryNote: 'Around Shah Alam' });
   await seed('sq-closed', { storeEnabled: false });
   await seed('sq-personal', { mode: 'PERSONAL' });
   await seed('sq-draft', { published: false });
@@ -75,6 +75,11 @@ describe('getPublicShop', () => {
     expect((await getPublicShop('sq-order'))?.shopDescription).toBeNull();
   });
 
+  it('carries the closed days and the delivery note, for checkout', async () => {
+    expect(await getPublicShop('sq-open')).toMatchObject({ closedDays: [0, 3], deliveryNote: 'Around Shah Alam' });
+    expect(await getPublicShop('sq-order')).toMatchObject({ closedDays: [], deliveryNote: null });
+  });
+
   it('is null for a closed shop, a personal page, and an unpublished page', async () => {
     expect(await getPublicShop('sq-closed')).toBeNull();
     expect(await getPublicShop('sq-personal')).toBeNull();
@@ -107,5 +112,9 @@ describe('getOwnerStore', () => {
     const store = await getOwnerStore(openAccountId);
     expect(store?.items.map((item) => [item.name, item.available])).toEqual([['A', true], ['B', false], ['C', true]]);
     expect(store?.settings).toMatchObject({ enabled: true, shopDescription: 'Homemade cakes, baked fresh.', pickupEnabled: true, paymentQrKey: 'qr/p/x.png', tileSize: null });
+  });
+
+  it('carries the closed days and the delivery note', async () => {
+    expect((await getOwnerStore(openAccountId))?.settings).toMatchObject({ closedDays: [0, 3], deliveryNote: 'Around Shah Alam' });
   });
 });

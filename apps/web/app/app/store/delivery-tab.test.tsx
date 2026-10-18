@@ -7,6 +7,7 @@ const settings: StoreSettings = {
   enabled: true, shopDescription: null, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'NONE',
   deliveryFeeCents: null, minNoticeDays: 2, paymentQrKey: 'qr', bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
+  closedDays: [0], deliveryNote: null,
 };
 
 // A Friday.
@@ -113,5 +114,32 @@ describe('DeliveryTab, notice', () => {
     show({ minNoticeDays: 30 });
     expect(screen.getByRole('button', { name: 'One day more' })).toBeDisabled();
     expect(screen.getByText('Customers order 30 days ahead.')).toBeInTheDocument();
+  });
+});
+
+describe('DeliveryTab, closed days and the delivery note', () => {
+  it('toggles a closed day and saves it', async () => {
+    vi.useFakeTimers();
+    const save = show();
+    const pills = screen.getAllByRole('button', { name: /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun)$/ });
+    expect(pills.map((pill) => pill.textContent)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']);
+    expect(screen.getByRole('button', { name: 'Sun' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Mon' })).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(screen.getByRole('button', { name: 'Mon' }));
+    expect(screen.getByRole('button', { name: 'Mon' })).toHaveAttribute('aria-pressed', 'true');
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(save).toHaveBeenCalledWith({ closedDays: [0, 1] });
+    fireEvent.click(screen.getByRole('button', { name: 'Sun' }));
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(save).toHaveBeenLastCalledWith({ closedDays: [1] });
+  });
+
+  it('saves the delivery note as typed', async () => {
+    vi.useFakeTimers();
+    const save = show({ deliveryMode: 'RIDER' });
+    fireEvent.change(screen.getByLabelText('Delivery note'), { target: { value: 'Around Shah Alam · 2pm to 6pm' } });
+    expect(screen.getByText('29/120')).toBeInTheDocument();
+    await act(async () => { await vi.advanceTimersByTimeAsync(600); });
+    expect(save).toHaveBeenCalledWith({ deliveryNote: 'Around Shah Alam · 2pm to 6pm' });
   });
 });

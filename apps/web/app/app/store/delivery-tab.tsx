@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Callout } from '@curios/ui';
-import { DELIVERY_FEE_MAX_CENTS, MIN_NOTICE_DAYS_MAX, PICKUP_NOTE_MAX, parseRinggit, type DeliveryMode } from '@curios/core/store';
+import { DELIVERY_FEE_MAX_CENTS, DELIVERY_NOTE_MAX, MIN_NOTICE_DAYS_MAX, PICKUP_NOTE_MAX, parseRinggit, type DeliveryMode } from '@curios/core/store';
 import ui from '../_ui/editor.module.css';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
@@ -21,6 +21,8 @@ const MODES: { mode: DeliveryMode; name: string; note: string; tone?: 'biru' | '
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+/** Monday first, as a shop's week reads; the number is the weekday as `closedDays` stores it. */
+const WEEK: { day: number; name: string }[] = [1, 2, 3, 4, 5, 6, 0].map((day) => ({ day, name: WEEKDAYS[day] ?? '' }));
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const noticeWords = (days: number) => (days === 0 ? 'Same day' : days === 1 ? '1 day' : `${days} days`);
@@ -54,6 +56,9 @@ export function DeliveryTab({
   const [notice, setNotice] = useState(settings.minNoticeDays);
   const [error, setError] = useState('');
   const note = useSettingText(settings.pickupNote ?? '', (text) => ({ pickupNote: orNull(text) }), save);
+  const deliveryNote = useSettingText(settings.deliveryNote ?? '', (text) => ({ deliveryNote: orNull(text) }), save);
+  const [closed, setClosed] = useState(settings.closedDays);
+  const closedSave = useAutosave((daysClosed: number[]) => save({ closedDays: daysClosed }), 300);
   const fee = useSettingText(settings.deliveryFeeCents ? centsText(settings.deliveryFeeCents) : '', feePatch, save);
   // From the field as it reads now, so choosing flat delivery with no fee yet asks for one straight away.
   const feeCheck = feePatch(fee.text);
@@ -95,6 +100,12 @@ export function DeliveryTab({
     const next = Math.min(MIN_NOTICE_DAYS_MAX, Math.max(0, notice + delta));
     setNotice(next);
     noticeSave.schedule(next);
+  }
+
+  function toggleDay(day: number) {
+    const next = (closed.includes(day) ? closed.filter((d) => d !== day) : [...closed, day]).sort((a, b) => a - b);
+    setClosed(next);
+    closedSave.schedule(next);
   }
 
   const days = Array.from({ length: 10 }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
@@ -171,6 +182,24 @@ export function DeliveryTab({
           </div>
         ) : null}
         <SaveState status={fee.autosave.status} error={fee.autosave.error} retry={fee.autosave.retry} />
+        {mode !== 'NONE' ? (
+          <div className={`${ui.float} ${styles.pickupNote}`}>
+            <label>
+              <em>Delivery note</em>
+              <input
+                value={deliveryNote.text}
+                maxLength={DELIVERY_NOTE_MAX}
+                placeholder="Around Shah Alam · 2pm to 6pm"
+                autoComplete="off"
+                onChange={(event) => deliveryNote.change(event.target.value)}
+              />
+            </label>
+            <small aria-hidden="true">
+              {[...deliveryNote.text].length}/{DELIVERY_NOTE_MAX}
+            </small>
+          </div>
+        ) : null}
+        <SaveState status={deliveryNote.autosave.status} error={deliveryNote.autosave.error} retry={deliveryNote.autosave.retry} />
         {error ? <Callout tone="error">{error}</Callout> : null}
       </section>
 
@@ -200,6 +229,17 @@ export function DeliveryTab({
           {earliestWords}
         </p>
         <SaveState status={noticeSave.status} error={noticeSave.error} retry={noticeSave.retry} />
+        <div className={styles.closedOn} role="group" aria-labelledby="closed-title">
+          <b id="closed-title">Closed on</b>
+          <div className={styles.weekdays}>
+            {WEEK.map(({ day, name }) => (
+              <button key={day} type="button" className={styles.weekday} aria-pressed={closed.includes(day)} onClick={() => toggleDay(day)}>
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <SaveState status={closedSave.status} error={closedSave.error} retry={closedSave.retry} />
       </section>
     </>
   );

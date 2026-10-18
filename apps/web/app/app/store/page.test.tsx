@@ -25,7 +25,7 @@ const StorePage = (await import('./page.js')).default;
 
 const settings = {
   enabled: true, shopDescription: null, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE', deliveryFeeCents: null,
-  minNoticeDays: 0, paymentQrKey: 'qr/key.webp', bankName: null, bankAccountName: null,
+  minNoticeDays: 0, closedDays: [], deliveryNote: null, paymentQrKey: 'qr/key.webp', bankName: null, bankAccountName: null,
   bankAccountNumber: null, tileSize: 'WIDE',
 };
 

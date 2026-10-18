@@ -15,7 +15,7 @@ const { StoreScreen } = await import('./store-screen.js');
 
 const settings: StoreSettings = {
   enabled: false, shopDescription: null, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
-  deliveryFeeCents: null, minNoticeDays: 0, paymentQrKey: null, bankName: null,
+  deliveryFeeCents: null, minNoticeDays: 0, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
 };
 

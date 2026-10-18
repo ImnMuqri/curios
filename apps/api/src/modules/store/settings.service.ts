@@ -3,6 +3,7 @@ import {
   BANK_ACCOUNT_NAME_MAX,
   BANK_NAME_MAX,
   DELIVERY_FEE_MAX_CENTS,
+  DELIVERY_NOTE_MAX,
   MIN_NOTICE_DAYS_MAX,
   normalizeBankAccountNumber,
   PICKUP_NOTE_MAX,
@@ -24,6 +25,9 @@ export interface StoreSettings {
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   minNoticeDays: number;
+  /** Weekdays no order can be for, 0 = Sunday to 6 = Saturday. */
+  closedDays: number[];
+  deliveryNote: string | null;
   paymentQrKey: string | null;
   bankName: string | null;
   bankAccountName: string | null;
@@ -41,6 +45,8 @@ const SELECT = {
   deliveryMode: true,
   deliveryFeeCents: true,
   minNoticeDays: true,
+  closedDays: true,
+  deliveryNote: true,
   paymentQrKey: true,
   bankName: true,
   bankAccountName: true,
@@ -99,6 +105,15 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
     }
     next.minNoticeDays = patch.minNoticeDays;
   }
+  if (patch.closedDays !== undefined) {
+    const days = patch.closedDays;
+    if (!days.every((day) => Number.isInteger(day) && day >= 0 && day <= 6) || new Set(days).size !== days.length) {
+      throw new InvalidStoreSettingError('Closed days are weekdays, each named once.');
+    }
+    if (days.length >= 7) throw new StoreNotReadyError('Leave at least one day open.');
+    next.closedDays = [...days].sort((a, b) => a - b);
+  }
+  if (patch.deliveryNote !== undefined) next.deliveryNote = optionalText(patch.deliveryNote, DELIVERY_NOTE_MAX, 'the delivery note');
   if (patch.deliveryMode !== undefined) next.deliveryMode = patch.deliveryMode;
   if (patch.deliveryFeeCents !== undefined) next.deliveryFeeCents = patch.deliveryFeeCents;
   if (next.deliveryMode === 'FLAT') {
