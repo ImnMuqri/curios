@@ -191,6 +191,9 @@ importers:
 
   apps/workers:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.1141.0
+        version: 3.1141.0
       '@curios/billing':
         specifier: workspace:*
         version: link:../../packages/billing
