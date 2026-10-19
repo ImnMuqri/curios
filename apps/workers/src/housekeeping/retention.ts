@@ -13,6 +13,11 @@ export function retentionCutoff(now: Date): Date {
   return cutoff;
 }
 
+/** How many old orders one sweep step reads, removes and deletes: far under Postgres's bind-parameter limit. */
+export const RETENTION_BATCH = 500;
+
+type RetentionLog = { warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
+
 /**
  * BACKEND.md's PDPA promise, kept: leads, orders and the messages of
  * conversations are deleted outright once they are twelve months old, and a
@@ -24,6 +29,12 @@ export function retentionCutoff(now: Date): Date {
  * file went, so a receipt uploaded mid-sweep is never orphaned. With storage
  * off (`removeObjects` null) nothing was stored, and every old order goes.
  *
+ * Orders are swept `batchSize` at a time by id, so a year of orders never
+ * becomes one query past the bind-parameter limit. Each kind is its own step,
+ * and a step that fails is logged and does not skip the others: storage being
+ * down must not keep a visitor's messages past their year. The sweep throws
+ * the first failure after every step has run, so the job is marked failed.
+ *
  * What the owner sees as statistics -- the questions and how often they were
  * asked, the topics, their answers -- is the page's own knowledge rather than
  * a visitor's record, and stays. ModelCall keeps its conversation id as a
@@ -33,47 +44,90 @@ export async function runRetention(deps: {
   prisma: PrismaClient;
   now: Date;
   removeObjects?: RemoveObjects | null;
-  log?: { warn: (details: object, message: string) => void };
+  log?: RetentionLog;
+  batchSize?: number;
 }): Promise<{ leads: number; messages: number; conversations: number; orders: number; receipts: number }> {
   const before = retentionCutoff(deps.now);
-  const leads = await deps.prisma.lead.deleteMany({ where: { createdAt: { lt: before } } });
+  const failures: unknown[] = [];
+  const step = async (name: string, run: () => Promise<number>): Promise<number> => {
+    try {
+      return await run();
+    } catch (error) {
+      failures.push(error);
+      (deps.log?.error ?? deps.log?.warn)?.({ step: name, err: String(error) }, 'retention step failed; the other steps still ran');
+      return 0;
+    }
+  };
 
-  // Lines go with their order (onDelete: Cascade); a conversation waiting on one is let go of (SetNull).
-  let orders: number;
+  // Messages before conversations, which go only once emptied; orders last, so
+  // storage trouble in their sweep comes after everything else is done.
+  const leads = await step('leads', async () => (await deps.prisma.lead.deleteMany({ where: { createdAt: { lt: before } } })).count);
+  const messages = await step('messages', async () => (await deps.prisma.message.deleteMany({ where: { createdAt: { lt: before } } })).count);
+  const conversations = await step(
+    'conversations',
+    async () => (await deps.prisma.conversation.deleteMany({ where: { createdAt: { lt: before }, messages: { none: {} }, lead: null } })).count,
+  );
   let receipts = 0;
-  if (!deps.removeObjects) {
-    orders = (await deps.prisma.order.deleteMany({ where: { createdAt: { lt: before } } })).count;
-  } else {
-    const old = await deps.prisma.order.findMany({ where: { createdAt: { lt: before } }, select: { id: true, receiptKey: true } });
-    const keys = old.flatMap((order) => (order.receiptKey ? [order.receiptKey] : []));
-    const { failed } = keys.length > 0 ? await deps.removeObjects(keys) : { failed: [] };
-    if (failed.length > 0) deps.log?.warn({ failed }, 'retention could not remove some receipt files; their orders wait for the next sweep');
-    const removed = keys.filter((key) => !failed.includes(key));
-    receipts = removed.length;
-    const bare = old.filter((order) => !order.receiptKey).map((order) => order.id);
-    orders = (
-      await deps.prisma.order.deleteMany({
-        where: {
-          createdAt: { lt: before },
-          OR: [{ id: { in: bare }, receiptKey: null }, { receiptKey: { in: removed } }],
-        },
-      })
-    ).count;
+  const orders = await step('orders', () =>
+    sweepOrders(deps, before, deps.batchSize ?? RETENTION_BATCH, (removed) => {
+      receipts += removed;
+    }),
+  );
+
+  if (failures.length > 0) throw failures[0];
+  return { leads, messages, conversations, orders, receipts };
+}
+
+/** The old orders, a batch at a time by id: files first, then the rows whose files went. */
+async function sweepOrders(
+  deps: { prisma: PrismaClient; removeObjects?: RemoveObjects | null; log?: RetentionLog },
+  before: Date,
+  batchSize: number,
+  countReceipts: (removed: number) => void,
+): Promise<number> {
+  // Lines go with their order (onDelete: Cascade); a conversation waiting on one is let go of (SetNull).
+  let orders = 0;
+  let after: string | undefined;
+  for (;;) {
+    const old = await deps.prisma.order.findMany({
+      where: { createdAt: { lt: before }, ...(after ? { id: { gt: after } } : {}) },
+      select: { id: true, receiptKey: true },
+      orderBy: { id: 'asc' },
+      take: batchSize,
+    });
+    if (old.length === 0) break;
+    after = old[old.length - 1]!.id;
+
+    const ids = old.map((order) => order.id);
+    if (!deps.removeObjects) {
+      orders += (await deps.prisma.order.deleteMany({ where: { id: { in: ids }, createdAt: { lt: before } } })).count;
+    } else {
+      const keys = old.flatMap((order) => (order.receiptKey ? [order.receiptKey] : []));
+      const { failed } = keys.length > 0 ? await deps.removeObjects(keys) : { failed: [] };
+      if (failed.length > 0) deps.log?.warn({ failed }, 'retention could not remove some receipt files; their orders wait for the next sweep');
+      const removed = keys.filter((key) => !failed.includes(key));
+      countReceipts(removed.length);
+      const bare = old.filter((order) => !order.receiptKey).map((order) => order.id);
+      orders += (
+        await deps.prisma.order.deleteMany({
+          where: {
+            createdAt: { lt: before },
+            OR: [{ id: { in: bare }, receiptKey: null }, { id: { in: ids }, receiptKey: { in: removed } }],
+          },
+        })
+      ).count;
+    }
+
+    if (old.length < batchSize) break;
   }
-
-  const messages = await deps.prisma.message.deleteMany({ where: { createdAt: { lt: before } } });
-  const conversations = await deps.prisma.conversation.deleteMany({
-    where: { createdAt: { lt: before }, messages: { none: {} }, lead: null },
-  });
-
-  return { leads: leads.count, messages: messages.count, conversations: conversations.count, orders, receipts };
+  return orders;
 }
 
 export function createHousekeepingWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   removeObjects: RemoveObjects | null;
-  log?: { info: (details: object, message: string) => void; warn: (details: object, message: string) => void };
+  log?: { info: (details: object, message: string) => void; warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
 }): Worker {
   return new Worker(
     HOUSEKEEPING_QUEUE,

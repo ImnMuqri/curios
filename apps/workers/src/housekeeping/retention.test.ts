@@ -150,6 +150,48 @@ describe('runRetention', () => {
     expect(await prisma.order.findUnique({ where: { id: stuck.id } })).toBeNull();
   });
 
+  it('sweeps the orders in batches, so no one query carries every old order', async () => {
+    const batch = await Promise.all(Array.from({ length: 5 }, () => anOrder(old, `receipts/${pageId}/${randomUUID()}.jpg`)));
+    const bare = await anOrder(old, null);
+    const removeObjects = vi.fn(async (_keys: string[]) => ({ failed: [] as string[] }));
+
+    const result = await runRetention({ prisma, now, removeObjects, batchSize: 2 });
+
+    // Five receipts at two a batch is at least three calls, none over two keys.
+    expect(removeObjects.mock.calls.length).toBeGreaterThanOrEqual(3);
+    for (const [keys] of removeObjects.mock.calls) expect(keys.length).toBeLessThanOrEqual(2);
+    const removed = removeObjects.mock.calls.flatMap(([keys]) => keys);
+    for (const order of batch) expect(removed).toContain(order.receiptKey);
+    const ids = [...batch.map((order) => order.id), bare.id];
+    expect(await prisma.order.count({ where: { id: { in: ids } } })).toBe(0);
+    expect(result.orders).toBeGreaterThanOrEqual(6);
+  });
+
+  it('still deletes old leads, messages and conversations when the order sweep fails, and logs it', async () => {
+    const order = await anOrder(old, `receipts/${pageId}/${randomUUID()}.jpg`);
+    const gone = await aConversation(old, true);
+    const error = vi.fn();
+
+    await expect(
+      runRetention({
+        prisma,
+        now,
+        removeObjects: async () => {
+          throw new Error('storage is down');
+        },
+        log: { warn: vi.fn(), error },
+      }),
+    ).rejects.toThrow('storage is down');
+
+    expect(await prisma.message.count({ where: { conversationId: gone } })).toBe(0);
+    expect(await prisma.lead.count({ where: { conversationId: gone } })).toBe(0);
+    expect(await prisma.conversation.findUnique({ where: { id: gone } })).toBeNull();
+    // The order and its receipt wait for the next night.
+    expect(await prisma.order.findUnique({ where: { id: order.id }, select: { id: true } })).toEqual({ id: order.id });
+    expect(error).toHaveBeenCalledWith(expect.objectContaining({ step: 'orders' }), expect.stringMatching(/retention/));
+    await prisma.order.delete({ where: { id: order.id } });
+  });
+
   it('lets go of a recent conversation waiting on an order it deletes', async () => {
     const order = await anOrder(old, null);
     const conversation = await prisma.conversation.create({ data: { pageId, createdAt: recent, pendingOrderId: order.id } });
