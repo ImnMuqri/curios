@@ -1,28 +1,67 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { NotifyLeadsForm } from './notify-leads.js';
+import { NotifyForm } from './notify-leads.js';
 
-const SWITCH = { name: 'Email me when someone leaves their number' };
+const LEADS = { name: 'Email me when someone leaves their number' };
+const ORDERS = { name: 'Email me when a new order comes in' };
+const RECEIPTS = { name: 'Email me when a receipt is uploaded' };
 
-describe('NotifyLeadsForm', () => {
+const all = { leads: true, orders: true, receipts: true };
+
+describe('NotifyForm', () => {
+  it('lists the board’s three emails, order and receipt first', () => {
+    render(<NotifyForm on={all} onChange={vi.fn()} />);
+
+    expect(screen.getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([ORDERS.name, RECEIPTS.name, LEADS.name]);
+    expect(screen.getByText('A new order')).toBeInTheDocument();
+    expect(screen.getByText('With the total, so you can check the receipt.')).toBeInTheDocument();
+    expect(screen.getByText('A receipt is uploaded')).toBeInTheDocument();
+    expect(screen.getByText('So you can mark it paid.')).toBeInTheDocument();
+  });
+
   it('turns the lead email off, and says leads still wait in Leads', async () => {
     const onChange = vi.fn(async () => undefined);
-    render(<NotifyLeadsForm on onChange={onChange} />);
+    render(<NotifyForm on={all} onChange={onChange} />);
 
-    await userEvent.click(screen.getByRole('switch', SWITCH));
+    await userEvent.click(screen.getByRole('switch', LEADS));
 
-    expect(onChange).toHaveBeenCalledWith(false);
-    expect(screen.getByRole('switch', SWITCH)).toHaveAttribute('aria-checked', 'false');
+    expect(onChange).toHaveBeenCalledWith({ leads: false });
+    expect(screen.getByRole('switch', LEADS)).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByText('Off. New leads still wait in Leads.')).toBeInTheDocument();
   });
 
-  it('puts the switch back, and says why, when the change could not be saved', async () => {
-    render(<NotifyLeadsForm on onChange={vi.fn(async () => Promise.reject(new Error('Something failed on our side. Try again.')))} />);
+  it('turns the order email off on its own, and says orders still wait in Orders', async () => {
+    const onChange = vi.fn(async () => undefined);
+    render(<NotifyForm on={all} onChange={onChange} />);
 
-    await userEvent.click(screen.getByRole('switch', SWITCH));
+    await userEvent.click(screen.getByRole('switch', ORDERS));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Something failed');
-    expect(screen.getByRole('switch', SWITCH)).toHaveAttribute('aria-checked', 'true');
+    expect(onChange).toHaveBeenCalledWith({ orders: false });
+    expect(screen.getByRole('switch', ORDERS)).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', RECEIPTS)).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByText('Off. New orders still wait in Orders.')).toBeInTheDocument();
+  });
+
+  it('turns the receipt email on from off', async () => {
+    const onChange = vi.fn(async () => undefined);
+    render(<NotifyForm on={{ ...all, receipts: false }} onChange={onChange} />);
+    expect(screen.getByText('Off. Receipts still show on the order in Orders.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole('switch', RECEIPTS));
+
+    expect(onChange).toHaveBeenCalledWith({ receipts: true });
+    expect(screen.getByRole('switch', RECEIPTS)).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('puts the switch back, and says why under its own row, when the change could not be saved', async () => {
+    render(<NotifyForm on={all} onChange={vi.fn(async () => Promise.reject(new Error('Something failed on our side. Try again.')))} />);
+
+    await userEvent.click(screen.getByRole('switch', ORDERS));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('Something failed');
+    expect(within(alert.parentElement!).getByRole('switch', ORDERS)).toBeInTheDocument();
+    expect(screen.getByRole('switch', ORDERS)).toHaveAttribute('aria-checked', 'true');
   });
 });

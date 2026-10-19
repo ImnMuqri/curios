@@ -65,7 +65,7 @@ describe('SettingsPage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockReset();
     getOwnerPage.mockResolvedValue(null);
-    getNotifications.mockResolvedValue({ leads: true });
+    getNotifications.mockResolvedValue({ leads: true, orders: true, receipts: true });
     SearchIndexing.mockClear();
   });
 
@@ -175,13 +175,15 @@ describe('SettingsPage', () => {
       id: 'p1', handle: 'nadia', displayName: 'Nadia', published: true, mode: 'BUSINESS',
       paidUntil: null, leadsCaptured: 0, trialResetAt: null, allowSearchIndexing: false,
     });
-    getNotifications.mockResolvedValue({ leads: false });
+    getNotifications.mockResolvedValue({ leads: false, orders: true, receipts: false });
 
     await renderWith({}, methods({}));
 
     expect(screen.getByRole('heading', { name: 'Email me when' })).toBeInTheDocument();
     expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app.')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Email me when someone leaves their number' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', { name: 'Email me when a new order comes in' })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('switch', { name: 'Email me when a receipt is uploaded' })).toHaveAttribute('aria-checked', 'false');
   });
 
   it('offers a personal page no email switches, since it takes no leads', async () => {

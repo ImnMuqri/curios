@@ -98,6 +98,11 @@
   color: var(--amber-ink);
 }
 
+.icon[data-tone='hijau'] {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
 .icon[data-tone='grey'] {
   background: var(--surface);
   color: var(--ink-soft);

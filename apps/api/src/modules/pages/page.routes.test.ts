@@ -343,6 +343,28 @@ describe('PATCH /pages/notifications', () => {
     expect(await notifies(handle)).toBe(true);
   });
 
+  it('turns the order and receipt emails off each on its own, leaving the rest as they were', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    await claimAs(cookie, handle, 'BUSINESS');
+    const flags = async () =>
+      app.prisma.page.findUniqueOrThrow({ where: { handle }, select: { notifyLeads: true, notifyOrders: true, notifyReceipts: true } });
+    expect(await flags()).toEqual({ notifyLeads: true, notifyOrders: true, notifyReceipts: true });
+
+    const orders = await call(cookie, 'PATCH', '/pages/notifications', { orders: false });
+    expect(orders.json()).toEqual({ orders: false });
+    expect(await flags()).toEqual({ notifyLeads: true, notifyOrders: false, notifyReceipts: true });
+
+    const receipts = await call(cookie, 'PATCH', '/pages/notifications', { receipts: false });
+    expect(receipts.json()).toEqual({ receipts: false });
+    expect(await flags()).toEqual({ notifyLeads: true, notifyOrders: false, notifyReceipts: false });
+  });
+
+  it('refuses a body that switches nothing', async () => {
+    const res = await call(await anOwner(), 'PATCH', '/pages/notifications', {});
+    expect(res.statusCode).toBe(400);
+  });
+
   it('answers NO_PAGE for an owner with no page yet', async () => {
     const res = await call(await anOwner(), 'PATCH', '/pages/notifications', { leads: true });
     expect(res.statusCode).toBe(404);

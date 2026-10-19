@@ -11,6 +11,8 @@ export const ICONS = {
   out: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10',
   chat: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
   check: 'M5 12.5l4.5 4.5L19 7.5',
+  receipt: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4',
+  upload: 'M12 16V4M7 9l5-5 5 5M5 20h14',
 } as const;
 
 /** The Google mark, in Google's own colours (set as tokens in settings.module.css). */
@@ -51,7 +53,7 @@ export function SettingRow({
   below,
 }: {
   icon: keyof typeof ICONS | 'google';
-  tone: 'biru' | 'rose' | 'amber' | 'grey' | 'google';
+  tone: 'biru' | 'rose' | 'amber' | 'hijau' | 'grey' | 'google';
   title: string;
   note: ReactNode;
   action?: ReactNode;

@@ -115,12 +115,20 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
 
   app.patch(
     '/pages/notifications',
-    { schema: { body: z.object({ leads: z.boolean() }) } },
+    {
+      schema: {
+        // Each switch on its own, so a tap on one never rewrites another; at least one.
+        body: z
+          .object({ leads: z.boolean().optional(), orders: z.boolean().optional(), receipts: z.boolean().optional() })
+          .strict()
+          .refine((body) => Object.keys(body).length > 0, { message: 'Say which email to switch.' }),
+      },
+    },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
 
-      await setNotifications(app.prisma, request.account.id, { leads: request.body.leads });
-      return reply.send({ leads: request.body.leads });
+      await setNotifications(app.prisma, request.account.id, request.body);
+      return reply.send(request.body);
     },
   );
 
