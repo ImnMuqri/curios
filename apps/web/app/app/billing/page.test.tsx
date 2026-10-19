@@ -207,6 +207,14 @@ describe('BillingPage', () => {
     expect(within(meter).getByText('3 of 3 free orders used. Your shop takes no orders until you pay.')).toBeInTheDocument();
   });
 
+  it('says orders are paused since the plan ended, once the free orders are used too', async () => {
+    await renderWith({ ...page, paidUntil: new Date('2026-10-14T04:00:00.000Z'), ordersPlaced: 5, leadsCaptured: 3 });
+
+    const meter = screen.getByText('Orders').closest('div')!;
+    expect(meter).toHaveTextContent('this month');
+    expect(within(meter).getByText('Your plan ended on 14 Oct 2026. Your shop takes no orders until you pay.')).toBeInTheDocument();
+  });
+
   it('lists what Business includes, as the board does', async () => {
     await renderWith(page);
 

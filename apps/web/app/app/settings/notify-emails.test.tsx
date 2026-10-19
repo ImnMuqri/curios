@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { NotifyForm } from './notify-leads.js';
+import { NotifyForm } from './notify-emails.js';
 
 const LEADS = { name: 'Email me when someone leaves their number' };
 const ORDERS = { name: 'Email me when a new order comes in' };

@@ -327,6 +327,7 @@ export function StoreEditor({
 
           <div role="tabpanel" id="panel-payment" aria-labelledby="tab-payment" hidden={tab !== 'payment'} className={ui.panel}>
             <PaymentTab
+              displayName={look.displayName}
               settings={settings}
               save={save}
               qr={qr}

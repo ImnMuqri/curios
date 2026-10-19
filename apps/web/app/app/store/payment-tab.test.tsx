@@ -17,7 +17,7 @@ function show(over: Partial<StoreSettings> = {}, opts: { qr?: { has: boolean; ur
     removeQr: vi.fn(opts.removeQr ?? (async () => undefined)),
     onQr: vi.fn(),
   };
-  render(<PaymentTab settings={{ ...settings, ...over }} qr={opts.qr ?? { has: false, url: null }} uploadsEnabled={opts.uploadsEnabled ?? true} {...props} />);
+  render(<PaymentTab displayName="Kek Lina" settings={{ ...settings, ...over }} qr={opts.qr ?? { has: false, url: null }} uploadsEnabled={opts.uploadsEnabled ?? true} {...props} />);
   return props;
 }
 
@@ -93,7 +93,7 @@ describe('PaymentTab, the QR', () => {
     show({}, { qr: { has: true, url: null } });
     expect(screen.getByText('Customers scan it on their order page')).toBeInTheDocument();
     expect(screen.getByText('Your QR is ready')).toBeInTheDocument();
-    expect(screen.getByText('Each order page shows it with the exact total, so customers pay the right amount.')).toBeInTheDocument();
+    expect(screen.getByText('Kek Lina · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.')).toBeInTheDocument();
   });
 
   it('says uploads are off, while the bank fields still work', () => {

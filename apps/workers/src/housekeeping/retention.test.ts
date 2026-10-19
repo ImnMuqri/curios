@@ -99,7 +99,7 @@ describe('runRetention', () => {
 
     expect(await prisma.order.findMany({ where: { id: { in: [withReceipt.id, noReceipt.id, kept.id] } }, select: { id: true } })).toEqual([{ id: kept.id }]);
     expect(await prisma.orderLine.count({ where: { orderId: { in: [withReceipt.id, noReceipt.id] } } })).toBe(0);
-    // Rows first, then the files: the deleted order's receipt goes, the kept one's stays.
+    // The old order's receipt goes, the kept one's stays.
     // (Containment, not equality: the sweep is database-wide, and another
     // package's tests may have left an old order behind.)
     expect(removeObjects).toHaveBeenCalledTimes(1);
@@ -110,14 +110,54 @@ describe('runRetention', () => {
     expect(result.receipts).toBe(keys.length);
   });
 
-  it('still deletes the orders when a receipt cannot be removed, and logs which', async () => {
-    const order = await anOrder(old, `receipts/${pageId}/${randomUUID()}.webp`);
+  it('removes the files before the rows', async () => {
+    const order = await anOrder(old, `receipts/${pageId}/${randomUUID()}.jpg`);
+    let rowWhileRemoving: unknown = 'not called';
+
+    await runRetention({
+      prisma,
+      now,
+      removeObjects: async () => {
+        rowWhileRemoving = await prisma.order.findUnique({ where: { id: order.id }, select: { id: true } });
+        return { failed: [] };
+      },
+    });
+
+    expect(rowWhileRemoving).toEqual({ id: order.id });
+    expect(await prisma.order.findUnique({ where: { id: order.id } })).toBeNull();
+  });
+
+  it('keeps an order whose receipt will not delete, logs it, and deletes it on the next night', async () => {
+    const stuck = await anOrder(old, `receipts/${pageId}/${randomUUID()}.webp`);
+    const fine = await anOrder(old, `receipts/${pageId}/${randomUUID()}.png`);
     const warn = vi.fn();
 
-    await runRetention({ prisma, now, removeObjects: async (keys) => ({ failed: keys }), log: { warn } });
+    await runRetention({
+      prisma,
+      now,
+      removeObjects: async (keys) => ({ failed: keys.filter((key) => key === stuck.receiptKey) }),
+      log: { warn },
+    });
+
+    expect(await prisma.order.findUnique({ where: { id: stuck.id }, select: { receiptKey: true } })).toEqual({ receiptKey: stuck.receiptKey });
+    expect(await prisma.order.findUnique({ where: { id: fine.id } })).toBeNull();
+    expect(warn).toHaveBeenCalledWith({ failed: [stuck.receiptKey] }, expect.stringMatching(/receipt/));
+
+    const next = vi.fn(async (_keys: string[]) => ({ failed: [] as string[] }));
+    await runRetention({ prisma, now, removeObjects: next, log: { warn } });
+
+    expect(next.mock.calls[0]![0]).toContain(stuck.receiptKey);
+    expect(await prisma.order.findUnique({ where: { id: stuck.id } })).toBeNull();
+  });
+
+  it('lets go of a recent conversation waiting on an order it deletes', async () => {
+    const order = await anOrder(old, null);
+    const conversation = await prisma.conversation.create({ data: { pageId, createdAt: recent, pendingOrderId: order.id } });
+
+    await runRetention({ prisma, now, removeObjects: async () => ({ failed: [] }) });
 
     expect(await prisma.order.findUnique({ where: { id: order.id } })).toBeNull();
-    expect(warn).toHaveBeenCalledWith({ failed: expect.arrayContaining([order.receiptKey]) }, expect.stringMatching(/receipt/));
+    expect(await prisma.conversation.findUnique({ where: { id: conversation.id }, select: { pendingOrderId: true } })).toEqual({ pendingOrderId: null });
   });
 
   it('deletes the orders with no file to remove when storage is off', async () => {

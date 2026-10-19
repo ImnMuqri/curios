@@ -7,7 +7,7 @@ import { decideSettingsBanner, decideSettingsView } from './settings.js';
 import { AddPassword } from './add-password-form.js';
 import { ConnectGoogle } from './connect-google.js';
 import { CopyAddress } from './copy-address.js';
-import { Notify } from './notify-leads.js';
+import { Notify } from './notify-emails.js';
 import { SearchIndexing } from './search-indexing.js';
 import { Done, SettingRow } from './setting-row.js';
 import { SignOutButton } from '../sign-out-button.js';

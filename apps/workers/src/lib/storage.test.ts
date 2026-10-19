@@ -40,4 +40,18 @@ describe('createObjectRemover', () => {
       ['curios', 'receipts/p/bad.jpg'],
     ]);
   });
+
+  it('gives up on a delete that hangs, counts it failed, and goes on to the next', async () => {
+    const send = vi.fn(
+      (command: DeleteObjectCommand, options: { abortSignal: AbortSignal }) =>
+        new Promise((resolve, reject) => {
+          if (command.input.Key !== 'receipts/p/hung.jpg') return resolve({});
+          options.abortSignal.addEventListener('abort', () => reject(new Error('aborted')));
+        }),
+    );
+    const removeObjects = createObjectRemover(env, { send }, 20)!;
+
+    expect(await removeObjects(['receipts/p/hung.jpg', 'receipts/p/b.jpg'])).toEqual({ failed: ['receipts/p/hung.jpg'] });
+    expect(send).toHaveBeenCalledTimes(2);
+  });
 });

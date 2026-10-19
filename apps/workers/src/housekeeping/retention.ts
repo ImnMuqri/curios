@@ -17,10 +17,12 @@ export function retentionCutoff(now: Date): Date {
  * BACKEND.md's PDPA promise, kept: leads, orders and the messages of
  * conversations are deleted outright once they are twelve months old, and a
  * conversation left with nothing in it goes with them. An order's receipt is
- * a customer's bank screenshot, so its file goes too: the rows first, in one
- * statement that hands back their receipt keys, then the files, best-effort
- * -- a file that will not delete is logged, never a reason to keep the row.
- * `removeObjects` is null when storage is off (nothing was stored).
+ * a customer's bank screenshot, so its file goes first and the row after: an
+ * order whose file will not delete keeps its row, and with it the key, so the
+ * next night's sweep tries again (deleting a key already gone succeeds, so a
+ * retry is safe). A row is deleted only while its key is still the one whose
+ * file went, so a receipt uploaded mid-sweep is never orphaned. With storage
+ * off (`removeObjects` null) nothing was stored, and every old order goes.
  *
  * What the owner sees as statistics -- the questions and how often they were
  * asked, the topics, their answers -- is the page's own knowledge rather than
@@ -35,21 +37,36 @@ export async function runRetention(deps: {
 }): Promise<{ leads: number; messages: number; conversations: number; orders: number; receipts: number }> {
   const before = retentionCutoff(deps.now);
   const leads = await deps.prisma.lead.deleteMany({ where: { createdAt: { lt: before } } });
+
   // Lines go with their order (onDelete: Cascade); a conversation waiting on one is let go of (SetNull).
-  const orders = await deps.prisma.$queryRaw<{ receiptKey: string | null }[]>`
-    DELETE FROM "Order" WHERE "createdAt" < ${before} RETURNING "receiptKey"`;
+  let orders: number;
+  let receipts = 0;
+  if (!deps.removeObjects) {
+    orders = (await deps.prisma.order.deleteMany({ where: { createdAt: { lt: before } } })).count;
+  } else {
+    const old = await deps.prisma.order.findMany({ where: { createdAt: { lt: before } }, select: { id: true, receiptKey: true } });
+    const keys = old.flatMap((order) => (order.receiptKey ? [order.receiptKey] : []));
+    const { failed } = keys.length > 0 ? await deps.removeObjects(keys) : { failed: [] };
+    if (failed.length > 0) deps.log?.warn({ failed }, 'retention could not remove some receipt files; their orders wait for the next sweep');
+    const removed = keys.filter((key) => !failed.includes(key));
+    receipts = removed.length;
+    const bare = old.filter((order) => !order.receiptKey).map((order) => order.id);
+    orders = (
+      await deps.prisma.order.deleteMany({
+        where: {
+          createdAt: { lt: before },
+          OR: [{ id: { in: bare }, receiptKey: null }, { receiptKey: { in: removed } }],
+        },
+      })
+    ).count;
+  }
+
   const messages = await deps.prisma.message.deleteMany({ where: { createdAt: { lt: before } } });
   const conversations = await deps.prisma.conversation.deleteMany({
     where: { createdAt: { lt: before }, messages: { none: {} }, lead: null },
   });
 
-  const keys = orders.flatMap((order) => (order.receiptKey ? [order.receiptKey] : []));
-  if (keys.length > 0 && deps.removeObjects) {
-    const { failed } = await deps.removeObjects(keys);
-    if (failed.length > 0) deps.log?.warn({ failed }, 'retention could not remove some receipt files');
-  }
-
-  return { leads: leads.count, messages: messages.count, conversations: conversations.count, orders: orders.length, receipts: keys.length };
+  return { leads: leads.count, messages: messages.count, conversations: conversations.count, orders, receipts };
 }
 
 export function createHousekeepingWorker(deps: {

@@ -125,7 +125,7 @@ export function DeliveryTab({
         <div className={styles.row}>
           <span className={styles.rowText}>
             <b>Allow pickup</b>
-            <span>{pickup ? 'Shown at checkout and on the order page' :'Customers can only get it delivered'}</span>
+            <span>{pickup ? 'Shown at checkout and on the order page' : 'Customers can only get it delivered'}</span>
           </span>
           <button type="button" className={ui.switch} role="switch" aria-checked={pickup} aria-label="Allow pickup" onClick={() => void choosePickup(!pickup)}>
             <i />

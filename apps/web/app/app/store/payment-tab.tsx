@@ -26,7 +26,10 @@ export function PaymentTab({
   uploadQr,
   removeQr,
   onQr,
+  displayName,
 }: {
+  /** The shop's name, for the QR card's "<name> · DuitNow." */
+  displayName: string;
   settings: StoreSettings;
   save: (patch: SettingsPatch) => Promise<StoreSettings>;
   qr: { has: boolean; url: string | null };
@@ -77,7 +80,7 @@ export function PaymentTab({
             </span>
             <span>
               <b>Your QR is ready</b>
-              <p>Each order page shows it with the exact total, so customers pay the right amount.</p>
+              <p>{displayName} · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.</p>
               <span className={styles.buttons}>
                 <button type="button" className={styles.outline} disabled={!uploadsEnabled} onClick={() => file.current?.click()}>
                   Change QR

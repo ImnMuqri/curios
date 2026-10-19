@@ -24,6 +24,8 @@ export interface ShopCopy {
   checkout: string;
   /** The Store preview's bar before anything is in the basket. */
   basketEmpty: string;
+  /** The Store preview's Pay screen, for a shop with no QR or bank account yet. */
+  noWayToPay: string;
   paused: (name: string) => string;
   // Checkout.
   backToShop: string;
@@ -175,6 +177,7 @@ const EN: ShopCopy = {
   close: 'Close',
   checkout: 'Checkout',
   basketEmpty: 'Basket is empty',
+  noWayToPay: 'No way to pay yet. Add a QR or your bank account.',
   paused: (name) => `Checkout is paused. Send your basket to ${name} on WhatsApp instead.`,
   backToShop: 'Back to the shop',
   yourOrder: 'Your order',
@@ -283,6 +286,7 @@ const MS: ShopCopy = {
   close: 'Tutup',
   checkout: 'Daftar keluar',
   basketEmpty: 'Bakul kosong',
+  noWayToPay: 'Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.',
   paused: (name) => `Tempahan di sini ditangguhkan. Hantar bakul anda kepada ${name} di WhatsApp.`,
   backToShop: 'Kembali ke kedai',
   yourOrder: 'Tempahan anda',

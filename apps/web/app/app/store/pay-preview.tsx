@@ -54,7 +54,9 @@ export function PayPreview({
   const day = openDays({ now: new Date(`${today}T04:00:00Z`), minNoticeDays: settings.minNoticeDays, closedDays: settings.closedDays }, 1)[0] ?? today;
   const bank = { name: settings.bankName, accountName: settings.bankAccountName, accountNumber: settings.bankAccountNumber };
   const total = formatRinggit(totals.totalCents);
-  const canPay = hasQr || hasBank(bank);
+  // A QR saved but with no address to show it from (storage off) draws nothing, so it cannot count.
+  const shownQr = hasQr ? qrUrl : null;
+  const canPay = Boolean(shownQr) || hasBank(bank);
 
   return (
     <PageTheme theme={look} className={styles.payStage}>
@@ -76,9 +78,9 @@ export function PayPreview({
             <span>{copy.payTo(look.displayName)}</span>
           </div>
           {canPay ? (
-            <PayBox name={look.displayName} qrUrl={hasQr ? qrUrl : null} bank={bank} copy={copy} />
+            <PayBox name={look.displayName} qrUrl={shownQr} bank={bank} copy={copy} />
           ) : (
-            <p className={order.askPay}>No way to pay yet. Add a QR or your bank account.</p>
+            <p className={order.askPay}>{copy.noWayToPay}</p>
           )}
           <div className={`${order.upload} ${styles.payUpload}`}>
             <svg viewBox="0 0 24 24" aria-hidden="true">

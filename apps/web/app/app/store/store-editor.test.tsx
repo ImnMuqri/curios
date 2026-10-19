@@ -212,6 +212,15 @@ describe('the preview', () => {
     expect(within(preview()).getByText('No way to pay yet. Add a QR or your bank account.')).toBeInTheDocument();
   });
 
+  it('counts a saved QR with nothing to show it from as no way to pay, in the page’s language', () => {
+    const noBank = { ...ready, paymentQrKey: 'qr/k.webp', bankName: null, bankAccountName: null, bankAccountNumber: null };
+    render(
+      <StoreEditor initial={noBank} items={items} look={{ ...look, language: 'ms' }} qrUrl={null} uploadsEnabled today="2026-10-16" orders={{ paused: null, nextNumber: 1 }} {...apis()} />,
+    );
+    fireEvent.click(screenTab('Pay'));
+    expect(within(preview()).getByText('Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.')).toBeInTheDocument();
+  });
+
   it('turns to the Pay screen with the Payment and delivery tabs, and back to the shop with Items', () => {
     show();
     fireEvent.click(editTab('Payment'));
