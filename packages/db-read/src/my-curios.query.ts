@@ -83,18 +83,21 @@ export interface NavBadges {
   review: number;
   questions: number;
   leads: number;
+  /** Orders with a receipt in, waiting for the owner to check it. */
+  orders: number;
 }
 
 /**
  * The sidebar's counts, each the filter of the screen it sits beside: facts
  * waiting in Review, topics with no answer yet (Questions' "Needs you"), and
- * leads nobody has contacted (Leads' "New").
+ * leads nobody has contacted (Leads' "New"), and orders whose receipt waits to be checked.
  */
 export async function countNavBadges(accountId: string): Promise<NavBadges> {
-  const [review, questions, leads] = await Promise.all([
+  const [review, questions, leads, orders] = await Promise.all([
     countPendingFacts(accountId),
     prismaRead.topic.count({ where: { page: { accountId }, answer: null } }),
     prismaRead.lead.count({ where: { page: { accountId }, status: 'NEW' } }),
+    prismaRead.order.count({ where: { page: { accountId }, status: 'PLACED', receiptUploadedAt: { not: null } } }),
   ]);
-  return { review, questions, leads };
+  return { review, questions, leads, orders };
 }

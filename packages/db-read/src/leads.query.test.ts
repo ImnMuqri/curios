@@ -70,6 +70,20 @@ describe('getLeads', () => {
     ]);
   });
 
+  it('says how many messages came before the number was left', async () => {
+    const { pageId, accountId } = await anOwnerWithAPage();
+    const conversation = await write.conversation.create({ data: { pageId } });
+    const at = (minute: number) => new Date(Date.UTC(2026, 9, 17, 5, minute));
+    await write.message.create({ data: { conversationId: conversation.id, role: 'USER', content: 'kek coklat?', createdAt: at(1) } });
+    await write.message.create({ data: { conversationId: conversation.id, role: 'ASSISTANT', content: 'RM170.', createdAt: at(2) } });
+    await write.lead.create({ data: { pageId, conversationId: conversation.id, phone: '+60127814402', createdAt: at(3) } });
+    await write.message.create({ data: { conversationId: conversation.id, role: 'USER', content: 'terima kasih', createdAt: at(4) } });
+
+    const [lead] = await getLeads(accountId);
+    expect(lead?.transcript).toHaveLength(3);
+    expect(lead?.capturedAfter).toBe(2);
+  });
+
   it('carries the slots and the score', async () => {
     const leads = await getLeads(mine);
     const withSlots = leads.find((l) => l.phone === '+60123456789');
@@ -103,18 +117,19 @@ describe('getLeads', () => {
 });
 
 describe('getLeadStats', () => {
-  it('counts what is waiting, what is closed, and each of the last seven days', async () => {
+  it('counts what is waiting, what became a sale, and each of the last seven days', async () => {
     const now = new Date('2026-10-17T12:00:00Z');
     const ago = (hours: number) => new Date(now.getTime() - hours * 3600 * 1000);
     const owner = await anOwnerWithAPage();
     const other = await anOwnerWithAPage();
     await aLead(owner.pageId, '+60120000001', { createdAt: ago(1) });
     await aLead(owner.pageId, '+60120000002', { createdAt: ago(2), status: 'CONTACTED' });
-    await aLead(owner.pageId, '+60120000003', { createdAt: ago(30), status: 'CLOSED' });
+    await aLead(owner.pageId, '+60120000003', { createdAt: ago(30), status: 'SOLD' });
     await aLead(owner.pageId, '+60120000004', { createdAt: ago(6 * 24 + 20) });
     await aLead(owner.pageId, '+60120000005', { createdAt: ago(9 * 24), status: 'CLOSED' });
     await aLead(other.pageId, '+60120000006', { createdAt: ago(1) });
 
-    expect(await getLeadStats(owner.accountId, now)).toEqual({ waiting: 2, week: [1, 0, 0, 0, 0, 1, 2], closed: 2 });
+    // Closed is not sold: an enquiry can end without a sale.
+    expect(await getLeadStats(owner.accountId, now)).toEqual({ waiting: 2, week: [1, 0, 0, 0, 0, 1, 2], sold: 1 });
   });
 });

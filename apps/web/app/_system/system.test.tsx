@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 
 let pathname = '/kekklina';
 vi.mock('next/navigation', () => ({ usePathname: () => pathname }));
+const apiFetch = vi.fn(async (_path: string): Promise<{ handle: string | null }> => ({ handle: null }));
+vi.mock('../../lib/api.js', () => ({ apiFetch }));
 
 const { NotFoundScreen } = await import('./NotFoundScreen.js');
 const { default: ErrorScreen } = await import('../error.js');
@@ -24,9 +26,21 @@ describe('NotFoundScreen', () => {
     expect(window.localStorage.getItem('curios:wanted-handle')).toBe('kekklina');
   });
 
+  it('asks which page was meant, and offers it in the board’s words', async () => {
+    pathname = '/kekklina';
+    apiFetch.mockResolvedValueOnce({ handle: 'keklina' });
+    render(<NotFoundScreen />);
+
+    expect(apiFetch).toHaveBeenLastCalledWith('/pages/near?handle=kekklina');
+    expect(await screen.findByText(/Looking for someone\? Did you mean/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'curios.my/keklina' })).toHaveAttribute('href', '/keklina');
+  });
+
   it('offers nothing to claim at an address that was never a page’s', () => {
     pathname = '/app/nothing-here';
+    apiFetch.mockClear();
     render(<NotFoundScreen />);
+    expect(apiFetch).not.toHaveBeenCalled();
 
     expect(screen.queryByRole('link', { name: /Claim/ })).toBeNull();
     expect(screen.getByRole('link', { name: 'Go to Curios' })).toHaveAttribute('href', '/');

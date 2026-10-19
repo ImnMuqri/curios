@@ -9,6 +9,41 @@ export interface BasketLine {
   quantity: number;
 }
 
+/** Where a shop's basket is kept, so the shelf and checkout read the same one. */
+export const defaultStorageKey = (handle: string) => `curios-basket:${handle}`;
+
+/** Storage is the visitor's to edit, so each saved line is checked before anything prices or counts it. */
+function isBasketLine(value: unknown): value is BasketLine {
+  if (typeof value !== 'object' || value === null) return false;
+  const line = value as Record<string, unknown>;
+  return (
+    typeof line.itemId === 'string' &&
+    (line.optionId === null || typeof line.optionId === 'string') &&
+    typeof line.quantity === 'number' &&
+    Number.isInteger(line.quantity) &&
+    line.quantity > 0
+  );
+}
+
+/** sessionStorage can be missing or throw (private windows, blocked storage); the basket then lives in memory only. */
+export function readBasket(key: string): BasketLine[] {
+  try {
+    const raw = window.sessionStorage.getItem(key);
+    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed.filter(isBasketLine) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function writeBasket(key: string, lines: BasketLine[]) {
+  try {
+    window.sessionStorage.setItem(key, JSON.stringify(lines));
+  } catch {
+    // Memory only, as above.
+  }
+}
+
 export interface PricedLine extends BasketLine {
   name: string;
   optionLabel: string | null;

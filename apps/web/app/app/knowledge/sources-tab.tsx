@@ -6,6 +6,7 @@ import type { KnowledgeSource } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { checkSource, FILE_ACCEPT, fileSize, ingestSource, type IngestionResult, type Source, type SourceWay } from '../onboarding/source-input.js';
 import { sourcePlace } from '../_ui/source-place.js';
+import { useToast } from '../_ui/toast.js';
 import { ICONS, sourceKind } from './facts-tab.js';
 import styles from './knowledge.module.css';
 
@@ -34,9 +35,17 @@ type Outcome = { found: number; recheck: boolean; text: boolean };
  * Its own timer rather than a cached query: a re-check reads the same source
  * again, and a cached "finished" from the last read would end it at once.
  */
-function useReading(id: string, fetchStatus: (id: string) => Promise<IngestionResult>, onSettled: (result: IngestionResult) => void, intervalMs = 2000) {
+function useReading(
+  id: string,
+  fetchStatus: (id: string) => Promise<IngestionResult>,
+  onSettled: (result: IngestionResult) => void,
+  onProgress: (progress: number) => void,
+  intervalMs = 2000,
+) {
   const settled = useRef(onSettled);
   settled.current = onSettled;
+  const moved = useRef(onProgress);
+  moved.current = onProgress;
   useEffect(() => {
     let stopped = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -44,6 +53,7 @@ function useReading(id: string, fetchStatus: (id: string) => Promise<IngestionRe
       try {
         const result = await fetchStatus(id);
         if (stopped) return;
+        moved.current(result.progress);
         if (result.status === 'SUCCEEDED' || result.status === 'FAILED') {
           settled.current(result);
           return;
@@ -61,17 +71,28 @@ function useReading(id: string, fetchStatus: (id: string) => Promise<IngestionRe
   }, [id, fetchStatus, intervalMs]);
 }
 
+/** The bar along the foot of a source being read, filling as far as the read has got. */
 function ReadingWatch({
   id,
   fetchStatus,
   onSettled,
+  onProgress,
 }: {
   id: string;
   fetchStatus: (id: string) => Promise<IngestionResult>;
   onSettled: (result: IngestionResult) => void;
+  onProgress: (progress: number) => void;
 }) {
-  useReading(id, fetchStatus, onSettled);
-  return null;
+  const [progress, setProgress] = useState(0);
+  useReading(id, fetchStatus, onSettled, (next) => {
+    setProgress(next);
+    onProgress(next);
+  });
+  return (
+    <span className={styles.sprog} aria-hidden="true">
+      <i style={{ width: `${Math.max(4, progress)}%` }} />
+    </span>
+  );
 }
 
 /** The form for one more source: a link, pasted text, or a file. */
@@ -259,7 +280,11 @@ export function SourceList({
   // just added or just sent to be read again.
   const [started, setStarted] = useState<Record<string, { recheck: boolean; text: boolean }>>({});
   const [outcomes, setOutcomes] = useState<Record<string, Outcome>>({});
-  const [said, setSaid] = useState('');
+  // How far each read has got, as its own poll last said.
+  const [percents, setPercents] = useState<Record<string, number>>({});
+  const { say, toast } = useToast();
+  // A file cut short is worth more than a moment's toast: it stays until the next add.
+  const [cut, setCut] = useState('');
 
   async function act(id: string, run: () => Promise<unknown>, after?: () => void) {
     setBusy(id);
@@ -303,15 +328,18 @@ export function SourceList({
           onDone={(result) => {
             setAdding(false);
             setStarted((prev) => ({ ...prev, [result.ingestionId]: { recheck: false, text: result.text } }));
-            setSaid(result.truncated ? `That file is long, so your page read the first ${pastedTextMax.toLocaleString('en-MY')} characters of it.` : 'Reading it now. New facts go to Review.');
+            setCut(result.truncated ? `That file is long, so your page read the first ${pastedTextMax.toLocaleString('en-MY')} characters of it.` : '');
             onChanged();
           }}
         />
       ) : null}
 
-      <p className={styles.note} role="status">
-        {said}
-      </p>
+      {cut ? (
+        <p className={styles.note} role="status">
+          {cut}
+        </p>
+      ) : null}
+      {toast}
 
       {sources.length === 0 ? (
         adding ? null : (
@@ -363,8 +391,12 @@ export function SourceList({
                 {isReading ? (
                   <>
                     <span className={styles.scan} aria-hidden="true" />
-                    <span className={styles.sprog} aria-hidden="true" />
-                    <ReadingWatch id={source.id} fetchStatus={fetchStatus} onSettled={(result) => settle(source, result)} />
+                    <ReadingWatch
+                      id={source.id}
+                      fetchStatus={fetchStatus}
+                      onSettled={(result) => settle(source, result)}
+                      onProgress={(next) => setPercents((prev) => ({ ...prev, [source.id]: next }))}
+                    />
                   </>
                 ) : null}
                 <span className={styles.sic} data-kind={kind} aria-hidden="true">
@@ -376,7 +408,7 @@ export function SourceList({
                   <b title={source.label}>{label}</b>
                   <span>
                     {isReading
-                      ? 'Reading… This usually takes under a minute.'
+                      ? `Reading… ${Math.max(4, percents[source.id] ?? 0)}%`
                       : source.status === 'FAILED'
                         ? `Could not read it · added ${addedOn(source.createdAt)}`
                         : `${what(source)} · added ${addedOn(source.createdAt)}${source.tracked ? '' : ' · Facts from before tracking are listed under Facts'}`}
@@ -419,7 +451,7 @@ export function SourceList({
                         ? `Remove it and its ${facts(source.factCount)}? Facts another source also says are removed too.`
                         : 'Remove this entry? Its older facts stay under Facts.'}
                     </span>
-                    <button type="button" disabled={busy === source.id} onClick={() => void act(source.id, () => onRemove(source.id), () => setSaid('Source removed, with its facts.'))}>
+                    <button type="button" disabled={busy === source.id} onClick={() => void act(source.id, () => onRemove(source.id), () => say('Source removed, with its facts.'))}>
                       Remove
                     </button>
                     <button type="button" onClick={() => setConfirming(null)}>
@@ -442,7 +474,7 @@ export function SourceList({
                             () => {
                               setStarted((prev) => ({ ...prev, [source.id]: { recheck: true, text: false } }));
                               setOutcomes(({ [source.id]: _old, ...rest }) => rest);
-                              setSaid(`Reading ${label} again. New facts go to Review; facts the site has dropped stay until you remove them.`);
+                              say(`Reading ${label} again. New facts go to Review.`);
                             },
                           )
                         }

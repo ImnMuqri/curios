@@ -1,11 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import { FREE_LEADS, planState } from '@curios/core';
+import { FREE_LEADS, FREE_ORDERS, orderState, planState } from '@curios/core';
 import { alertsFor, billingNeedsYou } from './alerts.js';
 
 const NOW = new Date('2026-10-15T04:00:00.000Z');
 const plan = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; leadsCaptured?: number } = {}) =>
   planState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, leadsCaptured: page.leadsCaptured ?? 0, now: NOW });
 const quiet = { used: 10, cap: 200 };
+const shop = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; ordersPlaced?: number; storeEnabled?: boolean } = {}) => ({
+  state: orderState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, ordersPlaced: page.ordersPlaced ?? 0, ordersAtTrialReset: 0, now: NOW }),
+  storeEnabled: page.storeEnabled ?? true,
+});
+/** One page, read the way layout.tsx reads it: the plan and the shop from the same row, so every pairing is a real one. */
+const page = (
+  p: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; leadsCaptured?: number; ordersPlaced?: number; storeEnabled?: boolean } = {},
+) => ({
+  plan: plan(p),
+  usage: quiet,
+  now: NOW,
+  orders: shop(p),
+});
 
 describe('alertsFor', () => {
   it('counts a running trial on Leads, in blue, one segment per free lead', () => {
@@ -105,7 +118,107 @@ describe('alertsFor', () => {
   });
 });
 
+describe('alertsFor, the shop', () => {
+  it('pauses an open shop whose free orders are used, in red, on Orders', () => {
+    const alerts = alertsFor(page({ ordersPlaced: FREE_ORDERS }));
+
+    expect(alerts).toContainEqual(
+      expect.objectContaining({
+        id: 'paused',
+        tone: 'stop',
+        where: '/app/orders',
+        icon: 'shop',
+        title: 'Your shop can’t take orders right now',
+        text: 'Your 3 free orders are used. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+        action: { href: '/app/billing', label: 'Pay to take orders' },
+      }),
+    );
+  });
+
+  // A plan that ended always ends both allowances' paid time at once: either
+  // the leads are used too (lapsed) or some are left (trial with lapsedOn).
+  // Both are real pages; each gets the every-screen plan banner AND, for an
+  // open shop, the orders' own paused banner, which Orders shows first.
+  it.each([
+    ['leads used too', FREE_LEADS],
+    ['free leads left', 1],
+  ])('says when the plan ended, for a shop paused by a lapsed plan (%s)', (_name, leadsCaptured) => {
+    const alerts = alertsFor(page({ leadsCaptured, ordersPlaced: FREE_ORDERS, paidUntil: new Date('2026-10-13T20:00:00.000Z') }));
+
+    expect(alerts.find((a) => a.where === 'all')).toMatchObject({ tone: 'stop', title: 'Your Business plan ended on 14 Oct 2026' });
+    expect(alerts.find((a) => a.where === '/app/orders')).toMatchObject({
+      id: 'paused-2026-10-13',
+      tone: 'stop',
+      title: 'Your shop can’t take orders right now',
+      text: 'Your Business plan ended on 14 Oct 2026. Customers can still see your shop, and their basket comes to you on WhatsApp instead.',
+      action: { label: 'Pay to take orders' },
+    });
+  });
+
+  // The every-screen banner's shop half follows orderState, the same rule
+  // checkout, the Orders banner and Billing's Orders meter read.
+  const ENDED = new Date('2026-10-13T20:00:00.000Z');
+  const everyScreen = (p: { ordersPlaced: number; storeEnabled?: boolean }) =>
+    alertsFor(page({ leadsCaptured: FREE_LEADS, paidUntil: ENDED, ...p })).find((a) => a.where === 'all');
+
+  it('says a lapsed plan’s shop still has its free orders, and not that it stopped, while some are left', () => {
+    const alert = everyScreen({ ordersPlaced: 1 });
+
+    expect(alert?.text).toBe(
+      'The capture card is no longer shown. Your shop still has 2 free orders. After those, checkout pauses until you pay. Your page and chat still work. Pay again to switch the capture card back on.',
+    );
+    expect(everyScreen({ ordersPlaced: 2 })?.text).toContain('Your shop still has 1 free order. After that, checkout pauses until you pay.');
+    // And Orders' own banner counts the same orders: the two cannot disagree.
+    expect(alertsFor(page({ leadsCaptured: FREE_LEADS, paidUntil: ENDED, ordersPlaced: 1 })).find((a) => a.where === '/app/orders')).toMatchObject({
+      title: '1 of your 3 free orders used',
+    });
+  });
+
+  it('says a lapsed plan’s shop has stopped taking orders once none are left', () => {
+    expect(everyScreen({ ordersPlaced: FREE_ORDERS })?.text).toBe(
+      'The capture card is no longer shown and your shop has stopped taking orders. Your page and chat still work. Pay again to switch them back on.',
+    );
+  });
+
+  it('says nothing about orders in a lapsed plan’s banner when the Store is off', () => {
+    const text = everyScreen({ ordersPlaced: FREE_ORDERS, storeEnabled: false })?.text;
+    expect(text).toBe('The capture card is no longer shown. Your page and chat still work. Pay again to switch it back on.');
+  });
+
+  it('counts the free orders on Orders, in blue, while the trial runs', () => {
+    const alert = alertsFor(page({ ordersPlaced: 1 })).find((a) => a.where === '/app/orders');
+
+    expect(alert).toMatchObject({
+      id: 'orders-trial-1',
+      tone: 'info',
+      where: '/app/orders',
+      icon: 'shop',
+      title: '1 of your 3 free orders used',
+      text: 'After 3, checkout pauses and baskets come to you on WhatsApp until you subscribe.',
+      meter: [true, false, false],
+      action: { href: '/app/billing', label: 'See plans' },
+    });
+  });
+
+  it('says nothing about orders for a shop that is off, a paid one, or a personal page', () => {
+    const aboutOrders = (input: Parameters<typeof alertsFor>[0]) => alertsFor(input).filter((a) => a.where === '/app/orders');
+    expect(aboutOrders(page({ ordersPlaced: FREE_ORDERS, storeEnabled: false }))).toEqual([]);
+    expect(aboutOrders(page({ ordersPlaced: 9, paidUntil: new Date('2099-01-01T00:00:00.000Z') }))).toEqual([]);
+    expect(aboutOrders(page({ mode: 'PERSONAL' }))).toEqual([]);
+  });
+});
+
 describe('billingNeedsYou', () => {
+  it('dots Billing for a paused shop too, even with free leads left', () => {
+    const dot = (p: Parameters<typeof page>[0]) => {
+      const { plan: pagePlan, orders } = page(p);
+      return billingNeedsYou(pagePlan, orders);
+    };
+    expect(dot({ ordersPlaced: FREE_ORDERS })).toBe(true);
+    expect(dot({ ordersPlaced: FREE_ORDERS, storeEnabled: false })).toBe(false);
+    expect(dot({ ordersPlaced: 1 })).toBe(false);
+  });
+
   it('dots Billing for a used-up trial or an ended plan, and not otherwise', () => {
     expect(billingNeedsYou(plan({ leadsCaptured: FREE_LEADS }))).toBe(true);
     expect(billingNeedsYou(plan({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2026-10-01T00:00:00.000Z') }))).toBe(true);

@@ -9,6 +9,7 @@ import { PageHead } from '../_ui/page-head.js';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
+import { useToast } from '../_ui/toast.js';
 import { LeadDetail, PhoneSquare, STATUSES, type LeadActions, type LeadStatus } from './lead-detail.js';
 import styles from './leads.module.css';
 
@@ -34,6 +35,7 @@ export function LeadsScreen({
   publicUrl,
   look,
   now,
+  keptMonths,
   actions,
   onChanged,
 }: {
@@ -46,6 +48,8 @@ export function LeadsScreen({
   publicUrl: string;
   look: Parameters<typeof LeadDetail>[0]['look'];
   now: Date;
+  /** How long a lead is kept before the retention sweep deletes it. */
+  keptMonths: number;
   actions: LeadActions;
   onChanged: () => void;
 }) {
@@ -53,6 +57,7 @@ export function LeadsScreen({
   const [selected, setSelected] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, LeadStatus>>({});
   const [copied, setCopied] = useState(false);
+  const { say, toast } = useToast();
   // A fresh read from the server is the truth again.
   useEffect(() => setStatuses({}), [leads]);
 
@@ -86,7 +91,7 @@ export function LeadsScreen({
 
   return (
     <>
-      <PageHead title="Leads" note="Numbers visitors left in the chat" />
+      <PageHead title="Leads" note={`Numbers visitors left in the chat · kept for ${keptMonths} months`} />
 
       <ul className={inbox.stats} aria-label="Your leads">
         <li className={inbox.kpi}>
@@ -123,8 +128,8 @@ export function LeadsScreen({
             </svg>
           </span>
           <span>
-            <b>{stats.closed}</b>
-            <span>Marked closed</span>
+            <b>{stats.sold}</b>
+            <span>Closed into a sale</span>
           </span>
         </li>
       </ul>
@@ -243,8 +248,10 @@ export function LeadsScreen({
                 now={now}
                 actions={actions}
                 onStatus={(next) => setStatus(chosen, next)}
+                say={say}
                 onDeleted={() => {
                   setSelected(null);
+                  say('Lead deleted.');
                   onChanged();
                 }}
               />
@@ -252,6 +259,7 @@ export function LeadsScreen({
           </div>
         </div>
       )}
+      {toast}
     </>
   );
 }

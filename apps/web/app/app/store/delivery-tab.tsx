@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Callout } from '@curios/ui';
-import { DELIVERY_FEE_MAX_CENTS, MIN_NOTICE_DAYS_MAX, PICKUP_NOTE_MAX, parseRinggit, type DeliveryMode } from '@curios/core/store';
+import { DELIVERY_FEE_MAX_CENTS, DELIVERY_NOTE_MAX, MIN_NOTICE_DAYS_MAX, PICKUP_NOTE_MAX, parseRinggit, type DeliveryMode } from '@curios/core/store';
 import ui from '../_ui/editor.module.css';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
@@ -16,11 +16,14 @@ const FEE_SENTENCE = 'Give flat delivery a fee above RM0, up to RM500.';
 
 const MODES: { mode: DeliveryMode; name: string; note: string; tone?: 'biru' | 'hijau'; d: string }[] = [
   { mode: 'NONE', name: 'No delivery', note: 'Pickup only', d: 'M5 5l14 14M9 7h5v6M14 10h4l3 3v3h-3M3 7h2M3 16h8M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
-  { mode: 'FLAT', name: 'Flat fee', note: 'One fee per order', tone: 'biru', d: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
+  { mode: 'FLAT', name: 'Flat fee', note: 'Added to the total', tone: 'biru', d: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
   { mode: 'RIDER', name: 'Rider paid separately', note: 'Customer pays the rider', tone: 'hijau', d: 'M5 17a3 3 0 1 0 0-.01M19 17a3 3 0 1 0 0-.01M5 17l4-7h5l3 7M9 10l-1-3H6M14 10l2-3h2' },
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FULL_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+/** Monday first, as a shop's week reads; the number is the weekday as `closedDays` stores it. */
+const WEEK: { day: number; name: string; full: string }[] = [1, 2, 3, 4, 5, 6, 0].map((day) => ({ day, name: WEEKDAYS[day] ?? '', full: FULL_WEEKDAYS[day] ?? '' }));
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 const noticeWords = (days: number) => (days === 0 ? 'Same day' : days === 1 ? '1 day' : `${days} days`);
@@ -54,6 +57,9 @@ export function DeliveryTab({
   const [notice, setNotice] = useState(settings.minNoticeDays);
   const [error, setError] = useState('');
   const note = useSettingText(settings.pickupNote ?? '', (text) => ({ pickupNote: orNull(text) }), save);
+  const deliveryNote = useSettingText(settings.deliveryNote ?? '', (text) => ({ deliveryNote: orNull(text) }), save);
+  const [closed, setClosed] = useState(settings.closedDays);
+  const closedSave = useAutosave((daysClosed: number[]) => save({ closedDays: daysClosed }), 300);
   const fee = useSettingText(settings.deliveryFeeCents ? centsText(settings.deliveryFeeCents) : '', feePatch, save);
   // From the field as it reads now, so choosing flat delivery with no fee yet asks for one straight away.
   const feeCheck = feePatch(fee.text);
@@ -97,13 +103,19 @@ export function DeliveryTab({
     noticeSave.schedule(next);
   }
 
+  function toggleDay(day: number) {
+    const next = (closed.includes(day) ? closed.filter((d) => d !== day) : [...closed, day]).sort((a, b) => a - b);
+    setClosed(next);
+    closedSave.schedule(next);
+  }
+
   const days = Array.from({ length: 10 }, (_, i) => new Date(today.getFullYear(), today.getMonth(), today.getDate() + i));
   const earliest = days[Math.min(notice, days.length - 1)] ?? today;
   const earliestWords =
     notice === 0
       ? 'Customers can order for today.'
       : notice < days.length
-        ? `Ordering today, the earliest a customer can have it is ${WEEKDAYS[earliest.getDay()]} ${earliest.getDate()} ${MONTHS[earliest.getMonth()]}.`
+        ? `The earliest date a customer can pick is ${WEEKDAYS[earliest.getDay()]} ${earliest.getDate()} ${MONTHS[earliest.getMonth()]}.`
         : `Customers order ${notice} days ahead.`;
 
   return (
@@ -113,7 +125,7 @@ export function DeliveryTab({
         <div className={styles.row}>
           <span className={styles.rowText}>
             <b>Allow pickup</b>
-            <span>{pickup ? 'Your shop says where and when' : 'Customers can only get it delivered'}</span>
+            <span>{pickup ? 'Shown at checkout and on the order page' : 'Customers can only get it delivered'}</span>
           </span>
           <button type="button" className={ui.switch} role="switch" aria-checked={pickup} aria-label="Allow pickup" onClick={() => void choosePickup(!pickup)}>
             <i />
@@ -171,6 +183,24 @@ export function DeliveryTab({
           </div>
         ) : null}
         <SaveState status={fee.autosave.status} error={fee.autosave.error} retry={fee.autosave.retry} />
+        {mode !== 'NONE' ? (
+          <div className={`${ui.float} ${styles.pickupNote}`}>
+            <label>
+              <em>Delivery note</em>
+              <input
+                value={deliveryNote.text}
+                maxLength={DELIVERY_NOTE_MAX}
+                placeholder="Around Shah Alam · 2pm to 6pm"
+                autoComplete="off"
+                onChange={(event) => deliveryNote.change(event.target.value)}
+              />
+            </label>
+            <small aria-hidden="true">
+              {[...deliveryNote.text].length}/{DELIVERY_NOTE_MAX}
+            </small>
+          </div>
+        ) : null}
+        <SaveState status={deliveryNote.autosave.status} error={deliveryNote.autosave.error} retry={deliveryNote.autosave.retry} />
         {error ? <Callout tone="error">{error}</Callout> : null}
       </section>
 
@@ -200,6 +230,17 @@ export function DeliveryTab({
           {earliestWords}
         </p>
         <SaveState status={noticeSave.status} error={noticeSave.error} retry={noticeSave.retry} />
+        <div className={styles.closedOn} role="group" aria-labelledby="closed-title">
+          <b id="closed-title">Closed on</b>
+          <div className={styles.weekdays}>
+            {WEEK.map(({ day, name, full }) => (
+              <button key={day} type="button" className={styles.weekday} aria-label={`Closed on ${full}`} aria-pressed={closed.includes(day)} onClick={() => toggleDay(day)}>
+                {name}
+              </button>
+            ))}
+          </div>
+        </div>
+        <SaveState status={closedSave.status} error={closedSave.error} retry={closedSave.retry} />
       </section>
     </>
   );

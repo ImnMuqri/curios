@@ -3,45 +3,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
 import type { ShopItem } from '@curios/db-read';
-import { basketMessage, priceBasket, whatsappOrderUrl, type BasketLine } from './basket.js';
+import {
+  basketMessage,
+  defaultStorageKey,
+  priceBasket,
+  readBasket,
+  whatsappOrderUrl,
+  writeBasket,
+  type BasketLine,
+} from './basket.js';
 import { shopCopy, type ShopCopy } from './copy.js';
 import styles from './shop.module.css';
 
 type ViewItem = ShopItem & { photoUrl: string | null };
-
-const defaultStorageKey = (handle: string) => `curios-basket:${handle}`;
-
-/** Storage is the visitor's to edit, so each saved line is checked before anything prices or counts it. */
-function isBasketLine(value: unknown): value is BasketLine {
-  if (typeof value !== 'object' || value === null) return false;
-  const line = value as Record<string, unknown>;
-  return (
-    typeof line.itemId === 'string' &&
-    (line.optionId === null || typeof line.optionId === 'string') &&
-    typeof line.quantity === 'number' &&
-    Number.isInteger(line.quantity) &&
-    line.quantity > 0
-  );
-}
-
-/** sessionStorage can be missing or throw (private windows, blocked storage); the basket then lives in memory only. */
-function readBasket(key: string): BasketLine[] {
-  try {
-    const raw = window.sessionStorage.getItem(key);
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
-    return Array.isArray(parsed) ? parsed.filter(isBasketLine) : [];
-  } catch {
-    return [];
-  }
-}
-
-function writeBasket(key: string, lines: BasketLine[]) {
-  try {
-    window.sessionStorage.setItem(key, JSON.stringify(lines));
-  } catch {
-    // Memory only, as above.
-  }
-}
 
 export function ShopView(props: {
   handle: string;
@@ -75,6 +49,18 @@ export function ShopView(props: {
    * would cover the editor itself. Default 'modal'.
    */
   sheet?: 'modal' | 'inline';
+  /**
+   * canTakeOrders, on the public shop: true sends the basket to checkout;
+   * false says checkout is paused and offers WhatsApp instead. Left out
+   * (the landing's demo, the Store preview), the bar is WhatsApp as before.
+   */
+  canTakeOrders?: boolean;
+  /**
+   * The Store preview's checkout, as the Store board draws it: the bar is
+   * always there ("Basket is empty" until something is added), and its
+   * Checkout button calls this instead of leaving the page.
+   */
+  onCheckout?: () => void;
 }) {
   const copy = shopCopy(props.language);
   const [basket, setBasket] = useState<BasketLine[]>([]);
@@ -153,6 +139,19 @@ export function ShopView(props: {
 
       {open ? <ItemSheet key={open.id} item={open} copy={copy} inline={props.sheet === 'inline'} onAdd={add} onClose={() => setOpenId(null)} /> : null}
 
+      {props.onCheckout && priced.lines.length === 0 ? (
+        <div className={styles.basket} data-empty="">
+          <div className={styles.bar}>
+            <p className={styles.total} data-empty="">
+              {copy.basketEmpty}
+            </p>
+            <button type="button" className={styles.order} onClick={props.onCheckout}>
+              {copy.checkout}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {priced.lines.length > 0 ? (
         <div className={styles.basket}>
           <ul className={styles.lines}>
@@ -172,9 +171,20 @@ export function ShopView(props: {
               </li>
             ))}
           </ul>
+          {props.canTakeOrders === false && props.whatsapp && !props.onOrder ? (
+            <p className={styles.paused}>{copy.paused(props.displayName)}</p>
+          ) : null}
           <div className={styles.bar}>
           <p className={styles.total}>{copy.basket(count, formatRinggit(priced.totalCents))}</p>
-          {props.onOrder ? (
+          {props.onCheckout ? (
+            <button type="button" className={styles.order} onClick={props.onCheckout}>
+              {copy.checkout}
+            </button>
+          ) : props.canTakeOrders && !props.onOrder ? (
+            <a className={styles.order} href={`/${props.handle}/shop/checkout`}>
+              {copy.checkout}
+            </a>
+          ) : props.onOrder ? (
             <button type="button" className={styles.order} onClick={() => props.onOrder?.(basketMessage(props.displayName, priced, copy))}>
               {props.orderLabel ?? copy.orderOnWhatsApp}
             </button>

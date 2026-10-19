@@ -5,6 +5,8 @@ import { loginWalledSite } from '../../../lib/social-links.js';
 export type IngestionResult = {
   status: 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
   extractedCount: number;
+  /** 0 to 100: how far through its source the read has got. */
+  progress: number;
   error: string | null;
 };
 

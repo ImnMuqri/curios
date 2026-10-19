@@ -63,9 +63,15 @@
   color: var(--amber-ink);
 }
 
-.avatar[data-status='CLOSED'] {
+.avatar[data-status='SOLD'] {
   background: var(--hijau-muda);
   color: var(--hijau);
+}
+
+/* Ended without a sale: quiet, out of the way. */
+.avatar[data-status='CLOSED'] {
+  background: var(--surface);
+  color: var(--muted);
 }
 
 .avatar svg {
@@ -218,11 +224,11 @@
   font-size: 13px;
 }
 
-/* New, Contacted, Closed: a sliding thumb in the status's colour. */
+/* New, Contacted, Sold, Closed: a sliding thumb in the status's colour. */
 .status {
   position: relative;
   display: inline-grid;
-  grid-template-columns: repeat(3, 120px);
+  grid-template-columns: repeat(4, 104px);
   margin-top: 22px;
   padding: 4px;
   border-radius: 999px;
@@ -235,7 +241,7 @@
   top: 4px;
   bottom: 4px;
   left: 4px;
-  width: 120px;
+  width: 104px;
   border-radius: 999px;
   background: var(--biru);
   transform: translateX(calc(var(--at, 0) * 100%));
@@ -246,8 +252,12 @@
   background: var(--amber-ink);
 }
 
-.status[data-status='CLOSED']::before {
+.status[data-status='SOLD']::before {
   background: var(--hijau);
+}
+
+.status[data-status='CLOSED']::before {
+  background: var(--muted);
 }
 
 .status button {
@@ -628,15 +638,6 @@
   margin-top: 12px;
 }
 
-.said {
-  margin: 12px 0 0;
-  color: var(--hijau);
-  font-size: 13px;
-}
-
-.said:empty {
-  margin: 0;
-}
 
 /* ---- Narrower ---- */
 
@@ -669,11 +670,11 @@
   .status {
     display: grid;
     width: 100%;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .status::before {
-    width: calc((100% - 8px) / 3);
+    width: calc((100% - 8px) / 4);
   }
 }
 

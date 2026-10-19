@@ -102,3 +102,16 @@ export const BILLING_QUEUE = 'billing';
 export const PENDING_CHECK_JOB = 'pending-check';
 /** The daily reminder that a plan is about to end. Scheduled jobs carry no data. */
 export const RENEWAL_REMINDER_JOB = 'renewal-reminder';
+
+/**
+ * Housekeeping that runs whatever else is configured: the nightly retention
+ * sweep. Its own queue, not billing's, because billing's only runs where
+ * Billplz is set up and a promise to delete personal data cannot depend on that.
+ */
+export const HOUSEKEEPING_QUEUE = 'housekeeping';
+export const RETENTION_JOB = 'retention';
+/**
+ * How long a lead and a conversation's messages are kept (BACKEND.md, PDPA):
+ * then deleted outright. The Leads screen says so.
+ */
+export const LEAD_RETENTION_MONTHS = 12;

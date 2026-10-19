@@ -20,13 +20,18 @@ import {
   chatPerPageLimit,
   ingestPerIpLimit,
   ingestPerPageLimit,
+  nearPerIpLimit,
+  orderPerIpLimit,
+  orderPerPageLimit,
+  receiptPerIpLimit,
   rateLimitPlugin,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
-import { pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
+import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
+import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
@@ -65,6 +70,12 @@ export interface AppOverrides {
   billing?: BillingRouteOptions;
   facts?: FactRouteOptions;
   pages?: PageRouteOptions;
+  orders?: OrderRouteOptions;
+}
+
+/** `/store/orders/<token>/receipt` -> `/store/orders/:token/receipt`; any other URL is returned as it came. */
+export function maskOrderToken(url: string): string {
+  return url.replace(/^(\/store\/orders\/)[^/?#]+/, '$1:token');
 }
 
 export async function buildApp(overrides: AppOverrides = {}) {
@@ -73,7 +84,23 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // would otherwise carry the proxy's address, and the limiters would throttle
   // all visitors as though they were one caller. Off by default so local
   // development is unaffected and nothing can spoof its own address.
-  const options: FastifyServerOptions = { logger: true, trustProxy: resolveTrustProxy() };
+  const options: FastifyServerOptions = {
+    logger: {
+      serializers: {
+        // Fastify's own req serializer, but for the URL. An order link's token
+        // is the order's only credential and it rides in the path, so every
+        // /store/orders/<token>... URL is logged with the token masked.
+        req: (request) => ({
+          method: request.method,
+          url: maskOrderToken(request.url),
+          host: request.host,
+          remoteAddress: request.ip,
+          remotePort: request.socket ? request.socket.remotePort : undefined,
+        }),
+      },
+    },
+    trustProxy: resolveTrustProxy(),
+  };
   const app = Fastify(options).withTypeProvider<ZodTypeProvider>();
 
   app.setValidatorCompiler(validatorCompiler);
@@ -138,6 +165,22 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(leadRoutes);
   });
 
+  // A visitor's checkout: anonymous, so its own scope and its own two budgets.
+  // Per-IP first, so one address's refused flood never reaches the per-shop
+  // count and cannot spend a shop's daily budget on its own.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, orderPerIpLimit(app.rateLimitRedis));
+    await scope.register(rateLimit, orderPerPageLimit(app.rateLimitRedis));
+    await scope.register(orderRoutes, overrides.orders ?? {});
+  });
+
+  // The receipt on an order's link: anonymous too, with its own per-IP budget
+  // (the shop budget above keys on a handle this path does not have).
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, receiptPerIpLimit(app.rateLimitRedis));
+    await scope.register(receiptRoutes, overrides.orders ?? {});
+  });
+
   // Both limiters, because every route in here carries an email address to
   // key the second one on.
   await app.register(async (scope) => {
@@ -155,6 +198,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(authFlowRoutes, overrides.auth ?? {});
   });
 
+  // The 404's "Did you mean": public, so a per-IP budget of its own.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, nearPerIpLimit(app.rateLimitRedis));
+    await scope.register(nearPageRoutes);
+  });
+
   // Outside that scope on purpose: these two carry no credential to stuff, and
   // a session check is the most-called route the dashboard has.
   await app.register(sessionRoutes);
@@ -169,6 +218,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
     await scope.register(storeRoutes, overrides.pages ?? {});
+    await scope.register(ownerOrderRoutes, overrides.orders ?? {});
   });
 
   // Billplz's callback and redirect. No session -- Billplz has none -- and no per-IP

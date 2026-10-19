@@ -1,0 +1,19 @@
+/*
+ * Hidden until the count starts, so the server's figure does not show and
+ * then drop to 0. If no script ever runs, it appears on its own after a beat.
+ */
+.n {
+  opacity: 0;
+  animation: show 0s 1s forwards;
+}
+
+.n[data-live] {
+  opacity: 1;
+  animation: none;
+}
+
+@keyframes show {
+  to {
+    opacity: 1;
+  }
+}

@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { countQuestionsThisWeek, getTopics } from './topics.query.js';
+import { countQuestionsThisWeek, getAnswerRate, getTopics } from './topics.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -168,5 +168,21 @@ describe('the week of asks', () => {
     await say(theirs.pageId, [{ role: 'USER', createdAt: ago(1) }]);
 
     expect(await countQuestionsThisWeek(mine.accountId, now)).toBe(2);
+  });
+});
+
+describe('getAnswerRate', () => {
+  it('counts the last thirty days of asks whose outcome was recorded, and how many the chat could answer', async () => {
+    const now = new Date('2026-10-18T12:00:00Z');
+    const day = (n: number) => new Date(now.getTime() - n * 24 * 3600 * 1000);
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const t = await topic(pageId, 'Delivery?', 5, '2026-10-17T00:00:00Z');
+    const q = await wording(pageId, t.id, `delivery ${randomUUID().slice(0, 6)}`, 5, '2026-10-01T00:00:00Z');
+    for (const [ago, answered] of [[1, true], [2, true], [3, false], [5, null], [40, true]] as const) {
+      await write.questionAsk.create({ data: { questionId: q.id, askedAt: day(ago), answered } });
+    }
+
+    // Two answered of three recorded; the unrecorded one and the old one are left out.
+    expect(await getAnswerRate(accountId, now)).toEqual({ answered: 2, recorded: 3 });
   });
 });

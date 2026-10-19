@@ -227,9 +227,10 @@ describe('copy', () => {
     }
   });
 
-  it('marks the claims that wait on slice 18 where they live', () => {
-    const source = readFileSync(join(import.meta.dirname, 'copy.ts'), 'utf8');
-    expect(source.match(/SLICE 18/g)?.length).toBeGreaterThanOrEqual(4);
+  it('carries no slice 18 markers: checkout, QR payment and Orders are built', () => {
+    for (const file of ['copy.ts', 'order-scene.ts', 'Business.tsx']) {
+      expect(readFileSync(join(import.meta.dirname, file), 'utf8')).not.toMatch(/SLICE 18/);
+    }
   });
 });
 

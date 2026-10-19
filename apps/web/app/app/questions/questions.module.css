@@ -329,6 +329,7 @@
 }
 
 .save {
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -644,17 +645,61 @@
   margin-top: 12px;
 }
 
-/* What just happened, said once and quietly. */
-.said {
-  min-height: 18px;
-  margin: 12px 0 0;
-  color: var(--hijau);
-  font-size: 13px;
+
+/* The board's save: eight sparks fly off the button, and the answer types itself in. */
+.sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
-.said:empty {
-  min-height: 0;
-  margin: 0;
+.sparks i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 3px;
+  height: 12px;
+  margin: -6px 0 0 -1.5px;
+  border-radius: 2px;
+  background: var(--biru);
+  animation: spark 520ms ease-out forwards;
+}
+
+@keyframes spark {
+  from {
+    transform: rotate(var(--r)) translateY(-18px) scaleY(1);
+    opacity: 1;
+  }
+  to {
+    transform: rotate(var(--r)) translateY(-40px) scaleY(0.2);
+    opacity: 0;
+  }
+}
+
+.caret {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 1px;
+  background: currentColor;
+  vertical-align: -0.15em;
+  animation: caretBlink 1s steps(1) infinite;
+}
+
+@keyframes caretBlink {
+  50% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sparks {
+    display: none;
+  }
+
+  .caret {
+    animation: none;
+  }
 }
 
 /* ---- Narrower ---- */

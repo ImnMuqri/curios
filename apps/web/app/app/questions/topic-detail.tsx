@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
 import type { OwnerTopic, OwnerWording } from '@curios/db-read';
 import { themeAttrs } from '../../_bento/BentoPage.js';
@@ -57,6 +57,7 @@ export function TopicDetail({
   actions,
   onChanged,
   onSelect,
+  say,
 }: {
   topic: OwnerTopic;
   /** Every other topic, for "Same question as…". */
@@ -72,6 +73,8 @@ export function TopicDetail({
   onChanged: () => void;
   /** Moves the selection: to the topic merged into, or to none after a delete. */
   onSelect: (id: string | null) => void;
+  /** The screen's toast, which outlives this panel (a deleted topic, a merge). */
+  say: (text: string) => void;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
@@ -81,7 +84,10 @@ export function TopicDetail({
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [said, setSaid] = useState('');
+  // The board's save: sparks off the Save button with every toast, and the
+  // saved answer typing itself into the chat beside it.
+  const [sparks, setSparks] = useState(0);
+  const [typing, setTyping] = useState<{ text: string; shown: number } | null>(null);
   const inFlight = useRef(false);
   const titleRef = useRef<HTMLInputElement>(null);
   // What was just saved, shown until the refreshed topic brings it back, so
@@ -94,17 +100,39 @@ export function TopicDetail({
     if (renaming) titleRef.current?.focus();
   }, [renaming]);
 
+  function tell(text: string) {
+    say(text);
+    setSparks((n) => n + 1);
+  }
+
+  useEffect(() => {
+    if (sparks === 0) return;
+    const timer = setTimeout(() => setSparks(0), 560);
+    return () => clearTimeout(timer);
+  }, [sparks]);
+
+  // Two characters every 22ms, as the board types; all at once for anyone who
+  // asked for less motion.
+  useEffect(() => {
+    if (!typing) return;
+    if (typing.shown >= typing.text.length) {
+      setTyping(null);
+      return;
+    }
+    const timer = setTimeout(() => setTyping((t) => t && { ...t, shown: t.shown + 2 }), 22);
+    return () => clearTimeout(timer);
+  }, [typing]);
+
   /** One request at a time. On success `after` runs and the screen refreshes; on failure the panel stays, with its input. */
   async function run(work: () => Promise<void>, after?: () => void, done?: string) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setError('');
-    setSaid('');
     try {
       await work();
       after?.();
-      if (done) setSaid(done);
+      if (done) tell(done);
       onChanged();
     } catch (failure) {
       setError(toMessage(failure));
@@ -132,7 +160,7 @@ export function TopicDetail({
             type="button"
             className={styles.save}
             disabled={busy || title.trim() === ''}
-            onClick={() => void run(() => actions.rename(topic.id, title.trim()), () => setRenaming(false))}
+            onClick={() => void run(() => actions.rename(topic.id, title.trim()), () => setRenaming(false), 'Renamed.')}
           >
             Save
           </button>
@@ -170,8 +198,14 @@ export function TopicDetail({
               wording={wording}
               canSplit={topic.wordings.length > 1}
               busy={busy}
-              onSplit={() => void run(() => actions.split(wording.id), undefined, 'Split into a topic of its own.')}
-              onDelete={() => void run(() => actions.deleteWording(wording.id))}
+              onSplit={() => void run(() => actions.split(wording.id), undefined, `“${wording.text}” is its own topic now. It will not be grouped back.`)}
+              onDelete={() =>
+                void run(
+                  () => actions.deleteWording(wording.id),
+                  topic.wordings.length === 1 ? () => onSelect(null) : undefined,
+                  topic.wordings.length === 1 ? 'Wording deleted, and its topic with it.' : 'Wording deleted.',
+                )
+              }
             />
           ))}
         </ul>
@@ -183,12 +217,12 @@ export function TopicDetail({
             Two answers, pick one<span>Two topics with answers became one</span>
           </h3>
           <div className={styles.conflict}>
-            <button type="button" className={styles.pick} disabled={busy} onClick={() => void run(() => actions.resolve(topic.id, 'answer'), undefined, 'Kept that answer.')}>
+            <button type="button" className={styles.pick} disabled={busy} onClick={() => void run(() => actions.resolve(topic.id, 'answer'), undefined, 'Kept your answer.')}>
               <small>This answer</small>
               <b>{topic.answer}</b>
               <span>Keep this one</span>
             </button>
-            <button type="button" className={styles.pick} disabled={busy} onClick={() => void run(() => actions.resolve(topic.id, 'conflict'), undefined, 'Kept that answer.')}>
+            <button type="button" className={styles.pick} disabled={busy} onClick={() => void run(() => actions.resolve(topic.id, 'conflict'), undefined, 'Kept the other answer.')}>
               <small>The other answer</small>
               <b>{topic.conflictAnswer}</b>
               <span>Keep this one</span>
@@ -224,7 +258,7 @@ export function TopicDetail({
                           setDraft(null);
                           setSaved({ answer: null });
                         },
-                        'Answer withdrawn.',
+                        'Answer withdrawn. The chat will say it is not sure.',
                       )
                     }
                   >
@@ -241,8 +275,9 @@ export function TopicDetail({
                       () => {
                         setSaved({ answer: text.trim() });
                         setDraft(null);
+                        if (!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) setTyping({ text: text.trim(), shown: 0 });
                       },
-                      `Saved. The chat now answers ${topic.wordings.length === 1 ? 'that wording' : `all ${topic.wordings.length} wordings`} with it.`,
+                      `Saved. The chat now answers all ${plural(topic.wordings.length, 'wording')} with it.`,
                     )
                   }
                 >
@@ -250,6 +285,13 @@ export function TopicDetail({
                     <path d="M5 12.5l4.5 4.5L19 7.5" />
                   </svg>
                   {answer ? 'Update answer' : 'Save answer'}
+                  {sparks > 0 ? (
+                    <span key={sparks} className={styles.sparks} aria-hidden="true">
+                      {[0, 45, 90, 135, 180, 225, 270, 315].map((r) => (
+                        <i key={r} style={{ '--r': `${r}deg` } as CSSProperties} />
+                      ))}
+                    </span>
+                  ) : null}
                 </button>
               </div>
             </div>
@@ -260,7 +302,10 @@ export function TopicDetail({
               </span>
               <span className={styles.asked}>{topic.wordings[0]?.text ?? topic.title}</span>
               {live ? (
-                <span className={styles.reply}>{answer}</span>
+                <span className={styles.reply}>
+                  {typing ? typing.text.slice(0, typing.shown) : answer}
+                  {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
+                </span>
               ) : (
                 <span className={styles.replyNote}>Without your answer, the chat replies from your facts, or says it isn&apos;t sure.</span>
               )}
@@ -316,10 +361,14 @@ export function TopicDetail({
                 onClick={() => {
                   if (!into) return;
                   // The one merged into keeps its answer; this one's answer stays only when that one has none.
-                  void run(() => actions.merge(topic.id, into.id, into.answer ? 'into' : 'this'), () => {
-                    setMerging(false);
-                    onSelect(into.id);
-                  });
+                  void run(
+                    () => actions.merge(topic.id, into.id, into.answer ? 'into' : 'this'),
+                    () => {
+                      setMerging(false);
+                      onSelect(into.id);
+                    },
+                    `Merged into “${into.title}”.`,
+                  );
                 }}
               >
                 Merge
@@ -334,7 +383,7 @@ export function TopicDetail({
           {deleting ? (
             <span className={styles.wordConfirm} role="group" aria-label="Confirm deleting this topic">
               Delete this topic and all its wordings?{answer ? ' Your answer goes too.' : ''}
-              <button type="button" disabled={busy} onClick={() => void run(() => actions.deleteTopic(topic.id), () => onSelect(null))}>
+              <button type="button" disabled={busy} onClick={() => void run(() => actions.deleteTopic(topic.id), () => onSelect(null), 'Topic deleted.')}>
                 Delete topic
               </button>
               <button type="button" onClick={() => setDeleting(false)}>
@@ -354,9 +403,6 @@ export function TopicDetail({
           <Callout tone="error">{error}</Callout>
         </div>
       ) : null}
-      <p className={styles.said} role="status">
-        {said}
-      </p>
     </div>
   );
 }

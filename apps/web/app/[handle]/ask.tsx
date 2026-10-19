@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { AskBar } from '@curios/ui';
 import styles from './page.module.css';
 
 /*
@@ -11,9 +10,8 @@ import styles from './page.module.css';
  * chat mode would put the streaming parser and every bubble into the cold
  * page, which is the page a stranger on 4G actually waits for.
  */
-// The subpath, NOT the '@curios/ui' barrel: AskBar above is imported from that
-// barrel statically, so a dynamic import of the same barrel gives webpack
-// nothing to defer.
+// The subpath, NOT the '@curios/ui' barrel, so chat mode can be split from
+// the cold page.
 //
 // Honest status: this still does not defer anything. It now produces a
 // separate file -- webpack hoists chat mode into a shared chunk once the
@@ -47,7 +45,6 @@ export function Ask({
   // the thread survives being hidden, and unmounting it on every close would
   // throw the conversation away along with the DOM.
   const [everOpened, setEverOpened] = useState(false);
-  const askBarRef = useRef<HTMLButtonElement>(null);
   const promptRef = useRef<HTMLDivElement>(null);
   // Read by the tab listeners, which are attached once and would otherwise see the first render's value.
   const openRef = useRef(open);
@@ -105,21 +102,21 @@ export function Ask({
   }, [open]);
 
   /**
-   * Focus follows the visitor back to what they tapped -- without this, Tab
-   * from a just-closed chat mode lands wherever it happened to be before the
-   * bar was ever touched. Done from an effect, on the true -> false edge,
-   * rather than inside `onClose` itself: the ask bar is hidden by a CSS rule
-   * keyed on `data-mode`, which `ChatMode` removes from its own effect on the
-   * very same `open` transition. Calling `.focus()` synchronously inside
-   * `onClose` would run before either effect has fired -- while the bar is
-   * still `display: none` under the old attribute value -- and silently
-   * fail. Ordering `ChatMode`'s effect before this one (a child's effects run
-   * before its parent's, for the same commit) is what makes waiting for the
-   * next effect pass enough.
+   * Focus follows the visitor back to what they tapped, the Ask tab -- without
+   * this, Tab from a just-closed chat mode lands wherever it happened to be.
+   * Done from an effect, on the true -> false edge, rather than inside
+   * `onClose` itself, so it runs after `ChatMode` has taken `data-mode` off
+   * the page in its own effect for the same commit (a child's effects run
+   * before its parent's).
+   *
+   * There is no ask bar on the Links tab: the Public board has the Ask tab
+   * as the one way into the chat, and its composer only there.
    */
   const wasOpen = useRef(false);
   useEffect(() => {
-    if (wasOpen.current && !open) askBarRef.current?.focus();
+    if (wasOpen.current && !open) {
+      promptRef.current?.closest<HTMLElement>('[data-bento-page]')?.querySelector<HTMLElement>('[data-tab="ask"]')?.focus();
+    }
     wasOpen.current = open;
   }, [open]);
 
@@ -190,7 +187,6 @@ export function Ask({
           </a>
         ) : null}
       </div>
-      <AskBar ref={askBarRef} questions={questions} onOpen={onOpen} />
       {everOpened ? (
         <ChatMode
           open={open}
@@ -201,6 +197,8 @@ export function Ask({
           // Omitted on a personal page, so the card is never offered there.
           // The server refuses one anyway; this stops it being asked for.
           onCapture={canCapture ? onCapture : undefined}
+          // Where "Order <item>" chips go; the server sends them only while the shop is open.
+          shopPath={`/${handle}/shop`}
         />
       ) : null}
     </>

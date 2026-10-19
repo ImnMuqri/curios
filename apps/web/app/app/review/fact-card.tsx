@@ -81,7 +81,19 @@ function Source({ fact }: { fact: ReviewFact }) {
       {/* FRONTEND.md: "the line it came from, for the review screen" --
           without it the owner is asked to approve a claim with no way to
           check it against anything. */}
-      {fact.sourceText ? <p>“{fact.sourceText}”</p> : null}
+      {fact.sourceText ? (
+        fact.sourceBefore !== null || fact.sourceAfter !== null ? (
+          // As the board draws it: the line it sits in, faint, and the words
+          // the fact came from picked out.
+          <p data-picked="">
+            “{fact.sourceBefore}
+            <b>{fact.sourceText}</b>
+            {fact.sourceAfter}”
+          </p>
+        ) : (
+          <p>“{fact.sourceText}”</p>
+        )
+      ) : null}
     </div>
   );
 }

@@ -51,7 +51,7 @@ export const ownerLeadRoutes: FastifyPluginAsyncZod = async (app) => {
     {
       schema: {
         params: z.object({ id: z.string().min(1).max(64) }),
-        body: z.object({ status: z.enum(['NEW', 'CONTACTED', 'CLOSED']) }),
+        body: z.object({ status: z.enum(['NEW', 'CONTACTED', 'SOLD', 'CLOSED']) }),
       },
     },
     async (request, reply) => {

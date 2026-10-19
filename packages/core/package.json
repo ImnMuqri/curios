@@ -12,7 +12,8 @@
     "./billing": "./src/billing.ts",
     "./phone": "./src/phone.ts",
     "./socials": "./src/socials.ts",
-    "./store": "./src/store.ts"
+    "./store": "./src/store.ts",
+    "./orders": "./src/orders.ts"
   },
   "scripts": {
     "lint": "eslint .",

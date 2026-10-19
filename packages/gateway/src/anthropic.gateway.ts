@@ -162,19 +162,26 @@ export function createAnthropicGateway(apiKey: string): Gateway {
   const client = new Anthropic({ apiKey });
 
   return {
-    async extract({ documents }: ExtractInput): Promise<ExtractOutput> {
+    async extract({ documents, onText }: ExtractInput): Promise<ExtractOutput> {
       const started = Date.now();
       const body = buildSourceBlock(documents);
 
       // No output_config.format and no strict mode: constrained generation
-      // flattens prose, and Malay pricing language suffers worst.
-      const message = await client.messages.create({
+      // flattens prose, and Malay pricing language suffers worst. Streamed, so
+      // the facts can be written (and seen) as they come rather than at the end.
+      const stream = client.messages.stream({
         model: EXTRACT_MODEL,
         max_tokens: 16_000,
         system: EXTRACT_SYSTEM,
         output_config: { effort: 'medium' },
         messages: [{ role: 'user', content: body }],
       });
+
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') onText?.(event.delta.text);
+      }
+
+      const message = await stream.finalMessage();
 
       const raw = message.content
         .filter((b): b is Anthropic.TextBlock => b.type === 'text')

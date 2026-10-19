@@ -21,13 +21,24 @@ describe('AuthFilm', () => {
     await act(async () => {
       vi.advanceTimersByTime(4900);
     });
-    expect(container).toHaveTextContent('Wake up to leads.');
+    // The SignIn board's morning: the paid order first, then the lead and the questions.
+    expect(container).toHaveTextContent('Wake up to orders.');
+    expect(container).toHaveTextContent('New order #1042 · RM235');
+    expect(container).toHaveTextContent('Paid by QR, proof attached');
+    expect(container).toHaveTextContent('New lead · 012-345 6789');
     await act(async () => {
       vi.advanceTimersByTime(4900);
     });
-    expect(container).toHaveTextContent('Reply before breakfast.');
-    // Sign in shows only what the product does today: no paid orders.
-    expect(container).not.toHaveTextContent(/order #|paid by qr/i);
+    // Then confirming it in Orders.
+    expect(container).toHaveTextContent('Confirm it before breakfast.');
+    expect(container).toHaveTextContent('Orders');
+    expect(container).toHaveTextContent('Mira');
+    expect(container).toHaveTextContent('#1042 · 7:12 am');
+    expect(container).toHaveTextContent('2× Kek coklat 1kg · 1× Kek batik');
+    expect(container).toHaveTextContent('Pickup · Saturday · Paid by QR');
+    expect(container).toHaveTextContent('Confirmed ✓');
+    expect(container).toHaveTextContent('Hakim · #1041');
+    expect(container).not.toHaveTextContent('Reply before breakfast.');
   });
 
   it('holds the first scene for a visitor who asked for less motion', async () => {

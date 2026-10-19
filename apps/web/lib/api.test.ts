@@ -40,6 +40,14 @@ describe('apiFetch', () => {
     });
   });
 
+  it('keeps the whole error body, for a route that sends more than the error', async () => {
+    stubFetch(409, { error: { code: 'PRICES_CHANGED', message: 'Prices changed.' }, items: [{ id: 'cake' }] });
+    await expect(apiFetch('/store/nadia/orders', { method: 'POST' })).rejects.toMatchObject({
+      code: 'PRICES_CHANGED',
+      body: { items: [{ id: 'cake' }] },
+    });
+  });
+
   it('survives a response that is not JSON at all', async () => {
     const spy = vi.fn(async () => new Response('<html>502</html>', { status: 502 }));
     vi.stubGlobal('fetch', spy);

@@ -206,6 +206,14 @@
 .tsegAdd {
   height: 100%;
   transition: width 700ms cubic-bezier(0.22, 1, 0.36, 1);
+  /* As the board opens: the line fills in from nothing. */
+  animation: grow 700ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
+}
+
+@keyframes grow {
+  from {
+    width: 0;
+  }
 }
 
 .tsegPaid {
@@ -527,6 +535,7 @@
   border-radius: 4px;
   background: var(--biru);
   transition: width 1000ms cubic-bezier(0.22, 1, 0.36, 1);
+  animation: grow 1000ms cubic-bezier(0.22, 1, 0.36, 1) 150ms both;
 }
 
 .mbar[data-tone='kuning'] i {
@@ -535,6 +544,10 @@
 
 .mbar[data-tone='merah'] i {
   background: var(--merah);
+}
+
+.mbar[data-tone='hijau'] i {
+  background: repeating-linear-gradient(135deg, var(--blob-mint) 0 6px, var(--hijau-muda) 6px 12px);
 }
 
 .mbar[data-tone='rose'] i {
@@ -972,6 +985,9 @@
     transition: none;
   }
 
+  .tsegPaid,
+  .tsegAdd,
+  .mbar i,
   .tab tbody tr,
   .esRows > span,
   .esBadge,

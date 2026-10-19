@@ -63,7 +63,9 @@ export type MailBlock =
   /** A conversation: the visitor's turns on the right, the page's on the left. */
   | { kind: 'chat'; lines: { from: 'visitor' | 'page'; text: string }[] }
   /** Label and value rows. */
-  | { kind: 'facts'; rows: [string, string][] };
+  | { kind: 'facts'; rows: [string, string][] }
+  /** A boxed list of what was bought, a detail under each name and an amount on the right, and a total row. */
+  | { kind: 'lines'; rows: { name: string; detail: string; amount: string }[]; total: { label: string; amount: string } };
 
 export interface MailContent {
   /** The inbox line, also the <title>. */
@@ -139,6 +141,15 @@ function block(b: MailBlock): string {
             `<tr><td style="padding:4px 16px 4px 0;font-family:${FONT};font-size:14px;color:${C.muted};vertical-align:top;white-space:nowrap;">${escapeHtml(label)}</td><td style="padding:4px 0;font-family:${FONT};font-size:14px;font-weight:500;color:${C.ink};">${lines(value)}</td></tr>`,
         )
         .join('')}</table>`;
+    case 'lines':
+      return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 8px;border-collapse:separate;border:1px solid ${C.line};border-radius:14px;">${b.rows
+        .map(
+          (row, i) =>
+            `<tr><td style="padding:12px 14px;${i > 0 ? `border-top:1px solid ${C.line};` : ''}"><div style="font-family:${FONT};font-size:14px;font-weight:500;line-height:20px;color:${C.ink};">${escapeHtml(row.name)}</div><div style="font-family:${FONT};font-size:12.5px;line-height:18px;color:${C.muted};">${escapeHtml(row.detail)}</div></td><td align="right" style="padding:12px 14px;${i > 0 ? `border-top:1px solid ${C.line};` : ''}font-family:${FONT};font-size:14px;font-weight:500;color:${C.ink};white-space:nowrap;">${escapeHtml(row.amount)}</td></tr>`,
+        )
+        .join(
+          '',
+        )}<tr><td style="padding:12px 14px;border-top:1px solid ${C.line};border-radius:0 0 0 14px;background:${C.paper};font-family:${FONT};font-size:14px;font-weight:600;color:${C.ink};">${escapeHtml(b.total.label)}</td><td align="right" style="padding:12px 14px;border-top:1px solid ${C.line};border-radius:0 0 14px 0;background:${C.paper};font-family:${FONT};font-size:16px;font-weight:600;color:${C.ink};white-space:nowrap;">${escapeHtml(b.total.amount)}</td></tr></table>`;
   }
 }
 

@@ -94,6 +94,8 @@ export const ingestRoutes: FastifyPluginAsyncZod<IngestRouteOptions> = async (ap
             id: z.string(),
             status: z.enum(['QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED']),
             extractedCount: z.number(),
+            // 0 to 100: how far through its source the read has got.
+            progress: z.number(),
             error: z.string().nullable(),
             // Null for an ingestion from pasted text.
             sourceUrl: z.string().nullable(),

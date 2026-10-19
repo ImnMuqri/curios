@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 // The barrel here, unlike middleware.ts. This file runs on Node, so the
 // barrel's transitive node:crypto import is fine. The split between the two
 // is deliberate -- see the comment in middleware.ts.
-import { planState, SESSION_COOKIE } from '@curios/core';
+import { orderState, planState, SESSION_COOKIE } from '@curios/core';
 import { countNavBadges, getConversationUsage, getOwnerPage } from '@curios/db-read';
 import { avatarUrl } from '../../lib/avatar-url.js';
 import { AppFrame } from './app-frame.js';
@@ -48,7 +48,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // not be remounted when the server side re-reads.
   if (!page) {
     return (
-      <AppFrame bare displayName="" avatarUrl={null} planLabel="" badges={{ review: 0, questions: 0, leads: 0 }} mode="PERSONAL">
+      <AppFrame bare displayName="" avatarUrl={null} planLabel="" badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL">
         {children}
       </AppFrame>
     );
@@ -59,6 +59,11 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // The stop states (trial, limit, plan ended), decided once here for every
   // screen; each screen's header shows the one that is about it.
   const plan = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
+  // The shop's own count, by the one rule the shop and the API use too.
+  const orders = {
+    state: orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
+    storeEnabled: page.storeEnabled,
+  };
   return (
     <AppFrame
       displayName={page.displayName}
@@ -66,8 +71,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       planLabel={planLabel({ ...page, now })}
       badges={badges}
       mode={page.mode}
-      alerts={alertsFor({ plan, usage, now })}
-      billingDot={billingNeedsYou(plan)}
+      alerts={alertsFor({ plan, usage, now, orders })}
+      billingDot={billingNeedsYou(plan, orders)}
     >
       {children}
     </AppFrame>

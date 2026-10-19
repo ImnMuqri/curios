@@ -23,6 +23,8 @@ export interface LeadActions {
 export const STATUSES: { id: LeadStatus; label: string }[] = [
   { id: 'NEW', label: 'New' },
   { id: 'CONTACTED', label: 'Contacted' },
+  // Apart from Closed: a lead is often only an enquiry, and ends without a sale.
+  { id: 'SOLD', label: 'Sold' },
   { id: 'CLOSED', label: 'Closed' },
 ];
 
@@ -68,6 +70,7 @@ export function LeadDetail({
   actions,
   onStatus,
   onDeleted,
+  say,
 }: {
   lead: OwnerLead;
   /** The status as the screen shows it now, which may be ahead of `lead.status`. */
@@ -81,13 +84,14 @@ export function LeadDetail({
   /** Shows a new status at once; the screen puts it back if the save fails. */
   onStatus: (status: LeadStatus) => Promise<void>;
   onDeleted: () => void;
+  /** The screen's toast ("Marked contacted."), which outlives this panel. */
+  say: (text: string) => void;
 }) {
   const [message, setMessage] = useState(() => firstMessage(displayName, lead.slots, language));
   const [copied, setCopied] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [said, setSaid] = useState('');
   const inFlight = useRef(false);
 
   const phone = formatMalaysianPhone(lead.phone);
@@ -100,7 +104,7 @@ export function LeadDetail({
     setError('');
     try {
       await onStatus(next);
-      setSaid(words);
+      say(words);
     } catch (failure) {
       setError(failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
     }
@@ -109,6 +113,7 @@ export function LeadDetail({
   // Reaching out is what Contacted means; a lead already past New stays where the owner put it.
   const reachedOut = () => {
     if (status === 'NEW') void choose('CONTACTED', 'WhatsApp opened. Marked contacted.');
+    else say('WhatsApp opened.');
   };
 
   async function copy() {
@@ -200,7 +205,7 @@ export function LeadDetail({
               The conversation<span>{lead.transcript.length} messages</span>
             </h3>
             <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} aria-label="The conversation">
-              {lead.transcript.map((line, i) => (
+              {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
                 <span key={i} className={line.role === 'USER' ? styles.fromVisitor : styles.fromPage}>
                   {line.content}
                 </span>
@@ -211,6 +216,11 @@ export function LeadDetail({
                 </svg>
                 Left their number
               </span>
+              {lead.transcript.slice(lead.capturedAfter).map((line, i) => (
+                <span key={lead.capturedAfter + i} className={line.role === 'USER' ? styles.fromVisitor : styles.fromPage}>
+                  {line.content}
+                </span>
+              ))}
             </div>
           </div>
           <div>
@@ -278,9 +288,6 @@ export function LeadDetail({
           <Callout tone="error">{error}</Callout>
         </div>
       ) : null}
-      <p className={styles.said} role="status">
-        {said}
-      </p>
     </div>
   );
 }

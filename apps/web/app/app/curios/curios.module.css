@@ -831,11 +831,87 @@
   opacity: 0.8;
 }
 
-.previewAsk {
-  margin: 16px;
-  font-size: 13px;
-  text-align: center;
-  opacity: 0.75;
+/* The preview's Ask tab: a customer's question and the page's answer, as the board draws them. */
+.pvChat {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 14px 16px;
+  text-align: left;
+}
+
+.pvQ,
+.pvA {
+  max-width: 88%;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.pvQ {
+  align-self: flex-end;
+  border-radius: 16px 16px 5px 16px;
+  background: var(--card);
+  color: var(--ink);
+}
+
+.pvA {
+  align-self: flex-start;
+  border-radius: 16px 16px 16px 5px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 18%, var(--card));
+  color: var(--ink);
+}
+
+.pvTap {
+  align-self: flex-start;
+  padding: 8px 12px;
+  border: 1.5px dashed color-mix(in srgb, currentColor 35%, transparent);
+  border-radius: 16px 16px 16px 5px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.pvTap:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+
+.pvDots {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.pvDots i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.4;
+  animation: pvDot 1s ease-in-out infinite;
+}
+
+.pvDots i:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.pvDots i:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes pvDot {
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pvDots i {
+    animation: none;
+  }
 }
 
 .previewShop {

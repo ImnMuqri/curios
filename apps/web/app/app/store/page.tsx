@@ -1,7 +1,8 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { SESSION_COOKIE } from '@curios/core';
-import { getMyCurios, getOwnerStore } from '@curios/db-read';
+import { FREE_ORDERS, orderState, SESSION_COOKIE } from '@curios/core';
+import { getMyCurios, getOwnerPage, getOwnerStore, type OwnerPage } from '@curios/db-read';
+import { shortDate } from '../billing/billing-copy.js';
 import { Callout } from '@curios/ui';
 import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
 import { whatsappNumber } from '../../[handle]/shop/basket.js';
@@ -15,11 +16,28 @@ function todayInMalaysia(now = new Date()): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kuala_Lumpur' }).format(now);
 }
 
+/**
+ * Why an open shop takes no orders now, in the Alerts board's words for the
+ * same pause, or null while it may. orderState decides, as it does for the
+ * shop, the API, Alerts and Billing.
+ */
+function pausedWhy(page: Pick<OwnerPage, 'mode' | 'paidUntil' | 'ordersPlaced' | 'ordersAtTrialReset'>, now: Date): string | null {
+  const state = orderState({ ...page, now });
+  switch (state.kind) {
+    case 'trialSpent':
+      return `Paused: your ${FREE_ORDERS} free orders are used.`;
+    case 'lapsed':
+      return `Paused: your plan ended on ${shortDate(state.paidUntil, true)}.`;
+    default:
+      return null;
+  }
+}
+
 export default async function StorePage() {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
-  const [store, page] = await Promise.all([getOwnerStore(owner.accountId), getMyCurios(owner.accountId)]);
-  if (!store || !page) redirect('/app/onboarding');
+  const [store, page, owned] = await Promise.all([getOwnerStore(owner.accountId), getMyCurios(owner.accountId), getOwnerPage(owner.accountId)]);
+  if (!store || !page || !owned) redirect('/app/onboarding');
 
   if (store.mode === 'PERSONAL') {
     return (
@@ -60,6 +78,7 @@ export default async function StorePage() {
       uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
       publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
       today={todayInMalaysia()}
+      orders={{ paused: pausedWhy(owned, new Date()), nextNumber: owned.ordersPlaced + 1 }}
     />
   );
 }

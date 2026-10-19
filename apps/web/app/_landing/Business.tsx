@@ -24,8 +24,6 @@ const Cursor = ({ x, y, o, pressed }: { x: number; y: number; o: number; pressed
  * yours: it plays once the stage is fully in view, and loops while it stays
  * there. With reduced motion (and before JavaScript) it shows the last frame:
  * the order received, confirmed in your Orders.
- *
- * SLICE 18: checkout, QR payment and Orders are not built yet.
  */
 export function Business({ locale }: { locale: Locale }) {
   const copy = COPY[locale].business;

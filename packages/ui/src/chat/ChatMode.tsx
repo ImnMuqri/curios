@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CaptureCard } from '../capture/CaptureCard.js';
 import { AnswerBubble } from './AnswerBubble.js';
+import { isOrderCardData, OrderCard, validOrderChips, type OrderCardData } from './OrderCard.js';
 import styles from './ChatMode.module.css';
 
 /** Same copy for every failure path. The visitor never sees a raw error. */
@@ -15,6 +16,10 @@ const MAX_CHIPS = 4;
 interface Turn {
   question: string;
   answer: string;
+  /** "Thanks. Here’s order 7Q4M:" is followed by the order itself. */
+  order?: OrderCardData;
+  /** "Order <item>" links, for the shop's items the answer named. */
+  orderChips?: { itemId: string; label: string }[];
 }
 
 /**
@@ -58,6 +63,11 @@ export interface ChatModeProps {
    * answers, because a field that posts nowhere is worse than no field.
    */
   onCapture?: (phone: string, conversationId: string) => Promise<void>;
+  /**
+   * The page's shop, `/<handle>/shop`: an answer naming its items ends with
+   * "Order <item>" links to `?item=<id>` there. Without it none are drawn.
+   */
+  shopPath?: string;
 }
 
 export function ChatMode({
@@ -67,6 +77,7 @@ export function ChatMode({
   displayName,
   questions,
   onCapture,
+  shopPath,
 }: ChatModeProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState('');
@@ -257,6 +268,10 @@ export function ChatMode({
             index === previous.length - 1 ? { ...turn, answer: text } : turn,
           ),
         );
+      const attach = (extra: Pick<Turn, 'order' | 'orderChips'>) =>
+        setTurns((previous) =>
+          previous.map((turn, index) => (index === previous.length - 1 ? { ...turn, ...extra } : turn)),
+        );
 
       try {
         const body = await onAsk(question, conversationId.current);
@@ -292,8 +307,12 @@ export function ChatMode({
                 code?: string;
                 conversationId?: string;
                 intent?: { qualified?: boolean };
+                // Checked before drawing, like everything else in the stream.
+                card?: unknown;
+                orderChips?: unknown;
               };
               if (parsed.type === 'text' && parsed.text) append(parsed.text);
+              if (parsed.type === 'order' && isOrderCardData(parsed.card)) attach({ order: parsed.card });
               if (parsed.type === 'error') {
                 // The one error this acts on rather than only showing. A dead
                 // id must be dropped, or every later question carries it and
@@ -307,6 +326,8 @@ export function ChatMode({
               if (parsed.type === 'done') {
                 if (parsed.conversationId) conversationId.current = parsed.conversationId;
                 setQualified(parsed.intent?.qualified === true);
+                const chips = validOrderChips(parsed.orderChips);
+                if (chips.length > 0) attach({ orderChips: chips });
                 return;
               }
             } catch {
@@ -380,6 +401,20 @@ export function ChatMode({
           <div key={`${index}-${turn.question}`} className={styles.turn}>
             <p className={styles.question}>{turn.question}</p>
             <AnswerBubble text={turn.answer} />
+            {turn.order ? <OrderCard card={turn.order} /> : null}
+            {turn.orderChips && shopPath ? (
+              <div className={styles.orderChips}>
+                {turn.orderChips.map((chip) => (
+                  <a
+                    key={chip.itemId}
+                    className={styles.orderChip}
+                    href={`${shopPath}?item=${encodeURIComponent(chip.itemId)}`}
+                  >
+                    {chip.label}
+                  </a>
+                ))}
+              </div>
+            ) : null}
           </div>
         ))
       )}

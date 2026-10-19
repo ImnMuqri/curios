@@ -50,6 +50,8 @@ export interface CuriosApi {
   chooseStockCover: (name: StockCover) => Promise<{ coverKey: string; coverUrl: string | null }>;
   uploadCover: (file: File) => Promise<{ coverKey: string; coverUrl: string | null }>;
   removeCover: () => Promise<void>;
+  /** The preview's Ask tab: what the page really says, through the owner's tester. */
+  askPage: (question: string) => Promise<{ reply: string }>;
 }
 
 export type EditorPage = MyCurios & {
@@ -57,6 +59,8 @@ export type EditorPage = MyCurios & {
   coverUrl: string | null;
   /** The first few items for sale, for the preview's Shop tab. */
   shopItems: { name: string; priceCents: number | null; photoUrl: string | null }[];
+  /** The question the preview's Ask tab offers: the most asked, or a starter. */
+  previewQuestion: string;
 };
 
 const TABS = [
@@ -81,6 +85,8 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
     chooseStockCover: (name) => track(api.chooseStockCover(name)),
     uploadCover: (file) => track(api.uploadCover(file)),
     removeCover: () => track(api.removeCover()),
+    // A question, not a save: the header's status is not its business.
+    askPage: (question) => api.askPage(question),
   };
 }
 
@@ -250,7 +256,14 @@ export function MyCuriosEditor({
             interactive={false}
             nameAs="p"
           >
-            <PreviewTabBody tab={shownPreview} hasLinks={page.links.length > 0} items={page.shopItems} />
+            <PreviewTabBody
+              tab={shownPreview}
+              hasLinks={page.links.length > 0}
+              items={page.shopItems}
+              question={page.previewQuestion}
+              askPage={api.askPage}
+              accent={page.accentColor}
+            />
           </BentoPage>
         </PreviewFrame>
       </div>
@@ -259,9 +272,64 @@ export function MyCuriosEditor({
 }
 
 /** What the preview shows under the tabs that BentoPage leaves to its caller. */
-function PreviewTabBody({ tab, hasLinks, items }: { tab: PreviewTab; hasLinks: boolean; items: EditorPage['shopItems'] }) {
+/**
+ * The preview's Ask tab, as the board draws it: a customer's question and the
+ * page's answer. The question is real (the most asked, or a starter), and so
+ * is the answer -- the owner taps for it, and the tester asks the page, so it
+ * never shows a sample answer the page would not give, and a model call is
+ * spent only when asked for.
+ */
+function PreviewAsk({ question, askPage, accent }: { question: string; askPage: CuriosApi['askPage']; accent: string }) {
+  const [state, setState] = useState<{ kind: 'idle' } | { kind: 'asking' } | { kind: 'answered'; reply: string } | { kind: 'failed' }>({ kind: 'idle' });
+
+  async function ask() {
+    setState({ kind: 'asking' });
+    try {
+      setState({ kind: 'answered', reply: (await askPage(question)).reply });
+    } catch {
+      setState({ kind: 'failed' });
+    }
+  }
+
+  return (
+    <span className={styles.pvChat} style={{ '--accent': accent } as CSSProperties}>
+      <span className={styles.pvQ}>{question}</span>
+      {state.kind === 'answered' ? (
+        <span className={styles.pvA}>{state.reply}</span>
+      ) : state.kind === 'asking' ? (
+        <span className={styles.pvA} aria-label="Asking">
+          <span className={styles.pvDots} aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </span>
+        </span>
+      ) : (
+        <button type="button" className={styles.pvTap} onClick={() => void ask()}>
+          {state.kind === 'failed' ? 'That did not work. Tap to try again' : 'Tap to hear what your page says'}
+        </button>
+      )}
+    </span>
+  );
+}
+
+function PreviewTabBody({
+  tab,
+  hasLinks,
+  items,
+  question,
+  askPage,
+  accent,
+}: {
+  tab: PreviewTab;
+  hasLinks: boolean;
+  items: EditorPage['shopItems'];
+  question: string;
+  askPage: CuriosApi['askPage'];
+  accent: string;
+}) {
   if (tab === 'links') return hasLinks ? null : <span className={styles.previewEmpty}>Your links show here</span>;
-  if (tab === 'ask') return <p className={styles.previewAsk}>What do you want to know?</p>;
+  if (tab === 'ask') return <PreviewAsk question={question} askPage={askPage} accent={accent} />;
   if (items.length === 0) return <span className={styles.previewEmpty}>Your items show here</span>;
   return (
     <span className={styles.previewShop}>

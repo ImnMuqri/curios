@@ -136,6 +136,29 @@ describe('PATCH /store/settings', () => {
     expect(cleared.json().settings.shopDescription).toBeNull();
   });
 
+  it('saves the closed days and the delivery note', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { closedDays: [0, 6], deliveryNote: ' Around Shah Alam ' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().settings).toMatchObject({ closedDays: [0, 6], deliveryNote: 'Around Shah Alam' });
+    const cleared = await call(app, 'PATCH', '/store/settings', owner.cookie, { closedDays: [], deliveryNote: '  ' });
+    expect(cleared.json().settings).toMatchObject({ closedDays: [], deliveryNote: null });
+  });
+
+  it('refuses closing all seven days', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { closedDays: [0, 1, 2, 3, 4, 5, 6] });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatchObject({ code: 'STORE_NOT_READY', message: 'Leave at least one day open.' });
+  });
+
+  it('refuses a weekday outside 0 to 6, a repeat, and an over-long delivery note', async () => {
+    const owner = await anOwner(app);
+    for (const patch of [{ closedDays: [7] }, { closedDays: [-1] }, { closedDays: [1, 1] }, { closedDays: [1.5] }, { deliveryNote: 'x'.repeat(121) }]) {
+      expect((await call(app, 'PATCH', '/store/settings', owner.cookie, patch)).json().error.code).toBe('INVALID_STORE_SETTING');
+    }
+  });
+
   it('refuses a bad account number, an over-long note or description, and an impossible notice', async () => {
     const owner = await anOwner(app);
     for (const patch of [{ bankAccountNumber: '12ab' }, { pickupNote: 'x'.repeat(121) }, { shopDescription: 'x'.repeat(161) }, { minNoticeDays: 31 }, { minNoticeDays: -1 }]) {

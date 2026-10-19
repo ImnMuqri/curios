@@ -173,6 +173,82 @@ export function chatPerIpLimit(redis: IORedis): RateLimitPluginOptions {
   };
 }
 
+const ORDER_MESSAGE = (after: string) => `Too many orders just now. Try again in ${after}.`;
+
+/**
+ * Per visitor, across every shop. Placing an order spends nothing, but it
+ * writes a row, emails an owner and can spend a page's free orders, so a loop
+ * from one address must not do any of that without bound.
+ */
+export function orderPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('order-ip:'),
+    max: limit('RATE_LIMIT_ORDER_PER_IP', 10),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany(ORDER_MESSAGE),
+  };
+}
+
+/**
+ * Receipt uploads, per visitor across every order. Each one writes a file to
+ * storage and may email an owner, and the order link is the only credential,
+ * so a loop from one address must not fill the bucket or an inbox.
+ */
+export function receiptPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('receipt-ip:'),
+    max: limit('RATE_LIMIT_RECEIPT_PER_IP', 20),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many receipts just now. Try again in ${after}.`),
+  };
+}
+
+/**
+ * Per shop, whoever asks: what bounds the junk many addresses can pour into
+ * one owner's orders and inbox in a day. Keyed on the `handle` route param,
+ * lowercased as the page is looked up, so every casing is the same budget.
+ */
+export function orderPerPageLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('order-page:'),
+    max: limit('RATE_LIMIT_ORDER_PER_PAGE', 100),
+    timeWindow: '1 day',
+    keyGenerator: (request) => ((request.params as { handle?: string }).handle ?? '-').toLowerCase(),
+    // The looser of the two for any one visitor, so the per-IP headers are the ones a client sees.
+    addHeaders: { 'x-ratelimit-limit': false, 'x-ratelimit-remaining': false, 'x-ratelimit-reset': false },
+    errorResponseBuilder: tooMany(ORDER_MESSAGE),
+  };
+}
+
+/**
+ * Per caller, for the 404's "Did you mean". Each lookup reads published page
+ * addresses, so the budget is generous for someone mistyping and tight for
+ * someone walking the list.
+ */
+export function nearPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('near-ip:'),
+    max: limit('RATE_LIMIT_NEAR_PER_IP', 30),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many lookups just now. Try again in ${after}.`),
+  };
+}
+
 /**
  * Per caller. An ingestion runs Opus over a whole site and costs roughly eight
  * times what an answer costs, so this budget is much tighter than chat's.

@@ -10,9 +10,9 @@ const transcript = [
   { role: 'ASSISTANT' as const, content: 'Kek coklat moist 2kg is RM170.' },
 ];
 const leads: OwnerLead[] = [
-  { id: 'l1', phone: '+60127814402', score: 3, slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, status: 'NEW', createdAt: new Date('2026-10-17T05:35:00Z'), transcript },
-  { id: 'l2', phone: '+601120457788', score: 1, slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, status: 'CONTACTED', createdAt: new Date('2026-10-16T03:00:00Z'), transcript },
-  { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript },
+  { id: 'l1', phone: '+60127814402', score: 3, slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, status: 'NEW', createdAt: new Date('2026-10-17T05:35:00Z'), transcript, capturedAfter: 2 },
+  { id: 'l2', phone: '+601120457788', score: 1, slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, status: 'CONTACTED', createdAt: new Date('2026-10-16T03:00:00Z'), transcript, capturedAfter: 2 },
+  { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript, capturedAfter: 2 },
 ];
 
 function show(list = leads, calls?: Partial<LeadActions>) {
@@ -21,13 +21,14 @@ function show(list = leads, calls?: Partial<LeadActions>) {
   render(
     <LeadsScreen
       leads={list}
-      stats={{ waiting: 1, week: [0, 0, 0, 0, 1, 1, 1], closed: 1 }}
+      stats={{ waiting: 1, week: [0, 0, 0, 0, 1, 1, 1], sold: 1 }}
       handle="keklina"
       displayName="Kek Lina"
       language="en"
       publicUrl="https://curios.my/keklina"
       look={{ accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null }}
       now={now}
+      keptMonths={12}
       actions={actions}
       onChanged={onChanged}
     />,
@@ -41,11 +42,16 @@ const filter = (name: RegExp) => within(screen.getByRole('tablist', { name: 'Sho
 const statusSwitch = () => within(screen.getByRole('radiogroup', { name: 'Lead status' }));
 
 describe('LeadsScreen, the figures', () => {
-  it('counts what waits, this week’s numbers, and what is closed', () => {
+  it('says how long numbers are kept', () => {
+    show();
+    expect(screen.getByText('Numbers visitors left in the chat · kept for 12 months')).toBeInTheDocument();
+  });
+
+  it('counts what waits, this week’s numbers, and what became a sale', () => {
     show();
     expect(figures().getByText('New, waiting for you').previousSibling).toHaveTextContent('1');
     expect(figures().getByText('Numbers left this week').previousSibling).toHaveTextContent('3');
-    expect(figures().getByText('Marked closed').previousSibling).toHaveTextContent('1');
+    expect(figures().getByText('Closed into a sale').previousSibling).toHaveTextContent('1');
   });
 });
 
@@ -87,6 +93,14 @@ describe('LeadsScreen, the status', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Marked closed.');
   });
 
+  it('marks a sale apart from a close', async () => {
+    const { actions } = show();
+    expect(statusSwitch().getAllByRole('radio').map((r) => r.textContent)).toEqual(['New', 'Contacted', 'Sold', 'Closed']);
+    await act(async () => { fireEvent.click(statusSwitch().getByRole('radio', { name: 'Sold' })); });
+    expect(actions.setStatus).toHaveBeenCalledWith('l1', 'SOLD');
+    expect(screen.getByRole('status')).toHaveTextContent('Marked sold.');
+  });
+
   it('puts it back, and says why, when the save fails', async () => {
     show(leads, { setStatus: vi.fn(async () => { throw new Error('No such lead.'); }) });
     await act(async () => { fireEvent.click(statusSwitch().getByRole('radio', { name: 'Contacted' })); });
@@ -101,12 +115,22 @@ describe('LeadsScreen, the status', () => {
     open.addEventListener('click', (event) => event.preventDefault());
     await act(async () => { fireEvent.click(open); });
     expect(actions.setStatus).toHaveBeenCalledWith('l1', 'CONTACTED');
+    expect(screen.getByRole('status')).toHaveTextContent('WhatsApp opened. Marked contacted.');
 
     fireEvent.click(list().getByRole('button', { name: /\+60 13-557 6610/ }));
     const again = screen.getByRole('link', { name: 'Open WhatsApp' });
     again.addEventListener('click', (event) => event.preventDefault());
     await act(async () => { fireEvent.click(again); });
     expect(actions.setStatus).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('status')).toHaveTextContent(/^WhatsApp opened\.$/);
+  });
+
+  it('says a deleted lead is gone, after its panel has closed', async () => {
+    show();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete lead' }));
+    const confirm = screen.getByRole('group', { name: 'Confirm deleting this lead' });
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete' })); });
+    expect(screen.getByRole('status')).toHaveTextContent('Lead deleted.');
   });
 });
 

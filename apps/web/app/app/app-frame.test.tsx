@@ -6,7 +6,7 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios' }));
 const { AppFrame } = await import('./app-frame.js');
 
 const frame = ({
-  badges = { review: 3, questions: 0, leads: 0 },
+  badges = { review: 3, questions: 0, leads: 0, orders: 0 },
   mode = 'PERSONAL',
   avatarUrl = null,
   billingDot = false,
@@ -46,6 +46,17 @@ describe('AppFrame', () => {
     expect(screen.queryByRole('link', { name: 'Store' })).toBeNull();
   });
 
+  it('puts Orders first in the Inbox for a business page, counting the receipts to check', () => {
+    frame({ mode: 'BUSINESS', badges: { review: 0, questions: 0, leads: 0, orders: 2 } });
+    expect(screen.getByRole('link', { name: /^Orders/ })).toHaveAttribute('href', '/app/orders');
+    expect(links().map((a) => a.textContent).slice(2, 5)).toEqual(['Orders2', 'Questions', 'Leads']);
+  });
+
+  it('shows a personal page no Orders link, whatever the count says', () => {
+    frame({ mode: 'PERSONAL', badges: { review: 0, questions: 0, leads: 0, orders: 2 } });
+    expect(screen.queryByRole('link', { name: /Orders/ })).toBeNull();
+  });
+
   it('sends Facts & sources to the Knowledge screen', () => {
     frame();
     expect(screen.getByRole('link', { name: 'Facts & sources' })).toHaveAttribute('href', '/app/knowledge');
@@ -58,14 +69,14 @@ describe('AppFrame', () => {
   });
 
   it('counts what is waiting beside Review, Questions and Leads', () => {
-    frame({ badges: { review: 3, questions: 4, leads: 2 } });
+    frame({ badges: { review: 3, questions: 4, leads: 2, orders: 0 } });
     expect(screen.getByRole('link', { name: /review/i }).textContent).toBe('Review3');
     expect(screen.getByRole('link', { name: /questions/i }).textContent).toBe('Questions4');
     expect(screen.getByRole('link', { name: /leads/i }).textContent).toBe('Leads2');
   });
 
   it('shows no count when nothing is waiting', () => {
-    frame({ badges: { review: 0, questions: 0, leads: 0 } });
+    frame({ badges: { review: 0, questions: 0, leads: 0, orders: 0 } });
     expect(screen.getByRole('link', { name: 'Review' }).textContent).toBe('Review');
     expect(screen.getByRole('link', { name: 'Questions' }).textContent).toBe('Questions');
   });

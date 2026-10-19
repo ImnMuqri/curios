@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { SESSION_COOKIE } from '@curios/core';
+import { LEAD_RETENTION_MONTHS, SESSION_COOKIE } from '@curios/core';
 import { getLeadStats, getLeads, getMyCurios, getOwnerPage } from '@curios/db-read';
 import { Callout } from '@curios/ui';
 import { resolveOwner } from '../session.js';
@@ -40,7 +40,7 @@ export default async function LeadsPage() {
     // a list here. Say why, and where that changes.
     return (
       <>
-        <PageHead title="Leads" note="Numbers visitors left in the chat" />
+        <PageHead title="Leads" note={`Numbers visitors left in the chat · kept for ${LEAD_RETENTION_MONTHS} months`} />
         <div className={panel.body}>
           <Callout tone="info">
             Personal pages don&apos;t collect phone numbers. Visitors can still chat with your page. If you start selling, you can make this a business page from{' '}
@@ -62,6 +62,7 @@ export default async function LeadsPage() {
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`}
       look={{ accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor }}
       now={now.toISOString()}
+      keptMonths={LEAD_RETENTION_MONTHS}
     />
   );
 }

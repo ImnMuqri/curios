@@ -6,7 +6,8 @@ const getTopics = vi.fn();
 const getOwnerPage = vi.fn();
 const getMyCurios = vi.fn();
 const countQuestionsThisWeek = vi.fn();
-vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek }));
+const getAnswerRate = vi.fn(async () => ({ answered: 0, recorded: 0 }));
+vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek, getAnswerRate }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -35,7 +36,10 @@ const business: OwnerPage = {
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,
+  ordersPlaced: 0,
+  ordersAtTrialReset: 0,
   trialResetAt: null,
+  storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
 };

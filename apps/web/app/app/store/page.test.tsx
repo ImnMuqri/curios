@@ -3,7 +3,8 @@ import { render, screen } from '@testing-library/react';
 
 const getOwnerStore = vi.fn();
 const getMyCurios = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios }));
+const getOwnerPage = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -25,7 +26,7 @@ const StorePage = (await import('./page.js')).default;
 
 const settings = {
   enabled: true, shopDescription: null, pickupEnabled: true, pickupNote: null, deliveryMode: 'NONE', deliveryFeeCents: null,
-  minNoticeDays: 0, paymentQrKey: 'qr/key.webp', bankName: null, bankAccountName: null,
+  minNoticeDays: 0, closedDays: [], deliveryNote: null, paymentQrKey: 'qr/key.webp', bankName: null, bankAccountName: null,
   bankAccountNumber: null, tileSize: 'WIDE',
 };
 
@@ -35,6 +36,9 @@ const page = {
   links: [{ id: 'l1', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null }],
 };
 
+// The owner's page as getOwnerPage reads it: only what orderState needs matters here.
+const owned = { mode: 'BUSINESS', paidUntil: new Date('2099-01-01T00:00:00Z'), ordersPlaced: 12, ordersAtTrialReset: 0 };
+
 describe('StorePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
@@ -43,6 +47,7 @@ describe('StorePage', () => {
     });
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getMyCurios.mockResolvedValue(page);
+    getOwnerPage.mockResolvedValue(owned);
     vi.stubEnv('STORAGE_PUBLIC_URL', 'https://files.example/');
   });
 
@@ -112,6 +117,26 @@ describe('StorePage', () => {
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings: { ...settings, paymentQrKey: null }, items: [] });
     render(await StorePage());
     expect(StoreScreen.mock.calls[0]![0]).toMatchObject({ uploadsEnabled: false, publicBase: '', qrUrl: null });
+  });
+
+  it('hands over the next order number, and no pause while orders are allowed', async () => {
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [] });
+    render(await StorePage());
+    expect(StoreScreen.mock.calls[0]![0].orders).toEqual({ paused: null, nextNumber: 13 });
+  });
+
+  it('says orders are paused once the free orders are used', async () => {
+    getOwnerPage.mockResolvedValue({ ...owned, paidUntil: null, ordersPlaced: 3 });
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [] });
+    render(await StorePage());
+    expect(StoreScreen.mock.calls[0]![0].orders).toEqual({ paused: 'Paused: your 3 free orders are used.', nextNumber: 4 });
+  });
+
+  it('says orders are paused since the plan ended', async () => {
+    getOwnerPage.mockResolvedValue({ ...owned, paidUntil: new Date('2026-10-14T04:00:00Z'), ordersPlaced: 9 });
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [] });
+    render(await StorePage());
+    expect(StoreScreen.mock.calls[0]![0].orders).toMatchObject({ paused: 'Paused: your plan ended on 14 Oct 2026.' });
   });
 
   it('sends an owner with no page to onboarding', async () => {

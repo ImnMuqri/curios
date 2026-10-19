@@ -173,6 +173,6 @@ describe('countNavBadges', () => {
       await write.lead.create({ data: { pageId: page.id, conversationId: conversation.id, phone: `+6012000000${n}`, status } });
     }
 
-    expect(await countNavBadges(accountId)).toEqual({ review: 1, questions: 1, leads: 2 });
+    expect(await countNavBadges(accountId)).toEqual({ review: 1, questions: 1, leads: 2, orders: 0 });
   });
 });

@@ -6,7 +6,7 @@ import { HEADING_FONTS, PAGE_BACKGROUNDS, PAGE_STYLES, STOCK_COVERS, stockCoverK
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
-import { claimHandle, handleAvailability, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
+import { claimHandle, handleAvailability, nearestPage, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { resolveStore, type AvatarStore } from './storage.js';
 
 export interface PageRouteOptions {
@@ -25,6 +25,19 @@ export class StorageNotConfiguredError extends Error {
     this.name = 'StorageNotConfiguredError';
   }
 }
+
+/**
+ * The 404's "Did you mean": the published page a mistyped address was
+ * probably meant to be. No session -- a visitor who mistyped has none -- and
+ * its own per-IP limit (app.ts). It names only pages that are public anyway.
+ */
+export const nearPageRoutes: FastifyPluginAsyncZod = async (app) => {
+  app.get(
+    '/pages/near',
+    { schema: { querystring: z.object({ handle: z.string().max(200) }) } },
+    async (request, reply) => reply.send({ handle: await nearestPage(app.prisma, request.query.handle) }),
+  );
+};
 
 export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, options) => {
   // Resolved at registration, like chat's embedder: production with a missing
@@ -102,12 +115,20 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
 
   app.patch(
     '/pages/notifications',
-    { schema: { body: z.object({ leads: z.boolean() }) } },
+    {
+      schema: {
+        // Each switch on its own, so a tap on one never rewrites another; at least one.
+        body: z
+          .object({ leads: z.boolean().optional(), orders: z.boolean().optional(), receipts: z.boolean().optional() })
+          .strict()
+          .refine((body) => Object.keys(body).length > 0, { message: 'Say which email to switch.' }),
+      },
+    },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
 
-      await setNotifications(app.prisma, request.account.id, { leads: request.body.leads });
-      return reply.send({ leads: request.body.leads });
+      await setNotifications(app.prisma, request.account.id, request.body);
+      return reply.send(request.body);
     },
   );
 

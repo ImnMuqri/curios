@@ -1024,10 +1024,81 @@
   transform: scale(1.06);
 }
 
+/* Days the shop takes no orders for: a pressed pill is a closed day. */
+.closedOn {
+  margin-top: 18px;
+}
+
+.closedOn b {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.weekday {
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: var(--biru-muda);
+  color: color-mix(in oklch, var(--biru) 70%, var(--ink));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+.weekday[aria-pressed='true'] {
+  background: var(--surface);
+  color: var(--faint);
+  text-decoration: line-through;
+}
+
+.weekday:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
 /* ---- The preview ---- */
 
 .previewShop {
   padding: 0 14px;
+}
+
+/* The preview's Pay screen: the order page's column, filling the phone instead of the window. */
+.payStage {
+  min-height: 100%;
+}
+
+.payStage .payColumn {
+  min-height: 100%;
+  padding-bottom: 28px;
+  box-shadow: none;
+  animation: none;
+}
+
+.payStage .payTitle {
+  margin: 0;
+  font-size: 24px;
+}
+
+.payStage .payHead {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* A picture of the upload box: nothing to press. */
+.payStage .payUpload {
+  cursor: default;
 }
 
 /* ---- Narrower ---- */
@@ -1097,7 +1168,8 @@
   }
 
   .pricedBy::before,
-  .day {
+  .day,
+  .weekday {
     transition: none;
   }
 }

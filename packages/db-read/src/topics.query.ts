@@ -60,6 +60,26 @@ export async function getTopics(accountId: string, options: { limit?: number; no
   return topics.map(({ questions, ...topic }) => ({ ...topic, wordings: questions, week: weeks.get(topic.id) ?? [0, 0, 0, 0, 0, 0, 0] }));
 }
 
+/** How many of the last thirty days' asks the chat could answer, of those whose outcome was recorded. */
+export interface AnswerRate {
+  answered: number;
+  recorded: number;
+}
+
+/**
+ * The Questions screen's "Of asks the chat can answer": asks answered from the
+ * owner's answer or the facts, against every ask whose outcome was recorded
+ * (the chat marks each; the month's fixed reply is neither and is left out).
+ */
+export async function getAnswerRate(accountId: string, now = new Date()): Promise<AnswerRate> {
+  const where = { askedAt: { gt: new Date(now.getTime() - 30 * DAY_MS), lte: now }, question: { page: { accountId } } };
+  const [answered, recorded] = await Promise.all([
+    prismaRead.questionAsk.count({ where: { ...where, answered: true } }),
+    prismaRead.questionAsk.count({ where: { ...where, answered: { not: null } } }),
+  ]);
+  return { answered, recorded };
+}
+
 /** What visitors asked the page in the last seven days: every visitor turn, answered or not. */
 export async function countQuestionsThisWeek(accountId: string, now = new Date()): Promise<number> {
   return prismaRead.message.count({

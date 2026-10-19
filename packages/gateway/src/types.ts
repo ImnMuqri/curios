@@ -9,6 +9,12 @@ export interface TokenUsage {
 
 export interface ExtractInput {
   documents: SourceDocument[];
+  /**
+   * Each piece of the answer as it arrives, so the worker can write a fact the
+   * moment its block is complete instead of all of them at the end. The
+   * whole answer still comes back in `raw`.
+   */
+  onText?: (text: string) => void;
 }
 
 export interface ExtractOutput {

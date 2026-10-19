@@ -9,6 +9,11 @@ let app: FastifyInstance;
 let nth = 0;
 const from = () => `203.0.113.${(nth++ % 200) + 1}`;
 
+/** What the stub says when asked which facts an answer used. */
+let attribution = '1';
+/** Whether the stub's answer is a "not sure", marker and all. */
+let unsure = false;
+
 /** What the model was asked, each time. */
 const calls: Array<{ systemPrompt: string; messages: Array<{ role: string; content: string }> }> = [];
 
@@ -21,8 +26,16 @@ function stubGateway(): Gateway {
     },
     chat: async function* (request) {
       calls.push({ systemPrompt: request.systemPrompt, messages: request.messages });
-      yield { type: 'text' as const, text: 'Kek butter 1kg ' };
-      yield { type: 'text' as const, text: 'RM95.' };
+      // The tester's second call: which numbered facts the answer used.
+      if (request.systemPrompt.startsWith('You are shown numbered facts')) {
+        yield { type: 'text' as const, text: attribution };
+      } else if (unsure) {
+        yield { type: 'text' as const, text: '[?] ' };
+        yield { type: 'text' as const, text: 'Tak pasti, saya akan tanya Nadia.' };
+      } else {
+        yield { type: 'text' as const, text: 'Kek butter 1kg ' };
+        yield { type: 'text' as const, text: 'RM95.' };
+      }
       yield {
         type: 'done' as const,
         usage: { inputTokens: 900, outputTokens: 120, cacheReadTokens: 0, cacheWriteTokens: 0 },
@@ -47,6 +60,8 @@ afterAll(async () => {
 
 beforeEach(() => {
   calls.length = 0;
+  attribution = '1';
+  unsure = false;
 });
 
 /** An owner whose page is NOT published, with one verified and one unreviewed fact. */
@@ -63,7 +78,7 @@ async function anOwner() {
           published: false,
           facts: {
             create: [
-              { category: 'PRICE', claim: 'Kek butter 1kg RM95', normalizedClaim: 'kek butter 1kg rm95', confidence: 0.9, verified: true },
+              { category: 'PRICE', claim: 'Kek butter 1kg RM95', normalizedClaim: 'kek butter 1kg rm95', confidence: 0.9, verified: true, sourceUrl: 'https://www.nadia.example/menu/' },
               { category: 'PRICE', claim: 'Kek lapis RM60', normalizedClaim: 'kek lapis rm60', confidence: 0.9, verified: false },
             ],
           },
@@ -97,7 +112,8 @@ describe('POST /chat/test', () => {
     const res = await ask(mine.cookie, { question: 'Berapa kek butter?' });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ reply: 'Kek butter 1kg RM95.', from: 'facts' });
+    // The answer word for word, and where it came from, as the owner knows it.
+    expect(res.json()).toEqual({ reply: 'Kek butter 1kg RM95.', from: 'facts', sources: ['nadia.example/menu'] });
     // The same rule as the live chat: nothing unreviewed reaches an answer.
     expect(calls[0]?.systemPrompt).toContain('Kek butter 1kg RM95');
     expect(calls[0]?.systemPrompt).not.toContain('Kek lapis RM60');
@@ -113,8 +129,9 @@ describe('POST /chat/test', () => {
     expect(await app.prisma.topic.count({ where })).toBe(0);
     expect(await app.prisma.conversation.count({ where })).toBe(0);
     expect(await app.prisma.usageCounter.count({ where })).toBe(0);
-    // The model call is recorded against the page, so its cost is visible.
-    expect(await app.prisma.modelCall.count({ where })).toBe(1);
+    // The model calls -- the answer, and which facts it used -- are recorded
+    // against the page, so their cost is visible.
+    expect(await app.prisma.modelCall.count({ where })).toBe(2);
   });
 
   it("gives the owner's own answer for a wording they answered, without the model", async () => {
@@ -188,5 +205,45 @@ describe('POST /chat/test', () => {
     const res = await ask(mine.cookie, { question: 'Berapa kek butter?' });
 
     expect(res.json()).toMatchObject({ from: 'facts' });
+  });
+});
+
+describe('POST /chat/test, where an answer came from', () => {
+  it('names nothing when the answer used none of the facts, and the answer is unchanged', async () => {
+    const mine = await anOwner();
+    attribution = 'none';
+
+    const res = await ask(mine.cookie, { question: 'Do you deliver?' });
+    expect(res.json()).toEqual({ reply: 'Kek butter 1kg RM95.', from: 'facts', sources: [] });
+  });
+
+  it('calls a fact the owner added "A fact you added", and ignores numbers it never sent', async () => {
+    const mine = await anOwner();
+    await app.prisma.fact.updateMany({ where: { pageId: mine.pageId, verified: true }, data: { origin: 'OWNER', sourceUrl: null } });
+    attribution = '1, 7';
+
+    const res = await ask(mine.cookie, { question: 'Berapa kek butter?' });
+    expect(res.json().sources).toEqual(['A fact you added']);
+  });
+
+  it('asks its second question with the facts sent, as data', async () => {
+    const mine = await anOwner();
+    await ask(mine.cookie, { question: 'Berapa kek butter?' });
+
+    const second = calls[1];
+    expect(second?.messages[0]?.content).toContain('[1] Kek butter 1kg RM95');
+    expect(second?.messages[0]?.content).toContain('<answer>\nKek butter 1kg RM95.\n</answer>');
+    expect(second?.messages[0]?.content).not.toContain('Kek lapis RM60');
+  });
+});
+
+describe('POST /chat/test, when the page is not sure', () => {
+  it('says so without the marker, names no source, and asks nothing more', async () => {
+    const mine = await anOwner();
+    unsure = true;
+
+    const res = await ask(mine.cookie, { question: 'Ada delivery?' });
+    expect(res.json()).toEqual({ reply: 'Tak pasti, saya akan tanya Nadia.', from: 'facts', sources: [] });
+    expect(calls).toHaveLength(1);
   });
 });

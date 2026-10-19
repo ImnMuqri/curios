@@ -289,6 +289,12 @@ describe('the shop', () => {
     expect(buildSystemPrompt({ ...base, shop })).toMatch(/order it from the shop on this page/);
   });
 
+  it('asks for the order code when someone asks about an order without one', () => {
+    expect(buildSystemPrompt({ ...base, shop })).toContain(
+      'When someone asks about the status of an order they placed and gives no code, ask for the 4-character order code on their order page.',
+    );
+  });
+
   it('has no SHOP block, and no mention of one, without a shop', () => {
     const prompt = buildSystemPrompt({ ...base });
     expect(prompt).not.toContain('SHOP');

@@ -97,7 +97,7 @@ export async function recheckSource(
 
   const claimed = await deps.prisma.ingestion.updateMany({
     where: { id: source.id, page: { accountId }, status: { in: [...SETTLED] } },
-    data: { status: 'QUEUED', error: null, extractedCount: 0, tracked: true },
+    data: { status: 'QUEUED', error: null, extractedCount: 0, progress: 0, tracked: true },
   });
   if (claimed.count !== 1) throw new SourceBusyError();
 

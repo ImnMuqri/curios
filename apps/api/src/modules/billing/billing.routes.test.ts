@@ -442,6 +442,33 @@ describe('POST /billing/trial-reset', () => {
 
     expect((await reset(owner.cookie)).statusCode).toBe(409);
   });
+
+  it('resets the order allowance once, keeping order numbers', async () => {
+    const owner = await anOwner();
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { ordersPlaced: 3 } });
+    const counts = () =>
+      app.prisma.page.findUniqueOrThrow({
+        where: { id: owner.pageId },
+        select: { ordersPlaced: true, ordersAtTrialReset: true, leadsCaptured: true, trialResetAt: true },
+      });
+
+    // Orders alone, with no leads, are something to give back.
+    expect((await reset(owner.cookie)).statusCode).toBe(200);
+    const after = await counts();
+    expect(after).toMatchObject({ ordersPlaced: 3, ordersAtTrialReset: 3, leadsCaptured: 0 });
+    expect(after.trialResetAt).not.toBeNull();
+
+    // Once: more orders do not buy a second reset.
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { ordersPlaced: 5 } });
+    expect((await reset(owner.cookie)).statusCode).toBe(409);
+    expect(await counts()).toMatchObject({ ordersPlaced: 5, ordersAtTrialReset: 3 });
+  });
+
+  it('refuses when neither leads nor orders have been used since', async () => {
+    const owner = await anOwner();
+    await app.prisma.page.update({ where: { id: owner.pageId }, data: { ordersPlaced: 2, ordersAtTrialReset: 2 } });
+    expect((await reset(owner.cookie)).statusCode).toBe(409);
+  });
 });
 
 // Development with no Billplz settings at all: the API still boots, so a developer
@@ -525,10 +552,11 @@ describe('with billing switched off', () => {
   it('refuses to start in production without the settings', async () => {
     process.env.NODE_ENV = 'production';
     try {
-      // `pages: { store: null }` sidesteps storage's own production check
-      // (storage is unset throughout this suite -- see vitest.setup.ts) so
-      // this test isolates the one setting it actually means to prove: Billplz's.
-      await expect(buildApp({ pages: { store: null } })).rejects.toThrow(/BILLPLZ_API_KEY is not set/);
+      // `store: null` on each storage consumer sidesteps storage's own
+      // production check (storage is unset throughout this suite -- see
+      // vitest.setup.ts) so this test isolates the one setting it actually
+      // means to prove: Billplz's.
+      await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(/BILLPLZ_API_KEY is not set/);
     } finally {
       process.env.NODE_ENV = savedNodeEnv;
     }

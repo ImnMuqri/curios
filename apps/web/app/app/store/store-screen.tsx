@@ -20,6 +20,7 @@ export function StoreScreen({
   uploadsEnabled,
   publicBase,
   today,
+  orders,
 }: {
   initial: StoreSettings;
   items: EditorItem[];
@@ -28,6 +29,7 @@ export function StoreScreen({
   uploadsEnabled: boolean;
   publicBase: string;
   today: string;
+  orders: { paused: string | null; nextNumber: number };
 }) {
   const settingsApi: SettingsApi = {
     save: async (patch) => (await apiFetch<{ settings: StoreSettings }>('/store/settings', { method: 'PATCH', body: JSON.stringify(patch) })).settings,
@@ -68,6 +70,7 @@ export function StoreScreen({
       qrUrl={qrUrl}
       uploadsEnabled={uploadsEnabled}
       today={today}
+      orders={orders}
       settingsApi={settingsApi}
       itemsApi={itemsApi}
     />

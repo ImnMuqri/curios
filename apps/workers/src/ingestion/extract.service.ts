@@ -2,6 +2,7 @@ import {
   normalizeClaim,
   parseFactBlocks,
   type IngestJobData,
+  type ParsedFact,
   type SourceDocument,
 } from '@curios/core';
 import { recordModelCall, syncFactEmbeddings, type PrismaClient } from '@curios/db';
@@ -9,6 +10,8 @@ import { EXTRACT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import type { SourceAdapter } from '../sources/types.js';
 import { textAdapter } from '../sources/text.adapter.js';
+import { contextAround } from './excerpt.js';
+import { completedPart, nextProgress, progressAt, PROGRESS_FETCHED } from './progress.js';
 
 export interface ExtractDeps {
   prisma: PrismaClient;
@@ -87,9 +90,50 @@ export async function runExtraction(
       return { extractedCount: 0 };
     }
 
+    // Fetched: the first stretch of the bar.
+    await prisma.ingestion.update({ where: { id: job.ingestionId }, data: { progress: PROGRESS_FETCHED } });
+    const source = documents.map((d) => d.text).join('\n\n');
+
+    // Facts are written as their blocks complete, so the owner sees them
+    // arrive (onboarding's list, the source's count) instead of all at the
+    // end. Writes queue behind each other in order; one that fails is kept
+    // and thrown once the stream ends, into the outer catch like any other.
+    let written = 0;
+    let created = 0;
+    let progress = PROGRESS_FETCHED;
+    let writes: Promise<void> = Promise.resolve();
+    // An object, so the check after the stream sees what the callbacks set.
+    const failure: { error: Error | null } = { error: null };
+
+    const writeNew = async (facts: ParsedFact[]) => {
+      const fresh = facts.slice(written);
+      if (fresh.length === 0) return;
+      written = facts.length;
+      // skipDuplicates against @@unique([pageId, normalizedClaim]) is what
+      // makes re-running this job produce one set of facts rather than two.
+      const result = await prisma.fact.createMany({ data: fresh.map((fact) => factRow(job, fact, source)), skipDuplicates: true });
+      created += result.count;
+      for (const fact of fresh) progress = nextProgress(progress, progressAt(source, fact.sourceText));
+      await prisma.ingestion.update({ where: { id: job.ingestionId }, data: { extractedCount: created, progress } });
+    };
+
+    let streamed = '';
+    let parsedUpTo = 0;
+    const onText = (text: string) => {
+      streamed += text;
+      if (!text.includes('-')) return;
+      const done = completedPart(streamed);
+      if (done.length <= parsedUpTo) return;
+      parsedUpTo = done.length;
+      const { facts } = parseFactBlocks(done);
+      writes = writes.then(() => (failure.error ? undefined : writeNew(facts))).catch((error: unknown) => {
+        failure.error ??= error instanceof Error ? error : new Error(String(error));
+      });
+    };
+
     let raw: string;
     try {
-      const result = await gateway.extract({ documents });
+      const result = await gateway.extract({ documents, onText });
       raw = result.raw;
       await recordModelCall(prisma, {
         pageId: job.pageId,
@@ -103,6 +147,7 @@ export async function runExtraction(
       // A call that fails here has already consumed tokens (or the attempt to
       // make it failed outright); either way it must be visible in the one
       // table that tracks margin, not silently absent like the crawl case.
+      await writes;
       await recordModelCall(prisma, {
         pageId: job.pageId,
         ingestionId: job.ingestionId,
@@ -115,40 +160,11 @@ export async function runExtraction(
       throw error;
     }
 
-    const { facts } = parseFactBlocks(raw);
-
-    // Facts are hostile input until reviewed. An injected instruction is flagged
-    // and confidence-penalised, never silently dropped -- dropping it hides the
-    // attack from the owner and teaches us nothing.
-    const rows = facts.map((fact) => {
-      const flagged = isImperative(fact.claim);
-      return {
-        pageId: job.pageId,
-        // Credited to this ingestion so the owner can remove the source and
-        // its facts together. A re-check re-runs the same ingestion id, so
-        // new facts from it land on the same source.
-        ingestionId: job.ingestionId,
-        origin: 'EXTRACTED' as const,
-        category: fact.category,
-        claim: fact.claim,
-        question: fact.question,
-        normalizedClaim: normalizeClaim(fact.claim),
-        // Taken from the job, not the document: a fact from pasted text has no
-        // page, and Review hides the Source link when there is none.
-        sourceUrl: job.sourceUrl ?? null,
-        sourceText: fact.sourceText,
-        confidence: flagged ? Math.min(fact.confidence, 0.2) : fact.confidence,
-        flagged,
-        verified: false,
-      };
-    });
-
-    // skipDuplicates against @@unique([pageId, normalizedClaim]) is what makes
-    // re-running this job produce one set of facts rather than two. A failure
-    // here (or in the ingestion.update just below) previously escaped every
-    // try/catch in this function and left the row RUNNING forever -- it is
-    // now covered by the outer catch like everything else.
-    const created = await prisma.fact.createMany({ data: rows, skipDuplicates: true });
+    // The last block has no separator after it, so the whole answer is read
+    // once more at the end; the facts already written are skipped by count.
+    await writes;
+    if (failure.error) throw failure.error;
+    await writeNew(parseFactBlocks(raw).facts);
 
     // Its own try, not the outer one. An ingestion that crawled a site, spent
     // an Opus call and wrote its facts has succeeded; a provider blip on the
@@ -169,10 +185,10 @@ export async function runExtraction(
 
     await prisma.ingestion.update({
       where: { id: job.ingestionId },
-      data: { status: 'SUCCEEDED', extractedCount: created.count },
+      data: { status: 'SUCCEEDED', extractedCount: created, progress: 100 },
     });
 
-    return { extractedCount: created.count };
+    return { extractedCount: created };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await prisma.ingestion.update({
@@ -181,6 +197,39 @@ export async function runExtraction(
     });
     throw error;
   }
+}
+
+/**
+ * One parsed fact as a row. Facts are hostile input until reviewed: an
+ * injected instruction is flagged and confidence-penalised, never silently
+ * dropped -- dropping it hides the attack from the owner and teaches us
+ * nothing.
+ */
+function factRow(job: IngestJobData, fact: ParsedFact, source: string) {
+  const flagged = isImperative(fact.claim);
+  // What the source says either side of the excerpt, for Review's line.
+  const around = contextAround(source, fact.sourceText);
+  return {
+    pageId: job.pageId,
+    // Credited to this ingestion so the owner can remove the source and its
+    // facts together. A re-check re-runs the same ingestion id, so new facts
+    // from it land on the same source.
+    ingestionId: job.ingestionId,
+    origin: 'EXTRACTED' as const,
+    category: fact.category,
+    claim: fact.claim,
+    question: fact.question,
+    normalizedClaim: normalizeClaim(fact.claim),
+    // Taken from the job, not the document: a fact from pasted text has no
+    // page, and Review hides the Source link when there is none.
+    sourceUrl: job.sourceUrl ?? null,
+    sourceText: fact.sourceText,
+    sourceBefore: around?.before ?? null,
+    sourceAfter: around?.after ?? null,
+    confidence: flagged ? Math.min(fact.confidence, 0.2) : fact.confidence,
+    flagged,
+    verified: false,
+  };
 }
 
 /**

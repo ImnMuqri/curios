@@ -1,4 +1,4 @@
-import { FREE_LEADS, type PlanState } from '@curios/core';
+import { FREE_LEADS, FREE_ORDERS, planEndedSaid, type OrderState, type PlanState } from '@curios/core';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
 /**
@@ -16,8 +16,8 @@ import { shortDate, usageResets } from './billing/billing-copy.js';
 export interface Alert {
   id: string;
   tone: 'info' | 'warn' | 'stop';
-  where: 'all' | '/app/leads' | '/app/questions';
-  icon: 'lead' | 'card' | 'chat';
+  where: 'all' | '/app/leads' | '/app/questions' | '/app/orders';
+  icon: 'lead' | 'card' | 'chat' | 'shop';
   title: string;
   text: string;
   meter?: boolean[];
@@ -36,11 +36,59 @@ function fifths(used: number, cap: number): boolean[] {
 }
 
 /**
+ * The shop's side of the plan: whether it may take orders (`orderState`, the
+ * one rule the shop, the API and Billing also use) and whether the owner has
+ * switched it on at all. A shop that is off is closed, not paused, so it says
+ * nothing.
+ */
+export interface ShopAlertInput {
+  state: OrderState;
+  storeEnabled: boolean;
+}
+
+/** The shop's stop states, on Orders: the free orders counted, then checkout paused. */
+function shopAlerts(orders: ShopAlertInput | undefined): Alert[] {
+  if (!orders?.storeEnabled) return [];
+  const { state } = orders;
+  const paused = (text: string): Alert => ({
+    id: 'paused',
+    tone: 'stop',
+    where: '/app/orders',
+    icon: 'shop',
+    title: 'Your shop can’t take orders right now',
+    text: `${text} Customers can still see your shop, and their basket comes to you on WhatsApp instead.`,
+    action: { href: BILLING, label: 'Pay to take orders' },
+  });
+  switch (state.kind) {
+    case 'trial':
+      return [
+        {
+          id: `orders-trial-${state.used}`,
+          tone: 'info',
+          where: '/app/orders',
+          icon: 'shop',
+          title: `${state.used} of your ${FREE_ORDERS} free orders used`,
+          text: `After ${FREE_ORDERS}, checkout pauses and baskets come to you on WhatsApp until you subscribe.`,
+          meter: Array.from({ length: FREE_ORDERS }, (_, i) => i < state.used),
+          action: { href: BILLING, label: 'See plans' },
+        },
+      ];
+    case 'trialSpent':
+      return [paused(`Your ${FREE_ORDERS} free orders are used.`)];
+    case 'lapsed':
+      return [{ ...paused(`Your Business plan ended on ${shortDate(state.paidUntil, true)}.`), id: `paused-${state.paidUntil.toISOString().slice(0, 10)}` }];
+    case 'paid':
+    case 'personal':
+      return [];
+  }
+}
+
+/**
  * Which alerts this owner has right now, most urgent first. The words are the
  * board's (the owner's decision of 2026-10-16), keeping the repo's meaning
  * where the old trial notice on Leads said the same thing.
  */
-export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: number }; now: Date }): Alert[] {
+export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: number }; now: Date; orders?: ShopAlertInput }): Alert[] {
   const { plan, usage, now } = input;
   const alerts: Alert[] = [];
 
@@ -52,7 +100,9 @@ export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: 
         where: 'all',
         icon: 'card',
         title: `Your Business plan ended on ${shortDate(plan.paidUntil, true)}`,
-        text: 'The capture card is no longer shown and your shop has stopped taking orders. Your page and chat still work. Pay again to switch them back on.',
+        // The shop's half from the same orderState as Orders' banner, Billing's
+        // Orders meter and checkout: a shop with free orders left is still open.
+        text: planEndedSaid(input.orders),
         action: { href: BILLING, label: 'Renew your plan' },
       });
       break;
@@ -100,6 +150,8 @@ export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: 
       break;
   }
 
+  alerts.push(...shopAlerts(input.orders));
+
   const month = now.toISOString().slice(0, 7);
   const resets = shortDate(usageResets(now));
   if (usage.cap > 0 && usage.used >= usage.cap) {
@@ -129,7 +181,8 @@ export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: 
   return alerts;
 }
 
-/** A red dot on Billing in the sidebar until the owner chooses: a used-up trial, or a plan that ended. */
-export function billingNeedsYou(plan: PlanState): boolean {
-  return plan.kind === 'trialSpent' || plan.kind === 'lapsed' || (plan.kind === 'trial' && plan.lapsedOn !== undefined);
+/** A red dot on Billing in the sidebar until the owner chooses: a used-up trial, a plan that ended, or a paused shop. */
+export function billingNeedsYou(plan: PlanState, orders?: ShopAlertInput): boolean {
+  const paused = orders?.storeEnabled === true && (orders.state.kind === 'trialSpent' || orders.state.kind === 'lapsed');
+  return paused || plan.kind === 'trialSpent' || plan.kind === 'lapsed' || (plan.kind === 'trial' && plan.lapsedOn !== undefined);
 }

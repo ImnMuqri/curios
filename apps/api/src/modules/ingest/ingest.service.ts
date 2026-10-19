@@ -184,6 +184,6 @@ export async function getIngestion(prisma: PrismaClient, accountId: string, id: 
   // careless early return away from returning another owner's sourceUrl.
   return prisma.ingestion.findFirst({
     where: { id, page: { accountId } },
-    select: { id: true, status: true, extractedCount: true, error: true, sourceUrl: true },
+    select: { id: true, status: true, extractedCount: true, progress: true, error: true, sourceUrl: true },
   });
 }

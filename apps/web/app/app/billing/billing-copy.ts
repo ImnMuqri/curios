@@ -115,8 +115,7 @@ export interface PaymentBanner {
  */
 export function paymentBanner(value: string | undefined): PaymentBanner | null {
   switch (value) {
-    case 'paid':
-      return { tone: 'info', text: 'Payment received. Your plan is active.' };
+    // A confirmed 'paid' is the page's toast, not a banner (paid-toast.tsx).
     case 'pending':
       return {
         tone: 'info',

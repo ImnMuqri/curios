@@ -6,6 +6,7 @@ import type { FactCategory } from '@curios/core';
 import type { KnowledgeFact } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { sourcePlace } from '../_ui/source-place.js';
+import { useToast } from '../_ui/toast.js';
 import styles from './knowledge.module.css';
 
 const toMessage = (failure: unknown) => (failure instanceof Error ? failure.message : 'Something failed. Try again.');
@@ -195,7 +196,7 @@ export function FactList({
   const [claim, setClaim] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [said, setSaid] = useState('');
+  const { say, toast } = useToast();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FactCategory | 'all'>('all');
   const field = useRef<HTMLInputElement>(null);
@@ -207,7 +208,6 @@ export function FactList({
   function openAdd() {
     setKind(filter === 'all' ? (categories[0] ?? 'MISC') : filter);
     setError('');
-    setSaid('');
     setAdding(true);
   }
 
@@ -222,7 +222,7 @@ export function FactList({
       setAdding(false);
       setFilter('all');
       setQuery('');
-      setSaid('Added. The chat can use it now.');
+      say('Added. The chat can use it now.');
       onChanged();
     } catch (failure) {
       setError(toMessage(failure));
@@ -241,12 +241,12 @@ export function FactList({
   // Each row's own handlers wrap onChanged, so a success re-reads the server.
   const edit = async (id: string, text: string) => {
     await onEdit(id, text);
-    setSaid('Saved.');
+    say('Saved.');
     onChanged();
   };
   const remove = async (id: string) => {
     await onRemove(id);
-    setSaid('Removed. The chat no longer uses it.');
+    say('Removed. The chat no longer uses it.');
     onChanged();
   };
 
@@ -310,9 +310,7 @@ export function FactList({
         </form>
       ) : null}
 
-      <p className={styles.note} role="status">
-        {said}
-      </p>
+      {toast}
 
       {facts.length === 0 ? (
         adding ? null : (

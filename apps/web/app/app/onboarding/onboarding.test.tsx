@@ -9,7 +9,7 @@ function actions(overrides: Partial<OnboardingActions> = {}): OnboardingActions 
     checkHandle: vi.fn(async () => 'available' as const),
     claim: vi.fn(async () => ({ pageId: 'p1' })),
     ingest: vi.fn(async () => ({ ingestionId: 'ing-1' })),
-    fetchStatus: vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 2, error: null })),
+    fetchStatus: vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 2, progress: 100, error: null })),
     refresh: vi.fn(),
     navigate: vi.fn(),
     ...overrides,
@@ -98,7 +98,7 @@ describe('OnboardingFlow', () => {
   });
 
   it('turns a quiet read into a paste', async () => {
-    flow({ page: { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' }, actions: actions({ fetchStatus: vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 0, error: null })) }) });
+    flow({ page: { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' }, actions: actions({ fetchStatus: vi.fn(async () => ({ status: 'SUCCEEDED' as const, extractedCount: 0, progress: 100, error: null })) }) });
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
     await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
 
@@ -144,5 +144,35 @@ describe('OnboardingFlow', () => {
 
     expect(screen.getByText(/don’t let us read profiles/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Read my website' })).toBeDisabled();
+  });
+
+  it('shows facts as it finds them, and how far it has read', async () => {
+    // Two polls while reading (one fact, then two), then done.
+    const polls = [
+      { status: 'RUNNING' as const, extractedCount: 1, progress: 40, error: null },
+      { status: 'RUNNING' as const, extractedCount: 2, progress: 80, error: null },
+      { status: 'SUCCEEDED' as const, extractedCount: 2, progress: 100, error: null },
+    ];
+    const a = actions({ fetchStatus: vi.fn(async () => polls.shift() ?? { status: 'SUCCEEDED' as const, extractedCount: 2, progress: 100, error: null }) });
+    const page = { id: 'p1', handle: 'keklina', displayName: 'Kek Lina', mode: 'BUSINESS' as const };
+    const { rerender } = flow({ page, actions: a });
+    await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
+
+      // The first poll: one fact in, so the server is asked for it, and the bar is at 40.
+      await waitFor(() => expect(screen.getByRole('progressbar', { name: 'How far it has read' })).toHaveAttribute('aria-valuenow', '40'));
+      expect(a.refresh).toHaveBeenCalledTimes(1);
+      rerender(<OnboardingFlow page={page} facts={facts.slice(0, 1)} monthlyPrice="RM49" pastedTextMax={20000} actions={a} />);
+      expect(screen.getByRole('heading', { name: 'Reading it now…' })).toBeInTheDocument();
+      expect(screen.getByText('Kek coklat 2kg is RM170')).toBeInTheDocument();
+
+      // The next: a second fact, asked for again.
+      await vi.advanceTimersByTimeAsync(2000);
+      await waitFor(() => expect(a.refresh).toHaveBeenCalledTimes(2));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

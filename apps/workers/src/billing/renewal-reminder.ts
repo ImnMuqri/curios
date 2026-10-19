@@ -1,5 +1,5 @@
 import type { MailJobData } from '@curios/core';
-import { MAIL_QUEUE, planEndedMail, planEndingMail } from '@curios/core';
+import { MAIL_QUEUE, orderState, planEndedMail, planEndingMail } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import type { BillingLog } from './pending-check.js';
 
@@ -139,7 +139,15 @@ export async function runPlanEndedMails(deps: {
       mode: 'BUSINESS',
       paidUntil: { lte: deps.now, gt: new Date(deps.now.getTime() - ENDED_WINDOW_MS) },
     },
-    select: { id: true, displayName: true, paidUntil: true, account: { select: { email: true } } },
+    select: {
+      id: true,
+      displayName: true,
+      paidUntil: true,
+      ordersPlaced: true,
+      ordersAtTrialReset: true,
+      storeEnabled: true,
+      account: { select: { email: true } },
+    },
     orderBy: { paidUntil: 'asc' },
   });
 
@@ -158,7 +166,12 @@ export async function runPlanEndedMails(deps: {
     });
     if (claim.count === 0) continue;
 
-    const mail = planEndedMail({ displayName: page.displayName, paidUntil, appUrl: deps.appUrl });
+    // The shop by the rule checkout uses: free orders left keep it open.
+    const shop = {
+      state: orderState({ mode: 'BUSINESS', paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now: deps.now }),
+      storeEnabled: page.storeEnabled,
+    };
+    const mail = planEndedMail({ displayName: page.displayName, paidUntil, appUrl: deps.appUrl, shop });
     try {
       await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
     } catch (error) {

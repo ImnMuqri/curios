@@ -10,8 +10,14 @@ export interface OwnerPage {
   paidUntil: Date | null;
   /** Leads ever captured. Never decremented -- deleting a lead does not return one. */
   leadsCaptured: number;
+  /** Orders ever placed on this page. Never decremented: order numbers come from it. */
+  ordersPlaced: number;
+  /** `ordersPlaced` as it stood at the trial reset; the free orders count from here. */
+  ordersAtTrialReset: number;
   /** When the owner spent their one trial reset, or null while it is unspent. */
   trialResetAt: Date | null;
+  /** Whether the owner has switched the shop on: a shop that is off is not paused, only closed. */
+  storeEnabled: boolean;
   /** Whether this page, if personal, may appear in search results. Settings' switch. */
   allowSearchIndexing: boolean;
   /** The owner's picture, for the sidebar's account row. */
@@ -48,7 +54,10 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       mode: true,
       paidUntil: true,
       leadsCaptured: true,
+      ordersPlaced: true,
+      ordersAtTrialReset: true,
       trialResetAt: true,
+      storeEnabled: true,
       allowSearchIndexing: true,
       avatarKey: true,
     },

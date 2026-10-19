@@ -8,11 +8,9 @@ import { PLAN_PRICES_CENTS } from '@curios/core/billing';
  * The Malay was drafted by an AI. DESIGN.md is clear that Malay copy comes
  * from a Malay speaker: it needs a native read before launch.
  *
- * Every claim should be one the product makes true today. Two are not yet,
- * and are marked SLICE 18 where they appear: checkout, paying by the owner's
- * QR with proof attached, and orders landing in the dashboard. They come from
- * the board and describe store-design.md's next slice. Until it ships, they
- * promise something the product does not do.
+ * Every claim should be one the product makes true today. Checkout, paying
+ * by the owner's QR with proof attached, and orders landing in the dashboard
+ * came true with slice 18 (orders), and are as the board draws them.
  *
  * Client-safe: the price comes from the @curios/core/billing subpath, which
  * imports nothing, so the client sections read their words from here by
@@ -153,8 +151,6 @@ export interface LandingCopy {
       plus: string;
       /** Business's features, as the landing sells them. */
       points: string[];
-      /** The ones the product has today, which Billing lists before an owner pays. */
-      pointsToday: string[];
       cta: string;
     };
     calc: {
@@ -285,7 +281,6 @@ const EN: LandingCopy = {
     title: 'Have a business? Your page becomes a shop.',
     caps: [
       { title: 'Tap to add', body: 'Items with pictures, prices and sizes, right in the Shop tab.' },
-      // SLICE 18: checkout, QR payment with proof, and Orders are not built yet.
       { title: 'Check out', body: 'Name, WhatsApp number, pickup or delivery. No account needed.' },
       { title: 'Pay with your QR', body: 'No payment gateway? Upload your bank QR once. Customers scan it with the total, then upload their receipt.' },
       { title: 'Order received', body: 'They get a confirmation with the order number.' },
@@ -353,14 +348,12 @@ const EN: LandingCopy = {
       noteYearly: `RM${ANNUAL_A_MONTH} a month, paid once a year.`,
       plus: 'Everything in Personal, plus',
       points: [
-        // SLICE 18: the first two are store-design.md's next slice.
         'A shop with QR payment and payment proof',
         'Orders land in your dashboard',
         'Every lead emailed with their number and chat',
         'FAQ pages Google can find',
         'Your first three leads are free',
       ],
-      pointsToday: ['Every lead emailed with their number and chat', 'FAQ pages Google can find', 'Your own shop, with orders sent to your WhatsApp', 'Your first three leads are free'],
       cta: 'Start with 3 free leads',
     },
     calc: {
@@ -509,7 +502,6 @@ const MS: LandingCopy = {
     title: 'Ada bisnes? Halaman anda jadi kedai.',
     caps: [
       { title: 'Tekan untuk tambah', body: 'Barang dengan gambar, harga dan saiz, terus dalam tab Kedai.' },
-      // SLICE 18: checkout, QR payment with proof, and Orders are not built yet.
       { title: 'Daftar keluar', body: 'Nama, nombor WhatsApp, ambil sendiri atau hantar. Tak perlu akaun.' },
       { title: 'Bayar dengan QR anda', body: 'Tiada payment gateway? Muat naik QR bank anda sekali. Pelanggan imbas dengan jumlahnya, kemudian muat naik resit.' },
       { title: 'Tempahan diterima', body: 'Mereka dapat pengesahan dengan nombor tempahan.' },
@@ -577,14 +569,12 @@ const MS: LandingCopy = {
       noteYearly: `RM${ANNUAL_A_MONTH} sebulan, bayar sekali setahun.`,
       plus: 'Semua dalam Peribadi, dan',
       points: [
-        // SLICE 18: the first two are store-design.md's next slice.
         'Kedai dengan bayaran QR dan bukti bayaran',
         'Tempahan masuk dalam dashboard anda',
         'Setiap lead diemel dengan nombor dan perbualan mereka',
         'Halaman soalan lazim yang Google boleh jumpa',
         'Tiga lead pertama percuma',
       ],
-      pointsToday: ['Setiap lead diemel dengan nombor dan perbualan mereka', 'Halaman soalan lazim yang Google boleh jumpa', 'Kedai anda sendiri, tempahan dihantar ke WhatsApp anda', 'Tiga lead pertama percuma'],
       cta: 'Mula dengan 3 lead percuma',
     },
     calc: {

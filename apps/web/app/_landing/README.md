@@ -47,11 +47,10 @@ persona without one is drawn in the colour alone. They are in
 head-and-shoulders for the small round faces (How it works, the pricing chip);
 only Aisyah has one. All are made-up people, as the footer says.
 
-**Claims that wait on slice 18.** The For business section and two Business
+**Claims slice 18 made true.** The For business section and two Business
 pricing lines show checkout, paying by the owner's QR with proof, and Orders.
-None of it is built yet (`devDocs/store-design.md`). They are marked `SLICE 18`
-in `copy.ts` and `order-scene.ts`; a test counts the markers. Until slice 18
-ships, the page promises something the product does not do.
+Slice 18 (orders) built them as the board draws them, so the `SLICE 18`
+markers that once flagged them are gone; a test keeps them gone.
 
 ## SEO
 
@@ -67,10 +66,9 @@ Nothing claims ratings or reviews.
 
 1. **A native speaker reads the Malay** in `copy.ts`. It was drafted by an AI;
    DESIGN.md requires a Malay speaker's copy.
-2. **Slice 18, or the copy changes.** See above.
-3. **Font preloading is broken app-wide** (`devDocs/deferred-findings.md`).
-4. **The sitemap lists only the landing page.**
-5. **Not re-measured.** The 2026-10-03 Lighthouse figures were for a different
+2. **Font preloading is broken app-wide** (`devDocs/deferred-findings.md`).
+3. **The sitemap lists only the landing page.**
+4. **Not re-measured.** The 2026-10-03 Lighthouse figures were for a different
    page. Measure this one before launch.
 
 ## History

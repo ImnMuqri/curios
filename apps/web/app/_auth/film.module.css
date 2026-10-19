@@ -465,6 +465,79 @@
   font-weight: 600;
 }
 
+/* The SignIn board's Orders card: the total beside the name, and Confirm turning to Confirmed. */
+.cardRow .amount {
+  font-family: var(--font-display);
+  font-size: 19px;
+  letter-spacing: -0.02em;
+}
+
+/* Still, for reduced motion: already confirmed. */
+.confirm {
+  position: relative;
+  overflow: hidden;
+  background: var(--hijau);
+}
+
+.confirm > span {
+  position: absolute;
+}
+
+.confirmA {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .confirm {
+    animation: okBg 3.4s ease forwards;
+  }
+
+  .confirmA {
+    animation: okA 3.4s ease forwards;
+  }
+
+  .confirmB {
+    animation: okB 3.4s ease forwards;
+  }
+}
+
+@keyframes okBg {
+  0%,
+  60% {
+    background: var(--biru);
+  }
+  72%,
+  100% {
+    background: var(--hijau);
+  }
+}
+
+@keyframes okA {
+  0%,
+  60% {
+    opacity: 1;
+    transform: none;
+  }
+  72%,
+  100% {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes okB {
+  0%,
+  60% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  72%,
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .dots {
   position: absolute;
   left: 0;

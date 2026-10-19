@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { OwnerTopic } from '@curios/db-read';
 import { TopicDetail, type TopicActions } from './topic-detail.js';
@@ -43,6 +43,7 @@ function show(topic = klang, opts: { calls?: TopicActions; others?: OwnerTopic[]
   const calls = opts.calls ?? actions();
   const onChanged = vi.fn();
   const onSelect = vi.fn();
+  const say = vi.fn();
   render(
     <TopicDetail
       topic={topic}
@@ -57,9 +58,10 @@ function show(topic = klang, opts: { calls?: TopicActions; others?: OwnerTopic[]
       actions={calls}
       onChanged={onChanged}
       onSelect={onSelect}
+      say={say}
     />,
   );
-  return { calls, onChanged, onSelect };
+  return { calls, onChanged, onSelect, say };
 }
 
 const answerBox = () => screen.getByRole('textbox', { name: 'Your answer' });
@@ -74,15 +76,24 @@ describe('TopicDetail, the head', () => {
   });
 });
 
+/** These check what is on screen, not how it moves: motion off, as an owner can ask for. */
+const motion = window.matchMedia.bind(window);
+const still = (on: boolean) => {
+  window.matchMedia = on ? (query: string) => ({ ...motion(query), matches: query.includes('reduce') }) : motion;
+};
+
 describe('TopicDetail, the answer', () => {
+  beforeEach(() => still(true));
+  afterEach(() => still(false));
+
   it('saves an answer, says so, and refreshes', async () => {
-    const { calls, onChanged } = show();
+    const { calls, onChanged, say } = show();
     expect(screen.getByRole('button', { name: 'Save answer' })).toBeDisabled();
     fireEvent.change(answerBox(), { target: { value: '  Yes, RM15 to Klang.  ' } });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save answer' })); });
     expect(calls.answer).toHaveBeenCalledWith('t1', 'Yes, RM15 to Klang.');
     expect(onChanged).toHaveBeenCalled();
-    expect(screen.getByRole('status')).toHaveTextContent('The chat now answers all 3 wordings with it.');
+    expect(say).toHaveBeenCalledWith('Saved. The chat now answers all 3 wordings with it.');
   });
 
   // The screen refreshes from the server after a save; until it does, what was saved stays on screen.
@@ -254,5 +265,45 @@ describe('TopicDetail, rename, merge and delete', () => {
     show(klang, { calls: actions({ split: vi.fn(async () => { throw new Error('That wording moved.'); }) }) });
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Not the same question: delivery klang ada?' })); });
     expect(screen.getByRole('alert')).toHaveTextContent('That wording moved.');
+  });
+});
+
+describe('TopicDetail, the board’s save', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('throws sparks off the button and types the answer into the chat', async () => {
+    vi.useFakeTimers();
+    show();
+    fireEvent.change(answerBox(), { target: { value: 'Yes, RM15 to Klang.' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save answer' })); });
+
+    const chat = screen.getByLabelText('How the chat replies');
+    const button = screen.getByRole('button', { name: 'Update answer' });
+    expect(button.querySelectorAll('i')).toHaveLength(8);
+    expect(within(chat).queryByText('Yes, RM15 to Klang.')).toBeNull();
+
+    // Two characters every 22ms: the 19 characters are in by 220ms.
+    // Each step waits for the one before it to render.
+    for (let i = 0; i < 12; i += 1) await act(async () => { vi.advanceTimersByTime(22); });
+    expect(within(chat).getByText('Yes, RM15 to Klang.')).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(600); });
+    expect(button.querySelectorAll('i')).toHaveLength(0);
+  });
+});
+
+describe('TopicDetail, in the board’s words', () => {
+  it('says what each change did', async () => {
+    const { say } = show();
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Not the same question: boleh hantar ke klang tak' })); });
+    expect(say).toHaveBeenLastCalledWith('“boleh hantar ke klang tak” is its own topic now. It will not be grouped back.');
+  });
+
+  it('says a topic went with its last wording, and lets go of it', async () => {
+    const { say, onSelect } = show(halal);
+    fireEvent.click(screen.getByRole('button', { name: 'Delete wording: Is it halal?' }));
+    const confirm = screen.getByRole('group', { name: 'Confirm deleting this wording' });
+    await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes' })); });
+    expect(say).toHaveBeenLastCalledWith('Wording deleted, and its topic with it.');
+    expect(onSelect).toHaveBeenCalledWith(null);
   });
 });

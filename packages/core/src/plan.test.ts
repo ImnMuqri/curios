@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { canCapture, FREE_LEADS, planState } from './plan.js';
+import {
+  canCapture,
+  canTakeOrders,
+  FREE_LEADS,
+  FREE_ORDERS,
+  orderState,
+  planState,
+} from './plan.js';
 
 const NOW = new Date('2026-09-12T00:00:00Z');
 const FUTURE = new Date('2026-10-12T00:00:00Z');
@@ -170,4 +177,29 @@ describe('planState', () => {
       }),
     ).toBe(true);
   });
+});
+
+describe('orderState and canTakeOrders', () => {
+  const base = {
+    mode: 'BUSINESS' as const,
+    paidUntil: null,
+    ordersPlaced: 0,
+    ordersAtTrialReset: 0,
+    now: NOW,
+  };
+  const cases = [
+    { name: 'personal', input: { ...base, mode: 'PERSONAL' as const }, state: { kind: 'personal' }, can: false },
+    { name: 'paid', input: { ...base, paidUntil: FUTURE, ordersPlaced: 99 }, state: { kind: 'paid', paidUntil: FUTURE }, can: true },
+    { name: 'trial, none used', input: base, state: { kind: 'trial', used: 0, remaining: 3 }, can: true },
+    { name: 'trial, two used', input: { ...base, ordersPlaced: 2 }, state: { kind: 'trial', used: 2, remaining: 1 }, can: true },
+    { name: 'trial spent', input: { ...base, ordersPlaced: FREE_ORDERS }, state: { kind: 'trialSpent' }, can: false },
+    { name: 'lapsed', input: { ...base, paidUntil: PAST, ordersPlaced: 3 }, state: { kind: 'lapsed', paidUntil: PAST }, can: false },
+    { name: 'after a reset', input: { ...base, ordersPlaced: 5, ordersAtTrialReset: 3 }, state: { kind: 'trial', used: 2, remaining: 1 }, can: true },
+  ];
+  for (const c of cases) {
+    it(`${c.name}: state and enforcement agree`, () => {
+      expect(orderState(c.input)).toEqual(c.state);
+      expect(canTakeOrders(c.input)).toBe(c.can);
+    });
+  }
 });

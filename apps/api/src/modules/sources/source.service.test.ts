@@ -125,14 +125,14 @@ describe('recheckSource', () => {
   it('queues the same source again, under a fresh job id', async () => {
     const { accountId, pageId } = await anOwner();
     const source = await prisma.ingestion.create({
-      data: { pageId, sourceUrl: 'https://s.example/', status: 'FAILED', error: 'boom', extractedCount: 3, tracked: false },
+      data: { pageId, sourceUrl: 'https://s.example/', status: 'FAILED', error: 'boom', extractedCount: 3, progress: 100, tracked: false },
     });
     const q = queue();
 
     await expect(recheckSource({ prisma, queue: q }, accountId, source.id)).resolves.toEqual({ ingestionId: source.id });
 
     const row = await prisma.ingestion.findUniqueOrThrow({ where: { id: source.id } });
-    expect(row).toMatchObject({ status: 'QUEUED', error: null, extractedCount: 0, tracked: true });
+    expect(row).toMatchObject({ status: 'QUEUED', error: null, extractedCount: 0, progress: 0, tracked: true });
     const [name, data, options] = q.add.mock.calls[0]!;
     expect(name).toBe(INGEST_QUEUE);
     expect(data).toMatchObject({ ingestionId: source.id, pageId, sourceUrl: 'https://s.example/' });

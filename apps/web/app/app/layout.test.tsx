@@ -51,7 +51,10 @@ const page: OwnerPage = {
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,
+  ordersPlaced: 0,
+  ordersAtTrialReset: 0,
   trialResetAt: null,
+  storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
 };
@@ -78,7 +81,7 @@ describe('the dashboard layout', () => {
   it('puts an owner with a page in the frame', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
-    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
@@ -88,7 +91,7 @@ describe('the dashboard layout', () => {
   it("names the owner's plan under their name", async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);
-    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
@@ -110,7 +113,7 @@ describe('the dashboard layout', () => {
   it('puts a used-up trial’s banner on Leads, and a dot on Billing', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce({ ...page, leadsCaptured: 3 });
-    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
     const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
 
@@ -119,12 +122,34 @@ describe('the dashboard layout', () => {
     expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
   });
 
+  it('counts the free orders from the trial reset, on Orders', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, storeEnabled: true, ordersPlaced: 4, ordersAtTrialReset: 3 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
+
+    expect(frame.props.alerts).toContainEqual(expect.objectContaining({ id: 'orders-trial-1', where: '/app/orders' }));
+    expect(frame.props.billingDot).toBe(false);
+  });
+
+  it('puts the paused banner on Orders when the free orders are spent', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, storeEnabled: true, ordersPlaced: 3 });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
+
+    expect(frame.props.alerts).toContainEqual(expect.objectContaining({ id: 'paused', where: '/app/orders' }));
+    expect(frame.props.billingDot).toBe(true);
+  });
+
   it('leaves onboarding full screen, without the frame, once the page exists', async () => {
     pathname = '/app/onboarding';
     try {
       resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
       getOwnerPage.mockResolvedValueOnce(page);
-      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0 });
+      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
 
       render(await AppLayout({ children: <p>onboarding</p> }));
 

@@ -258,9 +258,9 @@ describe('PATCH /leads/:id', () => {
       payload: { status },
     });
 
-  it('moves a lead the owner owns through contacted and closed, and back', async () => {
+  it('moves a lead the owner owns through contacted, sold and closed, and back', async () => {
     const mine = await anOwnerWithALead();
-    for (const status of ['CONTACTED', 'CLOSED', 'NEW']) {
+    for (const status of ['CONTACTED', 'SOLD', 'CLOSED', 'NEW']) {
       const res = await patch(mine.leadId, mine.cookie, status);
       expect(res.statusCode).toBe(200);
       expect((await app.prisma.lead.findUniqueOrThrow({ where: { id: mine.leadId } })).status).toBe(status);
@@ -269,7 +269,7 @@ describe('PATCH /leads/:id', () => {
 
   it('refuses a status that does not exist', async () => {
     const mine = await anOwnerWithALead();
-    expect((await patch(mine.leadId, mine.cookie, 'SOLD')).statusCode).toBe(400);
+    expect((await patch(mine.leadId, mine.cookie, 'WON')).statusCode).toBe(400);
   });
 
   it("refuses someone else's lead, and leaves it as it was", async () => {

@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { apiFetch } from '../../lib/api.js';
 import { rememberWantedHandle, tidyHandle } from '../../lib/wanted-handle.js';
 import { SystemShell, systemStyles as styles } from './SystemShell.js';
 
@@ -23,6 +25,21 @@ function triedHandle(pathname: string): string | null {
  */
 export function NotFoundScreen() {
   const handle = triedHandle(usePathname() ?? '');
+  // The page it was probably meant to be, asked for once the screen is up; a
+  // lookup that fails just leaves the line out.
+  const [near, setNear] = useState<string | null>(null);
+  useEffect(() => {
+    if (!handle) return;
+    let stale = false;
+    apiFetch<{ handle: string | null }>(`/pages/near?handle=${encodeURIComponent(handle)}`)
+      .then((found) => {
+        if (!stale) setNear(found.handle);
+      })
+      .catch(() => {});
+    return () => {
+      stale = true;
+    };
+  }, [handle]);
 
   return (
     <SystemShell>
@@ -50,6 +67,11 @@ export function NotFoundScreen() {
               Go to Curios
             </a>
           </div>
+          {near ? (
+            <p className={`${styles.l} ${styles.mean}`}>
+              Looking for someone? Did you mean <a href={`/${near}`}>curios.my/{near}</a>?
+            </p>
+          ) : null}
         </div>
         <div className={styles.art} aria-hidden="true">
           <div className={styles.ghostcard}>

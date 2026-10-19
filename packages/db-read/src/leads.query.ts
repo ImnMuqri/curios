@@ -17,9 +17,15 @@ export interface OwnerLead {
   score: number;
   /** Null until the extraction job runs, and null forever if it failed. */
   slots: LeadSlots | null;
-  status: 'NEW' | 'CONTACTED' | 'CLOSED';
+  status: 'NEW' | 'CONTACTED' | 'SOLD' | 'CLOSED';
   createdAt: Date;
   transcript: LeadTranscriptLine[];
+  /**
+   * How many of the transcript's messages came before the number was left,
+   * so "Left their number" sits where it happened rather than at the end.
+   * The capture card is not a message; the lead's own time places it.
+   */
+  capturedAfter: number;
 }
 
 /**
@@ -54,7 +60,7 @@ export async function getLeads(
       createdAt: true,
       conversation: {
         select: {
-          messages: { select: { role: true, content: true }, orderBy: { createdAt: 'asc' } },
+          messages: { select: { role: true, content: true, createdAt: true }, orderBy: { createdAt: 'asc' } },
         },
       },
     },
@@ -74,6 +80,7 @@ export async function getLeads(
       role: message.role,
       content: message.content,
     })),
+    capturedAfter: row.conversation.messages.filter((message) => message.createdAt <= row.createdAt).length,
   }));
 }
 
@@ -82,8 +89,8 @@ export interface LeadStats {
   waiting: number;
   /** Leads left in each of the last seven days, oldest first, today (the last 24 hours) last. */
   week: number[];
-  /** Leads the owner marked CLOSED. */
-  closed: number;
+  /** Leads the owner marked SOLD: closed into a sale. */
+  sold: number;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -91,9 +98,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** The Leads screen's three figures, counted in the database rather than from the newest fifty. */
 export async function getLeadStats(accountId: string, now = new Date()): Promise<LeadStats> {
   const scope = { page: { accountId } };
-  const [waiting, closed, recent] = await Promise.all([
+  const [waiting, sold, recent] = await Promise.all([
     prismaRead.lead.count({ where: { ...scope, status: 'NEW' } }),
-    prismaRead.lead.count({ where: { ...scope, status: 'CLOSED' } }),
+    prismaRead.lead.count({ where: { ...scope, status: 'SOLD' } }),
     prismaRead.lead.findMany({
       where: { ...scope, createdAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now } },
       select: { createdAt: true },
@@ -101,5 +108,5 @@ export async function getLeadStats(accountId: string, now = new Date()): Promise
   ]);
   const week = [0, 0, 0, 0, 0, 0, 0];
   for (const lead of recent) week[6 - Math.floor((now.getTime() - lead.createdAt.getTime()) / DAY_MS)]! += 1;
-  return { waiting, week, closed };
+  return { waiting, week, sold };
 }
