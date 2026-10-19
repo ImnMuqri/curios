@@ -1,8 +1,19 @@
 import type { ReactNode } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { extendPaidUntil, FREE_LEADS, PLAN_PRICES_CENTS, planState, SESSION_COOKIE, type BillingPlan, type PlanState } from '@curios/core';
-import { countLeadsThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getSignInMethods } from '@curios/db-read';
+import {
+  extendPaidUntil,
+  FREE_LEADS,
+  FREE_ORDERS,
+  orderState,
+  PLAN_PRICES_CENTS,
+  planState,
+  SESSION_COOKIE,
+  type BillingPlan,
+  type OrderState,
+  type PlanState,
+} from '@curios/core';
+import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 import { PayButtons, type PayOption } from './pay-buttons.js';
@@ -14,7 +25,7 @@ import { CountUp } from '../_ui/count-up.js';
 import { PaidToast } from './paid-toast.js';
 import { NEAR_SHARE } from '../alerts.js';
 
-/** What Business includes, as the board lists it: everything here exists today. */
+/** What Business includes, as the Billing board lists it. */
 const INCLUDED = ['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search'];
 
 const PLANS: { plan: BillingPlan; name: string; note: string; period: string; unit: string; save?: string }[] = [
@@ -53,6 +64,27 @@ function planHead(state: PlanState, now: Date): { big: number; unit: string; sub
       return { big: 0, unit: 'free leads left', sub: planSummary(state) };
     case 'lapsed':
       return { big: 0, unit: 'days left', sub: planSummary(state) };
+  }
+}
+
+/**
+ * The Orders meter's line. Paid is the board's; the board draws no trial, so a
+ * trial counts the free orders the way the plan card counts the free leads, and
+ * a spent one says the shop has stopped, as Store's "Open for orders" does.
+ */
+function ordersNote(state: OrderState): { paid: boolean; note: string } {
+  const stopped = 'Your shop takes no orders until you pay.';
+  switch (state.kind) {
+    case 'paid':
+      return { paid: true, note: 'Take as many as you get.' };
+    case 'trial':
+      return { paid: false, note: `${state.used} of ${FREE_ORDERS} free orders used` };
+    case 'trialSpent':
+      return { paid: false, note: `${FREE_ORDERS} of ${FREE_ORDERS} free orders used. ${stopped}` };
+    case 'lapsed':
+      return { paid: false, note: `Your plan ended on ${shortDate(state.paidUntil, true)}. ${stopped}` };
+    case 'personal':
+      return { paid: false, note: '' };
   }
 }
 
@@ -109,14 +141,18 @@ export default async function BillingPage({
 
   // A personal page pays nothing and has no billing story to tell, so it is
   // asked for none of these.
-  const [usage, leads, payments, account] = personal
-    ? [null, 0, [], null]
+  const [usage, leads, orders, payments, account] = personal
+    ? [null, 0, 0, [], null]
     : await Promise.all([
         getConversationUsage(page.id, now),
         countLeadsThisMonth(page.id, now),
+        countOrdersThisMonth(page.id, now),
         getRecentPayments(page.id),
         getSignInMethods(owner.accountId),
       ]);
+  const orderMeter = ordersNote(
+    orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
+  );
 
   // Exactly the conditions the API enforces (billing.service.ts, resetTrial).
   // A button that leads to a 409 is worse than no button.
@@ -229,6 +265,9 @@ export default async function BillingPage({
                 {usage.used > usage.cap
                   ? `Past the limit: the chat is giving a short fixed reply until ${shortDate(usageResets(now))}.`
                   : `Resets ${shortDate(usageResets(now))}. Past the limit, the chat gives a short fixed reply.`}
+              </Meter>
+              <Meter label="Orders" used={orders} of={orderMeter.paid ? 'no limit' : 'this month'} share={orderMeter.paid ? 100 : 0} tone="hijau">
+                {orderMeter.note}
               </Meter>
               <Meter
                 label="Leads"

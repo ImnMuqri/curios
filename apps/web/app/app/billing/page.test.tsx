@@ -6,8 +6,9 @@ const getOwnerPage = vi.fn();
 const getConversationUsage = vi.fn();
 const getRecentPayments = vi.fn();
 const countLeadsThisMonth = vi.fn();
+const countOrdersThisMonth = vi.fn();
 const getSignInMethods = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getConversationUsage, getRecentPayments, countLeadsThisMonth, getSignInMethods }));
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -78,6 +79,8 @@ describe('BillingPage', () => {
     getRecentPayments.mockResolvedValue([]);
     countLeadsThisMonth.mockReset();
     countLeadsThisMonth.mockResolvedValue(2);
+    countOrdersThisMonth.mockReset();
+    countOrdersThisMonth.mockResolvedValue(7);
     getSignInMethods.mockResolvedValue({ email: 'nadia@example.com' });
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
   });
@@ -175,11 +178,40 @@ describe('BillingPage', () => {
   it('counts this month’s leads, and says the capture card stays on a paid page', async () => {
     await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z') });
 
-    const month = screen.getByRole('region', { name: 'This month' });
-    expect(within(month).getByText('2')).toBeInTheDocument();
-    expect(within(month).getByText('no limit')).toBeInTheDocument();
-    expect(within(month).getByText('The capture card stays on your page.')).toBeInTheDocument();
+    const meter = screen.getByText('Leads').closest('div')!;
+    expect(meter).toHaveTextContent('2 no limit');
+    expect(within(meter).getByText('The capture card stays on your page.')).toBeInTheDocument();
     expect(countLeadsThisMonth).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('counts this month’s orders on a paid page, with no limit, as the board draws it', async () => {
+    await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z'), ordersPlaced: 40 });
+
+    const meter = screen.getByText('Orders').closest('div')!;
+    expect(meter).toHaveTextContent('7 no limit');
+    expect(within(meter).getByText('Take as many as you get.')).toBeInTheDocument();
+    expect(countOrdersThisMonth).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('counts the free orders used on a trial', async () => {
+    await renderWith({ ...page, ordersPlaced: 5, ordersAtTrialReset: 4 });
+
+    const meter = screen.getByText('Orders').closest('div')!;
+    expect(within(meter).getByText('1 of 3 free orders used')).toBeInTheDocument();
+  });
+
+  it('says orders are paused once the free orders are used', async () => {
+    await renderWith({ ...page, ordersPlaced: 3 });
+
+    const meter = screen.getByText('Orders').closest('div')!;
+    expect(within(meter).getByText('3 of 3 free orders used. Your shop takes no orders until you pay.')).toBeInTheDocument();
+  });
+
+  it('lists what Business includes, as the board does', async () => {
+    await renderWith(page);
+
+    const list = screen.getByRole('heading', { name: 'Included in Business' }).nextElementSibling!;
+    expect([...list.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search']);
   });
 
   it('lists what has been paid, with a receipt for a paid one', async () => {
@@ -284,6 +316,7 @@ describe('BillingPage', () => {
     expect(getConversationUsage).not.toHaveBeenCalled();
     expect(getRecentPayments).not.toHaveBeenCalled();
     expect(countLeadsThisMonth).not.toHaveBeenCalled();
+    expect(countOrdersThisMonth).not.toHaveBeenCalled();
   });
 
   it('offers a personal page the upgrade, and says what changes', async () => {

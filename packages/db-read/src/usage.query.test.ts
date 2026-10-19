@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
-import { countLeadsThisMonth, getConversationUsage } from './usage.query.js';
+import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage } from './usage.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -87,5 +87,50 @@ describe('countLeadsThisMonth', () => {
     });
 
     expect(await countLeadsThisMonth(other.pages[0]?.id ?? '', NOW)).toBe(0);
+  });
+});
+
+describe('countOrdersThisMonth', () => {
+  let n = 0;
+  const order = async (createdAt: Date, page = pageId) => {
+    n += 1;
+    await write.order.create({
+      data: {
+        pageId: page,
+        number: n,
+        code: `U${n}`,
+        tokenHash: `usage-order-${n}`,
+        customerName: 'Aina',
+        phone: '+60123456789',
+        method: 'PICKUP',
+        day: new Date('2026-09-20T00:00:00Z'),
+        itemsCents: 1000,
+        deliveryCents: 0,
+        totalCents: 1000,
+        createdAt,
+      },
+    });
+  };
+
+  it('counts the orders placed this month, by the same UTC month as the meters beside it', async () => {
+    await order(new Date('2026-09-01T00:00:00.000Z'));
+    await order(new Date('2026-09-16T23:00:00.000Z'));
+    // Last month, and after now: neither is this month's so far.
+    await order(new Date('2026-08-31T23:59:59.000Z'));
+    await order(new Date('2026-09-20T00:00:00.000Z'));
+
+    expect(await countOrdersThisMonth(pageId, NOW)).toBe(2);
+  });
+
+  it('counts nothing for another page', async () => {
+    const other = await write.account.create({
+      data: {
+        email: 'usage-orders-other@example.com',
+        pages: { create: { handle: 'usage-orders-other', skeleton: 'usageordersother', displayName: 'Someone Else' } },
+      },
+      select: { pages: { select: { id: true } } },
+    });
+
+    expect(await countOrdersThisMonth(other.pages[0]?.id ?? '', NOW)).toBe(0);
   });
 });

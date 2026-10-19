@@ -40,6 +40,18 @@ export async function getConversationUsage(pageId: string, now: Date): Promise<C
  * meters beside each other reset together.
  */
 export async function countLeadsThisMonth(pageId: string, now: Date): Promise<number> {
-  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-  return prismaRead.lead.count({ where: { pageId, createdAt: { gte: start, lte: now } } });
+  return prismaRead.lead.count({ where: { pageId, createdAt: { gte: monthStart(now), lte: now } } });
+}
+
+/**
+ * Orders placed on this page this month, for the billing screen's Orders
+ * meter. The same UTC month as the two meters beside it, for the same reason:
+ * one "Resets" date for all three.
+ */
+export async function countOrdersThisMonth(pageId: string, now: Date): Promise<number> {
+  return prismaRead.order.count({ where: { pageId, createdAt: { gte: monthStart(now), lte: now } } });
+}
+
+function monthStart(now: Date): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 }

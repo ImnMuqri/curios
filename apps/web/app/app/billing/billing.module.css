@@ -546,6 +546,10 @@
   background: var(--merah);
 }
 
+.mbar[data-tone='hijau'] i {
+  background: repeating-linear-gradient(135deg, var(--blob-mint) 0 6px, var(--hijau-muda) 6px 12px);
+}
+
 .mbar[data-tone='rose'] i {
   background: repeating-linear-gradient(135deg, var(--blob-pink) 0 6px, var(--rose-muda) 6px 12px);
 }
