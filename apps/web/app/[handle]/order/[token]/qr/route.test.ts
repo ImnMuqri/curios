@@ -26,7 +26,7 @@ describe('GET /[handle]/order/[token]/qr', () => {
     vi.stubGlobal('fetch', fetchSpy);
 
     const response = await call('KekLina');
-    expect(fetchSpy).toHaveBeenCalledWith('https://cdn.test/qr/p1/abc.png');
+    expect(fetchSpy).toHaveBeenCalledWith('https://cdn.test/qr/p1/abc.png', expect.objectContaining({ signal: expect.any(AbortSignal) }));
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/webp');
     expect(response.headers.get('content-disposition')).toBe('attachment; filename="keklina-qr.webp"');
@@ -45,6 +45,23 @@ describe('GET /[handle]/order/[token]/qr', () => {
     vi.mocked(getOrderByToken).mockResolvedValueOnce(order(null));
     expect((await call('keklina')).status).toBe(404);
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('gives up on storage after ten seconds, as a 404', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order());
+    // Ten seconds gone already: the signal handed to fetch is the timed-out one.
+    const timeout = vi.spyOn(AbortSignal, 'timeout').mockReturnValue(AbortSignal.abort(new DOMException('timed out', 'TimeoutError')));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        if (init?.signal?.aborted) throw init.signal.reason;
+        return new Response(new Uint8Array([1]));
+      }),
+    );
+
+    expect((await call('keklina')).status).toBe(404);
+    expect(timeout).toHaveBeenCalledWith(10_000);
+    timeout.mockRestore();
   });
 
   it('is a 404 when storage has no such picture', async () => {

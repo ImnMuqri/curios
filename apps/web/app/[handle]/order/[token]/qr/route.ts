@@ -22,7 +22,8 @@ export async function GET(_request: Request, { params }: { params: Promise<{ han
   const url = avatarUrl(order.page.paymentQrKey);
   if (!url) return notFound();
 
-  const upstream = await fetch(url).catch(() => null);
+  // Ten seconds, then a 404 like any other storage failure: a hung bucket must not hold the request open.
+  const upstream = await fetch(url, { signal: AbortSignal.timeout(10_000) }).catch(() => null);
   if (!upstream?.ok || !upstream.body) return notFound();
   const type = (upstream.headers.get('content-type') ?? 'image/png').split(';')[0]!.trim();
   const ext = EXTENSION[type] ?? 'png';
