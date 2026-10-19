@@ -177,7 +177,8 @@ export function OrderDetail({
   const doneCount = steps.filter((s) => s[2]).length;
   const lastDone = steps.reduce((at, s, i) => (s[2] ? i : at), 0);
   // The step after the last one done; a step skipped on the way (no receipt, paid another way) is not "next".
-  const next = steps.findIndex((s, i) => !s[2] && i > lastDone);
+  // A cancelled order rings its first step not reached, as the board's findIndex(!done) does.
+  const next = cancelled ? steps.findIndex((s) => !s[2]) : steps.findIndex((s, i) => !s[2] && i > lastDone);
   const fill = doneCount <= 1 ? 0 : (lastDone / 3) * 75;
 
   let ask: Ask | null = null;
@@ -297,7 +298,8 @@ export function OrderDetail({
             const isEnd = i === 3;
             const state = done ? (cancelled && isEnd && !order.refundedAt ? 'cancel' : isEnd && !cancelled ? 'complete' : 'done') : i === next ? 'next' : 'todo';
             return (
-              <li key={label} className={styles.step} aria-current={i === next ? 'step' : undefined}>
+              // The ring only, on a cancelled order: nothing there is the current step.
+              <li key={label} className={styles.step} aria-current={i === next && !cancelled ? 'step' : undefined}>
                 <span className={styles.node} data-state={state} aria-hidden="true">
                   {done ? (
                     <svg viewBox="0 0 24 24">

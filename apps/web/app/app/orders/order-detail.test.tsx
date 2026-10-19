@@ -113,6 +113,15 @@ describe('OrderDetail, who and where it is', () => {
     expect(steps().getAllByRole('listitem').map((li) => li.textContent)).toEqual(['PlacedMon, 10:02am', 'ReceiptMon, 11:20am', 'PaidMon, 12:05pm', 'CancelledTue, 9:00am']);
   });
 
+  // The board's findIndex(!done): a cancelled order rings its first step not
+  // reached. Only the ring: it is not the current step of anything.
+  it('rings the first step a cancelled order never reached, as the board does', () => {
+    show({ ...awaiting, status: 'CANCELLED', cancelledAt: new Date('2026-10-16T03:00:00Z') });
+    const items = steps().getAllByRole('listitem');
+    expect(items.map((li) => li.querySelector('[data-state]')?.getAttribute('data-state'))).toEqual(['done', 'next', 'todo', 'cancel']);
+    for (const item of items) expect(item).not.toHaveAttribute('aria-current');
+  });
+
   it('draws a refunded order’s last step as Refunded', () => {
     show({ ...refundOwed, refundedAt: new Date('2026-10-14T02:00:00Z') });
     expect(steps().getAllByRole('listitem')[3]).toHaveTextContent('RefundedWed, 10:00am');
