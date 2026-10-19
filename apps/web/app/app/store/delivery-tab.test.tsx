@@ -107,7 +107,7 @@ describe('DeliveryTab, notice', () => {
       ['Sat17', 'before'],
       ['Sun18', 'first'],
     ]);
-    expect(screen.getByText('Ordering today, the earliest a customer can have it is Sun 18 Oct.')).toBeInTheDocument();
+    expect(screen.getByText('The earliest date a customer can pick is Sun 18 Oct.')).toBeInTheDocument();
   });
 
   it('stops at 30 days', () => {
@@ -132,6 +132,12 @@ describe('DeliveryTab, closed days and the delivery note', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Closed on Sunday' }));
     await act(async () => { await vi.advanceTimersByTimeAsync(400); });
     expect(save).toHaveBeenLastCalledWith({ closedDays: [1] });
+  });
+
+  it('says what pickup and the flat fee do, in the board’s words', () => {
+    show();
+    expect(screen.getByText('Shown at checkout and on the order page')).toBeInTheDocument();
+    expect(tile(/Flat fee/)).toHaveTextContent('Added to the total');
   });
 
   it('saves the delivery note as typed', async () => {

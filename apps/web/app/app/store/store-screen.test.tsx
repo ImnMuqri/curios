@@ -30,7 +30,7 @@ const look: ShopLook = {
 
 const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items) =>
   render(
-    <StoreScreen initial={{ ...settings, ...over }} items={list} look={look} uploadsEnabled publicBase="https://files.example/" qrUrl={null} today="2026-10-16" />,
+    <StoreScreen initial={{ ...settings, ...over }} items={list} look={look} uploadsEnabled publicBase="https://files.example/" qrUrl={null} today="2026-10-16" orders={{ paused: null, nextNumber: 1 }} />,
   );
 
 const tab = (name: string) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
@@ -45,6 +45,8 @@ describe('StoreScreen, against the API', () => {
     await userEvent.click(tab('Pickup & delivery'));
     await userEvent.click(screen.getByRole('switch', { name: 'Allow pickup' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/settings', { method: 'PATCH', body: JSON.stringify({ pickupEnabled: true }) });
+    // This tab turns the preview to the Pay screen; the shop's terms are on Shop.
+    await userEvent.click(within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Shop' }));
     expect(await screen.findByText(/Pickup/, { selector: 'li' })).toBeInTheDocument();
   });
 

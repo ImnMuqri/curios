@@ -16,7 +16,7 @@ const FEE_SENTENCE = 'Give flat delivery a fee above RM0, up to RM500.';
 
 const MODES: { mode: DeliveryMode; name: string; note: string; tone?: 'biru' | 'hijau'; d: string }[] = [
   { mode: 'NONE', name: 'No delivery', note: 'Pickup only', d: 'M5 5l14 14M9 7h5v6M14 10h4l3 3v3h-3M3 7h2M3 16h8M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
-  { mode: 'FLAT', name: 'Flat fee', note: 'One fee per order', tone: 'biru', d: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
+  { mode: 'FLAT', name: 'Flat fee', note: 'Added to the total', tone: 'biru', d: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
   { mode: 'RIDER', name: 'Rider paid separately', note: 'Customer pays the rider', tone: 'hijau', d: 'M5 17a3 3 0 1 0 0-.01M19 17a3 3 0 1 0 0-.01M5 17l4-7h5l3 7M9 10l-1-3H6M14 10l2-3h2' },
 ];
 
@@ -115,7 +115,7 @@ export function DeliveryTab({
     notice === 0
       ? 'Customers can order for today.'
       : notice < days.length
-        ? `Ordering today, the earliest a customer can have it is ${WEEKDAYS[earliest.getDay()]} ${earliest.getDate()} ${MONTHS[earliest.getMonth()]}.`
+        ? `The earliest date a customer can pick is ${WEEKDAYS[earliest.getDay()]} ${earliest.getDate()} ${MONTHS[earliest.getMonth()]}.`
         : `Customers order ${notice} days ahead.`;
 
   return (
@@ -125,7 +125,7 @@ export function DeliveryTab({
         <div className={styles.row}>
           <span className={styles.rowText}>
             <b>Allow pickup</b>
-            <span>{pickup ? 'Your shop says where and when' : 'Customers can only get it delivered'}</span>
+            <span>{pickup ? 'Shown at checkout and on the order page' :'Customers can only get it delivered'}</span>
           </span>
           <button type="button" className={ui.switch} role="switch" aria-checked={pickup} aria-label="Allow pickup" onClick={() => void choosePickup(!pickup)}>
             <i />

@@ -69,7 +69,7 @@ export function PaymentTab({
   return (
     <>
       <section className={ui.section} aria-labelledby="qr-title">
-        <SectionHead id="qr-title" icon="qr" tone="biru" title="DuitNow QR" note="For customers to scan when they pay" />
+        <SectionHead id="qr-title" icon="qr" tone="biru" title="DuitNow QR" note="Customers scan it on their order page" />
         {qr.has ? (
           <div className={styles.qrCard}>
             <span className={styles.qrBox}>
@@ -77,8 +77,8 @@ export function PaymentTab({
               <span className={styles.scan} aria-hidden="true" />
             </span>
             <span>
-              <b>Your QR is saved</b>
-              <p>Order pages will show it with the exact total, so customers pay the right amount.</p>
+              <b>Your QR is ready</b>
+              <p>Each order page shows it with the exact total, so customers pay the right amount.</p>
               <span className={styles.buttons}>
                 <button type="button" className={styles.outline} disabled={!uploadsEnabled} onClick={() => file.current?.click()}>
                   Change QR

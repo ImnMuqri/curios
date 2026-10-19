@@ -37,8 +37,8 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   return { settingsApi, itemsApi };
 }
 
-function show(settings: StoreSettings = ready, list = items, calls = apis()) {
-  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" {...calls} />);
+function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }) {
+  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" orders={orders} {...calls} />);
   return calls;
 }
 
@@ -74,6 +74,14 @@ describe('the header', () => {
     expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
     expect(within(header()).getByText('Open for orders')).toBeInTheDocument();
     expect(within(header()).getByRole('link', { name: 'See your shop' })).toBeInTheDocument();
+  });
+
+  it('says why an open shop takes no orders while they are paused', () => {
+    show(ready, items, apis(), { paused: 'Paused: your 3 free orders are used.', nextNumber: 4 });
+    expect(within(header()).getByText('Paused: your 3 free orders are used.')).toBeInTheDocument();
+    expect(within(header()).queryByText('Open for orders')).toBeNull();
+    // Still open: customers see the shop, and their basket goes on WhatsApp.
+    expect(within(header()).getByRole('switch', { name: 'Shop open' })).toHaveAttribute('aria-checked', 'true');
   });
 
   it('says why when the API will not open it', async () => {
@@ -168,6 +176,50 @@ describe('the items', () => {
     fireEvent.click(screen.getByRole('button', { name: 'All items' }));
     expect(screen.getByLabelText('Shop description')).toBeInTheDocument();
     expect(within(preview()).queryByRole('dialog')).toBeNull();
+  });
+});
+
+describe('the preview', () => {
+  const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
+
+  it('ends the shop in the board’s basket bar, empty, with Checkout', () => {
+    show();
+    expect(within(preview()).getByText('Basket is empty')).toBeInTheDocument();
+    fireEvent.click(within(preview()).getByRole('button', { name: 'Checkout' }));
+    expect(screenTab('Pay')).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('shows the order page’s Pay screen: the total, the bank account, and the receipt upload', () => {
+    show();
+    fireEvent.click(screenTab('Pay'));
+    const pay = within(preview());
+    expect(pay.getByRole('heading', { name: 'Order #13' })).toBeInTheDocument();
+    expect(pay.getByText('Waiting for payment')).toBeInTheDocument();
+    // Kek batik RM45 and the RM10 flat fee: the board's delivery, on the earliest day.
+    expect(pay.getByRole('heading', { name: 'Pay RM55' })).toBeInTheDocument();
+    expect(pay.getByText('Maybank · Lina')).toBeInTheDocument();
+    expect(pay.getByText('1234567890')).toBeInTheDocument();
+    expect(pay.getByText('Upload your receipt')).toBeInTheDocument();
+    expect(pay.getByText('1× Kek batik')).toBeInTheDocument();
+    expect(pay.getByText('Delivery · Sun 18 Oct')).toBeInTheDocument();
+    // A preview: nothing in it uploads.
+    expect(preview().querySelector('input[type="file"]')).toBeNull();
+  });
+
+  it('says so on the Pay screen when there is no way to pay yet', () => {
+    show({ ...ready, bankName: null, bankAccountName: null, bankAccountNumber: null });
+    fireEvent.click(screenTab('Pay'));
+    expect(within(preview()).getByText('No way to pay yet. Add a QR or your bank account.')).toBeInTheDocument();
+  });
+
+  it('turns to the Pay screen with the Payment and delivery tabs, and back to the shop with Items', () => {
+    show();
+    fireEvent.click(editTab('Payment'));
+    expect(screenTab('Pay')).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(editTab('Items'));
+    expect(screenTab('Shop')).toHaveAttribute('aria-selected', 'true');
+    fireEvent.click(editTab('Pickup & delivery'));
+    expect(screenTab('Pay')).toHaveAttribute('aria-selected', 'true');
   });
 });
 

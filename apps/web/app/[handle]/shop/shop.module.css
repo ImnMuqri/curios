@@ -176,6 +176,16 @@
   box-shadow: 0 14px 30px -14px rgb(0 0 0 / 60%);
 }
 
+/* The Store preview's bar before anything is added: the bar alone. */
+.basket[data-empty] {
+  padding-top: 6px;
+}
+
+.total[data-empty] {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .shop[data-variant='embedded'] .basket {
   position: sticky;
   right: auto;

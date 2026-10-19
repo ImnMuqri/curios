@@ -89,6 +89,13 @@ describe('PaymentTab, the QR', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('only way to pay');
   });
 
+  it('says where customers see the QR, in the board’s words', () => {
+    show({}, { qr: { has: true, url: null } });
+    expect(screen.getByText('Customers scan it on their order page')).toBeInTheDocument();
+    expect(screen.getByText('Your QR is ready')).toBeInTheDocument();
+    expect(screen.getByText('Each order page shows it with the exact total, so customers pay the right amount.')).toBeInTheDocument();
+  });
+
   it('says uploads are off, while the bank fields still work', () => {
     show({}, { uploadsEnabled: false });
     expect(screen.getByRole('button', { name: /Upload your DuitNow QR/ })).toBeDisabled();

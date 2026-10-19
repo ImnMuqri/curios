@@ -55,6 +55,12 @@ export function ShopView(props: {
    * (the landing's demo, the Store preview), the bar is WhatsApp as before.
    */
   canTakeOrders?: boolean;
+  /**
+   * The Store preview's checkout, as the Store board draws it: the bar is
+   * always there ("Basket is empty" until something is added), and its
+   * Checkout button calls this instead of leaving the page.
+   */
+  onCheckout?: () => void;
 }) {
   const copy = shopCopy(props.language);
   const [basket, setBasket] = useState<BasketLine[]>([]);
@@ -133,6 +139,19 @@ export function ShopView(props: {
 
       {open ? <ItemSheet key={open.id} item={open} copy={copy} inline={props.sheet === 'inline'} onAdd={add} onClose={() => setOpenId(null)} /> : null}
 
+      {props.onCheckout && priced.lines.length === 0 ? (
+        <div className={styles.basket} data-empty="">
+          <div className={styles.bar}>
+            <p className={styles.total} data-empty="">
+              {copy.basketEmpty}
+            </p>
+            <button type="button" className={styles.order} onClick={props.onCheckout}>
+              {copy.checkout}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       {priced.lines.length > 0 ? (
         <div className={styles.basket}>
           <ul className={styles.lines}>
@@ -157,7 +176,11 @@ export function ShopView(props: {
           ) : null}
           <div className={styles.bar}>
           <p className={styles.total}>{copy.basket(count, formatRinggit(priced.totalCents))}</p>
-          {props.canTakeOrders && !props.onOrder ? (
+          {props.onCheckout ? (
+            <button type="button" className={styles.order} onClick={props.onCheckout}>
+              {copy.checkout}
+            </button>
+          ) : props.canTakeOrders && !props.onOrder ? (
             <a className={styles.order} href={`/${props.handle}/shop/checkout`}>
               {copy.checkout}
             </a>

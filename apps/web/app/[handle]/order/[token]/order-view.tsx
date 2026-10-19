@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
 import { customerSteps, orderView, type OrderStatus } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
+import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { ReceiptUpload } from './receipt-upload.js';
 import checkout from '../../shop/checkout/checkout.module.css';
 import styles from './order.module.css';
@@ -67,60 +67,6 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
   }
 }
 
-/** "Copied" for a moment after a copy, as the board's buttons do. */
-function useCopied(): [boolean, (text: string) => void] {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-  function copyText(text: string) {
-    void navigator.clipboard
-      ?.writeText(text)
-      .then(() => {
-        clearTimeout(timer.current);
-        setCopied(true);
-        timer.current = setTimeout(() => setCopied(false), 1500);
-      })
-      .catch(() => {
-        // No clipboard: the text is on the screen to read.
-      });
-  }
-  return [copied, copyText];
-}
-
-/**
- * The board's download button on the QR's corner: a tick for a moment once
- * pressed. A plain download link to this app's own address (./qr), which
- * serves the QR as an attachment: a `download` attribute is ignored across
- * origins, and storage's own address is another origin.
- */
-function SaveQr(props: { href: string; copy: ShopCopy }) {
-  const [saved, setSaved] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  useEffect(() => () => clearTimeout(timer.current), []);
-
-  function pressed() {
-    clearTimeout(timer.current);
-    setSaved(true);
-    timer.current = setTimeout(() => setSaved(false), 1600);
-  }
-
-  return (
-    <a
-      href={props.href}
-      download
-      className={styles.save}
-      data-saved={saved || undefined}
-      aria-label={props.copy.saveQr}
-      title={props.copy.saveQrTitle}
-      onClick={pressed}
-    >
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d={saved ? 'M5 12.5l4.5 4.5L19 7.5' : 'M12 4v12M7 11l5 5 5-5M5 20h14'} />
-      </svg>
-    </a>
-  );
-}
-
 /**
  * The customer's order link (Public board, `order`): where it is, how to pay,
  * and the receipt. Every name and number is this order's and this shop's.
@@ -129,7 +75,6 @@ export function OrderView(props: OrderViewProps) {
   const { order, displayName: name } = props;
   const copy = shopCopy(props.language);
   const [codeCopied, copyCode] = useCopied();
-  const [accountCopied, copyAccount] = useCopied();
 
   const facts = {
     status: order.status,
@@ -153,9 +98,6 @@ export function OrderView(props: OrderViewProps) {
   // The step being waited on: the first one not yet lit.
   const nowAt = stepList.findIndex((step) => !step.done);
 
-  const bankLine = [props.bank.name, props.bank.accountName].filter(Boolean).join(' · ');
-  const hasBank = Boolean(bankLine || props.bank.accountNumber);
-  const lead = props.qrUrl ? (hasBank ? copy.scanOrTransfer : copy.scanOnly) : copy.transferTo;
   const receiptName = `receipt-${order.number}.${EXTENSION[order.receiptType ?? ''] ?? 'jpg'}`;
 
   return (
@@ -214,27 +156,14 @@ export function OrderView(props: OrderViewProps) {
               {copy.notReceived(name)}
             </p>
           ) : null}
-          {props.qrUrl || hasBank ? (
-            <div className={styles.payBox}>
-              {props.qrUrl ? (
-                <span className={styles.qr}>
-                  <img src={props.qrUrl} alt={copy.qrLabel(name)} width={104} height={104} referrerPolicy="no-referrer" />
-                  <SaveQr href={`/${props.handle}/order/${encodeURIComponent(props.token)}/qr`} copy={copy} />
-                </span>
-              ) : null}
-              <span className={styles.bank}>
-                <span>{lead}</span>
-                {bankLine ? <b>{bankLine}</b> : null}
-                {props.bank.accountNumber ? (
-                  <span className={styles.account}>
-                    <code>{props.bank.accountNumber}</code>
-                    <button type="button" className={styles.textButton} onClick={() => copyAccount(props.bank.accountNumber ?? '')}>
-                      {accountCopied ? copy.copied : copy.copy}
-                    </button>
-                  </span>
-                ) : null}
-              </span>
-            </div>
+          {props.qrUrl || hasBank(props.bank) ? (
+            <PayBox
+              name={name}
+              qrUrl={props.qrUrl}
+              bank={props.bank}
+              copy={copy}
+              saveHref={`/${props.handle}/order/${encodeURIComponent(props.token)}/qr`}
+            />
           ) : (
             <p className={styles.askPay}>{copy.askHowToPay(name)}</p>
           )}

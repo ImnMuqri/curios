@@ -1073,6 +1073,34 @@
   padding: 0 14px;
 }
 
+/* The preview's Pay screen: the order page's column, filling the phone instead of the window. */
+.payStage {
+  min-height: 100%;
+}
+
+.payStage .payColumn {
+  min-height: 100%;
+  padding-bottom: 28px;
+  box-shadow: none;
+  animation: none;
+}
+
+.payStage .payTitle {
+  margin: 0;
+  font-size: 24px;
+}
+
+.payStage .payHead {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+/* A picture of the upload box: nothing to press. */
+.payStage .payUpload {
+  cursor: default;
+}
+
 /* ---- Narrower ---- */
 
 @container (max-width: 680px) {

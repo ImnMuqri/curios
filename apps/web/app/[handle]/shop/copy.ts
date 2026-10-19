@@ -22,6 +22,8 @@ export interface ShopCopy {
   close: string;
   /** The basket bar's way to checkout, when the shop takes orders. */
   checkout: string;
+  /** The Store preview's bar before anything is in the basket. */
+  basketEmpty: string;
   paused: (name: string) => string;
   // Checkout.
   backToShop: string;
@@ -172,6 +174,7 @@ const EN: ShopCopy = {
   empty: 'Nothing for sale right now. Check back soon.',
   close: 'Close',
   checkout: 'Checkout',
+  basketEmpty: 'Basket is empty',
   paused: (name) => `Checkout is paused. Send your basket to ${name} on WhatsApp instead.`,
   backToShop: 'Back to the shop',
   yourOrder: 'Your order',
@@ -279,6 +282,7 @@ const MS: ShopCopy = {
   empty: 'Tiada barang dijual buat masa ini. Datang lagi nanti.',
   close: 'Tutup',
   checkout: 'Daftar keluar',
+  basketEmpty: 'Bakul kosong',
   paused: (name) => `Tempahan di sini ditangguhkan. Hantar bakul anda kepada ${name} di WhatsApp.`,
   backToShop: 'Kembali ke kedai',
   yourOrder: 'Tempahan anda',

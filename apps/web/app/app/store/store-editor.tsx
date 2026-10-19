@@ -15,6 +15,7 @@ import panel from '../panel.module.css';
 import { DeliveryTab } from './delivery-tab.js';
 import { ItemEditor } from './item-editor.js';
 import { ItemsList } from './items-list.js';
+import { PayPreview } from './pay-preview.js';
 import { PaymentTab } from './payment-tab.js';
 import { orNull, useSettingText } from './setting-field.js';
 import type { EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
@@ -26,7 +27,10 @@ const TABS = [
   { id: 'delivery', label: 'Pickup & delivery' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
-type PreviewTab = 'shop' | 'item';
+type PreviewTab = 'shop' | 'item' | 'pay';
+
+/** What the phone shows for an editing tab, as the board turns it: the shop for Items, the order page for the rest. */
+const previewFor = (tab: Tab): PreviewTab => (tab === 'items' ? 'shop' : 'pay');
 
 const message = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
 
@@ -72,6 +76,7 @@ export function StoreEditor({
   qrUrl,
   uploadsEnabled,
   today,
+  orders,
   settingsApi: rawSettings,
   itemsApi: rawItems,
 }: {
@@ -82,6 +87,11 @@ export function StoreEditor({
   uploadsEnabled: boolean;
   /** Today's date as YYYY-MM-DD, from the server, for the notice strip. */
   today: string;
+  /**
+   * From the server's orderState: why an open shop takes no orders now (null
+   * while it may), and the number the next order will get, for the preview.
+   */
+  orders: { paused: string | null; nextNumber: number };
   settingsApi: SettingsApi;
   itemsApi: ItemsApi;
 }) {
@@ -120,8 +130,16 @@ export function StoreEditor({
   const payOk = !gaps.includes('payment');
   const handOk = !gaps.includes('fulfilment');
   const blocked = !settings.enabled && gaps.length > 0;
-  const openState = settings.enabled ? 'open' : blocked ? 'blocked' : 'closed';
-  const openWords = settings.enabled ? 'Open for orders' : !payOk ? 'Add a way to pay to open' : !handOk ? 'Turn on pickup or delivery' : 'Closed';
+  // Open but paused (Alerts board): the shop still shows, its basket goes on WhatsApp, and this says why.
+  const paused = settings.enabled ? orders.paused : null;
+  const openState = paused || blocked ? 'blocked' : settings.enabled ? 'open' : 'closed';
+  const openWords = settings.enabled
+    ? (paused ?? 'Open for orders')
+    : !payOk
+      ? 'Add a way to pay to open'
+      : !handOk
+        ? 'Turn on pickup or delivery'
+        : 'Closed';
 
   async function setOpen(next: boolean) {
     setOpenError('');
@@ -163,6 +181,12 @@ export function StoreEditor({
     setEditing(id);
     setDraftItem(null);
     setPreviewTab(id ? 'item' : 'shop');
+  }
+
+  function showTab(next: Tab) {
+    setTab(next);
+    openItem(null);
+    setPreviewTab(previewFor(next));
   }
 
   function saved(item: EditorItem) {
@@ -229,10 +253,7 @@ export function StoreEditor({
                   type="button"
                   className={styles.step}
                   data-ok={step.ok}
-                  onClick={() => {
-                    setTab(step.go);
-                    openItem(null);
-                  }}
+                  onClick={() => showTab(step.go)}
                 >
                   <span className={styles.stepDot} aria-hidden="true">
                     <svg viewBox="0 0 24 24" width="14" height="14">
@@ -253,10 +274,7 @@ export function StoreEditor({
             tabs={TABS}
             selected={tab}
             width={150}
-            onSelect={(id) => {
-              setTab(id);
-              openItem(null);
-            }}
+            onSelect={showTab}
           />
 
           <div role="tabpanel" id="panel-items" aria-labelledby="tab-items" hidden={tab !== 'items'} className={ui.panel}>
@@ -330,53 +348,67 @@ export function StoreEditor({
           tabs={[
             { id: 'shop', label: 'Shop' },
             { id: 'item', label: 'Item' },
+            { id: 'pay', label: 'Pay' },
           ]}
           selected={previewTab}
           onSelect={setPreviewTab}
         >
-          <BentoPage
-            displayName={look.displayName}
-            handle={look.handle}
-            bio={look.bio}
-            avatarUrl={look.avatarUrl}
-            coverUrl={look.coverUrl}
-            links={[]}
-            style={look.style}
-            accentColor={look.accentColor}
-            headingFont={look.headingFont}
-            background={look.background}
-            backgroundColor={look.backgroundColor}
-            language={look.language}
-            socials={look.socials}
-            shop={{ position: 0, size: null, label: '', caption: '', photoUrl: null }}
-            mode="shop"
-            interactive={false}
-            nameAs="p"
-          >
-            <div className={styles.previewShop}>
-              <ShopView
-                // A new key per screen and focused item, so Item opens that item's sheet.
-                key={`${previewTab}:${previewTab === 'item' ? (previewFocus?.id ?? '') : ''}`}
-                handle={look.handle}
-                displayName={look.displayName}
-                language={look.language}
-                items={previewItems}
-                whatsapp={look.whatsapp}
-                description={orNull(description.text)}
-                pickupEnabled={settings.pickupEnabled}
-                pickupNote={settings.pickupNote}
-                deliveryMode={settings.deliveryMode}
-                deliveryFeeCents={settings.deliveryFeeCents}
-                minNoticeDays={settings.minNoticeDays}
-                initialItemId={previewTab === 'item' ? (previewFocus?.id ?? null) : null}
-                showBack={false}
-                variant="embedded"
-                sheet="inline"
-                storageKey="curios-store-preview"
-                onOrder={() => undefined}
-              />
-            </div>
-          </BentoPage>
+          {previewTab === 'pay' ? (
+            <PayPreview
+              look={look}
+              settings={settings}
+              items={live}
+              qrUrl={qr.url}
+              hasQr={qr.has}
+              today={today}
+              nextNumber={orders.nextNumber}
+            />
+          ) : (
+            <BentoPage
+              displayName={look.displayName}
+              handle={look.handle}
+              bio={look.bio}
+              avatarUrl={look.avatarUrl}
+              coverUrl={look.coverUrl}
+              links={[]}
+              style={look.style}
+              accentColor={look.accentColor}
+              headingFont={look.headingFont}
+              background={look.background}
+              backgroundColor={look.backgroundColor}
+              language={look.language}
+              socials={look.socials}
+              shop={{ position: 0, size: null, label: '', caption: '', photoUrl: null }}
+              mode="shop"
+              interactive={false}
+              nameAs="p"
+            >
+              <div className={styles.previewShop}>
+                <ShopView
+                  // A new key per screen and focused item, so Item opens that item's sheet.
+                  key={`${previewTab}:${previewTab === 'item' ? (previewFocus?.id ?? '') : ''}`}
+                  handle={look.handle}
+                  displayName={look.displayName}
+                  language={look.language}
+                  items={previewItems}
+                  whatsapp={look.whatsapp}
+                  description={orNull(description.text)}
+                  pickupEnabled={settings.pickupEnabled}
+                  pickupNote={settings.pickupNote}
+                  deliveryMode={settings.deliveryMode}
+                  deliveryFeeCents={settings.deliveryFeeCents}
+                  minNoticeDays={settings.minNoticeDays}
+                  initialItemId={previewTab === 'item' ? (previewFocus?.id ?? null) : null}
+                  showBack={false}
+                  variant="embedded"
+                  sheet="inline"
+                  storageKey="curios-store-preview"
+                  // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
+                  onCheckout={() => setPreviewTab('pay')}
+                />
+              </div>
+            </BentoPage>
+          )}
         </PreviewFrame>
       </div>
     </>
