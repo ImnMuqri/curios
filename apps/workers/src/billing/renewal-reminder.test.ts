@@ -23,6 +23,8 @@ async function aPage(options: {
   paidUntil: Date | null;
   mode?: 'BUSINESS' | 'PERSONAL';
   renewalReminderFor?: Date | null;
+  ordersPlaced?: number;
+  storeEnabled?: boolean;
 }) {
   const slug = `rem-${randomUUID().slice(0, 8)}`;
   const account = await prisma.account.create({
@@ -36,6 +38,8 @@ async function aPage(options: {
           mode: options.mode ?? 'BUSINESS',
           paidUntil: options.paidUntil,
           renewalReminderFor: options.renewalReminderFor ?? null,
+          ordersPlaced: options.ordersPlaced ?? 0,
+          storeEnabled: options.storeEnabled ?? false,
         },
       },
     },
@@ -216,6 +220,22 @@ describe('runPlanEndedMails', () => {
     expect(mail?.subject).toBe('Your Curios plan for Nadia Bakes has ended');
     expect(mail?.html).toContain('Plan ended');
     expect(mail?.text).toContain(`${APP_URL}/app/billing`);
+  });
+
+  // The shop's half by orderState, the rule checkout uses: free orders left
+  // means the shop is still open, and a Store that is off is not mentioned.
+  it.each([
+    ['free orders left', { ordersPlaced: 1, storeEnabled: true }, 'Your shop still has 2 free orders. After those, checkout pauses until you pay.'],
+    ['none left', { ordersPlaced: 3, storeEnabled: true }, 'your shop has stopped taking orders'],
+    ['the Store off', { ordersPlaced: 3, storeEnabled: false }, 'The capture card is no longer shown. Your page and chat still work.'],
+  ])('says what the plan ending did to the shop (%s)', async (_name, shop, said) => {
+    await aPage({ paidUntil: inDays(-0.5), ...shop });
+    const mailQueue = aMailQueue();
+
+    await run(mailQueue);
+    const text = mailQueue.add.mock.calls[0]?.[1]?.text ?? '';
+    expect(text).toContain(said);
+    if (!shop.storeEnabled || shop.ordersPlaced < 3) expect(text).not.toContain('stopped taking orders');
   });
 
   it('says nothing to a plan still running, or one that ended long before', async () => {

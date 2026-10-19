@@ -155,6 +155,36 @@ describe('alertsFor, the shop', () => {
     });
   });
 
+  // The every-screen banner's shop half follows orderState, the same rule
+  // checkout, the Orders banner and Billing's Orders meter read.
+  const ENDED = new Date('2026-10-13T20:00:00.000Z');
+  const everyScreen = (p: { ordersPlaced: number; storeEnabled?: boolean }) =>
+    alertsFor(page({ leadsCaptured: FREE_LEADS, paidUntil: ENDED, ...p })).find((a) => a.where === 'all');
+
+  it('says a lapsed plan’s shop still has its free orders, and not that it stopped, while some are left', () => {
+    const alert = everyScreen({ ordersPlaced: 1 });
+
+    expect(alert?.text).toBe(
+      'The capture card is no longer shown. Your shop still has 2 free orders. After those, checkout pauses until you pay. Your page and chat still work. Pay again to switch the capture card back on.',
+    );
+    expect(everyScreen({ ordersPlaced: 2 })?.text).toContain('Your shop still has 1 free order. After that, checkout pauses until you pay.');
+    // And Orders' own banner counts the same orders: the two cannot disagree.
+    expect(alertsFor(page({ leadsCaptured: FREE_LEADS, paidUntil: ENDED, ordersPlaced: 1 })).find((a) => a.where === '/app/orders')).toMatchObject({
+      title: '1 of your 3 free orders used',
+    });
+  });
+
+  it('says a lapsed plan’s shop has stopped taking orders once none are left', () => {
+    expect(everyScreen({ ordersPlaced: FREE_ORDERS })?.text).toBe(
+      'The capture card is no longer shown and your shop has stopped taking orders. Your page and chat still work. Pay again to switch them back on.',
+    );
+  });
+
+  it('says nothing about orders in a lapsed plan’s banner when the Store is off', () => {
+    const text = everyScreen({ ordersPlaced: FREE_ORDERS, storeEnabled: false })?.text;
+    expect(text).toBe('The capture card is no longer shown. Your page and chat still work. Pay again to switch it back on.');
+  });
+
   it('counts the free orders on Orders, in blue, while the trial runs', () => {
     const alert = alertsFor(page({ ordersPlaced: 1 })).find((a) => a.where === '/app/orders');
 

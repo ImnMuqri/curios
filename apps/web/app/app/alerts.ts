@@ -1,4 +1,4 @@
-import { FREE_LEADS, FREE_ORDERS, type OrderState, type PlanState } from '@curios/core';
+import { FREE_LEADS, FREE_ORDERS, planEndedSaid, type OrderState, type PlanState } from '@curios/core';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
 /**
@@ -100,7 +100,9 @@ export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: 
         where: 'all',
         icon: 'card',
         title: `Your Business plan ended on ${shortDate(plan.paidUntil, true)}`,
-        text: 'The capture card is no longer shown and your shop has stopped taking orders. Your page and chat still work. Pay again to switch them back on.',
+        // The shop's half from the same orderState as Orders' banner, Billing's
+        // Orders meter and checkout: a shop with free orders left is still open.
+        text: planEndedSaid(input.orders),
         action: { href: BILLING, label: 'Renew your plan' },
       });
       break;

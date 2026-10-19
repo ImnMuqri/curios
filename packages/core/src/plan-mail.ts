@@ -1,6 +1,6 @@
 import { PLAN_PRICES_CENTS } from './billing.js';
 import { renderMailHtml } from './mail.js';
-import { FREE_LEADS } from './plan.js';
+import { FREE_LEADS, type OrderState } from './plan.js';
 
 /**
  * The emails about an owner's plan and its limits: the free leads used up,
@@ -117,11 +117,34 @@ export function planEndingMail(input: { displayName: string; paidUntil: Date; ap
   };
 }
 
+/** The shop as a plan-ended notice needs it: `orderState` for the page, and whether the Store is on. */
+export interface PlanEndedShop {
+  state: OrderState;
+  storeEnabled: boolean;
+}
+
+/**
+ * What a plan ending changed, for the every-screen banner and the email alike.
+ * The capture card has stopped; the shop has stopped only when `orderState`
+ * says it may not take orders (a page with free orders left still can), and a
+ * Store that is off is not mentioned at all.
+ */
+export function planEndedSaid(shop: PlanEndedShop | undefined): string {
+  if (shop?.storeEnabled && (shop.state.kind === 'trialSpent' || shop.state.kind === 'lapsed')) {
+    return 'The capture card is no longer shown and your shop has stopped taking orders. Your page and chat still work. Pay again to switch them back on.';
+  }
+  if (shop?.storeEnabled && shop.state.kind === 'trial') {
+    const left = shop.state.remaining;
+    return `The capture card is no longer shown. Your shop still has ${left} free ${left === 1 ? 'order' : 'orders'}. After ${left === 1 ? 'that' : 'those'}, checkout pauses until you pay. Your page and chat still work. Pay again to switch the capture card back on.`;
+  }
+  return 'The capture card is no longer shown. Your page and chat still work. Pay again to switch it back on.';
+}
+
 /** On the day a paid plan ends: the plan-ended banner's words (the owner's choice, 2026-10-16). */
-export function planEndedMail(input: { displayName: string; paidUntil: Date; appUrl: string }): Mail {
+export function planEndedMail(input: { displayName: string; paidUntil: Date; appUrl: string; shop: PlanEndedShop }): Mail {
   const ended = day(input.paidUntil);
   const subject = `Your Curios plan for ${input.displayName} has ended`;
-  const said = 'The capture card is no longer shown and your shop has stopped taking orders. Your page and chat still work. Pay again to switch them back on.';
+  const said = planEndedSaid(input.shop);
   const url = billingUrl(input.appUrl);
   return {
     subject,
