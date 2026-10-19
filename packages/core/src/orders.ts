@@ -14,17 +14,35 @@ export type OrderStatus = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
  */
 export const ORDER_CODE_ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 
+const CODE_DIGITS = ORDER_CODE_ALPHABET.replace(/[^0-9]/g, '');
+const CODE_LETTERS = ORDER_CODE_ALPHABET.replace(/[0-9]/g, '');
+
+/**
+ * Four characters with at least one digit and one letter, the board's 7Q4M
+ * shape. The digit is what lets the chat tell a code from a word: no code is
+ * ever spelt like MANA, SAYA or CAKE, so an everyday message is never
+ * mistaken for one.
+ */
 export function orderCode(random: () => number = Math.random): string {
-  let code = '';
-  for (let i = 0; i < 4; i++) {
-    // Clamped so a `random()` that returns exactly 1 cannot index past the end.
-    const index = Math.min(
-      ORDER_CODE_ALPHABET.length - 1,
-      Math.floor(random() * ORDER_CODE_ALPHABET.length),
-    );
-    code += ORDER_CODE_ALPHABET[index];
-  }
-  return code;
+  // Clamped so a `random()` that returns exactly 1 cannot index past the end.
+  const pick = (from: string) => from[Math.min(from.length - 1, Math.floor(random() * from.length))]!;
+  const chars = Array.from({ length: 4 }, () => pick(ORDER_CODE_ALPHABET));
+  // All letters: one becomes a digit. All digits: one becomes a letter. A
+  // code cannot lack both, so one fix is always enough.
+  const lacks = !chars.some((c) => CODE_DIGITS.includes(c)) ? CODE_DIGITS : !chars.some((c) => CODE_LETTERS.includes(c)) ? CODE_LETTERS : null;
+  if (lacks) chars[Math.min(3, Math.floor(random() * 4))] = pick(lacks);
+  return chars.join('');
+}
+
+/** Whether a code has the shape `orderCode` gives it: four alphabet characters, a digit and a letter among them. */
+export function isOrderCodeShape(word: string): boolean {
+  const upper = word.toUpperCase();
+  return (
+    upper.length === 4 &&
+    [...upper].every((c) => ORDER_CODE_ALPHABET.includes(c)) &&
+    [...upper].some((c) => CODE_DIGITS.includes(c)) &&
+    [...upper].some((c) => CODE_LETTERS.includes(c))
+  );
 }
 
 export const ORDER_DAYS_AHEAD = 60;

@@ -1672,6 +1672,35 @@ describe('"where is my order", by its code', () => {
     expect(chat).toHaveBeenCalledTimes(1);
   });
 
+  it('sends a message about ordering, with no code in it, to the model', async () => {
+    await seedOrder();
+    for (const question of ['Can I order cake for Saturday?', 'nak buat tempahan baru', 'WHAT IS MY ORDER']) {
+      const gateway = gatewaySaying('A model answer.');
+      const chat = vi.spyOn(gateway, 'chat');
+      const events = await ask(gateway, question);
+      expect(chat, question).toHaveBeenCalledTimes(1);
+      expect(said(events), question).toBe('A model answer.');
+    }
+  });
+
+  it('never takes a word for a code, even when an order’s code is spelt like it', async () => {
+    // orderCode() cannot make a code with no digit (orders.test.ts); this one
+    // is written by hand, to prove the chat would not be captured by it.
+    await seedOrder('nadia', 'MANA');
+    const gateway = gatewaySaying('Kami di Shah Alam.');
+    const chat = vi.spyOn(gateway, 'chat');
+    expect(said(await ask(gateway, 'mana lokasi?'))).toBe('Kami di Shah Alam.');
+    expect(chat).toHaveBeenCalledTimes(1);
+  });
+
+  it('finds a code typed in small letters', async () => {
+    await seedOrder();
+    const gateway = gatewaySaying('unused');
+    expect(said(await ask(gateway, 'where is my order 7q4m'))).toBe(
+      'Found order 7Q4M. To keep it private, what are the last 4 digits of the WhatsApp number on it?',
+    );
+  });
+
   it('spends no model call or conversation on a lookup', async () => {
     await seedOrder();
     const gateway = gatewaySaying('an answer');
@@ -1679,7 +1708,7 @@ describe('"where is my order", by its code', () => {
 
     const conversationId = idOf(await ask(gateway, 'where is my order 7Q4M'));
     await ask(gateway, '6789', conversationId);
-    await ask(gateway, 'where is my order HXPT');
+    await ask(gateway, 'where is my order HX9T');
 
     expect(chat).not.toHaveBeenCalled();
     expect(await prisma.modelCall.count()).toBe(0);
@@ -1739,6 +1768,20 @@ describe('order chips', () => {
       { itemId: coklat.id, label: 'Order Kek Coklat Moist' },
     ]);
     expect(done?.intent).toEqual({ qualified: false });
+  });
+
+  it('offers the capture card on those same three turns with the Store off (the control)', async () => {
+    await seedItems(false);
+    const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
+
+    const first = await ask(gatewaySaying('Ya ada.'), 'ada kek butter?');
+    const conversationId = first.find((e) => e.type === 'done')?.conversationId;
+    await ask(gatewaySaying('Ya.'), 'yang 2kg', conversationId);
+    const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
+
+    const done = third.find((e) => e.type === 'done');
+    expect(done?.orderChips).toBeUndefined();
+    expect(done?.intent).toEqual({ qualified: true });
   });
 
   it('offers no chips while the Store is off', async () => {

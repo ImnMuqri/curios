@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CaptureCard } from '../capture/CaptureCard.js';
 import { AnswerBubble } from './AnswerBubble.js';
-import { OrderCard, type OrderCardData } from './OrderCard.js';
+import { isOrderCardData, OrderCard, validOrderChips, type OrderCardData } from './OrderCard.js';
 import styles from './ChatMode.module.css';
 
 /** Same copy for every failure path. The visitor never sees a raw error. */
@@ -307,11 +307,12 @@ export function ChatMode({
                 code?: string;
                 conversationId?: string;
                 intent?: { qualified?: boolean };
-                card?: OrderCardData;
-                orderChips?: { itemId: string; label: string }[];
+                // Checked before drawing, like everything else in the stream.
+                card?: unknown;
+                orderChips?: unknown;
               };
               if (parsed.type === 'text' && parsed.text) append(parsed.text);
-              if (parsed.type === 'order' && parsed.card) attach({ order: parsed.card });
+              if (parsed.type === 'order' && isOrderCardData(parsed.card)) attach({ order: parsed.card });
               if (parsed.type === 'error') {
                 // The one error this acts on rather than only showing. A dead
                 // id must be dropped, or every later question carries it and
@@ -325,7 +326,8 @@ export function ChatMode({
               if (parsed.type === 'done') {
                 if (parsed.conversationId) conversationId.current = parsed.conversationId;
                 setQualified(parsed.intent?.qualified === true);
-                if (parsed.orderChips?.length) attach({ orderChips: parsed.orderChips.slice(0, 2) });
+                const chips = validOrderChips(parsed.orderChips);
+                if (chips.length > 0) attach({ orderChips: chips });
                 return;
               }
             } catch {

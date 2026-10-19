@@ -1,5 +1,5 @@
 import { normalizeClaim } from '@curios/core';
-import { customerSteps, ORDER_CODE_ALPHABET, orderView, type OrderStatus } from '@curios/core/orders';
+import { customerSteps, isOrderCodeShape, orderView, type OrderStatus } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 
 /**
@@ -37,26 +37,24 @@ export interface OrderCard {
   note: string;
 }
 
-const CODE_SHAPE = new RegExp(`^[${ORDER_CODE_ALPHABET}]{4}$`);
-
 /** The words a message about an order uses. */
 const ORDER_WORD = /^(order|pesanan|tempahan|status)$/;
-/**
- * Words that may stand between "order" and its code: "order code 7Q4M",
- * "pesanan saya abcd". SAYA is spelt from the alphabet, so it must be skipped,
- * not taken.
- */
-const FILLER = /^(code|kod|no|number|nombor|saya|aku|kami|my)$/;
 
 function words(text: string): string[] {
   return text.split(/[^A-Za-z0-9]+/).filter(Boolean);
 }
 
-/** Every code-shaped word of a message, upper-cased, once each, in order. */
+/**
+ * Every word of a message that could be an order code, upper-cased, once
+ * each, in order: four alphabet characters with a digit and a letter, the
+ * only shape `orderCode` makes ("7Q4M", "yva4"). A word with no digit is
+ * never a code -- MANA, SAYA, CAKE are just words -- so an everyday message
+ * always reaches the model, whose prompt asks for the code.
+ */
 export function orderCodeCandidates(text: string): string[] {
   const found = words(text)
-    .map((word) => word.toUpperCase())
-    .filter((word) => CODE_SHAPE.test(word));
+    .filter((word) => isOrderCodeShape(word))
+    .map((word) => word.toUpperCase());
   return [...new Set(found)];
 }
 
@@ -65,36 +63,17 @@ export function mentionsOrder(text: string): boolean {
 }
 
 /**
- * The word in a message most likely meant as an order code, or null.
- *
- * Plenty of ordinary words are spelt from the alphabet -- WHAT, CAKE, SAYA --
- * so a word counts here only when it looks deliberate: straight after
- * "order" (or "pesanan", "tempahan", "status"), written with a digit, or
- * written in capitals. A price ("RM95") and a quantity ("3pcs") are not codes.
- * The chat only acts on this when the message also says it is about an order;
- * a word that IS one of the page's codes is found without it (see `lookUpOrder`).
+ * The word a message names as an order code, for "I can’t find an order X",
+ * or null. A candidate, but not one written like a price ("RM95") or a
+ * quantity ("3pcs"): those are still matched against the page's real codes
+ * (see `lookUpOrder`), but never answered as a missing order.
  */
 export function findOrderCode(text: string): string | null {
-  const all = words(text);
-  const isCode = (word: string) => CODE_SHAPE.test(word.toUpperCase()) && !looksLikeAnAmount(word);
-
-  // Written with a digit, then written in capitals: the plainest signs.
-  const deliberate =
-    all.find((word) => isCode(word) && /\d/.test(word)) ?? all.find((word) => isCode(word) && word === word.toUpperCase());
-  if (deliberate) return deliberate.toUpperCase();
-
-  for (let i = 0; i < all.length; i++) {
-    if (!ORDER_WORD.test(all[i]!.toLowerCase())) continue;
-    let j = i + 1;
-    while (j < all.length && FILLER.test(all[j]!.toLowerCase())) j++;
-    const next = all[j];
-    if (next && isCode(next)) return next.toUpperCase();
-  }
-  return null;
+  return words(text).find((word) => isOrderCodeShape(word) && !looksLikeAnAmount(word))?.toUpperCase() ?? null;
 }
 
 function looksLikeAnAmount(word: string): boolean {
-  return /^rm\d+$/i.test(word) || /^\d+[a-z]+$/i.test(word) || /^\d+$/.test(word);
+  return /^rm\d+$/i.test(word) || /^\d+[a-z]+$/i.test(word);
 }
 
 /** The last 4 digits typed, however they are spaced, or null with fewer than 4. */

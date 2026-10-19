@@ -6,6 +6,7 @@ import {
   openDays,
   ORDER_CODE_ALPHABET,
   ORDER_TOTAL_MAX_CENTS,
+  isOrderCodeShape,
   orderCode,
   orderTotals,
   orderView,
@@ -23,6 +24,37 @@ describe('orderCode', () => {
       for (const ch of code) expect(ORDER_CODE_ALPHABET).toContain(ch);
     }
     expect(orderCode()).toHaveLength(4);
+  });
+
+  it('always has a digit and a letter, so no code is spelt like a word', () => {
+    const digit = /[2-9]/;
+    const letter = /[A-Z]/;
+    // Constant draws give all-digit (0) and all-letter (0.999999) codes before the fix.
+    const seeds: Array<() => number> = [0, 0.1, 0.25, 0.26, 0.5, 0.75, 0.999999, 1].map((r) => () => r);
+    // And a seeded sequence, for many ordinary codes.
+    let x = 7;
+    const lcg = () => ((x = (x * 1103515245 + 12345) % 2147483648) / 2147483648);
+    for (let i = 0; i < 2000; i++) seeds.push(lcg);
+    for (const random of seeds) {
+      const code = orderCode(random);
+      expect(code).toHaveLength(4);
+      for (const ch of code) expect(ORDER_CODE_ALPHABET).toContain(ch);
+      expect(code).toMatch(digit);
+      expect(code).toMatch(letter);
+      expect(isOrderCodeShape(code)).toBe(true);
+    }
+    for (let i = 0; i < 500; i++) expect(isOrderCodeShape(orderCode())).toBe(true);
+  });
+});
+
+describe('isOrderCodeShape', () => {
+  it('wants four alphabet characters with a digit and a letter, in any case', () => {
+    expect(isOrderCodeShape('7Q4M')).toBe(true);
+    expect(isOrderCodeShape('7q4m')).toBe(true);
+    expect(isOrderCodeShape('MANA')).toBe(false);
+    expect(isOrderCodeShape('6789')).toBe(false);
+    expect(isOrderCodeShape('10KG')).toBe(false);
+    expect(isOrderCodeShape('7Q4')).toBe(false);
   });
 });
 

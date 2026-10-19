@@ -667,6 +667,30 @@ describe('ChatMode, orders', () => {
     expect(order.querySelectorAll('li')).toHaveLength(4);
     expect(order).toHaveTextContent('Placed, done');
     expect(order.querySelector('button, a')).toBeNull();
+    // The step being waited on is announced as the current one.
+    expect(order.querySelector('[aria-current="step"]')).toHaveTextContent('Paid');
+    expect(order.querySelectorAll('[aria-current]')).toHaveLength(1);
+  });
+
+  it('drops a malformed card and malformed chips rather than half-drawing them', async () => {
+    await askOnce(
+      [
+        'data: {"type":"text","text":"Thanks."}\n\n',
+        `data: ${JSON.stringify({ type: 'order', card: { ...card, steps: null } })}\n\n`,
+        `data: ${JSON.stringify({ type: 'order', card: { ...card, totalCents: 'RM215' } })}\n\n`,
+        `data: ${JSON.stringify({
+          type: 'done',
+          conversationId: 'c1',
+          intent: { qualified: false },
+          orderChips: [{ itemId: 'i1' }, null, { itemId: 'i2', label: 'Order Kek Batik' }, 'Order X'],
+        })}\n\n`,
+      ],
+      { shopPath: '/keklina/shop' },
+    );
+
+    expect(await screen.findByRole('link', { name: 'Order Kek Batik' })).toHaveAttribute('href', '/keklina/shop?item=i2');
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+    expect(screen.queryByRole('group', { name: /Order #14/ })).not.toBeInTheDocument();
   });
 
   it('renders order chips as links', async () => {

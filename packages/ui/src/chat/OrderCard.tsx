@@ -17,6 +17,49 @@ export interface OrderCardData {
   note: string;
 }
 
+const TONES = ['wait', 'check', 'ok', 'stop', 'quiet'];
+const isText = (value: unknown): value is string => typeof value === 'string';
+const isSen = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value >= 0;
+
+/** Whether a streamed `card` is one this component can draw; anything else is dropped, never half-drawn. */
+export function isOrderCardData(value: unknown): value is OrderCardData {
+  if (typeof value !== 'object' || value === null) return false;
+  const card = value as Record<string, unknown>;
+  const steps = card.steps as Record<string, unknown> | null | undefined;
+  return (
+    isSen(card.number) &&
+    isText(card.code) &&
+    isText(card.status) &&
+    isText(card.pill) &&
+    isText(card.tone) &&
+    TONES.includes(card.tone) &&
+    typeof steps === 'object' &&
+    steps !== null &&
+    ['placed', 'paid', 'ready', 'done'].every((key) => typeof steps[key] === 'boolean') &&
+    isText(card.summary) &&
+    isText(card.when) &&
+    isSen(card.totalCents) &&
+    isText(card.note)
+  );
+}
+
+/** The well-formed `orderChips` of a streamed `done`, at most two. */
+export function validOrderChips(value: unknown): { itemId: string; label: string }[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter(
+      (chip): chip is { itemId: string; label: string } =>
+        typeof chip === 'object' &&
+        chip !== null &&
+        isText((chip as Record<string, unknown>).itemId) &&
+        (chip as { itemId: string }).itemId !== '' &&
+        isText((chip as Record<string, unknown>).label) &&
+        (chip as { label: string }).label !== '',
+    )
+    .slice(0, 2)
+    .map(({ itemId, label }) => ({ itemId, label }));
+}
+
 /** As `formatRinggit` (@curios/core/store) writes money; this package does not depend on core. */
 function ringgit(cents: number): string {
   const whole = Math.floor(cents / 100)
@@ -56,7 +99,7 @@ export function OrderCard({ card }: { card: OrderCardData }) {
             const done = card.steps[key];
             const state = done ? 'done' : i === nowAt ? 'now' : undefined;
             return (
-              <li key={key} className={styles.orderStep} data-state={state}>
+              <li key={key} className={styles.orderStep} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>
                 <i aria-hidden="true">
                   {done ? (
                     <svg viewBox="0 0 24 24">
