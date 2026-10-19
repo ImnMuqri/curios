@@ -1,6 +1,6 @@
 'use client';
 
-import { customerSteps, orderView, type OrderStatus } from '@curios/core/orders';
+import { customerSteps, isRiderDelivery, orderView, type OrderStatus } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
@@ -201,6 +201,7 @@ export function OrderView(props: OrderViewProps) {
           <h2 id="order-lines">{copy.yourOrder}</h2>
           <span>
             {order.method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel} · {copy.dayLong(order.day)}
+            {isRiderDelivery(order) ? ` · ${copy.riderPaidSeparately}` : null}
           </span>
         </div>
         <ul className={styles.lines}>

@@ -314,6 +314,21 @@ describe('OrderView', () => {
     expect(screen.queryByRole('link', { name: /WhatsApp/ })).toBeNull();
   });
 
+  // A FLAT fee is always above RM0, so a delivery with none added is a rider's,
+  // paid to the rider: said on the delivery line, as checkout says it.
+  it('says a rider delivery’s fee is paid separately, on the delivery line, and adds no fee line', () => {
+    render(<OrderView {...withOrder({ method: 'DELIVERY', deliveryCents: 0 })} />);
+    const order = screen.getByRole('region', { name: copy.yourOrder });
+    expect(within(order).getByText('Delivery · Sat 17 Oct · Rider fee paid separately')).toBeInTheDocument();
+    expect(within(order).queryByText(copy.deliveryLabel)).toBeNull();
+    expect(within(order).getByText(copy.total).nextSibling).toHaveTextContent('RM215');
+  });
+
+  it('says nothing about a rider for a pickup or a flat fee', () => {
+    render(<OrderView {...withOrder({ method: 'DELIVERY', deliveryCents: 1000, totalCents: 22500 })} />);
+    expect(screen.queryByText(/Rider fee/)).toBeNull();
+  });
+
   it('speaks Malay on a Malay page', () => {
     render(<OrderView {...base} language="ms" />);
     expect(screen.getByRole('heading', { level: 1, name: 'Tempahan #14' })).toBeInTheDocument();

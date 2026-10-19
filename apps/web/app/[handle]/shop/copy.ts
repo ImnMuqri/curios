@@ -41,6 +41,8 @@ export interface ShopCopy {
   free: string;
   /** A rider's fee is paid to the rider, never added to the order. */
   riderFee: string;
+  /** The order page's delivery line, after the day, for a rider delivery. */
+  riderPaidSeparately: string;
   address: string;
   addressPlaceholder: string;
   day: string;
@@ -191,6 +193,7 @@ const EN: ShopCopy = {
   deliveryLabel: 'Delivery',
   free: 'Free',
   riderFee: 'Pay the rider',
+  riderPaidSeparately: 'Rider fee paid separately',
   address: 'Address',
   addressPlaceholder: 'House number, street, area',
   day: 'Day',
@@ -300,6 +303,7 @@ const MS: ShopCopy = {
   deliveryLabel: 'Penghantaran',
   free: 'Percuma',
   riderFee: 'Bayar rider',
+  riderPaidSeparately: 'Caj rider dibayar berasingan',
   address: 'Alamat',
   addressPlaceholder: 'Nombor rumah, jalan, kawasan',
   day: 'Hari',

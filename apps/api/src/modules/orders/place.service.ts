@@ -211,6 +211,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         customerName,
         phone,
         method: input.method,
+        deliveryCents: placed.totals.deliveryCents,
         day: input.day,
         note,
         lines: placed.lines.map((line) => ({

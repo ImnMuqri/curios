@@ -8,6 +8,7 @@ const order = {
   customerName: 'Aisyah',
   phone: '+60123456789',
   method: 'PICKUP' as const,
+  deliveryCents: 0,
   // A Saturday.
   day: '2026-10-17',
   note: 'Tulis “Selamat Hari Jadi Mak” please',
@@ -59,6 +60,15 @@ describe('newOrderMail', () => {
     expect(mail.html).toContain('>Note<');
     expect(mail.html).toContain('Tulis “Selamat Hari Jadi Mak” please');
     expect(newOrderMail({ ...order, method: 'DELIVERY' }).html).toContain('Delivery · Sat 17 Oct');
+  });
+
+  // A flat fee is always above RM0, so a delivery with none added is a rider's.
+  it('says a rider delivery’s fee is paid separately, in Getting it, as checkout does', () => {
+    const rider = newOrderMail({ ...order, method: 'DELIVERY', deliveryCents: 0 });
+    expect(rider.html).toContain('Delivery · Sat 17 Oct · Rider fee paid separately');
+    expect(rider.text).toContain('Getting it: Delivery · Sat 17 Oct · Rider fee paid separately');
+    expect(newOrderMail({ ...order, method: 'DELIVERY', deliveryCents: 800 }).html).not.toContain('Rider fee');
+    expect(newOrderMail(order).html).not.toContain('Rider fee');
   });
 
   it('leaves the note out when there is none', () => {

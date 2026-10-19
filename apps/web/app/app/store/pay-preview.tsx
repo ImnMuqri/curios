@@ -1,6 +1,6 @@
 'use client';
 
-import { openDays, orderTotals } from '@curios/core/orders';
+import { isRiderDelivery, openDays, orderTotals } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
 import { PageTheme } from '../../_bento/BentoPage.js';
 import { shopCopy } from '../../[handle]/shop/copy.js';
@@ -98,6 +98,7 @@ export function PayPreview({
             <h3 className={styles.payHead}>{copy.yourOrder}</h3>
             <span>
               {method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel} · {copy.dayLong(day)}
+              {isRiderDelivery({ method, deliveryCents: totals.deliveryCents }) ? ` · ${copy.riderPaidSeparately}` : null}
             </span>
           </div>
           <ul className={order.lines}>

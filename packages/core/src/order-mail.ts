@@ -1,4 +1,5 @@
 import { OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
+import { isRiderDelivery } from './orders.js';
 import { formatMalaysianPhone } from './phone.js';
 import { formatRinggit } from './store.js';
 
@@ -20,6 +21,8 @@ export interface NewOrderMailInput {
   /** E.164, as stored. */
   phone: string;
   method: 'PICKUP' | 'DELIVERY';
+  /** Sen. None on a delivery means a rider, paid separately (isRiderDelivery). */
+  deliveryCents: number;
   /** The order's calendar day in Malaysia, `YYYY-MM-DD`. */
   day: string;
   note: string | null;
@@ -45,7 +48,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
   // Not the board's "She’s paying by DuitNow QR": we know neither how they will
   // pay nor who they are (DEVIATIONS 101).
   const said = 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
-  const gettingIt = `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}`;
+  const gettingIt = `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}${isRiderDelivery(o) ? ' · Rider fee paid separately' : ''}`;
   const customer = `${o.customerName} · ${formatMalaysianPhone(o.phone)}`;
   const facts: [string, string][] = [
     ['Getting it', gettingIt],

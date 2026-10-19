@@ -206,6 +206,12 @@ describe('the preview', () => {
     expect(preview().querySelector('input[type="file"]')).toBeNull();
   });
 
+  it('says a rider’s fee is paid separately on the Pay screen, as the order page does', () => {
+    show({ ...ready, deliveryMode: 'RIDER', deliveryFeeCents: null });
+    fireEvent.click(screenTab('Pay'));
+    expect(within(preview()).getByText('Delivery · Sun 18 Oct · Rider fee paid separately')).toBeInTheDocument();
+  });
+
   it('says so on the Pay screen when there is no way to pay yet', () => {
     show({ ...ready, bankName: null, bankAccountName: null, bankAccountNumber: null });
     fireEvent.click(screenTab('Pay'));

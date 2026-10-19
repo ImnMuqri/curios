@@ -104,6 +104,16 @@ export function openDays(s: DaySettings, count: number): string[] {
 }
 
 /**
+ * Whether a placed order is a rider delivery, whose fee the customer pays the
+ * rider. The order keeps no delivery mode, and needs none: a flat fee is
+ * always above RM0 (the Store refuses RM0), so a delivery with nothing added
+ * is a rider's.
+ */
+export function isRiderDelivery(order: { method: 'PICKUP' | 'DELIVERY'; deliveryCents: number }): boolean {
+  return order.method === 'DELIVERY' && order.deliveryCents === 0;
+}
+
+/**
  * Items plus delivery, in integer sen. Only a flat fee on a delivery adds to
  * the total: a rider is paid by the customer directly, and pickup costs
  * nothing. The server computes this; a client total is only ever compared.
