@@ -277,6 +277,20 @@ describe('OrderDetail, the next step', () => {
     await waitFor(() => expect(say).toHaveBeenCalledWith('#12 cancelled.'));
   });
 
+  // Cancelling a receipt still to check leaves paidAt empty, so no refund is
+  // tracked: the question says so, and points at Mark paid first.
+  it('warns before cancelling an order whose receipt is in, that a paid one should be marked paid first', async () => {
+    const { move, say } = show(mira);
+    fireEvent.click(actionBox().getByRole('button', { name: 'Cancel order' }));
+    expect(
+      actionBox().getByText('Cancel #13? Mira’s receipt is in. If the money arrived, mark it paid first, so cancelling records the refund you owe.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(actionBox().getByRole('button', { name: 'Yes, cancel' }));
+    await waitFor(() => expect(say).toHaveBeenCalledWith('#13 cancelled.'));
+    expect(move).toHaveBeenCalledWith('o13', 'cancel');
+  });
+
   it('says what is owed on a paid order that was cancelled, and marks it refunded', async () => {
     const { move, say } = show(refundOwed);
     expect(actionBox().getByText('You owe Farid RM120')).toBeInTheDocument();

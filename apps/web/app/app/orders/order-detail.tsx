@@ -245,7 +245,10 @@ export function OrderDetail({
     confirming === 'cancel'
       ? order.status === 'PAID'
         ? `Cancel #${order.number}? You will owe ${first} ${total}.`
-        : `Cancel #${order.number}?`
+        : view === 'toCheck'
+          ? // Not marked paid, so cancelling tracks no refund: say how to make it.
+            `Cancel #${order.number}? ${first}’s receipt is in. If the money arrived, mark it paid first, so cancelling records the refund you owe.`
+          : `Cancel #${order.number}?`
       : `Mark the receipt not received? ${first} will be asked to pay again.`;
 
   const paymentBadge =
