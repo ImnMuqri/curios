@@ -15,9 +15,8 @@ const BANKS = ['Maybank', 'CIMB', 'Public Bank', 'RHB', 'Bank Islam', 'Hong Leon
 
 /**
  * How customers pay: a DuitNow QR, a bank account, or both. The QR uploads
- * and is removed at once; the bank fields save as the owner pauses. Order
- * pages, which will show these to customers with each order's total, are
- * slice 18 -- so the words here say "will", not "does".
+ * and is removed at once; the bank fields save as the owner pauses. Each
+ * order page shows these to its customer with the order's total.
  */
 export function PaymentTab({
   settings,

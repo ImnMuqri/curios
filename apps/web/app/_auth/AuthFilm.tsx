@@ -116,12 +116,45 @@ function Leads({ who, when, need, phone, other, otherNote, tint }: { who: string
   );
 }
 
+/** The SignIn board's Orders screen: the night's paid order, its Confirm turning to Confirmed, and yesterday's below. */
+function Orders() {
+  return (
+    <div className={styles.scr} style={{ background: 'var(--tj-grey-50)', color: 'var(--ink)' }}>
+      <p className={styles.scrTitle}>Orders</p>
+      <div className={`${styles.card} ${styles.enter} ${styles.d1}`}>
+        <p className={styles.cardRow}>
+          <span className={styles.av} style={{ background: 'var(--tj-blob-pink)' }}>
+            M
+          </span>
+          <span>
+            <b>Mira</b>
+            <span>#1042 · 7:12 am</span>
+          </span>
+          <b className={styles.amount}>RM235</b>
+        </p>
+        <p className={styles.cardText}>
+          2× Kek coklat 1kg · 1× Kek batik
+          <br />
+          Pickup · Saturday · Paid by QR
+        </p>
+        <span className={`${styles.cardBtn} ${styles.confirm}`}>
+          <span className={styles.confirmA}>Confirm</span>
+          <span className={styles.confirmB}>Confirmed ✓</span>
+        </span>
+      </div>
+      <div className={`${styles.card} ${styles.dim} ${styles.enter} ${styles.d2}`}>
+        <b>Hakim · #1041</b>
+        <span>2 items · RM50 · Confirmed</span>
+      </div>
+    </div>
+  );
+}
+
 /**
  * The scenes, from the SignIn and SignUp boards. Sign in follows Kek Lina
- * through a night: her page answers while she sleeps, she wakes to the lead,
- * and replies before breakfast. (The board's version ends on a paid order
- * being confirmed; orders are slice 18, so it ends on the lead instead.)
- * Sign up follows Aisyah through an afternoon of work.
+ * through a night: her page answers while she sleeps, she wakes to a paid
+ * order (and a lead), and confirms it in Orders before breakfast. Sign up
+ * follows Aisyah through an afternoon of work.
  */
 const FILMS: Record<'signin' | 'signup', Scene[]> = {
   signin: [
@@ -130,17 +163,18 @@ const FILMS: Record<'signin' | 'signup', Scene[]> = {
       screen: <Chat persona={lina} lines={['Ada kek coklat 1kg? Nak hari Sabtu.', 'Ada, RM95. Order sebelum Khamis ya.', 'Ok nak order. 012-345 6789']} tag="Answered while Lina slept" />,
     },
     {
-      time: '7:30', meridiem: 'am', caption: 'Wake up to leads.', sky: day('#fde4d3', '50%', '12%', 'rgb(255 200 90 / 42%)', '#ffb648', '#f2a33c'),
+      time: '7:30', meridiem: 'am', caption: 'Wake up to orders.', sky: day('#fde4d3', '50%', '12%', 'rgb(255 200 90 / 42%)', '#ffb648', '#f2a33c'),
       screen: (
         <Lock date="Friday, 17 October" time="7:30" photo={lina.photo}>
-          <Note title="New lead · 012-345 6789" body="1kg chocolate cake, Saturday" delay={styles.d1} />
-          <Note title="4 questions answered overnight" body="All from your approved facts" delay={styles.d2} />
+          <Note title="New order #1042 · RM235" body="Paid by QR, proof attached" delay={styles.d1} />
+          <Note title="New lead · 012-345 6789" body="1kg chocolate cake, Saturday" delay={styles.d2} />
+          <Note title="4 questions answered overnight" body="All from your approved facts" delay={styles.d3} />
         </Lock>
       ),
     },
     {
-      time: '7:45', meridiem: 'am', caption: 'Reply before breakfast.', sky: day('#e6eeff', '78%', '9%', 'rgb(255 200 90 / 42%)'),
-      screen: <Leads who="Kek coklat 1kg" when="11:43 pm · from your page" need="For Saturday" phone="012-345 6789" other="Kek batik · 10 boxes" otherNote="Yesterday · replied" tint="var(--tj-blob-pink)" />,
+      time: '7:45', meridiem: 'am', caption: 'Confirm it before breakfast.', sky: day('#e6eeff', '78%', '9%', 'rgb(255 200 90 / 42%)'),
+      screen: <Orders />,
     },
   ],
   signup: [

@@ -4,8 +4,6 @@
  * shop's QR and uploads the receipt; the order flies across and lands in the
  * owner's Orders, who confirms it. Ported from the TanyaJe board's `ofVals`,
  * so the timings are the board's. Pure, so it can be tested frame by frame.
- *
- * SLICE 18: checkout, QR payment and Orders are store-design.md's next slice.
  */
 
 const clamp = (v: number) => Math.max(0, Math.min(1, v));
