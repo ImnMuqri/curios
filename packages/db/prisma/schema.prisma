@@ -415,6 +415,9 @@ model Conversation {
   pendingOrder   Order?    @relation(fields: [pendingOrderId], references: [id], onDelete: SetNull)
 
   @@index([pageId, createdAt])
+  // Deleting an order sets this null (SetNull): without it, every order the
+  // retention sweep deletes scans Conversation.
+  @@index([pendingOrderId])
 }
 
 model Message {
@@ -739,4 +742,6 @@ model OrderLine {
   position       Int
 
   @@index([orderId, position])
+  // Deleting an item sets this null (SetNull): without it, every deleted item scans OrderLine.
+  @@index([itemId])
 }
