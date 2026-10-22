@@ -15,7 +15,7 @@ import {
 import { shopCopy, type ShopCopy } from './copy.js';
 import styles from './shop.module.css';
 
-type ViewItem = ShopItem & { photoUrl: string | null };
+export type ViewItem = ShopItem & { photoUrl: string | null };
 
 export function ShopView(props: {
   handle: string;
@@ -202,7 +202,7 @@ export function ShopView(props: {
   );
 }
 
-function ItemSheet({
+export function ItemSheet({
   item,
   copy,
   inline,

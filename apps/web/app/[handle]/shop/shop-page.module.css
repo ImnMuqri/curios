@@ -1,0 +1,460 @@
+/*
+ * /[handle]/shop, copied from the Public board's .sp-* rules (Public.dc.html
+ * ~99-131). The board is drawn on one dark page; here every colour is the
+ * owner's: the page's own background and text (--page-bg, --page-fg, set by
+ * PageTheme from Bento.module.css) and their accent. Surfaces are the page's
+ * text at a low strength, so one rule set reads on a pale page and a dark one.
+ */
+
+.stage {
+  --stage-bg: color-mix(in oklch, var(--page-bg) 88%, var(--ink));
+  --veil-1: color-mix(in srgb, var(--page-fg) 7%, transparent);
+  --veil-2: color-mix(in srgb, var(--page-fg) 12%, transparent);
+  --veil-3: color-mix(in srgb, var(--page-fg) 16%, transparent);
+  --warm: color-mix(in srgb, var(--accent) 20%, var(--card));
+  min-height: 100vh;
+  background: var(--stage-bg);
+}
+
+.stage:is([data-bg='BIRU'], [data-bg='INK'], [data-bg-text='light']) {
+  --stage-bg: color-mix(in oklch, var(--page-bg) 50%, black);
+}
+
+.column {
+  container: shop / inline-size;
+  position: relative;
+  box-sizing: border-box;
+  max-width: 460px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 0 0 110px;
+  background: var(--page-bg);
+  color: var(--page-fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  box-shadow: 0 0 80px rgb(0 0 0 / 35%);
+}
+
+.shop {
+  display: block;
+}
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 60px;
+  padding: 0 12px;
+  background: var(--page-bg);
+}
+
+.top > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 0.85;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ib {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--veil-2);
+  color: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.ib svg,
+.facts svg {
+  flex: none;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.ib svg {
+  width: 18px;
+  height: 18px;
+  stroke-width: 2.2;
+}
+
+.toast {
+  position: fixed;
+  top: 68px;
+  left: 50%;
+  z-index: 6;
+  margin: 0;
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 13px;
+  font-weight: 600;
+  transform: translateX(-50%);
+}
+
+.sign {
+  padding: 6px 20px 0;
+}
+
+.open {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.open i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--hijau);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--hijau) 18%, transparent);
+}
+
+/* Paused: the same sign, quiet. */
+.open[data-paused] {
+  background: var(--veil-2);
+  color: var(--page-fg);
+}
+
+.open[data-paused] i {
+  background: var(--faint);
+  box-shadow: 0 0 0 3px var(--veil-1);
+}
+
+.name {
+  margin: 12px 0 0;
+  font-family: var(--font-heading), var(--font-display);
+  font-size: 40px;
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 13px;
+  list-style: none;
+  opacity: 0.82;
+}
+
+.facts li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.facts svg {
+  width: 15px;
+  height: 15px;
+  stroke-width: 2;
+  opacity: 0.8;
+}
+
+.own {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin: 18px 20px 0;
+}
+
+.av {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--page-bg);
+  color: var(--on-accent);
+  font-family: var(--font-heading), var(--font-display);
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.bubble {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 14px;
+  border-radius: 18px 18px 18px 6px;
+  background: var(--warm);
+  color: var(--ink);
+}
+
+.bubble p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.bubble small {
+  display: block;
+  margin-top: 4px;
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-size: 11.5px;
+}
+
+.cats {
+  position: sticky;
+  top: 60px;
+  z-index: 3;
+  display: flex;
+  gap: 6px;
+  margin-top: 16px;
+  padding: 8px 20px 10px;
+  overflow-x: auto;
+  background: var(--page-bg);
+  scrollbar-width: none;
+}
+
+.cats button {
+  flex: none;
+  height: 34px;
+  padding: 0 15px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--veil-2);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cats button[aria-pressed='true'] {
+  background: var(--page-fg);
+  color: var(--page-bg);
+}
+
+.cats em {
+  margin-left: 6px;
+  font-style: normal;
+  font-weight: 500;
+  opacity: 0.55;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 20px 0;
+  list-style: none;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.pic {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 20px;
+  background: var(--warm);
+  color: color-mix(in srgb, var(--accent) 70%, var(--ink));
+  font-family: var(--font-heading), var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.pic img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.add {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: grid;
+  place-items: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 6px 16px -8px rgb(0 0 0 / 60%);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.add[data-has] {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.cn {
+  display: block;
+  margin: 9px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp {
+  display: block;
+  margin-top: 2px;
+  font-size: 13.5px;
+  opacity: 0.75;
+}
+
+.foot {
+  margin: 28px 20px 0;
+  padding: 16px;
+  border-radius: 18px;
+  background: var(--veil-1);
+  font-size: 13px;
+  text-align: center;
+}
+
+.foot b {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.foot a,
+.lite {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--veil-3);
+  color: inherit;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin: 20px 20px 0;
+  padding: 34px 20px;
+  border: 1.5px dashed color-mix(in srgb, var(--page-fg) 25%, transparent);
+  border-radius: 24px;
+  text-align: center;
+}
+
+.ei {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 6px;
+  border-radius: 16px;
+  background: var(--veil-2);
+}
+
+.ei svg {
+  width: 24px;
+  height: 24px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.empty b {
+  font-size: 17px;
+}
+
+.empty p {
+  max-width: 26em;
+  margin: 0;
+  font-size: 13.5px;
+  opacity: 0.75;
+}
+
+.ib:focus-visible,
+.cats button:focus-visible,
+.add:focus-visible,
+.cn:focus-visible,
+.foot a:focus-visible,
+.lite:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .sign,
+  .card {
+    animation: rise 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

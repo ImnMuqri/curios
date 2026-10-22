@@ -8,10 +8,10 @@ vi.mock('next/navigation', () => ({
     throw new Error('NEXT_NOT_FOUND');
   }),
 }));
-vi.mock('./shop-view.js', () => ({ ShopView: vi.fn(() => null) }));
+vi.mock('./shop-page.js', () => ({ ShopPageView: vi.fn(() => null) }));
 
 const { getCheckout } = await import('@curios/db-read');
-const { ShopView } = await import('./shop-view.js');
+const { ShopPageView } = await import('./shop-page.js');
 const { default: ShopPage, generateMetadata } = await import('./page.js');
 
 const shop: Checkout = {
@@ -53,7 +53,7 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
-const call = (props: Record<string, unknown>) => (vi.mocked(ShopView).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0] ?? props;
+const call = (props: Record<string, unknown>) => (vi.mocked(ShopPageView).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0] ?? props;
 
 describe('/[handle]/shop', () => {
   it('is a 404 when there is no shop to show', async () => {
@@ -65,16 +65,14 @@ describe('/[handle]/shop', () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
     render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({ item: 'cake' }) }));
     const props = call({});
-    expect(props.whatsapp).toBe('60123456789');
-    expect(props.language).toBe('ms');
+        expect(props.language).toBe('ms');
     expect(props.copy).toBeUndefined();
     expect(props.initialItemId).toBe('cake');
     expect(props.handle).toBe('nadia');
     expect(props.displayName).toBe('Nadia Bakes');
     expect(props.pickupNote).toBe('Shah Alam');
     expect(props.description).toBe('Cakes for every Raya.');
-    expect(props.deliveryFeeCents).toBe(800);
-    expect(props.minNoticeDays).toBe(2);
+    expect(props.halal).toBe(false);
     expect((props.items as { id: string; photoUrl: string | null }[]).map((i) => [i.id, i.photoUrl])).toEqual([
       ['cake', 'https://cdn.test/items/cake.webp'],
       ['cookie', null],
@@ -96,10 +94,21 @@ describe('/[handle]/shop', () => {
     expect(call({}).initialItemId).toBeNull();
   });
 
-  it('folds the page into shop mode', async () => {
+  it('gives the next day an order could be for, and none when paused', async () => {
+    vi.mocked(getCheckout).mockResolvedValueOnce(shop);
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
+    expect(call({}).nextDay).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    vi.mocked(getCheckout).mockResolvedValueOnce({ ...shop, canTakeOrders: false });
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
+    expect(call({}).nextDay).toBeNull();
+  });
+
+  it('wears the owner look without the page header, and holds the basket bar', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
     const { container } = render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
-    expect(container.querySelector('[data-bento-page]')?.getAttribute('data-mode')).toBe('shop');
+    expect(container.querySelector('[data-bg]')).not.toBeNull();
+    expect(container.querySelector('[data-bento-page]')).toBeNull();
+    expect(container.querySelector('header')).toBeNull();
   });
 
   it('titles the tab with the shop name, and nothing for a missing shop', async () => {

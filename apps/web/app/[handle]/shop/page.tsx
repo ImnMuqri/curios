@@ -1,10 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getCheckout } from '@curios/db-read';
-import { BentoPage } from '../../_bento/BentoPage.js';
-import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
+import { PageTheme } from '../../_bento/BentoPage.js';
+import { avatarUrl } from '../../../lib/avatar-url.js';
+import { BasketBar } from './basket-bar.js';
 import { whatsappNumber } from './basket.js';
-import { ShopView } from './shop-view.js';
+import { shopCopy } from './copy.js';
+import { nextOrderDay } from './pill.js';
+import { ShopPageView } from './shop-page.js';
+import styles from './shop-page.module.css';
 
 // Read live, like /[handle]: an item turned off must leave the shelf on the next request.
 export const runtime = 'nodejs';
@@ -29,42 +33,40 @@ export default async function ShopPage({
   const shop = await getCheckout(handle);
   if (!shop) notFound();
 
+  const copy = shopCopy(shop.language);
+  const nextDay = nextOrderDay(shop, new Date());
+  const barNote = nextDay ? (shop.pickupEnabled ? copy.barPickup(copy.dayLong(nextDay)) : copy.barDelivery(copy.dayLong(nextDay))) : false;
+
+  // The shop has its own top bar, so it does not wear the page's header and tabs: only its look.
   return (
     <main>
-      <BentoPage
-        displayName={shop.displayName}
-        handle={shop.handle}
-        bio={shop.bio}
-        avatarUrl={avatarUrl(shop.avatarKey)}
-        links={[]}
-        style={shop.style}
-        accentColor={shop.accentColor}
-        headingFont={shop.headingFont}
-        background={shop.background}
-        backgroundColor={shop.backgroundColor}
-        coverUrl={coverUrl(shop.coverKey)}
-        language={shop.language}
-        mode="shop"
-        stage
-      >
-        <ShopView
-          handle={shop.handle}
-          displayName={shop.displayName}
-          language={shop.language}
-          items={shop.items.map((i) => ({ ...i, photoUrl: avatarUrl(i.photoKey) }))}
-          whatsapp={whatsappNumber(shop.links)}
-          pickupEnabled={shop.pickupEnabled}
-          description={shop.shopDescription}
-          pickupNote={shop.pickupNote}
-          deliveryMode={shop.deliveryMode}
-          deliveryFeeCents={shop.deliveryFeeCents}
-          minNoticeDays={shop.minNoticeDays}
-          canTakeOrders={shop.canTakeOrders}
-          initialItemId={item ?? null}
-          // The page's Links tab is the way back.
-          showBack={false}
-        />
-      </BentoPage>
+      <PageTheme theme={shop} className={styles.stage}>
+        <div className={styles.column}>
+          <ShopPageView
+            handle={shop.handle}
+            displayName={shop.displayName}
+            language={shop.language}
+            items={shop.items.map((i) => ({ ...i, photoUrl: avatarUrl(i.photoKey) }))}
+            pickupEnabled={shop.pickupEnabled}
+            pickupNote={shop.pickupNote}
+            deliveryMode={shop.deliveryMode}
+            canTakeOrders={shop.canTakeOrders}
+            nextDay={nextDay}
+            description={shop.shopDescription}
+            halal={shop.shopHalal}
+            initialItemId={item ?? null}
+          />
+          <BasketBar
+            handle={shop.handle}
+            displayName={shop.displayName}
+            language={shop.language}
+            items={shop.items}
+            canTakeOrders={shop.canTakeOrders}
+            whatsapp={whatsappNumber(shop.links)}
+            note={barNote}
+          />
+        </div>
+      </PageTheme>
     </main>
   );
 }

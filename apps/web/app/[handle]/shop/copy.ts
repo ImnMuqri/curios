@@ -13,6 +13,28 @@ export interface ShopCopy {
   /** The basket bar's count and total, and its small line on the Links tab. */
   barText: (items: number, total: string) => string;
   stillInBasket: string;
+  /** The shop page: the basket bar's small line, and the facts under the name. */
+  barPickup: (day: string) => string;
+  barDelivery: (day: string) => string;
+  factNextPickup: (day: string) => string;
+  factNextDelivery: (day: string) => string;
+  backTo: (name: string) => string;
+  shareShop: string;
+  linkCopied: string;
+  openForOrders: string;
+  ordersPaused: string;
+  pickupOnly: string;
+  deliveryOnly: string;
+  halal: string;
+  allItems: string;
+  categories: string;
+  addNamed: (name: string) => string;
+  wantMore: string;
+  wantMoreBody: (name: string) => string;
+  askQuestion: string;
+  emptyTitle: string;
+  emptyBody: (name: string) => string;
+  askName: (name: string) => string;
   back: string;
   from: (price: string) => string;
   add: string;
@@ -175,6 +197,27 @@ const EN: ShopCopy = {
   nextDelivery: (day) => `next delivery ${day}`,
   barText: (items, total) => `${items} ${items === 1 ? 'item' : 'items'} · ${total}`,
   stillInBasket: 'Still in your basket',
+  barPickup: (day) => `Pickup ${day}`,
+  barDelivery: (day) => `Delivery ${day}`,
+  factNextPickup: (day) => `Next pickup ${day}`,
+  factNextDelivery: (day) => `Next delivery ${day}`,
+  backTo: (name) => `Back to ${name}`,
+  shareShop: 'Share the shop',
+  linkCopied: 'Link copied',
+  openForOrders: 'Open for orders',
+  ordersPaused: 'Orders paused',
+  pickupOnly: 'Pickup',
+  deliveryOnly: 'Delivery',
+  halal: 'Halal',
+  allItems: 'All',
+  categories: 'Categories',
+  addNamed: (name) => `Add ${name}`,
+  wantMore: 'Want something not listed?',
+  wantMoreBody: (name) => `Ask ${name} about custom orders and bigger quantities.`,
+  askQuestion: 'Ask a question',
+  emptyTitle: 'New items are coming soon',
+  emptyBody: (name) => `${name} is getting the shop ready. Ask what’s available today.`,
+  askName: (name) => `Ask ${name}`,
   back: 'Back',
   from: (price) => `from ${price}`,
   add: 'Add to basket',
@@ -290,6 +333,27 @@ const MS: ShopCopy = {
   nextDelivery: (day) => `hantar seterusnya ${day}`,
   barText: (items, total) => `${items} barang · ${total}`,
   stillInBasket: 'Masih dalam bakul anda',
+  barPickup: (day) => `Ambil ${day}`,
+  barDelivery: (day) => `Hantar ${day}`,
+  factNextPickup: (day) => `Ambil seterusnya ${day}`,
+  factNextDelivery: (day) => `Hantar seterusnya ${day}`,
+  backTo: (name) => `Kembali ke ${name}`,
+  shareShop: 'Kongsi kedai',
+  linkCopied: 'Pautan disalin',
+  openForOrders: 'Buka untuk tempahan',
+  ordersPaused: 'Tempahan ditangguhkan',
+  pickupOnly: 'Ambil sendiri',
+  deliveryOnly: 'Penghantaran',
+  halal: 'Halal',
+  allItems: 'Semua',
+  categories: 'Kategori',
+  addNamed: (name) => `Tambah ${name}`,
+  wantMore: 'Mahu sesuatu yang tiada di sini?',
+  wantMoreBody: (name) => `Tanya ${name} tentang tempahan khas dan kuantiti lebih besar.`,
+  askQuestion: 'Tanya soalan',
+  emptyTitle: 'Barang baharu akan datang',
+  emptyBody: (name) => `${name} sedang menyediakan kedai. Tanya apa yang ada hari ini.`,
+  askName: (name) => `Tanya ${name}`,
   back: 'Kembali',
   from: (price) => `dari ${price}`,
   add: 'Masuk bakul',

@@ -58,4 +58,11 @@ describe('BasketBar', () => {
     render(<BasketBar {...base} canTakeOrders={false} whatsapp={null} />);
     expect(screen.getByText('To order, contact Kek Lina through the links on their page.')).toBeInTheDocument();
   });
+
+  it('says what it is given under the count, in place of the default line', () => {
+    writeBasket(defaultStorageKey('nadia'), [{ itemId: 'cookie', optionId: null, quantity: 1 }]);
+    render(<BasketBar {...base} note="Pickup Sat 17 Oct" />);
+    expect(screen.getByText('Pickup Sat 17 Oct')).toBeInTheDocument();
+    expect(screen.queryByText('Still in your basket')).toBeNull();
+  });
 });

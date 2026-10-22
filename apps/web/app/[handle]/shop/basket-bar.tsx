@@ -30,8 +30,8 @@ export function BasketBar(props: {
   items: PricedItem[];
   canTakeOrders: boolean;
   whatsapp: string | null;
-  /** The small line under the count. Default "Still in your basket"; the shop and product pages say nothing. */
-  note?: boolean;
+  /** The small line under the count: a string says that, true says "Still in your basket" (the default), false says nothing. */
+  note?: boolean | string;
 }) {
   const copy = shopCopy(props.language);
   const key = defaultStorageKey(props.handle);
@@ -61,7 +61,7 @@ export function BasketBar(props: {
       <div className={styles.row}>
         <span className={styles.text}>
           {copy.barText(count, formatRinggit(priced.totalCents))}
-          {props.note !== false ? <small className={styles.note}>{copy.stillInBasket}</small> : null}
+          {props.note !== false ? <small className={styles.note}>{typeof props.note === 'string' ? props.note : copy.stillInBasket}</small> : null}
         </span>
         {!paused ? (
           <a className={styles.go} href={`/${props.handle}/shop/checkout`}>

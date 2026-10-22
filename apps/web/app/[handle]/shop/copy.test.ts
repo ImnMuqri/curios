@@ -40,4 +40,11 @@ describe('shopCopy', () => {
     expect(shopCopy('ms').dayPill('2026-10-17')).toBe('Sab 17');
     expect(shopCopy('ms').dayLong('2026-10-17')).toBe('Sab 17 Okt');
   });
+  it('words the shop page in both languages', () => {
+    expect(shopCopy('en').openForOrders).toBe('Open for orders');
+    expect(shopCopy('ms').openForOrders).toBe('Buka untuk tempahan');
+    expect(shopCopy('en').barPickup('Sat 17 Oct')).toBe('Pickup Sat 17 Oct');
+    expect(shopCopy('ms').barPickup('Sab 17 Okt')).toBe('Ambil Sab 17 Okt');
+    expect(shopCopy('en').factNextPickup('Sat 17 Oct')).toBe('Next pickup Sat 17 Oct');
+  });
 });

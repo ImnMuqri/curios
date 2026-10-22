@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { shopCopy } from './copy.js';
-import { shopPillCaption } from './pill.js';
+import { nextOrderDay, shopPillCaption } from './pill.js';
 
 // Wednesday 14 Oct 2026, noon in Malaysia.
 const now = new Date('2026-10-14T04:00:00Z');
@@ -34,5 +34,17 @@ describe('shopPillCaption', () => {
 
   it('reads in Malay', () => {
     expect(shopPillCaption({ ...open }, 3, shopCopy('ms'), now)).toBe('3 barang · ambil seterusnya Jum 16 Okt');
+  });
+});
+
+describe('nextOrderDay', () => {
+  it('is the first day an order could be for', () => {
+    expect(nextOrderDay({ ...open }, now)).toBe('2026-10-16');
+    expect(nextOrderDay({ ...open, closedDays: [5, 6] }, now)).toBe('2026-10-18');
+  });
+
+  it('is null when paused or when there is no way to get the order', () => {
+    expect(nextOrderDay({ ...open, canTakeOrders: false }, now)).toBeNull();
+    expect(nextOrderDay({ ...open, pickupEnabled: false }, now)).toBeNull();
   });
 });
