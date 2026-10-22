@@ -1,18 +1,18 @@
 /*
  * The order page (Public board, `order`). It sits in checkout's column on
- * checkout's stage (checkout.module.css: .stage, .column, .top, .title,
- * .section, .head); these are the board's o3 pieces on top. The accent is the
+ * checkout's stage (checkout.module.css: .stage, .column, .sheet, .top,
+ * .title, .section, .head); these are the board's o3 pieces on top. The accent is the
  * owner's (--accent from PageTheme); green means paid, as everywhere.
  */
 
 /* No fixed bar at the foot here, so none of checkout's room for one. */
-.page:is(main) {
+.sheet:is(div) {
   padding-bottom: 48px;
 }
 
 .bookmark {
   margin-left: auto;
-  color: var(--hint);
+  color: color-mix(in srgb, var(--page-fg) 60%, transparent);
   font-size: 12.5px;
 }
 
@@ -22,10 +22,12 @@
   align-items: center;
   gap: 10px;
   margin-top: 18px;
+  padding: 0 20px;
 }
 
 .titleRow h1 {
   margin: 0;
+  padding: 0;
 }
 
 .pill {

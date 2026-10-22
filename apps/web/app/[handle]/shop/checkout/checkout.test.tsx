@@ -61,6 +61,16 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
 const placeButton = (total: string) => screen.getByRole('button', { name: copy.placeOrder(total) });
 
 describe('Checkout', () => {
+  it("checkout's title sits on the page background and the form on a white sheet", async () => {
+    render(<Checkout {...base} />);
+    const sheet = await screen.findByTestId('sheet');
+    const title = screen.getByRole('heading', { level: 1, name: copy.checkout });
+    expect(sheet).not.toContainElement(title);
+    expect(sheet).not.toContainElement(screen.getByRole('link', { name: copy.backToShop }));
+    expect(sheet).toContainElement(screen.getByRole('heading', { name: copy.yourOrder }));
+    expect(sheet).toContainElement(placeButton('RM215'));
+  });
+
   it('lists the basket with steppers and the total', async () => {
     const user = userEvent.setup();
     render(<Checkout {...base} />);

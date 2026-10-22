@@ -6,7 +6,8 @@
  * (--accent from PageTheme); text on it is whichever of ink or paper reads.
  */
 .stage {
-  --stage-bg: color-mix(in oklch, var(--page-bg) 88%, var(--ink));
+  /* Checkout and the order page sit on the owner's own background (--page-bg, --page-fg from PageTheme). */
+  --stage-bg: var(--page-bg);
   /* The board's --deep: the accent taken most of the way to ink, for the code's chips. */
   --deep: color-mix(in oklab, var(--accent) 35%, var(--ink));
   --lp-bg: color-mix(in srgb, var(--accent) 4%, var(--card));
@@ -17,23 +18,31 @@
   background: var(--stage-bg);
 }
 
-.stage:is([data-bg='BIRU'], [data-bg='INK'], [data-bg-text='light']) {
-  --stage-bg: color-mix(in oklch, var(--page-bg) 50%, black);
-}
-
+/* The 460px column: the title on the page's background, the form on a white sheet below it. */
 .column {
   box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
   max-width: 460px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 20px 20px 120px;
-  background: var(--card);
-  color: var(--ink);
+  padding: 20px 0 0;
+  color: var(--page-fg);
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.5;
-  box-shadow: 0 0 80px rgb(0 0 0 / 35%);
   animation: rise 320ms ease both;
+}
+
+/* The board's .ck-sheet: white, rounded at the top, to the foot of the screen. */
+.sheet {
+  box-sizing: border-box;
+  flex: 1;
+  margin-top: 18px;
+  padding: 4px 20px 120px;
+  border-radius: 24px 24px 0 0;
+  background: var(--card);
+  color: var(--ink);
 }
 
 @keyframes rise {
@@ -49,7 +58,8 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: var(--muted);
+  padding: 0 20px;
+  color: color-mix(in srgb, var(--page-fg) 85%, transparent);
   font-size: 14px;
   font-weight: 500;
 }
@@ -61,8 +71,8 @@
   height: 36px;
   flex: none;
   border-radius: 50%;
-  background: var(--ghost-a);
-  color: var(--ink);
+  background: color-mix(in srgb, var(--page-fg) 14%, transparent);
+  color: var(--page-fg);
 }
 
 .back svg {
@@ -77,6 +87,7 @@
 
 .title {
   margin: 18px 0 0;
+  padding: 0 20px;
   font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -581,8 +592,11 @@
 /* ---- Placed ---- */
 
 .placedColumn {
+  display: block;
   padding: 18px 18px 120px;
   background: var(--lp-bg);
+  color: var(--ink);
+  box-shadow: 0 0 80px rgb(0 0 0 / 35%);
 }
 
 .placed {

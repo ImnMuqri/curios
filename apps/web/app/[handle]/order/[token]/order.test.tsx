@@ -83,6 +83,17 @@ afterEach(() => {
 });
 
 describe('OrderView', () => {
+  it("the order page's number and status sit on the background", () => {
+    render(<OrderView {...base} />);
+    const sheet = screen.getByTestId('sheet');
+    const title = screen.getByRole('heading', { level: 1, name: copy.orderTitle(14) });
+    expect(sheet).not.toContainElement(title);
+    expect(sheet).not.toContainElement(screen.getByText(copy.statusWaiting));
+    expect(sheet).not.toContainElement(screen.getByText(copy.bookmark));
+    expect(sheet).toContainElement(screen.getByText('7Q4M'));
+    expect(sheet).toContainElement(screen.getByRole('heading', { name: copy.yourOrder }));
+  });
+
   it('shows the order, its code and its total', () => {
     render(<OrderView {...base} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
