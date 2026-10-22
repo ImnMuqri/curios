@@ -16,6 +16,8 @@ const RESERVED_ROUTES = new Set([
   'app', 'api', 'faq', 'admin', 'about', 'pricing', 'help', 'support', 'blog',
   'login', 'signup', 'settings', 'static', 'next', '_next', 'www', 'auth',
   'terms', 'privacy', 'security', 'curios', 'root', 'system',
+  // The Refund Policy's page, and its likely neighbours.
+  'refunds', 'refund', 'legal',
 ]);
 
 /**

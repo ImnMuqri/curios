@@ -1,0 +1,184 @@
+/*
+ * The Terms, Privacy and Refund pages. No board draws them; they borrow the
+ * System board's paper, type and wordmark header, and set the words in one
+ * column narrow enough to read.
+ */
+
+.legal {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.legal *,
+.legal *::before,
+.legal *::after {
+  box-sizing: border-box;
+}
+
+.legal a:not(.brand, .lang, .back) {
+  color: var(--biru);
+  overflow-wrap: anywhere;
+}
+
+.legal a:not(.brand, .lang, .back):hover {
+  color: var(--biru-deep);
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 40px;
+}
+
+.brand {
+  display: inline-block;
+  font-size: 26px;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.lang {
+  font-size: 14px;
+  color: var(--ink-soft);
+  text-decoration: none;
+}
+
+.lang:hover {
+  color: var(--ink);
+}
+
+.main {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 24px 20px 96px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 32px;
+}
+
+.tabs a {
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.legal .tabs a {
+  color: var(--ink-soft);
+}
+
+.legal .tabs a:hover {
+  color: var(--ink);
+  border-color: var(--hint);
+}
+
+.legal .tabs a[aria-current='page'] {
+  border-color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.h {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.01em;
+}
+
+.updated {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: var(--hint);
+}
+
+.lede {
+  margin: 20px 0 8px;
+  font-size: 17px;
+  color: var(--ink-soft);
+}
+
+.section {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+
+.h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.num {
+  flex: none;
+  min-width: 1.6em;
+  font-family: var(--font-plex-mono), monospace;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--hint);
+}
+
+.p {
+  margin: 0 0 12px;
+}
+
+.list {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+
+.list li {
+  margin: 0 0 8px;
+}
+
+.list li::marker {
+  color: var(--hint);
+}
+
+.foot {
+  margin: 48px 0 0;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 14.5px;
+}
+
+.back {
+  display: inline-block;
+  margin-top: 20px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 600px) {
+  .top {
+    padding: 20px 16px;
+  }
+
+  .main {
+    padding: 8px 16px 72px;
+  }
+
+  .h {
+    font-size: 30px;
+  }
+}

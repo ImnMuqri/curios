@@ -73,6 +73,20 @@ describe('the landing page', () => {
     expect(within(nav).getByRole('link', { name: 'Buat halaman anda' })).toHaveAttribute('href', '/signup');
   });
 
+  it('links the Terms, Privacy and Refund pages from the footer, in the page’s language', () => {
+    const { unmount } = render(<LandingPage locale="en" />);
+    let foot = screen.getByRole('contentinfo');
+    expect(within(foot).getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+    expect(within(foot).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
+    expect(within(foot).getByRole('link', { name: 'Refunds' })).toHaveAttribute('href', '/refunds');
+    unmount();
+
+    render(<LandingPage locale="ms" />);
+    foot = screen.getByRole('contentinfo');
+    expect(within(foot).getByRole('link', { name: 'Terma' })).toHaveAttribute('href', '/ms/terms');
+    expect(within(foot).getByRole('link', { name: 'Bayaran balik' })).toHaveAttribute('href', '/ms/refunds');
+  });
+
   it('escapes "<" in structured data, so no copy can close the script tag', () => {
     const { container } = render(<LandingPage locale="en" />);
     expect(container.querySelector('script[type="application/ld+json"]')!.innerHTML).not.toContain('<');

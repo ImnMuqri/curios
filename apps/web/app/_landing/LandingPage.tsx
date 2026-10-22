@@ -76,7 +76,7 @@ export function LandingPage({ locale }: { locale: Locale }) {
         <Faq copy={copy.faq} />
       </main>
       <Closing locale={locale} />
-      <Footer copy={copy} />
+      <Footer copy={copy} locale={locale} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData(copy, url)) }} />
     </div>
   );

@@ -1,9 +1,14 @@
-import type { LandingCopy } from './copy.js';
+import type { LandingCopy, Locale } from './copy.js';
+import { CHROME, LEGAL_DOCS, LEGAL_PATH } from '../_legal/content.js';
 import { Wordmark } from './Wordmark.js';
 import styles from './tanya.module.css';
 
-/** The sections again, sign in, the other language, the note that every sample is made up, and the wordmark at full width. */
-export function Footer({ copy }: { copy: LandingCopy }) {
+/**
+ * The sections again, the Terms, Privacy and Refund pages (not on the board,
+ * DEVIATIONS 138), sign in, the other language, the note that every sample is
+ * made up, and the wordmark at full width.
+ */
+export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) {
   const { nav } = copy;
   return (
     <footer className={styles.foot}>
@@ -17,6 +22,11 @@ export function Footer({ copy }: { copy: LandingCopy }) {
             <a href="#faq">{nav.faq}</a>
           </nav>
           <div className={`${styles.footLinks} ${styles.footEnd}`}>
+            {LEGAL_DOCS.map((doc) => (
+              <a key={doc} href={LEGAL_PATH[locale][doc]}>
+                {CHROME[locale].tab[doc]}
+              </a>
+            ))}
             <a href="/signin">{copy.footer.signIn}</a>
             <a href={nav.other.href} hrefLang={nav.other.lang} lang={nav.other.lang}>
               {nav.other.name}
