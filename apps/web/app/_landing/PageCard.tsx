@@ -75,7 +75,7 @@ export function PageCard({
         {view === 'ask' ? (
           <span className={styles.pcChat}>
             <span className={styles.pcQ}>{words.q}</span>
-            <span className={styles.pcA}>
+            <span className={styles.pcA} data-who={`${persona.name}’s page`}>
               {answer ?? words.a}
               {typing ? <span className={styles.caret} /> : null}
             </span>

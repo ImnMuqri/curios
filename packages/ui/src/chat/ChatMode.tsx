@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CaptureCard } from '../capture/CaptureCard.js';
 import { AnswerBubble } from './AnswerBubble.js';
-import { isOrderCardData, OrderCard, validOrderChips, type OrderCardData } from './OrderCard.js';
+import { isOrderCardData, OrderCard, ringgit, validProductCard, type OrderCardData, type ProductCardData } from './OrderCard.js';
 import styles from './ChatMode.module.css';
 
 /** Same copy for every failure path. The visitor never sees a raw error. */
@@ -18,8 +18,8 @@ interface Turn {
   answer: string;
   /** "Thanks. Here’s order 7Q4M:" is followed by the order itself. */
   order?: OrderCardData;
-  /** "Order <item>" links, for the shop's items the answer named. */
-  orderChips?: { itemId: string; label: string }[];
+  /** The shop item the answer named first, as one card. */
+  productCard?: ProductCardData;
 }
 
 /**
@@ -31,6 +31,20 @@ interface Turn {
 function findPage(node: HTMLElement | null): HTMLElement | null {
   return node?.closest<HTMLElement>('[data-bento-page]') ?? null;
 }
+
+export interface ProductCardCopy {
+  add: string;
+  inBasket: string;
+  from: (price: string) => string;
+  open: (name: string) => string;
+}
+
+const CARD_COPY: ProductCardCopy = {
+  add: 'Add to basket',
+  inBasket: 'In your basket',
+  from: (price) => `from ${price}`,
+  open: (name) => `Open ${name}`,
+};
 
 export interface ChatModeProps {
   /**
@@ -64,10 +78,18 @@ export interface ChatModeProps {
    */
   onCapture?: (phone: string, conversationId: string) => Promise<void>;
   /**
-   * The page's shop, `/<handle>/shop`: an answer naming its items ends with
-   * "Order <item>" links to `?item=<id>` there. Without it none are drawn.
+   * The page's shop, `/<handle>/shop`: an answer naming an item is followed
+   * by its card, whose photo opens `<shopPath>/<slug>`. Without it no card is drawn.
    */
   shopPath?: string;
+  /** Writes the card's item into the visitor's basket. Without it the card has no button. */
+  onAddToBasket?: (card: ProductCardData) => void;
+  /** The items already in the basket, so a card says "In your basket" -- read by the caller, so it is right after a reload too. */
+  basketItemIds?: string[];
+  /** The card's words, in the page's language; English when left out. */
+  cardCopy?: ProductCardCopy;
+  /** The label over each reply; "{displayName}’s page" when left out. */
+  replyLabel?: string;
   /** Typed into the box when chat mode mounts, for the visitor to read and send. Never sent by itself. */
   initialDraft?: string;
 }
@@ -80,6 +102,10 @@ export function ChatMode({
   questions,
   onCapture,
   shopPath,
+  onAddToBasket,
+  basketItemIds,
+  cardCopy = CARD_COPY,
+  replyLabel,
   initialDraft,
 }: ChatModeProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -271,7 +297,7 @@ export function ChatMode({
             index === previous.length - 1 ? { ...turn, answer: text } : turn,
           ),
         );
-      const attach = (extra: Pick<Turn, 'order' | 'orderChips'>) =>
+      const attach = (extra: Pick<Turn, 'order' | 'productCard'>) =>
         setTurns((previous) =>
           previous.map((turn, index) => (index === previous.length - 1 ? { ...turn, ...extra } : turn)),
         );
@@ -312,7 +338,7 @@ export function ChatMode({
                 intent?: { qualified?: boolean };
                 // Checked before drawing, like everything else in the stream.
                 card?: unknown;
-                orderChips?: unknown;
+                productCard?: unknown;
               };
               if (parsed.type === 'text' && parsed.text) append(parsed.text);
               if (parsed.type === 'order' && isOrderCardData(parsed.card)) attach({ order: parsed.card });
@@ -329,8 +355,8 @@ export function ChatMode({
               if (parsed.type === 'done') {
                 if (parsed.conversationId) conversationId.current = parsed.conversationId;
                 setQualified(parsed.intent?.qualified === true);
-                const chips = validOrderChips(parsed.orderChips);
-                if (chips.length > 0) attach({ orderChips: chips });
+                const productCard = validProductCard(parsed.productCard);
+                if (productCard) attach({ productCard });
                 return;
               }
             } catch {
@@ -403,19 +429,45 @@ export function ChatMode({
         turns.map((turn, index) => (
           <div key={`${index}-${turn.question}`} className={styles.turn}>
             <p className={styles.question}>{turn.question}</p>
-            <AnswerBubble text={turn.answer} />
+            <div className={styles.reply}>
+              <span className={styles.who}>{replyLabel ?? `${displayName}’s page`}</span>
+              <AnswerBubble text={turn.answer} />
+            </div>
             {turn.order ? <OrderCard card={turn.order} /> : null}
-            {turn.orderChips && shopPath ? (
-              <div className={styles.orderChips}>
-                {turn.orderChips.map((chip) => (
-                  <a
-                    key={chip.itemId}
-                    className={styles.orderChip}
-                    href={`${shopPath}?item=${encodeURIComponent(chip.itemId)}`}
+            {turn.productCard && shopPath ? (
+              <div className={styles.productCard} role="group" aria-label={turn.productCard.name}>
+                <a
+                  className={styles.productPhoto}
+                  href={`${shopPath}/${encodeURIComponent(turn.productCard.slug)}`}
+                  aria-label={cardCopy.open(turn.productCard.name)}
+                >
+                  {turn.productCard.photoUrl ? (
+                    <img src={turn.productCard.photoUrl} alt="" />
+                  ) : (
+                    <span aria-hidden="true">{[...turn.productCard.name][0]?.toUpperCase()}</span>
+                  )}
+                </a>
+                <span className={styles.productText}>
+                  <b>{turn.productCard.name}</b>
+                  {turn.productCard.fromPriceCents === null ? null : (
+                    <span>
+                      {turn.productCard.firstOptionId === null
+                        ? ringgit(turn.productCard.fromPriceCents)
+                        : cardCopy.from(ringgit(turn.productCard.fromPriceCents))}
+                    </span>
+                  )}
+                </span>
+                {onAddToBasket ? (
+                  <button
+                    type="button"
+                    className={styles.productAdd}
+                    data-done={basketItemIds?.includes(turn.productCard.itemId) || undefined}
+                    disabled={basketItemIds?.includes(turn.productCard.itemId)}
+                    onClick={() => turn.productCard && onAddToBasket(turn.productCard)}
                   >
-                    {chip.label}
-                  </a>
-                ))}
+                    {basketItemIds?.includes(turn.productCard.itemId) ? cardCopy.inBasket : cardCopy.add}
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>

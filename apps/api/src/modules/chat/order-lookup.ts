@@ -229,22 +229,48 @@ export async function lookUpOrder(
   return null;
 }
 
-/**
- * "Order <item>" chips for the items of an open shop an answer names: whole
- * names, matched on normalised text (capitals and punctuation folded, as a
- * wording is), in the order the answer names them, at most two.
- */
-export const MAX_ORDER_CHIPS = 2;
+/** What the chat shows under an answer that names a product: one card, for the first item named. */
+export interface ProductCard {
+  itemId: string;
+  slug: string;
+  name: string;
+  fromPriceCents: number | null;
+  photoUrl: string | null;
+  firstOptionId: string | null;
+}
 
-export function orderChips(answer: string, items: { id: string; name: string }[]): { itemId: string; label: string }[] {
+interface CardItem {
+  id: string;
+  name: string;
+  slug: string;
+  priceCents: number | null;
+  photoKey: string | null;
+  options: { id: string; priceCents: number }[];
+}
+
+/**
+ * The item of an open shop an answer names first: whole names, matched on
+ * normalised text (capitals and punctuation folded, as a wording is). At most
+ * one card. `storageBase` is STORAGE_PUBLIC_URL, joined to the photo key as
+ * every other public item photo is.
+ */
+export function productCard(answer: string, items: CardItem[], storageBase: string | null): ProductCard | null {
   const said = ` ${normalizeClaim(answer)} `;
-  return items
-    .map((item) => {
-      const name = normalizeClaim(item.name);
-      return { item, at: name ? said.indexOf(` ${name} `) : -1 };
-    })
-    .filter((hit) => hit.at >= 0)
-    .sort((a, b) => a.at - b.at)
-    .slice(0, MAX_ORDER_CHIPS)
-    .map(({ item }) => ({ itemId: item.id, label: `Order ${item.name}` }));
+  let best: { item: CardItem; at: number } | null = null;
+  for (const item of items) {
+    const name = normalizeClaim(item.name);
+    const at = name ? said.indexOf(` ${name} `) : -1;
+    if (at >= 0 && (best === null || at < best.at)) best = { item, at };
+  }
+  if (!best) return null;
+  const { item } = best;
+  const prices = item.options.map((option) => option.priceCents);
+  return {
+    itemId: item.id,
+    slug: item.slug,
+    name: item.name,
+    fromPriceCents: prices.length > 0 ? Math.min(...prices) : item.priceCents,
+    photoUrl: item.photoKey && storageBase ? `${storageBase.replace(/\/+$/, '')}/${item.photoKey}` : null,
+    firstOptionId: item.options[0]?.id ?? null,
+  };
 }

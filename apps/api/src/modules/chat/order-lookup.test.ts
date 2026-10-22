@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findOrderCode, lastFourDigits, mentionsOrder, orderCard, orderCodeCandidates, orderChips } from './order-lookup.js';
+import { findOrderCode, lastFourDigits, mentionsOrder, orderCard, orderCodeCandidates, productCard } from './order-lookup.js';
 
 describe('findOrderCode', () => {
   it('finds a code with a digit in it, in any case', () => {
@@ -125,21 +125,50 @@ describe('orderCard', () => {
   });
 });
 
-describe('orderChips', () => {
+describe('productCard', () => {
+  const item = (id: string, name: string, over: Record<string, unknown> = {}) => ({
+    id,
+    name,
+    slug: name.toLowerCase().replace(/ /g, '-'),
+    priceCents: 900 as number | null,
+    photoKey: null as string | null,
+    options: [] as { id: string; label: string; priceCents: number }[],
+    ...over,
+  });
   const items = [
-    { id: 'a', name: 'Kek Batik' },
-    { id: 'b', name: 'Kek Coklat Moist' },
-    { id: 'c', name: 'Tart Nenas' },
+    item('a', 'Kek Batik', { priceCents: null, photoKey: 'items/p/batik.webp', options: [{ id: 'o2', label: '2kg', priceCents: 17000 }, { id: 'o1', label: '1kg', priceCents: 9500 }] }),
+    item('b', 'Kek Coklat Moist'),
+    item('c', 'Tart Nenas'),
   ];
 
-  it('matches item names in the answer, ignoring case and punctuation, in the answer’s order, at most two', () => {
-    expect(orderChips('We have tart nenas, KEK BATIK and kek coklat-moist!', items)).toEqual([
-      { itemId: 'c', label: 'Order Tart Nenas' },
-      { itemId: 'a', label: 'Order Kek Batik' },
-    ]);
+  it('is the first item the answer names, ignoring case and punctuation: one card, never two', () => {
+    expect(productCard('We have tart nenas, KEK BATIK and kek coklat-moist!', items, 'https://files.example')).toEqual({
+      itemId: 'c',
+      slug: 'tart-nenas',
+      name: 'Tart Nenas',
+      fromPriceCents: 900,
+      photoUrl: null,
+      firstOptionId: null,
+    });
   });
 
-  it('matches whole words only', () => {
-    expect(orderChips('Kek Batiks are lovely', items)).toEqual([]);
+  it('carries the cheapest price, the photo URL and the first option of an item with options', () => {
+    expect(productCard('Kek batik is lovely', items, 'https://files.example/')).toEqual({
+      itemId: 'a',
+      slug: 'kek-batik',
+      name: 'Kek Batik',
+      fromPriceCents: 9500,
+      photoUrl: 'https://files.example/items/p/batik.webp',
+      firstOptionId: 'o2',
+    });
+  });
+
+  it('has no photo URL when storage is not configured', () => {
+    expect(productCard('Kek batik', items, null)?.photoUrl).toBeNull();
+  });
+
+  it('matches whole words only, and is null when nothing is named', () => {
+    expect(productCard('Kek Batiks are lovely', items, null)).toBeNull();
+    expect(productCard('Hello', items, null)).toBeNull();
   });
 });

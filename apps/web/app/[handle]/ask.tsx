@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import { BASKET_EVENT, defaultStorageKey, readBasket, writeBasket } from './shop/basket.js';
+import { shopCopy } from './shop/copy.js';
 import styles from './page.module.css';
 
 /*
@@ -30,6 +32,7 @@ export function Ask({
   displayName,
   canCapture,
   faqTotal = 0,
+  language = 'en',
 }: {
   handle: string;
   questions: string[];
@@ -38,7 +41,10 @@ export function Ask({
   canCapture: boolean;
   /** How many answered questions the FAQ holds; with any, chat mode's greeting offers to browse them. */
   faqTotal?: number;
+  /** The page's language: the opening line, the reply label and the product card speak it. */
+  language?: string;
 }) {
+  const copy = shopCopy(language);
   const [open, setOpen] = useState(false);
   // Chat mode is mounted the first time it is opened, and never removed
   // again after that -- the whole point of the claude.ai treatment is that
@@ -60,6 +66,31 @@ export function Ask({
   }, []);
 
   const onClose = useCallback(() => setOpen(false), []);
+
+  // What the visitor's basket holds, read from the same sessionStorage the shop and checkout use -- so a card says
+  // "In your basket" after a reload too, and follows an add made on another page of the shop.
+  const [basketItemIds, setBasketItemIds] = useState<string[]>([]);
+  useEffect(() => {
+    const sync = () => setBasketItemIds(readBasket(defaultStorageKey(handle)).map((line) => line.itemId));
+    sync();
+    window.addEventListener(BASKET_EVENT, sync);
+    return () => window.removeEventListener(BASKET_EVENT, sync);
+  }, [handle]);
+
+  const onAddToBasket = useCallback(
+    (card: { itemId: string; firstOptionId: string | null }) => {
+      const key = defaultStorageKey(handle);
+      const lines = readBasket(key);
+      const same = lines.find((line) => line.itemId === card.itemId && line.optionId === card.firstOptionId);
+      writeBasket(
+        key,
+        same
+          ? lines.map((line) => (line === same ? { ...line, quantity: line.quantity + 1 } : line))
+          : [...lines, { itemId: card.itemId, optionId: card.firstOptionId, quantity: 1 }],
+      );
+    },
+    [handle],
+  );
 
   /**
    * The page's Ask and Links tabs are server-rendered links (BentoPage), so
@@ -181,7 +212,7 @@ export function Ask({
         before.
       */}
       <div ref={promptRef} className={styles.greeting} data-ask-prompt>
-        <p className={styles.askPrompt}>What do you want to know?</p>
+        <p className={styles.askPrompt} data-who={copy.askLabel(displayName)}>{copy.askHello(displayName)}</p>
         {faqTotal > 0 ? (
           <a className={styles.browse} href={`/${handle}/faq`}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -202,8 +233,12 @@ export function Ask({
           // Omitted on a personal page, so the card is never offered there.
           // The server refuses one anyway; this stops it being asked for.
           onCapture={canCapture ? onCapture : undefined}
-          // Where "Order <item>" chips go; the server sends them only while the shop is open.
+          // Where a product card goes; the server sends one only while the shop is open.
           shopPath={`/${handle}/shop`}
+          onAddToBasket={onAddToBasket}
+          basketItemIds={basketItemIds}
+          replyLabel={copy.askLabel(displayName)}
+          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen }}
           initialDraft={prefill}
         />
       ) : null}

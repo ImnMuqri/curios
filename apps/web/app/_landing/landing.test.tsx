@@ -170,6 +170,20 @@ describe('who it is for', () => {
   });
 });
 
+describe('the floating chat', () => {
+  it("the floating chat's reply is a white card with the label", () => {
+    render(<LandingPage locale="en" />);
+    fireEvent.mouseEnter(screen.getByRole('button', { name: /Job seekers/ }));
+    const figure = screen.getByRole('figure', { name: 'Daniel Tan’s Curios page' });
+    const reply = within(figure).getByText(en.personas.daniel.a, { exact: false });
+    expect(reply).toHaveTextContent('Daniel Tan’s page');
+    const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
+    expect(css).toMatch(/^\.floatA \{[^}]*background: var\(--card\)/m);
+    expect(css).toMatch(/^\.pcA \{[^}]*padding: 0/m);
+    expect(css).not.toMatch(/^\.pcA \{[^}]*background/m);
+  });
+});
+
 describe('pricing', () => {
   it('switches Business between monthly and yearly, and says which is on', async () => {
     render(<LandingPage locale="en" />);

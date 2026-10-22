@@ -76,25 +76,24 @@
 }
 
 /*
- * A thread, the way the landing page's demo draws one: the visitor's words
- * on the right in a white bubble, the page's answer on the left in a tint of
- * the accent (DESIGN.md: the accent is the owner's voice). Each bubble's
- * square corner points at who said it.
+ * A thread, as the Public board draws it (.chat): the visitor's words in a
+ * see-through bubble on the right, the page's reply with no bubble at all --
+ * plain text under a dot and "{Name}'s page". The reply is AnswerBubble with
+ * its --bubble-* hooks flattened.
  */
 .turn {
   display: flex;
   flex-direction: column;
-  gap: 9px;
-  margin-top: 9px;
-  --bubble-max: 85%;
-  --bubble-width: fit-content;
+  gap: 12px;
+  margin-top: 14px;
+  --bubble-max: none;
+  --bubble-width: 100%;
   --bubble-margin: 0;
-  --bubble-padding: 10px 14px;
-  --bubble-radius: 18px 18px 18px 6px;
-  --bubble-bg: var(--warm, var(--ask-tint, var(--biru-muda)));
-  --bubble-fg: var(--ink);
-  --bubble-size: 14px;
-  --bubble-leading: 1.5;
+  --bubble-padding: 0;
+  --bubble-bg: transparent;
+  --bubble-fg: var(--page-fg, var(--ink));
+  --bubble-size: 15px;
+  --bubble-leading: 1.6;
 }
 
 .turn:first-child {
@@ -105,14 +104,31 @@
   align-self: flex-end;
   max-width: 85%;
   margin: 0;
-  padding: 10px 14px;
-  border-radius: 18px 18px 6px 18px;
-  background: var(--paper);
+  padding: 10px 15px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--page-fg, var(--ink)) 14%, transparent);
   font-family: var(--font-body);
-  font-size: 14px;
+  font-size: 14.5px;
   line-height: 1.5;
-  color: var(--ink);
+  color: var(--page-fg, var(--ink));
   overflow-wrap: anywhere;
+}
+
+.reply {
+  align-self: stretch;
+  font-family: var(--font-body);
+}
+
+/* The dot is the page's accent; the words are 75% of the page's text colour. */
+.who {
+  display: block;
+  margin-bottom: 6px;
+  padding-left: 30px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 22px;
+  color: color-mix(in srgb, var(--page-fg, var(--ink)) 75%, transparent);
+  background: radial-gradient(circle at 11px 11px, var(--accent, var(--biru)) 10.5px, transparent 11px) no-repeat;
 }
 
 /*
@@ -138,40 +154,89 @@
   }
 }
 
-/*
- * "Order <item>": drawn like the question chips above (the board's
- * suggestion chips), but links -- they go to the item in the shop.
- */
-.orderChips {
+/* The product card: the Public board's .sp-pc. */
+.productCard {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.orderChip {
-  display: inline-flex;
   align-items: center;
-  min-height: 34px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--page-fg, var(--ink)) 12%, transparent);
+  gap: 12px;
+  padding: 8px;
+  border-radius: 20px;
+  background: var(--paper);
+  color: var(--ink);
   font-family: var(--font-body);
-  font-size: 13px;
-  font-weight: 500;
-  line-height: 1.4;
-  color: var(--page-fg, var(--ink));
+}
+
+.productPhoto {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--accent, var(--biru)) 18%, var(--paper));
+  color: var(--accent, var(--biru));
+  font-family: var(--font-heading, var(--font-body));
+  font-size: 22px;
+  font-weight: 800;
   text-decoration: none;
-  transition: background 120ms ease;
 }
 
-.orderChip:hover,
-.orderChip:active {
-  background: color-mix(in srgb, var(--page-fg, var(--ink)) 20%, transparent);
+.productPhoto img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.orderChip:focus-visible {
+.productPhoto:focus-visible,
+.productAdd:focus-visible {
   outline: 2px solid var(--accent, var(--biru));
   outline-offset: 2px;
+}
+
+.productText {
+  flex: 1;
+  min-width: 0;
+}
+
+.productText b {
+  display: block;
+  font-size: 14px;
+}
+
+.productText span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.productAdd {
+  height: 36px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent, var(--biru));
+  color: var(--on-accent, var(--paper));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.productAdd[data-done] {
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .productCard {
+    animation: orderUp 320ms ease both;
+  }
 }
 
 /* The order card in the chat: the Public board's `ocard`. */

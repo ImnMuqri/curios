@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { StrictMode, useState } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -672,7 +672,7 @@ describe('ChatMode, orders', () => {
     expect(order.querySelectorAll('[aria-current]')).toHaveLength(1);
   });
 
-  it('drops a malformed card and malformed chips rather than half-drawing them', async () => {
+  it('drops a malformed card rather than half-drawing it', async () => {
     await askOnce(
       [
         'data: {"type":"text","text":"Thanks."}\n\n',
@@ -682,44 +682,108 @@ describe('ChatMode, orders', () => {
           type: 'done',
           conversationId: 'c1',
           intent: { qualified: false },
-          orderChips: [{ itemId: 'i1' }, null, { itemId: 'i2', label: 'Order Kek Batik' }, 'Order X'],
+          productCard: { itemId: 'i1', slug: 'kek-batik' },
         })}\n\n`,
       ],
       { shopPath: '/keklina/shop' },
     );
 
-    expect(await screen.findByRole('link', { name: 'Order Kek Batik' })).toHaveAttribute('href', '/keklina/shop?item=i2');
-    expect(screen.getAllByRole('link')).toHaveLength(1);
+    await screen.findByText('Thanks.');
     expect(screen.queryByRole('group', { name: /Order #14/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /Kek Batik/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+});
+
+describe('ChatMode, the product card', () => {
+  const productCard = { itemId: 'i1', slug: 'kek-batik', name: 'Kek Batik', fromPriceCents: 9500, photoUrl: 'https://files.example/items/batik.webp', firstOptionId: 'o1' };
+  const named = (extra: Record<string, unknown> = { productCard }) => [
+    'data: {"type":"text","text":"Kek batik is RM95."}\n\n',
+    `data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, ...extra })}\n\n`,
+  ];
+
+  async function askOnce(events: string[], props: Partial<ChatModeProps> = {}) {
+    const onAsk = vi.fn().mockResolvedValue(streamOf(...events));
+    const view = render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Kek Lina" questions={[]} shopPath="/keklina/shop" {...props} />);
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'Berapa kek batik?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    return view;
+  }
+
+  it('an answer naming an item is followed by one product card', async () => {
+    await askOnce(named(), { onAddToBasket: vi.fn() });
+
+    const cardEl = await screen.findByRole('group', { name: 'Kek Batik' });
+    expect(cardEl).toHaveTextContent('Kek Batik');
+    expect(cardEl).toHaveTextContent('RM95');
+    expect(cardEl).toHaveTextContent('from');
+    expect(within(cardEl).getByRole('button', { name: 'Add to basket' })).toBeInTheDocument();
+    expect(screen.getAllByRole('group')).toHaveLength(1);
   });
 
-  it('renders order chips as links', async () => {
-    await askOnce(
-      [
-        'data: {"type":"text","text":"Kek batik RM25."}\n\n',
-        `data: ${JSON.stringify({
-          type: 'done',
-          conversationId: 'c1',
-          intent: { qualified: false },
-          orderChips: [
-            { itemId: 'i1', label: 'Order Kek Batik' },
-            { itemId: 'i 2', label: 'Order Tart Nenas' },
-          ],
-        })}\n\n`,
-      ],
-      { shopPath: '/keklina/shop' },
-    );
-
-    expect(await screen.findByRole('link', { name: 'Order Kek Batik' })).toHaveAttribute('href', '/keklina/shop?item=i1');
-    expect(screen.getByRole('link', { name: 'Order Tart Nenas' })).toHaveAttribute('href', '/keklina/shop?item=i%202');
+  it('the card’s photo opens the product page', async () => {
+    await askOnce(named());
+    const open = await screen.findByRole('link', { name: 'Open Kek Batik' });
+    expect(open).toHaveAttribute('href', '/keklina/shop/kek-batik');
+    expect(open.querySelector('img')).toHaveAttribute('src', 'https://files.example/items/batik.webp');
   });
 
-  it('offers no chips without a shop to link to', async () => {
-    const onAsk = await askOnce([
-      `data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, orderChips: [{ itemId: 'i1', label: 'Order Kek Batik' }] })}\n\n`,
-    ]);
-    await waitFor(() => expect(onAsk).toHaveBeenCalled());
-    expect(screen.queryByRole('link', { name: 'Order Kek Batik' })).not.toBeInTheDocument();
+  it('Add to basket hands the card over and turns into "In your basket"', async () => {
+    const onAddToBasket = vi.fn();
+    const { rerender } = await askOnce(named(), { onAddToBasket, basketItemIds: [] });
+    await userEvent.click(await screen.findByRole('button', { name: 'Add to basket' }));
+    expect(onAddToBasket).toHaveBeenCalledWith(expect.objectContaining({ itemId: 'i1', firstOptionId: 'o1' }));
+
+    rerender(<ChatMode open onClose={vi.fn()} onAsk={vi.fn()} displayName="Kek Lina" questions={[]} shopPath="/keklina/shop" onAddToBasket={onAddToBasket} basketItemIds={['i1']} />);
+    expect(screen.getByRole('button', { name: 'In your basket' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
+  });
+
+  it('is in Malay when the page is', async () => {
+    await askOnce(named(), {
+      onAddToBasket: vi.fn(),
+      cardCopy: { add: 'Masuk bakul', inBasket: 'Dalam bakul anda', from: (price) => `dari ${price}`, open: (name) => `Buka ${name}` },
+    });
+    expect(await screen.findByRole('button', { name: 'Masuk bakul' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Buka Kek Batik' })).toBeInTheDocument();
+  });
+
+  it('no card when the shop is closed (the server sends none)', async () => {
+    await askOnce(named({}));
+    await screen.findByText('Kek batik is RM95.');
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+
+  it('no card without a shop to open', async () => {
+    await askOnce(named(), { shopPath: undefined });
+    await screen.findByText('Kek batik is RM95.');
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
+  });
+});
+
+describe('ChatMode, replies are plain text', () => {
+  const css = () => readFileSync(join(import.meta.dirname, 'ChatMode.module.css'), 'utf8');
+
+  it('the visitor’s message is a see-through bubble', () => {
+    const block = css().match(/^\.question \{([^}]*)\}/m)?.[1] ?? '';
+    expect(block).toMatch(/background:\s*color-mix\(in srgb, var\(--page-fg, var\(--ink\)\) 14%, transparent\)/);
+    expect(block).toMatch(/border-radius:\s*20px;/);
+  });
+
+  it('the reply has no bubble, a dot and "{Name}’s page" label, 15px/1.6', async () => {
+    const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"text","text":"RM95."}\n\n', 'data: {"type":"done","conversationId":"c1","intent":{"qualified":false}}\n\n'));
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Kek Lina" questions={[]} />);
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    expect(await screen.findByText('Kek Lina’s page')).toBeInTheDocument();
+    const turn = css().match(/^\.turn \{([^}]*)\}/m)?.[1] ?? '';
+    expect(turn).toMatch(/--bubble-bg:\s*transparent/);
+    expect(turn).toMatch(/--bubble-padding:\s*0/);
+    expect(turn).toMatch(/--bubble-size:\s*15px/);
+    expect(turn).toMatch(/--bubble-leading:\s*1\.6/);
+    expect(turn).not.toMatch(/--bubble-radius/);
+    expect(css()).toMatch(/^\.who::before|^\.who \{[^}]*radial-gradient/m);
   });
 });
 

@@ -1735,14 +1735,18 @@ describe('"where is my order", by its code', () => {
   });
 });
 
-describe('order chips', () => {
-  type Event = { type: string; orderChips?: { itemId: string; label: string }[]; intent?: { qualified: boolean }; conversationId?: string };
+describe('product card', () => {
+  type Card = { itemId: string; slug: string; name: string; fromPriceCents: number | null; photoUrl: string | null; firstOptionId: string | null };
+  type Event = { type: string; productCard?: Card | null; orderChips?: unknown; intent?: { qualified: boolean }; conversationId?: string };
 
   async function seedItems(storeEnabled: boolean) {
     const pageId = await pageIdFor('nadia');
     await prisma.page.update({ where: { id: pageId }, data: { storeEnabled, mode: 'BUSINESS' } });
-    const batik = await prisma.item.create({ data: { pageId, name: 'Kek Batik', slug: 'kek-batik', priceCents: 2500, position: 0, available: true } });
-    const coklat = await prisma.item.create({ data: { pageId, name: 'Kek Coklat Moist', slug: 'kek-coklat-moist', priceCents: 9500, position: 1, available: true } });
+    const batik = await prisma.item.create({ data: { pageId, name: 'Kek Batik', slug: 'kek-batik', priceCents: 2500, photoKey: 'items/p/batik.webp', position: 0, available: true } });
+    const coklat = await prisma.item.create({
+      data: { pageId, name: 'Kek Coklat Moist', slug: 'kek-coklat-moist', position: 1, available: true, options: { create: [{ label: '1kg', priceCents: 9500, position: 0 }, { label: '2kg', priceCents: 17000, position: 1 }] } },
+      include: { options: { orderBy: { position: 'asc' } } },
+    });
     await prisma.item.create({ data: { pageId, name: 'Tart Nenas', slug: 'tart-nenas', priceCents: 900, position: 2, available: true } });
     await prisma.item.create({ data: { pageId, name: 'Hidden Tart', slug: 'hidden-tart', priceCents: 900, position: 3, available: false } });
     return { batik, coklat };
@@ -1752,25 +1756,45 @@ describe('order chips', () => {
     return collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question, conversationId }));
   }
 
-  it('offers at most two order chips, matched from item names, and withholds the capture card on that turn', async () => {
-    const { batik, coklat } = await seedItems(true);
-    const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
+  it('sends one card, for the first item the answer names, and withholds the capture card on that turn', async () => {
+    vi.stubEnv('STORAGE_PUBLIC_URL', 'https://files.example');
+    try {
+      const { batik } = await seedItems(true);
+      const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
 
-    // Three specific turns: the turn that would otherwise offer the capture card.
-    const first = await ask(gatewaySaying('Ya ada.'), 'ada kek butter?');
-    const conversationId = first.find((e) => e.type === 'done')?.conversationId;
-    await ask(gatewaySaying('Ya.'), 'yang 2kg', conversationId);
-    const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
+      // Three specific turns: the turn that would otherwise offer the capture card.
+      const first = await ask(gatewaySaying('Ya ada.'), 'ada kek butter?');
+      const conversationId = first.find((e) => e.type === 'done')?.conversationId;
+      await ask(gatewaySaying('Ya.'), 'yang 2kg', conversationId);
+      const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
 
-    const done = third.find((e) => e.type === 'done');
-    expect(done?.orderChips).toEqual([
-      { itemId: batik.id, label: 'Order Kek Batik' },
-      { itemId: coklat.id, label: 'Order Kek Coklat Moist' },
-    ]);
-    expect(done?.intent).toEqual({ qualified: false });
+      const done = third.find((e) => e.type === 'done');
+      expect(done?.productCard).toEqual({
+        itemId: batik.id,
+        slug: 'kek-batik',
+        name: 'Kek Batik',
+        fromPriceCents: 2500,
+        photoUrl: 'https://files.example/items/p/batik.webp',
+        firstOptionId: null,
+      });
+      expect(done?.orderChips).toBeUndefined();
+      expect(done?.intent).toEqual({ qualified: false });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
-  it('offers the capture card on those same three turns with the Store off (the control)', async () => {
+  it('gives an item with options its cheapest price and its first option', async () => {
+    const { coklat } = await seedItems(true);
+    const events = await ask(gatewaySaying('Kek coklat moist, ya.'), 'ada kek coklat?');
+    expect(events.find((e) => e.type === 'done')?.productCard).toMatchObject({
+      itemId: coklat.id,
+      fromPriceCents: 9500,
+      firstOptionId: coklat.options[0]?.id,
+    });
+  });
+
+  it('offers the capture card on those same three turns with the shop off (the control)', async () => {
     await seedItems(false);
     const gateway = gatewaySaying('Ada! Kek batik RM25, kek coklat moist RM95, tart nenas dan hidden tart pun.');
 
@@ -1780,20 +1804,26 @@ describe('order chips', () => {
     const third = await ask(gateway, 'hantar ke Klang 20 Mac boleh?', conversationId);
 
     const done = third.find((e) => e.type === 'done');
-    expect(done?.orderChips).toBeUndefined();
+    expect(done?.productCard).toBeUndefined();
     expect(done?.intent).toEqual({ qualified: true });
   });
 
-  it('offers no chips while the Store is off', async () => {
+  it('sends no card while the shop is off', async () => {
     await seedItems(false);
     const events = await ask(gatewaySaying('Kek batik RM25.'), 'berapa kek batik?');
-    expect(events.find((e) => e.type === 'done')?.orderChips).toBeUndefined();
+    expect(events.find((e) => e.type === 'done')?.productCard).toBeUndefined();
   });
 
-  it('offers no chips on an owner’s pinned answer', async () => {
+  it('sends no card when the answer names no item', async () => {
+    await seedItems(true);
+    const events = await ask(gatewaySaying('Boleh, hubungi kami.'), 'boleh hantar?');
+    expect(events.find((e) => e.type === 'done')?.productCard).toBeUndefined();
+  });
+
+  it('sends no card on an owner’s pinned answer', async () => {
     await seedItems(true);
     await seedTopic(await pageIdFor('nadia'), { answer: 'Kek batik RM25.', wordings: [{ text: 'berapa kek batik?' }] });
     const events = await ask(gatewaySaying('unused'), 'berapa kek batik?');
-    expect(events.find((e) => e.type === 'done')?.orderChips).toBeUndefined();
+    expect(events.find((e) => e.type === 'done')?.productCard).toBeUndefined();
   });
 });

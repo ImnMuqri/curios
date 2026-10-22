@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { PageCard } from './PageCard.js';
 import { PERSONAS } from './personas.js';
@@ -69,7 +69,8 @@ export function Who({ locale }: { locale: Locale }) {
               className={styles.whoCard}
             />
             <p className={`${styles.float} ${styles.floatQ}`}>{words.q}</p>
-            <p className={`${styles.float} ${styles.floatA}`} style={{ background: person.warm }}>
+            <p className={`${styles.float} ${styles.floatA}`} style={{ '--float-dot': person.accent } as CSSProperties}>
+              <span className={styles.floatWho}>{person.name}’s page</span>
               {words.a}
             </p>
           </figure>

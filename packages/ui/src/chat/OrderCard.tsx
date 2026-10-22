@@ -43,25 +43,30 @@ export function isOrderCardData(value: unknown): value is OrderCardData {
   );
 }
 
-/** The well-formed `orderChips` of a streamed `done`, at most two. */
-export function validOrderChips(value: unknown): { itemId: string; label: string }[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter(
-      (chip): chip is { itemId: string; label: string } =>
-        typeof chip === 'object' &&
-        chip !== null &&
-        isText((chip as Record<string, unknown>).itemId) &&
-        (chip as { itemId: string }).itemId !== '' &&
-        isText((chip as Record<string, unknown>).label) &&
-        (chip as { label: string }).label !== '',
-    )
-    .slice(0, 2)
-    .map(({ itemId, label }) => ({ itemId, label }));
+/** What the server sends under an answer that names a product. */
+export interface ProductCardData {
+  itemId: string;
+  slug: string;
+  name: string;
+  fromPriceCents: number | null;
+  photoUrl: string | null;
+  firstOptionId: string | null;
+}
+
+/** The streamed `done`'s `productCard` when it is whole, else null: half a card is not drawn. */
+export function validProductCard(value: unknown): ProductCardData | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const card = value as Record<string, unknown>;
+  const text = (v: unknown): v is string => typeof v === 'string' && v !== '';
+  const maybe = (v: unknown): v is string | null => v === null || typeof v === 'string';
+  if (!text(card.itemId) || !text(card.slug) || !text(card.name)) return null;
+  if (card.fromPriceCents !== null && !(typeof card.fromPriceCents === 'number' && Number.isInteger(card.fromPriceCents) && card.fromPriceCents >= 0)) return null;
+  if (!maybe(card.photoUrl) || !maybe(card.firstOptionId)) return null;
+  return { itemId: card.itemId, slug: card.slug, name: card.name, fromPriceCents: card.fromPriceCents, photoUrl: card.photoUrl, firstOptionId: card.firstOptionId };
 }
 
 /** As `formatRinggit` (@curios/core/store) writes money; this package does not depend on core. */
-function ringgit(cents: number): string {
+export function ringgit(cents: number): string {
   const whole = Math.floor(cents / 100)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');

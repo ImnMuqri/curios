@@ -2,7 +2,7 @@ import { capReachedMail, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qua
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
-import { lookUpOrder, orderChips, type OrderCard } from './order-lookup.js';
+import { lookUpOrder, productCard, type OrderCard, type ProductCard } from './order-lookup.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { unsureFilter } from './unsure.js';
@@ -16,8 +16,8 @@ export type AnswerEvent =
       type: 'done';
       conversationId: string;
       intent: { qualified: boolean };
-      /** "Order <item>" links for the open shop's items the answer named; never with the capture card. */
-      orderChips?: { itemId: string; label: string }[];
+      /** The open shop's item the answer named first, as one card; never with the capture card. */
+      productCard?: ProductCard;
     };
 
 export interface ChatDeps {
@@ -284,12 +284,14 @@ export const ANSWER_PAGE_SELECT = {
     where: { available: true },
     orderBy: { position: 'asc' },
     select: {
-      // For the "Order <item>" chips' links.
+      // For the product card.
       id: true,
       name: true,
+      slug: true,
+      photoKey: true,
       description: true,
       priceCents: true,
-      options: { orderBy: { position: 'asc' }, select: { label: true, priceCents: true } },
+      options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
     },
   },
 } satisfies Prisma.PageSelect;
@@ -763,14 +765,16 @@ export async function* answer(
       },
     });
 
-    // "Order <item>" for the open shop's items this answer named (the spec's
-    // Chat section): at most two, and on that turn the capture card is not
-    // also offered -- the shop is the better next step than leaving a number.
-    // Only after a model answer: never on a pinned answer or the cap's reply.
-    const chips =
-      page.mode === 'BUSINESS' && page.storeEnabled && !filter.unsure ? orderChips(text, page.items) : [];
-    if (chips.length > 0) {
-      yield { type: 'done', conversationId, intent: { qualified: false }, orderChips: chips };
+    // One product card for the open shop's item this answer named first, and
+    // on that turn the capture card is not also offered -- the shop is the
+    // better next step than leaving a number. Only after a model answer:
+    // never on a pinned answer or the cap's reply.
+    const card =
+      page.mode === 'BUSINESS' && page.storeEnabled && !filter.unsure
+        ? productCard(text, page.items, process.env.STORAGE_PUBLIC_URL ?? null)
+        : null;
+    if (card) {
+      yield { type: 'done', conversationId, intent: { qualified: false }, productCard: card };
     } else {
       yield { type: 'done', conversationId, intent };
     }

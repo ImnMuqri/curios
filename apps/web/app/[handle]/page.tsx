@@ -139,6 +139,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
             now: new Date(),
           })}
           faqTotal={faq?.total ?? 0}
+          language={page.language}
         />
       </BentoPage>
     </main>

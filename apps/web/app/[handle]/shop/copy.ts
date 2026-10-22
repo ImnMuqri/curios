@@ -50,6 +50,12 @@ export interface ShopCopy {
   askName: (name: string) => string;
   back: string;
   from: (price: string) => string;
+  /** The Ask tab: the page's opening line, the label over each reply, and the product card's two buttons. */
+  askHello: (name: string) => string;
+  askLabel: (name: string) => string;
+  cardAdd: string;
+  cardIn: string;
+  cardOpen: (name: string) => string;
   basket: (items: number, total: string) => string;
   orderOnWhatsApp: string;
   noWhatsApp: (name: string) => string;
@@ -244,6 +250,11 @@ const EN: ShopCopy = {
   askName: (name) => `Ask ${name}`,
   back: 'Back',
   from: (price) => `from ${price}`,
+  askHello: (name) => `Hi! I’m ${name}’s page. Ask me about what’s on offer, prices or how to order.`,
+  askLabel: (name) => `${name}’s page`,
+  cardAdd: 'Add to basket',
+  cardIn: 'In your basket',
+  cardOpen: (name) => `Open ${name}`,
   basket: (items, total) => `${items} in basket · ${total}`,
   orderOnWhatsApp: 'Order on WhatsApp',
   noWhatsApp: (name) => `To order, contact ${name} through the links on their page.`,
@@ -391,6 +402,11 @@ const MS: ShopCopy = {
   askName: (name) => `Tanya ${name}`,
   back: 'Kembali',
   from: (price) => `dari ${price}`,
+  askHello: (name) => `Hai! Saya halaman ${name}. Tanya saya tentang apa yang ditawarkan, harga atau cara menempah.`,
+  askLabel: (name) => `Halaman ${name}`,
+  cardAdd: 'Masuk bakul',
+  cardIn: 'Dalam bakul anda',
+  cardOpen: (name) => `Buka ${name}`,
   basket: (items, total) => `${items} dalam bakul · ${total}`,
   orderOnWhatsApp: 'Tempah di WhatsApp',
   noWhatsApp: (name) => `Untuk tempah, hubungi ${name} melalui pautan di halaman mereka.`,

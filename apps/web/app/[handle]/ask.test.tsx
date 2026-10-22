@@ -62,9 +62,9 @@ describe('Ask, opening chat mode', () => {
     stubQualifyingFetch();
     render(<Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />);
 
-    // "What do you want to know?" is chat mode's own greeting (shown by CSS
+    // The opening line is chat mode's own greeting (shown by CSS
     // only in chat mode), server-rendered so a no-JS visitor still sees it.
-    expect(screen.getByText('What do you want to know?').closest('[data-ask-prompt]')).not.toBeNull();
+    expect(screen.getByText('Hi! I’m Nadia Bakes’s page. Ask me about what’s on offer, prices or how to order.').closest('[data-ask-prompt]')).not.toBeNull();
     expect(screen.queryByRole('button', { name: /ask a question/i })).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -104,7 +104,7 @@ describe('Ask, opening chat mode', () => {
     );
 
     await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
-    expect(screen.getByText('What do you want to know?')).toBeInTheDocument();
+    expect(screen.getByText('Hi! I’m Nadia Bakes’s page. Ask me about what’s on offer, prices or how to order.')).toBeInTheDocument();
 
     await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
 
@@ -280,5 +280,69 @@ describe('Ask, and the page tabs', () => {
   it('offers to browse the answered questions when there are any', () => {
     render(<Ask handle="nadia" questions={[]} displayName="Nadia Bakes" canCapture={true} faqTotal={5} />);
     expect(screen.getByRole('link', { name: /Browse 5 answered questions/ })).toHaveAttribute('href', '/nadia/faq');
+  });
+});
+
+describe('Ask, the product card', () => {
+  const productCard = { itemId: 'i1', slug: 'kek-batik', name: 'Kek Batik', fromPriceCents: 9500, photoUrl: null, firstOptionId: 'o1' };
+
+  function stubNamingFetch() {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              const enc = new TextEncoder();
+              controller.enqueue(enc.encode('data: {"type":"text","text":"Kek batik is RM95."}\n\n'));
+              controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, productCard })}\n\n`));
+              controller.close();
+            },
+          }),
+          { status: 200 },
+        ),
+      ),
+    );
+  }
+
+  async function askAboutBatik(language?: string) {
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={false} language={language} />
+      </TabbedPage>,
+    );
+    await userEvent.click(screen.getByRole('link', { name: 'Ask' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Berapa harga?' }));
+  }
+
+  afterEach(() => window.sessionStorage.clear());
+
+  it('Add to basket writes the first option into the shop’s basket and turns into "In your basket"', async () => {
+    stubNamingFetch();
+    const seen = vi.fn();
+    window.addEventListener('curios-basket', seen);
+    await askAboutBatik();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Add to basket' }));
+
+    expect(JSON.parse(window.sessionStorage.getItem('curios-basket:nadia') ?? '[]')).toEqual([{ itemId: 'i1', optionId: 'o1', quantity: 1 }]);
+    expect(seen).toHaveBeenCalled();
+    expect(await screen.findByRole('button', { name: 'In your basket' })).toBeInTheDocument();
+    window.removeEventListener('curios-basket', seen);
+  });
+
+  it('says "In your basket" straight away when the basket already holds the item (a reload)', async () => {
+    window.sessionStorage.setItem('curios-basket:nadia', JSON.stringify([{ itemId: 'i1', optionId: 'o1', quantity: 2 }]));
+    stubNamingFetch();
+    await askAboutBatik();
+    expect(await screen.findByRole('button', { name: 'In your basket' })).toBeInTheDocument();
+  });
+
+  it('opens and labels itself in Malay on a Malay page', async () => {
+    stubNamingFetch();
+    await askAboutBatik('ms');
+    expect(screen.getByText('Hai! Saya halaman Nadia Bakes. Tanya saya tentang apa yang ditawarkan, harga atau cara menempah.')).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Masuk bakul' })).toBeInTheDocument();
+    expect(screen.getByText('Halaman Nadia Bakes')).toBeInTheDocument();
   });
 });

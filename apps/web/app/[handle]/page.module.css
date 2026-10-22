@@ -9,15 +9,25 @@
   padding: 20px 18px 0;
 }
 
+/* The opening line is the page's first reply: plain text under the same dot and label as every other (Public board, .chat .a). */
 .askPrompt {
-  justify-self: start;
-  max-width: 88%;
+  justify-self: stretch;
   margin: 0;
-  padding: 10px 14px;
-  border-radius: 18px 18px 18px 6px;
-  background: var(--warm, var(--biru-muda));
-  color: var(--ink);
-  font-size: 14px;
+  color: var(--page-fg, var(--ink));
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.askPrompt::before {
+  content: attr(data-who);
+  display: block;
+  margin-bottom: 6px;
+  padding-left: 30px;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 22px;
+  color: color-mix(in srgb, var(--page-fg, var(--ink)) 75%, transparent);
+  background: radial-gradient(circle at 11px 11px, var(--accent, var(--biru)) 10.5px, transparent 11px) no-repeat;
 }
 
 .browse {
