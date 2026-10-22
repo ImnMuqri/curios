@@ -1,0 +1,246 @@
+/*
+ * The panel beside the sign-in and sign-up forms: Peek, full-body and calm,
+ * from the SignIn and SignUp boards ("auth panel: Peek"). Wide screens only;
+ * a phone gets the form alone. Reduced motion stops all of it.
+ * The board's 13 / 11.5 / 15px land on the type scale as 12.5 / 11 / 14.
+ */
+.art {
+  position: relative;
+  display: none;
+  flex: 1 1 50%;
+  min-width: 0;
+  height: calc(100dvh - 28px);
+  margin: 14px 14px 14px 0;
+  overflow: hidden;
+  border-radius: 32px;
+}
+
+.signin {
+  background: var(--panel-signin);
+}
+
+.signup {
+  background: var(--panel-signup);
+}
+
+@media (min-width: 981px) {
+  .art {
+    display: block;
+  }
+}
+
+.pa {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(16px, 4vh, 36px);
+  padding: 40px;
+}
+
+.stage {
+  position: relative;
+  width: min(380px, 78%);
+  padding-top: clamp(90px, 16vh, 130px);
+}
+
+.stageUp {
+  padding-top: 0;
+}
+
+.svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.shadow {
+  fill: rgb(25 31 44 / 12%);
+}
+
+.signMono {
+  font-family: var(--font-plex-mono), 'IBM Plex Mono', ui-monospace, monospace;
+}
+
+.signName {
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+
+.cap {
+  max-width: 340px;
+  margin: 0;
+  text-align: center;
+  text-wrap: balance;
+}
+
+.cap > b {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.cap > span {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--text-base);
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.bob {
+  animation: paBob 3.2s ease-in-out infinite;
+}
+
+.eyes {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: paBlink 5s infinite;
+}
+
+.tap {
+  animation: paTap 520ms ease-in-out infinite alternate;
+}
+
+.sign {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  animation: paSway 4s ease-in-out infinite;
+}
+
+.tick {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: paPop 500ms cubic-bezier(0.34, 1.6, 0.64, 1) 900ms both;
+}
+
+.pops {
+  position: absolute;
+  top: 0;
+  left: 34%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pops > span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  padding: 9px 10px 9px 14px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow:
+    0 1px 0 rgb(25 31 44 / 6%),
+    0 10px 24px -14px rgb(25 31 44 / 35%);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+  animation: paIn 9s cubic-bezier(0.22, 1, 0.36, 1) infinite both;
+}
+
+.pops b {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+.pops i {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--biru-muda);
+  color: var(--biru);
+  font-size: var(--text-xs);
+  font-style: normal;
+  font-weight: 600;
+}
+
+.pops i.green {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+@keyframes paBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes paBlink {
+  0%,
+  46%,
+  50%,
+  100% {
+    transform: scaleY(1);
+  }
+  48% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes paTap {
+  to {
+    transform: translate(1px, -2px);
+  }
+}
+
+@keyframes paSway {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes paPop {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes paIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  6%,
+  82% {
+    opacity: 1;
+    transform: none;
+  }
+  90%,
+  100% {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bob,
+  .eyes,
+  .tap,
+  .sign,
+  .tick,
+  .pops > span {
+    animation: none;
+  }
+}

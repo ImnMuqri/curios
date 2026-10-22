@@ -21,17 +21,19 @@ describe('SignUpForm', () => {
 
   it('says the address typed on the landing page will be filled in, and nothing when there is none', () => {
     const { unmount } = render(<SignUpForm onSubmit={vi.fn()} wantedHandle="aisyahdraws" />);
-    expect(screen.getByText(/curios\.my\/aisyahdraws/)).toBeInTheDocument();
+    expect(screen.getByText(/fill in curios\.my\/aisyahdraws/)).toBeInTheDocument();
+    expect(screen.getByText(/claim curios\.my\/aisyahdraws\./)).toBeInTheDocument();
     unmount();
 
     render(<SignUpForm onSubmit={vi.fn()} wantedHandle="" />);
-    expect(screen.queryByText(/curios\.my\//)).toBeNull();
+    expect(screen.queryByText(/fill in curios\.my\//)).toBeNull();
+    expect(screen.getByText(/claim curios\.my\/yourname\./)).toBeInTheDocument();
   });
 
   it('reads the wanted address from browser storage when not given one', async () => {
     window.localStorage.setItem('curios:wanted-handle', 'keklina');
     render(<SignUpForm onSubmit={vi.fn()} />);
-    expect(await screen.findByText(/curios\.my\/keklina/)).toBeInTheDocument();
+    expect(await screen.findByText(/fill in curios\.my\/keklina/)).toBeInTheDocument();
     window.localStorage.removeItem('curios:wanted-handle');
   });
 

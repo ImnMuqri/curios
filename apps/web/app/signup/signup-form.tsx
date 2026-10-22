@@ -52,7 +52,7 @@ export function SignUpForm({
     // API's response is byte-identical in both cases, and this screen must
     // not leak what the API refuses to. It names only what was typed.
     return (
-      <AuthShell title="Check your email" lede="Check your email to confirm your address and finish signing up." film="signup">
+      <AuthShell title="Check your email" lede="Check your email to confirm your address and finish signing up." scene="signup" handle={handle}>
         <span className={styles.mail} aria-hidden="true">
           <svg viewBox="0 0 24 24" width="38" height="38">
             <rect x="3" y="5" width="18" height="14" rx="3" />
@@ -84,7 +84,8 @@ export function SignUpForm({
       title="Create your free page"
       lede="Answering is free on every plan. No card needed."
       switchTo={{ prompt: 'Already have a page?', label: 'Sign in', href: '/signin' }}
-      film="signup"
+      scene="signup"
+      handle={handle}
     >
       {handle ? (
         <p className={styles.claimChip}>

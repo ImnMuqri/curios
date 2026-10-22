@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import '../_landing/landing-tokens.css';
 import { Wordmark } from '../_landing/Wordmark.js';
-import { AuthFilm } from './AuthFilm.js';
+import { AuthScene } from './AuthScene.js';
 import styles from '../auth.module.css';
 
 /**
@@ -9,9 +9,9 @@ import styles from '../auth.module.css';
  * reset, verify, and claiming a page -- from the design handoff's SignIn and
  * SignUp boards.
  *
- * Left: the form on paper, under the wordmark. Right, on wide screens: a short
- * film of a page at work (AuthFilm). `film` picks which: sign in's night with
- * Kek Lina (the default) or sign up's afternoon with Aisyah.
+ * Left: the form on paper, under the wordmark. Right, on wide screens: Peek on
+ * a tinted panel (AuthScene). `scene` picks which: sign in's (the default) or
+ * sign up's, which shows `handle` on Peek's sign.
  *
  * Server-safe, so the client forms render it directly. `switchTo` is the
  * link under the form to the other way in ("Create your free page" from sign
@@ -21,13 +21,16 @@ export function AuthShell({
   title,
   lede,
   switchTo,
-  film = 'signin',
+  scene = 'signin',
+  handle,
   children,
 }: {
   title: string;
   lede?: string;
   switchTo?: { prompt: string; label: string; href: string };
-  film?: 'signin' | 'signup';
+  scene?: 'signin' | 'signup';
+  /** The address being claimed, for sign up's sign. */
+  handle?: string;
   children: ReactNode;
 }) {
   return (
@@ -50,7 +53,7 @@ export function AuthShell({
         </div>
       </main>
 
-      <AuthFilm film={film} />
+      <AuthScene scene={scene} handle={handle} />
     </div>
   );
 }

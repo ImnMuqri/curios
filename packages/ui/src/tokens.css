@@ -26,6 +26,11 @@
   --peek-edge: #1b33aa;
   --peek-hand: #3150dc;
   --peek-cover: #4664ee;
+  /* Peek full-body on the sign in and sign up panels: feet, highlight, and each panel's ground. */
+  --peek-foot: #1a2fa3;
+  --peek-shine: #5b76ff;
+  --panel-signin: #eef1fb;
+  --panel-signup: #fdf3e3;
   /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
   --card: #ffffff;
   --line: #e4e7eb;
