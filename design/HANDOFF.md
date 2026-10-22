@@ -188,9 +188,18 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   The money goes to the owner's own CHIP account. Curios never holds it.
 - **Checkout** gets a "How you'll pay" section.
   - **With CHIP connected,** four choices:
-    - Online banking (FPX), E-wallet, Card: paid on CHIP's page. Pass the chosen method in CHIP's
-      payment method whitelist so its page opens on that method. Confirmed automatically, and the
-      button reads "Pay RM…".
+    - Online banking (FPX), E-wallet, Card: confirmed automatically. **CHIP's own payment page is
+      never shown.**
+      - Picking Online banking shows "Your bank" (Maybank2u, CIMB Clicks, Public Bank, RHB Now,
+        Bank Islam, Hong Leong) right in our checkout.
+      - Picking E-wallet shows "Your e-wallet" (Touch 'n Go, GrabPay, Boost, ShopeePay).
+      - The button reads "Pay RM215 with Maybank2u" (or the chosen wallet, or "by card").
+      - It sends the customer straight to the bank or wallet using the purchase's `checkout_url`
+        plus `?preferred=fpx&fpx_bank_code=…` (e.g. `MB2U0227`), or
+        `?preferred=razer_tng&razer_bank_code=TNG-EWALLET` and the like.
+      - Card uses CHIP's card page, or `direct_post_url`. Check the PCI implications before posting
+        card fields from our own form.
+      - See CHIP's "Direct Post & Skip Payment Page" doc for the exact codes.
     - DuitNow QR: the owner's **own** QR with a receipt upload, exactly as before. The button reads
       "Place order · RM…". Do not use CHIP's DuitNow here; there must be one QR option, not two.
   - **Without CHIP,** only the owner's QR option shows. Screen: `Public-checkout-qr-only`.
@@ -209,8 +218,9 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 **Elsewhere**
 - **Landing, For business:**
   - the customer phone shows the new shop page (two-column cards, + on photos)
-  - checkout pays the CHIP way: "How you'll pay" with FPX picked, "Pay RM235", CHIP's bank list,
-    "Payment approved"
+  - checkout: "How you'll pay" with FPX picked, then Maybank2u picked under "Your bank", then "Pay
+    RM235 with Maybank2u", "Opening Maybank2u…", "Approved in Maybank2u"
+  - it never shows a CHIP screen, only "Payment processed by CHIP" in small type
   - the order lands in Orders as "Paid by FPX"
   - each step runs on its own timer (about 20s for the loop), with a progress line under the
     active step

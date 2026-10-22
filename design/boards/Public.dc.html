@@ -418,6 +418,10 @@ body{margin:0;background:#2a0b16}
 .c2r em{margin-left:auto;font-style:normal;font-size:14px;font-weight:600}
 .rd{width:20px;height:20px;flex:none;border-radius:50%;box-shadow:inset 0 0 0 1.5px #c9ccd3;transition:box-shadow 200ms}
 .rd.on{box-shadow:inset 0 0 0 6px var(--acc)}
+.pbk{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pbk button{display:flex;align-items:center;gap:9px;height:46px;padding:0 12px;border:0;border-radius:12px;background:#ffffff;box-shadow:inset 0 0 0 1px #e4e7eb;font:inherit;font-size:13.5px;font-weight:600;color:#191f2c;text-align:left;cursor:pointer;transition:box-shadow 160ms,background 160ms}
+.pbk button.on{background:#fbf2f5;box-shadow:inset 0 0 0 2px var(--acc)}
+.pbk i{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:7px;color:#fff;font-style:normal;font-size:10px;font-weight:800}
 .pw-ic{display:flex;gap:3px;margin-left:auto;flex:none}
 .pw-ic i{display:grid;place-items:center;min-width:26px;height:20px;padding:0 4px;border-radius:5px;font-style:normal;font-size:9px;font-weight:700;letter-spacing:.02em}
 .c2d{display:flex;gap:8px;overflow-x:auto;padding:2px;scrollbar-width:none}
@@ -590,6 +594,7 @@ body{margin:0;background:#2a0b16}
 
 <section class="c2s"><div class="c2h"><b>How you’ll pay</b><span>To Kek Lina, directly</span></div>
 <div class="c2r" role="radiogroup" aria-label="How you’ll pay"><sc-for list="{{ payWays }}" as="w" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{ w.on }}" onClick="{{ w.go }}"><i class="rd {{w.cls}}"></i><span><b>{{w.l}}</b><span>{{w.sub}}</span></span><span class="pw-ic" aria-hidden="true"><sc-for list="{{ w.marks }}" as="m" hint-placeholder-count="3"><i style="background: {{m.bg}}; color: {{m.fg}}">{{m.t}}</i></sc-for></span></button></sc-for></div>
+<sc-if value="{{ hasSub }}" hint-placeholder-val="{{ true }}"><div class="c2h" style="margin-top: 16px"><b>{{subLabel}}</b></div><div class="pbk" role="radiogroup" aria-label="{{subLabel}}"><sc-for list="{{ subOpts }}" as="k" hint-placeholder-count="6"><button type="button" role="radio" class="{{k.cls}}" aria-checked="{{ k.on }}" onClick="{{ k.go }}"><i style="background: {{k.c}}">{{k.i}}</i>{{k.n}}</button></sc-for></div></sc-if>
 </section>
 
 <section class="c2s c2sum"><div><span>Items</span><span>{{itemsRM}}</span></div><div><span>{{feeLabel}}</span><span>{{feeRM}}</span></div><div><span>{{whenLabel}}</span><span>{{dayLabel}}</span></div><div class="t"><span>Total</span><span>{{totalRM}}</span></div><p>{{payNote}}</p></section>
@@ -799,9 +804,11 @@ class Component extends DCLogic {
       cantPlace: !(st.cname.trim() && st.cphone.replace(/\D/g, '').length >= 9),
       placeOrder: go('placed', { pay: how === 'qr' ? 'waiting' : 'paid' }), toOrderPay: go('order', { pay: st.pay }),
       payWays: (chipOn ? [['fpx', 'Online banking', 'FPX · Maybank2u, CIMB Clicks, RHB and more', [['FPX', '#eaf0ff', '#122686']]], ['wallet', 'E-wallet', 'Touch ’n Go, GrabPay, Boost, ShopeePay', [['TNG', '#e6f0ff', '#0b4dbd'], ['Grab', '#e3f6ea', '#0d7a3e']]], ['card', 'Card', 'Debit or credit card', [['VISA', '#eef0ff', '#1a1f71'], ['MC', '#fff1e8', '#c2410c']]], ['qr', 'DuitNow QR', 'Scan Kek Lina’s QR, then upload your receipt', [['QR', '#fdecef', '#b5294e']]]] : [['qr', 'DuitNow QR or bank transfer', 'Pay Kek Lina directly, then upload your receipt', [['QR', '#fdecef', '#b5294e']]]]).map((w) => ({ l: w[1], sub: w[2], marks: w[3].map((m) => ({ t: m[0], bg: m[1], fg: m[2] })), on: how === w[0], cls: how === w[0] ? 'on' : '', go: () => self.setState({ how: w[0] }) })),
-      goText: (how === 'qr' ? 'Place order · ' : 'Pay ') + self.rm(itemsTotal + fee),
-      payNote: how === 'qr' ? 'You pay Kek Lina directly on the next step, then upload your receipt. Your name and number go to Kek Lina only.' : 'You pay on a secure CHIP page, then come straight back here. It’s confirmed straight away, and the money goes to Kek Lina’s own account.',
-      paidOnline: payIdx === 2 && how !== 'qr', paidVia: { wallet: 'Touch ’n Go eWallet', card: 'Visa card ending 4242' }[how] || 'FPX · Maybank2u',
+      hasSub: how === 'fpx' || how === 'wallet', subLabel: how === 'wallet' ? 'Your e-wallet' : 'Your bank',
+      subOpts: (how === 'wallet' ? [['tng', 'Touch ’n Go', 'T', '#0b4dbd'], ['grab', 'GrabPay', 'G', '#0d9a4f'], ['boost', 'Boost', 'B', '#e3262b'], ['spay', 'ShopeePay', 'S', '#ee4d2d']] : [['maybank', 'Maybank2u', 'M', '#e0a800'], ['cimb', 'CIMB Clicks', 'C', '#c8102e'], ['pbb', 'Public Bank', 'P', '#d71920'], ['rhb', 'RHB Now', 'R', '#005baa'], ['bislam', 'Bank Islam', 'B', '#a6195b'], ['hlb', 'Hong Leong', 'H', '#0a3b8c']]).map((k) => { const cur = how === 'wallet' ? (st.wallet || 'tng') : (st.bank || 'maybank'); return { n: k[1], i: k[2], c: k[3], on: cur === k[0], cls: cur === k[0] ? 'on' : '', go: () => self.setState(how === 'wallet' ? { wallet: k[0] } : { bank: k[0] }) }; }),
+      goText: how === 'qr' ? 'Place order · ' + self.rm(itemsTotal + fee) : 'Pay ' + self.rm(itemsTotal + fee) + (how === 'card' ? ' by card' : ' with ' + (how === 'wallet' ? { tng: 'Touch ’n Go', grab: 'GrabPay', boost: 'Boost', spay: 'ShopeePay' }[st.wallet || 'tng'] : { maybank: 'Maybank2u', cimb: 'CIMB Clicks', pbb: 'Public Bank', rhb: 'RHB Now', bislam: 'Bank Islam', hlb: 'Hong Leong' }[st.bank || 'maybank'])),
+      payNote: how === 'qr' ? 'You pay Kek Lina directly on the next step, then upload your receipt. Your name and number go to Kek Lina only.' : (how === 'card' ? 'You’ll enter your card on a secure page, then come straight back here.' : 'You’ll go straight to ' + (how === 'wallet' ? 'your e-wallet' : 'your bank') + ' to approve it, then come back here.') + ' Payments are processed by CHIP, and the money goes to Kek Lina’s own account.',
+      paidOnline: payIdx === 2 && how !== 'qr', paidVia: how === 'wallet' ? { tng: 'Touch ’n Go eWallet', grab: 'GrabPay', boost: 'Boost', spay: 'ShopeePay' }[st.wallet || 'tng'] : how === 'card' ? 'Visa card ending 4242' : 'FPX · ' + { maybank: 'Maybank2u', cimb: 'CIMB Clicks', pbb: 'Public Bank', rhb: 'RHB Now', bislam: 'Bank Islam', hlb: 'Hong Leong' }[st.bank || 'maybank'],
       placedTitle: payIdx === 2 && how !== 'qr' ? 'Paid. Order placed' : 'Order placed',
       placedSub: payIdx === 2 && how !== 'qr' ? self.rm(itemsTotal + fee) + ' paid. Kek Lina has your order and will get it ready.' : 'Kek Lina has it. Pay on the next screen to confirm it.',
       placedCta: payIdx === 2 && how !== 'qr' ? 'See your order' : 'Pay ' + self.rm(itemsTotal + fee) + ' now',

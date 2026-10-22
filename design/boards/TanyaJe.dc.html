@@ -229,22 +229,27 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .cs-card>span:last-child{display:block;font-size:11px;opacity:.75}
 .cbar{left:18px;right:18px;top:542px;height:44px;display:flex;align-items:center;padding:0 5px 0 16px;border-radius:999px;background:#fafbfc}
 .sheet{position:absolute;left:0;right:0;top:170px;bottom:0;border-radius:26px 26px 0 0;background:#fafbfc;color:#191f2c}
-.pway{left:18px;right:18px;top:54px;display:grid;border-radius:14px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb}
-.pw-row{display:flex;align-items:center;gap:10px;height:62px;padding:0 12px}
+.pway{left:18px;right:18px;top:52px;display:grid;border-radius:14px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb}
+.pw-row{display:flex;align-items:center;gap:10px;height:46px;padding:0 12px}
+.pbanks{left:18px;right:18px;top:244px;transition:opacity 260ms ease}
+.pbanks p{margin:0 0 6px;font-size:11px;font-weight:600;color:#4b5060}
+.pb-g{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pb{display:flex;align-items:center;gap:7px;height:38px;padding:0 9px;border-radius:10px;font-size:11.5px;font-weight:600;transition:background 200ms,box-shadow 200ms}
+.pb i{display:grid;place-items:center;width:20px;height:20px;flex:none;border-radius:6px;color:#fff;font-style:normal;font-size:9px;font-weight:800}
+.chipv{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;border-radius:26px 26px 0 0;background:#ffffff;text-align:center;animation:sheetIn 260ms cubic-bezier(.22,1,.36,1) both}
+.go-bank{display:grid;place-items:center;width:56px;height:56px;border-radius:16px;color:#fff;font-size:22px;font-weight:800}
+.go-t{margin:16px 0 0;font-size:17px;font-weight:700}
+.go-s{margin:6px 0 0;max-width:15em;font-size:12.5px;line-height:1.45;color:#4b5060}
+.go-spin{width:22px;height:22px;margin-top:18px;border:2.5px solid #e4e7eb;border-top-color:#191f2c;border-radius:50%;animation:spin 800ms linear infinite}
+.go-f{position:absolute;bottom:18px;left:0;right:0;margin:0;font-size:10.5px;color:#8a8f9b}
 .pw-row+.pw-row{border-top:1px solid #eef0f3}
 .pw-rd{width:18px;height:18px;flex:none;border-radius:50%;transition:box-shadow 200ms ease}
 .pw-tx{flex:1;min-width:0}
 .pw-tx b{display:block;font-size:13px}
 .pw-tx small{display:block;font-size:10.5px;color:#8a8f9b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pw-row em{padding:2px 6px;border-radius:5px;font-style:normal;font-size:9px;font-weight:700}
-.chipv{position:absolute;inset:0;z-index:2;padding:18px;border-radius:26px 26px 0 0;background:#ffffff;animation:sheetIn 260ms cubic-bezier(.22,1,.36,1) both}
 @keyframes sheetIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
-.chipv-h{display:flex;align-items:center;justify-content:space-between;margin:0;padding-bottom:12px;border-bottom:1px solid #eef0f3;font-size:12px;color:#4b5060}
-.chipv-h b{font-family:var(--m);font-size:13px;letter-spacing:.08em;color:#191f2c}
-.chipv-t{margin:14px 0 8px;font-size:15px;font-weight:600}
-.chipv-b{display:flex;align-items:center;gap:10px;height:46px;margin-top:6px;padding:0 12px;border-radius:12px;font-size:13px;font-weight:600;transition:background 200ms,box-shadow 200ms}
-.chipv-b i{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;color:#fff;font-style:normal;font-size:10px;font-weight:800}
-.chipv-ok{position:absolute;left:18px;right:18px;bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:999px;background:#1d6f5f;color:#fff;font-size:13.5px;font-weight:600;animation:sheetIn 220ms ease both}
+.chipv-ok{position:relative;margin-top:18px;padding:0 18px;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:999px;background:#1d6f5f;color:#fff;font-size:13.5px;font-weight:600;animation:sheetIn 220ms ease both}
 .flabel{left:18px;margin:0;font-size:11.5px;color:#4b5060}
 .field{left:18px;right:18px;height:42px;margin:0;display:flex;align-items:center;padding:0 14px;border-radius:12px;background:#ffffff;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
 .seg{left:18px;right:18px;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#f0f1f4;font-size:12.5px;font-weight:600}
@@ -777,14 +782,14 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 <div class="abs pway">
 <sc-for list="{{ of.ways }}" as="w" hint-placeholder-count="4"><span class="pw-row"><i class="pw-rd" style="box-shadow: inset 0 0 0 {{w.ring}} #b5294e, inset 0 0 0 1.5px #c9ccd3"></i><span class="pw-tx"><b>{{w.l}}</b><small>{{w.s}}</small></span><em style="background: {{w.bg}}; color: {{w.fg}}">{{w.m}}</em></span></sc-for>
 </div>
-<p class="abs" style="top: 312px; left: 18px; right: 18px; margin: 0; font-size: 11px; line-height: 1.45; color: #696e7b">You pay on a secure CHIP page. The money goes to Kek Lina’s own account.</p>
-<span class="abs cta" style="top: 360px; background: #b5294e; opacity: {{of.payBtnO}}">Pay RM235</span>
+<div class="abs pbanks" style="opacity: {{of.banksO}}"><p>Your bank</p><span class="pb-g"><sc-for list="{{ of.banks }}" as="k" hint-placeholder-count="4"><span class="pb" style="background: {{k.bg}}; box-shadow: inset 0 0 0 1.5px {{k.ring}}"><i style="background: {{k.c}}">{{k.i}}</i>{{k.n}}</span></sc-for></span></div>
+<span class="abs cta" style="top: 360px; background: #b5294e; opacity: {{of.payBtnO}}">{{of.payBtn}}</span>
 <sc-if value="{{ of.chipView }}" hint-placeholder-val="{{ false }}">
 <div class="chipv">
-<p class="chipv-h"><b>CHIP</b><span>Kek Lina · RM235.00</span></p>
-<p class="chipv-t">Choose your bank</p>
-<sc-for list="{{ of.banks }}" as="k" hint-placeholder-count="4"><span class="chipv-b" style="background: {{k.bg}}; box-shadow: inset 0 0 0 1.5px {{k.ring}}"><i style="background: {{k.c}}">{{k.i}}</i>{{k.n}}</span></sc-for>
-<sc-if value="{{ of.approved }}" hint-placeholder-val="{{ false }}"><span class="chipv-ok"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Payment approved</span></sc-if>
+<span class="go-bank" style="background: #f2b705">M</span>
+<sc-if value="{{ of.notApproved }}" hint-placeholder-val="{{ true }}"><p class="go-t">Opening Maybank2u…</p><p class="go-s">Approve RM235 in your bank, then you’ll come straight back to Kek Lina.</p><span class="go-spin" aria-hidden="true"></span></sc-if>
+<sc-if value="{{ of.approved }}" hint-placeholder-val="{{ false }}"><p class="go-t">Approved in Maybank2u</p><p class="go-s">Taking you back to Kek Lina…</p><span class="chipv-ok"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>RM235 paid</span></sc-if>
+<p class="go-f">Payment processed by CHIP</p>
 </div>
 </sc-if>
 </sc-if>
@@ -1152,8 +1157,8 @@ class Component extends DCLogic {
       const z = W[W.length - 1]; return [z[1], z[2]];
     };
     const near = (ts) => ts.some((t) => p >= t && p < t + 0.012);
-    const C = path([[0, 200, 470], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.51, 150, 552], [0.525, 150, 254], [0.54, 150, 254], [0.555, 150, 552], [0.57, 150, 552], [0.59, 150, 285], [0.615, 150, 285], [0.64, 220, 470], [0.66, 220, 470]]);
-    const clicks = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.53, 0.565, 0.605];
+    const C = path([[0, 200, 470], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.51, 150, 552], [0.522, 150, 245], [0.535, 150, 245], [0.543, 84, 452], [0.556, 84, 452], [0.566, 150, 552], [0.578, 150, 552], [0.6, 230, 480], [0.66, 230, 480]]);
+    const clicks = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.53, 0.55, 0.572];
     const qc = p >= 0.12 ? 2 : (p >= 0.09 ? 1 : 0), qb = p >= 0.19 ? 1 : 0;
     const n = qc + qb, total = qc * 95 + qb * 45;
     const items = [
@@ -1200,9 +1205,10 @@ class Component extends DCLogic {
       phone: phone.slice(0, phoneN), phoneCaret: p >= 0.37 && p < 0.445, phoneRing: p >= 0.37 && p < 0.445 ? '#2340c8' : '#dfe1e6',
       pickBg: p >= 0.465 ? '#191f2c' : 'transparent', pickFg: p >= 0.465 ? '#fafbfc' : '#191f2c',
       ways: [['Online banking', 'FPX · Maybank2u, CIMB, RHB', 'FPX', '#eaf0ff', '#122686'], ['E-wallet', 'Touch ’n Go, GrabPay, Boost', 'TNG', '#e6f0ff', '#0b4dbd'], ['Card', 'Debit or credit card', 'VISA', '#eef0ff', '#1a1f71'], ['DuitNow QR', 'Scan, then upload your receipt', 'QR', '#fdecef', '#b5294e']].map((w, i) => ({ l: w[0], s: w[1], m: w[2], bg: w[3], fg: w[4], ring: i === 0 && p >= 0.53 ? '6px' : '0px' })),
-      payBtnO: p >= 0.53 ? '1' : '0.45',
-      chipView: p >= 0.575, approved: p >= 0.615,
-      banks: [['Maybank2u', 'M', '#f2b705'], ['CIMB Clicks', 'C', '#c8102e'], ['RHB Now', 'R', '#005baa'], ['Public Bank', 'P', '#d71920']].map((k, i) => ({ n: k[0], i: k[1], c: k[2], bg: i === 0 && p >= 0.605 ? '#f6f8ff' : '#fafbfc', ring: i === 0 && p >= 0.605 ? '#2340c8' : '#eef0f3' })),
+      payBtnO: p >= 0.55 ? '1' : '0.45', payBtn: p >= 0.55 ? 'Pay RM235 with Maybank2u' : 'Pay RM235',
+      banksO: p >= 0.53 ? '1' : '0',
+      chipView: p >= 0.58, approved: p >= 0.615, notApproved: p < 0.615,
+      banks: [['Maybank2u', 'M', '#f2b705'], ['CIMB Clicks', 'C', '#c8102e'], ['Public Bank', 'P', '#d71920'], ['RHB Now', 'R', '#005baa']].map((k, i) => ({ n: k[0], i: k[1], c: k[2], bg: i === 0 && p >= 0.55 ? '#f6f8ff' : '#fafbfc', ring: i === 0 && p >= 0.55 ? '#2340c8' : '#eef0f3' })),
       succO: seg(0.64, 0.66).toFixed(2), circS: back(seg(0.645, 0.668)).toFixed(3), checkOff: (70 - 70 * seg(0.655, 0.685)).toFixed(1),
       burst: Array.from({ length: 12 }, (_, i) => {
         const a = (i / 12) * Math.PI * 2, d = 18 + 62 * (1 - Math.pow(1 - burstT, 3));
