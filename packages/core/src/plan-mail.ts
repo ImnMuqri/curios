@@ -169,19 +169,24 @@ export function renewalFailedMail(input: { displayName: string; paidUntil: Date;
   };
 }
 
-/** When auto-renew gives up: after the third declined charge, or when the saved card can no longer be charged at all. */
+/**
+ * When auto-renew gives up: after the third declined charge (`attempts`), when the plan ran
+ * out without a renewal going through (`lapsed`, which can follow a single try, so it never
+ * claims three), or when the saved card can no longer be charged at all (`card-removed`).
+ */
 export function autoRenewStoppedMail(input: {
   displayName: string;
   paidUntil: Date;
   appUrl: string;
-  reason: 'declined' | 'card-removed';
+  reason: 'attempts' | 'lapsed' | 'card-removed';
   now: Date;
 }): Mail {
   const subject = `Auto-renew is off for ${input.displayName}`;
-  const why =
-    input.reason === 'declined'
-      ? "We couldn't charge your card after 3 tries, so we've turned auto-renew off."
-      : "Your saved card can no longer be charged, so we've turned auto-renew off.";
+  const why = {
+    attempts: "We couldn't charge your card after 3 tries, so we've turned auto-renew off.",
+    lapsed: "We couldn't renew your plan before it ran out, so we've turned auto-renew off.",
+    'card-removed': "Your saved card can no longer be charged, so we've turned auto-renew off.",
+  }[input.reason];
   const when = `Your plan ${input.paidUntil.getTime() > input.now.getTime() ? 'ends' : 'ended'} on ${day(input.paidUntil)}.`;
   const next = 'Pay on Billing to switch the capture card and shop back on.';
   const url = billingUrl(input.appUrl);

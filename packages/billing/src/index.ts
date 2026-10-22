@@ -9,7 +9,7 @@ export type {
   FetchLike,
 } from './client.js';
 export { billDescription } from './product.js';
-export { notifyCardRemoved, notifyRenewalFailure } from './renewal-mail.js';
+export { notifyAutoRenewStopped, notifyCardRemoved, notifyRenewalFailure } from './renewal-mail.js';
 export type { RenewalMailDeps } from './renewal-mail.js';
 export { evidenceFromPurchase, grantPayment, recordRenewalFailure } from './grant.js';
 export type { GrantOptions, GrantOutcome, PaymentEvidence, RenewalFailureResult } from './grant.js';

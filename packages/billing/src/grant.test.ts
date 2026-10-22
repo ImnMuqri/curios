@@ -286,14 +286,14 @@ describe('recordRenewalFailure', () => {
     expect(await recordRenewalFailure(prisma, second.id, NOW)).toEqual({ kind: 'retry', attempts: 2 });
 
     const third = await aPendingPayment(pageId, 'pur-third', { autoRenewal: true });
-    expect(await recordRenewalFailure(prisma, third.id, NOW)).toEqual({ kind: 'stopped' });
+    expect(await recordRenewalFailure(prisma, third.id, NOW)).toEqual({ kind: 'stopped', reason: 'attempts' });
     expect(await cardRow(pageId)).toBeNull();
   });
 
   it('stops once paidUntil is more than 3 days past', async () => {
     const { pageId, payment } = await aRenewal(new Date('2026-09-10T00:00:00.000Z'));
 
-    expect(await recordRenewalFailure(prisma, payment.id, NOW)).toEqual({ kind: 'stopped' });
+    expect(await recordRenewalFailure(prisma, payment.id, NOW)).toEqual({ kind: 'stopped', reason: 'lapsed' });
     expect(await cardRow(pageId)).toBeNull();
     expect((await paymentRow(payment.id)).status).toBe('FAILED');
   });

@@ -58,14 +58,25 @@ export async function notifyRenewalFailure(
   await mailOwner(deps, pageId, (page) =>
     result.kind === 'retry'
       ? renewalFailedMail({ ...page, appUrl: deps.appUrl, attempts: result.attempts })
-      : autoRenewStoppedMail({ ...page, appUrl: deps.appUrl, reason: 'declined', now }),
+      : autoRenewStoppedMail({ ...page, appUrl: deps.appUrl, reason: result.reason, now }),
   );
+}
+
+/**
+ * Auto-renew was turned off by the system, not by a counted failure: `card-removed` when
+ * CHIP no longer knows the saved card, `lapsed` when the plan ran out with no renewal
+ * through (CHIP unreachable, or a charge left open, for the whole grace).
+ */
+export async function notifyAutoRenewStopped(
+  deps: RenewalMailDeps,
+  pageId: string,
+  reason: 'card-removed' | 'lapsed',
+): Promise<void> {
+  const now = deps.now ?? new Date();
+  await mailOwner(deps, pageId, (page) => autoRenewStoppedMail({ ...page, appUrl: deps.appUrl, reason, now }));
 }
 
 /** The saved card can no longer be charged at all (CHIP no longer knows its token), so auto-renew is off. */
 export async function notifyCardRemoved(deps: RenewalMailDeps, pageId: string): Promise<void> {
-  const now = deps.now ?? new Date();
-  await mailOwner(deps, pageId, (page) =>
-    autoRenewStoppedMail({ ...page, appUrl: deps.appUrl, reason: 'card-removed', now }),
-  );
+  await notifyAutoRenewStopped(deps, pageId, 'card-removed');
 }

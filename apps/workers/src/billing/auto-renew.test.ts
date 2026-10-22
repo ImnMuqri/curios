@@ -108,7 +108,7 @@ function aMailQueue() {
 function run(
   client: ReturnType<typeof aChip>,
   mailQueue = aMailQueue(),
-  extra: { afterRead?: () => Promise<void> } = {},
+  extra: { afterRead?: () => Promise<void>; beforeCharge?: () => Promise<void>; now?: Date } = {},
 ) {
   return runAutoRenewals({
     prisma,
@@ -195,6 +195,36 @@ describe('runAutoRenewals', () => {
     expect(client.createPurchase).not.toHaveBeenCalled();
   });
 
+  it('charges a card whose plan ends exactly a day from now', async () => {
+    await aRenewingPage({ paidUntil: at(DAY_MS) });
+    const client = aChip();
+
+    expect(await run(client)).toMatchObject({ charged: 1 });
+  });
+
+  it('does not charge a card whose plan ended exactly 3 days ago', async () => {
+    await aRenewingPage({ paidUntil: at(-3 * DAY_MS) });
+    const client = aChip();
+
+    await run(client);
+
+    expect(client.createPurchase).not.toHaveBeenCalled();
+  });
+
+  it('does not charge a page that paid at checkout after the read', async () => {
+    const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+
+    await run(client, aMailQueue(), {
+      afterRead: async () => {
+        await prisma.page.update({ where: { id: page.pageId }, data: { paidUntil: at(30 * DAY_MS) } });
+      },
+    });
+
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: null });
+  });
+
   it('charges once when two runs race', async () => {
     const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
     const client = aChip();
@@ -253,6 +283,22 @@ describe('runAutoRenewals', () => {
     });
 
     expect(client.chargePurchase).not.toHaveBeenCalled();
+  });
+
+  it('does not charge a card turned off between the purchase and the charge', async () => {
+    const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+
+    await run(client, aMailQueue(), {
+      beforeCharge: async () => {
+        await prisma.renewalCard.delete({ where: { pageId: page.pageId } });
+      },
+    });
+
+    expect(client.chargePurchase).not.toHaveBeenCalled();
+    const [payment] = await renewalsOf(page.pageId);
+    expect(payment).toMatchObject({ status: 'EXPIRED' });
+    expect(client.cancelPurchase).toHaveBeenCalledWith(payment?.providerRef);
   });
 
   it(`a decline counts a failure and mails "we'll try again tomorrow"`, async () => {
@@ -357,7 +403,55 @@ describe('runAutoRenewals', () => {
         { id: stuck.id, status: 'FAILED' },
         { status: 'PAID' },
       ]);
+      // Renewed in the same run: there is no failure to tell the owner about.
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('mails once, with the final count, when the fresh charge is declined too', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-20 * HOUR_MS), lastAttemptAt: at(-26 * HOUR_MS) });
+      await aRenewalPayment(page.pageId, at(-26 * HOUR_MS));
+      const client = aChip();
+      client.getPurchase.mockImplementation(async (id) => purchaseFor(id, 'expired'));
+      client.chargePurchase.mockResolvedValue({ kind: 'declined' });
+      const mailQueue = aMailQueue();
+
+      expect(await run(client, mailQueue)).toEqual({ charged: 0, pending: 0, failed: 2, stopped: 0 });
+
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
       expect(mailQueue.add.mock.calls[0]?.[1].text).toContain("We'll try again tomorrow.");
+      expect(await cardOf(page.pageId)).toMatchObject({ failedAttempts: 2 });
+    });
+
+    it('mails the counted failure when no fresh charge can be made today', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-20 * HOUR_MS), lastAttemptAt: at(-3 * HOUR_MS) });
+      await aRenewalPayment(page.pageId, at(-3 * HOUR_MS));
+      const client = aChip();
+      client.getPurchase.mockImplementation(async (id) => purchaseFor(id, 'expired'));
+      const mailQueue = aMailQueue();
+
+      expect(await run(client, mailQueue)).toEqual({ charged: 0, pending: 0, failed: 1, stopped: 0 });
+
+      expect(client.createPurchase).not.toHaveBeenCalled();
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+      expect(mailQueue.add.mock.calls[0]?.[1].text).toContain("We'll try again tomorrow.");
+    });
+
+    it('mails at once when the counted failure stops auto-renew', async () => {
+      const page = await aRenewingPage({
+        paidUntil: at(-20 * HOUR_MS),
+        failedAttempts: 2,
+        lastAttemptAt: at(-26 * HOUR_MS),
+      });
+      await aRenewalPayment(page.pageId, at(-26 * HOUR_MS));
+      const client = aChip();
+      client.getPurchase.mockImplementation(async (id) => purchaseFor(id, 'expired'));
+      const mailQueue = aMailQueue();
+
+      expect(await run(client, mailQueue)).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 1 });
+
+      expect(client.createPurchase).not.toHaveBeenCalled();
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+      expect(mailQueue.add.mock.calls[0]?.[1].text).toContain("We couldn't charge your card after 3 tries");
     });
 
     it('holds the page while CHIP is still working on it', async () => {
@@ -408,6 +502,55 @@ describe('runAutoRenewals', () => {
     expect(await renewalsOf(page.pageId)).toMatchObject([{ status: 'PENDING', providerRef: null }]);
     expect(client.chargePurchase).not.toHaveBeenCalled();
     expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: NOW });
+  });
+
+  describe('a card whose plan ran out past the grace', () => {
+    it('is dropped, and the owner told once, when CHIP was unreachable all through the window', async () => {
+      const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+      const client = aChip();
+      client.chargePurchase.mockRejectedValue(new ChipUnavailableError('timeout'));
+      client.getPurchase.mockRejectedValue(new ChipUnavailableError('timeout'));
+      const mailQueue = aMailQueue();
+
+      // One run a day, from the day before the plan ends to past the grace.
+      for (const day of [0, 1, 2, 3, 4]) {
+        await run(client, mailQueue, { now: at(day * DAY_MS) });
+      }
+
+      expect(client.chargePurchase).toHaveBeenCalledTimes(1);
+      expect(await cardOf(page.pageId)).toBeNull();
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+      const [, mail] = mailQueue.add.mock.calls[0] ?? [];
+      expect(mail?.to).toBe(page.email);
+      expect(mail?.subject).toBe('Auto-renew is off for Nadia Bakes');
+      expect(mail?.text).toContain("We couldn't renew your plan before it ran out");
+      // The charge CHIP may yet settle is left for its webhook.
+      expect(await renewalsOf(page.pageId)).toMatchObject([{ status: 'PENDING' }]);
+
+      await run(client, mailQueue, { now: at(5 * DAY_MS) });
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    });
+
+    it('is dropped from exactly 3 days after the plan ended', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-3 * DAY_MS) });
+      const mailQueue = aMailQueue();
+
+      expect(await run(aChip(), mailQueue)).toMatchObject({ stopped: 1 });
+
+      expect(await cardOf(page.pageId)).toBeNull();
+      expect(mailQueue.add.mock.calls[0]?.[1].text).toContain("We couldn't renew your plan before it ran out");
+    });
+
+    it('leaves a personal page alone', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-5 * DAY_MS) });
+      await prisma.page.update({ where: { id: page.pageId }, data: { mode: 'PERSONAL' } });
+      const mailQueue = aMailQueue();
+
+      await run(aChip(), mailQueue);
+
+      expect(await cardOf(page.pageId)).not.toBeNull();
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
   });
 
   it('one page failing does not stop the rest', async () => {

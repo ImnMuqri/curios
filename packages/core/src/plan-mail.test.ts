@@ -84,7 +84,7 @@ describe('the plan emails', () => {
 
   it('the stopped mail says when the plan ends', () => {
     const ahead = new Date(PAID_UNTIL.getTime() + 86_400_000);
-    const mail = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'declined', now: new Date(PAID_UNTIL.getTime() - 86_400_000) });
+    const mail = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'attempts', now: new Date(PAID_UNTIL.getTime() - 86_400_000) });
 
     expect(mail.subject).toBe('Auto-renew is off for Kek Lina');
     expect(mail.text).toContain("We couldn't charge your card after 3 tries, so we've turned auto-renew off.");
@@ -96,6 +96,14 @@ describe('the plan emails', () => {
     const past = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'card-removed', now: ahead });
     expect(past.text).toContain("Your saved card can no longer be charged, so we've turned auto-renew off.");
     expect(past.text).toContain('Your plan ended on 14 Oct 2026.');
+  });
+
+  it('the stopped mail after the grace ran out does not claim three tries', () => {
+    const mail = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'lapsed', now: new Date(PAID_UNTIL.getTime() + 4 * 86_400_000) });
+
+    expect(mail.text).toContain("We couldn't renew your plan before it ran out, so we've turned auto-renew off.");
+    expect(mail.text).not.toContain('3 tries');
+    expect(mail.text).toContain('Your plan ended on 14 Oct 2026.');
   });
 
   it('plan ended: the plan-ended banner’s words, on the Malaysian calendar', () => {

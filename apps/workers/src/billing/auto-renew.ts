@@ -4,12 +4,14 @@ import {
   billDescription,
   evidenceFromPurchase,
   grantPayment,
+  notifyAutoRenewStopped,
   notifyCardRemoved,
   notifyRenewalFailure,
   recordRenewalFailure,
   DEAD_PURCHASE_STATUSES,
   type ChipClient,
   type GrantOutcome,
+  type RenewalFailureResult,
 } from '@curios/billing';
 import type { BillingLog } from './pending-check.js';
 import type { MailQueueLike } from './renewal-reminder.js';
@@ -52,10 +54,21 @@ type Deps = {
   log?: BillingLog;
   /**
    * Test-only. Runs after the cards are read and before any is claimed, so a test can
-   * remove a card in that window and prove the claim -- not the read -- decides.
+   * change a card or its page in that window and prove the claim -- not the read -- decides.
    */
   afterRead?: () => Promise<void>;
+  /**
+   * Test-only. Runs after the purchase is created and before the card is charged, so a
+   * test can turn auto-renew off in that window and prove the card is checked again.
+   */
+  beforeCharge?: () => Promise<void>;
 };
+
+/**
+ * What an error may say in a log: its name, and nothing else. A refused CHIP call carries
+ * CHIP's response body in its message, and that body can hold the payer's details.
+ */
+const errName = (error: unknown) => (error instanceof Error ? error.name : 'unknown');
 
 /** Money taken with no time given, or a purchase that does not bind: a person has to look. */
 function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: string, outcome: GrantOutcome): void {
@@ -68,27 +81,25 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
 /**
  * Charges the saved card of every business page whose plan ends within a day, or ended
  * up to three days ago, and turns what CHIP answers into paid time, a counted failure,
- * or auto-renew switched off.
+ * or auto-renew switched off. Then drops the cards whose plan ran out past that grace
+ * with no renewal through, telling each owner, so no plan ends in silence.
  *
  * Never two charges for one page. A page with a renewal still PENDING is not charged
  * again: CHIP may have taken that money already, so the job asks CHIP about it once it is
  * two hours old and only moves on when CHIP says it is settled. Then the day is claimed
- * with a conditional update on the card -- same page, same token, no attempt in the last
- * twenty hours -- so two runs at once charge once, and a card removed since the read is
- * never charged at all.
+ * with a conditional update on the card -- same page, same token, plan still in the window,
+ * no attempt in the last twenty hours -- so two runs at once charge once, and a card
+ * removed or a plan paid since the read is never charged. The card is checked once more
+ * just before the charge, for an owner who turned auto-renew off in between.
+ *
+ * At most one email per page per run, decided once today's attempt is known.
  *
  * Each page is its own try: one page's trouble -- CHIP briefly down, say -- must not
  * stop the rest.
  */
 export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
-  const now = deps.now.getTime();
   const cards = await deps.prisma.renewalCard.findMany({
-    where: {
-      page: {
-        mode: 'BUSINESS',
-        paidUntil: { gt: new Date(now - CHARGE_GRACE_MS), lte: new Date(now + CHARGE_AHEAD_MS) },
-      },
-    },
+    where: { page: { mode: 'BUSINESS', paidUntil: chargeWindow(deps.now) } },
     select: {
       pageId: true,
       token: true,
@@ -101,13 +112,24 @@ export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
 
   const result: AutoRenewResult = { charged: 0, pending: 0, failed: 0, stopped: 0 };
   for (const card of cards) {
+    // A failure counted while settling an earlier renewal, told only if today brings no
+    // fresh attempt that answers it (see renewPage).
+    const page: PageRun = { untold: null };
     try {
-      await renewPage(deps, card, result);
+      await renewPage(deps, card, result, page);
     } catch (error) {
-      deps.log?.error({ pageId: card.pageId, err: String(error) }, 'auto-renew could not finish a page');
+      deps.log?.error({ pageId: card.pageId, err: errName(error) }, 'auto-renew could not finish a page');
     }
+    if (page.untold) await notifyRenewalFailure(mailDeps(deps), card.pageId, page.untold);
   }
+
+  await dropLapsedCards(deps, result);
   return result;
+}
+
+/** paidUntil from three days ago (exclusive) to a day ahead (inclusive). */
+function chargeWindow(now: Date) {
+  return { gt: new Date(now.getTime() - CHARGE_GRACE_MS), lte: new Date(now.getTime() + CHARGE_AHEAD_MS) };
 }
 
 type Card = {
@@ -117,6 +139,8 @@ type Card = {
   page: { displayName: string; account: { email: string } };
 };
 
+type PageRun = { untold: RenewalFailureResult | null };
+
 const mailDeps = (deps: Deps) => ({
   prisma: deps.prisma,
   mailQueue: deps.mailQueue,
@@ -125,21 +149,30 @@ const mailDeps = (deps: Deps) => ({
   log: deps.log,
 });
 
-/** Counts a failure against the card and tells the owner what it means. */
-async function failRenewal(deps: Deps, pageId: string, paymentId: string, result: AutoRenewResult): Promise<boolean> {
+/** Counts a failure against the card. The caller decides whether and when to tell the owner. */
+async function countFailure(
+  deps: Deps,
+  pageId: string,
+  paymentId: string,
+  result: AutoRenewResult,
+): Promise<RenewalFailureResult> {
   const failure = await recordRenewalFailure(deps.prisma, paymentId, deps.now);
   if (failure.kind === 'retry') result.failed += 1;
   if (failure.kind === 'stopped') result.stopped += 1;
   deps.log?.info({ pageId, paymentId, outcome: `renewal-${failure.kind}` }, 'renewal charge failed');
-  await notifyRenewalFailure(mailDeps(deps), pageId, failure);
-  return failure.kind !== 'stopped';
+  return failure;
 }
 
 /**
  * Settles renewals an earlier run left PENDING. True when the page may be charged now:
  * nothing is pending, or everything pending is settled and auto-renew is still on.
+ *
+ * A dead renewal is counted here but not told: if today's fresh charge renews the plan
+ * there is nothing to tell, and if it is declined that mail carries the final count. It
+ * is left in `page.untold` for when no fresh charge follows. A failure that stops
+ * auto-renew is told at once, since nothing follows it.
  */
-async function settlePending(deps: Deps, pageId: string, result: AutoRenewResult): Promise<boolean> {
+async function settlePending(deps: Deps, pageId: string, result: AutoRenewResult, page: PageRun): Promise<boolean> {
   const pending = await deps.prisma.payment.findMany({
     where: { pageId, autoRenewal: true, status: 'PENDING' },
     select: { id: true, providerRef: true, createdAt: true },
@@ -169,7 +202,13 @@ async function settlePending(deps: Deps, pageId: string, result: AutoRenewResult
       return false;
     }
     if (DEAD_PURCHASE_STATUSES.has(purchase.status)) {
-      if (!(await failRenewal(deps, pageId, payment.id, result))) return false;
+      const failure = await countFailure(deps, pageId, payment.id, result);
+      if (failure.kind === 'stopped') {
+        page.untold = null;
+        await notifyRenewalFailure(mailDeps(deps), pageId, failure);
+        return false;
+      }
+      if (failure.kind === 'retry') page.untold = failure;
       continue;
     }
     // Still open at CHIP (pending_charge, say): it may yet be paid, so wait for it.
@@ -178,15 +217,17 @@ async function settlePending(deps: Deps, pageId: string, result: AutoRenewResult
   return true;
 }
 
-async function renewPage(deps: Deps, card: Card, result: AutoRenewResult): Promise<void> {
+async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: PageRun): Promise<void> {
   // A CHIP outage here throws to the caller's catch, which leaves the page for tomorrow.
-  if (!(await settlePending(deps, card.pageId, result))) return;
+  if (!(await settlePending(deps, card.pageId, result, page))) return;
 
-  // The claim, and the only guard against charging twice in a day.
+  // The claim, and the only guard against charging twice in a day. The window is checked
+  // again here, so a plan paid at checkout since the read is not renewed on top.
   const claim = await deps.prisma.renewalCard.updateMany({
     where: {
       pageId: card.pageId,
       token: card.token,
+      page: { paidUntil: chargeWindow(deps.now) },
       OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: new Date(deps.now.getTime() - ATTEMPT_GAP_MS) } }],
     },
     data: { lastAttemptAt: deps.now },
@@ -213,7 +254,26 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult): Promi
     cardsOnlyRecurring: false,
   });
   await deps.prisma.payment.update({ where: { id: payment.id }, data: { providerRef: purchase.id } });
+  if (deps.beforeCharge) await deps.beforeCharge();
 
+  // The owner may have turned auto-renew off, or saved another card, since the claim.
+  // Checked as late as it can be; what remains is the moment between this read and
+  // CHIP receiving the charge.
+  if ((await deps.prisma.renewalCard.count({ where: { pageId: card.pageId, token: card.token } })) === 0) {
+    await deps.prisma.payment.updateMany({ where: { id: payment.id, status: 'PENDING' }, data: { status: 'EXPIRED' } });
+    try {
+      await deps.client.cancelPurchase(purchase.id);
+    } catch (error) {
+      // Unpaid and due in an hour: it expires on its own.
+      deps.log?.error({ pageId: card.pageId, purchaseId: purchase.id, err: errName(error) }, 'unused renewal purchase not cancelled');
+    }
+    deps.log?.info({ pageId: card.pageId, purchaseId: purchase.id }, 'auto-renew turned off before the charge');
+    return;
+  }
+
+  // From here today's attempt answers any failure counted while settling: its own outcome
+  // is what the owner hears, if anything.
+  page.untold = null;
   let charge;
   try {
     charge = await deps.client.chargePurchase(purchase.id, card.token);
@@ -222,7 +282,7 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult): Promi
     // the same. The payment stays PENDING and the day stays claimed; a later run asks
     // CHIP what happened before it ever charges again.
     result.pending += 1;
-    deps.log?.error({ pageId: card.pageId, purchaseId: purchase.id, err: String(error) }, 'renewal charge unconfirmed');
+    deps.log?.error({ pageId: card.pageId, purchaseId: purchase.id, err: errName(error) }, 'renewal charge unconfirmed');
     return;
   }
 
@@ -239,7 +299,8 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult): Promi
     return;
   }
   if (charge.kind === 'declined') {
-    await failRenewal(deps, card.pageId, payment.id, result);
+    const failure = await countFailure(deps, card.pageId, payment.id, result);
+    await notifyRenewalFailure(mailDeps(deps), card.pageId, failure);
     return;
   }
 
@@ -251,5 +312,32 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult): Promi
   if (removed.count > 0) {
     result.stopped += 1;
     await notifyCardRemoved(mailDeps(deps), card.pageId);
+  }
+}
+
+/**
+ * Cards whose plan ran out more than the grace ago with no renewal through -- CHIP
+ * unreachable, or a charge left open, every day of the window. The page is already
+ * offline and the plan-ended email skips pages with a card, so without this the plan
+ * would end in silence. Each card goes by page and token, and its owner is told once;
+ * a renewal still PENDING is left for its webhook, which can still grant it.
+ */
+async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<void> {
+  const lapsed = await deps.prisma.renewalCard.findMany({
+    where: {
+      page: { mode: 'BUSINESS', paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) } },
+    },
+    select: { pageId: true, token: true },
+  });
+  for (const card of lapsed) {
+    try {
+      const removed = await deps.prisma.renewalCard.deleteMany({ where: { pageId: card.pageId, token: card.token } });
+      if (removed.count === 0) continue;
+      result.stopped += 1;
+      deps.log?.info({ pageId: card.pageId }, 'plan ran out past the grace; auto-renew off');
+      await notifyAutoRenewStopped(mailDeps(deps), card.pageId, 'lapsed');
+    } catch (error) {
+      deps.log?.error({ pageId: card.pageId, err: errName(error) }, 'lapsed renewal card could not be dropped');
+    }
   }
 }

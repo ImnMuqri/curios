@@ -52,13 +52,24 @@ describe('notifyRenewalFailure', () => {
     const { pageId, email } = await aPage();
     const d = deps();
 
-    await notifyRenewalFailure(d, pageId, { kind: 'stopped' });
+    await notifyRenewalFailure(d, pageId, { kind: 'stopped', reason: 'attempts' });
 
     const [, mail] = d.mailQueue.add.mock.calls[0] ?? [];
     expect(mail?.to).toBe(email);
     expect(mail?.subject).toBe('Auto-renew is off for Nadia Bakes');
     expect(mail?.text).toContain("We couldn't charge your card after 3 tries");
     expect(mail?.text).toContain('Your plan ends on 15 Sep 2026.');
+  });
+
+  it('says the plan ran out, not three tries, when the grace stopped it', async () => {
+    const { pageId } = await aPage(new Date('2026-09-10T00:00:00.000Z'));
+    const d = deps();
+
+    await notifyRenewalFailure(d, pageId, { kind: 'stopped', reason: 'lapsed' });
+
+    const [, mail] = d.mailQueue.add.mock.calls[0] ?? [];
+    expect(mail?.text).toContain("We couldn't renew your plan before it ran out");
+    expect(mail?.text).not.toContain('3 tries');
   });
 
   it('sends nothing for a failure that was not counted', async () => {

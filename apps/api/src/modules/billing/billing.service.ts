@@ -95,8 +95,10 @@ export async function createPurchaseForOwner(
  * then at CHIP.
  *
  * The row goes first, in one statement that hands back the token it removed. The row is
- * what the renewal job reads, so once it is gone no charge can follow -- whatever CHIP
- * says next. Telling CHIP to forget the token is tidiness on top: if CHIP is down it is
+ * what the renewal job reads: its claim needs it, and it checks it again just before it
+ * charges, so once it is gone a new charge can only follow if the job had read it in the
+ * moment before -- the instant between that last check and CHIP receiving the charge.
+ * Clearing the token at CHIP below closes even that, when CHIP takes it first. Telling CHIP to forget the token is tidiness on top: if CHIP is down it is
  * logged, not thrown, because the owner's request has already done what they asked.
  *
  * No card is not an error. Two clicks, or a card the job dropped a moment ago, both end

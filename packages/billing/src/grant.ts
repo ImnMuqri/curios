@@ -152,7 +152,8 @@ export async function grantPayment(
 
 export type RenewalFailureResult =
   | { kind: 'retry'; attempts: number }
-  | { kind: 'stopped' }
+  /** `attempts`: the third failure. `lapsed`: the plan ran out more than 3 days ago, after any number. */
+  | { kind: 'stopped'; reason: 'attempts' | 'lapsed' }
   | { kind: 'ignored' };
 
 const MAX_RENEWAL_ATTEMPTS = 3;
@@ -203,7 +204,7 @@ export async function recordRenewalFailure(
     const lapsed = page.paidUntil !== null && page.paidUntil.getTime() < now.getTime() - GRACE_MS;
     if (attempts >= MAX_RENEWAL_ATTEMPTS || lapsed) {
       await tx.renewalCard.deleteMany({ where: { pageId: payment.pageId } });
-      return { kind: 'stopped' as const };
+      return { kind: 'stopped' as const, reason: attempts >= MAX_RENEWAL_ATTEMPTS ? ('attempts' as const) : ('lapsed' as const) };
     }
     await tx.renewalCard.updateMany({
       where: { pageId: payment.pageId },
