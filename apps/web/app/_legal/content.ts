@@ -325,7 +325,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         {
           heading: 'The Business plan',
           body: [
-            'Every payment is a one-off and never renews by itself, so nothing is charged without you.',
+            'Each payment is for a set time. Your plan renews by itself only if you turn on auto-renew by card, and you can turn it off any time on your Billing screen.',
             {
               list: [
                 'Your first payment: if you change your mind, ask within 7 days of paying and we will refund it in full, whether it was for a month or a year. Your Business plan ends when we make the refund.',
@@ -595,7 +595,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         {
           heading: 'Pelan Bisnes',
           body: [
-            'Setiap bayaran ialah bayaran sekali dan tidak diperbaharui dengan sendirinya, jadi tiada apa-apa dicaj tanpa anda.',
+            'Setiap bayaran adalah untuk tempoh tertentu. Pelan anda diperbaharui dengan sendirinya hanya jika anda hidupkan auto-renew dengan kad, dan anda boleh mematikannya pada bila-bila masa di skrin Billing anda.',
             {
               list: [
                 'Bayaran pertama anda: jika anda berubah fikiran, minta dalam masa 7 hari selepas membayar dan kami akan membayar balik sepenuhnya, sama ada untuk sebulan atau setahun. Pelan Bisnes anda tamat apabila kami membuat bayaran balik.',
