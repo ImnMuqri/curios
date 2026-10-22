@@ -137,8 +137,6 @@ export default async function BillingPage({
   // called paid before its callback reached us still reads as confirming.
   const paidNow = params.payment === 'paid' && state.kind === 'paid';
   const banner = paidNow ? null : paymentBanner(params.payment === 'paid' ? 'pending' : params.payment);
-  // `card=off` rides only on a paid return; typed by hand it claims nothing.
-  const cardBanner = params.payment === 'paid' && params.card === 'off' ? cardOffBanner() : null;
   const badge = planBadge(state);
   const personal = state.kind === 'personal';
 
@@ -163,6 +161,9 @@ export default async function BillingPage({
   const canReset = page.mode === 'BUSINESS' && page.paidUntil === null && page.trialResetAt === null &&
     (page.leadsCaptured >= 1 || page.ordersPlaced > page.ordersAtTrialReset);
 
+  // `card=off` rides only on a confirmed paid return that kept no card; typed by
+  // hand on any other page it claims nothing.
+  const cardBanner = paidNow && !card && params.card === 'off' ? cardOffBanner() : null;
   const head = planHead(state, now, card !== null);
   const paidUntil = state.kind === 'paid' ? state.paidUntil : null;
   const options: PayOption[] = PLANS.map((p) => {
@@ -227,12 +228,12 @@ export default async function BillingPage({
               </>
             ) : null}
 
-            {card ? (
+            {card && state.kind === 'paid' ? (
               <AutoRenew
                 card={{
                   label: card.cardLabel,
                   price: ringgit(PLAN_PRICES_CENTS[card.plan]),
-                  paidUntil: page.paidUntil ? shortDate(page.paidUntil, true) : '',
+                  paidUntil: shortDate(state.paidUntil, true),
                   failed: card.failedAttempts > 0,
                 }}
               />

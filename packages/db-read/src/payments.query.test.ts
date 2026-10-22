@@ -99,7 +99,7 @@ describe('getRecentPayments', () => {
 });
 
 describe('getRenewalCard', () => {
-  it('answers the page’s card, and never the token', async () => {
+  it('answers the pageâ€™s card, and never the token', async () => {
     await write.renewalCard.create({
       data: { pageId, token: 'secret-recurring-token', plan: 'ANNUAL', cardLabel: 'Visa ending 4242', failedAttempts: 1 },
     });
@@ -110,7 +110,7 @@ describe('getRenewalCard', () => {
     expect(card).toEqual({ cardLabel: 'Visa ending 4242', plan: 'ANNUAL', failedAttempts: 1 });
   });
 
-  it('answers null for a page with no saved card, and never another page’s', async () => {
+  it('answers null for a page with no saved card, and never another pageâ€™s', async () => {
     expect(await getRenewalCard(otherPageId)).toBeNull();
   });
 });

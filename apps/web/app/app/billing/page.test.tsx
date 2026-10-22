@@ -309,6 +309,28 @@ describe('BillingPage', () => {
     expect(screen.getByText(/auto-renew couldn’t be turned on for this payment/)).toBeInTheDocument();
   });
 
+  it('says nothing about a card on a hand-typed ?payment=paid&card=off for a page that has not paid', async () => {
+    await renderWith(page, 'paid', 'off');
+
+    expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
+  });
+
+  it('says nothing about a missing card when the page does have one', async () => {
+    getRenewalCard.mockResolvedValue({ cardLabel: null, plan: 'MONTHLY', failedAttempts: 0 });
+
+    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') }, 'paid', 'off');
+
+    expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
+  });
+
+  it('leaves the card line off a page that is not paid, even with a saved card', async () => {
+    getRenewalCard.mockResolvedValue({ cardLabel: null, plan: 'MONTHLY', failedAttempts: 0 });
+
+    await renderWith({ ...page, paidUntil: null, leadsCaptured: 1 });
+
+    expect(AutoRenew).not.toHaveBeenCalled();
+  });
+
   it('says nothing about a card on a hand-typed ?card=off with no payment', async () => {
     await renderWith(page, undefined, 'off');
 
