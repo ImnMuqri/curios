@@ -159,7 +159,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           heading: 'Plans and payment',
           body: [
             'Personal pages are free. A Business page starts with a free trial: its first 3 leads and its first 3 orders cost nothing. After that, the Business plan is RM49 a month or RM490 a year.',
-            'You pay through Billplz, by FPX online banking. Each payment is a one-off: it adds a month or a year to your plan, counted from when your paid time would otherwise end. Nothing renews or charges you automatically.',
+            'You pay through CHIP, by FPX online banking, card or e-wallet. Each payment adds a month or a year to your plan, counted from when your paid time would otherwise end. Nothing renews by itself unless you turn on auto-renew, which is for cards only: we then charge your card the same amount when each paid period ends, until you turn it off on your Billing screen. If a renewal charge fails, we try again for up to 3 days, then turn auto-renew off.',
             'When your paid time ends, your page and its chat keep working, but the chat stops taking numbers and your shop stops taking orders until you pay again.',
             'A plan may have usage limits, such as a number of new chat conversations each month; your Billing screen shows yours. We may change prices or limits, but never for time you have already paid for, and we will tell you before a change applies to you.',
             'Refunds are covered by our {refunds}.',
@@ -213,7 +213,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
               list: [
                 'If you make a page: your email address, and your password, which we keep only as a scrambled hash that can’t be turned back into it. If you sign in with Google, your name and email address from your Google account.',
                 'What you put on your page: your name, bio, photos, links, social profiles and items. If you take orders, your DuitNow QR and your bank account name and number, which your customers see. The websites, text and files you give your page to read: we keep the facts drawn from them and short excerpts, not the files.',
-                'If you pay for a plan: the plan, amount and date, and the Billplz bill. You log in to your bank on Billplz’s and your bank’s pages; we never see those details.',
+                'If you pay for a plan: the plan, amount and date, the CHIP purchase and, if you turn on auto-renew, your card’s brand and last four digits. You log in to your bank or enter your card on CHIP’s and your bank’s pages; we never see those details.',
                 'If you chat on a page: what you type and the page’s replies. The questions people ask are also kept without who asked them, so the owner can see what people want to know.',
                 'If you leave your number in a chat: your phone number, and what the chat understood you wanted, such as a product, a date or a place.',
                 'If you order from a shop: your name, your WhatsApp number, pickup or delivery, the day, your address for a delivery, any note, what you ordered, and the payment receipt you upload.',
@@ -246,7 +246,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
                 'The page’s owner sees the chats on their page, the numbers left with them, and the orders and receipts sent to them.',
                 'Anthropic (United States): its Claude models read chat messages and a page’s facts and sources, to write answers and pick out facts.',
                 'OpenAI (United States): turns questions and facts into numbers (embeddings) so the chat can find the right fact.',
-                'Billplz (Malaysia): takes Business plan payments, and receives your email address, your page’s name and the amount.',
+                'CHIP (Malaysia): takes Business plan payments, and receives your email address, your page’s name and the amount. Your card details go to CHIP, never to us; for auto-renew, CHIP keeps a token of your card that only works for Curios’s charges.',
                 'Have I Been Pwned: receives the first five characters of a hash of a new password, never the password, to check it hasn’t leaked in a breach.',
                 'Our hosting, storage and email providers, who store data and send email for us.',
                 'Authorities, where the law requires us to share.',
@@ -325,11 +325,12 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         {
           heading: 'The Business plan',
           body: [
-            'Every payment is a one-off and never renews by itself, so nothing is charged without you.',
+            'Each payment is for a set time. Your plan renews by itself only if you turn on auto-renew by card, and you can turn it off any time on your Billing screen.',
             {
               list: [
                 'Your first payment: if you change your mind, ask within 7 days of paying and we will refund it in full, whether it was for a month or a year. Your Business plan ends when we make the refund.',
                 'Later payments, which add time to a plan you have already paid for, are not refunded. Your plan keeps working until the end of the time you paid for.',
+                'A renewal charged by auto-renew counts as a later payment, unless you had already turned auto-renew off, in which case we refund it in full.',
                 'We always refund in full a payment made twice by mistake, or a charge for something you didn’t get because of a fault on our side.',
               ],
             },
@@ -428,7 +429,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           heading: 'Pelan dan bayaran',
           body: [
             'Halaman Peribadi adalah percuma. Halaman Bisnes bermula dengan percubaan percuma: 3 lead pertama dan 3 tempahan pertamanya tidak dikenakan bayaran. Selepas itu, pelan Bisnes berharga RM49 sebulan atau RM490 setahun.',
-            'Anda membayar melalui Billplz, menggunakan perbankan dalam talian FPX. Setiap bayaran ialah bayaran sekali: ia menambah sebulan atau setahun pada pelan anda, dikira dari tarikh masa berbayar anda sepatutnya tamat. Tiada apa-apa yang diperbaharui atau dicaj secara automatik.',
+            'Anda membayar melalui CHIP, menggunakan perbankan dalam talian FPX, kad atau e-dompet. Setiap bayaran menambah sebulan atau setahun pada pelan anda, dikira dari tarikh masa berbayar anda sepatutnya tamat. Tiada apa-apa yang diperbaharui dengan sendirinya melainkan anda hidupkan auto-renew, yang hanya untuk kad: kami kemudian mengecaj kad anda dengan jumlah yang sama apabila setiap tempoh berbayar tamat, sehingga anda mematikannya di skrin Billing anda. Jika caj pembaharuan gagal, kami cuba lagi sehingga 3 hari, kemudian mematikan auto-renew.',
             'Apabila masa berbayar anda tamat, halaman dan sembangnya terus berfungsi, tetapi sembang berhenti menerima nombor dan kedai anda berhenti menerima tempahan sehingga anda membayar semula.',
             'Sesuatu pelan mungkin mempunyai had penggunaan, seperti bilangan perbualan sembang baharu setiap bulan; skrin Billing anda menunjukkan had anda. Kami boleh mengubah harga atau had, tetapi tidak sekali-kali bagi masa yang telah anda bayar, dan kami akan memberitahu anda sebelum perubahan itu terpakai kepada anda.',
             'Bayaran balik diterangkan dalam {refunds} kami.',
@@ -482,7 +483,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
               list: [
                 'Jika anda membuat halaman: alamat e-mel anda, dan kata laluan anda, yang kami simpan hanya sebagai cincangan (hash) yang tidak boleh ditukar kembali menjadi kata laluan. Jika anda log masuk dengan Google, nama dan alamat e-mel daripada akaun Google anda.',
                 'Apa yang anda letak di halaman anda: nama, bio, gambar, pautan, profil media sosial dan barangan. Jika anda menerima tempahan, DuitNow QR serta nama dan nombor akaun bank anda, yang dilihat oleh pelanggan anda. Laman web, teks dan fail yang anda berikan untuk dibaca oleh halaman anda: kami menyimpan fakta yang diambil daripadanya dan petikan pendek, bukan fail itu.',
-                'Jika anda membayar pelan: pelan, jumlah dan tarikh, serta bil Billplz. Anda log masuk ke bank anda di halaman Billplz dan bank anda; kami tidak sekali-kali melihat butiran itu.',
+                'Jika anda membayar pelan: pelan, jumlah dan tarikh, pembelian CHIP dan, jika anda hidupkan auto-renew, jenama kad dan empat digit terakhirnya. Anda log masuk ke bank anda atau memasukkan kad anda di halaman CHIP dan bank anda; kami tidak sekali-kali melihat butiran itu.',
                 'Jika anda bersembang di halaman: apa yang anda taip dan balasan halaman itu. Soalan yang ditanya juga disimpan tanpa maklumat siapa yang bertanya, supaya pemilik dapat melihat apa yang orang ingin tahu.',
                 'Jika anda meninggalkan nombor dalam sembang: nombor telefon anda, dan apa yang difahami oleh sembang tentang kehendak anda, seperti produk, tarikh atau tempat.',
                 'Jika anda membuat tempahan di kedai: nama anda, nombor WhatsApp anda, ambil sendiri atau penghantaran, hari, alamat anda untuk penghantaran, sebarang nota, apa yang anda tempah, dan resit bayaran yang anda muat naik.',
@@ -515,7 +516,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
                 'Pemilik halaman melihat sembang di halamannya, nombor yang ditinggalkan untuknya, dan tempahan serta resit yang dihantar kepadanya.',
                 'Anthropic (Amerika Syarikat): model Claude miliknya membaca mesej sembang serta fakta dan sumber halaman, untuk menulis jawapan dan mengambil fakta.',
                 'OpenAI (Amerika Syarikat): menukar soalan dan fakta kepada nombor (embedding) supaya sembang dapat mencari fakta yang betul.',
-                'Billplz (Malaysia): menerima bayaran pelan Bisnes, dan menerima alamat e-mel anda, nama halaman anda dan jumlah bayaran.',
+                'CHIP (Malaysia): menerima bayaran pelan Bisnes, dan menerima alamat e-mel anda, nama halaman anda dan jumlah bayaran. Butiran kad anda pergi kepada CHIP, tidak sekali-kali kepada kami; bagi auto-renew, CHIP menyimpan token kad anda yang hanya berfungsi untuk caj Curios.',
                 'Have I Been Pwned: menerima lima aksara pertama cincangan kata laluan baharu, bukan kata laluan itu, untuk menyemak sama ada ia pernah bocor.',
                 'Penyedia pengehosan, storan dan e-mel kami, yang menyimpan data dan menghantar e-mel untuk kami.',
                 'Pihak berkuasa, jika undang-undang mewajibkan kami berkongsi.',
@@ -594,11 +595,12 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         {
           heading: 'Pelan Bisnes',
           body: [
-            'Setiap bayaran ialah bayaran sekali dan tidak diperbaharui dengan sendirinya, jadi tiada apa-apa dicaj tanpa anda.',
+            'Setiap bayaran adalah untuk tempoh tertentu. Pelan anda diperbaharui dengan sendirinya hanya jika anda hidupkan auto-renew dengan kad, dan anda boleh mematikannya pada bila-bila masa di skrin Billing anda.',
             {
               list: [
                 'Bayaran pertama anda: jika anda berubah fikiran, minta dalam masa 7 hari selepas membayar dan kami akan membayar balik sepenuhnya, sama ada untuk sebulan atau setahun. Pelan Bisnes anda tamat apabila kami membuat bayaran balik.',
                 'Bayaran seterusnya, yang menambah masa pada pelan yang telah anda bayar, tidak dibayar balik. Pelan anda terus berfungsi sehingga tamat masa yang telah anda bayar.',
+                'Pembaharuan yang dicaj oleh auto-renew dikira sebagai bayaran seterusnya, melainkan anda telah mematikan auto-renew, dalam hal itu kami membayar baliknya sepenuhnya.',
                 'Kami sentiasa membayar balik sepenuhnya bayaran yang dibuat dua kali secara tidak sengaja, atau caj bagi sesuatu yang anda tidak terima akibat kesilapan pihak kami.',
               ],
             },

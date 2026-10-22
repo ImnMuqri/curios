@@ -365,8 +365,8 @@ export function authPerEmailLimit(redis: IORedis): RateLimitPluginOptions {
 }
 
 /**
- * Per account, on starting a payment. Every request raises a bill at Billplz, so an
- * owner or a runaway loop must not be able to raise them without bound.
+ * Per account, on starting a payment. Every request starts a purchase at CHIP, so an
+ * owner or a runaway loop must not be able to start them without bound.
  *
  * Keyed on the account, falling back to the caller and never to a constant -- the
  * shape and the reason of ingestPerPageLimit: a shared constant bucket fills once and

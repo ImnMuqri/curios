@@ -1,13 +1,7 @@
 import { PLAN_PRICES_CENTS, type BillingPlan } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
-import type { BillplzClient } from '@curios/billing';
+import { billDescription, type ChipClient } from '@curios/billing';
 import { NoPageError } from '../pages/page.service.js';
-
-export interface BillingConfig {
-  collectionId: string;
-  callbackUrl: string;
-  redirectUrl: string;
-}
 
 export class NotABusinessPageError extends Error {
   readonly statusCode = 400;
@@ -29,28 +23,27 @@ export class TrialResetUsedError extends Error {
   }
 }
 
-/** Billplz caps a description at 200 characters, and a long shop name must not fail the bill. */
-export function billDescription(plan: BillingPlan, displayName: string): string {
-  return `Curios Business, ${plan === 'ANNUAL' ? '1 year' : '1 month'} — ${displayName}`.slice(0, 200);
-}
+/** An unpaid purchase stops being payable this long after it was started. */
+const PURCHASE_LIFETIME_MS = 60 * 60 * 1000;
 
 /**
  * Starts a payment for the signed-in owner's page.
  *
- * The Payment row is created before Billplz is called, so its id can be the bill's
- * reference_1 -- the field a fetched bill is later checked against. If Billplz fails,
- * that row stays PENDING with no bill id, which is harmless: no bill can ever match it,
- * and the hourly check skips rows without one.
+ * The Payment row is created before CHIP is called, so its id can be the purchase's
+ * reference -- the field a fetched purchase is later checked against. If CHIP fails,
+ * that row stays PENDING with no providerRef, which is harmless: no purchase can ever
+ * match it, and the hourly check skips rows without one.
  */
-export async function createBillForOwner(
+export async function createPurchaseForOwner(
   deps: {
     prisma: PrismaClient;
-    client: BillplzClient;
-    config: BillingConfig;
+    client: ChipClient;
+    /** The API's public origin, without a trailing slash: where CHIP calls and returns to. */
+    callbackBaseUrl: string;
     /** Optional, like `assignFaqSlug`'s -- `request.log` fits it without a new dependency. */
     log?: { error: (obj: unknown, msg: string) => void };
   },
-  input: { accountId: string; plan: BillingPlan },
+  input: { accountId: string; plan: BillingPlan; autoRenew: boolean; now: Date },
 ): Promise<{ url: string }> {
   const page = await deps.prisma.page.findUnique({
     where: { accountId: input.accountId },
@@ -61,43 +54,85 @@ export async function createBillForOwner(
 
   const amountCents = PLAN_PRICES_CENTS[input.plan];
   const payment = await deps.prisma.payment.create({
-    data: {
-      pageId: page.id,
-      plan: input.plan,
-      amountCents,
-      billplzCollectionId: deps.config.collectionId,
-    },
+    data: { pageId: page.id, plan: input.plan, amountCents, provider: 'CHIP', autoRenew: input.autoRenew },
     select: { id: true },
   });
 
-  const bill = await deps.client.createBill({
-    collectionId: deps.config.collectionId,
+  const purchase = await deps.client.createPurchase({
     email: page.account.email,
-    // Billplz caps the name at 255 characters.
-    name: page.displayName.slice(0, 255),
+    fullName: page.displayName.slice(0, 255),
+    productName: billDescription(input.plan, page.displayName),
     amountCents,
-    description: billDescription(input.plan, page.displayName),
-    callbackUrl: deps.config.callbackUrl,
-    redirectUrl: deps.config.redirectUrl,
-    reference1: payment.id,
+    reference: payment.id,
+    successCallback: `${deps.callbackBaseUrl}/billing/chip/callback`,
+    redirectUrl: `${deps.callbackBaseUrl}/billing/chip/return?payment=${payment.id}`,
+    dueAt: new Date(input.now.getTime() + PURCHASE_LIFETIME_MS),
+    sendReceipt: true,
+    cardsOnlyRecurring: input.autoRenew,
   });
 
   try {
-    await deps.prisma.payment.update({ where: { id: payment.id }, data: { billplzBillId: bill.id } });
+    await deps.prisma.payment.update({ where: { id: payment.id }, data: { providerRef: purchase.id } });
   } catch (error) {
     deps.log?.error(
-      { paymentId: payment.id, billId: bill.id, err: error },
-      'billplz accepted the bill but the payment row could not be updated with its id -- the bill is now orphaned',
+      { paymentId: payment.id, purchaseId: purchase.id, err: error },
+      'chip accepted the purchase but the payment row could not be updated with its id -- the purchase is now orphaned',
     );
-    // Rethrown on purpose. Billplz already holds a real, payable bill, but without this
-    // update the row that could resolve it stays PENDING with billplzBillId null: the
-    // hourly check skips rows without one, and a callback for this bill finds no match
-    // and reports unknown-bill. Nothing downstream can reconcile that on its own, so the
-    // owner must not be handed a URL to a bill this system cannot later grant -- failing
-    // the request is safer than pretending it succeeded. See devDocs/OPERATIONS.md.
+    // Rethrown on purpose. CHIP already holds a real, payable purchase, but without this
+    // update the row that could resolve it stays PENDING with providerRef null: the
+    // hourly check skips rows without one, and a callback for this purchase finds no
+    // match and reports unknown-payment. Nothing downstream can reconcile that on its
+    // own, so the owner must not be handed a URL to a purchase this system cannot later
+    // grant -- failing the request is safer than pretending it succeeded. See
+    // devDocs/OPERATIONS.md.
     throw error;
   }
-  return { url: bill.url };
+  return { url: purchase.checkoutUrl };
+}
+
+/**
+ * What an error may say in a log: its name, and nothing else. A refused CHIP call carries
+ * CHIP's response body in its message, and that body can hold the payer's details.
+ */
+export const errName = (error: unknown) => (error instanceof Error ? error.name : 'unknown');
+
+/**
+ * Turns auto-renew off for the signed-in owner's page: the saved card is forgotten here,
+ * then at CHIP.
+ *
+ * The row goes first, in one statement that hands back the token it removed. The row is
+ * what the renewal job reads: its claim needs it, and it checks it again just before it
+ * charges, so once it is gone a new charge can only follow if the job had read it in the
+ * moment before -- the instant between that last check and CHIP receiving the charge.
+ * Clearing the token at CHIP below closes even that, when CHIP takes it first. Telling CHIP to forget the token is tidiness on top: if CHIP is down it is
+ * logged, not thrown, because the owner's request has already done what they asked.
+ *
+ * No card is not an error. Two clicks, or a card the job dropped a moment ago, both end
+ * with auto-renew off, which is the answer either way.
+ */
+export async function turnOffAutoRenew(
+  deps: {
+    prisma: PrismaClient;
+    client: ChipClient;
+    log?: { error: (obj: unknown, msg: string) => void };
+  },
+  input: { accountId: string },
+): Promise<void> {
+  const removed = await deps.prisma.$queryRaw<{ pageId: string; token: string }[]>`
+    DELETE FROM "RenewalCard"
+    WHERE "pageId" IN (SELECT "id" FROM "Page" WHERE "accountId" = ${input.accountId})
+    RETURNING "pageId", "token"`;
+
+  for (const card of removed) {
+    try {
+      await deps.client.deleteRecurringToken(card.token);
+    } catch (error) {
+      deps.log?.error(
+        { pageId: card.pageId, err: errName(error) },
+        'auto-renew turned off, but CHIP could not be told to forget the card',
+      );
+    }
+  }
 }
 
 /**

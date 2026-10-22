@@ -1,0 +1,4337 @@
+openapi: 3.1.0
+
+info:
+  title: Public REST API
+  version: v1
+  description: |
+    All the endpoints below have a prefix of `https://gate.chip-in.asia/api/v1` (e.g. `POST https://gate.chip-in.asia/api/v1/purchases`).
+
+    You will need your API key that you can obtain in the Developers section in your account. Please use this key as a bearer token in the Authorization header included in every request: `Authorization: Bearer <secret key>`.
+
+    You can generate and manage your API keys here : <br/> https://portal.chip-in.asia/collect/developers/api-keys
+
+    Your Brand ID is required for certain endpoints. You can find it here : <br/> https://portal.chip-in.asia/collect/developers/brands
+
+    Before starting the development, we recommend checking out the list of ready-to-go connectors to the popular platforms we’ve already built for you. It might save you some precious time if you use one of these to develop your project.
+
+    Plugins: [WooCommerce](https://gate.chip-in.asia/apis/plugins/WooCommerce%20v3.5+), [Gravity Forms](https://gate.chip-in.asia/apis/plugins/Gravity%20Forms), [OpenCart](https://gate.chip-in.asia/apis/plugins/OpenCart%20v3.0+), [Magento](https://gate.chip-in.asia/apis/plugins/Magento%20v2.0+), [PrestaShop](https://gate.chip-in.asia/apis/plugins/PrestaShop%20v1.7+)
+
+
+
+    Libraries: [PHP](https://gate.chip-in.asia/apis/libraries/PHP), [Java](https://gate.chip-in.asia/apis/libraries/Java), [C#](https://gate.chip-in.asia/apis/libraries/C%23), [Node.js](https://gate.chip-in.asia/apis/libraries/Node.js)
+
+    SDKs: [iOS](https://gate.chip-in.asia/apis/sdks/iOS), [Android](https://gate.chip-in.asia/apis/sdks/Android)
+    ***
+
+    # Online Purchases
+
+    ## Prebuilt payment flow — Redirect
+
+    Redirect integration allows running payments using the prebuilt payment flow.
+
+    To accept payments in your application or website via redirect, use `POST /purchases/` request to create the `Purchase` and receive the `checkout_url`. Redirect the customer to the `checkout_url` to enter their card details for processing. After the payment is processed, the system will redirect the customer back to your website (take note of `success_redirect`, `failure_redirect`).
+
+    *You have three options to check payment status:*
+
+    1. Use `success_callback` parameter of the `Purchase` object.
+
+    2. Use `GET /purchases/<purchase_id>/` request.
+
+    3. Set up a Webhook using the Developers section of your account or use Webhook API to listen to `purchase.paid`, or `purchase.payment_failure` event on your server.
+
+    Setting the `skip_capture` flag to `true` allows you to separate the authentication and payment execution steps, allowing you to reserve funds on the customer's card account for some time.
+
+    This flag can also enable preauthorization capability, allowing you to save the card without a financial transaction, if possible.
+
+    If the customer agrees to store his card for future purchases, there will be an option to pay with a single click next time. To enable this, create a `Client` object for each of your clients and provide `client_id` parameter value in your Purchase creation requests.
+
+    To create a Purchase, you must specify the `Brand ID` and `API key`. You can find both in the Developers section of your account.
+
+
+
+    ## Custom payment flow — Direct Post
+
+    Direct post integration allows running payments through the custom payment flow.
+
+    To accept payments in your application or website, use `POST /purchases/` request to create a `Purchase`.
+
+    To capture customers card details use an HTML `<form>` hosted on your website with `method="POST"` and `action` pointing to the `direct_post_url` of the transaction.
+
+    You will also need to fill the form with `<input>`'s for the fields with card details. As a result, when a customer submits their card details, it will be posted straight to our system, allowing you to customize the checkout as you wish. At the same time, your PCI DSS requirement is only raised to Self-Assessment Questionnaire (SAQ A-EP), as your system doesn't receive or process card data.
+
+    For more details, see the documentation on Purchase's `direct_post_url` field.
+
+    ### Tokenization & recurring payments
+
+    You can store card tokens and charge the respective cards without user interaction if the payment channel supports tokenization.
+
+    When you pass `remember_card=on` to `direct_post_url`, the respective `Purchase`'s ID will serve as a card token. This initial `Purchase` will have the `is_recurring_token` field set to `true`, which is the flag confirming that its `id` is now valid for use as a `recurring_token` in the charge call below. Do not infer this from `status: paid` alone - check `is_recurring_token`.
+
+    To charge the tokenized card once again, create a new Purchase and then call the `POST /purchases/{new_purchase_id}/charge/`. In the request body, provide `"recurring_token": "initial_purchase_id"`. When the request succeeds (response code `200`), the new Purchase will become paid. The token will be persisted in the Purchase's recurring_token field. That new Purchase is the opposite case from the initial one: `recurring_token` is set (it was PAID USING a token) while `is_recurring_token` is `false` (it did not create one).
+
+    Use `"recurring_token": "initial_purchase_id"` in all the upcoming `POST /purchases/{new_purchase_id}/charge/` requests.
+
+    If you wish to delete the recurring token stored for the initial `Purchase`, use the `POST /purchases/{initial_purchase_id}/delete_recurring_token/` request. Its `is_recurring_token` will reset to `false`.
+
+    ## Testing Integration
+
+    It’s possible to test-drive all checkouts using a test Purchase.
+
+    For a successful payment, you can use the following card numbers:
+
+    *   4444 3333 2222 1111 - non-3D Secure card
+    *   5555 5555 5555 4444 - 3D Secure card
+
+    For both cards, please use:
+
+    *   any cardholder name
+    *   any expiry larger or equal to the current month/year
+    *   CVC = 123
+
+    For a failed payment, please change the CVC or expiration date.
+
+    When using a 3D Secure enrolled card in S2S checkout,  an incorrect CVC will trigger an authorization failure on the S2S callback step (after the customer returns from test ACS). Using a wrong expiry date emulates data validation failure and results in immediate error before that step.
+
+
+    ***
+
+    # Callbacks
+
+    Two methods for defining asynchronous callbacks are supported - `Purchase` success callbacks and webhooks.
+
+    ## Purchase success callbacks
+
+    `Purchase` success callbacks are defined by providing a target URL in the `success_callback` field on `Purchase` creation (see [POST /purchases/](#/Purchases/purchases_create)). The system will generate a callback when:
+    * a `Purchase` with `skip_capture=false` is successfully paid;
+    * a `Purchase` with `skip_capture=true` is successfully captured (see [POST /purchases/{id}/capture/](#/Purchases/purchases_capture));
+    * a `Purchase` is successfully paid using a recurring token (see [POST /purchases/{id}/charge/](#/Purchases/purchases_charge));
+
+    These callbacks pass a JSON-encoded `Purchase` as their payload. The payload represents a snapshot of the state of the `Purchase` when the event was created. The payload will include an `event_type` field to indicate which specific event (see [Event schema](#model-Event)) triggered the callback.
+
+    The payload is signed using a company-wide key pair. You can obtain the public key with `GET /public_key/`. See the `Authentication` section below for more details.
+
+    ## Webhooks
+
+    For creating and modifying webhooks, see the Webhook [CRUD API specification](#operations-tag-Webhooks).
+
+    `Webhook` callback payloads are signed using a dedicated key pair. You can obtain the public key from `Webhook.public_key`. See the [Authentication](#callback-auth) section below for more details.
+
+    ## Delivery protocol
+
+    When a callback is not successfully delivered (received by the target server and responded to with a 200 series HTTP response code), the system will make up to 8 additional attempts at exponentially increasing intervals between attempts. No further delivery attempts will be made if the callback is not successfully delivered 36 hours after triggering.
+
+    Please note that due to the asynchronous nature of network requests, it is possible for a callback delivery confirmation (HTTP response with a 200 series status code) to not properly arrive from the callback's target server. Therefore it is possible in case of severe network faults for the target server to receive a callback, respond to it with a 200 series HTTP status code and then receive the same callback after an interval.
+
+    Callback deliveries are guaranteed to be sequential to events triggered on their source objects. For example, when registering webhooks for both the `purchase.created` and `purchase.paid` events, there will be no `purchase.paid` callbacks for this `Purchase` until all `purchase.created` callbacks for this `Purchase` are successfully delivered.
+
+    ## <b id="callback-auth">Authentication</b>
+
+    Payloads are signed using asymmetric A.K.A. public-key cryptography to guarantee the authenticity of delivered callbacks. Each callback delivery request includes an X-Signature header field. This field contains a base64-encoded RSA PKCS#1 v1.5 signature of the SHA256 digest of the request body buffer.
+
+    You can obtain the public key for `Webhook` authentication from `Webhook.public_key` of the corresponding `Webhook`.
+
+    You can obtain the public key for success callback authentication from [GET /public_key/](#operations-Public_Key-public_key).
+
+    Please note the provider is not responsible for any financial losses incurred due to not implementing payload signature verification.
+servers:
+  - url: https://gate.chip-in.asia/api/v1
+paths:
+  /purchases/:
+    post:
+      operationId: purchases_create
+      description: |-
+        To run payments in your application use `POST /purchases/`, request to register payments and receive the checkout link (`checkout_url`). After the payment is processed, gateway will redirect the client back to your website (take note of `success_redirect`, `failure_redirect`).
+        
+        To set the price to the smallest unit possible, the value of the `price` field is expected to be specified in cents.
+        
+        For example, `price: 100` is equivalent to `RM 1.00`
+        
+        You have three options to check payment status:
+        1) use `success_callback` parameter of `Purchase` object.
+        2) use `GET /purchases/<purchase_id>/` request.
+        3) set up a Webhook using the UI or Webhook API to listen to `purchase.paid` or `purchase.payment_failure` event on your server.
+        
+        Using `skip_capture` flag allows you to separate the authentication and payment execution steps, allowing you to reserve funds on payer’s card account for some time. This flag can also enable preauthorization capability, allowing you to save the card without a financial transaction, if available.
+        
+        When the client agrees to store their card during a purchase, they can pay with a single click on subsequent purchases.
+        
+        Instead of a redirect you can also utilize Direct Post checkout: you can create an HTML `<form>` on your website with `method="POST"` and `action` pointing to `direct_post_url` of a created Purchase. You will also need to populate the form with `<input>` elements for the card data fields. As a result, when a payer submits their card data, it will be posted straight to our system, allowing you to customize the checkout as you wish while your PCI DSS requirement is only raised to SAQ A-EP, as your system doesn't receive or process card data. For more details, see the documentation on Purchase's `direct_post_url` field.
+        
+        To pay for test Purchases, use `4444 3333 2222 1111` as the card number, `123` as CVC, any date/month greater than now as expiry and any (Latin) cardholder name. Any other card number, CVC, or expiry earlier than the current month will cause a test payment to fail.
+      responses:
+        '201':
+          $ref: '#/components/responses/Purchase'
+        '400':
+          $ref: '#/components/responses/400'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PurchaseBody'
+            example:
+              client:
+                email: customer@example.com
+              purchase:
+                products:
+                  - name: Premium Subscription
+                    price: 1000
+              brand_id: 409eb80e-3782-4b1d-afa8-b779759266a5
+      summary: Create a purchase
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: purchases_read
+      description: |-
+        Retrieve a Purchase by its `id`.
+        
+        Use this endpoint to verify purchase status server-side (for example,
+        after a return-URL redirect) rather than trusting client-side data.
+        
+        For card payments, the `transaction_data.extra` and
+        `transaction_data.attempts[].extra` objects contain detailed card and
+        authorization metadata (funding type, brand, masked PAN, expiry,
+        authorization code, etc.) and per-attempt fee information. See
+        [Card response metadata](/chip-collect/overview/direct-post/card-response-metadata)
+        for the full field list and how to map a card purchase to a
+        processing-cost tier.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Retrieve a purchase
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/cancel/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_cancel
+      description: |-
+        If a Purchase is still payable, this request guarantees that it cannot be paid.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Cancel a pending purchase
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/release/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_release
+      description: |-
+        Release funds reserved for a Purchase (`status == hold`). You can place a `hold` (authenticate the payment) using `skip_capture == true` when creating the Purchase and ensuring your client submits the payment form.
+        
+        If this operation takes too long to be processed on the acquirer side - you will get a response with status code 200 and a Purchase object having `status` = `pending_release` in body (you will receive a corresponding Webhook callback too for a `purchase.pending_release` event). To be notified of a successful operation completion, please subscribe to `purchase.released` callback event - it will deliver an updated Purchase with `status` = `released`.
+        
+        If fund release fails due to payment processing error, you will receive HTTP response code 400 with error code `purchase_release_error`. In this case, to get more details about the error, you should perform a `GET /purchases/{id}/` request for the Purchase you tried to release funds for. In `transaction_data.attempts[]` array (newest element first) you'll find the corresponding attempt with error code and description in `.error` parameter.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Release funds on hold
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/capture/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_capture
+      description: |-
+        Capture funds reserved for a Purchase (`status == hold`). You can place a `hold` (authenticate the payment) using `skip_capture == true` when creating the Purchase and ensuring your client submits the payment form.
+        
+        If this operation takes too long to be processed on the acquirer side - you will get a response with status code 200 and a Purchase object having `status` = `pending_capture` in body (you will receive a corresponding Webhook callback too for a `purchase.pending_capture` event). To be notified of a successful operation completion, please subscribe to `purchase.captured` callback event - it will deliver an updated Purchase with `status` = `paid`.
+        
+        If capture fails due to payment processing error, you will receive HTTP response code 400 with error code `purchase_capture_error`. In this case, to get more details about the error, you should perform a `GET /purchases/{id}/` request for the Purchase you tried to capture. In `transaction_data.attempts[]` array (newest element first) you'll find the corresponding attempt with error code and description in `.error` parameter. By default the full amount is captured, the `amount` body param is optional.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              properties:
+                amount:
+                  type: integer
+                  description: Amount to be captured. Used to perform partial captures. Remainder will be automatically released.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Capture a previously authorized payment
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/charge/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_charge
+      description: |-
+        Charge a purchase using a `recurring_token` provided in the request body. Its value should be an `id` of a Purchase that has `is_recurring_token == true`. This purchase will be paid using the same method (e.g. same card) as the one used to pay the `recurring_token` purchase.
+        
+        If this operation takes too long to be processed on the acquirer side - you will get a response with status code 200 and a Purchase object having `status` = `pending_charge` in body (you will receive a corresponding Webhook callback too for a `purchase.pending_charge` event). To be notified of a successful operation completion, please subscribe to `purchase.paid` callback event - it will deliver an updated Purchase with `status` = `paid`. Alternatively, if charge fails, you will receive a `purchase.payment_failure` callback event.
+        
+        If recurring charge fails due to payment processing error, you will receive HTTP response code 400 with error code `purchase_charge_error`. In this case, to get more details about the error, you should perform a `GET /purchases/{id}/` request for the Purchase you tried to charge. In `transaction_data.attempts[]` array (newest element first) you'll find the corresponding attempt with error code and description in `.error` parameter.
+        
+        If the `recurring_token` you provide does not correspond to a valid, active token (e.g. it does not exist, refers to a Purchase that does not have `is_recurring_token == true`, or its token has been deleted), you will receive HTTP response code 400 with the following error body and **no webhook callback will be sent** (no charge was attempted on the acquirer side):
+        
+        ```json
+        {
+          "__all__": [
+            {
+              "message": "Invalid or inactive recurring token!",
+              "code": "invalid_recurring_token"
+            }
+          ]
+        }
+        ```
+        
+        To resolve this, verify the token by [retrieving the Purchase](/chip-collect/api-reference/purchases/retrieve) referenced by `recurring_token` and checking that `is_recurring_token` is `true`, or list the active tokens for the client via the [List Recurring Tokens API](/chip-collect/api-reference/clients/list-recurring-tokens).
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '400':
+          description: |
+            Invalid data submitted or request processing error.
+
+            When the supplied `recurring_token` does not correspond to a valid, active
+            token (e.g. it does not exist, refers to a Purchase that does not have
+            `is_recurring_token == true`, or its token has been deleted), the response
+            body will be:
+          content:
+            application/json:
+              schema:
+                type: object
+              example:
+                __all__:
+                  - message: Invalid or inactive recurring token!
+                    code: invalid_recurring_token
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              properties:
+                recurring_token:
+                  type: string
+                  format: uuid
+                  description: ID of a recurring token (Purchase having `is_recurring_token == true`) to use.
+            example:
+              recurring_token: ea582899-78ec-4c3a-9cb3-08f922e556b6
+      summary: Charge a purchase using a saved token
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/delete_recurring_token/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_delete_recurring_token
+      description: |-
+        Sets `is_recurring_token` to `false`. You won't be able to use this Purchase's ID as a `recurring_token` anymore. The respective `ClientRecurringToken`, if any, will also be deleted.
+        
+        If this operation takes too long to be processed on the acquirer side, you will get a response with status code 200 and a corresponding Webhook callback for a `purchase.pending_recurring_token_delete` event. To be notified of a successful operation completion, please subscribe to the `purchase.recurring_token_deleted` callback event.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Delete a recurring token associated with a purchase
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/refund/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_refund
+      description: |-
+        Will generate a Payment object and return it as a successful response.
+        
+        Optional `amount` argument can be included in the request body to request a partial refund.
+        
+        Consult `refund_availability` field on Purchase on details whether this Purchase can be refunded or not.
+        
+        If this operation takes too long to be processed on the acquirer side - you will get a response with status code 200 and a Purchase object having `status` = `pending_refund` in body (you will receive a corresponding Webhook callback too for a `purchase.pending_refund` event). To be notified of a successful operation completion, please subscribe to `payment.refunded` callback event - it will deliver a Payment generated by this refund.
+        
+        If refund fails due to payment processing error, you will receive HTTP response code 400 with error code `purchase_refund_error`. In this case, to get more details about the error, you should perform a `GET /purchases/{id}/` request for the Purchase you tried to refund. In `transaction_data.attempts[]` array (newest element first) you'll find the corresponding attempt with error code and description in `.error` parameter.
+      responses:
+        '200':
+          $ref: '#/components/responses/Payment'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              properties:
+                amount:
+                  type: integer
+                  description: |-
+                    Amount to refund in minor units of the purchase's currency - e.g. `100` for RM 1.00. Should not be more than `Purchase.refundable_amount`.
+
+                    Optional; if not provided, a full refund will be executed. See the description for `Purchase.refund_availability` field.
+            example:
+              amount: 120
+      summary: Refund a paid purchase
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/mark_as_paid/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_mark_as_paid
+      description: |-
+        Sets the Purchase's status to `paid` and marks `purchase.marked_as_paid` as `true` to distinguish it.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              properties:
+                paid_on:
+                  allOf:
+                    - $ref: '#/components/schemas/UnixTimestamp'
+                  description: UTC timestamp at which this purchase was paid. Current time will be used if omitted.
+            example:
+              paid_on: 1635162311
+      summary: Mark a purchase as paid
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /purchases/{id}/resend_invoice/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: purchases_resend_invoice
+      description: |-
+        Re-sends the invoice.
+      responses:
+        '200':
+          $ref: '#/components/responses/Purchase'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Resend an invoice
+      tags:
+        - Purchases
+      security:
+        - bearerAuth: []
+  /payment_methods/:
+    get:
+      operationId: payment_methods
+      description: |-
+        > Always send the `amount` query parameter, e.g. `&amount=1000` for RM 10.
+        > Without it, only card methods (visa, mastercard, maestro) and a few
+        > others are returned — most methods (FPX, DuitNow QR, Shopee Pay, etc.)
+        > have a minimum amount and are hidden from the response.
+        >
+        > RM 10 (`1000`) is a safe value that covers every method's minimum.
+
+        Send this request providing the `brand_id` and `currency` query parameters, with the same values you'd use to create your Purchase. Be sure to use the same API key you'll create your Purchase with; it will define the test_mode setting used in the lookup.
+
+        In the response body you'll receive an object with `available_payment_methods` property containing the list of payment method names available to use with your Purchase (e.g. those codes can be used in `payment_method_whitelist` field or with `?preferred={payment_method}` option of `checkout_url`).
+
+        Please note that all lookup arguments must be provided via query parameters after the endpoint, e.g. the minimal call would be similar to: `GET /api/v1/payment_methods/?brand_id=75a76529-91c7-4d98-90a9-8a641d70ee52&currency=MYR&amount=1000`
+      summary: List of payment methods
+      parameters:
+        - name: brand_id
+          in: query
+          description: Which brand would you like to lookup the available payment methods for. Use the same value (UUID) you'd set the `Purchase.brand_id` to.
+          required: true
+          schema:
+            type: string
+        - name: currency
+          in: query
+          description: Currency you'd use in your Purchase in ISO 4217 format, e.g. `MYR`.
+          required: true
+          schema:
+            type: string
+            enum: ["MYR"]
+        - name: country
+          in: query
+          description: Country code in the ISO 3166-1 alpha-2 format (e.g. `GB`). Optional.
+          schema:
+            type: string
+        - name: recurring
+          in: query
+          description: If provided in the format of `recurring=true`, will filter out the methods that don't support recurring charges (see `POST /purchases/{id}/charge/`).
+          schema:
+            type: boolean
+        - name: skip_capture
+          in: query
+          description: If provided in the format of `skip_capture=true`, will filter out the methods that don't support `skip_capture` functionality (see the description for `Purchase.skip_capture field`).
+          schema:
+            type: boolean
+        - name: preauthorization
+          in: query
+          description: If provided in the format of `preauthorization=true`, will filter out the methods that don't support preauthorization functionality (see the description for `Purchase.skip_capture field`).
+          schema:
+            type: boolean
+        - name: language
+          in: query
+          description: Language code in the ISO 639-1 format (e.g. 'en'). Optional.
+          schema:
+            type: string
+        - name: amount
+          in: query
+          description: |-
+            Amount of money as the smallest indivisible units of the currency (e.g. `1000` for RM 10). **Strongly recommended in practice even though it's marked optional in the schema** — most payment methods (FPX, DuitNow QR, Shopee Pay, etc.) have a minimum amount, and omitting this parameter hides them from the response. Use a value at or above the highest minimum among the methods you want to expose; RM 10 (`1000`) is a safe default.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available_payment_methods:
+                    type: array
+                    items:
+                      type: string
+                      description: Name of the payment method, e.g. `visa`.
+                  by_country:
+                    type: object
+                    description: Payment method names (as returned by `available_payment_methods`) grouped by country codes they are available in. `any` key returns names of payment method available in all countries.
+                    properties:
+                      any:
+                        type: array
+                        items:
+                          type: string
+                          description: Name of the payment method, e.g. `visa`.
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: string
+                        description: Name of the payment method, e.g. `visa`.
+                  country_names:
+                    type: object
+                    description: Human-readable names corresponding to country codes as returned by `by_country` property. `any` code is also decoded to `Other`.
+                    additionalProperties:
+                      type: string
+                      description: Human-readable name of the country.
+                  names:
+                    type: object
+                    description: Human-readable names of payment methods as returned by `available_payment_methods` property.
+                    additionalProperties:
+                      type: string
+                      description: Human-readable name of the payment method.
+                  logos:
+                    type: object
+                    description: Mapping of payment method names to respective logo file paths (relative to the hostname of API host). Some methods can be displayed as an array of logos.
+                    additionalProperties:
+                      oneOf:
+                        - type: string
+                          description: Path to the payment method logo file relative to API host.
+                        - type: array
+                          items:
+                            type: string
+                            description: Path to the payment method logo file relative to API host.
+                  card_methods:
+                    type: array
+                    items:
+                      type: string
+                      description: Names of the card methods listed in `available_payment_methods` property. All of these are grouped under `card` in other properties like `by_country`.
+                example:
+                  available_payment_methods:
+                    - visa
+                    - mastercard
+                    - maestro
+                  by_country:
+                    any:
+                      - card
+                    GB:
+                      - maestro
+                  country_names:
+                    any: Other
+                    GB: United Kingdom
+                  names:
+                    visa: Visa
+                    mastercard: Mastercard
+                    maestro: Maestro
+                  logos:
+                    maestro: /static/images/icon-maestro.svg
+                    visa: /static/images/icon-visa.svg
+                    mastercard: /static/images/icon-mastercard.svg
+                  card_methods:
+                    - visa
+                    - mastercard
+                    - maestro
+        '400':
+          $ref: '#/components/responses/400'
+      tags:
+        - Payment methods
+      security:
+        - bearerAuth: []
+  /clients/:
+    post:
+      operationId: clients_create
+      description: |-
+        Client is a record of a single customer of your business. Create one for each of your clients so you can issue invoices or subscriptions for them later.
+      responses:
+        '201':
+          $ref: '#/components/responses/Client'
+        '400':
+          $ref: '#/components/responses/400'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientBody'
+      summary: Create a client
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+    get:
+      operationId: clients_list
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Client'
+                  next:
+                    nullable: true
+                    type: string
+                    description: The next page of pagination results. `null` if there are no more results.
+                  previous:
+                    nullable: true
+                    type: string
+                    description: The previous page of pagination results. `null` if there was no previous page.
+      summary: List all clients
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+  /clients/{id}/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: clients_read
+      responses:
+        '200':
+          $ref: '#/components/responses/Client'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Retrieve a client
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+    put:
+      operationId: clients_update
+      responses:
+        '200':
+          $ref: '#/components/responses/Client'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientBody'
+      summary: Update a client
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+    patch:
+      operationId: clients_partial_update
+      responses:
+        '200':
+          $ref: '#/components/responses/Client'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientBody'
+      summary: Partially update a client
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+    delete:
+      operationId: clients_delete
+      responses:
+        '204':
+          description: OK
+      summary: Delete a client
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+  /clients/{id}/recurring_tokens/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: client_recurring_tokens_list
+      description: |-
+        List recurring tokens saved for a client.
+        
+        All of these tokens will be available in a checkout (see `Purchase.checkout_url`) if you create a Purchase with this client's ID in `client_id` field.
+        
+        You can use one in `POST /purchases/{id}/charge/`, too. Note that you can use one client's `recurring_token` to pay a Purchase created for a different `client_id` or created with no `client_id` at all; it's not recommended to do this.
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClientRecurringToken'
+                  next:
+                    nullable: true
+                    type: string
+                    description: The next page of pagination results. `null` if there are no more results.
+                  previous:
+                    nullable: true
+                    type: string
+                    description: The previous page of pagination results. `null` if there was no previous page.
+      summary: List recurring tokens
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+  /clients/{client_id}/recurring_tokens/{purchase_id}/:
+    parameters:
+      - $ref: '#/components/parameters/client_id'
+      - $ref: '#/components/parameters/purchase_id'
+    get:
+      operationId: client_recurring_tokens_read
+      responses:
+        '200':
+          $ref: '#/components/responses/ClientRecurringToken'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Retrieve a recurring token
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+    delete:
+      operationId: client_recurring_tokens_delete
+      description: |-
+        If you create the Purchase with the respective Client's ID (in `.client_id`), your client won't see this token as available on the checkout page anymore.
+        
+        You also won't be able to use the ID of this object as a `recurring_token` in `POST /purchases/{id}/charge/`. The respective Purchase will have `is_recurring_token` set to `false` (as if `POST /purchases/{recurring_token}/delete_recurring_token/` was issued).
+      responses:
+        '204':
+          description: OK
+      summary: Delete a recurring token
+      tags:
+        - Clients
+      security:
+        - bearerAuth: []
+  /webhooks/:
+    post:
+      operationId: webhooks_create
+      description: |
+        Create a webhook using the values provided in the request body. The webhook enables the recipient to receive notifications via the callback URL when selected events occur.
+      responses:
+        '201':
+          $ref: '#/components/responses/Webhook'
+        '400':
+          $ref: '#/components/responses/400'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookBody'
+      summary: Create a webhook
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+    get:
+      operationId: webhooks_list
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Webhook'
+                  next:
+                    nullable: true
+                    type: string
+                    description: The next page of pagination results. `null` if there are no more results.
+                  previous:
+                    nullable: true
+                    type: string
+                    description: The previous page of pagination results. `null` if there was no previous page.
+      summary: List all webhooks
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+  /webhooks/{id}/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: webhooks_read
+      responses:
+        '200':
+          $ref: '#/components/responses/Webhook'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Retrieve a webhook
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+    put:
+      operationId: webhooks_update
+      responses:
+        '200':
+          $ref: '#/components/responses/Webhook'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookBody'
+      summary: Update a webhook
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+    patch:
+      operationId: webhooks_partial_update
+      responses:
+        '200':
+          $ref: '#/components/responses/Webhook'
+        '400':
+          $ref: '#/components/responses/400'
+        '404':
+          $ref: '#/components/responses/404'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WebhookBody'
+      summary: Partially update a webhook
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+    delete:
+      operationId: webhooks_delete
+      responses:
+        '204':
+          description: OK
+      summary: Delete a webhook
+      tags:
+        - Webhooks
+      security:
+        - bearerAuth: []
+  /public_key/:
+    get:
+      description: |-
+        Returns public key for authenticating company callback payloads.
+
+        The response body is a JSON-encoded PEM string (e.g.
+        `"-----BEGIN PUBLIC KEY-----..."` with surrounding quotes), not a
+        bare PEM body and not a `{"key": ...}` object. `json_decode` the
+        response body before passing it to your crypto library.
+      summary: Retrieve a public key
+      parameters: []
+      operationId: public_key
+      responses:
+        '200':
+          description: Public key for authenticating callback payloads
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicKey'
+      tags:
+        - Public Key
+      security:
+        - bearerAuth: []
+  /account/json/balance/:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/tokenized'
+        - in: query
+          name: from
+          description: Retrieve a past balance value at a specific Unix timestamp
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/brand'
+        - $ref: '#/components/parameters/terminal_uid'
+        - $ref: '#/components/parameters/currency'
+        - $ref: '#/components/parameters/payment_method'
+        - $ref: '#/components/parameters/product'
+        - $ref: '#/components/parameters/flow'
+        - $ref: '#/components/parameters/country'
+      operationId: balance
+      responses:
+        '200':
+          description: Company balance successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceByCurrency'
+        '400':
+          $ref: '#/components/responses/400'
+      summary: Get company balance
+      description: Returns the company balance according to the provided query string filters. Multiple values can be provided for all filters except `from` and `to`, including all results matching any of these values.
+      tags:
+        - Account
+      security:
+        - bearerAuth: []
+  /account/json/turnover/:
+    get:
+      parameters:
+        - $ref: '#/components/parameters/tokenized'
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/brand'
+        - $ref: '#/components/parameters/terminal_uid'
+        - $ref: '#/components/parameters/currency'
+        - $ref: '#/components/parameters/payment_method'
+        - $ref: '#/components/parameters/product'
+        - $ref: '#/components/parameters/flow'
+        - $ref: '#/components/parameters/country'
+      operationId: turnover
+      responses:
+        '200':
+          description: Company turnover successfully retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TurnoverPair'
+        '400':
+          $ref: '#/components/responses/400'
+      summary: Get company turnover
+      description: Fetches the company turnover according to the provided query string filters. Must provide exactly one `currency` filter. Multiple values can be provided for all filters except `currency`, `from` and `to`, including all results matching any of these values.
+      tags:
+        - Account
+      security:
+        - bearerAuth: []
+  /company_statements/:
+    post:
+      operationId: company_statements_create
+      description: |-
+        With this request, you can schedule a statement generation for a company.
+        
+        In a response, you will get an object with the following structure. Main fields to look out for here are `id`, `status` and `download_url`.
+      summary: Schedule a statement
+      parameters:
+        - $ref: '#/components/parameters/from'
+        - $ref: '#/components/parameters/to'
+        - $ref: '#/components/parameters/paid_from'
+        - $ref: '#/components/parameters/paid_to'
+        - $ref: '#/components/parameters/updated_from'
+        - $ref: '#/components/parameters/updated_to'
+        - $ref: '#/components/parameters/brand_id'
+        - $ref: '#/components/parameters/shop_id'
+        - $ref: '#/components/parameters/q'
+        - $ref: '#/components/parameters/products'
+        - $ref: '#/components/parameters/total'
+        - $ref: '#/components/parameters/currency'
+        - $ref: '#/components/parameters/payment_method'
+        - $ref: '#/components/parameters/three_d_secure'
+        - $ref: '#/components/parameters/country'
+        - $ref: '#/components/parameters/status'
+        - $ref: '#/components/parameters/product'
+      responses:
+        '201':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyStatement'
+        '400':
+          $ref: '#/components/responses/400'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompanyStatementBody'
+            example:
+              format: csv
+              timezone: UTC
+      tags:
+        - Company Statements
+      security:
+        - bearerAuth: []
+    get:
+      operationId: company_statements_list
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  results:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CompanyStatement'
+                  next:
+                    nullable: true
+                    type: string
+                    description: The next page of pagination results. `null` if there are no more results.
+                  previous:
+                    nullable: true
+                    type: string
+                    description: The previous page of pagination results. `null` if there was no previous page.
+      summary: List all statements
+      tags:
+        - Company Statements
+      security:
+        - bearerAuth: []
+  /company_statements/{id}/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    get:
+      operationId: company_statements_read
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyStatement'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Retrieve a statement
+      tags:
+        - Company Statements
+      security:
+        - bearerAuth: []
+  /company_statements/{id}/cancel/:
+    parameters:
+      - $ref: '#/components/parameters/id'
+    post:
+      operationId: company_statements_cancel
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompanyStatement'
+        '404':
+          $ref: '#/components/responses/404'
+      summary: Cancel a statement
+      tags:
+        - Company Statements
+      security:
+        - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    id:
+      name: id
+      required: true
+      in: path
+      description: Object ID (UUID)
+      schema:
+        type: string
+        format: uuid
+    client_id:
+      name: Client id
+      required: true
+      in: path
+      description: Object ID (UUID)
+      schema:
+        type: string
+        format: uuid
+    purchase_id:
+      name: Purchase id
+      required: true
+      in: path
+      description: Object ID (UUID)
+      schema:
+        type: string
+        format: uuid
+    tokenized:
+      in: query
+      name: tokenized
+      description: Filter result set by whether the transaction was performed using a recurring execution token
+      schema:
+        type: boolean
+    from:
+      in: query
+      name: from
+      description: Filter result set to only include values older or equal to the provided Unix timestamp
+      schema:
+        type: integer
+    paid_from:
+      in: query
+      name: paid_from
+      description: Filter paid result set to only include values older or equal to the provided Unix timestamp
+      schema:
+        type: integer
+    paid_to:
+      in: query
+      name: paid_to
+      description: Filter paid result set to only include values younger than the provided Unix timestamp
+      schema:
+        type: integer
+    updated_to:
+      in: query
+      name: updated_to
+      description: Filter result set to only include values younger than the provided last modification time Unix timestamp
+      schema:
+        type: integer
+    updated_from:
+      in: query
+      name: updated_from
+      description: Filter result set to only include values older or equal to the provided last modification time Unix timestamp
+      schema:
+        type: integer
+    brand_id:
+      in: query
+      name: brand_id
+      description: Filter result set to only include the specified brand UUID(s)
+      schema:
+        type: string
+        format: uuid
+    shop_id:
+      in: query
+      name: shop_id
+      description: Filter result set to only include the specified shop UUID(s)
+      schema:
+        type: string
+        format: uuid
+    q:
+      in: query
+      name: q
+      description: Filter result set to only include results including a specified text (search over a ton of text fields)
+      schema:
+        type: string
+    products:
+      in: query
+      name: products
+      description: Filter result set to only include results including a specified text in products
+      schema:
+        type: string
+    total:
+      in: query
+      name: total
+      description: Filter result set to only include results with a total between min and max value. Must include 2 values, if any - (min, max).
+      schema:
+        type: string
+    three_d_secure:
+      in: query
+      name: three_d_secure
+      description: Filter result set to only include results with a 3-D verification.
+      schema:
+        type: string
+    status:
+      in: query
+      name: status
+      description: Filter result set to only include results with a specific status. See <a href="#model-Purchase">Purchase</a> and <a href="#model-Payout">Payout</a> for more information.
+      schema:
+        type: string
+    to:
+      in: query
+      name: to
+      description: Filter result set to only include values younger than the provided Unix timestamp
+      schema:
+        type: integer
+    brand:
+      in: query
+      name: brand
+      description: Filter result set to only include the specified brand UUID(s)
+      schema:
+        type: string
+        format: uuid
+    terminal_uid:
+      in: query
+      name: terminal_uid
+      description: Filter result set to only include the specified terminal UUID(s)
+      schema:
+        type: string
+        format: uuid
+    currency:
+      in: query
+      name: currency
+      required: true
+      description: Filter result set to only include specified currency(ies). The value must be in uppercase.
+      schema:
+        type: string
+    payment_method:
+      in: query
+      name: payment_method
+      description: Filter result set to only include specified payment methods(s). See <a href="#model-PaymentMethod">PaymentMethod</a> for more information.
+      schema:
+        $ref: '#/components/schemas/PaymentMethod'
+    product:
+      in: query
+      name: product
+      description: Filter result set to only include specified products(s). See <a href="#model-TransactionProduct">TransactionProduct</a> for more information.
+      schema:
+        $ref: '#/components/schemas/TransactionProduct'
+    flow:
+      in: query
+      name: flow
+      description: Filter result set to only include specified transaction creation or execution flow(s). See <a href="#model-TransactionFlow">TransactionFlow</a> for more information.
+      schema:
+        $ref: '#/components/schemas/TransactionFlow'
+    country:
+      in: query
+      name: country
+      description: Filter result set to only include specified client country(ies) in ISO 3166-1 alpha-2 format
+      schema:
+        type: string
+    banking_account:
+      in: query
+      name: banking_account
+      description: Filter result set to only include specified banking account UUID(s)
+      schema:
+        type: string
+        format: uuid
+  responses:
+    '400':
+      description: Invalid data submitted or request processing error
+      content:
+        application/json:
+          schema:
+            type: object
+            example: |
+              {
+                "__all__": {
+                  "message": "descriptive error message",
+                  "code": "error_code"
+                }
+              }
+    '404':
+      description: No such object
+    Purchase:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Purchase'
+          example:
+            id: 00000000-0000-0000-0000-000000000001
+            type: purchase
+            status: created
+            is_test: true
+            company_id: 00000000-0000-0000-0000-000000000002
+            brand_id: 00000000-0000-0000-0000-000000000003
+            client_id: 00000000-0000-0000-0000-000000000004
+            reference_generated: CH0001
+            reference: test
+            issued: 2026-01-01
+            due: 1735689600
+            created_on: 1735603200
+            updated_on: 1735603200
+            created_from_ip: 127.0.0.1
+            platform: api
+            product: purchases
+            currency_conversion: null
+            payment_method_whitelist: null
+            success_redirect: https://example.com/success
+            failure_redirect: https://example.com/failure
+            cancel_redirect: ''
+            success_callback: ''
+            marked_as_paid: false
+            force_recurring: false
+            send_receipt: false
+            is_recurring_token: false
+            recurring_token: null
+            skip_capture: false
+            refund_availability: none
+            refundable_amount: 0
+            upsell_campaigns: []
+            tags: []
+            viewed_on: null
+            invoice_url: null
+            checkout_url: https://gate.chip-in.asia/p/00000000-0000-0000-0000-000000000001/
+            direct_post_url: null
+            can_retrieve: false
+            can_chargeback: false
+            can_reverse_chargeback: false
+            status_history:
+              - status: created
+                timestamp: 1735603200
+            client:
+              email: buyer@example.com
+              full_name: Test Buyer
+              phone: ''
+              client_type: null
+              personal_code: ''
+              legal_name: ''
+              brand_name: ''
+              registration_number: ''
+              tax_number: ''
+              bank_account: ''
+              bank_code: ''
+              street_address: ''
+              city: ''
+              zip_code: ''
+              country: ''
+              state: ''
+              shipping_street_address: ''
+              shipping_city: ''
+              shipping_zip_code: ''
+              shipping_country: ''
+              shipping_state: ''
+              cc: []
+              bcc: []
+              delivery_methods:
+                - method: email
+                  options: {}
+            purchase:
+              currency: MYR
+              language: en
+              notes: ''
+              debt: 0
+              timezone: UTC
+              due_strict: false
+              email_message: ''
+              single_attempt: false
+              has_upsell_products: false
+              metadata: {}
+              total: 1000
+              subtotal_override: null
+              total_tax_override: null
+              total_discount_override: null
+              total_override: null
+              request_client_details: []
+              shipping_options: []
+              payment_method_details: {}
+              products:
+                - name: Premium Subscription
+                  price: 1000
+                  quantity: '1.0000'
+                  discount: 0
+                  tax_percent: '0.00'
+                  category: ''
+                  total_price_override: null
+            payment: null
+            issuer_details:
+              brand_name: CHIP
+              website: https://www.chip-in.asia
+              legal_name: ''
+              registration_number: ''
+              tax_number: ''
+              legal_street_address: ''
+              legal_country: ''
+              legal_city: ''
+              legal_zip_code: ''
+              bank_accounts: []
+            transaction_data:
+              payment_method: ''
+              flow: payform
+              country: ''
+              processing_tx_id: ''
+              extra: {}
+              attempts: []
+            creator_agent: ''
+            user_id: null
+            billing_template_id: null
+            order_id: null
+            referral_campaign_id: null
+            referral_code: null
+            referral_code_details: null
+            referral_code_generated: null
+            retain_level_details: null
+    Payout:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Payout'
+    Payment:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Payment'
+    Client:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Client'
+    ClientRecurringToken:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ClientRecurringToken'
+    Webhook:
+      description: OK
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Webhook'
+  schemas:
+    Balance:
+      type: object
+      description: Company Balance in a specific currency
+      properties:
+        gross_balance:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+            - description: Raw Company balance without any fees or reserved amounts subtracted
+        balance:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+            - description: Company gross balance with transaction fees subtracted
+        available_balance:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+            - description: Company balance currently available for withdrawal
+        reserved:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+            - description: Amount protected from withdrawal for an amount of time as per the brand configuration
+        pending_outgoing:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+            - description: Amount currently pending withdrawal
+        fee_sell:
+          $ref: '#/components/schemas/FeeSell'
+    BalanceByCurrency:
+      type: object
+      description: Map of currency to company Balance for the specific currency
+      additionalProperties:
+        $ref: '#/components/schemas/Balance'
+      example:
+        MYR:
+          balance: 93408
+          fee_sell: 0
+          reserved: 0
+          gross_balance: 93408
+          pending_outgoing: 0
+          available_balance: 93408
+        RUB:
+          balance: 1111840
+          fee_sell: 360
+          reserved: 0
+          gross_balance: 1112200
+          pending_outgoing: 0
+          available_balance: 1111840
+        USD:
+          balance: -35420
+          fee_sell: 1880
+          reserved: 0
+          gross_balance: -33540
+          pending_outgoing: 0
+          available_balance: -35420
+    BankAccount:
+      type: object
+      properties:
+        bank_account:
+          type: string
+          maxLength: 64
+          description: Bank account number (e.g. IBAN)
+        bank_code:
+          type: string
+          maxLength: 32
+          description: SWIFT/BIC code of the bank
+    BaseModel:
+      type: object
+      properties:
+        type:
+          type: string
+          description: Object type identifier
+        id:
+          type: string
+          format: uuid
+        created_on:
+          description: Object creation time
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        updated_on:
+          description: Object last modification time
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+    City:
+      type: string
+      maxLength: 128
+      description: City name
+    Client:
+      description: |-
+        Record of a single customer of your business. Create one for each of your clients.
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - $ref: '#/components/schemas/ClientDetails'
+    ClientDetails:
+      description: Contains details about the client of a purchase or payment - the remote payer/fund recipient party.
+      required:
+        - email
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        phone:
+          $ref: '#/components/schemas/Phone'
+        full_name:
+          type: string
+          maxLength: 1000
+          description: Name and surname of client. It is advisable to include `full_name` in request body.
+        personal_code:
+          type: string
+          maxLength: 32
+          description: Personal identification code of client
+        street_address:
+          $ref: '#/components/schemas/StreetAddress'
+        country:
+          $ref: '#/components/schemas/Country'
+        city:
+          $ref: '#/components/schemas/City'
+        zip_code:
+          $ref: '#/components/schemas/ZIPCode'
+        state:
+          $ref: '#/components/schemas/State'
+        shipping_street_address:
+          $ref: '#/components/schemas/StreetAddress'
+        shipping_country:
+          $ref: '#/components/schemas/Country'
+        shipping_city:
+          $ref: '#/components/schemas/City'
+        shipping_zip_code:
+          $ref: '#/components/schemas/ZIPCode'
+        shipping_state:
+          $ref: '#/components/schemas/State'
+        cc:
+          type: array
+          items:
+            $ref: '#/components/schemas/Email'
+          description: Email addresses to receive a carbon copy of all notification emails
+        bcc:
+          type: array
+          items:
+            $ref: '#/components/schemas/Email'
+          description: Email addresses to receive a blind carbon copy of all notification emails
+        legal_name:
+          type: string
+          maxLength: 1000
+          description: Legal name of company
+        brand_name:
+          type: string
+          maxLength: 128
+          description: Company brand name
+        registration_number:
+          type: string
+          maxLength: 32
+          description: Registration number of company
+        tax_number:
+          type: string
+          maxLength: 32
+          description: Tax payer registration number
+      allOf:
+        - $ref: '#/components/schemas/BankAccount'
+    ClientRecurringToken:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - description: A record of one of `recurring_token`-s saved for a specific client. `id` of this object will be the same as the `recurring_token` saved.
+          properties:
+            payment_method:
+              type: string
+              description: Payment method used to create this token, e.g. `card`.
+            description:
+              type: string
+              description: Description of this token, if available. For card payments, this field will contain the masked card number.
+    CompanyStatement:
+      type: object
+      properties:
+        format:
+          type: string
+          maxLength: 32
+          description: 'Statement format, available formats: `csv`, `xlsx`.'
+        timezone:
+          type: string
+          description: Timezone to localize statement-specific timestamps
+          example: Europe/Oslo
+        is_test:
+          type: boolean
+          description: Indicates this is a test object, created using test API keys or using the merchant portal while in test mode.
+        company_uid:
+          type: string
+          format: uuid
+          description: ID of the Company.
+        query_string:
+          type: string
+          description: Query parameters used to generate statement.
+        status:
+          type: string
+          description: Status of statement generation e.g. `pending`, `processing`, `success`.
+        download_url:
+          type: string
+          description: Download URL of a statement.
+        began_on:
+          description: Date and time for the beginning of statement generation process.
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        finished_on:
+          description: Date and time for finishing the statement generation process.
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        created_on:
+          description: Object creation time
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        updated_on:
+          description: Object last modification time
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        type:
+          type: string
+          description: Statement request type
+        id:
+          type: string
+          format: uuid
+          description: ID of a statement
+    Country:
+      type: string
+      maxLength: 2
+      description: Country code in the ISO 3166-1 alpha-2 format (e.g. 'GB')
+    Currency:
+      type: string
+      maxLength: 3
+      description: Currency code in the ISO 4217 standard (e.g. 'MYR').
+    Email:
+      type: string
+      format: email
+      maxLength: 254
+      example: customer@example.com
+      description: Email address
+    Event:
+      type: string
+      description: |-
+        Available event types and when they are emitted:
+
+        `purchase.created`: Emitted when a Purchase is created. This happens as a result of POST /purchases/ request executed successfully. Purchase.status will be == `created` in the received payload.
+
+        ---
+
+        `purchase.paid`: Emitted when a Purchase is paid for. Purchase.status will be == `paid`. Happens when a payform is submitted (for a Purchase having `skip_capture == false`) and a successful payment is done by the payer or in case of /capture/ or /charge/ API requests executed successfully.
+
+        ---
+
+        `purchase.payment_failure`: Emitted when payer submits a payment using the payform, but it doesn't complete successfully (e.g. because payer's account balance is insufficient). Purchase.status will be == `error`.
+
+        ---
+
+        `purchase.refund_failure`: Emitted when a pending refund fails.
+
+        ---
+
+        `purchase.capture_failure`: Emitted when a pending capture fails. The Purchase status is expected to be 'hold' after that.
+
+        ---
+
+        `purchase.release_failure`: Emitted when a pending release fails. The Purchase status is expected to be 'hold' after that.
+
+        ---
+
+        `purchase.pending_execute`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_execute` Purchase status. When transaction becomes finalized, a `purchase.paid`, `purchase.hold` or `purchase.payment_failed` callback will be emitted.
+
+        ---
+
+        `purchase.pending_charge`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_charge` Purchase status. When transaction becomes finalized, a `purchase.paid` or `purchase.payment_failed` callback will be emitted.
+
+        ---
+
+        `purchase.cancelled`: Emitted once POST /purchases/{id}/cancel/ request succeeds. It won't be possible to pay for the related Purchase after that. Purchase.status will be == `cancelled`.
+
+        ---
+
+        `purchase.hold`: Emitted when a Purchase having `skip_capture == true` has its payform submitted and "payment" performed successfully. The specified amount of funds will be placed on hold. Purchase.status will be == `hold`.
+
+        ---
+
+        `purchase.captured`: Emitted when the POST /purchases/{id}/capture/ request for a Purchase that previously had the status of `hold` succeeds. Purchase.status will be == `paid`.
+
+        ---
+
+        `purchase.pending_capture`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_capture` Purchase status. When transaction becomes finalized, a `purchase.captured` callback will be emitted.
+
+        ---
+
+        `purchase.released`: Emitted when the POST /purchases/{id}/release/ request for a Purchase that previously had the status of `hold` succeeds. Funds reserved will be released with no payment performed. Purchase.status will be == `released`.
+
+        ---
+
+        `purchase.pending_release`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_release` Purchase status. When transaction becomes finalized, a `purchase.released` callback will be emitted.
+
+        ---
+
+        `purchase.preauthorized`: Emitted when preauthorization scenario (see description for the Purchase.skip_capture field) is executed successfully. Purchase will have a status of `preauthorized`.
+
+        ---
+
+        `purchase.recurring_token_deleted`: Emitted when the POST /purchases/{id}/delete_recurring_token/ request is executed successfully, deleting the recurring token associated with a Purchase. Purchase status will be the same as it were prior to this event.
+
+        ---
+
+        `purchase.pending_recurring_token_delete`: Emitted when token deletion takes longer than expected on the acquirer side. When operation is finalized, a `purchase.recurring_token_deleted` callback will be emitted.
+
+        ---
+
+        `purchase.pending_refund`: Emitted when refund transaction execution takes longer than expected on the acquirer side. See `pending_refund` Purchase status. When refund becomes finalized, a `payment.refunded` callback will ne emitted.
+
+        ---
+
+        `payment.refunded`: Emitted when a Purchase is refunded (as a result of POST /purchases/{id}/capture/ request done successfully or action performed in company's frontoffice system). The returned data will be a Payment object generated as a result of this action. A link to the original Purchase (that will have a status of `refunded`) will be present in the `related_to` field of this Payment.
+
+        ---
+
+        `payout.pending`: Emitted when Payout execution has been initiated and is currently processing.
+
+        ---
+
+        `payout.failed`: Emitted when a Payout processing was completed with an error. Payout.status will be == `error`. Note that payouts can spend up to 3-5 days (depending on the payout provider) in processing after being initiated.
+
+        ---
+
+        `payout.success`: Emitted when a Payout is successfully processed. Payout.status will be == `success`. Note that payouts can spend up to 3-5 days (depending on the payout provider) in processing after being initiated.
+
+        ---
+
+        `payment.charged_back`: Emitted when a Payment is charged_back.
+
+        ---
+
+        `purchase.viewed`: Emitted when a Purchase is viewed.
+
+        ---
+
+        `purchase.settled`: Emitted when a Purchase is settled.
+
+        ---
+
+        `payout.created`: Emitted when a Payout is created.
+
+        ---
+
+        `payment.chargeback_reversed`: Emitted when a Payment chargeback is reversed.
+      enum:
+        - purchase.created
+        - purchase.paid
+        - purchase.payment_failure
+        - purchase.refund_failure
+        - purchase.capture_failure
+        - purchase.release_failure
+        - purchase.pending_execute
+        - purchase.pending_charge
+        - purchase.cancelled
+        - purchase.hold
+        - purchase.captured
+        - purchase.pending_capture
+        - purchase.released
+        - purchase.pending_release
+        - purchase.preauthorized
+        - purchase.pending_recurring_token_delete
+        - purchase.recurring_token_deleted
+        - purchase.pending_refund
+        - payment.refunded
+        - payout.pending
+        - payout.failed
+        - payout.success
+        - payment.charged_back
+        - purchase.viewed
+        - purchase.settled
+        - payout.created
+        - payment.chargeback_reversed
+    FeeSell:
+      allOf:
+        - $ref: '#/components/schemas/MoneyAmount'
+        - description: Fees applied to transactions
+    IssuerDetails:
+      description: Read-only details of issuer company/brand, persisted for invoice display.
+      properties:
+        website:
+          description: Company website URL
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        legal_street_address:
+          allOf:
+            - $ref: '#/components/schemas/StreetAddress'
+        legal_country:
+          allOf:
+            - $ref: '#/components/schemas/Country'
+        legal_city:
+          allOf:
+            - $ref: '#/components/schemas/City'
+        legal_zip_code:
+          allOf:
+            - $ref: '#/components/schemas/ZIPCode'
+        bank_accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/BankAccount'
+        legal_name:
+          type: string
+          maxLength: 128
+          description: Legal name of company
+        brand_name:
+          type: string
+          maxLength: 128
+          description: Company brand name
+        registration_number:
+          type: string
+          maxLength: 32
+          description: Registration number of company
+        tax_number:
+          type: string
+          maxLength: 32
+          description: Tax payer registration number
+    MoneyAmount:
+      type: integer
+      description: 'Amount of money as the smallest indivisible units of the currency. Examples: 100 is equivalent to RM 1.00.'
+    Payment:
+      description: A record of a performed financial transaction. Can be generated e.g. as a result of refund operation.
+      properties:
+        client:
+          allOf:
+            - $ref: '#/components/schemas/ClientDetails'
+        payment:
+          allOf:
+            - $ref: '#/components/schemas/PaymentDetails'
+        transaction_data:
+          type: object
+          description: Payment method-specific, read-only, internal transaction data. Will contain information about all the transaction attempts, if available.
+          nullable: true
+        related_to:
+          type: object
+          nullable: true
+          description: 'The object type and id this object is related to, if any. E.g. refund Payments are related to a specific Purchase, so this object will contain `type: purchase` and `id: <purchase''s id>`.'
+          properties:
+            type:
+              type: string
+              description: Object type identifier
+            id:
+              type: string
+              format: uuid
+        reference_generated:
+          type: string
+          description: If an explicit invoice `reference` wasn't provided, this autogenerated value will be used as a reference instead.
+        reference:
+          type: string
+          description: Invoice reference.
+        account_id:
+          type: string
+          format: uuid
+          description: ID of an account this Payment is associated with.
+        company_id:
+          type: string
+          format: uuid
+        is_test:
+          type: boolean
+          description: Indicates this is a test object, created using test API keys or using the merchant portal while in test mode.
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of user who has created this object in the merchant portal, if applicable.
+        brand_id:
+          type: string
+          format: uuid
+          description: ID of the brand this Payment is associated with.
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+    PaymentDetails:
+      description: Details of an executed transaction. Read-only for `Purchase`s and `Payout`s. For an unpaid `Purchase`, this object will be `null`.
+      properties:
+        is_outgoing:
+          type: boolean
+          default: false
+          description: Denotes the direction of payment, e.g. for a paid Purchase, is granted to be `false`, `true` for payouts.
+        payment_type:
+          type: string
+          enum:
+            - purchase
+            - purchase_charge
+            - payout
+            - bank_payment
+            - refund
+            - custom
+        amount:
+          $ref: '#/components/schemas/MoneyAmount'
+        currency:
+          $ref: '#/components/schemas/Currency'
+        net_amount:
+          x-summary: Net amount of payment with all fees and pending amount subtracted. `amount` = `net_amount` + `fee_amount` + `pending_amount`. The respective account is credited or debited with this value.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        fee_amount:
+          x-summary: Amount of fees for this payment. For a Purchase's PurchaseDetails this is the calculated transaction fee. The same fee is also exposed per-attempt at `transaction_data.attempts[].fee_amount`, alongside `markup_amount` and `processing_fee`. See [Card response metadata](/chip-collect/overview/direct-post/card-response-metadata).
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        pending_amount:
+          x-summary: Pending amount for this payment that will be unfrozen later. If e.g. it's a Purchase's PaymentDetails and a part of transaction sum is withheld to form a rolling reserve, this field will be equal to the frozen part amount.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        pending_unfreeze_on:
+          x-summary: Informs when the `pending_amount` will be unfrozen.
+          nullable: true
+          default: null
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        description:
+          type: string
+          maxLength: 256
+        paid_on:
+          description: When the payment was accepted in (`is_outgoing == false`) or sent from (`is_outgoing == true`) the gateway system.
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        remote_paid_on:
+          description: If available, this field will report the date the payment was sent by the remote payer (`is_outgoing == false`) or when funds arrived to the remote beneficiary (`is_outgoing == true`).
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+    PaymentMethod:
+      type: string
+      description: |-
+        Payment method used to execute the transaction.
+
+        - crypto_coin: Crypto Coin
+        - dnqr: Dnqr
+        - duitnow_qr: Duitnow Qr
+        - fpx: FPX B2C
+        - fpx_b2b1: FPX B2B1
+        - maestro: Maestro payment card
+        - mastercard: Mastercard payment card
+        - mpgs_apple_pay: Apple Pay
+        - mpgs_google_pay: Mpgs Google Pay
+        - razer: Razer
+        - razer_atome: Razer Atome
+        - razer_grabpay: Razer Grabpay
+        - razer_maybankqr: Razer Maybankqr
+        - razer_shopeepay: Razer Shopeepay
+        - razer_tng: Razer Tng
+        - shopee_pay: Shopee Pay
+        - unknown: Payment method could not be determined
+        - visa: Visa payment card
+      enum:
+        - crypto_coin
+        - dnqr
+        - duitnow_qr
+        - fpx
+        - fpx_b2b1
+        - maestro
+        - mastercard
+        - mpgs_apple_pay
+        - mpgs_google_pay
+        - razer
+        - razer_atome
+        - razer_grabpay
+        - razer_maybankqr
+        - razer_shopeepay
+        - razer_tng
+        - shopee_pay
+        - unknown
+        - visa
+    Payout:
+      description: Record of a single payout operation. Has a status attribute, e.g. can be initialized, error or success.
+      required:
+        - payment
+        - client
+        - brand_id
+      properties:
+        payment:
+          required:
+            - amount
+            - currency
+          allOf:
+            - $ref: '#/components/schemas/PaymentDetails'
+        client:
+          required:
+            - email
+            - phone
+          allOf:
+            - $ref: '#/components/schemas/ClientDetails'
+        transaction_data:
+          type: object
+          description: Payment method-specific, read-only transaction data. Will contain information about all the transaction attempts and possible errors, if available.
+          properties:
+            payment_method:
+              type: string
+              description: Payment method used if Payout was paid, blank string otherwise.
+            extra:
+              type: object
+              description: 'Extra data associated with selected payment method if Payout was paid, empty object otherwise. Dataset depends on payment method. E.g. for card payment methods like `visa` or `mastercard` it will contain properties `masked_pan: string`, `three_d_secure: boolean`, `expiry_month: int`, `expiry_year: int` and `cardholder_name: string`.'
+            country:
+              type: string
+              description: Country code (in the ISO 3166-1 alpha-2 format e.g. 'GB') where payment tool used originates (e.g. in case of card payments, the card issuing country). Will be blank if Payout was not paid or country could not be detected.
+            attempts:
+              type: array
+              description: Will contain information about all the payment attempts made and errors encountered, if any.
+              items:
+                type: object
+                properties:
+                  successful:
+                    type: boolean
+                    description: If this attempt was successful or not. For `false`, `error` of this attempt will be not null.
+                  payment_method:
+                    type: string
+                    description: Payment method used for this attempt.
+                  extra:
+                    type: object
+                    description: 'Extra data associated with selected payment method. Dataset depends on payment method. E.g. for card payment methods like `visa` or `mastercard` it will contain properties `masked_pan: string`, `three_d_secure: boolean`, `expiry_month: int`, `expiry_year: int` and `cardholder_name: string`.'
+                  country:
+                    type: string
+                    description: Country code (in the ISO 3166-1 alpha-2 format e.g. 'GB') where payment tool used originates (e.g. in case of card payments, the card issuing country). Will be blank if country could not be detected.
+                  client_ip:
+                    type: string
+                    format: ipv4
+                    description: IP the paying client made this attempt from, if available.
+                  processing_time:
+                    description: Time (if possible, fetched from the remote processing system) this attempt happened at.
+                    allOf:
+                      - $ref: '#/components/schemas/UnixTimestamp'
+                  error:
+                    type: object
+                    nullable: true
+                    description: Code and description of the error encountered. Not-null if `successful` parameter of this attempt is `false`.
+                    properties:
+                      code:
+                        type: string
+                        description: |-
+                          Available error codes:
+
+                          ---
+
+                          `unknown_payment_method`: Unknown payment method
+
+                          ---
+
+                          `invalid_card_number`: Invalid card number
+
+                          ---
+
+                          `invalid_expires`: Invalid expires
+
+                          ---
+
+                          `no_matching_terminal`: No matching terminal
+
+                          ---
+
+                          `blacklisted_tx`: Blacklisted transaction: blocked (general)
+
+                          ---
+
+                          `timeout_3ds_enrollment_check`: 3DS enrollment check timeout
+
+                          ---
+
+                          `timeout_acquirer_status_check`: Timeout checking payment status with acquirer
+
+                          ---
+
+                          `validation_card_details_missing`: Card data field values are missing from request
+
+                          ---
+
+                          `validation_cvc_not_provided`: `cvc` field not provided
+
+                          ---
+
+                          `validation_cardholder_name_not_provided`: `cardholder_name` field not provided
+
+                          ---
+
+                          `validation_card_number_not_provided`: `card_number` field not provided
+
+                          ---
+
+                          `validation_expires_not_provided`: `expires` field not provided
+
+                          ---
+
+                          `validation_cvc_too_long`: `cvc` is too long
+
+                          ---
+
+                          `validation_cardholder_name_too_long`: `cardholder_name` is too long
+
+                          ---
+
+                          `validation_card_number_too_long`: `card_number` is too long
+
+                          ---
+
+                          `validation_expires_too_long`: `expires` is too long
+
+                          ---
+
+                          `validation_cvc_invalid`: `cvc` is invalid
+
+                          ---
+
+                          `validation_cardholder_name_invalid`: `cardholder_name` is too long or invalid
+
+                          ---
+
+                          `validation_card_number_invalid`: `card_number` is invalid
+
+                          ---
+
+                          `validation_expires_invalid`: `expires` is invalid
+
+                          ---
+
+                          `acquirer_connection_error`: Acquirer connection error
+
+                          ---
+
+                          `blacklisted_tx_issuing_country`: Blacklisted transaction: issuing country
+
+                          ---
+
+                          `s2s_not_supported`: Server-to-server flow not supported by processing
+
+                          ---
+
+                          `timeout`: Operation timeout
+
+                          ---
+
+                          `general_transaction_error`: Unrecognized transaction error
+
+                          ---
+
+                          `antifraud_general`: Decline, fraud
+
+                          ---
+
+                          `acquirer_internal_error`: Acquirer internal error
+
+                          ---
+
+                          `exceeds_frequency_limit`: Exceeds frequency limit
+
+                          ---
+
+                          `insufficient_funds`: Insufficient funds
+
+                          ---
+
+                          `purchase_already_paid_for`: Purchase is already paid for
+
+                          ---
+
+                          `issuer_not_available`: Issuer Not Available
+
+                          ---
+
+                          `3ds_authentication_failed`: 3DS authentication failed
+
+                          ---
+
+                          `do_not_honour`: Do not honour (the transaction was declined by the Issuer without definition or reason).
+
+                          ---
+
+                          `exceeds_withdrawal_limit`: Exceeds withdrawal limit
+
+                          ---
+
+                          `exceeded_account_limit`: Exceeded account limit
+
+                          ---
+
+                          `expired_card`: Expired card
+
+                          ---
+
+                          `blacklisted_tx_risk_score`: Blacklisted transaction: risk score
+
+                          ---
+
+                          `transaction_not_supported_or_not_valid_for_card`: The transaction request presented is not supported or is not valid for the card number presented.
+
+                          ---
+
+                          `exceeded_acquirer_refund_amount`: Exceeded refundable amount defined by acquirer
+
+                          ---
+
+                          `transaction_not_permitted_on_terminal`: Transaction not permitted on terminal (this card does not support the type of transaction requested).
+
+                          ---
+
+                          `acquirer_configuration_error`: Acquirer configuration error
+
+                          ---
+
+                          `transaction_not_permitted_to_cardholder`: Transaction not permitted to cardholder
+
+                          ---
+
+                          `invalid_issuer_number`: No such issuer (the Issuer number is not valid).
+
+                          ---
+
+                          `restricted_card`: Restricted card
+
+                          ---
+
+                          `merchant_response_timeout`: Timeout of merchant response exceeded
+
+                          ---
+
+                          `reconcile_error`: Reconciliation error
+
+                          ---
+
+                          `lost_card`: Lost card
+
+                          ---
+
+                          `stolen_card`: Stolen card
+
+                          ---
+
+                          `invalid_amount`: Invalid amount
+
+                          ---
+
+                          `re_enter_transaction`: Re enter transaction
+
+                          ---
+
+                          `security_violation`: Security violation
+
+                          ---
+
+                          `partial_forbidden`: Intervene, bank approval required for partial amount
+
+                          ---
+
+                          `suspected_fraud`: Decline, suspected fraud
+
+                          ---
+
+                          `acquirer_routing_error`: Acquirer routing error
+
+                          ---
+
+                          `payment_rejected_other_reason`: Payment rejected (other reason)
+
+                          ---
+
+                          `authorization_failed`: Payment authorization failed
+
+                          ---
+
+                          `acquirer_error_cs`: Internal acquirer error. Please, contact support.
+
+                          ---
+
+                          `decline_irregular_transaction_pattern`: Declined by acquirer - irregular transaction pattern, please contact support
+
+                          ---
+
+                          `invalid_card_data`: Invalid card data provided
+
+                          ---
+
+                          `exceeded_terminal_limit`: Exceeded terminal limit
+
+                          ---
+
+                          `recurring_token_expired`: recurring token expired
+
+                          ---
+
+                          `soft_decline_contact_support`: Soft Decline - Please contact support for manual settlement of this purchase
+
+                          ---
+
+                          `payment_method_details_missing`: Missing payment_method_details
+                      message:
+                        type: string
+                        description: Verbose name and explanation of this error.
+        reference_generated:
+          type: string
+          description: If you don't provide an invoice `reference` yourself, this autogenerated value will be used as a reference instead.
+        reference:
+          type: string
+          maxLength: 128
+          description: Payout reference.
+        status:
+          $ref: '#/components/schemas/PayoutStatus'
+        status_history:
+          type: array
+          description: History of status changes, latest last.
+          items:
+            properties:
+              status:
+                $ref: '#/components/schemas/PayoutStatus'
+              timestamp:
+                $ref: '#/components/schemas/UnixTimestamp'
+        sender_name:
+          type: string
+          maxLength: 40
+          description: Name of payout sender.
+        recipient_card_country:
+          type: string
+          description: Recipient's card's registration country. Country code in the ISO 3166-1 alpha-2 format (e.g. `GB`).
+        recipient_card_brand:
+          type: string
+          description: Recipient's card's brand, e.g. `visa` or `mastercard`.
+        execution_url:
+          type: string
+          description: URL that must be used for payout execution. See details in description.
+        brand_id:
+          type: string
+          format: uuid
+          description: ID of the brand to create this Payout for. You can copy it down in the API section, see the "specify the ID of the Brand" link in answer to "How to setup payments on website or in mobile app?".
+        company_id:
+          type: string
+          format: uuid
+        is_test:
+          type: boolean
+          description: Indicates this is a test object, created using test API keys or using the merchant portal while in test mode.
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of user who has created this object in the merchant portal, if applicable.
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+    PayoutStatus:
+      type: string
+      description: |-
+        `Payout` status. Can have the following values:
+
+        `initialized`: `Payout` was created, but not executed. Initial status to new `Payout`s.
+
+        ---
+
+        `pending`: `Payout`'s execution is currently pending
+
+        ---
+
+        `error`: An error has occurred during the execution. Execution can be attempted again.
+
+        ---
+
+        `success`: `Payout` was executed successfully.
+      default: initialized
+      enum:
+        - initialized
+        - pending
+        - error
+        - success
+    PeriodUnits:
+      type: string
+      enum:
+        - days
+        - weeks
+        - months
+    Phone:
+      type: string
+      maxLength: 32
+      description: Phone number in the `<country_code> <number>` format
+      example: +60 123456789
+    Product:
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          maxLength: 256
+          description: Product name
+        quantity:
+          type: string
+          minimum: 0
+          default: 1
+          description: Quantity of these products in invoice
+        price:
+          minimum: 0
+          description: |
+            You can use this field or `total_override` with a value of 0 to activate the preauthorization scenario. See the description of the `Purchase.skip_capture` field.
+
+            This field is an integer, and the value should be in cents. Setting the value to 100 is equivalent to RM 1.00.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        discount:
+          minimum: 0
+          description: Total discount per this product in invoice
+          default: 0
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        tax_percent:
+          type: string
+          minimum: 0
+          maximum: 100
+          default: 0
+          description: Percent of tax added to the price of this product
+        category:
+          type: string
+          maxLength: 256
+          description: Product category
+        total_price_override:
+          nullable: true
+          description: If specified and not null, will override the total price for this product.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+    PublicKey:
+      type: string
+      description: PEM-encoded RSA public key for authenticating webhook or callback payloads
+      example: |-
+        -----BEGIN PUBLIC KEY-----
+        MIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEA6gLlBKxCB5dxPJbinCzl
+        hOfKSgQtOWQQBxmnWIkEVUbqhpnqr3xNYiAvDyMUxYUwuzN44eHO+mR9MZWcSx3c
+        bXmKa3gsOzR6GdcOxMGaVxvfje+fujCAlCtO1BP+A9/FS3KcPgCYG1wtAPwA5IAf
+        HylL3TsUVIJQFBgiBr6N4Bgapr9eloaFfeYIBRsXmxPKAMJivqxYpLh0V3N4ZFd5
+        TGqSEAa4b1ULDr6p0sB2L3QikTdsF0zp03zNceKA6fXDOzD0xWtg9buXvyKwePK4
+        M2kcnWBNfsWghrdg0fG3O9bmkaS1oEXydrmJfuiI8h6a64J/1nzooi2yLC9D6Ta0
+        S63bbuAHymnQtiNuV7Ixp6IoTGFaS88aTiHaP8rdyWV8JTDFx0qeDzyaGWiYGwEF
+        mj/buHCEcRhoajbGkPhYA4YEdn4jy1wZhEr2OMdBPM7mPPI0Hy3hcNJVMVVlrpHe
+        IltQATpjlNaJMlRPjbcaiW7dsO3BuF9ZOMGksSOnyYm/AgMBAAE=
+        -----END PUBLIC KEY-----
+    Purchase:
+      description: Record of a single purchase operation, either a transaction originating from e-commerce integration or invoice sent. Has a status attribute, e.g. can be `created`, `paid` or `refunded`.
+      required:
+        - client
+        - purchase
+        - brand_id
+      properties:
+        client:
+          description: Either this or `.client_id` is required.
+          allOf:
+            - $ref: '#/components/schemas/ClientDetails'
+        purchase:
+          $ref: '#/components/schemas/PurchaseDetails'
+        payment:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/PaymentDetails'
+        issuer_details:
+          allOf:
+            - $ref: '#/components/schemas/IssuerDetails'
+        transaction_data:
+          type: object
+          description: Payment method-specific, read-only transaction data. Will contain information about all the transaction attempts and possible errors, if available.
+          properties:
+            payment_method:
+              type: string
+              description: Payment method used if Purchase was paid, blank string otherwise.
+            flow:
+              $ref: '#/components/schemas/TransactionFlow'
+            processing_tx_id:
+              type: string
+              description: ID of the transaction in the processing system.
+            extra:
+              type: object
+              description: 'Extra data associated with the selected payment method, if the Purchase was paid; an empty object otherwise. The dataset depends on the payment method. For card payment methods (`visa`, `mastercard`), the following fields are present when reported by the acquirer: `card_type: string` (funding type — `credit`, `debit`, or `prepaid`; may be missing), `card_brand: string` (card scheme; same as `payment_method` for cards), `masked_pan: string` (last 4 digits of the PAN; the BIN is not included), `expiry_month: int`, `expiry_year: int` (2-digit), `cardholder_name: string`, `card_issuer: string` (issuing bank), `card_issuer_country: string` (ISO 3166-1 alpha-2), `card_category: string` (e.g. `PERSONAL`, `CORPORATE`), `RRN: string` (Retrieval Reference Number), `authorization_approval_code: string`, `descriptor: string` (statement descriptor), and `three_d_secure: boolean`. See [Card response metadata](/chip-collect/overview/direct-post/card-response-metadata) for the full reference.'
+            country:
+              type: string
+              description: Country code (in the ISO 3166-1 alpha-2 format e.g. 'GB') where payment tool used originates (e.g. in case of card payments, the card issuing country). Will be blank if Purchase was not paid or country could not be detected.
+            attempts:
+              type: array
+              description: Will contain information about all the payment attempts made and errors encountered, if any.
+              items:
+                type: object
+                properties:
+                  type:
+                    type: string
+                    description: Type of action attempted
+                    enum:
+                      - execute
+                      - authorize
+                      - release
+                      - capture
+                      - recurring_execute
+                      - delete_recurring_token
+                      - refund
+                  successful:
+                    type: boolean
+                    description: If this attempt was successful or not. For `false`, `error` of this attempt will be not null.
+                  payment_method:
+                    type: string
+                    description: Payment method used for this attempt.
+                  extra:
+                    type: object
+                    description: 'Extra data associated with the selected payment method for this attempt. The dataset depends on the payment method. For card payment methods (`visa`, `mastercard`), the same field set as `transaction_data.extra` is present: `card_type`, `card_brand`, `masked_pan`, `expiry_month`, `expiry_year`, `cardholder_name`, `card_issuer`, `card_issuer_country`, `card_category`, `RRN`, `authorization_approval_code`, `descriptor`, and `three_d_secure`. See [Card response metadata](/chip-collect/overview/direct-post/card-response-metadata) for the full reference.'
+                  country:
+                    type: string
+                    description: Country code (in the ISO 3166-1 alpha-2 format e.g. 'GB') where payment tool used originates (e.g. in case of card payments, the card issuing country). Will be blank if country could not be detected.
+                  client_ip:
+                    type: string
+                    format: ipv4
+                    description: IP the paying client made this attempt from, if available.
+                  processing_time:
+                    description: Time (if possible, fetched from the remote processing system) this attempt happened at.
+                    allOf:
+                      - $ref: '#/components/schemas/UnixTimestamp'
+                  error:
+                    type: object
+                    nullable: true
+                    description: Code and description of the error encountered. Not-null if `successful` parameter of this attempt is `false`.
+                    properties:
+                      code:
+                        type: string
+                        description: |-
+                          Available error codes:
+
+                          ---
+
+                          `unknown_payment_method`: Unknown payment method
+
+                          ---
+
+                          `invalid_card_number`: Invalid card number
+
+                          ---
+
+                          `invalid_expires`: Invalid expires
+
+                          ---
+
+                          `no_matching_terminal`: No matching terminal
+
+                          ---
+
+                          `blacklisted_tx`: Blacklisted transaction: blocked (general)
+
+                          ---
+
+                          `timeout_3ds_enrollment_check`: 3DS enrollment check timeout
+
+                          ---
+
+                          `timeout_acquirer_status_check`: Timeout checking payment status with acquirer
+
+                          ---
+
+                          `validation_card_details_missing`: Card data field values are missing from request
+
+                          ---
+
+                          `validation_cvc_not_provided`: `cvc` field not provided
+
+                          ---
+
+                          `validation_cardholder_name_not_provided`: `cardholder_name` field not provided
+
+                          ---
+
+                          `validation_card_number_not_provided`: `card_number` field not provided
+
+                          ---
+
+                          `validation_expires_not_provided`: `expires` field not provided
+
+                          ---
+
+                          `validation_cvc_too_long`: `cvc` is too long
+
+                          ---
+
+                          `validation_cardholder_name_too_long`: `cardholder_name` is too long
+
+                          ---
+
+                          `validation_card_number_too_long`: `card_number` is too long
+
+                          ---
+
+                          `validation_expires_too_long`: `expires` is too long
+
+                          ---
+
+                          `validation_cvc_invalid`: `cvc` is invalid
+
+                          ---
+
+                          `validation_cardholder_name_invalid`: `cardholder_name` is too long or invalid
+
+                          ---
+
+                          `validation_card_number_invalid`: `card_number` is invalid
+
+                          ---
+
+                          `validation_expires_invalid`: `expires` is invalid
+
+                          ---
+
+                          `acquirer_connection_error`: Acquirer connection error
+
+                          ---
+
+                          `blacklisted_tx_issuing_country`: Blacklisted transaction: issuing country
+
+                          ---
+
+                          `s2s_not_supported`: Server-to-server flow not supported by processing
+
+                          ---
+
+                          `timeout`: Operation timeout
+
+                          ---
+
+                          `general_transaction_error`: Unrecognized transaction error
+
+                          ---
+
+                          `antifraud_general`: Decline, fraud
+
+                          ---
+
+                          `acquirer_internal_error`: Acquirer internal error
+
+                          ---
+
+                          `exceeds_frequency_limit`: Exceeds frequency limit
+
+                          ---
+
+                          `insufficient_funds`: Insufficient funds
+
+                          ---
+
+                          `purchase_already_paid_for`: Purchase is already paid for
+
+                          ---
+
+                          `issuer_not_available`: Issuer Not Available
+
+                          ---
+
+                          `3ds_authentication_failed`: 3DS authentication failed
+
+                          ---
+
+                          `do_not_honour`: Do not honour (the transaction was declined by the Issuer without definition or reason).
+
+                          ---
+
+                          `exceeds_withdrawal_limit`: Exceeds withdrawal limit
+
+                          ---
+
+                          `exceeded_account_limit`: Exceeded account limit
+
+                          ---
+
+                          `expired_card`: Expired card
+
+                          ---
+
+                          `blacklisted_tx_risk_score`: Blacklisted transaction: risk score
+
+                          ---
+
+                          `transaction_not_supported_or_not_valid_for_card`: The transaction request presented is not supported or is not valid for the card number presented.
+
+                          ---
+
+                          `exceeded_acquirer_refund_amount`: Exceeded refundable amount defined by acquirer
+
+                          ---
+
+                          `transaction_not_permitted_on_terminal`: Transaction not permitted on terminal (this card does not support the type of transaction requested).
+
+                          ---
+
+                          `acquirer_configuration_error`: Acquirer configuration error
+
+                          ---
+
+                          `transaction_not_permitted_to_cardholder`: Transaction not permitted to cardholder
+
+                          ---
+
+                          `invalid_issuer_number`: No such issuer (the Issuer number is not valid).
+
+                          ---
+
+                          `restricted_card`: Restricted card
+
+                          ---
+
+                          `merchant_response_timeout`: Timeout of merchant response exceeded
+
+                          ---
+
+                          `reconcile_error`: Reconciliation error
+
+                          ---
+
+                          `lost_card`: Lost card
+
+                          ---
+
+                          `stolen_card`: Stolen card
+
+                          ---
+
+                          `invalid_amount`: Invalid amount
+
+                          ---
+
+                          `re_enter_transaction`: Re enter transaction
+
+                          ---
+
+                          `security_violation`: Security violation
+
+                          ---
+
+                          `partial_forbidden`: Intervene, bank approval required for partial amount
+
+                          ---
+
+                          `suspected_fraud`: Decline, suspected fraud
+
+                          ---
+
+                          `acquirer_routing_error`: Acquirer routing error
+
+                          ---
+
+                          `payment_rejected_other_reason`: Payment rejected (other reason)
+
+                          ---
+
+                          `authorization_failed`: Payment authorization failed
+
+                          ---
+
+                          `acquirer_error_cs`: Internal acquirer error. Please, contact support.
+
+                          ---
+
+                          `decline_irregular_transaction_pattern`: Declined by acquirer - irregular transaction pattern, please contact support
+
+                          ---
+
+                          `invalid_card_data`: Invalid card data provided
+
+                          ---
+
+                          `exceeded_terminal_limit`: Exceeded terminal limit
+
+                          ---
+
+                          `recurring_token_expired`: recurring token expired
+
+                          ---
+
+                          `soft_decline_contact_support`: Soft Decline - Please contact support for manual settlement of this purchase
+
+                          ---
+
+                          `payment_method_details_missing`: Missing payment_method_details
+                      message:
+                        type: string
+                        description: Verbose name and explanation of this error.
+                  fee_amount:
+                    type: integer
+                    description: Fee charged for this attempt, in the smallest currency unit. For a single-attempt `paid` Purchase, this equals the top-level `payment.fee_amount`.
+                  markup_amount:
+                    type: integer
+                    description: Markup (if any) on top of the processor fee for this attempt, in the smallest currency unit.
+                  processing_fee:
+                    type: integer
+                    description: Raw processor fee for this attempt, before any markup, in the smallest currency unit.
+        status:
+          $ref: '#/components/schemas/PurchaseStatus'
+        status_history:
+          type: array
+          description: History of status changes, latest last. Might contain entry about a related object, e.g. status change to `refunded` will contain a reference to the refund Payment.
+          items:
+            properties:
+              status:
+                $ref: '#/components/schemas/PurchaseStatus'
+              timestamp:
+                $ref: '#/components/schemas/UnixTimestamp'
+              related_object:
+                nullable: true
+                properties:
+                  type:
+                    type: string
+                  id:
+                    type: string
+                    format: uuid
+        viewed_on:
+          description: Time the payment form or invoice page was first viewed on
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        company_id:
+          type: string
+          format: uuid
+        is_test:
+          type: boolean
+          description: Indicates this is a test object, created using test API keys or using the merchant portal while in test mode.
+        user_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of user who has created this object in the merchant portal, if applicable.
+        brand_id:
+          type: string
+          format: uuid
+          description: "ID of the brand to create this Purchase for. Once registered, You can obtain at: https://portal.chip-in.asia/collect/developers/brands"
+        client_id:
+          type: string
+          format: uuid
+          nullable: true
+          default: null
+          description: |-
+            ID of a Client object used to initialize ClientDetails (`.client`) of this Purchase. Either this field or specifying `.client` object is required (you can only specify a value for one of these fields). All `ClientDetails` fields from the Client will be copied to `.client` object. Note that editing Client object won't change the respective fields in already created Purchases.
+
+            If you specify this field and your client saves a `recurring_token` (for instance, by saving their card), the respective ClientRecurringToken will be created. See the `/clients/{id}/recurring_tokens/` endpoint.
+        send_receipt:
+          type: boolean
+          default: false
+          description: Whether to send receipt email for this Purchase when it's paid.
+        is_recurring_token:
+          type: boolean
+          description: 'Indicates whether a recurring token (e.g. for card payments - card token) was saved for this Purchase. If this is `true`, the `id` of this Purchase can be used as a `recurring_token` in `POST /purchases/{id}/charge/`, enabling you to pay for that Purchase using the same method (same card for card payments) that this one was paid with. This field answers "can this Purchase be used as a token", and is NOT the same as `recurring_token` below, which answers "was this Purchase paid using a token". A Purchase that is merely `paid` does not necessarily have this set to `true` - a token is saved only when `remember_card=on` (with `direct_post`) or `force_recurring=true` (hosted checkout) was used and the payment is completed.'
+        recurring_token:
+          type: string
+          format: uuid
+          nullable: true
+          description: 'ID of a recurring token (Purchase having `is_recurring_token == true`) that was used to pay this Purchase, if any. It is `null` when this Purchase was paid with a newly entered payment method rather than a saved token. A Purchase paid by a token therefore has this field set and `is_recurring_token` false, because it was billed with an existing token instead of creating a new one. This field answers "was this Purchase paid using a token", and is NOT the same as `is_recurring_token` above, which answers "can this Purchase be used as a token".'
+        skip_capture:
+          type: boolean
+          default: false
+          description: |-
+            Card payment-specific: if set to true, only authorize the payment (place funds on hold) when payer enters his card data and pays. This option requires a `POST /capture/` or `POST /release/` later on.
+
+            You can use the preauthorization feature if you set this parameter to true and make the Purchase with `purchase.total == 0` (this can be achieved by providing a list of `purchase.products` with a total `price` of 0, or simply overriding the total using `purchase.total_override` to 0). The resulting Purchase can only be "paid" by the client (only cardholder data verification will happen, without a financial transaction) by card and will enforce saving the client's card. When this happens, the Purchase will have `status` of `preauthorized` and the `purchase.preauthorized` webhook callbacks will be emitted.
+
+            Trying to use skip_capture (or preauthorization) without any payment methods that support the respective actions (this can be a result of `payment_method_whitelist` field being used) will result in an error on Purchase creation request step. Please check the `GET /payment_methods/` response for your desired Purchase parameters and/or consult with your account manager.
+        force_recurring:
+          type: boolean
+          default: false
+          description: If the used payment method supports recurring payment functionality, forces the customer's payment credentials to be saved for possible later recurring payments, without giving the customer a choice in the matter.
+        reference_generated:
+          type: string
+          description: If you don't provide an invoice `reference` yourself, this autogenerated value will be used as a reference instead.
+        reference:
+          type: string
+          description: Invoice reference.
+        notes:
+          type: string
+          description: Add any additional information.
+        issued:
+          description: Value for 'Invoice issued' field. Display-only, does not get validated. If not provided, will be generated as the current date in `purchase.timezone` at the moment of Purchase's creation.
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/Timestamp'
+        due:
+          description: When the payment is due for this Purchase. The default behaviour is to still allow payment once this moment passes. To change that, set `purchase.due_strict` to true.
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestamp'
+        refund_availability:
+          description: Specifies, if the purchase can be refunded fully and partially, only fully, partially or not at all.
+          type: string
+          enum:
+            - all
+            - full_only
+            - partial_only
+            - pis_all
+            - pis_partial
+            - none
+        refundable_amount:
+          x-summary: Amount available for refunds.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        currency_conversion:
+          type: object
+          nullable: true
+          description: This object is present when automatic currency conversion has occurred upon creation of the purchase. Purchase's original currency was changed and its original amount was converted using the exchange rate shown here.
+          properties:
+            original_currency:
+              type: string
+              description: Currency this purchase was initially created with
+            original_amount:
+              type: integer
+              description: Amount this purchase was initially created with
+            exchange_rate:
+              type: number
+              description: Exchanged rate that was used for currency conversion. Original amount was multiplied by this number to calculate the new purchase amount.
+        payment_method_whitelist:
+          type: array
+          minItems: 1
+          description: |-
+            An optional whitelist of payment methods available for this purchase. Use this field if you want to restrict your payer to pay using only one or several specific methods.
+
+            Using this field and at the same time trying to use specific capabilities of a Purchase (e.g. `skip_capture` or charging it using a saved card token using `POST /purchases/{id}/charge/`) can cause a situation when there are no payment methods available for paying this Purchase. This will cause a validation error on Purchase creation. Please check the `GET /payment_methods/` response for your desired Purchase parameters and/or consult with your account manager.
+          items:
+            type: string
+            enum:
+              - fpx
+              - fpx_b2b1
+              - crypto_coin
+              - dnqr
+              - duitnow_qr
+              - maestro
+              - mastercard
+              - mpgs_apple_pay
+              - mpgs_google_pay
+              - razer_atome
+              - razer_grabpay
+              - razer_maybankqr
+              - razer_shopeepay
+              - razer_tng
+              - shopee_pay
+              - visa
+            description: Payment method name as returned by `GET /payment_methods/`.
+        success_redirect:
+          description: When Purchase is paid for successfully, your customer will be taken to this link. Otherwise a standard screen will be displayed.
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        failure_redirect:
+          description: If there's a payment failure for this Purchase, your customer will be taken to this link. Otherwise a standard screen will be displayed.
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        cancel_redirect:
+          description: |-
+            If you provide this link, customer will have an option to go to it instead of making payment (a button with 'Return to seller' text will be displayed). Can't contain any of the following symbols: `<>'"` .
+
+            Be aware that this does not cancel the payment (e.g. does not do the equivalent of doing the `POST /purchases/{id}/cancel/` request); the client will still be able to press 'Back' in the browser and perform the payment.
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        success_callback:
+          description: |-
+            When Purchase is paid for successfully, the `success_callback` URL will receive a POST request with the Purchase object's data in body.
+
+            The URL must not contain an explicit port. Only the scheme's default port is usable (`http` on 80, `https` on 443), and a URL that spells the port out is rejected with `webhooks_callback_port` - including `:80` and `:443`, which name the default port. Only the `http` and `https` schemes are supported; any other scheme is rejected with `webhooks_callback_scheme`. This restriction applies to `success_callback` and `Webhook.callback` only - see `success_redirect`, `failure_redirect` and `cancel_redirect`, which accept a custom port.
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        creator_agent:
+          type: string
+          maxLength: 32
+          description: Identification of software (e.g. an ecommerce module and version) used to create this purchase, if any.
+        platform:
+          type: string
+          enum:
+            - web
+            - api
+            - ios
+            - android
+            - macos
+            - windows
+          description: Platform this Purchase was created on.
+        product:
+          type: string
+          enum:
+            - purchases
+          description: Defines which gateway product was used to create this Purchase.
+        created_from_ip:
+          type: string
+          format: ipv4
+          description: IP the Purchase was created from.
+        invoice_url:
+          description: URL you will be able to access invoice for this Purchase at, if applicable
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        checkout_url:
+          description: |-
+            URL you will be able to access the checkout for this Purchase at, if payment for it is possible. When building integrations, redirect the customer to this URL once purchase is created.
+
+            You can add the `preferred` query arg to the `checkout_url` in order to force redirect the client straight to the checkout for a specific payment method (`?preferred={payment_method}`, where `{payment_method}` is the payment method name as returned by `GET /payment_methods/`). If this method redirects the client further to a different system and no customer data entry is needed on gateway's checkout page, your payer will be taken straight to that page (not seeing the gateway's checkout UI); otherwise, he will see the payment method entry UI on the gateway checkout page.
+
+            You can also add the `active` query arg to the `checkout_url` in order to pre-select a specific payment method on the default payment page without skipping it (`?active={payment_method}`, where `{payment_method}` is the payment method name as returned by `GET /payment_methods/`). Unlike `?preferred={payment_method}`, the customer still sees the default payment page and can switch to a different method. The `?active=` parameter does not restrict which methods are available.
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        direct_post_url:
+          description: |-
+            URL that can be used for Direct Post integration.
+
+            This functionality is activated for each merchant account individually. Please consult with your account manager if you wish to use it.
+
+            Will be null if payment for purchase is not possible, `purchase.request_client_details` isn't empty or success_redirect/failure_redirect are not provided - these all break the usual direct post flow.
+
+            To leverage Direct Post checkout, create a `<form>` having `method="POST" action="<direct_post_url value>"` and include the following inputs:
+
+            `cardholder_name: text, Latin letters only (space and apostrophe (`'`), dot (`.`), dash (`-`) symbols are also allowed), max 30 chars`
+
+            ---
+
+            `card_number: text, digits only, no whitespace, max 19 chars`
+
+            ---
+
+            `expires: text in 'MM/YY' format, digits and a slash only /^\d{2}\/\d{2}$/, max 5 chars`
+
+            ---
+
+            `cvc: numeric string of 3 or 4 digits`
+
+            ---
+
+            `remember_card: checkbox with value="on" (the default when omitting value attribute of a checkbox input)`
+
+            Ensure the validation as listed above! Validation errors will be treated as payment failures. Obviously, you can style this form to fit in with the rest of your website.
+
+            When your payer submits this form (don't forget a `<button>` or `<input type="submit">`), he will POST the data directly to the gateway system. There, with minimal interaction with gateway's interface, payment will be processed. In the process, your customer might get redirected to authenticate against 3D Secure system of his card issuer bank (this depends on settings of his card and your account). After that, payer will be taken to `success_redirect` or `failure_redirect` depending on the payment result (as in the usual payment flow).
+
+            Be aware, though, that while not having to process card data allows you not to comply with the entirety of PCI DSS SAQ D requirements, having sensitive cardholder data entry form on your website does raise your PCI DSS scope to SAQ A-EP. Contact your account manager to receive advisory and assistance for this integration method.
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/URL'
+        marked_as_paid:
+          type: boolean
+          description: True if a purchase was manually marked as paid.
+        order_id:
+          type: string
+          description: ID of corresponding order.
+        upsell_campaigns:
+          type: array
+          description: Upsell campaigns associated with this purchase.
+          items:
+            type: object
+        referral_campaign_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: ID of the referral campaign.
+        referral_code:
+          type: string
+          nullable: true
+          description: Referral code used.
+        referral_code_details:
+          type: object
+          nullable: true
+          description: Details of the referral code.
+        referral_code_generated:
+          type: string
+          nullable: true
+          description: Generated referral code.
+        retain_level_details:
+          type: object
+          nullable: true
+          description: Retain level details.
+        can_retrieve:
+          type: boolean
+          description: Indicates if the purchase can be retrieved.
+        can_chargeback:
+          type: boolean
+          description: Indicates if the purchase can be charged back.
+        can_reverse_chargeback:
+          type: boolean
+          description: Indicates if the purchase can have its chargeback reversed.
+        tags:
+          type: array
+          description: Tags associated with the purchase.
+          items:
+            type: string
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+    PurchaseDetails:
+      description: Core information about the Purchase, including the products, total, currency and invoice fields.
+      required:
+        - products
+      properties:
+        currency:
+          $ref: '#/components/schemas/Currency'
+        products:
+          type: array
+          minItems: 1
+          description: Line items of the invoice. In case of a transaction with no invoice sent, specify a single Product forming the cost of transaction.
+          items:
+            $ref: '#/components/schemas/Product'
+        total:
+          x-summary: Calculated from `products`. You don't need to specify it.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        language:
+          x-summary: Language of invoice/payment forms.
+          type: string
+          maxLength: 2
+          description: Language code in the ISO 639-1 format (e.g. 'en')
+          default: Default value is controlled in Company -> Brand section of merchant portal separately per each Brand used (default value, if no changes are made, is `en`). Brand to be used with corresponding Purchase specified using brand_id.
+        notes:
+          x-summary: Invoice notes.
+          type: string
+          maxLength: 10000
+        debt:
+          default: 0
+          x-summary: Will be added/subtracted to the invoice total, if present.
+          x-minValue: '`total` * -1'
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        subtotal_override:
+          default: null
+          nullable: true
+          x-summary: If specified and not null, will override the grand subtotal. This field is visual-only, setting it won't impact `total`.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        total_tax_override:
+          default: null
+          nullable: true
+          x-summary: If specified and not null, will override the total tax. This field is visual-only, setting it won't impact `total`.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        total_discount_override:
+          default: null
+          nullable: true
+          x-summary: If specified and not null, will override the total discount. This field is visual-only, setting it won't impact `total`.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        total_override:
+          default: null
+          nullable: true
+          x-summary: |-
+            If specified and not null, will override the total (unlike the rest of `total_*_override` fields).
+
+            You can use this field or `products[].total` with a value of 0 to activate preauthorization scenario. See the description of the `Purchase.skip_capture` field.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        request_client_details:
+          type: array
+          description: |
+            ClientDetails fields to request from the client before the payment. If a value is passed for a field in ClientDetails, it will be automatically removed from this list.
+
+            It is advisable to include `full_name` in request body.
+          default: []
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - email
+              - phone
+              - full_name
+              - personal_code
+              - brand_name
+              - legal_name
+              - registration_number
+              - tax_number
+              - bank_account
+              - bank_code
+              - billing_address
+              - shipping_address
+        timezone:
+          type: string
+          description: Timezone to localize invoice-specific timestamps in, e.g. to display a concrete date for a `due` timestamp on the invoice.
+          example: Europe/Oslo
+        due_strict:
+          type: boolean
+          default: false
+          description: Whether to permit payments when Purchase's `due` has passed. By default those are permitted (and status will be set to `overdue` once `due` moment is passed). If this is set to `true`, it won't be possible to pay for an overdue invoice, and when `due` is passed the Purchase's status will be set to `expired`.
+        email_message:
+          type: string
+          maxLength: 512
+          description: An optional message to display to your customer in invoice email, e.g. "Your invoice for June".
+        shipping_options:
+          type: array
+          description: Shipping options available for this purchase.
+          items:
+            type: object
+        payment_method_details:
+          type: object
+          description: Payment method-specific details.
+        has_upsell_products:
+          type: boolean
+          description: Indicates if the purchase has upsell products.
+        single_attempt:
+          type: boolean
+          description: If true, only a single payment attempt is allowed.
+        metadata:
+          type: object
+          description: Metadata associated with the purchase.
+    PurchaseStatus:
+      type: string
+      description: |-
+        Purchase status. Can have the following values:
+
+        - `created`: Purchase was created using POST /purchases/ or the merchant portal.
+        - `sent`: Invoice for this purchase was sent over email.
+        - `viewed`: The client has viewed the payform and/or invoice details for this purchase.
+        - `error`: There was a failed payment attempt for this purchase because of a problem with customer's payment instrument (e.g. low account balance). You can analyze the `.transaction_data` to get information on reason of the failure.
+        - `cancelled`: Purchase was cancelled using the `POST /purchases/{id}/cancel/` endpoint; payment for it is not possible anymore.
+        - `overdue`: Purchase is past its `.due`, but payment for it is still possible (unless e.g. POST /purchases/{id}/cancel/ is used).
+        - `expired`: Purchase is past its `.due` and payment for it isn't possible anymore (as a result of `purchase.due_strict` having been set to `true`).
+        - `blocked`: Like `error`, but payment attempt was blocked due to fraud scoring below threshold or other security checks not passing.
+        - `hold`: Funds are on hold for this Purchase (`.skip_capture: true` was used). You can now run `POST /capture/` or `POST /release/` for this payment to capture the payment or return funds to the client, respectively.
+        - `released`: This Purchase previously had `hold` status, but funds have since been released and returned to the customer's card.
+        - `pending_release`: release of funds for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/release/` operation when it takes longer than expected to process on the acquirer side.
+        - `pending_capture`: capture of funds for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/capture/` operation when it takes longer than expected to process on the acquirer side.
+        - `preauthorized`: A preauthorization of a card (authorization of card data without a financial transaction) was executed successfully using this Purchase. See the description of the `.skip_capture` field for more details.
+        - `paid`: Purchase was successfully paid for.
+        - `pending_execute`: Payment (or `hold` in case of `skip_capture`) for this Purchase is in processing, but is not finalized on the acquirer side yet.
+        - `pending_charge`: Recurring payment for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/charge/` operation when it takes longer than expected to process on the acquirer side.
+        - `cleared`: Funds for this Purchase (that was already `paid`) have been transferred for clearing in payment card network. All non-card payment methods and some card payment methods (depends on configuration) don't use this status and Purchases paid using them stay in `paid` status instead.
+        - `settled`: Settlement was issued for funds for this Purchase (that was already `paid`). All non-card payment methods and some card payment methods (depends on configuration) don't use this status and Purchases paid using them stay in `paid` status instead.
+        - `chargeback`: A chargeback was registered for this, previously paid, Purchase.
+        - `pending_refund`: a refund (full or partial) for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/refund/` operation when it takes longer than expected to process on the acquirer side.
+        - `refunded`: This Purchase had its payment refunded, fully or partially.
+      default: created
+      enum:
+        - created
+        - sent
+        - viewed
+        - error
+        - cancelled
+        - overdue
+        - expired
+        - blocked
+        - hold
+        - released
+        - pending_release
+        - pending_capture
+        - preauthorized
+        - paid
+        - pending_execute
+        - pending_charge
+        - cleared
+        - settled
+        - chargeback
+        - pending_refund
+        - refunded
+    State:
+      type: string
+      maxLength: 128
+      description: State code
+    StreetAddress:
+      type: string
+      maxLength: 128
+      description: Street house number and flat address where applicable
+    Timestamp:
+      type: string
+      format: date
+      example: '2020-04-30'
+    TransactionFlow:
+      type: string
+      description: |-
+        Flow or pathway used to initiate or execute a transaction.
+
+        - api: transaction initiated via the merchant API
+        - direct_post: transaction executed via direct POST request
+        - fluentforms: transaction initialized from Fluent Forms integration
+        - formidableforms: transaction initialized from Formidable Forms integration
+        - givewp: transaction initialized from GiveWP integration
+        - gravityforms: transaction initialized from Gravity Forms integration
+        - hostbill: transaction initialized from Hostbill integration
+        - import: transaction imported from external system
+        - link: transaction initiated via shared link
+        - magento: transaction initialized from Magento module
+        - opencart: transaction initialized from OpenCart module
+        - payform: transaction executed via the gateway payform
+        - paymattic: transaction initialized from Paymattic integration
+        - prestashop: transaction initialized from PrestaShop module
+        - server_to_server: transaction executed via server to server API
+        - shopify: transaction initialized from Shopify integration
+        - web_office: transaction initiated via the merchant portal
+        - whmcs: transaction initialized from WHMCS integration
+        - woocommerce: transaction initialized from WooCommerce module
+        - wpcharitable: transaction initialized from WPCharitable integration
+      enum:
+        - api
+        - direct_post
+        - fluentforms
+        - formidableforms
+        - givewp
+        - gravityforms
+        - hostbill
+        - import
+        - link
+        - magento
+        - opencart
+        - payform
+        - paymattic
+        - prestashop
+        - server_to_server
+        - shopify
+        - web_office
+        - whmcs
+        - woocommerce
+        - wpcharitable
+    TransactionProduct:
+      type: string
+      description: |-
+        Product category the transaction belongs to.
+
+        - bank_payment: bank_payment (Payment.payment_type == "bank_payment")
+        - custom_payment: custom_payment (Payment.payment_type == "custom_payment")
+        - invoice: Purchase created as an invoice through the merchant portal
+        - purchase: Purchase created through the merchant API (Purchase.product == "purchases")
+        - refund: refund (Payment.payment_type == "refund")
+        - subscription: Purchase created using a subscription
+      enum:
+        - bank_payment
+        - custom_payment
+        - invoice
+        - purchase
+        - refund
+        - subscription
+    Turnover:
+      type: object
+      description: Company turnover statistics
+      properties:
+        turnover:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+            - description: Amount transferred through a company
+        fee_sell:
+          $ref: '#/components/schemas/FeeSell'
+        count:
+          type: object
+          description: Transaction counts processed within the selected filters
+          properties:
+            all:
+              type: integer
+              description: Number of transactions that contributed to the turnover. This can be used for calculating average `turnover` and `fee_sell` within the selected filters.
+      example:
+        turnover: 93408
+        fee_sell: 1750
+        count:
+          all: 175
+    TurnoverPair:
+      type: object
+      description: Incoming and outgoing Company turnover statistics
+      properties:
+        incoming:
+          $ref: '#/components/schemas/Turnover'
+        outgoing:
+          $ref: '#/components/schemas/Turnover'
+    URL:
+      type: string
+      format: url
+      maxLength: 500
+    UnixTimestamp:
+      type: integer
+      format: int64
+      example: 1619740800
+    Webhook:
+      allOf:
+        - $ref: '#/components/schemas/BaseModel'
+        - description: |-
+            Defines a webhook rule to an external server. The `callback` URL will receive a POST request with the related object's (e.g. Purchase for `purchase.*` webhooks) data in body when any of the events (see the description of `events` field below) it is configured to listen for are triggered.
+            The payload object will additionally include an "event_type" field to indicate which event type (see the Webhook.events field) triggered the webhook.
+
+             Note that, as well as with the rest of dataset, test and live Webhooks are separate; test webhooks will not handle events caused by live Purchases, and vice-versa.
+          required:
+            - title
+            - events
+            - callback
+          properties:
+            title:
+              type: string
+              maxLength: 100
+              description: Arbitrary title of webhook
+            all_events:
+              type: boolean
+              default: false
+              description: Specifies this webhook should trigger on all event types. Either this or `events` is required.
+            public_key:
+              $ref: '#/components/schemas/PublicKey'
+            events:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              description: List of events to trigger webhook callbacks for. Either this or `all_events` is required.
+              items:
+                $ref: '#/components/schemas/Event'
+            callback:
+              description: |-
+                URL that will receive a POST request with the related object's (e.g. Purchase for `purchase.*` webhooks) data in body when any of the events configured on this webhook are triggered.
+
+                The URL must not contain an explicit port. Only the scheme's default port is usable (`http` on 80, `https` on 443), and a URL that spells the port out is rejected with `webhooks_callback_port` - including `:80` and `:443`. Only the `http` and `https` schemes are supported; any other scheme is rejected with `webhooks_callback_scheme`.
+              allOf:
+                - $ref: '#/components/schemas/URL'
+    ZIPCode:
+      type: string
+      maxLength: 32
+      description: ZIP or postal code
+
+
+    BalanceBody:
+      type: object
+      description: Company Balance in a specific currency
+      properties:
+        gross_balance:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+            - description: Raw Company balance without any fees or reserved amounts subtracted
+        balance:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+            - description: Company gross balance with transaction fees subtracted
+        available_balance:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+            - description: Company balance currently available for withdrawal
+        reserved:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+            - description: Amount protected from withdrawal for an amount of time as per the brand configuration
+        pending_outgoing:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+            - description: Amount currently pending withdrawal
+        fee_sell:
+          $ref: '#/components/schemas/FeeSellBody'
+    BalanceByCurrencyBody:
+      type: object
+      description: Map of currency to company Balance for the specific currency
+      additionalProperties:
+        $ref: '#/components/schemas/BalanceBody'
+      example:
+        MYR:
+          balance: 93408
+          fee_sell: 0
+          reserved: 0
+          gross_balance: 93408
+          pending_outgoing: 0
+          available_balance: 93408
+        RUB:
+          balance: 1111840
+          fee_sell: 360
+          reserved: 0
+          gross_balance: 1112200
+          pending_outgoing: 0
+          available_balance: 1111840
+        USD:
+          balance: -35420
+          fee_sell: 1880
+          reserved: 0
+          gross_balance: -33540
+          pending_outgoing: 0
+          available_balance: -35420
+    BankAccountBody:
+      type: object
+      properties:
+        bank_account:
+          type: string
+          maxLength: 64
+          description: Bank account number (e.g. IBAN)
+        bank_code:
+          type: string
+          maxLength: 32
+          description: SWIFT/BIC code of the bank
+    BaseModelBody:
+      type: object
+    CityBody:
+      type: string
+      maxLength: 128
+      description: City name
+    ClientBody:
+      description: |-
+        Record of a single customer of your business. Create one for each of your clients.
+      allOf:
+        - $ref: '#/components/schemas/BaseModelBody'
+        - $ref: '#/components/schemas/ClientDetailsBody'
+    ClientDetailsBody:
+      description: Contains details about the client of a purchase or payment - the remote payer/fund recipient party.
+      required:
+        - email
+      properties:
+        email:
+          $ref: '#/components/schemas/EmailBody'
+        phone:
+          $ref: '#/components/schemas/PhoneBody'
+        full_name:
+          type: string
+          maxLength: 1000
+          description: Name and surname of client. It is advisable to include `full_name` in request body.
+        personal_code:
+          type: string
+          maxLength: 32
+          description: Personal identification code of client
+        street_address:
+          $ref: '#/components/schemas/StreetAddressBody'
+        country:
+          $ref: '#/components/schemas/CountryBody'
+        city:
+          $ref: '#/components/schemas/CityBody'
+        zip_code:
+          $ref: '#/components/schemas/ZIPCodeBody'
+        state:
+          $ref: '#/components/schemas/StateBody'
+        shipping_street_address:
+          $ref: '#/components/schemas/StreetAddressBody'
+        shipping_country:
+          $ref: '#/components/schemas/CountryBody'
+        shipping_city:
+          $ref: '#/components/schemas/CityBody'
+        shipping_zip_code:
+          $ref: '#/components/schemas/ZIPCodeBody'
+        shipping_state:
+          $ref: '#/components/schemas/StateBody'
+        cc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailBody'
+          description: Email addresses to receive a carbon copy of all notification emails
+        bcc:
+          type: array
+          items:
+            $ref: '#/components/schemas/EmailBody'
+          description: Email addresses to receive a blind carbon copy of all notification emails
+        legal_name:
+          type: string
+          maxLength: 1000
+          description: Legal name of company
+        brand_name:
+          type: string
+          maxLength: 128
+          description: Company brand name
+        registration_number:
+          type: string
+          maxLength: 32
+          description: Registration number of company
+        tax_number:
+          type: string
+          maxLength: 32
+          description: Tax payer registration number
+      allOf:
+        - $ref: '#/components/schemas/BankAccountBody'
+    ClientRecurringTokenBody:
+      allOf:
+        - $ref: '#/components/schemas/BaseModelBody'
+        - description: A record of one of `recurring_token`-s saved for a specific client. `id` of this object will be the same as the `recurring_token` saved.
+    CompanyStatementBody:
+      type: object
+      properties:
+        format:
+          type: string
+          maxLength: 32
+          description: 'Statement format, available formats: `csv`, `xlsx`.'
+        timezone:
+          type: string
+          description: Timezone to localize statement-specific timestamps
+          example: Europe/Oslo
+    CountryBody:
+      type: string
+      maxLength: 2
+      description: Country code in the ISO 3166-1 alpha-2 format (e.g. 'GB')
+    CurrencyBody:
+      type: string
+      maxLength: 3
+      description: Currency code in the ISO 4217 standard (e.g. 'MYR').
+    EmailBody:
+      type: string
+      format: email
+      maxLength: 254
+      example: customer@example.com
+      description: Email address
+    EventBody:
+      type: string
+      description: |-
+        Available event types and when they are emitted:
+
+        `purchase.created`: Emitted when a Purchase is created. This happens as a result of POST /purchases/ request executed successfully. Purchase.status will be == `created` in the received payload.
+
+        ---
+
+        `purchase.paid`: Emitted when a Purchase is paid for. Purchase.status will be == `paid`. Happens when a payform is submitted (for a Purchase having `skip_capture == false`) and a successful payment is done by the payer or in case of /capture/ or /charge/ API requests executed successfully.
+
+        ---
+
+        `purchase.payment_failure`: Emitted when payer submits a payment using the payform, but it doesn't complete successfully (e.g. because payer's account balance is insufficient). Purchase.status will be == `error`.
+
+        ---
+
+        `purchase.refund_failure`: Emitted when a pending refund fails.
+
+        ---
+
+        `purchase.capture_failure`: Emitted when a pending capture fails. The Purchase status is expected to be 'hold' after that.
+
+        ---
+
+        `purchase.release_failure`: Emitted when a pending release fails. The Purchase status is expected to be 'hold' after that.
+
+        ---
+
+        `purchase.pending_execute`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_execute` Purchase status. When transaction becomes finalized, a `purchase.paid`, `purchase.hold` or `purchase.payment_failed` callback will be emitted.
+
+        ---
+
+        `purchase.pending_charge`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_charge` Purchase status. When transaction becomes finalized, a `purchase.paid` or `purchase.payment_failed` callback will be emitted.
+
+        ---
+
+        `purchase.cancelled`: Emitted once POST /purchases/{id}/cancel/ request succeeds. It won't be possible to pay for the related Purchase after that. Purchase.status will be == `cancelled`.
+
+        ---
+
+        `purchase.hold`: Emitted when a Purchase having `skip_capture == true` has its payform submitted and "payment" performed successfully. The specified amount of funds will be placed on hold. Purchase.status will be == `hold`.
+
+        ---
+
+        `purchase.captured`: Emitted when the POST /purchases/{id}/capture/ request for a Purchase that previously had the status of `hold` succeeds. Purchase.status will be == `paid`.
+
+        ---
+
+        `purchase.pending_capture`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_capture` Purchase status. When transaction becomes finalized, a `purchase.captured` callback will be emitted.
+
+        ---
+
+        `purchase.released`: Emitted when the POST /purchases/{id}/release/ request for a Purchase that previously had the status of `hold` succeeds. Funds reserved will be released with no payment performed. Purchase.status will be == `released`.
+
+        ---
+
+        `purchase.pending_release`: Emitted when transaction execution takes longer than expected on the acquirer side. See `pending_release` Purchase status. When transaction becomes finalized, a `purchase.released` callback will be emitted.
+
+        ---
+
+        `purchase.preauthorized`: Emitted when preauthorization scenario (see description for the Purchase.skip_capture field) is executed successfully. Purchase will have a status of `preauthorized`.
+
+        ---
+
+        `purchase.recurring_token_deleted`: Emitted when the POST /purchases/{id}/delete_recurring_token/ request is executed successfully, deleting the recurring token associated with a Purchase. Purchase status will be the same as it were prior to this event.
+
+        ---
+
+        `purchase.pending_recurring_token_delete`: Emitted when token deletion takes longer than expected on the acquirer side. When operation is finalized, a `purchase.recurring_token_deleted` callback will be emitted.
+
+        ---
+
+        `purchase.pending_refund`: Emitted when refund transaction execution takes longer than expected on the acquirer side. See `pending_refund` Purchase status. When refund becomes finalized, a `payment.refunded` callback will ne emitted.
+
+        ---
+
+        `payment.refunded`: Emitted when a Purchase is refunded (as a result of POST /purchases/{id}/capture/ request done successfully or action performed in company's frontoffice system). The returned data will be a Payment object generated as a result of this action. A link to the original Purchase (that will have a status of `refunded`) will be present in the `related_to` field of this Payment.
+
+        ---
+
+        `payout.pending`: Emitted when Payout execution has been initiated and is currently processing.
+
+        ---
+
+        `payout.failed`: Emitted when a Payout processing was completed with an error. Payout.status will be == `error`. Note that payouts can spend up to 3-5 days (depending on the payout provider) in processing after being initiated.
+
+        ---
+
+        `payout.success`: Emitted when a Payout is successfully processed. Payout.status will be == `success`. Note that payouts can spend up to 3-5 days (depending on the payout provider) in processing after being initiated.
+
+        ---
+
+        `payment.charged_back`: Emitted when a Payment is charged_back.
+
+        ---
+
+        `purchase.viewed`: Emitted when a Purchase is viewed.
+
+        ---
+
+        `purchase.settled`: Emitted when a Purchase is settled.
+
+        ---
+
+        `payout.created`: Emitted when a Payout is created.
+
+        ---
+
+        `payment.chargeback_reversed`: Emitted when a Payment chargeback is reversed.
+      enum:
+        - purchase.created
+        - purchase.paid
+        - purchase.payment_failure
+        - purchase.refund_failure
+        - purchase.capture_failure
+        - purchase.release_failure
+        - purchase.pending_execute
+        - purchase.pending_charge
+        - purchase.cancelled
+        - purchase.hold
+        - purchase.captured
+        - purchase.pending_capture
+        - purchase.released
+        - purchase.pending_release
+        - purchase.preauthorized
+        - purchase.pending_recurring_token_delete
+        - purchase.recurring_token_deleted
+        - purchase.pending_refund
+        - payment.refunded
+        - payout.pending
+        - payout.failed
+        - payout.success
+        - payment.charged_back
+        - purchase.viewed
+        - purchase.settled
+        - payout.created
+        - payment.chargeback_reversed
+    FeeSellBody:
+      allOf:
+        - $ref: '#/components/schemas/MoneyAmount'
+        - description: Fees applied to transactions
+    MoneyAmountBody:
+      type: integer
+      description: 'Amount of money as the smallest indivisible units of the currency. Examples: 100 is equivalent to RM 1.00.'
+    PaymentBody:
+      description: A record of a performed financial transaction. Can be generated e.g. as a result of refund operation.
+      allOf:
+        - $ref: '#/components/schemas/BaseModelBody'
+    PaymentDetailsBody:
+      description: Details of an executed transaction. Read-only for `Purchase`s and `Payout`s. For an unpaid `Purchase`, this object will be `null`.
+      properties:
+        is_outgoing:
+          type: boolean
+          default: false
+          description: Denotes the direction of payment, e.g. for a paid Purchase, is granted to be `false`, `true` for payouts.
+        amount:
+          $ref: '#/components/schemas/MoneyAmountBody'
+        currency:
+          $ref: '#/components/schemas/CurrencyBody'
+        description:
+          type: string
+          maxLength: 256
+    PaymentMethodBody:
+      type: string
+      description: |-
+        Payment method used to execute the transaction.
+
+        - crypto_coin: Crypto Coin
+        - dnqr: Dnqr
+        - duitnow_qr: Duitnow Qr
+        - fpx: FPX B2C
+        - fpx_b2b1: FPX B2B1
+        - maestro: Maestro payment card
+        - mastercard: Mastercard payment card
+        - mpgs_apple_pay: Apple Pay
+        - mpgs_google_pay: Mpgs Google Pay
+        - razer: Razer
+        - razer_atome: Razer Atome
+        - razer_grabpay: Razer Grabpay
+        - razer_maybankqr: Razer Maybankqr
+        - razer_shopeepay: Razer Shopeepay
+        - razer_tng: Razer Tng
+        - unknown: Payment method could not be determined
+        - visa: Visa payment card
+      enum:
+        - crypto_coin
+        - dnqr
+        - duitnow_qr
+        - fpx
+        - fpx_b2b1
+        - maestro
+        - mastercard
+        - mpgs_apple_pay
+        - mpgs_google_pay
+        - razer
+        - razer_atome
+        - razer_grabpay
+        - razer_maybankqr
+        - razer_shopeepay
+        - razer_tng
+        - unknown
+        - visa
+    PayoutBody:
+      description: Record of a single payout operation. Has a status attribute, e.g. can be initialized, error or success.
+      required:
+        - payment
+        - client
+        - brand_id
+      properties:
+        payment:
+          required:
+            - amount
+            - currency
+          allOf:
+            - $ref: '#/components/schemas/PaymentDetailsBody'
+        client:
+          required:
+            - email
+            - phone
+          allOf:
+            - $ref: '#/components/schemas/ClientDetailsBody'
+        reference:
+          type: string
+          maxLength: 128
+          description: Payout reference.
+        status:
+          $ref: '#/components/schemas/PayoutStatusBody'
+        sender_name:
+          type: string
+          maxLength: 40
+          description: Name of payout sender.
+        brand_id:
+          type: string
+          format: uuid
+          description: ID of the brand to create this Payout for. You can copy it down in the API section, see the "specify the ID of the Brand" link in answer to "How to setup payments on website or in mobile app?".
+      allOf:
+        - $ref: '#/components/schemas/BaseModelBody'
+    PayoutStatusBody:
+      type: string
+      description: |-
+        `Payout` status. Can have the following values:
+
+        `initialized`: `Payout` was created, but not executed. Initial status to new `Payout`s.
+
+        ---
+
+        `pending`: `Payout`'s execution is currently pending
+
+        ---
+
+        `error`: An error has occurred during the execution. Execution can be attempted again.
+
+        ---
+
+        `success`: `Payout` was executed successfully.
+      default: initialized
+    PeriodUnitsBody:
+      type: string
+      enum:
+        - days
+        - weeks
+        - months
+    PhoneBody:
+      type: string
+      maxLength: 32
+      description: Phone number in the `<country_code> <number>` format
+      example: +60 123456789
+    ProductBody:
+      required:
+        - name
+        - price
+      properties:
+        name:
+          type: string
+          maxLength: 256
+          description: Product name
+        quantity:
+          type: string
+          minimum: 0
+          default: 1
+          description: Quantity of these products in invoice
+        price:
+          minimum: 0
+          description: |
+            You can use this field or `total_override` with a value of 0 to activate the preauthorization scenario. See the description of the `Purchase.skip_capture` field.
+
+            This field is an integer, and the value should be in cents. Setting the value to 100 is equivalent to RM 1.00.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        discount:
+          minimum: 0
+          description: Total discount per this product in invoice
+          default: 0
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmount'
+        tax_percent:
+          type: string
+          minimum: 0
+          maximum: 100
+          default: 0
+          description: Percent of tax added to the price of this product
+        category:
+          type: string
+          maxLength: 256
+          description: Product category
+        total_price_override:
+          nullable: true
+          description: If specified and not null, will override the total price for this product.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+    PublicKeyBody:
+      type: string
+      description: PEM-encoded RSA public key for authenticating webhook or callback payloads
+    PurchaseBody:
+      description: Record of a single purchase operation, either a transaction originating from e-commerce integration or invoice sent. Has a status attribute, e.g. can be `created`, `paid` or `refunded`.
+      required:
+        - client
+        - purchase
+        - brand_id
+      properties:
+        client:
+          description: Either this or `.client_id` is required.
+          allOf:
+            - $ref: '#/components/schemas/ClientDetailsBody'
+        purchase:
+          $ref: '#/components/schemas/PurchaseDetailsBody'
+        brand_id:
+          type: string
+          format: uuid
+          description: "ID of the brand to create this Purchase for. Once registered, you can obtain at: https://portal.chip-in.asia/collect/developers/brands"
+        client_id:
+          type: string
+          format: uuid
+          nullable: true
+          default: null
+          description: |-
+            ID of a Client object used to initialize ClientDetails (`.client`) of this Purchase. Either this field or specifying `.client` object is required (you can only specify a value for one of these fields). All `ClientDetails` fields from the Client will be copied to `.client` object. Note that editing Client object won't change the respective fields in already created Purchases.
+
+            If you specify this field and your client saves a `recurring_token` (for instance, by saving their card), the respective ClientRecurringToken will be created. See the `/clients/{id}/recurring_tokens/` endpoint.
+        send_receipt:
+          type: boolean
+          default: false
+          description: Whether to send receipt email for this Purchase when it's paid.
+        skip_capture:
+          type: boolean
+          default: false
+          description: |-
+            Card payment-specific: if set to true, only authorize the payment (place funds on hold) when payer enters his card data and pays. This option requires a `POST /capture/` or `POST /release/` later on.
+
+            You can use the preauthorization feature if you set this parameter to true and make the Purchase with `purchase.total == 0` (this can be achieved by providing a list of `purchase.products` with a total `price` of 0, or simply overriding the total using `purchase.total_override` to 0). The resulting Purchase can only be "paid" by the client (only cardholder data verification will happen, without a financial transaction) by card and will enforce saving the client's card. When this happens, the Purchase will have `status` of `preauthorized` and the `purchase.preauthorized` webhook callbacks will be emitted.
+
+            Trying to use skip_capture (or preauthorization) without any payment methods that support the respective actions (this can be a result of `payment_method_whitelist` field being used) will result in an error on Purchase creation request step. Please check the `GET /payment_methods/` response for your desired Purchase parameters and/or consult with your account manager.
+        force_recurring:
+          type: boolean
+          default: false
+          description: If the used payment method supports recurring payment functionality, forces the customer's payment credentials to be saved for possible later recurring payments, without giving the customer a choice in the matter.
+        reference:
+          type: string
+          description: Invoice reference.
+        issued:
+          description: Value for 'Invoice issued' field. Display-only, does not get validated. If not provided, will be generated as the current date in `purchase.timezone` at the moment of Purchase's creation.
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/TimestampBody'
+        due:
+          description: When the payment is due for this Purchase. The default behaviour is to still allow payment once this moment passes. To change that, set `purchase.due_strict` to true.
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/UnixTimestampBody'
+        payment_method_whitelist:
+          type: array
+          minItems: 1
+          description: |-
+            An optional whitelist of payment methods available for this purchase. Use this field if you want to restrict your payer to pay using only one or several specific methods.
+
+            Using this field and at the same time trying to use specific capabilities of a Purchase (e.g. `skip_capture` or charging it using a saved card token using `POST /purchases/{id}/charge/`) can cause a situation when there are no payment methods available for paying this Purchase. This will cause a validation error on Purchase creation. Please check the `GET /payment_methods/` response for your desired Purchase parameters and/or consult with your account manager.
+          items:
+            type: string
+            enum:
+              - fpx
+              - fpx_b2b1
+              - crypto_coin
+              - dnqr
+              - duitnow_qr
+              - maestro
+              - mastercard
+              - mpgs_apple_pay
+              - mpgs_google_pay
+              - razer_atome
+              - razer_grabpay
+              - razer_maybankqr
+              - razer_shopeepay
+              - razer_tng
+              - shopee_pay
+              - visa
+            description: Payment method name as returned by `GET /payment_methods/`.
+        success_redirect:
+          description: When Purchase is paid for successfully, your customer will be taken to this link. Otherwise a standard screen will be displayed.
+          allOf:
+            - $ref: '#/components/schemas/URLBody'
+        failure_redirect:
+          description: If there's a payment failure for this Purchase, your customer will be taken to this link. Otherwise a standard screen will be displayed.
+          allOf:
+            - $ref: '#/components/schemas/URLBody'
+        cancel_redirect:
+          description: |-
+            If you provide this link, customer will have an option to go to it instead of making payment (a button with 'Return to seller' text will be displayed). Can't contain any of the following symbols: `<>'"` .
+
+            Be aware that this does not cancel the payment (e.g. does not do the equivalent of doing the `POST /purchases/{id}/cancel/` request); the client will still be able to press 'Back' in the browser and perform the payment.
+          allOf:
+            - $ref: '#/components/schemas/URLBody'
+        success_callback:
+          description: |-
+            When Purchase is paid for successfully, the `success_callback` URL will receive a POST request with the Purchase object's data in body.
+
+            The URL must not contain an explicit port. Only the scheme's default port is usable (`http` on 80, `https` on 443), and a URL that spells the port out is rejected with `webhooks_callback_port` - including `:80` and `:443`, which name the default port. Only the `http` and `https` schemes are supported; any other scheme is rejected with `webhooks_callback_scheme`. This restriction applies to `success_callback` and `Webhook.callback` only - see `success_redirect`, `failure_redirect` and `cancel_redirect`, which accept a custom port.
+          allOf:
+            - $ref: '#/components/schemas/URLBody'
+        creator_agent:
+          type: string
+          maxLength: 32
+          description: Identification of software (e.g. an ecommerce module and version) used to create this purchase, if any.
+        platform:
+          type: string
+          enum:
+            - web
+            - api
+            - ios
+            - android
+            - macos
+            - windows
+          description: Platform this Purchase was created on.
+        tags:
+          type: array
+          description: Tags associated with the purchase.
+          items:
+            type: string
+      allOf:
+        - $ref: '#/components/schemas/BaseModelBody'
+    PurchaseDetailsBody:
+      description: Core information about the Purchase, including the products, total, currency and invoice fields.
+      required:
+        - products
+      properties:
+        currency:
+          $ref: '#/components/schemas/CurrencyBody'
+        products:
+          type: array
+          minItems: 1
+          description: Line items of the invoice. In case of a transaction with no invoice sent, specify a single Product forming the cost of transaction.
+          items:
+            $ref: '#/components/schemas/ProductBody'
+        language:
+          x-summary: Language of invoice/payment forms.
+          type: string
+          maxLength: 2
+          description: Language code in the ISO 639-1 format (e.g. 'en')
+          default: Default value is controlled in Company -> Brand section of merchant portal separately per each Brand used (default value, if no changes are made, is `en`). Brand to be used with corresponding Purchase specified using brand_id.
+        notes:
+          x-summary: Invoice notes.
+          type: string
+          maxLength: 10000
+        debt:
+          default: 0
+          x-summary: Will be added/subtracted to the invoice total, if present.
+          x-minValue: '`total` * -1'
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+        subtotal_override:
+          default: null
+          nullable: true
+          x-summary: If specified and not null, will override the grand subtotal. This field is visual-only, setting it won't impact `total`.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+        total_tax_override:
+          default: null
+          nullable: true
+          x-summary: If specified and not null, will override the total tax. This field is visual-only, setting it won't impact `total`.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+        total_discount_override:
+          default: null
+          nullable: true
+          x-summary: If specified and not null, will override the total discount. This field is visual-only, setting it won't impact `total`.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+        total_override:
+          default: null
+          nullable: true
+          x-summary: |-
+            If specified and not null, will override the total (unlike the rest of `total_*_override` fields).
+
+            You can use this field or `products[].total` with a value of 0 to activate preauthorization scenario. See the description of the `Purchase.skip_capture` field.
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+        request_client_details:
+          type: array
+          description: |
+            ClientDetails fields to request from the client before the payment. If a value is passed for a field in ClientDetails, it will be automatically removed from this list.
+
+            It is advisable to include `full_name` in request body.
+          default: []
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - email
+              - phone
+              - full_name
+              - personal_code
+              - brand_name
+              - legal_name
+              - registration_number
+              - tax_number
+              - bank_account
+              - bank_code
+              - billing_address
+              - shipping_address
+        timezone:
+          type: string
+          description: Timezone to localize invoice-specific timestamps in, e.g. to display a concrete date for a `due` timestamp on the invoice.
+          example: Europe/Oslo
+        due_strict:
+          type: boolean
+          default: false
+          description: Whether to permit payments when Purchase's `due` has passed. By default those are permitted (and status will be set to `overdue` once `due` moment is passed). If this is set to `true`, it won't be possible to pay for an overdue invoice, and when `due` is passed the Purchase's status will be set to `expired`.
+        email_message:
+          type: string
+          maxLength: 512
+          description: An optional message to display to your customer in invoice email, e.g. "Your invoice for June".
+        shipping_options:
+          type: array
+          description: Shipping options available for this purchase.
+          items:
+            type: object
+        payment_method_details:
+          type: object
+          description: Payment method-specific details.
+        has_upsell_products:
+          type: boolean
+          description: Indicates if the purchase has upsell products.
+        single_attempt:
+          type: boolean
+          description: If true, only a single payment attempt is allowed.
+        metadata:
+          type: object
+          description: Metadata associated with the purchase.
+    PurchaseStatusBody:
+      type: string
+      description: |-
+        Purchase status. Can have the following values:
+
+        - `created`: Purchase was created using POST /purchases/ or the merchant portal.
+        - `sent`: Invoice for this purchase was sent over email.
+        - `viewed`: The client has viewed the payform and/or invoice details for this purchase.
+        - `error`: There was a failed payment attempt for this purchase because of a problem with customer's payment instrument (e.g. low account balance). You can analyze the `.transaction_data` to get information on reason of the failure.
+        - `cancelled`: Purchase was cancelled using the `POST /purchases/{id}/cancel/` endpoint; payment for it is not possible anymore.
+        - `overdue`: Purchase is past its `.due`, but payment for it is still possible (unless e.g. POST /purchases/{id}/cancel/ is used).
+        - `expired`: Purchase is past its `.due` and payment for it isn't possible anymore (as a result of `purchase.due_strict` having been set to `true`).
+        - `blocked`: Like `error`, but payment attempt was blocked due to fraud scoring below threshold or other security checks not passing.
+        - `hold`: Funds are on hold for this Purchase (`.skip_capture: true` was used). You can now run `POST /capture/` or `POST /release/` for this payment to capture the payment or return funds to the client, respectively.
+        - `released`: This Purchase previously had `hold` status, but funds have since been released and returned to the customer's card.
+        - `pending_release`: release of funds for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/release/` operation when it takes longer than expected to process on the acquirer side.
+        - `pending_capture`: capture of funds for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/capture/` operation when it takes longer than expected to process on the acquirer side.
+        - `preauthorized`: A preauthorization of a card (authorization of card data without a financial transaction) was executed successfully using this Purchase. See the description of the `.skip_capture` field for more details.
+        - `paid`: Purchase was successfully paid for.
+        - `pending_execute`: Payment (or `hold` in case of `skip_capture`) for this Purchase is in processing, but is not finalized on the acquirer side yet.
+        - `pending_charge`: Recurring payment for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/charge/` operation when it takes longer than expected to process on the acquirer side.
+        - `cleared`: Funds for this Purchase (that was already `paid`) have been transferred for clearing in payment card network. All non-card payment methods and some card payment methods (depends on configuration) don't use this status and Purchases paid using them stay in `paid` status instead.
+        - `settled`: Settlement was issued for funds for this Purchase (that was already `paid`). All non-card payment methods and some card payment methods (depends on configuration) don't use this status and Purchases paid using them stay in `paid` status instead.
+        - `chargeback`: A chargeback was registered for this, previously paid, Purchase.
+        - `pending_refund`: a refund (full or partial) for this Purchase is in processing, but is not finalized on the acquirer side yet. Is set by `POST /purchases/{id}/refund/` operation when it takes longer than expected to process on the acquirer side.
+        - `refunded`: This Purchase had its payment refunded, fully or partially.
+      default: created
+      enum:
+        - created
+        - sent
+        - viewed
+        - error
+        - cancelled
+        - overdue
+        - expired
+        - blocked
+        - hold
+        - released
+        - pending_release
+        - pending_capture
+        - preauthorized
+        - paid
+        - pending_execute
+        - pending_charge
+        - cleared
+        - settled
+        - chargeback
+        - pending_refund
+        - refunded
+    StateBody:
+      type: string
+      maxLength: 128
+      description: State code
+    StreetAddressBody:
+      type: string
+      maxLength: 128
+      description: Street house number and flat address where applicable
+    TimestampBody:
+      type: string
+      format: date
+      example: '2020-04-30'
+    TransactionFlowBody:
+      type: string
+      description: |-
+        Flow or pathway used to initiate or execute a transaction.
+
+        - api: transaction initiated via the merchant API
+        - direct_post: transaction executed via direct POST request
+        - fluentforms: transaction initialized from Fluent Forms integration
+        - formidableforms: transaction initialized from Formidable Forms integration
+        - givewp: transaction initialized from GiveWP integration
+        - gravityforms: transaction initialized from Gravity Forms integration
+        - hostbill: transaction initialized from Hostbill integration
+        - import: transaction imported from external system
+        - link: transaction initiated via shared link
+        - magento: transaction initialized from Magento module
+        - opencart: transaction initialized from OpenCart module
+        - payform: transaction executed via the gateway payform
+        - paymattic: transaction initialized from Paymattic integration
+        - prestashop: transaction initialized from PrestaShop module
+        - server_to_server: transaction executed via server to server API
+        - shopify: transaction initialized from Shopify integration
+        - web_office: transaction initiated via the merchant portal
+        - whmcs: transaction initialized from WHMCS integration
+        - woocommerce: transaction initialized from WooCommerce module
+        - wpcharitable: transaction initialized from WPCharitable integration
+      enum:
+        - api
+        - direct_post
+        - fluentforms
+        - formidableforms
+        - givewp
+        - gravityforms
+        - hostbill
+        - import
+        - link
+        - magento
+        - opencart
+        - payform
+        - paymattic
+        - prestashop
+        - server_to_server
+        - shopify
+        - web_office
+        - whmcs
+        - woocommerce
+        - wpcharitable
+    TransactionProductBody:
+      type: string
+      description: |-
+        Product category the transaction belongs to.
+
+        - bank_payment: bank_payment (Payment.payment_type == "bank_payment")
+        - custom_payment: custom_payment (Payment.payment_type == "custom_payment")
+        - invoice: Purchase created as an invoice through the merchant portal
+        - purchase: Purchase created through the merchant API (Purchase.product == "purchases")
+        - refund: refund (Payment.payment_type == "refund")
+        - subscription: Purchase created using a subscription
+      enum:
+        - bank_payment
+        - custom_payment
+        - invoice
+        - purchase
+        - refund
+        - subscription
+    TurnoverBody:
+      type: object
+      description: Company turnover statistics
+      properties:
+        turnover:
+          allOf:
+            - $ref: '#/components/schemas/MoneyAmountBody'
+            - description: Amount transferred through a company
+        fee_sell:
+          $ref: '#/components/schemas/FeeSellBody'
+        count:
+          type: object
+          description: Transaction counts processed within the selected filters
+          properties:
+            all:
+              type: integer
+              description: Number of transactions that contributed to the turnover. This can be used for calculating average `turnover` and `fee_sell` within the selected filters.
+      example:
+        turnover: 93408
+        fee_sell: 1750
+        count:
+          all: 175
+    TurnoverPairBody:
+      type: object
+      description: Incoming and outgoing Company turnover statistics
+      properties:
+        incoming:
+          $ref: '#/components/schemas/TurnoverBody'
+        outgoing:
+          $ref: '#/components/schemas/TurnoverBody'
+    URLBody:
+      type: string
+      format: url
+      maxLength: 500
+    UnixTimestampBody:
+      type: integer
+      format: int64
+      example: 1619740800
+    WebhookBody:
+      allOf:
+        - $ref: '#/components/schemas/BaseModelBody'
+        - description: |-
+            Defines a webhook rule to an external server. The `callback` URL will receive a POST request with the related object's (e.g. Purchase for `purchase.*` webhooks) data in body when any of the events (see the description of `events` field below) it is configured to listen for are triggered.
+            The payload object will additionally include an "event_type" field to indicate which event type (see the Webhook.events field) triggered the webhook.
+
+             Note that, as well as with the rest of dataset, test and live Webhooks are separate; test webhooks will not handle events caused by live Purchases, and vice-versa.
+          required:
+            - title
+            - events
+            - callback
+          properties:
+            title:
+              type: string
+              maxLength: 100
+              description: Arbitrary title of webhook
+            all_events:
+              type: boolean
+              default: false
+              description: Specifies this webhook should trigger on all event types. Either this or `events` is required.
+            public_key:
+              $ref: '#/components/schemas/PublicKeyBody'
+            events:
+              type: array
+              minItems: 1
+              uniqueItems: true
+              description: List of events to trigger webhook callbacks for. Either this or `all_events` is required.
+              items:
+                $ref: '#/components/schemas/EventBody'
+            callback:
+              description: |-
+                URL that will receive a POST request with the related object's (e.g. Purchase for `purchase.*` webhooks) data in body when any of the events configured on this webhook are triggered.
+
+                The URL must not contain an explicit port. Only the scheme's default port is usable (`http` on 80, `https` on 443), and a URL that spells the port out is rejected with `webhooks_callback_port` - including `:80` and `:443`. Only the `http` and `https` schemes are supported; any other scheme is rejected with `webhooks_callback_scheme`.
+              allOf:
+                - $ref: '#/components/schemas/URLBody'
+    ZIPCodeBody:
+      type: string
+      maxLength: 32
+      description: ZIP or postal code
+security:
+  - bearerAuth: []

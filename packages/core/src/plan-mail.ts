@@ -91,13 +91,43 @@ export function capReachedMail(input: { displayName: string; cap: number; resets
   };
 }
 
-/** Three days before a paid plan ends. The one thing it must not do is imply an automatic charge. */
-export function planEndingMail(input: { displayName: string; paidUntil: Date; appUrl: string }): Mail {
+/**
+ * Three days before a paid plan ends. With a saved card it says what will be charged,
+ * to which card and when; without one, the one thing it must not do is imply an
+ * automatic charge.
+ */
+export function planEndingMail(input: {
+  displayName: string;
+  paidUntil: Date;
+  appUrl: string;
+  card: { label: string | null; amountCents: number } | null;
+}): Mail {
   const ends = longDay(input.paidUntil);
-  const subject = `Your Curios plan for ${input.displayName} ends on ${ends}`;
-  const noCharge = 'We do not charge you automatically: FPX payments need your approval each time, so nothing will be taken from your account.';
+  // With a card the plan does not end on that day, it renews: the subject must say so.
+  const subject = `Your Curios plan for ${input.displayName} ${input.card ? 'renews' : 'ends'} on ${ends}`;
   const keep = 'If you do nothing, your page, your FAQ pages and chat all keep working. Only the capture card stops.';
   const url = billingUrl(input.appUrl);
+
+  if (input.card) {
+    const charge = `We'll charge ${ringgit(input.card.amountCents)} to ${input.card.label ?? 'your card'} on ${ends}. Turn off auto-renew on Billing if you don't want that.`;
+    return {
+      subject,
+      text: [`Your Curios plan for ${input.displayName} renews on ${ends}.`, '', charge, '', url].join('\n'),
+      html: renderMailHtml({
+        subject,
+        topRight: input.displayName,
+        tag: { label: 'Plan ending', tone: 'amber' },
+        heading: `Your plan renews on ${ends}`,
+        blocks: [
+          { kind: 'p', text: charge },
+          { kind: 'buttons', primary: { label: 'See billing', href: url } },
+        ],
+        footer: PLAN_MAIL_FOOTER,
+      }),
+    };
+  }
+
+  const noCharge = 'We do not charge you automatically: you pay each time, by FPX, card or e-wallet, so nothing will be taken from your account.';
   return {
     subject,
     text: [`Your Curios plan for ${input.displayName} ends on ${ends}.`, '', noCharge, '', 'To keep the capture card on your page, pay for another month or year here:', url, '', keep].join('\n'),
@@ -111,6 +141,68 @@ export function planEndingMail(input: { displayName: string; paidUntil: Date; ap
         { kind: 'p', text: 'To keep the capture card on your page, pay for another month or year.' },
         { kind: 'buttons', primary: { label: 'Renew your plan', href: url } },
         { kind: 'small', text: keep },
+      ],
+      footer: PLAN_MAIL_FOOTER,
+    }),
+  };
+}
+
+/** The day a renewal charge was declined: the card is tried again tomorrow, and the owner may pay now instead. */
+export function renewalFailedMail(input: { displayName: string; paidUntil: Date; appUrl: string; attempts: number }): Mail {
+  const subject = "We couldn't renew your Curios plan";
+  const said = "Your card was declined when we tried to renew your plan. We'll try again tomorrow. To keep your capture card and shop on without waiting, pay now.";
+  const url = billingUrl(input.appUrl);
+  return {
+    subject,
+    text: [said, '', url].join('\n'),
+    html: renderMailHtml({
+      subject,
+      topRight: input.displayName,
+      tag: { label: 'Renewal failed', tone: 'merah' },
+      heading: "We couldn't charge your card",
+      blocks: [
+        { kind: 'p', text: said },
+        { kind: 'buttons', primary: { label: 'Pay now', href: url } },
+      ],
+      footer: PLAN_MAIL_FOOTER,
+    }),
+  };
+}
+
+/**
+ * When auto-renew gives up: after the third declined charge (`attempts`), when the plan ran
+ * out without a renewal going through (`lapsed`, which can follow a single try, so it never
+ * claims three), or when the saved card can no longer be charged at all (`card-removed`).
+ */
+export function autoRenewStoppedMail(input: {
+  displayName: string;
+  paidUntil: Date;
+  appUrl: string;
+  reason: 'attempts' | 'lapsed' | 'card-removed';
+  now: Date;
+}): Mail {
+  const subject = `Auto-renew is off for ${input.displayName}`;
+  const why = {
+    attempts: "We couldn't charge your card after 3 tries, so we've turned auto-renew off.",
+    lapsed: "We couldn't renew your plan before it ran out, so we've turned auto-renew off.",
+    'card-removed': "Your saved card can no longer be charged, so we've turned auto-renew off.",
+  }[input.reason];
+  const when = `Your plan ${input.paidUntil.getTime() > input.now.getTime() ? 'ends' : 'ended'} on ${day(input.paidUntil)}.`;
+  const next = 'Pay on Billing to switch the capture card and shop back on.';
+  const url = billingUrl(input.appUrl);
+  return {
+    subject,
+    text: [why, when, '', next, url].join('\n'),
+    html: renderMailHtml({
+      subject,
+      topRight: input.displayName,
+      tag: { label: 'Auto-renew off', tone: 'amber' },
+      heading: 'Auto-renew is off',
+      blocks: [
+        { kind: 'p', text: why },
+        { kind: 'p', text: when },
+        { kind: 'p', text: next },
+        { kind: 'buttons', primary: { label: 'Pay on Billing', href: url } },
       ],
       footer: PLAN_MAIL_FOOTER,
     }),

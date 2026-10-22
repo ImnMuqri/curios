@@ -11,7 +11,7 @@ export const STORAGE_ENV = [
 /**
  * Whether pictures are switched off in this process: outside production, and
  * only when none of the storage settings is set -- the rule billingDisabled
- * set for Billplz. A partial set is a mistake and falls through to the
+ * set for CHIP. A partial set is a mistake and falls through to the
  * per-setting check that names the missing one.
  */
 export function storageDisabled(env: NodeJS.ProcessEnv = process.env): boolean {

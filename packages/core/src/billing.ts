@@ -1,5 +1,5 @@
 /**
- * What a plan costs, in cents -- Billplz's unit, and the only unit money moves in here.
+ * What a plan costs, in cents -- CHIP's unit, and the only unit money moves in here.
  *
  * Constants, not env vars, for FREE_LEADS's reason: this is a promise printed on a
  * pricing page, not an operational dial. A Payment stores the amount it was billed

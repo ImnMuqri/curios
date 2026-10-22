@@ -264,46 +264,146 @@ retrieval` log before assuming retrieval is broken.
 
 ---
 
-## An orphaned Billplz bill
+## An orphaned CHIP purchase
 
-**Why this exists.** `createBillForOwner` (`apps/api/src/modules/billing/billing.service.ts`)
-creates a `Payment` row, then asks Billplz for a bill, then writes the bill's id onto that
-row. If the app crashes or the database is briefly unreachable between the second and third
-steps, Billplz is left holding a real, payable bill, but the row that should resolve it keeps
-`billplzBillId` null. The hourly check only ever looks at `PENDING` rows with a
-`billplzBillId` set, so it skips this one by construction, and a callback that names this
-bill finds no matching row and reports `unknown-bill`. Nothing in the system reconciles this
-by itself.
+**Why this exists.** `createPurchaseForOwner` (`apps/api/src/modules/billing/billing.service.ts`)
+creates a `Payment` row, then asks CHIP for a purchase, then writes the purchase's id onto that
+row as `providerRef`. If the app crashes or the database is briefly unreachable between the second
+and third steps, CHIP is left holding a real, payable purchase, but the row that should resolve it
+keeps `providerRef` null. The hourly check only ever looks at `PENDING` rows with a `providerRef`
+set, so it skips this one by construction, and a webhook that names this purchase finds no matching
+row. Nothing in the system reconciles this by itself.
 
-**Recognise it** by a `PENDING` `Payment` with `billplzBillId` null and `createdAt` more than
-a few minutes old — the update should be near-instant, so anything older did not merely lose
-a race — paired with an owner reporting a bill they could not pay, or a payment that never
-registered:
+**Recognise it** by a `PENDING` `Payment` with `providerRef` null and `createdAt` more than a few
+minutes old — the update should be near-instant, so anything older did not merely lose a race —
+paired with an owner reporting a payment that never registered:
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c \
-  "SELECT id, \"pageId\", plan, \"amountCents\", \"createdAt\" FROM \"Payment\" WHERE status = 'PENDING' AND \"billplzBillId\" IS NULL AND \"createdAt\" < now() - interval '5 minutes';"
+  "SELECT id, \"pageId\", plan, \"amountCents\", \"createdAt\" FROM \"Payment\" WHERE status = 'PENDING' AND provider = 'CHIP' AND \"providerRef\" IS NULL AND \"createdAt\" < now() - interval '5 minutes';"
 ```
 
-**Resolve it.** The bill Billplz raised carries `reference_1` equal to that `Payment.id` --
-that is what correlates the two sides. Look the bill up in the Billplz dashboard (or via its
-API) by searching for a bill whose reference matches one of the `id`s above. If the bill was
-genuinely paid, write its id onto the row so the hourly check grants it on the next pass:
+**Resolve it.** The purchase CHIP raised carries a `reference` equal to that `Payment.id` -- that is
+what correlates the two sides. Look the purchase up in the CHIP portal (or via its API) by searching
+for a purchase whose reference matches one of the `id`s above. If it was genuinely paid, write its id
+onto the row so the hourly check grants it on the next pass:
 
 ```bash
 docker exec -i curios-postgres psql -U curios -d curios -c \
-  "UPDATE \"Payment\" SET \"billplzBillId\" = 'BILL_ID' WHERE id = 'PAYMENT_ID' AND status = 'PENDING' AND \"billplzBillId\" IS NULL;"
+  "UPDATE \"Payment\" SET \"providerRef\" = 'PURCHASE_ID' WHERE id = 'PAYMENT_ID' AND status = 'PENDING' AND \"providerRef\" IS NULL;"
 ```
 
-Expect `UPDATE 1`. If the bill was never paid, or none matches, leave the row alone; it ages
-out like any other unpaid bill.
+Expect `UPDATE 1`. If the purchase was never paid, or none matches, leave the row alone; it ages out
+like any other unpaid purchase.
 
 ### Retire this when
 
-When the create-bill request is made idempotent against Billplz -- so a retry after this
-exact failure re-uses the same bill instead of the owner needing a human to find it -- or
-when a scheduled sweep looks for exactly this shape (`PENDING`, `billplzBillId` null, old)
-and either recovers or flags it without a person going looking first.
+When the create-purchase request is made idempotent against CHIP -- so a retry after this exact
+failure re-uses the same purchase instead of the owner needing a human to find it -- or when a
+scheduled sweep looks for exactly this shape (`PENDING`, `providerRef` null, old) and either recovers
+or flags it without a person going looking first.
+
+---
+
+## Cutting over from Billplz
+
+**Why this exists.** Once CHIP is deployed nothing asks Billplz about a payment any more: its
+callback route is gone, and the hourly check only asks CHIP. A Billplz bill an owner opened before
+the deploy and pays after it takes their money and gives them no time. The hourly check names any
+such row at error level (`billplz payments still pending since the cutover`, payment ids only)
+while it is under seven days old, but it settles none of them.
+
+**Before deploying**, list the Billplz payments that could still be paid:
+
+```bash
+docker exec -i curios-postgres psql -U curios -d curios <<'SQL'
+SELECT id, "pageId", plan, "amountCents", "providerRef", "createdAt"
+FROM "Payment"
+WHERE provider = 'BILLPLZ' AND status = 'PENDING' AND "createdAt" > now() - interval '7 days'
+ORDER BY "createdAt";
+SQL
+```
+
+Look each `providerRef` (the Billplz bill id) up in Billplz's dashboard, before the deploy and again
+for a day or so after, as long as the error line keeps naming rows.
+
+- **Paid at Billplz.** Grant it by hand, in one transaction. `INTERVAL` is `'1 month'` for
+  `MONTHLY` and `'1 year'` for `ANNUAL`; the time stacks on any paid time still left, as
+  `grantPayment` does:
+
+  ```bash
+  docker exec -i curios-postgres psql -U curios -d curios <<'SQL'
+  BEGIN;
+  UPDATE "Payment" SET status = 'PAID', "paidAt" = now()
+    WHERE id = 'PAYMENT_ID' AND provider = 'BILLPLZ' AND status = 'PENDING';
+  UPDATE "Page" SET "paidUntil" = GREATEST(COALESCE("paidUntil", now()), now()) + interval 'INTERVAL'
+    WHERE id = 'PAGE_ID';
+  UPDATE "Payment" SET "grantedUntil" = (SELECT "paidUntil" FROM "Page" WHERE id = 'PAGE_ID')
+    WHERE id = 'PAYMENT_ID';
+  COMMIT;
+  SQL
+  ```
+
+  Expect `UPDATE 1` three times. If the first says `UPDATE 0`, the row was already settled:
+  `ROLLBACK` and grant nothing.
+- **Not paid.** Cancel the bill in Billplz's dashboard so it can no longer be paid, then mark the row
+  so it stops being named:
+
+  ```bash
+  docker exec -i curios-postgres psql -U curios -d curios <<'SQL'
+  UPDATE "Payment" SET status = 'EXPIRED' WHERE id = 'PAYMENT_ID' AND provider = 'BILLPLZ' AND status = 'PENDING';
+  SQL
+  ```
+
+  An owner who still wants the plan pays again on Billing, through CHIP.
+
+### Retire this when
+
+Seven days after the deploy, when no Billplz row is young enough to be named and the error line has
+stopped. Then the Billplz branch of the hourly check can go too.
+
+---
+
+## CHIP setup
+
+**Test and live keys.** CHIP gives a test secret key and a live one, under the same Brand ID. A test
+key never moves real money; going live is swapping `CHIP_SECRET_KEY` and the webhook public key
+below, nothing else. `CHIP_BASE_URL` is the same for both.
+
+**Register the webhook** in CHIP's portal (Developers, then Webhooks). Subscribe to the events
+`purchase.paid` and `purchase.payment_failure`, with the URL
+`{CHIP_CALLBACK_BASE_URL}/billing/chip/webhook`. Copy the public key CHIP shows for that webhook into
+`CHIP_WEBHOOK_PUBLIC_KEY`. In production the API refuses to start without it, and without it every
+webhook would be refused.
+
+**Pasting a PEM key** (`CHIP_WEBHOOK_PUBLIC_KEY`, and `CHIP_PUBLIC_KEY` if you pin it). Either keep
+its line breaks, as a quoted multi-line value:
+
+```
+CHIP_WEBHOOK_PUBLIC_KEY="-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...
+-----END PUBLIC KEY-----"
+```
+
+or put it on one line with each line break written as the two characters `\n`, which is what most
+hosting dashboards need:
+
+```
+CHIP_WEBHOOK_PUBLIC_KEY=-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA...\n-----END PUBLIC KEY-----
+```
+
+The API turns each `\n` back into a line break when it reads the key, so both read the same. A key
+pasted on one line with the breaks simply dropped does not parse: every message would be refused.
+
+**Auto-renew needs recurring card payments enabled on the CHIP account.** Without that, a purchase
+that asks to keep the card is paid but keeps no token, the owner sees the "auto-renew couldn't be
+turned on" line, and no renewal is ever charged. Ask CHIP to switch it on before launch.
+
+**Callbacks can't carry a port.** CHIP refuses a callback or return address with a port, so
+`http://localhost:3001` cannot be called back. Locally the return redirect and the workers' hourly
+check still grant a payment. To exercise the webhook and callback themselves, run a tunnel on 443
+(`cloudflared tunnel --url http://localhost:3001`) and point `CHIP_CALLBACK_BASE_URL` at it. See
+`devDocs/manual-verification-billing.md`.
 
 ---
 

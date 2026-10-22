@@ -69,7 +69,7 @@ export { SOCIAL_KINDS, normalizeSocial, socialUrl, tidySocials } from './socials
 export type { SocialKind, Socials } from './socials.js';
 export { ACCOUNT_MAIL_FOOTER, escapeHtml, OWNER_MAIL_FOOTER, renderMailHtml } from './mail.js';
 export type { MailBlock, MailButton, MailContent, MailTone } from './mail.js';
-export { capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, planEndedSaid, planEndingMail, trialSpentMail } from './plan-mail.js';
+export { autoRenewStoppedMail, capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, planEndedSaid, planEndingMail, renewalFailedMail, trialSpentMail } from './plan-mail.js';
 export type { PlanEndedShop } from './plan-mail.js';
 export { newOrderMail, receiptMail } from './order-mail.js';
 export type { NewOrderMailInput, ReceiptMailInput } from './order-mail.js';

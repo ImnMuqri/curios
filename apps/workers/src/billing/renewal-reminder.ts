@@ -1,5 +1,5 @@
 import type { MailJobData } from '@curios/core';
-import { MAIL_QUEUE, orderState, planEndedMail, planEndingMail } from '@curios/core';
+import { MAIL_QUEUE, orderState, PLAN_PRICES_CENTS, planEndedMail, planEndingMail } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import type { BillingLog } from './pending-check.js';
 
@@ -25,11 +25,15 @@ export interface MailQueueLike {
 /**
  * The reminder itself: planEndingMail in @curios/core, laid out as the
  * Emails board draws its emails. English, because the dashboard is; and the
- * one thing it must not do is imply an automatic charge, since FPX cannot
- * auto-charge and an owner who believes otherwise finds out by losing their
- * capture card.
+ * one thing it must not do is imply an automatic charge without a saved card,
+ * since an owner who believes otherwise finds out by losing their capture card.
  */
-export function buildRenewalReminder(input: { displayName: string; paidUntil: Date; appUrl: string }): { subject: string; text: string; html: string } {
+export function buildRenewalReminder(input: {
+  displayName: string;
+  paidUntil: Date;
+  appUrl: string;
+  card: { label: string | null; amountCents: number } | null;
+}): { subject: string; text: string; html: string } {
   return planEndingMail(input);
 }
 
@@ -62,6 +66,7 @@ export async function runRenewalReminders(deps: {
       id: true,
       displayName: true,
       paidUntil: true,
+      renewalCard: { select: { plan: true, cardLabel: true } },
       account: { select: { email: true } },
     },
     orderBy: { paidUntil: 'asc' },
@@ -94,6 +99,10 @@ export async function runRenewalReminders(deps: {
       displayName: page.displayName,
       paidUntil,
       appUrl: deps.appUrl,
+      // What the renewal job will charge: the price of the plan the card was saved for.
+      card: page.renewalCard
+        ? { label: page.renewalCard.cardLabel, amountCents: PLAN_PRICES_CENTS[page.renewalCard.plan] }
+        : null,
     });
     try {
       await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
@@ -138,6 +147,8 @@ export async function runPlanEndedMails(deps: {
     where: {
       mode: 'BUSINESS',
       paidUntil: { lte: deps.now, gt: new Date(deps.now.getTime() - ENDED_WINDOW_MS) },
+      // A page with a card is still being renewed; the auto-renew job tells the owner if it gives up.
+      renewalCard: null,
     },
     select: {
       id: true,

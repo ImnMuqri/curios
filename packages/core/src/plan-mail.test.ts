@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { capReachedMail, planEndedMail, planEndingMail, trialSpentMail } from './plan-mail.js';
+import { autoRenewStoppedMail, capReachedMail, planEndedMail, planEndingMail, renewalFailedMail, trialSpentMail } from './plan-mail.js';
 import { orderState } from './plan.js';
 
 const appUrl = 'https://curios.my/';
@@ -32,12 +32,78 @@ describe('the plan emails', () => {
   });
 
   it('plan ending: the date as it was always written, and no charge implied', () => {
-    const mail = planEndingMail({ displayName: 'Kek Lina', paidUntil: new Date('2026-09-20T03:00:00.000Z'), appUrl });
+    const mail = planEndingMail({ displayName: 'Kek Lina', paidUntil: new Date('2026-09-20T03:00:00.000Z'), appUrl, card: null });
 
     expect(mail.subject).toBe('Your Curios plan for Kek Lina ends on 20 September 2026');
     expect(mail.text).toContain('We do not charge you automatically');
     expect(mail.text).not.toContain('—');
     expect(mail.html).toContain('>Renew your plan</a>');
+  });
+
+  it('the reminder names the card and the charge when auto-renew is on', () => {
+    const mail = planEndingMail({
+      displayName: 'Kek Lina',
+      paidUntil: new Date('2026-09-20T03:00:00.000Z'),
+      appUrl,
+      card: { label: 'Visa ending 1111', amountCents: 4900 },
+    });
+
+    expect(mail.subject).toBe('Your Curios plan for Kek Lina renews on 20 September 2026');
+    expect(mail.html).toContain('Plan ending');
+    expect(mail.html).toContain('Your plan renews on 20 September 2026');
+    expect(mail.text).toContain("We'll charge RM49 to Visa ending 1111 on 20 September 2026. Turn off auto-renew on Billing if you don't want that.");
+    expect(mail.html).toContain('>See billing</a>');
+    expect(mail.text).not.toContain('We do not charge you automatically');
+  });
+
+  it('the reminder falls back to "your card" when the card has no label', () => {
+    const mail = planEndingMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, card: { label: null, amountCents: 49000 } });
+
+    expect(mail.text).toContain("We'll charge RM490 to your card on");
+  });
+
+  it('the reminder without a card says you pay each time', () => {
+    const mail = planEndingMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, card: null });
+
+    expect(mail.text).toContain('We do not charge you automatically: you pay each time, by FPX, card or e-wallet, so nothing will be taken from your account.');
+    expect(mail.text).not.toContain('FPX payments need your approval');
+    expect(mail.text).toContain('Only the capture card stops');
+  });
+
+  it("the renewal-failed mail says we'll try again tomorrow and links Billing", () => {
+    const mail = renewalFailedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, attempts: 1 });
+
+    expect(mail.subject).toBe("We couldn't renew your Curios plan");
+    expect(mail.text).toContain("We'll try again tomorrow.");
+    expect(mail.text).toContain('https://curios.my/app/billing');
+    expect(mail.html).toContain('Renewal failed');
+    expect(mail.html).toContain('We couldn&#39;t charge your card');
+    expect(mail.html).toContain('href="https://curios.my/app/billing"');
+    expect(mail.html).toContain('>Pay now</a>');
+  });
+
+  it('the stopped mail says when the plan ends', () => {
+    const ahead = new Date(PAID_UNTIL.getTime() + 86_400_000);
+    const mail = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'attempts', now: new Date(PAID_UNTIL.getTime() - 86_400_000) });
+
+    expect(mail.subject).toBe('Auto-renew is off for Kek Lina');
+    expect(mail.text).toContain("We couldn't charge your card after 3 tries, so we've turned auto-renew off.");
+    expect(mail.text).toContain('Your plan ends on 14 Oct 2026.');
+    expect(mail.text).toContain('Pay on Billing to switch the capture card and shop back on.');
+    expect(mail.html).toContain('Auto-renew off');
+    expect(mail.html).toContain('>Pay on Billing</a>');
+
+    const past = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'card-removed', now: ahead });
+    expect(past.text).toContain("Your saved card can no longer be charged, so we've turned auto-renew off.");
+    expect(past.text).toContain('Your plan ended on 14 Oct 2026.');
+  });
+
+  it('the stopped mail after the grace ran out does not claim three tries', () => {
+    const mail = autoRenewStoppedMail({ displayName: 'Kek Lina', paidUntil: PAID_UNTIL, appUrl, reason: 'lapsed', now: new Date(PAID_UNTIL.getTime() + 4 * 86_400_000) });
+
+    expect(mail.text).toContain("We couldn't renew your plan before it ran out, so we've turned auto-renew off.");
+    expect(mail.text).not.toContain('3 tries');
+    expect(mail.text).toContain('Your plan ended on 14 Oct 2026.');
   });
 
   it('plan ended: the plan-ended banner’s words, on the Malaysian calendar', () => {

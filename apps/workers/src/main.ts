@@ -10,7 +10,7 @@ import { createIngestionWorker } from './ingestion/ingestion.worker.js';
 import { createMailWorker } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
 import { createGroupWorker } from './grouping/group.worker.js';
-import { billingDisabled, createBillplzClient } from '@curios/billing';
+import { billingDisabled, CHIP_DEFAULT_BASE_URL, createChipClient } from '@curios/billing';
 import { createBillingWorker, scheduleBillingJobs } from './billing/pending-check.js';
 import { createHousekeepingWorker, scheduleHousekeepingJobs } from './housekeeping/retention.js';
 
@@ -19,11 +19,17 @@ const log = pino({ name: 'workers' });
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
 
-// Switched off only in development with no Billplz settings at all -- see
+// Switched off only in development with no CHIP settings at all -- see
 // billingDisabled. Production, or a half-filled configuration, still refuses to start.
+// callbackBaseUrl is read now so a missing one fails at boot rather than at the first renewal.
 const billing = billingDisabled()
   ? null
-  : { apiKey: required('BILLPLZ_API_KEY'), baseUrl: required('BILLPLZ_BASE_URL') };
+  : {
+      secretKey: required('CHIP_SECRET_KEY'),
+      brandId: required('CHIP_BRAND_ID'),
+      baseUrl: process.env.CHIP_BASE_URL || CHIP_DEFAULT_BASE_URL,
+      callbackBaseUrl: required('CHIP_CALLBACK_BASE_URL'),
+    };
 
 function required(name: string): string {
   const value = process.env[name];
@@ -103,9 +109,10 @@ if (billing) {
   const billingWorker = createBillingWorker({
     connection: createRedis(),
     prisma,
-    client: createBillplzClient(billing),
+    client: createChipClient({ secretKey: billing.secretKey, brandId: billing.brandId, baseUrl: billing.baseUrl }),
     mailQueue: mailProducer,
     appUrl,
+    callbackBaseUrl: billing.callbackBaseUrl,
     log,
   });
   billingWorker.on('failed', (job, err) =>
@@ -117,7 +124,7 @@ if (billing) {
   // here, rather than leaving a worker running with nothing ever scheduled.
   await scheduleBillingJobs(new Queue(BILLING_QUEUE, { connection: createRedis() }));
 } else {
-  log.warn('No BILLPLZ_* settings: the billing worker and its schedule are off in development.');
+  log.warn('No CHIP_* settings: the billing worker and its schedule are off in development.');
 }
 
 log.info('workers up');

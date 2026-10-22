@@ -32,16 +32,16 @@ export interface PayTimeline {
 
 /**
  * The API replaces every 5xx message with a generic sentence and keeps only an
- * allow-listed code, so a Billplz outage arrives as BILLPLZ_UNAVAILABLE and nothing
+ * allow-listed code, so a CHIP outage arrives as CHIP_UNAVAILABLE and nothing
  * else. Anything below 500 carries a message written for the owner, used as it is.
  */
 export function payError(failure: unknown): string {
-  if (failure instanceof ApiError && failure.code === 'BILLPLZ_UNAVAILABLE') {
-    return 'Billplz is not answering right now. Try again in a few minutes.';
+  if (failure instanceof ApiError && failure.code === 'CHIP_UNAVAILABLE') {
+    return 'CHIP is not answering right now. Try again in a few minutes.';
   }
-  // Only ever seen in development, where billing runs switched off without Billplz settings.
+  // Only ever seen in development, where billing runs switched off without CHIP settings.
   if (failure instanceof ApiError && failure.code === 'BILLING_NOT_CONFIGURED') {
-    return 'Payments are switched off here: no Billplz settings in this environment.';
+    return 'Payments are switched off here: no CHIP settings in this environment.';
   }
   return failure instanceof Error ? failure.message : 'Something failed. Try again.';
 }
@@ -49,11 +49,15 @@ export function payError(failure: unknown): string {
 /**
  * Choosing how much time to add, and paying for it: the two plans as cards,
  * one Pay button, and a dialog that says what is about to happen before the
- * browser leaves for Billplz. With a paid-until date, a line above shows
+ * browser leaves for CHIP. With a paid-until date, a line above shows
  * today, paid-until and where paid-until lands after this payment.
  *
- * Presentational half of the wrapper split. Nothing is charged here: a bill is
- * raised and the browser goes to Billplz, where the owner pays or does not.
+ * A box asks to keep the card for renewing. Ticked, CHIP is sent to take a card
+ * only, since a card is the one thing that can be charged again; the API is
+ * told with `autoRenew`, and `?card=off` says so if CHIP kept none.
+ *
+ * Presentational half of the wrapper split. Nothing is charged here: a purchase
+ * is opened and the browser goes to CHIP, where the owner pays or does not.
  */
 export function PlanPay({
   options,
@@ -63,10 +67,11 @@ export function PlanPay({
 }: {
   options: PayOption[];
   timeline?: PayTimeline;
-  onPay: (plan: BillingPlan) => Promise<{ url: string }>;
+  onPay: (plan: BillingPlan, autoRenew: boolean) => Promise<{ url: string }>;
   navigate: (url: string) => void;
 }) {
   const [chosen, setChosen] = useState<BillingPlan>(options[0]?.plan ?? 'MONTHLY');
+  const [autoRenew, setAutoRenew] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -89,8 +94,8 @@ export function PlanPay({
     setError('');
     setBusy(true);
     try {
-      const { url } = await onPay(option.plan);
-      // Left busy: the browser is leaving for Billplz.
+      const { url } = await onPay(option.plan, autoRenew);
+      // Left busy: the browser is leaving for CHIP.
       navigate(url);
     } catch (failure) {
       setError(payError(failure));
@@ -144,6 +149,14 @@ export function PlanPay({
         ))}
       </div>
 
+      <div className={styles.tick}>
+        <label>
+          <input type="checkbox" checked={autoRenew} onChange={(event) => setAutoRenew(event.target.checked)} aria-describedby="renew-hint" />
+          Renew automatically by card
+        </label>
+        <small id="renew-hint">We’ll charge your card when this period ends. Turn it off any time.</small>
+      </div>
+
       <div className={styles.pay}>
         <button ref={payButton} type="button" className={styles.go} onClick={() => setOpen(true)}>
           <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -152,7 +165,7 @@ export function PlanPay({
           Pay {option.price}
         </button>
         <p>
-          FPX or card, through Billplz.
+          FPX, card or e-wallet, through CHIP.
           <br />
           It adds to the time you already have.
         </p>
@@ -172,13 +185,13 @@ export function PlanPay({
             {busy ? (
               <div className={styles.wait} role="status">
                 <span className={styles.spin} aria-hidden="true" />
-                <b id="pay-title">Opening Billplz…</b>
-                <span>Your bank’s page opens next.</span>
+                <b id="pay-title">Opening CHIP…</b>
+                <span>CHIP’s payment page opens next.</span>
               </div>
             ) : (
               <>
                 <h2 id="pay-title">Add {option.period}</h2>
-                <p>You’ll go to Billplz to pay by FPX or card, then come straight back here.</p>
+                <p>You’ll go to CHIP to pay by {autoRenew ? 'card' : 'FPX, card or e-wallet'}, then come straight back here.</p>
                 <div className={styles.line}>
                   <span>
                     Business, 1 {option.unit}
@@ -196,7 +209,7 @@ export function PlanPay({
                     Cancel
                   </button>
                   <button type="button" className={styles.prim} onClick={() => void pay()}>
-                    Continue to Billplz
+                    Continue to CHIP
                   </button>
                 </div>
               </>
@@ -219,7 +232,7 @@ export function PayButtons({ options, timeline }: { options: PayOption[]; timeli
     <PlanPay
       options={options}
       timeline={timeline}
-      onPay={(plan) => apiFetch<{ url: string }>('/billing/bills', { method: 'POST', body: JSON.stringify({ plan }) })}
+      onPay={(plan, autoRenew) => apiFetch<{ url: string }>('/billing/purchases', { method: 'POST', body: JSON.stringify({ plan, autoRenew }) })}
       navigate={(url) => window.location.assign(url)}
     />
   );

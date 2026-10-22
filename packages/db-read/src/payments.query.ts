@@ -4,13 +4,15 @@ export interface OwnerPayment {
   id: string;
   plan: 'MONTHLY' | 'ANNUAL';
   amountCents: number;
-  status: 'PENDING' | 'PAID';
+  /** Which processor took it. Old rows are Billplz; everything new is CHIP. */
+  provider: 'BILLPLZ' | 'CHIP';
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
+  /** A renewal charge made by the job against the saved card, not a checkout the owner started. */
+  autoRenewal: boolean;
   /** Null until a payment is granted, and null forever for one that never was. */
   paidAt: Date | null;
   /** The paidUntil this payment produced. */
   grantedUntil: Date | null;
-  /** Billplz's bill, whose page is the receipt once it is paid. Null if Billplz never answered. */
-  billplzBillId: string | null;
   createdAt: Date;
 }
 
@@ -40,11 +42,33 @@ export async function getRecentPayments(pageId: string): Promise<OwnerPayment[]>
       id: true,
       plan: true,
       amountCents: true,
+      provider: true,
+      autoRenewal: true,
       status: true,
       paidAt: true,
       grantedUntil: true,
-      billplzBillId: true,
       createdAt: true,
     },
+  });
+}
+
+/** The card a page has saved for renewing itself: what the owner is told, and nothing that could charge it. */
+export interface OwnerRenewalCard {
+  cardLabel: string | null;
+  plan: 'MONTHLY' | 'ANNUAL';
+  failedAttempts: number;
+}
+
+/**
+ * This page's saved card, or null when auto-renew is off.
+ *
+ * The select names three columns and leaves `token` out on purpose: it is
+ * CHIP's recurring token, what the renewal job charges, and a web screen has
+ * no use for it. A column that is never selected cannot leak.
+ */
+export async function getRenewalCard(pageId: string): Promise<OwnerRenewalCard | null> {
+  return prismaRead.renewalCard.findUnique({
+    where: { pageId },
+    select: { cardLabel: true, plan: true, failedAttempts: true },
   });
 }

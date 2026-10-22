@@ -1,24 +1,19 @@
-import { randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import {
-  BILLPLZ_ENV,
-  BillplzUnavailableError,
-  flattenRedirectParams,
-  signBillplz,
-  type BillplzBill,
-  type BillplzClient,
-} from '@curios/billing';
+import { MAIL_QUEUE } from '@curios/core';
+import { CHIP_ENV, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { buildApp } from '../../app.js';
+import type { BillingRouteOptions } from './billing.routes.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
-// Both pinned in apps/api/vitest.setup.ts.
-const KEY = 'test-signature-key';
-const COLLECTION = 'test-collection';
-
 const client = {
-  createBill: vi.fn<BillplzClient['createBill']>(),
-  getBill: vi.fn<BillplzClient['getBill']>(),
+  createPurchase: vi.fn<ChipClient['createPurchase']>(),
+  getPurchase: vi.fn<ChipClient['getPurchase']>(),
+  chargePurchase: vi.fn<ChipClient['chargePurchase']>(),
+  deleteRecurringToken: vi.fn<ChipClient['deleteRecurringToken']>(),
+  cancelPurchase: vi.fn<ChipClient['cancelPurchase']>(),
+  getPublicKey: vi.fn<ChipClient['getPublicKey']>(),
 };
 
 let app: FastifyInstance;
@@ -37,17 +32,17 @@ afterAll(async () => {
 });
 
 beforeEach(() => {
-  client.createBill.mockReset();
-  client.getBill.mockReset();
-  client.createBill.mockImplementation(async (input) => ({
-    id: `bill-${randomUUID()}`,
-    collectionId: input.collectionId,
-    paid: false,
-    state: 'due',
-    amount: input.amountCents,
-    paidAmount: 0,
-    reference1: input.reference1,
-    url: 'https://www.billplz-sandbox.com/bills/stub',
+  for (const fn of Object.values(client)) fn.mockReset();
+  client.createPurchase.mockImplementation(async (input) => ({
+    id: `purchase-${randomUUID()}`,
+    status: 'created',
+    reference: input.reference,
+    totalCents: input.amountCents,
+    checkoutUrl: 'https://gate.chip-in.asia/p/stub/',
+    isRecurringToken: false,
+    isTest: true,
+    paymentMethod: null,
+    maskedPan: null,
   }));
 });
 
@@ -64,54 +59,27 @@ async function anOwner(mode: 'BUSINESS' | 'PERSONAL' = 'BUSINESS') {
   return { cookie: value, email: account.email, pageId: account.pages[0]?.id ?? '' };
 }
 
-async function aPendingPayment(pageId: string) {
-  const billId = `bill-${randomUUID()}`;
+async function aPendingPayment(pageId: string, autoRenew = false) {
+  const providerRef = `purchase-${randomUUID()}`;
   const payment = await app.prisma.payment.create({
-    data: { pageId, plan: 'MONTHLY', amountCents: 3900, billplzCollectionId: COLLECTION, billplzBillId: billId },
+    data: { pageId, plan: 'MONTHLY', amountCents: 4900, provider: 'CHIP', providerRef, autoRenew },
     select: { id: true },
   });
-  return { billId, paymentId: payment.id };
+  return { providerRef, paymentId: payment.id };
 }
 
-function callbackBody(billId: string, overrides: Record<string, string> = {}, signature?: string) {
-  const params: Record<string, string> = {
-    id: billId,
-    collection_id: COLLECTION,
-    paid: 'true',
-    state: 'paid',
-    amount: '3900',
-    paid_amount: '3900',
-    due_at: '2026-9-14',
-    email: 'payer@example.com',
-    mobile: '',
-    name: 'Nadia Bakes',
-    url: `https://www.billplz-sandbox.com/bills/${billId}`,
-    paid_at: '2026-09-14 15:15:09 +0800',
-    ...overrides,
-  };
-  return new URLSearchParams({ ...params, x_signature: signature ?? signBillplz(params, KEY) }).toString();
-}
-
-function returnUrl(billId: string, paid: 'true' | 'false', signature?: string) {
-  const query: Record<string, string> = {
-    'billplz[id]': billId,
-    'billplz[paid]': paid,
-    'billplz[paid_at]': '2026-09-14 15:15:09 +0800',
-  };
-  const signed = { ...query, 'billplz[x_signature]': signature ?? signBillplz(flattenRedirectParams(query), KEY) };
-  return `/billing/billplz/return?${new URLSearchParams(signed).toString()}`;
-}
-
-function paidBill(billId: string, paymentId: string): BillplzBill {
+function aPurchase(providerRef: string, paymentId: string, overrides: Partial<ChipPurchase> = {}): ChipPurchase {
   return {
-    id: billId,
-    collectionId: COLLECTION,
-    paid: true,
-    state: 'paid',
-    amount: 3900,
-    paidAmount: 3900,
-    reference1: paymentId,
-    url: `https://www.billplz-sandbox.com/bills/${billId}`,
+    id: providerRef,
+    status: 'paid',
+    reference: paymentId,
+    totalCents: 4900,
+    checkoutUrl: `https://gate.chip-in.asia/p/${providerRef}/`,
+    isRecurringToken: false,
+    isTest: true,
+    paymentMethod: 'fpx',
+    maskedPan: null,
+    ...overrides,
   };
 }
 
@@ -136,67 +104,78 @@ function spyOnPrismaMethod<T extends object, M extends keyof T>(obj: T, method: 
   };
 }
 
-const postCallback = (payload: string) =>
-  app.inject({
-    method: 'POST',
-    url: '/billing/billplz/callback',
-    remoteAddress: from(),
-    headers: { 'content-type': 'application/x-www-form-urlencoded' },
-    payload,
-  });
-
 const paidUntilOf = async (pageId: string) =>
   (await app.prisma.page.findUniqueOrThrow({ where: { id: pageId }, select: { paidUntil: true } })).paidUntil;
 const statusOf = async (paymentId: string) =>
   (await app.prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { status: true } })).status;
 
-describe('POST /billing/bills', () => {
-  const raise = (cookie: string | undefined, plan = 'MONTHLY') =>
+describe('POST /billing/purchases', () => {
+  const start = (cookie: string | undefined, body: Record<string, unknown> = { plan: 'MONTHLY' }) =>
     app.inject({
       method: 'POST',
-      url: '/billing/bills',
+      url: '/billing/purchases',
       remoteAddress: from(),
       cookies: cookie ? { [SESSION_COOKIE]: cookie } : {},
-      payload: { plan },
+      payload: body,
     });
 
   it('refuses a caller with no session', async () => {
-    expect((await raise(undefined)).statusCode).toBe(401);
+    expect((await start(undefined)).statusCode).toBe(401);
   });
 
-  it("raises a bill for the owner's page, bound to a new pending payment", async () => {
+  it('starts a purchase for a business page and answers its checkout URL', async () => {
     const owner = await anOwner();
 
-    const res = await raise(owner.cookie);
+    const res = await start(owner.cookie);
 
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ url: 'https://www.billplz-sandbox.com/bills/stub' });
+    expect(res.json()).toEqual({ url: 'https://gate.chip-in.asia/p/stub/' });
     const payment = await app.prisma.payment.findFirstOrThrow({
       where: { pageId: owner.pageId },
-      select: { id: true, status: true, amountCents: true, billplzCollectionId: true, billplzBillId: true },
+      select: { id: true, status: true, amountCents: true, provider: true, autoRenew: true, providerRef: true },
     });
-    expect(payment).toMatchObject({ status: 'PENDING', amountCents: 4900, billplzCollectionId: COLLECTION });
-    expect(payment.billplzBillId).toMatch(/^bill-/);
-    expect(client.createBill).toHaveBeenCalledWith({
-      collectionId: COLLECTION,
+    expect(payment).toMatchObject({ status: 'PENDING', amountCents: 4900, provider: 'CHIP', autoRenew: false });
+    expect(payment.providerRef).toMatch(/^purchase-/);
+    expect(client.createPurchase).toHaveBeenCalledTimes(1);
+    const input = client.createPurchase.mock.calls[0]?.[0];
+    expect(input).toMatchObject({
       email: owner.email,
-      name: 'Nadia Bakes',
+      fullName: 'Nadia Bakes',
+      productName: 'Curios Business, 1 month — Nadia Bakes',
       amountCents: 4900,
-      description: 'Curios Business, 1 month — Nadia Bakes',
-      callbackUrl: 'http://localhost:3001/billing/billplz/callback',
-      redirectUrl: 'http://localhost:3001/billing/billplz/return',
-      reference1: payment.id,
+      reference: payment.id,
+      successCallback: 'https://api.curios.invalid/billing/chip/callback',
+      redirectUrl: `https://api.curios.invalid/billing/chip/return?payment=${payment.id}`,
+      sendReceipt: true,
+      cardsOnlyRecurring: false,
     });
+    // Due an hour from now: an unpaid purchase must stop being payable.
+    const hour = (input?.dueAt.getTime() ?? 0) - Date.now();
+    expect(hour).toBeGreaterThan(59 * 60_000);
+    expect(hour).toBeLessThanOrEqual(60 * 60_000);
   });
 
-  it('refuses a personal page, and raises no bill', async () => {
+  it('asks CHIP for a card token only when autoRenew is ticked', async () => {
+    const owner = await anOwner();
+
+    expect((await start(owner.cookie, { plan: 'ANNUAL', autoRenew: true })).statusCode).toBe(201);
+
+    expect(client.createPurchase.mock.calls[0]?.[0]).toMatchObject({ cardsOnlyRecurring: true });
+    const payment = await app.prisma.payment.findFirstOrThrow({
+      where: { pageId: owner.pageId },
+      select: { autoRenew: true, plan: true },
+    });
+    expect(payment).toEqual({ autoRenew: true, plan: 'ANNUAL' });
+  });
+
+  it('refuses a personal page with NOT_A_BUSINESS_PAGE, and starts no purchase', async () => {
     const owner = await anOwner('PERSONAL');
 
-    const res = await raise(owner.cookie);
+    const res = await start(owner.cookie);
 
     expect(res.statusCode).toBe(400);
     expect(res.json()).toMatchObject({ error: { code: 'NOT_A_BUSINESS_PAGE' } });
-    expect(client.createBill).not.toHaveBeenCalled();
+    expect(client.createPurchase).not.toHaveBeenCalled();
     expect(await app.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
   });
 
@@ -207,160 +186,590 @@ describe('POST /billing/bills', () => {
     });
     const { value } = await createSession(app.prisma, account.id);
 
-    const res = await raise(value);
+    const res = await start(value);
 
     expect(res.statusCode).toBe(404);
     expect(res.json()).toMatchObject({ error: { code: 'NO_PAGE' } });
   });
 
-  it('reports Billplz being down by its own code, leaving a harmless pending row', async () => {
+  it('answers CHIP_UNAVAILABLE when CHIP is down, leaving a harmless pending row', async () => {
     const owner = await anOwner();
-    client.createBill.mockRejectedValue(new BillplzUnavailableError('connect ECONNREFUSED'));
+    client.createPurchase.mockRejectedValue(new ChipUnavailableError('connect ECONNREFUSED'));
 
-    const res = await raise(owner.cookie);
+    const res = await start(owner.cookie);
 
     expect(res.statusCode).toBe(502);
-    expect(res.json()).toMatchObject({ error: { code: 'BILLPLZ_UNAVAILABLE' } });
+    expect(res.json()).toMatchObject({ error: { code: 'CHIP_UNAVAILABLE' } });
     const payment = await app.prisma.payment.findFirstOrThrow({
       where: { pageId: owner.pageId },
-      select: { billplzBillId: true, status: true },
+      select: { providerRef: true, status: true },
     });
-    expect(payment).toEqual({ billplzBillId: null, status: 'PENDING' });
+    expect(payment).toEqual({ providerRef: null, status: 'PENDING' });
   });
 
-  it('fails rather than hand out a bill URL when the bill id cannot be recorded, leaving an orphaned bill behind', async () => {
-    // Billplz has already accepted the bill by this point. If the update below fails, the
+  it('fails rather than hand out a checkout URL when the purchase id cannot be recorded, leaving an orphaned purchase behind', async () => {
+    // CHIP has already accepted the purchase by this point. If the update below fails, the
     // Payment row must not look like the request succeeded -- an owner must never receive
-    // a URL to a bill nothing can later grant.
+    // a URL to a purchase nothing can later grant.
     const owner = await anOwner();
     const { spy: updateSpy, restore } = spyOnPrismaMethod(app.prisma.payment, 'update');
     updateSpy.mockRejectedValueOnce(new Error('database went away'));
 
     try {
-      const res = await raise(owner.cookie);
+      const res = await start(owner.cookie);
 
       expect(res.statusCode).toBe(500);
       expect(res.json()).not.toHaveProperty('url');
       const payment = await app.prisma.payment.findFirstOrThrow({
         where: { pageId: owner.pageId },
-        select: { billplzBillId: true, status: true },
+        select: { providerRef: true, status: true },
       });
-      expect(payment).toEqual({ billplzBillId: null, status: 'PENDING' });
+      expect(payment).toEqual({ providerRef: null, status: 'PENDING' });
     } finally {
       restore();
     }
   });
 });
 
-describe('POST /billing/billplz/callback', () => {
-  it('grants a signed, paid callback sent as a form', async () => {
-    // The path that would be a 415 without the form parser this task adds.
+describe('GET /billing/chip/return', () => {
+  const visit = (paymentId: string) =>
+    app.inject({ method: 'GET', url: `/billing/chip/return?payment=${paymentId}`, remoteAddress: from() });
+  const BACK = 'http://localhost:3000/app/billing?payment=';
+
+  it('fetches the purchase, grants it, and sends the owner back to the paid banner', async () => {
     const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
 
-    const res = await postCallback(callbackBody(billId));
+    const res = await visit(paymentId);
 
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe(`${BACK}paid`);
+    expect(client.getPurchase).toHaveBeenCalledWith(providerRef);
     expect(await statusOf(paymentId)).toBe('PAID');
     expect(await paidUntilOf(owner.pageId)).not.toBeNull();
   });
 
-  it('refuses a callback whose signature does not verify', async () => {
+  it('says failed for an expired purchase, and grants nothing', async () => {
     const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { status: 'expired' }));
 
-    const res = await postCallback(callbackBody(billId, {}, 'f'.repeat(64)));
+    const res = await visit(paymentId);
 
-    expect(res.statusCode).toBe(400);
+    expect(res.headers.location).toBe(`${BACK}failed`);
     expect(await statusOf(paymentId)).toBe('PENDING');
   });
 
-  it('answers 200 to a signed callback for an unpaid bill, and grants nothing', async () => {
+  it('says pending for a purchase still waiting on the payer', async () => {
     const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { status: 'created' }));
 
-    const res = await postCallback(callbackBody(billId, { paid: 'false', state: 'due', paid_amount: '0' }));
+    expect((await visit(paymentId)).headers.location).toBe(`${BACK}pending`);
+  });
 
-    expect(res.statusCode).toBe(200);
+  it('says pending when CHIP cannot be reached', async () => {
+    const owner = await anOwner();
+    const { paymentId } = await aPendingPayment(owner.pageId);
+    client.getPurchase.mockRejectedValue(new ChipUnavailableError('timeout'));
+
+    const res = await visit(paymentId);
+
+    expect(res.headers.location).toBe(`${BACK}pending`);
     expect(await statusOf(paymentId)).toBe('PENDING');
   });
 
-  it('answers 200 to a signed callback whose amount does not match, and grants nothing', async () => {
-    // Signed, so it came from Billplz -- and still refused, because it is not what we billed.
+  it('adds card=off when auto-renew was asked but no token came back', async () => {
     const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId, true);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { isRecurringToken: false }));
 
-    const res = await postCallback(callbackBody(billId, { paid_amount: '100' }));
+    const res = await visit(paymentId);
 
-    expect(res.statusCode).toBe(200);
-    expect(await statusOf(paymentId)).toBe('PENDING');
-    expect(await paidUntilOf(owner.pageId)).toBeNull();
+    expect(res.headers.location).toBe(`${BACK}paid&card=off`);
   });
 
-  it('answers 500 to a signed, paid callback when granting fails unexpectedly, so Billplz retries', async () => {
+  it('adds card=off when the callback granted first and no token came back', async () => {
+    // The usual order in production: CHIP's callback lands before the browser returns.
     const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
-    // grantPayment's first database call.
-    const { spy: findUniqueSpy, restore } = spyOnPrismaMethod(app.prisma.payment, 'findUnique');
-    findUniqueSpy.mockRejectedValueOnce(new Error('database went away'));
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId, true);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { isRecurringToken: false }));
+    await visit(paymentId);
+
+    const res = await visit(paymentId);
+
+    expect(await statusOf(paymentId)).toBe('PAID');
+    expect(res.headers.location).toBe(`${BACK}paid&card=off`);
+  });
+
+  it('does not add card=off when the card was kept', async () => {
+    const owner = await anOwner();
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId, true);
+    client.getPurchase.mockResolvedValue(
+      aPurchase(providerRef, paymentId, { isRecurringToken: true, paymentMethod: 'visa', maskedPan: '411111******1111' }),
+    );
+
+    expect((await visit(paymentId)).headers.location).toBe(`${BACK}paid`);
+  });
+
+  it('does not add card=off when auto-renew was never asked', async () => {
+    const owner = await anOwner();
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId, false);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+
+    expect((await visit(paymentId)).headers.location).toBe(`${BACK}paid`);
+  });
+
+  it('says pending for a payment id we never created, without asking CHIP', async () => {
+    const res = await visit('does-not-exist');
+
+    expect(res.headers.location).toBe(`${BACK}pending`);
+    expect(client.getPurchase).not.toHaveBeenCalled();
+  });
+
+  it('says pending for a payment that never reached CHIP', async () => {
+    const owner = await anOwner();
+    const payment = await app.prisma.payment.create({
+      data: { pageId: owner.pageId, plan: 'MONTHLY', amountCents: 4900, provider: 'CHIP' },
+      select: { id: true },
+    });
+
+    expect((await visit(payment.id)).headers.location).toBe(`${BACK}pending`);
+    expect(client.getPurchase).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('GET /billing/chip/return, when the database fails', () => {
+  it('says pending rather than answering 500', async () => {
+    const owner = await anOwner();
+    const { paymentId } = await aPendingPayment(owner.pageId);
+    const { spy, restore } = spyOnPrismaMethod(app.prisma.payment, 'findUnique');
+    spy.mockRejectedValueOnce(new Error('database went away'));
 
     try {
-      const res = await postCallback(callbackBody(billId));
+      const res = await app.inject({
+        method: 'GET',
+        url: `/billing/chip/return?payment=${paymentId}`,
+        remoteAddress: from(),
+      });
 
-      expect(res.statusCode).toBe(500);
-      expect(await statusOf(paymentId)).toBe('PENDING');
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000/app/billing?payment=pending');
+      expect(client.getPurchase).not.toHaveBeenCalled();
     } finally {
       restore();
     }
   });
 });
 
-describe('GET /billing/billplz/return', () => {
-  const visit = (url: string) => app.inject({ method: 'GET', url, remoteAddress: from() });
+// CHIP's server-to-server messages. Signed with key pairs made here, and the public halves
+// handed to the routes through the environment, as they are in a deployment.
+describe('CHIP callback and webhook', () => {
+  const pair = () =>
+    generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+  const callbackKeys = pair();
+  const webhookKeys = pair();
+  const sign = (body: string, privateKey: string) =>
+    cryptoSign('sha256', Buffer.from(body), privateKey).toString('base64');
 
-  it('fetches the bill, grants it, and sends the owner back to the paid banner', async () => {
-    const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
-    client.getBill.mockResolvedValue(paidBill(billId, paymentId));
+  const KEYS = ['CHIP_PUBLIC_KEY', 'CHIP_WEBHOOK_PUBLIC_KEY'] as const;
+  const saved = Object.fromEntries(KEYS.map((name) => [name, process.env[name]]));
+  const restoreEnv = () => {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  };
 
-    const res = await visit(returnUrl(billId, 'true'));
+  const onRenewalFailure = vi.fn<NonNullable<BillingRouteOptions['onRenewalFailure']>>();
+  const apps: FastifyInstance[] = [];
 
-    expect(res.statusCode).toBe(302);
-    expect(res.headers.location).toBe('http://localhost:3000/app/billing?payment=paid');
-    expect(client.getBill).toHaveBeenCalledWith(billId);
-    expect(await statusOf(paymentId)).toBe('PAID');
+  /**
+   * An app built with exactly these keys in the environment, whatever a developer's .env says.
+   * `realHook` leaves onRenewalFailure out, so the app wires its own: the owner's email.
+   */
+  async function appWith(keys: { callback?: string; webhook?: string }, realHook = false) {
+    delete process.env.CHIP_PUBLIC_KEY;
+    delete process.env.CHIP_WEBHOOK_PUBLIC_KEY;
+    if (keys.callback) process.env.CHIP_PUBLIC_KEY = keys.callback;
+    if (keys.webhook) process.env.CHIP_WEBHOOK_PUBLIC_KEY = keys.webhook;
+    try {
+      const built = await buildApp({ billing: realHook ? { client } : { client, onRenewalFailure } });
+      await built.ready();
+      apps.push(built);
+      return built;
+    } finally {
+      restoreEnv();
+    }
+  }
+
+  let keyed: FastifyInstance;
+  beforeAll(async () => {
+    keyed = await appWith({ callback: callbackKeys.publicKey, webhook: webhookKeys.publicKey });
+  });
+  afterAll(async () => {
+    restoreEnv();
+    await Promise.all(apps.map((built) => built.close()));
+  });
+  beforeEach(() => {
+    onRenewalFailure.mockReset().mockResolvedValue(undefined);
   });
 
-  it('sends a signed but unpaid redirect to the failed banner, without fetching', async () => {
-    const owner = await anOwner();
-    const { billId } = await aPendingPayment(owner.pageId);
+  const post = (target: FastifyInstance, url: string, body: string, signature: string | undefined) =>
+    target.inject({
+      method: 'POST',
+      url,
+      remoteAddress: from(),
+      headers: { 'content-type': 'application/json', ...(signature ? { 'x-signature': signature } : {}) },
+      payload: body,
+    });
+  const callback = (body: string, signature: string | undefined = sign(body, callbackKeys.privateKey)) =>
+    post(keyed, '/billing/chip/callback', body, signature);
+  const webhook = (body: string, signature: string | undefined = sign(body, webhookKeys.privateKey)) =>
+    post(keyed, '/billing/chip/webhook', body, signature);
 
-    const res = await visit(returnUrl(billId, 'false'));
+  describe('POST /billing/chip/callback', () => {
+    it('verifies the raw body, not a re-serialised one', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      // Odd whitespace and key order: signed as sent it is genuine, and re-serialised it is not.
+      const sent = `{ "status":"paid",\n   "id" : "${providerRef}" }`;
+      const signature = sign(sent, callbackKeys.privateKey);
+      const reserialised = JSON.stringify(JSON.parse(sent));
 
-    expect(res.headers.location).toBe('http://localhost:3000/app/billing?payment=failed');
-    expect(client.getBill).not.toHaveBeenCalled();
+      expect((await callback(reserialised, signature)).statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+
+      expect((await callback(sent, signature)).statusCode).toBe(200);
+      expect(await statusOf(paymentId)).toBe('PAID');
+    });
+
+    it('reads keys pasted on one line, each newline written as \\n', async () => {
+      const oneLine = (pem: string) => pem.trim().replaceAll('\n', String.raw`\n`);
+      const escaped = await appWith({ callback: oneLine(callbackKeys.publicKey), webhook: oneLine(webhookKeys.publicKey) });
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+
+      const res = await post(escaped, '/billing/chip/callback', body, sign(body, callbackKeys.privateKey));
+      expect(res.statusCode).toBe(200);
+      expect(await statusOf(paymentId)).toBe('PAID');
+      const hook = JSON.stringify({ id: 'none', event_type: 'purchase.created' });
+      expect((await post(escaped, '/billing/chip/webhook', hook, sign(hook, webhookKeys.privateKey))).statusCode).toBe(200);
+    });
+
+    it('refuses a callback without a valid signature with 400 and grants nothing', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      const body = JSON.stringify({ id: providerRef });
+
+      const missing = await callback(body, '');
+      const forged = await callback(body, sign(body, pair().privateKey));
+
+      expect(missing.statusCode).toBe(400);
+      expect(forged.statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+      expect(await statusOf(paymentId)).toBe('PENDING');
+    });
+
+    it('grants on a verified callback after fetching the purchase', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      // What CHIP says about the purchase decides; the body only names it.
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+
+      const res = await callback(JSON.stringify({ id: providerRef, status: 'paid', total: 1 }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'granted' });
+      expect(client.getPurchase).toHaveBeenCalledWith(providerRef);
+      expect(await statusOf(paymentId)).toBe('PAID');
+      expect(await paidUntilOf(owner.pageId)).not.toBeNull();
+    });
+
+    it('answers 200 already-granted to a repeat', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+      await callback(body);
+      const once = await paidUntilOf(owner.pageId);
+
+      const res = await callback(body);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'already-granted' });
+      expect(await paidUntilOf(owner.pageId)).toEqual(once);
+    });
+
+    it('answers 200 ignored for a signed body with no purchase id', async () => {
+      const res = await callback(JSON.stringify({ nothing: 'here' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'ignored' });
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('answers 500 when the database fails, so CHIP retries', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const { spy, restore } = spyOnPrismaMethod(app.prisma, '$transaction');
+      spy.mockRejectedValueOnce(new Error('database went away'));
+
+      try {
+        const res = await callback(JSON.stringify({ id: providerRef }));
+
+        expect(res.statusCode).toBe(500);
+        expect(await statusOf(paymentId)).toBe('PENDING');
+      } finally {
+        restore();
+      }
+    });
+
+    it("fetches CHIP's public key once when CHIP_PUBLIC_KEY is unset", async () => {
+      const unkeyed = await appWith({});
+      client.getPublicKey.mockResolvedValue(callbackKeys.publicKey);
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+      const signature = sign(body, callbackKeys.privateKey);
+
+      const first = await post(unkeyed, '/billing/chip/callback', body, signature);
+      const second = await post(unkeyed, '/billing/chip/callback', body, signature);
+
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      expect(client.getPublicKey).toHaveBeenCalledTimes(1);
+    });
+
+    it('refuses an unsigned callback before fetching any key', async () => {
+      const unkeyed = await appWith({});
+      client.getPublicKey.mockResolvedValue(callbackKeys.publicKey);
+
+      const res = await post(unkeyed, '/billing/chip/callback', JSON.stringify({ id: 'purchase-x' }), undefined);
+
+      expect(res.statusCode).toBe(400);
+      expect(client.getPublicKey).not.toHaveBeenCalled();
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('answers 500 and tries again next time when the key cannot be fetched', async () => {
+      const unkeyed = await appWith({});
+      client.getPublicKey.mockRejectedValueOnce(new ChipUnavailableError('timeout'));
+      client.getPublicKey.mockResolvedValue(callbackKeys.publicKey);
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+      const signature = sign(body, callbackKeys.privateKey);
+
+      const failed = await post(unkeyed, '/billing/chip/callback', body, signature);
+      const retried = await post(unkeyed, '/billing/chip/callback', body, signature);
+
+      expect(failed.statusCode).toBeGreaterThanOrEqual(500);
+      expect(retried.statusCode).toBe(200);
+      expect(client.getPublicKey).toHaveBeenCalledTimes(2);
+    });
   });
 
-  it('sends a redirect whose signature does not verify to pending, without fetching', async () => {
-    const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
+  describe('POST /billing/chip/webhook', () => {
+    it('grants on purchase.paid', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
 
-    const res = await visit(returnUrl(billId, 'true', 'f'.repeat(64)));
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
 
-    expect(res.headers.location).toBe('http://localhost:3000/app/billing?payment=pending');
-    expect(client.getBill).not.toHaveBeenCalled();
-    expect(await statusOf(paymentId)).toBe('PENDING');
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'granted' });
+      expect(await statusOf(paymentId)).toBe('PAID');
+    });
+
+    it('records a renewal failure on purchase.payment_failure, and tells the hook', async () => {
+      const owner = await anOwner();
+      await app.prisma.renewalCard.create({
+        data: { pageId: owner.pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY', cardLabel: 'Visa 1111' },
+      });
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      await app.prisma.payment.update({ where: { id: paymentId }, data: { autoRenewal: true } });
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(await statusOf(paymentId)).toBe('FAILED');
+      expect(onRenewalFailure).toHaveBeenCalledWith(owner.pageId, { kind: 'retry', attempts: 1 });
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it("the webhook's renewal failure mails the owner", async () => {
+      const wired = await appWith({ callback: callbackKeys.publicKey, webhook: webhookKeys.publicKey }, true);
+      const add = vi.spyOn(wired.mailQueue, 'add').mockResolvedValue({} as never);
+      try {
+        const owner = await anOwner();
+        await app.prisma.page.update({
+          where: { id: owner.pageId },
+          data: { paidUntil: new Date(Date.now() + 12 * 60 * 60 * 1000) },
+        });
+        await app.prisma.renewalCard.create({
+          data: { pageId: owner.pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY', cardLabel: 'Visa 1111' },
+        });
+        const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+        await app.prisma.payment.update({ where: { id: paymentId }, data: { autoRenewal: true } });
+        const body = JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' });
+
+        const res = await post(wired, '/billing/chip/webhook', body, sign(body, webhookKeys.privateKey));
+
+        expect(res.statusCode).toBe(200);
+        expect(add).toHaveBeenCalledTimes(1);
+        const [name, mail] = add.mock.calls[0] ?? [];
+        expect(name).toBe(MAIL_QUEUE);
+        expect(mail).toMatchObject({ to: owner.email, subject: "We couldn't renew your Curios plan" });
+        expect(mail?.text).toContain('http://localhost:3000/app/billing');
+      } finally {
+        add.mockRestore();
+      }
+    });
+
+    it('still answers 200 when the renewal email cannot be queued', async () => {
+      // The failure is committed; a 500 would only make CHIP resend into a FAILED payment.
+      const wired = await appWith({ callback: callbackKeys.publicKey, webhook: webhookKeys.publicKey }, true);
+      const add = vi.spyOn(wired.mailQueue, 'add').mockRejectedValue(new Error('redis went away'));
+      try {
+        const owner = await anOwner();
+        await app.prisma.page.update({ where: { id: owner.pageId }, data: { paidUntil: new Date() } });
+        await app.prisma.renewalCard.create({
+          data: { pageId: owner.pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY' },
+        });
+        const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+        await app.prisma.payment.update({ where: { id: paymentId }, data: { autoRenewal: true } });
+        const body = JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' });
+
+        const res = await post(wired, '/billing/chip/webhook', body, sign(body, webhookKeys.privateKey));
+
+        expect(res.statusCode).toBe(200);
+        expect(await statusOf(paymentId)).toBe('FAILED');
+      } finally {
+        add.mockRestore();
+      }
+    });
+
+    it('ignores a failure for a payment that was not a renewal', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'ignored' });
+      expect(await statusOf(paymentId)).toBe('PENDING');
+      expect(onRenewalFailure).not.toHaveBeenCalled();
+    });
+
+    it('ignores an event it does not act on', async () => {
+      const res = await webhook(JSON.stringify({ id: 'purchase-x', event_type: 'purchase.created' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'ignored' });
+    });
+
+    it('refuses an unsigned webhook with 400', async () => {
+      const res = await webhook(JSON.stringify({ id: 'purchase-x', event_type: 'purchase.paid' }), '');
+
+      expect(res.statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('refuses a callback-key signature', async () => {
+      const owner = await anOwner();
+      const { providerRef } = await aPendingPayment(owner.pageId);
+      const body = JSON.stringify({ id: providerRef, event_type: 'purchase.paid' });
+
+      const res = await webhook(body, sign(body, callbackKeys.privateKey));
+
+      expect(res.statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('is not registered when no webhook key is set outside production', async () => {
+      const noWebhook = await appWith({ callback: callbackKeys.publicKey });
+
+      const res = await post(noWebhook, '/billing/chip/webhook', '{}', sign('{}', webhookKeys.privateKey));
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+});
+
+describe('POST /billing/auto-renew/off', () => {
+  const off = (cookie: string | undefined) =>
+    app.inject({
+      method: 'POST',
+      url: '/billing/auto-renew/off',
+      remoteAddress: from(),
+      cookies: cookie ? { [SESSION_COOKIE]: cookie } : {},
+    });
+  const aCard = async (pageId: string) => {
+    const token = `tok-${randomUUID()}`;
+    await app.prisma.renewalCard.create({ data: { pageId, token, plan: 'MONTHLY', cardLabel: 'Visa ending 1111' } });
+    return token;
+  };
+  const cardOf = (pageId: string) => app.prisma.renewalCard.findUnique({ where: { pageId } });
+
+  it('refuses a caller with no session', async () => {
+    expect((await off(undefined)).statusCode).toBe(401);
   });
 
-  it('sends the owner to pending when the bill cannot be fetched', async () => {
+  it('turning auto-renew off deletes the card and the token', async () => {
     const owner = await anOwner();
-    const { billId, paymentId } = await aPendingPayment(owner.pageId);
-    client.getBill.mockRejectedValue(new BillplzUnavailableError('timeout'));
+    const token = await aCard(owner.pageId);
 
-    const res = await visit(returnUrl(billId, 'true'));
+    const res = await off(owner.cookie);
 
-    expect(res.headers.location).toBe('http://localhost:3000/app/billing?payment=pending');
-    expect(await statusOf(paymentId)).toBe('PENDING');
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'off' });
+    expect(await cardOf(owner.pageId)).toBeNull();
+    expect(client.deleteRecurringToken).toHaveBeenCalledWith(token);
+  });
+
+  it('turning it off still deletes the card when CHIP is down', async () => {
+    const owner = await anOwner();
+    await aCard(owner.pageId);
+    client.deleteRecurringToken.mockRejectedValue(new ChipUnavailableError('timeout'));
+
+    const res = await off(owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(await cardOf(owner.pageId)).toBeNull();
+  });
+
+  it('answers off when auto-renew already is, without asking CHIP', async () => {
+    const owner = await anOwner();
+
+    const res = await off(owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'off' });
+    expect(client.deleteRecurringToken).not.toHaveBeenCalled();
+  });
+
+  it("leaves another owner's card alone", async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    await aCard(other.pageId);
+
+    await off(owner.cookie);
+
+    expect(await cardOf(other.pageId)).not.toBeNull();
   });
 });
 
@@ -471,15 +880,15 @@ describe('POST /billing/trial-reset', () => {
   });
 });
 
-// Development with no Billplz settings at all: the API still boots, so a developer
-// working on anything else needs no Billplz sandbox account. Production never does.
+// Development with no CHIP settings at all: the API still boots, so a developer
+// working on anything else needs no CHIP account. Production never does.
 describe('with billing switched off', () => {
-  const saved = Object.fromEntries(BILLPLZ_ENV.map((name) => [name, process.env[name]]));
+  const saved = Object.fromEntries(CHIP_ENV.map((name) => [name, process.env[name]]));
   const savedNodeEnv = process.env.NODE_ENV;
   let offApp: FastifyInstance;
 
   beforeAll(async () => {
-    for (const name of BILLPLZ_ENV) delete process.env[name];
+    for (const name of CHIP_ENV) delete process.env[name];
     offApp = await buildApp();
     await offApp.ready();
   });
@@ -506,12 +915,12 @@ describe('with billing switched off', () => {
     return { cookie: value, pageId: account.pages[0]?.id ?? '' };
   }
 
-  it('answers a payment with its own code, and raises no bill', async () => {
+  it('answers a payment with its own code, and starts no purchase', async () => {
     const owner = await anOffOwner();
 
     const res = await offApp.inject({
       method: 'POST',
-      url: '/billing/bills',
+      url: '/billing/purchases',
       remoteAddress: from(),
       cookies: { [SESSION_COOKIE]: owner.cookie },
       payload: { plan: 'MONTHLY' },
@@ -522,19 +931,14 @@ describe('with billing switched off', () => {
     expect(await offApp.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
   });
 
-  // No bill can exist, so Billplz has nothing to call back about.
-  it('does not register the Billplz callback', async () => {
-    const res = await offApp.inject({
-      method: 'POST',
-      url: '/billing/billplz/callback',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      payload: 'id=anything',
-    });
+  // No purchase can exist, so there is nothing for CHIP to send the owner back from.
+  it('does not register the CHIP return', async () => {
+    const res = await offApp.inject({ method: 'GET', url: '/billing/chip/return?payment=anything' });
 
     expect(res.statusCode).toBe(404);
   });
 
-  // Nothing about the trial reset touches Billplz.
+  // Nothing about the trial reset touches CHIP.
   it('still resets a spent trial', async () => {
     const owner = await anOffOwner();
     await offApp.prisma.page.update({ where: { id: owner.pageId }, data: { leadsCaptured: 3 } });
@@ -555,10 +959,34 @@ describe('with billing switched off', () => {
       // `store: null` on each storage consumer sidesteps storage's own
       // production check (storage is unset throughout this suite -- see
       // vitest.setup.ts) so this test isolates the one setting it actually
-      // means to prove: Billplz's.
-      await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(/BILLPLZ_API_KEY is not set/);
+      // means to prove: CHIP's.
+      await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(/CHIP_SECRET_KEY is not set/);
     } finally {
       process.env.NODE_ENV = savedNodeEnv;
     }
+  });
+});
+
+// The webhook's public key is the one setting that is optional in development and not in
+// production: without it every genuine webhook would be refused, so it fails the deploy.
+describe('in production', () => {
+  const names = [...CHIP_ENV, 'CHIP_WEBHOOK_PUBLIC_KEY'] as const;
+  const saved = Object.fromEntries([...names, 'NODE_ENV'].map((name) => [name, process.env[name]]));
+
+  afterAll(() => {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+
+  it('refuses to start without CHIP_WEBHOOK_PUBLIC_KEY, naming it', async () => {
+    process.env.NODE_ENV = 'production';
+    for (const name of CHIP_ENV) process.env[name] = 'https://api.curios.invalid';
+    delete process.env.CHIP_WEBHOOK_PUBLIC_KEY;
+
+    await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(
+      /CHIP_WEBHOOK_PUBLIC_KEY is not set/,
+    );
   });
 });

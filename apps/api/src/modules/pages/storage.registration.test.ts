@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BILLPLZ_ENV } from '@curios/billing';
+import { CHIP_ENV } from '@curios/billing';
 import { buildApp } from '../../app.js';
 import { STORAGE_ENV } from './storage.js';
 
@@ -12,19 +12,19 @@ import { STORAGE_ENV } from './storage.js';
  * an avatar route passes its own `pages` override, so none of them ever calls
  * `createS3Store` for real. This is the one test that does.
  *
- * Every BILLPLZ_* setting is filled in so a rejection here can only be about
+ * Every CHIP_* setting is filled in so a rejection here can only be about
  * storage; billing's own production requirement has its own test in
  * billing.routes.test.ts.
  */
 describe('pageRoutes registration in production', () => {
-  it('refuses to start over a missing storage setting, naming it, with Billplz fully configured', async () => {
+  it('refuses to start over a missing storage setting, naming it, with CHIP fully configured', async () => {
     const savedNodeEnv = process.env.NODE_ENV;
-    const savedBillplz = Object.fromEntries(BILLPLZ_ENV.map((name) => [name, process.env[name]]));
+    const savedChip = Object.fromEntries([...CHIP_ENV, 'CHIP_WEBHOOK_PUBLIC_KEY'].map((name) => [name, process.env[name]]));
     const savedStorage = Object.fromEntries(STORAGE_ENV.map((name) => [name, process.env[name]]));
 
     try {
       process.env.NODE_ENV = 'production';
-      for (const name of BILLPLZ_ENV) process.env[name] = 'set';
+      for (const name of [...CHIP_ENV, 'CHIP_WEBHOOK_PUBLIC_KEY']) process.env[name] = 'set';
       for (const name of STORAGE_ENV) delete process.env[name];
 
       // createS3Store checks in this order (storage.ts): STORAGE_BUCKET,
@@ -34,7 +34,7 @@ describe('pageRoutes registration in production', () => {
       await expect(buildApp()).rejects.toThrow(/STORAGE_BUCKET is not set/);
     } finally {
       process.env.NODE_ENV = savedNodeEnv;
-      for (const [name, value] of Object.entries(savedBillplz)) {
+      for (const [name, value] of Object.entries(savedChip)) {
         if (value === undefined) delete process.env[name];
         else process.env[name] = value;
       }

@@ -1,63 +1,52 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { constants, verify } from 'node:crypto';
 
 /**
- * Billplz's X Signature source string, as its API docs state it (checked 2026-09-14).
+ * Whether `rawBody` was signed by the holder of the private half of `publicKeyPem`.
  *
- * Every parameter except `x_signature`; each key concatenated directly to its value;
- * the joined strings -- not the keys -- sorted ascending and case-insensitively;
- * joined with `|`. Built from whatever parameters arrived, never from a fixed list:
- * `transaction_id` and `transaction_status` appear only sometimes and are signed when
- * they do, so a fixed list would refuse every genuine payment that carries them.
- *
- * Case-insensitive means lowercased code points, as PHP's case-insensitive string
- * sort compares. Not `localeCompare`, whose collation of `_` against letters depends
- * on the ICU build it runs on.
+ * CHIP signs the exact bytes it POSTs, RSA PKCS#1 v1.5 over SHA-256, and sends the
+ * signature base64-encoded in the `X-Signature` header. So this must be given the raw
+ * body as received, never a re-serialised parse of it. False rather than throwing for
+ * anything malformed -- a missing signature, a bad key, junk base64: a false here must
+ * always mean "do not grant", with no path around it.
  */
-export function signatureSource(params: Record<string, string>): string {
-  return Object.entries(params)
-    .filter(([key]) => key !== 'x_signature')
-    .map(([key, value]) => `${key}${value}`)
-    .sort((a, b) => {
-      const left = a.toLowerCase();
-      const right = b.toLowerCase();
-      return left < right ? -1 : left > right ? 1 : 0;
-    })
-    .join('|');
-}
-
-export function signBillplz(params: Record<string, string>, key: string): string {
-  return createHmac('sha256', key).update(signatureSource(params)).digest('hex');
-}
-
-/**
- * Whether `params` were signed by the holder of `key`. False rather than throwing for
- * anything malformed: a missing signature, a missing key, a value of the wrong length.
- * A false here must always mean "do not grant" -- there is no path around it.
- */
-export function verifyBillplzSignature(params: Record<string, string>, key: string): boolean {
-  const received = params.x_signature;
-  if (!received || !key) return false;
-
-  const expected = Buffer.from(signBillplz(params, key), 'utf8');
-  const actual = Buffer.from(received, 'utf8');
-  // timingSafeEqual throws on unequal lengths, and a different length is simply wrong.
-  return actual.length === expected.length && timingSafeEqual(actual, expected);
-}
-
-/**
- * The redirect's parameters, keyed the way its signature is computed.
- *
- * Billplz sends them nested -- `billplz[id]` -- and the docs show the key hashed with
- * the prefix kept and the brackets dropped: `billplzid`. `billplz[x_signature]` carries
- * the signature itself. Anything not under `billplz[` is not Billplz's and is left out.
- */
-export function flattenRedirectParams(query: Record<string, string>): Record<string, string> {
-  const flat: Record<string, string> = {};
-  for (const [key, value] of Object.entries(query)) {
-    const match = /^billplz\[(.+)\]$/.exec(key);
-    const name = match?.[1];
-    if (!name) continue;
-    flat[name === 'x_signature' ? 'x_signature' : `billplz${name}`] = value;
+export function verifyChipSignature(
+  rawBody: string,
+  signature: string | undefined,
+  publicKeyPem: string,
+): boolean {
+  if (!signature || !publicKeyPem) return false;
+  // Buffer.from(..., 'base64') silently drops junk, so refuse anything that is not
+  // strictly base64 before it can decode to something that happens to verify.
+  if (!/^[A-Za-z0-9+/]+={0,2}$/.test(signature) || signature.length % 4 !== 0) return false;
+  try {
+    return verify(
+      'sha256',
+      Buffer.from(rawBody),
+      { key: publicKeyPem, padding: constants.RSA_PKCS1_PADDING },
+      Buffer.from(signature, 'base64'),
+    );
+  } catch {
+    return false;
   }
-  return flat;
+}
+
+/**
+ * `GET /public_key/` answers a JSON-encoded PEM string (quotes and escaped newlines
+ * included), not a bare PEM. Decodes it, and throws on anything that is not a PEM
+ * public key so a changed response shape fails loudly instead of verifying nothing.
+ */
+export function parsePublicKey(body: string): string {
+  let decoded: unknown;
+  try {
+    decoded = JSON.parse(body);
+  } catch {
+    throw new Error('CHIP returned a public key that is not JSON');
+  }
+  if (
+    typeof decoded !== 'string' ||
+    !/^-----BEGIN PUBLIC KEY-----[\s\S]+-----END PUBLIC KEY-----\s*$/.test(decoded)
+  ) {
+    throw new Error('CHIP returned a public key that is not a PEM');
+  }
+  return decoded;
 }

@@ -70,6 +70,17 @@ enum BillingPlan {
 enum PaymentStatus {
   PENDING
   PAID
+  /// The gateway refused or cancelled the payment.
+  FAILED
+  /// The checkout was never completed and the gateway let it lapse.
+  EXPIRED
+}
+
+/// Which gateway took (or will take) the money. Billplz rows are kept as history
+/// after the move to CHIP, so the provider is recorded rather than assumed.
+enum PaymentProvider {
+  BILLPLZ
+  CHIP
 }
 
 enum TileSize {
@@ -165,9 +176,10 @@ model Page {
   bio                 String?
   language            String         @default("en")
   published           Boolean        @default(false)
-  /// Paid through this instant. Null means never paid. A one-off Billplz bill
-  /// extends it; there is no subscription to activate, suspend or reconcile,
-  /// because a one-off bill has no lifecycle to model. Lapsed is a comparison.
+  /// Paid through this instant. Null means never paid. A one-off CHIP purchase
+  /// extends it or, with auto-renew, a saved card charged by the renewal job
+  /// does; there is no subscription to activate, suspend or reconcile, because
+  /// each payment simply moves this date. Lapsed is a comparison.
   paidUntil           DateTime?
   /// Leads ever captured, and never decremented. A counter rather than
   /// count(Lead) because slice 5 gave owners a lead delete -- counting rows
@@ -263,6 +275,7 @@ model Page {
   leads               Lead[]
   questions           Question[]
   payments            Payment[]
+  renewalCard         RenewalCard?
   orders              Order[]
 
   @@unique([accountId])
@@ -644,31 +657,53 @@ model FaqRedirect {
 }
 
 model Payment {
-  id                  String        @id @default(cuid())
+  id                  String          @id @default(cuid())
   pageId              String
   /// Restrict, not Cascade like every other table here: a payment is a financial
   /// record, and it must not disappear as a side effect of removing a page.
-  page                Page          @relation(fields: [pageId], references: [id], onDelete: Restrict)
+  page                Page            @relation(fields: [pageId], references: [id], onDelete: Restrict)
   plan                BillingPlan
   /// What was billed, fixed at creation. A grant is checked against this -- never
   /// against today's price, which may have changed since the bill was raised.
   amountCents         Int
-  /// Fixed at creation for the same reason, so a later change of collection cannot
-  /// break the grant for a bill already issued.
-  billplzCollectionId String
-  /// Filled from Billplz's response. Unique, so one bill can never grant twice;
-  /// nullable, because a failed call to Billplz leaves a pending row without one.
-  billplzBillId       String?       @unique
-  status              PaymentStatus @default(PENDING)
+  provider            PaymentProvider @default(CHIP)
+  /// Billplz only: fixed at creation so a later change of collection cannot break
+  /// the grant for a bill already issued. Null for CHIP payments.
+  billplzCollectionId String?
+  /// The provider's id for this payment (Billplz bill id or CHIP purchase id).
+  /// Unique, so one purchase can never grant twice; nullable, because a failed
+  /// call to the provider leaves a pending row without one.
+  providerRef         String?         @unique
+  /// The buyer asked for their card to be kept and charged again at renewal.
+  autoRenew           Boolean         @default(false)
+  /// This payment is itself a renewal charge made by the job, not a checkout.
+  autoRenewal         Boolean         @default(false)
+  status              PaymentStatus   @default(PENDING)
   paidAt              DateTime?
   /// The paidUntil this payment produced -- an audit trail for every extension.
   grantedUntil        DateTime?
-  createdAt           DateTime      @default(now())
+  createdAt           DateTime        @default(now())
 
   // The hourly pending check scans by status and age.
   @@index([status, createdAt])
   // Plan 2's "recent payments" reads by page, newest first.
   @@index([pageId, createdAt])
+}
+
+/// A card CHIP saved for a page's auto-renew. One per page: a new card replaces
+/// the old. Cascades with the page, unlike Payment, because it is a credential
+/// handle and not a financial record.
+model RenewalCard {
+  pageId         String      @id
+  page           Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  /// CHIP's recurring token; what the renewal job charges.
+  token          String      @unique
+  plan           BillingPlan
+  cardLabel      String?
+  failedAttempts Int         @default(0)
+  lastFailedAt   DateTime?
+  lastAttemptAt  DateTime?
+  createdAt      DateTime    @default(now())
 }
 
 /// One customer's order from a business page's shop. Money is sen, computed by

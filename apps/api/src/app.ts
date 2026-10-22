@@ -38,7 +38,7 @@ import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.rout
 import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
 import { topicRoutes } from './modules/topics/topic.routes.js';
 import {
-  billplzRoutes,
+  chipRoutes,
   ownerBillingRoutes,
   type BillingRouteOptions,
 } from './modules/billing/billing.routes.js';
@@ -221,11 +221,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(ownerOrderRoutes, overrides.orders ?? {});
   });
 
-  // Billplz's callback and redirect. No session -- Billplz has none -- and no per-IP
-  // limit: every genuine retry comes from Billplz's own addresses, and a forged request
-  // costs one HMAC to refuse. The plugin registers its own form parser, and its
-  // encapsulation keeps that parser off every other route.
-  await app.register(billplzRoutes, overrides.billing ?? {});
+  // CHIP's return, and (with its callback and webhook) CHIP's own calls. No session --
+  // CHIP has none -- and no per-IP limit: every genuine call comes from CHIP or from the
+  // owner's own browser coming back, and a forged one costs one signature check or one
+  // lookup to refuse. The plugin keeps its own body parsers, and its encapsulation keeps
+  // them off every other route.
+  await app.register(chipRoutes, overrides.billing ?? {});
 
   // Starting a payment. The session hook goes before the limiter, as in the ingest
   // scope, so an unauthenticated request is refused before it can spend any budget.
