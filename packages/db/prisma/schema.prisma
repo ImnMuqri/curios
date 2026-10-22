@@ -124,6 +124,15 @@ enum OrderStatus {
   CANCELLED
 }
 
+/// How a PAID order came to be paid: the owner marked it after checking a
+/// receipt the customer uploaded, marked it with no receipt (paid some other
+/// way), or CHIP confirmed an online payment on the owner's own account.
+enum OrderPaidVia {
+  RECEIPT
+  MANUAL
+  CHIP
+}
+
 /// Whether the customer collects or is sent the order.
 enum OrderMethod {
   PICKUP
@@ -279,6 +288,7 @@ model Page {
   questions           Question[]
   payments            Payment[]
   renewalCard         RenewalCard?
+  paymentAccount      ShopPaymentAccount?
   orders              Order[]
 
   @@unique([accountId])
@@ -706,6 +716,32 @@ model Payment {
 /// A card CHIP saved for a page's auto-renew. One per page: a new card replaces
 /// the old. Cascades with the page, unlike Payment, because it is a credential
 /// handle and not a financial record.
+/// A shop's own payment account: the owner's CHIP brand and secret key, so
+/// customers pay the owner directly. One per page. The secret key is stored
+/// only sealed (packages/core/src/secret-box.ts), and this table is never part
+/// of a page select; the web app's read-only role cannot read that column at
+/// all (packages/db/prisma/sql/readonly-role.sql).
+model ShopPaymentAccount {
+  pageId              String          @id
+  page                Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  provider            PaymentProvider @default(CHIP)
+  brandId             String
+  /// From CHIP when it says (a purchase's issuer details); null until then.
+  brandName           String?
+  /// sealSecret(secret key, PAYMENT_SECRETS_KEY), base64.
+  secretKeyCiphertext String
+  /// The owner's CHIP public key, from GET /public_key/: what verifies their callbacks.
+  publicKeyPem        String
+  /// The method names GET /payment_methods/ listed when the key was last checked.
+  methods             String[]
+  /// A test key: no real money moves. Learned from a purchase's is_test; false until one says.
+  isTest              Boolean         @default(false)
+  connectedAt         DateTime        @default(now())
+  checkedAt           DateTime
+  /// When a call with this key was last refused by CHIP.
+  lastErrorAt         DateTime?
+}
+
 model RenewalCard {
   pageId         String      @id
   page           Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
@@ -766,6 +802,16 @@ model Order {
   /// When the owner marked the money returned after a paid order was
   /// cancelled. Null with CANCELLED and paidAt set is a refund still owed.
   refundedAt        DateTime?
+  /// How it was paid; null until it is. Orders paid before this column existed stay null.
+  paidVia           OrderPaidVia?
+  /// The CHIP purchase that pays (or paid) this order online, on the owner's own account.
+  chipPurchaseId    String?        @unique
+  /// The customer's email, asked for only when they pay online (CHIP needs one for the receipt).
+  payerEmail        String?
+  /// How CHIP says it was paid, for the order page: "FPX · Maybank2u".
+  paidMethodLabel   String?
+  /// CHIP's reference for the payment, shown beside it.
+  paidRef           String?
   createdAt         DateTime       @default(now())
   lines             OrderLine[]
   conversations     Conversation[]

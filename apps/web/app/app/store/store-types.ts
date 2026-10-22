@@ -42,6 +42,17 @@ export type SettingsApi = {
   removeQr: () => Promise<void>;
 };
 
+/** The owner's own CHIP account, as the Store screen may know it. Never the key. */
+export type ChipState = OwnerStore['chip'];
+
+export type ChipApi = {
+  /** Checks the Brand ID and secret key with CHIP and stores them; the key is only ever sent, never read back. */
+  connect: (brandId: string, secretKey: string) => Promise<ChipState>;
+  disconnect: () => Promise<void>;
+  /** Starts the RM1 test purchase; resolves to CHIP's checkout URL. */
+  test: () => Promise<string>;
+};
+
 /** The page's look and words, for the preview's shop. */
 export type ShopLook = {
   handle: string;

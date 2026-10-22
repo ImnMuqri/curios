@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ChipUnavailableError, createChipClient, type FetchLike } from './client.js';
+import { ChipRefusedError, ChipUnavailableError, createChipClient, type FetchLike } from './client.js';
 
 // The shape of the Purchase example in CHIP's OpenAPI reference, trimmed to what matters.
 const purchaseJson = {
@@ -131,6 +131,47 @@ describe('createPurchase', () => {
     for (const key of ['success_callback', 'success_redirect', 'failure_redirect', 'cancel_redirect']) {
       expect(body).not.toHaveProperty(key);
     }
+  });
+
+  it('offers only the methods it is given, when given some', async () => {
+    const send = answering(201, purchaseJson);
+
+    await clientWith(send).createPurchase({ ...input, methods: ['visa', 'razer_tng'] });
+
+    expect(sentBody(send).payment_method_whitelist).toEqual(['visa', 'razer_tng']);
+    expect(sentBody(send)).not.toHaveProperty('force_recurring');
+  });
+
+  it("reads the brand's name from the issuer details, when CHIP gives one", async () => {
+    const named = await clientWith(answering(201, { ...purchaseJson, issuer_details: { brand_name: 'Kek Lina' } })).createPurchase(input);
+    expect(named.brandName).toBe('Kek Lina');
+
+    const blank = await clientWith(answering(201, { ...purchaseJson, issuer_details: { brand_name: '' } })).createPurchase(input);
+    expect(blank).not.toHaveProperty('brandName');
+  });
+});
+
+describe('listPaymentMethods', () => {
+  it('asks for the brand, MYR and the amount, and returns the method names', async () => {
+    const send = answering(200, { available_payment_methods: ['fpx', 'visa', 'razer_tng'], names: {} });
+
+    const methods = await clientWith(send).listPaymentMethods(1000);
+
+    expect(send.mock.calls[0]?.[0]).toBe(`${BASE}/payment_methods/?brand_id=brand-1&currency=MYR&amount=1000`);
+    expect(send.mock.calls[0]?.[1].method).toBe('GET');
+    expect(send.mock.calls[0]?.[1].headers.authorization).toBe('Bearer secret-key');
+    expect(methods).toEqual(['fpx', 'visa', 'razer_tng']);
+  });
+
+  it('refuses a list in a shape it does not recognise', async () => {
+    await expect(clientWith(answering(200, {})).listPaymentMethods(1000)).rejects.toThrow(/shape/);
+    await expect(clientWith(answering(200, { available_payment_methods: [1] })).listPaymentMethods(1000)).rejects.toThrow(/shape/);
+  });
+
+  it('throws ChipRefusedError, carrying the status, when the key or brand is refused', async () => {
+    const error = await clientWith(answering(401, { detail: 'Invalid token' })).listPaymentMethods(1000).catch((e: unknown) => e);
+    expect(error).toBeInstanceOf(ChipRefusedError);
+    expect(error).toMatchObject({ status: 401, name: 'ChipRefusedError' });
   });
 });
 

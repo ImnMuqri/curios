@@ -33,8 +33,17 @@ async function move(
 
 const from = (...statuses: Status[]): Prisma.OrderWhereInput => ({ status: { in: statuses } });
 
-export const markPaid = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
-  move(deps.prisma, accountId, id, from('PLACED'), { status: 'PAID', paidAt: now });
+/**
+ * The owner says the money arrived: by the receipt the customer sent in, or by
+ * hand with none (cash, a transfer they saw in their bank). Which one is read
+ * first and then made part of the `where`, so a receipt that lands in between
+ * fails the move rather than being recorded as MANUAL.
+ */
+export async function markPaid(deps: OwnerOrderDeps, accountId: string, id: string, now: Date): Promise<void> {
+  const current = await deps.prisma.order.findFirst({ where: { id, page: { accountId } }, select: { receiptKey: true } });
+  const receiptKey = current?.receiptKey ?? null;
+  await move(deps.prisma, accountId, id, { ...from('PLACED'), receiptKey }, { status: 'PAID', paidAt: now, paidVia: receiptKey ? 'RECEIPT' : 'MANUAL' });
+}
 
 export const markCompleted = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
   move(deps.prisma, accountId, id, from('PAID'), { status: 'COMPLETED', completedAt: now });

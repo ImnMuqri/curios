@@ -74,6 +74,11 @@ function optionalText(raw: string | null, max: number, what: string): string | n
   return text;
 }
 
+/** Whether the page has a CHIP account connected: a way to pay as good as a QR or bank details. */
+export async function chipConnected(prisma: PrismaClient, pageId: string): Promise<boolean> {
+  return (await prisma.shopPaymentAccount.count({ where: { pageId } })) > 0;
+}
+
 export async function getStoreSettings(prisma: PrismaClient, accountId: string): Promise<StoreSettings> {
   const page = await storePageFor(prisma, accountId);
   return toSettings(await prisma.page.findUniqueOrThrow({ where: { id: page.id }, select: SELECT }));
@@ -134,7 +139,7 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
   if (patch.enabled !== undefined) next.enabled = patch.enabled;
 
   if (next.enabled) {
-    const gaps = storeGaps(next);
+    const gaps = storeGaps({ ...next, chipConnected: await chipConnected(prisma, page.id) });
     if (gaps.length > 0) throw new StoreNotReadyError(storeGapMessage(gaps));
   }
 
@@ -159,9 +164,9 @@ export async function clearPaymentQr(prisma: PrismaClient, pageId: string): Prom
   const row = await prisma.page.findUniqueOrThrow({ where: { id: pageId }, select: SELECT });
   const settings = toSettings(row);
   if (settings.enabled) {
-    const gaps = storeGaps({ ...settings, paymentQrKey: null });
+    const gaps = storeGaps({ ...settings, paymentQrKey: null, chipConnected: await chipConnected(prisma, pageId) });
     if (gaps.length > 0) {
-      throw new StoreNotReadyError('Your shop is open and this QR is its only way to pay. Add bank details or close the shop first.');
+      throw new StoreNotReadyError('Your shop is open and this QR is its only way to pay. Add bank details, connect CHIP, or close the shop first.');
     }
   }
   await prisma.page.update({ where: { id: pageId }, data: { paymentQrKey: null } });

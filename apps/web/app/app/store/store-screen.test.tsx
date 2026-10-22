@@ -30,7 +30,18 @@ const look: ShopLook = {
 
 const screenWith = (over: Partial<StoreSettings> = {}, list: EditorItem[] = items) =>
   render(
-    <StoreScreen initial={{ ...settings, ...over }} items={list} look={look} uploadsEnabled publicBase="https://files.example/" qrUrl={null} today="2026-10-16" orders={{ paused: null, nextNumber: 1 }} />,
+    <StoreScreen
+      initial={{ ...settings, ...over }}
+      items={list}
+      look={look}
+      uploadsEnabled
+      publicBase="https://files.example/"
+      qrUrl={null}
+      today="2026-10-16"
+      now={new Date('2026-10-16T02:00:00Z')}
+      chip={{ connected: false, brandName: null, methods: [], checkedAt: null, isTest: false }}
+      orders={{ paused: null, nextNumber: 1 }}
+    />,
   );
 
 const tab = (name: string) => within(screen.getByRole('tablist', { name: 'Store' })).getByRole('tab', { name });
@@ -108,5 +119,43 @@ describe('StoreScreen, against the API', () => {
     screenWith({}, [...items, { ...items[0]!, id: 'b', name: 'Tart' }]);
     await userEvent.click(screen.getByRole('button', { name: 'Move Kek Batik down' }));
     expect(apiFetch).toHaveBeenCalledWith('/store/items/order', { method: 'PUT', body: JSON.stringify({ ids: ['b', 'a'] }) });
+  });
+
+  it('connects CHIP with POST /store/chip, sending the key once and reading back only the connection', async () => {
+    apiFetch.mockResolvedValue({ connected: true, brandName: null, methods: ['fpx'], checkedAt: '2026-10-16T02:00:00.000Z', isTest: false });
+    screenWith();
+    await userEvent.click(tab('Payment'));
+    await userEvent.click(screen.getByRole('button', { name: 'Connect CHIP' }));
+    fireEvent.change(screen.getByLabelText('Brand ID'), { target: { value: 'brand-uuid' } });
+    fireEvent.change(screen.getByLabelText('Secret key'), { target: { value: 'the-secret-key' } });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Check and connect' })); });
+
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(apiFetch).toHaveBeenCalledWith('/store/chip', { method: 'POST', body: JSON.stringify({ brandId: 'brand-uuid', secretKey: 'the-secret-key' }) });
+    expect(screen.getByText('Connected to CHIP')).toBeInTheDocument();
+    expect(screen.getByText(/^Brand “Nadia Bakes” · checked just now\./)).toBeInTheDocument();
+  });
+
+  it('disconnects with DELETE /store/chip and starts the test with POST /store/chip/test', async () => {
+    apiFetch.mockResolvedValue({ connected: false });
+    render(
+      <StoreScreen
+        initial={settings}
+        items={items}
+        look={look}
+        uploadsEnabled
+        publicBase="https://files.example/"
+        qrUrl={null}
+        today="2026-10-16"
+        now={new Date('2026-10-16T02:00:00Z')}
+        chip={{ connected: true, brandName: 'Nadia Bakes', methods: ['fpx'], checkedAt: new Date('2026-10-16T01:00:00Z'), isTest: false }}
+        orders={{ paused: null, nextNumber: 1 }}
+      />,
+    );
+    await userEvent.click(tab('Payment'));
+    await userEvent.click(screen.getByRole('button', { name: 'Disconnect' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Yes, disconnect' })); });
+    expect(apiFetch).toHaveBeenCalledWith('/store/chip', { method: 'DELETE' });
+    expect(screen.getByText('Let customers pay online')).toBeInTheDocument();
   });
 });

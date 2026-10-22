@@ -31,6 +31,7 @@ import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/cha
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
+import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
@@ -71,6 +72,7 @@ export interface AppOverrides {
   facts?: FactRouteOptions;
   pages?: PageRouteOptions;
   orders?: OrderRouteOptions;
+  shopChip?: ShopChipRouteOptions;
 }
 
 /** `/store/orders/<token>/receipt` -> `/store/orders/:token/receipt`; any other URL is returned as it came. */
@@ -219,6 +221,15 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(ownerLeadRoutes);
     await scope.register(storeRoutes, overrides.pages ?? {});
     await scope.register(ownerOrderRoutes, overrides.orders ?? {});
+  });
+
+  // The owner's own CHIP account. Signed in, and under the per-account payments budget:
+  // connecting tries a key against CHIP and the test starts a real purchase, so neither
+  // may be repeated without limit. Session first, as in the billing scope below.
+  await app.register(async (scope) => {
+    scope.addHook('onRequest', requireSession);
+    await scope.register(rateLimit, billingPerAccountLimit(app.rateLimitRedis));
+    await scope.register(shopChipRoutes, overrides.shopChip ?? {});
   });
 
   // CHIP's return, and (with its callback and webhook) CHIP's own calls. No session --

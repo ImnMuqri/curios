@@ -12,6 +12,8 @@ export interface ChipPurchase {
   isTest: boolean;
   paymentMethod: string | null;
   maskedPan: string | null;
+  /** The brand's name, from the purchase's issuer details; absent when CHIP leaves it blank. */
+  brandName?: string;
 }
 
 export interface CreatePurchaseInput {
@@ -26,6 +28,8 @@ export interface CreatePurchaseInput {
   sendReceipt: boolean;
   /** Ask for a saved card (for auto-renew), and offer cards only, as only cards can be saved. */
   cardsOnlyRecurring: boolean;
+  /** Offer only these payment methods (CHIP's `payment_method_whitelist`). Ignored with cardsOnlyRecurring. */
+  methods?: string[];
 }
 
 export type ChargeResult =
@@ -40,6 +44,8 @@ export interface ChipClient {
   deleteRecurringToken(id: string): Promise<void>;
   cancelPurchase(id: string): Promise<void>;
   getPublicKey(): Promise<string>;
+  /** The method names this key and brand can take at this amount (`GET /payment_methods/`). */
+  listPaymentMethods(amountCents: number): Promise<string[]>;
 }
 
 export type FetchLike = (
@@ -59,6 +65,21 @@ export class ChipUnavailableError extends Error {
   constructor(detail: string) {
     super(`CHIP is unavailable: ${detail}`);
     this.name = 'ChipUnavailableError';
+  }
+}
+
+/**
+ * CHIP answered a 4xx: the key, the brand or the request is wrong. `status` says which
+ * kind, so a caller checking an owner's own key can tell "that key didn't work" (401,
+ * 403, 400) from an outage, which is ChipUnavailableError. The message carries CHIP's
+ * body for a developer reading a stack trace; log the name, never the message.
+ */
+export class ChipRefusedError extends Error {
+  readonly status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ChipRefusedError';
+    this.status = status;
   }
 }
 
@@ -101,7 +122,7 @@ export function createChipClient(options: {
   }
 
   async function refused(method: string, path: string, response: Response): Promise<Error> {
-    return new Error(`CHIP refused ${method} ${path} with ${response.status}: ${await response.text()}`);
+    return new ChipRefusedError(`CHIP refused ${method} ${path} with ${response.status}: ${await response.text()}`, response.status);
   }
 
   async function purchaseCall(method: 'GET' | 'POST', path: string, body?: unknown): Promise<ChipPurchase> {
@@ -144,7 +165,9 @@ export function createChipClient(options: {
         send_receipt: input.sendReceipt,
         ...(input.cardsOnlyRecurring
           ? { force_recurring: true, payment_method_whitelist: CARD_METHODS }
-          : {}),
+          : input.methods
+            ? { payment_method_whitelist: input.methods }
+            : {}),
       });
     },
 
@@ -185,6 +208,18 @@ export function createChipClient(options: {
       const response = await request('GET', '/public_key/');
       if (!response.ok) throw await refused('GET', '/public_key/', response);
       return parsePublicKey(await response.text());
+    },
+
+    async listPaymentMethods(amountCents) {
+      const query = new URLSearchParams({ brand_id: options.brandId, currency: 'MYR', amount: String(amountCents) });
+      const path = `/payment_methods/?${query.toString()}`;
+      const response = await request('GET', path);
+      if (!response.ok) throw await refused('GET', '/payment_methods/', response);
+      const methods = ((await response.json()) as { available_payment_methods?: unknown } | null)?.available_payment_methods;
+      if (!Array.isArray(methods) || !methods.every((name): name is string => typeof name === 'string')) {
+        throw new Error('CHIP returned payment methods in a shape this client does not recognise');
+      }
+      return methods;
     },
   };
 }
@@ -231,6 +266,7 @@ function toPurchase(raw: unknown): ChipPurchase {
   const data = p.transaction_data as { payment_method?: unknown; extra?: { masked_pan?: unknown } } | null | undefined;
   const method = data?.payment_method;
   const pan = data?.extra?.masked_pan;
+  const brand = (p.issuer_details as { brand_name?: unknown } | null | undefined)?.brand_name;
   return {
     id: p.id,
     status: p.status,
@@ -242,5 +278,6 @@ function toPurchase(raw: unknown): ChipPurchase {
     // CHIP sends '' until a method was used.
     paymentMethod: typeof method === 'string' && method !== '' ? method : null,
     maskedPan: typeof pan === 'string' && pan !== '' ? pan : null,
+    ...(typeof brand === 'string' && brand.trim() !== '' ? { brandName: brand.trim() } : {}),
   };
 }

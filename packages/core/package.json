@@ -14,7 +14,8 @@
     "./socials": "./src/socials.ts",
     "./store": "./src/store.ts",
     "./slug": "./src/slug.ts",
-    "./orders": "./src/orders.ts"
+    "./orders": "./src/orders.ts",
+    "./secret-box": "./src/secret-box.ts"
   },
   "scripts": {
     "lint": "eslint .",

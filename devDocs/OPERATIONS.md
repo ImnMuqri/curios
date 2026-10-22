@@ -407,6 +407,50 @@ check still grant a payment. To exercise the webhook and callback themselves, ru
 
 ---
 
+## Shop CHIP keys
+
+A shop owner connects their own CHIP account in Store → Payment. Their secret key is stored only
+sealed (AES-256-GCM, `packages/core/src/secret-box.ts`) in `ShopPaymentAccount.secretKeyCiphertext`,
+with `PAYMENT_SECRETS_KEY` as the key. The web app's read-only role cannot read that column at all.
+
+**Generating `PAYMENT_SECRETS_KEY`.** The base64 of 32 random bytes:
+
+```
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Set it on the API. Production refuses to start without it, and any value that is not the base64 of
+32 bytes refuses to start everywhere. In development, leaving it blank switches connecting CHIP off
+("Connecting CHIP is switched off here"). Keep it as secret as the database password, and never
+in the same place: someone holding a database dump and this key holds every shop's CHIP key.
+
+**Rotating it** is re-connecting. A sealed key opens only with the `PAYMENT_SECRETS_KEY` it was
+sealed with, so after changing the variable every connected shop's key stops opening: their "Test
+with RM1" (and, from Task 13b, paying online) fails until they connect again. To rotate:
+
+1. Generate a new value and deploy it.
+2. Clear the old connections so no shop is left half-working, and have each owner reconnect in
+   Store → Payment (their Brand ID and secret key from CHIP's dashboard, under Developers):
+
+   ```sql
+   DELETE FROM "ShopPaymentAccount";
+   ```
+
+   An open shop whose only way to pay was CHIP keeps taking orders, paid by QR or bank transfer if
+   it has one; check `SELECT "pageId" FROM "Page" p WHERE "storeEnabled" AND "paymentQrKey" IS NULL
+   AND "bankAccountNumber" IS NULL` before deleting and tell those owners first.
+
+The box carries a version byte (`0x01` today), so a later change can open old boxes with the old
+key and seal new ones with a new key, rotating without re-connecting. That is not built: until it
+is, rotation is the procedure above. Rotate if the key may have leaked, not on a schedule.
+
+**A test key in production.** Connecting cannot tell a test key from a live one (CHIP's payment
+methods and public key look the same for both). The first purchase can: "Test with RM1" refuses a
+test key in production with "This is a test key", cancels that purchase and removes the
+connection.
+
+---
+
 ## An owner says the renewal reminder never arrived
 
 ```bash

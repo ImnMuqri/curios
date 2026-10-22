@@ -4,7 +4,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { resizeContained, resizeImage } from '../curios/resize-image.js';
 import { StoreEditor } from './store-editor.js';
-import type { EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoreSettings } from './store-types.js';
 
 /**
  * Supplies the real API calls. Thin on purpose: a Server Component cannot hand
@@ -20,6 +20,8 @@ export function StoreScreen({
   uploadsEnabled,
   publicBase,
   today,
+  now,
+  chip,
   orders,
 }: {
   initial: StoreSettings;
@@ -29,6 +31,8 @@ export function StoreScreen({
   uploadsEnabled: boolean;
   publicBase: string;
   today: string;
+  now: Date;
+  chip: ChipState;
   orders: { paused: string | null; nextNumber: number };
 }) {
   const settingsApi: SettingsApi = {
@@ -62,6 +66,18 @@ export function StoreScreen({
     },
   };
 
+  // The secret key goes out once, in POST /store/chip, and nothing ever reads it back.
+  const chipApi: ChipApi = {
+    connect: async (brandId, secretKey) => {
+      const next = await apiFetch<Omit<ChipState, 'checkedAt'> & { checkedAt: string }>('/store/chip', { method: 'POST', body: JSON.stringify({ brandId, secretKey }) });
+      return { connected: next.connected, brandName: next.brandName, methods: next.methods, checkedAt: new Date(next.checkedAt), isTest: next.isTest };
+    },
+    disconnect: async () => {
+      await apiFetch('/store/chip', { method: 'DELETE' });
+    },
+    test: async () => (await apiFetch<{ url: string }>('/store/chip/test', { method: 'POST' })).url,
+  };
+
   return (
     <StoreEditor
       initial={initial}
@@ -70,9 +86,12 @@ export function StoreScreen({
       qrUrl={qrUrl}
       uploadsEnabled={uploadsEnabled}
       today={today}
+      now={now}
+      chip={chip}
       orders={orders}
       settingsApi={settingsApi}
       itemsApi={itemsApi}
+      chipApi={chipApi}
     />
   );
 }

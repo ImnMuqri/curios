@@ -108,6 +108,7 @@ describe('storeGaps', () => {
     bankName: null,
     bankAccountName: null,
     bankAccountNumber: null,
+    chipConnected: false,
   };
   it('is ready with a QR and pickup', () => {
     expect(storeGaps(ready)).toEqual([]);
@@ -116,6 +117,10 @@ describe('storeGaps', () => {
     expect(
       storeGaps({ ...ready, paymentQrKey: null, bankName: 'Maybank', bankAccountName: 'Lina', bankAccountNumber: '1234567890' }),
     ).toEqual([]);
+  });
+  it('counts a CHIP connection as a way to pay', () => {
+    expect(storeGaps({ ...ready, paymentQrKey: null, chipConnected: true })).toEqual([]);
+    expect(storeGaps({ ...ready, paymentQrKey: null })).toEqual(['payment']);
   });
   it('counts partial bank details as no way to pay', () => {
     expect(storeGaps({ ...ready, paymentQrKey: null, bankName: 'Maybank' })).toEqual(['payment']);

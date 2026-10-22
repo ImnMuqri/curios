@@ -647,6 +647,160 @@
 
 /* ---- Payment ---- */
 
+/* Online payments: the owner's own CHIP account, in three states. */
+.gw {
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+}
+
+.gw > b,
+.gwText b {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.gw > p {
+  max-width: 44em;
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gwMarks {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 12px;
+}
+
+.gwMarks i {
+  display: grid;
+  place-items: center;
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.gwMarks .markFpx {
+  background: var(--biru-muda);
+  color: var(--biru-ink);
+}
+
+.gwMarks .markTng {
+  background: var(--mark-tng-muda);
+  color: var(--mark-tng);
+}
+
+.gwMarks .markGrab {
+  background: var(--mark-grab-muda);
+  color: var(--mark-grab);
+}
+
+.gwMarks .markCard {
+  background: var(--mark-card-muda);
+  color: var(--mark-card);
+}
+
+.gwList {
+  display: grid;
+  gap: 4px;
+  margin: 10px 0 14px;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.gwList li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.gwList li::before {
+  content: '';
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--hijau);
+  transform: translateY(-2px);
+}
+
+.gwOn {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  border-color: var(--hijau-edge);
+  background: linear-gradient(135deg, var(--hijau-wash), var(--card) 60%);
+}
+
+.gwOk {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--hijau);
+}
+
+.gwOk svg {
+  fill: none;
+  stroke: var(--card);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.gwText p {
+  margin: 4px 0 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.gwForm {
+  margin-top: 12px;
+}
+
+.gwButtons {
+  margin-top: 14px;
+}
+
+.filled {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ink);
+  color: var(--paper);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.filled:disabled,
+.outline:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.outline[data-disconnect] {
+  color: var(--merah);
+}
+
+.signUp {
+  text-decoration: none;
+}
+
 .qrCard {
   display: flex;
   align-items: center;

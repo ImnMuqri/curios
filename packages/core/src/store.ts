@@ -117,6 +117,8 @@ export interface StoreReadiness {
   bankName: string | null;
   bankAccountName: string | null;
   bankAccountNumber: string | null;
+  /** The owner connected their own CHIP account (Store -> Payment), so customers can pay online. */
+  chipConnected: boolean;
 }
 
 export type StoreGap = 'payment' | 'fulfilment';
@@ -129,7 +131,7 @@ export type StoreGap = 'payment' | 'fulfilment';
 export function storeGaps(s: StoreReadiness): StoreGap[] {
   const gaps: StoreGap[] = [];
   const bank = Boolean(s.bankName && s.bankAccountName && s.bankAccountNumber);
-  if (!s.paymentQrKey && !bank) gaps.push('payment');
+  if (!s.paymentQrKey && !bank && !s.chipConnected) gaps.push('payment');
   if (!s.pickupEnabled && s.deliveryMode === 'NONE') gaps.push('fulfilment');
   return gaps;
 }

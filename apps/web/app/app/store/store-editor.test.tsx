@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StoreEditor } from './store-editor.js';
-import type { EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -34,11 +34,16 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
     uploadPhoto: vi.fn(),
     removePhoto: vi.fn(),
   };
-  return { settingsApi, itemsApi };
+  const chipApi: ChipApi = { connect: vi.fn(), disconnect: vi.fn(async () => undefined), test: vi.fn() };
+  return { settingsApi, itemsApi, chipApi };
 }
 
-function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }) {
-  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" orders={orders} {...calls} />);
+const noChip: ChipState = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
+const chipOn: ChipState = { connected: true, brandName: 'Kek Lina Bakes', methods: ['fpx'], checkedAt: new Date('2026-10-16T01:00:00Z'), isTest: false };
+const NOW = new Date('2026-10-16T02:00:00Z');
+
+function show(settings: StoreSettings = ready, list = items, calls = apis(), orders = { paused: null as string | null, nextNumber: 13 }, chip = noChip) {
+  render(<StoreEditor initial={settings} items={list} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={chip} orders={orders} {...calls} />);
   return calls;
 }
 
@@ -65,6 +70,19 @@ describe('the header', () => {
     expect(open).toBeDisabled();
     expect(open).toHaveAttribute('title', expect.stringMatching(/add a way to pay/));
     expect(within(header()).queryByRole('link', { name: 'See your shop' })).toBeNull();
+  });
+
+  it('counts a CHIP connection as a way to pay', async () => {
+    const calls = show({ ...ready, enabled: false, bankName: null, bankAccountName: null, bankAccountNumber: null }, items, apis(), undefined, chipOn);
+    expect(within(header()).getByText('Closed')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A way to pay\s*CHIP/ })).toBeInTheDocument();
+    await act(async () => { fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' })); });
+    expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
+  });
+
+  it('names CHIP beside the QR and bank account in the ready strip', () => {
+    show({ ...ready, paymentQrKey: null }, items, apis(), undefined, chipOn);
+    expect(screen.getByRole('button', { name: /A way to pay\s*CHIP and bank account/ })).toBeInTheDocument();
   });
 
   it('opens a ready shop, and the link appears', async () => {
@@ -241,7 +259,7 @@ describe('the preview', () => {
   it('counts a saved QR with nothing to show it from as no way to pay, in the page’s language', () => {
     const noBank = { ...ready, paymentQrKey: 'qr/k.webp', bankName: null, bankAccountName: null, bankAccountNumber: null };
     render(
-      <StoreEditor initial={noBank} items={items} look={{ ...look, language: 'ms' }} qrUrl={null} uploadsEnabled today="2026-10-16" orders={{ paused: null, nextNumber: 1 }} {...apis()} />,
+      <StoreEditor initial={noBank} items={items} look={{ ...look, language: 'ms' }} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 1 }} {...apis()} />,
     );
     fireEvent.click(screenTab('Pay'));
     expect(within(preview()).getByText('Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.')).toBeInTheDocument();

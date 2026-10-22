@@ -695,6 +695,19 @@ describe("the owner's transitions", () => {
     expect(after.paidAt).not.toBeNull();
   });
 
+  it('records how it was paid: by the receipt sent in, or by hand with none', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const withReceipt = await another(shop, RECEIPT);
+    const without = await another(shop);
+
+    expect((await move(cookie, withReceipt.id, 'paid')).statusCode).toBe(204);
+    expect((await move(cookie, without.id, 'paid')).statusCode).toBe(204);
+
+    expect((await row(withReceipt.id)).paidVia).toBe('RECEIPT');
+    expect((await row(without.id)).paidVia).toBe('MANUAL');
+  });
+
   it('changes nothing the second time', async () => {
     const shop = await aShop();
     const cookie = await ownerOf(shop);

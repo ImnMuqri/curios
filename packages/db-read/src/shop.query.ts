@@ -166,6 +166,11 @@ export interface OwnerStore {
     tileSize: TileSize | null;
   };
   items: (ShopItem & { available: boolean })[];
+  /**
+   * The owner's own CHIP account, as Store -> Payment shows it. Never the key: it is
+   * not selected here, and this role cannot read that column anyway (readonly-role.sql).
+   */
+  chip: { connected: boolean; brandName: string | null; methods: string[]; checkedAt: Date | null; isTest: boolean };
 }
 
 /** The owner's Store screen: every item, available or not, and the settings. */
@@ -190,9 +195,13 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
       bankAccountNumber: true,
       shopTileSize: true,
       items: { orderBy: { position: 'asc' }, select: { ...ITEM_SELECT, available: true } },
+      paymentAccount: { select: { brandName: true, methods: true, checkedAt: true, isTest: true } },
     },
   });
   if (!page) return null;
-  const { mode, items, storeEnabled, shopTileSize, ...rest } = page;
-  return { mode, items, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest } };
+  const { mode, items, storeEnabled, shopTileSize, paymentAccount, ...rest } = page;
+  const chip = paymentAccount
+    ? { connected: true, ...paymentAccount }
+    : { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
+  return { mode, items, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest }, chip };
 }

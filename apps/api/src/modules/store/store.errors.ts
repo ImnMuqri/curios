@@ -61,3 +61,75 @@ export class ItemOrderStaleError extends Error {
     this.name = 'ItemOrderStaleError';
   }
 }
+
+/** A Brand ID or secret key that cannot be one: checked before anything is sent to CHIP. */
+export class InvalidChipKeyError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_CHIP_KEY';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidChipKeyError';
+  }
+}
+
+/** CHIP refused the owner's key or Brand ID. */
+export class ChipKeyRefusedError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'CHIP_KEY_REFUSED';
+  constructor() {
+    super("That key or Brand ID didn't work. Copy both again from your CHIP dashboard, under Developers.");
+    this.name = 'ChipKeyRefusedError';
+  }
+}
+
+/** A CHIP test key, where only a live one can take an order's money. */
+export class ChipTestKeyError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'CHIP_TEST_KEY';
+  constructor() {
+    super('This is a test key. Connect your live secret key from your CHIP dashboard, under Developers.');
+    this.name = 'ChipTestKeyError';
+  }
+}
+
+/** The owner's account takes no card or e-wallet, so there is nothing to test RM1 with. */
+export class ChipNoTestMethodError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'CHIP_NO_TEST_METHOD';
+  constructor() {
+    super('Your CHIP account takes no card or e-wallet yet, so there is nothing to test with. Turn one on in CHIP first.');
+    this.name = 'ChipNoTestMethodError';
+  }
+}
+
+/** CHIP would not start the test payment, for a reason other than the key. */
+export class ChipTestRefusedError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'CHIP_TEST_REFUSED';
+  constructor() {
+    super('CHIP would not start a test payment. Check your account in the CHIP dashboard, then try again.');
+    this.name = 'ChipTestRefusedError';
+  }
+}
+
+export class ChipNotConnectedError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'CHIP_NOT_CONNECTED';
+  constructor() {
+    super('Connect CHIP first.');
+    this.name = 'ChipNotConnectedError';
+  }
+}
+
+/**
+ * Development only: PAYMENT_SECRETS_KEY is not set, so there is nowhere safe to keep a
+ * key. A 503 like BILLING_NOT_CONFIGURED; production refuses to start without it.
+ */
+export class ChipNotConfiguredError extends Error {
+  readonly statusCode = 503;
+  readonly code = 'CHIP_NOT_CONFIGURED';
+  constructor() {
+    super('Connecting CHIP is not configured in this environment.');
+    this.name = 'ChipNotConfiguredError';
+  }
+}

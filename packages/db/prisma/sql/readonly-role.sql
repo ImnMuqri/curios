@@ -17,3 +17,10 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO curios_readonly;
 
 -- Tables created by future migrations must inherit the same grant.
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO curios_readonly;
+
+-- Every column of a shop's payment account but the sealed CHIP secret key: the
+-- web app never needs it, so it cannot read it. Re-granting ALL TABLES above
+-- gives the whole table back, so this narrows it again on every run.
+REVOKE SELECT ON "ShopPaymentAccount" FROM curios_readonly;
+GRANT SELECT ("pageId", "provider", "brandId", "brandName", "publicKeyPem", "methods", "isTest", "connectedAt", "checkedAt", "lastErrorAt")
+  ON "ShopPaymentAccount" TO curios_readonly;

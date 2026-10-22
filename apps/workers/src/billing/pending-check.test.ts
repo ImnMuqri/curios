@@ -76,6 +76,7 @@ function aPayingClient() {
     deleteRecurringToken: vi.fn<ChipClient['deleteRecurringToken']>(),
     cancelPurchase: vi.fn<ChipClient['cancelPurchase']>(),
     getPublicKey: vi.fn<ChipClient['getPublicKey']>(),
+    listPaymentMethods: vi.fn<ChipClient['listPaymentMethods']>(),
     getPurchase: vi.fn<ChipClient['getPurchase']>(async (id): Promise<ChipPurchase> => {
       const payment = await prisma.payment.findUniqueOrThrow({ where: { providerRef: id }, select: { id: true } });
       return aPurchase({ id, status: 'paid', reference: payment.id });

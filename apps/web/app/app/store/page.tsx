@@ -78,6 +78,8 @@ export default async function StorePage() {
       uploadsEnabled={Boolean(process.env.STORAGE_PUBLIC_URL)}
       publicBase={process.env.STORAGE_PUBLIC_URL ?? ''}
       today={todayInMalaysia()}
+      now={new Date()}
+      chip={store.chip}
       orders={{ paused: pausedWhy(owned, new Date()), nextNumber: owned.ordersPlaced + 1 }}
     />
   );

@@ -45,6 +45,12 @@ async function anOwner(on: FastifyInstance, mode: 'BUSINESS' | 'PERSONAL' = 'BUS
 const call = (on: FastifyInstance, method: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE', url: string, cookie?: string, payload?: object) =>
   on.inject({ method, url, remoteAddress: from(), ...(cookie ? { cookies: { [SESSION_COOKIE]: cookie } } : {}), ...(payload ? { payload } : {}) });
 
+/** A connected CHIP account, written straight to the table: these tests are about the gaps, not connecting. */
+const aChipAccount = (pageId: string) =>
+  app.prisma.shopPaymentAccount.create({
+    data: { pageId, brandId: randomUUID(), secretKeyCiphertext: 'sealed', publicKeyPem: 'pem', methods: ['fpx'], checkedAt: new Date() },
+  });
+
 const bank = { bankName: 'Maybank', bankAccountName: 'Lina binti Ahmad', bankAccountNumber: '5140 1234 5678' };
 
 describe('the store gate', () => {
@@ -108,6 +114,14 @@ describe('PATCH /store/settings', () => {
   it('opens a ready shop in the same request that makes it ready', async () => {
     const owner = await anOwner(app);
     const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, pickupEnabled: true, ...bank });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().settings.enabled).toBe(true);
+  });
+
+  it('opens a shop whose only way to pay is a CHIP connection', async () => {
+    const owner = await anOwner(app);
+    await aChipAccount(owner.pageId);
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, pickupEnabled: true });
     expect(res.statusCode).toBe(200);
     expect(res.json().settings.enabled).toBe(true);
   });
@@ -196,6 +210,16 @@ describe('the payment QR', () => {
     const res = await call(app, 'DELETE', '/store/payment-qr', owner.cookie);
     expect(res.json().error.code).toBe('STORE_NOT_READY');
     expect((await call(app, 'GET', '/store', owner.cookie)).json().settings.paymentQrKey).not.toBeNull();
+  });
+
+  it('removes the QR from an open shop when CHIP is connected', async () => {
+    const owner = await anOwner(app);
+    await call(app, 'POST', '/store/payment-qr', owner.cookie, { contentType: 'image/png', data: PNG });
+    await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, pickupEnabled: true });
+    await aChipAccount(owner.pageId);
+    const res = await call(app, 'DELETE', '/store/payment-qr', owner.cookie);
+    expect(res.statusCode).toBe(200);
+    expect((await call(app, 'GET', '/store', owner.cookie)).json().settings.paymentQrKey).toBeNull();
   });
 
   it('says uploads are off where storage is not configured', async () => {

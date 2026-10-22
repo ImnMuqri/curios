@@ -129,6 +129,17 @@ export const DOMAIN_ERROR_CODES = new Set([
   'ORDER_ALREADY_PAID',
   'ORDER_CANCELLED',
   'ORDER_STATE',
+  // Connecting the owner's own CHIP account (Store -> Payment): each says what to fix --
+  // the key's shape, the key CHIP refused, a test key in production, an account with
+  // nothing to test with, a test CHIP would not start, or nothing connected yet.
+  'INVALID_CHIP_KEY',
+  'CHIP_KEY_REFUSED',
+  'CHIP_TEST_KEY',
+  'CHIP_NO_TEST_METHOD',
+  'CHIP_TEST_REFUSED',
+  'CHIP_NOT_CONNECTED',
+  // Development only, as BILLING_NOT_CONFIGURED: no PAYMENT_SECRETS_KEY to seal a key with.
+  'CHIP_NOT_CONFIGURED',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --

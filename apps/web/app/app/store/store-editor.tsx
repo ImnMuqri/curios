@@ -20,7 +20,7 @@ import { ItemsList } from './items-list.js';
 import { PayPreview } from './pay-preview.js';
 import { PaymentTab } from './payment-tab.js';
 import { orNull, useSettingText } from './setting-field.js';
-import type { EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
 import styles from './store.module.css';
 
 const TABS = [
@@ -55,6 +55,18 @@ function trackedSettings(api: SettingsApi, track: SaveTrack): SettingsApi {
   };
 }
 
+/**
+ * What "A way to pay" says once there is one: the board's "QR and bank account", "DuitNow
+ * QR" or "Bank account", with CHIP named first when it is connected.
+ */
+function payWords(chip: boolean, qr: boolean, bank: boolean): string {
+  if (!chip) return qr && bank ? 'QR and bank account' : qr ? 'DuitNow QR' : 'Bank account';
+  const others = [...(qr ? ['QR'] : []), ...(bank ? ['bank account'] : [])];
+  if (others.length === 0) return 'CHIP';
+  if (others.length === 1) return `CHIP and ${others[0]}`;
+  return `CHIP, ${others.join(' and ')}`;
+}
+
 /** "Pickup and delivery RM10", "Rider delivery", ...: what "Getting it to them" says once it is set. */
 function handOverWords(s: StoreSettings): string {
   const parts = [
@@ -78,9 +90,12 @@ export function StoreEditor({
   qrUrl,
   uploadsEnabled,
   today,
+  now,
+  chip: initialChip,
   orders,
   settingsApi: rawSettings,
   itemsApi: rawItems,
+  chipApi,
 }: {
   initial: StoreSettings;
   items: EditorItem[];
@@ -89,6 +104,10 @@ export function StoreEditor({
   uploadsEnabled: boolean;
   /** Today's date as YYYY-MM-DD, from the server, for the notice strip. */
   today: string;
+  /** The server's now, for "checked 12 min ago". */
+  now: Date;
+  /** The owner's own CHIP account, as the read gives it. Never the key. */
+  chip: ChipState;
   /**
    * From the server's orderState: why an open shop takes no orders now (null
    * while it may), and the number the next order will get, for the preview.
@@ -96,6 +115,7 @@ export function StoreEditor({
   orders: { paused: string | null; nextNumber: number };
   settingsApi: SettingsApi;
   itemsApi: ItemsApi;
+  chipApi: ChipApi;
 }) {
   const { state, track } = useSaveStatus();
   const settingsApi = useMemo(() => trackedSettings(rawSettings, track), [rawSettings, track]);
@@ -103,6 +123,7 @@ export function StoreEditor({
 
   const [settings, setSettings] = useState(initial);
   const [qr, setQr] = useState({ has: Boolean(initial.paymentQrKey), url: qrUrl });
+  const [chip, setChip] = useState(initialChip);
   const [items, setItems] = useState(initialItems);
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -134,7 +155,8 @@ export function StoreEditor({
   );
   const toggleHalal = () => void save({ shopHalal: !settings.shopHalal }).catch(() => undefined);
 
-  const readiness = { ...settings, paymentQrKey: qr.has ? 'qr' : null };
+  const readiness = { ...settings, paymentQrKey: qr.has ? 'qr' : null, chipConnected: chip.connected };
+  const bankOk = Boolean(settings.bankName && settings.bankAccountName && settings.bankAccountNumber);
   const gaps = storeGaps(readiness);
   const live = items.filter((item) => item.available);
   const payOk = !gaps.includes('payment');
@@ -256,7 +278,7 @@ export function StoreEditor({
           <ul className={styles.ready} aria-label="Ready to take orders">
             {[
               { ok: live.length > 0, title: 'Items', note: live.length > 0 ? `${live.length} in your shop` : items.length > 0 ? 'Switch an item on' : 'Add your first item', go: 'items' as const },
-              { ok: payOk, title: 'A way to pay', note: !payOk ? 'Add a QR or bank account' : qr.has && settings.bankName && settings.bankAccountName && settings.bankAccountNumber ? 'QR and bank account' : qr.has ? 'DuitNow QR' : 'Bank account', go: 'payment' as const },
+              { ok: payOk, title: 'A way to pay', note: !payOk ? 'Add a QR or bank account' : payWords(chip.connected, qr.has, bankOk), go: 'payment' as const },
               { ok: handOk, title: 'Getting it to them', note: handOk ? handOverWords(settings) : 'Turn on pickup or delivery', go: 'delivery' as const },
             ].map((step) => (
               <li key={step.title}>
@@ -356,6 +378,10 @@ export function StoreEditor({
               uploadQr={settingsApi.uploadQr}
               removeQr={settingsApi.removeQr}
               onQr={setQr}
+              chip={chip}
+              chipApi={chipApi}
+              onChip={setChip}
+              now={now}
             />
           </div>
 

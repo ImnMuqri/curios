@@ -13,6 +13,7 @@ const ICONS = {
   shelf: 'M4 7h16v13H4zM4 7l2-3h12l2 3M9 11h6',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2',
   bank: 'M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18',
+  card: 'M3 6h18v13H3zM3 10h18M7 15h4',
   bag: 'M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2',
   truck: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
   calendar: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5',

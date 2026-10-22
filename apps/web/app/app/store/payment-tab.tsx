@@ -3,18 +3,197 @@
 import { useRef, useState } from 'react';
 import { Callout } from '@curios/ui';
 import { BANK_ACCOUNT_NAME_MAX, BANK_NAME_MAX } from '@curios/core/store';
+import { ApiError } from '../../../lib/api.js';
+import { relativeTime } from '../_ui/relative-time.js';
 import ui from '../_ui/editor.module.css';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
 import { orNull, useSettingText } from './setting-field.js';
-import type { SettingsPatch, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, SettingsPatch, StoreSettings } from './store-types.js';
 import styles from './store.module.css';
 
 /** The banks most owners here use, one tap each; anything else is typed. */
 const BANKS = ['Maybank', 'CIMB', 'Public Bank', 'RHB', 'Bank Islam', 'Hong Leong'];
 
+const NOT_CONNECTED: ChipState = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
+
+/** Where CHIP's own sign-up starts. */
+const CHIP_SIGN_UP = 'https://www.chip-in.asia';
+
 /**
- * How customers pay: a DuitNow QR, a bank account, or both. The QR uploads
+ * The API replaces a 5xx message with a generic sentence and keeps only an allow-listed
+ * code, so an outage and "switched off here" are told by code. Anything below 500 carries
+ * a message written for the owner, used as it is.
+ */
+function chipError(failure: unknown): string {
+  if (failure instanceof ApiError && failure.code === 'CHIP_UNAVAILABLE') return 'CHIP is not answering right now. Try again in a few minutes.';
+  if (failure instanceof ApiError && failure.code === 'CHIP_NOT_CONFIGURED') return 'Connecting CHIP is switched off here: no PAYMENT_SECRETS_KEY in this environment.';
+  return failure instanceof Error && failure.message ? failure.message : 'That did not work. Try again.';
+}
+
+/**
+ * "Online payments" (Store board): the owner's own CHIP account. Not connected, it
+ * says what CHIP does; connecting, it asks for the Brand ID and secret key; connected,
+ * it names the brand and offers the RM1 test and Disconnect. The secret key is only
+ * ever typed here and sent once; it is never read back, and is cleared once sent.
+ */
+function OnlinePayments({
+  chip,
+  chipApi,
+  onChip,
+  displayName,
+  now,
+  navigate,
+}: {
+  chip: ChipState;
+  chipApi: ChipApi;
+  onChip: (chip: ChipState) => void;
+  displayName: string;
+  now: Date;
+  navigate: (url: string) => void;
+}) {
+  const [form, setForm] = useState(false);
+  const [brandId, setBrandId] = useState('');
+  const [secretKey, setSecretKey] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+
+  async function run(action: () => Promise<void>) {
+    setError('');
+    setBusy(true);
+    try {
+      await action();
+    } catch (failure) {
+      setError(chipError(failure));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const connect = () =>
+    run(async () => {
+      const next = await chipApi.connect(brandId, secretKey);
+      setSecretKey('');
+      setBrandId('');
+      setForm(false);
+      onChip(next);
+    });
+
+  const disconnect = () =>
+    run(async () => {
+      setConfirming(false);
+      await chipApi.disconnect();
+      onChip(NOT_CONNECTED);
+    });
+
+  const test = () => run(async () => navigate(await chipApi.test()));
+
+  const checked = chip.checkedAt ? relativeTime(new Date(chip.checkedAt), now) : 'just now';
+
+  return (
+    <section className={ui.section} aria-labelledby="online-title">
+      <SectionHead id="online-title" icon="card" tone="hijau" title="Online payments" note="FPX online banking and e-wallets" />
+      {chip.connected ? (
+        <div className={`${styles.gw} ${styles.gwOn}`}>
+          <span className={styles.gwOk} aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+          </span>
+          <span className={styles.gwText}>
+            <b>Connected to CHIP</b>
+            <p>
+              Brand “{chip.brandName ?? displayName}” · checked {checked}. Customers can pay by FPX, e-wallet or card, and those orders land in Orders as Paid. Your
+              DuitNow QR below stays on too, with receipts to check as before.
+            </p>
+            {chip.isTest ? <p>Test mode: payments here move no real money.</p> : null}
+            {confirming ? (
+              <span className={ui.confirm}>
+                Disconnect CHIP? Customers can’t pay online until you connect again.
+                <button type="button" className={ui.confirmRemove} onClick={() => void disconnect()}>
+                  Yes, disconnect
+                </button>
+                <button type="button" onClick={() => setConfirming(false)}>
+                  Keep
+                </button>
+              </span>
+            ) : (
+              <span className={styles.buttons}>
+                <button type="button" className={styles.outline} disabled={busy} onClick={() => void test()}>
+                  Test with RM1
+                </button>
+                <button type="button" className={styles.outline} data-disconnect="" disabled={busy} onClick={() => setConfirming(true)}>
+                  Disconnect
+                </button>
+              </span>
+            )}
+          </span>
+        </div>
+      ) : form ? (
+        <div className={styles.gw}>
+          <b>Connect CHIP</b>
+          <p>Copy these from your CHIP dashboard, under Developers. We only use them to take payments for your orders.</p>
+          <div className={`${styles.grid2} ${styles.gwForm}`}>
+            <label className={`${ui.float} ${styles.mono}`}>
+              <em>Brand ID</em>
+              <input value={brandId} autoComplete="off" spellCheck={false} onChange={(event) => setBrandId(event.target.value)} />
+            </label>
+            <label className={`${ui.float} ${styles.mono}`}>
+              <em>Secret key</em>
+              <input value={secretKey} autoComplete="off" spellCheck={false} onChange={(event) => setSecretKey(event.target.value)} />
+            </label>
+          </div>
+          <span className={`${styles.buttons} ${styles.gwButtons}`}>
+            <button type="button" className={styles.filled} disabled={busy} onClick={() => void connect()}>
+              Check and connect
+            </button>
+            <button
+              type="button"
+              className={styles.outline}
+              onClick={() => {
+                setForm(false);
+                setSecretKey('');
+                setError('');
+              }}
+            >
+              Cancel
+            </button>
+          </span>
+        </div>
+      ) : (
+        <div className={styles.gw}>
+          <div className={styles.gwMarks} aria-hidden="true">
+            <i className={styles.markFpx}>FPX</i>
+            <i className={styles.markTng}>TNG</i>
+            <i className={styles.markGrab}>Grab</i>
+            <i className={styles.markCard}>Card</i>
+          </div>
+          <b>Let customers pay online</b>
+          <p>Connect your own CHIP account. Customers pick their bank or e-wallet at checkout, and the order marks itself paid. No receipts to check.</p>
+          <ul className={styles.gwList}>
+            <li>Money goes to your CHIP account, then to your bank</li>
+            <li>CHIP charges a small fee per payment</li>
+            <li>Covers FPX, e-wallets and cards, all confirmed straight away</li>
+            <li>Your DuitNow QR below stays on, with no CHIP fee</li>
+          </ul>
+          <span className={styles.buttons}>
+            <button type="button" className={styles.filled} onClick={() => setForm(true)}>
+              Connect CHIP
+            </button>
+            <a className={`${styles.outline} ${styles.signUp}`} href={CHIP_SIGN_UP} target="_blank" rel="noreferrer">
+              No account yet? Sign up
+            </a>
+          </span>
+        </div>
+      )}
+      {error ? <Callout tone="error">{error}</Callout> : null}
+    </section>
+  );
+}
+
+/**
+ * How customers pay: online through the owner's own CHIP account, a DuitNow QR, a bank account. The QR uploads
  * and is removed at once; the bank fields save as the owner pauses. Each
  * order page shows these to its customer with the order's total.
  */
@@ -27,6 +206,11 @@ export function PaymentTab({
   removeQr,
   onQr,
   displayName,
+  chip,
+  chipApi,
+  onChip,
+  now,
+  navigate = (url) => window.location.assign(url),
 }: {
   /** The shop's name, for the QR card's "<name> · DuitNow." */
   displayName: string;
@@ -37,6 +221,13 @@ export function PaymentTab({
   uploadQr: (file: File) => Promise<string>;
   removeQr: () => Promise<void>;
   onQr: (qr: { has: boolean; url: string | null }) => void;
+  chip: ChipState;
+  chipApi: ChipApi;
+  onChip: (chip: ChipState) => void;
+  /** For "checked 12 min ago": the server's now on first render, so both renders agree. */
+  now: Date;
+  /** Where "Test with RM1" sends the browser; tests pass a spy. */
+  navigate?: (url: string) => void;
 }) {
   const file = useRef<HTMLInputElement>(null);
   const [qrError, setQrError] = useState('');
@@ -70,6 +261,8 @@ export function PaymentTab({
 
   return (
     <>
+      <OnlinePayments chip={chip} chipApi={chipApi} onChip={onChip} displayName={displayName} now={now} navigate={navigate} />
+
       <section className={ui.section} aria-labelledby="qr-title">
         <SectionHead id="qr-title" icon="qr" tone="biru" title="DuitNow QR" note="Customers scan it on their order page" />
         {qr.has ? (

@@ -1,12 +1,15 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { getPublicPage } from './page.query.js';
+import { prismaRead } from './client.js';
 import { getOwnerStore, getPublicShop } from './shop.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 const EMAIL = '@shop-query.example.com';
 let openAccountId = '';
 let orderAccountId = '';
+let chipAccountId = '';
+const CHECKED = new Date('2026-10-23T02:00:00Z');
 
 const shelf = [
   { name: 'A', slug: 'a', category: 'Cakes', tag: 'New', priceCents: 1000, position: 0, available: true },
@@ -41,6 +44,11 @@ beforeAll(async () => {
   await seed('sq-draft', { published: false });
   await seed('sq-many', {
     items: { create: ['M1', 'M2', 'M3', 'M4'].map((name, position) => ({ name, slug: name.toLowerCase(), position, available: true })) },
+  });
+  chipAccountId = await seed('sq-chip', {
+    paymentAccount: {
+      create: { brandId: 'brand-1a2b', brandName: 'Kek Lina Bakes', secretKeyCiphertext: 'sealed-box', publicKeyPem: 'pem', methods: ['fpx', 'visa'], checkedAt: CHECKED },
+    },
   });
   // Created in the reverse of their positions, so insertion order cannot pass for position order.
   orderAccountId = await seed('sq-order', {
@@ -163,5 +171,18 @@ describe('getOwnerStore', () => {
 
   it('carries the closed days and the delivery note', async () => {
     expect((await getOwnerStore(openAccountId))?.settings).toMatchObject({ closedDays: [0, 3], deliveryNote: 'Around Shah Alam' });
+  });
+
+  it('says whether CHIP is connected, and nothing about the key', async () => {
+    const store = await getOwnerStore(chipAccountId);
+    expect(store?.chip).toEqual({ connected: true, brandName: 'Kek Lina Bakes', methods: ['fpx', 'visa'], checkedAt: CHECKED, isTest: false });
+    expect(JSON.stringify(store)).not.toContain('sealed-box');
+
+    expect((await getOwnerStore(openAccountId))?.chip).toEqual({ connected: false, brandName: null, methods: [], checkedAt: null, isTest: false });
+  });
+
+  it('cannot read the sealed key at all, as the read-only role', async () => {
+    await expect(prismaRead.shopPaymentAccount.findMany({ select: { secretKeyCiphertext: true } })).rejects.toThrow(/permission denied/);
+    await expect(prismaRead.shopPaymentAccount.findMany({ select: { pageId: true, brandName: true } })).resolves.toBeDefined();
   });
 });

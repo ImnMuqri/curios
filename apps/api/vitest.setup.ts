@@ -64,3 +64,8 @@ process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';
 // in .env never changes what a test does -- and so nothing in this suite can
 // spend real money reaching a real embedder by accident.
 process.env.OPENAI_API_KEY = 'test-openai-api-key';
+
+// The key that seals owners' CHIP secret keys (Store -> Payment), required in production.
+// A fixed dummy of the right shape (base64 of 32 bytes) so buildApp() boots with CHIP
+// connecting switched on; the suites that care about the key inject their own.
+process.env.PAYMENT_SECRETS_KEY = Buffer.alloc(32, 7).toString('base64');

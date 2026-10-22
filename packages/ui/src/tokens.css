@@ -109,6 +109,18 @@
   --kuning-ink: #7a4a0c;
   --biru-ink: #122686;
   --hijau-ink: #123b33;
+  /*
+   * Store -> Payment's "Online payments" (Store board): the payment marks (FPX uses
+   * --biru-muda and --biru-ink), and the connected card's green wash and edge.
+   */
+  --mark-tng: #0b4dbd;
+  --mark-tng-muda: #e6f0ff;
+  --mark-grab: #0d7a3e;
+  --mark-grab-muda: #e3f6ea;
+  --mark-card: #c2410c;
+  --mark-card-muda: #fff1e8;
+  --hijau-wash: #eef7f3;
+  --hijau-edge: #d3e8e1;
 
   /* The original six steps. The handoff's screens use more; see SCALE in design-rules.ts. */
   --text-xs: 11px;

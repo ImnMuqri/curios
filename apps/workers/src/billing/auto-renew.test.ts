@@ -99,6 +99,7 @@ function aChip() {
     deleteRecurringToken: vi.fn<ChipClient['deleteRecurringToken']>(),
     cancelPurchase: vi.fn<ChipClient['cancelPurchase']>(),
     getPublicKey: vi.fn<ChipClient['getPublicKey']>(),
+    listPaymentMethods: vi.fn<ChipClient['listPaymentMethods']>(),
   };
 }
 
