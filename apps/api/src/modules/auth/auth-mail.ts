@@ -15,6 +15,7 @@ export function verifyMail(token: string): Mail {
     text: `Confirm your address to finish setting up Curios:\n\n${url}`,
     html: renderMailHtml({
       subject: 'Confirm your email',
+      appUrl: appUrl(),
       heading: 'Confirm your email',
       blocks: [
         { kind: 'p', text: 'Confirm your address to finish setting up Curios.' },
@@ -36,6 +37,7 @@ export function resetMail(token: string, email: string): Mail {
     text: `${asked}\n\n${url}\n\n${once}`,
     html: renderMailHtml({
       subject: 'Reset your password',
+      appUrl: appUrl(),
       heading: 'Reset your password',
       blocks: [
         { kind: 'p', text: asked },
@@ -55,6 +57,7 @@ export function alreadySignedUpMail(): Mail {
     text: 'Someone tried to sign up with this address. You already have an account, so sign in instead. If that was not you, you can ignore this message. Nothing has changed on your account.',
     html: renderMailHtml({
       subject: 'You already have a Curios account',
+      appUrl: appUrl(),
       heading: 'You already have a Curios account',
       blocks: [
         { kind: 'p', text: 'Someone tried to sign up with this address. You already have an account, so sign in instead.' },

@@ -14,6 +14,10 @@ import type { NextConfig } from 'next';
 // race entirely, since every worker it spawns inherits process.env as it
 // existed at that point.
 const config: NextConfig = {
+  // `next build` and the running `next dev` both write to .next, so a build can
+  // break a dev server. Builds from agents and scripts set NEXT_DIST_DIR (to
+  // .next-build) to keep out of its way; everyone else gets the default.
+  distDir: process.env.NEXT_DIST_DIR ?? '.next',
   // The public page reads Postgres directly through the SELECT-only role, which
   // the edge runtime cannot do. Node everywhere, deliberately.
   serverExternalPackages: ['@prisma/client'],

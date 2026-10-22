@@ -1,4 +1,6 @@
 .mark {
+  --mo-ring: var(--biru);
+  --mo-eye: var(--biru);
   display: inline-block;
   font-family: var(--font-display);
   font-size: var(--l-wordmark, 28px);
@@ -8,19 +10,89 @@
   color: currentColor;
 }
 
-.i {
-  position: relative;
+.mark[data-tone='ghost'] {
+  --mo-ring: var(--ghost-ink);
+  --mo-eye: var(--ghost-ink);
 }
 
-/* The ask bar in miniature, where the i's dot would be. */
-.i::before {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 0.06em;
-  width: 0.42em;
-  height: 0.26em;
-  border: 0.065em solid currentColor;
-  border-radius: 0.08em;
-  transform: translateX(-50%);
+/* The o: a ring with two eyes that look around, and a ^^ for hover. */
+.mo {
+  position: relative;
+  display: inline-block;
+  width: 0.6em;
+  height: 0.6em;
+  margin: 0 0.012em;
+  vertical-align: -0.015em;
+}
+
+.mo svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--mo-ring);
+  stroke-width: 7.6;
+}
+
+.eyes {
+  fill: var(--mo-eye);
+  transform-box: view-box;
+  transform-origin: 20px 16px;
+  animation: moLook 10s ease-in-out infinite;
+  transition: opacity 160ms;
+}
+
+@keyframes moLook {
+  0%,
+  16% {
+    transform: translate(0, 0);
+  }
+  20%,
+  32% {
+    transform: translate(-2.6px, 1.2px);
+  }
+  36%,
+  50% {
+    transform: translate(2.6px, 1.2px);
+  }
+  54%,
+  68% {
+    transform: translate(0, -0.6px);
+  }
+  70% {
+    transform: translate(0, -0.6px) scaleY(0.1);
+  }
+  72%,
+  100% {
+    transform: translate(0, -0.6px);
+  }
+}
+
+.happy {
+  opacity: 0;
+  fill: none;
+  stroke: var(--mo-eye);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  transition: opacity 160ms;
+}
+
+.mark:hover .eyes,
+:global(a):hover > .mark .eyes {
+  opacity: 0;
+}
+
+.mark:hover .happy,
+:global(a):hover > .mark .happy {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eyes {
+    animation: none;
+  }
 }

@@ -4,6 +4,15 @@ import { ACCOUNT_MAIL_FOOTER, escapeHtml, renderMailHtml } from './mail.js';
 const base = { subject: 'Confirm your email', heading: 'Confirm your email', footer: ACCOUNT_MAIL_FOOTER };
 
 describe('renderMailHtml', () => {
+  it('the header is the hosted wordmark image with alt "curios"', () => {
+    const html = renderMailHtml({ ...base, blocks: [], appUrl: 'https://curios.my/' });
+    expect(html).toContain('<img src="https://curios.my/email/wordmark@2x.png"');
+    expect(html).toContain('alt="curios"');
+    expect(html).toContain('width="');
+    expect(html).toContain('height="28"');
+    expect(html).toContain('display:block;border:0');
+  });
+
   it('lays the email out: wordmark, heading, button, footer', () => {
     const html = renderMailHtml({
       ...base,
@@ -14,7 +23,7 @@ describe('renderMailHtml', () => {
     });
 
     expect(html).toContain('<title>Confirm your email</title>');
-    expect(html).toContain('>curios<');
+    expect(html).not.toContain('>curios<');
     expect(html).toContain('>Confirm your email</h1>');
     expect(html).toContain('href="https://curios.my/verify?token=abc"');
     expect(html).toContain('>Confirm my email</a>');

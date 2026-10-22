@@ -77,6 +77,8 @@
   --ghost-a: #f3f4f7;
   --ghost-b: #eef0f4;
   --ghost-line: #c9ccd3;
+  /* The footer wordmark's ring and eyes, dark on dark. */
+  --ghost-ink: #2a3248;
   --phone-edge: #e1e4e9;
   /* The tick in the dashboard toast. */
   --toast-tick: #86e0b8;

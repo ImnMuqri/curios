@@ -212,6 +212,7 @@ export function buildNotification(input: {
   const html = renderMailHtml({
     subject,
     topRight: 'From your page',
+    appUrl: input.appUrl,
     tag: { label: 'New lead', tone: 'hijau' },
     heading: 'Someone wants you to message them',
     blocks,

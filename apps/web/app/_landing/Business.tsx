@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { scene } from './order-scene.js';
 import { PERSONAS } from './personas.js';
@@ -27,6 +27,7 @@ const Cursor = ({ x, y, o, pressed }: { x: number; y: number; o: number; pressed
  */
 export function Business({ locale }: { locale: Locale }) {
   const copy = COPY[locale].business;
+  const badgeId = useId();
   const reduced = useReducedMotion();
   const [p, setP] = useState(1);
   const stage = useRef<HTMLDivElement>(null);
@@ -322,7 +323,7 @@ export function Business({ locale }: { locale: Locale }) {
 
                 <div className={styles.notif} style={{ transform: `translateY(${s.notif.y}%)`, opacity: s.notif.o }}>
                   <p>
-                    <span className={styles.notifIcon}>c</span>
+                    <span className={styles.notifIcon}><svg width="100%" height="100%" style={{ display: 'block' }} viewBox="0 0 32 32" aria-hidden="true"><defs><clipPath id={`${badgeId}-crf`}><rect width="32" height="32" rx="8" /></clipPath></defs><g clipPath={`url(#${badgeId}-crf)`}><rect width="32" height="32" fill="#2340c8" /><path d="M4 33V21.5a12 12 0 0 1 24 0V33z" fill="#fafbfc" /><circle cx="12" cy="20.6" r="3.8" fill="#191f2c" /><circle cx="20" cy="20.6" r="3.8" fill="#191f2c" /><circle cx="13.1" cy="19.1" r="1.2" fill="#fafbfc" /><circle cx="21.1" cy="19.1" r="1.2" fill="#fafbfc" /></g></svg></span>
                     <span style={{ flex: 1, minWidth: 0 }}>
                       <span>
                         <b>Curios</b>

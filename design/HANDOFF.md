@@ -311,13 +311,13 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   looks around. Size and position are in em, so it scales with the 31vw wordmark.
 - The giant footer wordmark uses the same eyes o, in the dark ghost colour (#2a3248).
 
-## Open decisions (ask Iman before building these)
+## Open decisions (all three settled; kept for the record)
 
-1. **Price.** The code has RM39 a month (`PLAN_PRICES_CENTS` 3900 / 39000). The landing and Billing
-   designs say RM49 / RM490.
-2. **New emails not yet in any spec:**
+1. ~~**Price.** The code has RM39 a month (`PLAN_PRICES_CENTS` 3900 / 39000). The landing and Billing
+   designs say RM49 / RM490.~~ Settled 2026-10-16: RM49 a month, RM490 a year (`PLAN_PRICES_CENTS` is 4900 / 49000).
+2. ~~**New emails not yet in any spec:**~~ Settled 2026-10-16: all four are built in `packages/core/src/plan-mail.ts`.
    - "Your page stopped taking numbers" (trial used up)
    - "Your page reached its monthly limit"
    - plan ending reminders: 3 days before, and on the day
-3. **Lapsed plan wording.** The design says a lapse also stops orders. This matches
-   `canTakeOrders()`, but confirm the banner copy.
+3. ~~**Lapsed plan wording.** The design says a lapse also stops orders. This matches
+   `canTakeOrders()`, but confirm the banner copy.~~ Settled 2026-10-16: the lapsed wording is `planEndedSaid` in `packages/core/src/plan-mail.ts`.

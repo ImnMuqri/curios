@@ -40,7 +40,8 @@ const C = {
 
 const FONT = "'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace";
-const DISPLAY = "'Bricolage Grotesque', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+/** The hosted wordmark is 161x56 at 2x; shown at half that. */
+const WORDMARK_W = 81;
 
 export type MailTone = 'biru' | 'hijau' | 'amber' | 'merah';
 
@@ -77,6 +78,8 @@ export interface MailContent {
   blocks: MailBlock[];
   /** Why this email came. */
   footer: string;
+  /** The site's address, where the hosted wordmark image lives. Defaults to production. */
+  appUrl?: string;
 }
 
 export function escapeHtml(value: string): string {
@@ -155,6 +158,7 @@ function block(b: MailBlock): string {
 
 /** The whole email as HTML, one document, ready to send. */
 export function renderMailHtml(mail: MailContent): string {
+  const appUrl = (mail.appUrl ?? 'https://curios.my').replace(/\/+$/, '');
   const tag = mail.tag
     ? `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${TAGS[mail.tag.tone].bg};color:${TAGS[mail.tag.tone].fg};font-family:${FONT};font-size:12px;font-weight:600;line-height:18px;">&#9679;&nbsp;${escapeHtml(mail.tag.label)}</span>`
     : '';
@@ -179,7 +183,7 @@ export function renderMailHtml(mail: MailContent): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="paper" style="max-width:600px;border-collapse:separate;border-radius:18px;background:#ffffff;">
 <tr><td class="px" style="padding:28px 36px 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-<td style="font-family:${DISPLAY};font-size:22px;font-weight:700;letter-spacing:-0.5px;color:${C.ink};">curios</td>
+<td><img src="${escapeHtml(appUrl)}/email/wordmark@2x.png" width="${WORDMARK_W}" height="28" alt="curios" style="display:block;border:0"></td>
 ${mail.topRight ? `<td align="right" style="font-family:${FONT};font-size:12.5px;color:${C.muted};">${escapeHtml(mail.topRight)}</td>` : ''}
 </tr></table>
 </td></tr>

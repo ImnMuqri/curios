@@ -53,6 +53,7 @@ export function trialSpentMail(input: { displayName: string; appUrl: string }): 
     text: [said, '', more, '', url].join('\n'),
     html: renderMailHtml({
       subject,
+      appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Trial used up', tone: 'amber' },
       heading: `Your ${FREE_LEADS} free leads are used`,
@@ -79,6 +80,7 @@ export function capReachedMail(input: { displayName: string; cap: number; resets
     text: [`${input.displayName} answered ${cap} conversations this month.`, '', said, '', url].join('\n'),
     html: renderMailHtml({
       subject,
+      appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Limit reached', tone: 'amber' },
       heading: `Your page answered ${cap} conversations this month`,
@@ -115,6 +117,7 @@ export function planEndingMail(input: {
       text: [`Your Curios plan for ${input.displayName} renews on ${ends}.`, '', charge, '', url].join('\n'),
       html: renderMailHtml({
         subject,
+        appUrl: input.appUrl,
         topRight: input.displayName,
         tag: { label: 'Plan ending', tone: 'amber' },
         heading: `Your plan renews on ${ends}`,
@@ -133,6 +136,7 @@ export function planEndingMail(input: {
     text: [`Your Curios plan for ${input.displayName} ends on ${ends}.`, '', noCharge, '', 'To keep the capture card on your page, pay for another month or year here:', url, '', keep].join('\n'),
     html: renderMailHtml({
       subject,
+      appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Plan ending', tone: 'amber' },
       heading: `Your plan ends on ${ends}`,
@@ -157,6 +161,7 @@ export function renewalFailedMail(input: { displayName: string; paidUntil: Date;
     text: [said, '', url].join('\n'),
     html: renderMailHtml({
       subject,
+      appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Renewal failed', tone: 'merah' },
       heading: "We couldn't charge your card",
@@ -195,6 +200,7 @@ export function autoRenewStoppedMail(input: {
     text: [why, when, '', next, url].join('\n'),
     html: renderMailHtml({
       subject,
+      appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Auto-renew off', tone: 'amber' },
       heading: 'Auto-renew is off',
@@ -243,6 +249,7 @@ export function planEndedMail(input: { displayName: string; paidUntil: Date; app
     text: [`Your Business plan ended on ${ended}.`, '', said, '', url].join('\n'),
     html: renderMailHtml({
       subject,
+      appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Plan ended', tone: 'merah' },
       heading: `Your Business plan ended on ${ended}`,
