@@ -49,6 +49,9 @@ const shop = {
   deliveryNote: null,
   items: [item],
   canTakeOrders: true,
+  payByQr: true,
+  hasQr: true,
+  chipMethods: null,
 } as Checkout;
 
 beforeEach(() => vi.stubEnv('STORAGE_PUBLIC_URL', 'https://cdn.test'));

@@ -41,6 +41,9 @@ const shop: Checkout = {
   closedDays: [0],
   items: [{ id: 'batik', name: 'Kek batik', slug: 'batik', category: null, tag: null, description: null, photoKey: 'items/b.webp', priceCents: 4500, options: [] }],
   canTakeOrders: true,
+  payByQr: true,
+  hasQr: true,
+  chipMethods: ['fpx', 'visa'],
 };
 
 const params = (handle: string) => ({ params: Promise.resolve({ handle }) });
@@ -70,6 +73,9 @@ describe('/[handle]/shop/checkout', () => {
       deliveryNote: 'Around Shah Alam',
       closedDays: [0],
       minNoticeDays: 2,
+      payByQr: true,
+      hasQr: true,
+      chipMethods: ['fpx', 'visa'],
     });
     expect((props.items as { photoUrl: string | null }[])[0]?.photoUrl).toBe('https://cdn.test/items/b.webp');
     expect(typeof props.now).toBe('string');

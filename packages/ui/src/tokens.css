@@ -121,6 +121,21 @@
   --mark-card-muda: #fff1e8;
   --hijau-wash: #eef7f3;
   --hijau-edge: #d3e8e1;
+  /*
+   * Checkout's "How you'll pay" (Public board): the Visa and QR marks beside each
+   * choice, and the letter chips of the banks and e-wallets under it.
+   */
+  --mark-visa: #1a1f71;
+  --mark-visa-muda: #eef0ff;
+  --mark-qr-muda: #fdecef;
+  --bank-maybank: #e0a800;
+  --bank-cimb: #c8102e;
+  --bank-pbb: #d71920;
+  --bank-rhb: #005baa;
+  --bank-bislam: #a6195b;
+  --bank-hlb: #0a3b8c;
+  --wallet-grab: #0d9a4f;
+  --wallet-shopee: #ee4d2d;
 
   /* The original six steps. The handoff's screens use more; see SCALE in design-rules.ts. */
   --text-xs: 11px;

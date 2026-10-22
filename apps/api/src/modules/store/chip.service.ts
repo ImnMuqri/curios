@@ -6,6 +6,7 @@ import { errName } from '../billing/billing.service.js';
 import { getStoreSettings } from './settings.service.js';
 import {
   ChipKeyRefusedError,
+  ChipNoCheckMethodError,
   ChipNoTestMethodError,
   ChipNotConnectedError,
   ChipTestKeyError,
@@ -94,7 +95,7 @@ const cardOrWallet = (methods: string[]) => methods.filter((method) => TEST_METH
  *
  * Neither the payment methods nor the public key say whether a key is a test one; only a
  * purchase does. So connecting starts an RM1 purchase on the owner's brand (card and
- * e-wallet only, no callback), reads its `is_test` and brand name, and cancels it at once:
+ * e-wallet only, no callback; an account with neither is refused), reads its `is_test` and brand name, and cancels it at once:
  * nothing is paid and no money moves. In production a test key is refused here, before
  * anything is stored -- a shop must never open on a key that takes no real money.
  */
@@ -116,7 +117,9 @@ export async function connectChip(
     where: { id: page.id },
     select: { displayName: true, account: { select: { email: true } } },
   });
+  // Card and e-wallet only, as the RM1 test: the check never offers FPX or CHIP's QR.
   const allowed = cardOrWallet(methods);
+  if (allowed.length === 0) throw new ChipNoCheckMethodError();
   const check = await withOwnerKey(
     () =>
       client.createPurchase({
@@ -129,8 +132,7 @@ export async function connectChip(
         dueAt: new Date(input.now.getTime() + 60 * 60 * 1000),
         sendReceipt: false,
         cardsOnlyRecurring: false,
-        // An account with no card or e-wallet still gets checked; nobody pays this purchase.
-        ...(allowed.length > 0 ? { methods: allowed } : {}),
+        methods: allowed,
       }),
     purchaseRefused,
   );

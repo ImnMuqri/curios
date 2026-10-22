@@ -14,6 +14,17 @@ export interface ChipPurchase {
   maskedPan: string | null;
   /** The brand's name, from the purchase's issuer details; absent when CHIP leaves it blank. */
   brandName?: string;
+  /** CHIP's own reference for the purchase (`reference_generated`); absent when blank. */
+  referenceGenerated?: string;
+  /** The purchase's notes, as it was created with them; absent when blank. */
+  notes?: string;
+}
+
+/** One line of a purchase. Money is in sen. */
+export interface PurchaseProduct {
+  name: string;
+  priceCents: number;
+  quantity: number;
 }
 
 export interface CreatePurchaseInput {
@@ -30,6 +41,12 @@ export interface CreatePurchaseInput {
   cardsOnlyRecurring: boolean;
   /** Offer only these payment methods (CHIP's `payment_method_whitelist`). Ignored with cardsOnlyRecurring. */
   methods?: string[];
+  /** Several lines (an order's), sent in place of the one `productName` at `amountCents`. */
+  products?: PurchaseProduct[];
+  /** The client's phone, in CHIP's `+60 123456789` form. */
+  phone?: string;
+  /** The purchase's notes. */
+  notes?: string;
 }
 
 export type ChargeResult =
@@ -144,16 +161,19 @@ export function createChipClient(options: {
           : undefined;
       return purchaseCall('POST', '/purchases/', {
         brand_id: options.brandId,
-        client: { email: input.email, full_name: input.fullName },
+        client: { email: input.email, full_name: input.fullName, ...(input.phone ? { phone: input.phone } : {}) },
         purchase: {
           currency: 'MYR',
           // CHIP's schema types quantity as a string, so send one.
-          products: [{ name: input.productName, price: input.amountCents, quantity: '1' }],
+          products: input.products
+            ? input.products.map((product) => ({ name: product.name, price: product.priceCents, quantity: String(product.quantity) }))
+            : [{ name: input.productName, price: input.amountCents, quantity: '1' }],
           // An unpaid purchase must stop being payable at `due`, not linger past its period.
           due_strict: true,
         },
         due: Math.floor(input.dueAt.getTime() / 1000),
         reference: input.reference,
+        ...(input.notes ? { notes: input.notes } : {}),
         ...(callback ? { success_callback: callback } : {}),
         ...(input.redirectUrl
           ? {
@@ -267,6 +287,7 @@ function toPurchase(raw: unknown): ChipPurchase {
   const method = data?.payment_method;
   const pan = data?.extra?.masked_pan;
   const brand = (p.issuer_details as { brand_name?: unknown } | null | undefined)?.brand_name;
+  const nonBlank = (value: unknown): value is string => typeof value === 'string' && value.trim() !== '';
   return {
     id: p.id,
     status: p.status,
@@ -278,6 +299,8 @@ function toPurchase(raw: unknown): ChipPurchase {
     // CHIP sends '' until a method was used.
     paymentMethod: typeof method === 'string' && method !== '' ? method : null,
     maskedPan: typeof pan === 'string' && pan !== '' ? pan : null,
-    ...(typeof brand === 'string' && brand.trim() !== '' ? { brandName: brand.trim() } : {}),
+    ...(nonBlank(brand) ? { brandName: brand.trim() } : {}),
+    ...(nonBlank(p.reference_generated) ? { referenceGenerated: p.reference_generated.trim() } : {}),
+    ...(nonBlank(p.notes) ? { notes: p.notes } : {}),
   };
 }

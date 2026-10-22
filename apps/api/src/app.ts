@@ -26,6 +26,7 @@ import {
   receiptPerIpLimit,
   rateLimitPlugin,
   shopChipPerAccountLimit,
+  shopPayPerIpLimit,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
@@ -34,6 +35,7 @@ import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pag
 import { storeRoutes } from './modules/store/store.routes.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
+import { shopChipCallbackRoutes, shopPayRoutes } from './modules/orders/pay-online.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
@@ -183,6 +185,17 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, receiptPerIpLimit(app.rateLimitRedis));
     await scope.register(receiptRoutes, overrides.orders ?? {});
   });
+
+  // Paying a shop online through the owner's own CHIP account, and the order page's
+  // check on it: anonymous, on the order link, under a per-IP budget of its own.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, shopPayPerIpLimit(app.rateLimitRedis));
+    await scope.register(shopPayRoutes, { chip: overrides.shopChip, store: overrides.orders?.store });
+  });
+
+  // CHIP's callback for a shop's order. No session and no limit, as billing's callback
+  // below: verified with that shop's own key, and a forged one costs a lookup to refuse.
+  await app.register(shopChipCallbackRoutes, { chip: overrides.shopChip, store: overrides.orders?.store });
 
   // Both limiters, because every route in here carries an email address to
   // key the second one on.

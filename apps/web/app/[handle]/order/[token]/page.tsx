@@ -64,6 +64,10 @@ export default async function OrderPage({ params }: Params) {
           receiptRejectedAt: iso(order.receiptRejectedAt),
           paidAt: iso(order.paidAt),
           refundedAt: iso(order.refundedAt),
+          paidVia: order.paidVia,
+          paidMethodLabel: order.paidMethodLabel,
+          paidRef: order.paidRef,
+          chipPending: order.chipPending,
           lines: order.lines.map(({ itemName, optionLabel, unitPriceCents, quantity }) => ({ itemName, optionLabel, unitPriceCents, quantity })),
         }}
         qrUrl={avatarUrl(page.paymentQrKey)}

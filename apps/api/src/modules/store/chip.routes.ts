@@ -13,6 +13,8 @@ export interface ShopChipRouteOptions {
   secretsKey?: Buffer | null;
   /** Undefined reads NODE_ENV. */
   production?: boolean;
+  /** Where CHIP calls back for a shop's order. Undefined reads CHIP_CALLBACK_BASE_URL; null leaves it out. */
+  callbackBaseUrl?: string | null;
 }
 
 /**

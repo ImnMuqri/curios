@@ -109,6 +109,47 @@ export interface ShopCopy {
   pickADay: string;
   total: string;
   payNote: (name: string) => string;
+  // How you'll pay (Public board, checkout): the choices, their lists, the email, the button and the note.
+  howYoullPay: string;
+  onlineBanking: string;
+  onlineBankingSub: string;
+  eWallet: string;
+  card: string;
+  cardSub: string;
+  duitnowQr: string;
+  duitnowQrSub: (name: string) => string;
+  /** The one choice when the shop has no CHIP: its QR or bank account. */
+  qrOrBank: string;
+  qrOrBankSub: (name: string) => string;
+  yourBank: string;
+  yourWallet: string;
+  /** Owner's answer 2: asked only for an online method. */
+  email: string;
+  forReceipt: string;
+  payWith: (total: string, where: string) => string;
+  payByCard: (total: string) => string;
+  noteBank: string;
+  noteWallet: string;
+  noteCard: string;
+  chipNote: (name: string) => string;
+  /** Paying online failed after the order was placed: it waits for the QR instead. */
+  onlineUnavailable: string;
+  /** The same, for a shop with no QR or bank account: its WhatsApp is the way. */
+  onlineUnavailableWhatsApp: (name: string) => string;
+  /** CHIP's own words for how it was paid, in this language ("Visa card ending 4242"). */
+  methodLabel: (label: string) => string;
+  /** The board's Paid row on the order page. */
+  paidBy: (total: string, how: string) => string;
+  paidWhen: (when: string, ref: string) => string;
+  /** "15 Oct, 3:42pm", in Malaysia. */
+  paidTime: (iso: string) => string;
+  checkingPayment: string;
+  stillWaiting: string;
+  onlineFailed: string;
+  // The placed screen after paying online.
+  paidPlaced: string;
+  paidPlacedSub: (total: string, name: string) => string;
+  seeOrder: string;
   /** The board's PDPA line: who the number goes to, and no one else. */
   consent: (name: string) => string;
   tooLarge: (name: string) => string;
@@ -191,6 +232,10 @@ const EN_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
 const MS_DAY = ['Ahd', 'Isn', 'Sel', 'Rab', 'Kha', 'Jum', 'Sab'];
 const MS_DAYS = ['Ahad', 'Isnin', 'Selasa', 'Rabu', 'Khamis', 'Jumaat', 'Sabtu'];
 const MS_MONTH = ['Jan', 'Feb', 'Mac', 'Apr', 'Mei', 'Jun', 'Jul', 'Ogo', 'Sep', 'Okt', 'Nov', 'Dis'];
+
+/** Malaysia is UTC+8 all year: the time read off this Date's UTC fields is Malaysia's. */
+const malaysiaTime = (iso: string) => new Date(new Date(iso).getTime() + 8 * 3_600_000);
+const pad = (n: number) => String(n).padStart(2, '0');
 
 function dayWords(short: string[], months: string[]) {
   return {
@@ -301,7 +346,43 @@ const EN: ShopCopy = {
   deliveryOn: 'Delivery on',
   pickADay: 'Pick a day',
   total: 'Total',
-  payNote: (name) => `You pay ${name} directly by DuitNow QR or bank transfer on the next step.`,
+  payNote: (name) => `You pay ${name} directly on the next step, then upload your receipt.`,
+  howYoullPay: 'How you’ll pay',
+  onlineBanking: 'Online banking',
+  onlineBankingSub: 'FPX · Maybank2u, CIMB Clicks, RHB and more',
+  eWallet: 'E-wallet',
+  card: 'Card',
+  cardSub: 'Debit or credit card',
+  duitnowQr: 'DuitNow QR',
+  duitnowQrSub: (name) => `Scan ${name}’s QR, then upload your receipt`,
+  qrOrBank: 'DuitNow QR or bank transfer',
+  qrOrBankSub: (name) => `Pay ${name} directly, then upload your receipt`,
+  yourBank: 'Your bank',
+  yourWallet: 'Your e-wallet',
+  email: 'Email',
+  forReceipt: 'for your receipt',
+  payWith: (total, where) => `Pay ${total} with ${where}`,
+  payByCard: (total) => `Pay ${total} by card`,
+  noteBank: 'You’ll go straight to your bank to approve it, then come back here.',
+  noteWallet: 'You’ll go straight to your e-wallet to approve it, then come back here.',
+  noteCard: 'You’ll enter your card on a secure page, then come straight back here.',
+  chipNote: (name) => `Payments are processed by CHIP, and the money goes to ${name}’s own account.`,
+  onlineUnavailable: 'Online payment isn’t available right now. Pay by QR or bank transfer instead.',
+  onlineUnavailableWhatsApp: (name) => `Online payment isn’t available right now. WhatsApp ${name} to pay.`,
+  methodLabel: (label) => label,
+  paidBy: (total, how) => `Paid ${total} by ${how}`,
+  paidWhen: (when, ref) => `${when} · Ref ${ref}`,
+  paidTime: (iso) => {
+    const at = malaysiaTime(iso);
+    const hour = at.getUTCHours() % 12 || 12;
+    return `${at.getUTCDate()} ${EN_MONTH[at.getUTCMonth()]}, ${hour}:${pad(at.getUTCMinutes())}${at.getUTCHours() < 12 ? 'am' : 'pm'}`;
+  },
+  checkingPayment: 'Checking your payment…',
+  stillWaiting: 'We’re still waiting for the bank. This page updates once it’s confirmed.',
+  onlineFailed: 'Your online payment didn’t go through.',
+  paidPlaced: 'Paid. Order placed',
+  paidPlacedSub: (total, name) => `${total} paid. ${name} has your order and will get it ready.`,
+  seeOrder: 'See your order',
   consent: (name) => `Your name and number go to ${name} only.`,
   tooLarge: (name) => `This order is too big to place here. Send your basket to ${name} on WhatsApp instead.`,
   deliveryOff: 'Delivery isn’t offered any more, so this order is for pickup.',
@@ -453,7 +534,43 @@ const MS: ShopCopy = {
   deliveryOn: 'Hantar pada',
   pickADay: 'Pilih hari',
   total: 'Jumlah',
-  payNote: (name) => `Anda bayar terus kepada ${name} melalui DuitNow QR atau pindahan bank pada langkah seterusnya.`,
+  payNote: (name) => `Anda bayar terus kepada ${name} pada langkah seterusnya, kemudian muat naik resit anda.`,
+  howYoullPay: 'Cara anda bayar',
+  onlineBanking: 'Perbankan dalam talian',
+  onlineBankingSub: 'FPX · Maybank2u, CIMB Clicks, RHB dan lain-lain',
+  eWallet: 'E-dompet',
+  card: 'Kad',
+  cardSub: 'Kad debit atau kredit',
+  duitnowQr: 'DuitNow QR',
+  duitnowQrSub: (name) => `Imbas QR ${name}, kemudian muat naik resit anda`,
+  qrOrBank: 'DuitNow QR atau pindahan bank',
+  qrOrBankSub: (name) => `Bayar terus kepada ${name}, kemudian muat naik resit anda`,
+  yourBank: 'Bank anda',
+  yourWallet: 'E-dompet anda',
+  email: 'E-mel',
+  forReceipt: 'untuk resit anda',
+  payWith: (total, where) => `Bayar ${total} dengan ${where}`,
+  payByCard: (total) => `Bayar ${total} dengan kad`,
+  noteBank: 'Anda akan terus ke bank anda untuk meluluskannya, kemudian kembali ke sini.',
+  noteWallet: 'Anda akan terus ke e-dompet anda untuk meluluskannya, kemudian kembali ke sini.',
+  noteCard: 'Anda akan masukkan kad anda di halaman yang selamat, kemudian terus kembali ke sini.',
+  chipNote: (name) => `Bayaran diproses oleh CHIP, dan wang terus masuk ke akaun ${name} sendiri.`,
+  onlineUnavailable: 'Bayaran dalam talian tidak tersedia buat masa ini. Bayar melalui QR atau pindahan bank.',
+  onlineUnavailableWhatsApp: (name) => `Bayaran dalam talian tidak tersedia buat masa ini. WhatsApp ${name} untuk bayar.`,
+  methodLabel: (label) =>
+    label.replace(/^(\w+) card ending (\d{4})$/, 'kad $1 berakhir $2').replace(/^(\w+) card$/, 'kad $1'),
+  paidBy: (total, how) => `Dibayar ${total} melalui ${how}`,
+  paidWhen: (when, ref) => `${when} · Ruj ${ref}`,
+  paidTime: (iso) => {
+    const at = malaysiaTime(iso);
+    return `${at.getUTCDate()} ${MS_MONTH[at.getUTCMonth()]}, ${at.getUTCHours()}:${pad(at.getUTCMinutes())}`;
+  },
+  checkingPayment: 'Menyemak bayaran anda…',
+  stillWaiting: 'Kami masih menunggu bank. Halaman ini dikemas kini sebaik sahaja ia disahkan.',
+  onlineFailed: 'Bayaran dalam talian anda tidak berjaya.',
+  paidPlaced: 'Dibayar. Tempahan dibuat',
+  paidPlacedSub: (total, name) => `${total} dibayar. ${name} sudah menerima tempahan anda dan akan menyediakannya.`,
+  seeOrder: 'Lihat tempahan anda',
   consent: (name) => `Nama dan nombor anda hanya pergi kepada ${name}.`,
   tooLarge: (name) => `Tempahan ini terlalu besar untuk dibuat di sini. Hantar bakul anda kepada ${name} di WhatsApp.`,
   deliveryOff: 'Penghantaran tidak lagi ditawarkan, jadi tempahan ini untuk ambil sendiri.',

@@ -93,6 +93,20 @@ export class ChipTestKeyError extends Error {
 }
 
 /** The owner's account takes no card or e-wallet, so there is nothing to test RM1 with. */
+/**
+ * Connecting checks the key with a purchase it cancels at once, offered by card or
+ * e-wallet only; an account with neither cannot be checked that way, and the check
+ * never offers FPX or CHIP's DuitNow QR.
+ */
+export class ChipNoCheckMethodError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'CHIP_NO_CHECK_METHOD';
+  constructor() {
+    super('Your CHIP account takes no card or e-wallet yet, so Curios can’t check it. Turn one on in CHIP, then connect again.');
+    this.name = 'ChipNoCheckMethodError';
+  }
+}
+
 export class ChipNoTestMethodError extends Error {
   readonly statusCode = 400;
   readonly code = 'CHIP_NO_TEST_METHOD';

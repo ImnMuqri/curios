@@ -376,3 +376,175 @@ describe('Checkout', () => {
     expect(screen.getByRole('button', { name: 'Sab 17' })).toBeInTheDocument();
   });
 });
+
+describe('Checkout: how you’ll pay', () => {
+  const CHIP = ['fpx', 'visa', 'mastercard', 'razer_tng', 'razer_grabpay', 'shopee_pay', 'duitnow_qr'];
+  const connected = { ...base, payByQr: true, chipMethods: CHIP };
+  const ALL = { fpx: true, wallets: ['tng', 'grab', 'spay'], card: true };
+
+  /** The API, by path: what checkout asks of it, in order. */
+  function api(routes: { methods?: unknown; place?: unknown; pay?: unknown }) {
+    const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+    const spy = vi.fn(async (url: string) => {
+      if (url.includes('/pay-methods')) return json(200, routes.methods ?? ALL);
+      if (url.endsWith('/orders')) return json(201, routes.place ?? { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
+      if (url.endsWith('/pay')) {
+        if (routes.pay instanceof Error) throw routes.pay;
+        return json(200, routes.pay ?? { url: 'https://gate.chip-in.asia/p/x/?preferred=fpx&fpx_bank_code=MB2U0227' });
+      }
+      return json(404, { error: { code: 'NOT_FOUND', message: 'no' } });
+    });
+    vi.stubGlobal('fetch', spy);
+    return spy;
+  }
+  const payGroup = () => screen.getByRole('radiogroup', { name: copy.howYoullPay });
+  const ways = () => within(payGroup()).getAllByRole('radio').map((radio) => radio.querySelector('b')?.textContent);
+  const choose = (user: ReturnType<typeof userEvent.setup>, name: string | RegExp) => user.click(within(payGroup()).getByRole('radio', { name }));
+
+  it('checkout offers FPX, e-wallet, card and QR when connected, QR only when not', async () => {
+    api({});
+    const { unmount } = render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    expect(screen.getByText(copy.payTo('Kek Lina'))).toBeInTheDocument();
+    expect(ways()).toEqual([copy.onlineBanking, copy.eWallet, copy.card, copy.duitnowQr]);
+    unmount();
+
+    render(<Checkout {...base} />);
+    await screen.findByText('Kek coklat moist');
+    expect(ways()).toEqual([copy.qrOrBank]);
+    expect(screen.getByText(copy.qrOrBankSub('Kek Lina'))).toBeInTheDocument();
+    expect(placeButton('RM215')).toBeInTheDocument();
+  });
+
+  it('names the choice for what the shop has: a shop with bank details and no QR keeps the QR-only words', async () => {
+    api({});
+    render(<Checkout {...connected} hasQr={false} />);
+    await screen.findByText('Kek coklat moist');
+    expect(ways()).toEqual([copy.onlineBanking, copy.eWallet, copy.card, copy.qrOrBank]);
+  });
+
+  it('asks CHIP, through the API, what it takes at this total, and offers only that', async () => {
+    const fetch = api({ methods: { fpx: false, wallets: ['tng'], card: false } });
+    render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    await vi.waitFor(() => expect(ways()).toEqual([copy.eWallet, copy.duitnowQr]));
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/store/keklina/pay-methods?amount=21500'))).toBe(true);
+  });
+
+  it('Boost is not offered', async () => {
+    const user = userEvent.setup();
+    api({});
+    render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    await choose(user, new RegExp(copy.eWallet));
+    const wallets = within(screen.getByRole('radiogroup', { name: copy.yourWallet })).getAllByRole('radio').map((radio) => radio.textContent);
+    expect(wallets).toEqual(['TTouch ’n Go', 'GGrabPay', 'SShopeePay']);
+    expect(screen.queryByText(/Boost/)).toBeNull();
+  });
+
+  it('lists the banks and says on the button where the customer is going', async () => {
+    const user = userEvent.setup();
+    api({});
+    render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    const banks = within(screen.getByRole('radiogroup', { name: copy.yourBank })).getAllByRole('radio');
+    expect(banks.map((bank) => bank.textContent?.slice(1))).toEqual(['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now', 'Bank Islam', 'Hong Leong']);
+    expect(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') })).toBeInTheDocument();
+    expect(screen.getByText(`${copy.noteBank} ${copy.chipNote('Kek Lina')}`)).toBeInTheDocument();
+
+    await user.click(within(screen.getByRole('radiogroup', { name: copy.yourBank })).getByRole('radio', { name: /CIMB Clicks/ }));
+    expect(screen.getByRole('button', { name: copy.payWith('RM215', 'CIMB Clicks') })).toBeInTheDocument();
+
+    await choose(user, new RegExp(copy.eWallet));
+    expect(screen.getByRole('button', { name: copy.payWith('RM215', 'Touch ’n Go') })).toBeInTheDocument();
+    expect(screen.getByText(`${copy.noteWallet} ${copy.chipNote('Kek Lina')}`)).toBeInTheDocument();
+
+    await choose(user, new RegExp(`^${copy.card}`));
+    expect(screen.getByRole('button', { name: copy.payByCard('RM215') })).toBeInTheDocument();
+    expect(screen.getByText(`${copy.noteCard} ${copy.chipNote('Kek Lina')}`)).toBeInTheDocument();
+
+    await choose(user, new RegExp(copy.duitnowQr));
+    expect(placeButton('RM215')).toBeInTheDocument();
+    expect(screen.getByText(`${copy.payNote('Kek Lina')} ${copy.consent('Kek Lina')}`)).toBeInTheDocument();
+  });
+
+  it('an online choice asks for an email, for the receipt', async () => {
+    const user = userEvent.setup();
+    api({});
+    render(<Checkout {...connected} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    const go = screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') });
+    const email = screen.getByLabelText(new RegExp(copy.email));
+    expect(email).toHaveAttribute('type', 'email');
+    expect(screen.getByText(copy.forReceipt)).toBeInTheDocument();
+    expect(go).toBeDisabled();
+    await user.type(email, 'mira@');
+    expect(go).toBeDisabled();
+    await user.type(email, 'example.com');
+    expect(go).toBeEnabled();
+
+    await choose(user, new RegExp(copy.duitnowQr));
+    expect(screen.queryByLabelText(new RegExp(copy.email))).toBeNull();
+  });
+
+  it('places the order, then pays it online and goes straight to the bank', async () => {
+    const user = userEvent.setup();
+    const fetch = api({});
+    const navigate = vi.fn();
+    render(<Checkout {...connected} navigate={navigate} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('https://gate.chip-in.asia/p/x/?preferred=fpx&fpx_bank_code=MB2U0227'));
+    const calls = fetch.mock.calls.map(([url]) => String(url)).filter((url) => !url.includes('pay-methods'));
+    expect(calls).toEqual([expect.stringMatching(/\/store\/keklina\/orders$/), expect.stringMatching(/\/store\/orders\/tok_abc\/pay$/)]);
+    const payCall = fetch.mock.calls.find(([url]) => String(url).endsWith('/pay')) as unknown as [string, RequestInit];
+    expect(JSON.parse(payCall[1].body as string)).toEqual({ method: 'fpx', bank: 'maybank', email: 'mira@example.com' });
+    expect(saved()).toEqual([]);
+    // So the order page can say "Paid. Order placed" when the customer comes back.
+    expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBe('1');
+  });
+
+  it('a CHIP failure when paying falls back to the QR with a message', async () => {
+    const user = userEvent.setup();
+    api({ pay: { url: null } });
+    const navigate = vi.fn();
+    render(<Checkout {...connected} navigate={navigate} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await choose(user, new RegExp(`^${copy.card}`));
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: copy.payByCard('RM215') }));
+
+    // The order is placed already: the placed screen, with the QR on the next step and the reason.
+    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+    expect(screen.getByText(copy.onlineUnavailable)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: copy.payNow('RM215') })).toHaveAttribute('href', '/keklina/order/tok_abc');
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
+  it('a shop with only CHIP falls back to its WhatsApp, so the order is never stuck', async () => {
+    const user = userEvent.setup();
+    api({ pay: new TypeError('Failed to fetch') });
+    render(<Checkout {...connected} payByQr={false} navigate={vi.fn()} />);
+    await screen.findByText('Kek coklat moist');
+    expect(ways()).toEqual([copy.onlineBanking, copy.eWallet, copy.card]);
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    expect(await screen.findByText(copy.onlineUnavailableWhatsApp('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
+  });
+
+  it('speaks Malay on a Malay page', async () => {
+    const ms = shopCopy('ms');
+    api({});
+    render(<Checkout {...connected} language="ms" />);
+    expect(await screen.findByRole('radiogroup', { name: ms.howYoullPay })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: ms.payWith('RM215', 'Maybank2u') })).toHaveTextContent('Bayar RM215 dengan Maybank2u');
+  });
+});

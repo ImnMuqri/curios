@@ -106,7 +106,8 @@
   margin-bottom: 12px;
 }
 
-.head h2 {
+.head h2,
+.head h3 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
@@ -809,6 +810,172 @@
   text-underline-offset: 3px;
 }
 
+/* ---- How you'll pay (Public board, checkout: .pw-ic, .pbk) ---- */
+
+/* The small marks at the end of each choice. */
+.marks {
+  display: flex;
+  flex: none;
+  gap: 3px;
+  margin-left: auto;
+}
+
+.marks i {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 20px;
+  box-sizing: border-box;
+  padding: 0 4px;
+  border-radius: 5px;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.marks .markFpx {
+  background: var(--biru-muda);
+  color: var(--biru-ink);
+}
+
+.marks .markTng {
+  background: var(--mark-tng-muda);
+  color: var(--mark-tng);
+}
+
+.marks .markGrab {
+  background: var(--mark-grab-muda);
+  color: var(--mark-grab);
+}
+
+.marks .markVisa {
+  background: var(--mark-visa-muda);
+  color: var(--mark-visa);
+}
+
+.marks .markMc {
+  background: var(--mark-card-muda);
+  color: var(--mark-card);
+}
+
+.marks .markQr {
+  background: var(--mark-qr-muda);
+  color: var(--rose);
+}
+
+.subHead {
+  margin-top: 16px;
+}
+
+/* "Your bank" and "Your e-wallet": two columns of named chips. */
+.picks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.pick {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 46px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    box-shadow 160ms,
+    background 160ms;
+}
+
+.pick[aria-checked='true'] {
+  background: color-mix(in srgb, var(--accent) 6%, var(--card));
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+.pick i {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 7px;
+  background: var(--ink-soft);
+  color: var(--card);
+  font-size: 10px;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.pick[data-mark='maybank'] i {
+  background: var(--bank-maybank);
+}
+
+.pick[data-mark='cimb'] i {
+  background: var(--bank-cimb);
+}
+
+.pick[data-mark='pbb'] i {
+  background: var(--bank-pbb);
+}
+
+.pick[data-mark='rhb'] i {
+  background: var(--bank-rhb);
+}
+
+.pick[data-mark='bislam'] i {
+  background: var(--bank-bislam);
+}
+
+.pick[data-mark='hlb'] i {
+  background: var(--bank-hlb);
+}
+
+.pick[data-mark='tng'] i {
+  background: var(--mark-tng);
+}
+
+.pick[data-mark='grab'] i {
+  background: var(--wallet-grab);
+}
+
+.pick[data-mark='spay'] i {
+  background: var(--wallet-shopee);
+}
+
+/* The placed screen's word when paying online did not happen, under the sub-line. */
+.placedNotice {
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--lp-tint);
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+}
+
+/* A CHIP-only shop's way on when paying online could not start: its WhatsApp, full width. */
+.placedWhatsapp {
+  box-sizing: border-box;
+  width: 100%;
+  margin-top: 12px;
+}
+
+/* "See your order" on the order page is a button, drawn as the placed screen's link. */
+.pay:is(button) {
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .column,
   .burst span,
@@ -820,5 +987,10 @@
 
   .tick {
     stroke-dashoffset: 0;
+  }
+
+  .pick,
+  .radio {
+    transition: none;
   }
 }

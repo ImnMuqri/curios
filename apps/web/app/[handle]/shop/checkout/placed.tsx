@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { normalizeMalaysianPhone } from '@curios/core/phone';
 import { formatRinggit } from '@curios/core/store';
+import { whatsappOrderUrl } from '../basket.js';
 import type { ShopCopy } from '../copy.js';
 import styles from './checkout.module.css';
 
@@ -21,16 +22,29 @@ function waNumber(phone: string): string {
  * The placed screen (Public board, `placed`). Owner decision 2: Curios sends
  * no WhatsApp, so under Pay is a button that opens the customer's own chat
  * with the order link in it, rather than the board's "We also sent…".
+ *
+ * Paid online, it is the board's "Paid. Order placed" with "See your order",
+ * drawn by the order page when the customer comes back from CHIP. When paying
+ * online could not start, the order waits for the QR, and this says so; a shop
+ * with no QR or bank account points at its WhatsApp instead.
  */
 export function Placed(props: {
   handle: string;
   displayName: string;
   copy: ShopCopy;
+  number?: number;
   code: string;
   token: string;
   totalCents: number;
-  /** The number as it was sent with the order. */
-  phone: string;
+  /** The number as it was sent with the order; absent on the order page, which has none to send to. */
+  phone?: string;
+  /** Paid online: "Paid. Order placed", and See your order calls this. */
+  onSeeOrder?: () => void;
+  /** Paying online could not start. */
+  onlineUnavailable?: boolean;
+  /** The shop has a QR or bank account to pay by instead. */
+  payByQr?: boolean;
+  whatsapp?: string | null;
 }) {
   const { copy } = props;
   const [copied, setCopied] = useState(false);
@@ -41,6 +55,13 @@ export function Placed(props: {
   useEffect(() => heading.current?.focus(), []);
 
   const path = `/${props.handle}/order/${props.token}`;
+  const paid = props.onSeeOrder !== undefined;
+  const total = formatRinggit(props.totalCents);
+  const arrow = (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
   // Only ever rendered in the browser, after the order is placed.
   const link = `${window.location.origin}${path}`;
 
@@ -68,8 +89,15 @@ export function Placed(props: {
           <path d="M31 49l11 11 23-24" className={styles.tick} />
         </svg>
       </div>
-      <h1 ref={heading} className={styles.placedTitle} tabIndex={-1}>{copy.orderPlaced}</h1>
-      <p className={styles.placedSub}>{copy.placedSub(props.displayName)}</p>
+      <h1 ref={heading} className={styles.placedTitle} tabIndex={-1}>
+        {paid ? copy.paidPlaced : copy.orderPlaced}
+      </h1>
+      <p className={styles.placedSub}>{paid ? copy.paidPlacedSub(total, props.displayName) : copy.placedSub(props.displayName)}</p>
+      {props.onlineUnavailable ? (
+        <p className={styles.placedNotice} role="status">
+          {props.payByQr === false ? copy.onlineUnavailableWhatsApp(props.displayName) : copy.onlineUnavailable}
+        </p>
+      ) : null}
 
       <div className={styles.codebox}>
         <small>{copy.yourCode}</small>
@@ -88,15 +116,27 @@ export function Placed(props: {
         </p>
       </div>
 
-      <a className={styles.pay} href={path}>
-        {copy.payNow(formatRinggit(props.totalCents))}
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M5 12h14M13 6l6 6-6 6" />
-        </svg>
-      </a>
-      <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
-        {copy.sendLink}
-      </a>
+      {paid ? (
+        <button type="button" className={styles.pay} onClick={props.onSeeOrder}>
+          {copy.seeOrder}
+          {arrow}
+        </button>
+      ) : (
+        <a className={styles.pay} href={path}>
+          {copy.payNow(total)}
+          {arrow}
+        </a>
+      )}
+      {props.onlineUnavailable && props.payByQr === false && props.whatsapp && props.number !== undefined ? (
+        <a className={`${styles.whatsapp} ${styles.placedWhatsapp}`} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(props.number, props.code))} rel="noopener">
+          {copy.whatsappAbout(props.displayName)}
+        </a>
+      ) : null}
+      {props.phone ? (
+        <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
+          {copy.sendLink}
+        </a>
+      ) : null}
     </div>
   );
 }

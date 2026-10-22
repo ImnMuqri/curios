@@ -16,7 +16,7 @@ export const OPERATOR = {
 export const SUPPORT_EMAIL = 'support@curios.my';
 
 /** Change with any edit to the words below. */
-export const UPDATED = new Date('2026-10-22T00:00:00+08:00');
+export const UPDATED = new Date('2026-10-23T00:00:00+08:00');
 
 export const LEGAL_DOCS: readonly LegalDoc[] = ['terms', 'privacy', 'refunds'];
 
@@ -132,7 +132,8 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           heading: 'Shops and orders',
           body: [
             'A Business page can take orders. The sale is between the customer and the owner: we are not the seller and not a party to it.',
-            'Customers pay the owner directly, by the owner’s DuitNow QR or bank transfer. Curios never receives, holds or passes on that money.',
+            'Customers pay the owner directly: by the owner’s DuitNow QR or bank transfer, or online through the owner’s own CHIP account, by FPX online banking, e-wallet or card. Curios never receives, holds or passes on that money: an online payment goes to the owner’s CHIP account, never to us.',
+            'To take payments online, an owner gives us the Brand ID and secret key of their own CHIP account. We store the key encrypted and use it only to take payments for their shop. The owner is responsible for their CHIP account, including CHIP’s own terms, fees and payouts.',
             'The owner is responsible for what they sell: that it is legal, as described and as priced, ready or delivered on the day, and for any refund. A customer with a problem should raise it with the owner first, using the WhatsApp link on their order page. Our {refunds} says more.',
             'If you think an owner is using Curios to cheat customers, tell us at {email} and we will look into it.',
           ],
@@ -212,11 +213,11 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
             {
               list: [
                 'If you make a page: your email address, and your password, which we keep only as a scrambled hash that can’t be turned back into it. If you sign in with Google, your name and email address from your Google account.',
-                'What you put on your page: your name, bio, photos, links, social profiles and items. If you take orders, your DuitNow QR and your bank account name and number, which your customers see. The websites, text and files you give your page to read: we keep the facts drawn from them and short excerpts, not the files.',
+                'What you put on your page: your name, bio, photos, links, social profiles and items. If you take orders, your DuitNow QR and your bank account name and number, which your customers see, and, if you connect CHIP, your CHIP Brand ID and secret key, which we keep encrypted and no one sees. The websites, text and files you give your page to read: we keep the facts drawn from them and short excerpts, not the files.',
                 'If you pay for a plan: the plan, amount and date, the CHIP purchase and, if you turn on auto-renew, your card’s brand and last four digits. You log in to your bank or enter your card on CHIP’s and your bank’s pages; we never see those details.',
                 'If you chat on a page: what you type and the page’s replies. The questions people ask are also kept without who asked them, so the owner can see what people want to know.',
                 'If you leave your number in a chat: your phone number, and what the chat understood you wanted, such as a product, a date or a place.',
-                'If you order from a shop: your name, your WhatsApp number, pickup or delivery, the day, your address for a delivery, any note, what you ordered, and the payment receipt you upload.',
+                'If you order from a shop: your name, your WhatsApp number, pickup or delivery, the day, your address for a delivery, any note, what you ordered, and the payment receipt you upload. If you pay online: your email address, for CHIP’s receipt, and how CHIP says you paid, such as your bank or your card’s brand and last four digits. You log in to your bank or enter your card on CHIP’s and your bank’s pages; we never see those details.',
                 'Your IP address, which our servers use to block abuse and record in their logs. We use no advertising or analytics trackers.',
               ],
             },
@@ -247,6 +248,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
                 'Anthropic (United States): its Claude models read chat messages and a page’s facts and sources, to write answers and pick out facts.',
                 'OpenAI (United States): turns questions and facts into numbers (embeddings) so the chat can find the right fact.',
                 'CHIP (Malaysia): takes Business plan payments, and receives your email address, your page’s name and the amount. Your card details go to CHIP, never to us; for auto-renew, CHIP keeps a token of your card that only works for Curios’s charges.',
+                'CHIP (Malaysia): processes online payments for shop orders, through the shop owner’s own CHIP account, and receives the customer’s name, WhatsApp number and email address, what they ordered and the amount. The money goes to the owner’s CHIP account, and CHIP emails the customer the receipt.',
                 'Have I Been Pwned: receives the first five characters of a hash of a new password, never the password, to check it hasn’t leaked in a breach.',
                 'Our hosting, storage and email providers, who store data and send email for us.',
                 'Authorities, where the law requires us to share.',
@@ -402,7 +404,8 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           heading: 'Kedai dan tempahan',
           body: [
             'Halaman Bisnes boleh menerima tempahan. Jualan itu antara pelanggan dan pemilik: kami bukan penjual dan bukan pihak dalam jualan itu.',
-            'Pelanggan membayar terus kepada pemilik, melalui DuitNow QR atau pindahan bank pemilik. Curios tidak sekali-kali menerima, memegang atau memindahkan wang itu.',
+            'Pelanggan membayar terus kepada pemilik: melalui DuitNow QR atau pindahan bank pemilik, atau dalam talian melalui akaun CHIP pemilik sendiri, menggunakan perbankan dalam talian FPX, e-dompet atau kad. Curios tidak sekali-kali menerima, memegang atau memindahkan wang itu: bayaran dalam talian masuk ke akaun CHIP pemilik, tidak sekali-kali kepada kami.',
+            'Untuk menerima bayaran dalam talian, pemilik memberi kami Brand ID dan kunci rahsia (secret key) akaun CHIP mereka sendiri. Kami menyimpan kunci itu dalam bentuk tersulit dan menggunakannya hanya untuk menerima bayaran bagi kedai mereka. Pemilik bertanggungjawab atas akaun CHIP mereka, termasuk terma, caj dan pembayaran keluar CHIP sendiri.',
             'Pemilik bertanggungjawab atas apa yang dijualnya: bahawa ia sah di sisi undang-undang, sama seperti yang diterangkan dan pada harga yang dinyatakan, siap atau dihantar pada hari yang dijanjikan, dan atas sebarang bayaran balik. Pelanggan yang menghadapi masalah hendaklah membangkitkannya dengan pemilik dahulu, melalui pautan WhatsApp di halaman tempahan mereka. {refunds} kami menerangkan lebih lanjut.',
             'Jika anda rasa seseorang pemilik menggunakan Curios untuk menipu pelanggan, beritahu kami di {email} dan kami akan menyiasatnya.',
           ],
@@ -482,11 +485,11 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
             {
               list: [
                 'Jika anda membuat halaman: alamat e-mel anda, dan kata laluan anda, yang kami simpan hanya sebagai cincangan (hash) yang tidak boleh ditukar kembali menjadi kata laluan. Jika anda log masuk dengan Google, nama dan alamat e-mel daripada akaun Google anda.',
-                'Apa yang anda letak di halaman anda: nama, bio, gambar, pautan, profil media sosial dan barangan. Jika anda menerima tempahan, DuitNow QR serta nama dan nombor akaun bank anda, yang dilihat oleh pelanggan anda. Laman web, teks dan fail yang anda berikan untuk dibaca oleh halaman anda: kami menyimpan fakta yang diambil daripadanya dan petikan pendek, bukan fail itu.',
+                'Apa yang anda letak di halaman anda: nama, bio, gambar, pautan, profil media sosial dan barangan. Jika anda menerima tempahan, DuitNow QR serta nama dan nombor akaun bank anda, yang dilihat oleh pelanggan anda, dan, jika anda menyambung CHIP, Brand ID dan kunci rahsia CHIP anda, yang kami simpan dalam bentuk tersulit dan tidak dilihat oleh sesiapa. Laman web, teks dan fail yang anda berikan untuk dibaca oleh halaman anda: kami menyimpan fakta yang diambil daripadanya dan petikan pendek, bukan fail itu.',
                 'Jika anda membayar pelan: pelan, jumlah dan tarikh, pembelian CHIP dan, jika anda hidupkan auto-renew, jenama kad dan empat digit terakhirnya. Anda log masuk ke bank anda atau memasukkan kad anda di halaman CHIP dan bank anda; kami tidak sekali-kali melihat butiran itu.',
                 'Jika anda bersembang di halaman: apa yang anda taip dan balasan halaman itu. Soalan yang ditanya juga disimpan tanpa maklumat siapa yang bertanya, supaya pemilik dapat melihat apa yang orang ingin tahu.',
                 'Jika anda meninggalkan nombor dalam sembang: nombor telefon anda, dan apa yang difahami oleh sembang tentang kehendak anda, seperti produk, tarikh atau tempat.',
-                'Jika anda membuat tempahan di kedai: nama anda, nombor WhatsApp anda, ambil sendiri atau penghantaran, hari, alamat anda untuk penghantaran, sebarang nota, apa yang anda tempah, dan resit bayaran yang anda muat naik.',
+                'Jika anda membuat tempahan di kedai: nama anda, nombor WhatsApp anda, ambil sendiri atau penghantaran, hari, alamat anda untuk penghantaran, sebarang nota, apa yang anda tempah, dan resit bayaran yang anda muat naik. Jika anda membayar dalam talian: alamat e-mel anda, untuk resit CHIP, dan cara anda membayar seperti yang dilaporkan CHIP, contohnya bank anda atau jenama kad dan empat digit terakhirnya. Anda log masuk ke bank anda atau memasukkan kad anda di halaman CHIP dan bank anda; kami tidak sekali-kali melihat butiran itu.',
                 'Alamat IP anda, yang digunakan oleh pelayan kami untuk menyekat penyalahgunaan dan direkodkan dalam log. Kami tidak menggunakan penjejak pengiklanan atau analitik.',
               ],
             },
@@ -517,6 +520,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
                 'Anthropic (Amerika Syarikat): model Claude miliknya membaca mesej sembang serta fakta dan sumber halaman, untuk menulis jawapan dan mengambil fakta.',
                 'OpenAI (Amerika Syarikat): menukar soalan dan fakta kepada nombor (embedding) supaya sembang dapat mencari fakta yang betul.',
                 'CHIP (Malaysia): menerima bayaran pelan Bisnes, dan menerima alamat e-mel anda, nama halaman anda dan jumlah bayaran. Butiran kad anda pergi kepada CHIP, tidak sekali-kali kepada kami; bagi auto-renew, CHIP menyimpan token kad anda yang hanya berfungsi untuk caj Curios.',
+                'CHIP (Malaysia): memproses bayaran dalam talian untuk tempahan kedai, melalui akaun CHIP pemilik kedai sendiri, dan menerima nama, nombor WhatsApp dan alamat e-mel pelanggan, apa yang ditempah dan jumlah bayaran. Wang itu masuk ke akaun CHIP pemilik, dan CHIP menghantar resit kepada pelanggan melalui e-mel.',
                 'Have I Been Pwned: menerima lima aksara pertama cincangan kata laluan baharu, bukan kata laluan itu, untuk menyemak sama ada ia pernah bocor.',
                 'Penyedia pengehosan, storan dan e-mel kami, yang menyimpan data dan menghantar e-mel untuk kami.',
                 'Pihak berkuasa, jika undang-undang mewajibkan kami berkongsi.',

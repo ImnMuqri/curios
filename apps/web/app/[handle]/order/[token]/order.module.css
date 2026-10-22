@@ -474,3 +474,12 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* A payment in flight at CHIP: the sent box's shape, in the quiet blue of "checking". */
+.upload.checking {
+  background: var(--biru-muda);
+}
+
+.upload.checking svg {
+  stroke: var(--biru-ink);
+}

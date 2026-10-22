@@ -133,6 +133,34 @@ describe('createPurchase', () => {
     }
   });
 
+  it("sends an order's lines as products, with the client's phone and the notes, when given them", async () => {
+    const send = answering(201, purchaseJson);
+
+    await clientWith(send).createPurchase({
+      ...input,
+      products: [
+        { name: 'Kek coklat moist (2kg)', priceCents: 17000, quantity: 1 },
+        { name: 'Tart nenas', priceCents: 2000, quantity: 2 },
+        { name: 'Delivery', priceCents: 1000, quantity: 1 },
+      ],
+      phone: '+60 123456789',
+      notes: 'FPX · Maybank2u',
+    });
+
+    const body = sentBody(send);
+    expect(body.purchase).toEqual({
+      currency: 'MYR',
+      products: [
+        { name: 'Kek coklat moist (2kg)', price: 17000, quantity: '1' },
+        { name: 'Tart nenas', price: 2000, quantity: '2' },
+        { name: 'Delivery', price: 1000, quantity: '1' },
+      ],
+      due_strict: true,
+    });
+    expect(body.client).toEqual({ email: 'owner@example.com', full_name: 'Nadia Bakes', phone: '+60 123456789' });
+    expect(body.notes).toBe('FPX · Maybank2u');
+  });
+
   it('offers only the methods it is given, when given some', async () => {
     const send = answering(201, purchaseJson);
 
@@ -189,6 +217,22 @@ describe('getPurchase', () => {
       paymentMethod: 'visa',
       maskedPan: '411111******1111',
     });
+  });
+
+  it("reads CHIP's generated reference, the notes and the card brand when it sends them", async () => {
+    const purchase = await clientWith(
+      answering(200, {
+        ...paidJson,
+        reference_generated: 'CH0042',
+        notes: 'FPX · Maybank2u',
+        transaction_data: { payment_method: 'mastercard', extra: { masked_pan: '4242', card_brand: 'mastercard' } },
+      }),
+    ).getPurchase(paidJson.id);
+    expect(purchase).toMatchObject({ referenceGenerated: 'CH0042', notes: 'FPX · Maybank2u', paymentMethod: 'mastercard', maskedPan: '4242' });
+
+    const bare = await clientWith(answering(200, { ...purchaseJson, reference_generated: '', notes: '' })).getPurchase('x');
+    expect(bare).not.toHaveProperty('referenceGenerated');
+    expect(bare).not.toHaveProperty('notes');
   });
 
   it('accepts an empty reference', async () => {

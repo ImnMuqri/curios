@@ -426,7 +426,10 @@ in the same place: someone holding a database dump and this key holds every shop
 
 **Rotating it** is re-connecting. A sealed key opens only with the `PAYMENT_SECRETS_KEY` it was
 sealed with, so after changing the variable every connected shop's key stops opening: their "Test
-with RM1" (and, from Task 13b, paying online) fails until they connect again. To rotate:
+with RM1" and customers' online payments fail until they connect again. A customer paying
+online then gets the shop's QR at checkout instead (or its WhatsApp, for a shop with no QR or
+bank details), and the key is marked (`lastErrorAt`), so checkout stops offering CHIP for that
+shop until its owner reconnects. To rotate:
 
 1. Find the open shops whose **only** way to pay is CHIP. Deleting their connection would leave
    them open with nothing a customer can pay by:
@@ -434,9 +437,12 @@ with RM1" (and, from Task 13b, paying online) fails until they connect again. To
    ```sql
    SELECT p."id", p."handle" FROM "Page" p
    JOIN "ShopPaymentAccount" a ON a."pageId" = p."id"
-   WHERE p."storeEnabled" AND p."paymentQrKey" IS NULL
-     AND (p."bankName" IS NULL OR p."bankAccountName" IS NULL OR p."bankAccountNumber" IS NULL);
+   WHERE p."storeEnabled" AND COALESCE(p."paymentQrKey", '') = ''
+     AND (COALESCE(p."bankName", '') = '' OR COALESCE(p."bankAccountName", '') = ''
+          OR COALESCE(p."bankAccountNumber", '') = '');
    ```
+
+   An empty string counts as missing, as it does for the shop itself (`storeGaps`).
 
    **Close every one of those shops** (`UPDATE "Page" SET "storeEnabled" = false WHERE "id" IN (…)`)
    or have its owner add a QR or bank details first, and tell those owners why. Do not go on while
@@ -460,6 +466,19 @@ cancelled "Curios key check"). In production a test key is refused there, "This 
 before anything is stored. If "Test with RM1" ever finds a test key later, it refuses too, and
 removes the connection only when the shop has another way to pay or is closed; otherwise it keeps
 it with `lastErrorAt` set.
+A customer's order purchase is refused the same way: in production a purchase CHIP calls a test is
+cancelled at once and the customer is offered the QR, and a test purchase never marks an order paid.
+
+**Customers paying a shop online.** The order is placed first, as for the QR; paying creates a
+purchase on the owner's own brand with their key, reference = the order number. CHIP calls back at
+`${CHIP_CALLBACK_BASE_URL}/store/chip/callback/<orderId>` (left out when that URL has a port, as on
+localhost), verified with **that shop's** stored public key, and the purchase is then fetched with
+that shop's key before the order is marked paid. The order page asks the API too
+(`GET /store/orders/:token/pay-status`), so an order is marked paid even if the callback is lost or,
+in development, never sent. Logs carry order and purchase ids and outcomes only: "order purchase
+handled" (callback), "order purchase checked" (order page), "online payment not available" (with a
+reason; the customer was offered the QR), and "order paid online but no longer placed" (paid at CHIP
+for an order the owner had cancelled: the money is in the owner's CHIP account, theirs to refund).
 
 ---
 

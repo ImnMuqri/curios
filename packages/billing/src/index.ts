@@ -6,6 +6,7 @@ export type {
   ChipClient,
   ChipPurchase,
   CreatePurchaseInput,
+  PurchaseProduct,
   FetchLike,
 } from './client.js';
 export { billDescription } from './product.js';

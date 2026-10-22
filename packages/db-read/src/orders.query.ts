@@ -180,6 +180,13 @@ export interface PublicOrder {
   completedAt: Date | null;
   cancelledAt: Date | null;
   refundedAt: Date | null;
+  /** How it was paid; null until it is. */
+  paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+  /** How CHIP says it was paid ("FPX · Maybank2u") and CHIP's reference, for the Paid row. */
+  paidMethodLabel: string | null;
+  paidRef: string | null;
+  /** Placed, with a CHIP purchase started for it: the order page checks it. The purchase id itself stays on the server. */
+  chipPending: boolean;
   createdAt: Date;
   lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; photoKey: string | null }[];
   page: {
@@ -231,6 +238,10 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
       completedAt: true,
       cancelledAt: true,
       refundedAt: true,
+      paidVia: true,
+      paidMethodLabel: true,
+      paidRef: true,
+      chipPurchaseId: true,
       createdAt: true,
       lines: {
         orderBy: { position: 'asc' },
@@ -258,9 +269,10 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
     },
   });
   if (!row) return null;
-  const { day, lines, ...order } = row;
+  const { day, lines, chipPurchaseId, ...order } = row;
   return {
     ...order,
+    chipPending: order.status === 'PLACED' && chipPurchaseId !== null,
     day: dayText(day),
     lines: lines.map(({ item, ...line }) => ({ ...line, photoKey: item?.photoKey ?? null })),
   };
@@ -276,18 +288,48 @@ export interface Checkout extends PublicShop {
   closedDays: number[];
   /** `canTakeOrders` of @curios/core, the one rule the shop, API, Alerts and Billing share. */
   canTakeOrders: boolean;
+  /** The owner's QR or full bank details: the "DuitNow QR" choice. */
+  payByQr: boolean;
+  /** The owner's own DuitNow QR, which the choice is named after when CHIP sits beside it. */
+  hasQr: boolean;
+  /**
+   * The methods the owner's CHIP account listed when last checked, for checkout's first
+   * draw (the API says what it takes at the order's total); null when there is no
+   * account, or CHIP refused its key, or (in production) it is a test key.
+   */
+  chipMethods: string[] | null;
 }
 
 /** The shop plus what checkout draws; null for a personal page or a closed Store. */
 export async function getCheckout(handle: string, now = new Date()): Promise<Checkout | null> {
   const shop = await getPublicShop(handle);
   if (!shop) return null;
-  const plan = await prismaRead.page.findUnique({
+  const page = await prismaRead.page.findUnique({
     where: { handle: handle.toLowerCase() },
-    select: { mode: true, paidUntil: true, ordersPlaced: true, ordersAtTrialReset: true },
+    select: {
+      mode: true,
+      paidUntil: true,
+      ordersPlaced: true,
+      ordersAtTrialReset: true,
+      paymentQrKey: true,
+      bankName: true,
+      bankAccountName: true,
+      bankAccountNumber: true,
+      // Never the sealed key: the read-only role cannot read that column at all.
+      paymentAccount: { select: { methods: true, isTest: true, lastErrorAt: true } },
+    },
   });
-  if (!plan) return null;
-  return { ...shop, canTakeOrders: canTakeOrders({ ...plan, now }) };
+  if (!page) return null;
+  const { paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, ...plan } = page;
+  const usable = chip && chip.lastErrorAt === null && !(chip.isTest && process.env.NODE_ENV === 'production');
+  return {
+    ...shop,
+    canTakeOrders: canTakeOrders({ ...plan, now }),
+    // The same rule as storeGaps: a QR, or all three bank details.
+    payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
+    hasQr: Boolean(paymentQrKey),
+    chipMethods: usable ? chip.methods : null,
+  };
 }
 
 /**

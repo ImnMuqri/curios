@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX, openDays, orderTotals } from '@curios/core/orders';
 import { formatRinggit, type DeliveryMode } from '@curios/core/store';
+import { FPX_BANKS, onlineOffer, WALLETS, type FpxBankId, type OnlineOffer, type WalletId } from '@curios/core/shop-pay';
 import type { ShopItem } from '@curios/db-read';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
 import {
@@ -15,6 +16,7 @@ import {
   type BasketLine,
 } from '../basket.js';
 import { shopCopy } from '../copy.js';
+import { payingKey } from './paying.js';
 import { Placed } from './placed.js';
 import styles from './checkout.module.css';
 
@@ -45,14 +47,37 @@ export interface CheckoutProps {
   closedDays: number[];
   /** The server's clock when it rendered (ISO), so the browser draws the same day pills. */
   now: string;
+  /** The owner's QR or full bank details: the "DuitNow QR" choice. Absent reads as yes. */
+  payByQr?: boolean;
+  /** The owner's own DuitNow QR: with CHIP beside it, the choice is the board's "DuitNow QR". */
+  hasQr?: boolean;
+  /**
+   * The methods the owner's CHIP account listed when last checked; null or absent when
+   * the shop takes nothing online. Only the first draw: the API says what it takes at
+   * this basket's total.
+   */
+  chipMethods?: string[] | null;
+  /** Where paying online sends the browser. Tests pass a spy. */
+  navigate?: (url: string) => void;
 }
 
 interface PlacedOrder {
+  number: number;
   code: string;
   token: string;
   totalCents: number;
   phone: string;
+  /** Paying online could not start: the order waits for the QR (or WhatsApp) instead. */
+  onlineUnavailable: boolean;
 }
+
+/** The board's four ways to pay: three through the owner's CHIP account, and their own QR. */
+type Way = 'fpx' | 'wallet' | 'card' | 'qr';
+
+/** Enough to catch a typo; CHIP and the API say the rest. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+const goTo = (url: string) => window.location.assign(url);
 
 /** Where a refusal is said: under the field it is about, or above Place order. */
 type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'form'; message: string };
@@ -104,6 +129,13 @@ export function Checkout(props: CheckoutProps) {
   /** Checkout cannot take this basket: the shop paused, or the order is too big. WhatsApp replaces Place order. */
   const [fallback, setFallback] = useState<'paused' | 'tooLarge' | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
+  const chip = props.chipMethods ?? null;
+  const payByQr = props.payByQr ?? true;
+  const [offer, setOffer] = useState<OnlineOffer | null>(chip ? onlineOffer(chip) : null);
+  const [way, setWay] = useState<Way | null>(null);
+  const [bank, setBank] = useState<FpxBankId>('maybank');
+  const [wallet, setWallet] = useState<WalletId | null>(null);
+  const [email, setEmail] = useState('');
   const top = useRef<HTMLDivElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLTextAreaElement>(null);
@@ -156,6 +188,38 @@ export function Checkout(props: CheckoutProps) {
     mode: delivery.mode,
     feeCents: delivery.feeCents,
   });
+  // What CHIP takes at this total, asked through the API once the basket settles.
+  const hasChip = chip !== null;
+  useEffect(() => {
+    if (!hasChip || totals.totalCents <= 0) return;
+    let stale = false;
+    const timer = setTimeout(() => {
+      apiFetch<OnlineOffer>(`/store/${props.handle}/pay-methods?amount=${totals.totalCents}`)
+        .then((next) => {
+          if (!stale) setOffer(next);
+        })
+        .catch(() => {
+          // Keep what the page drew; paying says so if CHIP cannot take it.
+        });
+    }, 300);
+    return () => {
+      stale = true;
+      clearTimeout(timer);
+    };
+  }, [hasChip, props.handle, totals.totalCents]);
+
+  const ways: Way[] = [];
+  if (offer?.fpx) ways.push('fpx');
+  if (offer && offer.wallets.length > 0) ways.push('wallet');
+  if (offer?.card) ways.push('card');
+  // A shop without CHIP has only its QR, as checkout always had.
+  if (payByQr || !hasChip) ways.push('qr');
+  const how: Way | null = way && ways.includes(way) ? way : (ways[0] ?? null);
+  const walletPick: WalletId | null = wallet && offer?.wallets.includes(wallet) ? wallet : (offer?.wallets[0] ?? null);
+  const online = how === 'fpx' || how === 'wallet' || how === 'card';
+  const bankName = FPX_BANKS.find((b) => b.id === bank)?.name ?? '';
+  const walletName = WALLETS.find((w) => w.id === walletPick)?.name ?? '';
+
   const flatFee = delivery.mode === 'FLAT' && delivery.feeCents ? formatRinggit(delivery.feeCents) : null;
   const deliveryPrice = delivery.mode === 'RIDER' ? copy.riderFee : (flatFee ?? copy.free);
 
@@ -166,6 +230,8 @@ export function Checkout(props: CheckoutProps) {
     day !== null &&
     method !== null &&
     (method !== 'DELIVERY' || address.trim() !== '') &&
+    (!online || EMAIL.test(email.trim())) &&
+    (how !== 'wallet' || walletPick !== null) &&
     !sending;
 
   async function place() {
@@ -175,6 +241,8 @@ export function Checkout(props: CheckoutProps) {
     setProblem(null);
     setPricesChanged(false);
     setDeliveryOff(false);
+    // Going to CHIP: the button stays busy until the page is gone.
+    let leaving = false;
     try {
       const result = await apiFetch<{ number: number; code: string; token: string; totalCents: number }>(
         `/store/${props.handle}/orders`,
@@ -195,7 +263,32 @@ export function Checkout(props: CheckoutProps) {
         },
       );
       changeLines([]);
-      setPlaced({ code: result.code, token: result.token, totalCents: result.totalCents, phone: sentPhone });
+      // Placed first, exactly as for the QR; paying online only follows. If it cannot
+      // start, the order waits for the QR (or the shop's WhatsApp) like any other.
+      let onlineUnavailable = false;
+      if (online) {
+        const choice = how === 'fpx' ? { method: 'fpx', bank } : how === 'card' ? { method: 'card' } : { method: walletPick };
+        try {
+          const paying = await apiFetch<{ url: string | null }>(`/store/orders/${encodeURIComponent(result.token)}/pay`, {
+            method: 'POST',
+            body: JSON.stringify({ ...choice, email: email.trim() }),
+          });
+          if (paying.url) {
+            try {
+              window.sessionStorage.setItem(payingKey(result.token), '1');
+            } catch {
+              // No storage: the order page shows the order, paid, without the placed screen.
+            }
+            leaving = true;
+            (props.navigate ?? goTo)(paying.url);
+            return;
+          }
+        } catch {
+          // Said on the placed screen below.
+        }
+        onlineUnavailable = true;
+      }
+      setPlaced({ number: result.number, code: result.code, token: result.token, totalCents: result.totalCents, phone: sentPhone, onlineUnavailable });
       top.current?.scrollIntoView?.();
     } catch (error) {
       if (!(error instanceof ApiError)) {
@@ -229,7 +322,7 @@ export function Checkout(props: CheckoutProps) {
         setProblem({ field: FIELD_OF[error.code] ?? 'form', message: error.message });
       }
     } finally {
-      setSending(false);
+      if (!leaving) setSending(false);
     }
   }
 
@@ -241,10 +334,14 @@ export function Checkout(props: CheckoutProps) {
           handle={props.handle}
           displayName={props.displayName}
           copy={copy}
+          number={placed.number}
           code={placed.code}
           token={placed.token}
           totalCents={placed.totalCents}
           phone={placed.phone}
+          onlineUnavailable={placed.onlineUnavailable}
+          payByQr={payByQr}
+          whatsapp={props.whatsapp}
         />
       </main>
     );
@@ -252,6 +349,33 @@ export function Checkout(props: CheckoutProps) {
 
   const shopHref = `/${props.handle}/shop`;
   const total = formatRinggit(totals.totalCents);
+  const goText =
+    how === 'fpx'
+      ? copy.payWith(total, bankName)
+      : how === 'wallet'
+        ? copy.payWith(total, walletName)
+        : how === 'card'
+          ? copy.payByCard(total)
+          : copy.placeOrder(total);
+  const payNote = online
+    ? `${how === 'card' ? copy.noteCard : how === 'wallet' ? copy.noteWallet : copy.noteBank} ${copy.chipNote(props.displayName)}`
+    : `${copy.payNote(props.displayName)} ${copy.consent(props.displayName)}`;
+
+  const wayText: Record<Way, { label: string; sub: string; marks: { text: string; className: string | undefined }[] }> = {
+    fpx: { label: copy.onlineBanking, sub: copy.onlineBankingSub, marks: [{ text: 'FPX', className: styles.markFpx }] },
+    wallet: {
+      label: copy.eWallet,
+      sub: (offer?.wallets ?? []).map((id) => WALLETS.find((w) => w.id === id)?.name).join(', '),
+      marks: [
+        ...(offer?.wallets.includes('tng') ? [{ text: 'TNG', className: styles.markTng }] : []),
+        ...(offer?.wallets.includes('grab') ? [{ text: 'Grab', className: styles.markGrab }] : []),
+      ],
+    },
+    card: { label: copy.card, sub: copy.cardSub, marks: [{ text: 'VISA', className: styles.markVisa }, { text: 'MC', className: styles.markMc }] },
+    qr: hasChip && (props.hasQr ?? true)
+      ? { label: copy.duitnowQr, sub: copy.duitnowQrSub(props.displayName), marks: [{ text: 'QR', className: styles.markQr }] }
+      : { label: copy.qrOrBank, sub: copy.qrOrBankSub(props.displayName), marks: [{ text: 'QR', className: styles.markQr }] },
+  };
 
   return (
     <main className={styles.column}>
@@ -474,6 +598,84 @@ export function Checkout(props: CheckoutProps) {
             </div>
           </section>
 
+          <section className={styles.section} aria-labelledby="ck-pay">
+            <div className={styles.head}>
+              <h2 id="ck-pay">{copy.howYoullPay}</h2>
+              <span>{copy.payTo(props.displayName)}</span>
+            </div>
+            {ways.length === 0 ? (
+              // CHIP is this shop's only way to pay and it takes nothing right now.
+              <p className={styles.notice} role="status">
+                {copy.onlineUnavailableWhatsApp(props.displayName)}
+              </p>
+            ) : (
+              <div className={styles.methods} role="radiogroup" aria-label={copy.howYoullPay}>
+                {ways.map((w) => (
+                  <button key={w} type="button" role="radio" aria-checked={how === w} className={styles.method} onClick={() => setWay(w)}>
+                    <i className={styles.radio} aria-hidden="true" />
+                    <span className={styles.methodText}>
+                      <b>{wayText[w].label}</b>
+                      <span>{wayText[w].sub}</span>
+                    </span>
+                    <span className={styles.marks} aria-hidden="true">
+                      {wayText[w].marks.map((mark) => (
+                        <i key={mark.text} className={mark.className}>
+                          {mark.text}
+                        </i>
+                      ))}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {how === 'fpx' ? (
+              <>
+                <div className={`${styles.head} ${styles.subHead}`}>
+                  <h3 id="ck-bank">{copy.yourBank}</h3>
+                </div>
+                <div className={styles.picks} role="radiogroup" aria-labelledby="ck-bank">
+                  {FPX_BANKS.map((b) => (
+                    <button key={b.id} type="button" role="radio" aria-checked={bank === b.id} className={styles.pick} data-mark={b.id} onClick={() => setBank(b.id)}>
+                      <i aria-hidden="true">{b.name.charAt(0)}</i>
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            {how === 'wallet' ? (
+              <>
+                <div className={`${styles.head} ${styles.subHead}`}>
+                  <h3 id="ck-wallet">{copy.yourWallet}</h3>
+                </div>
+                <div className={styles.picks} role="radiogroup" aria-labelledby="ck-wallet">
+                  {WALLETS.filter((w) => offer?.wallets.includes(w.id)).map((w) => (
+                    <button key={w.id} type="button" role="radio" aria-checked={walletPick === w.id} className={styles.pick} data-mark={w.id} onClick={() => setWallet(w.id)}>
+                      <i aria-hidden="true">{w.name.charAt(0)}</i>
+                      {w.name}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : null}
+            {online ? (
+              <div className={styles.field}>
+                <label htmlFor="ck-email">
+                  {copy.email} <i>{copy.forReceipt}</i>
+                </label>
+                <input
+                  id="ck-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  maxLength={254}
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                />
+              </div>
+            ) : null}
+          </section>
+
           <section className={`${styles.section} ${styles.summary}`}>
             <div>
               <span>{copy.items}</span>
@@ -493,9 +695,7 @@ export function Checkout(props: CheckoutProps) {
               <span>{copy.total}</span>
               <span>{total}</span>
             </div>
-            <p>
-              {copy.payNote(props.displayName)} {copy.consent(props.displayName)}
-            </p>
+            <p>{payNote}</p>
           </section>
 
           {problem?.field === 'form' ? (
@@ -518,7 +718,7 @@ export function Checkout(props: CheckoutProps) {
             </div>
           ) : (
             <button type="button" className={styles.go} disabled={!canPlace} onClick={() => void place()}>
-              {copy.placeOrder(total)}
+              {goText}
             </button>
           )}
         </>

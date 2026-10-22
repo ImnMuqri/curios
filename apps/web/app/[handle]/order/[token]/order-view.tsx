@@ -1,9 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { customerSteps, isRiderDelivery, orderView, type OrderStatus } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
+import { payingKey } from '../../shop/checkout/paying.js';
+import { Placed } from '../../shop/checkout/placed.js';
+import { apiFetch } from '../../../../lib/api.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { ReceiptUpload } from './receipt-upload.js';
 import checkout from '../../shop/checkout/checkout.module.css';
@@ -30,6 +34,12 @@ export interface OrderViewProps {
     receiptRejectedAt: string | null;
     paidAt: string | null;
     refundedAt: string | null;
+    /** How it was paid, and for CHIP, how CHIP says and its reference. */
+    paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+    paidMethodLabel?: string | null;
+    paidRef?: string | null;
+    /** Placed, with a CHIP purchase started for it: the page asks the API how it went. */
+    chipPending?: boolean;
     lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number }[];
   };
   qrUrl: string | null;
@@ -42,6 +52,61 @@ export interface OrderViewProps {
 }
 
 type Tone = 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
+
+/** What GET /store/orders/:token/pay-status answers. */
+type PayStatus =
+  | { state: 'paid'; paidAt: string | null; paidMethodLabel: string | null; paidRef: string | null }
+  | { state: 'pending' | 'failed' | 'none' };
+
+/** Quick checks while the customer has just come back, then slower ones for about ten minutes. */
+const QUICK_CHECKS = 5;
+const QUICK_MS = 2000;
+const SLOW_CHECKS = 60;
+const SLOW_MS = 10_000;
+
+/**
+ * A payment in flight on CHIP: asks the API (which asks CHIP with the owner's key and
+ * settles the order the way the callback does) until it is paid, has failed, or the
+ * checks run out. "checking" first, "waiting" once the quick checks are spent.
+ */
+function usePaymentCheck(token: string, pending: boolean) {
+  const [check, setCheck] = useState<'checking' | 'waiting' | 'failed' | null>(pending ? 'checking' : null);
+  const [paid, setPaid] = useState<Extract<PayStatus, { state: 'paid' }> | null>(null);
+  useEffect(() => {
+    if (!pending) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let tries = 0;
+    const poll = async () => {
+      tries += 1;
+      try {
+        const status = await apiFetch<PayStatus>(`/store/orders/${encodeURIComponent(token)}/pay-status`);
+        if (stopped) return;
+        if (status.state === 'paid') {
+          setPaid(status);
+          setCheck(null);
+          return;
+        }
+        if (status.state === 'failed' || status.state === 'none') {
+          setCheck(status.state === 'failed' ? 'failed' : null);
+          return;
+        }
+      } catch {
+        // Asked again below: a hiccup is not an answer.
+      }
+      if (stopped) return;
+      if (tries >= QUICK_CHECKS) setCheck('waiting');
+      if (tries >= QUICK_CHECKS + SLOW_CHECKS) return;
+      timer = setTimeout(() => void poll(), tries < QUICK_CHECKS ? QUICK_MS : SLOW_MS);
+    };
+    void poll();
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+    };
+  }, [token, pending]);
+  return { check, paid };
+}
 
 const date = (iso: string | null) => (iso ? new Date(iso) : null);
 
@@ -72,9 +137,34 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
  * and the receipt. Every name and number is this order's and this shop's.
  */
 export function OrderView(props: OrderViewProps) {
-  const { order, displayName: name } = props;
+  const { displayName: name } = props;
   const copy = shopCopy(props.language);
   const [codeCopied, copyCode] = useCopied();
+  const { check, paid: confirmed } = usePaymentCheck(props.token, props.order.status === 'PLACED' && props.order.chipPending === true);
+  // Paid while the customer was at CHIP (or, by the callback, before this page rendered).
+  const order: OrderViewProps['order'] = confirmed
+    ? { ...props.order, status: 'PAID', paidVia: 'CHIP', paidAt: confirmed.paidAt, paidMethodLabel: confirmed.paidMethodLabel, paidRef: confirmed.paidRef, chipPending: false }
+    : props.order;
+  const paidOnline = order.paidVia === 'CHIP' && (order.status === 'PAID' || order.status === 'COMPLETED');
+
+  // Back from paying online (checkout marked it): the board's "Paid. Order placed", once.
+  const [celebrate, setCelebrate] = useState(false);
+  useEffect(() => {
+    if (!paidOnline) return;
+    try {
+      if (window.sessionStorage.getItem(payingKey(props.token)) === '1') setCelebrate(true);
+    } catch {
+      // No storage: straight to the order.
+    }
+  }, [paidOnline, props.token]);
+  function seeOrder() {
+    try {
+      window.sessionStorage.removeItem(payingKey(props.token));
+    } catch {
+      // Nothing to forget.
+    }
+    setCelebrate(false);
+  }
 
   const facts = {
     status: order.status,
@@ -85,7 +175,9 @@ export function OrderView(props: OrderViewProps) {
   const view = orderView(facts);
   const steps = customerSteps({ status: order.status, paidAt: facts.paidAt, day: order.day }, new Date(props.now));
   const status = pill(view, steps.ready, name, copy);
-  const needPay = view === 'awaitingPayment' || view === 'toCheck';
+  // While a payment is in flight the QR stays away, so nobody pays twice.
+  const inFlight = check === 'checking' || check === 'waiting';
+  const needPay = (view === 'awaitingPayment' || view === 'toCheck') && !inFlight;
   const stopped = order.status === 'CANCELLED';
   const total = formatRinggit(order.totalCents);
 
@@ -99,6 +191,22 @@ export function OrderView(props: OrderViewProps) {
   const nowAt = stepList.findIndex((step) => !step.done);
 
   const receiptName = `receipt-${order.number}.${EXTENSION[order.receiptType ?? ''] ?? 'jpg'}`;
+
+  if (celebrate) {
+    return (
+      <main className={`${checkout.column} ${checkout.placedColumn}`}>
+        <Placed
+          handle={props.handle}
+          displayName={name}
+          copy={copy}
+          code={order.code}
+          token={props.token}
+          totalCents={order.totalCents}
+          onSeeOrder={seeOrder}
+        />
+      </main>
+    );
+  }
 
   return (
     <main className={checkout.column}>
@@ -147,12 +255,45 @@ export function OrderView(props: OrderViewProps) {
         </ol>
       )}
 
+      {inFlight ? (
+        <section className={checkout.section}>
+          <div className={`${styles.upload} ${styles.sent} ${styles.checking}`} role="status">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2" />
+            </svg>
+            <span>
+              <b>{copy.checkingPayment}</b>
+              {check === 'waiting' ? <span>{copy.stillWaiting}</span> : null}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
+      {paidOnline ? (
+        <section className={checkout.section}>
+          <div className={`${styles.upload} ${styles.sent}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+            <span>
+              <b>{copy.paidBy(total, copy.methodLabel(order.paidMethodLabel ?? 'CHIP'))}</b>
+              {order.paidAt && order.paidRef ? <span>{copy.paidWhen(copy.paidTime(order.paidAt), order.paidRef)}</span> : null}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
       {needPay ? (
         <section className={checkout.section} aria-labelledby="order-pay">
           <div className={checkout.head}>
             <h2 id="order-pay">{copy.payTitle(total)}</h2>
             <span>{copy.payTo(name)}</span>
           </div>
+          {check === 'failed' ? (
+            <p className={styles.rejected} role="status">
+              {copy.onlineFailed}
+            </p>
+          ) : null}
           {order.receiptRejectedAt && view === 'awaitingPayment' ? (
             <p className={styles.rejected} role="status">
               {copy.notReceived(name)}

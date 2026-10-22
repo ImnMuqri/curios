@@ -369,6 +369,10 @@ const order: PublicOrder = {
   completedAt: null,
   cancelledAt: null,
   refundedAt: null,
+  paidVia: null,
+  paidMethodLabel: null,
+  paidRef: null,
+  chipPending: false,
   createdAt: new Date('2026-10-15T02:00:00.000Z'),
   lines: [{ itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoKey: null }],
   page: {
@@ -392,6 +396,97 @@ const order: PublicOrder = {
 
 const params = (handle: string, token: string) => ({ params: Promise.resolve({ handle, token }) });
 
+describe('OrderView: paid online', () => {
+  const paidOnline = withOrder({
+    status: 'PAID',
+    paidVia: 'CHIP',
+    // 3:42pm in Malaysia.
+    paidAt: '2026-10-15T07:42:00.000Z',
+    paidMethodLabel: 'FPX · Maybank2u',
+    paidRef: 'CH0042',
+  });
+  const status = (body: unknown) =>
+    vi.fn(async (_url: string) => new Response(JSON.stringify(body), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+  afterEach(() => {
+    window.sessionStorage.clear();
+    vi.useRealTimers();
+  });
+
+  it('the order page shows Paid after a callback even if the customer never came back', () => {
+    const fetch = status({ state: 'pending' });
+    vi.stubGlobal('fetch', fetch);
+    render(<OrderView {...paidOnline} />);
+
+    expect(screen.getByText(copy.statusPaid('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByText(copy.paidBy('RM215', 'FPX · Maybank2u'))).toBeInTheDocument();
+    expect(screen.getByText('15 Oct, 3:42pm · Ref CH0042')).toBeInTheDocument();
+    // No QR and no upload once paid, and nothing to check.
+    expect(screen.queryByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeNull();
+    expect(screen.queryByText(copy.uploadReceipt)).toBeNull();
+    expect(screen.queryByRole('heading', { name: copy.paidPlaced })).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('checks a payment in flight, then shows it paid, without the QR meanwhile', async () => {
+    const fetch = status({ state: 'paid', paidAt: '2026-10-15T07:42:00.000Z', paidMethodLabel: 'Visa card ending 4242', paidRef: 'purchase-1' });
+    vi.stubGlobal('fetch', fetch);
+    render(<OrderView {...withOrder({ chipPending: true })} />);
+
+    expect(screen.getByText(copy.checkingPayment)).toBeInTheDocument();
+    expect(screen.queryByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeNull();
+    expect(await screen.findByText(copy.paidBy('RM215', 'Visa card ending 4242'))).toBeInTheDocument();
+    expect(String(fetch.mock.calls[0]?.[0])).toMatch(/\/store\/orders\/tok_abc\/pay-status$/);
+    expect(screen.getByText(copy.statusPaid('Kek Lina'))).toBeInTheDocument();
+    expect(screen.queryByText(copy.checkingPayment)).toBeNull();
+  });
+
+  it('says "Paid. Order placed" to a customer coming back from paying, then shows the order', async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.setItem('curios-paying:tok_abc', '1');
+    vi.stubGlobal('fetch', status({ state: 'paid', paidAt: '2026-10-15T07:42:00.000Z', paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' }));
+    render(<OrderView {...withOrder({ chipPending: true })} />);
+
+    expect(await screen.findByRole('heading', { name: copy.paidPlaced })).toBeInTheDocument();
+    expect(screen.getByText(copy.paidPlacedSub('RM215', 'Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByLabelText('Order code 7Q4M')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: copy.seeOrder }));
+    expect(screen.getByText(copy.paidBy('RM215', 'FPX · Maybank2u'))).toBeInTheDocument();
+    expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBeNull();
+  });
+
+  it('says it is still waiting for the bank after a few checks, and keeps checking', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] });
+    const fetch = status({ state: 'pending' });
+    vi.stubGlobal('fetch', fetch);
+    render(<OrderView {...withOrder({ chipPending: true })} />);
+
+    await vi.advanceTimersByTimeAsync(15_000);
+    expect(await screen.findByText(copy.stillWaiting)).toBeInTheDocument();
+    const asked = fetch.mock.calls.length;
+    expect(asked).toBeGreaterThanOrEqual(4);
+    await vi.advanceTimersByTimeAsync(30_000);
+    expect(fetch.mock.calls.length).toBeGreaterThan(asked);
+  });
+
+  it('a payment that did not go through: the QR and the upload, with a word about it', async () => {
+    vi.stubGlobal('fetch', status({ state: 'failed' }));
+    render(<OrderView {...withOrder({ chipPending: true })} />);
+
+    expect(await screen.findByText(copy.onlineFailed)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
+    expect(screen.getByText(copy.uploadReceipt)).toBeInTheDocument();
+  });
+
+  it('speaks Malay on a Malay page', () => {
+    vi.stubGlobal('fetch', status({ state: 'pending' }));
+    const ms = shopCopy('ms');
+    render(<OrderView {...{ ...paidOnline, language: 'ms', order: { ...paidOnline.order, paidMethodLabel: 'Visa card ending 4242' } }} />);
+    expect(screen.getByText(ms.paidBy('RM215', 'kad Visa berakhir 4242'))).toBeInTheDocument();
+    expect(screen.getByText('15 Okt, 15:42 · Ruj CH0042')).toBeInTheDocument();
+  });
+});
+
 describe('/[handle]/order/[token]', () => {
   beforeEach(() => vi.stubEnv('STORAGE_PUBLIC_URL', 'https://cdn.test'));
   afterEach(() => vi.unstubAllEnvs());
@@ -413,6 +508,23 @@ describe('/[handle]/order/[token]', () => {
     expect(screen.getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p1/abc.jpg');
     expect(screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
     expect(screen.getByRole('main').closest('[data-on-accent]')).not.toBeNull();
+  });
+
+  it('draws an order paid online as paid, from the server, with how and the reference', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce({
+      ...order,
+      status: 'PAID',
+      receiptKey: null,
+      receiptType: null,
+      receiptUploadedAt: null,
+      paidAt: new Date('2026-10-15T07:42:00.000Z'),
+      paidVia: 'CHIP',
+      paidMethodLabel: 'FPX · Maybank2u',
+      paidRef: 'CH0042',
+    });
+    render(await OrderPage(params('keklina', 'tok')));
+    expect(screen.getByText(copy.paidBy('RM215', 'FPX · Maybank2u'))).toBeInTheDocument();
+    expect(screen.getByText('15 Oct, 3:42pm · Ref CH0042')).toBeInTheDocument();
   });
 
   it('is never indexed, and titles the tab', async () => {

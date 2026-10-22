@@ -41,6 +41,9 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
         deliveryNote={shop.deliveryNote}
         minNoticeDays={shop.minNoticeDays}
         closedDays={shop.closedDays}
+        payByQr={shop.payByQr}
+        hasQr={shop.hasQr}
+        chipMethods={shop.chipMethods}
         // The server's clock, so the day pills the browser draws are the ones it rendered.
         now={now.toISOString()}
       />

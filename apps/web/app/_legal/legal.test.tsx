@@ -55,6 +55,18 @@ describe('LegalPage', () => {
     }
   });
 
+  it('says, in both languages, that shop customers may pay through the owner’s own CHIP account, and what that shares', () => {
+    const all = (locale: 'en' | 'ms', doc: 'terms' | 'privacy') => DOCS[locale][doc].sections.flatMap((s) => s.body.flatMap(text)).join(' ');
+    expect(all('en', 'terms')).toContain('online through the owner’s own CHIP account');
+    expect(all('en', 'terms')).toContain('We store the key encrypted and use it only to take payments for their shop.');
+    expect(all('en', 'terms')).toContain('The owner is responsible for their CHIP account');
+    expect(all('ms', 'terms')).toContain('akaun CHIP pemilik sendiri');
+    expect(all('ms', 'terms')).toContain('Kami menyimpan kunci itu dalam bentuk tersulit');
+    expect(all('en', 'privacy')).toContain('CHIP (Malaysia): processes online payments for shop orders');
+    expect(all('en', 'privacy')).toContain('your email address, for CHIP’s receipt');
+    expect(all('ms', 'privacy')).toContain('CHIP (Malaysia): memproses bayaran dalam talian untuk tempahan kedai');
+  });
+
   it('names who runs Curios on the Terms and Privacy pages', () => {
     for (const doc of ['terms', 'privacy'] as const) {
       const { container, unmount } = render(<LegalPage doc={doc} locale="en" />);

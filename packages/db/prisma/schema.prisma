@@ -731,7 +731,8 @@ model ShopPaymentAccount {
   publicKeyPem        String
   /// The method names GET /payment_methods/ listed when the key was last checked.
   methods             String[]
-  /// A test key: no real money moves. Learned from a purchase's is_test; false until one says.
+  /// A test key: no real money moves. Learned at connect from the check purchase's is_test,
+  /// and kept up to date by later purchases (the RM1 test, customers' orders).
   isTest              Boolean         @default(false)
   connectedAt         DateTime        @default(now())
   checkedAt           DateTime

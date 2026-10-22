@@ -209,6 +209,21 @@ describe('getOrderByToken', () => {
     expect(order?.lines).toHaveLength(1);
   });
 
+  it('says how an order was paid online, and only whether a CHIP payment is under way', async () => {
+    const owner = await anOwner();
+    const paidToken = randomUUID();
+    await anOrder(owner.pageId, { status: 'PAID', paidAt: NOW, paidVia: 'CHIP', chipPurchaseId: `p-${randomUUID()}`, payerEmail: 'a@example.com', paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' }, paidToken);
+    const paid = await getOrderByToken(paidToken);
+    expect(paid).toMatchObject({ paidVia: 'CHIP', paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042', chipPending: false });
+    // The purchase id and the payer's email stay on the server.
+    expect(paid).not.toHaveProperty('chipPurchaseId');
+    expect(paid).not.toHaveProperty('payerEmail');
+
+    const pendingToken = randomUUID();
+    await anOrder(owner.pageId, { chipPurchaseId: `p-${randomUUID()}` }, pendingToken);
+    expect(await getOrderByToken(pendingToken)).toMatchObject({ status: 'PLACED', chipPending: true, paidVia: null });
+  });
+
   it('does not match on the hash itself', async () => {
     const token = randomUUID();
     await anOrder(mine.pageId, {}, token);
@@ -234,6 +249,28 @@ describe('getCheckout', () => {
     expect((await getCheckout(spent.handle, NOW))?.canTakeOrders).toBe(false);
     const paid = await anOwner({ ordersPlaced: 3, paidUntil: new Date('2026-12-01T00:00:00Z') });
     expect((await getCheckout(paid.handle, NOW))?.canTakeOrders).toBe(true);
+  });
+
+  it('says whether the shop takes a QR or bank transfer, and which methods its CHIP account listed', async () => {
+    const plain = await anOwner();
+    expect(await getCheckout(plain.handle, NOW)).toMatchObject({ payByQr: false, hasQr: false, chipMethods: null });
+
+    const qr = await anOwner({ paymentQrKey: 'qr/a.png' });
+    expect(await getCheckout(qr.handle, NOW)).toMatchObject({ payByQr: true, hasQr: true });
+    const bank = await anOwner({ bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122' });
+    expect(await getCheckout(bank.handle, NOW)).toMatchObject({ payByQr: true, hasQr: false });
+    const halfBank = await anOwner({ bankName: 'Maybank', bankAccountName: '', bankAccountNumber: '1122' });
+    expect((await getCheckout(halfBank.handle, NOW))?.payByQr).toBe(false);
+
+    const chip = await anOwner();
+    const account = { brandId: randomUUID(), secretKeyCiphertext: 'sealed', publicKeyPem: 'pem', methods: ['fpx', 'visa'], checkedAt: NOW };
+    await write.shopPaymentAccount.create({ data: { pageId: chip.pageId, ...account } });
+    expect((await getCheckout(chip.handle, NOW))?.chipMethods).toEqual(['fpx', 'visa']);
+
+    // A key CHIP refused takes nothing online until the owner connects again.
+    const refused = await anOwner();
+    await write.shopPaymentAccount.create({ data: { pageId: refused.pageId, ...account, lastErrorAt: NOW } });
+    expect((await getCheckout(refused.handle, NOW))?.chipMethods).toBeNull();
   });
 });
 

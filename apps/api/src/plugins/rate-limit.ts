@@ -404,3 +404,23 @@ export function shopChipPerAccountLimit(redis: IORedis): RateLimitPluginOptions 
     errorResponseBuilder: tooMany((after) => `Too many tries. Wait a little and try again in ${after}.`),
   };
 }
+
+/**
+ * Paying a shop online, per visitor: checkout asking which methods the shop takes,
+ * starting a payment (each one creates a purchase on the owner's CHIP account), and
+ * the order page checking whether it went through. Generous enough for that page's
+ * few checks; a loop from one address is stopped before it can fill an owner's
+ * CHIP account with purchases.
+ */
+export function shopPayPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('shop-pay-ip:'),
+    max: limit('RATE_LIMIT_SHOP_PAY_PER_IP', 60),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
+  };
+}

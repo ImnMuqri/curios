@@ -124,6 +124,21 @@ describe('POST /store/chip', () => {
     expect(await account(app, owner.pageId)).toMatchObject({ isTest: true, brandName: 'Kek Lina Bakes' });
   });
 
+  it('refuses to check an account that takes no card or e-wallet, rather than offer FPX or a QR on the check', async () => {
+    const owner = await anOwner(app);
+    client.listPaymentMethods.mockResolvedValue(['fpx', 'duitnow_qr']);
+
+    const res = await connect(app, owner.cookie);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toEqual({
+      code: 'CHIP_NO_CHECK_METHOD',
+      message: 'Your CHIP account takes no card or e-wallet yet, so Curios can’t check it. Turn one on in CHIP, then connect again.',
+    });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(await account(app, owner.pageId)).toBeNull();
+  });
+
   it('a test key is refused in production at connect, before anything is stored', async () => {
     const owner = await anOwner(live);
     const probe = aPurchase({ isTest: true });
