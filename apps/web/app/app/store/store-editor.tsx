@@ -395,7 +395,6 @@ export function StoreEditor({
               backgroundColor={look.backgroundColor}
               language={look.language}
               socials={look.socials}
-              shop={{ position: 0, size: null, label: '', caption: '', photoUrl: null }}
               mode="shop"
               interactive={false}
               nameAs="p"

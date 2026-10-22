@@ -49,6 +49,7 @@ const page: PublicPage = {
   coverKey: null,
   background: 'PAPER' as const, backgroundColor: null, shop: null,
   socials: [],
+  shopOrdering: null,
 };
 
 describe('public page', () => {
@@ -280,15 +281,34 @@ describe('indexing', () => {
   });
 });
 
-describe('the Shop tab on the public page', () => {
-  it("links to the shop in the page's language", async () => {
-    vi.mocked(getPublicPage).mockResolvedValue({ ...page, language: 'ms', shop: { position: 0, size: null, itemCount: 3, photoKey: null } });
+const ordering = {
+  pickupEnabled: true,
+  deliveryMode: 'NONE' as const,
+  minNoticeDays: 1,
+  closedDays: [],
+  canTakeOrders: true,
+  items: [{ id: 'i1', name: 'Kek', priceCents: 9500, options: [] }],
+};
+const tile = { position: 0, size: null, itemCount: 3, photoKey: null, photos: [{ name: 'Kek', photoKey: null }] };
+
+describe('the shop pill on the public page', () => {
+  it("is the first link, in the page's language, and there is no Shop tab", async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, language: 'ms', shop: tile, shopOrdering: ordering });
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
-    expect(screen.getByRole('link', { name: 'Kedai' })).toHaveAttribute('href', '/nadia/shop');
+    const pill = screen.getByRole('link', { name: /Kedai/ });
+    expect(pill).toHaveAttribute('href', '/nadia/shop');
+    expect(pill).toHaveTextContent('3 barang');
+    expect(screen.getByRole('navigation', { name: 'Bahagian halaman' }).querySelector('a[href="/nadia/shop"]')).toBeNull();
+  });
+
+  it('drops the day while the shop is paused', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, shop: tile, shopOrdering: { ...ordering, canTakeOrders: false } });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    expect(screen.getByRole('link', { name: /Kedai/ })).not.toHaveTextContent('seterusnya');
   });
 
   it('has no such link without a shop', async () => {
-    vi.mocked(getPublicPage).mockResolvedValue({ ...page, shop: null });
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, shop: null, shopOrdering: null });
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
     expect(document.querySelector('a[href="/nadia/shop"]')).toBeNull();
   });

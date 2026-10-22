@@ -1,3 +1,5 @@
+import { canTakeOrders } from '@curios/core';
+import type { DeliveryMode } from '@curios/core/store';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
@@ -50,6 +52,19 @@ export interface PublicPage {
   socials: { kind: SocialKind; value: string }[];
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
+  /**
+   * What the shop pill and the basket bar need that the tile does not: the
+   * next pickup day's inputs, whether orders can be taken, and the shelf's
+   * prices to price a saved basket. Null while the shop is closed.
+   */
+  shopOrdering: {
+    pickupEnabled: boolean;
+    deliveryMode: DeliveryMode;
+    minNoticeDays: number;
+    closedDays: number[];
+    canTakeOrders: boolean;
+    items: { id: string; name: string; priceCents: number | null; options: { id: string; label: string; priceCents: number }[] }[];
+  } | null;
 }
 
 /**
@@ -80,6 +95,12 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
       background: true,
       backgroundColor: true,
       socials: true,
+      ordersPlaced: true,
+      ordersAtTrialReset: true,
+      pickupEnabled: true,
+      deliveryMode: true,
+      minNoticeDays: true,
+      closedDays: true,
       ...SHOP_TILE_SELECT,
       links: {
         orderBy: { position: 'asc' },
@@ -94,6 +115,33 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
   });
 
   if (!page) return null;
-  const { storeEnabled: _open, shopTilePosition: _at, shopTileSize: _size, items: _items, ...rest } = page;
-  return { ...rest, socials: tidySocials(rest.socials), shop: shopTileOf(page) };
+  const {
+    storeEnabled: _open,
+    shopTilePosition: _at,
+    shopTileSize: _size,
+    items,
+    ordersPlaced,
+    ordersAtTrialReset,
+    pickupEnabled,
+    deliveryMode,
+    minNoticeDays,
+    closedDays,
+    ...rest
+  } = page;
+  const shop = shopTileOf(page);
+  return {
+    ...rest,
+    socials: tidySocials(rest.socials),
+    shop,
+    shopOrdering: shop
+      ? {
+          pickupEnabled,
+          deliveryMode,
+          minNoticeDays,
+          closedDays,
+          canTakeOrders: canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced, ordersAtTrialReset, now: new Date() }),
+          items: items.map(({ id, name, priceCents, options }) => ({ id, name, priceCents, options })),
+        }
+      : null,
+  };
 }

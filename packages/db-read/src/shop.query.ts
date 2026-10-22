@@ -8,6 +8,8 @@ export interface ShopTile {
   itemCount: number;
   /** The first available item's photo, for the tile's picture. */
   photoKey: string | null;
+  /** The first three available items, for the shop pill's overlapping photos (the name gives an initial when there is no photo). */
+  photos: { name: string; photoKey: string | null }[];
 }
 
 export interface ShopItem {
@@ -42,8 +44,15 @@ export const SHOP_TILE_SELECT = {
   shopTilePosition: true,
   shopTileSize: true,
   // Name and price as well, for the editor's preview of the Shop tab.
-  items: { where: { available: true }, orderBy: { position: 'asc' }, select: { photoKey: true, name: true, priceCents: true } },
+  items: {
+    where: { available: true },
+    orderBy: { position: 'asc' },
+    select: { id: true, photoKey: true, name: true, priceCents: true, options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } } },
+  },
 } as const;
+
+/** How many photos the shop pill overlaps. */
+export const SHOP_PILL_PHOTOS = 3;
 
 /**
  * The shop tile, or null when the page shows none: a closed shop, or a
@@ -55,7 +64,7 @@ export function shopTileOf(row: {
   storeEnabled: boolean;
   shopTilePosition: number;
   shopTileSize: TileSize | null;
-  items: { photoKey: string | null }[];
+  items: { photoKey: string | null; name: string }[];
 }): ShopTile | null {
   if (row.mode !== 'BUSINESS' || !row.storeEnabled) return null;
   return {
@@ -63,6 +72,7 @@ export function shopTileOf(row: {
     size: row.shopTileSize,
     itemCount: row.items.length,
     photoKey: row.items.find((item) => item.photoKey !== null)?.photoKey ?? null,
+    photos: row.items.slice(0, SHOP_PILL_PHOTOS).map((item) => ({ name: item.name, photoKey: item.photoKey })),
   };
 }
 

@@ -2,6 +2,9 @@ import { formatRinggit } from '@curios/core/store';
 import type { ShopItem } from '@curios/db-read';
 import type { ShopCopy } from './copy.js';
 
+/** What pricing a basket needs of an item: the shelf's name, price and options. */
+export type PricedItem = Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options'>;
+
 /** What the browser keeps: ids and counts, never prices -- a price is always read from the shelf as it is now. */
 export interface BasketLine {
   itemId: string;
@@ -36,12 +39,16 @@ export function readBasket(key: string): BasketLine[] {
   }
 }
 
+/** Fired on `window` whenever a basket is written, so a bar elsewhere on the same page follows it (sessionStorage's own event only reaches other tabs). */
+export const BASKET_EVENT = 'curios-basket';
+
 export function writeBasket(key: string, lines: BasketLine[]) {
   try {
     window.sessionStorage.setItem(key, JSON.stringify(lines));
   } catch {
     // Memory only, as above.
   }
+  window.dispatchEvent(new Event(BASKET_EVENT));
 }
 
 export interface PricedLine extends BasketLine {
@@ -56,7 +63,7 @@ export interface PricedLine extends BasketLine {
  * whose option no longer exists, is dropped rather than priced at a number the
  * shop no longer offers.
  */
-export function priceBasket(lines: BasketLine[], items: ShopItem[]): { lines: PricedLine[]; totalCents: number } {
+export function priceBasket(lines: BasketLine[], items: PricedItem[]): { lines: PricedLine[]; totalCents: number } {
   const priced: PricedLine[] = [];
   for (const line of lines) {
     const item = items.find((candidate) => candidate.id === line.itemId);

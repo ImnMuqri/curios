@@ -4,7 +4,15 @@
  */
 export interface ShopCopy {
   visit: string;
+  /** The shop pill's title. */
+  shop: string;
   itemCount: (n: number) => string;
+  /** The shop pill's second half, after the item count: the day the next order could be for. */
+  nextPickup: (day: string) => string;
+  nextDelivery: (day: string) => string;
+  /** The basket bar's count and total, and its small line on the Links tab. */
+  barText: (items: number, total: string) => string;
+  stillInBasket: string;
   back: string;
   from: (price: string) => string;
   add: string;
@@ -161,7 +169,12 @@ function dayWords(short: string[], months: string[]) {
 
 const EN: ShopCopy = {
   visit: 'Visit shop',
+  shop: 'Shop',
   itemCount: (n) => `${n} ${n === 1 ? 'item' : 'items'}`,
+  nextPickup: (day) => `next pickup ${day}`,
+  nextDelivery: (day) => `next delivery ${day}`,
+  barText: (items, total) => `${items} ${items === 1 ? 'item' : 'items'} · ${total}`,
+  stillInBasket: 'Still in your basket',
   back: 'Back',
   from: (price) => `from ${price}`,
   add: 'Add to basket',
@@ -271,7 +284,12 @@ const EN: ShopCopy = {
 
 const MS: ShopCopy = {
   visit: 'Lawati kedai',
+  shop: 'Kedai',
   itemCount: (n) => `${n} barang`,
+  nextPickup: (day) => `ambil seterusnya ${day}`,
+  nextDelivery: (day) => `hantar seterusnya ${day}`,
+  barText: (items, total) => `${items} barang · ${total}`,
+  stillInBasket: 'Masih dalam bakul anda',
   back: 'Kembali',
   from: (price) => `dari ${price}`,
   add: 'Masuk bakul',

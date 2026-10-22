@@ -39,6 +39,9 @@ beforeAll(async () => {
   await seed('sq-closed', { storeEnabled: false });
   await seed('sq-personal', { mode: 'PERSONAL' });
   await seed('sq-draft', { published: false });
+  await seed('sq-many', {
+    items: { create: ['M1', 'M2', 'M3', 'M4'].map((name, position) => ({ name, slug: name.toLowerCase(), position, available: true })) },
+  });
   // Created in the reverse of their positions, so insertion order cannot pass for position order.
   orderAccountId = await seed('sq-order', {
     items: { create: [
@@ -99,7 +102,21 @@ describe('getPublicShop', () => {
 
 describe('the tile on the public page', () => {
   it('counts available items and takes the first available photo', async () => {
-    expect((await getPublicPage('sq-open'))?.shop).toEqual({ position: 0, size: null, itemCount: 2, photoKey: 'items/p/c.webp' });
+    expect((await getPublicPage('sq-open'))?.shop).toEqual({
+      position: 0,
+      size: null,
+      itemCount: 2,
+      photoKey: 'items/p/c.webp',
+      photos: [{ name: 'A', photoKey: null }, { name: 'C', photoKey: 'items/p/c.webp' }],
+    });
+  });
+
+  it('carries the first three items for the shop pill, in position order, photo or not', async () => {
+    expect((await getPublicPage('sq-order'))?.shop?.photos).toEqual([
+      { name: 'First', photoKey: 'items/p/first.webp' },
+      { name: 'Second', photoKey: 'items/p/second.webp' },
+    ]);
+    expect((await getPublicPage('sq-many'))?.shop?.photos.map((p) => p.name)).toEqual(['M1', 'M2', 'M3']);
   });
 
   it('takes the photo of the first item in position order', async () => {
@@ -109,6 +126,20 @@ describe('the tile on the public page', () => {
   it('is null while the shop is closed, and on a personal page', async () => {
     expect((await getPublicPage('sq-closed'))?.shop).toBeNull();
     expect((await getPublicPage('sq-personal'))?.shop).toBeNull();
+  });
+});
+
+describe('what the page needs to say the next pickup day and price the basket', () => {
+  it('carries the pickup terms, whether orders can be taken, and the priced shelf', async () => {
+    const ordering = (await getPublicPage('sq-open'))?.shopOrdering;
+    expect(ordering).toMatchObject({ pickupEnabled: true, deliveryMode: 'NONE', closedDays: [0, 3], canTakeOrders: true });
+    expect(typeof ordering?.minNoticeDays).toBe('number');
+    expect(ordering?.items.map((i) => [i.name, i.priceCents])).toEqual([['A', 1000], ['C', null]]);
+    expect(ordering?.items[1]?.options.map((o) => [o.label, o.priceCents])).toEqual([['1kg', 9500], ['2kg', 17000]]);
+  });
+
+  it('is null while the shop is closed', async () => {
+    expect((await getPublicPage('sq-closed'))?.shopOrdering).toBeNull();
   });
 });
 

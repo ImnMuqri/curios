@@ -44,8 +44,6 @@ export default async function ShopPage({
         backgroundColor={shop.backgroundColor}
         coverUrl={coverUrl(shop.coverKey)}
         language={shop.language}
-        // Only its presence matters here: it is what gives the page its Shop tab.
-        shop={{ position: 0, size: null, label: '', caption: '', photoUrl: null }}
         mode="shop"
         stage
       >

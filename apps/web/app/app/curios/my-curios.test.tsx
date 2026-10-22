@@ -181,9 +181,21 @@ describe('the tabs', () => {
 describe('the preview tabs', () => {
   const previewTabs = () => within(screen.getByRole('tablist', { name: 'Preview tab' }));
 
-  it('offers Links and Ask, and Shop only while the shop is open', () => {
+  it('offers Links and Ask only, the shop open or not', () => {
     show(business);
     expect(previewTabs().getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Links', 'Ask']);
+  });
+
+  it('the preview switch has no Shop tab while the shop is open', () => {
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
+    expect(previewTabs().getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Links', 'Ask']);
+    expect(previewTabs().queryByRole('tab', { name: 'Shop' })).toBeNull();
+  });
+
+  it('shows the shop pill on the Links preview while the shop is open', () => {
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
+    expect(within(preview()).getByText('2 items')).toBeInTheDocument();
+    expect(within(preview()).queryByRole('link')).toBeNull();
   });
 
   it('shows a real question on the Ask tab, and the page’s real answer only when tapped', async () => {
@@ -199,7 +211,7 @@ describe('the preview tabs', () => {
   });
 
   it('draws the page on the tab chosen, as boxes not links', async () => {
-    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null } });
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
     const page = preview().querySelector('[data-bento-page]');
     expect(page).not.toHaveAttribute('data-mode');
 
@@ -207,10 +219,8 @@ describe('the preview tabs', () => {
     expect(page).toHaveAttribute('data-mode', 'chat');
     expect(within(preview()).getByText('Do you deliver to Klang?')).toBeInTheDocument();
 
-    await userEvent.click(previewTabs().getByRole('tab', { name: 'Shop' }));
-    expect(page).toHaveAttribute('data-mode', 'shop');
-    expect(within(preview()).getByText('Kek coklat')).toBeInTheDocument();
-    expect(within(preview()).getByText('RM95')).toBeInTheDocument();
+    await userEvent.click(previewTabs().getByRole('tab', { name: 'Links' }));
+    expect(page).not.toHaveAttribute('data-mode');
     expect(within(preview()).queryByRole('link')).toBeNull();
   });
 
@@ -227,7 +237,7 @@ describe('the Shop tab switch', () => {
     expect(screen.queryByRole('switch', { name: 'Show the Shop tab' })).toBeNull();
   });
 
-  it('opens the shop, and the preview gains its Shop tab', async () => {
+  it('opens the shop, and the preview gains the shop pill, not a tab', async () => {
     const { calls } = show(business);
     await userEvent.click(editTab('Links'));
     expect(screen.getByText(/Sits next to Links and Ask · 2 items/)).toBeInTheDocument();
@@ -238,7 +248,8 @@ describe('the Shop tab switch', () => {
 
     expect(calls.setShopOpen).toHaveBeenCalledWith(true);
     expect(toggle).toHaveAttribute('aria-checked', 'true');
-    expect(within(screen.getByRole('tablist', { name: 'Preview tab' })).getByRole('tab', { name: 'Shop' })).toBeInTheDocument();
+    expect(within(screen.getByRole('tablist', { name: 'Preview tab' })).queryByRole('tab', { name: 'Shop' })).toBeNull();
+    expect(within(preview()).getByText('2 items')).toBeInTheDocument();
   });
 
   it('stays off and says why when the shop cannot open', async () => {
@@ -252,14 +263,13 @@ describe('the Shop tab switch', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Add a way to be paid before opening your shop.');
   });
 
-  it('closing the shop takes the preview back to Links', async () => {
-    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null } });
-    await userEvent.click(within(screen.getByRole('tablist', { name: 'Preview tab' })).getByRole('tab', { name: 'Shop' }));
+  it('closing the shop takes the pill off the preview', async () => {
+    show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
+    expect(within(preview()).getByText('2 items')).toBeInTheDocument();
     await userEvent.click(editTab('Links'));
     await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop tab' }));
 
-    expect(preview().querySelector('[data-bento-page]')).not.toHaveAttribute('data-mode');
-    expect(within(screen.getByRole('tablist', { name: 'Preview tab' })).queryByRole('tab', { name: 'Shop' })).toBeNull();
+    expect(within(preview()).queryByText('2 items')).toBeNull();
   });
 });
 

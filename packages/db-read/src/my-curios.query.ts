@@ -67,7 +67,7 @@ export async function getMyCurios(accountId: string): Promise<MyCurios | null> {
     socials: tidySocials(rest.socials),
     shop: shopTileOf(page),
     shopTab:
-      page.mode === 'BUSINESS' ? { open: page.storeEnabled, itemCount: page.items.length, preview: page.items.slice(0, SHOP_PREVIEW) } : null,
+      page.mode === 'BUSINESS' ? { open: page.storeEnabled, itemCount: page.items.length, preview: page.items.slice(0, SHOP_PREVIEW).map(({ name, priceCents, photoKey }) => ({ name, priceCents, photoKey })) } : null,
   };
 }
 

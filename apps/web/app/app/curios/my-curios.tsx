@@ -4,7 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import type { HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
-import { formatRinggit } from '@curios/core/store';
+import { shopCopy } from '../../[handle]/shop/copy.js';
 import { BentoPage } from '../../_bento/BentoPage.js';
 import { PageHead } from '../_ui/page-head.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
@@ -57,7 +57,7 @@ export interface CuriosApi {
 export type EditorPage = MyCurios & {
   avatarUrl: string | null;
   coverUrl: string | null;
-  /** The first few items for sale, for the preview's Shop tab. */
+  /** The first few items for sale, for the preview's shop pill. */
   shopItems: { name: string; priceCents: number | null; photoUrl: string | null }[];
   /** The question the preview's Ask tab offers: the most asked, or a starter. */
   previewQuestion: string;
@@ -69,7 +69,7 @@ const TABS = [
   { id: 'appearance', label: 'Appearance' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
-type PreviewTab = 'links' | 'ask' | 'shop';
+type PreviewTab = 'links' | 'ask';
 
 /** Each tracked, so the header's "Saving…" and "Saved" cover every save on the screen. */
 function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['track']): CuriosApi {
@@ -122,8 +122,17 @@ export function MyCuriosEditor({
   const [copied, setCopied] = useState(false);
 
   const shopOpen = page.shopTab?.open ?? false;
-  const previewTabs: PreviewTab[] = shopOpen ? ['links', 'ask', 'shop'] : ['links', 'ask'];
-  const shownPreview: PreviewTab = previewTab === 'shop' && !shopOpen ? 'links' : previewTab;
+  const previewTabs: PreviewTab[] = ['links', 'ask'];
+  const shownPreview: PreviewTab = previewTab;
+
+  // The shop pill as visitors see it, minus the pickup day (that needs the shop's terms the editor does not carry).
+  const previewPill = shopOpen
+    ? {
+        label: 'Shop',
+        caption: shopCopy(page.language).itemCount(page.shopTab?.itemCount ?? 0),
+        photos: page.shopItems.slice(0, 3).map((item) => ({ name: item.name, url: item.photoUrl })),
+      }
+    : null;
 
   async function copyLink() {
     try {
@@ -211,7 +220,7 @@ export function MyCuriosEditor({
                     ...current,
                     shopTab: current.shopTab ? { ...current.shopTab, open } : null,
                     // The tile sits after the links when the shop opens, which is where the API puts it.
-                    shop: open ? { position: current.links.length, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null } : null,
+                    shop: open ? { position: current.links.length, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
                   }))
                 }
               />
@@ -235,7 +244,7 @@ export function MyCuriosEditor({
         <PreviewFrame
           label="Live preview"
           tabsLabel="Preview tab"
-          tabs={previewTabs.map((id) => ({ id, label: id === 'links' ? 'Links' : id === 'ask' ? 'Ask' : 'Shop' }))}
+          tabs={previewTabs.map((id) => ({ id, label: id === 'links' ? 'Links' : 'Ask' }))}
           selected={shownPreview}
           onSelect={setPreviewTab}
           overlay={
@@ -251,15 +260,14 @@ export function MyCuriosEditor({
         >
           <BentoPage
             {...page}
-            shop={shopOpen ? { position: 0, size: null, label: '', caption: '', photoUrl: null } : null}
-            mode={shownPreview === 'ask' ? 'chat' : shownPreview === 'shop' ? 'shop' : undefined}
+            shop={previewPill}
+            mode={shownPreview === 'ask' ? 'chat' : undefined}
             interactive={false}
             nameAs="p"
           >
             <PreviewTabBody
               tab={shownPreview}
               hasLinks={page.links.length > 0}
-              items={page.shopItems}
               question={page.previewQuestion}
               askPage={api.askPage}
               accent={page.accentColor}
@@ -316,30 +324,16 @@ function PreviewAsk({ question, askPage, accent }: { question: string; askPage: 
 function PreviewTabBody({
   tab,
   hasLinks,
-  items,
   question,
   askPage,
   accent,
 }: {
   tab: PreviewTab;
   hasLinks: boolean;
-  items: EditorPage['shopItems'];
   question: string;
   askPage: CuriosApi['askPage'];
   accent: string;
 }) {
   if (tab === 'links') return hasLinks ? null : <span className={styles.previewEmpty}>Your links show here</span>;
-  if (tab === 'ask') return <PreviewAsk question={question} askPage={askPage} accent={accent} />;
-  if (items.length === 0) return <span className={styles.previewEmpty}>Your items show here</span>;
-  return (
-    <span className={styles.previewShop}>
-      {items.map((item) => (
-        <span key={item.name}>
-          {item.photoUrl ? <img src={item.photoUrl} alt="" /> : <i />}
-          {item.name}
-          {item.priceCents !== null ? <em>{formatRinggit(item.priceCents)}</em> : null}
-        </span>
-      ))}
-    </span>
-  );
+  return <PreviewAsk question={question} askPage={askPage} accent={accent} />;
 }

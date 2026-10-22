@@ -32,16 +32,18 @@ export interface BentoPageProps {
    */
   nameAs?: 'h1' | 'p';
   /**
-   * Present when the shop is open, which is what gives the page its Shop tab.
-   * The other fields are the old tile's words, still passed by callers that
-   * show a shop elsewhere; the tab only needs to know the shop is there.
+   * Present when the shop is open: the shop is the first link on the Links
+   * tab, a pill in the accent with up to three overlapping product photos (an
+   * initial stands in for a missing one), `label`, and the `caption` under it
+   * ("3 items · next pickup Sat 17 Oct"). There is no Shop tab.
    */
-  shop?: { position: number; size: TileSize | null; label: string; caption: string; photoUrl: string | null } | null;
+  shop?: { label: string; caption: string; photos: { url: string | null; name: string }[] } | null;
   /**
    * Which tab the page is drawn on. Left out, it is Links; the public page's
    * Ask flips to chat at runtime by setting the same attribute (ChatMode).
    * `'chat'` draws a page already mid-conversation (the landing's demos);
-   * `'shop'` is /handle/shop. Either way the links and the FAQ fold away.
+   * `'shop'` is /handle/shop, drawn on no tab. Either way the links and the
+   * FAQ fold away.
    */
   mode?: 'chat' | 'shop';
   /** The page's background band. PAPER, the look every page had before there was a choice, when left out. */
@@ -62,6 +64,8 @@ export interface BentoPageProps {
   stage?: boolean;
   /** Social profiles, shown as icons under the handle. */
   socials?: { kind: SocialKind; value: string }[];
+  /** The basket bar: held at the foot of the Links tab, hidden on Ask. */
+  basketBar?: ReactNode;
   /** The ask bar, on the public page; the shop's shelf on /handle/shop. */
   children?: ReactNode;
 }
@@ -115,6 +119,29 @@ export function PageTheme({ theme, className, children }: { theme: Parameters<ty
   );
 }
 
+/** The shop pill's inside, from the Public board: the photos overlap, then the words, then a chevron. */
+function ShopPill({ shop }: { shop: NonNullable<BentoPageProps['shop']> }) {
+  return (
+    <span className={styles.shopIn}>
+      <span className={styles.shopPhotos} aria-hidden="true">
+        {shop.photos.map((photo, index) => (
+          <span key={index} className={styles.shopPhoto}>
+            {photo.name.trim().charAt(0).toUpperCase()}
+            {photo.url ? <img src={photo.url} alt="" /> : null}
+          </span>
+        ))}
+      </span>
+      <span className={styles.shopText}>
+        <b>{shop.label}</b>
+        <small>{shop.caption}</small>
+      </span>
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M9 6l6 6-6 6" />
+      </svg>
+    </span>
+  );
+}
+
 /**
  * A Curios page, for visitors and for the editor's preview alike -- one
  * renderer, so the preview cannot disagree with the page. (Named for the bento
@@ -138,10 +165,9 @@ export function BentoPage(props: BentoPageProps) {
   const theme = themeAttrs(props);
 
   const home = `/${props.handle}`;
-  const tabs: { id: 'links' | 'ask' | 'shop'; label: string; href: string; current: boolean }[] = [
+  const tabs: { id: 'links' | 'ask'; label: string; href: string; current: boolean }[] = [
     { id: 'links', label: copy.links, href: home, current: props.mode === undefined },
     { id: 'ask', label: copy.ask, href: `${home}#ask`, current: props.mode === 'chat' },
-    ...(props.shop ? [{ id: 'shop' as const, label: copy.shop, href: `${home}/shop`, current: props.mode === 'shop' }] : []),
   ];
   const faqHref = `${home}/faq`;
 
@@ -198,8 +224,21 @@ export function BentoPage(props: BentoPageProps) {
 
       <div className={styles.foldaway} data-foldaway>
         <div className={styles.foldawayInner}>
-          {props.links.length > 0 ? (
-            <ul className={styles.links} role="list">
+          {props.links.length > 0 || props.shop ? (
+            <ul className={styles.links} role="list" data-shop={props.shop ? 'yes' : undefined}>
+              {props.shop ? (
+                <li>
+                  {interactive ? (
+                    <a className={styles.shopLink} href={`${home}/shop`}>
+                      <ShopPill shop={props.shop} />
+                    </a>
+                  ) : (
+                    <span className={styles.shopLink}>
+                      <ShopPill shop={props.shop} />
+                    </span>
+                  )}
+                </li>
+              ) : null}
               {props.links.map((link) => (
                 <li key={link.id}>
                   {interactive ? (
@@ -247,6 +286,8 @@ export function BentoPage(props: BentoPageProps) {
           ) : null}
         </div>
       </div>
+
+      {props.basketBar ? <div className={styles.basketSlot}>{props.basketBar}</div> : null}
 
       {props.children}
     </div>

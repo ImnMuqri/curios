@@ -6,6 +6,9 @@ import { BentoPage, FAQ_SHOWN } from '../_bento/BentoPage.js';
 import { avatarUrl, coverUrl } from '../../lib/avatar-url.js';
 import { Ask } from './ask.js';
 import { shopCopy } from './shop/copy.js';
+import { shopPillCaption } from './shop/pill.js';
+import { BasketBar } from './shop/basket-bar.js';
+import { whatsappNumber } from './shop/basket.js';
 
 // Node, not edge: this reads Postgres directly through the read-only role.
 export const runtime = 'nodejs';
@@ -72,9 +75,15 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
   const faq = page.mode === 'BUSINESS' ? await getFaqIndex(page.handle, { limit: FAQ_SHOWN }) : null;
 
   const copy = shopCopy(page.language);
-  const shop = page.shop
-    ? { position: page.shop.position, size: page.shop.size, label: copy.visit, caption: copy.itemCount(page.shop.itemCount), photoUrl: avatarUrl(page.shop.photoKey) }
-    : null;
+  const ordering = page.shopOrdering;
+  const shop =
+    page.shop && ordering
+      ? {
+          label: copy.shop,
+          caption: shopPillCaption(ordering, page.shop.itemCount, copy, new Date()),
+          photos: page.shop.photos.map((photo) => ({ name: photo.name, url: avatarUrl(photo.photoKey) })),
+        }
+      : null;
 
   // Server-rendered into real DOM: with JavaScript disabled the links are
   // still a working link list, which is also the SEO artifact.
@@ -100,6 +109,18 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
         language={page.language}
         socials={page.socials}
         faq={faq}
+        basketBar={
+          ordering ? (
+            <BasketBar
+              handle={page.handle}
+              displayName={page.displayName}
+              language={page.language}
+              items={ordering.items}
+              canTakeOrders={ordering.canTakeOrders}
+              whatsapp={whatsappNumber(page.links)}
+            />
+          ) : null
+        }
         stage
       >
         {/* The "What do you want to know?" prompt now lives inside Ask

@@ -269,7 +269,15 @@ describe('BentoPage, drawn in chat mode', () => {
 });
 
 describe('the tabs', () => {
-  const shop = { position: 0, size: null, label: '', caption: '', photoUrl: null };
+  const shop = {
+    label: 'Shop',
+    caption: '3 items · next pickup Sat 17 Oct',
+    photos: [
+      { url: '/p/a.jpg', name: 'Kek coklat' },
+      { url: null, name: 'Batik' },
+      { url: '/p/c.jpg', name: 'Cookies' },
+    ],
+  };
   const tabs = () => within(screen.getByRole('navigation', { name: 'Page sections' }));
 
   it('offers Links and Ask, Links current', () => {
@@ -281,17 +289,63 @@ describe('the tabs', () => {
     expect(tabs().getByRole('link', { name: 'Links' })).toHaveAttribute('aria-current', 'page');
   });
 
-  it('adds a Shop tab when the shop is open, current on the shop page', () => {
-    render(<BentoPage {...base} shop={shop} mode="shop" />);
-    expect(tabs().getByRole('link', { name: 'Shop' })).toHaveAttribute('href', '/imnmuqri/shop');
-    expect(tabs().getByRole('link', { name: 'Shop' })).toHaveAttribute('aria-current', 'page');
-    expect(tabs().getByRole('link', { name: 'Links' })).not.toHaveAttribute('aria-current');
+  it('a business page has Links and Ask tabs only, shop or no shop', () => {
+    render(<BentoPage {...base} shop={shop} />);
+    expect(tabs().getAllByRole('link').map((a) => a.textContent)).toEqual(['Links', 'Ask']);
+    expect(tabs().queryByRole('link', { name: 'Shop' })).toBeNull();
   });
 
   it("speaks the page's language", () => {
-    render(<BentoPage {...base} language="ms" shop={shop} />);
+    render(<BentoPage {...base} language="ms" shop={{ ...shop, label: 'Kedai' }} />);
     expect(screen.getByRole('navigation', { name: 'Bahagian halaman' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Kedai' })).toBeInTheDocument();
+    expect(within(screen.getByRole('navigation', { name: 'Bahagian halaman' })).getAllByRole('link').map((a) => a.textContent)).toEqual(['Pautan', 'Tanya']);
+  });
+});
+
+describe('the shop pill', () => {
+  const shop = {
+    label: 'Shop',
+    caption: '3 items · next pickup Sat 17 Oct',
+    photos: [
+      { url: '/p/a.jpg', name: 'Kek coklat' },
+      { url: null, name: 'Batik' },
+      { url: '/p/c.jpg', name: 'Cookies' },
+    ],
+  };
+  const linkList = () => screen.getByRole('list');
+
+  it('is the first link: the shop, its photos, and "Shop · N items · next pickup …"', () => {
+    const { container } = render(<BentoPage {...base} shop={shop} />);
+    const links = within(linkList()).getAllByRole('link');
+    expect(links.map((a) => a.getAttribute('href'))).toEqual(['/imnmuqri/shop', 'https://iman.dev', 'https://wa.me/60123', 'https://github.com/iman']);
+    expect(links[0]).toHaveTextContent('Shop');
+    expect(links[0]).toHaveTextContent('3 items · next pickup Sat 17 Oct');
+    expect(links[0]?.querySelectorAll('img')).toHaveLength(2);
+    // The photo that is missing falls back to the item's initial.
+    expect(links[0]).toHaveTextContent('B');
+    expect(container.querySelectorAll('img[alt]:not([alt=""])')).toHaveLength(0);
+  });
+
+  it('is not drawn without a shop', () => {
+    render(<BentoPage {...base} />);
+    expect(screen.queryByRole('link', { name: /Shop/ })).toBeNull();
+    expect(within(linkList()).getAllByRole('link')).toHaveLength(3);
+  });
+
+  it('is a box, not a link, in the editor preview', () => {
+    render(<BentoPage {...base} shop={shop} interactive={false} />);
+    expect(screen.queryByRole('link', { name: /Shop/ })).toBeNull();
+    expect(screen.getByText('3 items · next pickup Sat 17 Oct')).toBeInTheDocument();
+  });
+
+  it('is drawn without the owner having links', () => {
+    render(<BentoPage {...base} links={[]} shop={shop} />);
+    expect(screen.getByRole('link', { name: /Shop/ })).toHaveAttribute('href', '/imnmuqri/shop');
+  });
+
+  it('keeps every selector on a local class, and the photos overlap by 12px', () => {
+    const css = readFileSync(join(__dirname, 'Bento.module.css'), 'utf8');
+    expect(css).toMatch(/\.shopPhoto\s*\+\s*\.shopPhoto\s*\{[^}]*margin-left:\s*-12px/s);
   });
 });
 
