@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit } from '@curios/core/store';
 import type { ShopItem } from '@curios/db-read';
-import { BASKET_EVENT, defaultStorageKey, priceBasket, readBasket, writeBasket, type BasketLine } from '../basket.js';
+import { BASKET_EVENT, defaultStorageKey, priceBasket, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
 import { shopCopy } from '../copy.js';
 import styles from './product.module.css';
 
@@ -83,6 +83,7 @@ export function ProductView(props: {
 
   // A preview must not leave the editor: every link in it just stays put.
   const stay = props.inline ? (event: { preventDefault: () => void }) => event.preventDefault() : undefined;
+  const back = props.inline ? (event: { preventDefault: () => void }) => { event.preventDefault(); props.onDone?.(); } : undefined;
   const q = encodeURIComponent(copy.askPrefill(item.name));
 
   function add() {
@@ -98,6 +99,8 @@ export function ProductView(props: {
         next.filter((l) => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0),
       ),
     );
+    // The page we are about to leave cannot be heard saying it; the shop says it on arrival.
+    if (!props.inline) writeAddedNote(props.handle, copy.addedNamed(item.name, next.filter((l) => l.itemId === item.id).reduce((sum, l) => sum + l.quantity, 0)));
     if (props.onDone) props.onDone();
     else window.location.assign(shopHref);
   }
@@ -105,7 +108,7 @@ export function ProductView(props: {
   return (
     <div className={styles.view} data-inline={props.inline || undefined}>
       <div className={styles.top}>
-        <a className={styles.ib} href={shopHref} aria-label={copy.backToShop} onClick={stay}>
+        <a className={styles.ib} href={shopHref} aria-label={copy.backToShop} onClick={back}>
           <Icon d={ICON.back} />
         </a>
         <span>{copy.shopOf(props.displayName)}</span>
@@ -119,7 +122,7 @@ export function ProductView(props: {
       </p>
 
       <div className={styles.hero}>
-        {item.name.trim().charAt(0).toUpperCase()}
+        <span aria-hidden="true">{item.name.trim().charAt(0).toUpperCase()}</span>
         {item.photoUrl ? <img src={item.photoUrl} alt="" /> : null}
       </div>
 
@@ -139,8 +142,24 @@ export function ProductView(props: {
               {copy.sizeLabel}
             </span>
             <div className={styles.opts} role="radiogroup" aria-labelledby="product-size">
-              {item.options.map((o) => (
-                <button key={o.id} type="button" role="radio" aria-checked={o.id === optionId} onClick={() => setOptionId(o.id)}>
+              {item.options.map((o, i) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={o.id === optionId}
+                  tabIndex={o.id === optionId ? 0 : -1}
+                  onClick={() => setOptionId(o.id)}
+                  onKeyDown={(event) => {
+                    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+                    if (step === 0) return;
+                    event.preventDefault();
+                    const next = item.options[(i + step + item.options.length) % item.options.length];
+                    if (!next) return;
+                    setOptionId(next.id);
+                    (event.currentTarget.parentElement?.children[item.options.indexOf(next)] as HTMLElement | undefined)?.focus();
+                  }}
+                >
                   <b>{o.label}</b>
                   <span>{formatRinggit(o.priceCents)}</span>
                 </button>

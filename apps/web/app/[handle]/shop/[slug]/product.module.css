@@ -129,7 +129,7 @@
   background: var(--warm);
   color: color-mix(in srgb, var(--accent) 70%, var(--ink));
   font-family: var(--font-heading), var(--font-display);
-  font-size: 32px;
+  font-size: 64px;
   font-weight: 800;
 }
 

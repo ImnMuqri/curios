@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
-import { BASKET_EVENT, defaultStorageKey, readBasket, writeBasket, type BasketLine } from './basket.js';
+import { BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
 import { shopCopy } from './copy.js';
 import type { ViewItem } from './shop-view.js';
 import styles from './shop-page.module.css';
@@ -63,6 +63,11 @@ export function ShopPageView(props: {
       window.removeEventListener('pageshow', read);
     };
   }, [key]);
+
+  // What the product page just added, said once on arrival.
+  useEffect(() => {
+    setAnnounce(takeAddedNote(props.handle));
+  }, [props.handle]);
 
   useEffect(() => {
     if (!copied) return;

@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getShopItem } from '@curios/db-read';
@@ -12,11 +13,14 @@ import styles from './product.module.css';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// One read per request: the metadata and the page ask for the same item.
+const findItem = cache(getShopItem);
+
 type Params = Promise<{ handle: string; slug: string }>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { handle, slug } = await params;
-  const found = await getShopItem(handle, slug);
+  const found = await findItem(handle, slug);
   if (!found) return {};
   const { shop, item } = found;
   const photo = avatarUrl(item.photoKey);
@@ -32,7 +36,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function ProductPage({ params }: { params: Params }) {
   const { handle, slug } = await params;
   // Unknown, taken down, another shop's, a closed shop or a personal page: all one 404.
-  const found = await getShopItem(handle, slug);
+  const found = await findItem(handle, slug);
   if (!found) notFound();
   const { shop, item } = found;
 

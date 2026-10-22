@@ -50,8 +50,6 @@ export interface ShopCopy {
   askName: (name: string) => string;
   back: string;
   from: (price: string) => string;
-  add: string;
-  quantity: string;
   basket: (items: number, total: string) => string;
   orderOnWhatsApp: string;
   noWhatsApp: (name: string) => string;
@@ -62,7 +60,6 @@ export interface ShopCopy {
   greeting: (shop: string) => string;
   totalLine: (total: string) => string;
   empty: string;
-  close: string;
   /** The basket bar's way to checkout, when the shop takes orders. */
   checkout: string;
   /** The Store preview's bar before anything is in the basket. */
@@ -247,8 +244,6 @@ const EN: ShopCopy = {
   askName: (name) => `Ask ${name}`,
   back: 'Back',
   from: (price) => `from ${price}`,
-  add: 'Add to basket',
-  quantity: 'Quantity',
   basket: (items, total) => `${items} in basket · ${total}`,
   orderOnWhatsApp: 'Order on WhatsApp',
   noWhatsApp: (name) => `To order, contact ${name} through the links on their page.`,
@@ -259,7 +254,6 @@ const EN: ShopCopy = {
   greeting: (shop) => `Hi ${shop}, I'd like to order:`,
   totalLine: (total) => `Total: ${total}`,
   empty: 'Nothing for sale right now. Check back soon.',
-  close: 'Close',
   checkout: 'Checkout',
   basketEmpty: 'Basket is empty',
   noWayToPay: 'No way to pay yet. Add a QR or your bank account.',
@@ -397,8 +391,6 @@ const MS: ShopCopy = {
   askName: (name) => `Tanya ${name}`,
   back: 'Kembali',
   from: (price) => `dari ${price}`,
-  add: 'Masuk bakul',
-  quantity: 'Kuantiti',
   basket: (items, total) => `${items} dalam bakul · ${total}`,
   orderOnWhatsApp: 'Tempah di WhatsApp',
   noWhatsApp: (name) => `Untuk tempah, hubungi ${name} melalui pautan di halaman mereka.`,
@@ -409,7 +401,6 @@ const MS: ShopCopy = {
   greeting: (shop) => `Hai ${shop}, saya nak tempah:`,
   totalLine: (total) => `Jumlah: ${total}`,
   empty: 'Tiada barang dijual buat masa ini. Datang lagi nanti.',
-  close: 'Tutup',
   checkout: 'Daftar keluar',
   basketEmpty: 'Bakul kosong',
   noWayToPay: 'Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.',

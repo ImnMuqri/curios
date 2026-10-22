@@ -161,6 +161,16 @@ describe('ShopPageView', () => {
     expect(readBasket(key)).toEqual([{ itemId: 'tart', optionId: null, quantity: 1 }]);
   });
 
+  it('says once what the product page just added, then clears it', () => {
+    window.sessionStorage.setItem('curios-added:keklina', 'Kek Batik added. 2 in basket.');
+    const { unmount } = render(<ShopPageView {...base} />);
+    expect(screen.getAllByRole('status').some((el) => el.textContent === 'Kek Batik added. 2 in basket.')).toBe(true);
+    expect(window.sessionStorage.getItem('curios-added:keklina')).toBeNull();
+    unmount();
+    render(<ShopPageView {...base} />);
+    expect(screen.queryByText('Kek Batik added. 2 in basket.')).toBeNull();
+  });
+
   it('links the card’s name and photo to the product page, and opens no sheet', () => {
     render(<ShopPageView {...base} />);
     const name = screen.getByRole('link', { name: 'Kek Batik' });

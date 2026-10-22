@@ -142,6 +142,24 @@ describe('ProductView', () => {
     expect(readBasket(key)).toEqual([{ itemId: 'cake', optionId: 'k2', quantity: 3 }]);
     expect(screen.getByRole('status')).toHaveTextContent('Kek Coklat Moist added. 3 in basket.');
     expect(base.onDone).toHaveBeenCalledTimes(1);
+    // The page is about to be left, so it leaves the line for the shop to say.
+    expect(window.sessionStorage.getItem('curios-added:keklina')).toBe('Kek Coklat Moist added. 3 in basket.');
+  });
+
+  it('keeps the arrow keys inside the size cards, one tab stop', async () => {
+    const user = userEvent.setup();
+    render(<ProductView {...base} />);
+    expect(screen.getByRole('radio', { name: /1kg/ })).toHaveAttribute('tabindex', '0');
+    expect(screen.getByRole('radio', { name: /2kg/ })).toHaveAttribute('tabindex', '-1');
+    screen.getByRole('radio', { name: /1kg/ }).focus();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('radio', { name: /2kg/ })).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getByRole('radio', { name: /2kg/ })).toHaveFocus();
+  });
+
+  it('hides the initial from a screen reader', () => {
+    render(<ProductView {...base} item={cookie} />);
+    expect(screen.getByText('C')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('adds an item with no sizes with no option', async () => {
@@ -166,7 +184,16 @@ describe('ProductView', () => {
     render(<ProductView {...base} inline storageKey="curios-store-preview" onDone={onDone} />);
     await user.click(screen.getByRole('button', { name: 'Add to basket · RM95' }));
     expect(readBasket('curios-store-preview')).toHaveLength(1);
+    expect(window.sessionStorage.getItem('curios-added:keklina')).toBeNull();
     expect(readBasket(key)).toHaveLength(0);
+    expect(onDone).toHaveBeenCalled();
+  });
+
+  it('sends the preview’s back arrow to onDone instead of leaving', async () => {
+    const user = userEvent.setup();
+    const onDone = vi.fn();
+    render(<ProductView {...base} inline onDone={onDone} />);
+    await user.click(screen.getByRole('link', { name: 'Back to the shop' }));
     expect(onDone).toHaveBeenCalled();
   });
 });

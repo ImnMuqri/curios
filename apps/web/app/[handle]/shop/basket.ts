@@ -119,3 +119,25 @@ export function basketMessage(shopName: string, basket: { lines: PricedLine[]; t
 export function whatsappOrderUrl(number: string, text: string): string {
   return `https://wa.me/${number}?text=${encodeURIComponent(text)}`;
 }
+
+/** A one-shot line the product page leaves for the shop to say aloud: the page that said it is already gone. */
+export const addedNoteKey = (handle: string) => `curios-added:${handle}`;
+
+export function writeAddedNote(handle: string, text: string) {
+  try {
+    window.sessionStorage.setItem(addedNoteKey(handle), text);
+  } catch {
+    // Nothing to say it with; the basket itself is saved.
+  }
+}
+
+/** Reads the note once and clears it. */
+export function takeAddedNote(handle: string): string {
+  try {
+    const text = window.sessionStorage.getItem(addedNoteKey(handle)) ?? '';
+    window.sessionStorage.removeItem(addedNoteKey(handle));
+    return text;
+  } catch {
+    return '';
+  }
+}
