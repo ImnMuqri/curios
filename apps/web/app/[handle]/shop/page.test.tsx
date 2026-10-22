@@ -65,7 +65,7 @@ describe('/[handle]/shop', () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
     render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({ item: 'cake' }) }));
     const props = call({});
-        expect(props.language).toBe('ms');
+    expect(props.language).toBe('ms');
     expect(props.copy).toBeUndefined();
     expect(props.initialItemId).toBe('cake');
     expect(props.handle).toBe('nadia');

@@ -28,7 +28,9 @@ export interface ShopCopy {
   halal: string;
   allItems: string;
   categories: string;
-  addNamed: (name: string) => string;
+  addNamed: (name: string, inBasket: number) => string;
+  /** Said once, after a tap on a card's +. */
+  addedNamed: (name: string, inBasket: number) => string;
   wantMore: string;
   wantMoreBody: (name: string) => string;
   askQuestion: string;
@@ -211,7 +213,8 @@ const EN: ShopCopy = {
   halal: 'Halal',
   allItems: 'All',
   categories: 'Categories',
-  addNamed: (name) => `Add ${name}`,
+  addNamed: (name, n) => (n > 0 ? `Add ${name}, ${n} in basket` : `Add ${name}`),
+  addedNamed: (name, n) => `${name} added. ${n} in basket.`,
   wantMore: 'Want something not listed?',
   wantMoreBody: (name) => `Ask ${name} about custom orders and bigger quantities.`,
   askQuestion: 'Ask a question',
@@ -347,7 +350,8 @@ const MS: ShopCopy = {
   halal: 'Halal',
   allItems: 'Semua',
   categories: 'Kategori',
-  addNamed: (name) => `Tambah ${name}`,
+  addNamed: (name, n) => (n > 0 ? `Tambah ${name}, ${n} dalam bakul` : `Tambah ${name}`),
+  addedNamed: (name, n) => `${name} ditambah. ${n} dalam bakul.`,
   wantMore: 'Mahu sesuatu yang tiada di sini?',
   wantMoreBody: (name) => `Tanya ${name} tentang tempahan khas dan kuantiti lebih besar.`,
   askQuestion: 'Tanya soalan',

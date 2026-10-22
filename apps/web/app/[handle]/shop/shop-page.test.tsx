@@ -126,13 +126,33 @@ describe('ShopPageView', () => {
   it('adds the first option with the + and turns it into the count, across options', async () => {
     const user = userEvent.setup();
     render(<ShopPageView {...base} />);
-    await user.click(screen.getByRole('button', { name: 'Add Kek Batik' }));
+    await user.click(screen.getByRole('button', { name: /^Add Kek Batik/ }));
     expect(readBasket(key)).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 1 }]);
-    expect(screen.getByRole('button', { name: 'Add Kek Batik' })).toHaveTextContent('1');
-    await user.click(screen.getByRole('button', { name: 'Add Kek Batik' }));
-    expect(screen.getByRole('button', { name: 'Add Kek Batik' })).toHaveTextContent('2');
+    expect(screen.getByRole('button', { name: /^Add Kek Batik/ })).toHaveTextContent('1');
+    await user.click(screen.getByRole('button', { name: /^Add Kek Batik/ }));
+    expect(screen.getByRole('button', { name: /^Add Kek Batik/ })).toHaveTextContent('2');
     act(() => writeBasket(key, [...readBasket(key), { itemId: 'cake', optionId: 'k2', quantity: 3 }]));
-    expect(screen.getByRole('button', { name: 'Add Kek Batik' })).toHaveTextContent('5');
+    expect(screen.getByRole('button', { name: /^Add Kek Batik/ })).toHaveTextContent('5');
+  });
+
+  it('labels the + with how many are in the basket, and announces a tap', async () => {
+    const user = userEvent.setup();
+    render(<ShopPageView {...base} />);
+    expect(screen.getByRole('button', { name: 'Add Kek Batik' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add Kek Batik' }));
+    expect(screen.getByRole('button', { name: 'Add Kek Batik, 1 in basket' })).toBeInTheDocument();
+    expect(screen.getByText('Kek Batik added. 1 in basket.')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Add Kek Batik, 1 in basket' }));
+    expect(screen.getByRole('button', { name: 'Add Kek Batik, 2 in basket' })).toBeInTheDocument();
+    expect(screen.getByText('Kek Batik added. 2 in basket.')).toBeInTheDocument();
+  });
+
+  it('does both in Malay', async () => {
+    const user = userEvent.setup();
+    render(<ShopPageView {...base} language="ms" />);
+    await user.click(screen.getByRole('button', { name: 'Tambah Kek Batik' }));
+    expect(screen.getByRole('button', { name: 'Tambah Kek Batik, 1 dalam bakul' })).toBeInTheDocument();
+    expect(screen.getByText('Kek Batik ditambah. 1 dalam bakul.')).toBeInTheDocument();
   });
 
   it('adds an item with no options with a null option', async () => {

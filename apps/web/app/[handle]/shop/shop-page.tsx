@@ -53,6 +53,7 @@ export function ShopPageView(props: {
   const [category, setCategory] = useState<string | null>(null);
   const [openId, setOpenId] = useState<string | null>(props.items.some((i) => i.id === props.initialItemId) ? props.initialItemId : null);
   const [copied, setCopied] = useState(false);
+  const [announce, setAnnounce] = useState('');
 
   useEffect(() => {
     const read = () => setBasket(readBasket(key));
@@ -122,6 +123,9 @@ export function ShopPageView(props: {
           <Icon d={ICON.share} />
         </button>
       </div>
+      <p className={styles.sr} role="status">
+        {announce}
+      </p>
       {copied ? (
         <p className={styles.toast} role="status">
           {copy.linkCopied}
@@ -205,8 +209,11 @@ export function ShopPageView(props: {
                         type="button"
                         className={styles.add}
                         data-has={inBasket > 0 ? '' : undefined}
-                        aria-label={copy.addNamed(item.name)}
-                        onClick={() => add({ itemId: item.id, optionId: item.options[0]?.id ?? null, quantity: 1 })}
+                        aria-label={copy.addNamed(item.name, inBasket)}
+                        onClick={() => {
+                          add({ itemId: item.id, optionId: item.options[0]?.id ?? null, quantity: 1 });
+                          setAnnounce(copy.addedNamed(item.name, inBasket + 1));
+                        }}
                       >
                         {inBasket > 0 ? inBasket : '+'}
                       </button>
