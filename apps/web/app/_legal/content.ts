@@ -213,7 +213,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
               list: [
                 'If you make a page: your email address, and your password, which we keep only as a scrambled hash that can’t be turned back into it. If you sign in with Google, your name and email address from your Google account.',
                 'What you put on your page: your name, bio, photos, links, social profiles and items. If you take orders, your DuitNow QR and your bank account name and number, which your customers see. The websites, text and files you give your page to read: we keep the facts drawn from them and short excerpts, not the files.',
-                'If you pay for a plan: the plan, amount and date, and the CHIP purchase. You log in to your bank or enter your card on CHIP’s and your bank’s pages; we never see those details.',
+                'If you pay for a plan: the plan, amount and date, the CHIP purchase and, if you turn on auto-renew, your card’s brand and last four digits. You log in to your bank or enter your card on CHIP’s and your bank’s pages; we never see those details.',
                 'If you chat on a page: what you type and the page’s replies. The questions people ask are also kept without who asked them, so the owner can see what people want to know.',
                 'If you leave your number in a chat: your phone number, and what the chat understood you wanted, such as a product, a date or a place.',
                 'If you order from a shop: your name, your WhatsApp number, pickup or delivery, the day, your address for a delivery, any note, what you ordered, and the payment receipt you upload.',
@@ -483,7 +483,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
               list: [
                 'Jika anda membuat halaman: alamat e-mel anda, dan kata laluan anda, yang kami simpan hanya sebagai cincangan (hash) yang tidak boleh ditukar kembali menjadi kata laluan. Jika anda log masuk dengan Google, nama dan alamat e-mel daripada akaun Google anda.',
                 'Apa yang anda letak di halaman anda: nama, bio, gambar, pautan, profil media sosial dan barangan. Jika anda menerima tempahan, DuitNow QR serta nama dan nombor akaun bank anda, yang dilihat oleh pelanggan anda. Laman web, teks dan fail yang anda berikan untuk dibaca oleh halaman anda: kami menyimpan fakta yang diambil daripadanya dan petikan pendek, bukan fail itu.',
-                'Jika anda membayar pelan: pelan, jumlah dan tarikh, serta pembelian CHIP. Anda log masuk ke bank anda atau memasukkan kad anda di halaman CHIP dan bank anda; kami tidak sekali-kali melihat butiran itu.',
+                'Jika anda membayar pelan: pelan, jumlah dan tarikh, pembelian CHIP dan, jika anda hidupkan auto-renew, jenama kad dan empat digit terakhirnya. Anda log masuk ke bank anda atau memasukkan kad anda di halaman CHIP dan bank anda; kami tidak sekali-kali melihat butiran itu.',
                 'Jika anda bersembang di halaman: apa yang anda taip dan balasan halaman itu. Soalan yang ditanya juga disimpan tanpa maklumat siapa yang bertanya, supaya pemilik dapat melihat apa yang orang ingin tahu.',
                 'Jika anda meninggalkan nombor dalam sembang: nombor telefon anda, dan apa yang difahami oleh sembang tentang kehendak anda, seperti produk, tarikh atau tempat.',
                 'Jika anda membuat tempahan di kedai: nama anda, nombor WhatsApp anda, ambil sendiri atau penghantaran, hari, alamat anda untuk penghantaran, sebarang nota, apa yang anda tempah, dan resit bayaran yang anda muat naik.',
