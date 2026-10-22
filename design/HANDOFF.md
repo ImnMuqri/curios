@@ -283,6 +283,15 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   - peeking over the closing claim field on the dark section
   - it smiles (^^) while the visitor types a handle
 - **Landing (as built):** the same, over both claim fields.
+- **Sign in and sign up, right panel:** the old sky and phone scene is replaced by one calm
+  scene with the full-body Peek on a flat tinted panel, with a short caption under it.
+  - Sign in (#eef1fb): Peek reads a phone, tapping, while three small cards pop in above it:
+    two questions marked "Answered" and one marked "Number saved". Caption: "While you were
+    away / Your page answered 12 questions and saved 2 numbers." Use the owner's real counts.
+  - Sign up (#fdf3e3): Peek holds up a sign with the handle being saved
+    (curios.my/aisyahdraws) and a green tick pops on. Caption: "We're holding your name".
+    Without a handle, show "curios.my/yourname" with no tick.
+  - The panel still hides below 980px. Reduced motion stops all of it.
 - **Full body, landing footer:** Peek stands on top of the o in the giant "curios" footer
   wordmark (`.pkf`). Its full-body form is:
   - a **round, slightly wide ball** in flat brand blue
