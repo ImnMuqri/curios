@@ -2,25 +2,23 @@ import type { FastifyBaseLogger } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
+  CHIP_DEFAULT_BASE_URL,
   billingDisabled,
-  createBillplzClient,
-  evidenceFromBill,
-  evidenceFromCallback,
-  flattenRedirectParams,
+  createChipClient,
+  evidenceFromPurchase,
   grantPayment,
-  verifyBillplzSignature,
-  type BillplzClient,
+  type ChipClient,
   type GrantOutcome,
 } from '@curios/billing';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { createBillForOwner, resetTrial } from './billing.service.js';
+import { createPurchaseForOwner, resetTrial } from './billing.service.js';
 
 export interface BillingRouteOptions {
   /**
    * Injected only by tests, the way the chat routes take a stub model. Without it the
    * client is built from the environment at registration.
    */
-  client?: BillplzClient;
+  client?: ChipClient;
 }
 
 function required(name: string): string {
@@ -30,8 +28,8 @@ function required(name: string): string {
 }
 
 /**
- * Billing is switched off in this environment -- development with no Billplz settings,
- * see `billingDisabled`. A 503 like BILLPLZ_UNAVAILABLE, so the web app turns the code
+ * Billing is switched off in this environment -- development with no CHIP settings,
+ * see `billingDisabled`. A 503 like CHIP_UNAVAILABLE, so the web app turns the code
  * into its own sentence; it can never happen in production, where the settings are
  * required at startup.
  */
@@ -45,24 +43,29 @@ export class BillingNotConfiguredError extends Error {
 }
 
 /**
- * Every Billplz setting, read once at registration -- the moment the chat routes check
+ * Every CHIP setting, read once at registration -- the moment the chat routes check
  * their model key, and for the same reason: a missing value fails the deploy, not an
- * owner's payment. A missing signature key in particular must never reach a request,
- * where it could only mean refusing every genuine payment.
+ * owner's payment. A missing webhook key in particular must never reach a request,
+ * where it could only mean refusing every genuine payment -- so in production it is
+ * required here, and optional only where a developer has no webhook registered.
  *
- * Null only when billing is switched off: outside production, with none of the settings
- * present. A test that injects a client is never switched off.
+ * Null only when billing is switched off: outside production, with none of the required
+ * settings present. A test that injects a client is never switched off.
  */
-function billplzSettings(options: BillingRouteOptions) {
+export function chipSettings(options: BillingRouteOptions) {
   if (!options.client && billingDisabled()) return null;
-  const apiKey = required('BILLPLZ_API_KEY');
-  const baseUrl = required('BILLPLZ_BASE_URL');
+  const secretKey = required('CHIP_SECRET_KEY');
+  const brandId = required('CHIP_BRAND_ID');
+  const callbackBaseUrl = required('CHIP_CALLBACK_BASE_URL').replace(/\/+$/, '');
+  const baseUrl = process.env.CHIP_BASE_URL || CHIP_DEFAULT_BASE_URL;
   return {
-    client: options.client ?? createBillplzClient({ apiKey, baseUrl }),
-    collectionId: required('BILLPLZ_COLLECTION_ID'),
-    signatureKey: required('BILLPLZ_X_SIGNATURE_KEY'),
-    callbackUrl: required('BILLPLZ_CALLBACK_URL'),
-    redirectUrl: required('BILLPLZ_REDIRECT_URL'),
+    client: options.client ?? createChipClient({ secretKey, brandId, baseUrl }),
+    callbackBaseUrl,
+    publicKey: process.env.CHIP_PUBLIC_KEY || undefined,
+    webhookPublicKey:
+      process.env.NODE_ENV === 'production'
+        ? required('CHIP_WEBHOOK_PUBLIC_KEY')
+        : process.env.CHIP_WEBHOOK_PUBLIC_KEY || undefined,
   };
 }
 
@@ -70,29 +73,34 @@ const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.st
 
 /** Starting a payment. Registered behind a session and a per-account limit in app.ts. */
 export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
-  const billplz = billplzSettings(options);
-  if (!billplz) {
+  const chip = chipSettings(options);
+  if (!chip) {
     app.log.warn(
-      'No BILLPLZ_* settings: billing is switched off in development. Starting a payment ' +
+      'No CHIP_* settings: billing is switched off in development. Starting a payment ' +
         'answers BILLING_NOT_CONFIGURED. Production refuses to start without them.',
     );
   }
 
   app.post(
-    '/billing/bills',
+    '/billing/purchases',
     {
       schema: {
-        body: z.object({ plan: z.enum(['MONTHLY', 'ANNUAL']) }),
+        body: z.object({ plan: z.enum(['MONTHLY', 'ANNUAL']), autoRenew: z.boolean().default(false) }),
         response: { 201: z.object({ url: z.string() }), 400: errorSchema, 404: errorSchema },
       },
     },
     async (request, reply) => {
       if (!request.account) throw new UnauthenticatedError();
-      if (!billplz) throw new BillingNotConfiguredError();
+      if (!chip) throw new BillingNotConfiguredError();
 
-      const result = await createBillForOwner(
-        { prisma: app.prisma, client: billplz.client, config: billplz, log: request.log },
-        { accountId: request.account.id, plan: request.body.plan },
+      const result = await createPurchaseForOwner(
+        { prisma: app.prisma, client: chip.client, callbackBaseUrl: chip.callbackBaseUrl, log: request.log },
+        {
+          accountId: request.account.id,
+          plan: request.body.plan,
+          autoRenew: request.body.autoRenew,
+          now: new Date(),
+        },
       );
       return reply.status(201).send(result);
     },
@@ -115,101 +123,81 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
 };
 
 /**
- * The bill id and the outcome, and nothing else. Billplz's parameters carry the payer's
- * email and mobile, and logging them on the way past is how they end up somewhere they
+ * The purchase id and the outcome, and nothing else. A purchase carries the payer's
+ * email and name, and logging them on the way past is how they end up somewhere they
  * were never meant to be.
  */
 function logOutcome(
   log: FastifyBaseLogger,
-  billId: string | undefined,
-  source: 'callback' | 'redirect',
+  purchaseId: string | undefined,
+  source: 'return',
   outcome: GrantOutcome,
 ): void {
   const details = {
-    billId,
+    purchaseId,
     source,
     outcome: outcome.kind,
     ...(outcome.kind === 'mismatch' ? { reason: outcome.reason } : {}),
   };
-  if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-bill') {
-    log.error(details, 'billplz bill refused');
+  if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment') {
+    log.error(details, 'chip purchase refused');
   } else {
-    log.info(details, 'billplz bill handled');
+    log.info(details, 'chip purchase handled');
   }
 }
 
-/** Billplz's callback and redirect. No session, and no per-IP limit -- see app.ts. */
-export const billplzRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
-  const billplz = billplzSettings(options);
-  // Switched off: no bill can have been raised, so Billplz has nothing to call back
-  // about, and a route that could only refuse is better not registered at all.
-  if (!billplz) return;
+/** A purchase nobody will ever pay: the banner says so, rather than "pending". */
+const FAILED_PURCHASE_STATUSES = new Set(['expired', 'cancelled', 'error', 'blocked']);
 
-  // Billplz posts its callback form-encoded, and nothing else in this API accepts a
-  // form. Added inside this plugin's own encapsulated scope, so no other route starts
-  // to. URLSearchParams keeps every value exactly as sent, which is what the signature
-  // was computed over.
-  app.addContentTypeParser(
-    'application/x-www-form-urlencoded',
-    { parseAs: 'string' },
-    (_request, body, done) => {
-      done(null, Object.fromEntries(new URLSearchParams(String(body))));
-    },
-  );
-
-  app.post(
-    '/billing/billplz/callback',
-    { schema: { body: z.record(z.string(), z.string()) } },
-    async (request, reply) => {
-      if (!verifyBillplzSignature(request.body, billplz.signatureKey)) {
-        request.log.error({ billId: request.body.id, source: 'callback' }, 'billplz signature did not verify');
-        return reply.status(400).send();
-      }
-
-      // Not wrapped in try/catch. An outcome below -- unpaid, mismatched -- answers 200
-      // because no retry could ever fix it. An unexpected failure here (the database
-      // unreachable, a transaction timeout) is the opposite: exactly what Billplz's own
-      // retry schedule (15 seconds, then 15 minutes) exists for. Letting it propagate to
-      // a 500 keeps the payment where a retry -- or worst case the hourly check -- can
-      // still resolve it; answering 200 would end Billplz's retries and leave only the
-      // hourly check, hours later.
-      const outcome = await grantPayment(app.prisma, evidenceFromCallback(request.body), { now: new Date() });
-      logOutcome(request.log, request.body.id, 'callback', outcome);
-      // 200 for everything that verified. Billplz retries anything else, and no retry
-      // can fix an unpaid bill or one that does not match what we billed.
-      return reply.status(200).send({ status: outcome.kind });
-    },
-  );
+/** CHIP's return, and -- with Task 5 -- its callback and webhook. No session; see app.ts. */
+export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
+  const chip = chipSettings(options);
+  // Switched off: no purchase can have been started, so CHIP has nothing to send anyone
+  // back from, and a route that could only refuse is better not registered at all.
+  if (!chip) return;
 
   app.get(
-    '/billing/billplz/return',
-    { schema: { querystring: z.record(z.string(), z.string()) } },
+    '/billing/chip/return',
+    { schema: { querystring: z.object({ payment: z.string().optional() }) } },
     async (request, reply) => {
       const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
-      const back = (payment: 'paid' | 'pending' | 'failed') =>
-        reply.redirect(`${appUrl}/app/billing?payment=${payment}`);
-      const billId = request.query['billplz[id]'];
+      const back = (payment: 'paid' | 'pending' | 'failed', cardOff = false) =>
+        reply.redirect(`${appUrl}/app/billing?payment=${payment}${cardOff ? '&card=off' : ''}`);
 
-      if (!verifyBillplzSignature(flattenRedirectParams(request.query), billplz.signatureKey)) {
-        request.log.error({ billId, source: 'redirect' }, 'billplz signature did not verify');
-        return back('pending');
-      }
-      if (request.query['billplz[paid]'] !== 'true') return back('failed');
+      // The redirect is unsigned: it carries only our own payment id, so nothing in it is
+      // trusted. The purchase is fetched from CHIP by the id we stored, and that -- not
+      // the query -- decides what is granted. A forged id can only make us ask CHIP
+      // about a purchase of ours.
+      const paymentId = request.query.payment;
+      const payment = paymentId
+        ? await app.prisma.payment.findUnique({
+            where: { id: paymentId },
+            select: { providerRef: true, autoRenew: true },
+          })
+        : null;
+      if (!payment?.providerRef) return back('pending');
 
-      // The redirect carries no amount, collection or reference, so it cannot be bound
-      // as it stands. One fetch of the bill supplies them -- the same call the hourly
-      // check makes, once per payment, which is not polling.
       let outcome: GrantOutcome;
+      let purchaseStatus: string;
       try {
-        const bill = await billplz.client.getBill(billId ?? '');
-        outcome = await grantPayment(app.prisma, evidenceFromBill(bill), { now: new Date() });
+        const purchase = await chip.client.getPurchase(payment.providerRef);
+        purchaseStatus = purchase.status;
+        outcome = await grantPayment(app.prisma, evidenceFromPurchase(purchase), { now: new Date() });
       } catch (error) {
-        request.log.error({ err: error, billId, source: 'redirect' }, 'billplz bill could not be confirmed');
+        request.log.error(
+          { err: error, purchaseId: payment.providerRef, source: 'return' },
+          'chip purchase could not be confirmed',
+        );
         return back('pending');
       }
 
-      logOutcome(request.log, billId, 'redirect', outcome);
-      return back(outcome.kind === 'granted' || outcome.kind === 'already-granted' ? 'paid' : 'pending');
+      logOutcome(request.log, payment.providerRef, 'return', outcome);
+      if (outcome.kind === 'granted' || outcome.kind === 'already-granted') {
+        // Auto-renew was asked for and CHIP kept no card: the plan is paid, but it will
+        // not renew itself, and the owner should hear that now rather than at expiry.
+        return back('paid', outcome.kind === 'granted' && payment.autoRenew && !outcome.cardSaved);
+      }
+      return back(FAILED_PURCHASE_STATUSES.has(purchaseStatus) ? 'failed' : 'pending');
     },
   );
 };

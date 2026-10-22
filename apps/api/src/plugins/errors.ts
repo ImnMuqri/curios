@@ -91,12 +91,12 @@ export const DOMAIN_ERROR_CODES = new Set([
   // to pay for.
   'NOT_A_BUSINESS_PAGE',
   // A 502, so the handler below still replaces its message with the generic sentence.
-  // Listed so the code survives the trip -- the web app turns it into "Billplz is not
+  // Listed so the code survives the trip -- the web app turns it into "CHIP is not
   // answering". Unlike OAUTH_EXCHANGE_FAILED, an outage is worth waiting out, and a
-  // misconfiguration never becomes this code: the Billplz client throws a plain Error
+  // misconfiguration never becomes this code: the CHIP client throws a plain Error
   // for a 4xx, which stays INTERNAL_ERROR.
-  'BILLPLZ_UNAVAILABLE',
-  // Development only: billing switched off because no BILLPLZ_* setting is present
+  'CHIP_UNAVAILABLE',
+  // Development only: billing switched off because no CHIP_* setting is present
   // (billingDisabled in @curios/billing). A 503 for the same reason as the one above,
   // and listed for the same reason: the web app says what is actually true rather than
   // "something failed on our side".

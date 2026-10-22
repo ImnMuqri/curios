@@ -46,20 +46,19 @@ process.env.RATE_LIMIT_RECEIPT_PER_IP = '20';
 // default so those suites see the same number production does.
 process.env.CONVERSATION_CAP_PER_MONTH = '200';
 
-// The Billplz settings buildApp() now requires at boot. Dummies: every test that
-// reaches Billplz injects a stub client through AppOverrides, so none of these is
-// ever sent anywhere. They exist so the boot check passes, and so a developer's own
-// sandbox keys in .env never change what a test does.
-process.env.BILLPLZ_API_KEY = 'test-billplz-api-key';
-process.env.BILLPLZ_COLLECTION_ID = 'test-collection';
-process.env.BILLPLZ_X_SIGNATURE_KEY = 'test-signature-key';
-process.env.BILLPLZ_BASE_URL = 'https://billplz.invalid';
-process.env.BILLPLZ_CALLBACK_URL = 'http://localhost:3001/billing/billplz/callback';
-process.env.BILLPLZ_REDIRECT_URL = 'http://localhost:3001/billing/billplz/return';
+// The CHIP settings buildApp() now requires at boot. Dummies: every test that reaches
+// CHIP injects a stub client through AppOverrides, so none of these is ever sent
+// anywhere. They exist so the boot check passes, and so a developer's own test keys in
+// .env never change what a test does. CHIP_PUBLIC_KEY and CHIP_WEBHOOK_PUBLIC_KEY are
+// left unset: the tests that need them set them for themselves.
+process.env.CHIP_SECRET_KEY = 'test-chip-secret-key';
+process.env.CHIP_BRAND_ID = 'test-brand-id';
+process.env.CHIP_CALLBACK_BASE_URL = 'https://api.curios.invalid';
+process.env.CHIP_BASE_URL = 'https://chip.invalid/api/v1';
 process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';
 
 // The embeddings key factRoutes now requires at boot, for the same reason as
-// the Billplz settings above: every test that reaches the embedder injects a
+// the CHIP settings above: every test that reaches the embedder injects a
 // stub through AppOverrides.facts.embedder, so this dummy is never sent
 // anywhere. It exists so the boot check passes, and so a developer's own key
 // in .env never changes what a test does -- and so nothing in this suite can
