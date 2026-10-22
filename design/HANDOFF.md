@@ -281,9 +281,11 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 - **Landing (as built):** the same, over both claim fields.
 - **Full body, landing footer:** Peek stands on top of the o in the giant "curios" footer
   wordmark (`.pkf`). Its full-body form is:
-  - a **round ball** with a soft glossy gradient and a highlight
-  - **floating** bean-shaped hands and feet that aren't attached to the body
-  - big eyes and a small smile
+  - a **round, slightly wide ball** in flat brand blue
+  - one flat darker crescent (#1b33aa) on the bottom right for volume, and a small light
+    highlight on the top left (no gradients)
+  - **floating** round hands and small feet tucked under the body
+  - big oval eyes and a tiny smile
 
   The right hand waves every couple of seconds, the other limbs bob gently, and it blinks and
   looks around. Size and position are in em, so it scales with the 31vw wordmark.
