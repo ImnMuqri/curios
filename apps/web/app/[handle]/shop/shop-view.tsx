@@ -12,7 +12,7 @@ import {
   writeBasket,
   type BasketLine,
 } from './basket.js';
-import { shopCopy, type ShopCopy } from './copy.js';
+import { shopCopy } from './copy.js';
 import styles from './shop.module.css';
 
 export type ViewItem = ShopItem & { photoUrl: string | null };
@@ -28,7 +28,8 @@ export function ShopView(props: {
   deliveryMode: DeliveryMode;
   deliveryFeeCents: number | null;
   minNoticeDays: number;
-  initialItemId: string | null;
+  /** A tapped row: the Store preview's product screen opens for it. */
+  onOpenItem?: (id: string) => void;
   /** When given, replaces the WhatsApp link with a button that hands the message here (the landing's demo). */
   onOrder?: (message: string) => void;
   /** Called whenever the basket's lines change (and once on load), so a host can drop what it showed for the old basket. */
@@ -44,12 +45,6 @@ export function ShopView(props: {
   /** "About your shop", above the terms. */
   description?: string | null;
   /**
-   * 'inline' opens an item as a sheet inside the shop rather than as a modal
-   * over the whole window: for the Store editor's phone preview, where a modal
-   * would cover the editor itself. Default 'modal'.
-   */
-  sheet?: 'modal' | 'inline';
-  /**
    * canTakeOrders, on the public shop: true sends the basket to checkout;
    * false says checkout is paused and offers WhatsApp instead. Left out
    * (the landing's demo, the Store preview), the bar is WhatsApp as before.
@@ -64,7 +59,6 @@ export function ShopView(props: {
 }) {
   const copy = shopCopy(props.language);
   const [basket, setBasket] = useState<BasketLine[]>([]);
-  const [openId, setOpenId] = useState<string | null>(props.items.some((i) => i.id === props.initialItemId) ? props.initialItemId : null);
   const loaded = useRef(false);
   const key = props.storageKey ?? defaultStorageKey(props.handle);
 
@@ -88,17 +82,6 @@ export function ShopView(props: {
 
   const priced = useMemo(() => priceBasket(basket, props.items), [basket, props.items]);
   const count = priced.lines.reduce((sum, line) => sum + line.quantity, 0);
-  const open = props.items.find((item) => item.id === openId) ?? null;
-
-  function add(line: BasketLine) {
-    setBasket((current) => {
-      const same = current.find((l) => l.itemId === line.itemId && l.optionId === line.optionId);
-      return same
-        ? current.map((l) => (l === same ? { ...l, quantity: l.quantity + line.quantity } : l))
-        : [...current, line];
-    });
-    setOpenId(null);
-  }
 
   return (
     <section className={styles.shop} data-variant={props.variant === 'embedded' ? 'embedded' : undefined}>
@@ -119,7 +102,7 @@ export function ShopView(props: {
           const inBasket = basket.filter((line) => line.itemId === item.id).reduce((sum, line) => sum + line.quantity, 0);
           return (
             <li key={item.id}>
-              <button type="button" className={styles.row} onClick={() => setOpenId(item.id)}>
+              <button type="button" className={styles.row} onClick={() => props.onOpenItem?.(item.id)}>
                 <span className={styles.thumb} aria-hidden="true">
                   {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
                 </span>
@@ -130,14 +113,12 @@ export function ShopView(props: {
                   </span>
                 </span>
                 {inBasket > 0 ? <span className={styles.count}>{inBasket}×</span> : null}
-                <span className={styles.plus} aria-hidden="true">+</span>
+                <span className={styles.plus} aria-hidden="true">›</span>
               </button>
             </li>
           );
         })}
       </ul>
-
-      {open ? <ItemSheet key={open.id} item={open} copy={copy} inline={props.sheet === 'inline'} onAdd={add} onClose={() => setOpenId(null)} /> : null}
 
       {props.onCheckout && priced.lines.length === 0 ? (
         <div className={styles.basket} data-empty="">
@@ -199,68 +180,5 @@ export function ShopView(props: {
         </div>
       ) : null}
     </section>
-  );
-}
-
-export function ItemSheet({
-  item,
-  copy,
-  inline,
-  onAdd,
-  onClose,
-}: {
-  item: ViewItem;
-  copy: ShopCopy;
-  inline: boolean;
-  onAdd: (line: BasketLine) => void;
-  onClose: () => void;
-}) {
-  const [optionId, setOptionId] = useState<string | null>(item.options[0]?.id ?? null);
-  const [quantity, setQuantity] = useState(1);
-  const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog || dialog.open) return;
-    // Inline: shown in place, not in the top layer, so it stays inside whatever holds the shop.
-    if (inline) {
-      dialog.setAttribute('open', '');
-      return;
-    }
-    // Opened as a modal so Escape closes it and focus stays inside. jsdom has
-    // no showModal; the open attribute is the same sheet without the extras.
-    if (typeof dialog.showModal === 'function') dialog.showModal();
-    else dialog.setAttribute('open', '');
-  }, []);
-
-  // No `open` attribute in the markup: showModal() throws on a dialog that is
-  // already open. The parent unmounts this sheet on close, so the native close
-  // event (Escape) and the Close button both end in the same idempotent
-  // setOpenId(null); an unmount fires no close event, so nothing runs twice.
-  return (
-    <dialog ref={ref} className={styles.sheet} data-inline={inline || undefined} aria-labelledby="item-name" onClose={onClose}>
-      {item.photoUrl ? <img className={styles.sheetPhoto} src={item.photoUrl} alt="" /> : null}
-      <h2 id="item-name" className={styles.sheetName}>{item.name}</h2>
-      {item.description ? <p className={styles.description}>{item.description}</p> : null}
-      {item.options.length > 0 ? (
-        <fieldset className={styles.options}>
-          {item.options.map((option) => (
-            <label key={option.id}>
-              <input type="radio" name="option" checked={optionId === option.id} onChange={() => setOptionId(option.id)} />
-              {option.label} — {formatRinggit(option.priceCents)}
-            </label>
-          ))}
-        </fieldset>
-      ) : item.priceCents !== null ? (
-        <p className={styles.price}>{formatRinggit(item.priceCents)}</p>
-      ) : null}
-      <label className={styles.quantity}>
-        {copy.quantity}
-        <input type="number" min={1} max={99} value={quantity} onChange={(e) => setQuantity(Math.max(1, Math.min(99, Number(e.target.value) || 1)))} />
-      </label>
-      <button type="button" className={styles.add} onClick={() => onAdd({ itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity })}>
-        {copy.add}
-      </button>
-      <button type="button" className={styles.close} onClick={onClose}>{copy.close}</button>
-    </dialog>
   );
 }

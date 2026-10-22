@@ -78,8 +78,6 @@
 }
 
 .row:focus-visible,
-.add:focus-visible,
-.close:focus-visible,
 .remove:focus-visible,
 .order:focus-visible,
 .back:focus-visible {
@@ -126,14 +124,6 @@
   display: block;
   font-size: 12.5px;
   color: var(--page-soft);
-}
-
-/* In the sheet the price sits on the white card, not on the page's own colour. */
-.sheet .price {
-  margin: 0 0 12px;
-  color: var(--ink);
-  font-size: 16px;
-  font-weight: 600;
 }
 
 .count {
@@ -275,129 +265,4 @@
   color: var(--muted);
   font-size: var(--text-sm);
   line-height: 1.5;
-}
-
-.sheet {
-  box-sizing: border-box;
-  width: 100%;
-  max-width: 460px;
-  max-height: 90vh;
-  margin: auto auto 0;
-  padding: 20px 20px calc(24px + env(safe-area-inset-bottom));
-  overflow-y: auto;
-  border: 0;
-  border-radius: 28px 28px 0 0;
-  background: var(--card);
-  color: var(--ink);
-}
-
-.sheet::backdrop {
-  background: var(--scrim);
-}
-
-/*
- * The inline sheet (the Store editor's preview): held at the foot of the
- * page it sits in, with the scrim drawn as a spread shadow, since only a
- * modal gets a ::backdrop. Whatever holds it clips the shadow to its edges.
- */
-.sheet[data-inline] {
-  position: absolute;
-  inset: auto 0 0;
-  z-index: 6;
-  max-height: 86%;
-  margin: 0;
-  box-shadow: 0 0 0 100vmax var(--scrim);
-}
-
-.sheetPhoto {
-  display: block;
-  width: 100%;
-  aspect-ratio: 16 / 10;
-  margin-bottom: 12px;
-  border-radius: 12px;
-  object-fit: cover;
-}
-
-.sheetName {
-  margin: 0 0 8px;
-  font-family: var(--font-heading, var(--font-display));
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.1;
-}
-
-.description {
-  margin: 0 0 12px;
-  color: var(--muted);
-  font-size: var(--text-base);
-  line-height: 1.5;
-}
-
-.options {
-  display: grid;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 0;
-  border: 0;
-}
-
-.options label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  font-size: var(--text-body);
-}
-
-.quantity {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 12px;
-  font-size: var(--text-body);
-}
-
-.quantity input {
-  width: 72px;
-  min-height: 44px;
-  padding: 0 8px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--paper);
-  color: var(--ink);
-  font: inherit;
-}
-
-.add {
-  display: block;
-  width: 100%;
-  min-height: 50px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--accent, var(--biru));
-  color: var(--on-accent, var(--paper));
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.close {
-  display: block;
-  width: 100%;
-  min-height: 44px;
-  margin-top: 8px;
-  border: 0;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  cursor: pointer;
-}
-
-@media (min-width: 720px) {
-  .sheet {
-    margin: auto;
-    padding-bottom: 16px;
-    border-radius: 20px;
-  }
 }

@@ -4,7 +4,7 @@ import type { HeadingFont, PageBackground, PageStyle } from '@curios/core/bento'
 import type { DeliveryMode } from '@curios/core/store';
 import type { Prisma } from '@prisma/client';
 import { prismaRead } from './client.js';
-import { getPublicShop, type PublicShop } from './shop.query.js';
+import { getPublicShop, type PublicShop, type ShopItem } from './shop.query.js';
 
 type OrderStatus = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
 type OrderMethod = 'PICKUP' | 'DELIVERY';
@@ -288,4 +288,16 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
   });
   if (!plan) return null;
   return { ...shop, canTakeOrders: canTakeOrders({ ...plan, now }) };
+}
+
+/**
+ * One available item by its slug, with the shop it is on (everything
+ * `getCheckout` gives, items included, so a caller can price the basket); null
+ * for an unknown or unavailable slug, a personal page or a closed Store. The
+ * slug is unique per page, so the handle is part of the question.
+ */
+export async function getShopItem(handle: string, slug: string, now = new Date()): Promise<{ shop: Checkout; item: ShopItem } | null> {
+  const shop = await getCheckout(handle, now);
+  const item = shop?.items.find((candidate) => candidate.slug === slug);
+  return shop && item ? { shop, item } : null;
 }

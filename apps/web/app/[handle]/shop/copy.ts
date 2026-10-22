@@ -31,6 +31,17 @@ export interface ShopCopy {
   addNamed: (name: string, inBasket: number) => string;
   /** Said once, after a tap on a card's +. */
   addedNamed: (name: string, inBasket: number) => string;
+  /** The product page. */
+  shopOf: (name: string) => string;
+  basketLabel: string;
+  sizeLabel: string;
+  /** "Needs 2 days. Earliest pickup Sat 17 Oct." Either half drops when the shop has nothing true to say for it. */
+  productNotice: (days: number, dayText: string | null, pickup: boolean) => string | null;
+  halalLine: string;
+  askAboutThis: string;
+  askSamples: string;
+  askPrefill: (name: string) => string;
+  addToBasket: (total: string) => string;
   wantMore: string;
   wantMoreBody: (name: string) => string;
   askQuestion: string;
@@ -215,6 +226,19 @@ const EN: ShopCopy = {
   categories: 'Categories',
   addNamed: (name, n) => (n > 0 ? `Add ${name}, ${n} in basket` : `Add ${name}`),
   addedNamed: (name, n) => `${name} added. ${n} in basket.`,
+  shopOf: (name) => `${name}’s shop`,
+  basketLabel: 'Basket',
+  sizeLabel: 'Size',
+  productNotice: (days, day, pickup) => {
+    const need = days > 0 ? `Needs ${days} ${days === 1 ? 'day' : 'days'}.` : null;
+    const earliest = day ? `Earliest ${pickup ? 'pickup' : 'delivery'} ${day}.` : null;
+    return [need, earliest].filter(Boolean).join(' ') || null;
+  },
+  halalLine: 'Halal ingredients.',
+  askAboutThis: 'Ask about this',
+  askSamples: 'What’s in it? Is it OK for kids?',
+  askPrefill: (name) => `I have a question about ${name}.`,
+  addToBasket: (total) => `Add to basket · ${total}`,
   wantMore: 'Want something not listed?',
   wantMoreBody: (name) => `Ask ${name} about custom orders and bigger quantities.`,
   askQuestion: 'Ask a question',
@@ -352,6 +376,19 @@ const MS: ShopCopy = {
   categories: 'Kategori',
   addNamed: (name, n) => (n > 0 ? `Tambah ${name}, ${n} dalam bakul` : `Tambah ${name}`),
   addedNamed: (name, n) => `${name} ditambah. ${n} dalam bakul.`,
+  shopOf: (name) => `Kedai ${name}`,
+  basketLabel: 'Bakul',
+  sizeLabel: 'Saiz',
+  productNotice: (days, day, pickup) => {
+    const need = days > 0 ? `Perlu ${days} hari.` : null;
+    const earliest = day ? `Awal ${pickup ? 'ambil' : 'hantar'} ${day}.` : null;
+    return [need, earliest].filter(Boolean).join(' ') || null;
+  },
+  halalLine: 'Bahan halal.',
+  askAboutThis: 'Tanya tentang ini',
+  askSamples: 'Apa kandungannya? Sesuai untuk kanak-kanak?',
+  askPrefill: (name) => `Saya ada soalan tentang ${name}.`,
+  addToBasket: (total) => `Masuk bakul · ${total}`,
   wantMore: 'Mahu sesuatu yang tiada di sini?',
   wantMoreBody: (name) => `Tanya ${name} tentang tempahan khas dan kuantiti lebih besar.`,
   askQuestion: 'Tanya soalan',

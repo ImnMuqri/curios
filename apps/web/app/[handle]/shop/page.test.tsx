@@ -4,6 +4,9 @@ import type { Checkout } from '@curios/db-read';
 
 vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn() }));
 vi.mock('next/navigation', () => ({
+  redirect: vi.fn((to: string) => {
+    throw new Error(`NEXT_REDIRECT ${to}`);
+  }),
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
   }),
@@ -11,6 +14,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('./shop-page.js', () => ({ ShopPageView: vi.fn(() => null) }));
 
 const { getCheckout } = await import('@curios/db-read');
+const { redirect } = await import('next/navigation');
 const { ShopPageView } = await import('./shop-page.js');
 const { default: ShopPage, generateMetadata } = await import('./page.js');
 
@@ -61,14 +65,13 @@ describe('/[handle]/shop', () => {
     await expect(ShopPage({ params: Promise.resolve({ handle: 'nope' }), searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_NOT_FOUND');
   });
 
-  it('hands the view its items with photo URLs, the WhatsApp number, the language and the item to open', async () => {
+  it('hands the view its items with photo URLs and the language', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
-    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({ item: 'cake' }) }));
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
     const props = call({});
     expect(props.language).toBe('ms');
     expect(props.copy).toBeUndefined();
-    expect(props.initialItemId).toBe('cake');
-    expect(props.handle).toBe('nadia');
+        expect(props.handle).toBe('nadia');
     expect(props.displayName).toBe('Nadia Bakes');
     expect(props.pickupNote).toBe('Shah Alam');
     expect(props.description).toBe('Cakes for every Raya.');
@@ -88,10 +91,18 @@ describe('/[handle]/shop', () => {
     expect(call({}).canTakeOrders).toBe(false);
   });
 
-  it('opens nothing when the URL names no item', async () => {
+  it('sends a shared ?item=<id> link on to that product’s page', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
-    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
-    expect(call({}).initialItemId).toBeNull();
+    await expect(ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({ item: 'cake' }) })).rejects.toThrow(
+      'NEXT_REDIRECT /nadia/shop/cake',
+    );
+  });
+
+  it('shows the shop for an item id it does not know', async () => {
+    vi.mocked(getCheckout).mockResolvedValueOnce(shop);
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({ item: 'gone' }) }));
+    expect(call({})).toBeDefined();
+    expect(vi.mocked(redirect)).not.toHaveBeenCalledWith(expect.stringContaining('gone'));
   });
 
   it('gives the next day an order could be for, and none when paused', async () => {

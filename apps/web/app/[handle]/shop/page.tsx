@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { getCheckout } from '@curios/db-read';
 import { PageTheme } from '../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../lib/avatar-url.js';
@@ -33,6 +33,10 @@ export default async function ShopPage({
   const shop = await getCheckout(handle);
   if (!shop) notFound();
 
+  // Links shared before the product page (the chat's "Order" chips among them) name the item by id.
+  const shared = item ? shop.items.find((candidate) => candidate.id === item) : undefined;
+  if (shared) redirect(`/${shop.handle}/shop/${shared.slug}`);
+
   const copy = shopCopy(shop.language);
   const nextDay = nextOrderDay(shop, new Date());
   const barNote = nextDay ? (shop.pickupEnabled ? copy.barPickup(copy.dayLong(nextDay)) : copy.barDelivery(copy.dayLong(nextDay))) : false;
@@ -54,7 +58,6 @@ export default async function ShopPage({
             nextDay={nextDay}
             description={shop.shopDescription}
             halal={shop.shopHalal}
-            initialItemId={item ?? null}
           />
           <BasketBar
             handle={shop.handle}

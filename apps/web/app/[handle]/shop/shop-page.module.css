@@ -290,6 +290,15 @@
   font-weight: 800;
 }
 
+.photo {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: inherit;
+  text-decoration: none;
+}
+
 .pic img {
   position: absolute;
   inset: 0;
@@ -343,10 +352,9 @@
   display: block;
   margin: 9px 0 0;
   padding: 0;
-  border: 0;
-  background: none;
   color: inherit;
   font: inherit;
+  text-decoration: none;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.3;

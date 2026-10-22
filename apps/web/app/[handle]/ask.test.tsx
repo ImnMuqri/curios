@@ -133,6 +133,44 @@ describe('Ask, opening chat mode', () => {
   });
 });
 
+describe('Ask, arriving with a question', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'));
+
+  it('opens chat mode with ?q= typed in, and sends nothing until the visitor does', async () => {
+    stubQualifyingFetch();
+    window.history.replaceState(null, '', '/nadia?q=I%20have%20a%20question%20about%20Kek%20Batik.#ask');
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+    const input = await screen.findByRole('textbox', { name: 'Ask a question' });
+    expect(input).toHaveValue('I have a question about Kek Batik.');
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('ignores ?q= without #ask, and opens with an empty box with #ask alone', async () => {
+    stubQualifyingFetch();
+    window.history.replaceState(null, '', '/nadia?q=Hello');
+    const first = render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 50)));
+    expect(screen.queryByRole('textbox', { name: 'Ask a question' })).toBeNull();
+    first.unmount();
+
+    window.history.replaceState(null, '', '/nadia#ask');
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+    expect(await screen.findByRole('textbox', { name: 'Ask a question' })).toHaveValue('');
+  });
+});
+
 describe('Ask, once a conversation qualifies', () => {
   it('offers the capture card when the page can capture', async () => {
     stubQualifyingFetch();

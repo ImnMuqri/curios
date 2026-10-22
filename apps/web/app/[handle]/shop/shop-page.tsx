@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
 import { BASKET_EVENT, defaultStorageKey, readBasket, writeBasket, type BasketLine } from './basket.js';
 import { shopCopy } from './copy.js';
-import { ItemSheet, type ViewItem } from './shop-view.js';
+import type { ViewItem } from './shop-view.js';
 import styles from './shop-page.module.css';
 
 const ICON = {
@@ -45,13 +45,11 @@ export function ShopPageView(props: {
   nextDay: string | null;
   description: string | null;
   halal: boolean;
-  initialItemId: string | null;
 }) {
   const copy = shopCopy(props.language);
   const key = defaultStorageKey(props.handle);
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [category, setCategory] = useState<string | null>(null);
-  const [openId, setOpenId] = useState<string | null>(props.items.some((i) => i.id === props.initialItemId) ? props.initialItemId : null);
   const [copied, setCopied] = useState(false);
   const [announce, setAnnounce] = useState('');
 
@@ -81,7 +79,6 @@ export function ShopPageView(props: {
     return [...counts];
   }, [props.items]);
   const shown = category ? props.items.filter((item) => item.category?.trim() === category) : props.items;
-  const open = props.items.find((item) => item.id === openId) ?? null;
 
   function add(line: BasketLine) {
     const current = readBasket(key);
@@ -90,7 +87,6 @@ export function ShopPageView(props: {
       key,
       same ? current.map((l) => (l === same ? { ...l, quantity: l.quantity + line.quantity } : l)) : [...current, line],
     );
-    setOpenId(null);
   }
 
   async function share() {
@@ -202,7 +198,9 @@ export function ShopPageView(props: {
               return (
                 <li key={item.id} className={styles.card}>
                   <span className={styles.pic}>
-                    {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
+                    <a className={styles.photo} href={`/${props.handle}/shop/${item.slug}`} tabIndex={-1} aria-hidden="true">
+                      {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
+                    </a>
                     {item.tag ? <span className={styles.tag}>{item.tag}</span> : null}
                     {buyable ? (
                       <button
@@ -219,9 +217,9 @@ export function ShopPageView(props: {
                       </button>
                     ) : null}
                   </span>
-                  <button type="button" className={styles.cn} onClick={() => setOpenId(item.id)}>
+                  <a className={styles.cn} href={`/${props.handle}/shop/${item.slug}`}>
                     {item.name}
-                  </button>
+                  </a>
                   <span className={styles.cp}>
                     {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}
                   </span>
@@ -249,7 +247,6 @@ export function ShopPageView(props: {
         </div>
       )}
 
-      {open ? <ItemSheet key={open.id} item={open} copy={copy} inline={false} onAdd={add} onClose={() => setOpenId(null)} /> : null}
     </div>
   );
 }

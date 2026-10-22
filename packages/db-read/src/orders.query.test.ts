@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { hashSessionValue } from '@curios/core';
-import { getCheckout, getOrderByToken, getOrderStats, getOwnerOrders } from './orders.query.js';
+import { getCheckout, getOrderByToken, getShopItem, getOrderStats, getOwnerOrders } from './orders.query.js';
 import { countNavBadges } from './my-curios.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -234,6 +234,37 @@ describe('getCheckout', () => {
     expect((await getCheckout(spent.handle, NOW))?.canTakeOrders).toBe(false);
     const paid = await anOwner({ ordersPlaced: 3, paidUntil: new Date('2026-12-01T00:00:00Z') });
     expect((await getCheckout(paid.handle, NOW))?.canTakeOrders).toBe(true);
+  });
+});
+
+describe('getShopItem', () => {
+  async function anItem(pageId: string, name: string, slug: string, extra: Record<string, unknown> = {}) {
+    return write.item.create({ data: { pageId, name, slug, position: 0, priceCents: 2500, ...extra }, select: { id: true } });
+  }
+
+  it('finds an available item by its slug, with the shop it belongs to', async () => {
+    const owner = await anOwner({ shopHalal: true, minNoticeDays: 2 });
+    await anItem(owner.pageId, 'Kek Batik', 'kek-batik');
+    const found = await getShopItem(owner.handle, 'kek-batik', NOW);
+    expect(found?.item).toMatchObject({ name: 'Kek Batik', slug: 'kek-batik', priceCents: 2500 });
+    expect(found?.shop).toMatchObject({ handle: owner.handle, shopHalal: true, minNoticeDays: 2, canTakeOrders: true });
+    expect(found?.shop.items.map((i) => i.slug)).toEqual(['kek-batik']);
+  });
+
+  it('is null for an unknown slug, another shop’s slug, an unavailable item, a personal page and a closed shop', async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    await anItem(owner.pageId, 'Off', 'off', { available: false });
+    await anItem(other.pageId, 'Theirs', 'theirs');
+    expect(await getShopItem(owner.handle, 'nope', NOW)).toBeNull();
+    expect(await getShopItem(owner.handle, 'theirs', NOW)).toBeNull();
+    expect(await getShopItem(owner.handle, 'off', NOW)).toBeNull();
+    const personal = await anOwner({ mode: 'PERSONAL' });
+    await anItem(personal.pageId, 'P', 'p');
+    expect(await getShopItem(personal.handle, 'p', NOW)).toBeNull();
+    const closed = await anOwner({ storeEnabled: false });
+    await anItem(closed.pageId, 'C', 'c');
+    expect(await getShopItem(closed.handle, 'c', NOW)).toBeNull();
   });
 });
 

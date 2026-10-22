@@ -47,4 +47,17 @@ describe('shopCopy', () => {
     expect(shopCopy('ms').barPickup('Sab 17 Okt')).toBe('Ambil Sab 17 Okt');
     expect(shopCopy('en').factNextPickup('Sat 17 Oct')).toBe('Next pickup Sat 17 Oct');
   });
+  it('words the product page in both languages', () => {
+    const en = shopCopy('en');
+    const ms = shopCopy('ms');
+    expect(en.productNotice(2, 'Sat 17 Oct', true)).toBe('Needs 2 days. Earliest pickup Sat 17 Oct.');
+    expect(en.productNotice(1, 'Sat 17 Oct', false)).toBe('Needs 1 day. Earliest delivery Sat 17 Oct.');
+    expect(en.productNotice(0, null, true)).toBeNull();
+    expect(ms.productNotice(2, 'Sab 17 Okt', true)).toBe('Perlu 2 hari. Awal ambil Sab 17 Okt.');
+    expect(ms.productNotice(2, null, false)).toBe('Perlu 2 hari.');
+    expect(en.addToBasket('RM95')).toBe('Add to basket · RM95');
+    expect(ms.addToBasket('RM95')).toBe('Masuk bakul · RM95');
+    expect(en.askPrefill('Kek')).toBe('I have a question about Kek.');
+    expect(ms.askPrefill('Kek')).toBe('Saya ada soalan tentang Kek.');
+  });
 });

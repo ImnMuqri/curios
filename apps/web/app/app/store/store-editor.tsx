@@ -3,6 +3,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { SHOP_DESCRIPTION_MAX, formatRinggit, storeGapMessage, storeGaps } from '@curios/core/store';
 import { BentoPage } from '../../_bento/BentoPage.js';
+import { nextOrderDay } from '../../[handle]/shop/pill.js';
+import { ProductView } from '../../[handle]/shop/[slug]/product-view.js';
 import { ShopView } from '../../[handle]/shop/shop-view.js';
 import { PageHead } from '../_ui/page-head.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
@@ -113,6 +115,8 @@ export function StoreEditor({
   const [editing, setEditing] = useState<string | null>(null);
   const [draftItem, setDraftItem] = useState<EditorItem | null>(null);
   const [previewTab, setPreviewTab] = useState<PreviewTab>('shop');
+  /** A row tapped in the preview's shop: the Item screen shows it, until the owner opens another item. */
+  const [picked, setPicked] = useState<string | null>(null);
   const [listError, setListError] = useState('');
   const [openError, setOpenError] = useState('');
 
@@ -186,6 +190,7 @@ export function StoreEditor({
   function openItem(id: string | null) {
     setEditing(id);
     setDraftItem(null);
+    setPicked(null);
     setPreviewTab(id ? 'item' : 'shop');
   }
 
@@ -208,7 +213,7 @@ export function StoreEditor({
   // The shop as a customer would see it, with the item being edited as it reads now.
   const shown = items.map((item) => (draftItem && item.id === draftItem.id ? draftItem : item));
   if (draftItem && !shown.some((item) => item.id === draftItem.id)) shown.push(draftItem);
-  const previewFocus = draftItem ?? editingItem ?? live[0] ?? null;
+  const previewFocus = shown.find((item) => item.id === picked) ?? draftItem ?? editingItem ?? live[0] ?? null;
   const previewItems = shown.filter((item) => item.available || (previewTab === 'item' && item.id === previewFocus?.id));
 
   const [year, month, day] = today.split('-').map(Number);
@@ -400,28 +405,48 @@ export function StoreEditor({
               nameAs="p"
             >
               <div className={styles.previewShop}>
-                <ShopView
-                  // A new key per screen and focused item, so Item opens that item's sheet.
-                  key={`${previewTab}:${previewTab === 'item' ? (previewFocus?.id ?? '') : ''}`}
-                  handle={look.handle}
-                  displayName={look.displayName}
-                  language={look.language}
-                  items={previewItems}
-                  whatsapp={look.whatsapp}
-                  description={orNull(description.text)}
-                  pickupEnabled={settings.pickupEnabled}
-                  pickupNote={settings.pickupNote}
-                  deliveryMode={settings.deliveryMode}
-                  deliveryFeeCents={settings.deliveryFeeCents}
-                  minNoticeDays={settings.minNoticeDays}
-                  initialItemId={previewTab === 'item' ? (previewFocus?.id ?? null) : null}
-                  showBack={false}
-                  variant="embedded"
-                  sheet="inline"
-                  storageKey="curios-store-preview"
-                  // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
-                  onCheckout={() => setPreviewTab('pay')}
-                />
+                {previewTab === 'item' && previewFocus ? (
+                  <ProductView
+                    // A new key per item, so choosing another starts from its first size.
+                    key={previewFocus.id}
+                    handle={look.handle}
+                    displayName={look.displayName}
+                    language={look.language}
+                    item={previewFocus}
+                    items={previewItems}
+                    halal={settings.shopHalal}
+                    noticeDays={settings.minNoticeDays}
+                    nextDay={nextOrderDay({ ...settings, canTakeOrders: true }, new Date())}
+                    pickup={settings.pickupEnabled}
+                    storageKey="curios-store-preview"
+                    inline
+                    onDone={() => setPreviewTab('shop')}
+                  />
+                ) : (
+                  <ShopView
+                    key={previewTab}
+                    handle={look.handle}
+                    displayName={look.displayName}
+                    language={look.language}
+                    items={previewItems}
+                    whatsapp={look.whatsapp}
+                    description={orNull(description.text)}
+                    pickupEnabled={settings.pickupEnabled}
+                    pickupNote={settings.pickupNote}
+                    deliveryMode={settings.deliveryMode}
+                    deliveryFeeCents={settings.deliveryFeeCents}
+                    minNoticeDays={settings.minNoticeDays}
+                    onOpenItem={(id) => {
+                      setPicked(id);
+                      setPreviewTab('item');
+                    }}
+                    showBack={false}
+                    variant="embedded"
+                    storageKey="curios-store-preview"
+                    // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
+                    onCheckout={() => setPreviewTab('pay')}
+                  />
+                )}
               </div>
             </BentoPage>
           )}

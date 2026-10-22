@@ -178,16 +178,24 @@ describe('the items', () => {
     expect(screen.getByRole('group', { name: 'Edit Kek batik' })).toBeInTheDocument();
     expect(screen.queryByLabelText('Shop description')).toBeNull();
     expect(within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Item' })).toHaveAttribute('aria-selected', 'true');
-    const sheet = within(preview()).getByRole('dialog');
-    expect(sheet).toHaveAttribute('data-inline');
-    expect(within(sheet).getByRole('heading', { name: 'Kek batik' })).toBeInTheDocument();
+    expect(preview().querySelector('[data-inline]')).not.toBeNull();
+    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
+    expect(within(preview()).queryByRole('dialog')).toBeNull();
 
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek batik Raya' } });
-    expect(within(within(preview()).getByRole('dialog')).getByRole('heading', { name: 'Kek batik Raya' })).toBeInTheDocument();
+    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik Raya' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'All items' }));
     expect(screen.getByLabelText('Shop description')).toBeInTheDocument();
-    expect(within(preview()).queryByRole('dialog')).toBeNull();
+    expect(preview().querySelector('[data-inline]')).toBeNull();
+  });
+
+  it('opens the product screen in the preview from a tapped row, and returns to the shop after an add', () => {
+    show();
+    fireEvent.click(within(preview()).getByRole('button', { name: /Kek batik/ }));
+    expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
+    fireEvent.click(within(preview()).getByRole('button', { name: /^Add to basket/ }));
+    expect(within(preview()).getByText(/in basket/)).toBeInTheDocument();
   });
 });
 

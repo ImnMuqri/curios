@@ -23,7 +23,6 @@ const base = {
   nextDay: '2026-10-17' as string | null,
   description: 'Homemade cakes, baked fresh.' as string | null,
   halal: false,
-  initialItemId: null as string | null,
 };
 
 const key = defaultStorageKey('keklina');
@@ -162,16 +161,14 @@ describe('ShopPageView', () => {
     expect(readBasket(key)).toEqual([{ itemId: 'tart', optionId: null, quantity: 1 }]);
   });
 
-  it('still opens the item sheet from the name', async () => {
-    const user = userEvent.setup();
+  it('links the card’s name and photo to the product page, and opens no sheet', () => {
     render(<ShopPageView {...base} />);
-    await user.click(screen.getByRole('button', { name: 'Kek Batik' }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-  });
-
-  it('opens the item named by ?item=', () => {
-    render(<ShopPageView {...base} initialItemId="tart" />);
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    const name = screen.getByRole('link', { name: 'Kek Batik' });
+    expect(name).toHaveAttribute('href', '/keklina/shop/kek-batik');
+    expect(screen.getByRole('link', { name: 'Tart nenas' })).toHaveAttribute('href', '/keklina/shop/tart-nenas');
+    const photo = document.querySelector('img[src="https://cdn.test/x.webp"]')?.closest('a');
+    expect(photo).toHaveAttribute('href', '/keklina/shop/tart-nenas');
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('ends with "Want something not listed?" and a way to ask', () => {

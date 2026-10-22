@@ -45,6 +45,8 @@ export function Ask({
   // the thread survives being hidden, and unmounting it on every close would
   // throw the conversation away along with the DOM.
   const [everOpened, setEverOpened] = useState(false);
+  // A question the page was opened with (`?q=`, from a product's "Ask about this"), typed into the box and never sent for the visitor.
+  const [prefill, setPrefill] = useState('');
   const promptRef = useRef<HTMLDivElement>(null);
   // Read by the tab listeners, which are attached once and would otherwise see the first render's value.
   const openRef = useRef(open);
@@ -83,7 +85,10 @@ export function Ask({
     };
     askTab?.addEventListener('click', toAsk);
     linksTab?.addEventListener('click', toLinks);
-    if (window.location.hash === '#ask') onOpen();
+    if (window.location.hash === '#ask') {
+      setPrefill(new URLSearchParams(window.location.search).get('q')?.slice(0, 500) ?? '');
+      onOpen();
+    }
     return () => {
       askTab?.removeEventListener('click', toAsk);
       linksTab?.removeEventListener('click', toLinks);
@@ -199,6 +204,7 @@ export function Ask({
           onCapture={canCapture ? onCapture : undefined}
           // Where "Order <item>" chips go; the server sends them only while the shop is open.
           shopPath={`/${handle}/shop`}
+          initialDraft={prefill}
         />
       ) : null}
     </>

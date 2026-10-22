@@ -68,6 +68,8 @@ export interface ChatModeProps {
    * "Order <item>" links to `?item=<id>` there. Without it none are drawn.
    */
   shopPath?: string;
+  /** Typed into the box when chat mode mounts, for the visitor to read and send. Never sent by itself. */
+  initialDraft?: string;
 }
 
 export function ChatMode({
@@ -78,9 +80,10 @@ export function ChatMode({
   questions,
   onCapture,
   shopPath,
+  initialDraft,
 }: ChatModeProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState('');
+  const [draft, setDraft] = useState(initialDraft ?? '');
   const [busy, setBusy] = useState(false);
   /**
    * Whatever the server said on the last `done`. FRONTEND.md: "the client
