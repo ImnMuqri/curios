@@ -4,7 +4,7 @@
  * contents, so they get one stylesheet rather than near-copies that drift.
  *
  * From the design handoff's SignIn and SignUp boards: the form on paper
- * beside a film panel (_auth/film.module.css), Bricolage 800 for the title,
+ * beside a Peek panel (_auth/scene.module.css), Bricolage 800 for the title,
  * IBM Plex Sans for everything else, white fields with a soft edge, a biru
  * pill to submit. The product's Field, Button and Callout keep their
  * behaviour; only their look is restyled inside .content.

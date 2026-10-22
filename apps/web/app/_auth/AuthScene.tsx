@@ -8,10 +8,9 @@ const POPS: { text: string; tag: string; green?: boolean; delay: string }[] = [
   { text: 'Nak order 2kg untuk Sabtu', tag: 'Number saved', green: true, delay: '2600ms' },
 ];
 
-/** The sign's text is sized to fit the sign: the board's 15.5 for a short name, smaller for a long one. */
-function handleSize(handle: string): number {
-  return Math.max(8, Math.min(15.5, 100 / (handle.length * 0.58)));
-}
+/** Room for the name on the sign (between its left edge and the tick); a longer name is squeezed to fit, up to the 30-character limit. */
+const NAME_ROOM = 100;
+const NAME_FITS_AT = 11;
 
 /**
  * Beside the sign-in and sign-up forms: Peek, full-body and calm, on a tinted
@@ -89,7 +88,9 @@ export function AuthScene({ scene, handle = '' }: { scene: 'signin' | 'signup'; 
                   x="22"
                   y="15"
                   className={styles.signName}
-                  fontSize={handleSize(name)}
+                  fontSize="15.5"
+                  textLength={name.length > NAME_FITS_AT ? NAME_ROOM : undefined}
+                  lengthAdjust="spacingAndGlyphs"
                   fontWeight="700"
                   fill="var(--ink)"
                   letterSpacing="-.3"

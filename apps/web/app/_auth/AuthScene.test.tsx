@@ -42,4 +42,18 @@ describe('AuthScene', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids.length).toBe(2);
   });
+
+  it('squeezes a 30-character handle to fit the sign', () => {
+    const long = 'a'.repeat(30);
+    const { container } = render(<AuthScene scene="signup" handle={long} />);
+    const name = [...container.querySelectorAll('text')].find((node) => node.textContent === long);
+    expect(name).toHaveAttribute('textLength', '100');
+    expect(name).toHaveAttribute('lengthAdjust', 'spacingAndGlyphs');
+  });
+
+  it('leaves a short handle at its natural width', () => {
+    const { container } = render(<AuthScene scene="signup" handle="aisyahdraws" />);
+    const name = [...container.querySelectorAll('text')].find((node) => node.textContent === 'aisyahdraws');
+    expect(name).not.toHaveAttribute('textLength');
+  });
 });
