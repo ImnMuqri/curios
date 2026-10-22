@@ -12,7 +12,7 @@ const options: PayOption[] = [
 function pay(overrides: Partial<Parameters<typeof PlanPay>[0]> = {}) {
   const props = {
     options,
-    onPay: vi.fn(async () => ({ url: 'https://www.billplz-sandbox.com/bills/abc' })),
+    onPay: vi.fn(async () => ({ url: 'https://gate.chip-in.asia/p/abc/' })),
     navigate: vi.fn(),
     ...overrides,
   };
@@ -30,7 +30,7 @@ describe('PlanPay', () => {
     expect(screen.getByRole('button', { name: 'Pay RM490' })).toBeInTheDocument();
   });
 
-  it('says what is about to happen before raising a bill', async () => {
+  it('says what is about to happen before opening CHIP', async () => {
     const { onPay, navigate } = pay();
     await userEvent.click(screen.getByRole('radio', { name: /yearly/i }));
     await userEvent.click(screen.getByRole('button', { name: 'Pay RM490' }));
@@ -40,9 +40,9 @@ describe('PlanPay', () => {
     expect(dialog).toHaveTextContent('Paid until becomes 14 Nov 2027');
     expect(onPay).not.toHaveBeenCalled();
 
-    await userEvent.click(within(dialog).getByRole('button', { name: 'Continue to Billplz' }));
-    expect(onPay).toHaveBeenCalledWith('ANNUAL');
-    expect(navigate).toHaveBeenCalledWith('https://www.billplz-sandbox.com/bills/abc');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Continue to CHIP' }));
+    expect(onPay).toHaveBeenCalledWith('ANNUAL', false);
+    expect(navigate).toHaveBeenCalledWith('https://gate.chip-in.asia/p/abc/');
   });
 
   it('raises nothing when the owner backs out', async () => {
@@ -53,37 +53,73 @@ describe('PlanPay', () => {
     expect(onPay).not.toHaveBeenCalled();
   });
 
-  it('cannot raise two bills from a double press', async () => {
+  it('cannot open two purchases from a double press', async () => {
     let finish = () => {};
     const onPay = vi.fn(
       () =>
         new Promise<{ url: string }>((resolve) => {
-          finish = () => resolve({ url: 'https://www.billplz-sandbox.com/bills/abc' });
+          finish = () => resolve({ url: 'https://gate.chip-in.asia/p/abc/' });
         }),
     );
     pay({ onPay });
     await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Continue to Billplz' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
 
-    // The button is gone while the bill is raised: there is nothing to press twice.
-    expect(screen.queryByRole('button', { name: 'Continue to Billplz' })).toBeNull();
-    expect(screen.getByText('Opening Billplz…')).toBeInTheDocument();
+    // The button is gone while the purchase is made: there is nothing to press twice.
+    expect(screen.queryByRole('button', { name: 'Continue to CHIP' })).toBeNull();
+    expect(screen.getByText('Opening CHIP…')).toBeInTheDocument();
     expect(onPay).toHaveBeenCalledTimes(1);
     finish();
   });
 
-  it('says Billplz is not answering when the API reports it by code, and lets the owner try again', async () => {
+  it('says CHIP is not answering when the API reports it by code, and lets the owner try again', async () => {
     // The API replaces a 502's message with its generic sentence, so the code is all that
     // arrives. This screen supplies the words.
     const onPay = vi.fn(async (): Promise<{ url: string }> => {
-      throw new ApiError(502, 'BILLPLZ_UNAVAILABLE', 'Something failed on our side. Try again.');
+      throw new ApiError(502, 'CHIP_UNAVAILABLE', 'Something failed on our side. Try again.');
     });
     pay({ onPay });
     await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Continue to Billplz' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent('Billplz is not answering right now. Try again in a few minutes.');
-    expect(screen.getByRole('button', { name: 'Continue to Billplz' })).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('CHIP is not answering right now. Try again in a few minutes.');
+    expect(screen.getByRole('button', { name: 'Continue to CHIP' })).toBeInTheDocument();
+  });
+
+  it('pays with auto-renew when the box is ticked', async () => {
+    const { onPay } = pay();
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Renew automatically by card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
+
+    expect(onPay).toHaveBeenCalledWith('MONTHLY', true);
+  });
+
+  it('says what the box does, and leaves it unticked', () => {
+    pay();
+    expect(screen.getByRole('checkbox', { name: 'Renew automatically by card' })).not.toBeChecked();
+    expect(screen.getByText('We’ll charge your card when this period ends. Turn it off any time.')).toBeInTheDocument();
+    expect(screen.getByText(/FPX, card or e-wallet, through CHIP\./)).toBeInTheDocument();
+  });
+
+  it('says the card-only route when ticked', async () => {
+    pay();
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('You’ll go to CHIP to pay by FPX, card or e-wallet, then come straight back here.');
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+
+    await userEvent.click(screen.getByRole('checkbox', { name: 'Renew automatically by card' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('You’ll go to CHIP to pay by card, then come straight back here.');
+  });
+
+  it('names CHIP in the dialog and the busy state', async () => {
+    pay({ onPay: vi.fn(() => new Promise<{ url: string }>(() => {})) });
+    await userEvent.click(screen.getByRole('button', { name: 'Pay RM49' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Continue to CHIP' }));
+
+    expect(screen.getByText('Opening CHIP…')).toBeInTheDocument();
+    expect(screen.getByText('CHIP’s payment page opens next.')).toBeInTheDocument();
   });
 
   it('draws the line from today to where this payment takes it', () => {
@@ -95,12 +131,12 @@ describe('PlanPay', () => {
 });
 
 describe('payError', () => {
-  // Development without Billplz settings. A 503, so again only the code arrives.
+  // Development without CHIP settings. A 503, so again only the code arrives.
   it('says payments are switched off when billing is not configured', () => {
     const failure = new ApiError(503, 'BILLING_NOT_CONFIGURED', 'Something failed on our side. Try again.');
 
     expect(payError(failure)).toBe(
-      'Payments are switched off here: no Billplz settings in this environment.',
+      'Payments are switched off here: no CHIP settings in this environment.',
     );
   });
 

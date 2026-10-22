@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_LEADS, planState } from '@curios/core';
-import { daysLeft, formatDate, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { daysLeft, formatDate, cardOffBanner, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 
 const NOW = new Date('2026-09-14T08:00:00.000Z');
 
@@ -66,7 +66,7 @@ describe('paymentBanner', () => {
   it('says a pending return is still being confirmed', () => {
     expect(paymentBanner('pending')).toEqual({
       tone: 'info',
-      text: 'We are still confirming your payment with Billplz. It will show here once it is confirmed.',
+      text: 'We are still confirming your payment with CHIP. It will show here once it is confirmed.',
     });
   });
 
@@ -80,6 +80,15 @@ describe('paymentBanner', () => {
   it('says nothing for anything else', () => {
     expect(paymentBanner(undefined)).toBeNull();
     expect(paymentBanner('granted')).toBeNull();
+  });
+});
+
+describe('cardOffBanner', () => {
+  it('says the plan is paid but the card was not kept, and how to turn auto-renew on', () => {
+    expect(cardOffBanner()).toEqual({
+      tone: 'info',
+      text: 'Your plan is paid, but auto-renew couldn’t be turned on for this payment. Pay by card with the box ticked next time to turn it on.',
+    });
   });
 });
 
@@ -106,12 +115,12 @@ describe('planBadge', () => {
 });
 
 describe('paymentParts', () => {
-  const base = { id: 'p', plan: 'ANNUAL' as const, amountCents: 39000, billplzBillId: 'bill-1', createdAt: new Date('2026-09-11T10:00:00.000Z') };
+  const base = { id: 'p', plan: 'ANNUAL' as const, amountCents: 39000, provider: 'CHIP' as const, autoRenewal: false, createdAt: new Date('2026-09-11T10:00:00.000Z') };
 
   it('dates a paid payment by when it was paid, and says how long it covers', () => {
     expect(
       paymentParts({ ...base, status: 'PAID', paidAt: new Date('2026-09-11T20:00:00.000Z'), grantedUntil: new Date('2027-09-12T00:00:00.000Z') }),
-    ).toEqual({ date: '12 Sep 2026', what: 'Business, 1 year', amount: 'RM390', paid: true, until: '12 September 2027' });
+    ).toEqual({ date: '12 Sep 2026', what: 'Business, 1 year', amount: 'RM390', paid: true, until: '12 September 2027', status: 'Paid' });
   });
 
   it('dates an unfinished one by when it was started, and promises nothing', () => {
@@ -121,7 +130,20 @@ describe('paymentParts', () => {
       amount: 'RM390',
       paid: false,
       until: null,
+      status: 'Not completed',
     });
+  });
+
+  it('calls an expired one not completed, and a refused one declined', () => {
+    expect(paymentParts({ ...base, status: 'EXPIRED', paidAt: null, grantedUntil: null }).status).toBe('Not completed');
+    expect(paymentParts({ ...base, status: 'FAILED', paidAt: null, grantedUntil: null }).status).toBe('Declined');
+  });
+
+  it('lists a declined renewal as Declined, and says it was the auto-renewal', () => {
+    const row = paymentParts({ ...base, plan: 'MONTHLY', amountCents: 4900, autoRenewal: true, status: 'FAILED', paidAt: null, grantedUntil: null });
+    expect(row.what).toBe('Auto-renewal, 1 month');
+    expect(row.status).toBe('Declined');
+    expect(row.paid).toBe(false);
   });
 });
 

@@ -8,7 +8,8 @@ const getRecentPayments = vi.fn();
 const countLeadsThisMonth = vi.fn();
 const countOrdersThisMonth = vi.fn();
 const getSignInMethods = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods }));
+const getRenewalCard = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getRenewalCard, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -28,6 +29,8 @@ vi.mock('next/navigation', () => ({ redirect }));
 // about what the page decides to offer, not about what those two do with it.
 const PayButtons = vi.fn((_props: { options: Record<string, unknown>[]; timeline?: { today: string; paidUntil: string | null } }) => null);
 vi.mock('./pay-buttons.js', () => ({ PayButtons }));
+const AutoRenew = vi.fn((_props: { card: Record<string, unknown> }) => null);
+vi.mock('./auto-renew.js', () => ({ AutoRenew }));
 const ResetTrial = vi.fn(() => null);
 vi.mock('./reset-button.js', () => ({ ResetTrial }));
 
@@ -52,9 +55,9 @@ const page: OwnerPage = {
   avatarKey: null,
 };
 
-async function renderWith(owned: OwnerPage | null, payment?: string) {
+async function renderWith(owned: OwnerPage | null, payment?: string, card?: string) {
   getOwnerPage.mockResolvedValueOnce(owned);
-  render(await BillingPage({ searchParams: Promise.resolve({ payment }) }));
+  render(await BillingPage({ searchParams: Promise.resolve({ payment, card }) }));
 }
 
 // These check the figures, not how they count up (count-up.test.tsx does): motion off.
@@ -72,6 +75,9 @@ describe('BillingPage', () => {
     resolveOwner.mockReset();
     PayButtons.mockClear();
     ResetTrial.mockClear();
+    AutoRenew.mockClear();
+    getRenewalCard.mockReset();
+    getRenewalCard.mockResolvedValue(null);
     UpgradeToBusiness.mockClear();
     getConversationUsage.mockReset();
     getRecentPayments.mockReset();
@@ -110,7 +116,7 @@ describe('BillingPage', () => {
     expect(screen.getByText('30')).toBeInTheDocument();
     expect(screen.getByText('days left')).toBeInTheDocument();
     expect(screen.getByText('14 Nov 2026')).toBeInTheDocument();
-    expect(screen.getByText(/no auto-renew/i)).toBeInTheDocument();
+    expect(screen.getByText(/Renews only if you turn on auto-renew/)).toBeInTheDocument();
     const props = PayButtons.mock.calls[0]?.[0];
     expect(props?.timeline).toEqual({ today: '15 Oct', paidUntil: '14 Nov' });
     // Paying adds to the time already paid for.
@@ -142,10 +148,10 @@ describe('BillingPage', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Paid. You’re covered until 14 Dec 2026.');
   });
 
-  it('still says confirming when Billplz said paid before its callback reached us', async () => {
+  it('still says confirming when CHIP said paid before its callback reached us', async () => {
     await renderWith(page, 'paid');
 
-    expect(screen.getByRole('status')).toHaveTextContent('We are still confirming your payment with Billplz.');
+    expect(screen.getByRole('status')).toHaveTextContent('We are still confirming your payment with CHIP.');
   });
 
   it('shows the banner for a payment that failed', async () => {
@@ -222,47 +228,91 @@ describe('BillingPage', () => {
     expect([...list.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search']);
   });
 
-  it('lists what has been paid, with a receipt for a paid one', async () => {
-    process.env.BILLPLZ_BASE_URL = 'https://www.billplz-sandbox.com/';
-    getRecentPayments.mockResolvedValue([
-      {
-        id: 'pay-1',
-        plan: 'MONTHLY',
-        amountCents: 4900,
-        status: 'PAID',
-        paidAt: new Date('2026-09-11T20:00:00.000Z'),
-        grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
-        billplzBillId: 'abc123',
-        createdAt: new Date('2026-09-11T10:00:00.000Z'),
-      },
-      {
-        id: 'pay-2',
-        plan: 'MONTHLY',
-        amountCents: 4900,
-        status: 'PENDING',
-        paidAt: null,
-        grantedUntil: null,
-        billplzBillId: 'def456',
-        createdAt: new Date('2026-09-10T10:00:00.000Z'),
-      },
-    ]);
+  const row = {
+    plan: 'MONTHLY' as const,
+    amountCents: 4900,
+    provider: 'CHIP' as const,
+    autoRenewal: false,
+    paidAt: null,
+    grantedUntil: null,
+  };
+  const paidRow = {
+    ...row,
+    id: 'pay-1',
+    status: 'PAID' as const,
+    paidAt: new Date('2026-09-11T20:00:00.000Z'),
+    grantedUntil: new Date('2026-10-12T00:00:00.000Z'),
+    createdAt: new Date('2026-09-11T10:00:00.000Z'),
+  };
 
-    try {
-      await renderWith(page);
-    } finally {
-      delete process.env.BILLPLZ_BASE_URL;
-    }
+  it('lists what has been paid, and who gets the receipt', async () => {
+    getRecentPayments.mockResolvedValue([paidRow, { ...row, id: 'pay-2', status: 'PENDING', createdAt: new Date('2026-09-10T10:00:00.000Z') }]);
+
+    await renderWith(page);
 
     expect(screen.getByText('Receipts go to nadia@example.com')).toBeInTheDocument();
     const paid = screen.getByText('12 Sep 2026').closest('tr')!;
     expect(paid).toHaveTextContent('Business, 1 month');
     expect(paid).toHaveTextContent('RM49');
     expect(paid).toHaveTextContent('Paid');
-    expect(within(paid).getByRole('link', { name: 'Receipt' })).toHaveAttribute('href', 'https://www.billplz-sandbox.com/bills/abc123');
-    // A bill never paid has no receipt.
     const open = screen.getByText('10 Sep 2026').closest('tr')!;
     expect(open).toHaveTextContent('Not completed');
-    expect(within(open).queryByRole('link')).toBeNull();
+  });
+
+  it('has no receipt link, because CHIP emails the receipt', async () => {
+    getRecentPayments.mockResolvedValue([paidRow]);
+
+    await renderWith(page);
+
+    expect(screen.queryByRole('link', { name: 'Receipt' })).toBeNull();
+    expect(screen.queryByRole('columnheader', { name: 'Receipt' })).toBeNull();
+  });
+
+  it('lists a declined renewal as Declined', async () => {
+    getRecentPayments.mockResolvedValue([{ ...row, id: 'pay-3', autoRenewal: true, status: 'FAILED', createdAt: new Date('2026-09-12T10:00:00.000Z') }]);
+
+    await renderWith(page);
+
+    const declined = screen.getByText('12 Sep 2026').closest('tr')!;
+    expect(declined).toHaveTextContent('Auto-renewal');
+    expect(declined).toHaveTextContent('Declined');
+  });
+
+  it('shows auto-renew on the plan card when a card is saved, as plain data', async () => {
+    getRenewalCard.mockResolvedValue({ cardLabel: 'Visa ending 4242', plan: 'ANNUAL', failedAttempts: 0 });
+
+    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') });
+
+    expect(AutoRenew).toHaveBeenCalledTimes(1);
+    expect(AutoRenew.mock.calls[0]?.[0].card).toEqual({ label: 'Visa ending 4242', price: 'RM490', paidUntil: '14 Dec 2026', failed: false });
+    expect(screen.queryByText(/Renews only if you turn on auto-renew/)).toBeNull();
+  });
+
+  it('flags a card whose last renewal failed', async () => {
+    getRenewalCard.mockResolvedValue({ cardLabel: null, plan: 'MONTHLY', failedAttempts: 2 });
+
+    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') });
+
+    expect(AutoRenew.mock.calls[0]?.[0].card).toMatchObject({ label: null, price: 'RM49', failed: true });
+  });
+
+  it('says a paid plan renews only if auto-renew is turned on, when there is no card', async () => {
+    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') });
+
+    expect(AutoRenew).not.toHaveBeenCalled();
+    expect(screen.getByText(/Renews only if you turn on auto-renew\./)).toBeInTheDocument();
+  });
+
+  it('shows the card=off banner when the plan was paid without a saved card', async () => {
+    await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') }, 'paid', 'off');
+
+    expect(screen.getByText(/auto-renew couldn’t be turned on for this payment/)).toBeInTheDocument();
+  });
+
+  it('says nothing about a card on a hand-typed ?card=off with no payment', async () => {
+    await renderWith(page, undefined, 'off');
+
+    expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
   });
 
   it('says there are no payments yet', async () => {

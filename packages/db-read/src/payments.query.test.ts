@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { getRecentPayments, RECENT_PAYMENTS } from './payments.query.js';
+import { getRecentPayments, getRenewalCard, RECENT_PAYMENTS } from './payments.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -35,8 +35,8 @@ beforeAll(async () => {
         pageId,
         plan: 'MONTHLY',
         amountCents: 3900,
-        billplzCollectionId: 'col-test',
-        billplzBillId: `bill-${pageId}-${index}`,
+        provider: 'CHIP',
+        providerRef: `purchase-${pageId}-${index}`,
         status: 'PAID',
         paidAt: new Date(Date.UTC(2026, 2, index + 1)),
         grantedUntil: new Date(Date.UTC(2026, 3, index + 1)),
@@ -50,7 +50,7 @@ beforeAll(async () => {
       pageId: otherPageId,
       plan: 'ANNUAL',
       amountCents: 39000,
-      billplzCollectionId: 'col-test',
+      provider: 'CHIP',
       status: 'PAID',
       paidAt: new Date(Date.UTC(2026, 5, 1)),
       createdAt: new Date(Date.UTC(2026, 5, 1)),
@@ -79,11 +79,11 @@ describe('getRecentPayments', () => {
       id: expect.any(String),
       plan: 'MONTHLY',
       amountCents: 3900,
+      provider: 'CHIP',
+      autoRenewal: false,
       status: 'PAID',
       paidAt: new Date(Date.UTC(2026, 2, 7)),
       grantedUntil: new Date(Date.UTC(2026, 3, 7)),
-      // For the receipt link: Billplz's page for a paid bill is its receipt.
-      billplzBillId: `bill-${pageId}-6`,
       createdAt: new Date(Date.UTC(2026, 2, 7)),
     });
   });
@@ -95,5 +95,22 @@ describe('getRecentPayments', () => {
 
     expect(payments.every((payment) => payment.amountCents === 3900)).toBe(true);
     expect(await getRecentPayments(otherPageId)).toHaveLength(1);
+  });
+});
+
+describe('getRenewalCard', () => {
+  it('answers the page’s card, and never the token', async () => {
+    await write.renewalCard.create({
+      data: { pageId, token: 'secret-recurring-token', plan: 'ANNUAL', cardLabel: 'Visa ending 4242', failedAttempts: 1 },
+    });
+
+    const card = await getRenewalCard(pageId);
+
+    // Exactly these three: the token is a credential and must not reach the web app.
+    expect(card).toEqual({ cardLabel: 'Visa ending 4242', plan: 'ANNUAL', failedAttempts: 1 });
+  });
+
+  it('answers null for a page with no saved card, and never another page’s', async () => {
+    expect(await getRenewalCard(otherPageId)).toBeNull();
   });
 });

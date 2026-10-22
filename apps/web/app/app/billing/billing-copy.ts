@@ -90,16 +90,27 @@ export function planBadge(state: PlanState): { text: string; tone: 'biru' | 'mud
 /**
  * One payment as the payments table shows it. A paid one is dated by when it
  * was paid; one that never completed by when it was started, because it has no
- * payment date and the owner remembers starting it.
+ * payment date and the owner remembers starting it. A renewal the job charged
+ * says so, and a refused one reads "Declined" where an abandoned checkout
+ * reads "Not completed": the owner did nothing wrong in the second.
  */
-export function paymentParts(payment: OwnerPayment): { date: string; what: string; amount: string; paid: boolean; until: string | null } {
+export function paymentParts(payment: OwnerPayment): {
+  date: string;
+  what: string;
+  amount: string;
+  paid: boolean;
+  until: string | null;
+  status: 'Paid' | 'Not completed' | 'Declined';
+} {
   const paid = payment.status === 'PAID' && payment.paidAt !== null;
+  const span = `1 ${payment.plan === 'ANNUAL' ? 'year' : 'month'}`;
   return {
     date: shortDate(paid && payment.paidAt ? payment.paidAt : payment.createdAt, true),
-    what: `Business, 1 ${payment.plan === 'ANNUAL' ? 'year' : 'month'}`,
+    what: payment.autoRenewal ? `Auto-renewal, ${span}` : `Business, ${span}`,
     amount: ringgit(payment.amountCents),
     paid,
     until: paid && payment.grantedUntil ? formatDate(payment.grantedUntil) : null,
+    status: paid ? 'Paid' : payment.status === 'FAILED' ? 'Declined' : 'Not completed',
   };
 }
 
@@ -109,7 +120,7 @@ export interface PaymentBanner {
 }
 
 /**
- * What the screen says on returning from Billplz, keyed on the value the API's return
+ * What the screen says on returning from CHIP, keyed on the value the API's return
  * route redirects with. Anything else says nothing: a hand-typed query string must not
  * make the screen claim a payment happened.
  */
@@ -119,7 +130,7 @@ export function paymentBanner(value: string | undefined): PaymentBanner | null {
     case 'pending':
       return {
         tone: 'info',
-        text: 'We are still confirming your payment with Billplz. It will show here once it is confirmed.',
+        text: 'We are still confirming your payment with CHIP. It will show here once it is confirmed.',
       };
     case 'failed':
       return {
@@ -129,4 +140,15 @@ export function paymentBanner(value: string | undefined): PaymentBanner | null {
     default:
       return null;
   }
+}
+
+/**
+ * The return redirect adds `card=off` when auto-renew was asked for but CHIP
+ * kept no card. The plan itself is paid, so this is information, not an error.
+ */
+export function cardOffBanner(): PaymentBanner {
+  return {
+    tone: 'info',
+    text: 'Your plan is paid, but auto-renew couldn’t be turned on for this payment. Pay by card with the box ticked next time to turn it on.',
+  };
 }

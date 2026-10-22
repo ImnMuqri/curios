@@ -64,7 +64,7 @@
   container-type: inline-size;
 }
 
-/* What the screen says on coming back from Billplz. */
+/* What the screen says on coming back from CHIP. */
 .banner {
   margin: 0 0 16px;
   padding: 12px 16px;
@@ -343,6 +343,56 @@
   font-size: 11.5px;
   font-style: normal;
   font-weight: 600;
+}
+
+/* The box that keeps the card for renewing, and what it does. */
+.tick {
+  margin-top: 16px;
+}
+
+.tick label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tick input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--biru);
+}
+
+.tick small {
+  display: block;
+  margin: 2px 0 0 28px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The saved card's line, and turning it off: quiet, under the plan, like the reset. */
+.renew {
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+}
+
+.renew[data-failed] {
+  background: var(--amber-muda);
+  color: var(--amber-ink);
+}
+
+.renew p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
 }
 
 .pay {
@@ -665,10 +715,6 @@
   width: 140px;
 }
 
-.tab th:nth-child(5) {
-  width: 80px;
-}
-
 .am {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
@@ -695,15 +741,8 @@
   color: var(--hijau);
 }
 
-.tab a {
-  font-size: 13px;
-  color: var(--biru);
-  text-decoration: none;
-}
-
-.tab a:hover {
-  text-decoration: underline;
-  text-underline-offset: 3px;
+.st[data-declined] {
+  color: var(--merah-deep);
 }
 
 /* No payments yet. */
@@ -827,7 +866,7 @@
   color: var(--muted);
 }
 
-/* ---- Before Billplz ---- */
+/* ---- Before CHIP ---- */
 
 .modal {
   position: fixed;
@@ -954,8 +993,7 @@
   }
 
   /* Date, amount and status only, as the board's phone. */
-  .tab td:nth-child(2),
-  .tab td:nth-child(5) {
+  .tab td:nth-child(2) {
     display: none;
   }
 

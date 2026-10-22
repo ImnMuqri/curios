@@ -13,9 +13,10 @@ import {
   type OrderState,
   type PlanState,
 } from '@curios/core';
-import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getSignInMethods } from '@curios/db-read';
+import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
-import { daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { cardOffBanner, daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { AutoRenew } from './auto-renew.js';
 import { PayButtons, type PayOption } from './pay-buttons.js';
 import { ResetTrial } from './reset-button.js';
 import { UpgradeToBusiness } from './upgrade-button.js';
@@ -36,7 +37,7 @@ const PLANS: { plan: BillingPlan; name: string; note: string; period: string; un
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /** The big number on the plan card, the words beside it, and the sentence under it. */
-function planHead(state: PlanState, now: Date): { big: number; unit: string; sub: ReactNode } | null {
+function planHead(state: PlanState, now: Date, renews: boolean): { big: number; unit: string; sub: ReactNode } | null {
   switch (state.kind) {
     case 'personal':
       return null;
@@ -47,7 +48,7 @@ function planHead(state: PlanState, now: Date): { big: number; unit: string; sub
         unit: plural(days, 'day left', 'days left'),
         sub: (
           <>
-            Paid until <b>{shortDate(state.paidUntil, true)}</b>. No auto-renew, so nothing is charged without you.
+            Paid until <b>{shortDate(state.paidUntil, true)}</b>.{renews ? '' : ' Renews only if you turn on auto-renew.'}
           </>
         ),
       };
@@ -121,7 +122,7 @@ function Meter({ label, used, of, share, tone, children }: { label: string; used
 export default async function BillingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ payment?: string }>;
+  searchParams: Promise<{ payment?: string; card?: string }>;
 }) {
   const params = await searchParams;
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
@@ -132,23 +133,26 @@ export default async function BillingPage({
 
   const now = new Date();
   const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
-  // Back from Billplz: a confirmed payment is the board's toast; one Billplz
+  // Back from CHIP: a confirmed payment is the board's toast; one CHIP
   // called paid before its callback reached us still reads as confirming.
   const paidNow = params.payment === 'paid' && state.kind === 'paid';
   const banner = paidNow ? null : paymentBanner(params.payment === 'paid' ? 'pending' : params.payment);
+  // `card=off` rides only on a paid return; typed by hand it claims nothing.
+  const cardBanner = params.payment === 'paid' && params.card === 'off' ? cardOffBanner() : null;
   const badge = planBadge(state);
   const personal = state.kind === 'personal';
 
   // A personal page pays nothing and has no billing story to tell, so it is
   // asked for none of these.
-  const [usage, leads, orders, payments, account] = personal
-    ? [null, 0, 0, [], null]
+  const [usage, leads, orders, payments, account, card] = personal
+    ? [null, 0, 0, [], null, null]
     : await Promise.all([
         getConversationUsage(page.id, now),
         countLeadsThisMonth(page.id, now),
         countOrdersThisMonth(page.id, now),
         getRecentPayments(page.id),
         getSignInMethods(owner.accountId),
+        getRenewalCard(page.id),
       ]);
   const orderMeter = ordersNote(
     orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
@@ -159,7 +163,7 @@ export default async function BillingPage({
   const canReset = page.mode === 'BUSINESS' && page.paidUntil === null && page.trialResetAt === null &&
     (page.leadsCaptured >= 1 || page.ordersPlaced > page.ordersAtTrialReset);
 
-  const head = planHead(state, now);
+  const head = planHead(state, now, card !== null);
   const paidUntil = state.kind === 'paid' ? state.paidUntil : null;
   const options: PayOption[] = PLANS.map((p) => {
     const after = extendPaidUntil({ paidUntil: page.paidUntil, now, plan: p.plan });
@@ -172,8 +176,6 @@ export default async function BillingPage({
       paidPct: paidUntil && span > 0 ? ((paidUntil.getTime() - now.getTime()) / span) * 100 : 0,
     };
   });
-  // Billplz's page for a paid bill is its receipt.
-  const billplz = process.env.BILLPLZ_BASE_URL?.replace(/\/+$/, '');
   const trialUsed = state.kind === 'trial' ? state.used : state.kind === 'trialSpent' ? FREE_LEADS : null;
 
   return (
@@ -181,11 +183,13 @@ export default async function BillingPage({
       <PageHead title="Billing" note="Your plan, what this month has used, and what you have paid" />
       {paidNow ? <PaidToast until={shortDate(state.paidUntil, true)} /> : null}
       <div className={styles.bl}>
-        {banner ? (
-          <p className={styles.banner} data-tone={banner.tone} role="status">
-            {banner.text}
-          </p>
-        ) : null}
+        {[banner, cardBanner].map((shown) =>
+          shown ? (
+            <p key={shown.text} className={styles.banner} data-tone={shown.tone} role="status">
+              {shown.text}
+            </p>
+          ) : null,
+        )}
 
         <div className={styles.top} data-personal={personal || undefined}>
           <section className={styles.card} aria-labelledby="plan-title">
@@ -221,6 +225,17 @@ export default async function BillingPage({
                   {trialUsed} of {FREE_LEADS} used
                 </p>
               </>
+            ) : null}
+
+            {card ? (
+              <AutoRenew
+                card={{
+                  label: card.cardLabel,
+                  price: ringgit(PLAN_PRICES_CENTS[card.plan]),
+                  paidUntil: page.paidUntil ? shortDate(page.paidUntil, true) : '',
+                  failed: card.failedAttempts > 0,
+                }}
+              />
             ) : null}
 
             {personal ? (
@@ -332,7 +347,7 @@ export default async function BillingPage({
                   </span>
                 </div>
                 <h3>No payments yet</h3>
-                <p>When you pay for Business, the receipt shows up here and goes to your email.</p>
+                <p>When you pay for Business, it shows up here, and CHIP emails you the receipt.</p>
               </div>
             ) : (
               <table className={styles.tab}>
@@ -342,9 +357,6 @@ export default async function BillingPage({
                     <th scope="col">What for</th>
                     <th scope="col">Amount</th>
                     <th scope="col">Status</th>
-                    <th scope="col">
-                      <span className={styles.sr}>Receipt</span>
-                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -356,17 +368,10 @@ export default async function BillingPage({
                         <td title={row.until ? `Covers you until ${row.until}` : undefined}>{row.what}</td>
                         <td className={styles.am}>{row.amount}</td>
                         <td>
-                          <span className={styles.st} data-paid={row.paid || undefined}>
+                          <span className={styles.st} data-paid={row.paid || undefined} data-declined={row.status === 'Declined' || undefined}>
                             <i aria-hidden="true" />
-                            {row.paid ? 'Paid' : 'Not completed'}
+                            {row.status}
                           </span>
-                        </td>
-                        <td>
-                          {row.paid && payment.billplzBillId && billplz ? (
-                            <a href={`${billplz}/bills/${payment.billplzBillId}`} target="_blank" rel="noopener noreferrer">
-                              Receipt
-                            </a>
-                          ) : null}
                         </td>
                       </tr>
                     );
