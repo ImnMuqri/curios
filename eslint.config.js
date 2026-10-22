@@ -17,6 +17,7 @@ export default tseslint.config(
       '**/node_modules/**',
       '**/dist/**',
       '**/.next/**',
+      '**/.next-build/**',
       '**/coverage/**',
       '**/*.d.ts',
       'packages/db/prisma/**',

@@ -112,4 +112,13 @@ describe('Field', () => {
 
     expect(screen.queryByRole('button')).toBeNull();
   });
+
+  it('renders an adornment inside the field wrapper, beside the input', () => {
+    render(
+      <Field id="email" label="Email" value="" onChange={vi.fn()} adornment={<i data-testid="deco" />} />,
+    );
+
+    const input = screen.getByLabelText('Email');
+    expect(screen.getByTestId('deco').parentElement).toBe(input.parentElement?.parentElement);
+  });
 });

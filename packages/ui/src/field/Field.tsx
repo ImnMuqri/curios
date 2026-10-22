@@ -30,6 +30,7 @@ export function Field({
   multiline = false,
   placeholder,
   labelAside,
+  adornment,
 }: {
   id: string;
   label: string;
@@ -44,13 +45,20 @@ export function Field({
   placeholder?: string;
   /** Beside the label, at its far end: "Forgot your password?" on sign-in. */
   labelAside?: ReactNode;
+  /**
+   * Decoration that sits on the field's edge (Peek, over the email field). Rendered
+   * inside the field wrapper, which becomes its positioning context; the control
+   * is lifted to z 1 so the adornment's body tucks behind it.
+   */
+  adornment?: ReactNode;
 }) {
   const hintId = useId();
   const [revealed, setRevealed] = useState(false);
   const isPassword = type === 'password' && !multiline;
 
   return (
-    <div className={styles.field}>
+    <div className={adornment ? `${styles.field} ${styles.adorned}` : styles.field}>
+      {adornment}
       {labelAside ? (
         <div className={styles.labelRow}>
           <label className={styles.label} htmlFor={id}>

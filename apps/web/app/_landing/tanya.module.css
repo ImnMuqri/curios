@@ -609,7 +609,49 @@
   background: var(--card);
 }
 
-.claimField > span {
+/*
+ * Peek sits behind the field (z 0) and in front of it (z 3), so the box moves
+ * to a ::before at z 1 and the text and input ride above it.
+ */
+.claimField,
+.endField {
+  position: relative;
+}
+
+.claimField {
+  background: transparent;
+}
+
+.claimField::before,
+.endField::before {
+  content: '';
+  position: absolute;
+  inset: -1.5px;
+  z-index: 1;
+  border: 1.5px solid var(--ink);
+  border-radius: inherit;
+  background: var(--card);
+  pointer-events: none;
+}
+
+.endField::before {
+  inset: 0;
+  border: 0;
+  background: var(--paper);
+}
+
+.claimPrefix {
+  position: relative;
+  z-index: 1;
+}
+
+.claimField input,
+.endField input {
+  position: relative;
+  z-index: 1;
+}
+
+.claimField > .claimPrefix {
   color: var(--muted);
 }
 
@@ -3265,12 +3307,12 @@
   min-height: 68px;
   padding: 0 24px;
   border-radius: 999px;
-  background: var(--paper);
+  background: transparent;
   color: var(--ink);
   font-size: 19px;
 }
 
-.endField > span {
+.endField > .claimPrefix {
   color: var(--muted);
 }
 

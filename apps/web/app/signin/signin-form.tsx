@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button, Callout, Field } from '@curios/ui';
 import { AuthShell, GoogleButton, OrWithEmail } from '../_auth/AuthShell.js';
 import { apiFetch } from '../../lib/api.js';
+import { Peek } from '../_peek/Peek.js';
 import styles from '../auth.module.css';
 import { oauthErrorMessage } from '../../lib/oauth-errors.js';
 
@@ -63,6 +64,7 @@ export function SignInForm({
       <form onSubmit={(event) => void submit(event)}>
         <Field
           id="email"
+          adornment={<Peek variant="auth" width={84} right={18} top={-18.8} />}
           label="Email"
           type="email"
           autoComplete="email"

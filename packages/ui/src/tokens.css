@@ -20,6 +20,12 @@
   --kuning: #f2a33c;
   --merah: #d8452f;
   --muted: #696e7b;
+  /* Peek, the mascot (design boards): body, the shade behind it, hands, and the covering hands. */
+  --peek-body: #2340c8;
+  --peek-shade: #1b33aa;
+  --peek-edge: #1b33aa;
+  --peek-hand: #3150dc;
+  --peek-cover: #4664ee;
   /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
   --card: #ffffff;
   --line: #e4e7eb;

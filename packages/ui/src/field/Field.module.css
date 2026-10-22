@@ -2,6 +2,16 @@
   margin-bottom: 16px;
 }
 
+/* An adornment (Peek) is positioned against the field, behind the control. */
+.adorned {
+  position: relative;
+}
+
+.adorned > :is(div:not(.labelRow), textarea) {
+  position: relative;
+  z-index: 1;
+}
+
 /* The utility voice: mono, uppercase, tracked. It says "this is a slot". */
 /* The --field-* hooks: a surface can give every Field inside it its own voice (the dashboard frame does). */
 .label {

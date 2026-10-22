@@ -2,6 +2,7 @@
 
 import type { FormEvent } from 'react';
 import { rememberWantedHandle } from '../../lib/wanted-handle.js';
+import { Peek } from '../_peek/Peek.js';
 import styles from './tanya.module.css';
 
 /**
@@ -38,7 +39,14 @@ export function Claim({
         {label}
       </label>
       <span className={end ? styles.endField : styles.claimField}>
-        <span aria-hidden="true">curios.my/</span>
+        {end ? (
+          <Peek variant="claim" width={104} right={40} top={-55.5} />
+        ) : (
+          <Peek variant="claim" width={78} right={26} top={-41.6} />
+        )}
+        <span aria-hidden="true" className={styles.claimPrefix}>
+          curios.my/
+        </span>
         <input
           id={id}
           name="handle"
