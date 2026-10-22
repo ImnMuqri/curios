@@ -137,7 +137,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .of{position:relative;background:#fbeef1}
 .of-pin{padding:96px 0}
 .of-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:48px;align-items:center}
-@media (min-width:1000px){.of-grid{grid-template-columns:minmax(0,4fr) minmax(0,7fr)}}
+@media (min-width:1000px){.of-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
 .of-caps{display:grid;gap:22px;margin-top:36px}
 .of-cap{display:grid;grid-template-columns:44px 1fr;gap:10px}
 .of-n{font-family:var(--m);font-size:13px;color:#b5294e;padding-top:8px}
@@ -198,7 +198,10 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .of2-pin{position:sticky;top:0;min-height:860px;display:flex;align-items:center;padding:72px 0}
 .of2-pin>.wrap{width:100%}
 .of2-steps{list-style:none;margin:36px 0 0;padding:0;display:grid;gap:16px}
-.of2-steps li{display:grid;grid-template-columns:36px 1fr;gap:14px;align-items:start}
+.of2-steps li{display:grid;grid-template-columns:36px 1fr;gap:14px;align-items:start;cursor:pointer}
+.of2-steps li:hover{opacity:1!important}
+.of2-bar{display:block;width:100%;max-width:22em;height:3px;margin-top:10px;overflow:hidden;border-radius:2px;background:rgba(181,41,78,.14);transition:opacity 300ms ease}
+.of2-bar i{display:block;height:100%;border-radius:2px;background:#b5294e}
 .of2-dot{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;font-size:13px;font-weight:700;transition:background 300ms ease,color 300ms ease}
 .of2-h{display:block;font-family:var(--d);font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1.2;padding-top:3px}
 .of2-p{display:block;overflow:hidden;margin-top:4px;max-width:26em;color:#4b5060;font-size:15px;transition:max-height 360ms ease,opacity 360ms ease}
@@ -226,6 +229,22 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .cs-card>span:last-child{display:block;font-size:11px;opacity:.75}
 .cbar{left:18px;right:18px;top:542px;height:44px;display:flex;align-items:center;padding:0 5px 0 16px;border-radius:999px;background:#fafbfc}
 .sheet{position:absolute;left:0;right:0;top:170px;bottom:0;border-radius:26px 26px 0 0;background:#fafbfc;color:#191f2c}
+.pway{left:18px;right:18px;top:54px;display:grid;border-radius:14px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb}
+.pw-row{display:flex;align-items:center;gap:10px;height:62px;padding:0 12px}
+.pw-row+.pw-row{border-top:1px solid #eef0f3}
+.pw-rd{width:18px;height:18px;flex:none;border-radius:50%;transition:box-shadow 200ms ease}
+.pw-tx{flex:1;min-width:0}
+.pw-tx b{display:block;font-size:13px}
+.pw-tx small{display:block;font-size:10.5px;color:#8a8f9b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pw-row em{padding:2px 6px;border-radius:5px;font-style:normal;font-size:9px;font-weight:700}
+.chipv{position:absolute;inset:0;z-index:2;padding:18px;border-radius:26px 26px 0 0;background:#ffffff;animation:sheetIn 260ms cubic-bezier(.22,1,.36,1) both}
+@keyframes sheetIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.chipv-h{display:flex;align-items:center;justify-content:space-between;margin:0;padding-bottom:12px;border-bottom:1px solid #eef0f3;font-size:12px;color:#4b5060}
+.chipv-h b{font-family:var(--m);font-size:13px;letter-spacing:.08em;color:#191f2c}
+.chipv-t{margin:14px 0 8px;font-size:15px;font-weight:600}
+.chipv-b{display:flex;align-items:center;gap:10px;height:46px;margin-top:6px;padding:0 12px;border-radius:12px;font-size:13px;font-weight:600;transition:background 200ms,box-shadow 200ms}
+.chipv-b i{display:grid;place-items:center;width:26px;height:26px;border-radius:7px;color:#fff;font-style:normal;font-size:10px;font-weight:800}
+.chipv-ok{position:absolute;left:18px;right:18px;bottom:24px;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:999px;background:#1d6f5f;color:#fff;font-size:13.5px;font-weight:600;animation:sheetIn 220ms ease both}
 .flabel{left:18px;margin:0;font-size:11.5px;color:#4b5060}
 .field{left:18px;right:18px;height:42px;margin:0;display:flex;align-items:center;padding:0 14px;border-radius:12px;background:#ffffff;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums}
 .seg{left:18px;right:18px;display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border-radius:12px;background:#f0f1f4;font-size:12.5px;font-weight:600}
@@ -709,18 +728,18 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 
 <div>
 <p class="eyebrow" style="color: #b5294e">For business</p>
-<h2 class="h2">Have a business? Your page becomes a shop.</h2>
+<h2 class="h2" style="max-width: 13ch; font-size: clamp(34px, 20px + 2.2vw, 48px)">Have a business? Your page becomes a shop.</h2>
 <ol class="of2-steps">
 <sc-for list="{{ of.caps }}" as="c" hint-placeholder-count="5">
-<li style="opacity: {{c.op}}; transition: opacity 300ms ease">
+<li style="opacity: {{c.op}}; transition: opacity 300ms ease" class="of2-li" onClick="{{ c.go }}">
 <span class="of2-dot" style="background: {{c.dot}}; color: {{c.dotFg}}">{{c.n}}</span>
-<span><b class="of2-h">{{c.title}}</b><span class="of2-p" style="max-height: {{c.bodyH}}; opacity: {{c.bodyO}}">{{c.body}}</span></span>
+<span><b class="of2-h">{{c.title}}</b><span class="of2-p" style="max-height: {{c.bodyH}}; opacity: {{c.bodyO}}">{{c.body}}</span><span class="of2-bar" style="opacity: {{c.barO}}"><i style="width: {{c.prog}}%"></i></span></span>
 </li>
 </sc-for>
 </ol>
 </div>
 
-<div class="of2-stage" role="img" aria-label="A customer adds items, checks out, pays with Kek Lina's QR and uploads proof; the order arrives in Lina's Curios Orders">
+<div class="of2-stage" onMouseEnter="{{ ofPause }}" onMouseLeave="{{ ofResume }}" role="img" aria-label="A customer adds items, checks out, pays with Kek Lina's QR and uploads proof; the order arrives in Lina's Curios Orders">
 
 <!-- THE CUSTOMER'S PHONE -->
 <div class="cust">
@@ -753,30 +772,21 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 <span class="abs cta" style="top: 360px">Continue to pay</span>
 </sc-if>
 <sc-if value="{{ of.payView }}" hint-placeholder-val="{{ false }}">
-<p class="abs" style="top: 18px; left: 18px; margin: 0; font-family: var(--d); font-size: 20px; font-weight: 800; letter-spacing: -0.02em">Order #1042</p>
-<span class="abs" style="top: 20px; right: 18px; padding: 4px 10px; border-radius: 999px; background: {{of.payChipBg}}; color: {{of.payChipFg}}; font-size: 11px; font-weight: 600; transition: background 300ms ease, color 300ms ease">{{of.payChip}}</span>
-<div class="abs" style="top: 56px; left: 18px; right: 18px; padding: 10px 14px; border-radius: 16px; background: #f0f1f4; font-size: 12px">
-<p style="margin: 0; display: flex; justify-content: space-between; line-height: 1.75"><span style="color: #4b5060">2× Kek coklat · 1kg</span><b style="font-weight: 500">RM190</b></p>
-<p style="margin: 0; display: flex; justify-content: space-between; line-height: 1.75"><span style="color: #4b5060">1× Kek batik</span><b style="font-weight: 500">RM45</b></p>
-<p style="margin: 6px 0 0; padding-top: 8px; border-top: 1px solid #dfe1e6; display: flex; justify-content: space-between; align-items: baseline"><span style="color: #4b5060">Pickup · Sat</span><b style="font-family: var(--d); font-size: 20px; letter-spacing: -0.02em">RM235</b></p>
+<p class="abs" style="top: 18px; left: 18px; margin: 0; font-family: var(--d); font-size: 20px; font-weight: 800; letter-spacing: -0.02em">How you’ll pay</p>
+<p class="abs" style="top: 22px; right: 18px; margin: 0; font-size: 12.5px; color: #4b5060">RM235</p>
+<div class="abs pway">
+<sc-for list="{{ of.ways }}" as="w" hint-placeholder-count="4"><span class="pw-row"><i class="pw-rd" style="box-shadow: inset 0 0 0 {{w.ring}} #b5294e, inset 0 0 0 1.5px #c9ccd3"></i><span class="pw-tx"><b>{{w.l}}</b><small>{{w.s}}</small></span><em style="background: {{w.bg}}; color: {{w.fg}}">{{w.m}}</em></span></sc-for>
 </div>
-<div class="abs" style="top: 164px; left: 18px; right: 18px; display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: 16px; background: #ffffff; box-shadow: 0 0 0 1px #e4e7eb">
-<svg viewBox="-1 -1 27 27" width="88" height="88" role="img" aria-label="Kek Lina payment QR, sample" style="display: block; flex: none"><path d="M0 0h1v1h-1zM1 0h1v1h-1zM2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM6 0h1v1h-1zM8 0h1v1h-1zM9 0h1v1h-1zM10 0h1v1h-1zM11 0h1v1h-1zM12 0h1v1h-1zM14 0h1v1h-1zM15 0h1v1h-1zM18 0h1v1h-1zM19 0h1v1h-1zM20 0h1v1h-1zM21 0h1v1h-1zM22 0h1v1h-1zM23 0h1v1h-1zM24 0h1v1h-1zM0 1h1v1h-1zM6 1h1v1h-1zM8 1h1v1h-1zM9 1h1v1h-1zM10 1h1v1h-1zM12 1h1v1h-1zM13 1h1v1h-1zM15 1h1v1h-1zM16 1h1v1h-1zM18 1h1v1h-1zM24 1h1v1h-1zM0 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM6 2h1v1h-1zM11 2h1v1h-1zM15 2h1v1h-1zM18 2h1v1h-1zM20 2h1v1h-1zM21 2h1v1h-1zM22 2h1v1h-1zM24 2h1v1h-1zM0 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM6 3h1v1h-1zM9 3h1v1h-1zM10 3h1v1h-1zM11 3h1v1h-1zM13 3h1v1h-1zM14 3h1v1h-1zM18 3h1v1h-1zM20 3h1v1h-1zM21 3h1v1h-1zM22 3h1v1h-1zM24 3h1v1h-1zM0 4h1v1h-1zM2 4h1v1h-1zM3 4h1v1h-1zM4 4h1v1h-1zM6 4h1v1h-1zM8 4h1v1h-1zM15 4h1v1h-1zM18 4h1v1h-1zM20 4h1v1h-1zM21 4h1v1h-1zM22 4h1v1h-1zM24 4h1v1h-1zM0 5h1v1h-1zM6 5h1v1h-1zM8 5h1v1h-1zM9 5h1v1h-1zM12 5h1v1h-1zM13 5h1v1h-1zM14 5h1v1h-1zM15 5h1v1h-1zM16 5h1v1h-1zM18 5h1v1h-1zM24 5h1v1h-1zM0 6h1v1h-1zM1 6h1v1h-1zM2 6h1v1h-1zM3 6h1v1h-1zM4 6h1v1h-1zM5 6h1v1h-1zM6 6h1v1h-1zM12 6h1v1h-1zM13 6h1v1h-1zM14 6h1v1h-1zM18 6h1v1h-1zM19 6h1v1h-1zM20 6h1v1h-1zM21 6h1v1h-1zM22 6h1v1h-1zM23 6h1v1h-1zM24 6h1v1h-1zM10 7h1v1h-1zM14 7h1v1h-1zM15 7h1v1h-1zM16 7h1v1h-1zM0 8h1v1h-1zM5 8h1v1h-1zM6 8h1v1h-1zM8 8h1v1h-1zM11 8h1v1h-1zM12 8h1v1h-1zM15 8h1v1h-1zM16 8h1v1h-1zM17 8h1v1h-1zM20 8h1v1h-1zM24 8h1v1h-1zM1 9h1v1h-1zM2 9h1v1h-1zM7 9h1v1h-1zM10 9h1v1h-1zM11 9h1v1h-1zM12 9h1v1h-1zM13 9h1v1h-1zM15 9h1v1h-1zM16 9h1v1h-1zM17 9h1v1h-1zM19 9h1v1h-1zM20 9h1v1h-1zM23 9h1v1h-1zM3 10h1v1h-1zM4 10h1v1h-1zM5 10h1v1h-1zM6 10h1v1h-1zM8 10h1v1h-1zM9 10h1v1h-1zM12 10h1v1h-1zM16 10h1v1h-1zM18 10h1v1h-1zM19 10h1v1h-1zM0 11h1v1h-1zM5 11h1v1h-1zM7 11h1v1h-1zM12 11h1v1h-1zM16 11h1v1h-1zM17 11h1v1h-1zM18 11h1v1h-1zM19 11h1v1h-1zM20 11h1v1h-1zM21 11h1v1h-1zM0 12h1v1h-1zM3 12h1v1h-1zM6 12h1v1h-1zM8 12h1v1h-1zM12 12h1v1h-1zM13 12h1v1h-1zM15 12h1v1h-1zM16 12h1v1h-1zM17 12h1v1h-1zM19 12h1v1h-1zM21 12h1v1h-1zM22 12h1v1h-1zM23 12h1v1h-1zM1 13h1v1h-1zM5 13h1v1h-1zM6 13h1v1h-1zM7 13h1v1h-1zM9 13h1v1h-1zM10 13h1v1h-1zM11 13h1v1h-1zM14 13h1v1h-1zM15 13h1v1h-1zM19 13h1v1h-1zM20 13h1v1h-1zM22 13h1v1h-1zM23 13h1v1h-1zM2 14h1v1h-1zM4 14h1v1h-1zM6 14h1v1h-1zM7 14h1v1h-1zM10 14h1v1h-1zM11 14h1v1h-1zM13 14h1v1h-1zM14 14h1v1h-1zM15 14h1v1h-1zM16 14h1v1h-1zM17 14h1v1h-1zM18 14h1v1h-1zM19 14h1v1h-1zM21 14h1v1h-1zM23 14h1v1h-1zM24 14h1v1h-1zM0 15h1v1h-1zM1 15h1v1h-1zM2 15h1v1h-1zM5 15h1v1h-1zM6 15h1v1h-1zM8 15h1v1h-1zM10 15h1v1h-1zM13 15h1v1h-1zM17 15h1v1h-1zM21 15h1v1h-1zM22 15h1v1h-1zM23 15h1v1h-1zM24 15h1v1h-1zM0 16h1v1h-1zM2 16h1v1h-1zM3 16h1v1h-1zM4 16h1v1h-1zM8 16h1v1h-1zM9 16h1v1h-1zM10 16h1v1h-1zM11 16h1v1h-1zM12 16h1v1h-1zM13 16h1v1h-1zM14 16h1v1h-1zM18 16h1v1h-1zM20 16h1v1h-1zM21 16h1v1h-1zM22 16h1v1h-1zM23 16h1v1h-1zM24 16h1v1h-1zM8 17h1v1h-1zM9 17h1v1h-1zM10 17h1v1h-1zM17 17h1v1h-1zM18 17h1v1h-1zM20 17h1v1h-1zM23 17h1v1h-1zM0 18h1v1h-1zM1 18h1v1h-1zM2 18h1v1h-1zM3 18h1v1h-1zM4 18h1v1h-1zM5 18h1v1h-1zM6 18h1v1h-1zM14 18h1v1h-1zM15 18h1v1h-1zM16 18h1v1h-1zM17 18h1v1h-1zM18 18h1v1h-1zM0 19h1v1h-1zM6 19h1v1h-1zM8 19h1v1h-1zM9 19h1v1h-1zM10 19h1v1h-1zM12 19h1v1h-1zM16 19h1v1h-1zM17 19h1v1h-1zM22 19h1v1h-1zM23 19h1v1h-1zM24 19h1v1h-1zM0 20h1v1h-1zM2 20h1v1h-1zM3 20h1v1h-1zM4 20h1v1h-1zM6 20h1v1h-1zM9 20h1v1h-1zM11 20h1v1h-1zM12 20h1v1h-1zM13 20h1v1h-1zM15 20h1v1h-1zM18 20h1v1h-1zM19 20h1v1h-1zM22 20h1v1h-1zM23 20h1v1h-1zM24 20h1v1h-1zM0 21h1v1h-1zM2 21h1v1h-1zM3 21h1v1h-1zM4 21h1v1h-1zM6 21h1v1h-1zM11 21h1v1h-1zM14 21h1v1h-1zM15 21h1v1h-1zM17 21h1v1h-1zM18 21h1v1h-1zM19 21h1v1h-1zM20 21h1v1h-1zM21 21h1v1h-1zM23 21h1v1h-1zM0 22h1v1h-1zM2 22h1v1h-1zM3 22h1v1h-1zM4 22h1v1h-1zM6 22h1v1h-1zM10 22h1v1h-1zM11 22h1v1h-1zM12 22h1v1h-1zM13 22h1v1h-1zM14 22h1v1h-1zM16 22h1v1h-1zM18 22h1v1h-1zM19 22h1v1h-1zM21 22h1v1h-1zM22 22h1v1h-1zM0 23h1v1h-1zM6 23h1v1h-1zM8 23h1v1h-1zM11 23h1v1h-1zM12 23h1v1h-1zM14 23h1v1h-1zM15 23h1v1h-1zM16 23h1v1h-1zM17 23h1v1h-1zM20 23h1v1h-1zM22 23h1v1h-1zM24 23h1v1h-1zM0 24h1v1h-1zM1 24h1v1h-1zM2 24h1v1h-1zM3 24h1v1h-1zM4 24h1v1h-1zM5 24h1v1h-1zM6 24h1v1h-1zM8 24h1v1h-1zM9 24h1v1h-1zM10 24h1v1h-1zM11 24h1v1h-1zM12 24h1v1h-1zM13 24h1v1h-1zM14 24h1v1h-1zM15 24h1v1h-1zM19 24h1v1h-1zM20 24h1v1h-1zM22 24h1v1h-1zM23 24h1v1h-1zM24 24h1v1h-1z" fill="#191f2c"></path></svg>
-<span style="display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 11.5px"><span style="color: #696e7b">Scan, or transfer to</span><b style="font-size: 12.5px">Maybank</b><span style="color: #696e7b">Lina binti Kamal</span><code style="font-family: var(--m); font-size: 12px; color: #191f2c">1642 3378 9021</code></span>
+<p class="abs" style="top: 312px; left: 18px; right: 18px; margin: 0; font-size: 11px; line-height: 1.45; color: #696e7b">You pay on a secure CHIP page. The money goes to Kek Lina’s own account.</p>
+<span class="abs cta" style="top: 360px; background: #b5294e; opacity: {{of.payBtnO}}">Pay RM235</span>
+<sc-if value="{{ of.chipView }}" hint-placeholder-val="{{ false }}">
+<div class="chipv">
+<p class="chipv-h"><b>CHIP</b><span>Kek Lina · RM235.00</span></p>
+<p class="chipv-t">Choose your bank</p>
+<sc-for list="{{ of.banks }}" as="k" hint-placeholder-count="4"><span class="chipv-b" style="background: {{k.bg}}; box-shadow: inset 0 0 0 1.5px {{k.ring}}"><i style="background: {{k.c}}">{{k.i}}</i>{{k.n}}</span></sc-for>
+<sc-if value="{{ of.approved }}" hint-placeholder-val="{{ false }}"><span class="chipv-ok"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#fff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Payment approved</span></sc-if>
 </div>
-<sc-if value="{{ of.noProof }}" hint-placeholder-val="{{ true }}">
-<span class="abs upload" style="top: 282px">
-<svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>Upload payment proof
-</span>
 </sc-if>
-<sc-if value="{{ of.hasProof }}" hint-placeholder-val="{{ false }}">
-<span class="abs proof" style="top: 282px">
-<span class="proof-thumb"><span style="display: block; width: 60%; height: 3px; margin: 8px auto 4px; border-radius: 2px; background: #1d6f5f"></span><span style="display: block; width: 80%; height: 2px; margin: 3px auto; background: #dfe1e6"></span><span style="display: block; width: 70%; height: 2px; margin: 3px auto; background: #dfe1e6"></span><span style="display: block; width: 50%; height: 2px; margin: 3px auto; background: #dfe1e6"></span></span>
-<span style="flex: 1; display: grid; gap: 4px"><b style="font-size: 12.5px">receipt-rm235.jpg</b><span style="display: block; height: 4px; border-radius: 2px; background: #dfe1e6; overflow: hidden"><span style="display: block; height: 100%; width: {{of.upPct}}%; background: #1d6f5f"></span></span></span>
-<span style="font-size: 12px; font-weight: 600; color: #1d6f5f; opacity: {{of.upDoneO}}">✓</span>
-</span>
-</sc-if>
-<span class="abs cta" style="top: 360px; opacity: {{of.placeO}}">Place order</span>
 </sc-if>
 </div>
 
@@ -790,7 +800,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 </svg>
 </div>
 <p style="margin: 18px 0 0; font-family: var(--d); font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Order received</p>
-<p style="margin: 6px 0 0; font-size: 13.5px; color: #4b5060">#1042 · RM235 · proof sent to Lina</p>
+<p style="margin: 6px 0 0; font-size: 13.5px; color: #4b5060">#1042 · RM235 · paid by FPX</p>
 </div>
 
 <!-- the customer's cursor -->
@@ -828,7 +838,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 <div class="o2-card" style="background: {{of.cardBg}}; box-shadow: 0 0 0 1.5px {{of.cardRing}}">
 <p class="o2-r1"><span class="o2-av" style="background: #f6c9d5">M</span><span style="flex: 1; min-width: 0"><b>Mira</b><span>#1042 · now</span></span><span class="o2-badge" style="background: {{of.stBg}}; color: {{of.stFg}}">{{of.status}}</span></p>
 <p class="o2-items">2× Kek coklat 1kg<br>1× Kek batik</p>
-<p class="o2-meta"><span>Pickup · Sat</span><span>·</span><span>Proof attached</span></p>
+<p class="o2-meta"><span>Pickup · Sat</span><span>·</span><span>Paid by FPX</span></p>
 <p class="o2-total"><span>Total</span><b>RM235</b></p>
 <span class="o2-btn" style="background: {{of.confBg}}">{{of.confText}}</span>
 </div>
@@ -1142,8 +1152,8 @@ class Component extends DCLogic {
       const z = W[W.length - 1]; return [z[1], z[2]];
     };
     const near = (ts) => ts.some((t) => p >= t && p < t + 0.012);
-    const C = path([[0, 200, 470], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.52, 150, 552], [0.555, 150, 475], [0.58, 150, 475], [0.62, 150, 552], [0.66, 150, 552]]);
-    const clicks = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.565, 0.635];
+    const C = path([[0, 200, 470], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.51, 150, 552], [0.525, 150, 254], [0.54, 150, 254], [0.555, 150, 552], [0.57, 150, 552], [0.59, 150, 285], [0.615, 150, 285], [0.64, 220, 470], [0.66, 220, 470]]);
+    const clicks = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.53, 0.565, 0.605];
     const qc = p >= 0.12 ? 2 : (p >= 0.09 ? 1 : 0), qb = p >= 0.19 ? 1 : 0;
     const n = qc + qb, total = qc * 95 + qb * 45;
     const items = [
@@ -1160,12 +1170,15 @@ class Component extends DCLogic {
     const caps = [
       ['Tap to add', 'Your shop gets its own page, with pictures, prices and sizes. Link it from your page or straight from Instagram.'],
       ['Check out', 'Name, WhatsApp number, pickup or delivery. No account needed.'],
-      ['Pay with your QR', 'No payment gateway? Upload your bank QR once. Customers scan it with the total, then upload their receipt.'],
+      ['Pay their way', 'FPX, e-wallet or card through CHIP, confirmed straight away. Or your own DuitNow QR with a receipt.'],
       ['Order received', 'They get a confirmation with the order number.'],
-      ['It lands in your Orders', 'Paid, with the proof attached. Confirm it in one tap.']
+      ['It lands in your Orders', 'Already paid, nothing to check. Confirm it in one tap.']
     ].map((c, i) => ({
       n: i + 1, title: c[0], body: c[1],
       op: i === cur ? '1' : (i < cur ? '0.55' : '0.35'),
+      prog: i === cur ? Math.max(0, Math.min(100, (p - [0, 0.24, 0.5, 0.64, 0.76, 1][i]) / ([0, 0.24, 0.5, 0.64, 0.76, 1][i + 1] - [0, 0.24, 0.5, 0.64, 0.76, 1][i]) * 100)).toFixed(1) : (i < cur ? '100' : '0'),
+      barO: i === cur ? '1' : '0',
+      go: () => this.setState({ ofP: [0, 0.24, 0.5, 0.64, 0.76][i] + 0.0005 }),
       dot: i <= cur ? '#b5294e' : '#ffffff', dotFg: i <= cur ? '#fafbfc' : '#191f2c',
       bodyH: i === cur ? '90px' : '0px', bodyO: i === cur ? '1' : '0'
     }));
@@ -1186,9 +1199,10 @@ class Component extends DCLogic {
       name: name.slice(0, nameN), nameCaret: p >= 0.31 && p < 0.365, nameRing: p >= 0.31 && p < 0.365 ? '#2340c8' : '#dfe1e6',
       phone: phone.slice(0, phoneN), phoneCaret: p >= 0.37 && p < 0.445, phoneRing: p >= 0.37 && p < 0.445 ? '#2340c8' : '#dfe1e6',
       pickBg: p >= 0.465 ? '#191f2c' : 'transparent', pickFg: p >= 0.465 ? '#fafbfc' : '#191f2c',
-      payChip: p >= 0.59 ? 'Receipt uploaded' : 'Waiting for payment', payChipBg: p >= 0.59 ? '#d3e8e1' : '#ffebd6', payChipFg: p >= 0.59 ? '#123b33' : '#7a4a0c',
-      noProof: p < 0.565, hasProof: p >= 0.565, upPct: Math.round(seg(0.565, 0.59) * 100), upDoneO: p >= 0.59 ? '1' : '0',
-      placeO: p >= 0.59 ? '1' : '0.4',
+      ways: [['Online banking', 'FPX · Maybank2u, CIMB, RHB', 'FPX', '#eaf0ff', '#122686'], ['E-wallet', 'Touch ’n Go, GrabPay, Boost', 'TNG', '#e6f0ff', '#0b4dbd'], ['Card', 'Debit or credit card', 'VISA', '#eef0ff', '#1a1f71'], ['DuitNow QR', 'Scan, then upload your receipt', 'QR', '#fdecef', '#b5294e']].map((w, i) => ({ l: w[0], s: w[1], m: w[2], bg: w[3], fg: w[4], ring: i === 0 && p >= 0.53 ? '6px' : '0px' })),
+      payBtnO: p >= 0.53 ? '1' : '0.45',
+      chipView: p >= 0.575, approved: p >= 0.615,
+      banks: [['Maybank2u', 'M', '#f2b705'], ['CIMB Clicks', 'C', '#c8102e'], ['RHB Now', 'R', '#005baa'], ['Public Bank', 'P', '#d71920']].map((k, i) => ({ n: k[0], i: k[1], c: k[2], bg: i === 0 && p >= 0.605 ? '#f6f8ff' : '#fafbfc', ring: i === 0 && p >= 0.605 ? '#2340c8' : '#eef0f3' })),
       succO: seg(0.64, 0.66).toFixed(2), circS: back(seg(0.645, 0.668)).toFixed(3), checkOff: (70 - 70 * seg(0.655, 0.685)).toFixed(1),
       burst: Array.from({ length: 12 }, (_, i) => {
         const a = (i / 12) * Math.PI * 2, d = 18 + 62 * (1 - Math.pow(1 - burstT, 3));
@@ -1210,6 +1224,7 @@ class Component extends DCLogic {
     };
   }
   ofDriver() {
+    this.OFB = [0, 0.24, 0.5, 0.64, 0.76, 1];
     if (this.reduced()) { this.setState({ ofP: 1 }); return; }
     const run = () => {
       if (this.ofLoop) return;
@@ -1219,8 +1234,10 @@ class Component extends DCLogic {
         const dt = Math.min(64, now - last); last = now;
         if (hold > 0) { hold -= dt; if (hold <= 0) this.setState({ ofP: 0 }); }
         else {
-          const np = this.state.ofP + dt / 12000;
-          if (np >= 1) { this.setState({ ofP: 1 }); hold = 2200; } else this.setState({ ofP: np });
+          const B = this.OFB, D = [3800, 4600, 4800, 2600, 4000], p0 = this.state.ofP;
+          let i = B.findIndex((b, k) => k < 5 && p0 < B[k + 1]); if (i < 0) i = 4;
+          const np = this.ofPaused ? p0 : p0 + dt * (B[i + 1] - B[i]) / D[i];
+          if (np >= 1) { this.setState({ ofP: 1 }); hold = 2600; } else if (np !== p0) this.setState({ ofP: np });
         }
         this.ofLoop = requestAnimationFrame(step);
       };
@@ -1456,6 +1473,7 @@ class Component extends DCLogic {
         requestAnimationFrame(() => self.setState({ spark2On: true, spark2X: x, spark2Y: y }));
       },
       of: this.ofVals(this.state.ofP),
+      ofPause: () => { this.ofPaused = true; }, ofResume: () => { this.ofPaused = false; },
       magnetLeave: () => self.setState({ magX: 0, magY: 0, magDur: '600ms' }),
       // How it works 01: Animated List + Decrypted Text
       found: this.facts.slice(0, Math.min(this.state.decI + (this.state.decN > 0 ? 1 : 0), this.facts.length)).map((f, i) => {

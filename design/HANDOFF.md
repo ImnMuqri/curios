@@ -207,8 +207,14 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   to check, and a note that CHIP pays out to the owner's bank (`Emails-paid`).
 
 **Elsewhere**
-- **Landing, For business:** the customer phone shows the new shop page (two-column cards, + on
-  photos), and step 1 says the shop has its own page that can be linked from Instagram.
+- **Landing, For business:**
+  - the customer phone shows the new shop page (two-column cards, + on photos)
+  - checkout pays the CHIP way: "How you'll pay" with FPX picked, "Pay RM235", CHIP's bank list,
+    "Payment approved"
+  - the order lands in Orders as "Paid by FPX"
+  - each step runs on its own timer (about 20s for the loop), with a progress line under the
+    active step
+  - steps are clickable to jump to them, and hovering the phones pauses
 - **Store preview phone:** shows the new shop page, with the shop description as the owner's
   note bubble.
 
