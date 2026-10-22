@@ -212,6 +212,7 @@ describe('toItemCreateInput', () => {
       ),
     ).toEqual({
       name: 'Kek Batik',
+      slug: 'item-3',
       description: 'Nutella.',
       priceCents: null,
       position: 2,
@@ -227,6 +228,7 @@ describe('toItemCreateInput', () => {
   it('writes a single-price item with null description and no options', () => {
     expect(toItemCreateInput({ name: 'Cookies', priceCents: 2500 }, 0)).toEqual({
       name: 'Cookies',
+      slug: 'item-1',
       description: null,
       priceCents: 2500,
       position: 0,

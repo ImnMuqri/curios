@@ -13,7 +13,11 @@ export interface ShopTile {
 export interface ShopItem {
   id: string;
   name: string;
+  /** The item's link word, frozen when it was created. */
+  slug: string;
   description: string | null;
+  category: string | null;
+  tag: string | null;
   photoKey: string | null;
   priceCents: number | null;
   options: { id: string; label: string; priceCents: number }[];
@@ -22,7 +26,10 @@ export interface ShopItem {
 const ITEM_SELECT = {
   id: true,
   name: true,
+  slug: true,
   description: true,
+  category: true,
+  tag: true,
   photoKey: true,
   priceCents: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
@@ -76,6 +83,8 @@ export interface PublicShop {
   links: { label: string; url: string }[];
   /** "About your shop", above the items. */
   shopDescription: string | null;
+  /** The owner says the shop sells halal food. */
+  shopHalal: boolean;
   pickupEnabled: boolean;
   pickupNote: string | null;
   deliveryMode: DeliveryMode;
@@ -111,6 +120,7 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       backgroundColor: true,
       links: { orderBy: { position: 'asc' }, select: { label: true, url: true } },
       shopDescription: true,
+      shopHalal: true,
       pickupEnabled: true,
       pickupNote: true,
       deliveryMode: true,
@@ -131,6 +141,7 @@ export interface OwnerStore {
   settings: {
     enabled: boolean;
     shopDescription: string | null;
+    shopHalal: boolean;
     pickupEnabled: boolean;
     pickupNote: string | null;
     deliveryMode: DeliveryMode;
@@ -155,6 +166,7 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
       mode: true,
       storeEnabled: true,
       shopDescription: true,
+      shopHalal: true,
       pickupEnabled: true,
       pickupNote: true,
       deliveryMode: true,

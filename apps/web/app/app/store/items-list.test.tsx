@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ItemsList } from './items-list.js';
 import type { EditorItem } from './store-types.js';
 
-const base = { description: null, photoKey: null, photoUrl: null, options: [] };
+const base = { slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
 const items: EditorItem[] = [
   { ...base, id: 'a', name: 'Kek coklat', priceCents: null, available: true, options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }] },
   { ...base, id: 'b', name: 'Kek batik', priceCents: 4500, available: true },

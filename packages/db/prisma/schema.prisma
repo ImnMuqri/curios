@@ -225,6 +225,9 @@ model Page {
   storeEnabled        Boolean        @default(false)
   /// "About your shop": shown above the items, before the notice.
   shopDescription     String?
+  /// The owner's statement that the shop sells halal food, shown on the
+  /// shop and product pages. Shop-wide, not per item.
+  shopHalal           Boolean        @default(false)
   pickupEnabled       Boolean        @default(false)
   /// Where pickup happens, as the owner wants it said: "Seksyen 7, Shah Alam".
   pickupNote          String?
@@ -304,7 +307,16 @@ model Item {
   pageId      String
   page        Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
   name        String
+  /// The item's link word, made from the name when it is created and frozen
+  /// after, so a shared link survives a rename. Unique per page; itemSlug in
+  /// @curios/core/slug makes it.
+  slug        String
   description String?
+  /// Free text the owner types, trimmed; null when blank. The shop groups by it.
+  category    String?
+  /// One short word on the card (Best seller, Pre-order, New, or the owner's
+  /// own), at most ITEM_TAG_MAX characters; null when blank.
+  tag         String?
   /// An object key in storage, like Page.avatarKey.
   photoKey    String?
   priceCents  Int?
@@ -315,6 +327,7 @@ model Item {
   options     ItemOption[]
   orderLines  OrderLine[]
 
+  @@unique([pageId, slug])
   @@index([pageId, position])
 }
 

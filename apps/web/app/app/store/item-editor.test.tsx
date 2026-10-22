@@ -3,13 +3,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ItemEditor } from './item-editor.js';
 import type { EditorItem, ItemRow, ItemsApi } from './store-types.js';
 
-const batik: EditorItem = { id: 'a', name: 'Kek Batik', description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
+const batik: EditorItem = { id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
 const coklat: EditorItem = {
-  id: 'c', name: 'Kek coklat', description: null, photoKey: null, priceCents: null, available: true, photoUrl: null,
+  id: 'c', name: 'Kek coklat', slug: 'c', category: null, tag: null, description: null, photoKey: null, priceCents: null, available: true, photoUrl: null,
   options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }],
 };
 
-const row = (over: Partial<ItemRow> = {}): ItemRow => ({ id: 'n', name: 'Tart', description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
+const row = (over: Partial<ItemRow> = {}): ItemRow => ({ id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
 
 function api(over: Partial<ItemsApi> = {}): ItemsApi {
   return {
@@ -23,9 +23,9 @@ function api(over: Partial<ItemsApi> = {}): ItemsApi {
   };
 }
 
-function show(item: EditorItem | null, calls = api(), uploadsEnabled = true) {
+function show(item: EditorItem | null, calls = api(), uploadsEnabled = true, categories: string[] = []) {
   const props = { onSaved: vi.fn(), onPreview: vi.fn(), onRemoved: vi.fn(), onClose: vi.fn() };
-  render(<ItemEditor item={item} tint={0} uploadsEnabled={uploadsEnabled} api={calls} {...props} />);
+  render(<ItemEditor item={item} tint={0} uploadsEnabled={uploadsEnabled} api={calls} categories={categories} {...props} />);
   return { calls, ...props };
 }
 
@@ -48,14 +48,14 @@ describe('ItemEditor, a new item', () => {
     expect(screen.getByText('Customers see RM9')).toBeInTheDocument();
     await pause();
     expect(calls.add).toHaveBeenCalledTimes(1);
-    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, pricing: { kind: 'single', priceCents: 900 } });
+    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, category: null, tag: null, pricing: { kind: 'single', priceCents: 900 } });
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 'n', name: 'Tart' }));
 
     // Later changes update the item it became, not another new one.
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '10' } });
     await pause();
     expect(calls.add).toHaveBeenCalledTimes(1);
-    expect(calls.update).toHaveBeenCalledWith('n', { name: 'Tart', description: null, pricing: { kind: 'single', priceCents: 1000 } });
+    expect(calls.update).toHaveBeenCalledWith('n', { name: 'Tart', description: null, category: null, tag: null, pricing: { kind: 'single', priceCents: 1000 } });
   });
 
   // The second save is sent while the first is still creating the item.
@@ -94,6 +94,51 @@ describe('ItemEditor, a new item', () => {
   });
 });
 
+describe('ItemEditor, category and tag', () => {
+  it('saves a trimmed category and tag with the item', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(null);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
+    fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '9' } });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '  Kuih  ' } });
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: ' Best seller ' } });
+    await pause();
+    expect(calls.add).toHaveBeenCalledTimes(1);
+    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, category: 'Kuih', tag: 'Best seller', pricing: { kind: 'single', priceCents: 900 } });
+  });
+
+  it('clearing them sends null', async () => {
+    vi.useFakeTimers();
+    const { calls } = show({ ...batik, category: 'Kuih', tag: 'New' });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '' } });
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: '  ' } });
+    await pause();
+    expect(calls.update).toHaveBeenCalledWith('a', expect.objectContaining({ category: null, tag: null }));
+  });
+
+  it('refuses a tag over 20 characters, saying so, and sends nothing', async () => {
+    vi.useFakeTimers();
+    const { calls } = show({ ...batik, tag: 'New' });
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'x'.repeat(21) } });
+    await pause();
+    expect(calls.update).not.toHaveBeenCalled();
+    expect(screen.getByText(/tag is up to 20 characters/i)).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Tag'), { target: { value: 'x'.repeat(20) } });
+    await pause();
+    expect(calls.update).toHaveBeenCalledTimes(1);
+  });
+
+  it('the category field suggests the other categories of the owner, and the tag its three usual words', () => {
+    show(null, api(), true, ['Cakes', 'Kuih']);
+    const category = screen.getByLabelText('Category');
+    const list = document.getElementById(category.getAttribute('list') ?? 'none');
+    expect([...(list?.querySelectorAll('option') ?? [])].map((o) => o.getAttribute('value'))).toEqual(['Cakes', 'Kuih']);
+    const tag = screen.getByLabelText('Tag');
+    const tags = document.getElementById(tag.getAttribute('list') ?? 'none');
+    expect([...(tags?.querySelectorAll('option') ?? [])].map((o) => o.getAttribute('value'))).toEqual(['Best seller', 'Pre-order', 'New']);
+  });
+});
+
 describe('ItemEditor, an existing item', () => {
   it('saves a change once the owner pauses', async () => {
     vi.useFakeTimers();
@@ -101,7 +146,7 @@ describe('ItemEditor, an existing item', () => {
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek Batik Raya' } });
     expect(calls.update).not.toHaveBeenCalled();
     await pause();
-    expect(calls.update).toHaveBeenCalledWith('a', { name: 'Kek Batik Raya', description: 'Ten slices.', pricing: { kind: 'single', priceCents: 4500 } });
+    expect(calls.update).toHaveBeenCalledWith('a', { name: 'Kek Batik Raya', description: 'Ten slices.', category: null, tag: null, pricing: { kind: 'single', priceCents: 4500 } });
   });
 
   it('Done sends a change still waiting, at once, then closes', async () => {
@@ -156,7 +201,7 @@ describe('ItemEditor, an existing item', () => {
     fireEvent.change(screen.getByLabelText('Option 1 price in ringgit'), { target: { value: '99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Remove option 2' }));
     await pause();
-    expect(calls.update).toHaveBeenLastCalledWith('c', { name: 'Kek coklat', description: null, pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9900 }] } });
+    expect(calls.update).toHaveBeenLastCalledWith('c', { name: 'Kek coklat', description: null, category: null, tag: null, pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9900 }] } });
   });
 
   it('hides it from the shop at once with its switch', async () => {
@@ -209,7 +254,7 @@ describe('ItemEditor, an existing item', () => {
   it('hands the preview the item as it reads now', () => {
     const { onPreview } = show(batik);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek Batik Raya' } });
-    expect(onPreview).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'a', name: 'Kek Batik Raya', priceCents: 4500 }));
+    expect(onPreview).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'a', name: 'Kek Batik Raya', slug: 'a', category: null, tag: null, priceCents: 4500 }));
 
     // Unreadable: the preview keeps the item as last saved.
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: 'x' } });

@@ -18,6 +18,8 @@ import { storePageFor } from './store-page.js';
 
 export interface StoreSettings {
   enabled: boolean;
+  /** The owner says the shop sells halal food; shown on the shop and product pages. */
+  shopHalal: boolean;
   /** "About your shop", shown above the items. */
   shopDescription: string | null;
   pickupEnabled: boolean;
@@ -39,6 +41,7 @@ export type StoreSettingsPatch = Partial<Omit<StoreSettings, 'paymentQrKey'>>;
 
 const SELECT = {
   storeEnabled: true,
+  shopHalal: true,
   shopDescription: true,
   pickupEnabled: true,
   pickupNote: true,
@@ -86,6 +89,7 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
   const current = toSettings(await prisma.page.findUniqueOrThrow({ where: { id: page.id }, select: SELECT }));
   const next: StoreSettings = { ...current };
 
+  if (patch.shopHalal !== undefined) next.shopHalal = patch.shopHalal;
   if (patch.pickupEnabled !== undefined) next.pickupEnabled = patch.pickupEnabled;
   if (patch.shopDescription !== undefined) next.shopDescription = optionalText(patch.shopDescription, SHOP_DESCRIPTION_MAX, 'the shop description');
   if (patch.pickupNote !== undefined) next.pickupNote = optionalText(patch.pickupNote, PICKUP_NOTE_MAX, 'the pickup note');

@@ -71,6 +71,7 @@ async function aShop(options: ShopOptions = {}) {
             create: [
               {
                 name: 'Kek coklat moist',
+                slug: 'kek-coklat-moist',
                 position: 0,
                 options: {
                   create: [
@@ -79,7 +80,7 @@ async function aShop(options: ShopOptions = {}) {
                   ],
                 },
               },
-              { name: 'Tart nenas', priceCents: 2_000, position: 1 },
+              { name: 'Tart nenas', slug: 'tart-nenas', priceCents: 2_000, position: 1 },
             ],
           },
         },

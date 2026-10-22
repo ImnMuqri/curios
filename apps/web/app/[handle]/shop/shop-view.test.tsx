@@ -7,8 +7,8 @@ import { shopCopy } from './copy.js';
 const copy = shopCopy('en');
 
 const items = [
-  { id: 'cake', name: 'Kek Batik', description: 'Chilled, with Marie biscuits.', photoKey: null, photoUrl: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
-  { id: 'cookie', name: 'Cookies balang', description: null, photoKey: null, photoUrl: null, priceCents: 2500, options: [] },
+  { id: 'cake', name: 'Kek Batik', slug: 'cake', category: null, tag: null, description: 'Chilled, with Marie biscuits.', photoKey: null, photoUrl: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
+  { id: 'cookie', name: 'Cookies balang', slug: 'cookie', category: null, tag: null, description: null, photoKey: null, photoUrl: null, priceCents: 2500, options: [] },
 ];
 
 const base = {

@@ -84,7 +84,7 @@ describe('getOwnerOrders', () => {
 
   it('gives a line its item photo while the item exists', async () => {
     const owner = await anOwner();
-    const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Kek', photoKey: 'items/kek.jpg', position: 0 } });
+    const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Kek', slug: 'kek', photoKey: 'items/kek.jpg', position: 0 } });
     const id = await anOrder(owner.pageId);
     await write.orderLine.updateMany({ where: { orderId: id }, data: { itemId: item.id } });
     const [order] = await getOwnerOrders(owner.accountId);

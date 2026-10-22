@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
-import { ITEM_DESCRIPTION_MAX, MAX_OPTIONS, priceLine } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS, priceLine } from '@curios/core/store';
 import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
@@ -16,7 +16,7 @@ const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 
 /** An API row as the screen holds it, keeping the picture URL the row does not carry. */
 export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
-  return { id: row.id, name: row.name, description: row.description, photoKey: row.photoKey, available: row.available, priceCents: row.priceCents, options: row.options, photoUrl };
+  return { id: row.id, name: row.name, slug: row.slug, description: row.description, category: row.category, tag: row.tag, photoKey: row.photoKey, available: row.available, priceCents: row.priceCents, options: row.options, photoUrl };
 }
 
 /**
@@ -31,6 +31,7 @@ export function ItemEditor({
   item,
   tint,
   uploadsEnabled,
+  categories,
   api,
   onSaved,
   onPreview,
@@ -42,6 +43,8 @@ export function ItemEditor({
   /** Which of the four soft tints the no-photo square wears. */
   tint: number;
   uploadsEnabled: boolean;
+  /** The categories the owner's other items already use, offered as the owner types. */
+  categories: string[];
   api: ItemsApi;
   /** Called with the item as the API saved it (created, updated, or its picture changed). */
   onSaved: (item: EditorItem) => void;
@@ -53,7 +56,10 @@ export function ItemEditor({
   const [saved, setSaved] = useState<EditorItem | null>(item);
   const [name, setName] = useState(item?.name ?? '');
   const [description, setDescription] = useState(item?.description ?? '');
+  const [category, setCategory] = useState(item?.category ?? '');
+  const [tag, setTag] = useState(item?.tag ?? '');
   const [draft, setDraft] = useState<PricingDraft>(() => draftOf(item));
+  const listId = useId();
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [pictureFailed, setPictureFailed] = useState(false);
@@ -65,7 +71,7 @@ export function ItemEditor({
   const savedRef = useRef(saved);
   savedRef.current = saved;
 
-  const checked = checkFields(name, description, draft);
+  const checked = checkFields(name, description, draft, { category, tag });
   const problem = 'error' in checked ? checked.error : null;
 
   const autosave = useAutosave(async (fields: CheckedItem) => {
@@ -100,7 +106,10 @@ export function ItemEditor({
     onPreview({
       id: saved?.id ?? 'new',
       name: checked.name,
+      slug: saved?.slug ?? '',
       description: checked.description,
+      category: checked.category,
+      tag: checked.tag,
       photoKey: saved?.photoKey ?? null,
       photoUrl: saved?.photoUrl ?? null,
       available: saved?.available ?? true,
@@ -109,17 +118,21 @@ export function ItemEditor({
       options: pricedFields(checked.pricing).options.map((option, i) => ({ id: `draft-${i}`, ...option })),
     });
     // `checked` is derived from the first three; listing it would re-run on every render.
-  }, [name, description, draft, saved]);
+  }, [name, description, category, tag, draft, saved]);
 
-  function edit(next: { name?: string; description?: string; draft?: PricingDraft }) {
+  function edit(next: { name?: string; description?: string; category?: string; tag?: string; draft?: PricingDraft }) {
     const nextName = next.name ?? name;
     const nextDescription = next.description ?? description;
+    const nextCategory = next.category ?? category;
+    const nextTag = next.tag ?? tag;
     const nextDraft = next.draft ?? draft;
     if (next.name !== undefined) setName(next.name);
     if (next.description !== undefined) setDescription(next.description);
+    if (next.category !== undefined) setCategory(next.category);
+    if (next.tag !== undefined) setTag(next.tag);
     if (next.draft) setDraft(next.draft);
     setError('');
-    const fields = checkFields(nextName, nextDescription, nextDraft);
+    const fields = checkFields(nextName, nextDescription, nextDraft, { category: nextCategory, tag: nextTag });
     if (!('error' in fields)) autosave.schedule(fields);
   }
 
@@ -258,6 +271,27 @@ export function ItemEditor({
             </small>
           </div>
         </div>
+      </div>
+
+      <div className={styles.labels}>
+        <label className={ui.float}>
+          <em>Category</em>
+          <input value={category} list={`${listId}-categories`} maxLength={ITEM_CATEGORY_MAX * 2} autoComplete="off" onChange={(event) => edit({ category: event.target.value })} />
+          <datalist id={`${listId}-categories`}>
+            {categories.map((name) => (
+              <option key={name} value={name} />
+            ))}
+          </datalist>
+        </label>
+        <label className={ui.float}>
+          <em>Tag</em>
+          <input value={tag} list={`${listId}-tags`} maxLength={ITEM_TAG_MAX * 2} autoComplete="off" onChange={(event) => edit({ tag: event.target.value })} />
+          <datalist id={`${listId}-tags`}>
+            {ITEM_TAG_PRESETS.map((preset) => (
+              <option key={preset} value={preset} />
+            ))}
+          </datalist>
+        </label>
       </div>
 
       <div className={styles.sub}>

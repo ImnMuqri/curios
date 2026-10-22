@@ -14,13 +14,13 @@ vi.mock('../curios/resize-image.js', () => ({
 const { StoreScreen } = await import('./store-screen.js');
 
 const settings: StoreSettings = {
-  enabled: false, shopDescription: null, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
+  enabled: false, shopDescription: null, shopHalal: false, pickupEnabled: false, pickupNote: null, deliveryMode: 'NONE',
   deliveryFeeCents: null, minNoticeDays: 0, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
 };
 
 const items: EditorItem[] = [
-  { id: 'a', name: 'Kek Batik', description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
+  { id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
 ];
 
 const look: ShopLook = {
@@ -79,7 +79,7 @@ describe('StoreScreen, against the API', () => {
 
   it('adds with POST /store/items once the new item has a name and a price', async () => {
     vi.useFakeTimers();
-    apiFetch.mockResolvedValue({ item: { id: 'n', name: 'Tart', description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
+    apiFetch.mockResolvedValue({ item: { id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
     screenWith();
     fireEvent.click(screen.getByRole('button', { name: '+ Add item' }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
@@ -87,7 +87,7 @@ describe('StoreScreen, against the API', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(apiFetch).toHaveBeenCalledWith('/store/items', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Tart', description: null, pricing: { kind: 'single', priceCents: 900 } }),
+      body: JSON.stringify({ name: 'Tart', description: null, category: null, tag: null, pricing: { kind: 'single', priceCents: 900 } }),
     });
     fireEvent.click(screen.getByRole('button', { name: 'All items' }));
     expect(screen.getByRole('listitem', { name: 'Tart' })).toBeInTheDocument();

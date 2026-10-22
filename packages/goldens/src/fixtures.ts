@@ -98,6 +98,8 @@ export function toItemCreateInput(item: GoldenItem, position: number) {
   const options = item.options ?? [];
   return {
     name: item.name,
+    // Unique per page by position; the run never reads it.
+    slug: `item-${position + 1}`,
     description: item.description ?? null,
     // An item with options carries no price of its own, as the editor saves it.
     priceCents: options.length > 0 ? null : (item.priceCents ?? null),

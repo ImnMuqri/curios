@@ -76,7 +76,7 @@ describe('POST /store/items', () => {
 
   it('stops at the item limit', async () => {
     const owner = await anOwner(app);
-    await app.prisma.item.createMany({ data: Array.from({ length: 40 }, (_, position) => ({ pageId: owner.pageId, name: `i${position}`, priceCents: 100, position })) });
+    await app.prisma.item.createMany({ data: Array.from({ length: 40 }, (_, position) => ({ pageId: owner.pageId, name: `i${position}`, slug: `i${position}`, priceCents: 100, position })) });
     expect((await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().error.code).toBe('ITEM_LIMIT');
   });
 
@@ -108,6 +108,59 @@ describe('PATCH /store/items/:id', () => {
     const id = (await call(app, 'POST', '/store/items', a.cookie, cookies)).json().item.id as string;
     expect((await call(app, 'PATCH', `/store/items/${id}`, b.cookie, { name: 'mine now' })).statusCode).toBe(404);
     expect((await call(app, 'DELETE', `/store/items/${id}`, b.cookie)).statusCode).toBe(404);
+  });
+});
+
+describe('item link, category and tag', () => {
+  it('a new item gets a slug from its name', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'POST', '/store/items', owner.cookie, cake);
+    expect(res.json().item.slug).toBe('kek-batik');
+    const chinese = await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, name: '红豆糕' });
+    expect(chinese.json().item.slug).toBe('item');
+  });
+
+  it('a clashing name gets -2, then -3, and another page may reuse the slug', async () => {
+    const owner = await anOwner(app);
+    const slugs: string[] = [];
+    for (const name of ['Kek Batik', 'kek batik!', 'Kek  Batik']) {
+      slugs.push((await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, name })).json().item.slug as string);
+    }
+    expect(slugs).toEqual(['kek-batik', 'kek-batik-2', 'kek-batik-3']);
+    const other = await anOwner(app);
+    expect((await call(app, 'POST', '/store/items', other.cookie, { ...cookies, name: 'Kek Batik' })).json().item.slug).toBe('kek-batik');
+  });
+
+  it('renaming an item keeps its slug', async () => {
+    const owner = await anOwner(app);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item.id as string;
+    const res = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { name: 'Something else entirely' });
+    expect(res.json().item).toMatchObject({ name: 'Something else entirely', slug: 'cookies-balang' });
+    // A new item with the old name is a new item: it must not take the frozen slug.
+    const again = await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, name: 'Cookies balang' });
+    expect(again.json().item.slug).toBe('cookies-balang-2');
+  });
+
+  it('category and tag are saved and trimmed; blank clears them', async () => {
+    const owner = await anOwner(app);
+    const made = await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, category: '  Kuih  ', tag: ' Best seller ' });
+    expect(made.json().item).toMatchObject({ category: 'Kuih', tag: 'Best seller' });
+    const id = made.json().item.id as string;
+    const changed = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { tag: 'Raya special' });
+    expect(changed.json().item).toMatchObject({ category: 'Kuih', tag: 'Raya special' });
+    const cleared = await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { category: '   ', tag: null });
+    expect(cleared.json().item).toMatchObject({ category: null, tag: null });
+  });
+
+  it('a tag over 20 characters is refused with a clear error', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, tag: 'x'.repeat(21) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatchObject({ code: 'INVALID_ITEM' });
+    expect(res.json().error.message).toMatch(/20 characters/);
+    const id = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item.id as string;
+    expect((await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { tag: 'y'.repeat(21) })).json().error.code).toBe('INVALID_ITEM');
+    expect((await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, tag: 'x'.repeat(20) })).statusCode).toBe(201);
   });
 });
 

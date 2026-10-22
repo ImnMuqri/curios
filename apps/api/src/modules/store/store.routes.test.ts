@@ -136,6 +136,16 @@ describe('PATCH /store/settings', () => {
     expect(cleared.json().settings.shopDescription).toBeNull();
   });
 
+  it('the halal switch saves', async () => {
+    const owner = await anOwner(app);
+    expect((await call(app, 'GET', '/store', owner.cookie)).json().settings.shopHalal).toBe(false);
+    const on = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopHalal: true });
+    expect(on.json().settings.shopHalal).toBe(true);
+    expect((await call(app, 'GET', '/store', owner.cookie)).json().settings.shopHalal).toBe(true);
+    const off = await call(app, 'PATCH', '/store/settings', owner.cookie, { shopHalal: false });
+    expect(off.json().settings.shopHalal).toBe(false);
+  });
+
   it('saves the closed days and the delivery note', async () => {
     const owner = await anOwner(app);
     const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { closedDays: [0, 6], deliveryNote: ' Around Shah Alam ' });

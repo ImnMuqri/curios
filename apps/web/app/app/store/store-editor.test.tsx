@@ -4,12 +4,12 @@ import { StoreEditor } from './store-editor.js';
 import type { EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
 
 const ready: StoreSettings = {
-  enabled: true, shopDescription: 'Homemade cakes.', pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
+  enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
   deliveryFeeCents: 1000, minNoticeDays: 2, closedDays: [], deliveryNote: null, paymentQrKey: null, bankName: 'Maybank',
   bankAccountName: 'Lina', bankAccountNumber: '1234567890', tileSize: null,
 };
 
-const base = { description: null, photoKey: null, photoUrl: null, options: [] };
+const base = { slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
 const items: EditorItem[] = [
   { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true },
   { ...base, id: 'b', name: 'Burnt cheesecake', priceCents: 8500, available: false },
@@ -28,7 +28,7 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   };
   const itemsApi: ItemsApi = {
     add: vi.fn(),
-    update: vi.fn(async (id, patch) => ({ id, name: 'Kek batik', description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
+    update: vi.fn(async (id, patch) => ({ id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
     remove: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
     uploadPhoto: vi.fn(),
@@ -116,6 +116,18 @@ describe('ready to take orders', () => {
     expect(steps().getByRole('button', { name: /Getting it to them Turn on pickup or delivery/ })).toBeInTheDocument();
     fireEvent.click(steps().getByRole('button', { name: /A way to pay Add a QR or bank account/ }));
     expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
+describe('the halal switch', () => {
+  it('the halal switch saves', async () => {
+    const calls = show();
+    const toggle = screen.getByRole('switch', { name: 'Halal shop' });
+    expect(toggle).toHaveAttribute('aria-checked', 'false');
+    fireEvent.click(toggle);
+    await act(async () => {});
+    expect(calls.settingsApi.save).toHaveBeenCalledWith({ shopHalal: true });
+    expect(screen.getByRole('switch', { name: 'Halal shop' })).toHaveAttribute('aria-checked', 'true');
   });
 });
 

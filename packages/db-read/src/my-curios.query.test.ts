@@ -84,9 +84,9 @@ describe('getMyCurios', () => {
             mode: 'BUSINESS',
             items: {
               create: [
-                { name: 'Kek coklat', position: 0, priceCents: 9500 },
-                { name: 'Kek batik', position: 1 },
-                { name: 'Sold out', position: 2, available: false },
+                { name: 'Kek coklat', slug: 'kek-coklat', position: 0, priceCents: 9500 },
+                { name: 'Kek batik', slug: 'kek-batik', position: 1 },
+                { name: 'Sold out', slug: 'sold-out', position: 2, available: false },
               ],
             },
           },

@@ -4,7 +4,7 @@ import { DeliveryTab } from './delivery-tab.js';
 import type { SettingsPatch, StoreSettings } from './store-types.js';
 
 const settings: StoreSettings = {
-  enabled: true, shopDescription: null, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'NONE',
+  enabled: true, shopDescription: null, shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'NONE',
   deliveryFeeCents: null, minNoticeDays: 2, paymentQrKey: 'qr', bankName: null,
   bankAccountName: null, bankAccountNumber: null, tileSize: null,
   closedDays: [0], deliveryNote: null,

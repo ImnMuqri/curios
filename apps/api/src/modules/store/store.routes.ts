@@ -41,6 +41,7 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
       schema: {
         body: z.object({
           enabled: z.boolean().optional(),
+          shopHalal: z.boolean().optional(),
           pickupEnabled: z.boolean().optional(),
           pickupNote: text.nullable().optional(),
           shopDescription: text.nullable().optional(),
@@ -91,14 +92,14 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
     return { paymentQrKey: null };
   });
 
-  app.post('/store/items', { schema: { body: z.object({ name: text, description: text.nullable().optional(), pricing }) } }, async (request, reply) => {
+  app.post('/store/items', { schema: { body: z.object({ name: text, description: text.nullable().optional(), category: text.nullable().optional(), tag: text.nullable().optional(), pricing }) } }, async (request, reply) => {
     if (!request.account) throw new UnauthenticatedError();
     return reply.status(201).send({ item: await addItem(app.prisma, request.account.id, request.body) });
   });
 
   app.patch(
     '/store/items/:id',
-    { schema: { params, body: z.object({ name: text.optional(), description: text.nullable().optional(), available: z.boolean().optional(), pricing: pricing.optional() }) } },
+    { schema: { params, body: z.object({ name: text.optional(), description: text.nullable().optional(), category: text.nullable().optional(), tag: text.nullable().optional(), available: z.boolean().optional(), pricing: pricing.optional() }) } },
     async (request) => {
       if (!request.account) throw new UnauthenticatedError();
       return { item: await updateItem(app.prisma, request.account.id, request.params.id, request.body) };

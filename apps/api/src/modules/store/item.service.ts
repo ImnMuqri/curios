@@ -1,12 +1,16 @@
 import type { PrismaClient } from '@curios/db';
-import { ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_TAG_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
+import { itemSlug } from '@curios/core/slug';
 import { InvalidItemError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError } from './store.errors.js';
 import { storePageFor } from './store-page.js';
 
 export interface ItemRow {
   id: string;
   name: string;
+  slug: string;
   description: string | null;
+  category: string | null;
+  tag: string | null;
   photoKey: string | null;
   available: boolean;
   priceCents: number | null;
@@ -16,7 +20,10 @@ export interface ItemRow {
 const SELECT = {
   id: true,
   name: true,
+  slug: true,
   description: true,
+  category: true,
+  tag: true,
   photoKey: true,
   available: true,
   priceCents: true,
@@ -35,6 +42,27 @@ function checkDescription(raw: string | null): string | null {
   if (text === '') return null;
   if ([...text].length > ITEM_DESCRIPTION_MAX) throw new InvalidItemError(`Keep the description to ${ITEM_DESCRIPTION_MAX} characters.`);
   return text;
+}
+
+function checkCategory(raw: string | null): string | null {
+  if (raw === null) return null;
+  const text = raw.replace(/\s+/g, ' ').trim();
+  if (text === '') return null;
+  if ([...text].length > ITEM_CATEGORY_MAX) throw new InvalidItemError(`Keep the category to ${ITEM_CATEGORY_MAX} characters.`);
+  return text;
+}
+
+function checkTag(raw: string | null): string | null {
+  if (raw === null) return null;
+  const text = raw.replace(/\s+/g, ' ').trim();
+  if (text === '') return null;
+  if ([...text].length > ITEM_TAG_MAX) throw new InvalidItemError(`Keep the tag to ${ITEM_TAG_MAX} characters.`);
+  return text;
+}
+
+/** A unique-constraint failure on the slug: another item took it between the read and the write. */
+function slugRaced(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
 }
 
 function checkPricing(pricing: Pricing): Pricing {
@@ -61,31 +89,46 @@ export async function listItems(prisma: PrismaClient, accountId: string): Promis
 export async function addItem(
   prisma: PrismaClient,
   accountId: string,
-  input: { name: string; description?: string | null; pricing: Pricing },
+  input: { name: string; description?: string | null; category?: string | null; tag?: string | null; pricing: Pricing },
 ): Promise<ItemRow> {
   const name = checkName(input.name);
   const description = checkDescription(input.description ?? null);
+  const category = checkCategory(input.category ?? null);
+  const tag = checkTag(input.tag ?? null);
   const { priceCents, options } = pricingData(checkPricing(input.pricing));
   const page = await storePageFor(prisma, accountId);
 
   const count = await prisma.item.count({ where: { pageId: page.id } });
   if (count >= MAX_ITEMS) throw new ItemLimitError(MAX_ITEMS);
 
-  return prisma.item.create({
-    data: { pageId: page.id, name, description, priceCents, position: count, options: { create: options } },
-    select: SELECT,
-  });
+  // The slug is made here, once, and no update ever writes it: a renamed item
+  // keeps the link that was shared. Two requests can pick the same one; the
+  // unique index refuses the second, which picks again.
+  for (let attempt = 0; ; attempt++) {
+    const taken = new Set((await prisma.item.findMany({ where: { pageId: page.id }, select: { slug: true } })).map((row) => row.slug));
+    try {
+      return await prisma.item.create({
+        data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, priceCents, position: count, options: { create: options } },
+        select: SELECT,
+      });
+    } catch (error) {
+      if (attempt >= 4 || !slugRaced(error)) throw error;
+    }
+  }
 }
 
 export async function updateItem(
   prisma: PrismaClient,
   accountId: string,
   id: string,
-  input: { name?: string; description?: string | null; available?: boolean; pricing?: Pricing },
+  input: { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; pricing?: Pricing },
 ): Promise<ItemRow> {
-  const data: { name?: string; description?: string | null; available?: boolean; priceCents?: number | null } = {};
+  // No slug here, on purpose: it is frozen at creation.
+  const data: { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; priceCents?: number | null } = {};
   if (input.name !== undefined) data.name = checkName(input.name);
   if (input.description !== undefined) data.description = checkDescription(input.description);
+  if (input.category !== undefined) data.category = checkCategory(input.category);
+  if (input.tag !== undefined) data.tag = checkTag(input.tag);
   if (input.available !== undefined) data.available = input.available;
   const pricing = input.pricing ? pricingData(checkPricing(input.pricing)) : null;
   if (pricing) data.priceCents = pricing.priceCents;

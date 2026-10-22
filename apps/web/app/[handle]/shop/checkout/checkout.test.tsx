@@ -7,8 +7,8 @@ import { shopCopy } from '../copy.js';
 const copy = shopCopy('en');
 
 const items = [
-  { id: 'cake', name: 'Kek coklat moist', description: null, photoKey: null, photoUrl: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
-  { id: 'batik', name: 'Kek batik', description: null, photoKey: 'items/b.webp', photoUrl: 'https://cdn.test/items/b.webp', priceCents: 4500, options: [] },
+  { id: 'cake', name: 'Kek coklat moist', slug: 'cake', category: null, tag: null, description: null, photoKey: null, photoUrl: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
+  { id: 'batik', name: 'Kek batik', slug: 'batik', category: null, tag: null, description: null, photoKey: 'items/b.webp', photoUrl: 'https://cdn.test/items/b.webp', priceCents: 4500, options: [] },
 ];
 
 const base = {
@@ -247,8 +247,8 @@ describe('Checkout', () => {
     reply(409, {
       error: { code: 'PRICES_CHANGED', message: 'Prices changed since you opened the shop. Check your basket and try again.' },
       items: [
-        { id: 'cake', name: 'Kek coklat moist', description: null, photoKey: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 18000 }] },
-        { id: 'batik', name: 'Kek batik', description: null, photoKey: 'items/b.webp', priceCents: 4500, options: [] },
+        { id: 'cake', name: 'Kek coklat moist', slug: 'cake', category: null, tag: null, description: null, photoKey: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 18000 }] },
+        { id: 'batik', name: 'Kek batik', slug: 'batik', category: null, tag: null, description: null, photoKey: 'items/b.webp', priceCents: 4500, options: [] },
       ],
     });
     render(<Checkout {...base} />);

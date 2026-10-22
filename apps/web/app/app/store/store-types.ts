@@ -8,19 +8,22 @@ export type EditorItem = OwnerStore['items'][number] & { photoUrl: string | null
 export type ItemRow = {
   id: string;
   name: string;
+  slug: string;
   description: string | null;
+  category: string | null;
+  tag: string | null;
   photoKey: string | null;
   available: boolean;
   priceCents: number | null;
   options: { id: string; label: string; priceCents: number }[];
 };
 
-export type ItemPatch = { name?: string; description?: string | null; available?: boolean; pricing?: Pricing };
+export type ItemPatch = { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; pricing?: Pricing };
 
 // Function-typed properties, not method shorthand: they are handed around as
 // bare values, and method syntax's implicit `this` trips unbound-method.
 export type ItemsApi = {
-  add: (input: { name: string; description: string | null; pricing: Pricing }) => Promise<ItemRow>;
+  add: (input: { name: string; description: string | null; category: string | null; tag: string | null; pricing: Pricing }) => Promise<ItemRow>;
   update: (id: string, patch: ItemPatch) => Promise<ItemRow>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;

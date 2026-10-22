@@ -3,8 +3,8 @@ import { shopCopy } from './copy.js';
 import { basketMessage, priceBasket, whatsappNumber, whatsappOrderUrl } from './basket.js';
 
 const items = [
-  { id: 'cake', name: 'Kek Batik', description: null, photoKey: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
-  { id: 'cookie', name: 'Cookies balang', description: null, photoKey: null, priceCents: 2500, options: [] },
+  { id: 'cake', name: 'Kek Batik', slug: 'cake', category: null, tag: null, description: null, photoKey: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
+  { id: 'cookie', name: 'Cookies balang', slug: 'cookie', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [] },
 ];
 
 describe('priceBasket', () => {

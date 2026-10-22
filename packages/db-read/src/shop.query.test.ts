@@ -9,10 +9,11 @@ let openAccountId = '';
 let orderAccountId = '';
 
 const shelf = [
-  { name: 'A', priceCents: 1000, position: 0, available: true },
-  { name: 'B', priceCents: 2000, position: 1, available: false, photoKey: 'items/p/b.webp' },
+  { name: 'A', slug: 'a', category: 'Cakes', tag: 'New', priceCents: 1000, position: 0, available: true },
+  { name: 'B', slug: 'b', priceCents: 2000, position: 1, available: false, photoKey: 'items/p/b.webp' },
   {
     name: 'C',
+    slug: 'c',
     position: 2,
     available: true,
     photoKey: 'items/p/c.webp',
@@ -34,14 +35,15 @@ async function seed(handle: string, page: Record<string, unknown>) {
 beforeAll(async () => {
   await write.account.deleteMany({ where: { email: { endsWith: EMAIL } } });
   openAccountId = await seed('sq-open', { shopDescription: 'Homemade cakes, baked fresh.', closedDays: [0, 3], deliveryNote: 'Around Shah Alam' });
+  await seed('sq-halal', { shopHalal: true });
   await seed('sq-closed', { storeEnabled: false });
   await seed('sq-personal', { mode: 'PERSONAL' });
   await seed('sq-draft', { published: false });
   // Created in the reverse of their positions, so insertion order cannot pass for position order.
   orderAccountId = await seed('sq-order', {
     items: { create: [
-      { name: 'Second', position: 1, available: true, photoKey: 'items/p/second.webp' },
-      { name: 'First', position: 0, available: true, photoKey: 'items/p/first.webp' },
+      { name: 'Second', slug: 'second', position: 1, available: true, photoKey: 'items/p/second.webp' },
+      { name: 'First', slug: 'first', position: 0, available: true, photoKey: 'items/p/first.webp' },
     ] },
     links: { create: [
       { label: 'Two', url: 'https://two.example.com', position: 1 },
@@ -67,6 +69,14 @@ describe('getPublicShop', () => {
     expect(shop?.items.map((item) => item.name)).toEqual(['A', 'C']);
     expect(shop?.items[1]?.options.map((option) => option.label)).toEqual(['1kg', '2kg']);
     expect(shop).not.toHaveProperty('paymentQrKey');
+  });
+
+  it('carries each item slug, category and tag, and the shop halal switch', async () => {
+    const shop = await getPublicShop('sq-open');
+    expect(shop?.items[0]).toMatchObject({ slug: 'a', category: 'Cakes', tag: 'New' });
+    expect(shop?.items[1]).toMatchObject({ slug: 'c', category: null, tag: null });
+    expect(shop?.shopHalal).toBe(false);
+    expect((await getPublicShop('sq-halal'))?.shopHalal).toBe(true);
   });
 
   // Review Focus 3.
@@ -112,6 +122,12 @@ describe('getOwnerStore', () => {
     const store = await getOwnerStore(openAccountId);
     expect(store?.items.map((item) => [item.name, item.available])).toEqual([['A', true], ['B', false], ['C', true]]);
     expect(store?.settings).toMatchObject({ enabled: true, shopDescription: 'Homemade cakes, baked fresh.', pickupEnabled: true, paymentQrKey: 'qr/p/x.png', tileSize: null });
+  });
+
+  it('carries slug, category, tag and the halal switch for the editor', async () => {
+    const store = await getOwnerStore(openAccountId);
+    expect(store?.items[0]).toMatchObject({ slug: 'a', category: 'Cakes', tag: 'New' });
+    expect(store?.settings.shopHalal).toBe(false);
   });
 
   it('carries the closed days and the delivery note', async () => {

@@ -13,6 +13,7 @@
     "./phone": "./src/phone.ts",
     "./socials": "./src/socials.ts",
     "./store": "./src/store.ts",
+    "./slug": "./src/slug.ts",
     "./orders": "./src/orders.ts"
   },
   "scripts": {

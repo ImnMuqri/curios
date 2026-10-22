@@ -124,6 +124,12 @@ export function StoreEditor({
   };
   const description = useSettingText(settings.shopDescription ?? '', (text) => ({ shopDescription: orNull(text) }), save);
 
+  /** What the owner's other items are filed under, for the category field to suggest. */
+  const categories = [...new Set(items.filter((other) => other.id !== editing).map((other) => other.category).filter((value): value is string => Boolean(value)))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  const toggleHalal = () => void save({ shopHalal: !settings.shopHalal }).catch(() => undefined);
+
   const readiness = { ...settings, paymentQrKey: qr.has ? 'qr' : null };
   const gaps = storeGaps(readiness);
   const live = items.filter((item) => item.available);
@@ -284,6 +290,7 @@ export function StoreEditor({
                 item={editingItem}
                 tint={editingIndex}
                 uploadsEnabled={uploadsEnabled}
+                categories={categories}
                 api={itemsApi}
                 onSaved={saved}
                 onPreview={setDraftItem}
@@ -312,6 +319,15 @@ export function StoreEditor({
                     </small>
                   </div>
                   <SaveState status={description.autosave.status} error={description.autosave.error} retry={description.autosave.retry} />
+                  <div className={styles.row}>
+                    <span className={styles.rowText}>
+                      <b>Halal shop</b>
+                      <span>{settings.shopHalal ? 'Your shop and its items say halal' : 'Switch on if everything you sell is halal'}</span>
+                    </span>
+                    <button type="button" className={ui.switch} role="switch" aria-checked={settings.shopHalal} aria-label="Halal shop" onClick={toggleHalal}>
+                      <i />
+                    </button>
+                  </div>
                 </section>
                 <ItemsList
                   items={items}

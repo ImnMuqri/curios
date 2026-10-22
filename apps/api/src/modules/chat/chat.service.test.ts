@@ -963,10 +963,10 @@ describe('the shop in the chat path', () => {
     const pageId = await pageIdFor('nadia');
     await prisma.page.update({ where: { id: pageId }, data: { storeEnabled, mode } });
     await prisma.item.create({
-      data: { pageId, name: 'Kek Batik', priceCents: 2500, position: 1, available: true },
+      data: { pageId, name: 'Kek Batik', slug: 'kek-batik', priceCents: 2500, position: 1, available: true },
     });
     await prisma.item.create({
-      data: { pageId, name: 'Hidden Tart', priceCents: 900, position: 0, available: false },
+      data: { pageId, name: 'Hidden Tart', slug: 'hidden-tart', priceCents: 900, position: 0, available: false },
     });
   }
 
@@ -1741,10 +1741,10 @@ describe('order chips', () => {
   async function seedItems(storeEnabled: boolean) {
     const pageId = await pageIdFor('nadia');
     await prisma.page.update({ where: { id: pageId }, data: { storeEnabled, mode: 'BUSINESS' } });
-    const batik = await prisma.item.create({ data: { pageId, name: 'Kek Batik', priceCents: 2500, position: 0, available: true } });
-    const coklat = await prisma.item.create({ data: { pageId, name: 'Kek Coklat Moist', priceCents: 9500, position: 1, available: true } });
-    await prisma.item.create({ data: { pageId, name: 'Tart Nenas', priceCents: 900, position: 2, available: true } });
-    await prisma.item.create({ data: { pageId, name: 'Hidden Tart', priceCents: 900, position: 3, available: false } });
+    const batik = await prisma.item.create({ data: { pageId, name: 'Kek Batik', slug: 'kek-batik', priceCents: 2500, position: 0, available: true } });
+    const coklat = await prisma.item.create({ data: { pageId, name: 'Kek Coklat Moist', slug: 'kek-coklat-moist', priceCents: 9500, position: 1, available: true } });
+    await prisma.item.create({ data: { pageId, name: 'Tart Nenas', slug: 'tart-nenas', priceCents: 900, position: 2, available: true } });
+    await prisma.item.create({ data: { pageId, name: 'Hidden Tart', slug: 'hidden-tart', priceCents: 900, position: 3, available: false } });
     return { batik, coklat };
   }
 

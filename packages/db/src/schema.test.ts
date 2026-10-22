@@ -447,6 +447,7 @@ describe('the shelf', () => {
       data: {
         pageId,
         name: 'Kek Batik',
+        slug: 'kek-batik',
         position: 0,
         options: {
           create: [

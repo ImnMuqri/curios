@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkFields, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
+import { CATEGORY_SENTENCE, checkFields, type PricingDraft, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
 
 describe('draftOf', () => {
   it('reads a priced item as one price, and an item with options as its options', () => {
@@ -42,6 +42,8 @@ describe('checkFields', () => {
     expect(checkFields(' Tart ', '   ', { kind: 'single', price: '9', options: [] })).toEqual({
       name: 'Tart',
       description: null,
+      category: null,
+      tag: null,
       pricing: { kind: 'single', priceCents: 900 },
     });
   });
@@ -49,6 +51,21 @@ describe('checkFields', () => {
   it('counts the description the way the server will, without its surrounding spaces', () => {
     expect('error' in checkFields('Tart', ` ${'x'.repeat(280)} `, { kind: 'single', price: '9', options: [] })).toBe(false);
     expect('error' in checkFields('Tart', 'x'.repeat(281), { kind: 'single', price: '9', options: [] })).toBe(true);
+  });
+});
+
+describe('checkFields, category and tag', () => {
+  const single: PricingDraft = { kind: 'single', price: '9', options: [] };
+
+  it('trims them and sends null for blank', () => {
+    expect(checkFields('Tart', '', single, { category: ' Kuih  raya ', tag: ' New ' })).toMatchObject({ category: 'Kuih raya', tag: 'New' });
+    expect(checkFields('Tart', '', single, { category: '  ', tag: '' })).toMatchObject({ category: null, tag: null });
+  });
+
+  it('refuses a tag over 20 characters with a sentence, and allows exactly 20', () => {
+    expect(checkFields('Tart', '', single, { category: '', tag: 'x'.repeat(21) })).toEqual({ error: TAG_SENTENCE });
+    expect('error' in checkFields('Tart', '', single, { category: '', tag: 'x'.repeat(20) })).toBe(false);
+    expect(checkFields('Tart', '', single, { category: 'x'.repeat(31), tag: '' })).toEqual({ error: CATEGORY_SENTENCE });
   });
 });
 

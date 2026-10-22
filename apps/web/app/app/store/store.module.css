@@ -438,6 +438,13 @@
   gap: 10px;
 }
 
+.labels {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
 .sub {
   display: flex;
   align-items: baseline;

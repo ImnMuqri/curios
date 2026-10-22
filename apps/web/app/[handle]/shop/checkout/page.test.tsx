@@ -31,6 +31,7 @@ const shop: Checkout = {
   backgroundColor: null,
   links: [{ label: 'WA', url: 'https://wa.me/60123456789' }],
   shopDescription: null,
+  shopHalal: false,
   pickupEnabled: true,
   pickupNote: 'Seksyen 7',
   deliveryMode: 'FLAT',
@@ -38,7 +39,7 @@ const shop: Checkout = {
   deliveryNote: 'Around Shah Alam',
   minNoticeDays: 2,
   closedDays: [0],
-  items: [{ id: 'batik', name: 'Kek batik', description: null, photoKey: 'items/b.webp', priceCents: 4500, options: [] }],
+  items: [{ id: 'batik', name: 'Kek batik', slug: 'batik', category: null, tag: null, description: null, photoKey: 'items/b.webp', priceCents: 4500, options: [] }],
   canTakeOrders: true,
 };
 
