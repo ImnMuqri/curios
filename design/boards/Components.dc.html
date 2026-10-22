@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios motion components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#191f2c}a:hover{color:#2340c8}
+.track{display:flex;gap:12px;width:max-content;animation:marq 38s linear infinite}
+.track.rev{animation-direction:reverse;animation-duration:46s}
+.lane:hover .track{animation-play-state:paused}
+@keyframes marq{to{transform:translateX(-50%)}}
+@media (prefers-reduced-motion: reduce){.track{animation:none}}
+.chip{flex:none;margin:0;padding:10px 16px;border-radius:18px 18px 6px 18px;background:#ffffff;color:#191f2c;font-size:16px;white-space:nowrap}
+</style>
+</helmet>
+<div style="width: 1280px; min-height: 1480px; box-sizing: border-box; padding: 64px; background: #f0f1f4; color: #191f2c; font-family: 'IBM Plex Sans', system-ui, sans-serif; display: flex; flex-direction: column; gap: 40px">
+
+<div style="display: flex; flex-direction: column; gap: 8px">
+<p style="margin: 0; font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: #696e7b">Motion kit · after React Bits</p>
+<h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 44px; font-weight: 700; letter-spacing: -0.03em">Four components, each one doing a job on the page</h1>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px">
+
+<section aria-labelledby="c1" style="display: flex; flex-direction: column; gap: 20px; padding: 32px; border: 1.5px solid #191f2c; border-radius: 16px; background: #ffffff">
+<header style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px"><h2 id="c1" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700">Rotating Text</h2><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #696e7b">hero headline</span></header>
+<div style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; min-height: 220px">
+<p style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -0.03em">Your link in bio answers</p>
+<p aria-live="polite" style="margin: 0; align-self: flex-start; height: 1.2em; overflow: hidden; padding: 0 14px; border-radius: 10px; background: #2340c8; color: #fafbfc; font-family: 'Bricolage Grotesque', sans-serif; font-size: 40px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em">
+<span style="display: flex; flex-direction: column; transform: translateY(-{{rotY}}em); transition: {{rotTransition}}">
+<sc-for list="{{ rotWords }}" as="w" hint-placeholder-count="5"><span style="display: block; height: 1.2em; white-space: nowrap">{{ w }}</span></sc-for>
+</span>
+</p>
+</div>
+<p style="margin: 0; font-size: 14px; color: #696e7b">Each customer phrasing rolls up into the same slot, so the headline acts out "forty ways, one question". Rolls on a spring; stays on the first phrase for reduced motion.</p>
+</section>
+
+<section aria-labelledby="c2" style="display: flex; flex-direction: column; gap: 20px; padding: 32px; border: 1.5px solid #191f2c; border-radius: 16px; background: #191f2c; color: #fafbfc">
+<header style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px"><h2 id="c2" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: #bfd1f9">Count Up</h2><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #b3b7c1">storm counter</span></header>
+<div style="flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: 16px; min-height: 220px">
+<p style="margin: 0; padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: #ffffff; color: #191f2c; font-size: 16px">How much is a 1kg chocolate cake?</p>
+<p style="margin: 0; display: flex; align-items: baseline; gap: 12px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 18px; color: #b3b7c1">asked</span><span style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 96px; font-weight: 700; line-height: 0.9; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; color: #fafbfc">{{countShown}}×</span></p>
+<button type="button" onClick="{{ replayCount }}" style="min-height: 44px; padding: 0 18px; border: 1.5px solid #fafbfc; border-radius: 10px; background: transparent; color: #fafbfc; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer">Replay</button>
+</div>
+<p style="margin: 0; font-size: 14px; color: #b3b7c1">Eases out to 40 as the messages merge into one. Tabular figures so the number never jitters. Jumps straight to 40 for reduced motion.</p>
+</section>
+
+</div>
+
+<section aria-labelledby="c3" style="display: flex; flex-direction: column; gap: 20px; padding: 32px 0; border: 1.5px solid #191f2c; border-radius: 16px; background: #eaf0ff; overflow: hidden">
+<header style="display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 0 32px"><h2 id="c3" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: #122686">Scroll Velocity</h2><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #696e7b">between hero and storm</span></header>
+<div class="lane" aria-label="Forty ways customers ask the price" role="img" style="display: flex; flex-direction: column; gap: 12px">
+<div class="track">
+<p class="chip">how much?</p><p class="chip">price pls</p><p class="chip">berapa harga?</p><p class="chip">how much for 1kg?</p><p class="chip">brp?</p><p class="chip">rm brp</p><p class="chip">how much ah sis</p><p class="chip">price list ada?</p><p class="chip">mahal tak</p><p class="chip">quote pls</p><p class="chip">kak, berapa?</p>
+<p class="chip" aria-hidden="true">how much?</p><p class="chip" aria-hidden="true">price pls</p><p class="chip" aria-hidden="true">berapa harga?</p><p class="chip" aria-hidden="true">how much for 1kg?</p><p class="chip" aria-hidden="true">brp?</p><p class="chip" aria-hidden="true">rm brp</p><p class="chip" aria-hidden="true">how much ah sis</p><p class="chip" aria-hidden="true">price list ada?</p><p class="chip" aria-hidden="true">mahal tak</p><p class="chip" aria-hidden="true">quote pls</p><p class="chip" aria-hidden="true">kak, berapa?</p>
+</div>
+<div class="track rev">
+<p class="chip">chocolate 1kg price</p><p class="chip">hrg kek coklat?</p><p class="chip">may i know the price</p><p class="chip">pm price</p><p class="chip">harga??</p><p class="chip">cost?</p><p class="chip">boleh tau harga?</p><p class="chip">how much ya</p><p class="chip">brp ye kak</p><p class="chip">price ah?</p>
+<p class="chip" aria-hidden="true">chocolate 1kg price</p><p class="chip" aria-hidden="true">hrg kek coklat?</p><p class="chip" aria-hidden="true">may i know the price</p><p class="chip" aria-hidden="true">pm price</p><p class="chip" aria-hidden="true">harga??</p><p class="chip" aria-hidden="true">cost?</p><p class="chip" aria-hidden="true">boleh tau harga?</p><p class="chip" aria-hidden="true">how much ya</p><p class="chip" aria-hidden="true">brp ye kak</p><p class="chip" aria-hidden="true">price ah?</p>
+</div>
+</div>
+<p style="margin: 0; padding: 0 32px; font-size: 14px; color: #191f2c">Two lanes of the real storm phrasings, in opposite directions; in code their speed follows scroll velocity, here it's a steady drift. Hover pauses. Still for reduced motion.</p>
+</section>
+
+<section aria-labelledby="c4" style="display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; align-items: center; padding: 40px; border: 1.5px solid #191f2c; border-radius: 16px; background: #2340c8; color: #fafbfc">
+<div style="display: flex; flex-direction: column; gap: 16px">
+<header style="display: flex; flex-direction: column; gap: 4px"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #dfe8fd">leads section</span><h2 id="c4" style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 22px; font-weight: 700; color: #eaf0ff">Card Swap</h2></header>
+<p style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 34px; font-weight: 700; line-height: 1.1; letter-spacing: -0.03em; color: #eaf0ff">Overnight, the questions pile up. Each one already answered.</p>
+<p style="margin: 0; font-size: 14px; color: #dfe8fd">The deck cycles every few seconds, front card dropping to the back. It shows volume without a fake inbox count. Click to send the front card back yourself.</p>
+</div>
+<button type="button" aria-label="Show the next question" onClick="{{ swap }}" style="position: relative; display: block; width: 100%; height: 320px; padding: 0; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer">
+<sc-for list="{{ cards }}" as="c" hint-placeholder-count="4">
+<article style="position: absolute; left: 0; right: 80px; bottom: 0; padding: 22px 24px; border-radius: 20px; background: #ffffff; color: #191f2c; transform: {{c.tf}}; z-index: {{c.z}}; opacity: {{c.op}}; transition: transform 560ms cubic-bezier(0.34, 1.3, 0.64, 1), opacity 400ms ease">
+<p style="margin: 0 0 12px; display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #696e7b"><span>curios.my/keklina</span><span>{{c.time}}</span></p>
+<p style="margin: 0 0 10px; font-size: 17px; font-weight: 600">{{c.q}}</p>
+<p style="margin: 0; padding: 10px 14px; border-radius: 14px 14px 14px 4px; background: #f3dde3; font-size: 15px">{{c.a}}</p>
+</article>
+</sc-for>
+</button>
+</section>
+
+<p style="margin: 0; font-size: 12.5px; color: #696e7b">Kek Lina is the landing page's demo shop. Effects re-created from React Bits' Rotating Text, Count Up, Scroll Velocity and Card Swap, styled with Curios tokens.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1480}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.rot = ['berapa harga?', 'how much ah?', 'brp 1kg?', 'price pls', 'harga kek?'];
+    this.qa = [
+      { q: 'How much is a 1kg chocolate cake?', a: 'A 1kg chocolate cake is RM95. Please order 2 days ahead.', time: '11:42 pm' },
+      { q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.', time: '12:08 am' },
+      { q: 'Are you open on Sunday?', a: 'Closed on Sundays. Monday to Saturday, 10am to 7pm.', time: '1:15 am' },
+      { q: 'Can you write a name on the cake?', a: 'Yes, for free. Just tell us the name when you order.', time: '6:50 am' }
+    ];
+    this.state = { r: 0, rAnim: true, n: 0, front: 0 };
+  }
+  reduced() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+  componentDidMount() {
+    if (this.reduced()) { this.setState({ n: 40 }); return; }
+    this.rotTimer = setInterval(() => {
+      const next = this.state.r + 1;
+      this.setState({ r: next, rAnim: true });
+      if (next === this.rot.length) this.rotSnap = setTimeout(() => this.setState({ r: 0, rAnim: false }), 520);
+    }, 2000);
+    this.swapTimer = setInterval(() => this.next(), 3200);
+    this.runCount();
+  }
+  componentWillUnmount() {
+    clearInterval(this.rotTimer); clearTimeout(this.rotSnap); clearInterval(this.swapTimer);
+    if (this.raf) cancelAnimationFrame(this.raf);
+  }
+  runCount() {
+    if (this.raf) cancelAnimationFrame(this.raf);
+    if (this.reduced()) { this.setState({ n: 40 }); return; }
+    const start = performance.now();
+    const dur = 1600;
+    const step = (t) => {
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      this.setState({ n: Math.round(eased * 40) });
+      if (p < 1) this.raf = requestAnimationFrame(step);
+    };
+    this.raf = requestAnimationFrame(step);
+  }
+  next() {
+    this.setState({ front: (this.state.front + 1) % this.qa.length });
+  }
+  renderVals() {
+    const n = this.qa.length;
+    const cards = this.qa.map((c, k) => {
+      const p = (k - this.state.front + n) % n;
+      return {
+        q: c.q, a: c.a, time: c.time,
+        tf: 'translate(' + (p * 26) + 'px, ' + (-p * 30) + 'px) scale(' + (1 - p * 0.05).toFixed(2) + ')',
+        z: String(n - p),
+        op: p === n - 1 ? '0.55' : '1'
+      };
+    });
+    return {
+      rotWords: this.rot.concat([this.rot[0]]),
+      rotY: (this.state.r * 1.2).toFixed(2),
+      rotTransition: this.state.rAnim ? 'transform 480ms cubic-bezier(0.34, 1.4, 0.64, 1)' : 'none',
+      countShown: this.state.n,
+      replayCount: () => this.runCount(),
+      cards: cards,
+      swap: () => this.next()
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -992,7 +992,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="bl-pick" role="radiogroup" aria-label="How much time to add">
 <sc-for list="{{ plans }}" as="p" hint-placeholder-count="2"><button type="button" class="opt2" role="radio" aria-checked="{{p.on}}" onClick="{{ p.go }}" style="border-color: {{p.bd}}; background: {{p.bg}}; box-shadow: {{p.sh}}"><span class="on1" style="background: {{p.dot}}; box-shadow: {{p.ring}}"><svg viewBox="0 0 24 24" style="opacity: {{p.tick}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><small>{{p.name}}</small><b>{{p.price}}</b><span>{{p.note}}</span><sc-if value="{{ p.hasSave }}" hint-placeholder-val="{{ false }}"><em>2 months free</em></sc-if></button></sc-for>
 </div>
-<div class="bl-pay"><button type="button" class="go" onClick="{{ openPay }}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v13H3zM3 10h18"></path></svg>Pay {{price}}</button><p>FPX or card, through Billplz.<br>It adds to the time you already have.</p></div>
+<div class="bl-pay"><button type="button" class="go" onClick="{{ openPay }}"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18v13H3zM3 10h18"></path></svg>Pay {{price}}</button><p>FPX, e-wallet or card, through CHIP.<br>It adds to the time you already have.</p></div>
 </div>
 
 <div class="bl-card bl-use">
@@ -1020,11 +1020,11 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="bl-box">
 <sc-if value="{{ confirmStep }}" hint-placeholder-val="{{ true }}">
 <h3>Add {{planWord}}</h3>
-<p>You'll go to Billplz to pay by FPX or card, then come straight back here.</p>
+<p>You'll go to CHIP to pay by FPX, e-wallet or card, then come straight back here.</p>
 <div class="bl-line"><span>Business, 1 {{planWord}}<span style="display: block; font-size: 12.5px; color: #696e7b">Paid until becomes {{newLong}}</span></span><b>{{price}}</b></div>
-<div class="bl-f"><button type="button" class="btn2" onClick="{{ closeModal }}" style="height: 40px">Cancel</button><button type="button" class="prim" onClick="{{ goPay }}" style="height: 40px">Continue to Billplz</button></div>
+<div class="bl-f"><button type="button" class="btn2" onClick="{{ closeModal }}" style="height: 40px">Cancel</button><button type="button" class="prim" onClick="{{ goPay }}" style="height: 40px">Continue to CHIP</button></div>
 </sc-if>
-<sc-if value="{{ payingStep }}" hint-placeholder-val="{{ false }}"><div class="bl-wait"><span class="bl-spin"></span><b>Waiting for Billplz…</b><span style="font-size: 13px; color: #696e7b">This is where your bank's page would open.</span></div></sc-if>
+<sc-if value="{{ payingStep }}" hint-placeholder-val="{{ false }}"><div class="bl-wait"><span class="bl-spin"></span><b>Waiting for CHIP…</b><span style="font-size: 13px; color: #696e7b">This is where CHIP's payment page would open.</span></div></sc-if>
 </div>
 </div>
 </sc-if>

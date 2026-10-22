@@ -68,8 +68,9 @@ a{color:#191f2c}a:hover{color:#2340c8}
 @keyframes ripple{from{opacity:.9;transform:scale(.7)}to{opacity:0;transform:scale(1.6)}}
 /* chat inside the card (Ask tab open) */
 .pc-chat{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
-.pc-q{align-self:flex-end;max-width:88%;margin:0;padding:9px 13px;border-radius:18px 18px 6px 18px;background:#fafbfc;color:#191f2c;font-size:13.5px;line-height:1.4}
-.pc-a{align-self:flex-start;max-width:92%;min-height:56px;margin:0;padding:9px 13px;border-radius:18px 18px 18px 6px;font-size:13.5px;line-height:1.4;color:#191f2c}
+.pc-q{align-self:flex-end;max-width:88%;margin:0;padding:9px 13px;border-radius:18px;background:rgba(250,251,252,.16);color:#fafbfc;font-size:13.5px;line-height:1.4}
+.pc-a{align-self:stretch;min-height:56px;margin:0;padding:0;font-size:14px;line-height:1.5;color:#fafbfc}
+.pc-a::before{content:attr(data-who);display:block;margin-bottom:4px;padding-left:26px;font-size:11.5px;font-weight:600;line-height:18px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 9px 9px,var(--acc) 8.5px,transparent 9px) no-repeat}
 
 /* How it works: steps slide sideways as the page scrolls (pinned horizontal track) */
 .hs-view{overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
@@ -207,6 +208,22 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .cust-photo{position:absolute;inset:0 0 auto 0;height:58%}
 .cust-photo img{display:block;width:100%;height:100%;object-fit:cover;object-position:62% 22%;-webkit-mask-image:linear-gradient(to bottom,#000 35%,transparent 100%);mask-image:linear-gradient(to bottom,#000 35%,transparent 100%)}
 .crow{left:18px;right:18px;height:48px;display:flex;align-items:center;gap:10px;padding:5px;border-radius:999px;transition:background 200ms ease}
+.cs-top{left:14px;right:14px;top:16px;display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;opacity:.85}
+.cs-back{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:rgba(250,251,252,.12)}
+.cs-open{left:18px;top:60px;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;border-radius:999px;background:rgba(29,154,108,.18);color:#9be3c4;font-size:10.5px;font-weight:600}
+.cs-open i{width:6px;height:6px;border-radius:50%;background:#1d9a6c}
+.cs-name{left:18px;top:88px;margin:0;font-family:'Fraunces',serif;font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.cs-facts{left:18px;right:18px;top:126px;margin:0;font-size:11px;opacity:.75;white-space:nowrap}
+.cs-cats{left:18px;top:156px;display:flex;gap:5px}
+.cs-cats span{height:26px;padding:0 11px;border-radius:999px;background:rgba(250,251,252,.1);font-size:11px;font-weight:600;line-height:26px}
+.cs-cats span.on{background:#fafbfc;color:#3d0f1e}
+.cs-card{width:126px}
+.cs-ph{position:relative;display:block;width:126px;height:126px;overflow:hidden;border-radius:16px}
+.cs-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cs-tag{position:absolute;top:6px;left:6px;padding:2px 7px;border-radius:999px;background:#fafbfc;color:#3d0f1e;font-size:9.5px;font-weight:700}
+.cs-add{position:absolute;right:6px;bottom:6px;display:grid;place-items:center;min-width:30px;height:30px;padding:0 8px;border-radius:999px;font-size:15px;font-weight:700;box-shadow:0 6px 14px -8px rgba(0,0,0,.6);transition:background 200ms,color 200ms,transform 150ms}
+.cs-card>b{display:block;margin-top:6px;font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cs-card>span:last-child{display:block;font-size:11px;opacity:.75}
 .cbar{left:18px;right:18px;top:542px;height:44px;display:flex;align-items:center;padding:0 5px 0 16px;border-radius:999px;background:#fafbfc}
 .sheet{position:absolute;left:0;right:0;top:170px;bottom:0;border-radius:26px 26px 0 0;background:#fafbfc;color:#191f2c}
 .flabel{left:18px;margin:0;font-size:11.5px;color:#4b5060}
@@ -507,7 +524,7 @@ details.q[open] summary::after{content:'–'}
 <sc-if value="{{ c.askOpen }}" hint-placeholder-val="{{ true }}">
 <span class="pc-chat" style="min-height: 168px; justify-content: flex-start">
 <span class="pc-q">{{c.q}}</span>
-<span class="pc-a" style="background: {{c.warm}}">{{c.aShown}}<sc-if value="{{ c.typing }}" hint-placeholder-val="{{ false }}"><span class="caret" aria-hidden="true"></span></sc-if></span>
+<span class="pc-a" data-who="{{c.short}}’s page" style="--acc: {{c.accent}}">{{c.aShown}}<sc-if value="{{ c.typing }}" hint-placeholder-val="{{ false }}"><span class="caret" aria-hidden="true"></span></sc-if></span>
 </span>
 </sc-if>
 <sc-if value="{{ c.linksOpen }}" hint-placeholder-val="{{ false }}">
@@ -575,8 +592,8 @@ details.q[open] summary::after{content:'–'}
 <span class="pc-ask" style="margin-top: auto">Ask {{sel.short}} anything<span class="pc-send" style="background: {{sel.accent}}"><svg aria-hidden="true" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></span>
 </div>
 </article>
-<p class="fl" style="top: 84px; right: calc(50% - 174px); max-width: 220px; margin: 0; padding: 12px 16px; border-radius: 20px 20px 6px 20px; background: #ffffff; box-shadow: 0 0 0 1px #e4e7eb; font-size: 15px">{{sel.q}}</p>
-<p class="fl" style="top: 300px; left: calc(50% - 174px); max-width: 230px; margin: 0; padding: 12px 16px; border-radius: 20px 20px 20px 6px; background: {{sel.warm}}; font-size: 15px">{{sel.a}}</p>
+<p class="fl" style="top: 84px; right: calc(50% - 174px); max-width: 220px; margin: 0; padding: 12px 16px; border-radius: 20px; background: #ffffff; box-shadow: 0 0 0 1px #e4e7eb; font-size: 15px">{{sel.q}}</p>
+<p class="fl" style="top: 300px; left: calc(50% - 174px); max-width: 240px; margin: 0; padding: 12px 16px 14px; border-radius: 20px; background: #ffffff; box-shadow: 0 0 0 1px #e4e7eb, 0 16px 30px -20px rgba(25,31,44,.35); font-size: 15px"><span style="display: flex; align-items: center; gap: 7px; margin-bottom: 4px; font-size: 12px; font-weight: 600; color: #696e7b"><span style="width: 16px; height: 16px; border-radius: 50%; background: {{sel.accent}}"></span>{{sel.short}}’s page</span>{{sel.a}}</p>
 </div>
 </div>
 </div>
@@ -707,17 +724,15 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 
 <!-- THE CUSTOMER'S PHONE -->
 <div class="cust">
-<div class="cust-photo"><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt=""></div>
-<p class="abs" style="top: 100px; left: 0; right: 0; margin: 0; text-align: center; font-family: 'Fraunces', serif; font-size: 34px; font-weight: 800; letter-spacing: -0.03em">Kek Lina</p>
-<p class="abs" style="top: 142px; left: 0; right: 0; margin: 0; text-align: center; font-family: var(--m); font-size: 11px; opacity: 0.7">curios.my/keklina</p>
-<span class="abs pc-tabs" style="top: 164px; left: 50%; transform: translateX(-50%); grid-template-columns: 1fr 1fr 1fr"><span>Links</span><span>Ask</span><span class="on">Shop</span></span>
-<p class="abs" style="top: 210px; left: 18px; right: 18px; margin: 0; text-align: center; font-size: 11.5px; white-space: nowrap; opacity: 0.75">Order 2 days ahead · Pickup or delivery</p>
+<div class="abs cs-top"><span class="cs-back" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></span><span>curios.my/keklina/shop</span></div>
+<span class="abs cs-open"><i></i>Open for orders</span>
+<p class="abs cs-name">Kek Lina</p>
+<p class="abs cs-facts">Seksyen 7, Shah Alam · Pickup or delivery</p>
+<span class="abs cs-cats"><span class="on">All</span><span>Kek</span><span>Kuih</span><span>Raya</span></span>
 <sc-for list="{{ of.rows }}" as="r" hint-placeholder-count="4">
-<div class="abs crow" style="top: {{r.top}}px; background: {{r.bg}}">
-<span class="shop-thumb" style="background: {{r.tone}}"><sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{r.photo}}" alt="" style="width: 100%; height: 100%; object-fit: cover; object-position: {{r.focus}}"></sc-if></span>
-<span class="sr-txt"><b>{{r.name}}</b><span>{{r.price}}</span></span>
-<sc-if value="{{ r.hasQ }}" hint-placeholder-val="{{ false }}"><span class="qty">{{r.q}}×</span></sc-if>
-<span class="shop-add" style="transform: scale({{r.addS}})">+</span>
+<div class="abs cs-card" style="top: {{r.top}}px; left: {{r.left}}px">
+<span class="cs-ph" style="background: {{r.tone}}"><sc-if value="{{ r.hasPhoto }}" hint-placeholder-val="{{ false }}"><img src="{{r.photo}}" alt="" style="object-position: {{r.focus}}"></sc-if><sc-if value="{{ r.hasTag }}" hint-placeholder-val="{{ false }}"><span class="cs-tag">{{r.tag}}</span></sc-if><span class="cs-add" style="transform: scale({{r.addS}}); background: {{r.addBg}}; color: {{r.addFg}}">{{r.addTxt}}</span></span>
+<b>{{r.name}}</b><span>{{r.price}}</span>
 </div>
 </sc-for>
 <div class="abs cbar">
@@ -936,7 +951,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 </div>
 </div>
 
-<p style="margin: 24px 0 0; font-size: 14px; color: #696e7b">Business is paid by FPX online banking. No card and no automatic charge, so nothing renews without you. The calculator is an illustration, not a forecast.</p>
+<p style="margin: 24px 0 0; font-size: 14px; color: #696e7b">Business is paid by FPX, e-wallet or card, through CHIP. Nothing is saved and nothing charges automatically, so nothing renews without you. The calculator is an illustration, not a forecast.</p>
 </div>
 </section>
 
@@ -1127,7 +1142,7 @@ class Component extends DCLogic {
       const z = W[W.length - 1]; return [z[1], z[2]];
     };
     const near = (ts) => ts.some((t) => p >= t && p < t + 0.012);
-    const C = path([[0, 200, 470], [0.05, 260, 268], [0.13, 260, 268], [0.17, 260, 324], [0.2, 260, 324], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.52, 150, 552], [0.555, 150, 475], [0.58, 150, 475], [0.62, 150, 552], [0.66, 150, 552]]);
+    const C = path([[0, 200, 470], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564], [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381], [0.48, 86, 381], [0.5, 150, 552], [0.52, 150, 552], [0.555, 150, 475], [0.58, 150, 475], [0.62, 150, 552], [0.66, 150, 552]]);
     const clicks = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.565, 0.635];
     const qc = p >= 0.12 ? 2 : (p >= 0.09 ? 1 : 0), qb = p >= 0.19 ? 1 : 0;
     const n = qc + qb, total = qc * 95 + qb * 45;
@@ -1143,7 +1158,7 @@ class Component extends DCLogic {
     const burstT = seg(0.665, 0.72);
     const cur = p < 0.24 ? 0 : p < 0.5 ? 1 : p < 0.64 ? 2 : p < 0.76 ? 3 : 4;
     const caps = [
-      ['Tap to add', 'Items with pictures, prices and sizes, right in the Shop tab.'],
+      ['Tap to add', 'Your shop gets its own page, with pictures, prices and sizes. Link it from your page or straight from Instagram.'],
       ['Check out', 'Name, WhatsApp number, pickup or delivery. No account needed.'],
       ['Pay with your QR', 'No payment gateway? Upload your bank QR once. Customers scan it with the total, then upload their receipt.'],
       ['Order received', 'They get a confirmation with the order number.'],
@@ -1161,8 +1176,8 @@ class Component extends DCLogic {
       secH: 'auto',
       caps: caps,
       rows: items.map((it, i) => ({
-        top: 244 + i * 56, name: it.name, price: it.price, photo: it.photo, hasPhoto: !!it.photo, focus: it.focus, tone: it.tone,
-        q: it.q, hasQ: it.q > 0, bg: it.q > 0 ? 'rgba(250,251,252,0.2)' : 'rgba(250,251,252,0.08)',
+        top: 196 + Math.floor(i / 2) * 176, left: 18 + (i % 2) * 138, name: it.name, price: it.price, photo: it.photo, hasPhoto: !!it.photo, focus: it.focus, tone: it.tone,
+        hasTag: i === 0, tag: 'Best seller', addTxt: it.q > 0 ? String(it.q) : '+', addBg: it.q > 0 ? '#b5294e' : '#fafbfc', addFg: it.q > 0 ? '#fafbfc' : '#3d0f1e',
         addS: it.tap.some((x) => p >= x && p < x + 0.012) ? '1.18' : '1'
       })),
       barText: n ? n + ' in basket · RM' + total : 'Basket is empty', barFg: n ? '#191f2c' : '#696e7b',

@@ -239,6 +239,20 @@ a{color:#2340c8}a:hover{color:#122686}
 .ghost{height:38px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#b3261e;cursor:pointer}
 .ghost:hover{background:#fdecea}
 /* payment */
+.gw{padding:18px;border:1px solid var(--line);border-radius:16px;background:#ffffff}
+.gw>b{display:block;font-size:15px;font-weight:600}
+.gw>p{margin:4px 0 0;font-size:13px;color:var(--soft);max-width:44em}
+.gw-marks{display:flex;gap:5px;margin-bottom:12px}
+.gw-marks i{display:grid;place-items:center;height:24px;padding:0 8px;border-radius:6px;font-style:normal;font-size:10.5px;font-weight:700}
+.gw-l{margin:10px 0 14px;padding:0;list-style:none;display:grid;gap:4px;font-size:13px;color:#4b5060}
+.gw-l li{display:flex;gap:8px;align-items:baseline}
+.gw-l li::before{content:'';width:5px;height:5px;flex:none;border-radius:50%;background:#1d6f5f;transform:translateY(-2px)}
+.btn1{display:inline-flex;align-items:center;height:34px;padding:0 16px;border:0;border-radius:999px;background:#191f2c;color:#fafbfc;font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.gw.on{display:flex;gap:14px;align-items:flex-start;background:linear-gradient(135deg,#eef7f3,#ffffff 60%);border-color:#d3e8e1}
+.gw-ok{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;background:#1d6f5f}
+.gw-ok svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.gw-t b{display:block;font-size:15px;font-weight:600}
+.gw-t p{margin:4px 0 12px;font-size:13px;color:var(--soft)}
 .qrcard{display:flex;align-items:center;gap:22px;padding:18px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,#f6f8ff,#ffffff 60%)}
 .qrbox{position:relative;flex:none;padding:10px;overflow:hidden;border-radius:14px;background:#ffffff;box-shadow:0 0 0 1px var(--line),0 12px 24px -16px rgba(35,64,200,.4)}
 .qrbox svg{display:block}
@@ -303,6 +317,24 @@ a{color:#2340c8}a:hover{color:#122686}
 .isheet p{margin:0;font-size:12px;line-height:1.45;color:#4b5060}
 .isheet .pills>span{background:#f0f1f4;color:#191f2c}
 /* phone: other screens */
+.sf2-top{display:flex;align-items:center;gap:8px;padding:16px 14px 0;font-size:11px;font-weight:600;opacity:.85}
+.sf2-c{display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:rgba(250,251,252,.12)}
+.sf2-c svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.sf2{flex:1;min-height:0;overflow:hidden;padding:14px 14px 70px;text-align:left}
+.sf2-open{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;border-radius:999px;background:rgba(29,154,108,.18);color:#9be3c4;font-size:10.5px;font-weight:600}
+.sf2-open i{width:6px;height:6px;border-radius:50%;background:#1d9a6c}
+.sf2-nm{margin:8px 0 0;font-family:'Fraunces',serif;font-size:28px;font-weight:800;line-height:1.02;letter-spacing:-.02em}
+.sf2-nt{margin:4px 0 0;font-size:10.5px;opacity:.7}
+.sf2-own{display:flex;align-items:flex-end;gap:7px;margin-top:10px;animation:fadeUp 300ms ease both}
+.sf2-av{display:grid;place-items:center;width:24px;height:24px;flex:none;border-radius:50%;background:#b5294e;font-family:'Fraunces',serif;font-size:11px;font-weight:800}
+.sf2-b{flex:1;min-width:0;padding:8px 10px;border-radius:14px 14px 14px 5px;background:#f3dde3;color:#191f2c;font-size:11px;line-height:1.4}
+.sf2-g{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.sf2-card{display:block;min-width:0;padding:0;border:0;border-radius:14px;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.sf2-ph{position:relative;display:grid;place-items:center;aspect-ratio:1;overflow:hidden;border-radius:14px;font-family:'Fraunces',serif;font-size:26px;font-weight:800}
+.sf2-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sf2-add{position:absolute;right:5px;bottom:5px;display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#fafbfc;color:#3d0f1e;font-family:'Inter',sans-serif;font-size:14px;font-weight:700}
+.sf2-card>b{display:block;margin:5px 2px 0;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sf2-card>span:last-child{display:block;margin:0 2px 4px;font-size:10.5px;opacity:.75}
 .sp{position:absolute;inset:0;background:#542339;display:flex;flex-direction:column;animation:fadeUp 320ms cubic-bezier(.22,1,.36,1) both}
 .sp-top{display:flex;align-items:center;gap:8px;padding:18px 16px 0}
 .circ{position:relative;display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%}
@@ -629,6 +661,29 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
 <div class="wrapc" role="tabpanel" aria-label="Payment">
 <section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 6h18v13H3zM3 10h18M7 15h4"></path></svg></span>Online payments</b><span>FPX online banking and e-wallets</span></p>
+<sc-if value="{{ gwOff }}" hint-placeholder-val="{{ true }}"><div class="gw">
+<div class="gw-marks" aria-hidden="true"><i style="background: #eaf0ff; color: #122686">FPX</i><i style="background: #e6f0ff; color: #0b4dbd">TNG</i><i style="background: #e3f6ea; color: #0d7a3e">Grab</i><i style="background: #eef0ff; color: #3b2fb5">Boost</i><i style="background: #fff1e8; color: #c2410c">Card</i></div>
+<b>Let customers pay online</b>
+<p>Connect your own CHIP account. Customers pick their bank or e-wallet at checkout, and the order marks itself paid. No receipts to check.</p>
+<ul class="gw-l"><li>Money goes to your CHIP account, then to your bank</li><li>CHIP charges a small fee per payment</li><li>Covers FPX, e-wallets and cards, all confirmed straight away</li><li>Your DuitNow QR below stays on, with no CHIP fee</li></ul>
+<span class="btns"><button type="button" class="btn1" onClick="{{ gwStart }}">Connect CHIP</button><a class="btn2" href="#chip" style="text-decoration: none">No account yet? Sign up</a></span>
+</div></sc-if>
+<sc-if value="{{ gwForm }}" hint-placeholder-val="{{ false }}"><div class="gw">
+<b>Connect CHIP</b>
+<p>Copy these from your CHIP dashboard, under Developers. We only use them to take payments for your orders.</p>
+<div class="grid2" style="margin-top: 12px">
+<label class="fl"><em>Brand ID</em><input value="{{ gwCol }}" onChange="{{ setGwCol }}" style="font-family: var(--m)" autocomplete="off"></label>
+<label class="fl"><em>Secret key</em><input value="{{ gwKey }}" onChange="{{ setGwKey }}" style="font-family: var(--m)" autocomplete="off"></label>
+</div>
+<span class="btns" style="margin-top: 14px"><button type="button" class="btn1" onClick="{{ gwSave }}">Check and connect</button><button type="button" class="btn2" onClick="{{ gwCancel }}">Cancel</button></span>
+</div></sc-if>
+<sc-if value="{{ gwOn }}" hint-placeholder-val="{{ false }}"><div class="gw on">
+<span class="gw-ok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+<span class="gw-t"><b>Connected to CHIP</b><p>Brand “Kek Lina” · checked just now. Customers can pay by FPX, e-wallet or card, and those orders land in Orders as Paid. Your DuitNow QR below stays on too, with receipts to check as before.</p><span class="btns"><button type="button" class="btn2">Test with RM1</button><button type="button" class="btn2" onClick="{{ gwOffNow }}" style="color: #d8452f">Disconnect</button></span></span>
+</div></sc-if>
+</section>
+<section class="sec">
 <p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"></path></svg></span>DuitNow QR</b><span>Customers scan it on their order page</span></p>
 <sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}">
 <div class="qrcard">
@@ -687,17 +742,16 @@ a{color:#2340c8}a:hover{color:#122686}
 
 <sc-if value="{{ pvBase }}" hint-placeholder-val="{{ true }}">
 <div class="sp" style="bottom: {{spBottom}}">
-<div class="pv-photo"><img src="/_blob/8c12272a54670861ce6afc463dd85cd0" alt="" style="object-position: 50% 50%"></div>
-<div class="sb">
-<p class="nm">Kek Lina</p>
-<p class="hd">curios.my/keklina</p>
-<span class="tb" aria-hidden="true"><span>Links</span><span>Ask</span><span class="on">Shop</span></span>
-<sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><p class="ds">{{shopDesc}}</p></sc-if>
-<p class="nt">{{noticeLine}}</p>
-<div class="srows">
-<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="srow" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="th" style="background: {{s.tint}}; color: {{s.ink}}"><sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if>{{s.initial}}</span><span class="tx"><b>{{s.name}}</b><span>{{s.from}}</span></span><span class="ad" aria-hidden="true">+</span></button></sc-for>
+<div class="sf2-top"><span class="sf2-c" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span><span>curios.my/keklina/shop</span></div>
+<div class="sf2">
+<span class="sf2-open"><i></i>Open for orders</span>
+<p class="sf2-nm">Kek Lina</p>
+<p class="sf2-nt">{{noticeLine}}</p>
+<sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><div class="sf2-own"><span class="sf2-av" aria-hidden="true">L</span><span class="sf2-b">{{shopDesc}}</span></div></sc-if>
+<div class="sf2-g">
+<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="sf2-card" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="sf2-ph" style="background: {{s.tint}}; color: {{s.ink}}">{{s.initial}}<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if><span class="sf2-add" aria-hidden="true">+</span></span><b>{{s.name}}</b><span>{{s.from}}</span></button></sc-for>
 </div>
-<sc-if value="{{ pvEmpty }}" hint-placeholder-val="{{ false }}"><p class="nt" style="width: 100%; margin-top: 8px; padding: 18px 12px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px">New items are coming soon.</p></sc-if>
+<sc-if value="{{ pvEmpty }}" hint-placeholder-val="{{ false }}"><p class="sf2-nt" style="width: 100%; margin-top: 8px; padding: 18px 12px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px; text-align: center">New items are coming soon.</p></sc-if>
 </div>
 <div class="bar" style="background: #fafbfc; color: #191f2c"><span style="color: #696e7b">Basket is empty</span><em style="background: #b5294e; color: #fafbfc">Checkout</em></div>
 </div>
@@ -867,6 +921,10 @@ class Component extends DCLogic {
       ],
       tabs: ['Items', 'Payment', 'Pickup & delivery'].map((label, i) => ({ label: label, on: tabIx === i, go: () => self.setState({ tab: i, editId: null, confirmDel: false, pv: i === 0 ? 'shop' : 'pay' }) })),
       ulineX: tabIx * 150,
+      gwOff: (this.state.gw || 'off') === 'off', gwForm: this.state.gw === 'form', gwOn: this.state.gw === 'on',
+      gwKey: this.state.gwKey || '', gwCol: this.state.gwCol || '', gwSig: this.state.gwSig || '',
+      setGwKey: (e) => this.setState({ gwKey: e.target.value }), setGwCol: (e) => this.setState({ gwCol: e.target.value }), setGwSig: (e) => this.setState({ gwSig: e.target.value }),
+      gwStart: () => this.setState({ gw: 'form' }), gwCancel: () => this.setState({ gw: 'off' }), gwSave: () => this.setState({ gw: 'on' }), gwOffNow: () => this.setState({ gw: 'off' }),
       isItemsList: tabIx === 0 && !editing, isEditing: tabIx === 0 && !!editing, isPay: tabIx === 1, isDel: tabIx === 2,
       itemsNote: st.items.length + ' items · ' + live.length + ' in your shop',
       ilistH: st.items.length * 76,
@@ -922,7 +980,7 @@ class Component extends DCLogic {
       }),
       earliestText: st.notice === 0 ? 'Customers can order for today.' : 'The earliest date a customer can pick is ' + earliestLabel + '.',
       shopSub: st.notice === 0 ? 'Same day orders welcome' : 'Order ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + ' ahead',
-      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.2)' : 'rgba(250,251,252,0.08)', name: x.name, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
+      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.16)' : 'transparent', name: x.name, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
       pvEmpty: live.length === 0,
       spBottom: pvKey === 'item' ? '140px' : '0px',
       scrBg: pvKey === 'item' ? '#fafbfc' : '#542339',

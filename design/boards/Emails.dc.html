@@ -136,6 +136,20 @@ html,body{margin:0;background:#ffffff}
 <a class="em-cta" href="#">Open order #12</a>
 </div></sc-if>
 
+<sc-if value="{{ is.paid }}" hint-placeholder-val="{{ false }}"><div>
+<span class="em-tag" style="background: #e8f3ef; color: #1d6f5f"><i></i>Paid by FPX</span>
+<h2>Nurul ordered and paid RM215</h2>
+<p>The bank confirmed it through CHIP, so there’s nothing to check. Just get it ready for Saturday.</p>
+<div class="em-box">
+<div class="em-ln"><i style="background: #f6c9d5"></i><span><b>Kek coklat moist</b><small>2kg · 1×</small></span><em>RM170</em></div>
+<div class="em-ln"><i style="background: #ffe2b8"></i><span><b>Kek batik</b><small>Box of 12 · 1×</small></span><em>RM45</em></div>
+<div class="em-sum"><span>Paid</span><span>RM215</span></div>
+</div>
+<dl class="em-dl"><dt>Getting it</dt><dd>Pickup · Sat 17 Oct</dd><dt>Customer</dt><dd>Nurul · +60 13-778 2041</dd><dt>Paid with</dt><dd>FPX · Maybank2u · Ref CHIP-4K2X</dd></dl>
+<a class="em-cta" href="#">Open order #14</a>
+<p class="em-small">The money is in your CHIP account. CHIP pays it out to your bank on its usual schedule.</p>
+</div></sc-if>
+
 <sc-if value="{{ is.receipt }}" hint-placeholder-val="{{ false }}"><div>
 <span class="em-tag" style="background: #eaf0ff; color: #2340c8"><i></i>Receipt to check</span>
 <h2>Aisyah sent a receipt for order #12</h2>
@@ -209,6 +223,7 @@ class Component extends DCLogic {
     const authFoot = 'You get this because someone used this address on Curios.';
     const M = [
       { id: 'order', grp: 'Your shop', l: 'New order', subject: 'New order #12 · RM190', preview: 'Aisyah · Pickup Sat 17 Oct · waiting for payment', time: '3:20pm', icon: I.order, bg: '#fdf0dc', fg: '#8f5c15', top: 'Order #12', foot: ownerFoot },
+      { id: 'paid', grp: 'Your shop', l: 'Paid order', subject: 'New order #14 · RM215 · Paid', preview: 'Nurul · Paid by FPX · Pickup Sat 17 Oct', time: '11:20am', icon: I.order, bg: '#e8f3ef', fg: '#1d6f5f', top: 'Order #14', foot: ownerFoot },
       { id: 'receipt', grp: 'Your shop', l: 'Receipt', subject: 'Receipt uploaded for #12', preview: 'Check RM190 reached your account, then confirm', time: '3:42pm', icon: I.receipt, bg: '#eaf0ff', fg: '#2340c8', top: 'Order #12', foot: ownerFoot },
       { id: 'lead', grp: 'Your shop', l: 'New lead', subject: 'New lead · +60 17-882 4410', preview: 'Asked: Boleh buat kek kahwin 3 tingkat?', time: '2:15pm', icon: I.lead, bg: '#e8f3ef', fg: '#1d6f5f', top: 'From your page', foot: ownerFoot },
       { id: 'verify', grp: 'Your account', l: 'Confirm email', subject: 'Confirm your email', preview: 'Confirm your address to finish setting up Curios', time: 'Mon', icon: I.mail, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot },

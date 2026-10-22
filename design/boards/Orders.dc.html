@@ -422,6 +422,11 @@ a{color:#2340c8}a:hover{color:#122686}
 .rpaper i{display:block;height:3px;border-radius:2px;background:#e4e7eb}
 .match{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 10px;border-radius:999px;font-size:12px;font-weight:600}
 .match svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.paidol{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:14px;background:#eef7f3}
+.pok{display:grid;place-items:center;width:30px;height:30px;flex:none;border-radius:50%;background:#1d6f5f}
+.pok svg{width:16px;height:16px;fill:none;stroke:#fff;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.paidol b{display:block;font-size:14px;font-weight:600;color:#123b33}
+.paidol span>span{display:block;margin-top:2px;font-size:12.5px;color:#4b5060}
 .waitbox{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;height:156px;border:1.5px dashed #dfe1e6;border-radius:14px;color:var(--soft);font-size:13px;text-align:center}
 .waitbox svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 /* action bar */
@@ -706,6 +711,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <span><b style="display: block; font-size: 13px">{{d.file}}</b><span style="display: block; font-size: 12.5px; color: #696e7b">Uploaded {{d.upAt}}</span><span class="match" style="background: #e8f3ef; color: #123b33"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Shows {{d.total}}</span><span style="display: block; margin-top: 8px; font-size: 12px; color: #696e7b">Check it landed in your account before you mark it paid.</span></span>
 </div>
 </sc-if>
+<sc-if value="{{ d.isOnline }}" hint-placeholder-val="{{ false }}"><div class="paidol"><span class="pok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span><b>{{d.total}} paid by {{d.via}}</b><span>Confirmed by the bank through CHIP, so there is no receipt to check. Ref {{d.ref}}.</span></span></div></sc-if>
 <sc-if value="{{ d.noReceipt }}" hint-placeholder-val="{{ false }}"><div class="waitbox"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>{{d.waitText}}</div></sc-if>
 </div>
 <div class="card">
@@ -742,6 +748,7 @@ class Component extends DCLogic {
     this.state = {
       filter: 'all', sel: 13, confirm: false, zoom: false, sparkOn: false, toast: '', grow: 0,
       orders: [
+        { num: 14, name: 'Nurul Izzah', tone: '#bfe3d6', phone: '013-778 2041', placed: 'today, 11:18am', status: 'PAID', via: 'FPX · Maybank2u', ref: 'CHIP-4K2X', receipt: null, paidAt: 'today, 11:20am', doneAt: null, cancelAt: null, refundAt: null, method: 'Pickup', date: 'Sat 17 Oct', fee: 0, lines: [L('coklat', 'Kek coklat moist', '2kg', 1, 170), L('batik', 'Kek batik', '', 1, 45)] },
         { num: 13, name: 'Mira Hassan', tone: '#f6c9d5', phone: '012-345 6789', placed: 'today, 10:02am', status: 'PLACED', receipt: 'today, 10:09am', paidAt: null, doneAt: null, cancelAt: null, refundAt: null, method: 'Pickup', date: 'Sat 17 Oct', fee: 0, note: "Please write 'Selamat hari jadi Aisyah' on the coklat one. Thank you!", lines: [L('coklat', 'Kek coklat moist', '1kg', 2, 95), L('batik', 'Kek batik', '', 1, 45)] },
         { num: 12, name: 'Hakim Rahman', tone: '#bfd1f9', phone: '019-882 1034', placed: 'today, 8:40am', status: 'PLACED', receipt: null, paidAt: null, doneAt: null, cancelAt: null, refundAt: null, method: 'Delivery', date: 'Sat 17 Oct', fee: 10, address: '12, Jalan Bunga Raya 7/3, Seksyen 7, Shah Alam', note: '', lines: [L('coklat', 'Kek coklat moist', '2kg', 1, 170)] },
         { num: 11, name: 'Wei Ling', tone: '#bfe3d6', phone: '016-220 7781', placed: 'yesterday, 9:15pm', status: 'PAID', receipt: 'yesterday, 9:20pm', paidAt: 'yesterday, 9:41pm', doneAt: null, cancelAt: null, refundAt: null, method: 'Pickup', date: 'Fri 16 Oct', fee: 0, note: '', lines: [L('cookies', 'Cookies balang', '', 1, 25), L('batik', 'Kek batik', '', 1, 45)] },
@@ -762,7 +769,7 @@ class Component extends DCLogic {
   total(o) { return o.lines.reduce((a, l) => a + l.q * l.each, 0) + o.fee; }
   view(o) {
     if (o.status === 'PLACED') return o.receipt ? ['To check', '#ffebd6', '#7a4a0c'] : ['Awaiting payment', '#f0f1f4', '#4b5060'];
-    if (o.status === 'PAID') return ['Paid', '#eaf0ff', '#122686'];
+    if (o.status === 'PAID') return o.via ? ['Paid online', '#e8f3ef', '#123b33'] : ['Paid', '#eaf0ff', '#122686'];
     if (o.status === 'COMPLETED') return ['Completed', '#e8f3ef', '#123b33'];
     if (o.paidAt && !o.refundAt) return ['Refund owed', '#fdecea', '#b3261e'];
     return ['Cancelled', '#f0f1f4', '#696e7b'];
@@ -814,7 +821,7 @@ class Component extends DCLogic {
       const cancelled = o.status === 'CANCELLED';
       const stepsRaw = cancelled
         ? [['Placed', o.placed, true], ['Receipt', o.receipt || 'None', !!o.receipt], ['Paid', o.paidAt || 'No', !!o.paidAt], [o.refundAt ? 'Refunded' : 'Cancelled', o.refundAt || o.cancelAt, true]]
-        : [['Placed', o.placed, true], ['Receipt', o.receipt || 'Waiting', !!o.receipt], ['Paid', o.paidAt || (o.receipt ? 'Your check' : 'Not yet'), !!o.paidAt], ['Completed', o.doneAt || o.date, !!o.doneAt]];
+        : o.via ? [['Placed', o.placed, true], ['Paid by ' + o.via.split(' · ')[0], o.paidAt, true], ['Checked', 'By the bank', true], ['Completed', o.doneAt || o.date, !!o.doneAt]] : [['Placed', o.placed, true], ['Receipt', o.receipt || 'Waiting', !!o.receipt], ['Paid', o.paidAt || (o.receipt ? 'Your check' : 'Not yet'), !!o.paidAt], ['Completed', o.doneAt || o.date, !!o.doneAt]];
       const doneN = stepsRaw.filter((x) => x[2]).length;
       const lastDone = stepsRaw.reduce((a, x, i) => x[2] ? i : a, 0);
       const nextI = stepsRaw.findIndex((x) => !x[2]);
@@ -846,7 +853,7 @@ class Component extends DCLogic {
         doCancel: () => self.update(o.num, { status: 'CANCELLED', cancelAt: 'just now' }, '#' + o.num + ' cancelled.' + (o.paidAt ? ' A refund is owed.' : '')),
         pText: v[0] === 'To check' ? 'Receipt to check' : o.paidAt ? (o.refundAt ? 'Refunded' : 'Paid ' + o.paidAt) : 'Not paid',
         pBg: o.paidAt ? (o.refundAt ? '#f0f1f4' : '#e8f3ef') : v[1], pFg: o.paidAt ? (o.refundAt ? '#4b5060' : '#123b33') : v[2],
-        hasReceipt: !!o.receipt, noReceipt: !o.receipt, upAt: o.receipt, file: 'receipt-' + first.toLowerCase() + '.jpg',
+        hasReceipt: !!o.receipt, noReceipt: !o.receipt && !o.via, isOnline: !!o.via, via: o.via || '', ref: o.ref || '', upAt: o.receipt, file: 'receipt-' + first.toLowerCase() + '.jpg',
         waitText: o.status === 'CANCELLED' ? 'No receipt was uploaded.' : first + ' has not uploaded a receipt yet. Their order page shows your QR and bank details.',
         method: o.method, date: o.date, where: o.method === 'Pickup' ? 'Seksyen 7, Shah Alam. 10am to 6pm.' : o.address,
         mBg: o.method === 'Pickup' ? '#fdf0dc' : '#e8f3ef', mFg: o.method === 'Pickup' ? '#8f5c15' : '#1d6f5f', mIcon: mIcon,

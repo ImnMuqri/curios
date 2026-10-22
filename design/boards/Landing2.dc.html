@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Curios landing, product-led</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,700;9..144,800&amp;display=swap">
+<style>
+body{margin:0;background:#fafbfc}
+a{color:#191f2c}a:hover{color:#2340c8}
+.lp{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:17px;line-height:1.55;color:#191f2c;background:#fafbfc}
+.lp *{box-sizing:border-box}
+.wrap{width:100%;max-width:1200px;margin:0 auto;padding:0 24px}
+.sec{padding:120px 0}
+.eyebrow{margin:0 0 16px;font-family:var(--m);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#2340c8}
+.h1{margin:0;font-family:var(--d);font-size:clamp(44px,26px + 4.2vw,84px);font-weight:700;line-height:1;letter-spacing:-.035em;color:#191f2c}
+.h2{margin:0;max-width:18ch;font-family:var(--d);font-size:clamp(34px,24px + 2.2vw,54px);font-weight:700;line-height:1.04;letter-spacing:-.03em;text-wrap:balance}
+.h3{margin:0;font-family:var(--d);font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2}
+.lede{margin:20px 0 0;max-width:34em;color:#4b5060;text-wrap:pretty}
+.soft{color:#696e7b}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:52px;padding:0 22px;border:0;border-radius:12px;background:#2340c8;color:#fafbfc;font:inherit;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
+.btn:hover{background:#1a31a8;color:#fafbfc}
+.link{display:inline-flex;align-items:center;gap:6px;min-height:52px;font-weight:600;text-decoration:none;color:#191f2c}
+.mark{display:inline-block;font-family:var(--d);font-size:26px;font-weight:700;line-height:1;letter-spacing:-.03em}
+.mark .i{position:relative}
+.mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid currentColor;border-radius:.08em;transform:translateX(-50%)}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.sample{display:inline-block;padding:3px 8px;border-radius:6px;background:#f0f1f4;color:#696e7b;font-family:var(--m);font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+/* the app window: a real Curios dashboard screen, drawn */
+.win{border-radius:20px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb;overflow:hidden;font-size:14px}
+.win-bar{display:flex;align-items:center;gap:12px;height:44px;padding:0 16px;border-bottom:1px solid #e4e7eb;background:#fafbfc}
+.win-bar .mark{font-size:18px}
+.win-url{margin-left:auto;padding:4px 12px;border-radius:8px;background:#f0f1f4;font-family:var(--m);font-size:11.5px;color:#696e7b}
+.win-body{display:grid;grid-template-columns:168px minmax(0,1fr)}
+.side{display:flex;flex-direction:column;gap:2px;padding:14px 10px;border-right:1px solid #e4e7eb;background:#fafbfc}
+.side span{padding:8px 10px;border-radius:8px;font-size:13px;font-weight:500;color:#4b5060}
+.side .on{background:#eaf0ff;color:#122686;font-weight:600}
+.main{padding:22px 24px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:#f0f1f4}
+.count{margin-left:auto;font-family:var(--m);font-size:12px;color:#696e7b;font-variant-numeric:tabular-nums}
+.pill{display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:8px;font-size:13px;font-weight:600}
+.split{display:grid;grid-template-columns:minmax(0,1fr);gap:56px;align-items:center}
+.steps{display:grid;grid-template-columns:minmax(0,1fr);gap:24px}
+.quiet{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+.plans{display:grid;grid-template-columns:minmax(0,1fr);gap:20px}
+.foot{display:grid;grid-template-columns:minmax(0,1fr);gap:32px}
+.tabs{display:flex;flex-wrap:wrap;gap:8px}
+@media (min-width:900px){
+.split{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:72px}
+.split.flip{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+.quiet{grid-template-columns:repeat(4,minmax(0,1fr))}
+.plans{grid-template-columns:repeat(2,minmax(0,1fr))}
+.foot{grid-template-columns:2fr 1fr 1fr}
+}
+@media (max-width:700px){.side{display:none}.win-body{grid-template-columns:minmax(0,1fr)}.navlinks{display:none}}
+details.q{border-bottom:1px solid #e4e7eb}
+details.q summary{list-style:none;display:flex;justify-content:space-between;gap:16px;align-items:center;min-height:64px;cursor:pointer;font-family:var(--d);font-size:20px;font-weight:600}
+details.q summary::-webkit-details-marker{display:none}
+details.q summary::after{content:'+';font-family:var(--m);font-size:22px;color:#2340c8}
+details.q[open] summary::after{content:'–'}
+</style>
+</helmet>
+
+<div class="lp">
+
+<header style="position: sticky; top: 0; z-index: 10; background: #fafbfc; border-bottom: 1px solid #e4e7eb">
+<div class="wrap" style="display: flex; align-items: center; gap: 36px; height: 72px">
+<a href="#top" style="color: #191f2c; text-decoration: none"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios home</span></a>
+<nav class="navlinks" aria-label="Sections" style="display: flex; gap: 26px; font-size: 15px; font-weight: 500">
+<a href="#how" style="text-decoration: none">How it works</a>
+<a href="#questions" style="text-decoration: none">Questions</a>
+<a href="#leads" style="text-decoration: none">Leads</a>
+<a href="#pricing" style="text-decoration: none">Pricing</a>
+<a href="#faq" style="text-decoration: none">FAQ</a>
+</nav>
+<div style="margin-left: auto; display: flex; align-items: center; gap: 20px; font-size: 15px; font-weight: 500">
+<a href="/ms" hreflang="ms" style="text-decoration: none">BM</a>
+<a href="/signin" style="text-decoration: none">Sign in</a>
+<a href="/signup" class="btn" style="min-height: 44px; padding: 0 18px; font-size: 15px">Start free</a>
+</div>
+</div>
+</header>
+
+<main id="main">
+
+<!-- Hero -->
+<section id="top" style="padding: 96px 0 0">
+<div class="wrap">
+<p class="eyebrow">For shops that sell on Instagram and WhatsApp</p>
+<h1 class="h1" style="white-space: pre-line">{{heroTitle}}</h1>
+<p class="lede" style="font-size: 19px">Curios is a link in bio that answers your customers in Malay or English, from the prices you approve. When someone is ready to order, you get their number.</p>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 32px">
+<a href="/signup" class="btn">Create your free page</a>
+<a href="#how" class="link">See how it works <span aria-hidden="true" style="color: #2340c8">→</span></a>
+</div>
+<p class="soft" style="margin: 14px 0 0; font-size: 14px">Answering is free on every plan. No card needed.</p>
+
+<!-- Hero screen: the Questions screen with sample data -->
+<div class="win" role="img" aria-label="The Curios Questions screen: forty wordings of one price question, grouped, with one answer" style="margin-top: 64px">
+<div class="win-bar"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sample">Sample</span><span class="win-url">curios.my/app/questions</span></div>
+<div class="win-body">
+<div class="side"><span>My Curios</span><span>Review</span><span>Knowledge</span><span class="on">Questions</span><span>Leads</span><span>Billing</span><span>Settings</span></div>
+<div class="main" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<p style="margin: 0; font-family: var(--d); font-size: 22px; font-weight: 700">Price of a 1kg chocolate cake</p>
+<p style="margin: 0; font-family: var(--m); font-size: 12px; color: #696e7b">40 wordings · grouped by meaning</p>
+<div class="row" style="background: #eaf0ff"><span>A 1kg chocolate cake is RM95. Please order 2 days ahead.</span></div>
+<p style="margin: 0; font-size: 13px; color: #122686">Your answer. Every wording gets it.</p>
+<div style="display: flex; gap: 8px; margin-top: 4px"><span class="pill" style="background: #f0f1f4">Edit answer</span><span class="pill" style="background: #f0f1f4">Hide from FAQ</span></div>
+</div>
+<ul style="list-style: none; margin: 0; padding: 0; display: grid; gap: 6px">
+<li class="row">How much is a 1kg chocolate cake?<span class="count">9×</span></li>
+<li class="row">berapa harga?<span class="count">7×</span></li>
+<li class="row">price pls<span class="count">6×</span></li>
+<li class="row">how much ah sis<span class="count">5×</span></li>
+<li class="row">brp 1kg?<span class="count">4×</span></li>
+<li class="row">hrg kek coklat?<span class="count">3×</span></li>
+<li class="row" style="background: transparent; color: #696e7b">and 6 more ways</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Problem -->
+<section class="sec">
+<div class="wrap split">
+<div>
+<p class="eyebrow">The problem</p>
+<h2 class="h2">“Berapa harga?” Forty times a day.</h2>
+<p class="lede">Every customer asks the same few things, in their own words, at 11pm. You answer each DM by hand, or you miss it. The ones you miss were the ones ready to buy.</p>
+<a href="/signup" class="btn" style="margin-top: 28px">Stop answering it by hand</a>
+</div>
+<div style="display: grid; gap: 10px; padding: 28px; border-radius: 20px; background: #f0f1f4">
+<p style="margin: 0 0 6px; display: flex; justify-content: space-between; align-items: center"><span style="font-weight: 600">Your DMs, tonight</span><span class="sample">Sample</span></p>
+<p style="margin: 0; display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #ffffff"><span style="font-weight: 600">@aina.r</span><span>berapa harga kek coklat?</span><span class="count">11:42 pm</span></p>
+<p style="margin: 0; display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #ffffff"><span style="font-weight: 600">@farid_m</span><span>how much for 1kg?</span><span class="count">11:47 pm</span></p>
+<p style="margin: 0; display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #ffffff"><span style="font-weight: 600">@sitinor</span><span>price pls</span><span class="count">12:03 am</span></p>
+<p style="margin: 0; display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #ffffff"><span style="font-weight: 600">@weiling</span><span>hantar Klang tak?</span><span class="count">12:20 am</span></p>
+<p style="margin: 0; display: flex; gap: 12px; padding: 12px 14px; border-radius: 12px; background: #ffffff; opacity: 0.6"><span style="font-weight: 600">@hakim</span><span>brp?</span><span class="count">12:31 am</span></p>
+</div>
+</div>
+<div class="wrap" style="margin-top: 72px">
+<div style="aspect-ratio: 21 / 9; border-radius: 24px; overflow: hidden"><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="A home baker at her kitchen counter, smiling at her phone beside a chocolate cake and cake boxes" style="display: block; width: 100%; height: 100%; object-fit: cover; object-position: 60% 30%"></div>
+</div>
+</section>
+
+<!-- How it works -->
+<section id="how" class="sec" style="background: #f0f1f4">
+<div class="wrap">
+<p class="eyebrow">How it works</p>
+<h2 class="h2">Three steps from price list to bio link.</h2>
+<ol class="steps" style="list-style: none; margin: 56px 0 0; padding: 0">
+
+<li style="display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: var(--m); font-size: 13px; color: #2340c8">01</span>
+<h3 class="h3">Paste a link, or a few paragraphs.</h3>
+<p class="soft" style="margin: 0; font-size: 15px">Your website or Linktree. Instagram won’t let us read it, so paste your bio from there instead.</p>
+<div class="win" role="img" aria-label="The Sources tab with a menu link pasted in" style="margin-top: auto">
+<div class="main">
+<p style="margin: 0; font-weight: 600">Sources</p>
+<div style="display: flex; gap: 8px"><span style="flex: 1; padding: 10px 12px; border-radius: 10px; box-shadow: inset 0 0 0 1.5px #2340c8; font-family: var(--m); font-size: 12px">keklina.example/menu</span><span class="pill" style="background: #2340c8; color: #fafbfc; min-height: 38px">Read it</span></div>
+<div class="row" style="font-size: 13px">Read 1 page · found 9 facts</div>
+</div>
+</div>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: var(--m); font-size: 13px; color: #2340c8">02</span>
+<h3 class="h3">Approve what’s right. Fix what isn’t.</h3>
+<p class="soft" style="margin: 0; font-size: 15px">It only ever quotes what you approved. Nothing else gets said.</p>
+<div class="win" role="img" aria-label="The Review screen with facts waiting for approval" style="margin-top: auto">
+<div class="main">
+<p style="margin: 0; font-weight: 600">Review</p>
+<div class="row" style="flex-wrap: wrap"><span>1kg chocolate cake · <strong>RM95</strong></span><span style="margin-left: auto; display: flex; gap: 6px"><span class="pill" style="background: #2340c8; color: #fafbfc">Approve</span><span class="pill" style="background: #ffffff">Edit</span></span></div>
+<div class="row" style="flex-wrap: wrap"><span>Delivery, Klang · <strong>RM15</strong></span><span style="margin-left: auto; display: flex; gap: 6px"><span class="pill" style="background: #2340c8; color: #fafbfc">Approve</span><span class="pill" style="background: #ffffff">Edit</span></span></div>
+</div>
+</div>
+</li>
+
+<li style="display: flex; flex-direction: column; gap: 14px">
+<span style="font-family: var(--m); font-size: 13px; color: #2340c8">03</span>
+<h3 class="h3">Put the link in your bio.</h3>
+<p class="soft" style="margin: 0; font-size: 15px">Customers tap it, ask, and get answers from your facts. Day or night.</p>
+<div class="win" role="img" aria-label="Kek Lina's public Curios page" style="margin-top: auto; background: #fbeef1; box-shadow: none; font-family: 'Inter', sans-serif">
+<div class="main">
+<div style="display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 50%; background: #b5294e"></span><span><span style="display: block; font-family: 'Fraunces', serif; font-size: 20px; font-weight: 800; letter-spacing: -0.03em; line-height: 1">Kek Lina</span><span style="font-family: var(--m); font-size: 10.5px; color: #54555f">curios.my/keklina</span></span></div>
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px"><span style="padding: 10px; border-radius: 12px; background: #b5294e; color: #fafbfc; font-family: 'Fraunces', serif; font-size: 12px; font-weight: 700">Order on WhatsApp</span><span style="padding: 10px; border-radius: 12px; background: #f3dde3; font-family: 'Fraunces', serif; font-size: 12px; font-weight: 700">Menu &amp; prices</span></div>
+<span style="padding: 10px 12px; border-radius: 10px; border: 1.5px solid #b5294e; background: #fafbfc; color: #696e7b; font-size: 13px">Do you deliver to Klang?</span>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</section>
+
+<!-- Questions -->
+<section id="questions" class="sec">
+<div class="wrap split flip">
+<div class="win" role="img" aria-label="Questions grouped by topic, one waiting for an answer">
+<div class="win-bar"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sample">Sample</span><span class="win-url">curios.my/app/questions</span></div>
+<div class="main">
+<div class="tabs" role="presentation"><span class="pill" style="background: #191f2c; color: #fafbfc">Price</span><span class="pill" style="background: #f0f1f4">Delivery</span><span class="pill" style="background: #f0f1f4">Hours</span><span class="pill" style="background: #f0f1f4">Custom orders</span></div>
+<div class="row" style="background: #ffebd6; flex-wrap: wrap"><span><strong style="font-weight: 600">Do you have a sugar-free cake?</strong><span style="display: block; font-size: 13px; color: #8f5c15">Not answered yet · customers were told you’ll check</span></span><span class="pill" style="margin-left: auto; background: #191f2c; color: #fafbfc">Answer</span></div>
+<div class="row"><span><strong style="font-weight: 600">Price of a 1kg chocolate cake</strong><span style="display: block; font-size: 13px; color: #696e7b">RM95. Please order 2 days ahead.</span></span><span class="count">asked 40×</span></div>
+<div class="row"><span><strong style="font-weight: 600">Price of a 2kg cake</strong><span style="display: block; font-size: 13px; color: #696e7b">RM160 for 2kg.</span></span><span class="count">asked 12×</span></div>
+<div class="row"><span><strong style="font-weight: 600">Name on the cake</strong><span style="display: block; font-size: 13px; color: #696e7b">Yes, for free. Just tell us the name when you order.</span></span><span class="count">asked 8×</span></div>
+</div>
+</div>
+<div>
+<p class="eyebrow">Questions</p>
+<h2 class="h2">Answer each question once.</h2>
+<p class="lede">Customers ask the price forty different ways. Curios groups them by meaning, and every version gets the answer you wrote. When it doesn’t know, it says it’ll check with you, and the question waits here until you answer.</p>
+</div>
+</div>
+</section>
+
+<!-- Leads -->
+<section id="leads" class="sec" style="background: #2340c8; color: #fafbfc">
+<div class="wrap split">
+<div>
+<p class="eyebrow" style="color: #bfd1f9">Leads · Business</p>
+<h2 class="h2" style="color: #eaf0ff">Asked at 11:42pm. In your inbox by morning.</h2>
+<ul style="margin: 28px 0 0; padding: 0; list-style: none; display: grid; gap: 14px; color: #dfe8fd">
+<li style="display: flex; gap: 12px"><span aria-hidden="true" style="color: #bfd1f9">—</span>Their WhatsApp number, the order, the day and the area.</li>
+<li style="display: flex; gap: 12px"><span aria-hidden="true" style="color: #bfd1f9">—</span>The whole conversation, so you know what they were told.</li>
+<li style="display: flex; gap: 12px"><span aria-hidden="true" style="color: #bfd1f9">—</span>One tap opens WhatsApp with a greeting already typed.</li>
+</ul>
+<p style="margin: 28px 0 0; font-size: 14px; color: #dfe8fd">Your first three leads are free.</p>
+</div>
+<div class="win" role="img" aria-label="The Leads screen with one new lead" style="color: #191f2c">
+<div class="win-bar"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sample">Sample</span><span class="win-url">curios.my/app/leads</span></div>
+<div class="win-body">
+<div class="side"><span>My Curios</span><span>Review</span><span>Knowledge</span><span>Questions</span><span class="on">Leads</span><span>Billing</span></div>
+<div class="main">
+<div style="padding: 18px; border-radius: 14px; background: #f0f1f4; display: grid; gap: 10px">
+<p style="margin: 0; font-family: var(--m); font-size: 12px; color: #696e7b">New · 17 Oct 2026</p>
+<p style="margin: 0; font-family: var(--d); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums">012-345 6789</p>
+<ul style="margin: 0; padding: 0; list-style: none; display: grid; gap: 4px; font-size: 14px"><li>Product: 1kg chocolate cake</li><li>When: Saturday</li><li>Where: Shah Alam</li></ul>
+<div style="display: flex; gap: 8px; margin-top: 6px"><span class="pill" style="background: #2340c8; color: #fafbfc; min-height: 40px">WhatsApp them</span><span class="pill" style="background: #ffffff; min-height: 40px">Show transcript</span></div>
+</div>
+<div style="padding: 14px 18px; border-radius: 14px; box-shadow: inset 0 0 0 1px #e4e7eb; display: flex; justify-content: space-between; font-size: 14px; color: #696e7b"><span>019-876 5432 · Delivery to Klang</span><span>16 Oct</span></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<!-- Quiet parts -->
+<section class="sec">
+<div class="wrap">
+<p class="eyebrow">The quiet parts</p>
+<h2 class="h2">Small things that save you later.</h2>
+<div class="quiet" style="margin-top: 48px">
+<div style="padding: 24px; border-radius: 20px; background: #f0f1f4; display: grid; gap: 8px; align-content: start"><h3 class="h3" style="font-size: 19px">Never say</h3><p class="soft" style="margin: 0; font-size: 15px">Words it must never use about your shop. It won’t.</p></div>
+<div style="padding: 24px; border-radius: 20px; background: #f0f1f4; display: grid; gap: 8px; align-content: start"><h3 class="h3" style="font-size: 19px">Pinned answers</h3><p class="soft" style="margin: 0; font-size: 15px">Write the exact reply for the questions that matter most.</p></div>
+<div style="padding: 24px; border-radius: 20px; background: #f0f1f4; display: grid; gap: 8px; align-content: start"><h3 class="h3" style="font-size: 19px">Manglish, too</h3><p class="soft" style="margin: 0; font-size: 15px">It answers in the language the customer used, mix and all.</p></div>
+<div style="padding: 24px; border-radius: 20px; background: #f0f1f4; display: grid; gap: 8px; align-content: start"><h3 class="h3" style="font-size: 19px">FAQ pages</h3><p class="soft" style="margin: 0; font-size: 15px">Built from what customers actually ask, for Google to find.</p></div>
+</div>
+</div>
+</section>
+
+<!-- Pricing -->
+<section id="pricing" class="sec" style="background: #f0f1f4">
+<div class="wrap">
+<p class="eyebrow">Pricing</p>
+<h2 class="h2">Answering is free. Leads are RM39 a month.</h2>
+<div class="plans" style="margin-top: 48px">
+<div style="display: flex; flex-direction: column; gap: 16px; padding: 36px; border-radius: 24px; background: #ffffff">
+<h3 class="h3">Personal</h3>
+<p style="margin: 0; font-family: var(--d); font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1">Free</p>
+<p class="soft" style="margin: 0">A page with an AI that answers questions about you.</p>
+<ul style="margin: 8px 0 24px; padding: 0 0 0 18px; display: grid; gap: 8px; font-size: 15px"><li>Answers in Malay, English or both</li><li>Hidden from Google unless you switch it on</li><li>Switch to Business when you start selling</li></ul>
+<a href="/signup" class="btn" style="margin-top: auto; background: #f0f1f4; color: #191f2c">Create your free page</a>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px; padding: 36px; border-radius: 24px; background: #191f2c; color: #fafbfc">
+<h3 class="h3" style="color: #bfd1f9">Business</h3>
+<p style="margin: 0; display: flex; align-items: baseline; gap: 10px"><span style="font-family: var(--d); font-size: 56px; font-weight: 700; letter-spacing: -0.04em; line-height: 1">RM39</span><span style="color: #b3b7c1">a month, or RM390 a year</span></p>
+<p style="margin: 0; color: #b3b7c1">Your first three leads are free.</p>
+<ul style="margin: 8px 0 24px; padding: 0 0 0 18px; display: grid; gap: 8px; font-size: 15px"><li>Every lead emailed with their number and the whole chat</li><li>Reply on WhatsApp in one tap</li><li>FAQ pages Google can find</li><li>Questions grouped by meaning</li></ul>
+<a href="/signup" class="btn" style="margin-top: auto">Start with 3 free leads</a>
+</div>
+</div>
+<p class="soft" style="margin: 24px 0 0; font-size: 14px">Paid by FPX online banking. No card and no automatic charge, so nothing renews without you. One RM95 order a month pays for it.</p>
+</div>
+</section>
+
+<!-- FAQ -->
+<section id="faq" class="sec">
+<div class="wrap split">
+<h2 class="h2">Questions owners ask first.</h2>
+<div style="border-top: 1px solid #e4e7eb">
+<details class="q" open><summary>What if it gives a wrong price?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">It can only quote prices, dates and addresses that you approved. If nothing you approved answers the question, it tells the customer it will check with you. It never guesses, and never rounds a number.</p></details>
+<details class="q"><summary>Is answering really free?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">Yes. The AI answers your customers on every plan, for as long as you have a page. Business pays for the leads.</p></details>
+<details class="q"><summary>Can it read my Instagram?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">Not yet. Instagram and TikTok don’t let us read profiles. Paste your bio or a few paragraphs about your shop instead.</p></details>
+<details class="q"><summary>Does it reply in Malay?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">It answers in the language the customer used: Malay, English, Manglish or a mix.</p></details>
+<details class="q"><summary>How do I pay?</summary><p style="margin: 0 0 24px; max-width: 36em; color: #4b5060">By FPX online banking, RM39 a month or RM390 a year. There is no card on file and no automatic charge.</p></details>
+</div>
+</div>
+</section>
+
+<!-- Closing -->
+<section style="padding: 0 0 120px">
+<div class="wrap">
+<div style="display: grid; grid-template-columns: minmax(0, 1fr); border-radius: 28px; overflow: hidden; background: #eaf0ff">
+<div style="padding: 64px 48px 48px">
+<h2 class="h2" style="color: #122686; max-width: 14ch">Keep the price list. Lose the forty DMs.</h2>
+<p class="lede" style="color: #191f2c">Paste your website or a few paragraphs about your shop, approve the facts it finds, and share the link.</p>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 28px"><a href="/signup" class="btn">Create your free page</a><a href="/signin" class="link">Sign in <span aria-hidden="true" style="color: #2340c8">→</span></a></div>
+</div>
+<div style="aspect-ratio: 21 / 8; overflow: hidden"><img src="/_blob/712a5adabc653230800c5a21396b0117" alt="A shop owner at her kitchen table, typing on a laptop, her phone and a cup of teh tarik beside it" style="display: block; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%"></div>
+</div>
+</div>
+</section>
+
+</main>
+
+<footer style="border-top: 1px solid #e4e7eb; padding: 56px 0 40px">
+<div class="wrap foot">
+<div style="display: grid; gap: 10px; align-content: start"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><p class="soft" style="margin: 0; font-size: 15px; max-width: 24em">A link in bio that answers your customers.</p></div>
+<nav aria-label="Product" style="display: grid; gap: 8px; align-content: start; font-size: 15px"><p style="margin: 0 0 4px; font-family: var(--m); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #696e7b">Product</p><a href="#how" style="text-decoration: none">How it works</a><a href="#pricing" style="text-decoration: none">Pricing</a><a href="#faq" style="text-decoration: none">FAQ</a></nav>
+<nav aria-label="Curios" style="display: grid; gap: 8px; align-content: start; font-size: 15px"><p style="margin: 0 0 4px; font-family: var(--m); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: #696e7b">Curios</p><a href="/signup" style="text-decoration: none">Create your free page</a><a href="/signin" style="text-decoration: none">Sign in</a><a href="/ms" hreflang="ms" lang="ms" style="text-decoration: none">Bahasa Melayu</a></nav>
+</div>
+<div class="wrap" style="margin-top: 40px"><p class="soft" style="margin: 0; font-size: 13px">Kek Lina and every handle and number on this page are samples, made up for the demo.</p></div>
+</footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"heroTitle":{"editor":"text","default":"Your bio link answers\n“berapa harga”.\nAll forty times."},"$preview":{"width":1280,"height":7600}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { heroTitle: this.props.heroTitle ?? 'Your bio link answers\n“berapa harga”.\nAll forty times.' };
+  }
+}
+</script>
+</body>
+</html>

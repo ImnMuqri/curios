@@ -65,7 +65,8 @@ app.
 | `TanyaJe` | landing "Tanya je" section | exists, restyle |
 | `SignIn`, `SignUp` | `/signin`, `/signup` | exists, restyle |
 | `Onboarding` (4 steps) | `/app/onboarding` | exists, restyle |
-| `Public` route `page` / `shop` / `ask` | `/[handle]`, `/[handle]/shop`, the ask sheet | exists, restyle |
+| `Public` route `page` / `ask` | `/[handle]` (Links and Ask tabs) | exists, restyle |
+| `Public` route `shop` / `item` | `/[handle]/shop`, `/[handle]/shop/[slug]` (see the 22 Oct update) | restyle / new |
 | `Public` route `checkout` | checkout (slice 18, `devDocs/store-design.md`) | new |
 | `Public` route `placed` | after placing an order: show the code, tell the visitor to keep it | new |
 | `Public` route `order` | `/[handle]/order/<token>` | new |
@@ -131,6 +132,85 @@ app.
   written into the prefilled message (see `store-design.md`).
 - The "What a visitor sees" phone and "Where else it shows" list on this board explain each state.
   They are not UI to build.
+
+## Update, 22 Oct 2026: shopfront, AI replies, CHIP
+
+Iman approved these on the canvas. They replace what the boards showed before, so check the
+rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's tabs and Billplz.
+
+**The shop gets its own page (`Public`)**
+- The public page's tabs are **Links and Ask** only, on business pages too. The Shop tab is gone.
+- The shop's way in is the **first link** on the Links tab. It's the same pill as other links, in
+  the accent colour, with three overlapping product photos and "Shop · N items · next pickup …".
+- The shop is its own page at `/[handle]/shop`:
+  - top bar: back, the shop's address, share
+  - an "Open for orders" sign, the name in the owner's font, the area, pickup or delivery, and the
+    next pickup day
+  - the owner's note as a chat bubble from them, with their initial, name and date
+  - sticky category chips with counts
+  - two-column cards with square photos and tags ("Best seller", "Pre-order", "Raya")
+  - a + on each photo that turns into the count
+  - "Want something not listed? Ask a question" at the end
+- A product has its own page at `/[handle]/shop/[slug]`, so owners can share one product:
+  - a 4:3 photo
+  - tag, name, price, description
+  - size choice cards that change the price
+  - notice needed, halal line
+  - "Ask about this"
+  - a bottom bar with − / + and "Add to basket · RM…"
+
+  This replaces the item bottom sheet.
+- The basket bar ("N items · RM… · Checkout") shows on the Links tab, the shop and the product
+  page whenever the basket has something in it.
+- Screens: `Public-page`, `Public-shop`, `Public-product`, `Public-ask`.
+
+**AI replies are not chat bubbles (`Public`, `Main`, `TanyaJe`)**
+- The visitor's message is a soft see-through bubble on the right (rgba(250,251,252,.14) on the
+  page colour).
+- The page's reply has **no bubble**. A small label sits on top: a dot in the accent colour and
+  "{Name}'s page". The answer runs full width as plain text, 15px, line-height 1.6.
+- When an answer is about a product, a product card follows it, with photo, name, price and "Add
+  to basket". It changes to "In your basket" once added, and tapping the photo opens the product
+  page. See `Public-ask`.
+- On light backgrounds (the landing's floating chat) the reply is a white card with the same label.
+
+**Payments: CHIP Collect plus the owner's own QR**
+- Billplz is replaced by **CHIP** everywhere, for both of these:
+  - owners paying for Business (`Billing`, landing FAQ and pricing): FPX, e-wallet or card,
+    through CHIP, with nothing saved and nothing charged automatically
+  - customers paying for orders
+- **Store → Payment** has a new "Online payments" section above DuitNow QR, with three states:
+  - not connected
+  - connecting: the fields are **Brand ID** and **Secret key**, from the CHIP dashboard under
+    Developers; check against CHIP before building
+  - connected: "Test with RM1" and "Disconnect"
+
+  The money goes to the owner's own CHIP account. Curios never holds it.
+- **Checkout** gets a "How you'll pay" section.
+  - **With CHIP connected,** four choices:
+    - Online banking (FPX), E-wallet, Card: paid on CHIP's page. Pass the chosen method in CHIP's
+      payment method whitelist so its page opens on that method. Confirmed automatically, and the
+      button reads "Pay RM…".
+    - DuitNow QR: the owner's **own** QR with a receipt upload, exactly as before. The button reads
+      "Place order · RM…". Do not use CHIP's DuitNow here; there must be one QR option, not two.
+  - **Without CHIP,** only the owner's QR option shows. Screen: `Public-checkout-qr-only`.
+- **After paying online:**
+  - the placed screen reads "Paid. Order placed" and "See your order"
+  - the order page goes straight to Paid, with a "Paid RM… by FPX · Maybank2u · Ref …" row and
+    no QR or upload (`Public-placed`, `Public-order`; the QR version is `Public-order-qr`)
+- **Orders:**
+  - an online-paid order has the pill "Paid online"
+  - its steps are Placed → Paid by FPX → Checked "By the bank" → Completed
+  - its Payment card says the bank confirmed it through CHIP, with the reference
+  - the only action is "Mark completed" (`Orders-paid-online`)
+- **Emails:** a new "New order #14 · RM215 · Paid" email with a "Paid by FPX" tag, no receipt
+  to check, and a note that CHIP pays out to the owner's bank (`Emails-paid`).
+
+**Elsewhere**
+- **Landing, For business:** the customer phone shows the new shop page (two-column cards, + on
+  photos), and step 1 says the shop has its own page that can be linked from Instagram.
+- **Store preview phone:** shows the new shop page, with the shop description as the owner's
+  note bubble.
 
 ## Open decisions (ask Iman before building these)
 
