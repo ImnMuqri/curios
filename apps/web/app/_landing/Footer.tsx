@@ -1,5 +1,6 @@
 import type { LandingCopy, Locale } from './copy.js';
 import { CHROME, LEGAL_DOCS, LEGAL_PATH } from '../_legal/content.js';
+import { FooterPeek } from './FooterPeek.js';
 import { Wordmark } from './Wordmark.js';
 import styles from './tanya.module.css';
 
@@ -36,7 +37,9 @@ export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) 
         <p className={styles.footNote}>{copy.footer.note}</p>
       </div>
       <span className={styles.footMark} aria-hidden="true">
-        <Wordmark />
+        <Wordmark className={styles.footWord} tone="ghost">
+          <FooterPeek />
+        </Wordmark>
       </span>
     </footer>
   );

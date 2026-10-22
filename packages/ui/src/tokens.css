@@ -92,6 +92,10 @@
   --ghost-line: #c9ccd3;
   /* The footer wordmark's ring and eyes, dark on dark. */
   --ghost-ink: #2a3248;
+  /* The footer wordmark's slow shine, and the shadow under Peek's feet. */
+  --foot-mark-a: #252c3d;
+  --foot-mark-b: #4a5677;
+  --peek-ground-shadow: rgba(0, 0, 0, 0.28);
   --phone-edge: #e1e4e9;
   /* The tick in the dashboard toast. */
   --toast-tick: #86e0b8;

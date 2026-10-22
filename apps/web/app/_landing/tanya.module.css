@@ -3413,9 +3413,146 @@
   --l-wordmark: 31vw;
   display: block;
   margin: 28px 0 -0.16em;
-  overflow: hidden;
+  /* Clip sideways only: Peek stands above the wordmark's box. */
+  overflow-x: clip;
+  overflow-y: visible;
   line-height: 0.8;
   text-align: center;
   white-space: nowrap;
-  color: var(--tj-ink-700);
+  color: var(--foot-mark-a);
 }
+
+.footMark .footWord {
+  font-weight: 800;
+  line-height: 0.8;
+  letter-spacing: -0.06em;
+}
+
+.footPeek {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% - 0.065em);
+  width: 0.4em;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.footPeek svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.pkfArmR {
+  transform-box: fill-box;
+  transform-origin: -40% 140%;
+}
+
+.pkfEyes {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+/* The shine and Peek's wave, bob, blink and look run only when motion is welcome;
+   otherwise the mark is flat and Peek holds still. */
+@media (prefers-reduced-motion: no-preference) {
+  .footMark {
+    color: transparent;
+    background: linear-gradient(100deg, var(--foot-mark-a) 35%, var(--foot-mark-b) 50%, var(--foot-mark-a) 65%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    animation: shineMark 6s linear infinite;
+  }
+  .pkfArmR {
+    animation: pkfWave 2.4s ease-in-out infinite;
+  }
+  .pkfHandL {
+    animation: pkfBob 3s ease-in-out infinite;
+  }
+  .pkfFootL,
+  .pkfFootR {
+    animation: pkfBob 3.4s ease-in-out infinite;
+  }
+  .pkfFootR {
+    animation-delay: -1.2s;
+  }
+  .pkfEyes {
+    animation: pkfBlink 5s infinite;
+  }
+  .pkfPupils {
+    animation: pkfLook 9s ease-in-out infinite;
+  }
+}
+
+@keyframes shineMark {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@keyframes pkfBob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pkfWave {
+  0%,
+  55%,
+  100% {
+    transform: rotate(0);
+  }
+  62% {
+    transform: rotate(-18deg);
+  }
+  70% {
+    transform: rotate(14deg);
+  }
+  78% {
+    transform: rotate(-14deg);
+  }
+  86% {
+    transform: rotate(8deg);
+  }
+}
+
+@keyframes pkfBlink {
+  0%,
+  46%,
+  50%,
+  100% {
+    transform: scaleY(1);
+  }
+  48% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes pkfLook {
+  0%,
+  20% {
+    transform: translate(0, 0);
+  }
+  25%,
+  40% {
+    transform: translate(-4px, 2px);
+  }
+  45%,
+  60% {
+    transform: translate(4px, 2px);
+  }
+  65%,
+  100% {
+    transform: translate(0, -1px);
+  }
+}
+
