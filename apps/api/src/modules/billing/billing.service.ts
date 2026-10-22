@@ -91,6 +91,43 @@ export async function createPurchaseForOwner(
 }
 
 /**
+ * Turns auto-renew off for the signed-in owner's page: the saved card is forgotten here,
+ * then at CHIP.
+ *
+ * The row goes first, in one statement that hands back the token it removed. The row is
+ * what the renewal job reads, so once it is gone no charge can follow -- whatever CHIP
+ * says next. Telling CHIP to forget the token is tidiness on top: if CHIP is down it is
+ * logged, not thrown, because the owner's request has already done what they asked.
+ *
+ * No card is not an error. Two clicks, or a card the job dropped a moment ago, both end
+ * with auto-renew off, which is the answer either way.
+ */
+export async function turnOffAutoRenew(
+  deps: {
+    prisma: PrismaClient;
+    client: ChipClient;
+    log?: { error: (obj: unknown, msg: string) => void };
+  },
+  input: { accountId: string },
+): Promise<void> {
+  const removed = await deps.prisma.$queryRaw<{ pageId: string; token: string }[]>`
+    DELETE FROM "RenewalCard"
+    WHERE "pageId" IN (SELECT "id" FROM "Page" WHERE "accountId" = ${input.accountId})
+    RETURNING "pageId", "token"`;
+
+  for (const card of removed) {
+    try {
+      await deps.client.deleteRecurringToken(card.token);
+    } catch (error) {
+      deps.log?.error(
+        { pageId: card.pageId, err: error },
+        'auto-renew turned off, but CHIP could not be told to forget the card',
+      );
+    }
+  }
+}
+
+/**
  * Gives an owner their free trial back, once: the lead count goes to zero, and
  * the order allowance restarts from the orders placed so far (`ordersPlaced` itself
  * is never lowered; order numbers come from it).

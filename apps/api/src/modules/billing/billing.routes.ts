@@ -7,6 +7,7 @@ import {
   createChipClient,
   evidenceFromPurchase,
   grantPayment,
+  notifyRenewalFailure,
   recordRenewalFailure,
   verifyChipSignature,
   type ChipClient,
@@ -15,7 +16,7 @@ import {
 } from '@curios/billing';
 import { rawJson } from '../../plugins/raw-json.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { createPurchaseForOwner, resetTrial } from './billing.service.js';
+import { createPurchaseForOwner, resetTrial, turnOffAutoRenew } from './billing.service.js';
 
 export interface BillingRouteOptions {
   /**
@@ -24,8 +25,8 @@ export interface BillingRouteOptions {
    */
   client?: ChipClient;
   /**
-   * Told when a renewal charge failed and was counted, so the owner can be mailed. Without
-   * it the failure is still recorded and nothing is sent.
+   * Told when a renewal charge failed and was counted, so the owner can be mailed. Tests
+   * inject it; without it the app mails the owner through its own mail queue.
    */
   onRenewalFailure?: (pageId: string, result: RenewalFailureResult) => Promise<void>;
 }
@@ -112,6 +113,22 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
         },
       );
       return reply.status(201).send(result);
+    },
+  );
+
+  app.post(
+    '/billing/auto-renew/off',
+    { schema: { response: { 200: z.object({ status: z.string() }) } } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      if (!chip) throw new BillingNotConfiguredError();
+
+      await turnOffAutoRenew(
+        { prisma: app.prisma, client: chip.client, log: request.log },
+        { accountId: request.account.id },
+      );
+      request.log.info({ accountId: request.account.id }, 'auto-renew turned off by owner');
+      return reply.send({ status: 'off' });
     },
   );
 
@@ -276,6 +293,14 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
     return reply.send(await grantFromChip(request.log, purchaseId, 'callback'));
   });
 
+  // The owner hears about a counted renewal failure. notifyRenewalFailure never throws, so
+  // a mail queue that is down cannot turn a recorded failure into a 500 and a resend.
+  const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
+  const onRenewalFailure =
+    options.onRenewalFailure ??
+    ((pageId: string, result: RenewalFailureResult) =>
+      notifyRenewalFailure({ prisma: app.prisma, mailQueue: app.mailQueue, appUrl, log: app.log }, pageId, result));
+
   const webhookPublicKey = chip.webhookPublicKey;
   if (!webhookPublicKey) {
     app.log.warn(
@@ -313,7 +338,7 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
       if (!payment?.autoRenewal) return reply.send({ status: 'ignored' });
       const result = await recordRenewalFailure(app.prisma, payment.id, new Date());
       request.log.info({ purchaseId, source: 'webhook', outcome: `renewal-${result.kind}` }, 'chip purchase handled');
-      await options.onRenewalFailure?.(payment.pageId, result);
+      await onRenewalFailure(payment.pageId, result);
       return reply.send({ status: `renewal-${result.kind}` });
     }
     return reply.send({ status: 'ignored' });

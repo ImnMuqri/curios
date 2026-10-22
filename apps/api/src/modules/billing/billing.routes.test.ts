@@ -1,6 +1,7 @@
 import { generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { MAIL_QUEUE } from '@curios/core';
 import { CHIP_ENV, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { buildApp } from '../../app.js';
 import type { BillingRouteOptions } from './billing.routes.js';
@@ -376,14 +377,17 @@ describe('CHIP callback and webhook', () => {
   const onRenewalFailure = vi.fn<NonNullable<BillingRouteOptions['onRenewalFailure']>>();
   const apps: FastifyInstance[] = [];
 
-  /** An app built with exactly these keys in the environment, whatever a developer's .env says. */
-  async function appWith(keys: { callback?: string; webhook?: string }) {
+  /**
+   * An app built with exactly these keys in the environment, whatever a developer's .env says.
+   * `realHook` leaves onRenewalFailure out, so the app wires its own: the owner's email.
+   */
+  async function appWith(keys: { callback?: string; webhook?: string }, realHook = false) {
     delete process.env.CHIP_PUBLIC_KEY;
     delete process.env.CHIP_WEBHOOK_PUBLIC_KEY;
     if (keys.callback) process.env.CHIP_PUBLIC_KEY = keys.callback;
     if (keys.webhook) process.env.CHIP_WEBHOOK_PUBLIC_KEY = keys.webhook;
     try {
-      const built = await buildApp({ billing: { client, onRenewalFailure } });
+      const built = await buildApp({ billing: realHook ? { client } : { client, onRenewalFailure } });
       await built.ready();
       apps.push(built);
       return built;
@@ -579,6 +583,58 @@ describe('CHIP callback and webhook', () => {
       expect(client.getPurchase).not.toHaveBeenCalled();
     });
 
+    it("the webhook's renewal failure mails the owner", async () => {
+      const wired = await appWith({ callback: callbackKeys.publicKey, webhook: webhookKeys.publicKey }, true);
+      const add = vi.spyOn(wired.mailQueue, 'add').mockResolvedValue({} as never);
+      try {
+        const owner = await anOwner();
+        await app.prisma.page.update({
+          where: { id: owner.pageId },
+          data: { paidUntil: new Date(Date.now() + 12 * 60 * 60 * 1000) },
+        });
+        await app.prisma.renewalCard.create({
+          data: { pageId: owner.pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY', cardLabel: 'Visa 1111' },
+        });
+        const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+        await app.prisma.payment.update({ where: { id: paymentId }, data: { autoRenewal: true } });
+        const body = JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' });
+
+        const res = await post(wired, '/billing/chip/webhook', body, sign(body, webhookKeys.privateKey));
+
+        expect(res.statusCode).toBe(200);
+        expect(add).toHaveBeenCalledTimes(1);
+        const [name, mail] = add.mock.calls[0] ?? [];
+        expect(name).toBe(MAIL_QUEUE);
+        expect(mail).toMatchObject({ to: owner.email, subject: "We couldn't renew your Curios plan" });
+        expect(mail?.text).toContain('http://localhost:3000/app/billing');
+      } finally {
+        add.mockRestore();
+      }
+    });
+
+    it('still answers 200 when the renewal email cannot be queued', async () => {
+      // The failure is committed; a 500 would only make CHIP resend into a FAILED payment.
+      const wired = await appWith({ callback: callbackKeys.publicKey, webhook: webhookKeys.publicKey }, true);
+      const add = vi.spyOn(wired.mailQueue, 'add').mockRejectedValue(new Error('redis went away'));
+      try {
+        const owner = await anOwner();
+        await app.prisma.page.update({ where: { id: owner.pageId }, data: { paidUntil: new Date() } });
+        await app.prisma.renewalCard.create({
+          data: { pageId: owner.pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY' },
+        });
+        const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+        await app.prisma.payment.update({ where: { id: paymentId }, data: { autoRenewal: true } });
+        const body = JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' });
+
+        const res = await post(wired, '/billing/chip/webhook', body, sign(body, webhookKeys.privateKey));
+
+        expect(res.statusCode).toBe(200);
+        expect(await statusOf(paymentId)).toBe('FAILED');
+      } finally {
+        add.mockRestore();
+      }
+    });
+
     it('ignores a failure for a payment that was not a renewal', async () => {
       const owner = await anOwner();
       const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
@@ -623,6 +679,69 @@ describe('CHIP callback and webhook', () => {
 
       expect(res.statusCode).toBe(404);
     });
+  });
+});
+
+describe('POST /billing/auto-renew/off', () => {
+  const off = (cookie: string | undefined) =>
+    app.inject({
+      method: 'POST',
+      url: '/billing/auto-renew/off',
+      remoteAddress: from(),
+      cookies: cookie ? { [SESSION_COOKIE]: cookie } : {},
+    });
+  const aCard = async (pageId: string) => {
+    const token = `tok-${randomUUID()}`;
+    await app.prisma.renewalCard.create({ data: { pageId, token, plan: 'MONTHLY', cardLabel: 'Visa ending 1111' } });
+    return token;
+  };
+  const cardOf = (pageId: string) => app.prisma.renewalCard.findUnique({ where: { pageId } });
+
+  it('refuses a caller with no session', async () => {
+    expect((await off(undefined)).statusCode).toBe(401);
+  });
+
+  it('turning auto-renew off deletes the card and the token', async () => {
+    const owner = await anOwner();
+    const token = await aCard(owner.pageId);
+
+    const res = await off(owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'off' });
+    expect(await cardOf(owner.pageId)).toBeNull();
+    expect(client.deleteRecurringToken).toHaveBeenCalledWith(token);
+  });
+
+  it('turning it off still deletes the card when CHIP is down', async () => {
+    const owner = await anOwner();
+    await aCard(owner.pageId);
+    client.deleteRecurringToken.mockRejectedValue(new ChipUnavailableError('timeout'));
+
+    const res = await off(owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(await cardOf(owner.pageId)).toBeNull();
+  });
+
+  it('answers off when auto-renew already is, without asking CHIP', async () => {
+    const owner = await anOwner();
+
+    const res = await off(owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'off' });
+    expect(client.deleteRecurringToken).not.toHaveBeenCalled();
+  });
+
+  it("leaves another owner's card alone", async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    await aCard(other.pageId);
+
+    await off(owner.cookie);
+
+    expect(await cardOf(other.pageId)).not.toBeNull();
   });
 });
 

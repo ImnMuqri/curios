@@ -2,7 +2,8 @@ import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import { BILLING_QUEUE, PENDING_CHECK_JOB, RENEWAL_REMINDER_JOB } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
-import { evidenceFromPurchase, grantPayment, type ChipClient } from '@curios/billing';
+import { DEAD_PURCHASE_STATUSES, evidenceFromPurchase, grantPayment, type ChipClient } from '@curios/billing';
+import { runAutoRenewals } from './auto-renew.js';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import { runPlanEndedMails, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
@@ -29,9 +30,6 @@ export interface SchedulerQueue {
     template: { name: string },
   ): Promise<unknown>;
 }
-
-/** What CHIP says about a purchase that will never be paid. */
-const DEAD_PURCHASE_STATUSES = new Set(['expired', 'cancelled', 'error', 'blocked']);
 
 /**
  * Asks CHIP about payments still pending, grants the ones it says were paid, and
@@ -104,6 +102,8 @@ export function createBillingWorker(deps: {
   client: ChipClient;
   mailQueue: MailQueueLike;
   appUrl: string;
+  /** The API's public origin, for the renewal purchases' callback. */
+  callbackBaseUrl: string;
   log?: BillingLog;
 }): Worker {
   return new Worker(
@@ -113,6 +113,23 @@ export function createBillingWorker(deps: {
         await runPendingCheck({ prisma: deps.prisma, client: deps.client, now: new Date(), log: deps.log });
       }
       if (job.name === RENEWAL_REMINDER_JOB) {
+        // Charged first, so a page renewed this morning is not then told its plan ends.
+        // Its failure is kept until the emails below have gone, so one cannot stop the other.
+        let renewalError: Error | undefined;
+        try {
+          const renewed = await runAutoRenewals({
+            prisma: deps.prisma,
+            client: deps.client,
+            mailQueue: deps.mailQueue,
+            now: new Date(),
+            appUrl: deps.appUrl,
+            callbackBaseUrl: deps.callbackBaseUrl,
+            log: deps.log,
+          });
+          deps.log?.info(renewed, 'auto-renew run finished');
+        } catch (error) {
+          renewalError = error instanceof Error ? error : new Error(String(error));
+        }
         await runRenewalReminders({
           prisma: deps.prisma,
           mailQueue: deps.mailQueue,
@@ -128,6 +145,7 @@ export function createBillingWorker(deps: {
           appUrl: deps.appUrl,
           log: deps.log,
         });
+        if (renewalError) throw renewalError;
       }
     },
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.billing },

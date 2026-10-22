@@ -21,7 +21,7 @@ if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
 
 // Switched off only in development with no CHIP settings at all -- see
 // billingDisabled. Production, or a half-filled configuration, still refuses to start.
-// callbackBaseUrl is read now so a missing one fails at boot; the auto-renew job is its consumer.
+// callbackBaseUrl is read now so a missing one fails at boot rather than at the first renewal.
 const billing = billingDisabled()
   ? null
   : {
@@ -112,6 +112,7 @@ if (billing) {
     client: createChipClient({ secretKey: billing.secretKey, brandId: billing.brandId, baseUrl: billing.baseUrl }),
     mailQueue: mailProducer,
     appUrl,
+    callbackBaseUrl: billing.callbackBaseUrl,
     log,
   });
   billingWorker.on('failed', (job, err) =>

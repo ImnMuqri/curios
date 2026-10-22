@@ -62,6 +62,9 @@ export class ChipUnavailableError extends Error {
   }
 }
 
+/** What CHIP says about a purchase that will never be paid. */
+export const DEAD_PURCHASE_STATUSES: ReadonlySet<string> = new Set(['expired', 'cancelled', 'error', 'blocked']);
+
 /** Card schemes a saved card can come from; CHIP only saves cards for recurring use. */
 const CARD_METHODS = ['visa', 'mastercard', 'maestro'];
 
