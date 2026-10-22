@@ -5,8 +5,8 @@ import { PLAN_PRICES_CENTS } from '@curios/core/billing';
  * design handoff's TanyaJe board (design/boards/TanyaJe.dc.html), which
  * replaced the shop-first landing on 2026-10-16.
  *
- * The Malay was drafted by an AI. DESIGN.md is clear that Malay copy comes
- * from a Malay speaker: it needs a native read before launch.
+ * The Malay was drafted by an AI and read by the owner, a Malay speaker, on
+ * 2026-10-22 (DEVIATIONS 10). New Malay copy needs the same read.
  *
  * Every claim should be one the product makes true today. Checkout, paying
  * by the owner's QR with proof attached, and orders landing in the dashboard
