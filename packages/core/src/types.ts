@@ -106,7 +106,7 @@ export const RENEWAL_REMINDER_JOB = 'renewal-reminder';
 /**
  * Housekeeping that runs whatever else is configured: the nightly retention
  * sweep. Its own queue, not billing's, because billing's only runs where
- * Billplz is set up and a promise to delete personal data cannot depend on that.
+ * CHIP is set up and a promise to delete personal data cannot depend on that.
  */
 export const HOUSEKEEPING_QUEUE = 'housekeeping';
 export const RETENTION_JOB = 'retention';

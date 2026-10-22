@@ -51,7 +51,7 @@ separate processes sharing `db` and `core`, and they never import each other.
 | Jobs | BullMQ + Redis | ingestion, lead extraction, email |
 | DB | Postgres + Prisma | facts are rows; their vectors are bytes in a column, and there is still no vector database (see BACKEND.md) |
 | Files | Cloudflare R2 | avatars, OG images, scraped assets |
-| Pay | Billplz | one-off bills only — recurring is card-tokenised and in beta, and FPX cannot auto-charge. See Settled decisions. |
+| Pay | CHIP | one-off purchases by FPX, card or e-wallet, plus opt-in card auto-renew (FPX cannot auto-charge). See Settled decisions. |
 | Models | Haiku for chat, Opus for ingestion | the asymmetry is the margin |
 
 ---
@@ -91,7 +91,7 @@ All eight are built, the last in slice 10 — see `slice-10-build-spec.md`.
 | Personal privacy | `noindex` by default on personal pages, opt-in only, from a switch in Settings. `shouldIndex` in `@curios/core` is the one statement of the rule. |
 | Owner auth | Google, or email and password — both since slice 2. Phone OTP publishing gate deferred, not shipped. See slice-2-build-spec.md. |
 | Admin auth | Its own table, its own login, its own cookie. Shares nothing with owner auth. See ADMIN.md. |
-| Billing rails | Verified 2026-09-12, not assumed. Billplz recurring exists only as card tokenisation (`Agreements`, beta, billed as Auto-Deduct at 2% + RM0.75), and Billplz offers no FPX e-Mandate. FPX itself cannot auto-charge — every payment needs the payer to authenticate. So there is no auto-renew on the rail this market actually uses. |
+| Billing rails | Verified 2026-09-12, not assumed. Billplz recurring exists only as card tokenisation (`Agreements`, beta, billed as Auto-Deduct at 2% + RM0.75), and Billplz offers no FPX e-Mandate. FPX itself cannot auto-charge — every payment needs the payer to authenticate. So there is no auto-renew on the rail this market actually uses. *Superseded 2026-10-22: CHIP replaces Billplz; one-off purchases by FPX, card or e-wallet, plus opt-in card auto-renew (devDocs/chip-payments-design.md).* |
 | Plans | Monthly and annual, both as a one-off FPX bill. Monthly is renewed by hand; there is no mandate to lapse and no beta to depend on. Annual is one bill a year, and at 0.75–1.25% against Auto-Deduct's flat RM0.75+ component it is several times cheaper per subscriber-year at these ticket sizes. |
 | Tiers | Chosen when the handle is claimed — personal or business, with neither pre-selected. A personal page can become a business page once, from Billing; there is no way back, because business to personal would need rules for paid time, captured leads and indexed FAQ pages that nothing needs. A personal owner with no website pastes text instead of a link. See slice-10-build-spec.md. |
 | Granting paid time | One step, three callers. Billplz's callback and the browser's redirect both verify an X Signature and go through `grantPayment` (`packages/billing/src/grant.ts`), which binds the bill to the `Payment` row it was raised for, claims that row `PENDING → PAID` with a conditional update, and locks the page before extending `paidUntil`. An hourly check asks Billplz about payments still pending, because Billplz gives up after five callback attempts. Two arrivals for one bill grant once; two payments for one page both count. |

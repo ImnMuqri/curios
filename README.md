@@ -29,7 +29,7 @@ leads, the transcripts, and FAQ pages built from what customers really ask.
 | File reading | `unpdf` (PDF), `mammoth` (Word) | A resume or menu uploaded as a source |
 | Crawling | `undici` + `cheerio` | Reading an owner's website, behind an SSRF guard |
 | Storage | S3-compatible (Cloudflare R2) | Profile pictures and cover photos |
-| Payments | Billplz (FPX online banking) | One-off bills: RM39 a month or RM390 a year, no auto-renewal |
+| Payments | CHIP (FPX online banking, card, e-wallet) | One-off purchases: RM49 a month or RM490 a year, plus opt-in card auto-renew |
 | Email | SMTP via Nodemailer (Mailpit locally) | Sign-in links and new-lead notifications |
 | Auth | Email + password (Argon2) and Google sign-in | Sessions are random tokens, stored only as a hash |
 | Tests | Vitest, Testing Library, a "golden" set run against the real models | See [Testing](#testing) |
@@ -79,7 +79,7 @@ flowchart LR
     WG --> HAIKU
     WL --> HAIKU
     WM --> SMTP[SMTP]
-    WB <--> BILL[Billplz]
+    WB <--> BILL[CHIP]
     API --> S3[(R2 storage)]
 ```
 
@@ -200,7 +200,7 @@ curios/
 │   ├── db-read/      Read-only queries the public pages render from
 │   ├── gateway/      The model provider boundary (Anthropic): chat, extract, judge, slots
 │   ├── embeddings/   The embedding provider boundary (OpenAI) and vector encoding
-│   ├── billing/      Billplz client
+│   ├── billing/      CHIP client
 │   ├── ui/           Shared components and design tokens
 │   └── goldens/      Answer-quality evaluation against the real models
 ├── scripts/          Dev seed and one-off backfills
@@ -246,7 +246,7 @@ pnpm dev
 | Redis | `localhost:6399` |
 
 Profile and cover uploads need the `STORAGE_*` settings, and payments need the
-`BILLPLZ_*` ones. Without them, those buttons say they're switched off, and
+`CHIP_*` ones. Without them, those buttons say they're switched off, and
 everything else works.
 
 ---
