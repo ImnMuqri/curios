@@ -11,6 +11,18 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&amp;family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,800&amp;display=swap">
 <style>
+.mark .mo{display:inline-block;width:.6em;height:.6em;margin:0 .012em;vertical-align:-.015em}
+.mark .mo svg{display:block;width:100%;height:100%;overflow:visible}
+.mo-r{fill:none;stroke:#2340c8;stroke-width:7.6}
+.mo-e{fill:#2340c8;transform-box:view-box;transform-origin:20px 16px;animation:moLook 10s ease-in-out infinite}
+@keyframes moLook{0%,16%{transform:translate(0,0)}20%,32%{transform:translate(-2.6px,1.2px)}36%,50%{transform:translate(2.6px,1.2px)}54%,68%{transform:translate(0,-.6px)}70%{transform:translate(0,-.6px) scaleY(.1)}72%,100%{transform:translate(0,-.6px)}}
+@media (prefers-reduced-motion:reduce){.mo-e{animation:none}}
+.mo-h{opacity:0;fill:none;stroke:#2340c8;stroke-width:3.2;stroke-linecap:round;transition:opacity 160ms}
+.mark:hover .mo-e,a:hover>.mark .mo-e{opacity:0}
+.mark:hover .mo-h,a:hover>.mark .mo-h{opacity:1}
+.mo-e{transition:opacity 160ms}
+
+
 body{margin:0;background:#fafbfc}
 a{color:#2340c8}a:hover{color:#122686}
 .sy{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;--soft:#696e7b;position:relative;display:flex;flex-direction:column;min-height:100vh;overflow:hidden;background:#fafbfc;color:#191f2c;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:15px;line-height:1.55}
@@ -132,7 +144,7 @@ a{color:#2340c8}a:hover{color:#122686}
 
 <div class="sy">
 <div class="blobs" aria-hidden="true"><span class="blob" style="left: -15%; top: -20%; background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span><span class="blob" style="right: -15%; bottom: -25%; background: radial-gradient(circle, #f6c9d5 0%, transparent 65%); animation-name: b2; animation-duration: 22s"></span><span class="blob" style="right: 20%; top: -30%; width: 35%; background: radial-gradient(circle, #ffe2b8 0%, transparent 65%); animation-duration: 20s"></span><svg class="grain"><filter id="sgn"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#sgn)"></rect></svg></div>
-<div class="top"><a class="mark" href="/" aria-label="Curios home"><span aria-hidden="true">cur<span class="i">ı</span>os</span></a></div>
+<div class="top"><a class="mark" href="/" aria-label="Curios home"><span aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span></a></div>
 <div class="mid">
 
 <sc-if value="{{ rForgot }}" hint-placeholder-val="{{ true }}"><div class="box card2"><svg class="ill" viewBox="0 0 200 140" aria-hidden="true"><circle cx="100" cy="72" r="58" fill="#eaf0ff"></circle><g class="sway"><rect x="58" y="52" width="84" height="44" rx="14" fill="#ffffff" stroke="#dfe1e6" stroke-width="2"></rect><circle cx="78" cy="74" r="4" fill="#2340c8"></circle><circle cx="92" cy="74" r="4" fill="#2340c8"></circle><circle cx="106" cy="74" r="4" fill="#2340c8"></circle><circle cx="120" cy="74" r="4" fill="#86a2ea" class="blinkd"></circle></g><g class="keyfly"><circle cx="150" cy="40" r="12" fill="none" stroke="#f2a33c" stroke-width="5"></circle><path d="M141 49l-18 18M128 62l6 6M123 67l5 5" stroke="#f2a33c" stroke-width="5" stroke-linecap="round" fill="none"></path></g></svg>

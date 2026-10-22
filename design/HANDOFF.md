@@ -239,6 +239,47 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 - **Store preview phone:** shows the new shop page, with the shop description as the owner's
   note bubble.
 
+## Update, 22 Oct 2026 (evening): logo, favicon and the mascot
+
+**Wordmark**
+- "curios" stays in Bricolage Grotesque 700.
+- The **o** is replaced by a brand-blue ring with two eyes (see `design/brand/logo-eyes.png`,
+  option 4).
+- The eyes slowly look left, right and up, and blink now and then, about every 10s.
+- On hover they turn into happy ^^ arcs.
+- Reduced motion turns the movement off.
+- Every board's `.mark` now uses this. The markup is
+  `curi<span class="mo"><svg viewBox="0 0 40 40">…</svg></span>s`, with `.mo-r` (ring),
+  `.mo-e` (eyes) and `.mo-h` (happy).
+
+**Favicon and app icon**
+- Option c, "peeking up": a white head with two eyes rising from the bottom of a blue rounded
+  square.
+- Files are in `design/brand/`:
+  - `icon.svg` → `apps/web/app/icon.svg`
+  - `apple-icon.png` (180, full bleed) → `apps/web/app/apple-icon.png` (or keep the
+    `apple-icon.tsx` and draw the same shape)
+  - `favicon.ico` (16/32/48)
+  - `icon-512.png`
+- The email sender avatar and the landing's notification badge use it too.
+
+**Peek, the mascot** (`design/brand/peek-mascot.png`)
+- The favicon's character, in brand blue, living **behind an edge** with two small hands holding
+  it.
+- Build it as two layers: the body (`.pk`, z 0) behind the field, and the hands (`.pk-front`,
+  z 3) in front. The edge sits at 64 of 96 in the viewBox.
+- It slides up once on load. Reduced motion turns this and the eye movement off.
+- It appears only on Curios's own pages, never on owners' public pages.
+- **Sign in and sign up:** it peeks over the email field.
+  - It looks down at the field while you type your email.
+  - It **covers its eyes while the password field is focused**.
+  - Done in CSS with `form:has(...)`.
+- **Landing (Tanya je):**
+  - peeking over the hero "curios.my/" claim field
+  - peeking over the closing claim field on the dark section
+  - it smiles (^^) while the visitor types a handle
+- **Landing (as built):** the same, over both claim fields.
+
 ## Open decisions (ask Iman before building these)
 
 1. **Price.** The code has RM39 a month (`PLAN_PRICES_CENTS` 3900 / 39000). The landing and Billing

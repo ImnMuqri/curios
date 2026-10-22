@@ -11,6 +11,43 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,800&amp;display=swap">
 <style>
+/* Peek, the Curios mascot */
+.pk{position:absolute;z-index:0;display:block;pointer-events:none;animation:pkUp 700ms cubic-bezier(.34,1.4,.64,1) 300ms both}
+.pk.pk-front{z-index:3}
+.pk svg{display:block;width:100%;height:auto;overflow:visible}
+.pk-b{fill:#2340c8}
+.pk-hands rect,.pk-cover ellipse{fill:#3a57e3}
+.pk-p{animation:pkLook 9s ease-in-out infinite}
+.pk-eyes{transform-box:fill-box;transform-origin:50% 50%;animation:pkBlink 5.5s infinite}
+.pk-happy,.pk-cover{opacity:0;transition:opacity 180ms ease,transform 320ms cubic-bezier(.34,1.4,.64,1)}
+.pk-cover{transform:translateY(26px)}
+.pk-eyes{transition:opacity 180ms ease}
+@keyframes pkUp{from{transform:translateY(40%);opacity:0}to{transform:none;opacity:1}}
+@keyframes pkLook{0%,20%{transform:translate(0,0)}25%,40%{transform:translate(-4px,2px)}45%,60%{transform:translate(4px,2px)}65%,100%{transform:translate(0,-1px)}}
+@keyframes pkBlink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.1)}}
+.pk-typing .pk-p{animation:none;transform:translate(-4px,4px);transition:transform 300ms ease}
+.pk-shy .pk-cover{opacity:1;transform:none}
+.pk-hands{transition:opacity 180ms ease}
+.pk-shy .pk-hands{opacity:0}
+.pk-shy .pk-p{animation:none}
+.pk-glad .pk-eyes{opacity:0}
+.pk-glad .pk-happy{opacity:1}
+@media (prefers-reduced-motion:reduce){.pk,.pk-p,.pk-eyes{animation:none}}
+form:has(#claim-hero:focus) .pk-eyes,form:has(#claim-final:focus) .pk-eyes{opacity:0}
+form:has(#claim-hero:focus) .pk-happy,form:has(#claim-final:focus) .pk-happy{opacity:1}
+
+.mark .mo{display:inline-block;width:.6em;height:.6em;margin:0 .012em;vertical-align:-.015em}
+.mark .mo svg{display:block;width:100%;height:100%;overflow:visible}
+.mo-r{fill:none;stroke:#2340c8;stroke-width:7.6}
+.mo-e{fill:#2340c8;transform-box:view-box;transform-origin:20px 16px;animation:moLook 10s ease-in-out infinite}
+@keyframes moLook{0%,16%{transform:translate(0,0)}20%,32%{transform:translate(-2.6px,1.2px)}36%,50%{transform:translate(2.6px,1.2px)}54%,68%{transform:translate(0,-.6px)}70%{transform:translate(0,-.6px) scaleY(.1)}72%,100%{transform:translate(0,-.6px)}}
+@media (prefers-reduced-motion:reduce){.mo-e{animation:none}}
+.mo-h{opacity:0;fill:none;stroke:#2340c8;stroke-width:3.2;stroke-linecap:round;transition:opacity 160ms}
+.mark:hover .mo-e,a:hover>.mark .mo-e{opacity:0}
+.mark:hover .mo-h,a:hover>.mark .mo-h{opacity:1}
+.mo-e{transition:opacity 160ms}
+
+
 body{margin:0;background:#fafbfc}
 a{color:#191f2c}a:hover{color:#2340c8}
 .lp{--disp:'Bricolage Grotesque',system-ui,sans-serif;--body:'IBM Plex Sans',system-ui,sans-serif;font-family:var(--body);font-size:17px;line-height:1.55;color:#191f2c;background:#fafbfc;overflow-x:clip}
@@ -40,7 +77,8 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .faq-grid{grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:64px}
 .foot-grid{grid-template-columns:auto 1fr auto;align-items:center}
 }
-.claim{display:flex;flex-wrap:wrap;gap:8px;max-width:560px}
+.claim{position:relative;display:flex;flex-wrap:wrap;gap:8px;max-width:560px}
+.claim .field{position:relative;z-index:1}
 .field{flex:1 1 260px;display:flex;align-items:center;min-height:56px;padding:0 8px 0 24px;border-radius:999px;background:#ffffff;box-shadow:inset 0 0 0 1.5px #191f2c}
 .field input{flex:1;min-width:0;height:52px;border:0;background:transparent;font:inherit;font-weight:600;color:#191f2c;outline:none}
 .field input::placeholder{color:#696e7b;font-weight:400}
@@ -64,7 +102,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 <header style="position: sticky; top: 0; z-index: 20; height: 88px; margin-bottom: -88px; padding-top: 12px">
 <div class="wrap">
 <div style="display: flex; align-items: center; gap: 16px; min-height: 64px; padding: 0 8px 0 32px; border-radius: 999px; background: #ffffff; color: #191f2c">
-<a href="/" style="display: inline-flex; margin-top: 2px; color: #191f2c; text-decoration: none"><span class="mark" aria-hidden="true">cur<span class="i">ı</span>os</span><span class="sr">Curios home</span></a>
+<a href="/" style="display: inline-flex; margin-top: 2px; color: #191f2c; text-decoration: none"><span class="mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span><span class="sr">Curios home</span></a>
 <nav class="sections" aria-label="Sections" style="gap: 4px; margin-left: 24px">
 <a href="#how" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">How it works</a>
 <a href="#pricing" style="display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 999px; font-size: 13.6px; font-weight: 600; text-decoration: none; color: #191f2c">Pricing</a>
@@ -88,7 +126,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 <h1 id="hero-title" style="margin: 0; max-width: 11ch; font-family: var(--disp); font-size: clamp(41.5px, 24.16px + 4.445vw, 81.06px); font-weight: 800; line-height: 0.98; letter-spacing: -0.04em; color: #122686">{{heroTitle}}</h1>
 <p style="margin: 24px 0 0; max-width: 32em; font-size: 17px; color: #191f2c">For shops that sell on Instagram and WhatsApp. Curios answers your customers in Malay or English from the prices and details you approve, and sends you the number of anyone ready to order.</p>
 <div style="margin-top: 32px">
-<form class="claim" action="/signup" method="get">
+<form class="claim" action="/signup" method="get"><span class="pk" aria-hidden="true" style="width: 78px; left: 190px; top: -36px"><svg viewBox="0 0 120 96"><path class="pk-b" d="M14 96V52a46 46 0 0 1 92 0v44z"></path><g class="pk-eyes"><circle cx="44" cy="40" r="14" fill="#fff"></circle><circle cx="76" cy="40" r="14" fill="#fff"></circle><g class="pk-p"><circle cx="44" cy="41" r="7" fill="#191f2c"></circle><circle cx="76" cy="41" r="7" fill="#191f2c"></circle><circle cx="46.4" cy="38" r="2.3" fill="#fff"></circle><circle cx="78.4" cy="38" r="2.3" fill="#fff"></circle></g></g><g class="pk-happy"><path d="M33 45q11-14 22 0M65 45q11-14 22 0" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"></path></g></svg></span><span class="pk pk-front" aria-hidden="true" style="width: 78px; left: 190px; top: -36px"><svg viewBox="0 0 120 96"><g class="pk-hands"><rect x="20" y="57" width="24" height="14" rx="7"></rect><rect x="76" y="57" width="24" height="14" rx="7"></rect></g><g class="pk-cover"><ellipse cx="42" cy="40" rx="18" ry="14"></ellipse><ellipse cx="78" cy="40" rx="18" ry="14"></ellipse></g></svg></span>
 <label for="claim-hero" class="sr">The address you want for your page</label>
 <div class="field"><span aria-hidden="true" style="color: #696e7b">curios.my/</span><input id="claim-hero" name="handle" placeholder="yourshop" autocomplete="off"></div>
 <button type="submit" class="btn" style="background: #2340c8; color: #fafbfc">Create your free page</button>
@@ -330,7 +368,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 <div class="wrap">
 <h2 id="final-title" style="margin: 0; max-width: 14ch; font-family: var(--disp); font-size: clamp(41.5px, 24.16px + 4.445vw, 81.06px); font-weight: 800; line-height: 0.98; letter-spacing: -0.04em; color: #eaf0ff">Put your price list in your bio link.</h2>
 <p style="margin: 24px 0 40px; max-width: 30em; font-size: 21.25px; color: #bfd1f9">Paste your website or a few paragraphs about your shop, approve the facts it finds, and share the link.</p>
-<form class="claim" action="/signup" method="get">
+<form class="claim" action="/signup" method="get"><span class="pk" aria-hidden="true" style="width: 78px; left: 190px; top: -36px"><svg viewBox="0 0 120 96"><path class="pk-b" d="M14 96V52a46 46 0 0 1 92 0v44z"></path><g class="pk-eyes"><circle cx="44" cy="40" r="14" fill="#fff"></circle><circle cx="76" cy="40" r="14" fill="#fff"></circle><g class="pk-p"><circle cx="44" cy="41" r="7" fill="#191f2c"></circle><circle cx="76" cy="41" r="7" fill="#191f2c"></circle><circle cx="46.4" cy="38" r="2.3" fill="#fff"></circle><circle cx="78.4" cy="38" r="2.3" fill="#fff"></circle></g></g><g class="pk-happy"><path d="M33 45q11-14 22 0M65 45q11-14 22 0" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round"></path></g></svg></span><span class="pk pk-front" aria-hidden="true" style="width: 78px; left: 190px; top: -36px"><svg viewBox="0 0 120 96"><g class="pk-hands"><rect x="20" y="57" width="24" height="14" rx="7"></rect><rect x="76" y="57" width="24" height="14" rx="7"></rect></g><g class="pk-cover"><ellipse cx="42" cy="40" rx="18" ry="14"></ellipse><ellipse cx="78" cy="40" rx="18" ry="14"></ellipse></g></svg></span>
 <label for="claim-final" class="sr">The address you want for your page</label>
 <div class="field" style="box-shadow: none"><span aria-hidden="true" style="color: #696e7b">curios.my/</span><input id="claim-final" name="handle" placeholder="yourshop" autocomplete="off"></div>
 <button type="submit" class="btn" style="background: #eaf0ff; color: #122686">Create your free page</button>
@@ -339,7 +377,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 </section>
 <footer class="wrap">
 <div class="two foot-grid" style="gap: 24px; padding: 32px 48px; border-radius: 28px; background: #ffffff; color: #191f2c; font-size: 14px">
-<span class="mark" aria-hidden="true" style="color: #191f2c">cur<span class="i">ı</span>os</span>
+<span class="mark" aria-hidden="true" style="color: #191f2c">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span>
 <nav aria-label="Footer" style="display: flex; flex-wrap: wrap; gap: 8px 24px">
 <a href="/signup" style="color: #191f2c; font-weight: 600">Create your free page</a>
 <a href="/signin" style="color: #191f2c; font-weight: 600">Sign in</a>
