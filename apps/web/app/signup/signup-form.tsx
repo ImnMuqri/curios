@@ -122,6 +122,10 @@ export function SignUpForm({
           {busy ? 'Creating…' : 'Create my page'}
         </Button>
       </form>
+
+      <p className={styles.terms}>
+        By creating a page you agree to the <a href="/terms">Terms</a> and <a href="/privacy">Privacy Policy</a>.
+      </p>
     </AuthShell>
   );
 }

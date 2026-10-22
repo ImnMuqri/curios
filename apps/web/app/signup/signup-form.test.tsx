@@ -12,6 +12,13 @@ describe('SignUpForm', () => {
     expect(email).toHaveAttribute('placeholder', 'you@example.com');
   });
 
+  it('says that creating a page agrees to the Terms and Privacy Policy, and links both', () => {
+    render(<SignUpForm onSubmit={vi.fn()} wantedHandle="" />);
+    expect(screen.getByText(/By creating a page you agree to the/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
+    expect(screen.getByRole('link', { name: 'Privacy Policy' })).toHaveAttribute('href', '/privacy');
+  });
+
   it('says the address typed on the landing page will be filled in, and nothing when there is none', () => {
     const { unmount } = render(<SignUpForm onSubmit={vi.fn()} wantedHandle="aisyahdraws" />);
     expect(screen.getByText(/curios\.my\/aisyahdraws/)).toBeInTheDocument();

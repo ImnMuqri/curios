@@ -232,6 +232,19 @@
   font-weight: 600;
 }
 
+/* Sign up: the board's line under the form, agreeing to the Terms and Privacy Policy. */
+.terms {
+  margin: 16px 0 0;
+  font-size: 12.5px;
+  color: var(--hint);
+  text-align: center;
+}
+
+.terms a {
+  color: inherit;
+  text-decoration: underline;
+}
+
 /* "Check your email": the envelope, then where it went. */
 .mail {
   display: grid;
