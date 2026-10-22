@@ -16,6 +16,8 @@ export interface PaymentEvidence {
   reference: string;
   /** Only when CHIP kept the card for charging again. `token` is the purchase id. */
   card: { token: string; label: string | null } | null;
+  /** Paid with a test key: no real money moved. */
+  isTest: boolean;
 }
 
 export type GrantOutcome =
@@ -29,7 +31,12 @@ export type GrantOutcome =
   | { kind: 'paid-after-failure' }
   | { kind: 'not-paid' }
   | { kind: 'unknown-payment' }
-  | { kind: 'mismatch'; reason: 'amount' | 'reference' };
+  | { kind: 'mismatch'; reason: 'amount' | 'reference' }
+  /**
+   * A test-key purchase reached production: no real money moved, so no paid time is given.
+   * A misconfigured key, not an owner's doing; callers log it at error level, like mismatch.
+   */
+  | { kind: 'test-purchase' };
 
 export interface GrantOptions {
   now: Date;
@@ -60,6 +67,7 @@ export function evidenceFromPurchase(purchase: ChipPurchase): PaymentEvidence {
     card: purchase.isRecurringToken
       ? { token: purchase.id, label: cardLabel(purchase.paymentMethod, purchase.maskedPan) }
       : null,
+    isTest: purchase.isTest,
   };
 }
 
@@ -80,6 +88,7 @@ export async function grantPayment(
   options: GrantOptions,
 ): Promise<GrantOutcome> {
   if (!evidence.paid) return { kind: 'not-paid' };
+  if (evidence.isTest && process.env.NODE_ENV === 'production') return { kind: 'test-purchase' };
 
   const payment = await prisma.payment.findUnique({
     where: { providerRef: evidence.providerRef },
@@ -138,9 +147,10 @@ export async function grantPayment(
       });
       cardSaved = true;
     }
-    // A renewal that worked ends the run of failures. updateMany, so a card the owner
-    // turned off meanwhile is not an error.
-    if (payment.autoRenewal) {
+    // Any paid time ends the run of failures -- a renewal that worked, or the owner paying
+    // by hand after a decline -- so Billing stops saying the last renewal failed and the
+    // next period counts from zero. updateMany, so a page with no card is not an error.
+    if (!cardSaved) {
       await tx.renewalCard.updateMany({
         where: { pageId: payment.pageId },
         data: { failedAttempts: 0, lastFailedAt: null },

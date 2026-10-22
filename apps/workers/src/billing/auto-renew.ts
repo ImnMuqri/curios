@@ -1,4 +1,5 @@
 import { PLAN_PRICES_CENTS } from '@curios/core';
+import { malaysiaToday } from '@curios/core/orders';
 import type { PrismaClient } from '@curios/db';
 import {
   billDescription,
@@ -19,9 +20,13 @@ import type { MailQueueLike } from './renewal-reminder.js';
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 
-/** A card is charged from a day before its plan ends... */
-export const CHARGE_AHEAD_MS = DAY_MS;
-/** ...until three days after, when recordRenewalFailure gives up on it anyway. */
+/**
+ * A card is charged on the Kuala Lumpur calendar day its plan ends -- the date Billing and
+ * the emails state -- at that day's 10:00 run, whatever the hour the plan ends: a plan
+ * ending at 23:00 is renewed that morning, one that ended at 09:00 an hour into its
+ * grace. Never the day before. Charging is allowed until three days after, when
+ * recordRenewalFailure gives up on it anyway.
+ */
 export const CHARGE_GRACE_MS = 3 * DAY_MS;
 /**
  * One attempt a day. Twenty hours rather than twenty-four, so a run that starts a little
@@ -35,6 +40,12 @@ export const ATTEMPT_GAP_MS = 20 * HOUR_MS;
 export const STUCK_RENEWAL_MS = 2 * HOUR_MS;
 /** A renewal purchase that was never charged stops being payable after this. */
 const PURCHASE_LIFETIME_MS = HOUR_MS;
+
+/**
+ * What an error may say in a log: its name, and nothing else. A refused CHIP call carries
+ * CHIP's response body in its message, and that body can hold the payer's details.
+ */
+export const errName = (error: unknown) => (error instanceof Error ? error.name : 'unknown');
 
 export interface AutoRenewResult {
   charged: number;
@@ -58,17 +69,16 @@ type Deps = {
    */
   afterRead?: () => Promise<void>;
   /**
+   * Test-only. Runs after the lapsed cards are read and before any is dropped, so a test
+   * can renew a page in that window and prove the drop checks the plan again.
+   */
+  afterLapsedRead?: () => Promise<void>;
+  /**
    * Test-only. Runs after the purchase is created and before the card is charged, so a
    * test can turn auto-renew off in that window and prove the card is checked again.
    */
   beforeCharge?: () => Promise<void>;
 };
-
-/**
- * What an error may say in a log: its name, and nothing else. A refused CHIP call carries
- * CHIP's response body in its message, and that body can hold the payer's details.
- */
-const errName = (error: unknown) => (error instanceof Error ? error.name : 'unknown');
 
 /** Money taken with no time given, or a purchase that does not bind: a person has to look. */
 function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: string, outcome: GrantOutcome): void {
@@ -79,8 +89,8 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
 }
 
 /**
- * Charges the saved card of every business page whose plan ends within a day, or ended
- * up to three days ago, and turns what CHIP answers into paid time, a counted failure,
+ * Charges the saved card of every business page whose plan ends today in Kuala Lumpur,
+ * or ended up to three days ago, and turns what CHIP answers into paid time, a counted failure,
  * or auto-renew switched off. Then drops the cards whose plan ran out past that grace
  * with no renewal through, telling each owner, so no plan ends in silence.
  *
@@ -127,9 +137,11 @@ export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
   return result;
 }
 
-/** paidUntil from three days ago (exclusive) to a day ahead (inclusive). */
+/** paidUntil from three days ago (exclusive) to the end of today in Kuala Lumpur (inclusive). */
 function chargeWindow(now: Date) {
-  return { gt: new Date(now.getTime() - CHARGE_GRACE_MS), lte: new Date(now.getTime() + CHARGE_AHEAD_MS) };
+  // Malaysia keeps UTC+8 all year, with no daylight saving.
+  const tomorrow = new Date(Date.parse(`${malaysiaToday(now)}T00:00:00+08:00`) + DAY_MS);
+  return { gt: new Date(now.getTime() - CHARGE_GRACE_MS), lt: tomorrow };
 }
 
 type Card = {
@@ -320,7 +332,8 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: 
  * unreachable, or a charge left open, every day of the window. The page is already
  * offline and the plan-ended email skips pages with a card, so without this the plan
  * would end in silence. Each card goes by page and token, and its owner is told once;
- * a renewal still PENDING is left for its webhook, which can still grant it.
+ * a renewal still PENDING is left for its webhook, which can still grant it. The plan is
+ * checked again in the delete, so a page that webhook renewed since the read keeps its card.
  */
 async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<void> {
   const lapsed = await deps.prisma.renewalCard.findMany({
@@ -329,9 +342,16 @@ async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<voi
     },
     select: { pageId: true, token: true },
   });
+  if (deps.afterLapsedRead) await deps.afterLapsedRead();
   for (const card of lapsed) {
     try {
-      const removed = await deps.prisma.renewalCard.deleteMany({ where: { pageId: card.pageId, token: card.token } });
+      const removed = await deps.prisma.renewalCard.deleteMany({
+        where: {
+          pageId: card.pageId,
+          token: card.token,
+          page: { paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) } },
+        },
+      });
       if (removed.count === 0) continue;
       result.stopped += 1;
       deps.log?.info({ pageId: card.pageId }, 'plan ran out past the grace; auto-renew off');

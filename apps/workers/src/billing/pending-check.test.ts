@@ -143,6 +143,60 @@ describe('runPendingCheck', () => {
     expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
+  it('flags a Billplz payment still pending from before the cutover, by id only', async () => {
+    const billplz = await aPayment(ago(3 * 24 * HOUR_MS), { provider: 'BILLPLZ' });
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    await runPendingCheck({ prisma, client: aPayingClient(), now: NOW, log });
+
+    // Paid at Billplz after the deploy, it is never granted by anything here: a person settles it.
+    expect(log.error).toHaveBeenCalledWith(
+      { paymentIds: [billplz.id] },
+      'billplz payments still pending since the cutover; settle them by hand (devDocs/OPERATIONS.md)',
+    );
+  });
+
+  it('says nothing of a Billplz payment older than seven days, or one settled', async () => {
+    await aPayment(ago(PENDING_MAX_AGE_MS + MINUTE_MS), { provider: 'BILLPLZ' });
+    await aPayment(ago(HOUR_MS), { provider: 'BILLPLZ', status: 'PAID' });
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    await runPendingCheck({ prisma, client: aPayingClient(), now: NOW, log });
+
+    expect(log.error).not.toHaveBeenCalled();
+  });
+
+  it('logs a test purchase refused in production at error level', async () => {
+    const nodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const payment = await aPayment(ago(3 * HOUR_MS));
+      const log = { info: vi.fn(), error: vi.fn() };
+
+      expect(await runPendingCheck({ prisma, client: aPayingClient(), now: NOW, log })).toMatchObject({ granted: 0 });
+
+      expect(log.error).toHaveBeenCalledWith(
+        { purchaseId: payment.ref, outcome: 'test-purchase' },
+        'pending payment refused by the hourly check',
+      );
+      expect(await statusOf(payment.id)).toBe('PENDING');
+    } finally {
+      process.env.NODE_ENV = nodeEnv;
+    }
+  });
+
+  it('logs only the error name when CHIP refuses, never its response body', async () => {
+    await aPayment(ago(3 * HOUR_MS));
+    const client = aPayingClient();
+    client.getPurchase.mockRejectedValueOnce(new Error('CHIP refused GET with 400: {"client":{"email":"nadia@example.com"}}'));
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    await runPendingCheck({ prisma, client, now: NOW, log });
+
+    expect(log.error).toHaveBeenCalledWith(expect.objectContaining({ err: 'Error' }), 'hourly check could not confirm a purchase');
+    expect(JSON.stringify(log.error.mock.calls)).not.toContain('nadia@example.com');
+  });
+
   it('checks a payment exactly two hours old', async () => {
     await aPayment(ago(PENDING_MIN_AGE_MS));
     const client = aPayingClient();

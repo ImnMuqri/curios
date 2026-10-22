@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHIP_DEFAULT_BASE_URL, CHIP_ENV, billingDisabled } from './config.js';
+import { CHIP_DEFAULT_BASE_URL, CHIP_ENV, billingDisabled, pemFromEnv } from './config.js';
 
 const everySetting = Object.fromEntries(CHIP_ENV.map((name) => [name, 'set']));
 
@@ -28,5 +28,23 @@ describe('billingDisabled', () => {
   it('names the settings that decide it, and the default API root', () => {
     expect([...CHIP_ENV]).toEqual(['CHIP_SECRET_KEY', 'CHIP_BRAND_ID', 'CHIP_CALLBACK_BASE_URL']);
     expect(CHIP_DEFAULT_BASE_URL).toBe('https://gate.chip-in.asia/api/v1');
+  });
+});
+
+describe('pemFromEnv', () => {
+  const PEM = '-----BEGIN PUBLIC KEY-----\nMIIBIjAN\nBgkqhkiG\n-----END PUBLIC KEY-----';
+
+  it('turns an escaped one-line value into the multi-line PEM', () => {
+    // How a one-line .env or a hosting dashboard holds it: a backslash and an n.
+    expect(pemFromEnv(PEM.replaceAll('\n', String.raw`\n`))).toBe(PEM);
+  });
+
+  it('leaves a PEM pasted with real newlines as it is', () => {
+    expect(pemFromEnv(PEM)).toBe(PEM);
+  });
+
+  it('reads unset or blank as no key', () => {
+    expect(pemFromEnv(undefined)).toBeUndefined();
+    expect(pemFromEnv('')).toBeUndefined();
   });
 });

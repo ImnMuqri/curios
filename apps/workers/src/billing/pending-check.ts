@@ -3,7 +3,7 @@ import type IORedis from 'ioredis';
 import { BILLING_QUEUE, PENDING_CHECK_JOB, RENEWAL_REMINDER_JOB } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { DEAD_PURCHASE_STATUSES, evidenceFromPurchase, grantPayment, type ChipClient } from '@curios/billing';
-import { runAutoRenewals } from './auto-renew.js';
+import { errName, runAutoRenewals } from './auto-renew.js';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import { runPlanEndedMails, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
@@ -40,6 +40,11 @@ export interface SchedulerQueue {
  * never gets it.
  *
  * Renewal payments are left out: the auto-renew job charges and settles those itself.
+ *
+ * A Billplz payment still PENDING from before the cutover to CHIP is never granted by
+ * anything here -- nothing asks Billplz any more -- so while one is young enough to be
+ * paid yet, each run names it at error level for a person to settle (devDocs/OPERATIONS.md,
+ * "Cutting over from Billplz").
  */
 export async function runPendingCheck(deps: {
   prisma: PrismaClient;
@@ -62,6 +67,22 @@ export async function runPendingCheck(deps: {
     orderBy: { createdAt: 'asc' },
   });
 
+  const billplz = await deps.prisma.payment.findMany({
+    where: {
+      status: 'PENDING',
+      provider: 'BILLPLZ',
+      createdAt: { gte: new Date(deps.now.getTime() - PENDING_MAX_AGE_MS) },
+    },
+    select: { id: true },
+    orderBy: { createdAt: 'asc' },
+  });
+  if (billplz.length > 0) {
+    deps.log?.error(
+      { paymentIds: billplz.map((payment) => payment.id) },
+      'billplz payments still pending since the cutover; settle them by hand (devDocs/OPERATIONS.md)',
+    );
+  }
+
   let granted = 0;
   let expired = 0;
   for (const { id, providerRef } of stale) {
@@ -76,7 +97,9 @@ export async function runPendingCheck(deps: {
         outcome.kind === 'mismatch' ||
         outcome.kind === 'unknown-payment' ||
         // Paid after it was marked failed or expired: money taken, no time given.
-        outcome.kind === 'paid-after-failure'
+        outcome.kind === 'paid-after-failure' ||
+        // A test key in production: no money moved, and no time is given.
+        outcome.kind === 'test-purchase'
       ) {
         deps.log?.error({ purchaseId: providerRef, outcome: outcome.kind }, 'pending payment refused by the hourly check');
       } else if (outcome.kind === 'not-paid' && DEAD_PURCHASE_STATUSES.has(purchase.status)) {
@@ -89,7 +112,7 @@ export async function runPendingCheck(deps: {
       }
     } catch (error) {
       // One purchase failing -- CHIP briefly unreachable, say -- must not stop the rest.
-      deps.log?.error({ purchaseId: providerRef, err: String(error) }, 'hourly check could not confirm a purchase');
+      deps.log?.error({ purchaseId: providerRef, err: errName(error) }, 'hourly check could not confirm a purchase');
     }
   }
 

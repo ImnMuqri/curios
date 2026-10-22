@@ -91,6 +91,12 @@ export async function createPurchaseForOwner(
 }
 
 /**
+ * What an error may say in a log: its name, and nothing else. A refused CHIP call carries
+ * CHIP's response body in its message, and that body can hold the payer's details.
+ */
+export const errName = (error: unknown) => (error instanceof Error ? error.name : 'unknown');
+
+/**
  * Turns auto-renew off for the signed-in owner's page: the saved card is forgotten here,
  * then at CHIP.
  *
@@ -122,7 +128,7 @@ export async function turnOffAutoRenew(
       await deps.client.deleteRecurringToken(card.token);
     } catch (error) {
       deps.log?.error(
-        { pageId: card.pageId, err: error },
+        { pageId: card.pageId, err: errName(error) },
         'auto-renew turned off, but CHIP could not be told to forget the card',
       );
     }

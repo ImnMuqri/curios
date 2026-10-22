@@ -27,3 +27,15 @@ export function billingDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.NODE_ENV === 'production') return false;
   return CHIP_ENV.every((name) => !env[name]);
 }
+
+/**
+ * A PEM public key as it comes out of the environment, or undefined when unset or blank.
+ * A one-line .env value or a hosting dashboard often holds the key with each newline
+ * written as a backslash and an n; those are turned back into newlines, so the key
+ * parses either way. A value pasted with real newlines (a quoted multi-line value) is
+ * left as it is.
+ */
+export function pemFromEnv(value: string | undefined): string | undefined {
+  if (!value) return undefined;
+  return value.replaceAll(String.raw`\n`, '\n');
+}

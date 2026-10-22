@@ -8,6 +8,7 @@ import {
   evidenceFromPurchase,
   grantPayment,
   notifyRenewalFailure,
+  pemFromEnv,
   recordRenewalFailure,
   verifyChipSignature,
   type ChipClient,
@@ -16,7 +17,7 @@ import {
 } from '@curios/billing';
 import { rawJson } from '../../plugins/raw-json.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
-import { createPurchaseForOwner, resetTrial, turnOffAutoRenew } from './billing.service.js';
+import { createPurchaseForOwner, errName, resetTrial, turnOffAutoRenew } from './billing.service.js';
 
 export interface BillingRouteOptions {
   /**
@@ -71,11 +72,14 @@ export function chipSettings(options: BillingRouteOptions) {
   return {
     client: options.client ?? createChipClient({ secretKey, brandId, baseUrl }),
     callbackBaseUrl,
-    publicKey: process.env.CHIP_PUBLIC_KEY || undefined,
-    webhookPublicKey:
+    // A PEM pasted on one line, each newline written as a backslash and an n, reads the
+    // same as a multi-line one.
+    publicKey: pemFromEnv(process.env.CHIP_PUBLIC_KEY),
+    webhookPublicKey: pemFromEnv(
       process.env.NODE_ENV === 'production'
         ? required('CHIP_WEBHOOK_PUBLIC_KEY')
-        : process.env.CHIP_WEBHOOK_PUBLIC_KEY || undefined,
+        : process.env.CHIP_WEBHOOK_PUBLIC_KEY,
+    ),
   };
 }
 
@@ -168,7 +172,7 @@ function logOutcome(
   if (outcome.kind === 'paid-after-failure') {
     // Money taken with no time given: a person has to settle this one.
     log.error(details, 'chip purchase paid after its payment was marked failed or expired');
-  } else if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment') {
+  } else if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment' || outcome.kind === 'test-purchase') {
     log.error(details, 'chip purchase refused');
   } else {
     log.info(details, 'chip purchase handled');
@@ -204,6 +208,7 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
       let purchaseId: string | undefined;
       let autoRenew: boolean;
       let purchaseStatus: string;
+      let keptCard: boolean;
       let outcome: GrantOutcome;
       try {
         const payment = paymentId
@@ -218,17 +223,21 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
 
         const purchase = await chip.client.getPurchase(payment.providerRef);
         purchaseStatus = purchase.status;
+        keptCard = purchase.isRecurringToken;
         outcome = await grantPayment(app.prisma, evidenceFromPurchase(purchase), { now: new Date() });
       } catch (error) {
-        request.log.error({ err: error, purchaseId, source: 'return' }, 'chip purchase could not be confirmed');
+        // The name only: a refused CHIP call carries CHIP's response body in its message.
+        request.log.error({ err: errName(error), purchaseId, source: 'return' }, 'chip purchase could not be confirmed');
         return back('pending');
       }
 
       logOutcome(request.log, purchaseId, 'return', outcome);
       if (outcome.kind === 'granted' || outcome.kind === 'already-granted') {
         // Auto-renew was asked for and CHIP kept no card: the plan is paid, but it will
-        // not renew itself, and the owner should hear that now rather than at expiry.
-        return back('paid', outcome.kind === 'granted' && autoRenew && !outcome.cardSaved);
+        // not renew itself, and the owner should hear that now rather than at expiry. Read
+        // from the purchase, not this grant: CHIP's callback usually grants first, and
+        // this return then sees already-granted.
+        return back('paid', autoRenew && !keptCard);
       }
       return back(FAILED_PURCHASE_STATUSES.has(purchaseStatus) ? 'failed' : 'pending');
     },

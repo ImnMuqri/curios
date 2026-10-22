@@ -228,13 +228,16 @@ export default async function BillingPage({
               </>
             ) : null}
 
-            {card && state.kind === 'paid' ? (
+            {/* Whatever the plan state: the job keeps charging up to 3 days after the plan
+                ends, and the owner must be able to stop that from here. */}
+            {card && page.mode === 'BUSINESS' ? (
               <AutoRenew
                 card={{
                   label: card.cardLabel,
                   price: ringgit(PLAN_PRICES_CENTS[card.plan]),
-                  paidUntil: shortDate(state.paidUntil, true),
+                  paidUntil: page.paidUntil ? shortDate(page.paidUntil, true) : null,
                   failed: card.failedAttempts > 0,
+                  ended: state.kind !== 'paid',
                 }}
               />
             ) : null}

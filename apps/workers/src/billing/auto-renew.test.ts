@@ -8,7 +8,8 @@ import type { MailQueueLike } from './renewal-reminder.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
-const NOW = new Date('2026-09-14T08:00:00.000Z');
+// The daily run: 10:00 in Kuala Lumpur (UTC+8) on 14 Sep. Today there ends at 16:00 UTC.
+const NOW = new Date('2026-09-14T02:00:00.000Z');
 const HOUR_MS = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR_MS;
 const APP_URL = 'https://curios.example';
@@ -108,7 +109,12 @@ function aMailQueue() {
 function run(
   client: ReturnType<typeof aChip>,
   mailQueue = aMailQueue(),
-  extra: { afterRead?: () => Promise<void>; beforeCharge?: () => Promise<void>; now?: Date } = {},
+  extra: {
+    afterRead?: () => Promise<void>;
+    beforeCharge?: () => Promise<void>;
+    afterLapsedRead?: () => Promise<void>;
+    now?: Date;
+  } = {},
 ) {
   return runAutoRenewals({
     prisma,
@@ -132,7 +138,7 @@ const renewalsOf = (pageId: string) =>
 const cardOf = (pageId: string) => prisma.renewalCard.findUnique({ where: { pageId } });
 
 describe('runAutoRenewals', () => {
-  it('charges a card the day before paidUntil and grants', async () => {
+  it('charges a card on the day its plan ends and grants', async () => {
     const paidUntil = at(12 * HOUR_MS);
     const page = await aRenewingPage({ paidUntil });
     const client = aChip();
@@ -195,11 +201,40 @@ describe('runAutoRenewals', () => {
     expect(client.createPurchase).not.toHaveBeenCalled();
   });
 
-  it('charges a card whose plan ends exactly a day from now', async () => {
-    await aRenewingPage({ paidUntil: at(DAY_MS) });
-    const client = aChip();
+  describe('on the Kuala Lumpur day the plan ends, the date Billing states', () => {
+    it('does not charge a plan ending tomorrow at 09:00', async () => {
+      await aRenewingPage({ paidUntil: new Date('2026-09-15T09:00:00+08:00') });
+      const client = aChip();
 
-    expect(await run(client)).toMatchObject({ charged: 1 });
+      await run(client);
+
+      expect(client.createPurchase).not.toHaveBeenCalled();
+    });
+
+    it('charges a plan that ended at 09:00 today, at the 10:00 run', async () => {
+      await aRenewingPage({ paidUntil: new Date('2026-09-14T09:00:00+08:00') });
+      const client = aChip();
+
+      expect(await run(client)).toMatchObject({ charged: 1 });
+    });
+
+    it('charges a plan ending at 23:00 today', async () => {
+      await aRenewingPage({ paidUntil: new Date('2026-09-14T23:00:00+08:00') });
+      const client = aChip();
+
+      expect(await run(client)).toMatchObject({ charged: 1 });
+    });
+
+    it('charges a plan ending at the last moment of today, and not one ending at midnight', async () => {
+      const last = await aRenewingPage({ paidUntil: new Date('2026-09-14T23:59:59.999+08:00') });
+      const midnight = await aRenewingPage({ paidUntil: new Date('2026-09-15T00:00:00+08:00') });
+      const client = aChip();
+
+      await run(client);
+
+      expect(await renewalsOf(last.pageId)).toMatchObject([{ status: 'PAID' }]);
+      expect(await renewalsOf(midnight.pageId)).toHaveLength(0);
+    });
   });
 
   it('does not charge a card whose plan ended exactly 3 days ago', async () => {
@@ -512,7 +547,7 @@ describe('runAutoRenewals', () => {
       client.getPurchase.mockRejectedValue(new ChipUnavailableError('timeout'));
       const mailQueue = aMailQueue();
 
-      // One run a day, from the day before the plan ends to past the grace.
+      // One run a day, from the day the plan ends to past the grace.
       for (const day of [0, 1, 2, 3, 4]) {
         await run(client, mailQueue, { now: at(day * DAY_MS) });
       }
@@ -539,6 +574,21 @@ describe('runAutoRenewals', () => {
 
       expect(await cardOf(page.pageId)).toBeNull();
       expect(mailQueue.add.mock.calls[0]?.[1].text).toContain("We couldn't renew your plan before it ran out");
+    });
+
+    it('keeps the card of a page a webhook renewed during the sweep', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+      const mailQueue = aMailQueue();
+
+      await run(aChip(), mailQueue, {
+        afterLapsedRead: async () => {
+          // A renewal CHIP settled late is granted by its webhook between the read and the drop.
+          await prisma.page.update({ where: { id: page.pageId }, data: { paidUntil: at(26 * DAY_MS) } });
+        },
+      });
+
+      expect(await cardOf(page.pageId)).not.toBeNull();
+      expect(mailQueue.add).not.toHaveBeenCalled();
     });
 
     it('leaves a personal page alone', async () => {

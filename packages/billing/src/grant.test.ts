@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { extendPaidUntil } from '@curios/core';
 import { PrismaClient } from '@curios/db';
 import type { ChipPurchase } from './client.js';
@@ -54,7 +54,7 @@ async function aPendingPayment(
 }
 
 function paid(providerRef: string, overrides: Partial<PaymentEvidence> = {}): PaymentEvidence {
-  return { providerRef, paid: true, amountCents: 3900, reference: '', card: null, ...overrides };
+  return { providerRef, paid: true, amountCents: 3900, reference: '', card: null, isTest: false, ...overrides };
 }
 
 /** The evidence a purchase gives for a payment: its reference is that payment's id. */
@@ -211,6 +211,49 @@ describe('grantPayment', () => {
 
     expect(outcome).toMatchObject({ kind: 'granted', cardSaved: false });
     expect(await cardRow(pageId)).toMatchObject({ failedAttempts: 0, lastFailedAt: null });
+  });
+
+  it("any grant ends a run of failures, a payment by hand included", async () => {
+    // Paid at checkout after a decline: Billing must stop saying the last renewal failed,
+    // and the next period must start counting from zero.
+    const pageId = await aPage();
+    await prisma.renewalCard.create({
+      data: { pageId, token: 'tok-1', plan: 'MONTHLY', failedAttempts: 2, lastFailedAt: NOW },
+    });
+    const payment = await aPendingPayment(pageId, 'pur-1');
+
+    expect(await grantPayment(prisma, paidFor(payment, 'pur-1'), { now: NOW })).toMatchObject({ kind: 'granted' });
+    expect(await cardRow(pageId)).toMatchObject({ token: 'tok-1', failedAttempts: 0, lastFailedAt: null });
+  });
+
+  describe('a test purchase', () => {
+    const nodeEnv = process.env.NODE_ENV;
+    afterEach(() => {
+      process.env.NODE_ENV = nodeEnv;
+    });
+
+    it('is refused in production, and nothing is granted', async () => {
+      // A test key in production must never hand out paid time.
+      process.env.NODE_ENV = 'production';
+      const pageId = await aPage();
+      const payment = await aPendingPayment(pageId, 'pur-1');
+
+      expect(await grantPayment(prisma, paidFor(payment, 'pur-1', { isTest: true }), { now: NOW })).toEqual({
+        kind: 'test-purchase',
+      });
+      expect((await paymentRow(payment.id)).status).toBe('PENDING');
+      expect((await pageRow(pageId)).paidUntil).toBeNull();
+    });
+
+    it('is granted outside production', async () => {
+      process.env.NODE_ENV = 'test';
+      const pageId = await aPage();
+      const payment = await aPendingPayment(pageId, 'pur-1');
+
+      expect(await grantPayment(prisma, paidFor(payment, 'pur-1', { isTest: true }), { now: NOW })).toMatchObject({
+        kind: 'granted',
+      });
+    });
   });
 
   it.each(['FAILED', 'EXPIRED'] as const)(
@@ -376,6 +419,7 @@ describe('evidenceFromPurchase', () => {
       amountCents: 3900,
       reference: 'pay-1',
       card: { token: 'pur-1', label: 'Visa ending 1111' },
+      isTest: true,
     });
   });
 

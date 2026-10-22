@@ -290,6 +290,19 @@ describe('GET /billing/chip/return', () => {
     expect(res.headers.location).toBe(`${BACK}paid&card=off`);
   });
 
+  it('adds card=off when the callback granted first and no token came back', async () => {
+    // The usual order in production: CHIP's callback lands before the browser returns.
+    const owner = await anOwner();
+    const { providerRef, paymentId } = await aPendingPayment(owner.pageId, true);
+    client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { isRecurringToken: false }));
+    await visit(paymentId);
+
+    const res = await visit(paymentId);
+
+    expect(await statusOf(paymentId)).toBe('PAID');
+    expect(res.headers.location).toBe(`${BACK}paid&card=off`);
+  });
+
   it('does not add card=off when the card was kept', async () => {
     const owner = await anOwner();
     const { providerRef, paymentId } = await aPendingPayment(owner.pageId, true);
@@ -436,6 +449,21 @@ describe('CHIP callback and webhook', () => {
 
       expect((await callback(sent, signature)).statusCode).toBe(200);
       expect(await statusOf(paymentId)).toBe('PAID');
+    });
+
+    it('reads keys pasted on one line, each newline written as \\n', async () => {
+      const oneLine = (pem: string) => pem.trim().replaceAll('\n', String.raw`\n`);
+      const escaped = await appWith({ callback: oneLine(callbackKeys.publicKey), webhook: oneLine(webhookKeys.publicKey) });
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+
+      const res = await post(escaped, '/billing/chip/callback', body, sign(body, callbackKeys.privateKey));
+      expect(res.statusCode).toBe(200);
+      expect(await statusOf(paymentId)).toBe('PAID');
+      const hook = JSON.stringify({ id: 'none', event_type: 'purchase.created' });
+      expect((await post(escaped, '/billing/chip/webhook', hook, sign(hook, webhookKeys.privateKey))).statusCode).toBe(200);
     });
 
     it('refuses a callback without a valid signature with 400 and grants nothing', async () => {

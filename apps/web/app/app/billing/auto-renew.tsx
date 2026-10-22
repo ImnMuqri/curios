@@ -11,10 +11,25 @@ export interface RenewCard {
   label: string | null;
   /** "RM49". */
   price: string;
-  /** "14 Dec 2026". */
-  paidUntil: string;
+  /** "14 Dec 2026": when the plan ends, or ended; null only for a page that never paid. */
+  paidUntil: string | null;
   /** The last renewal was refused: the job tries again tomorrow. */
   failed: boolean;
+  /**
+   * The plan has run out and the job is still trying the card, for up to 3 days after:
+   * the owner must still be able to stop tomorrow's charge.
+   */
+  ended: boolean;
+}
+
+/** The card line: what auto-renew is about to do. */
+function renewLine(card: RenewCard): string {
+  const which = card.label ?? 'your card';
+  if (card.ended) {
+    return `${card.paidUntil ? `Your plan ended on ${card.paidUntil}. ` : ''}We’ll try ${which} again tomorrow.`;
+  }
+  if (card.failed) return 'Your last renewal didn’t go through. We’ll try again tomorrow.';
+  return `Auto-renew is on. We’ll charge ${which} ${card.price} on ${card.paidUntil ?? 'the day your plan ends'}.`;
 }
 
 /** A 4xx carries a sentence written for the owner; anything else gets a plain one. */
@@ -60,12 +75,8 @@ export function AutoRenewCard({
   }
 
   return (
-    <div className={styles.renew} data-failed={card.failed || undefined}>
-      <p>
-        {card.failed
-          ? 'Your last renewal didn’t go through. We’ll try again tomorrow.'
-          : `Auto-renew is on. We’ll charge ${card.label ?? 'your card'} ${card.price} on ${card.paidUntil}.`}
-      </p>
+    <div className={styles.renew} data-failed={card.failed || card.ended || undefined}>
+      <p>{renewLine(card)}</p>
       <div className={styles.buttons}>
         {asking ? (
           <>

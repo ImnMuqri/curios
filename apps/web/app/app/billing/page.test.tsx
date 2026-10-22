@@ -284,7 +284,13 @@ describe('BillingPage', () => {
     await renderWith({ ...page, paidUntil: new Date('2026-12-14T00:00:00Z') });
 
     expect(AutoRenew).toHaveBeenCalledTimes(1);
-    expect(AutoRenew.mock.calls[0]?.[0].card).toEqual({ label: 'Visa ending 4242', price: 'RM490', paidUntil: '14 Dec 2026', failed: false });
+    expect(AutoRenew.mock.calls[0]?.[0].card).toEqual({
+      label: 'Visa ending 4242',
+      price: 'RM490',
+      paidUntil: '14 Dec 2026',
+      failed: false,
+      ended: false,
+    });
     expect(screen.queryByText(/Renews only if you turn on auto-renew/)).toBeNull();
   });
 
@@ -323,12 +329,25 @@ describe('BillingPage', () => {
     expect(screen.queryByText(/auto-renew couldn’t be turned on/)).toBeNull();
   });
 
-  it('leaves the card line off a page that is not paid, even with a saved card', async () => {
-    getRenewalCard.mockResolvedValue({ cardLabel: null, plan: 'MONTHLY', failedAttempts: 0 });
+  it('keeps the turn-off on a lapsed page with a card, so the next try can still be stopped', async () => {
+    // The job charges up to 3 days after paidUntil; the Terms say the owner can stop it.
+    vi.useFakeTimers({ now: new Date('2026-10-13T04:00:00.000Z'), toFake: ['Date'] });
+    try {
+      getRenewalCard.mockResolvedValue({ cardLabel: 'Visa ending 4242', plan: 'MONTHLY', failedAttempts: 1 });
 
-    await renderWith({ ...page, paidUntil: null, leadsCaptured: 1 });
+      await renderWith({ ...page, paidUntil: new Date('2026-10-12T00:00:00Z'), leadsCaptured: 10 });
 
-    expect(AutoRenew).not.toHaveBeenCalled();
+      expect(AutoRenew).toHaveBeenCalledTimes(1);
+      expect(AutoRenew.mock.calls[0]?.[0].card).toEqual({
+        label: 'Visa ending 4242',
+        price: 'RM49',
+        paidUntil: '12 Oct 2026',
+        failed: true,
+        ended: true,
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('says nothing about a card on a hand-typed ?card=off with no payment', async () => {
