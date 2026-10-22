@@ -8,9 +8,9 @@ import { PLAN_PRICES_CENTS } from '@curios/core/billing';
  * The Malay was drafted by an AI and read by the owner, a Malay speaker, on
  * 2026-10-22 (DEVIATIONS 10). New Malay copy needs the same read.
  *
- * Every claim should be one the product makes true today. Checkout, paying
- * by the owner's QR with proof attached, and orders landing in the dashboard
- * came true with slice 18 (orders), and are as the board draws them.
+ * Every claim should be one the product makes true today. Checkout,
+ * paying through CHIP (or the owner's own QR with a receipt), and orders
+ * landing in the dashboard are as the board draws them.
  *
  * Client-safe: the price comes from the @curios/core/billing subpath, which
  * imports nothing, so the client sections read their words from here by
@@ -104,30 +104,54 @@ export interface LandingCopy {
     stage: string;
     customer: string;
     yours: string;
-    shopNote: string;
+    shopPath: string;
+    open: string;
+    facts: string;
+    cats: string[];
+    bestSeller: string;
     items: { name: string; price: string }[];
     basketEmpty: string;
     basket: (n: number, total: number) => string;
     checkout: string;
+    itemsTotal: string;
     name: string;
     phone: string;
     pickup: string;
     delivery: string;
     continueToPay: string;
-    waiting: string;
-    receipt: string;
-    scan: string;
-    upload: string;
-    place: string;
+    howPay: string;
+    ways: { label: string; sub: string; mark: string }[];
+    yourBank: string;
+    banks: string[];
+    pay: string;
+    payWith: string;
+    opening: string;
+    openingNote: string;
+    approved: string;
+    approvedNote: string;
+    paidChip: string;
+    processed: string;
     received: string;
     receivedNote: string;
     orders: string;
-    paidToday: string;
-    tabs: [string, string, string];
-    confirm: string;
-    confirmed: string;
-    proof: string;
-    total: string;
+    seeShop: string;
+    toCheck: string;
+    paidWeek: string;
+    seg: [string, string, string, string];
+    mira: string;
+    miraSub: string;
+    paidOnline: string;
+    completed: string;
+    actTitle: string;
+    actNote: string;
+    markDone: string;
+    done: string;
+    hakim: string;
+    hakimSub: string;
+    awaiting: string;
+    weiLing: string;
+    weiLingSub: string;
+    paid: string;
     newOrder: string;
     now: string;
   };
@@ -280,16 +304,20 @@ const EN: LandingCopy = {
     eyebrow: 'For business',
     title: 'Have a business? Your page becomes a shop.',
     caps: [
-      { title: 'Tap to add', body: 'Items with pictures, prices and sizes, right in the Shop tab.' },
+      { title: 'Tap to add', body: 'Your shop gets its own page, with pictures, prices and sizes. Link it from your page or straight from Instagram.' },
       { title: 'Check out', body: 'Name, WhatsApp number, pickup or delivery. No account needed.' },
-      { title: 'Pay with your QR', body: 'No payment gateway? Upload your bank QR once. Customers scan it with the total, then upload their receipt.' },
+      { title: 'Pay their way', body: 'FPX, e-wallet or card through CHIP, confirmed straight away. Or your own DuitNow QR with a receipt.' },
       { title: 'Order received', body: 'They get a confirmation with the order number.' },
-      { title: 'It lands in your Orders', body: 'Paid, with the proof attached. Confirm it in one tap.' },
+      { title: 'It lands in your Orders', body: 'Already paid, nothing to check. Mark it completed when they collect.' },
     ],
-    stage: 'A customer adds items, checks out, pays with Kek Lina’s QR and uploads proof; the order arrives in Lina’s Curios Orders',
+    stage: 'A customer adds items, checks out and pays from their bank through CHIP; the order arrives in Lina’s Curios Orders, already paid',
     customer: 'The customer’s phone',
     yours: 'Your phone',
-    shopNote: 'Order 2 days ahead · Pickup or delivery',
+    shopPath: 'curios.my/keklina/shop',
+    open: 'Open for orders',
+    facts: 'Seksyen 7, Shah Alam · Pickup or delivery',
+    cats: ['All', 'Kek', 'Kuih', 'Raya'],
+    bestSeller: 'Best seller',
     items: [
       { name: 'Kek coklat · 1kg', price: 'RM95' },
       { name: 'Kek batik', price: 'RM45' },
@@ -299,25 +327,50 @@ const EN: LandingCopy = {
     basketEmpty: 'Basket is empty',
     basket: (n, total) => `${n} in basket · RM${total}`,
     checkout: 'Checkout',
+    itemsTotal: '3 items · RM235',
     name: 'Your name',
     phone: 'WhatsApp number',
     pickup: 'Pickup · Sat',
     delivery: 'Delivery RM10',
     continueToPay: 'Continue to pay',
-    waiting: 'Waiting for payment',
-    receipt: 'Receipt uploaded',
-    scan: 'Scan, or transfer to',
-    upload: 'Upload payment proof',
-    place: 'Place order',
+    howPay: 'How you’ll pay',
+    ways: [
+      { label: 'Online banking', sub: 'FPX · Maybank2u, CIMB, RHB', mark: 'FPX' },
+      { label: 'E-wallet', sub: 'Touch ’n Go, GrabPay, ShopeePay', mark: 'TNG' },
+      { label: 'Card', sub: 'Debit or credit card', mark: 'VISA' },
+      { label: 'DuitNow QR', sub: 'Scan, then upload your receipt', mark: 'QR' },
+    ],
+    yourBank: 'Your bank',
+    banks: ['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now'],
+    pay: 'Pay RM235',
+    payWith: 'Pay RM235 with Maybank2u',
+    opening: 'Opening Maybank2u…',
+    openingNote: 'Approve RM235 in your bank, then you’ll come straight back to Kek Lina.',
+    approved: 'Approved in Maybank2u',
+    approvedNote: 'Taking you back to Kek Lina…',
+    paidChip: 'RM235 paid',
+    processed: 'Payment processed by CHIP',
     received: 'Order received',
-    receivedNote: '#1042 · RM235 · proof sent to Lina',
+    receivedNote: '#14 · RM235 · paid by FPX',
     orders: 'Orders',
-    paidToday: 'paid today',
-    tabs: ['New', 'Confirmed', 'Done'],
-    confirm: 'Confirm',
-    confirmed: 'Confirmed ✓',
-    proof: 'Proof attached',
-    total: 'Total',
+    seeShop: 'See your shop',
+    toCheck: 'Receipts to check',
+    paidWeek: 'Paid this week',
+    seg: ['All', 'To check', 'Paid', 'Refunds'],
+    mira: 'Mira Hassan',
+    miraSub: '#14 · 3 items · Pickup Sat',
+    paidOnline: 'Paid online',
+    completed: 'Completed',
+    actTitle: 'Paid by FPX. Ready on Sat 17 Oct',
+    actNote: 'Nothing to check. Mark it completed once Mira has it.',
+    markDone: '✓ Mark completed',
+    done: 'Completed ✓',
+    hakim: 'Hakim Rahman',
+    hakimSub: '#13 · 1 item · Delivery Sat',
+    awaiting: 'Awaiting payment',
+    weiLing: 'Wei Ling',
+    weiLingSub: '#12 · 2 items · Pickup Fri',
+    paid: 'Paid',
     newOrder: 'New order · RM235',
     now: 'now',
   },
@@ -501,16 +554,20 @@ const MS: LandingCopy = {
     eyebrow: 'Untuk bisnes',
     title: 'Ada bisnes? Halaman anda jadi kedai.',
     caps: [
-      { title: 'Tekan untuk tambah', body: 'Barang dengan gambar, harga dan saiz, terus dalam tab Kedai.' },
+      { title: 'Tekan untuk tambah', body: 'Kedai anda ada halamannya sendiri, dengan gambar, harga dan saiz. Pautkan dari halaman anda atau terus dari Instagram.' },
       { title: 'Daftar keluar', body: 'Nama, nombor WhatsApp, ambil sendiri atau hantar. Tak perlu akaun.' },
-      { title: 'Bayar dengan QR anda', body: 'Tiada payment gateway? Muat naik QR bank anda sekali. Pelanggan imbas dengan jumlahnya, kemudian muat naik resit.' },
+      { title: 'Bayar cara mereka', body: 'FPX, e-dompet atau kad melalui CHIP, disahkan serta-merta. Atau QR DuitNow anda sendiri dengan resit.' },
       { title: 'Tempahan diterima', body: 'Mereka dapat pengesahan dengan nombor tempahan.' },
-      { title: 'Masuk dalam Tempahan anda', body: 'Sudah dibayar, dengan bukti dilampirkan. Sahkan dengan satu tekan.' },
+      { title: 'Masuk dalam Tempahan anda', body: 'Sudah dibayar, tiada apa perlu disemak. Tandakan selesai bila mereka ambil.' },
     ],
-    stage: 'Pelanggan tambah barang, daftar keluar, bayar dengan QR Kek Lina dan muat naik bukti; tempahan sampai dalam Tempahan Curios Lina',
+    stage: 'Pelanggan tambah barang, daftar keluar dan bayar dari bank mereka melalui CHIP; tempahan sampai dalam Tempahan Curios Lina, sudah dibayar',
     customer: 'Telefon pelanggan',
     yours: 'Telefon anda',
-    shopNote: 'Tempah 2 hari awal · Ambil sendiri atau hantar',
+    shopPath: 'curios.my/keklina/shop',
+    open: 'Buka untuk tempahan',
+    facts: 'Seksyen 7, Shah Alam · Ambil sendiri atau hantar',
+    cats: ['Semua', 'Kek', 'Kuih', 'Raya'],
+    bestSeller: 'Paling laris',
     items: [
       { name: 'Kek coklat · 1kg', price: 'RM95' },
       { name: 'Kek batik', price: 'RM45' },
@@ -520,25 +577,50 @@ const MS: LandingCopy = {
     basketEmpty: 'Bakul kosong',
     basket: (n, total) => `${n} dalam bakul · RM${total}`,
     checkout: 'Bayar',
+    itemsTotal: '3 barang · RM235',
     name: 'Nama anda',
     phone: 'Nombor WhatsApp',
     pickup: 'Ambil · Sabtu',
     delivery: 'Hantar RM10',
     continueToPay: 'Teruskan bayar',
-    waiting: 'Menunggu bayaran',
-    receipt: 'Resit dimuat naik',
-    scan: 'Imbas, atau pindah ke',
-    upload: 'Muat naik bukti bayaran',
-    place: 'Hantar tempahan',
+    howPay: 'Cara anda bayar',
+    ways: [
+      { label: 'Perbankan dalam talian', sub: 'FPX · Maybank2u, CIMB, RHB', mark: 'FPX' },
+      { label: 'E-dompet', sub: 'Touch ’n Go, GrabPay, ShopeePay', mark: 'TNG' },
+      { label: 'Kad', sub: 'Kad debit atau kredit', mark: 'VISA' },
+      { label: 'QR DuitNow', sub: 'Imbas, kemudian muat naik resit anda', mark: 'QR' },
+    ],
+    yourBank: 'Bank anda',
+    banks: ['Maybank2u', 'CIMB Clicks', 'Public Bank', 'RHB Now'],
+    pay: 'Bayar RM235',
+    payWith: 'Bayar RM235 dengan Maybank2u',
+    opening: 'Membuka Maybank2u…',
+    openingNote: 'Luluskan RM235 dalam bank anda, kemudian anda terus kembali ke Kek Lina.',
+    approved: 'Diluluskan dalam Maybank2u',
+    approvedNote: 'Membawa anda kembali ke Kek Lina…',
+    paidChip: 'RM235 dibayar',
+    processed: 'Bayaran diproses oleh CHIP',
     received: 'Tempahan diterima',
-    receivedNote: '#1042 · RM235 · bukti dihantar kepada Lina',
+    receivedNote: '#14 · RM235 · dibayar dengan FPX',
     orders: 'Tempahan',
-    paidToday: 'dibayar hari ini',
-    tabs: ['Baru', 'Disahkan', 'Selesai'],
-    confirm: 'Sahkan',
-    confirmed: 'Disahkan ✓',
-    proof: 'Bukti dilampirkan',
-    total: 'Jumlah',
+    seeShop: 'Lihat kedai anda',
+    toCheck: 'Resit untuk disemak',
+    paidWeek: 'Dibayar minggu ini',
+    seg: ['Semua', 'Untuk disemak', 'Dibayar', 'Bayaran balik'],
+    mira: 'Mira Hassan',
+    miraSub: '#14 · 3 barang · Ambil Sabtu',
+    paidOnline: 'Dibayar dalam talian',
+    completed: 'Selesai',
+    actTitle: 'Dibayar dengan FPX. Siap pada Sabtu 17 Okt',
+    actNote: 'Tiada apa perlu disemak. Tandakan selesai bila Mira sudah terima.',
+    markDone: '✓ Tandakan selesai',
+    done: 'Selesai ✓',
+    hakim: 'Hakim Rahman',
+    hakimSub: '#13 · 1 barang · Hantar Sabtu',
+    awaiting: 'Menunggu bayaran',
+    weiLing: 'Wei Ling',
+    weiLingSub: '#12 · 2 barang · Ambil Jumaat',
+    paid: 'Dibayar',
     newOrder: 'Tempahan baru · RM235',
     now: 'baru',
   },

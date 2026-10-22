@@ -42,6 +42,26 @@
   --tj-blob-pink: #f6c9d5;
   --tj-blob-peach: #ffe2b8;
   --tj-blob-mint: #bfe3d6;
+  /* For business (TanyaJe "Business v2"): the sample shop's cards, the banks, the pay-method marks, the Orders mirror. */
+  --tj-card-rose: #f3dde3;
+  --tj-card-latte: #e9d6c9;
+  --tj-card-cocoa: #dcc6b8;
+  --tj-open: #1d9a6c;
+  --tj-open-ink: #9be3c4;
+  --tj-hair: #eef0f3;
+  --tj-seg: #e9ebef;
+  --tj-wash-biru: #eaf0ff;
+  --tj-way-tng-bg: #e6f0ff;
+  --tj-way-tng-ink: #0b4dbd;
+  --tj-way-visa-bg: #eef0ff;
+  --tj-way-visa-ink: #1a1f71;
+  --tj-way-qr-bg: #fdecef;
+  --tj-bank-picked: #f6f8ff;
+  --tj-bank-maybank: #f2b705;
+  --tj-bank-cimb: #c8102e;
+  --tj-bank-public: #d71920;
+  --tj-bank-rhb: #005baa;
+  --tj-act-bg: #f1f8f5;
 
   /* ---- Colour: biru ramp (parent --biru #2340c8, oklch 0.450 0.212 267) ---- */
   --l-biru-800: #122686; /* oklch 0.331 0.160 267 -- primary button pressed; paper on it 12.3:1 */

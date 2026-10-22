@@ -1,14 +1,10 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { COPY, type Locale } from './copy.js';
-import { scene } from './order-scene.js';
-import { PERSONAS } from './personas.js';
+import { HOLD_MS, advance, scene, stepProgress, stepStart } from './order-scene.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
-
-const PLAY_MS = 12000;
-const HOLD_MS = 2200;
 
 const Cursor = ({ x, y, o, pressed }: { x: number; y: number; o: number; pressed: boolean }) => (
   <span className={styles.ccur} style={{ left: x, top: y, opacity: o }}>
@@ -19,11 +15,17 @@ const Cursor = ({ x, y, o, pressed }: { x: number; y: number; o: number; pressed
   </span>
 );
 
+const BANK_COLOURS = ['var(--tj-bank-maybank)', 'var(--tj-bank-cimb)', 'var(--tj-bank-public)', 'var(--tj-bank-rhb)'];
+const AVATAR_TONES = ['var(--tj-blob-pink)', 'var(--tj-blob-blue)', 'var(--tj-blob-mint)'];
+
 /**
  * Have a business? The order, played out between the customer's phone and
- * yours: it plays once the stage is fully in view, and loops while it stays
- * there. With reduced motion (and before JavaScript) it shows the last frame:
- * the order received, confirmed in your Orders.
+ * yours: they add two items, check out, pick online banking and Maybank2u,
+ * approve in the bank and come straight back; it lands in your Orders already
+ * paid. It plays while the stage is in view (each step at its own pace, with a
+ * progress line), pauses while a phone is hovered, and a step can be clicked
+ * to jump to it. With reduced motion (and before JavaScript) it shows the last
+ * frame, completed in your Orders; the steps can still be clicked to look at.
  */
 export function Business({ locale }: { locale: Locale }) {
   const copy = COPY[locale].business;
@@ -31,6 +33,21 @@ export function Business({ locale }: { locale: Locale }) {
   const reduced = useReducedMotion();
   const [p, setP] = useState(1);
   const stage = useRef<HTMLDivElement>(null);
+  const progress = useRef(0);
+  const hold = useRef(0);
+  const paused = useRef(false);
+
+  const goTo = useCallback((i: number) => {
+    progress.current = stepStart(i);
+    hold.current = 0;
+    setP(progress.current);
+  }, []);
+  const pause = () => {
+    paused.current = true;
+  };
+  const resume = () => {
+    paused.current = false;
+  };
 
   useEffect(() => {
     if (reduced) {
@@ -45,42 +62,48 @@ export function Business({ locale }: { locale: Locale }) {
     }
     let frame = 0;
     let last = 0;
-    let progress = 0;
-    let hold = 0;
     const step = (now: number) => {
       const dt = Math.min(64, now - (last || now));
       last = now;
-      if (hold > 0) {
-        hold -= dt;
-        if (hold <= 0) progress = 0;
-      } else {
-        progress += dt / PLAY_MS;
-        if (progress >= 1) {
-          progress = 1;
-          hold = HOLD_MS;
+      if (hold.current > 0) {
+        hold.current -= dt;
+        if (hold.current <= 0) {
+          progress.current = 0;
+          setP(0);
         }
+      } else if (!paused.current) {
+        const next = advance(progress.current, dt);
+        if (next >= 1) {
+          progress.current = 1;
+          hold.current = HOLD_MS;
+        } else {
+          progress.current = next;
+        }
+        setP(progress.current);
       }
-      setP(progress);
       frame = requestAnimationFrame(step);
     };
     const stop = () => {
       cancelAnimationFrame(frame);
       frame = 0;
     };
+    progress.current = 0;
+    hold.current = 0;
     setP(0);
     const io = new IntersectionObserver(
       ([entry]) => {
         if (!entry) return;
-        if (entry.intersectionRatio >= 0.92 && !frame) {
+        if (entry.intersectionRatio >= 0.3 && !frame) {
           last = 0;
           frame = requestAnimationFrame(step);
-        } else if (entry.intersectionRatio < 0.15 && frame) {
+        } else if (entry.intersectionRatio < 0.04 && frame) {
           stop();
-          progress = 0;
+          progress.current = 0;
+          hold.current = 0;
           setP(0);
         }
       },
-      { threshold: [0, 0.15, 0.92, 1] },
+      { threshold: [0, 0.04, 0.3, 0.6, 1] },
     );
     io.observe(el);
     return () => {
@@ -102,42 +125,54 @@ export function Business({ locale }: { locale: Locale }) {
             <ol className={styles.steps}>
               {copy.caps.map((cap, i) => (
                 <li key={cap.title} data-state={i === s.step ? 'now' : i < s.step ? 'done' : undefined}>
-                  <span className={styles.stepDot}>{i + 1}</span>
-                  <span>
-                    <b className={styles.stepH}>{cap.title}</b>
-                    <span className={styles.stepP}>{cap.body}</span>
-                  </span>
+                  <button type="button" className={styles.stepBtn} aria-current={i === s.step ? 'step' : undefined} onClick={() => goTo(i)}>
+                    <span className={styles.stepDot}>{i + 1}</span>
+                    <span>
+                      <b className={styles.stepH}>{cap.title}</b>
+                      <span className={styles.stepP}>{cap.body}</span>
+                      <span className={styles.stepBar} data-bar aria-hidden="true">
+                        <i style={{ width: `${i === s.step ? stepProgress(p, i).toFixed(1) : i < s.step ? 100 : 0}%` }} />
+                      </span>
+                    </span>
+                  </button>
                 </li>
               ))}
             </ol>
           </div>
 
           <div ref={stage} className={styles.bizStage} role="img" aria-label={copy.stage}>
-            <div className={styles.cust}>
-              {PERSONAS.lina.photo ? (
-                <span className={styles.custPhoto}>
-                  <img src={PERSONAS.lina.photo.src} alt="" style={{ objectPosition: PERSONAS.lina.photo.focus }} loading="lazy" />
+            <div className={styles.cust} data-phone onMouseEnter={pause} onMouseLeave={resume}>
+              <p className={`${styles.abs} ${styles.csTop}`}>
+                <span className={styles.csBack} aria-hidden="true">
+                  <svg viewBox="0 0 24 24" width="14" height="14">
+                    <path d="M15 6l-6 6 6 6" />
+                  </svg>
                 </span>
-              ) : null}
-              <p className={`${styles.abs} ${styles.custName}`}>Kek Lina</p>
-              <p className={`${styles.abs} ${styles.custHandle}`}>curios.my/keklina</p>
-              <span className={`${styles.abs} ${styles.pcTabs} ${styles.custTabs}`}>
-                <span>Links</span>
-                <span>Ask</span>
-                <span data-on>Shop</span>
+                <span>{copy.shopPath}</span>
+              </p>
+              <span className={`${styles.abs} ${styles.csOpen}`}>
+                <i />
+                {copy.open}
               </span>
-              <p className={`${styles.abs} ${styles.custNote}`}>{copy.shopNote}</p>
+              <p className={`${styles.abs} ${styles.csName}`}>Kek Lina</p>
+              <p className={`${styles.abs} ${styles.csFacts}`}>{copy.facts}</p>
+              <span className={`${styles.abs} ${styles.csCats}`}>
+                {copy.cats.map((cat, i) => (
+                  <span key={cat} data-on={i === 0 || undefined}>{cat}</span>
+                ))}
+              </span>
               {items.map((item, i) => {
                 const row = s.rows[i]!;
                 return (
-                  <div key={item.name} className={`${styles.abs} ${styles.crow}`} style={{ top: 244 + i * 56 }} data-in={row.qty > 0 || undefined}>
-                    <span className={styles.thumb} style={{ background: row.tone }} />
-                    <span className={styles.rowText}>
-                      <b>{item.name}</b>
-                      <span>{item.price}</span>
+                  <div key={item.name} className={`${styles.abs} ${styles.csCard}`} style={{ top: 196 + Math.floor(i / 2) * 176, left: 18 + (i % 2) * 138 }}>
+                    <span className={styles.csPh} style={{ background: row.tone }}>
+                      {i === 0 ? <span className={styles.csTag}>{copy.bestSeller}</span> : null}
+                      <span className={styles.csAdd} data-in={row.qty > 0 || undefined} style={{ transform: `scale(${row.pressed ? 1.18 : 1})` }}>
+                        {row.qty > 0 ? row.qty : '+'}
+                      </span>
                     </span>
-                    {row.qty > 0 ? <span className={styles.qty}>{row.qty}×</span> : null}
-                    <span className={styles.add} style={{ transform: `scale(${row.pressed ? 1.18 : 1})` }}>+</span>
+                    <b>{item.name}</b>
+                    <span>{item.price}</span>
                   </div>
                 );
               })}
@@ -150,7 +185,7 @@ export function Business({ locale }: { locale: Locale }) {
                 {s.view === 'form' ? (
                   <>
                     <p className={`${styles.abs} ${styles.sheetTitle}`}>{copy.checkout}</p>
-                    <p className={`${styles.abs} ${styles.sheetSide}`}>3 · RM235</p>
+                    <p className={`${styles.abs} ${styles.sheetSide}`}>{copy.itemsTotal}</p>
                     <p className={`${styles.abs} ${styles.flabel}`} style={{ top: 50 }}>{copy.name}</p>
                     <p className={`${styles.abs} ${styles.field}`} style={{ top: 66 }} data-on={s.nameFocused || undefined}>
                       {s.name}
@@ -169,45 +204,58 @@ export function Business({ locale }: { locale: Locale }) {
                   </>
                 ) : (
                   <>
-                    <p className={`${styles.abs} ${styles.sheetTitle}`}>#1042</p>
-                    <span className={`${styles.abs} ${styles.payChip}`} data-paid={s.receipt || undefined}>
-                      {s.receipt ? copy.receipt : copy.waiting}
-                    </span>
-                    <div className={`${styles.abs} ${styles.lines}`}>
-                      <p><span>2× {items[0]!.name}</span><b>RM190</b></p>
-                      <p><span>1× {items[1]!.name}</span><b>RM45</b></p>
-                      <p className={styles.linesTotal}><span>{copy.pickup}</span><b>RM235</b></p>
-                    </div>
-                    <div className={`${styles.abs} ${styles.payto}`}>
-                      <span className={styles.qr} aria-hidden="true">
-                        {Array.from({ length: 81 }, (_, i) => <i key={i} />)}
-                      </span>
-                      <span>
-                        {copy.scan}
-                        <b>Maybank</b>
-                        Lina binti Kamal
-                        <code>1642 3378 9021</code>
-                      </span>
-                    </div>
-                    {s.uploading ? (
-                      <span className={`${styles.abs} ${styles.proof}`}>
-                        <span className={styles.proofThumb} />
-                        <span style={{ flex: 1, display: 'grid', gap: 4 }}>
-                          <b style={{ fontSize: 12.5 }}>receipt-rm235.jpg</b>
-                          <span className={styles.proofBar}>
-                            <span style={{ width: `${s.uploadPercent}%` }} />
+                    <p className={`${styles.abs} ${styles.sheetTitle}`}>{copy.howPay}</p>
+                    <p className={`${styles.abs} ${styles.sheetSide}`}>RM235</p>
+                    <div className={`${styles.abs} ${styles.pway}`}>
+                      {copy.ways.map((way, i) => (
+                        <span key={way.label} className={styles.pwRow}>
+                          <i className={styles.pwRd} data-on={(i === 0 && s.wayPicked) || undefined} />
+                          <span className={styles.pwTx}>
+                            <b>{way.label}</b>
+                            <small>{way.sub}</small>
                           </span>
+                          <em className={styles.pwMark} data-mark={way.mark}>{way.mark}</em>
                         </span>
+                      ))}
+                    </div>
+                    <div className={`${styles.abs} ${styles.pbanks}`} style={{ opacity: s.wayPicked ? 1 : 0 }}>
+                      <p>{copy.yourBank}</p>
+                      <span className={styles.pbGrid}>
+                        {copy.banks.map((bank, i) => (
+                          <span key={bank} className={styles.pb} data-on={(i === 0 && s.bankPicked) || undefined}>
+                            <i style={{ background: BANK_COLOURS[i] }}>{bank[0]}</i>
+                            {bank}
+                          </span>
+                        ))}
                       </span>
-                    ) : (
-                      <span className={`${styles.abs} ${styles.upload}`}>
-                        <svg viewBox="0 0 24 24" aria-hidden="true">
-                          <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
-                        </svg>
-                        {copy.upload}
-                      </span>
-                    )}
-                    <span className={`${styles.abs} ${styles.cta}`} style={{ opacity: s.placeReady ? 1 : 0.4 }}>{copy.place}</span>
+                    </div>
+                    <span className={`${styles.abs} ${styles.cta}`} data-pay style={{ opacity: s.bankPicked ? 1 : 0.45 }}>
+                      {s.bankPicked ? copy.payWith : copy.pay}
+                    </span>
+                    {s.chip ? (
+                      <div className={styles.chipv}>
+                        <span className={styles.goBank}>M</span>
+                        {s.approved ? (
+                          <>
+                            <p className={styles.goT}>{copy.approved}</p>
+                            <p className={styles.goS}>{copy.approvedNote}</p>
+                            <span className={styles.goOk}>
+                              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                <path d="M5 12.5l4.5 4.5L19 7.5" />
+                              </svg>
+                              {copy.paidChip}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <p className={styles.goT}>{copy.opening}</p>
+                            <p className={styles.goS}>{copy.openingNote}</p>
+                            <span className={styles.goSpin} aria-hidden="true" />
+                          </>
+                        )}
+                        <p className={styles.goF}>{copy.processed}</p>
+                      </div>
+                    ) : null}
                   </>
                 )}
               </div>
@@ -230,95 +278,94 @@ export function Business({ locale }: { locale: Locale }) {
             </div>
 
             <span className={styles.token} style={{ transform: `translate(${s.token.x}px, ${s.token.y}px) scale(${s.token.s})`, opacity: s.token.o }}>
-              <b>#1042</b> RM235
+              <b>#14</b> RM235
             </span>
 
-            <div className={styles.own}>
+            <div className={styles.own} data-phone onMouseEnter={pause} onMouseLeave={resume}>
               <div className={styles.ownScreen}>
                 <p className={styles.osStatus}>
                   <span>11:42</span>
                   <span aria-hidden="true">●●●</span>
                 </p>
-                <div className={styles.oHead}>
-                  <span style={{ flex: 1, minWidth: 0 }}>
-                    <b className={styles.oTitle}>{copy.orders}</b>
-                    <span className={styles.oSub}>
-                      <span style={{ fontVariantNumeric: 'tabular-nums' }}>RM{s.today}</span> {copy.paidToday}
-                      <span className={styles.oPlus} style={{ opacity: s.plus }}>+RM235</span>
-                    </span>
-                  </span>
-                  <span className={styles.bell} aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="17" height="17">
-                      <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" />
-                      <path d="M10 20a2 2 0 0 0 4 0" />
-                    </svg>
-                    <i style={{ opacity: s.bell ? 1 : 0 }} />
-                  </span>
+
+                <div className={styles.o3Head}>
+                  <b>{copy.orders}</b>
+                  <span>{copy.seeShop}</span>
                 </div>
-                <div className={styles.oTabs} aria-hidden="true">
+                <div className={styles.o3Kpi}>
                   <span>
-                    {copy.tabs[0]}
-                    {s.card.isNew ? <i>1</i> : null}
+                    <b>1</b>
+                    <small>{copy.toCheck}</small>
                   </span>
-                  <span>{copy.tabs[1]}</span>
-                  <span>{copy.tabs[2]}</span>
+                  <span>
+                    <b>
+                      RM{s.today}
+                      <em style={{ opacity: s.plus }}>+235</em>
+                    </b>
+                    <small>{copy.paidWeek}</small>
+                  </span>
                 </div>
-                <div className={styles.oList}>
+                <div className={styles.o3Seg} aria-hidden="true">
+                  <span data-on>{copy.seg[0]}</span>
+                  <span>
+                    {copy.seg[1]}
+                    <i data-amber>1</i>
+                  </span>
+                  <span>
+                    {copy.seg[2]}
+                    <i>{s.paidCount}</i>
+                  </span>
+                  <span>{copy.seg[3]}</span>
+                </div>
+                <div className={styles.o3List}>
                   <div style={{ display: 'grid', gridTemplateRows: `${s.card.inserted}fr`, opacity: s.card.inserted, transform: `translateY(${-12 + 12 * s.card.inserted}px)` }}>
                     <div style={{ minHeight: 0, overflow: 'hidden', padding: 2 }}>
-                      <div className={styles.oCard} style={{ boxShadow: `0 0 0 1.5px ${s.card.ring ? 'var(--biru)' : 'transparent'}` }}>
-                        <p className={styles.oR1}>
-                          <span className={styles.av} style={{ background: 'var(--tj-blob-pink)' }}>M</span>
-                          <span style={{ flex: 1, minWidth: 0 }}>
-                            <b>Mira</b>
-                            <span>#1042 · {copy.now}</span>
+                      <div className={styles.o3New} style={{ boxShadow: `0 0 0 1.5px ${s.card.ring ? 'var(--biru)' : 'transparent'}` }}>
+                        <p className={styles.o3Row}>
+                          <span className={styles.o3Av} style={{ background: AVATAR_TONES[0] }}>M</span>
+                          <span className={styles.o3Tx}>
+                            <b>{copy.mira}</b>
+                            <span>{copy.miraSub}</span>
                           </span>
-                          <span className={styles.badge} data-done={s.confirmed || undefined}>
-                            {s.confirmed ? copy.tabs[1] : copy.tabs[0]}
+                          <span className={styles.o3Amt}>
+                            <b>RM235</b>
+                            <em data-tone="green">{s.completed ? copy.completed : copy.paidOnline}</em>
                           </span>
                         </p>
-                        <p className={styles.oItems}>
-                          2× {items[0]!.name}
-                          <br />
-                          1× {items[1]!.name}
-                        </p>
-                        <p className={styles.oMeta}>
-                          <span>{copy.pickup}</span>
-                          <span>·</span>
-                          <span>{copy.proof}</span>
-                        </p>
-                        <p className={styles.oTotal}>
-                          <span>{copy.total}</span>
-                          <b>RM235</b>
-                        </p>
-                        <span className={styles.oBtn} data-done={s.confirmed || undefined}>
-                          {s.confirmed ? copy.confirmed : copy.confirm}
-                        </span>
+                        <div className={styles.o3Act}>
+                          <p>
+                            <b>{copy.actTitle}</b>
+                            <span>{copy.actNote}</span>
+                          </p>
+                          <span className={styles.o3Btn} data-done={s.completed || undefined}>
+                            {s.completed ? copy.done : copy.markDone}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className={styles.oRow}>
-                    <span className={styles.av} style={{ background: 'var(--tj-blob-peach)' }}>H</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <b>Hakim</b>
-                      <span>2 · {copy.delivery.split(' ')[0]}</span>
+                  <p className={styles.o3Row}>
+                    <span className={styles.o3Av} style={{ background: AVATAR_TONES[1] }}>H</span>
+                    <span className={styles.o3Tx}>
+                      <b>{copy.hakim}</b>
+                      <span>{copy.hakimSub}</span>
                     </span>
-                    <span className={styles.oAmt}>
-                      <b>RM50</b>
-                      <span style={{ color: 'var(--hijau)' }}>{copy.tabs[1]}</span>
+                    <span className={styles.o3Amt}>
+                      <b>RM180</b>
+                      <em data-tone="grey">{copy.awaiting}</em>
                     </span>
-                  </div>
-                  <div className={styles.oRow}>
-                    <span className={styles.av} style={{ background: 'var(--biru-muda)' }}>W</span>
-                    <span style={{ flex: 1, minWidth: 0 }}>
-                      <b>Wei Ling</b>
-                      <span>1 · {copy.pickup.split(' ')[0]}</span>
+                  </p>
+                  <p className={styles.o3Row}>
+                    <span className={styles.o3Av} style={{ background: AVATAR_TONES[2] }}>W</span>
+                    <span className={styles.o3Tx}>
+                      <b>{copy.weiLing}</b>
+                      <span>{copy.weiLingSub}</span>
                     </span>
-                    <span className={styles.oAmt}>
-                      <b>RM30</b>
-                      <span>{copy.tabs[2]}</span>
+                    <span className={styles.o3Amt}>
+                      <b>RM70</b>
+                      <em>{copy.paid}</em>
                     </span>
-                  </div>
+                  </p>
                 </div>
 
                 <div className={styles.notif} style={{ transform: `translateY(${s.notif.y}%)`, opacity: s.notif.o }}>

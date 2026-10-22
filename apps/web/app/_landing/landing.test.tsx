@@ -7,7 +7,7 @@ import { PLAN_PRICES_CENTS } from '@curios/core';
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY } from './copy.js';
 import { BRAND } from './brand-colors.js';
-import { scene } from './order-scene.js';
+import { STEP_MS, STEP_STARTS, advance, scene, stepProgress } from './order-scene.js';
 import { payback } from './Pricing.js';
 import { howAt } from './How.js';
 
@@ -130,7 +130,7 @@ describe('motion', () => {
     const hero = container.querySelector('section')!;
     expect(hero).toHaveTextContent(en.personas.aisyah.a);
     // The order has landed and been confirmed.
-    expect(container.querySelector('#business')).toHaveTextContent(en.business.confirmed);
+    expect(container.querySelector('#business')).toHaveTextContent(en.business.done);
     // The closing line is up, not waiting to rise.
     expect(screen.getByRole('heading', { name: 'Curious? Just ask' })).toHaveAttribute('data-in');
   });
@@ -191,13 +191,109 @@ describe('pricing', () => {
 });
 
 describe('the order, played out', () => {
-  it('starts empty and ends confirmed, with the basket and the sheet in between', () => {
-    expect(scene(0)).toMatchObject({ basketCount: 0, sheet: 0, view: 'form', confirmed: false });
+  it('starts empty and ends completed, with the basket and the sheet in between', () => {
+    expect(scene(0)).toMatchObject({ basketCount: 0, sheet: 0, view: 'form', completed: false });
     expect(scene(0.2)).toMatchObject({ basketCount: 3, basketTotal: 235, step: 0 });
+    expect(scene(0.2).rows.map((r) => r.qty)).toEqual([2, 1, 0, 0]);
     expect(scene(0.4)).toMatchObject({ view: 'form', step: 1 });
     expect(scene(0.4).sheet).toBe(100);
-    expect(scene(0.6)).toMatchObject({ view: 'pay', uploaded: true, step: 2 });
-    expect(scene(1)).toMatchObject({ confirmed: true, step: 4, success: 1 });
+    expect(scene(1)).toMatchObject({ completed: true, step: 4, success: 1 });
+  });
+
+  it('picks FPX, then Maybank2u, and pays through CHIP without a QR or a receipt', () => {
+    expect(scene(0.52)).toMatchObject({ view: 'pay', wayPicked: false, bankPicked: false, chip: false });
+    expect(scene(0.54)).toMatchObject({ wayPicked: true, bankPicked: false });
+    expect(scene(0.55)).toMatchObject({ bankPicked: true, chip: false });
+    expect(scene(0.6)).toMatchObject({ chip: true, approved: false });
+    expect(scene(0.62)).toMatchObject({ chip: true, approved: true, step: 2 });
+    expect(scene(0.7)).toMatchObject({ step: 3 });
+    expect(scene(0.6)).not.toHaveProperty('receipt');
+    expect(scene(0.6)).not.toHaveProperty('uploading');
+  });
+
+  it('lands in Orders already paid, then completed', () => {
+    expect(scene(0.7)).toMatchObject({ today: 480, paidCount: 3, completed: false, card: { isNew: false } });
+    expect(scene(0.85)).toMatchObject({ paidCount: 4, completed: false, card: { isNew: true } });
+    expect(scene(0.88).today).toBe(715);
+    expect(scene(0.95)).toMatchObject({ completed: true, paidCount: 3 });
+  });
+
+  it('gives each step its own duration', () => {
+    expect(STEP_MS).toEqual([3800, 4600, 4800, 2600, 4000]);
+    expect(STEP_STARTS).toEqual([0, 0.24, 0.5, 0.64, 0.76, 1]);
+    expect(advance(0, 3800)).toBeCloseTo(0.24);
+    expect(advance(0.24, 4600)).toBeCloseTo(0.5);
+    expect(advance(0.64, 2600)).toBeCloseTo(0.76);
+    expect(stepProgress(0.37, 1)).toBeCloseTo(50);
+    expect(stepProgress(0.1, 3)).toBe(0);
+  });
+});
+
+describe('For business, the steps', () => {
+  const business = (c: HTMLElement) => c.querySelector('#business') as HTMLElement;
+
+  it('a step can be clicked to jump to it', async () => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale="en" />);
+    expect(business(container)).toHaveTextContent(en.business.done);
+    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[2]!.title) }));
+    expect(business(container).querySelector('[data-state="now"]')).toHaveTextContent(en.business.caps[2]!.title);
+    expect(business(container)).toHaveTextContent(en.business.howPay);
+    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[1]!.title) }));
+    expect(business(container)).toHaveTextContent(en.business.continueToPay);
+    expect(business(container)).not.toHaveTextContent(en.business.howPay);
+    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[0]!.title) }));
+    expect(business(container)).toHaveTextContent(en.business.basketEmpty);
+  });
+
+  it('each step has its own duration and a progress line', async () => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale="en" />);
+    await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[1]!.title) }));
+    const bar = business(container).querySelector('[data-state="now"] [data-bar] i') as HTMLElement;
+    expect(parseFloat(bar.style.width)).toBeGreaterThanOrEqual(0);
+    expect(parseFloat(bar.style.width)).toBeLessThan(1);
+    expect(business(container).querySelectorAll('[data-bar]')).toHaveLength(5);
+  });
+
+  it('hovering the phones pauses', () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
+    vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+    );
+    const watchers: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          watchers.push(cb);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const { container } = render(<LandingPage locale="en" />);
+    act(() => watchers.forEach((w) => w([{ intersectionRatio: 0.5 } as IntersectionObserverEntry], {} as IntersectionObserver)));
+    const bar = () => parseFloat((business(container).querySelector('[data-state="now"] [data-bar] i') as HTMLElement).style.width);
+    const tick = (now: number) => act(() => frames.splice(0).forEach((f) => f(now)));
+    tick(1000);
+    tick(1050);
+    tick(1100);
+    const before = bar();
+    expect(before).toBeGreaterThan(0);
+    const phones = business(container).querySelectorAll('[data-phone]');
+    expect(phones).toHaveLength(2);
+    fireEvent.mouseEnter(phones[0]!);
+    tick(1150);
+    tick(1200);
+    expect(bar()).toBe(before);
+    fireEvent.mouseLeave(phones[0]!);
+    tick(1250);
+    tick(1300);
+    expect(bar()).toBeGreaterThan(before);
+    vi.unstubAllGlobals();
   });
 });
 
