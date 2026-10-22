@@ -31,6 +31,8 @@
   --peek-shine: #5b76ff;
   --panel-signin: #eef1fb;
   --panel-signup: #fdf3e3;
+  --panel-onboarding: #eef1fb;
+  --peek-bag-shade: #d98a22;
   /* Surfaces the My Curios slice needs: a card lifted off --paper, and the hairline between panels. */
   --card: #ffffff;
   --line: #e4e7eb;

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { apiFetch } from '../../../lib/api.js';
 import { loginWalledSite } from '../../../lib/social-links.js';
@@ -35,7 +35,6 @@ const ICON = {
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   text: 'M6 3h9l4 4v14H6zM9 12h7M9 16h5',
   file: 'M12 16V4M7 9l5-5 5 5M5 20h14',
-  bio: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
   web: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
   person: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0',
   shop: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
@@ -283,16 +282,12 @@ export function OnboardingFlow({
   const result = reading?.result ?? null;
   const done = result !== null;
   const foundCount = result?.status === 'SUCCEEDED' ? result.extractedCount : 0;
-  // While it reads, what it has found so far; the list beside the phone grows with it.
-  const soFar = reading?.live?.extractedCount ?? 0;
   const progress = reading?.live?.progress ?? 0;
   const found = done && result.status === 'SUCCEEDED' && foundCount > 0;
   const quiet = done && result.status === 'SUCCEEDED' && foundCount === 0;
   const failed = done && result.status === 'FAILED';
   // What this read found: the newest facts in the queue, once the refresh brings them.
   const justFound = found ? facts.slice(-foundCount) : [];
-  const arriving = !done && soFar > 0 ? facts.slice(-soFar) : [];
-  const ask = justFound.find((fact) => fact.question);
 
   return (
     <div className={styles.ob}>
@@ -648,164 +643,211 @@ export function OnboardingFlow({
         step={step}
         handle={handle}
         handleFree={status === 'available'}
-        name={name}
         mode={mode}
-        way={way}
-        found={done ? justFound : arriving}
-        ask={ask ? { q: ask.question ?? '', a: ask.claim } : null}
-        caption={
-          [
-            'Your address, live the moment you claim it.',
-            business ? 'Business pages get a Shop tab and take numbers.' : 'Personal pages are free and about you.',
-            'It reads a link, pasted text or a file.',
-            found ? 'Ask it something. It answers from what it found.' : quiet ? 'Paste some text and it tries again.' : 'Facts appear as it reads. You check each one.',
-          ][step] ?? ''
-        }
+        outcome={found ? 'found' : done ? 'none' : null}
+        foundCount={foundCount}
+        found={justFound.slice(0, 3)}
       />
     </div>
   );
 }
 
-/** The page on a phone, taking shape as the owner types. Drawing only. */
+type Pose = 'claim' | 'business' | 'personal' | 'read' | 'scan' | 'found' | 'none';
+
+/** The panel's two lines, one pair per pose (Onboarding.dc.html, paT and paS). */
+function panelCaption(pose: Pose, handleFree: boolean, foundCount: number): [string, string] {
+  switch (pose) {
+    case 'claim':
+      return [handleFree ? 'It’s yours' : 'Pick an address', 'Your page goes live at this address the moment you claim it.'];
+    case 'business':
+      return ['A page that sells', 'It answers customers, takes their numbers and runs your shop.'];
+    case 'personal':
+      return ['A page about you', 'It answers questions about you and your work.'];
+    case 'read':
+      return ['Give it something to read', 'Everything it learns waits for you to check first.'];
+    case 'scan':
+      return ['Reading it now', 'Picking out prices, hours and what you offer.'];
+    case 'found':
+      return [`Found ${foundCount} facts`, 'They wait in Review until you accept them.'];
+    default:
+      // Also what a failed read shows (DEVIATIONS row 89); the form says what went wrong.
+      return ['Nothing to read there', 'Try pasting a few lines instead.'];
+  }
+}
+
+/** Peek's body, the same in every pose; the eyes look to (look.x, look.y) and the mouth is the pose's. */
+function PeekBody({ clipId, look, mouth }: { clipId: string; look?: { x: number; y: number }; mouth?: 'smile' | 'flat' | 'happy' }) {
+  return (
+    <g className={styles.bob}>
+      <g clipPath={`url(#${clipId})`}>
+        <rect x="20" y="30" width="120" height="110" fill="var(--peek-shade)" />
+        <ellipse cx="73" cy="76" rx="54" ry="48" fill="var(--peek-body)" />
+      </g>
+      <ellipse cx="55" cy="54" rx="9" ry="5" fill="var(--peek-shine)" transform="rotate(-30 55 54)" />
+      {mouth === 'happy' ? (
+        <path d="M55 86q11-13 22 0M84 86q11-13 22 0" fill="none" stroke="var(--card)" strokeWidth="5.5" strokeLinecap="round" />
+      ) : look ? (
+        <g className={styles.eyes}>
+          <ellipse cx="66" cy="82" rx="11.5" ry="13.5" fill="var(--card)" />
+          <ellipse cx="95" cy="82" rx="11.5" ry="13.5" fill="var(--card)" />
+          <circle cx={look.x} cy={look.y} r="6.6" fill="var(--ink)" />
+          <circle cx={look.x + 29} cy={look.y} r="6.6" fill="var(--ink)" />
+          <circle cx={look.x + 2.2} cy={look.y - 3} r="2.1" fill="var(--card)" />
+          <circle cx={look.x + 31.2} cy={look.y - 3} r="2.1" fill="var(--card)" />
+        </g>
+      ) : null}
+      {mouth === 'smile' ? <path d="M75 104q5.5 4.5 11 0" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" /> : null}
+      {mouth === 'flat' ? <path d="M76 105h9" fill="none" stroke="var(--ink)" strokeWidth="3" strokeLinecap="round" /> : null}
+      {mouth === 'happy' ? <path d="M72 102q8.5 9 17 0z" fill="var(--ink)" stroke="var(--ink)" strokeWidth="2" strokeLinejoin="round" /> : null}
+    </g>
+  );
+}
+
+function Hand({ cx, cy, className }: { cx: number; cy: number; className?: string }) {
+  return (
+    <g className={className}>
+      <circle cx={cx} cy={cy} r="9.5" fill="var(--peek-hand)" stroke="var(--peek-edge)" strokeWidth="1.5" />
+    </g>
+  );
+}
+
+function Paper() {
+  return (
+    <g className={styles.paper}>
+      <g transform="rotate(-5 80 124)">
+        <rect x="50" y="106" width="60" height="40" rx="5" fill="var(--card)" stroke="var(--ink)" strokeWidth="2" />
+        <rect x="58" y="115" width="36" height="4" rx="2" fill="var(--ghost-line)" />
+        <rect x="58" y="123" width="44" height="4" rx="2" fill="var(--ghost-line)" />
+        <rect x="58" y="131" width="28" height="4" rx="2" fill="var(--ghost-line)" />
+      </g>
+    </g>
+  );
+}
+
+/**
+ * The panel beside the form: Peek, full-body, one pose per step, from the
+ * Onboarding board ("onboarding panel: Peek"). It does not stream facts while
+ * the read runs and has no phone preview (owner answer 8). Decoration only.
+ */
 function OnboardingArt({
   step,
   handle,
   handleFree,
-  name,
   mode,
-  way,
+  outcome,
+  foundCount,
   found,
-  ask,
-  caption,
 }: {
   step: number;
   handle: string;
   handleFree: boolean;
-  name: string;
   mode: Mode;
-  way: SourceWay;
+  /** How a finished read ended: with facts, or with nothing (quiet or failed). Null while it reads. */
+  outcome: 'found' | 'none' | null;
+  foundCount: number;
+  /** The first three facts it found, shown once the read is done. */
   found: FoundFact[];
-  ask: { q: string; a: string } | null;
-  caption: string;
 }) {
-  const shown = name.trim() || 'Your name';
-  const address = handle || 'yourname';
-  const other: Mode = mode === 'BUSINESS' ? 'PERSONAL' : 'BUSINESS';
-  const screen = (m: Mode, withQa: boolean) => (
-    <div className={styles.scr}>
-      <div className={styles.cov} />
-      <div className={styles.pb}>
-        <span className={styles.av}>{shown[0]?.toUpperCase()}</span>
-        <p className={styles.nm}>{shown}</p>
-        <p className={styles.hd}>curios.my/{address}</p>
-        <span className={styles.tb}>
-          <span>Links</span>
-          <span>Ask</span>
-          {m === 'BUSINESS' ? <span>Shop</span> : null}
-        </span>
-        {withQa && ask ? (
-          <span className={styles.qa}>
-            <span>{ask.q}</span>
-            <span>{ask.a}</span>
-          </span>
-        ) : (
-          <span className={styles.ghost}>
-            <span />
-            <span />
-            <span />
-          </span>
-        )}
-        <span className={styles.ask}>
-          Ask {shown.split(' ')[0]} anything
-          <i>
-            <svg viewBox="0 0 24 24">
-              <path d="M12 19V5M5 12l7-7 7 7" />
-            </svg>
-          </i>
-        </span>
-      </div>
-    </div>
-  );
+  const clipId = `ob-clip-${useId().replace(/:/g, '')}`;
+  const pose: Pose =
+    step === 0 ? 'claim' : step === 1 ? (mode === 'BUSINESS' ? 'business' : 'personal') : step === 2 ? 'read' : outcome === 'found' ? 'found' : outcome === 'none' ? 'none' : 'scan';
+  const [title, line] = panelCaption(pose, handleFree, foundCount);
 
   return (
-    <div className={styles.art} aria-hidden="true">
-      <div className={styles.dots} />
-      <div className={styles.blobs}>
-        <span />
-        <span />
-        <span />
-      </div>
-
-      {step === 0 ? (
-        <div className={styles.urlpill}>
-          <span className={styles.lock}>
-            <svg viewBox="0 0 24 24">
-              <path d="M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3" />
-            </svg>
-          </span>
-          curios.my/<b>{handle}</b>
-          <span className={styles.caret} />
-          {handleFree ? (
-            <span className={styles.yours}>
-              <svg viewBox="0 0 24 24">
-                <path d={ICON.check} />
-              </svg>
-              Yours
-            </span>
+    <aside className={styles.art} aria-hidden="true" data-onboarding-panel="">
+      <div className={styles.pa}>
+        <div className={styles.pstage}>
+          {pose === 'claim' ? (
+            <div className={styles.signw}>
+              <span className={styles.sign}>
+                <small>curios.my/</small>
+                <b>{handle || 'yourname'}</b>
+                {handleFree ? (
+                  <i className={styles.tk} data-peek-tick="">
+                    <svg viewBox="0 0 24 24">
+                      <path d="M5 12.5l4.5 4.5L19 7.5" />
+                    </svg>
+                  </i>
+                ) : null}
+                <em className={styles.hl} />
+                <em className={styles.hr} />
+              </span>
+            </div>
           ) : null}
+          {pose === 'found' ? (
+            <div className={styles.pops}>
+              {found.map((fact, i) => (
+                <span key={fact.id} data-peek-fact="" style={{ animationDelay: `${i * 250}ms` }}>
+                  <i className={styles.kind} data-kind={fact.category}>
+                    {KIND_LABELS[fact.category]}
+                  </i>
+                  <b>{fact.claim}</b>
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <svg className={styles.svg} viewBox={pose === 'claim' ? '-14 26 188 124' : '-14 -6 188 156'} data-pose={pose}>
+            <defs>
+              <clipPath id={clipId}>
+                <ellipse cx="80" cy="84" rx="54" ry="49" />
+              </clipPath>
+            </defs>
+            <ellipse cx="80" cy="143" rx="44" ry="4.5" className={styles.shadow} />
+            <ellipse cx="63" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
+            <ellipse cx="97" cy="132" rx="13" ry="8" fill="var(--peek-foot)" />
+            {pose === 'claim' ? <PeekBody clipId={clipId} look={{ x: 67, y: 81 }} mouth="smile" /> : null}
+            {pose === 'business' ? (
+              <>
+                <PeekBody clipId={clipId} look={{ x: 71, y: 86 }} mouth="smile" />
+                <g className={styles.bagg}>
+                  <path d="M127 98q0-12 9-12t9 12" fill="none" stroke="var(--ink)" strokeWidth="2.4" />
+                  <rect x="118" y="96" width="36" height="34" rx="6" fill="var(--kuning)" stroke="var(--ink)" strokeWidth="2" />
+                  <rect x="118" y="104" width="36" height="5" fill="var(--peek-bag-shade)" />
+                  <circle cx="136" cy="88" r="9.5" fill="var(--peek-hand)" stroke="var(--peek-edge)" strokeWidth="1.5" />
+                </g>
+                <Hand cx={20} cy={104} />
+              </>
+            ) : null}
+            {pose === 'personal' ? (
+              <>
+                <PeekBody clipId={clipId} look={{ x: 67, y: 85 }} mouth="smile" />
+                <Hand cx={20} cy={104} />
+                <Hand cx={141} cy={62} className={styles.wave} />
+              </>
+            ) : null}
+            {pose === 'read' || pose === 'scan' ? (
+              <>
+                <PeekBody clipId={clipId} look={{ x: 67, y: pose === 'read' ? 89 : 90 }} />
+                <Paper />
+                {pose === 'scan' ? (
+                  <rect className={styles.scan} data-peek-scan="" x="49" y="112" width="62" height="3" rx="1.5" fill="var(--peek-body)" transform="rotate(-5 80 124)" />
+                ) : null}
+                <Hand cx={50} cy={124} />
+                <Hand cx={111} cy={120} />
+              </>
+            ) : null}
+            {pose === 'found' ? (
+              <>
+                <PeekBody clipId={clipId} mouth="happy" />
+                <Hand cx={16} cy={78} className={styles.cheer} />
+                <Hand cx={144} cy={78} className={styles.cheer2} />
+              </>
+            ) : null}
+            {pose === 'none' ? (
+              <>
+                <PeekBody clipId={clipId} look={{ x: 62, y: 85 }} mouth="flat" />
+                <Hand cx={18} cy={112} />
+                <Hand cx={142} cy={112} />
+              </>
+            ) : null}
+          </svg>
         </div>
-      ) : null}
-
-      {step === 2
-        ? [
-            { id: 'link', label: 'Link', icon: ICON.link },
-            { id: 'text', label: 'Paste text', icon: ICON.text },
-            { id: 'file', label: 'A file', icon: ICON.file },
-            { id: 'bio', label: 'Bio', icon: ICON.bio },
-          ].map((s) => (
-            <span key={s.id} className={styles.sat} data-on={s.id === way || undefined}>
-              <svg viewBox="0 0 24 24">
-                <path d={s.icon} />
-              </svg>
-              <em>{s.label}</em>
-            </span>
-          ))
-        : null}
-
-      {step === 3 ? (
-        <div className={styles.flist}>
-          <div className={styles.fcount}>
-            <b>{found.length}</b>
-            <span>facts found</span>
-          </div>
-          {[...found]
-            .reverse()
-            .slice(0, 6)
-            .map((fact) => (
-              <div key={fact.id} className={styles.fcard}>
-                <i className={styles.kind} data-kind={fact.category}>
-                  {KIND_LABELS[fact.category]}
-                </i>
-                <span>{fact.claim}</span>
-              </div>
-            ))}
-        </div>
-      ) : null}
-
-      <div className={styles.stage} data-step={step}>
-        {step === 1 ? (
-          <div className={styles.phone} data-behind="" data-mode={other}>
-            {screen(other, false)}
-            <span className={styles.tag}>{other === 'BUSINESS' ? 'Business' : 'Personal'}</span>
-          </div>
-        ) : null}
-        <div className={styles.phone} data-front="" data-mode={mode}>
-          {screen(mode, step === 3)}
-          {step === 1 ? <span className={styles.tag}>{mode === 'BUSINESS' ? 'Business page' : 'Personal page'}</span> : null}
-        </div>
+        <p className={styles.cap}>
+          <b>{title}</b>
+          <span>{line}</span>
+        </p>
       </div>
-      <p className={styles.caption}>{caption}</p>
-    </div>
+    </aside>
   );
 }
 
