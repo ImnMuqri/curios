@@ -25,6 +25,7 @@ async function aPage(options: {
   renewalReminderFor?: Date | null;
   ordersPlaced?: number;
   storeEnabled?: boolean;
+  card?: { label: string | null; plan: 'MONTHLY' | 'ANNUAL' };
 }) {
   const slug = `rem-${randomUUID().slice(0, 8)}`;
   const account = await prisma.account.create({
@@ -40,6 +41,9 @@ async function aPage(options: {
           renewalReminderFor: options.renewalReminderFor ?? null,
           ordersPlaced: options.ordersPlaced ?? 0,
           storeEnabled: options.storeEnabled ?? false,
+          renewalCard: options.card
+            ? { create: { token: `tok-${randomUUID()}`, plan: options.card.plan, cardLabel: options.card.label } }
+            : undefined,
         },
       },
     },
@@ -70,6 +74,17 @@ describe('runRenewalReminders', () => {
     expect(mail?.to).toBe(page.email);
     expect(mail?.text).toContain(`${APP_URL}/app/billing`);
     expect(await reminderMark(page.pageId)).toEqual(paidUntil);
+  });
+
+  it('tells an owner with a saved card what will be charged, from the card plan', async () => {
+    await aPage({ paidUntil: inDays(2), card: { label: 'Visa ending 1111', plan: 'ANNUAL' } });
+    const mailQueue = aMailQueue();
+
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+
+    const [, mail] = mailQueue.add.mock.calls[0] ?? [];
+    expect(mail?.text).toContain("We'll charge RM490 to Visa ending 1111 on");
+    expect(mail?.html).toContain('>See billing</a>');
   });
 
   it('never sends a second reminder for the same period', async () => {
@@ -179,6 +194,7 @@ describe('buildRenewalReminder', () => {
     // 20:00 UTC is already the next day in Kuala Lumpur.
     paidUntil: new Date('2026-09-19T20:00:00.000Z'),
     appUrl: `${APP_URL}/`,
+    card: null,
   });
 
   it('names the shop and the Malaysian calendar day the plan ends', () => {
@@ -193,8 +209,8 @@ describe('buildRenewalReminder', () => {
   });
 
   it('does not promise a charge that cannot happen', () => {
-    // FPX cannot auto-charge. An email implying money will be taken is both
-    // untrue and the fastest way to lose an owner's trust.
+    // Without a saved card nothing is charged. An email implying money will be
+    // taken is both untrue and the fastest way to lose an owner's trust.
     expect(mail.text).toContain('not charge you automatically');
     expect(mail.text.toLowerCase()).not.toContain('will be renewed');
   });
@@ -236,6 +252,15 @@ describe('runPlanEndedMails', () => {
     const text = mailQueue.add.mock.calls[0]?.[1]?.text ?? '';
     expect(text).toContain(said);
     if (!shop.storeEnabled || shop.ordersPlaced < 3) expect(text).not.toContain('stopped taking orders');
+  });
+
+  it('skips the plan-ended mail while a renewal card exists', async () => {
+    // A renewal is still being tried; the auto-renew job says when it gives up.
+    await aPage({ paidUntil: inDays(-0.5), card: { label: null, plan: 'MONTHLY' } });
+    const mailQueue = aMailQueue();
+
+    expect(await run(mailQueue)).toEqual({ told: 0 });
+    expect(mailQueue.add).not.toHaveBeenCalled();
   });
 
   it('says nothing to a plan still running, or one that ended long before', async () => {

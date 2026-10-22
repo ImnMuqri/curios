@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import type { BillplzBill, BillplzClient } from '@curios/billing';
+import type { ChipClient, ChipPurchase } from '@curios/billing';
 import {
   PENDING_MAX_AGE_MS,
   PENDING_MIN_AGE_MS,
@@ -32,52 +32,115 @@ beforeEach(async () => {
   pageId = account.pages[0]?.id ?? '';
 });
 
-async function aPayment(createdAt: Date, options: { billId?: string | null; status?: 'PENDING' | 'PAID' } = {}) {
-  const billId = options.billId === undefined ? `bill-${randomUUID()}` : options.billId;
-  await prisma.payment.create({
+async function aPayment(
+  createdAt: Date,
+  options: { ref?: string | null; status?: 'PENDING' | 'PAID'; autoRenewal?: boolean; provider?: 'CHIP' | 'BILLPLZ' } = {},
+) {
+  const ref = options.ref === undefined ? `purchase-${randomUUID()}` : options.ref;
+  const payment = await prisma.payment.create({
     data: {
       pageId,
       plan: 'MONTHLY',
-      amountCents: 3900,
-      billplzCollectionId: 'col-test',
-      billplzBillId: billId,
+      amountCents: 4900,
+      provider: options.provider ?? 'CHIP',
+      providerRef: ref,
       status: options.status ?? 'PENDING',
+      autoRenewal: options.autoRenewal ?? false,
       createdAt,
     },
   });
-  return billId;
+  return { ref: ref ?? '', id: payment.id };
 }
 
-/** A Billplz that says every bill it is asked about has been paid, for exactly what was billed. */
+const statusOf = async (id: string) => (await prisma.payment.findUniqueOrThrow({ where: { id }, select: { status: true } })).status;
+
+function aPurchase(over: Partial<ChipPurchase> & { id: string }): ChipPurchase {
+  return {
+    status: 'created',
+    reference: '',
+    totalCents: 4900,
+    checkoutUrl: `https://gate.chip-in.asia/p/${over.id}/`,
+    isRecurringToken: false,
+    isTest: true,
+    paymentMethod: null,
+    maskedPan: null,
+    ...over,
+  };
+}
+
+/** A CHIP that says every purchase it is asked about has been paid, for exactly what was billed. */
 function aPayingClient() {
   return {
-    createBill: vi.fn<BillplzClient['createBill']>(),
-    getBill: vi.fn<BillplzClient['getBill']>(async (id): Promise<BillplzBill> => {
-      const payment = await prisma.payment.findUniqueOrThrow({ where: { billplzBillId: id }, select: { id: true } });
-      return {
-        id,
-        collectionId: 'col-test',
-        paid: true,
-        state: 'paid',
-        amount: 3900,
-        paidAmount: 3900,
-        reference1: payment.id,
-        url: `https://www.billplz-sandbox.com/bills/${id}`,
-      };
+    createPurchase: vi.fn<ChipClient['createPurchase']>(),
+    chargePurchase: vi.fn<ChipClient['chargePurchase']>(),
+    deleteRecurringToken: vi.fn<ChipClient['deleteRecurringToken']>(),
+    cancelPurchase: vi.fn<ChipClient['cancelPurchase']>(),
+    getPublicKey: vi.fn<ChipClient['getPublicKey']>(),
+    getPurchase: vi.fn<ChipClient['getPurchase']>(async (id): Promise<ChipPurchase> => {
+      const payment = await prisma.payment.findUniqueOrThrow({ where: { providerRef: id }, select: { id: true } });
+      return aPurchase({ id, status: 'paid', reference: payment.id });
     }),
   };
 }
 
 describe('runPendingCheck', () => {
-  it('grants a payment whose callbacks never arrived', async () => {
+  it('grants a paid purchase whose callbacks never arrived', async () => {
     await aPayment(ago(3 * HOUR_MS));
     const client = aPayingClient();
 
     const result = await runPendingCheck({ prisma, client, now: NOW });
 
-    expect(result).toEqual({ checked: 1, granted: 1 });
+    expect(result).toEqual({ checked: 1, granted: 1, expired: 0 });
     const page = await prisma.page.findUniqueOrThrow({ where: { id: pageId }, select: { paidUntil: true } });
     expect(page.paidUntil).not.toBeNull();
+  });
+
+  it.each(['expired', 'cancelled', 'error', 'blocked'])('marks a %s purchase EXPIRED', async (status) => {
+    const payment = await aPayment(ago(3 * HOUR_MS));
+    const client = aPayingClient();
+    client.getPurchase.mockResolvedValueOnce(aPurchase({ id: payment.ref, status, reference: payment.id }));
+
+    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 1, granted: 0, expired: 1 });
+    expect(await statusOf(payment.id)).toBe('EXPIRED');
+  });
+
+  it('never overwrites a payment that was paid after the read', async () => {
+    const payment = await aPayment(ago(3 * HOUR_MS));
+    const client = aPayingClient();
+    client.getPurchase.mockImplementationOnce(async (id) => {
+      // The webhook lands between the check's read and its write.
+      await prisma.payment.update({ where: { id: payment.id }, data: { status: 'PAID' } });
+      return aPurchase({ id, status: 'expired', reference: payment.id });
+    });
+
+    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 1, granted: 0, expired: 0 });
+    expect(await statusOf(payment.id)).toBe('PAID');
+  });
+
+  it('leaves a purchase still open alone', async () => {
+    const payment = await aPayment(ago(3 * HOUR_MS));
+    const client = aPayingClient();
+    client.getPurchase.mockResolvedValueOnce(aPurchase({ id: payment.ref, status: 'created', reference: payment.id }));
+
+    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 1, granted: 0, expired: 0 });
+    expect(await statusOf(payment.id)).toBe('PENDING');
+  });
+
+  it('skips renewal payments, which the auto-renew job owns', async () => {
+    await aPayment(ago(3 * HOUR_MS), { autoRenewal: true });
+    const client = aPayingClient();
+
+    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 0, granted: 0, expired: 0 });
+    expect(client.getPurchase).not.toHaveBeenCalled();
+  });
+
+  it('skips a Billplz payment, which CHIP knows nothing about', async () => {
+    await aPayment(ago(3 * HOUR_MS), { provider: 'BILLPLZ' });
+    const client = aPayingClient();
+
+    await runPendingCheck({ prisma, client, now: NOW });
+
+    expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
   it('checks a payment exactly two hours old', async () => {
@@ -86,15 +149,15 @@ describe('runPendingCheck', () => {
 
     await runPendingCheck({ prisma, client, now: NOW });
 
-    expect(client.getBill).toHaveBeenCalledTimes(1);
+    expect(client.getPurchase).toHaveBeenCalledTimes(1);
   });
 
   it('leaves a payment a minute younger than that to its callback', async () => {
     await aPayment(ago(PENDING_MIN_AGE_MS - MINUTE_MS));
     const client = aPayingClient();
 
-    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 0, granted: 0 });
-    expect(client.getBill).not.toHaveBeenCalled();
+    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 0, granted: 0, expired: 0 });
+    expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
   it('still checks a payment exactly seven days old', async () => {
@@ -103,7 +166,7 @@ describe('runPendingCheck', () => {
 
     await runPendingCheck({ prisma, client, now: NOW });
 
-    expect(client.getBill).toHaveBeenCalledTimes(1);
+    expect(client.getPurchase).toHaveBeenCalledTimes(1);
   });
 
   it('stops checking a payment a minute older than that', async () => {
@@ -112,16 +175,16 @@ describe('runPendingCheck', () => {
 
     await runPendingCheck({ prisma, client, now: NOW });
 
-    expect(client.getBill).not.toHaveBeenCalled();
+    expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
-  it('skips a payment that never got a bill id', async () => {
-    await aPayment(ago(3 * HOUR_MS), { billId: null });
+  it('skips a payment that never got a purchase id', async () => {
+    await aPayment(ago(3 * HOUR_MS), { ref: null });
     const client = aPayingClient();
 
     await runPendingCheck({ prisma, client, now: NOW });
 
-    expect(client.getBill).not.toHaveBeenCalled();
+    expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
   it('never asks about a payment already paid', async () => {
@@ -130,17 +193,17 @@ describe('runPendingCheck', () => {
 
     await runPendingCheck({ prisma, client, now: NOW });
 
-    expect(client.getBill).not.toHaveBeenCalled();
+    expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
-  it('keeps going when one bill cannot be fetched', async () => {
+  it('one purchase failing does not stop the rest', async () => {
     // Oldest first: the four-hour-old payment is asked about first, and fails.
     await aPayment(ago(4 * HOUR_MS));
     await aPayment(ago(3 * HOUR_MS));
     const client = aPayingClient();
-    client.getBill.mockRejectedValueOnce(new Error('Billplz unreachable'));
+    client.getPurchase.mockRejectedValueOnce(new Error('CHIP unreachable'));
 
-    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 2, granted: 1 });
+    expect(await runPendingCheck({ prisma, client, now: NOW })).toEqual({ checked: 2, granted: 1, expired: 0 });
   });
 });
 
