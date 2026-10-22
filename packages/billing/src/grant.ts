@@ -138,6 +138,11 @@ export async function grantPayment(
   });
 }
 
+export type RenewalFailureResult =
+  | { kind: 'retry'; attempts: number }
+  | { kind: 'stopped' }
+  | { kind: 'ignored' };
+
 const MAX_RENEWAL_ATTEMPTS = 3;
 const GRACE_MS = 3 * 24 * 60 * 60 * 1000;
 
@@ -152,7 +157,7 @@ export async function recordRenewalFailure(
   prisma: PrismaClient,
   paymentId: string,
   now: Date,
-): Promise<{ kind: 'retry'; attempts: number } | { kind: 'stopped' } | { kind: 'ignored' }> {
+): Promise<RenewalFailureResult> {
   return prisma.$transaction(async (tx) => {
     const payment = await tx.payment.findUnique({ where: { id: paymentId }, select: { pageId: true } });
     if (!payment) return { kind: 'ignored' as const };

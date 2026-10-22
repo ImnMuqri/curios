@@ -1,8 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { CHIP_ENV, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { buildApp } from '../../app.js';
+import type { BillingRouteOptions } from './billing.routes.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
 const client = {
@@ -322,6 +323,288 @@ describe('GET /billing/chip/return', () => {
 
     expect((await visit(payment.id)).headers.location).toBe(`${BACK}pending`);
     expect(client.getPurchase).not.toHaveBeenCalled();
+  });
+});
+
+
+describe('GET /billing/chip/return, when the database fails', () => {
+  it('says pending rather than answering 500', async () => {
+    const owner = await anOwner();
+    const { paymentId } = await aPendingPayment(owner.pageId);
+    const { spy, restore } = spyOnPrismaMethod(app.prisma.payment, 'findUnique');
+    spy.mockRejectedValueOnce(new Error('database went away'));
+
+    try {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/billing/chip/return?payment=${paymentId}`,
+        remoteAddress: from(),
+      });
+
+      expect(res.statusCode).toBe(302);
+      expect(res.headers.location).toBe('http://localhost:3000/app/billing?payment=pending');
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+});
+
+// CHIP's server-to-server messages. Signed with key pairs made here, and the public halves
+// handed to the routes through the environment, as they are in a deployment.
+describe('CHIP callback and webhook', () => {
+  const pair = () =>
+    generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+    });
+  const callbackKeys = pair();
+  const webhookKeys = pair();
+  const sign = (body: string, privateKey: string) =>
+    cryptoSign('sha256', Buffer.from(body), privateKey).toString('base64');
+
+  const KEYS = ['CHIP_PUBLIC_KEY', 'CHIP_WEBHOOK_PUBLIC_KEY'] as const;
+  const saved = Object.fromEntries(KEYS.map((name) => [name, process.env[name]]));
+  const restoreEnv = () => {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  };
+
+  const onRenewalFailure = vi.fn<NonNullable<BillingRouteOptions['onRenewalFailure']>>();
+  const apps: FastifyInstance[] = [];
+
+  /** An app built with exactly these keys in the environment, whatever a developer's .env says. */
+  async function appWith(keys: { callback?: string; webhook?: string }) {
+    delete process.env.CHIP_PUBLIC_KEY;
+    delete process.env.CHIP_WEBHOOK_PUBLIC_KEY;
+    if (keys.callback) process.env.CHIP_PUBLIC_KEY = keys.callback;
+    if (keys.webhook) process.env.CHIP_WEBHOOK_PUBLIC_KEY = keys.webhook;
+    try {
+      const built = await buildApp({ billing: { client, onRenewalFailure } });
+      await built.ready();
+      apps.push(built);
+      return built;
+    } finally {
+      restoreEnv();
+    }
+  }
+
+  let keyed: FastifyInstance;
+  beforeAll(async () => {
+    keyed = await appWith({ callback: callbackKeys.publicKey, webhook: webhookKeys.publicKey });
+  });
+  afterAll(async () => {
+    restoreEnv();
+    await Promise.all(apps.map((built) => built.close()));
+  });
+  beforeEach(() => {
+    onRenewalFailure.mockReset().mockResolvedValue(undefined);
+  });
+
+  const post = (target: FastifyInstance, url: string, body: string, signature: string | undefined) =>
+    target.inject({
+      method: 'POST',
+      url,
+      remoteAddress: from(),
+      headers: { 'content-type': 'application/json', ...(signature ? { 'x-signature': signature } : {}) },
+      payload: body,
+    });
+  const callback = (body: string, signature: string | undefined = sign(body, callbackKeys.privateKey)) =>
+    post(keyed, '/billing/chip/callback', body, signature);
+  const webhook = (body: string, signature: string | undefined = sign(body, webhookKeys.privateKey)) =>
+    post(keyed, '/billing/chip/webhook', body, signature);
+
+  describe('POST /billing/chip/callback', () => {
+    it('verifies the raw body, not a re-serialised one', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      // Odd whitespace and key order: signed as sent it is genuine, and re-serialised it is not.
+      const sent = `{ "status":"paid",\n   "id" : "${providerRef}" }`;
+      const signature = sign(sent, callbackKeys.privateKey);
+      const reserialised = JSON.stringify(JSON.parse(sent));
+
+      expect((await callback(reserialised, signature)).statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+
+      expect((await callback(sent, signature)).statusCode).toBe(200);
+      expect(await statusOf(paymentId)).toBe('PAID');
+    });
+
+    it('refuses a callback without a valid signature with 400 and grants nothing', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      const body = JSON.stringify({ id: providerRef });
+
+      const missing = await callback(body, '');
+      const forged = await callback(body, sign(body, pair().privateKey));
+
+      expect(missing.statusCode).toBe(400);
+      expect(forged.statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+      expect(await statusOf(paymentId)).toBe('PENDING');
+    });
+
+    it('grants on a verified callback after fetching the purchase', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      // What CHIP says about the purchase decides; the body only names it.
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+
+      const res = await callback(JSON.stringify({ id: providerRef, status: 'paid', total: 1 }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'granted' });
+      expect(client.getPurchase).toHaveBeenCalledWith(providerRef);
+      expect(await statusOf(paymentId)).toBe('PAID');
+      expect(await paidUntilOf(owner.pageId)).not.toBeNull();
+    });
+
+    it('answers 200 already-granted to a repeat', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+      await callback(body);
+      const once = await paidUntilOf(owner.pageId);
+
+      const res = await callback(body);
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'already-granted' });
+      expect(await paidUntilOf(owner.pageId)).toEqual(once);
+    });
+
+    it('answers 200 ignored for a signed body with no purchase id', async () => {
+      const res = await callback(JSON.stringify({ nothing: 'here' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'ignored' });
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('answers 500 when the database fails, so CHIP retries', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const { spy, restore } = spyOnPrismaMethod(app.prisma, '$transaction');
+      spy.mockRejectedValueOnce(new Error('database went away'));
+
+      try {
+        const res = await callback(JSON.stringify({ id: providerRef }));
+
+        expect(res.statusCode).toBe(500);
+        expect(await statusOf(paymentId)).toBe('PENDING');
+      } finally {
+        restore();
+      }
+    });
+
+    it("fetches CHIP's public key once when CHIP_PUBLIC_KEY is unset", async () => {
+      const unkeyed = await appWith({});
+      client.getPublicKey.mockResolvedValue(callbackKeys.publicKey);
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+      const signature = sign(body, callbackKeys.privateKey);
+
+      const first = await post(unkeyed, '/billing/chip/callback', body, signature);
+      const second = await post(unkeyed, '/billing/chip/callback', body, signature);
+
+      expect(first.statusCode).toBe(200);
+      expect(second.statusCode).toBe(200);
+      expect(client.getPublicKey).toHaveBeenCalledTimes(1);
+    });
+
+    it('answers 500 and tries again next time when the key cannot be fetched', async () => {
+      const unkeyed = await appWith({});
+      client.getPublicKey.mockRejectedValueOnce(new ChipUnavailableError('timeout'));
+      client.getPublicKey.mockResolvedValue(callbackKeys.publicKey);
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef });
+      const signature = sign(body, callbackKeys.privateKey);
+
+      const failed = await post(unkeyed, '/billing/chip/callback', body, signature);
+      const retried = await post(unkeyed, '/billing/chip/callback', body, signature);
+
+      expect(failed.statusCode).toBeGreaterThanOrEqual(500);
+      expect(retried.statusCode).toBe(200);
+      expect(client.getPublicKey).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('POST /billing/chip/webhook', () => {
+    it('grants on purchase.paid', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'granted' });
+      expect(await statusOf(paymentId)).toBe('PAID');
+    });
+
+    it('records a renewal failure on purchase.payment_failure, and tells the hook', async () => {
+      const owner = await anOwner();
+      await app.prisma.renewalCard.create({
+        data: { pageId: owner.pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY', cardLabel: 'Visa 1111' },
+      });
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      await app.prisma.payment.update({ where: { id: paymentId }, data: { autoRenewal: true } });
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(await statusOf(paymentId)).toBe('FAILED');
+      expect(onRenewalFailure).toHaveBeenCalledWith(owner.pageId, { kind: 'retry', attempts: 1 });
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('ignores a failure for a payment that was not a renewal', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.payment_failure' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'ignored' });
+      expect(await statusOf(paymentId)).toBe('PENDING');
+      expect(onRenewalFailure).not.toHaveBeenCalled();
+    });
+
+    it('ignores an event it does not act on', async () => {
+      const res = await webhook(JSON.stringify({ id: 'purchase-x', event_type: 'purchase.created' }));
+
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toEqual({ status: 'ignored' });
+    });
+
+    it('refuses a callback-key signature', async () => {
+      const owner = await anOwner();
+      const { providerRef } = await aPendingPayment(owner.pageId);
+      const body = JSON.stringify({ id: providerRef, event_type: 'purchase.paid' });
+
+      const res = await webhook(body, sign(body, callbackKeys.privateKey));
+
+      expect(res.statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
+    it('is not registered when no webhook key is set outside production', async () => {
+      const noWebhook = await appWith({ callback: callbackKeys.publicKey });
+
+      const res = await post(noWebhook, '/billing/chip/webhook', '{}', sign('{}', webhookKeys.privateKey));
+
+      expect(res.statusCode).toBe(404);
+    });
   });
 });
 

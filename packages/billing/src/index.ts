@@ -9,4 +9,4 @@ export type {
   FetchLike,
 } from './client.js';
 export { evidenceFromPurchase, grantPayment, recordRenewalFailure } from './grant.js';
-export type { GrantOptions, GrantOutcome, PaymentEvidence } from './grant.js';
+export type { GrantOptions, GrantOutcome, PaymentEvidence, RenewalFailureResult } from './grant.js';

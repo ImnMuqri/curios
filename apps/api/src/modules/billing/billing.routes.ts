@@ -7,9 +7,13 @@ import {
   createChipClient,
   evidenceFromPurchase,
   grantPayment,
+  recordRenewalFailure,
+  verifyChipSignature,
   type ChipClient,
   type GrantOutcome,
+  type RenewalFailureResult,
 } from '@curios/billing';
+import { rawJson } from '../../plugins/raw-json.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { createPurchaseForOwner, resetTrial } from './billing.service.js';
 
@@ -19,6 +23,11 @@ export interface BillingRouteOptions {
    * client is built from the environment at registration.
    */
   client?: ChipClient;
+  /**
+   * Told when a renewal charge failed and was counted, so the owner can be mailed. Without
+   * it the failure is still recorded and nothing is sent.
+   */
+  onRenewalFailure?: (pageId: string, result: RenewalFailureResult) => Promise<void>;
 }
 
 function required(name: string): string {
@@ -130,7 +139,7 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
 function logOutcome(
   log: FastifyBaseLogger,
   purchaseId: string | undefined,
-  source: 'return',
+  source: 'return' | 'callback' | 'webhook',
   outcome: GrantOutcome,
 ): void {
   const details = {
@@ -149,7 +158,7 @@ function logOutcome(
 /** A purchase nobody will ever pay: the banner says so, rather than "pending". */
 const FAILED_PURCHASE_STATUSES = new Set(['expired', 'cancelled', 'error', 'blocked']);
 
-/** CHIP's return, and -- with Task 5 -- its callback and webhook. No session; see app.ts. */
+/** CHIP's return, callback and webhook. No session; see app.ts. */
 export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
   const chip = chipSettings(options);
   // Switched off: no purchase can have been started, so CHIP has nothing to send anyone
@@ -168,36 +177,127 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
       // trusted. The purchase is fetched from CHIP by the id we stored, and that -- not
       // the query -- decides what is granted. A forged id can only make us ask CHIP
       // about a purchase of ours.
+      //
+      // The lookup is inside the try with the rest: a database error there is as little
+      // the owner's doing as a CHIP outage, and "pending" is the honest thing to tell them.
       const paymentId = request.query.payment;
-      const payment = paymentId
-        ? await app.prisma.payment.findUnique({
-            where: { id: paymentId },
-            select: { providerRef: true, autoRenew: true },
-          })
-        : null;
-      if (!payment?.providerRef) return back('pending');
-
-      let outcome: GrantOutcome;
+      let purchaseId: string | undefined;
+      let autoRenew: boolean;
       let purchaseStatus: string;
+      let outcome: GrantOutcome;
       try {
+        const payment = paymentId
+          ? await app.prisma.payment.findUnique({
+              where: { id: paymentId },
+              select: { providerRef: true, autoRenew: true },
+            })
+          : null;
+        if (!payment?.providerRef) return back('pending');
+        purchaseId = payment.providerRef;
+        autoRenew = payment.autoRenew;
+
         const purchase = await chip.client.getPurchase(payment.providerRef);
         purchaseStatus = purchase.status;
         outcome = await grantPayment(app.prisma, evidenceFromPurchase(purchase), { now: new Date() });
       } catch (error) {
-        request.log.error(
-          { err: error, purchaseId: payment.providerRef, source: 'return' },
-          'chip purchase could not be confirmed',
-        );
+        request.log.error({ err: error, purchaseId, source: 'return' }, 'chip purchase could not be confirmed');
         return back('pending');
       }
 
-      logOutcome(request.log, payment.providerRef, 'return', outcome);
+      logOutcome(request.log, purchaseId, 'return', outcome);
       if (outcome.kind === 'granted' || outcome.kind === 'already-granted') {
         // Auto-renew was asked for and CHIP kept no card: the plan is paid, but it will
         // not renew itself, and the owner should hear that now rather than at expiry.
-        return back('paid', outcome.kind === 'granted' && payment.autoRenew && !outcome.cardSaved);
+        return back('paid', outcome.kind === 'granted' && autoRenew && !outcome.cardSaved);
       }
       return back(FAILED_PURCHASE_STATUSES.has(purchaseStatus) ? 'failed' : 'pending');
     },
   );
+
+  // CHIP signs the exact bytes it posts, so these two read the raw body. The parser that
+  // keeps it replaces the JSON one for this scope only.
+  await app.register(rawJson);
+
+  // CHIP's public key for the callback: the configured one, else the one CHIP serves,
+  // fetched on first use and kept. What is kept is the promise, so concurrent first
+  // callbacks share one fetch -- and a failed fetch is forgotten, so the next one retries.
+  const chipClient = chip.client;
+  let fetchedKey: Promise<string> | undefined;
+  const callbackKey = (): Promise<string> => {
+    if (chip.publicKey) return Promise.resolve(chip.publicKey);
+    fetchedKey ??= chipClient.getPublicKey().catch((error: unknown) => {
+      fetchedKey = undefined;
+      throw error;
+    });
+    return fetchedKey;
+  };
+
+  const signatureOf = (header: string | string[] | undefined) => (typeof header === 'string' ? header : undefined);
+  const bodyId = (body: unknown): string | undefined => {
+    const parsed = z.object({ id: z.string().min(1) }).safeParse(body);
+    return parsed.success ? parsed.data.id : undefined;
+  };
+
+  /**
+   * A signed message names a purchase, and nothing else in it is believed: the purchase is
+   * fetched from CHIP by that id, and the grant is made from what CHIP says.
+   */
+  async function grantFromChip(log: FastifyBaseLogger, purchaseId: string, source: 'callback' | 'webhook') {
+    const purchase = await chipClient.getPurchase(purchaseId);
+    const outcome = await grantPayment(app.prisma, evidenceFromPurchase(purchase), { now: new Date() });
+    logOutcome(log, purchaseId, source, outcome);
+    return { status: outcome.kind };
+  }
+
+  // A signature that does not verify is a 400, never a 200 that would tell CHIP to stop
+  // sending. A failure of ours -- the database, CHIP, the key fetch -- is left to surface
+  // as a 500, so CHIP sends the message again.
+  app.post('/billing/chip/callback', async (request, reply) => {
+    const publicKey = await callbackKey();
+    if (!verifyChipSignature(request.rawBody ?? '', signatureOf(request.headers['x-signature']), publicKey)) {
+      request.log.warn({ source: 'callback' }, 'chip message refused: bad signature');
+      return reply.status(400).send({ error: { code: 'BAD_SIGNATURE', message: 'Signature does not verify.' } });
+    }
+    const purchaseId = bodyId(request.body);
+    if (!purchaseId) return reply.send({ status: 'ignored' });
+    return reply.send(await grantFromChip(request.log, purchaseId, 'callback'));
+  });
+
+  const webhookPublicKey = chip.webhookPublicKey;
+  if (!webhookPublicKey) {
+    app.log.warn(
+      'No CHIP_WEBHOOK_PUBLIC_KEY: the CHIP webhook is off in development, so a failed renewal ' +
+        'charge is not counted. Production refuses to start without it.',
+    );
+    return;
+  }
+
+  // The webhook has a key of its own and only that key passes here: a callback signature
+  // is not a webhook signature.
+  app.post('/billing/chip/webhook', async (request, reply) => {
+    if (!verifyChipSignature(request.rawBody ?? '', signatureOf(request.headers['x-signature']), webhookPublicKey)) {
+      request.log.warn({ source: 'webhook' }, 'chip message refused: bad signature');
+      return reply.status(400).send({ error: { code: 'BAD_SIGNATURE', message: 'Signature does not verify.' } });
+    }
+    const purchaseId = bodyId(request.body);
+    if (!purchaseId) return reply.send({ status: 'ignored' });
+    const event = (request.body as { event_type?: unknown }).event_type;
+
+    if (event === 'purchase.paid') return reply.send(await grantFromChip(request.log, purchaseId, 'webhook'));
+
+    if (event === 'purchase.payment_failure') {
+      const payment = await app.prisma.payment.findFirst({
+        where: { provider: 'CHIP', providerRef: purchaseId },
+        select: { id: true, pageId: true, autoRenewal: true },
+      });
+      // A failed first payment is the owner's to retry at checkout; only a renewal charge
+      // is ours to count.
+      if (!payment?.autoRenewal) return reply.send({ status: 'ignored' });
+      const result = await recordRenewalFailure(app.prisma, payment.id, new Date());
+      request.log.info({ purchaseId, source: 'webhook', outcome: `renewal-${result.kind}` }, 'chip purchase handled');
+      await options.onRenewalFailure?.(payment.pageId, result);
+      return reply.send({ status: `renewal-${result.kind}` });
+    }
+    return reply.send({ status: 'ignored' });
+  });
 };
