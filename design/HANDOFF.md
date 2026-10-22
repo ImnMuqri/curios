@@ -221,7 +221,10 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   - checkout: "How you'll pay" with FPX picked, then Maybank2u picked under "Your bank", then "Pay
     RM235 with Maybank2u", "Opening Maybank2u…", "Approved in Maybank2u"
   - it never shows a CHIP screen, only "Payment processed by CHIP" in small type
-  - the order lands in Orders as "Paid by FPX"
+  - the owner's phone mirrors the real Orders screen: "Receipts to check" and "Paid this week"
+    figures, the All / To check / Paid / Refunds filter, and rows with status pills
+  - the new order #14 arrives as "Paid online", with the green "Paid by FPX. Ready on Sat 17 Oct"
+    box and "Mark completed", which changes to "Completed"
   - each step runs on its own timer (about 20s for the loop), with a progress line under the
     active step
   - steps are clickable to jump to them, and hovering the phones pauses

@@ -303,6 +303,34 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .os-amt{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;font-variant-numeric:tabular-nums}
 .os-amt i{width:7px;height:7px;border-radius:50%}
 /* Owner Orders v2: calm and readable */
+.o3-head{display:flex;align-items:center;gap:8px;margin:8px 14px 0;font-family:'IBM Plex Sans',sans-serif}
+.o3-head b{font-size:17px;font-weight:600}
+.o3-head span{margin-left:auto;padding:5px 10px;border-radius:999px;background:#ffffff;box-shadow:0 0 0 1px #e4e7eb;font-size:10.5px;font-weight:600}
+.o3-kpi{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 12px 0;font-family:'IBM Plex Sans',sans-serif}
+.o3-kpi>span{padding:9px 10px;border-radius:12px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef}
+.o3-kpi b{display:flex;align-items:center;gap:5px;font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.o3-kpi em{padding:1px 5px;border-radius:999px;background:#e8f3ef;color:#1d6f5f;font-style:normal;font-size:9.5px;font-weight:700}
+.o3-kpi small{display:block;font-size:10px;color:#696e7b}
+.o3-seg{display:grid;grid-template-columns:auto auto auto auto;gap:2px;margin:10px 12px 0;padding:3px;border-radius:10px;background:#e9ebef;font-family:'IBM Plex Sans',sans-serif;font-size:10px;font-weight:600;color:#4b5060}
+.o3-seg>span{display:flex;align-items:center;justify-content:center;gap:3px;height:24px;border-radius:7px}
+.o3-seg .on{background:#ffffff;color:#191f2c}
+.o3-seg i{display:inline-grid;place-items:center;min-width:13px;height:13px;padding:0 3px;border-radius:999px;color:#fff;font-style:normal;font-size:8.5px}
+.o3-list{display:flex;flex-direction:column;gap:6px;margin:10px 12px 0;font-family:'IBM Plex Sans',sans-serif}
+.o3-new{display:flow-root;border-radius:14px;background:#ffffff;transition:box-shadow 400ms ease}
+.o3-row{display:flex;align-items:center;gap:8px;margin:0;padding:9px 10px;border-radius:14px;background:#ffffff}
+.o3-new .o3-row{background:transparent}
+.o3-av{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;font-size:11px;font-weight:700;color:#191f2c}
+.o3-tx{flex:1;min-width:0}
+.o3-tx b{display:block;font-size:12px;font-weight:600}
+.o3-tx span{display:block;font-size:9.5px;color:#696e7b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.o3-amt{display:grid;justify-items:end;gap:3px}
+.o3-amt b{font-size:12px;font-weight:600}
+.o3-amt em{padding:1px 6px;border-radius:999px;font-style:normal;font-size:9px;font-weight:600;white-space:nowrap}
+.o3-act{margin:0 8px 8px;padding:9px 10px;border-radius:10px;background:#f1f8f5;box-shadow:inset 0 0 0 1px #d3e8e1}
+.o3-act p{margin:0}
+.o3-act b{display:block;font-size:10.5px;color:#123b33}
+.o3-act p>span{display:block;font-size:9.5px;color:#4b5060}
+.o3-btn{display:flex;align-items:center;justify-content:center;height:30px;margin-top:8px;border-radius:999px;color:#fff;font-size:11px;font-weight:600;transition:background 300ms ease}
 .o2-head{display:flex;align-items:flex-start;gap:12px;margin:10px 18px 0}
 .o2-title{display:block;font-family:var(--d);font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1}
 .o2-sub{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:12.5px;color:#4b5060}
@@ -805,7 +833,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 </svg>
 </div>
 <p style="margin: 18px 0 0; font-family: var(--d); font-size: 26px; font-weight: 800; letter-spacing: -0.02em">Order received</p>
-<p style="margin: 6px 0 0; font-size: 13.5px; color: #4b5060">#1042 · RM235 · paid by FPX</p>
+<p style="margin: 6px 0 0; font-size: 13.5px; color: #4b5060">#14 · RM235 · paid by FPX</p>
 </div>
 
 <!-- the customer's cursor -->
@@ -816,41 +844,27 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 </div>
 
 <!-- the order, flying across -->
-<span class="token" style="transform: translate({{of.tx}}px, {{of.ty}}px) scale({{of.tS}}); opacity: {{of.tO}}"><b>#1042</b> RM235</span>
+<span class="token" style="transform: translate({{of.tx}}px, {{of.ty}}px) scale({{of.tS}}); opacity: {{of.tO}}"><b>#14</b> RM235</span>
 
 <!-- YOUR PHONE: Curios Orders -->
 <div class="own">
 <div class="own-screen">
 <p class="os-status"><span>11:42</span><span aria-hidden="true">●●●</span></p>
 
-<div class="o2-head">
-<span style="flex: 1; min-width: 0">
-<b class="o2-title">Orders</b>
-<span class="o2-sub"><span style="font-variant-numeric: tabular-nums">RM{{of.today}}</span> paid today<span class="o2-plus" style="opacity: {{of.plusO}}">+RM235</span></span>
-</span>
-<span class="os-bell" aria-hidden="true"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="#191f2c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"></path><path d="M10 20a2 2 0 0 0 4 0"></path></svg><span style="opacity: {{of.dotO}}"></span></span>
-</div>
-
-<div class="o2-tabs" aria-hidden="true">
-<span class="on">New<sc-if value="{{ of.hasNew }}" hint-placeholder-val="{{ false }}"><i>1</i></sc-if></span>
-<span>Confirmed</span>
-<span>Done</span>
-</div>
-
-<div class="o2-list">
+<div class="o3-head"><b>Orders</b><span>See your shop</span></div>
+<div class="o3-kpi"><span><b>{{of.toCheck}}</b><small>Receipts to check</small></span><span><b>RM{{of.today}}<em style="opacity: {{of.plusO}}">+235</em></b><small>Paid this week</small></span></div>
+<div class="o3-seg" aria-hidden="true"><span class="on">All</span><span>To check<i style="background: #f2a33c">1</i></span><span>Paid<i style="background: #2340c8">{{of.paidN}}</i></span><span>Refunds</span></div>
+<div class="o3-list">
 <div style="display: grid; grid-template-rows: {{of.newFr}}fr; opacity: {{of.newO}}; transform: translateY({{of.newY}}px)">
 <div style="min-height: 0; overflow: hidden; padding: 2px">
-<div class="o2-card" style="background: {{of.cardBg}}; box-shadow: 0 0 0 1.5px {{of.cardRing}}">
-<p class="o2-r1"><span class="o2-av" style="background: #f6c9d5">M</span><span style="flex: 1; min-width: 0"><b>Mira</b><span>#1042 · now</span></span><span class="o2-badge" style="background: {{of.stBg}}; color: {{of.stFg}}">{{of.status}}</span></p>
-<p class="o2-items">2× Kek coklat 1kg<br>1× Kek batik</p>
-<p class="o2-meta"><span>Pickup · Sat</span><span>·</span><span>Paid by FPX</span></p>
-<p class="o2-total"><span>Total</span><b>RM235</b></p>
-<span class="o2-btn" style="background: {{of.confBg}}">{{of.confText}}</span>
+<div class="o3-new" style="box-shadow: 0 0 0 1.5px {{of.cardRing}}">
+<p class="o3-row"><span class="o3-av" style="background: #f6c9d5">M</span><span class="o3-tx"><b>Mira Hassan</b><span>#14 · 3 items · Pickup Sat</span></span><span class="o3-amt"><b>RM235</b><em style="background: {{of.stBg}}; color: {{of.stFg}}">{{of.status}}</em></span></p>
+<div class="o3-act"><p><b>Paid by FPX. Ready on Sat 17 Oct</b><span>Nothing to check. Mark it completed once Mira has it.</span></p><span class="o3-btn" style="background: {{of.confBg}}">{{of.confText}}</span></div>
 </div>
 </div>
 </div>
-<div class="o2-row"><span class="o2-av" style="background: #e9dfd6">H</span><span style="flex: 1; min-width: 0"><b>Hakim</b><span>2 items · Delivery</span></span><span class="o2-amt"><b>RM50</b><span style="color: #1d6f5f">Confirmed</span></span></div>
-<div class="o2-row"><span class="o2-av" style="background: #e3e9fb">W</span><span style="flex: 1; min-width: 0"><b>Wei Ling</b><span>1 item · Pickup</span></span><span class="o2-amt"><b>RM30</b><span>Collected</span></span></div>
+<p class="o3-row"><span class="o3-av" style="background: #bfd1f9">H</span><span class="o3-tx"><b>Hakim Rahman</b><span>#13 · 1 item · Delivery Sat</span></span><span class="o3-amt"><b>RM180</b><em style="background: #f0f1f4; color: #4b5060">Awaiting payment</em></span></p>
+<p class="o3-row"><span class="o3-av" style="background: #bfe3d6">W</span><span class="o3-tx"><b>Wei Ling</b><span>#12 · 2 items · Pickup Fri</span></span><span class="o3-amt"><b>RM70</b><em style="background: #eaf0ff; color: #122686">Paid</em></span></p>
 </div>
 
 <div class="notif2" style="transform: translateY({{of.notifY}}%); opacity: {{of.notifO}}">
@@ -1138,7 +1152,7 @@ class Component extends DCLogic {
     if (this.raf) cancelAnimationFrame(this.raf);
     (this.introTimers || []).forEach(clearTimeout);
     clearInterval(this.decTimer); clearInterval(this.stackTimer); clearTimeout(this.flyTimer);
-    if (this.ofIO) this.ofIO.disconnect(); clearTimeout(this.ofAttach);
+    if (this.ofIO) this.ofIO.disconnect(); clearTimeout(this.ofAttach); clearTimeout(this.ofKick);
     if (this.prRaf) cancelAnimationFrame(this.prRaf);
     clearInterval(this.clTimer); clearTimeout(this.clSnap); clearTimeout(this.clAttach); if (this.clIO) this.clIO.disconnect();
     if (this.ofLoop) cancelAnimationFrame(this.ofLoop);
@@ -1177,7 +1191,7 @@ class Component extends DCLogic {
       ['Check out', 'Name, WhatsApp number, pickup or delivery. No account needed.'],
       ['Pay their way', 'FPX, e-wallet or card through CHIP, confirmed straight away. Or your own DuitNow QR with a receipt.'],
       ['Order received', 'They get a confirmation with the order number.'],
-      ['It lands in your Orders', 'Already paid, nothing to check. Confirm it in one tap.']
+      ['It lands in your Orders', 'Already paid, nothing to check. Mark it completed when they collect.']
     ].map((c, i) => ({
       n: i + 1, title: c[0], body: c[1],
       op: i === cur ? '1' : (i < cur ? '0.55' : '0.35'),
@@ -1187,7 +1201,7 @@ class Component extends DCLogic {
       dot: i <= cur ? '#b5294e' : '#ffffff', dotFg: i <= cur ? '#fafbfc' : '#191f2c',
       bodyH: i === cur ? '90px' : '0px', bodyO: i === cur ? '1' : '0'
     }));
-    const O = path([[0.86, 200, 540], [0.91, 132, 366]]);
+    const O = path([[0.86, 200, 540], [0.91, 140, 330]]);
     const confirmed = p >= 0.93;
     const ins = ease(seg(0.78, 0.84));
     return {
@@ -1222,9 +1236,9 @@ class Component extends DCLogic {
       notifO: p >= 0.76 && p < 0.84 ? '1' : '0',
       newFr: ins.toFixed(3), cardBg: '#ffffff', cardRing: confirmed ? 'transparent' : '#2340c8', hasNew: p >= 0.8 && !confirmed, plusO: seg(0.8, 0.83).toFixed(2), bar3: Math.round(4 + 40 * ease(seg(0.8, 0.88))), dotO: p >= 0.78 && !confirmed ? '1' : '0', newO: ins.toFixed(2), newY: Math.round(-12 + 12 * ins), newS: (0.96 + 0.04 * ins).toFixed(3),
       ringW: p >= 0.78 && !confirmed ? 2 : 0,
-      today: 80 + Math.round(235 * ease(seg(0.8, 0.88))), newCount: p >= 0.8 && !confirmed ? 1 : 0,
-      status: confirmed ? 'Confirmed' : 'New', stBg: confirmed ? '#d3e8e1' : '#eaf0ff', stFg: confirmed ? '#123b33' : '#122686',
-      confBg: confirmed ? '#1d6f5f' : '#2340c8', confText: confirmed ? 'Confirmed ✓' : 'Confirm',
+      today: 480 + Math.round(235 * ease(seg(0.8, 0.88))), newCount: p >= 0.8 && !confirmed ? 1 : 0,
+      status: confirmed ? 'Completed' : 'Paid online', stBg: '#e8f3ef', stFg: '#123b33', toCheck: 1, paidN: p >= 0.8 && !confirmed ? 4 : 3,
+      confBg: confirmed ? '#123b33' : '#1d6f5f', confText: confirmed ? 'Completed ✓' : '✓ Mark completed',
       ox: Math.round(O[0]), oy: Math.round(O[1]), oO: p < 0.97 ? seg(0.86, 0.875).toFixed(2) : (1 - seg(0.97, 0.99)).toFixed(2),
       oClick: p >= 0.93 && p < 0.942, oS: p >= 0.93 && p < 0.942 ? '0.82' : '1'
     };
@@ -1256,10 +1270,11 @@ class Component extends DCLogic {
       if (!('IntersectionObserver' in window)) { run(); return; }
       this.ofIO = new IntersectionObserver((entries) => {
         entries.forEach((en) => {
-          if (en.intersectionRatio >= 0.92) run();
-          else if (en.intersectionRatio < 0.15) stop();
+          if (en.intersectionRatio >= 0.3) run();
+          else if (en.intersectionRatio < 0.04) stop();
         });
-      }, { threshold: [0, 0.15, 0.92, 1] });
+      }, { threshold: [0, 0.04, 0.3, 0.6, 1] });
+      this.ofKick = setTimeout(() => { const r = stage.getBoundingClientRect(); if (!this.ofLoop && r.bottom > 0 && r.top < (window.innerHeight || 0)) run(); }, 1500);
       this.ofIO.observe(stage);
     };
     attach();
