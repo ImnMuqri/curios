@@ -308,14 +308,22 @@ describe('the owner surface columns', () => {
     ).rejects.toThrow(/23502/);
   });
 
-  it('starts a payment pending, with nothing paid or granted yet', async () => {
+  it('creates a CHIP payment pending, with no reference yet', async () => {
     const pageId = await aPageForPayments();
     const payment = await prisma.payment.create({
-      data: { pageId, plan: 'MONTHLY', amountCents: 3900, billplzCollectionId: 'col-test' },
-      select: { status: true, paidAt: true, grantedUntil: true, billplzBillId: true },
+      data: { pageId, plan: 'MONTHLY', amountCents: 3900 },
+      select: { provider: true, status: true, providerRef: true, autoRenew: true, autoRenewal: true, paidAt: true, grantedUntil: true },
     });
 
-    expect(payment).toEqual({ status: 'PENDING', paidAt: null, grantedUntil: null, billplzBillId: null });
+    expect(payment).toEqual({
+      provider: 'CHIP',
+      status: 'PENDING',
+      providerRef: null,
+      autoRenew: false,
+      autoRenewal: false,
+      paidAt: null,
+      grantedUntil: null,
+    });
   });
 
   it('starts a page with its trial reset unused and no reminder recorded', async () => {
@@ -388,21 +396,21 @@ describe('the owner surface columns', () => {
     ).rejects.toThrow(/23514/);
   });
 
-  it('refuses a second payment carrying the same Billplz bill id', async () => {
-    // The unique index is what lets one bill grant exactly once.
+  it('refuses a second payment carrying the same provider reference', async () => {
+    // The unique index is what lets one purchase grant exactly once.
     const pageId = await aPageForPayments();
-    const billplzBillId = `bill-${randomUUID()}`;
-    const data = { pageId, plan: 'MONTHLY' as const, amountCents: 3900, billplzCollectionId: 'col-test', billplzBillId };
+    const providerRef = `purchase-${randomUUID()}`;
+    const data = { pageId, plan: 'MONTHLY' as const, amountCents: 3900, providerRef };
     await prisma.payment.create({ data });
 
     await expect(prisma.payment.create({ data })).rejects.toMatchObject({ code: 'P2002' });
   });
 
-  it('allows any number of payments that never got a bill id', async () => {
-    // A failed call to Billplz leaves a pending row with no bill id. Several of
-    // those must not collide on the unique index.
+  it('allows any number of payments with no reference yet', async () => {
+    // A failed call to the provider leaves a pending row with no reference.
+    // Several of those must not collide on the unique index.
     const pageId = await aPageForPayments();
-    const data = { pageId, plan: 'ANNUAL' as const, amountCents: 39000, billplzCollectionId: 'col-test' };
+    const data = { pageId, plan: 'ANNUAL' as const, amountCents: 39000 };
     await prisma.payment.create({ data });
 
     await expect(prisma.payment.create({ data })).resolves.toBeTruthy();
@@ -413,10 +421,22 @@ describe('the owner surface columns', () => {
     // record and must not vanish as a side effect of removing a page.
     const pageId = await aPageForPayments();
     await prisma.payment.create({
-      data: { pageId, plan: 'MONTHLY', amountCents: 3900, billplzCollectionId: 'col-test' },
+      data: { pageId, plan: 'MONTHLY', amountCents: 3900 },
     });
 
     await expect(prisma.page.delete({ where: { id: pageId } })).rejects.toMatchObject({ code: 'P2003' });
+  });
+
+  it('keeps one renewal card per page, deleted with the page', async () => {
+    const pageId = await aPageForPayments();
+    await prisma.renewalCard.create({ data: { pageId, token: `tok-${randomUUID()}`, plan: 'MONTHLY' } });
+
+    await expect(
+      prisma.renewalCard.create({ data: { pageId, token: `tok-${randomUUID()}`, plan: 'ANNUAL' } }),
+    ).rejects.toMatchObject({ code: 'P2002' });
+
+    await prisma.page.delete({ where: { id: pageId } });
+    expect(await prisma.renewalCard.count({ where: { pageId } })).toBe(0);
   });
 });
 
