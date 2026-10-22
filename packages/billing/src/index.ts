@@ -8,5 +8,5 @@ export type {
   CreatePurchaseInput,
   FetchLike,
 } from './client.js';
-export { evidenceFromBill, evidenceFromCallback, grantPayment } from './grant.js';
-export type { BillEvidence, GrantOptions, GrantOutcome } from './grant.js';
+export { evidenceFromPurchase, grantPayment, recordRenewalFailure } from './grant.js';
+export type { GrantOptions, GrantOutcome, PaymentEvidence } from './grant.js';
