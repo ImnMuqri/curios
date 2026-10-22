@@ -1,6 +1,16 @@
 import { extendPaidUntil } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
-import type { BillplzBill } from './client.js';
+// replaced in Task 3
+interface BillplzBill {
+  id: string;
+  collectionId: string;
+  paid: boolean;
+  state: string;
+  amount: number;
+  paidAmount: number;
+  reference1: string | null;
+  url: string;
+}
 
 /**
  * A bill as a grant needs it, from one of two places: the callback's own fields, or a

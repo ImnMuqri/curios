@@ -1,19 +1,21 @@
-/** Every setting a Billplz integration needs, across the API and the workers. */
-export const BILLPLZ_ENV = [
-  'BILLPLZ_API_KEY',
-  'BILLPLZ_COLLECTION_ID',
-  'BILLPLZ_X_SIGNATURE_KEY',
-  'BILLPLZ_BASE_URL',
-  'BILLPLZ_CALLBACK_URL',
-  'BILLPLZ_REDIRECT_URL',
-] as const;
+/**
+ * The settings whose joint absence means "billing is off". CHIP_PUBLIC_KEY (fetched from
+ * CHIP when unset), CHIP_BASE_URL (CHIP_DEFAULT_BASE_URL when unset) and
+ * CHIP_WEBHOOK_PUBLIC_KEY (required in production only, enforced where it is read) are
+ * deliberately not here: a developer with none of the three required ones is not
+ * configuring payments, whatever else is set.
+ */
+export const CHIP_ENV = ['CHIP_SECRET_KEY', 'CHIP_BRAND_ID', 'CHIP_CALLBACK_BASE_URL'] as const;
+
+/** CHIP's API root, used when CHIP_BASE_URL is unset. */
+export const CHIP_DEFAULT_BASE_URL = 'https://gate.chip-in.asia/api/v1';
 
 /**
  * Whether this process may run with billing switched off.
  *
- * Only outside production, and only when none of the Billplz settings is set:
- * a developer working on anything but payments should not need a Billplz
- * sandbox account just to boot the API. Everywhere else the settings stay
+ * Only outside production, and only when none of the CHIP settings is set:
+ * a developer working on anything but payments should not need a CHIP
+ * account just to boot the API. Everywhere else the settings stay
  * required at startup, where a missing value fails the deploy rather than an
  * owner's payment.
  *
@@ -23,5 +25,5 @@ export const BILLPLZ_ENV = [
  */
 export function billingDisabled(env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.NODE_ENV === 'production') return false;
-  return BILLPLZ_ENV.every((name) => !env[name]);
+  return CHIP_ENV.every((name) => !env[name]);
 }
