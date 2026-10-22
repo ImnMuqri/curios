@@ -307,6 +307,12 @@ describe('the shop pill on the public page', () => {
     expect(screen.getByRole('link', { name: /Kedai/ })).not.toHaveTextContent('seterusnya');
   });
 
+  it('has no pill and no basket for an open shop with nothing for sale', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, shop: { ...tile, itemCount: 0, photos: [] }, shopOrdering: { ...ordering, items: [] } });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    expect(document.querySelector('a[href="/nadia/shop"]')).toBeNull();
+  });
+
   it('has no such link without a shop', async () => {
     vi.mocked(getPublicPage).mockResolvedValue({ ...page, shop: null, shopOrdering: null });
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));

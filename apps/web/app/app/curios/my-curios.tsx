@@ -123,10 +123,10 @@ export function MyCuriosEditor({
 
   const shopOpen = page.shopTab?.open ?? false;
   const previewTabs: PreviewTab[] = ['links', 'ask'];
-  const shownPreview: PreviewTab = previewTab;
+  const shownPreview = previewTab;
 
   // The shop pill as visitors see it, minus the pickup day (that needs the shop's terms the editor does not carry).
-  const previewPill = shopOpen
+  const previewPill = shopOpen && (page.shopTab?.itemCount ?? 0) > 0
     ? {
         label: 'Shop',
         caption: shopCopy(page.language).itemCount(page.shopTab?.itemCount ?? 0),

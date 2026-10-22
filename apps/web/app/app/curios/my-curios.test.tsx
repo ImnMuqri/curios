@@ -192,6 +192,11 @@ describe('the preview tabs', () => {
     expect(previewTabs().queryByRole('tab', { name: 'Shop' })).toBeNull();
   });
 
+  it('draws no shop pill while the shop is open with nothing for sale', () => {
+    show({ ...business, shopTab: { open: true, itemCount: 0, preview: [] }, shop: { position: 1, size: null, itemCount: 0, photoKey: null, photos: [] } });
+    expect(within(preview()).queryByText('0 items')).toBeNull();
+  });
+
   it('shows the shop pill on the Links preview while the shop is open', () => {
     show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
     expect(within(preview()).getByText('2 items')).toBeInTheDocument();

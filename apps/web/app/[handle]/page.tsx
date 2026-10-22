@@ -75,7 +75,8 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
   const faq = page.mode === 'BUSINESS' ? await getFaqIndex(page.handle, { limit: FAQ_SHOWN }) : null;
 
   const copy = shopCopy(page.language);
-  const ordering = page.shopOrdering;
+  // Open but empty (every item off): no pill and no basket, as the board gates both on having items.
+  const ordering = page.shop && page.shop.itemCount > 0 ? page.shopOrdering : null;
   const shop =
     page.shop && ordering
       ? {

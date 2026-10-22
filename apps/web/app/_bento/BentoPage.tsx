@@ -178,6 +178,7 @@ export function BentoPage(props: BentoPageProps) {
       data-style={props.style}
       data-cover={props.coverUrl ? 'yes' : 'no'}
       data-mode={props.mode}
+      data-basket={props.basketBar ? 'yes' : undefined}
       {...theme}
     >
       {props.coverUrl ? <Cover src={props.coverUrl} /> : null}

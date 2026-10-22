@@ -402,6 +402,11 @@
   stroke-linejoin: round;
 }
 
+/* Room for the fixed basket bar, taller while checkout is paused, so the last link and the footer scroll clear of it. */
+.page[data-basket] {
+  padding-bottom: 150px;
+}
+
 /* The basket bar rides on the Links tab only; Ask has its own bar. */
 .page[data-mode='chat'] .basketSlot,
 .page[data-mode='shop'] .basketSlot {
