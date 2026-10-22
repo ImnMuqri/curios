@@ -1,4 +1,4 @@
-import type { FastifyBaseLogger } from 'fastify';
+import type { FastifyBaseLogger, FastifyReply } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
@@ -148,7 +148,10 @@ function logOutcome(
     outcome: outcome.kind,
     ...(outcome.kind === 'mismatch' ? { reason: outcome.reason } : {}),
   };
-  if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment') {
+  if (outcome.kind === 'paid-after-failure') {
+    // Money taken with no time given: a person has to settle this one.
+    log.error(details, 'chip purchase paid after its payment was marked failed or expired');
+  } else if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment') {
     log.error(details, 'chip purchase refused');
   } else {
     log.info(details, 'chip purchase handled');
@@ -249,14 +252,24 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
     return { status: outcome.kind };
   }
 
+  const badSignature = (reply: FastifyReply) =>
+    reply.status(400).send({ error: { code: 'BAD_SIGNATURE', message: 'Signature does not verify.' } });
+
   // A signature that does not verify is a 400, never a 200 that would tell CHIP to stop
   // sending. A failure of ours -- the database, CHIP, the key fetch -- is left to surface
   // as a 500, so CHIP sends the message again.
   app.post('/billing/chip/callback', async (request, reply) => {
+    // No signature at all is refused before the key is fetched: an unsigned flood must
+    // not turn into calls to CHIP.
+    const signature = signatureOf(request.headers['x-signature']);
+    if (!signature) {
+      request.log.warn({ source: 'callback' }, 'chip message refused: no signature');
+      return badSignature(reply);
+    }
     const publicKey = await callbackKey();
-    if (!verifyChipSignature(request.rawBody ?? '', signatureOf(request.headers['x-signature']), publicKey)) {
+    if (!verifyChipSignature(request.rawBody ?? '', signature, publicKey)) {
       request.log.warn({ source: 'callback' }, 'chip message refused: bad signature');
-      return reply.status(400).send({ error: { code: 'BAD_SIGNATURE', message: 'Signature does not verify.' } });
+      return badSignature(reply);
     }
     const purchaseId = bodyId(request.body);
     if (!purchaseId) return reply.send({ status: 'ignored' });
@@ -275,9 +288,14 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
   // The webhook has a key of its own and only that key passes here: a callback signature
   // is not a webhook signature.
   app.post('/billing/chip/webhook', async (request, reply) => {
-    if (!verifyChipSignature(request.rawBody ?? '', signatureOf(request.headers['x-signature']), webhookPublicKey)) {
+    const signature = signatureOf(request.headers['x-signature']);
+    if (!signature) {
+      request.log.warn({ source: 'webhook' }, 'chip message refused: no signature');
+      return badSignature(reply);
+    }
+    if (!verifyChipSignature(request.rawBody ?? '', signature, webhookPublicKey)) {
       request.log.warn({ source: 'webhook' }, 'chip message refused: bad signature');
-      return reply.status(400).send({ error: { code: 'BAD_SIGNATURE', message: 'Signature does not verify.' } });
+      return badSignature(reply);
     }
     const purchaseId = bodyId(request.body);
     if (!purchaseId) return reply.send({ status: 'ignored' });

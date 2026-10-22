@@ -48,6 +48,7 @@ describe('the plan emails', () => {
       card: { label: 'Visa ending 1111', amountCents: 4900 },
     });
 
+    expect(mail.subject).toBe('Your Curios plan for Kek Lina renews on 20 September 2026');
     expect(mail.html).toContain('Plan ending');
     expect(mail.html).toContain('Your plan renews on 20 September 2026');
     expect(mail.text).toContain("We'll charge RM49 to Visa ending 1111 on 20 September 2026. Turn off auto-renew on Billing if you don't want that.");

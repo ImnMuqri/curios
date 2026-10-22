@@ -520,6 +520,17 @@ describe('CHIP callback and webhook', () => {
       expect(client.getPublicKey).toHaveBeenCalledTimes(1);
     });
 
+    it('refuses an unsigned callback before fetching any key', async () => {
+      const unkeyed = await appWith({});
+      client.getPublicKey.mockResolvedValue(callbackKeys.publicKey);
+
+      const res = await post(unkeyed, '/billing/chip/callback', JSON.stringify({ id: 'purchase-x' }), undefined);
+
+      expect(res.statusCode).toBe(400);
+      expect(client.getPublicKey).not.toHaveBeenCalled();
+      expect(client.getPurchase).not.toHaveBeenCalled();
+    });
+
     it('answers 500 and tries again next time when the key cannot be fetched', async () => {
       const unkeyed = await appWith({});
       client.getPublicKey.mockRejectedValueOnce(new ChipUnavailableError('timeout'));
@@ -585,6 +596,13 @@ describe('CHIP callback and webhook', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.json()).toEqual({ status: 'ignored' });
+    });
+
+    it('refuses an unsigned webhook with 400', async () => {
+      const res = await webhook(JSON.stringify({ id: 'purchase-x', event_type: 'purchase.paid' }), '');
+
+      expect(res.statusCode).toBe(400);
+      expect(client.getPurchase).not.toHaveBeenCalled();
     });
 
     it('refuses a callback-key signature', async () => {

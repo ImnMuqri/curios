@@ -3,8 +3,9 @@ import type { PrismaClient } from '@curios/db';
 import type { ChipPurchase } from './client.js';
 
 /**
- * A purchase as a grant needs it, whichever source brought it: the webhook's body, or a
- * purchase fetched from CHIP by the redirect, the hourly check or a renewal charge.
+ * A purchase as a grant needs it. Always one we fetched from CHIP ourselves -- after a
+ * callback, a webhook or the owner's return, by the hourly check, or as a renewal charge's
+ * answer -- never a message's own body, which only names the purchase.
  */
 export interface PaymentEvidence {
   /** The CHIP purchase id; how the payment is found. */
@@ -20,6 +21,12 @@ export interface PaymentEvidence {
 export type GrantOutcome =
   | { kind: 'granted'; paidUntil: Date; cardSaved: boolean }
   | { kind: 'already-granted' }
+  /**
+   * CHIP says paid, but the payment was already marked FAILED or EXPIRED: money was taken
+   * and no time was given. Nothing here can put that right on its own, so callers log it
+   * at error level for a person to settle.
+   */
+  | { kind: 'paid-after-failure' }
   | { kind: 'not-paid' }
   | { kind: 'unknown-payment' }
   | { kind: 'mismatch'; reason: 'amount' | 'reference' };
@@ -90,13 +97,18 @@ export async function grantPayment(
   if (payment.amountCents !== evidence.amountCents) return { kind: 'mismatch', reason: 'amount' };
   if (evidence.reference !== payment.id) return { kind: 'mismatch', reason: 'reference' };
   if (payment.status === 'PAID') return { kind: 'already-granted' };
+  if (payment.status === 'FAILED' || payment.status === 'EXPIRED') return { kind: 'paid-after-failure' };
 
   return prisma.$transaction(async (tx): Promise<GrantOutcome> => {
     const claimed = await tx.payment.updateMany({
       where: { id: payment.id, status: 'PENDING' },
       data: { status: 'PAID', paidAt: options.now },
     });
-    if (claimed.count === 0) return { kind: 'already-granted' };
+    if (claimed.count === 0) {
+      // Something settled it since the read above: a grant, or a failure that is now wrong.
+      const settled = await tx.payment.findUnique({ where: { id: payment.id }, select: { status: true } });
+      return settled?.status === 'PAID' ? { kind: 'already-granted' } : { kind: 'paid-after-failure' };
+    }
 
     const rows = await tx.$queryRaw<{ paidUntil: Date | null }[]>`
       SELECT "paidUntil" FROM "Page" WHERE "id" = ${payment.pageId} FOR UPDATE
@@ -152,6 +164,11 @@ const GRACE_MS = 3 * 24 * 60 * 60 * 1000;
  * off -- at the third failure, or once the paid time ran out more than 3 days ago: past
  * that the page is already offline and further charges only annoy the owner. All in one
  * transaction, so a crash cannot count a failure without failing its payment.
+ *
+ * Only a renewal is counted: a failed checkout is the owner's to retry, and is not claimed.
+ * The card row is locked while it is counted, so two failures at once count two, and an
+ * owner turning auto-renew off meanwhile either waits for this or has already won -- the
+ * writes go by pageId with deleteMany/updateMany, so a card gone mid-way is never an error.
  */
 export async function recordRenewalFailure(
   prisma: PrismaClient,
@@ -159,8 +176,11 @@ export async function recordRenewalFailure(
   now: Date,
 ): Promise<RenewalFailureResult> {
   return prisma.$transaction(async (tx) => {
-    const payment = await tx.payment.findUnique({ where: { id: paymentId }, select: { pageId: true } });
-    if (!payment) return { kind: 'ignored' as const };
+    const payment = await tx.payment.findUnique({
+      where: { id: paymentId },
+      select: { pageId: true, autoRenewal: true },
+    });
+    if (!payment?.autoRenewal) return { kind: 'ignored' as const };
 
     const claimed = await tx.payment.updateMany({
       where: { id: paymentId, status: 'PENDING' },
@@ -168,10 +188,10 @@ export async function recordRenewalFailure(
     });
     if (claimed.count === 0) return { kind: 'ignored' as const };
 
-    const card = await tx.renewalCard.findUnique({
-      where: { pageId: payment.pageId },
-      select: { failedAttempts: true },
-    });
+    const cards = await tx.$queryRaw<{ failedAttempts: number }[]>`
+      SELECT "failedAttempts" FROM "RenewalCard" WHERE "pageId" = ${payment.pageId} FOR UPDATE
+    `;
+    const card = cards[0];
     // Auto-renew is already off; there is nothing to count and no one to tell.
     if (!card) return { kind: 'ignored' as const };
 
@@ -182,10 +202,10 @@ export async function recordRenewalFailure(
     const attempts = card.failedAttempts + 1;
     const lapsed = page.paidUntil !== null && page.paidUntil.getTime() < now.getTime() - GRACE_MS;
     if (attempts >= MAX_RENEWAL_ATTEMPTS || lapsed) {
-      await tx.renewalCard.delete({ where: { pageId: payment.pageId } });
+      await tx.renewalCard.deleteMany({ where: { pageId: payment.pageId } });
       return { kind: 'stopped' as const };
     }
-    await tx.renewalCard.update({
+    await tx.renewalCard.updateMany({
       where: { pageId: payment.pageId },
       data: { failedAttempts: attempts, lastFailedAt: now },
     });

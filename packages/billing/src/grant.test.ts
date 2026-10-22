@@ -213,6 +213,22 @@ describe('grantPayment', () => {
     expect(await cardRow(pageId)).toMatchObject({ failedAttempts: 0, lastFailedAt: null });
   });
 
+  it.each(['FAILED', 'EXPIRED'] as const)(
+    'answers paid-after-failure for a paid purchase whose payment is %s, and grants nothing',
+    async (status) => {
+      // Money taken with no time given: a person has to look, so it must not read as a repeat.
+      const pageId = await aPage();
+      const payment = await aPendingPayment(pageId, 'pur-1', { autoRenewal: true });
+      await prisma.payment.update({ where: { id: payment.id }, data: { status } });
+
+      expect(await grantPayment(prisma, paidFor(payment, 'pur-1'), { now: NOW })).toEqual({
+        kind: 'paid-after-failure',
+      });
+      expect((await paymentRow(payment.id)).status).toBe(status);
+      expect((await pageRow(pageId)).paidUntil).toBeNull();
+    },
+  );
+
   it("a second payment reads the first's paidUntil", async () => {
     // Deterministic, not probabilistic. Payment A pauses between reading paidUntil and
     // writing it, and B starts during that pause. With the page lock, B waits on the
@@ -292,6 +308,43 @@ describe('recordRenewalFailure', () => {
     const paidOne = await aPendingPayment(pageId, 'pur-paid', { autoRenewal: true });
     await grantPayment(prisma, paidFor(paidOne, 'pur-paid'), { now: NOW });
     expect(await recordRenewalFailure(prisma, paidOne.id, NOW)).toEqual({ kind: 'ignored' });
+  });
+
+  it('ignores a payment that is not a renewal, and does not claim it', async () => {
+    const pageId = await aPage(new Date('2026-09-15T00:00:00.000Z'));
+    await prisma.renewalCard.create({ data: { pageId, token: 'tok-1', plan: 'MONTHLY' } });
+    const checkout = await aPendingPayment(pageId, 'pur-checkout');
+
+    expect(await recordRenewalFailure(prisma, checkout.id, NOW)).toEqual({ kind: 'ignored' });
+    expect((await paymentRow(checkout.id)).status).toBe('PENDING');
+    expect(await cardRow(pageId)).toMatchObject({ failedAttempts: 0 });
+  });
+
+  it('counts both of two failures reported at once', async () => {
+    // The card row is locked while it is counted, so the second waits and reads the first's count.
+    const { pageId, payment } = await aRenewal(new Date('2026-09-15T00:00:00.000Z'));
+    const other = await aPendingPayment(pageId, 'pur-other', { autoRenewal: true });
+
+    const results = await Promise.all([
+      recordRenewalFailure(prisma, payment.id, NOW),
+      recordRenewalFailure(prisma, other.id, NOW),
+    ]);
+
+    expect(results.map((result) => (result.kind === 'retry' ? result.attempts : 0)).sort()).toEqual([1, 2]);
+    expect(await cardRow(pageId)).toMatchObject({ failedAttempts: 2 });
+  });
+
+  it('does not throw when the owner turns auto-renew off as a failure is counted', async () => {
+    const { pageId, payment } = await aRenewal(new Date('2026-09-15T00:00:00.000Z'));
+
+    const [result] = await Promise.all([
+      recordRenewalFailure(prisma, payment.id, NOW),
+      prisma.renewalCard.deleteMany({ where: { pageId } }),
+    ]);
+
+    expect(['retry', 'ignored']).toContain(result.kind);
+    expect((await paymentRow(payment.id)).status).toBe('FAILED');
+    expect(await cardRow(pageId)).toBeNull();
   });
 
   it('claims the payment but ignores a page whose card is already gone', async () => {

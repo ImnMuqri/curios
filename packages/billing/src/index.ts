@@ -8,5 +8,6 @@ export type {
   CreatePurchaseInput,
   FetchLike,
 } from './client.js';
+export { billDescription } from './product.js';
 export { evidenceFromPurchase, grantPayment, recordRenewalFailure } from './grant.js';
 export type { GrantOptions, GrantOutcome, PaymentEvidence, RenewalFailureResult } from './grant.js';

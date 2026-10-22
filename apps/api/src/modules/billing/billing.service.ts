@@ -1,6 +1,6 @@
 import { PLAN_PRICES_CENTS, type BillingPlan } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
-import type { ChipClient } from '@curios/billing';
+import { billDescription, type ChipClient } from '@curios/billing';
 import { NoPageError } from '../pages/page.service.js';
 
 export class NotABusinessPageError extends Error {
@@ -21,14 +21,6 @@ export class TrialResetUsedError extends Error {
     );
     this.name = 'TrialResetUsedError';
   }
-}
-
-/**
- * CHIP's product name. It has no documented short cap, but a long shop name must still
- * not fail the purchase, so the line is cut at 200 characters.
- */
-export function billDescription(plan: BillingPlan, displayName: string): string {
-  return `Curios Business, ${plan === 'ANNUAL' ? '1 year' : '1 month'} — ${displayName}`.slice(0, 200);
 }
 
 /** An unpaid purchase stops being payable this long after it was started. */

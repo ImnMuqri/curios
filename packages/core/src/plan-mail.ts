@@ -103,7 +103,8 @@ export function planEndingMail(input: {
   card: { label: string | null; amountCents: number } | null;
 }): Mail {
   const ends = longDay(input.paidUntil);
-  const subject = `Your Curios plan for ${input.displayName} ends on ${ends}`;
+  // With a card the plan does not end on that day, it renews: the subject must say so.
+  const subject = `Your Curios plan for ${input.displayName} ${input.card ? 'renews' : 'ends'} on ${ends}`;
   const keep = 'If you do nothing, your page, your FAQ pages and chat all keep working. Only the capture card stops.';
   const url = billingUrl(input.appUrl);
 

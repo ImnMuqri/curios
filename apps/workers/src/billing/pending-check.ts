@@ -74,7 +74,12 @@ export async function runPendingCheck(deps: {
       if (outcome.kind === 'granted') {
         granted += 1;
         deps.log?.info({ purchaseId: providerRef }, 'pending payment granted by the hourly check');
-      } else if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment') {
+      } else if (
+        outcome.kind === 'mismatch' ||
+        outcome.kind === 'unknown-payment' ||
+        // Paid after it was marked failed or expired: money taken, no time given.
+        outcome.kind === 'paid-after-failure'
+      ) {
         deps.log?.error({ purchaseId: providerRef, outcome: outcome.kind }, 'pending payment refused by the hourly check');
       } else if (outcome.kind === 'not-paid' && DEAD_PURCHASE_STATUSES.has(purchase.status)) {
         // Conditional, so a webhook that paid this row since the read above is never overwritten.
