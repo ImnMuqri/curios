@@ -215,6 +215,14 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 - **Emails:** a new "New order #14 · RM215 · Paid" email with a "Paid by FPX" tag, no receipt
   to check, and a note that CHIP pays out to the owner's bank (`Emails-paid`).
 
+**The sample owner's look**
+- Kek Lina's heading font is now **Outfit**, not Fraunces, on every board. It's her choice in My
+  Curios → Heading font, and Fraunces stays in that list as an option.
+- Everything a visitor sees follows the owner's background and accent: the page, shop, product,
+  checkout and order page.
+- Checkout and the order page put the title on the page background, with the form on a white
+  sheet with rounded top corners, so forms stay easy to read.
+
 **Elsewhere**
 - **Landing, For business:**
   - the customer phone shows the new shop page (two-column cards, + on photos)

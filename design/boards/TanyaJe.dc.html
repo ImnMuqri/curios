@@ -9,7 +9,7 @@
 <x-dc>
 <helmet>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800&amp;family=Bricolage+Grotesque:opsz,wdth,wght@12..96,75..100,200..800&amp;family=IBM+Plex+Sans:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;family=Inter:wght@400;500;600&amp;family=Fraunces:opsz,wght@9..144,700;9..144,800;9..144,900&amp;display=swap">
 <style>
 body{margin:0;background:#fafbfc}
 a{color:#191f2c}a:hover{color:#2340c8}
@@ -215,7 +215,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .cs-back{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:rgba(250,251,252,.12)}
 .cs-open{left:18px;top:60px;display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 10px;border-radius:999px;background:rgba(29,154,108,.18);color:#9be3c4;font-size:10.5px;font-weight:600}
 .cs-open i{width:6px;height:6px;border-radius:50%;background:#1d9a6c}
-.cs-name{left:18px;top:88px;margin:0;font-family:'Fraunces',serif;font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em}
+.cs-name{left:18px;top:88px;margin:0;font-family:'Outfit',sans-serif;font-size:30px;font-weight:800;line-height:1;letter-spacing:-.02em}
 .cs-facts{left:18px;right:18px;top:126px;margin:0;font-size:11px;opacity:.75;white-space:nowrap}
 .cs-cats{left:18px;top:156px;display:flex;gap:5px}
 .cs-cats span{height:26px;padding:0 11px;border-radius:999px;background:rgba(250,251,252,.1);font-size:11px;font-weight:600;line-height:26px}
@@ -1061,7 +1061,7 @@ class Component extends DCLogic {
     const B = "'Bricolage Grotesque', sans-serif";
     this.people = {
       aisyah: { name: 'Aisyah', short: 'Aisyah', handle: 'aisyahdraws', kind: 'Personal', accent: '#1d6f5f', deep: '#123b33', warm: '#d3e8e1', chip: '#bfe3d6', font: B, photo: '/_blob/712a5adabc653230800c5a21396b0117', focus: '28% 40%', l1: 'Portfolio', l2: 'Commission rates', l3: 'Book a slot', q: 'Are you taking commissions in November?', a: 'Yes, two slots left for November. Portraits start at RM250.' },
-      lina: { name: 'Kek Lina', short: 'Kek Lina', handle: 'keklina', kind: 'Business', accent: '#b5294e', deep: '#3d0f1e', warm: '#f3dde3', chip: '#f6c9d5', font: "'Fraunces', serif", photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '62% 22%', l1: 'Order on WhatsApp', l2: 'Menu & prices', l3: 'Cake photos', q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.' },
+      lina: { name: 'Kek Lina', short: 'Kek Lina', handle: 'keklina', kind: 'Business', accent: '#b5294e', deep: '#3d0f1e', warm: '#f3dde3', chip: '#f6c9d5', font: "'Outfit', sans-serif", photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '62% 22%', l1: 'Order on WhatsApp', l2: 'Menu & prices', l3: 'Cake photos', q: 'Do you deliver to Klang?', a: 'Yes, delivery to Klang is RM15. Shah Alam is RM10.' },
       hana: { name: 'Studio Hana', short: 'Studio Hana', handle: 'studiohana', kind: 'Business', accent: '#c58a12', deep: '#2b2209', warm: '#f6e7c3', chip: '#f4dc9e', font: B, photo: '/_blob/00f6c0818827d90d83c2cd9e3342676e', focus: '55% 50%', l1: 'Case studies', l2: 'Packages', l3: 'Start a project', q: 'What’s in your branding package?', a: 'Logo, colour and type system, and social templates. Two weeks, from RM3,800.' },
       daniel: { name: 'Daniel Tan', short: 'Daniel', handle: 'danieltan', kind: 'Personal', accent: '#8a5a2b', deep: '#2a1a0e', warm: '#efe0cf', chip: '#e8cfb3', font: B, photo: '/_blob/70c73e99a20a4b61f68d0a9c487e932b', focus: '30% 50%', l1: 'Resume', l2: 'GitHub', l3: 'LinkedIn', q: 'Are you open to hybrid roles?', a: 'Yes, hybrid in KL or Petaling Jaya, or fully remote.' },
       aina: { name: 'Klinik Aina', short: 'Klinik Aina', handle: 'klinikaina', kind: 'Business', accent: '#2340c8', deep: '#0f1b4d', warm: '#d6e1fd', chip: '#bfd1f9', font: B, photo: '/_blob/92c05b3b823a434633375b043cf67b7a', focus: '70% 50%', l1: 'Book on WhatsApp', l2: 'Directions', l3: 'Panel companies', q: 'Are you open on Saturday?', a: 'Yes, 9am to 1pm on Saturdays. Walk-ins welcome.' },
