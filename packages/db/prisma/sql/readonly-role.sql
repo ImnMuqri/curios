@@ -21,6 +21,12 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT ON TABLES TO curios_reado
 -- Every column of a shop's payment account but the sealed CHIP secret key: the
 -- web app never needs it, so it cannot read it. Re-granting ALL TABLES above
 -- gives the whole table back, so this narrows it again on every run.
-REVOKE SELECT ON "ShopPaymentAccount" FROM curios_readonly;
-GRANT SELECT ("pageId", "provider", "brandId", "brandName", "publicKeyPem", "methods", "isTest", "connectedAt", "checkedAt", "lastErrorAt")
-  ON "ShopPaymentAccount" TO curios_readonly;
+-- Skipped until the migration has created the table.
+DO $$
+BEGIN
+  IF to_regclass('"ShopPaymentAccount"') IS NOT NULL THEN
+    REVOKE SELECT ON "ShopPaymentAccount" FROM curios_readonly;
+    GRANT SELECT ("pageId", "provider", "brandId", "brandName", "publicKeyPem", "methods", "isTest", "connectedAt", "checkedAt", "lastErrorAt")
+      ON "ShopPaymentAccount" TO curios_readonly;
+  END IF;
+END $$;

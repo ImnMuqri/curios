@@ -25,6 +25,7 @@ import {
   orderPerPageLimit,
   receiptPerIpLimit,
   rateLimitPlugin,
+  shopChipPerAccountLimit,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
@@ -223,12 +224,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(ownerOrderRoutes, overrides.orders ?? {});
   });
 
-  // The owner's own CHIP account. Signed in, and under the per-account payments budget:
-  // connecting tries a key against CHIP and the test starts a real purchase, so neither
-  // may be repeated without limit. Session first, as in the billing scope below.
+  // The owner's own CHIP account. Signed in, and under its own per-account budget:
+  // connecting tries a key against CHIP and starts a purchase, and the test starts one,
+  // so neither may be repeated without limit. Session first, as in the billing scope below.
   await app.register(async (scope) => {
     scope.addHook('onRequest', requireSession);
-    await scope.register(rateLimit, billingPerAccountLimit(app.rateLimitRedis));
+    await scope.register(rateLimit, shopChipPerAccountLimit(app.rateLimitRedis));
     await scope.register(shopChipRoutes, overrides.shopChip ?? {});
   });
 

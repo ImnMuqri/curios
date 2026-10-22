@@ -56,6 +56,7 @@ process.env.CHIP_BRAND_ID = 'test-brand-id';
 process.env.CHIP_CALLBACK_BASE_URL = 'https://api.curios.invalid';
 process.env.CHIP_BASE_URL = 'https://chip.invalid/api/v1';
 process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';
+process.env.RATE_LIMIT_SHOP_CHIP_PER_ACCOUNT = '10';
 
 // The embeddings key factRoutes now requires at boot, for the same reason as
 // the CHIP settings above: every test that reaches the embedder injects a

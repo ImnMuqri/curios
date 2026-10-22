@@ -385,3 +385,22 @@ export function billingPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
     errorResponseBuilder: tooMany((after) => `Too many payment attempts. Try again in ${after}.`),
   };
 }
+
+/**
+ * Per account, on the owner's own CHIP account in Store: connecting tries a key against
+ * CHIP and starts (then cancels) a purchase, and the RM1 test starts one. Its own bucket,
+ * so connecting CHIP can never use up the budget for paying for the plan.
+ */
+export function shopChipPerAccountLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    hook: 'preHandler',
+    nameSpace: namespace('shop-chip-account:'),
+    max: limit('RATE_LIMIT_SHOP_CHIP_PER_ACCOUNT', 10),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => request.account?.id ?? caller(request),
+    errorResponseBuilder: tooMany((after) => `Too many tries. Wait a little and try again in ${after}.`),
+  };
+}

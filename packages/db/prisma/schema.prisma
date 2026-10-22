@@ -713,9 +713,6 @@ model Payment {
   @@index([pageId, createdAt])
 }
 
-/// A card CHIP saved for a page's auto-renew. One per page: a new card replaces
-/// the old. Cascades with the page, unlike Payment, because it is a credential
-/// handle and not a financial record.
 /// A shop's own payment account: the owner's CHIP brand and secret key, so
 /// customers pay the owner directly. One per page. The secret key is stored
 /// only sealed (packages/core/src/secret-box.ts), and this table is never part
@@ -742,6 +739,9 @@ model ShopPaymentAccount {
   lastErrorAt         DateTime?
 }
 
+/// A card CHIP saved for a page's auto-renew. One per page: a new card replaces
+/// the old. Cascades with the page, unlike Payment, because it is a credential
+/// handle and not a financial record.
 model RenewalCard {
   pageId         String      @id
   page           Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)

@@ -138,7 +138,7 @@ export function storeGaps(s: StoreReadiness): StoreGap[] {
 
 export function storeGapMessage(gaps: StoreGap[]): string {
   const parts = [
-    ...(gaps.includes('payment') ? ['add a way to pay (a DuitNow QR or your bank account)'] : []),
+    ...(gaps.includes('payment') ? ['add a way to pay (connect CHIP, or add a DuitNow QR or your bank account)'] : []),
     ...(gaps.includes('fulfilment') ? ['turn on pickup or delivery'] : []),
   ];
   return `Before your shop can open, ${parts.join(' and ')}.`;

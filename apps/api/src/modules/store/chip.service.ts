@@ -76,14 +76,27 @@ function keyRefused(status: number): Error {
   return [400, 401, 403, 404].includes(status) ? new ChipKeyRefusedError() : new ChipUnavailableError(`answered ${status}`);
 }
 
+
+/** A purchase CHIP would not start: the key (401, 403), CHIP's own trouble (429), or the account. */
+function purchaseRefused(status: number): Error {
+  if ([401, 403].includes(status)) return new ChipKeyRefusedError();
+  if (status === 429) return new ChipUnavailableError(`answered ${status}`);
+  return new ChipTestRefusedError();
+}
+
+/** The methods an RM1 purchase here may be paid with: cards and e-wallets on this account. */
+const cardOrWallet = (methods: string[]) => methods.filter((method) => TEST_METHODS.has(method));
+
 /**
  * Checks the owner's Brand ID and secret key with CHIP, then stores the key sealed with
  * the brand, CHIP's public key (which verifies this shop's callbacks) and the methods the
  * account can take. Connecting again replaces all of it.
  *
- * Test mode is not visible from either call made here (neither the payment methods nor
- * the public key say), so `isTest` starts false and is learned from the first purchase
- * on the key -- "Test with RM1", or an order.
+ * Neither the payment methods nor the public key say whether a key is a test one; only a
+ * purchase does. So connecting starts an RM1 purchase on the owner's brand (card and
+ * e-wallet only, no callback), reads its `is_test` and brand name, and cancels it at once:
+ * nothing is paid and no money moves. In production a test key is refused here, before
+ * anything is stored -- a shop must never open on a key that takes no real money.
  */
 export async function connectChip(
   deps: ShopChipDeps,
@@ -99,13 +112,40 @@ export async function connectChip(
   const methods = await withOwnerKey(() => client.listPaymentMethods(CHECK_AMOUNT_CENTS));
   const publicKeyPem = await withOwnerKey(() => client.getPublicKey());
 
+  const owner = await deps.prisma.page.findUniqueOrThrow({
+    where: { id: page.id },
+    select: { displayName: true, account: { select: { email: true } } },
+  });
+  const allowed = cardOrWallet(methods);
+  const check = await withOwnerKey(
+    () =>
+      client.createPurchase({
+        email: owner.account.email,
+        fullName: owner.displayName,
+        productName: 'Curios key check',
+        amountCents: TEST_AMOUNT_CENTS,
+        reference: 'Curios key check',
+        redirectUrl: `${deps.appUrl}/app/store`,
+        dueAt: new Date(input.now.getTime() + 60 * 60 * 1000),
+        sendReceipt: false,
+        cardsOnlyRecurring: false,
+        // An account with no card or e-wallet still gets checked; nobody pays this purchase.
+        ...(allowed.length > 0 ? { methods: allowed } : {}),
+      }),
+    purchaseRefused,
+  );
+  await client.cancelPurchase(check.id).catch((error: unknown) =>
+    deps.log.warn({ pageId: page.id, purchaseId: check.id, err: errName(error) }, 'key check purchase could not be cancelled'),
+  );
+  if (deps.production && check.isTest) throw new ChipTestKeyError();
+
   const data = {
     brandId,
-    brandName: null,
+    brandName: check.brandName ?? null,
     secretKeyCiphertext: sealSecret(secretKey, deps.secretsKey),
     publicKeyPem,
     methods,
-    isTest: false,
+    isTest: check.isTest,
     connectedAt: input.now,
     checkedAt: input.now,
     lastErrorAt: null,
@@ -119,6 +159,12 @@ export async function connectChip(
   return { connected: true, ...row };
 }
 
+/** Whether the shop can lose CHIP: closed, or open with a QR or bank details to pay by. */
+async function canSpareChip(prisma: PrismaClient, accountId: string): Promise<boolean> {
+  const settings = await getStoreSettings(prisma, accountId);
+  return !(settings.enabled && storeGaps({ ...settings, chipConnected: false }).includes('payment'));
+}
+
 /**
  * Forgets the owner's CHIP account. Idempotent. Refused while the shop is open and CHIP
  * is its only way to pay, as removing the QR is: no request leaves an open shop with
@@ -126,8 +172,7 @@ export async function connectChip(
  */
 export async function disconnectChip(prisma: PrismaClient, accountId: string): Promise<void> {
   const page = await storePageFor(prisma, accountId);
-  const settings = await getStoreSettings(prisma, accountId);
-  if (settings.enabled && storeGaps({ ...settings, chipConnected: false }).includes('payment')) {
+  if (!(await canSpareChip(prisma, accountId))) {
     throw new StoreNotReadyError('Your shop is open and CHIP is its only way to pay. Add a DuitNow QR or bank details, or close the shop first.');
   }
   await prisma.shopPaymentAccount.deleteMany({ where: { pageId: page.id } });
@@ -139,8 +184,10 @@ export async function disconnectChip(prisma: PrismaClient, accountId: string): P
  * methods are asked for again at RM1, which re-checks the key; the purchase says whether
  * the key is a test one and what the brand is called, and both are kept.
  *
- * A test key in production is refused here, where it first shows: the purchase is
- * cancelled and the connection removed.
+ * Connecting already refuses a test key in production, so finding one here means CHIP
+ * changed its mind about the key. The purchase is cancelled and the request refused; the
+ * connection is removed when the shop can spare it, and otherwise kept with lastErrorAt
+ * set, so an open shop is never left with nothing to pay by.
  */
 export async function testChip(deps: ShopChipDeps, input: { accountId: string; now: Date }): Promise<{ url: string }> {
   const page = await storePageFor(deps.prisma, input.accountId);
@@ -162,7 +209,7 @@ export async function testChip(deps: ShopChipDeps, input: { accountId: string; n
     }
   };
 
-  const methods = (await noteRefusal(() => client.listPaymentMethods(TEST_AMOUNT_CENTS))).filter((method) => TEST_METHODS.has(method));
+  const methods = cardOrWallet(await noteRefusal(() => client.listPaymentMethods(TEST_AMOUNT_CENTS)));
   if (methods.length === 0) throw new ChipNoTestMethodError();
 
   const purchase = await noteRefusal(
@@ -179,14 +226,18 @@ export async function testChip(deps: ShopChipDeps, input: { accountId: string; n
         cardsOnlyRecurring: false,
         methods,
       }),
-    (status) => ([401, 403].includes(status) ? new ChipKeyRefusedError() : status === 429 ? new ChipUnavailableError(`answered ${status}`) : new ChipTestRefusedError()),
+    purchaseRefused,
   );
 
   if (deps.production && purchase.isTest) {
     await client.cancelPurchase(purchase.id).catch((error: unknown) =>
       deps.log.warn({ pageId: page.id, purchaseId: purchase.id, err: errName(error) }, 'test purchase could not be cancelled'),
     );
-    await deps.prisma.shopPaymentAccount.deleteMany({ where: { pageId: page.id } });
+    if (await canSpareChip(deps.prisma, input.accountId)) {
+      await deps.prisma.shopPaymentAccount.deleteMany({ where: { pageId: page.id } });
+    } else {
+      await deps.prisma.shopPaymentAccount.updateMany({ where: { pageId: page.id }, data: { isTest: true, lastErrorAt: input.now } });
+    }
     throw new ChipTestKeyError();
   }
 

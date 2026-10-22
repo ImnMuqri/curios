@@ -131,7 +131,7 @@ describe('storeGaps', () => {
   });
   it('says what is missing in one sentence', () => {
     expect(storeGapMessage(['payment', 'fulfilment'])).toBe(
-      'Before your shop can open, add a way to pay (a DuitNow QR or your bank account) and turn on pickup or delivery.',
+      'Before your shop can open, add a way to pay (connect CHIP, or add a DuitNow QR or your bank account) and turn on pickup or delivery.',
     );
   });
 });

@@ -107,7 +107,7 @@ export class ChipTestRefusedError extends Error {
   readonly statusCode = 400;
   readonly code = 'CHIP_TEST_REFUSED';
   constructor() {
-    super('CHIP would not start a test payment. Check your account in the CHIP dashboard, then try again.');
+    super('CHIP would not start a payment on this account. Check it in the CHIP dashboard, then try again.');
     this.name = 'ChipTestRefusedError';
   }
 }

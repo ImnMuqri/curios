@@ -428,26 +428,38 @@ in the same place: someone holding a database dump and this key holds every shop
 sealed with, so after changing the variable every connected shop's key stops opening: their "Test
 with RM1" (and, from Task 13b, paying online) fails until they connect again. To rotate:
 
-1. Generate a new value and deploy it.
-2. Clear the old connections so no shop is left half-working, and have each owner reconnect in
-   Store → Payment (their Brand ID and secret key from CHIP's dashboard, under Developers):
+1. Find the open shops whose **only** way to pay is CHIP. Deleting their connection would leave
+   them open with nothing a customer can pay by:
+
+   ```sql
+   SELECT p."id", p."handle" FROM "Page" p
+   JOIN "ShopPaymentAccount" a ON a."pageId" = p."id"
+   WHERE p."storeEnabled" AND p."paymentQrKey" IS NULL
+     AND (p."bankName" IS NULL OR p."bankAccountName" IS NULL OR p."bankAccountNumber" IS NULL);
+   ```
+
+   **Close every one of those shops** (`UPDATE "Page" SET "storeEnabled" = false WHERE "id" IN (…)`)
+   or have its owner add a QR or bank details first, and tell those owners why. Do not go on while
+   that query returns a row.
+2. Generate a new value and deploy it.
+3. Clear the old connections, and have each owner reconnect in Store → Payment (their Brand ID and
+   secret key from CHIP's dashboard, under Developers):
 
    ```sql
    DELETE FROM "ShopPaymentAccount";
    ```
 
-   An open shop whose only way to pay was CHIP keeps taking orders, paid by QR or bank transfer if
-   it has one; check `SELECT "pageId" FROM "Page" p WHERE "storeEnabled" AND "paymentQrKey" IS NULL
-   AND "bankAccountNumber" IS NULL` before deleting and tell those owners first.
-
 The box carries a version byte (`0x01` today), so a later change can open old boxes with the old
 key and seal new ones with a new key, rotating without re-connecting. That is not built: until it
 is, rotation is the procedure above. Rotate if the key may have leaked, not on a schedule.
 
-**A test key in production.** Connecting cannot tell a test key from a live one (CHIP's payment
-methods and public key look the same for both). The first purchase can: "Test with RM1" refuses a
-test key in production with "This is a test key", cancels that purchase and removes the
-connection.
+**A test key in production.** CHIP's payment methods and public key look the same for a test key
+and a live one, so connecting starts an RM1 purchase on the owner's brand, reads its `is_test`, and
+cancels it at once (nobody pays it; no money moves; it shows in the owner's CHIP dashboard as a
+cancelled "Curios key check"). In production a test key is refused there, "This is a test key",
+before anything is stored. If "Test with RM1" ever finds a test key later, it refuses too, and
+removes the connection only when the shop has another way to pay or is closed; otherwise it keeps
+it with `lastErrorAt` set.
 
 ---
 

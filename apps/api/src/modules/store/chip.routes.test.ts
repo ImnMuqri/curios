@@ -95,28 +95,81 @@ describe('POST /store/chip', () => {
     expect(client.getPublicKey).toHaveBeenCalled();
     expect(res.json()).toEqual({
       connected: true,
-      brandName: null,
+      brandName: 'Kek Lina Bakes',
       methods: ['fpx', 'visa', 'mastercard', 'maestro', 'razer_tng', 'razer_grabpay', 'shopee_pay', 'duitnow_qr'],
       checkedAt: expect.any(String),
       isTest: false,
     });
 
     const row = await account(app, owner.pageId);
-    expect(row).toMatchObject({ provider: 'CHIP', brandId: BRAND, publicKeyPem: PEM, isTest: false, brandName: null, lastErrorAt: null });
+    expect(row).toMatchObject({ provider: 'CHIP', brandId: BRAND, publicKeyPem: PEM, isTest: false, brandName: 'Kek Lina Bakes', lastErrorAt: null });
     expect(row?.secretKeyCiphertext).not.toContain(SECRET);
     expect(openSecret(row!.secretKeyCiphertext, SECRETS_KEY)).toBe(SECRET);
   });
 
-  it('reconnecting replaces the key and brand, and forgets the old brand name', async () => {
+  it('learns test mode at connect from an RM1 purchase it cancels at once, card and e-wallet only', async () => {
+    const owner = await anOwner(app);
+    const probe = aPurchase({ isTest: true, brandName: 'Kek Lina Bakes' });
+    client.createPurchase.mockResolvedValueOnce(probe);
+
+    const res = await connect(app, owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().isTest).toBe(true);
+    const input = client.createPurchase.mock.calls[0]![0];
+    expect(input).toMatchObject({ email: owner.email, amountCents: 100, cardsOnlyRecurring: false, sendReceipt: false });
+    expect(input.successCallback).toBeUndefined();
+    expect(input.methods).toEqual(['visa', 'mastercard', 'maestro', 'razer_tng', 'razer_grabpay', 'shopee_pay']);
+    expect(client.cancelPurchase).toHaveBeenCalledWith(probe.id);
+    expect(await account(app, owner.pageId)).toMatchObject({ isTest: true, brandName: 'Kek Lina Bakes' });
+  });
+
+  it('a test key is refused in production at connect, before anything is stored', async () => {
+    const owner = await anOwner(live);
+    const probe = aPurchase({ isTest: true });
+    client.createPurchase.mockResolvedValueOnce(probe);
+
+    const res = await connect(live, owner.cookie);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toEqual({ code: 'CHIP_TEST_KEY', message: 'This is a test key. Connect your live secret key from your CHIP dashboard, under Developers.' });
+    expect(client.cancelPurchase).toHaveBeenCalledWith(probe.id);
+    expect(await account(live, owner.pageId)).toBeNull();
+  });
+
+  it('a live key connects in production', async () => {
+    const owner = await anOwner(live);
+    expect((await connect(live, owner.cookie)).statusCode).toBe(200);
+    expect(await account(live, owner.pageId)).toMatchObject({ isTest: false });
+  });
+
+  it('still connects when the check purchase cannot be cancelled', async () => {
+    const owner = await anOwner(app);
+    client.cancelPurchase.mockRejectedValueOnce(new ChipUnavailableError('POST answered 503'));
+    expect((await connect(app, owner.cookie)).statusCode).toBe(200);
+    expect(await account(app, owner.pageId)).not.toBeNull();
+  });
+
+  it('says so, and stores nothing, when CHIP will not start the check purchase', async () => {
+    const owner = await anOwner(app);
+    client.createPurchase.mockRejectedValueOnce(new ChipRefusedError('CHIP refused POST with 401: {}', 401));
+    expect((await connect(app, owner.cookie)).json().error.code).toBe('CHIP_KEY_REFUSED');
+    client.createPurchase.mockRejectedValueOnce(new ChipRefusedError('CHIP refused POST with 422: {}', 422));
+    expect((await connect(app, owner.cookie)).json().error.code).toBe('CHIP_TEST_REFUSED');
+    expect(await account(app, owner.pageId)).toBeNull();
+  });
+
+  it('reconnecting replaces the key, the brand and what CHIP says of them', async () => {
     const owner = await anOwner(app);
     await connect(app, owner.cookie);
     await app.prisma.shopPaymentAccount.update({ where: { pageId: owner.pageId }, data: { brandName: 'Old', isTest: true } });
     const other = randomUUID();
+    client.createPurchase.mockResolvedValueOnce(aPurchase({ brandName: 'New Name' }));
 
     expect((await connect(app, owner.cookie, { brandId: other, secretKey: `${SECRET}-new` })).statusCode).toBe(200);
 
     const row = await account(app, owner.pageId);
-    expect(row).toMatchObject({ brandId: other, brandName: null, isTest: false });
+    expect(row).toMatchObject({ brandId: other, brandName: 'New Name', isTest: false });
     expect(openSecret(row!.secretKeyCiphertext, SECRETS_KEY)).toBe(`${SECRET}-new`);
   });
 
@@ -211,7 +264,7 @@ describe('POST /store/chip/test', () => {
     expect(res.json()).toEqual({ url: 'https://gate.chip-in.asia/p/test-purchase/' });
     expect(clientFor).toHaveBeenCalledWith({ secretKey: SECRET, brandId: BRAND });
     expect(client.listPaymentMethods).toHaveBeenLastCalledWith(100);
-    const input = client.createPurchase.mock.calls[0]![0];
+    const input = client.createPurchase.mock.calls.at(-1)![0];
     expect(input).toMatchObject({
       email: owner.email,
       amountCents: 100,
@@ -235,7 +288,7 @@ describe('POST /store/chip/test', () => {
     expect(await app.prisma.order.count({ where: { pageId: owner.pageId } })).toBe(0);
   });
 
-  it('a test key is refused in production', async () => {
+  it('in production, a key found to be a test one is refused and removed, when the shop can spare it', async () => {
     const owner = await anOwner(live);
     await connect(live, owner.cookie);
     const purchase = aPurchase({ isTest: true });
@@ -249,6 +302,23 @@ describe('POST /store/chip/test', () => {
     expect(await account(live, owner.pageId)).toBeNull();
   });
 
+  it('in production, a test key that is an open shop\'s only way to pay is kept, marked, and refused', async () => {
+    const owner = await anOwner(live);
+    await connect(live, owner.cookie);
+    expect((await call(live, 'PATCH', '/store/settings', owner.cookie, { enabled: true })).statusCode).toBe(200);
+    const purchase = aPurchase({ isTest: true });
+    client.createPurchase.mockResolvedValueOnce(purchase);
+
+    const res = await call(live, 'POST', '/store/chip/test', owner.cookie);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('CHIP_TEST_KEY');
+    expect(client.cancelPurchase).toHaveBeenCalledWith(purchase.id);
+    const row = await account(live, owner.pageId);
+    expect(row).not.toBeNull();
+    expect(row?.lastErrorAt).not.toBeNull();
+  });
+
   it('says so when the account takes no card or e-wallet', async () => {
     const owner = await anOwner(app);
     await connect(app, owner.cookie);
@@ -258,7 +328,8 @@ describe('POST /store/chip/test', () => {
 
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('CHIP_NO_TEST_METHOD');
-    expect(client.createPurchase).not.toHaveBeenCalled();
+    // Only connecting's own check purchase; the test never starts one.
+    expect(client.createPurchase).toHaveBeenCalledTimes(1);
   });
 
   it('notes a key that stopped working', async () => {
@@ -296,6 +367,20 @@ describe('the secret key', () => {
       expect(body).not.toContain(SECRET);
       expect(body).not.toContain(sealed);
     }
+  });
+});
+
+describe('the CHIP limit', () => {
+  it('has its own budget and words, so it never blocks paying for the plan', async () => {
+    const owner = await anOwner(app);
+    const statuses: number[] = [];
+    for (let i = 0; i < 11; i++) statuses.push((await call(app, 'DELETE', '/store/chip', owner.cookie)).statusCode);
+    expect(statuses.slice(0, 10).every((status) => status === 200)).toBe(true);
+    const limited = await call(app, 'DELETE', '/store/chip', owner.cookie);
+    expect(limited.statusCode).toBe(429);
+    expect(limited.json().error.message).toMatch(/^Too many tries\. Wait a little and try again/);
+
+    expect((await call(app, 'POST', '/billing/trial-reset', owner.cookie)).statusCode).not.toBe(429);
   });
 });
 

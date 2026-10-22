@@ -47,6 +47,11 @@ beforeEach(() => {
   for (const fn of Object.values(client)) fn.mockReset();
   client.listPaymentMethods.mockResolvedValue(['visa', 'razer_tng']);
   client.getPublicKey.mockResolvedValue('-----BEGIN PUBLIC KEY-----\nx\n-----END PUBLIC KEY-----');
+  client.createPurchase.mockResolvedValue({
+    id: 'p-0', status: 'created', reference: 'Curios key check', totalCents: 100, checkoutUrl: 'https://gate.chip-in.asia/p/p-0/',
+    isRecurringToken: false, isTest: false, paymentMethod: null, maskedPan: null,
+  });
+  client.cancelPurchase.mockResolvedValue(undefined);
   lines.length = 0;
 });
 
