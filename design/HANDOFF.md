@@ -292,6 +292,13 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
     (curios.my/aisyahdraws) and a green tick pops on. Caption: "We're holding your name".
     Without a handle, show "curios.my/yourname" with no tick.
   - The panel still hides below 980px. Reduced motion stops all of it.
+- **Onboarding, right panel:** the phone preview is replaced by Peek, one pose per step, on the
+  same #eef1fb panel with a caption (see `design/screens/Onboarding_panel_states.png`):
+  - Claim: holds up a sign with the live handle, green tick when it's free ("It's yours").
+  - What is it for: Business holds a shopping bag; Personal waves.
+  - Teach it: reads a sheet of paper. While reading, a blue scan line moves down the paper.
+  - Found facts: happy eyes, both hands cheering, the first 3 facts pop in above it.
+  - Nothing found: flat mouth, eyes to the side, hands down.
 - **Full body, landing footer:** Peek stands on top of the o in the giant "curios" footer
   wordmark (`.pkf`). Its full-body form is:
   - a **round, slightly wide ball** in flat brand blue
