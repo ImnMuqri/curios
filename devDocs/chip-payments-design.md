@@ -110,7 +110,7 @@ Stored on a new `RenewalCard` row, one per page **(call)**, kept out of `Page` t
 - `plan` (what to renew: the plan of the payment that saved it);
 - `cardLabel` (brand and last four, if the purchase carries them; otherwise null and the
   UI says "your card");
-- `failedAttempts`, `lastFailedAt`.
+- `failedAttempts`, `lastFailedAt`, `lastAttemptAt`.
 
 A daily job at 10:00 KL (next to the renewal reminder) **(call)** renews every page with
 a `RenewalCard` whose `paidUntil` is within the next 24 hours, or has passed by at most
@@ -127,9 +127,11 @@ a `RenewalCard` whose `paidUntil` is within the next 24 hours, or has passed by 
    now" with the Billing link. Three failures, or paidUntil 3 days past: delete the
    `RenewalCard`, email "auto-renew is off", and the plan lapses normally **(call)**.
 
-A page is never charged twice for one period: the job claims the period by writing
-`renewalAttemptFor = paidUntil` with a conditional update before charging, the same way
-`renewalReminderFor` claims a reminder **(call)**.
+A page is never charged twice: before charging, the job claims the day with a conditional
+update setting `RenewalCard.lastAttemptAt = now` where it is null or more than 20 hours
+old, and skips a page that already has a PENDING renewal payment (a `pending_charge` still
+in flight) **(call)**. A claim per period would not do: a failed period is retried on later
+days.
 
 Failures need CHIP's **webhook** (the purchase's `success_callback` fires on success
 only). One webhook on Curios's brand, subscribed to `purchase.paid` and
@@ -156,7 +158,7 @@ that." The plan-ended email is not sent while a renewal is still being retried.
   `Payment.autoRenewal Boolean @default(false)` (raised by the renewal job).
 - `PaymentStatus` gains `FAILED` (a renewal charge that failed) and `EXPIRED` (the
   pending check found the purchase expired or cancelled) **(call)**.
-- `RenewalCard` as above; `Page.renewalAttemptFor DateTime?`.
+- `RenewalCard` as above, with `lastAttemptAt DateTime?`.
 - The `Page.paidUntil` comment stops saying "there is no subscription".
 
 ### Removing Billplz
