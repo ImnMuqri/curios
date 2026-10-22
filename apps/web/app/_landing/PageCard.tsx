@@ -27,7 +27,7 @@ export function PageCard({
   persona: Persona;
   words: PersonaWords;
   view: 'links' | 'ask';
-  labels: { links: string; ask: string; askAnything: (name: string) => string };
+  labels: { links: string; ask: string; askAnything: (name: string) => string; reply: (name: string) => string };
   /** The answer as far as it has been typed; the whole answer when left out. */
   answer?: string;
   typing?: boolean;
@@ -75,7 +75,7 @@ export function PageCard({
         {view === 'ask' ? (
           <span className={styles.pcChat}>
             <span className={styles.pcQ}>{words.q}</span>
-            <span className={styles.pcA} data-who={`${persona.name}’s page`}>
+            <span className={styles.pcA} data-who={labels.reply(persona.name)}>
               {answer ?? words.a}
               {typing ? <span className={styles.caret} /> : null}
             </span>

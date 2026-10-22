@@ -37,6 +37,8 @@ export interface ProductCardCopy {
   inBasket: string;
   from: (price: string) => string;
   open: (name: string) => string;
+  /** Said aloud after an add: "{name} added. {n} in basket." */
+  added: (name: string, inBasket: number) => string;
 }
 
 const CARD_COPY: ProductCardCopy = {
@@ -44,6 +46,7 @@ const CARD_COPY: ProductCardCopy = {
   inBasket: 'In your basket',
   from: (price) => `from ${price}`,
   open: (name) => `Open ${name}`,
+  added: (name, n) => `${name} added. ${n} in basket.`,
 };
 
 export interface ChatModeProps {
@@ -83,7 +86,7 @@ export interface ChatModeProps {
    */
   shopPath?: string;
   /** Writes the card's item into the visitor's basket. Without it the card has no button. */
-  onAddToBasket?: (card: ProductCardData) => void;
+  onAddToBasket?: (card: ProductCardData) => number | void;
   /** The items already in the basket, so a card says "In your basket" -- read by the caller, so it is right after a reload too. */
   basketItemIds?: string[];
   /** The card's words, in the page's language; English when left out. */
@@ -117,6 +120,8 @@ export function ChatMode({
    * screen.
    */
   const [qualified, setQualified] = useState(false);
+  // One polite live region for the whole chat: set after an add, so a screen reader hears it.
+  const [announcement, setAnnouncement] = useState('');
   const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
@@ -457,13 +462,19 @@ export function ChatMode({
                     </span>
                   )}
                 </span>
-                {onAddToBasket ? (
+                {onAddToBasket && turn.productCard.fromPriceCents !== null ? (
                   <button
                     type="button"
                     className={styles.productAdd}
                     data-done={basketItemIds?.includes(turn.productCard.itemId) || undefined}
-                    disabled={basketItemIds?.includes(turn.productCard.itemId)}
-                    onClick={() => turn.productCard && onAddToBasket(turn.productCard)}
+                    // aria-disabled, not disabled: the button keeps keyboard focus when it turns into "In your basket".
+                    aria-disabled={basketItemIds?.includes(turn.productCard.itemId) || undefined}
+                    onClick={() => {
+                      const card = turn.productCard;
+                      if (!card || basketItemIds?.includes(card.itemId)) return;
+                      const inBasket = onAddToBasket(card);
+                      setAnnouncement(cardCopy.added(card.name, typeof inBasket === 'number' ? inBasket : 1));
+                    }}
                   >
                     {basketItemIds?.includes(turn.productCard.itemId) ? cardCopy.inBasket : cardCopy.add}
                   </button>
@@ -473,6 +484,10 @@ export function ChatMode({
           </div>
         ))
       )}
+
+      <div aria-live="polite" aria-atomic="true" className={styles.srOnly}>
+        {announcement}
+      </div>
 
       {qualified && onCapture ? (
         <CaptureCard

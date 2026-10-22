@@ -100,7 +100,7 @@ export function Hero({ locale }: { locale: Locale }) {
     background: front.accent,
     ...(widths ? { width: `${widths[Math.min(rot.i, NAMES.length - 1)]}em` } : {}),
   };
-  const labels = { links: copy.hero.linksTab, ask: copy.hero.askTab, askAnything: copy.hero.askAnything };
+  const labels = { links: copy.hero.linksTab, ask: copy.hero.askTab, askAnything: copy.hero.askAnything, reply: copy.hero.replyLabel };
 
   return (
     <section className={styles.hero}>

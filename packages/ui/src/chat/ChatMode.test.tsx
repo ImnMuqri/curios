@@ -739,10 +739,34 @@ describe('ChatMode, the product card', () => {
     expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
   });
 
+  it('has no Add button for an item with no price, but the photo still opens its page', async () => {
+    await askOnce(named({ productCard: { ...productCard, fromPriceCents: null, firstOptionId: null } }), { onAddToBasket: vi.fn() });
+    expect(await screen.findByRole('link', { name: 'Open Kek Batik' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
+  });
+
+  it('keeps keyboard focus on the button after adding, and says so in one live region', async () => {
+    const onAddToBasket = vi.fn().mockReturnValue(1);
+    const { rerender } = await askOnce(named(), { onAddToBasket, basketItemIds: [] });
+    const button = await screen.findByRole('button', { name: 'Add to basket' });
+    button.focus();
+    await userEvent.keyboard('{Enter}');
+    expect(onAddToBasket).toHaveBeenCalledTimes(1);
+
+    rerender(<ChatMode open onClose={vi.fn()} onAsk={vi.fn()} displayName="Kek Lina" questions={[]} shopPath="/keklina/shop" onAddToBasket={onAddToBasket} basketItemIds={['i1']} />);
+    const done = screen.getByRole('button', { name: 'In your basket' });
+    expect(done).toHaveAttribute('aria-disabled', 'true');
+    expect(done).toHaveFocus();
+    await userEvent.click(done);
+    expect(onAddToBasket).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Kek Batik added. 1 in basket.')).toBeInTheDocument();
+    expect(screen.getAllByText('Kek Batik added. 1 in basket.')).toHaveLength(1);
+  });
+
   it('is in Malay when the page is', async () => {
     await askOnce(named(), {
       onAddToBasket: vi.fn(),
-      cardCopy: { add: 'Masuk bakul', inBasket: 'Dalam bakul anda', from: (price) => `dari ${price}`, open: (name) => `Buka ${name}` },
+      cardCopy: { add: 'Masuk bakul', inBasket: 'Dalam bakul anda', from: (price) => `dari ${price}`, open: (name) => `Buka ${name}`, added: (name, n) => `${name} ditambah. ${n} dalam bakul.` },
     });
     expect(await screen.findByRole('button', { name: 'Masuk bakul' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Buka Kek Batik' })).toBeInTheDocument();

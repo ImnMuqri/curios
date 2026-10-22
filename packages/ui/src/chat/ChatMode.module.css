@@ -162,6 +162,8 @@
   padding: 8px;
   border-radius: 20px;
   background: var(--paper);
+  /* A hairline, so the white card still reads on a pale owner page. */
+  box-shadow: 0 0 0 1px var(--line);
   color: var(--ink);
   font-family: var(--font-body);
 }
@@ -227,7 +229,7 @@
   cursor: pointer;
 }
 
-.productAdd[data-done] {
+.productAdd[aria-disabled='true'] {
   background: var(--hijau-muda);
   color: var(--hijau-ink);
   cursor: default;

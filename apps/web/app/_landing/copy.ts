@@ -65,6 +65,8 @@ export interface LandingCopy {
     next: string;
     kinds: { personal: string; business: string; creator: string };
     askAnything: (name: string) => string;
+    /** The label over a page's reply: "{Name}’s page". */
+    replyLabel: (name: string) => string;
     linksTab: string;
     askTab: string;
   };
@@ -239,6 +241,7 @@ const EN: LandingCopy = {
     next: 'Show the next page',
     kinds: { personal: 'Personal', business: 'Business', creator: 'Creator' },
     askAnything: (name) => `Ask ${name} anything`,
+    replyLabel: (name) => `${name}’s page`,
     linksTab: 'Links',
     askTab: 'Ask',
   },
@@ -489,6 +492,7 @@ const MS: LandingCopy = {
     next: 'Tunjuk halaman seterusnya',
     kinds: { personal: 'Peribadi', business: 'Bisnes', creator: 'Kreator' },
     askAnything: (name) => `Tanya ${name} apa saja`,
+    replyLabel: (name) => `Halaman ${name}`,
     linksTab: 'Pautan',
     askTab: 'Tanya',
   },

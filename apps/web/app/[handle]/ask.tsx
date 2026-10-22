@@ -88,6 +88,8 @@ export function Ask({
           ? lines.map((line) => (line === same ? { ...line, quantity: line.quantity + 1 } : line))
           : [...lines, { itemId: card.itemId, optionId: card.firstOptionId, quantity: 1 }],
       );
+      // What the screen reader is told: how many of this item the basket now holds.
+      return (same?.quantity ?? 0) + 1;
     },
     [handle],
   );
@@ -238,7 +240,7 @@ export function Ask({
           onAddToBasket={onAddToBasket}
           basketItemIds={basketItemIds}
           replyLabel={copy.askLabel(displayName)}
-          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen }}
+          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed }}
           initialDraft={prefill}
         />
       ) : null}

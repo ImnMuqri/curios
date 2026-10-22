@@ -65,12 +65,12 @@ export function Who({ locale }: { locale: Locale }) {
               words={words}
               view="links"
               icons={false}
-              labels={{ links: copy.hero.linksTab, ask: copy.hero.askTab, askAnything: copy.hero.askAnything }}
+              labels={{ links: copy.hero.linksTab, ask: copy.hero.askTab, askAnything: copy.hero.askAnything, reply: copy.hero.replyLabel }}
               className={styles.whoCard}
             />
             <p className={`${styles.float} ${styles.floatQ}`}>{words.q}</p>
             <p className={`${styles.float} ${styles.floatA}`} style={{ '--float-dot': person.accent } as CSSProperties}>
-              <span className={styles.floatWho}>{person.name}’s page</span>
+              <span className={styles.floatWho}>{copy.hero.replyLabel(person.name)}</span>
               {words.a}
             </p>
           </figure>
