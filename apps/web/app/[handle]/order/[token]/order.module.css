@@ -12,7 +12,7 @@
 
 .bookmark {
   margin-left: auto;
-  color: color-mix(in srgb, var(--page-fg) 60%, transparent);
+  color: color-mix(in srgb, var(--page-fg) 85%, transparent);
   font-size: 12.5px;
 }
 
