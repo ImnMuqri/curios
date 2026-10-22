@@ -279,6 +279,10 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   - peeking over the closing claim field on the dark section
   - it smiles (^^) while the visitor types a handle
 - **Landing (as built):** the same, over both claim fields.
+- **Full body, landing footer:** Peek stands on top of the o in the giant "curios" footer
+  wordmark (`.pkf`). It has two arms, feet and a small smile, waves every couple of seconds,
+  blinks and looks around. Size and position are in em, so it scales with the 31vw wordmark.
+- The giant footer wordmark uses the same eyes o, in the dark ghost colour (#2a3248).
 
 ## Open decisions (ask Iman before building these)
 
