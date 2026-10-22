@@ -463,15 +463,19 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .ft-mark .mo-r{stroke:#2a3248}
 .ft-mark .mo-e{fill:#2a3248}
 .ft-mark .mo-h{stroke:#2a3248}
-.pkf{position:absolute;left:50%;bottom:calc(100% - .07em);width:.36em;transform:translateX(-50%);pointer-events:none}
+.pkf{position:absolute;left:50%;bottom:calc(100% - .035em);width:.42em;transform:translateX(-50%);pointer-events:none}
 .pkf svg{display:block;width:100%;height:auto;overflow:visible}
-.pkf-armR{transform-box:fill-box;transform-origin:50% 90%;animation:pkfWave 2.4s ease-in-out infinite}
+.pkf-armR{transform-box:fill-box;transform-origin:20% 90%;animation:pkfWave 2.4s ease-in-out infinite}
+.pkf-handL{animation:pkfBob 3s ease-in-out infinite}
+.pkf-footL,.pkf-footR{animation:pkfBob 3.4s ease-in-out infinite}
+.pkf-footR{animation-delay:-1.2s}
+@keyframes pkfBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
 @keyframes pkfWave{0%,55%,100%{transform:rotate(0)}62%{transform:rotate(-18deg)}70%{transform:rotate(14deg)}78%{transform:rotate(-14deg)}86%{transform:rotate(8deg)}}
 .pkf-eyes{transform-box:fill-box;transform-origin:50% 50%;animation:pkBlink 5s infinite}
 .pkf-p{animation:pkLook 9s ease-in-out infinite}
 @keyframes pkBlink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.1)}}
 @keyframes pkLook{0%,20%{transform:translate(0,0)}25%,40%{transform:translate(-4px,2px)}45%,60%{transform:translate(4px,2px)}65%,100%{transform:translate(0,-1px)}}
-@media (prefers-reduced-motion:reduce){.pkf-armR,.pkf-eyes,.pkf-p{animation:none}}
+@media (prefers-reduced-motion:reduce){.pkf-armR,.pkf-eyes,.pkf-p,.pkf-handL,.pkf-footL,.pkf-footR{animation:none}}
 .ft-mark .i{position:relative}
 .ft-mark .i::before{content:'';position:absolute;left:50%;top:.06em;width:.42em;height:.26em;border:.065em solid #303850;border-radius:.08em;transform:translateX(-50%)}
 @media (prefers-reduced-motion: reduce){.ft-mark{animation:none}.ft-mark{color:#252c3d;background:none}.sl>span{transition:none}}
@@ -1096,7 +1100,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 </div>
 <p class="ft-note">Every person, shop and order on this page is a made-up sample. Photos from Unsplash.</p>
 </div>
-<p class="ft-mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><span class="pkf" aria-hidden="true"><svg viewBox="0 0 140 160"><ellipse cx="70" cy="154" rx="40" ry="5" fill="rgba(0,0,0,.25)"></ellipse><g class="pkf-armL"><rect x="12" y="84" width="22" height="40" rx="11" fill="#2340c8"></rect></g><g class="pkf-armR"><rect x="106" y="40" width="22" height="44" rx="11" fill="#2340c8"></rect></g><ellipse cx="50" cy="146" rx="15" ry="9" fill="#1a31a8"></ellipse><ellipse cx="90" cy="146" rx="15" ry="9" fill="#1a31a8"></ellipse><path d="M24 66a46 46 0 0 1 92 0v52a26 26 0 0 1-26 26H50a26 26 0 0 1-26-26z" fill="#2340c8"></path><g class="pkf-eyes"><circle cx="54" cy="62" r="14" fill="#fff"></circle><circle cx="86" cy="62" r="14" fill="#fff"></circle><g class="pkf-p"><circle cx="55" cy="60" r="7" fill="#191f2c"></circle><circle cx="87" cy="60" r="7" fill="#191f2c"></circle><circle cx="57.4" cy="57" r="2.3" fill="#fff"></circle><circle cx="89.4" cy="57" r="2.3" fill="#fff"></circle></g></g><path d="M62 84q8 7 16 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"></path></svg></span><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</p>
+<p class="ft-mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><span class="pkf" aria-hidden="true"><svg viewBox="0 0 170 180"><defs><radialGradient id="pkfG" cx="38%" cy="30%" r="75%"><stop offset="0" stop-color="#5873ff"></stop><stop offset=".55" stop-color="#2340c8"></stop><stop offset="1" stop-color="#16278f"></stop></radialGradient><radialGradient id="pkfL" cx="35%" cy="30%" r="80%"><stop offset="0" stop-color="#4f6bff"></stop><stop offset="1" stop-color="#1a2fa0"></stop></radialGradient></defs><ellipse cx="85" cy="168" rx="40" ry="4.5" fill="rgba(0,0,0,.3)"></ellipse><g class="pkf-footL"><ellipse cx="62" cy="156" rx="17" ry="11" fill="url(#pkfL)" transform="rotate(-12 62 156)"></ellipse></g><g class="pkf-footR"><ellipse cx="108" cy="156" rx="17" ry="11" fill="url(#pkfL)" transform="rotate(12 108 156)"></ellipse></g><g class="pkf-handL"><ellipse cx="18" cy="104" rx="11" ry="17" fill="url(#pkfL)" transform="rotate(18 18 104)"></ellipse></g><g class="pkf-armR"><ellipse cx="152" cy="52" rx="11" ry="17" fill="url(#pkfL)" transform="rotate(-20 152 52)"></ellipse></g><circle cx="85" cy="82" r="56" fill="url(#pkfG)"></circle><ellipse cx="62" cy="50" rx="18" ry="10" fill="#fff" opacity=".22" transform="rotate(-28 62 50)"></ellipse><g class="pkf-eyes"><circle cx="68" cy="76" r="15" fill="#fff"></circle><circle cx="102" cy="76" r="15" fill="#fff"></circle><g class="pkf-p"><circle cx="69" cy="75" r="7.5" fill="#191f2c"></circle><circle cx="103" cy="75" r="7.5" fill="#191f2c"></circle><circle cx="71.6" cy="71.8" r="2.4" fill="#fff"></circle><circle cx="105.6" cy="71.8" r="2.4" fill="#fff"></circle></g></g><path d="M76 102q9 7 18 0" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"></path></svg></span><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</p>
 </footer>
 
 

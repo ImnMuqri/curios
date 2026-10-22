@@ -280,8 +280,13 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   - it smiles (^^) while the visitor types a handle
 - **Landing (as built):** the same, over both claim fields.
 - **Full body, landing footer:** Peek stands on top of the o in the giant "curios" footer
-  wordmark (`.pkf`). It has two arms, feet and a small smile, waves every couple of seconds,
-  blinks and looks around. Size and position are in em, so it scales with the 31vw wordmark.
+  wordmark (`.pkf`). Its full-body form is:
+  - a **round ball** with a soft glossy gradient and a highlight
+  - **floating** bean-shaped hands and feet that aren't attached to the body
+  - big eyes and a small smile
+
+  The right hand waves every couple of seconds, the other limbs bob gently, and it blinks and
+  looks around. Size and position are in em, so it scales with the 31vw wordmark.
 - The giant footer wordmark uses the same eyes o, in the dark ghost colour (#2a3248).
 
 ## Open decisions (ask Iman before building these)
