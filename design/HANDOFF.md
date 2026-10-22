@@ -268,6 +268,10 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   it.
 - Build it as two layers: the body (`.pk`, z 0) behind the field, and the hands (`.pk-front`,
   z 3) in front. The edge sits at 64 of 96 in the viewBox.
+- The peeking form uses the same flat style as the full body: the top of the round ball, a
+  darker crescent (#1b33aa) on the right, a small highlight on the top left, big oval eyes,
+  and two round hands (#3150dc with a thin #1b33aa outline) resting on the edge. Copy the
+  SVG from the boards.
 - It slides up once on load. Reduced motion turns this and the eye movement off.
 - It appears only on Curios's own pages, never on owners' public pages.
 - **Sign in and sign up:** it peeks over the email field.
