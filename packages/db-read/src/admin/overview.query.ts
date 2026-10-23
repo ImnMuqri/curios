@@ -36,6 +36,7 @@ export interface Overview {
     factCount: number;
     hasConversation: boolean;
   }[];
+  /** Live pages only (published, not suspended), so personal + business equals livePages.count. */
   byKind: { personal: number; business: number };
 }
 
@@ -108,8 +109,8 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
         conversations: { take: 1, select: { id: true } },
       },
     }),
-    prismaRead.page.count({ where: { mode: 'PERSONAL' } }),
-    prismaRead.page.count({ where: { mode: 'BUSINESS' } }),
+    prismaRead.page.count({ where: { mode: 'PERSONAL', published: true, suspendedAt: null } }),
+    prismaRead.page.count({ where: { mode: 'BUSINESS', published: true, suspendedAt: null } }),
   ]);
 
   // When each paying page first paid for real, to see which began in the period.

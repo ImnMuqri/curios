@@ -32,7 +32,7 @@ function fixture(over: Partial<OverviewData> = {}): OverviewData {
         hasConversation: false,
       },
     ],
-    byKind: { personal: 1072, business: 212 },
+    byKind: { personal: 1072, business: 212 }, // sums to livePages.count
     ...over,
   };
 }

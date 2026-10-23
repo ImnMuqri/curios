@@ -136,7 +136,8 @@ describe('getOverview', () => {
     const o = await getOverview('today', NOW);
     // published and not suspended: Chip, Gifted, Old, Ending, EndingGrant, Fresh
     expect(o.livePages).toEqual({ count: 6, newInPeriod: 1 });
-    expect(o.byKind).toEqual({ personal: 2, business: 6 });
+    // Solo (draft) and Held (suspended) are not counted; Fresh is the one live personal page.
+    expect(o.byKind).toEqual({ personal: 1, business: 5 });
   });
 
   it('lists the five newest pages', async () => {
