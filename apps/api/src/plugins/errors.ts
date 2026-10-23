@@ -44,6 +44,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   'RATE_LIMITED',
   'UNAUTHENTICATED',
   'INVALID_CREDENTIALS',
+  // Admin sign-in: one answer for an unknown email, a wrong password and a disabled admin.
+  'ADMIN_SIGNIN_FAILED',
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
   'OAUTH_STATE_MISMATCH',

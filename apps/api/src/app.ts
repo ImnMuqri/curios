@@ -11,7 +11,13 @@ import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
 import { requireSession, sessionPlugin } from './plugins/session.js';
+import { adminSessionPlugin } from './plugins/admin-session.js';
 import {
+  adminSigninRoutes,
+  adminSessionRoutes,
+} from './modules/admin/admin-auth.routes.js';
+import {
+  adminSigninPerIpLimit,
   authPerEmailLimit,
   authPerIpLimit,
   billingPerAccountLimit,
@@ -125,7 +131,10 @@ export async function buildApp(overrides: AppOverrides = {}) {
 
   await app.register(cookie, { secret: sessionSecret });
   await app.register(cors, {
-    origin: process.env.APP_URL ?? 'http://localhost:3000',
+    // Unchanged when ADMIN_ORIGIN is unset: the admin app is allowed only where it exists.
+    origin: [process.env.APP_URL ?? 'http://localhost:3000', process.env.ADMIN_ORIGIN].filter(
+      (origin): origin is string => Boolean(origin),
+    ),
     credentials: true,
   });
   await app.register(errorsPlugin);
@@ -288,6 +297,18 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, billingPerAccountLimit(app.rateLimitRedis));
     await scope.register(ownerBillingRoutes, overrides.billing ?? {});
   });
+
+  // The Curios team's own sign-in, present only where an admin origin is configured.
+  // Its own cookie and session: owner routes ignore it and these routes ignore the
+  // owner's. Sign-in sits under the IP limiter and outside any session check.
+  if (process.env.ADMIN_ORIGIN) {
+    await app.register(adminSessionPlugin);
+    await app.register(async (scope) => {
+      await scope.register(rateLimit, adminSigninPerIpLimit(app.rateLimitRedis));
+      await scope.register(adminSigninRoutes);
+    });
+    await app.register(adminSessionRoutes);
+  }
 
   return app;
 }
