@@ -25,6 +25,7 @@ async function aRenewingPage(options: {
   failedAttempts?: number;
   lastAttemptAt?: Date | null;
   plan?: 'MONTHLY' | 'ANNUAL';
+  suspendedAt?: Date | null;
 }) {
   const slug = `ar-${randomUUID().slice(0, 8)}`;
   const token = `tok-${randomUUID()}`;
@@ -38,6 +39,7 @@ async function aRenewingPage(options: {
           displayName: 'Nadia Bakes',
           mode: 'BUSINESS',
           paidUntil: options.paidUntil,
+          suspendedAt: options.suspendedAt ?? null,
           renewalCard: {
             create: {
               token,
@@ -165,6 +167,42 @@ describe('runAutoRenewals', () => {
     expect(client.chargePurchase).toHaveBeenCalledWith(payment?.providerRef, page.token);
     expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
     expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: NOW });
+  });
+
+  it('does not charge a suspended page, and charges it once it is back', async () => {
+    const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS), suspendedAt: at(-DAY_MS) });
+    const client = aChip();
+
+    expect(await run(client)).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 0 });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: null });
+
+    await prisma.page.update({ where: { id: page.pageId }, data: { suspendedAt: null } });
+    expect(await run(client)).toMatchObject({ charged: 1 });
+  });
+
+  it('does not charge a page suspended after the read', async () => {
+    const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+
+    await run(client, aMailQueue(), {
+      afterRead: async () => {
+        await prisma.page.update({ where: { id: page.pageId }, data: { suspendedAt: NOW } });
+      },
+    });
+
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(await renewalsOf(page.pageId)).toEqual([]);
+  });
+
+  it('keeps a suspended page’s card past the grace, and tells nobody', async () => {
+    const page = await aRenewingPage({ paidUntil: at(-4 * DAY_MS), suspendedAt: at(-5 * DAY_MS) });
+    const client = aChip();
+    const mailQueue = aMailQueue();
+
+    expect(await run(client, mailQueue)).toMatchObject({ stopped: 0 });
+    expect(await cardOf(page.pageId)).not.toBeNull();
+    expect(mailQueue.add).not.toHaveBeenCalled();
   });
 
   it('charges the plan the card was saved for', async () => {

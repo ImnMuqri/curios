@@ -245,3 +245,5 @@ the margin-first screen list; See it as the owner allowed read-only with persona
   audit log, the owner's email and their dashboard. The dialog says so under the box ("The owner
   sees this").
 - Reports never suspend or hide a page by themselves (above).
+- Suspending a page also pauses its card auto-renewal (decided by Iman, 24 Oct 2026): a suspended
+  page is never charged and its saved card is not dropped while suspended.

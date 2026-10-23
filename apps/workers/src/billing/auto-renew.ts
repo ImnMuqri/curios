@@ -107,10 +107,14 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
  *
  * Each page is its own try: one page's trouble -- CHIP briefly down, say -- must not
  * stop the rest.
+ *
+ * A suspended page is paused: never charged, and its card is never dropped for lapsing
+ * while it is suspended. Brought back, it is charged on the next run if its plan is still
+ * in the window, or its card goes the usual way if the plan ran out past the grace.
  */
 export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
   const cards = await deps.prisma.renewalCard.findMany({
-    where: { page: { mode: 'BUSINESS', paidUntil: chargeWindow(deps.now) } },
+    where: { page: { mode: 'BUSINESS', paidUntil: chargeWindow(deps.now), suspendedAt: null } },
     select: {
       pageId: true,
       token: true,
@@ -240,7 +244,7 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: 
     where: {
       pageId: card.pageId,
       token: card.token,
-      page: { paidUntil: chargeWindow(deps.now) },
+      page: { paidUntil: chargeWindow(deps.now), suspendedAt: null },
       OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: new Date(deps.now.getTime() - ATTEMPT_GAP_MS) } }],
     },
     data: { lastAttemptAt: deps.now },
@@ -339,7 +343,7 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: 
 async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<void> {
   const lapsed = await deps.prisma.renewalCard.findMany({
     where: {
-      page: { mode: 'BUSINESS', paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) } },
+      page: { mode: 'BUSINESS', paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) }, suspendedAt: null },
     },
     select: { pageId: true, token: true },
   });
@@ -350,7 +354,7 @@ async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<voi
         where: {
           pageId: card.pageId,
           token: card.token,
-          page: { paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) } },
+          page: { paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) }, suspendedAt: null },
         },
       });
       if (removed.count === 0) continue;
