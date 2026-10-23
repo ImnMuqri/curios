@@ -225,6 +225,9 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 
 **Elsewhere**
 - **Landing, For business:**
+  - The customer phone now **starts on Kek Lina's link in bio** (Links tab). The cursor taps
+    the Shop link (the first link), the page slides away, and the shop opens. The first step
+    runs 5.8s instead of 3.8s to fit this.
   - the customer phone shows the new shop page (two-column cards, + on photos)
   - checkout: "How you'll pay" with FPX picked, then Maybank2u picked under "Your bank", then "Pay
     RM235 with Maybank2u", "Opening Maybank2u…", "Approved in Maybank2u"
