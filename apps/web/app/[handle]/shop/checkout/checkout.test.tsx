@@ -383,14 +383,14 @@ describe('Checkout: how you’ll pay', () => {
   const ALL = { fpx: true, wallets: ['tng', 'grab', 'spay'], card: true };
 
   /** The API, by path: what checkout asks of it, in order. */
-  function api(routes: { methods?: unknown; place?: unknown; pay?: unknown }) {
+  function api(routes: { methods?: unknown; place?: unknown; pay?: unknown; payStatus?: number }) {
     const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
     const spy = vi.fn(async (url: string) => {
       if (url.includes('/pay-methods')) return json(200, routes.methods ?? ALL);
       if (url.endsWith('/orders')) return json(201, routes.place ?? { number: 12, code: '7Q4M', token: 'tok_abc', totalCents: 21500 });
       if (url.endsWith('/pay')) {
         if (routes.pay instanceof Error) throw routes.pay;
-        return json(200, routes.pay ?? { url: 'https://gate.chip-in.asia/p/x/?preferred=fpx&fpx_bank_code=MB2U0227' });
+        return json(routes.payStatus ?? 200, routes.pay ?? { url: 'https://gate.chip-in.asia/p/x/?preferred=fpx&fpx_bank_code=MB2U0227' });
       }
       return json(404, { error: { code: 'NOT_FOUND', message: 'no' } });
     });
@@ -546,5 +546,46 @@ describe('Checkout: how you’ll pay', () => {
     render(<Checkout {...connected} language="ms" />);
     expect(await screen.findByRole('radiogroup', { name: ms.howYoullPay })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: ms.payWith('RM215', 'Maybank2u') })).toHaveTextContent('Bayar RM215 dengan Maybank2u');
+  });
+
+  it('a shop with no QR, no bank and no CHIP: WhatsApp, at checkout and after placing', async () => {
+    const user = userEvent.setup();
+    api({});
+    render(<Checkout {...base} payByQr={false} />);
+    await screen.findByText('Kek coklat moist');
+    expect(screen.queryByRole('radiogroup', { name: copy.howYoullPay })).toBeNull();
+    expect(screen.getByText(copy.payOnWhatsApp('Kek Lina'))).toBeInTheDocument();
+    await fillDetails(user);
+    await user.click(placeButton('RM215'));
+
+    expect(await screen.findByRole('heading', { name: copy.orderPlaced })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: copy.payNow('RM215') })).toBeNull();
+    expect(screen.getByRole('link', { name: copy.whatsappAbout('Kek Lina') })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
+  });
+
+  it('too many tries says so, not that online payment is unavailable', async () => {
+    const user = userEvent.setup();
+    api({ pay: { error: { code: 'RATE_LIMITED', message: 'Too many tries just now.' } }, payStatus: 429 });
+    render(<Checkout {...connected} navigate={vi.fn()} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    expect(await screen.findByText(copy.payTooMany)).toBeInTheDocument();
+    expect(screen.queryByText(copy.onlineUnavailable)).toBeNull();
+  });
+
+  it('an order already paid goes to its order page', async () => {
+    const user = userEvent.setup();
+    api({ pay: { error: { code: 'ORDER_ALREADY_PAID', message: 'This order is already paid.' } }, payStatus: 409 });
+    const navigate = vi.fn();
+    render(<Checkout {...connected} navigate={navigate} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/keklina/order/tok_abc'));
   });
 });

@@ -6,6 +6,7 @@ import { hashSessionValue, type MailJobData } from '@curios/core';
 import { sealSecret } from '@curios/core/secret-box';
 import { buildApp } from '../../app.js';
 import type { AvatarStore } from '../pages/storage.js';
+import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
 const SECRETS_KEY = randomBytes(32);
 const SECRET = 'owner-chip-secret-key-0123456789abcdefghij';
@@ -38,16 +39,19 @@ const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<t
 
 let app: FastifyInstance;
 let live: FastifyInstance;
+/** As app, but asking CHIP about one order at most once every 5s, as production does. */
+let throttled: FastifyInstance;
 let nth = 0;
 const from = () => `203.0.121.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
-  app = await buildApp({ shopChip: { clientFor, secretsKey: SECRETS_KEY, production: false, callbackBaseUrl: CALLBACK_BASE }, orders: { mailQueue, store } });
-  live = await buildApp({ shopChip: { clientFor, secretsKey: SECRETS_KEY, production: true, callbackBaseUrl: CALLBACK_BASE }, orders: { mailQueue, store } });
-  await Promise.all([app.ready(), live.ready()]);
+  app = await buildApp({ shopChip: { clientFor, secretsKey: SECRETS_KEY, production: false, callbackBaseUrl: CALLBACK_BASE }, orders: { mailQueue, store, payStatusEveryMs: 0 } });
+  live = await buildApp({ shopChip: { clientFor, secretsKey: SECRETS_KEY, production: true, callbackBaseUrl: CALLBACK_BASE }, orders: { mailQueue, store, payStatusEveryMs: 0 } });
+  throttled = await buildApp({ shopChip: { clientFor, secretsKey: SECRETS_KEY, production: false, callbackBaseUrl: CALLBACK_BASE }, orders: { mailQueue, store } });
+  await Promise.all([app.ready(), live.ready(), throttled.ready()]);
 });
 afterAll(async () => {
-  await Promise.all([app.close(), live.close()]);
+  await Promise.all([app.close(), live.close(), throttled.close()]);
 });
 
 function aPurchase(overrides: Partial<ChipPurchase> = {}): ChipPurchase {
@@ -104,7 +108,7 @@ async function aShopWithOrder(on: FastifyInstance, options: ShopOptions = {}) {
         },
       },
     },
-    select: { pages: { select: { id: true } } },
+    select: { id: true, pages: { select: { id: true } } },
   });
   const pageId = account.pages[0]!.id;
   if (options.connected ?? true) {
@@ -145,7 +149,7 @@ async function aShopWithOrder(on: FastifyInstance, options: ShopOptions = {}) {
     },
     select: { id: true },
   });
-  return { handle: slug, pageId, brandId, token, orderId: order.id };
+  return { handle: slug, pageId, brandId, token, orderId: order.id, accountId: account.id };
 }
 
 type Shop = Awaited<ReturnType<typeof aShopWithOrder>>;
@@ -423,6 +427,7 @@ describe('POST /store/chip/callback/:orderId', () => {
       ['not paid', { status: 'pending_execute' }],
       ['another reference', { status: 'paid', reference: '2' }],
       ['another total', { status: 'paid', totalCents: 100 }],
+      ['another currency', { status: 'paid', currency: 'USD' }],
     ];
     for (const [, change] of cases) {
       const shop = await aShopWithOrder(app);
@@ -477,7 +482,8 @@ describe('GET /store/orders/:token/pay-status', () => {
     const res = await payStatus(app, shop.token);
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ state: 'paid', paidAt: expect.any(String), paidMethodLabel: 'Touch ’n Go eWallet', paidRef: purchase.id });
+    // CHIP gave no reference of its own, so none is shown: never the purchase id.
+    expect(res.json()).toEqual({ state: 'paid', paidAt: expect.any(String), paidMethodLabel: 'Touch ’n Go eWallet', paidRef: null });
     expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
@@ -498,12 +504,170 @@ describe('GET /store/orders/:token/pay-status', () => {
     client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'pending_execute' });
     expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'pending' });
     client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
-    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'pending' });
+    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'unknown' });
     client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'cancelled' });
     expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed' });
 
     const plain = await aShopWithOrder(app);
     expect((await payStatus(app, plain.token)).json()).toEqual({ state: 'none' });
     expect((await payStatus(app, 'no-such-token')).statusCode).toBe(404);
+  });
+});
+
+describe('fix round 1: a second try never orphans a paid purchase', () => {
+  it('makes no new purchase when the earlier one cannot be looked up', async () => {
+    const shop = await aShopWithOrder(app);
+    const first = await startPayment(app, shop);
+    client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+
+    expect((await pay(app, shop.token, { method: 'card', email: 'a@example.com' })).json()).toEqual({ url: null });
+    expect(client.createPurchase).toHaveBeenCalledTimes(1);
+    expect((await orderOf(app, shop.orderId)).chipPurchaseId).toBe(first.id);
+  });
+
+  it('settles the earlier purchase and refuses, when it cannot be cancelled because it was paid', async () => {
+    const shop = await aShopWithOrder(app);
+    const first = await startPayment(app, shop);
+    client.getPurchase.mockResolvedValueOnce({ ...first, status: 'viewed' }).mockResolvedValueOnce({ ...first, status: 'paid', paymentMethod: 'fpx' });
+    client.cancelPurchase.mockRejectedValueOnce(new ChipRefusedError('paid', 400));
+
+    const res = await pay(app, shop.token, { method: 'card', email: 'a@example.com' });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('ORDER_ALREADY_PAID');
+    expect(client.createPurchase).toHaveBeenCalledTimes(1);
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP' });
+  });
+
+  it('makes no new purchase when the earlier one cannot be cancelled and is not paid', async () => {
+    const shop = await aShopWithOrder(app);
+    await startPayment(app, shop);
+    client.getPurchase.mockResolvedValue({ ...aPurchase(), status: 'viewed' });
+    client.cancelPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+
+    expect((await pay(app, shop.token, { method: 'card', email: 'a@example.com' })).json()).toEqual({ url: null });
+    expect(client.createPurchase).toHaveBeenCalledTimes(1);
+  });
+
+  it('two tries at once: one purchase is kept, the other cancelled', async () => {
+    const shop = await aShopWithOrder(app);
+    const one = aPurchase();
+    const two = aPurchase();
+    // Slow enough at CHIP that both tries have read the order before either keeps its purchase.
+    const slow = (purchase: ChipPurchase) => () => new Promise<ChipPurchase>((resolve) => setTimeout(() => resolve(purchase), 150));
+    client.createPurchase.mockImplementationOnce(slow(one)).mockImplementationOnce(slow(two));
+
+    const answers = await Promise.all([
+      pay(app, shop.token, { method: 'card', email: 'a@example.com' }),
+      pay(app, shop.token, { method: 'card', email: 'a@example.com' }),
+    ]);
+
+    const kept = (await orderOf(app, shop.orderId)).chipPurchaseId;
+    expect([one.id, two.id]).toContain(kept);
+    const lost = kept === one.id ? two.id : one.id;
+    expect(client.cancelPurchase).toHaveBeenCalledWith(lost);
+    expect(answers.filter((res) => res.json().url !== null)).toHaveLength(1);
+  });
+
+  it('keeps when the purchase stops being payable', async () => {
+    const shop = await aShopWithOrder(app);
+    const before = Date.now();
+    await startPayment(app, shop);
+    const due = (await orderOf(app, shop.orderId)).chipPurchaseDueAt!.getTime();
+    expect(due).toBeGreaterThanOrEqual(before + 60 * 60 * 1000 - 1000);
+    expect(due).toBeLessThanOrEqual(Date.now() + 60 * 60 * 1000);
+  });
+});
+
+describe('fix round 1: the order page never strands a customer', () => {
+  it('says unknown, not pending, when it cannot ask CHIP', async () => {
+    const shop = await aShopWithOrder(app);
+    await startPayment(app, shop);
+    await app.prisma.shopPaymentAccount.delete({ where: { pageId: shop.pageId } });
+    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'unknown' });
+
+    const sealedElsewhere = await aShopWithOrder(app);
+    await startPayment(app, sealedElsewhere);
+    await app.prisma.shopPaymentAccount.update({ where: { pageId: sealedElsewhere.pageId }, data: { secretKeyCiphertext: sealSecret(SECRET, randomBytes(32)) } });
+    expect((await payStatus(app, sealedElsewhere.token)).json()).toEqual({ state: 'unknown' });
+  });
+
+  it('a purchase past its due time that is not paid has failed', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { chipPurchaseDueAt: new Date(Date.now() - 60_000) } });
+    client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'viewed' });
+    expect((await payStatus(app, shop.token)).json()).toEqual({ state: 'failed' });
+  });
+});
+
+describe('fix round 1: budgets', () => {
+  it('asks CHIP about one order at most once every few seconds, answering the last state meanwhile', async () => {
+    const shop = await aShopWithOrder(throttled);
+    const purchase = await startPayment(throttled, shop);
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'viewed' });
+
+    for (let i = 0; i < 3; i++) expect((await payStatus(throttled, shop.token)).json()).toEqual({ state: 'pending' });
+    expect(client.getPurchase).toHaveBeenCalledTimes(1);
+  });
+
+  it("the order page's checks have their own budget per order, apart from paying's per-visitor one", async () => {
+    const shop = await aShopWithOrder(app);
+    const ip = from();
+    for (let i = 0; i < 70; i++) {
+      const res = await app.inject({ method: 'GET', url: `/store/orders/${shop.token}/pay-status`, remoteAddress: ip });
+      expect(res.statusCode).toBe(200);
+    }
+  });
+
+  it('paying is limited per order as well as per visitor', async () => {
+    const shop = await aShopWithOrder(app);
+    client.createPurchase.mockImplementation(async () => aPurchase());
+    client.getPurchase.mockImplementation(async (id) => ({ ...aPurchase(), id, status: 'viewed' }));
+    const codes: number[] = [];
+    for (let i = 0; i < 11; i++) codes.push((await pay(app, shop.token, { method: 'card', email: 'a@example.com' })).statusCode);
+    expect(codes.slice(0, 10).every((code) => code === 200)).toBe(true);
+    expect(codes[10]).toBe(429);
+  });
+});
+
+describe('fix round 1: the owner cancels an order being paid online', () => {
+  const cancel = async (on: FastifyInstance, shop: Shop) =>
+    on.inject({ method: 'POST', url: `/orders/${shop.orderId}/cancel`, cookies: { [SESSION_COOKIE]: (await createSession(on.prisma, shop.accountId)).value }, payload: {} });
+
+  it("cancels CHIP's purchase first, with the owner's key", async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+
+    expect((await cancel(app, shop)).statusCode).toBe(204);
+    expect(client.cancelPurchase).toHaveBeenCalledWith(purchase.id);
+    expect((await orderOf(app, shop.orderId)).status).toBe('CANCELLED');
+  });
+
+  it('refuses, and marks it paid, when it was just paid online', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    client.cancelPurchase.mockRejectedValueOnce(new ChipRefusedError('paid', 400));
+    client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'paid', paymentMethod: 'fpx' });
+
+    const res = await cancel(app, shop);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'ORDER_JUST_PAID', message: 'This order was just paid online.' });
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP' });
+  });
+
+  it('a payment that lands after the cancel is recorded on the cancelled order, so a refund is owed', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    client.cancelPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    expect((await cancel(app, shop)).statusCode).toBe(204);
+
+    client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'paid', paymentMethod: 'visa', maskedPan: '4242' });
+    const res = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+
+    expect(res.json()).toEqual({ status: 'paid-after-cancel' });
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidVia: 'CHIP', paidAt: expect.any(Date), paidMethodLabel: 'Visa card ending 4242', refundedAt: null });
   });
 });

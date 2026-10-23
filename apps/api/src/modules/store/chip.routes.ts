@@ -58,7 +58,7 @@ export const shopChipRoutes: FastifyPluginAsyncZod<ShopChipRouteOptions> = async
 
   app.delete('/store/chip', async (request) => {
     if (!request.account) throw new UnauthenticatedError();
-    await disconnectChip(app.prisma, request.account.id);
+    await disconnectChip(app.prisma, request.account.id, new Date());
     return { connected: false };
   });
 

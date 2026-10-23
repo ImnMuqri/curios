@@ -9,6 +9,7 @@ import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import { resolveSecretsKey, type ShopChipRouteOptions } from '../store/chip.routes.js';
 import type { ChipClientFor } from '../store/chip.service.js';
 import {
+  LookupCache,
   MethodsCache,
   openOwnerClient,
   orderForCallback,
@@ -19,16 +20,34 @@ import {
   type PayOnlineDeps,
 } from './pay-online.service.js';
 
-export interface PayOnlineRouteOptions {
+export interface PayOnlineOptions {
   chip?: ShopChipRouteOptions;
   /** As OrderRouteOptions.store: where a receipt sent before paying online is removed from. */
   store?: AvatarStore | null;
+  /** How often the order page's check may ask CHIP about one order. Tests pass 0. */
+  payStatusEveryMs?: number;
+}
+
+/** What every paying-online route shares: the settings, and the two caches. Built once, in app.ts. */
+export type PayOnline = Omit<PayOnlineDeps, 'log'>;
+
+export interface PayOnlineRouteOptions {
+  payOnline: PayOnline;
 }
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
-/** Everything paying online needs, read once at registration. */
-function payOnlineSettings(options: PayOnlineRouteOptions) {
+/** Everything paying online needs, read once when the app is built. */
+export function createPayOnline(prisma: PayOnlineDeps['prisma'], options: PayOnlineOptions): PayOnline {
+  return {
+    prisma,
+    methods: new MethodsCache(),
+    lookups: new LookupCache(options.payStatusEveryMs ?? 5000),
+    ...payOnlineSettings(options),
+  };
+}
+
+function payOnlineSettings(options: PayOnlineOptions) {
   const chip = options.chip ?? {};
   const production = chip.production ?? process.env.NODE_ENV === 'production';
   const baseUrl = process.env.CHIP_BASE_URL || CHIP_DEFAULT_BASE_URL;
@@ -44,14 +63,9 @@ function payOnlineSettings(options: PayOnlineRouteOptions) {
   };
 }
 
-/**
- * Checkout's online payment and the order page's check, on the customer's order
- * link. Anonymous, as the receipt is, and under its own per-IP budget (app.ts).
- */
-export const shopPayRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async (app, options) => {
-  const settings = payOnlineSettings(options);
-  const methods = new MethodsCache();
-  const deps = (log: PayOnlineDeps['log']): PayOnlineDeps => ({ prisma: app.prisma, methods, log, ...settings });
+/** Checkout asking what the shop takes online. Anonymous, per-IP budget (app.ts). */
+export const shopPayMethodsRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async (app, options) => {
+  const deps = (log: PayOnlineDeps['log']): PayOnlineDeps => ({ ...options.payOnline, log });
 
   app.get(
     '/store/:handle/pay-methods',
@@ -67,6 +81,11 @@ export const shopPayRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async
     },
     async (request) => payMethodsFor(deps(request.log), request.params.handle, request.query.amount, new Date()),
   );
+};
+
+/** Starting to pay an order online: each one makes a purchase on the owner's account, so per-IP and per-order budgets (app.ts). */
+export const shopPayStartRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async (app, options) => {
+  const deps = (log: PayOnlineDeps['log']): PayOnlineDeps => ({ ...options.payOnline, log });
 
   app.post(
     '/store/orders/:token/pay',
@@ -87,6 +106,15 @@ export const shopPayRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async
       return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), email }, new Date());
     },
   );
+};
+
+/**
+ * The order page's check on a payment in flight. Its own, larger budget keyed on the
+ * order (app.ts), so a page that keeps asking never eats the visitor's paying budget;
+ * CHIP itself is asked about one order at most every few seconds (LookupCache).
+ */
+export const shopPayStatusRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async (app, options) => {
+  const deps = (log: PayOnlineDeps['log']): PayOnlineDeps => ({ ...options.payOnline, log });
 
   app.get(
     '/store/orders/:token/pay-status',
@@ -96,7 +124,7 @@ export const shopPayRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async
         response: {
           200: z.union([
             z.object({ state: z.literal('paid'), paidAt: z.string().nullable(), paidMethodLabel: z.string().nullable(), paidRef: z.string().nullable() }),
-            z.object({ state: z.enum(['pending', 'failed', 'none']) }),
+            z.object({ state: z.enum(['pending', 'failed', 'none', 'unknown']) }),
           ]),
           404: errorSchema,
         },
@@ -113,8 +141,6 @@ export const shopPayRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async
  * signature check to refuse. The raw body is kept, because the signature is over it.
  */
 export const shopChipCallbackRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = async (app, options) => {
-  const settings = payOnlineSettings(options);
-  const methods = new MethodsCache();
   await app.register(rawJson);
 
   const badSignature = (reply: FastifyReply) =>
@@ -139,9 +165,14 @@ export const shopChipCallbackRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions
     }
     // The id is the only thing the body is believed for, and only this order's own purchase is looked up.
     const parsed = z.object({ id: z.string().min(1) }).safeParse(request.body);
-    if (!parsed.success || parsed.data.id !== order.chipPurchaseId) return reply.send({ status: 'ignored' });
+    if (!parsed.success) return reply.send({ status: 'ignored' });
+    if (parsed.data.id !== order.chipPurchaseId) {
+      // Signed by this shop's key, about a purchase the order no longer holds (an earlier try).
+      request.log.warn({ source: 'shop-callback', orderId: order.id, purchaseId: parsed.data.id }, 'chip message about a purchase this order does not hold');
+      return reply.send({ status: 'ignored' });
+    }
 
-    const deps: PayOnlineDeps = { prisma: app.prisma, methods, log: request.log, ...settings };
+    const deps: PayOnlineDeps = { ...options.payOnline, log: request.log };
     const now = new Date();
     const client = await openOwnerClient(deps, account, now);
     if (!client) throw new Error('The shop’s CHIP key cannot be opened');

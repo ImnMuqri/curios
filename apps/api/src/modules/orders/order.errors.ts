@@ -138,3 +138,13 @@ export class OrderStateError extends Error {
     this.name = 'OrderStateError';
   }
 }
+
+/** The owner tried to cancel an order a customer had just paid online: it is marked paid instead. */
+export class OrderJustPaidError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ORDER_JUST_PAID';
+  constructor() {
+    super('This order was just paid online.');
+    this.name = 'OrderJustPaidError';
+  }
+}

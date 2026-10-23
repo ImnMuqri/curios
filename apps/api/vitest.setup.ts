@@ -58,6 +58,8 @@ process.env.CHIP_BASE_URL = 'https://chip.invalid/api/v1';
 process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';
 process.env.RATE_LIMIT_SHOP_CHIP_PER_ACCOUNT = '10';
 process.env.RATE_LIMIT_SHOP_PAY_PER_IP = '60';
+process.env.RATE_LIMIT_SHOP_PAY_PER_ORDER = '10';
+process.env.RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER = '300';
 
 // The embeddings key factRoutes now requires at boot, for the same reason as
 // the CHIP settings above: every test that reaches the embedder injects a

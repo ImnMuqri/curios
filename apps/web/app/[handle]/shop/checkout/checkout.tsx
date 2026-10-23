@@ -67,8 +67,8 @@ interface PlacedOrder {
   token: string;
   totalCents: number;
   phone: string;
-  /** Paying online could not start: the order waits for the QR (or WhatsApp) instead. */
-  onlineUnavailable: boolean;
+  /** Paying online could not start (or was tried too often): the order waits for the QR (or WhatsApp) instead. */
+  onlineUnavailable: 'unavailable' | 'tooMany' | null;
 }
 
 /** The board's four ways to pay: three through the owner's CHIP account, and their own QR. */
@@ -212,8 +212,9 @@ export function Checkout(props: CheckoutProps) {
   if (offer?.fpx) ways.push('fpx');
   if (offer && offer.wallets.length > 0) ways.push('wallet');
   if (offer?.card) ways.push('card');
-  // A shop without CHIP has only its QR, as checkout always had.
-  if (payByQr || !hasChip) ways.push('qr');
+  // The owner's own QR or bank account, when there is one; storeGaps keeps an open shop
+  // without CHIP from having neither, and a shop that slips through gets the WhatsApp line.
+  if (payByQr) ways.push('qr');
   const how: Way | null = way && ways.includes(way) ? way : (ways[0] ?? null);
   const walletPick: WalletId | null = wallet && offer?.wallets.includes(wallet) ? wallet : (offer?.wallets[0] ?? null);
   const online = how === 'fpx' || how === 'wallet' || how === 'card';
@@ -265,7 +266,7 @@ export function Checkout(props: CheckoutProps) {
       changeLines([]);
       // Placed first, exactly as for the QR; paying online only follows. If it cannot
       // start, the order waits for the QR (or the shop's WhatsApp) like any other.
-      let onlineUnavailable = false;
+      let onlineUnavailable: PlacedOrder['onlineUnavailable'] = null;
       if (online) {
         const choice = how === 'fpx' ? { method: 'fpx', bank } : how === 'card' ? { method: 'card' } : { method: walletPick };
         try {
@@ -283,10 +284,16 @@ export function Checkout(props: CheckoutProps) {
             (props.navigate ?? goTo)(paying.url);
             return;
           }
-        } catch {
-          // Said on the placed screen below.
+        } catch (error) {
+          if (error instanceof ApiError && error.code === 'ORDER_ALREADY_PAID') {
+            // Paid already (an earlier try went through): its order page says so.
+            leaving = true;
+            (props.navigate ?? goTo)(`/${props.handle}/order/${encodeURIComponent(result.token)}`);
+            return;
+          }
+          if (error instanceof ApiError && error.status === 429) onlineUnavailable = 'tooMany';
         }
-        onlineUnavailable = true;
+        onlineUnavailable ??= 'unavailable';
       }
       setPlaced({ number: result.number, code: result.code, token: result.token, totalCents: result.totalCents, phone: sentPhone, onlineUnavailable });
       top.current?.scrollIntoView?.();
@@ -604,9 +611,9 @@ export function Checkout(props: CheckoutProps) {
               <span>{copy.payTo(props.displayName)}</span>
             </div>
             {ways.length === 0 ? (
-              // CHIP is this shop's only way to pay and it takes nothing right now.
+              // Nothing to pay by here right now (CHIP is the only way and takes nothing, or there is no way at all).
               <p className={styles.notice} role="status">
-                {copy.onlineUnavailableWhatsApp(props.displayName)}
+                {hasChip ? copy.onlineUnavailableWhatsApp(props.displayName) : copy.payOnWhatsApp(props.displayName)}
               </p>
             ) : (
               <div className={styles.methods} role="radiogroup" aria-label={copy.howYoullPay}>

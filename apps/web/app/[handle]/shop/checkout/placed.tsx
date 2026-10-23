@@ -40,8 +40,8 @@ export function Placed(props: {
   phone?: string;
   /** Paid online: "Paid. Order placed", and See your order calls this. */
   onSeeOrder?: () => void;
-  /** Paying online could not start. */
-  onlineUnavailable?: boolean;
+  /** Paying online could not start, or was tried too often. */
+  onlineUnavailable?: 'unavailable' | 'tooMany' | null;
   /** The shop has a QR or bank account to pay by instead. */
   payByQr?: boolean;
   whatsapp?: string | null;
@@ -56,6 +56,7 @@ export function Placed(props: {
 
   const path = `/${props.handle}/order/${props.token}`;
   const paid = props.onSeeOrder !== undefined;
+  const noWayToPay = !paid && props.payByQr === false;
   const total = formatRinggit(props.totalCents);
   const arrow = (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -95,7 +96,11 @@ export function Placed(props: {
       <p className={styles.placedSub}>{paid ? copy.paidPlacedSub(total, props.displayName) : copy.placedSub(props.displayName)}</p>
       {props.onlineUnavailable ? (
         <p className={styles.placedNotice} role="status">
-          {props.payByQr === false ? copy.onlineUnavailableWhatsApp(props.displayName) : copy.onlineUnavailable}
+          {props.onlineUnavailable === 'tooMany'
+            ? copy.payTooMany
+            : props.payByQr === false
+              ? copy.onlineUnavailableWhatsApp(props.displayName)
+              : copy.onlineUnavailable}
         </p>
       ) : null}
 
@@ -121,17 +126,21 @@ export function Placed(props: {
           {copy.seeOrder}
           {arrow}
         </button>
+      ) : noWayToPay ? (
+        // No QR or bank account: the order page has nothing to pay by, so straight to the shop's WhatsApp.
+        props.whatsapp && props.number !== undefined ? (
+          <a className={`${styles.whatsapp} ${styles.placedWhatsapp}`} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(props.number, props.code))} rel="noopener">
+            {copy.whatsappAbout(props.displayName)}
+          </a>
+        ) : (
+          <p className={styles.placedNotice}>{copy.noWhatsApp(props.displayName)}</p>
+        )
       ) : (
         <a className={styles.pay} href={path}>
           {copy.payNow(total)}
           {arrow}
         </a>
       )}
-      {props.onlineUnavailable && props.payByQr === false && props.whatsapp && props.number !== undefined ? (
-        <a className={`${styles.whatsapp} ${styles.placedWhatsapp}`} href={whatsappOrderUrl(props.whatsapp, copy.whatsappOrderText(props.number, props.code))} rel="noopener">
-          {copy.whatsappAbout(props.displayName)}
-        </a>
-      ) : null}
       {props.phone ? (
         <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
           {copy.sendLink}

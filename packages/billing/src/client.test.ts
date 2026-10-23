@@ -91,6 +91,7 @@ describe('createPurchase', () => {
       isTest: true,
       paymentMethod: null,
       maskedPan: null,
+      currency: 'MYR',
     });
   });
 
@@ -228,7 +229,7 @@ describe('getPurchase', () => {
         transaction_data: { payment_method: 'mastercard', extra: { masked_pan: '4242', card_brand: 'mastercard' } },
       }),
     ).getPurchase(paidJson.id);
-    expect(purchase).toMatchObject({ referenceGenerated: 'CH0042', notes: 'FPX · Maybank2u', paymentMethod: 'mastercard', maskedPan: '4242' });
+    expect(purchase).toMatchObject({ referenceGenerated: 'CH0042', notes: 'FPX · Maybank2u', paymentMethod: 'mastercard', maskedPan: '4242', currency: 'MYR' });
 
     const bare = await clientWith(answering(200, { ...purchaseJson, reference_generated: '', notes: '' })).getPurchase('x');
     expect(bare).not.toHaveProperty('referenceGenerated');

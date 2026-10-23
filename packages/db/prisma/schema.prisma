@@ -807,6 +807,8 @@ model Order {
   paidVia           OrderPaidVia?
   /// The CHIP purchase that pays (or paid) this order online, on the owner's own account.
   chipPurchaseId    String?        @unique
+  /// When that purchase stops being payable (its due_strict time): past it, nobody can pay it.
+  chipPurchaseDueAt DateTime?
   /// The customer's email, asked for only when they pay online (CHIP needs one for the receipt).
   payerEmail        String?
   /// How CHIP says it was paid, for the order page: "FPX · Maybank2u".

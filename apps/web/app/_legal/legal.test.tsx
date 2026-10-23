@@ -63,7 +63,8 @@ describe('LegalPage', () => {
     expect(all('ms', 'terms')).toContain('akaun CHIP pemilik sendiri');
     expect(all('ms', 'terms')).toContain('Kami menyimpan kunci itu dalam bentuk tersulit');
     expect(all('en', 'privacy')).toContain('CHIP (Malaysia): processes online payments for shop orders');
-    expect(all('en', 'privacy')).toContain('your email address, for CHIP’s receipt');
+    expect(all('en', 'privacy')).toContain('your email address, for CHIP’s receipt, and how you paid (the bank you chose, or your card’s brand and last four digits)');
+    expect(all('ms', 'privacy')).toContain('cara anda membayar (bank yang anda pilih, atau jenama kad dan empat digit terakhirnya)');
     expect(all('ms', 'privacy')).toContain('CHIP (Malaysia): memproses bayaran dalam talian untuk tempahan kedai');
   });
 

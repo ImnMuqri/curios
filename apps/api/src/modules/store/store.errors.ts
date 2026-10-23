@@ -95,14 +95,14 @@ export class ChipTestKeyError extends Error {
 /** The owner's account takes no card or e-wallet, so there is nothing to test RM1 with. */
 /**
  * Connecting checks the key with a purchase it cancels at once, offered by card or
- * e-wallet only; an account with neither cannot be checked that way, and the check
- * never offers FPX or CHIP's DuitNow QR.
+ * e-wallet, or by FPX alone when the account has neither, and never by CHIP's DuitNow
+ * QR; an account with none of them cannot be checked.
  */
 export class ChipNoCheckMethodError extends Error {
   readonly statusCode = 400;
   readonly code = 'CHIP_NO_CHECK_METHOD';
   constructor() {
-    super('Your CHIP account takes no card or e-wallet yet, so Curios can’t check it. Turn one on in CHIP, then connect again.');
+    super('Your CHIP account takes no FPX, card or e-wallet yet, so Curios can’t check it. Turn one on in CHIP, then connect again.');
     this.name = 'ChipNoCheckMethodError';
   }
 }
@@ -111,7 +111,7 @@ export class ChipNoTestMethodError extends Error {
   readonly statusCode = 400;
   readonly code = 'CHIP_NO_TEST_METHOD';
   constructor() {
-    super('Your CHIP account takes no card or e-wallet yet, so there is nothing to test with. Turn one on in CHIP first.');
+    super('Test with RM1 needs card or e-wallet on your CHIP account.');
     this.name = 'ChipNoTestMethodError';
   }
 }
@@ -145,5 +145,15 @@ export class ChipNotConfiguredError extends Error {
   constructor() {
     super('Connecting CHIP is not configured in this environment.');
     this.name = 'ChipNotConfiguredError';
+  }
+}
+
+/** A customer may be paying through the CHIP account right now: it cannot go, or be swapped, until that purchase can no longer be paid. */
+export class ChipPaymentInFlightError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'CHIP_PAYMENT_IN_FLIGHT';
+  constructor() {
+    super('A customer is paying right now. Try again in an hour.');
+    this.name = 'ChipPaymentInFlightError';
   }
 }

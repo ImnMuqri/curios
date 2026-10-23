@@ -6,7 +6,7 @@ import type { PrismaClient } from '@curios/db';
 import { errName } from '../billing/billing.service.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
-import { OrderAlreadyPaidError, OrderCancelledError, OrderNotFoundError } from './order.errors.js';
+import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError } from './order.errors.js';
 
 type Log = {
   info: (obj: object, msg: string) => void;
@@ -42,6 +42,29 @@ export class MethodsCache {
   }
 }
 
+/**
+ * The last thing CHIP said about each order's purchase, so the order page's checks ask
+ * CHIP about one order at most once every few seconds however often the page asks.
+ */
+export class LookupCache {
+  private readonly entries = new Map<string, { at: number; status: PayStatus }>();
+  constructor(
+    readonly everyMs = 5000,
+    private readonly max = 5000,
+  ) {}
+
+  recent(orderId: string, now: number): PayStatus | undefined {
+    const entry = this.entries.get(orderId);
+    return entry && now - entry.at < this.everyMs ? entry.status : undefined;
+  }
+
+  keep(orderId: string, status: PayStatus, now: number): void {
+    if (this.everyMs <= 0) return;
+    if (this.entries.size >= this.max) this.entries.delete(this.entries.keys().next().value!);
+    this.entries.set(orderId, { at: now, status });
+  }
+}
+
 export interface PayOnlineDeps {
   prisma: PrismaClient;
   clientFor: ChipClientFor;
@@ -53,6 +76,7 @@ export interface PayOnlineDeps {
   callbackBaseUrl: string | null;
   store: AvatarStore | null;
   methods: MethodsCache;
+  lookups: LookupCache;
   log: Log;
 }
 
@@ -192,18 +216,36 @@ export async function startOnlinePayment(
   const client = await openOwnerClient(deps, account, now);
   if (!client) return unavailable('key cannot be opened');
 
-  // A purchase from an earlier attempt: if it was paid, that pays the order, and
-  // a second purchase would charge the customer twice. Otherwise it is cancelled.
-  if (order.chipPurchaseId) {
-    const previous = await client.getPurchase(order.chipPurchaseId).catch(() => null);
-    if (previous?.status === 'paid') {
-      const outcome = await settleChipPurchase(deps, { ...order, pageId: account.pageId }, previous, now);
+  // A purchase from an earlier attempt: if it was paid, that pays the order, and a
+  // second purchase would charge the customer twice. So nothing new is made unless the
+  // earlier one is known to be dead, or is cancelled here; anything less is unavailable.
+  const previousId = order.chipPurchaseId;
+  if (previousId) {
+    const settled = async (purchase: ChipPurchase) => {
+      const outcome = await settleChipPurchase(deps, { ...order, pageId: account.pageId }, purchase, now);
       if (outcome === 'paid' || outcome === 'already-paid') throw new OrderAlreadyPaidError();
+    };
+    let previous: ChipPurchase;
+    try {
+      previous = await client.getPurchase(previousId);
+    } catch (error) {
+      deps.log.warn({ orderId: order.id, purchaseId: previousId, err: errName(error) }, 'earlier order purchase could not be checked');
+      return unavailable('earlier purchase unknown');
     }
-    if (!previous || !DEAD_PURCHASE_STATUSES.has(previous.status)) {
-      await client.cancelPurchase(order.chipPurchaseId).catch((error: unknown) =>
-        deps.log.warn({ orderId: order.id, purchaseId: order.chipPurchaseId, err: errName(error) }, 'earlier order purchase could not be cancelled'),
-      );
+    if (previous.status === 'paid') {
+      await settled(previous);
+      return unavailable('earlier purchase paid but not this order');
+    }
+    if (!DEAD_PURCHASE_STATUSES.has(previous.status)) {
+      try {
+        await client.cancelPurchase(previousId);
+      } catch (error) {
+        deps.log.warn({ orderId: order.id, purchaseId: previousId, err: errName(error) }, 'earlier order purchase could not be cancelled');
+        // Most likely paid in between: look again, and settle it if so.
+        const again = await client.getPurchase(previousId).catch(() => null);
+        if (again?.status === 'paid') await settled(again);
+        return unavailable('earlier purchase could not be cancelled');
+      }
     }
   }
 
@@ -223,6 +265,7 @@ export async function startOnlinePayment(
     return unavailable('total mismatch');
   }
 
+  const dueAt = new Date(now.getTime() + PAY_WINDOW_MS);
   let purchase: ChipPurchase;
   try {
     purchase = await client.createPurchase({
@@ -236,7 +279,7 @@ export async function startOnlinePayment(
       notes: choiceLabel(input),
       ...(deps.callbackBaseUrl ? { successCallback: `${deps.callbackBaseUrl}/store/chip/callback/${order.id}` } : {}),
       redirectUrl: `${deps.appUrl}/${order.page.handle}/order/${token}`,
-      dueAt: new Date(now.getTime() + PAY_WINDOW_MS),
+      dueAt,
       sendReceipt: true,
       cardsOnlyRecurring: false,
       methods: chipWhitelist(methods),
@@ -263,15 +306,20 @@ export async function startOnlinePayment(
     });
   }
 
+  // Kept only over the purchase this attempt started from: two attempts at once both
+  // make one, and only one of them may stay on the order.
   const { count } = await deps.prisma.order.updateMany({
-    where: { id: order.id, status: 'PLACED' },
-    data: { chipPurchaseId: purchase.id, payerEmail: input.email },
+    where: { id: order.id, status: 'PLACED', chipPurchaseId: previousId },
+    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail: input.email },
   });
   if (count === 0) {
-    // Moved on while the purchase was made (the owner cancelled, or marked it paid).
-    await client.cancelPurchase(purchase.id).catch(() => undefined);
-    const now2 = await deps.prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { status: true } });
-    refuseFor(now2.status);
+    // Another attempt won, or the order moved on (the owner cancelled, or it was paid).
+    await client.cancelPurchase(purchase.id).catch((error: unknown) =>
+      deps.log.warn({ orderId: order.id, purchaseId: purchase.id, err: errName(error) }, 'lost order purchase could not be cancelled'),
+    );
+    const current = await deps.prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { status: true } });
+    refuseFor(current.status);
+    return unavailable('another attempt was kept');
   }
   deps.log.info({ orderId: order.id, purchaseId: purchase.id }, 'order purchase created');
 
@@ -279,7 +327,7 @@ export async function startOnlinePayment(
   return { url };
 }
 
-export type SettleOutcome = 'paid' | 'already-paid' | 'pending' | 'failed' | 'mismatch' | 'test-refused' | 'not-placed';
+export type SettleOutcome = 'paid' | 'already-paid' | 'paid-after-cancel' | 'pending' | 'failed' | 'mismatch' | 'test-refused' | 'not-placed';
 
 /**
  * Applies what CHIP says about an order's purchase, fetched with the owner's
@@ -295,7 +343,11 @@ export async function settleChipPurchase(
   now: Date,
 ): Promise<SettleOutcome> {
   if (!order.chipPurchaseId || purchase.id !== order.chipPurchaseId) return 'mismatch';
-  if (purchase.reference !== String(order.number) || purchase.totalCents !== order.totalCents) {
+  if (
+    purchase.reference !== String(order.number) ||
+    purchase.totalCents !== order.totalCents ||
+    (purchase.currency !== undefined && purchase.currency !== 'MYR')
+  ) {
     deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order purchase does not match its order');
     return 'mismatch';
   }
@@ -305,16 +357,20 @@ export async function settleChipPurchase(
   }
   if (purchase.status !== 'paid') return DEAD_PURCHASE_STATUSES.has(purchase.status) ? 'failed' : 'pending';
 
+  const paid = {
+    paidAt: now,
+    paidVia: 'CHIP' as const,
+    paidMethodLabel: paidMethodLabel(purchase),
+    // CHIP's own reference, or none: the purchase id is not a reference to show anyone.
+    paidRef: purchase.referenceGenerated ?? null,
+  };
   // Read for the file only: the update clears the receipt fields whatever they hold.
   const before = await deps.prisma.order.findUnique({ where: { id: order.id }, select: { receiptKey: true } });
   const { count } = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id },
     data: {
       status: 'PAID',
-      paidAt: now,
-      paidVia: 'CHIP',
-      paidMethodLabel: paidMethodLabel(purchase),
-      paidRef: purchase.referenceGenerated ?? purchase.id,
+      ...paid,
       // A receipt sent while paying online is not needed: CHIP's word is the proof.
       receiptKey: null,
       receiptType: null,
@@ -333,8 +389,18 @@ export async function settleChipPurchase(
   }
   const after = await deps.prisma.order.findUnique({ where: { id: order.id }, select: { status: true } });
   if (after && (after.status === 'PAID' || after.status === 'COMPLETED')) return 'already-paid';
-  // Paid at CHIP for an order that is no longer waiting (the owner cancelled it): the money is
-  // in the owner's CHIP account and theirs to refund. Logged so it can be found.
+  // Paid at CHIP after the owner cancelled: recorded on the cancelled order, which then
+  // reads as a refund owed (orderView). The money is in the owner's CHIP account. Task 14
+  // tells the owner from here.
+  const late = await deps.prisma.order.updateMany({
+    where: { id: order.id, status: 'CANCELLED', paidAt: null, chipPurchaseId: purchase.id },
+    data: paid,
+  });
+  if (late.count === 1) {
+    deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online after it was cancelled');
+    return 'paid-after-cancel';
+  }
+  if (after?.status === 'CANCELLED') return 'already-paid';
   deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online but no longer placed');
   return 'not-placed';
 }
@@ -345,6 +411,7 @@ const ORDER_FOR_SETTLE = {
   status: true,
   totalCents: true,
   chipPurchaseId: true,
+  chipPurchaseDueAt: true,
   pageId: true,
   paidAt: true,
   paidMethodLabel: true,
@@ -352,9 +419,14 @@ const ORDER_FOR_SETTLE = {
   page: { select: { paymentAccount: { select: ACCOUNT_SELECT } } },
 } as const;
 
+/**
+ * `unknown`: nothing here could ask CHIP (the shop disconnected, its key will not open,
+ * CHIP did not answer). The order page then offers the QR beside the wait, rather than
+ * leave the customer waiting on an answer that may never come.
+ */
 export type PayStatus =
   | { state: 'paid'; paidAt: string | null; paidMethodLabel: string | null; paidRef: string | null }
-  | { state: 'pending' | 'failed' | 'none' };
+  | { state: 'pending' | 'failed' | 'none' | 'unknown' };
 
 /**
  * Where an order's online payment stands, for its order page. A placed order
@@ -372,26 +444,71 @@ export async function payStatus(deps: PayOnlineDeps, token: string, now: Date): 
     paidRef: row.paidRef,
   });
   if (order.status === 'PAID' || order.status === 'COMPLETED') return paid(order);
-  if (order.status !== 'PLACED' || !order.chipPurchaseId) return { state: 'none' };
+  // A cancelled order whose payment may still land is checked, so it is recorded (a refund owed).
+  const lateCheck = order.status === 'CANCELLED' && order.paidAt === null && order.chipPurchaseId !== null;
+  if ((order.status !== 'PLACED' && !lateCheck) || !order.chipPurchaseId) return { state: 'none' };
 
+  const clock = now.getTime();
+  const recent = deps.lookups.recent(order.id, clock);
+  if (recent) return recent;
+  const status = await checkWithChip(deps, { ...order, chipPurchaseId: order.chipPurchaseId }, now);
+  deps.lookups.keep(order.id, status, clock);
+  return lateCheck ? { state: 'none' } : status;
+}
+
+async function checkWithChip(
+  deps: PayOnlineDeps,
+  order: { id: string; number: number; totalCents: number; chipPurchaseId: string; chipPurchaseDueAt: Date | null; pageId: string; page: { paymentAccount: ShopAccount | null } },
+  now: Date,
+): Promise<PayStatus> {
   const account = order.page.paymentAccount;
   // Disconnected while the customer paid: nothing here can ask CHIP, and nothing is guessed.
-  if (!account) return { state: 'pending' };
+  if (!account) return { state: 'unknown' };
   const client = await openOwnerClient(deps, account, now);
-  if (!client) return { state: 'pending' };
+  if (!client) return { state: 'unknown' };
   let purchase: ChipPurchase;
   try {
     purchase = await client.getPurchase(order.chipPurchaseId);
   } catch (error) {
     deps.log.warn({ orderId: order.id, err: errName(error) }, 'order purchase could not be checked');
-    return { state: 'pending' };
+    return { state: 'unknown' };
   }
   const outcome = await settleChipPurchase(deps, order, purchase, now);
   deps.log.info({ orderId: order.id, purchaseId: purchase.id, outcome, source: 'order-page' }, 'order purchase checked');
-  if (outcome === 'paid' || outcome === 'already-paid') {
-    return paid(await deps.prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { paidAt: true, paidMethodLabel: true, paidRef: true } }));
+  if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-after-cancel') {
+    const row = await deps.prisma.order.findUniqueOrThrow({ where: { id: order.id }, select: { paidAt: true, paidMethodLabel: true, paidRef: true } });
+    return { state: 'paid', paidAt: row.paidAt?.toISOString() ?? null, paidMethodLabel: row.paidMethodLabel, paidRef: row.paidRef };
   }
-  return { state: outcome === 'failed' || outcome === 'test-refused' ? 'failed' : 'pending' };
+  if (outcome === 'failed' || outcome === 'test-refused') return { state: 'failed' };
+  // Past its due time (due_strict) a purchase can no longer be paid, whatever CHIP's status says yet.
+  if (outcome === 'pending' && order.chipPurchaseDueAt && order.chipPurchaseDueAt.getTime() <= now.getTime()) return { state: 'failed' };
+  return { state: 'pending' };
+}
+
+/**
+ * Ruling on concern 3: before the owner cancels a placed order that a customer may be
+ * paying online, CHIP's purchase is cancelled with the owner's key. If CHIP will not
+ * cancel it because it was just paid, the order is marked paid and the cancel refused.
+ * Anything else (CHIP down, the key gone) lets the cancel go ahead: a payment that lands
+ * afterwards is recorded on the cancelled order, which then reads as a refund owed.
+ */
+export async function cancelChipBeforeOrderCancel(deps: PayOnlineDeps, accountId: string, orderId: string, now: Date): Promise<void> {
+  const order = await deps.prisma.order.findFirst({ where: { id: orderId, page: { accountId } }, select: ORDER_FOR_SETTLE });
+  if (!order || order.status !== 'PLACED' || !order.chipPurchaseId) return;
+  const account = order.page.paymentAccount;
+  if (!account) return;
+  const client = await openOwnerClient(deps, account, now);
+  if (!client) return;
+  try {
+    await client.cancelPurchase(order.chipPurchaseId);
+    return;
+  } catch (error) {
+    deps.log.warn({ orderId: order.id, purchaseId: order.chipPurchaseId, err: errName(error) }, 'order purchase could not be cancelled before the order');
+  }
+  const purchase = await client.getPurchase(order.chipPurchaseId).catch(() => null);
+  if (purchase?.status !== 'paid') return;
+  const outcome = await settleChipPurchase(deps, order, purchase, now);
+  if (outcome === 'paid' || outcome === 'already-paid') throw new OrderJustPaidError();
 }
 
 /** The callback's order: what verifying and settling it needs. */

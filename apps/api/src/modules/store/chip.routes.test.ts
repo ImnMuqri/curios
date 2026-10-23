@@ -83,6 +83,26 @@ const call = (on: FastifyInstance, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', 
 const connect = (on: FastifyInstance, cookie: string, payload: object = { brandId: BRAND, secretKey: SECRET }) => call(on, 'POST', '/store/chip', cookie, payload);
 const account = (on: FastifyInstance, pageId: string) => on.prisma.shopPaymentAccount.findUnique({ where: { pageId } });
 
+/** A placed order on the page with a CHIP purchase payable until `due`. */
+const aPayingOrder = (pageId: string, due: Date) =>
+  app.prisma.order.create({
+    data: {
+      pageId,
+      number: Math.floor(Math.random() * 1_000_000),
+      code: randomUUID().slice(0, 4),
+      tokenHash: randomUUID(),
+      customerName: 'Aisyah',
+      phone: '+60123456789',
+      method: 'PICKUP',
+      day: new Date('2026-12-01T00:00:00Z'),
+      itemsCents: 100,
+      deliveryCents: 0,
+      totalCents: 100,
+      chipPurchaseId: `p-${randomUUID()}`,
+      chipPurchaseDueAt: due,
+    },
+  });
+
 describe('POST /store/chip', () => {
   it('connecting checks the key and brand with CHIP and stores the key sealed', async () => {
     const owner = await anOwner(app);
@@ -124,19 +144,41 @@ describe('POST /store/chip', () => {
     expect(await account(app, owner.pageId)).toMatchObject({ isTest: true, brandName: 'Kek Lina Bakes' });
   });
 
-  it('refuses to check an account that takes no card or e-wallet, rather than offer FPX or a QR on the check', async () => {
+  it('checks an FPX-only account with an FPX-only purchase, never CHIP’s QR', async () => {
     const owner = await anOwner(app);
     client.listPaymentMethods.mockResolvedValue(['fpx', 'duitnow_qr']);
+
+    const res = await connect(app, owner.cookie);
+
+    expect(res.statusCode).toBe(200);
+    expect(client.createPurchase.mock.calls[0]![0].methods).toEqual(['fpx']);
+    expect(await account(app, owner.pageId)).not.toBeNull();
+  });
+
+  it('refuses to check an account that takes no FPX, card or e-wallet', async () => {
+    const owner = await anOwner(app);
+    client.listPaymentMethods.mockResolvedValue(['duitnow_qr']);
 
     const res = await connect(app, owner.cookie);
 
     expect(res.statusCode).toBe(400);
     expect(res.json().error).toEqual({
       code: 'CHIP_NO_CHECK_METHOD',
-      message: 'Your CHIP account takes no card or e-wallet yet, so Curios can’t check it. Turn one on in CHIP, then connect again.',
+      message: 'Your CHIP account takes no FPX, card or e-wallet yet, so Curios can’t check it. Turn one on in CHIP, then connect again.',
     });
     expect(client.createPurchase).not.toHaveBeenCalled();
     expect(await account(app, owner.pageId)).toBeNull();
+  });
+
+  it('will not swap in another CHIP account while a customer is paying, but reconnecting the same one is fine', async () => {
+    const owner = await anOwner(app);
+    await connect(app, owner.cookie);
+    await aPayingOrder(owner.pageId, new Date(Date.now() + 30 * 60 * 1000));
+
+    const other = await connect(app, owner.cookie, { brandId: '1b7f3c4e-1a2b-4c5d-8e9f-0a1b2c3d4e5f', secretKey: SECRET });
+    expect(other.statusCode).toBe(409);
+    expect(other.json().error).toEqual({ code: 'CHIP_PAYMENT_IN_FLIGHT', message: 'A customer is paying right now. Try again in an hour.' });
+    expect((await connect(app, owner.cookie)).statusCode).toBe(200);
   });
 
   it('a test key is refused in production at connect, before anything is stored', async () => {
@@ -342,7 +384,7 @@ describe('POST /store/chip/test', () => {
     const res = await call(app, 'POST', '/store/chip/test', owner.cookie);
 
     expect(res.statusCode).toBe(400);
-    expect(res.json().error.code).toBe('CHIP_NO_TEST_METHOD');
+    expect(res.json().error).toEqual({ code: 'CHIP_NO_TEST_METHOD', message: 'Test with RM1 needs card or e-wallet on your CHIP account.' });
     // Only connecting's own check purchase; the test never starts one.
     expect(client.createPurchase).toHaveBeenCalledTimes(1);
   });
@@ -410,5 +452,21 @@ describe('PAYMENT_SECRETS_KEY in production', () => {
       process.env.NODE_ENV = saved.NODE_ENV;
       process.env.PAYMENT_SECRETS_KEY = saved.PAYMENT_SECRETS_KEY;
     }
+  });
+});
+
+describe('fix round 1: disconnecting while a customer pays', () => {
+  it('is refused while a purchase can still be paid, and allowed once it cannot', async () => {
+    const owner = await anOwner(app);
+    await connect(app, owner.cookie);
+    const paying = await aPayingOrder(owner.pageId, new Date(Date.now() + 30 * 60 * 1000));
+
+    const res = await call(app, 'DELETE', '/store/chip', owner.cookie);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'CHIP_PAYMENT_IN_FLIGHT', message: 'A customer is paying right now. Try again in an hour.' });
+    expect(await account(app, owner.pageId)).not.toBeNull();
+
+    await app.prisma.order.update({ where: { id: paying.id }, data: { chipPurchaseDueAt: new Date(Date.now() - 1000) } });
+    expect((await call(app, 'DELETE', '/store/chip', owner.cookie)).statusCode).toBe(200);
   });
 });

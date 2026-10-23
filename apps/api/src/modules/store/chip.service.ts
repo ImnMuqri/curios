@@ -9,6 +9,7 @@ import {
   ChipNoCheckMethodError,
   ChipNoTestMethodError,
   ChipNotConnectedError,
+  ChipPaymentInFlightError,
   ChipTestKeyError,
   ChipTestRefusedError,
   InvalidChipKeyError,
@@ -117,9 +118,14 @@ export async function connectChip(
     where: { id: page.id },
     select: { displayName: true, account: { select: { email: true } } },
   });
-  // Card and e-wallet only, as the RM1 test: the check never offers FPX or CHIP's QR.
-  const allowed = cardOrWallet(methods);
+  // Card and e-wallet, as the RM1 test; FPX alone for an account with neither (nobody
+  // pays this purchase: it is cancelled at once). Never CHIP's QR.
+  const cardsAndWallets = cardOrWallet(methods);
+  const allowed = cardsAndWallets.length > 0 ? cardsAndWallets : methods.includes('fpx') ? ['fpx'] : [];
   if (allowed.length === 0) throw new ChipNoCheckMethodError();
+  // Swapping in another CHIP account would strand a purchase a customer may be paying.
+  const current = await deps.prisma.shopPaymentAccount.findUnique({ where: { pageId: page.id }, select: { brandId: true } });
+  if (current && current.brandId !== brandId && (await paymentInFlight(deps.prisma, page.id, input.now))) throw new ChipPaymentInFlightError();
   const check = await withOwnerKey(
     () =>
       client.createPurchase({
@@ -161,6 +167,18 @@ export async function connectChip(
   return { connected: true, ...row };
 }
 
+/**
+ * Whether a customer may be paying through the shop's CHIP account right now: a placed
+ * order whose purchase is still payable (its due_strict time, an hour from creation).
+ */
+async function paymentInFlight(prisma: PrismaClient, pageId: string, now: Date): Promise<boolean> {
+  const paying = await prisma.order.findFirst({
+    where: { pageId, status: 'PLACED', chipPurchaseId: { not: null }, chipPurchaseDueAt: { gt: now } },
+    select: { id: true },
+  });
+  return paying !== null;
+}
+
 /** Whether the shop can lose CHIP: closed, or open with a QR or bank details to pay by. */
 async function canSpareChip(prisma: PrismaClient, accountId: string): Promise<boolean> {
   const settings = await getStoreSettings(prisma, accountId);
@@ -172,8 +190,10 @@ async function canSpareChip(prisma: PrismaClient, accountId: string): Promise<bo
  * is its only way to pay, as removing the QR is: no request leaves an open shop with
  * nothing to pay by.
  */
-export async function disconnectChip(prisma: PrismaClient, accountId: string): Promise<void> {
+export async function disconnectChip(prisma: PrismaClient, accountId: string, now: Date): Promise<void> {
   const page = await storePageFor(prisma, accountId);
+  // Its key is what confirms a payment in flight; it goes once nobody can still pay.
+  if (await paymentInFlight(prisma, page.id, now)) throw new ChipPaymentInFlightError();
   if (!(await canSpareChip(prisma, accountId))) {
     throw new StoreNotReadyError('Your shop is open and CHIP is its only way to pay. Add a DuitNow QR or bank details, or close the shop first.');
   }

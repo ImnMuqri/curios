@@ -18,6 +18,8 @@ export interface ChipPurchase {
   referenceGenerated?: string;
   /** The purchase's notes, as it was created with them; absent when blank. */
   notes?: string;
+  /** The purchase's currency, when CHIP says it. */
+  currency?: string;
 }
 
 /** One line of a purchase. Money is in sen. */
@@ -269,7 +271,7 @@ function toPurchase(raw: unknown): ChipPurchase {
     throw new Error('CHIP returned something that is not a purchase');
   }
   const p = raw as Record<string, unknown>;
-  const inner = p.purchase as { total?: unknown } | null | undefined;
+  const inner = p.purchase as { total?: unknown; currency?: unknown } | null | undefined;
   if (
     typeof p.id !== 'string' ||
     typeof p.status !== 'string' ||
@@ -302,5 +304,6 @@ function toPurchase(raw: unknown): ChipPurchase {
     ...(nonBlank(brand) ? { brandName: brand.trim() } : {}),
     ...(nonBlank(p.reference_generated) ? { referenceGenerated: p.reference_generated.trim() } : {}),
     ...(nonBlank(p.notes) ? { notes: p.notes } : {}),
+    ...(nonBlank(inner.currency) ? { currency: inner.currency } : {}),
   };
 }

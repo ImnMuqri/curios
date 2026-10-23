@@ -27,6 +27,8 @@ import {
   rateLimitPlugin,
   shopChipPerAccountLimit,
   shopPayPerIpLimit,
+  shopPayPerOrderLimit,
+  shopPayStatusPerOrderLimit,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
@@ -35,7 +37,13 @@ import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pag
 import { storeRoutes } from './modules/store/store.routes.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
-import { shopChipCallbackRoutes, shopPayRoutes } from './modules/orders/pay-online.routes.js';
+import {
+  createPayOnline,
+  shopChipCallbackRoutes,
+  shopPayMethodsRoutes,
+  shopPayStartRoutes,
+  shopPayStatusRoutes,
+} from './modules/orders/pay-online.routes.js';
 import { linkRoutes } from './modules/links/link.routes.js';
 import { factRoutes, type FactRouteOptions } from './modules/facts/fact.routes.js';
 import { sourceRecheckRoutes, sourceRoutes } from './modules/sources/source.routes.js';
@@ -121,6 +129,13 @@ export async function buildApp(overrides: AppOverrides = {}) {
   });
   await app.register(errorsPlugin);
   await app.register(prismaPlugin);
+  // Paying shops online: built once, shared by checkout's routes, CHIP's callback and the
+  // owner's cancel (which cancels CHIP's purchase first).
+  const payOnline = createPayOnline(app.prisma, {
+    chip: overrides.shopChip,
+    store: overrides.orders?.store,
+    payStatusEveryMs: overrides.orders?.payStatusEveryMs,
+  });
   await app.register(sessionPlugin);
   await app.register(queuePlugin);
   await app.register(rateLimitPlugin);
@@ -186,16 +201,27 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(receiptRoutes, overrides.orders ?? {});
   });
 
-  // Paying a shop online through the owner's own CHIP account, and the order page's
-  // check on it: anonymous, on the order link, under a per-IP budget of its own.
+  // Paying a shop online through the owner's own CHIP account: anonymous, on the order
+  // link. Asking what the shop takes and starting a payment share a per-IP budget, and
+  // starting one is also limited per order; the order page's check has its own, larger
+  // budget per order, so a page left open never stops the visitor paying.
   await app.register(async (scope) => {
     await scope.register(rateLimit, shopPayPerIpLimit(app.rateLimitRedis));
-    await scope.register(shopPayRoutes, { chip: overrides.shopChip, store: overrides.orders?.store });
+    await scope.register(shopPayMethodsRoutes, { payOnline });
+  });
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, shopPayPerIpLimit(app.rateLimitRedis));
+    await scope.register(rateLimit, shopPayPerOrderLimit(app.rateLimitRedis));
+    await scope.register(shopPayStartRoutes, { payOnline });
+  });
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, shopPayStatusPerOrderLimit(app.rateLimitRedis));
+    await scope.register(shopPayStatusRoutes, { payOnline });
   });
 
   // CHIP's callback for a shop's order. No session and no limit, as billing's callback
   // below: verified with that shop's own key, and a forged one costs a lookup to refuse.
-  await app.register(shopChipCallbackRoutes, { chip: overrides.shopChip, store: overrides.orders?.store });
+  await app.register(shopChipCallbackRoutes, { payOnline });
 
   // Both limiters, because every route in here carries an email address to
   // key the second one on.
@@ -234,7 +260,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
     await scope.register(storeRoutes, overrides.pages ?? {});
-    await scope.register(ownerOrderRoutes, overrides.orders ?? {});
+    await scope.register(ownerOrderRoutes, { ...(overrides.orders ?? {}), payOnline });
   });
 
   // The owner's own CHIP account. Signed in, and under its own per-account budget:

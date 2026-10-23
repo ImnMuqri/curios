@@ -56,18 +56,22 @@ type Tone = 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
 /** What GET /store/orders/:token/pay-status answers. */
 type PayStatus =
   | { state: 'paid'; paidAt: string | null; paidMethodLabel: string | null; paidRef: string | null }
-  | { state: 'pending' | 'failed' | 'none' };
+  | { state: 'pending' | 'failed' | 'none' | 'unknown' };
 
-/** Quick checks while the customer has just come back, then slower ones for about ten minutes. */
+/**
+ * Quick checks while the customer has just come back, then slower ones for about ten
+ * minutes: 35 checks a load, well inside the API's per-order budget.
+ */
 const QUICK_CHECKS = 5;
 const QUICK_MS = 2000;
-const SLOW_CHECKS = 60;
-const SLOW_MS = 10_000;
+const SLOW_CHECKS = 30;
+const SLOW_MS = 20_000;
 
 /**
  * A payment in flight on CHIP: asks the API (which asks CHIP with the owner's key and
  * settles the order the way the callback does) until it is paid, has failed, or the
- * checks run out. "checking" first, "waiting" once the quick checks are spent.
+ * checks run out. "checking" first, "waiting" once the quick checks are spent or the API
+ * cannot ask CHIP at all ("unknown"), when the page also offers the QR.
  */
 function usePaymentCheck(token: string, pending: boolean) {
   const [check, setCheck] = useState<'checking' | 'waiting' | 'failed' | null>(pending ? 'checking' : null);
@@ -91,6 +95,7 @@ function usePaymentCheck(token: string, pending: boolean) {
           setCheck(status.state === 'failed' ? 'failed' : null);
           return;
         }
+        if (status.state === 'unknown') setCheck('waiting');
       } catch {
         // Asked again below: a hiccup is not an answer.
       }
@@ -175,9 +180,10 @@ export function OrderView(props: OrderViewProps) {
   const view = orderView(facts);
   const steps = customerSteps({ status: order.status, paidAt: facts.paidAt, day: order.day }, new Date(props.now));
   const status = pill(view, steps.ready, name, copy);
-  // While a payment is in flight the QR stays away, so nobody pays twice.
+  // While a payment is being checked the QR stays away, so nobody pays twice; once the wait
+  // drags on, it comes back under the wait, with a word against paying twice.
   const inFlight = check === 'checking' || check === 'waiting';
-  const needPay = (view === 'awaitingPayment' || view === 'toCheck') && !inFlight;
+  const needPay = (view === 'awaitingPayment' || view === 'toCheck') && check !== 'checking';
   const stopped = order.status === 'CANCELLED';
   const total = formatRinggit(order.totalCents);
 
@@ -264,6 +270,7 @@ export function OrderView(props: OrderViewProps) {
             <span>
               <b>{copy.checkingPayment}</b>
               {check === 'waiting' ? <span>{copy.stillWaiting}</span> : null}
+              {check === 'waiting' ? <span>{copy.dontPayAgain(name)}</span> : null}
             </span>
           </div>
         </section>
@@ -277,7 +284,9 @@ export function OrderView(props: OrderViewProps) {
             </svg>
             <span>
               <b>{copy.paidBy(total, copy.methodLabel(order.paidMethodLabel ?? 'CHIP'))}</b>
-              {order.paidAt && order.paidRef ? <span>{copy.paidWhen(copy.paidTime(order.paidAt), order.paidRef)}</span> : null}
+              {order.paidAt ? (
+                <span>{order.paidRef ? copy.paidWhen(copy.paidTime(order.paidAt), order.paidRef) : copy.paidTime(order.paidAt)}</span>
+              ) : null}
             </span>
           </div>
         </section>

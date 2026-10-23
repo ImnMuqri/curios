@@ -463,10 +463,23 @@ describe('OrderView: paid online', () => {
 
     await vi.advanceTimersByTimeAsync(15_000);
     expect(await screen.findByText(copy.stillWaiting)).toBeInTheDocument();
+    // Never stranded: the QR and upload sit under the wait, with a word against paying twice.
+    expect(screen.getByText(copy.dontPayAgain('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
+    expect(screen.getByText(copy.uploadReceipt)).toBeInTheDocument();
     const asked = fetch.mock.calls.length;
     expect(asked).toBeGreaterThanOrEqual(4);
     await vi.advanceTimersByTimeAsync(30_000);
     expect(fetch.mock.calls.length).toBeGreaterThan(asked);
+  });
+
+  it('when nothing can ask CHIP, the wait comes with the QR and the word against paying twice', async () => {
+    vi.stubGlobal('fetch', status({ state: 'unknown' }));
+    render(<OrderView {...withOrder({ chipPending: true })} />);
+
+    expect(await screen.findByText(copy.dontPayAgain('Kek Lina'))).toBeInTheDocument();
+    expect(screen.getByText(copy.stillWaiting)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
   });
 
   it('a payment that did not go through: the QR and the upload, with a word about it', async () => {

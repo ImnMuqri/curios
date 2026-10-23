@@ -136,6 +136,12 @@ export interface ShopCopy {
   onlineUnavailable: string;
   /** The same, for a shop with no QR or bank account: its WhatsApp is the way. */
   onlineUnavailableWhatsApp: (name: string) => string;
+  /** A shop with no QR, bank account or CHIP: its WhatsApp is how to pay. */
+  payOnWhatsApp: (name: string) => string;
+  /** The API's limit on starting a payment answered 429. */
+  payTooMany: string;
+  /** Under a wait the page cannot end: the QR is offered, but not twice. */
+  dontPayAgain: (name: string) => string;
   /** CHIP's own words for how it was paid, in this language ("Visa card ending 4242"). */
   methodLabel: (label: string) => string;
   /** The board's Paid row on the order page. */
@@ -369,6 +375,9 @@ const EN: ShopCopy = {
   chipNote: (name) => `Payments are processed by CHIP, and the money goes to ${name}’s own account.`,
   onlineUnavailable: 'Online payment isn’t available right now. Pay by QR or bank transfer instead.',
   onlineUnavailableWhatsApp: (name) => `Online payment isn’t available right now. WhatsApp ${name} to pay.`,
+  payOnWhatsApp: (name) => `WhatsApp ${name} to pay.`,
+  payTooMany: 'Too many tries. Wait a moment and try again.',
+  dontPayAgain: (name) => `If you already paid online, don’t pay again — WhatsApp ${name}.`,
   methodLabel: (label) => label,
   paidBy: (total, how) => `Paid ${total} by ${how}`,
   paidWhen: (when, ref) => `${when} · Ref ${ref}`,
@@ -557,6 +566,9 @@ const MS: ShopCopy = {
   chipNote: (name) => `Bayaran diproses oleh CHIP, dan wang terus masuk ke akaun ${name} sendiri.`,
   onlineUnavailable: 'Bayaran dalam talian tidak tersedia buat masa ini. Bayar melalui QR atau pindahan bank.',
   onlineUnavailableWhatsApp: (name) => `Bayaran dalam talian tidak tersedia buat masa ini. WhatsApp ${name} untuk bayar.`,
+  payOnWhatsApp: (name) => `WhatsApp ${name} untuk bayar.`,
+  payTooMany: 'Terlalu banyak cubaan. Tunggu sebentar dan cuba lagi.',
+  dontPayAgain: (name) => `Jika anda sudah membayar dalam talian, jangan bayar lagi — WhatsApp ${name}.`,
   methodLabel: (label) =>
     label.replace(/^(\w+) card ending (\d{4})$/, 'kad $1 berakhir $2').replace(/^(\w+) card$/, 'kad $1'),
   paidBy: (total, how) => `Dibayar ${total} melalui ${how}`,

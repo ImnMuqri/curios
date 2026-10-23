@@ -477,8 +477,19 @@ that shop's key before the order is marked paid. The order page asks the API too
 (`GET /store/orders/:token/pay-status`), so an order is marked paid even if the callback is lost or,
 in development, never sent. Logs carry order and purchase ids and outcomes only: "order purchase
 handled" (callback), "order purchase checked" (order page), "online payment not available" (with a
-reason; the customer was offered the QR), and "order paid online but no longer placed" (paid at CHIP
-for an order the owner had cancelled: the money is in the owner's CHIP account, theirs to refund).
+reason; the customer was offered the QR), "order paid online after it was cancelled" (recorded on the
+cancelled order, which shows as a refund owed: the money is in the owner's CHIP account, theirs to
+refund), and "chip message about a purchase this order does not hold" (a signed callback for an
+earlier try's purchase; ignored).
+
+A second try at paying never leaves a paid purchase behind: it makes a new purchase only once the
+earlier one is known to be dead or has been cancelled, and if cancelling fails because it was paid,
+the order is marked paid instead. While a placed order's purchase can still be paid (an hour from
+creation, `Order.chipPurchaseDueAt`), the owner cannot disconnect CHIP or swap in another CHIP
+account, and cancelling the order cancels the purchase first. Budgets: asking what a shop takes and
+starting a payment share `RATE_LIMIT_SHOP_PAY_PER_IP`; starting one is also limited per order
+(`RATE_LIMIT_SHOP_PAY_PER_ORDER`); the order page's checks have their own per-order budget
+(`RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER`), and CHIP is asked about one order at most every 5 seconds.
 
 ---
 

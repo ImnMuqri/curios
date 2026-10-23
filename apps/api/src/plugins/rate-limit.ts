@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import IORedis from 'ioredis';
@@ -422,5 +423,46 @@ export function shopPayPerIpLimit(redis: IORedis): RateLimitPluginOptions {
     timeWindow: '1 hour',
     keyGenerator: caller,
     errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
+  };
+}
+
+/** The order link's token, hashed: a limiter key must never hold an order's whole credential. */
+const orderKey = (request: FastifyRequest) => {
+  const token = (request.params as { token?: unknown } | undefined)?.token;
+  return typeof token === 'string' ? createHash('sha256').update(token).digest('base64url').slice(0, 32) : caller(request);
+};
+
+/**
+ * Starting to pay one order online: each try makes (and cancels) a purchase on the
+ * owner's CHIP account, so one order link gets a handful an hour whoever asks.
+ */
+export function shopPayPerOrderLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('shop-pay-order:'),
+    max: limit('RATE_LIMIT_SHOP_PAY_PER_ORDER', 10),
+    timeWindow: '1 hour',
+    keyGenerator: orderKey,
+    errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
+  };
+}
+
+/**
+ * The order page's checks on one order. Larger than any page's polling (about 35 checks
+ * a load) and keyed on the order, not the visitor, so it never spends paying's budget.
+ * CHIP is asked at most once every few seconds per order whatever this allows.
+ */
+export function shopPayStatusPerOrderLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('shop-pay-status:'),
+    max: limit('RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER', 300),
+    timeWindow: '1 hour',
+    keyGenerator: orderKey,
+    errorResponseBuilder: tooMany((after) => `Too many checks just now. Try again in ${after}.`),
   };
 }
