@@ -184,7 +184,8 @@ a{color:#2340c8}a:hover{color:#122686}
 .pv-links>span>span{display:block;padding:9px 12px;border-radius:999px;font-size:13px;font-weight:600}
 .pv-chat{display:flex;flex-direction:column;gap:7px;width:100%;text-align:left}
 .pv-q{align-self:flex-end;max-width:86%;padding:8px 12px;border-radius:16px 16px 5px 16px;background:#ffffff;color:#191f2c;font-size:12.5px}
-.pv-a{align-self:flex-start;max-width:90%;padding:8px 12px;border-radius:16px 16px 16px 5px;font-size:12.5px}
+.pv-a{align-self:flex-start;max-width:96%;font-size:12.5px;line-height:1.5}
+.pv-a::before{content:"Kek Lina\2019s page";display:block;margin-bottom:3px;font-size:10.5px;font-weight:600;opacity:.65}
 .pv-shop{display:grid;gap:6px;width:100%}
 .pv-shop>span{display:flex;align-items:center;gap:10px;padding:5px;border-radius:999px;text-align:left;font-size:12.5px;font-weight:600}
 .pv-shop img,.pv-shop i{width:30px;height:30px;flex:none;border-radius:50%;object-fit:cover}
@@ -553,6 +554,17 @@ a{color:#2340c8}a:hover{color:#122686}
 .it .avl{width:auto;font-size:0}
 .ready{grid-template-columns:minmax(0,1fr)}
 }
+
+/* plainer: fewer template tells */
+.stats{display:flex;gap:0;padding:18px 32px 0}
+.kpi{flex:1;min-width:0;gap:0;padding:2px 24px 2px 0;border:0;border-radius:0;background:transparent;overflow:visible}
+.kpi+.kpi{padding-left:24px;border-left:1px solid var(--line)}
+.kpi .si,.kpi .spark{display:none}
+.kpi b{font-size:22px}
+.ki,.wi,.fi,.sri,.chipi,.si2,.lav,.dic{display:none!important}
+.convo .a,.tchat .a{color:#fafbfc}
+.bl-r.hd2,.bl-r.hd2 span{color:#696e7b;opacity:1}
+@media (max-width:760px){.stats{padding:14px 16px 0}.kpi{padding-right:12px}.kpi+.kpi{padding-left:12px}.kpi b{font-size:18px}.kpi>span>span{font-size:11.5px}}
 </style>
 </helmet>
 
@@ -748,7 +760,6 @@ a{color:#2340c8}a:hover{color:#122686}
 </div>
 
 <div class="pv" aria-label="Live preview of your shop">
-<div class="blobs" aria-hidden="true" style="position: absolute"><span class="blob b1" style="background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span><span class="blob b2" style="background: radial-gradient(circle, #f6c9d5 0%, transparent 65%)"></span><span class="blob b3" style="background: radial-gradient(circle, #ffe2b8 0%, transparent 65%)"></span><span class="blob b4" style="background: radial-gradient(circle, #bfe3d6 0%, transparent 65%)"></span><svg class="grain"><filter id="pgn"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#pgn)"></rect></svg></div>
 <div class="phone">
 <div class="scr" style="background: {{scrBg}}; color: #fafbfc">
 
@@ -928,7 +939,7 @@ class Component extends DCLogic {
       toggleOpen: () => { if (!cantOpen) self.change({ open: !st.open }); },
       steps: [
         step(itemsOk, 'Items', live.length + ' in your shop', 'Switch an item on', 0),
-        step(payOk, 'A way to pay', st.qr && bankOk ? 'QR and bank account' : st.qr ? 'DuitNow QR' : 'Bank account', 'Add a QR or bank account', 1),
+        step(payOk || this.state.gw === 'on', 'A way to pay', [this.state.gw === 'on' ? 'Online payments through CHIP' : '', st.qr ? 'DuitNow QR' : ''].filter(Boolean).join(' and ') || 'Bank account', 'Connect CHIP or add your QR', 1),
         step(fulfilOk, 'Getting it to them', [st.pickup ? 'Pickup' : '', st.delivery === 'FLAT' ? 'delivery ' + self.rm(feeC || 0) : st.delivery === 'RIDER' ? 'rider delivery' : ''].filter(Boolean).join(' and ').replace(/^./, (c) => c.toUpperCase()) || '', 'Turn on pickup or delivery', 2)
       ],
       tabs: ['Items', 'Payment', 'Pickup & delivery'].map((label, i) => ({ label: label, on: tabIx === i, go: () => self.setState({ tab: i, editId: null, confirmDel: false, pv: i === 0 ? 'shop' : 'pay' }) })),

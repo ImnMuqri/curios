@@ -225,6 +225,9 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 
 **Elsewhere**
 - **Landing, For business:**
+  - The customer phone now **starts on Kek Lina's link in bio** (Links tab). The cursor taps
+    the Shop link (the first link), the page slides away, and the shop opens. The first step
+    runs 5.8s instead of 3.8s to fit this.
   - the customer phone shows the new shop page (two-column cards, + on photos)
   - checkout: "How you'll pay" with FPX picked, then Maybank2u picked under "Your bank", then "Pay
     RM235 with Maybank2u", "Opening Maybank2u…", "Approved in Maybank2u"
@@ -310,6 +313,30 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   The right hand waves every couple of seconds, the other limbs bob gently, and it blinks and
   looks around. Size and position are in em, so it scales with the 31vw wordmark.
 - The giant footer wordmark uses the same eyes o, in the dark ghost colour (#2a3248).
+
+## Update, 23 Oct 2026: less template, fixed stale copy
+
+A pass to make the product look less AI-generated. Follow these over anything older above.
+
+- **No tinted icon squares** in front of rows or section titles (Settings rows, Store and My
+  Curios section titles, Alerts "Where else it shows", Leads list and "What they're after").
+  Text only.
+- **Stats are one plain line**, not cards: Orders, Questions and Leads show three numbers in a
+  row split by thin dividers, with no icon tiles and no sparklines.
+- **No gradient blobs or grain** anywhere: landing hero, landing closing section, Store and My
+  Curios preview panels, Review, system pages. Flat background colours only.
+- **Landing:** no "01/02/03" watermark numbers, no curved "tanya je · just ask" marquee, no
+  blur-in or scroll-reveal on headings, no blur on the rotating words. Section labels are plain
+  sentence case in Inter 15px semibold (not mono uppercase). The hero has no label above the
+  headline.
+- **AI replies are plain text everywhere**, with a small "Kek Lina's page" label above, never a
+  bubble. This now includes the app previews: Alerts, Leads conversation, Questions, Review,
+  Facts & sources tester and My Curios. The customer's question can stay a bubble.
+- **No Shop tab** in any preview. The shop is the first link (a Shop card with photo thumbnails).
+  In My Curios the toggle is now "Shop link · Shown first in your links".
+- Copy fixes: the conversation limit is **200** (Billing said 2,000). The landing's Business card
+  says "A shop paid by FPX, e-wallet, card or your own QR". Store's checklist shows "Online
+  payments through CHIP" when CHIP is connected.
 
 ## Open decisions (all three settled; kept for the record)
 
