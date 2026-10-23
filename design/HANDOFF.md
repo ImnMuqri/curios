@@ -256,8 +256,9 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   `.mo-e` (eyes) and `.mo-h` (happy).
 
 **Favicon and app icon**
-- Option c, "peeking up": a white head with two eyes rising from the bottom of a blue rounded
-  square.
+- **Updated 24 Oct 2026:** Peek's eyes. Two big white oval eyes with dark pupils (looking a
+  little down and right) on a brand blue (#2340c8) rounded square. Replaces the older
+  "peeking up" white head, so it matches the new Peek.
 - Files are in `design/brand/`:
   - `icon.svg` → `apps/web/app/icon.svg`
   - `apple-icon.png` (180, full bleed) → `apps/web/app/apple-icon.png` (or keep the
@@ -267,7 +268,7 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 - The email sender avatar and the landing's notification badge use it too.
 
 **Peek, the mascot** (`design/brand/peek-mascot.png`)
-- The favicon's character, in brand blue, living **behind an edge** with two small hands holding
+- Brand blue, living **behind an edge** with two small hands holding
   it.
 - Build it as two layers: the body (`.pk`, z 0) behind the field, and the hands (`.pk-front`,
   z 3) in front. The edge sits at 64 of 96 in the viewBox.
