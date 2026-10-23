@@ -14,14 +14,17 @@ export interface AdminPageRow {
   status: AdminPageStatus;
   ownerEmail: string;
   createdAt: Date;
-}
-
-export interface AdminPageDetail extends AdminPageRow {
-  signInMethods: ('google' | 'password')[];
   plan: AdminPlan;
   paidUntil: Date | null;
   conversationsThisMonth: number;
   cap: number;
+  /** Leads and orders from the first of this (UTC) month, as the owner view counts them. */
+  leadsThisMonth: number;
+  ordersThisMonth: number;
+}
+
+export interface AdminPageDetail extends AdminPageRow {
+  signInMethods: ('google' | 'password')[];
   factCount: number;
   suspendedAt: Date | null;
   suspendReason: string | null;
@@ -36,6 +39,7 @@ const ROW_SELECT = {
   mode: true,
   published: true,
   paidUntil: true,
+  leadsCaptured: true,
   suspendedAt: true,
   createdAt: true,
   account: { select: { email: true } },
@@ -54,7 +58,15 @@ function statusOf(page: RowSource, now: Date): AdminPageStatus {
   return page.published ? 'Live' : 'Draft';
 }
 
-function rowOf(page: RowSource, now: Date): AdminPageRow {
+interface Counts {
+  conversations: number;
+  leads: number;
+  orders: number;
+}
+
+const monthStartOf = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+function rowOf(page: RowSource, now: Date, counts: Counts): AdminPageRow {
   return {
     id: page.id,
     handle: page.handle,
@@ -63,6 +75,12 @@ function rowOf(page: RowSource, now: Date): AdminPageRow {
     status: statusOf(page, now),
     ownerEmail: page.account.email,
     createdAt: page.createdAt,
+    plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now),
+    paidUntil: page.paidUntil,
+    conversationsThisMonth: counts.conversations,
+    cap: conversationCap(),
+    leadsThisMonth: counts.leads,
+    ordersThisMonth: counts.orders,
   };
 }
 
@@ -95,7 +113,27 @@ export async function listAdminPages(options: {
     take: Math.min(Math.max(options.limit ?? 50, 1), 200),
     select: ROW_SELECT,
   });
-  return pages.map((page) => rowOf(page, now));
+  if (pages.length === 0) return [];
+
+  // Three grouped reads for the whole list, not three per row.
+  const pageIds = pages.map((p) => p.id);
+  const inMonth = { pageId: { in: pageIds }, createdAt: { gte: monthStartOf(now), lte: now } };
+  const [counters, leads, orders] = await Promise.all([
+    prismaRead.usageCounter.findMany({ where: { pageId: { in: pageIds }, period: currentPeriod(now) }, select: { pageId: true, count: true } }),
+    prismaRead.lead.groupBy({ by: ['pageId'], where: inMonth, _count: { _all: true } }),
+    prismaRead.order.groupBy({ by: ['pageId'], where: inMonth, _count: { _all: true } }),
+  ]);
+  const conversations = new Map(counters.map((c) => [c.pageId, c.count]));
+  const leadCount = new Map(leads.map((l) => [l.pageId, l._count._all]));
+  const orderCount = new Map(orders.map((o) => [o.pageId, o._count._all]));
+
+  return pages.map((page) =>
+    rowOf(page, now, {
+      conversations: conversations.get(page.id) ?? 0,
+      leads: leadCount.get(page.id) ?? 0,
+      orders: orderCount.get(page.id) ?? 0,
+    }),
+  );
 }
 
 /** One page for the admin's page screen, or null. */
@@ -104,7 +142,6 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
     where: { id },
     select: {
       ...ROW_SELECT,
-      leadsCaptured: true,
       suspendReason: true,
       account: { select: { email: true, password: { select: { id: true } }, identities: { select: { provider: true } } } },
       _count: { select: { facts: true } },
@@ -112,9 +149,12 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
   });
   if (!page) return null;
 
-  const [counter, grantedMonths] = await Promise.all([
+  const inMonth = { pageId: id, createdAt: { gte: monthStartOf(now), lte: now } };
+  const [counter, grantedMonths, leads, orders] = await Promise.all([
     prismaRead.usageCounter.findUnique({ where: { pageId_period: { pageId: id, period: currentPeriod(now) } }, select: { count: true } }),
     prismaRead.payment.count({ where: { pageId: id, provider: 'GRANT', status: 'PAID' } }),
+    prismaRead.lead.count({ where: inMonth }),
+    prismaRead.order.count({ where: inMonth }),
   ]);
 
   const signInMethods: ('google' | 'password')[] = [];
@@ -122,12 +162,8 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
   if (page.account.password) signInMethods.push('password');
 
   return {
-    ...rowOf(page, now),
+    ...rowOf(page, now, { conversations: counter?.count ?? 0, leads, orders }),
     signInMethods,
-    plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now),
-    paidUntil: page.paidUntil,
-    conversationsThisMonth: counter?.count ?? 0,
-    cap: conversationCap(),
     factCount: page._count.facts,
     suspendedAt: page.suspendedAt,
     suspendReason: page.suspendReason,

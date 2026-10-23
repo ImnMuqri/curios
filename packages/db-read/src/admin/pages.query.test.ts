@@ -40,6 +40,18 @@ beforeAll(async () => {
     data: [1, 2].map(() => ({ pageId: live, plan: 'MONTHLY' as const, amountCents: 0, provider: 'GRANT' as const, status: 'PAID' as const, paidAt: NOW, grantedUntil: new Date(NOW.getTime() + 20 * DAY) })),
   });
   await write.usageCounter.create({ data: { pageId: live, period: '2026-10', count: 17 } });
+  for (const [i, at] of ['2026-10-05', '2026-10-06', '2026-09-30'].entries()) {
+    const conversation = await write.conversation.create({ data: { pageId: live } });
+    await write.lead.create({ data: { pageId: live, conversationId: conversation.id, phone: `+6012345678${i}`, createdAt: new Date(`${at}T00:00:00Z`) } });
+  }
+  for (const [i, at] of ['2026-10-07', '2026-08-01'].entries()) {
+    await write.order.create({
+      data: {
+        pageId: live, number: i + 1, code: `AB1${i}`, tokenHash: randomUUID(), customerName: 'X', phone: '+60112233445',
+        method: 'PICKUP', day: new Date('2026-10-22'), itemsCents: 10, deliveryCents: 0, totalCents: 10, createdAt: new Date(`${at}T00:00:00Z`),
+      },
+    });
+  }
   await write.fact.createMany({
     data: ['a', 'b'].map((c) => ({ pageId: live, category: 'MISC' as const, claim: c, normalizedClaim: c, confidence: 1 })),
   });
@@ -61,6 +73,21 @@ describe('listAdminPages', () => {
       ['Live Biz', 'Live'],
     ]);
     expect(rows[3]).toMatchObject({ ownerEmail: 'Owner.Live@Example.com', mode: 'BUSINESS' });
+  });
+
+  it('carries plan, paid until, the month’s conversations, cap, leads and orders', async () => {
+    const rows = await listAdminPages({ now: NOW });
+    const by = Object.fromEntries(rows.map((r) => [r.displayName, r]));
+    expect(by['Live Biz']).toMatchObject({
+      plan: 'Business',
+      paidUntil: new Date(NOW.getTime() + 20 * DAY),
+      conversationsThisMonth: 17,
+      cap: FREE_CONVERSATIONS_PER_MONTH,
+      leadsThisMonth: 2,
+      ordersThisMonth: 1,
+    });
+    expect(by['Draft Personal']).toMatchObject({ plan: 'Personal', paidUntil: null, conversationsThisMonth: 0, leadsThisMonth: 0, ordersThisMonth: 0 });
+    expect(by['Lapsed Biz']?.plan).toBe('Lapsed');
   });
 
   it('finds by owner email, case-insensitively', async () => {
@@ -106,6 +133,8 @@ describe('getAdminPage', () => {
       cap: FREE_CONVERSATIONS_PER_MONTH,
       factCount: 2,
       grantedMonths: 2,
+      leadsThisMonth: 2,
+      ordersThisMonth: 1,
       suspendedAt: null,
       suspendReason: null,
     });

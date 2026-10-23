@@ -28,6 +28,8 @@ function detail(over: Partial<AdminPageDetail> = {}): AdminPageDetail {
     suspendedAt: null,
     suspendReason: null,
     grantedMonths: 0,
+    leadsThisMonth: 9,
+    ordersThisMonth: 14,
     ...over,
   };
 }
@@ -56,7 +58,7 @@ describe('PagePanel', () => {
   it('opens the page in a new tab from APP_URL', () => {
     render(<PagePanel page={detail()} {...props} />);
 
-    const open = screen.getByRole('link', { name: /Open page/ });
+    const open = screen.getByRole('link', { name: /^Open their page/ });
     expect(open).toHaveAttribute('href', 'http://localhost:3000/keklina');
     expect(open).toHaveAttribute('target', '_blank');
   });

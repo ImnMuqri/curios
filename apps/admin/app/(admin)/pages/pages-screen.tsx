@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { AdminPageDetail, AdminPageRow, PageFilter } from '@curios/db-read/admin';
 import { PagePanel } from './page-panel.js';
-import { day, STATUS_COLOUR } from './format.js';
+import { day, meterColour, STATUS_COLOUR } from './format.js';
 import styles from './pages.module.css';
 
 const FILTERS: { key: PageFilter; label: string }[] = [
@@ -14,6 +14,16 @@ const FILTERS: { key: PageFilter; label: string }[] = [
   { key: 'personal', label: 'Personal' },
   { key: 'lapsed', label: 'Lapsed' },
   { key: 'flagged', label: 'Hidden or suspended' },
+];
+
+const HEADS: [string, boolean][] = [
+  ['Page', false],
+  ['Plan', false],
+  ['Paid until', false],
+  ['Conversations', false],
+  ['Leads', true],
+  ['Orders', true],
+  ['Status', false],
 ];
 
 /** The list's own address, with whatever of search, filter and open page is set. */
@@ -99,8 +109,8 @@ export function PagesScreen({
           <div className={`${styles.box} ${styles.tw}`}>
             <div className={styles.table} role="table" aria-label="Pages">
               <div className={`${styles.row} ${styles.hd}`} role="row">
-                {['Page', 'Owner', 'Kind', 'Created', 'Status'].map((h) => (
-                  <div key={h} className={styles.h} role="columnheader">
+                {HEADS.map(([h, right]) => (
+                  <div key={h} className={`${styles.h} ${right ? styles.r : ''}`} role="columnheader">
                     {h}
                   </div>
                 ))}
@@ -122,13 +132,29 @@ export function PagesScreen({
                     </span>
                   </div>
                   <div className={styles.c} role="cell">
-                    <span className={styles.ellip}>{p.ownerEmail}</span>
+                    {p.plan}
                   </div>
                   <div className={styles.c} role="cell">
-                    {p.mode === 'BUSINESS' ? 'Business' : 'Personal'}
+                    {p.paidUntil ? day(p.paidUntil) : '-'}
                   </div>
                   <div className={styles.c} role="cell">
-                    {day(p.createdAt)}
+                    <span className={styles.mini}>
+                      <span className={styles.bar}>
+                        <i
+                          style={{
+                            width: `${p.cap > 0 ? Math.min(100, (p.conversationsThisMonth / p.cap) * 100) : 0}%`,
+                            background: meterColour(p.conversationsThisMonth, p.cap),
+                          }}
+                        />
+                      </span>
+                      <span>{p.conversationsThisMonth}</span>
+                    </span>
+                  </div>
+                  <div className={`${styles.c} ${styles.r}`} role="cell">
+                    {p.leadsThisMonth}
+                  </div>
+                  <div className={`${styles.c} ${styles.r}`} role="cell">
+                    {p.ordersThisMonth}
                   </div>
                   <div className={styles.c} role="cell">
                     <span className={styles.st}>

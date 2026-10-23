@@ -19,6 +19,12 @@ const rows: AdminPageRow[] = [
     status: 'Live',
     ownerEmail: 'lina@keklina.example',
     createdAt: new Date('2026-09-02T03:00:00Z'),
+    plan: 'Business',
+    paidUntil: new Date('2026-11-14T03:00:00Z'),
+    conversationsThisMonth: 164,
+    cap: 200,
+    leadsThisMonth: 9,
+    ordersThisMonth: 14,
   },
   {
     id: 'p2',
@@ -28,6 +34,12 @@ const rows: AdminPageRow[] = [
     status: 'Suspended',
     ownerEmail: 'daniel@mail.example',
     createdAt: new Date('2026-10-11T03:00:00Z'),
+    plan: 'Personal',
+    paidUntil: null,
+    conversationsThisMonth: 41,
+    cap: 200,
+    leadsThisMonth: 0,
+    ordersThisMonth: 0,
   },
 ];
 
@@ -36,15 +48,18 @@ const base = { rows, q: '', filter: 'all' as const, detail: null, appUrl: 'http:
 beforeEach(() => push.mockClear());
 
 describe('PagesScreen', () => {
-  it('lists the pages with kind, created and status', () => {
+  it('draws the board columns and each row figures', () => {
     render(<PagesScreen {...base} />);
 
     const table = screen.getByRole('table', { name: 'Pages' });
-    expect(within(table).getByText('Kek Lina')).toBeInTheDocument();
-    expect(within(table).getByText('curios.my/keklina')).toBeInTheDocument();
-    expect(within(table).getByText('lina@keklina.example')).toBeInTheDocument();
-    expect(within(table).getByText('2 Sep 2026')).toBeInTheDocument();
-    expect(within(table).getByText('Suspended')).toBeInTheDocument();
+    const heads = within(table).getAllByRole('columnheader').map((h) => h.textContent);
+    expect(heads).toEqual(['Page', 'Plan', 'Paid until', 'Conversations', 'Leads', 'Orders', 'Status']);
+
+    const [, lina, daniel] = within(table).getAllByRole('row');
+    const cells = (row: HTMLElement) => within(row).getAllByRole('cell').map((c) => c.textContent);
+    expect(cells(lina!)).toEqual(['Kek Linacurios.my/keklina', 'Business', '14 Nov 2026', '164', '9', '14', 'Live']);
+    expect(cells(daniel!)).toEqual(['Daniel Tancurios.my/danieltan', 'Personal', '-', '41', '0', '0', 'Suspended']);
+    expect(within(table).queryByText('lina@keklina.example')).not.toBeInTheDocument();
   });
 
   it('has the five filter chips, each one a link to its filter', () => {
@@ -73,7 +88,7 @@ describe('PagesScreen', () => {
   it('clicking a row opens its panel by ?page=', async () => {
     render(<PagesScreen {...base} q="a" />);
 
-    await userEvent.click(screen.getByText('lina@keklina.example'));
+    await userEvent.click(screen.getByText('curios.my/keklina'));
 
     expect(push).toHaveBeenCalledWith('/pages?q=a&page=p1');
   });

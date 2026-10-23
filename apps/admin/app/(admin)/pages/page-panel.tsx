@@ -4,11 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { AdminPageDetail } from '@curios/db-read/admin';
 import { ActionDialog, type ActionKind } from './action-dialog.js';
-import { day, STATUS_COLOUR } from './format.js';
+import { day, meterColour, STATUS_COLOUR } from './format.js';
 import styles from './pages.module.css';
-
-const meterColour = (used: number, cap: number) =>
-  used >= cap ? '#d8452f' : used >= cap * 0.8 ? '#f2a33c' : '#2340c8';
 
 export function PagePanel({
   page,
@@ -93,7 +90,7 @@ export function PagePanel({
       <div className={styles.acts}>
         <p>Look</p>
         <a className={styles.btn} href={`${appUrl}/${page.handle}`} target="_blank" rel="noreferrer">
-          Open page<small>curios.my/{page.handle}</small>
+          Open their page<small>curios.my/{page.handle}</small>
         </a>
         <button type="button" className={styles.btn} onClick={() => setAsking('owner')}>
           See it as the owner<small>Read-only, logged</small>

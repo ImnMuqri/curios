@@ -8,3 +8,4 @@ export { getAuditLog } from './audit.query.js';
 export type { AuditRow } from './audit.query.js';
 export { getOwnerView } from './owner-view.query.js';
 export type { OwnerView } from './owner-view.query.js';
+export { hasRecentOwnerView } from './owner-view-log.query.js';
