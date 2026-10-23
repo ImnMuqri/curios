@@ -475,30 +475,6 @@
   border-radius: 14px;
 }
 
-.faqIcon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  flex: none;
-  border-radius: 10px;
-  background: var(--surface);
-  color: var(--muted);
-}
-
-.faqIcon[data-on] {
-  background: var(--biru-muda);
-  color: var(--biru);
-}
-
-.faqIcon svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
 .faqText {
   flex: 1;
   min-width: 0;

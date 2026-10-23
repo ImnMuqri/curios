@@ -61,6 +61,7 @@
   font-weight: 800;
   line-height: 1.02;
   letter-spacing: -0.035em;
+  text-wrap: balance;
 }
 
 .lede {

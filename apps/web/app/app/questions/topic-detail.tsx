@@ -489,11 +489,6 @@ function FaqRow({
   return (
     <section className={inbox.section} aria-label="FAQ page">
       <div className={styles.faq}>
-        <span className={styles.faqIcon} data-on={on || undefined} aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="17" height="17">
-            <path d="M4 4h16v16H4zM8 9h8M8 13h8M8 17h5" />
-          </svg>
-        </span>
         <span className={styles.faqText}>
           <b>{on ? 'On your FAQ page' : 'FAQ page'}</b>
           <span>{words}</span>

@@ -156,7 +156,7 @@ function ShopPill({ shop }: { shop: NonNullable<BentoPageProps['shop']> }) {
  * root through `closest()`: `Ask`/`ChatMode` toggle `data-mode="chat"` on it
  * and move `aria-current` between the `[data-tab]` links, since this component
  * stays server-only and holds no state. `data-foldaway` marks the block that
- * CSS collapses on the Ask and Shop tabs; the client side also marks it
+ * CSS collapses on Ask and in the shop view; the client side also marks it
  * `inert`/`aria-hidden` while it is collapsed.
  */
 export function BentoPage(props: BentoPageProps) {

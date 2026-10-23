@@ -96,6 +96,17 @@ describe('the header', () => {
     expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP and bank account/ })).toBeInTheDocument();
   });
 
+  it('names CHIP beside DuitNow QR when there is a QR and no bank account', () => {
+    show({ ...ready, paymentQrKey: 'qr.png', bankName: null, bankAccountName: null, bankAccountNumber: null }, items, apis(), undefined, chipOn);
+    expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP and DuitNow QR/ })).toBeInTheDocument();
+  });
+
+  it('reads Bank account for a shop with only a bank account, with no connect note', () => {
+    show(ready);
+    expect(screen.getByRole('button', { name: /A way to pay\s*Bank account/ })).toBeInTheDocument();
+    expect(screen.queryByText(/Connect CHIP or add your QR/)).toBeNull();
+  });
+
   it('opens a ready shop, and the link appears', async () => {
     const calls = show({ ...ready, enabled: false });
     expect(within(header()).getByText('Closed')).toBeInTheDocument();

@@ -24,18 +24,18 @@ export interface MyCurios {
   /** The shop tile, or null while the shop is closed. */
   shop: ShopTile | null;
   /**
-   * The Shop tab's switch: whether the shop is open, and how many items are
+   * The Shop link's switch: whether the shop is open, and how many items are
    * up for sale either way. Null on a personal page, which has no shop.
    */
   shopTab: {
     open: boolean;
     itemCount: number;
-    /** The first few, for the preview's Shop tab. */
+    /** The first few, for the preview's Shop link photos. */
     preview: { name: string; priceCents: number | null; photoKey: string | null }[];
   } | null;
 }
 
-/** How many items the preview's Shop tab shows. */
+/** How many items the preview's Shop link shows. */
 const SHOP_PREVIEW = 3;
 
 /** Everything the My Curios editor starts from, in one query. */

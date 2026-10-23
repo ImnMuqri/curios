@@ -61,7 +61,7 @@ function trackedSettings(api: SettingsApi, track: SaveTrack): SettingsApi {
  */
 function payWords(chip: boolean, qr: boolean, bank: boolean): string {
   if (!chip) return qr && bank ? 'QR and bank account' : qr ? 'DuitNow QR' : 'Bank account';
-  const others = [...(qr ? ['QR'] : []), ...(bank ? ['bank account'] : [])];
+  const others = [...(qr ? ['DuitNow QR'] : []), ...(bank ? ['bank account'] : [])];
   const online = 'Online payments through CHIP';
   if (others.length === 0) return online;
   if (others.length === 1) return `${online} and ${others[0]}`;
