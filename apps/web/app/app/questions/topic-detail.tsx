@@ -5,6 +5,7 @@ import { Callout } from '@curios/ui';
 import type { OwnerTopic, OwnerWording } from '@curios/db-read';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
+import { PageReply } from '../_ui/page-reply.js';
 import { relativeTime } from '../_ui/relative-time.js';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
@@ -53,6 +54,7 @@ export function TopicDetail({
   answerMax,
   titleMax,
   look,
+  pageName,
   now,
   actions,
   onChanged,
@@ -68,6 +70,8 @@ export function TopicDetail({
   answerMax: number;
   titleMax: number;
   look: ChatLook;
+  /** The page's display name, for the "{Name}’s page" label above its reply. */
+  pageName: string;
   now: Date;
   actions: TopicActions;
   onChanged: () => void;
@@ -302,10 +306,10 @@ export function TopicDetail({
               </span>
               <span className={styles.asked}>{topic.wordings[0]?.text ?? topic.title}</span>
               {live ? (
-                <span className={styles.reply}>
+                <PageReply name={pageName}>
                   {typing ? typing.text.slice(0, typing.shown) : answer}
                   {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
-                </span>
+                </PageReply>
               ) : (
                 <span className={styles.replyNote}>Without your answer, the chat replies from your facts, or says it isn&apos;t sure.</span>
               )}

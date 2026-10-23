@@ -215,6 +215,14 @@ describe('the preview tabs', () => {
     expect(await within(preview()).findByText('Yes, delivery to Klang is RM15.')).toBeInTheDocument();
   });
 
+  it('shows the page’s answer as plain text under "{Name}’s page"', async () => {
+    show();
+    await userEvent.click(previewTabs().getByRole('tab', { name: 'Ask' }));
+    await userEvent.click(within(preview()).getByRole('button', { name: 'Tap to hear what your page says' }));
+    const answer = await within(preview()).findByText('Yes, delivery to Klang is RM15.');
+    expect(answer.previousElementSibling).toHaveTextContent(`${initial.displayName}’s page`);
+  });
+
   it('draws the page on the tab chosen, as boxes not links', async () => {
     show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
     const page = preview().querySelector('[data-bento-page]');

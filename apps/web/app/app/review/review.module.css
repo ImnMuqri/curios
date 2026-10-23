@@ -831,20 +831,6 @@
   line-height: 1.4;
 }
 
-.reply {
-  align-self: flex-start;
-  max-width: 92%;
-  min-height: 20px;
-  padding: 8px 12px;
-  border-radius: 16px 16px 16px 5px;
-  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
 .log {
   display: flex;
   flex-direction: column;

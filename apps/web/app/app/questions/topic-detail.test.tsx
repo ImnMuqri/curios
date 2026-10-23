@@ -51,6 +51,7 @@ function show(topic = klang, opts: { calls?: TopicActions; others?: OwnerTopic[]
       publishesFaq={opts.publishesFaq ?? true}
       faqMinAsks={3}
       handle="keklina"
+      pageName="Kek Lina"
       answerMax={2000}
       titleMax={200}
       look={{ accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null }}
@@ -139,6 +140,13 @@ describe('TopicDetail, the answer', () => {
     expect(within(chat).getByText('Is it halal?')).toBeInTheDocument();
     expect(within(chat).getByText('Yes, all halal.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update answer' })).toBeDisabled();
+  });
+
+  it('shows the reply as plain text under "{Name}’s page"', () => {
+    show(halal);
+    const chat = within(screen.getByLabelText('How the chat replies'));
+    expect(chat.getByText('Kek Lina’s page')).toBeInTheDocument();
+    expect(chat.getByText('Yes, all halal.').previousElementSibling).toHaveTextContent('Kek Lina’s page');
   });
 
   it('says what the chat does without an answer, rather than inventing a reply', () => {

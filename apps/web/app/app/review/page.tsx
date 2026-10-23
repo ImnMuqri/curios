@@ -66,6 +66,7 @@ export default async function ReviewPage() {
         facts={facts}
         pending={pending}
         published={page.published}
+        pageName={page.displayName}
         look={look ? { accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor } : undefined}
         footer={<Publish publicUrl={publicUrl} published={page.published} />}
       />

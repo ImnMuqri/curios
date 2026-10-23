@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { apiFetch } from '../../../lib/api.js';
+import { PageReply } from '../_ui/page-reply.js';
 import styles from './knowledge.module.css';
 
 /** The page's colours, for the chat. */
@@ -32,10 +33,13 @@ const HISTORY = 10;
  */
 export function AskPanel({
   look,
+  pageName,
   suggestions,
   onAsk,
 }: {
   look?: ChatLook;
+  /** The page's display name, for the "{Name}’s page" label above its answers. */
+  pageName?: string;
   suggestions: string[];
   onAsk: (question: string, history: Turn[]) => Promise<TestAnswer>;
 }) {
@@ -98,7 +102,9 @@ export function AskPanel({
             </span>
           ) : (
             <span key={i} style={{ display: 'contents' }}>
-              <span className={styles.a}>{turn.content}</span>
+              <PageReply name={pageName} className={styles.a}>
+                {turn.content}
+              </PageReply>
               {turn.from === 'answer' || turn.from === 'limit' || (turn.from === 'facts' && turn.sources?.length) ? (
                 <span className={styles.from}>
                   <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -115,13 +121,13 @@ export function AskPanel({
           ),
         )}
         {thinking ? (
-          <span className={styles.a} aria-label="Thinking">
+          <PageReply name={pageName} className={styles.a} aria-label="Thinking">
             <span className={styles.dots}>
               <i />
               <i />
               <i />
             </span>
-          </span>
+          </PageReply>
         ) : null}
       </div>
 
@@ -159,10 +165,11 @@ export function AskPanel({
 }
 
 /** The real `onAsk`. A server component cannot pass functions. */
-export function Ask({ look, suggestions }: { look?: ChatLook; suggestions: string[] }) {
+export function Ask({ look, pageName, suggestions }: { look?: ChatLook; pageName?: string; suggestions: string[] }) {
   return (
     <AskPanel
       look={look}
+      pageName={pageName}
       suggestions={suggestions}
       onAsk={(question, history) =>
         apiFetch<TestAnswer>('/chat/test', { method: 'POST', body: JSON.stringify({ question, history }) })

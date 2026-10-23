@@ -29,6 +29,7 @@ function show(list = topics, publishesFaq = true, answerRate = { answered: 0, re
       publicUrl="https://curios.my/keklina"
       answerMax={2000}
       titleMax={200}
+      pageName="Kek Lina"
       look={{ accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null }}
       now={now}
       actions={actions()}

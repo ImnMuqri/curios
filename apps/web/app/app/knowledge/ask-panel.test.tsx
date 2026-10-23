@@ -31,6 +31,14 @@ describe('AskPanel', () => {
     expect(screen.getByRole('textbox', { name: 'Ask your page' })).toHaveValue('');
   });
 
+  it('shows the answer as plain text under "{Name}’s page"', async () => {
+    panel({ pageName: 'Kek Lina' });
+    await userEvent.click(screen.getByRole('button', { name: 'Berapa kek coklat 2kg?' }));
+    const answer = await within(log()).findByText('Kek coklat 2kg RM170.');
+    expect(answer.previousElementSibling).toHaveTextContent('Kek Lina’s page');
+    expect(within(log()).getByText('Berapa kek coklat 2kg?').closest('[class]')).not.toBe(answer);
+  });
+
   it('asks a suggestion in one tap', async () => {
     const { onAsk } = panel();
     await userEvent.click(screen.getByRole('button', { name: 'Ada delivery?' }));

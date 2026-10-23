@@ -7,6 +7,7 @@ import { Callout } from '@curios/ui';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import inbox from '../_ui/inbox.module.css';
+import { PageReply } from '../_ui/page-reply.js';
 import { relativeTime } from '../_ui/relative-time.js';
 import { firstMessage, waNumber } from './first-message.js';
 import styles from './leads.module.css';
@@ -35,6 +36,11 @@ const SLOTS = [
   { key: 'date', label: 'When' },
   { key: 'location', label: 'Where' },
 ] as const;
+
+/** One line of the chat: the visitor's in a bubble, the page's as plain text. */
+function Line({ line, name }: { line: OwnerLead['transcript'][number]; name: string }) {
+  return line.role === 'USER' ? <span className={styles.fromVisitor}>{line.content}</span> : <PageReply name={name}>{line.content}</PageReply>;
+}
 
 const READY = ['Start with hello', 'Ask a little more', 'Almost there', 'Ready to quote'];
 const RING = 2 * Math.PI * 18;
@@ -188,9 +194,7 @@ export function LeadDetail({
             </h3>
             <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} aria-label="The conversation">
               {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
-                <span key={i} className={line.role === 'USER' ? styles.fromVisitor : styles.fromPage}>
-                  {line.content}
-                </span>
+                <Line key={i} line={line} name={displayName} />
               ))}
               <span className={styles.leftNumber}>
                 <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
@@ -199,9 +203,7 @@ export function LeadDetail({
                 Left their number
               </span>
               {lead.transcript.slice(lead.capturedAfter).map((line, i) => (
-                <span key={lead.capturedAfter + i} className={line.role === 'USER' ? styles.fromVisitor : styles.fromPage}>
-                  {line.content}
-                </span>
+                <Line key={lead.capturedAfter + i} line={line} name={displayName} />
               ))}
             </div>
           </div>

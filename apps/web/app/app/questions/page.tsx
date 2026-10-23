@@ -46,6 +46,7 @@ export default async function QuestionsPage() {
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`}
       answerMax={ANSWER_MAX}
       titleMax={TOPIC_TITLE_MAX}
+      pageName={page.displayName}
       look={{ accentColor: page.accentColor, headingFont: page.headingFont, background: page.background, backgroundColor: page.backgroundColor }}
       now={now.toISOString()}
     />

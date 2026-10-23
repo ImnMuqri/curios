@@ -1363,17 +1363,8 @@
   animation: fadeUp 260ms ease both;
 }
 
+/* The page's answer is a PageReply; this is only how it arrives. */
 .a {
-  align-self: flex-start;
-  max-width: 90%;
-  padding: 8px 12px;
-  border-radius: 16px 16px 16px 5px;
-  background: color-mix(in srgb, var(--accent, var(--biru)) 16%, var(--paper));
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.45;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
   animation: fadeUp 260ms ease both;
 }
 

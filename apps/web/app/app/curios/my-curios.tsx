@@ -7,6 +7,7 @@ import type { Socials } from '@curios/core/socials';
 import { shopCopy } from '../../[handle]/shop/copy.js';
 import { BentoPage } from '../../_bento/BentoPage.js';
 import { PageHead } from '../_ui/page-head.js';
+import { PageReply } from '../_ui/page-reply.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
 import { SaveStatus, useSaveStatus } from '../_ui/save-status.js';
 import { UnderlineTabs } from '../_ui/underline-tabs.js';
@@ -271,6 +272,7 @@ export function MyCuriosEditor({
               question={page.previewQuestion}
               askPage={api.askPage}
               accent={page.accentColor}
+              name={page.displayName}
             />
           </BentoPage>
         </PreviewFrame>
@@ -287,7 +289,7 @@ export function MyCuriosEditor({
  * never shows a sample answer the page would not give, and a model call is
  * spent only when asked for.
  */
-function PreviewAsk({ question, askPage, accent }: { question: string; askPage: CuriosApi['askPage']; accent: string }) {
+function PreviewAsk({ question, askPage, accent, name }: { question: string; askPage: CuriosApi['askPage']; accent: string; name: string }) {
   const [state, setState] = useState<{ kind: 'idle' } | { kind: 'asking' } | { kind: 'answered'; reply: string } | { kind: 'failed' }>({ kind: 'idle' });
 
   async function ask() {
@@ -303,15 +305,15 @@ function PreviewAsk({ question, askPage, accent }: { question: string; askPage: 
     <span className={styles.pvChat} style={{ '--accent': accent } as CSSProperties}>
       <span className={styles.pvQ}>{question}</span>
       {state.kind === 'answered' ? (
-        <span className={styles.pvA}>{state.reply}</span>
+        <PageReply name={name}>{state.reply}</PageReply>
       ) : state.kind === 'asking' ? (
-        <span className={styles.pvA} aria-label="Asking">
+        <PageReply name={name} aria-label="Asking">
           <span className={styles.pvDots} aria-hidden="true">
             <i />
             <i />
             <i />
           </span>
-        </span>
+        </PageReply>
       ) : (
         <button type="button" className={styles.pvTap} onClick={() => void ask()}>
           {state.kind === 'failed' ? 'That did not work. Tap to try again' : 'Tap to hear what your page says'}
@@ -327,13 +329,15 @@ function PreviewTabBody({
   question,
   askPage,
   accent,
+  name,
 }: {
   tab: PreviewTab;
   hasLinks: boolean;
   question: string;
   askPage: CuriosApi['askPage'];
   accent: string;
+  name: string;
 }) {
   if (tab === 'links') return hasLinks ? null : <span className={styles.previewEmpty}>Your links show here</span>;
-  return <PreviewAsk question={question} askPage={askPage} accent={accent} />;
+  return <PreviewAsk question={question} askPage={askPage} accent={accent} name={name} />;
 }

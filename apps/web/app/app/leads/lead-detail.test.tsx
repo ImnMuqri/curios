@@ -45,7 +45,14 @@ describe('LeadDetail', () => {
   it('puts "Left their number" where it happened in the conversation', () => {
     show();
     const lines = [...screen.getByLabelText('The conversation').children].map((line) => line.textContent);
-    expect(lines).toEqual(['nak tanya kek coklat 2kg berapa?', 'Kek coklat moist 2kg is RM170.', 'Left their number', 'ok terima kasih']);
+    expect(lines).toEqual(['nak tanya kek coklat 2kg berapa?', 'Kek Lina’s pageKek coklat moist 2kg is RM170.', 'Left their number', 'ok terima kasih']);
+  });
+
+  it('shows the page’s replies as plain text under "Kek Lina’s page", and not the visitor’s', () => {
+    show();
+    const convo = within(screen.getByLabelText('The conversation'));
+    expect(convo.getAllByText('Kek Lina’s page')).toHaveLength(1);
+    expect(convo.getByText('Kek coklat moist 2kg is RM170.').previousElementSibling).toHaveTextContent('Kek Lina’s page');
   });
 
   it('says who left the number, when, and where', () => {

@@ -77,6 +77,7 @@ export default async function KnowledgePage({
           )}
         </div>
         <Ask
+          pageName={page.displayName}
           look={look ? { accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor } : undefined}
           suggestions={suggestions}
         />

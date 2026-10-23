@@ -40,6 +40,7 @@ export function QuestionsScreen({
   answerMax,
   titleMax,
   look,
+  pageName,
   now,
   actions,
   onChanged,
@@ -57,6 +58,7 @@ export function QuestionsScreen({
   answerMax: number;
   titleMax: number;
   look: ChatLook;
+  pageName: string;
   now: Date;
   actions: TopicActions;
   onChanged: () => void;
@@ -217,6 +219,7 @@ export function QuestionsScreen({
                 answerMax={answerMax}
                 titleMax={titleMax}
                 look={look}
+                pageName={pageName}
                 now={now}
                 actions={actions}
                 onChanged={onChanged}

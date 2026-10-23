@@ -7,6 +7,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { FactCard } from './fact-card.js';
+import { PageReply } from '../_ui/page-reply.js';
 import styles from './review.module.css';
 
 /** The page's colours, for the chat preview. */
@@ -77,6 +78,7 @@ export function ReviewQueue({
   pending = facts.length,
   published = true,
   look,
+  pageName,
   footer,
 }: {
   facts: ReviewFact[];
@@ -87,6 +89,8 @@ export function ReviewQueue({
   pending?: number;
   published?: boolean;
   look?: ChatLook;
+  /** The page's display name, for the "{Name}’s page" label above its reply. */
+  pageName?: string;
   /** Under the side panel: whether the page is live, and Publish while it is not. */
   footer?: ReactNode;
 }) {
@@ -300,7 +304,7 @@ export function ReviewQueue({
               On your page
             </span>
             {top?.question ? <span className={styles.asked}>{top.question}</span> : null}
-            <span className={styles.reply}>{top ? (draft ?? claimOf(top)) || '…' : 'Everything here is checked. The chat only says what you accepted.'}</span>
+            <PageReply name={pageName}>{top ? (draft ?? claimOf(top)) || '…' : 'Everything here is checked. The chat only says what you accepted.'}</PageReply>
           </div>
         </section>
 
@@ -347,12 +351,14 @@ export function Review({
   pending,
   published,
   look,
+  pageName,
   footer,
 }: {
   facts: ReviewFact[];
   pending: number;
   published: boolean;
   look?: ChatLook;
+  pageName?: string;
   footer?: ReactNode;
 }) {
   const router = useRouter();
@@ -363,6 +369,7 @@ export function Review({
       pending={pending}
       published={published}
       look={look}
+      pageName={pageName}
       footer={footer}
       onAccept={async (id) => {
         await apiFetch(`/facts/${id}/verify`, { method: 'POST' });
