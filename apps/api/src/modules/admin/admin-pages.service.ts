@@ -152,6 +152,9 @@ export async function unsuspendPage(deps: AdminPagesDeps, actor: AdminActor, id:
 
 export async function grantMonth(deps: AdminPagesDeps, actor: AdminActor, id: string, reason: string): Promise<void> {
   await deps.prisma.$transaction(async (tx) => {
+    // Lock the row first and read paidUntil after, so a second grant at the same moment
+    // waits, then extends from the first's result: two rows, two months, no disagreement.
+    await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${id} FOR UPDATE`;
     const page = await loadPage(tx, id);
     const now = new Date();
     const grantedUntil = extendPaidUntil({ paidUntil: page.paidUntil, plan: 'MONTHLY', now });

@@ -164,6 +164,25 @@ describe('grant-month', () => {
     expect(audit[0]).toMatchObject({ action: 'GRANTED_MONTH', metadata: { paidUntil: expected.toISOString() } });
   });
 
+  it('four grants at once add four months and leave payments, audit rows and paidUntil agreeing', async () => {
+    const start = new Date(Date.now() + 10 * 86_400_000);
+    const page = await aPage({ paidUntil: start });
+    const results = await Promise.all(
+      Array.from({ length: 4 }, () => call('POST', `/admin/pages/${page.id}/grant-month`, { reason: 'Double click' })),
+    );
+    expect(results.map((r) => r.statusCode)).toEqual([204, 204, 204, 204]);
+
+    let twice = start;
+    for (let i = 0; i < 4; i++) twice = extendPaidUntil({ paidUntil: twice, plan: 'MONTHLY', now: new Date() });
+    const row = await app.prisma.page.findUniqueOrThrow({ where: { id: page.id } });
+    expect(row.paidUntil).toEqual(twice);
+    const payments = await app.prisma.payment.findMany({ where: { pageId: page.id }, orderBy: { grantedUntil: 'asc' } });
+    expect(payments).toHaveLength(4);
+    expect(payments[3]!.grantedUntil).toEqual(row.paidUntil);
+    expect(new Set(payments.map((p) => p.grantedUntil!.getTime())).size).toBe(4);
+    expect(await actions(page.id)).toHaveLength(4);
+  });
+
   it('counts a lapsed page from now', async () => {
     const page = await aPage({ paidUntil: new Date(Date.now() - 20 * 86_400_000) });
     const before = Date.now();
