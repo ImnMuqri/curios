@@ -225,3 +225,10 @@ describe('ReviewQueue', () => {
     expect(screen.queryByRole('checkbox')).toBeNull();
   });
 });
+
+describe('ReviewQueue, without the template look', () => {
+  it('has no gradient blobs behind the stack', () => {
+    const { container } = render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+    expect(container.querySelector('[class*="blob"]')).toBeNull();
+  });
+});

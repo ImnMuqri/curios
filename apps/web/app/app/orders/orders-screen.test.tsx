@@ -53,7 +53,7 @@ const orders: OrderRow[] = [
   { ...base, id: 'o8', number: 8, customerName: 'Siti Nur', day: '2026-10-13', totalCents: 5000, status: 'COMPLETED', paidAt: new Date('2026-10-11T09:10:00Z'), completedAt: new Date('2026-10-13T03:30:00Z') },
 ];
 
-const stats: OrderStats = { toCheck: 1, toMake: 2, paidThisWeekCents: 17000, week: [0, 0, 5000, 10000, 0, 7000, 0] };
+const stats: OrderStats = { toCheck: 1, toMake: 2, paidThisWeekCents: 17000 };
 
 function show(list = orders, extra: { selected?: string | null; stats?: OrderStats } = {}) {
   const move = vi.fn(async () => undefined);
@@ -106,15 +106,6 @@ describe('OrdersScreen, the header and the figures', () => {
   it('says a week with sen in it exactly', () => {
     show(orders, { stats: { ...stats, paidThisWeekCents: 17050 } });
     expect(figures().getByText('Paid this week').previousSibling).toHaveTextContent('RM170.50');
-  });
-
-  it('draws the last seven days of payments, today last', () => {
-    const { container } = render(
-      <OrdersScreen orders={orders} stats={stats} now={now} selected={null} keptMonths={12} shopUrl="/s" publicUrl="/s" pickupNote={null} move={vi.fn()} onChanged={vi.fn()} />,
-    );
-    const bars = container.querySelectorAll('[data-spark] i');
-    expect(bars).toHaveLength(7);
-    expect(bars[6]).toHaveAttribute('data-today');
   });
 });
 
@@ -181,7 +172,7 @@ describe('OrdersScreen, the list', () => {
 
 describe('OrdersScreen, before the first order', () => {
   it('says where the first order lands, with the link to share and the shop to set up', () => {
-    show([], { stats: { toCheck: 0, toMake: 0, paidThisWeekCents: 0, week: [0, 0, 0, 0, 0, 0, 0] } });
+    show([], { stats: { toCheck: 0, toMake: 0, paidThisWeekCents: 0 } });
     expect(screen.queryByRole('tablist')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Your first order lands here' })).toBeInTheDocument();
     expect(screen.getByText('When someone checks out in your shop, the order shows up here with their receipt. You check it, mark it paid, and make it.')).toBeInTheDocument();
@@ -227,5 +218,16 @@ describe('OrdersScreen, an order paid twice', () => {
     expect(filter(/^Refunds/)).toHaveTextContent('1');
     fireEvent.click(filter(/^Refunds/));
     expect(rows().queryByText('Laila Musa')).toBeNull();
+  });
+});
+
+describe('OrdersScreen, without the template look', () => {
+  it('shows its three numbers as plain figures: no icon tiles, no bars', () => {
+    show();
+    const stats = screen.getByRole('list', { name: 'Your orders' });
+    expect(within(stats).getAllByRole('listitem')).toHaveLength(3);
+    expect(stats.querySelector('svg')).toBeNull();
+    expect(stats.querySelector('[data-tone]')).toBeNull();
+    expect(stats.querySelector('i')).toBeNull();
   });
 });

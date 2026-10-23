@@ -17,69 +17,12 @@
   }
 }
 
-/* Seven days of numbers, today last and darker. */
-.week {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 38px;
-  margin-left: auto;
-}
-
-.week i {
-  display: block;
-  width: 8px;
-  border-radius: 3px;
-  background: var(--blob-mint);
-  transition: height 700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.week i:last-child {
-  background: var(--hijau);
-}
-
 /* ---- A number in the list ---- */
 
 .lead {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-/* The phone square, in the lead's status colours. */
-.avatar {
-  display: grid;
-  place-items: center;
-  width: 40px;
-  height: 40px;
-  flex: none;
-  border-radius: 12px;
-  background: var(--biru-muda);
-  color: var(--biru);
-}
-
-.avatar[data-status='CONTACTED'] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
-}
-
-.avatar[data-status='SOLD'] {
-  background: var(--hijau-muda);
-  color: var(--hijau);
-}
-
-/* Ended without a sale: quiet, out of the way. */
-.avatar[data-status='CLOSED'] {
-  background: var(--surface);
-  color: var(--muted);
-}
-
-.avatar svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .leadMid {
@@ -159,12 +102,6 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 16px;
-}
-
-.head .avatar {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
 }
 
 .head h2 {
@@ -305,39 +242,6 @@
 .slot[data-missing] {
   border: 1.5px dashed var(--edge);
   background: var(--card);
-}
-
-.slotIcon {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--rose-muda);
-  color: var(--rose);
-}
-
-.slotIcon[data-tone='biru'] {
-  background: var(--biru-muda);
-  color: var(--biru);
-}
-
-.slotIcon[data-tone='hijau'] {
-  background: var(--hijau-muda);
-  color: var(--hijau);
-}
-
-.slot[data-missing] .slotIcon {
-  background: var(--surface);
-  color: var(--faint);
-}
-
-.slotIcon svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .slot small {
@@ -678,18 +582,11 @@
   }
 }
 
-@media (max-width: 1000px) {
-  .week {
-    display: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .slot {
     animation: none;
   }
 
-  .week i,
   .status::before,
   .meter circle:last-child {
     transition: none;

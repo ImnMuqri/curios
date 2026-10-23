@@ -73,7 +73,7 @@ export function SocialsEditor({
 }) {
   return (
     <section className={ui.section} aria-labelledby="socials-title">
-      <SectionHead id="socials-title" icon="at" tone="biru" title="Social profiles" note="Shown as icons under your name" />
+      <SectionHead id="socials-title" title="Social profiles" note="Shown as icons under your name" />
       <div className={styles.socials}>
         {SOCIAL_KINDS.map((kind) => (
           <SocialField

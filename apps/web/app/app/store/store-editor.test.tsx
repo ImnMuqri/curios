@@ -298,3 +298,21 @@ describe('the tabs', () => {
     expect(screen.getByLabelText('Shop description')).not.toBeVisible();
   });
 });
+
+describe('without the template look', () => {
+  it('has no gradient blobs in the preview panel', () => {
+    show();
+    expect(preview().parentElement!.querySelector('[class*="blob"]')).toBeNull();
+    expect(document.querySelector('[class*="blobs"]')).toBeNull();
+  });
+
+  it('titles its sections with text only, and the delivery choices too', () => {
+    show();
+    fireEvent.click(editTab('Pickup & delivery'));
+    for (const name of ['Pickup', 'Delivery', 'Notice']) {
+      expect(screen.getByRole('heading', { name }).querySelector('svg')).toBeNull();
+    }
+    expect(document.querySelector('[class*="deliveryIcon"]')).toBeNull();
+    expect(document.querySelector('[class*="chip"][data-tone]')).toBeNull();
+  });
+});

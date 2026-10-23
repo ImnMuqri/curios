@@ -1,9 +1,8 @@
 /*
  * Orders, from the design handoff's Orders board. The frame (figures, the
  * list column, the filters' sliding thumb, the detail column) is the inbox's
- * (../_ui/inbox.module.css); this is what only Orders has: the 7-day spark,
- * the order rows and badges, the four steps, the action box, the receipt and
- * its zoom.
+ * (../_ui/inbox.module.css); this is what only Orders has: the order rows
+ * and badges, the four steps, the action box, the receipt and its zoom.
  */
 
 @keyframes fadeIn {
@@ -29,33 +28,6 @@
     opacity: 0;
     transform: rotate(var(--r)) translateY(-40px) scaleY(0.2);
   }
-}
-
-/* ---- The figures ---- */
-
-.kpiCheck {
-  background: var(--kuning-muda);
-  color: var(--amber-ink);
-}
-
-.spark {
-  display: flex;
-  align-items: flex-end;
-  gap: 4px;
-  height: 38px;
-  margin-left: auto;
-}
-
-.spark i {
-  display: block;
-  width: 8px;
-  border-radius: 3px;
-  background: var(--blob-mint);
-  transition: height 700ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.spark i[data-today] {
-  background: var(--hijau);
 }
 
 /* ---- The list ---- */
@@ -1048,12 +1020,6 @@
   }
 }
 
-@media (max-width: 1000px) {
-  .spark {
-    display: none;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .zoom,
   .zoomImage,
@@ -1063,7 +1029,6 @@
 
   .fill,
   .node,
-  .spark i,
   .receiptThumb {
     transition: none;
   }

@@ -173,12 +173,6 @@ export function ReviewQueue({
   return (
     <div className={styles.rv}>
       <div className={styles.stage}>
-        <div className={styles.blobs} aria-hidden="true">
-          <span />
-          <span />
-          <span />
-        </div>
-
         <div className={styles.prog}>
           <b>{progText}</b>
           {fresh ? null : (

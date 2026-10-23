@@ -87,8 +87,8 @@ export async function getLeads(
 export interface LeadStats {
   /** Leads still NEW: nobody has reached out yet. */
   waiting: number;
-  /** Leads left in each of the last seven days, oldest first, today (the last 24 hours) last. */
-  week: number[];
+  /** Leads left in the last seven days. */
+  thisWeek: number;
   /** Leads the owner marked SOLD: closed into a sale. */
   sold: number;
 }
@@ -98,15 +98,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 /** The Leads screen's three figures, counted in the database rather than from the newest fifty. */
 export async function getLeadStats(accountId: string, now = new Date()): Promise<LeadStats> {
   const scope = { page: { accountId } };
-  const [waiting, sold, recent] = await Promise.all([
+  const [waiting, sold, thisWeek] = await Promise.all([
     prismaRead.lead.count({ where: { ...scope, status: 'NEW' } }),
     prismaRead.lead.count({ where: { ...scope, status: 'SOLD' } }),
-    prismaRead.lead.findMany({
-      where: { ...scope, createdAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now } },
-      select: { createdAt: true },
-    }),
+    prismaRead.lead.count({ where: { ...scope, createdAt: { gt: new Date(now.getTime() - 7 * DAY_MS), lte: now } } }),
   ]);
-  const week = [0, 0, 0, 0, 0, 0, 0];
-  for (const lead of recent) week[6 - Math.floor((now.getTime() - lead.createdAt.getTime()) / DAY_MS)]! += 1;
-  return { waiting, week, sold };
+  return { waiting, thisWeek, sold };
 }

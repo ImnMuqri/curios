@@ -93,7 +93,7 @@ function OnlinePayments({
 
   return (
     <section className={ui.section} aria-labelledby="online-title">
-      <SectionHead id="online-title" icon="card" tone="hijau" title="Online payments" note="FPX online banking and e-wallets" />
+      <SectionHead id="online-title" title="Online payments" note="FPX online banking and e-wallets" />
       {chip.connected ? (
         <div className={`${styles.gw} ${styles.gwOn}`}>
           <span className={styles.gwOk} aria-hidden="true">
@@ -264,7 +264,7 @@ export function PaymentTab({
       <OnlinePayments chip={chip} chipApi={chipApi} onChip={onChip} displayName={displayName} now={now} navigate={navigate} />
 
       <section className={ui.section} aria-labelledby="qr-title">
-        <SectionHead id="qr-title" icon="qr" tone="biru" title="DuitNow QR" note="Customers scan it on their order page" />
+        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it on their order page" />
         {qr.has ? (
           <div className={styles.qrCard}>
             <span className={styles.qrBox}>
@@ -317,7 +317,7 @@ export function PaymentTab({
       </section>
 
       <section className={ui.section} aria-labelledby="bank-title">
-        <SectionHead id="bank-title" icon="bank" tone="hijau" title="Bank account" note={bankOk ? 'All three filled in' : 'Fill in all three to use it'} />
+        <SectionHead id="bank-title" title="Bank account" note={bankOk ? 'All three filled in' : 'Fill in all three to use it'} />
         <div className={styles.banks} role="group" aria-label="Pick your bank">
           {BANKS.map((bank) => (
             <button key={bank} type="button" className={styles.bank} aria-pressed={bankName.text === bank} onClick={() => bankName.change(bank)}>

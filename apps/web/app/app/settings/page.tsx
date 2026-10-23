@@ -63,19 +63,15 @@ export default async function SettingsPage({
             <h2 id="page-title">Your page</h2>
             <p>The address people visit, and what kind of page it is.</p>
             <div className={styles.card}>
-              <SettingRow icon="link" tone="biru" title="Address" note={sourcePlace(publicUrl)} action={<CopyAddress url={publicUrl} />} />
+              <SettingRow title="Address" note={sourcePlace(publicUrl)} action={<CopyAddress url={publicUrl} />} />
               {page.mode === 'BUSINESS' ? (
                 <SettingRow
-                  icon="shop"
-                  tone="rose"
                   title="Business page"
                   note="Takes numbers, runs a shop and has FAQ pages. It can't be switched back to personal."
                   action={<Done>Business</Done>}
                 />
               ) : (
                 <SettingRow
-                  icon="person"
-                  tone="rose"
                   title="Personal page"
                   note="Answers questions about you. Selling something? A business page takes numbers and runs a shop."
                   action={
@@ -95,8 +91,6 @@ export default async function SettingsPage({
           <p>{view.signNote}</p>
           <div className={styles.card}>
             <SettingRow
-              icon="google"
-              tone="google"
               title="Google"
               note={view.googleEmail ?? 'Not connected.'}
               action={view.showConnectGoogle ? <ConnectGoogle /> : <Done>Connected</Done>}
@@ -104,7 +98,7 @@ export default async function SettingsPage({
             {view.showAddPassword ? (
               <AddPassword />
             ) : (
-              <SettingRow icon="lock" tone="grey" title="Password" note="Set. To change it, use “Forgot your password?” when you sign in." action={<Done>Added</Done>} />
+              <SettingRow title="Password" note="Set. To change it, use “Forgot your password?” when you sign in." action={<Done>Added</Done>} />
             )}
           </div>
         </section>
@@ -123,7 +117,7 @@ export default async function SettingsPage({
         <section className={styles.group} aria-labelledby="session-title">
           <h2 id="session-title">Session</h2>
           <div className={styles.card}>
-            <SettingRow icon="out" tone="grey" title="Sign out" note="On this device. Your page stays live." action={<SignOutButton />} />
+            <SettingRow title="Sign out" note="On this device. Your page stays live." action={<SignOutButton />} />
           </div>
         </section>
       </div>

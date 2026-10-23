@@ -56,8 +56,6 @@ export function AddPasswordForm({ onAdd }: { onAdd: (input: { password: string }
 
   return (
     <SettingRow
-      icon="lock"
-      tone="grey"
       title="Password"
       note={done ? 'Password added. You can now sign in with your email and this password.' : 'Not set. You sign in with Google only.'}
       action={

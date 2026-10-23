@@ -10,7 +10,7 @@ import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
 import { useToast } from '../_ui/toast.js';
-import { LeadDetail, PhoneSquare, STATUSES, type LeadActions, type LeadStatus } from './lead-detail.js';
+import { LeadDetail, STATUSES, type LeadActions, type LeadStatus } from './lead-detail.js';
 import styles from './leads.module.css';
 
 type Filter = 'all' | LeadStatus;
@@ -65,7 +65,6 @@ export function LeadsScreen({
   const shown = leads.filter((lead) => filter === 'all' || statusOf(lead) === filter);
   const chosen = shown.find((lead) => lead.id === selected) ?? shown[0] ?? null;
   const waiting = leads.filter((lead) => statusOf(lead) === 'NEW').length;
-  const top = Math.max(1, ...stats.week);
 
   async function setStatus(lead: OwnerLead, next: LeadStatus) {
     const before = statusOf(lead);
@@ -95,38 +94,18 @@ export function LeadsScreen({
 
       <ul className={inbox.stats} aria-label="Your leads">
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" />
-            </svg>
-          </span>
           <span>
             <b>{stats.waiting}</b>
             <span>New, waiting for you</span>
           </span>
         </li>
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} data-tone="hijau" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z" />
-            </svg>
-          </span>
           <span>
-            <b>{stats.week.reduce((sum, n) => sum + n, 0)}</b>
+            <b>{stats.thisWeek}</b>
             <span>Numbers left this week</span>
-          </span>
-          <span className={styles.week} aria-hidden="true">
-            {stats.week.map((n, i) => (
-              <i key={i} style={{ height: Math.max(4, Math.round((n / top) * 34)) }} />
-            ))}
           </span>
         </li>
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} data-tone="rose" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z" />
-            </svg>
-          </span>
           <span>
             <b>{stats.sold}</b>
             <span>Closed into a sale</span>
@@ -211,7 +190,6 @@ export function LeadsScreen({
                         onClick={() => setSelected(lead.id)}
                       >
                         <span className={styles.lead}>
-                          <PhoneSquare status={status} />
                           <span className={styles.leadMid}>
                             <span className={styles.phone}>
                               {formatMalaysianPhone(lead.phone)}

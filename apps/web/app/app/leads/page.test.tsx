@@ -54,7 +54,7 @@ describe('LeadsPage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getLeads.mockResolvedValue([]);
     getLeadStats.mockClear();
-    getLeadStats.mockResolvedValue({ waiting: 1, week: [0, 0, 0, 0, 0, 0, 1], sold: 0 });
+    getLeadStats.mockResolvedValue({ waiting: 1, thisWeek: 1, sold: 0 });
     getMyCurios.mockResolvedValue({ language: 'ms', accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null });
   });
 
@@ -85,7 +85,7 @@ describe('LeadsPage', () => {
     const props = Leads.mock.calls[0]![0];
     const now = getLeadStats.mock.calls[0]![1] as Date;
     expect(props).toMatchObject({
-      stats: { waiting: 1, week: [0, 0, 0, 0, 0, 0, 1], sold: 0 },
+      stats: { waiting: 1, thisWeek: 1, sold: 0 },
       handle: 'nadia',
       displayName: 'Nadia',
       language: 'ms',

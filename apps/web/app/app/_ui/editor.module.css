@@ -200,9 +200,6 @@
 }
 
 .sectionTitle {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
   margin: 0;
   font-size: 14.5px;
   font-weight: 600;
@@ -212,39 +209,6 @@
   margin: 0;
   font-size: 13px;
   color: var(--muted);
-}
-
-.chip {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  background: var(--biru-muda);
-  color: var(--biru);
-}
-
-.chip svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.chip[data-tone='hijau'] {
-  background: var(--hijau-muda);
-  color: var(--hijau);
-}
-
-.chip[data-tone='rose'] {
-  background: var(--rose-muda);
-  color: var(--rose);
-}
-
-.chip[data-tone='amber'] {
-  background: var(--amber-muda);
-  color: var(--amber-ink);
 }
 
 .note {
@@ -676,59 +640,6 @@
   position: relative;
 }
 
-.blobs {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.blobs > span {
-  position: absolute;
-  width: 80%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  filter: blur(30px);
-  animation: 18s ease-in-out infinite alternate;
-}
-
-.blobs > span:nth-child(1) {
-  left: -30%;
-  top: -15%;
-  background: radial-gradient(circle, var(--blob-blue) 0%, transparent 65%);
-  animation-name: blob1;
-}
-
-.blobs > span:nth-child(2) {
-  right: -35%;
-  top: 15%;
-  background: radial-gradient(circle, var(--blob-pink) 0%, transparent 65%);
-  animation-name: blob2;
-  animation-duration: 22s;
-}
-
-.blobs > span:nth-child(3) {
-  left: -10%;
-  bottom: -30%;
-  background: radial-gradient(circle, var(--blob-peach) 0%, transparent 65%);
-  animation-name: blob3;
-  animation-duration: 20s;
-}
-
-.blobs > span:nth-child(4) {
-  right: -20%;
-  bottom: -25%;
-  width: 60%;
-  background: radial-gradient(circle, var(--blob-mint) 0%, transparent 65%);
-  animation-name: blob4;
-  animation-duration: 25s;
-}
-
-@keyframes blob1 { to { transform: translate(25%, 20%) scale(1.15); } }
-@keyframes blob2 { to { transform: translate(-25%, 20%) scale(0.9); } }
-@keyframes blob3 { to { transform: translate(20%, -20%) scale(1.2); } }
-@keyframes blob4 { to { transform: translate(-25%, -15%) scale(1.1); } }
-
 .phone {
   width: 310px;
   height: 630px;
@@ -872,7 +783,6 @@
   .empty,
   .ghostRows > span,
   .emptyBadge,
-  .blobs > span,
   .spin {
     animation: none;
   }

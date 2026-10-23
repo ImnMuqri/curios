@@ -145,7 +145,7 @@ export function AppearanceEditor({
   return (
     <>
       <section className={ui.section} aria-labelledby="style-title">
-        <SectionHead id="style-title" icon="style" tone="biru" title="Style" note="How your buttons look" />
+        <SectionHead id="style-title" title="Style" note="How your buttons look" />
         <div className={styles.styleTiles} role="group" aria-labelledby="style-title">
           {STYLES.map((option) => (
             <button
@@ -170,7 +170,7 @@ export function AppearanceEditor({
       </section>
 
       <section className={ui.section} aria-labelledby="background-title">
-        <SectionHead id="background-title" icon="layers" tone="hijau" title="Background" note="Behind your whole page" />
+        <SectionHead id="background-title" title="Background" note="Behind your whole page" />
         <div className={styles.backgroundTiles} role="group" aria-labelledby="background-title">
           {PAGE_BACKGROUNDS.map((value) => {
             const drawn = value === 'CUSTOM' && !look.backgroundColor ? 'PAPER' : value;
@@ -217,7 +217,7 @@ export function AppearanceEditor({
       </section>
 
       <section className={ui.section} aria-labelledby="accent-title">
-        <SectionHead id="accent-title" icon="palette" tone="rose" title="Accent colour" note="Your first link and the send button" />
+        <SectionHead id="accent-title" title="Accent colour" note="Your first link and the send button" />
         <div className={styles.swatches} role="group" aria-labelledby="accent-title">
           {/* The owner's own colour joins the row, chosen, so the row always shows what the page wears. */}
           {[...ACCENT_PRESETS, ...((ACCENT_PRESETS as readonly string[]).includes(accentColor) ? [] : [accentColor])].map((preset) => (
@@ -263,7 +263,7 @@ export function AppearanceEditor({
       </section>
 
       <section className={ui.section} aria-labelledby="font-title">
-        <SectionHead id="font-title" icon="type" tone="amber" title="Heading font" note="Used for your name" />
+        <SectionHead id="font-title" title="Heading font" note="Used for your name" />
         <div className={styles.fonts} role="group" aria-labelledby="font-title">
           {HEADING_FONTS.map((font) => (
             <button

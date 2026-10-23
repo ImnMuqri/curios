@@ -83,7 +83,7 @@ describe('OrdersPage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockResolvedValue(page);
     getOwnerOrders.mockResolvedValue([order]);
-    getOrderStats.mockResolvedValue({ toCheck: 1, toMake: 0, paidThisWeekCents: 0, week: [0, 0, 0, 0, 0, 0, 0] });
+    getOrderStats.mockResolvedValue({ toCheck: 1, toMake: 0, paidThisWeekCents: 0 });
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings: { pickupNote: 'Seksyen 7, Shah Alam' }, items: [] });
   });
   afterEach(() => vi.unstubAllEnvs());

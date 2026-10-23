@@ -14,11 +14,9 @@ export type NotifySwitches = Record<Kind, boolean>;
  * The board's fourth switch, a question asked three times, is left out: no
  * such email exists to switch.
  */
-const ROWS: { kind: Kind; icon: 'receipt' | 'upload' | 'chat'; tone: 'hijau' | 'amber' | 'rose'; title: string; label: string; on: string; off: string }[] = [
+const ROWS: { kind: Kind; title: string; label: string; on: string; off: string }[] = [
   {
     kind: 'orders',
-    icon: 'receipt',
-    tone: 'hijau',
     title: 'A new order',
     label: 'Email me when a new order comes in',
     on: 'With the total, so you can check the receipt.',
@@ -26,8 +24,6 @@ const ROWS: { kind: Kind; icon: 'receipt' | 'upload' | 'chat'; tone: 'hijau' | '
   },
   {
     kind: 'receipts',
-    icon: 'upload',
-    tone: 'amber',
     title: 'A receipt is uploaded',
     label: 'Email me when a receipt is uploaded',
     on: 'So you can mark it paid.',
@@ -35,8 +31,6 @@ const ROWS: { kind: Kind; icon: 'receipt' | 'upload' | 'chat'; tone: 'hijau' | '
   },
   {
     kind: 'leads',
-    icon: 'chat',
-    tone: 'rose',
     title: 'Someone leaves their number',
     label: 'Email me when someone leaves their number',
     on: 'Leads go cold. Reply within the day.',
@@ -69,8 +63,6 @@ function NotifyRow({ row, on: initial, onChange }: { row: (typeof ROWS)[number];
 
   return (
     <SettingRow
-      icon={row.icon}
-      tone={row.tone}
       title={row.title}
       note={on ? row.on : row.off}
       action={

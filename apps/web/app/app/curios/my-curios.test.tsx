@@ -346,3 +346,23 @@ describe('the live preview fits its phone', () => {
     expect(css).toMatch(/\.scroll > \[data-bento-page\]\s*\{[^}]*border-radius:\s*0;/);
   });
 });
+
+describe('without the template look', () => {
+  it('has no gradient blobs in the preview panel', () => {
+    show();
+    expect(document.querySelector('[class*="blob"]')).toBeNull();
+  });
+
+  it('titles its sections with text only, and a link row has no icon tile', async () => {
+    show();
+    await userEvent.click(editTab('Links'));
+    expect(screen.getByRole('heading', { name: 'Links' }).querySelector('svg')).toBeNull();
+    expect(document.querySelector('[class*="kind"]')).toBeNull();
+  });
+
+  it('has no icon tile on the shop switch', async () => {
+    show(business);
+    await userEvent.click(editTab('Links'));
+    expect(document.querySelector('[class*="kind"]')).toBeNull();
+  });
+});

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { LinksEditor, linkKind, type LinkItem } from './links-editor.js';
+import { LinksEditor, type LinkItem } from './links-editor.js';
 
 const three: LinkItem[] = [
   { id: 'a', label: 'Portfolio', url: 'https://iman.dev', size: null },
@@ -392,20 +392,5 @@ describe('LinksEditor', () => {
       await userEvent.click(screen.getByRole('button', { name: 'Move Portfolio down' }));
       expect(props.reorder).toHaveBeenCalledWith(['b', 'a']);
     });
-  });
-});
-
-describe('linkKind', () => {
-  it('reads what a link is off its address, for its icon', () => {
-    expect(linkKind('https://wa.me/60123')).toBe('whatsapp');
-    expect(linkKind('tel:+60123')).toBe('whatsapp');
-    expect(linkKind('https://www.instagram.com/keklina')).toBe('instagram');
-    expect(linkKind('mailto:a@b.co')).toBe('email');
-    expect(linkKind('https://keklina.example/menu')).toBe('web');
-  });
-
-  it('is not fooled by a host that only starts like one', () => {
-    expect(linkKind('https://instagram.com.evil.example/x')).toBe('web');
-    expect(linkKind('https://wa.me.evil.example')).toBe('web');
   });
 });

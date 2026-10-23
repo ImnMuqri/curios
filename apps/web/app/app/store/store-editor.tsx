@@ -333,7 +333,7 @@ export function StoreEditor({
             ) : (
               <>
                 <section className={ui.section} aria-labelledby="about-title">
-                  <SectionHead id="about-title" icon="message" tone="biru" title="About your shop" note="Shown above your items, before the notice" />
+                  <SectionHead id="about-title" title="About your shop" note="Shown above your items, before the notice" />
                   <div className={ui.float}>
                     <label>
                       <em>Shop description</em>

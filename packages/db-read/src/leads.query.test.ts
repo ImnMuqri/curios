@@ -117,7 +117,7 @@ describe('getLeads', () => {
 });
 
 describe('getLeadStats', () => {
-  it('counts what is waiting, what became a sale, and each of the last seven days', async () => {
+  it('counts what is waiting, what became a sale, and the last seven days', async () => {
     const now = new Date('2026-10-17T12:00:00Z');
     const ago = (hours: number) => new Date(now.getTime() - hours * 3600 * 1000);
     const owner = await anOwnerWithAPage();
@@ -130,6 +130,6 @@ describe('getLeadStats', () => {
     await aLead(other.pageId, '+60120000006', { createdAt: ago(1) });
 
     // Closed is not sold: an enquiry can end without a sale.
-    expect(await getLeadStats(owner.accountId, now)).toEqual({ waiting: 2, week: [1, 0, 0, 0, 0, 1, 2], sold: 1 });
+    expect(await getLeadStats(owner.accountId, now)).toEqual({ waiting: 2, thisWeek: 4, sold: 1 });
   });
 });

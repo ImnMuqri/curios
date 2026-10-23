@@ -54,7 +54,7 @@ export function ItemsList({
 
   return (
     <section className={ui.section} aria-labelledby="items-title">
-      <SectionHead id="items-title" icon="shelf" tone="rose" title="Items" note={`${items.length} ${items.length === 1 ? 'item' : 'items'} · ${live} in your shop`} />
+      <SectionHead id="items-title" title="Items" note={`${items.length} ${items.length === 1 ? 'item' : 'items'} · ${live} in your shop`} />
 
       {items.length === 0 ? (
         <div className={ui.empty}>

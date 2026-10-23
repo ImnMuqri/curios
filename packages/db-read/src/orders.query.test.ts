@@ -203,7 +203,6 @@ describe('getOrderStats', () => {
     const stats = await getOrderStats(owner.accountId, NOW);
     expect(stats.toCheck).toBe(1);
     expect(stats.toMake).toBe(2);
-    expect(stats.week).toEqual([0, 0, 0, 0, 0, 2000, 1000]);
     expect(stats.paidThisWeekCents).toBe(3000);
   });
 });

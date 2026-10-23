@@ -113,3 +113,13 @@ describe('QuestionsScreen, before anyone asks', () => {
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument();
   });
 });
+
+describe('QuestionsScreen, without the template look', () => {
+  it('shows its three numbers as plain figures: no icon tiles, no ring', () => {
+    show();
+    const figures = screen.getByRole('list', { name: 'This week' });
+    expect(within(figures).getAllByRole('listitem')).toHaveLength(3);
+    expect(figures.querySelector('svg')).toBeNull();
+    expect(figures.querySelector('[data-tone]')).toBeNull();
+  });
+});

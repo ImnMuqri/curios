@@ -41,11 +41,6 @@ export function ShopSwitch({
   return (
     <section className={ui.section} aria-label="Shop tab">
       <div className={styles.shopRow}>
-        <span className={styles.kind} data-kind="shop" aria-hidden="true">
-          <svg viewBox="0 0 24 24" width="16" height="16">
-            <path d="M4 9h16l-1 11H5zM8 9V7a4 4 0 0 1 8 0v2" />
-          </svg>
-        </span>
         <span className={styles.shopText}>
           <b>Shop tab</b>
           <span>

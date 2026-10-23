@@ -21,8 +21,6 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: 'answered', label: 'Answered' },
 ];
 
-const RING = 2 * Math.PI * 18;
-
 /**
  * What visitors ask, grouped by topic, and the one screen that changes what
  * the page says back. Three figures, the topics down the left (most asked
@@ -106,41 +104,22 @@ export function QuestionsScreen({
 
       <ul className={inbox.stats} aria-label="This week">
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M4 5h16v11H9l-5 4zM8 9h8M8 12h5" />
-            </svg>
-          </span>
           <span>
             <b>{askedThisWeek}</b>
             <span>Questions asked this week</span>
           </span>
         </li>
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} data-tone="amber" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6M12 17h.01" />
-            </svg>
-          </span>
           <span>
             <b>{needs.length}</b>
             <span>Topics waiting for your answer</span>
           </span>
         </li>
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} data-tone="hijau" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M5 12.5l4.5 4.5L19 7.5" />
-            </svg>
-          </span>
           <span>
             <b>{pct}%</b>
             <span>{recorded ? 'Of asks the chat can answer' : 'Of asks with your own answer'}</span>
           </span>
-          <svg className={styles.ring} viewBox="0 0 44 44" width="44" height="44" aria-hidden="true">
-            <circle cx="22" cy="22" r="18" />
-            <circle cx="22" cy="22" r="18" strokeDasharray={RING} strokeDashoffset={RING * (1 - pct / 100)} transform="rotate(-90 22 22)" />
-          </svg>
         </li>
       </ul>
 

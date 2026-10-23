@@ -7,25 +7,14 @@ export { styles as systemStyles };
 /**
  * The frame for the account and system screens -- forgot and reset password,
  * email confirmation, not found, something broke -- from the design
- * handoff's System board: the wordmark on paper, slow blobs and a little
- * grain, and the screen centred in what is left.
+ * handoff's System board: the wordmark on flat paper, and the screen centred in what
+ * is left.
  *
  * Server-safe, so client screens render it directly.
  */
 export function SystemShell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.sy}>
-      <div className={styles.blobs} aria-hidden="true">
-        <span className={styles.blob} />
-        <span className={styles.blob} />
-        <span className={styles.blob} />
-        <svg className={styles.grain}>
-          <filter id="system-grain">
-            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#system-grain)" />
-        </svg>
-      </div>
       <div className={styles.top}>
         <a className={styles.brand} href="/" aria-label="Curios home">
           <Wordmark />

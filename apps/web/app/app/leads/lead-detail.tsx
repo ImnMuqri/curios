@@ -28,28 +28,16 @@ export const STATUSES: { id: LeadStatus; label: string }[] = [
   { id: 'CLOSED', label: 'Closed' },
 ];
 
-const PHONE = 'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z';
 const CHAT = 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z';
 
 const SLOTS = [
-  { key: 'product', label: 'Wants', tone: 'rose', d: 'M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2' },
-  { key: 'date', label: 'When', tone: 'biru', d: 'M4 6h16v14H4zM4 10h16M8 3v5M16 3v5' },
-  { key: 'location', label: 'Where', tone: 'hijau', d: 'M12 21s-6-5.3-6-11a6 6 0 0 1 12 0c0 5.7-6 11-6 11zM12 12a2 2 0 1 0 0-4 2 2 0 0 0 0 4z' },
+  { key: 'product', label: 'Wants' },
+  { key: 'date', label: 'When' },
+  { key: 'location', label: 'Where' },
 ] as const;
 
 const READY = ['Start with hello', 'Ask a little more', 'Almost there', 'Ready to quote'];
 const RING = 2 * Math.PI * 18;
-
-/** The phone square, in the lead's status colours. */
-export function PhoneSquare({ status }: { status: LeadStatus }) {
-  return (
-    <span className={styles.avatar} data-status={status} aria-hidden="true">
-      <svg viewBox="0 0 24 24" width="18" height="18">
-        <path d={PHONE} />
-      </svg>
-    </span>
-  );
-}
 
 /**
  * One number, on its own: who left it and where, where the owner is with
@@ -145,7 +133,6 @@ export function LeadDetail({
   return (
     <div className={inbox.detailInner}>
       <div className={styles.head}>
-        <PhoneSquare status={status} />
         <span>
           <h2>{phone}</h2>
           <p>
@@ -177,11 +164,6 @@ export function LeadDetail({
             const value = lead.slots?.[slot.key] ?? null;
             return (
               <div key={slot.key} className={styles.slot} data-missing={value ? undefined : ''} style={{ animationDelay: `${i * 60}ms` }}>
-                <span className={styles.slotIcon} data-tone={slot.tone} aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="15" height="15">
-                    <path d={slot.d} />
-                  </svg>
-                </span>
                 <small>{slot.label}</small>
                 <b>{value ?? 'Not mentioned'}</b>
               </div>

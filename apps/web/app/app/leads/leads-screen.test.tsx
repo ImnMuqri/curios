@@ -21,7 +21,7 @@ function show(list = leads, calls?: Partial<LeadActions>) {
   render(
     <LeadsScreen
       leads={list}
-      stats={{ waiting: 1, week: [0, 0, 0, 0, 1, 1, 1], sold: 1 }}
+      stats={{ waiting: 1, thisWeek: 3, sold: 1 }}
       handle="keklina"
       displayName="Kek Lina"
       language="en"
@@ -143,5 +143,29 @@ describe('LeadsScreen, before any numbers', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Copy your link' }));
     expect(writeText).toHaveBeenCalledWith('https://curios.my/keklina');
     expect(await screen.findByRole('button', { name: 'Copied' })).toBeInTheDocument();
+  });
+});
+
+describe('LeadsScreen, without the template look', () => {
+  it('shows its three numbers as plain figures: no icon tiles, no bars', () => {
+    show();
+    const stats = screen.getByRole('list', { name: 'Your leads' });
+    expect(within(stats).getAllByRole('listitem')).toHaveLength(3);
+    expect(stats.querySelector('svg')).toBeNull();
+    expect(stats.querySelector('[data-tone]')).toBeNull();
+    expect(stats.querySelector('i')).toBeNull();
+  });
+
+  it('lists each lead as text, with no avatar tile', () => {
+    show();
+    expect(screen.getByRole('list', { name: 'Leads' }).querySelector('svg')).toBeNull();
+    expect(document.querySelector('[class*="avatar"]')).toBeNull();
+  });
+
+  it('lists what they are after as text, with no icon tile on each', () => {
+    show();
+    const after = screen.getByRole('heading', { name: /What they’re after|What they're after/ }).closest('section')!;
+    expect(after.querySelector('[class*="slotIcon"]')).toBeNull();
+    expect(after).toHaveTextContent('Kek coklat, 2kg');
   });
 });

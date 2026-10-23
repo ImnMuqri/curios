@@ -14,10 +14,10 @@ import styles from './store.module.css';
 
 const FEE_SENTENCE = 'Give flat delivery a fee above RM0, up to RM500.';
 
-const MODES: { mode: DeliveryMode; name: string; note: string; tone?: 'biru' | 'hijau'; d: string }[] = [
-  { mode: 'NONE', name: 'No delivery', note: 'Pickup only', d: 'M5 5l14 14M9 7h5v6M14 10h4l3 3v3h-3M3 7h2M3 16h8M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
-  { mode: 'FLAT', name: 'Flat fee', note: 'Added to the total', tone: 'biru', d: 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z' },
-  { mode: 'RIDER', name: 'Rider paid separately', note: 'Customer pays the rider', tone: 'hijau', d: 'M5 17a3 3 0 1 0 0-.01M19 17a3 3 0 1 0 0-.01M5 17l4-7h5l3 7M9 10l-1-3H6M14 10l2-3h2' },
+const MODES: { mode: DeliveryMode; name: string; note: string }[] = [
+  { mode: 'NONE', name: 'No delivery', note: 'Pickup only' },
+  { mode: 'FLAT', name: 'Flat fee', note: 'Added to the total' },
+  { mode: 'RIDER', name: 'Rider paid separately', note: 'Customer pays the rider' },
 ];
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -121,7 +121,7 @@ export function DeliveryTab({
   return (
     <>
       <section className={ui.section} aria-labelledby="pickup-title">
-        <SectionHead id="pickup-title" icon="bag" tone="amber" title="Pickup" note="Customers collect from you" />
+        <SectionHead id="pickup-title" title="Pickup" note="Customers collect from you" />
         <div className={styles.row}>
           <span className={styles.rowText}>
             <b>Allow pickup</b>
@@ -146,7 +146,7 @@ export function DeliveryTab({
       </section>
 
       <section className={ui.section} aria-labelledby="delivery-title">
-        <SectionHead id="delivery-title" icon="truck" tone="hijau" title="Delivery" note="How orders reach customers who can't come" />
+        <SectionHead id="delivery-title" title="Delivery" note="How orders reach customers who can't come" />
         <div className={styles.deliveryTiles} role="group" aria-labelledby="delivery-title">
           {MODES.map((option) => (
             <button
@@ -159,11 +159,6 @@ export function DeliveryTab({
               <span className={ui.tick} aria-hidden="true">
                 <svg viewBox="0 0 24 24" width="12" height="12">
                   <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
-              </span>
-              <span className={styles.deliveryIcon} data-tone={option.tone} aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="18" height="18">
-                  <path d={option.d} />
                 </svg>
               </span>
               <span>
@@ -205,7 +200,7 @@ export function DeliveryTab({
       </section>
 
       <section className={ui.section} aria-labelledby="notice-title">
-        <SectionHead id="notice-title" icon="calendar" tone="rose" title="Notice" note="How far ahead customers must order" />
+        <SectionHead id="notice-title" title="Notice" note="How far ahead customers must order" />
         <span className={styles.stepper}>
           <button type="button" aria-label="One day less" disabled={notice <= 0} onClick={() => step(-1)}>
             −

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
 import { orderView } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
@@ -74,14 +74,7 @@ export function OrdersScreen({
   const [filter, setFilter] = useState<Filter>('all');
   const [chosenId, setChosenId] = useState<string | null>(selected);
   const [copied, setCopied] = useState(false);
-  const [grown, setGrown] = useState(false);
   const { say, toast } = useToast();
-
-  // The spark grows in from nothing, as the board's does.
-  useEffect(() => {
-    const t = setTimeout(() => setGrown(true), 120);
-    return () => clearTimeout(t);
-  }, []);
 
   const shown = orders.filter((o) => matches(o, filter));
   const chosen = shown.find((o) => o.id === chosenId) ?? shown[0] ?? null;
@@ -91,7 +84,6 @@ export function OrdersScreen({
     paid: orders.filter((o) => matches(o, 'paid')).length,
     refund: orders.filter((o) => matches(o, 'refund')).length,
   };
-  const top = Math.max(1, ...stats.week);
   const week = stats.paidThisWeekCents;
 
   async function copyLink() {
@@ -114,11 +106,6 @@ export function OrdersScreen({
 
       <ul className={inbox.stats} aria-label="Your orders">
         <li className={inbox.kpi}>
-          <span className={`${inbox.kpiIcon} ${styles.kpiCheck}`} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d={RECEIPT} />
-            </svg>
-          </span>
           <span>
             <b>
               <CountUp value={stats.toCheck} />
@@ -127,11 +114,6 @@ export function OrdersScreen({
           </span>
         </li>
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5M9 13h6" />
-            </svg>
-          </span>
           <span>
             <b>
               <CountUp value={stats.toMake} />
@@ -140,20 +122,10 @@ export function OrdersScreen({
           </span>
         </li>
         <li className={inbox.kpi}>
-          <span className={inbox.kpiIcon} data-tone="hijau" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="19" height="19">
-              <path d="M3 17l6-6 4 4 8-8M15 7h6v6" />
-            </svg>
-          </span>
           <span>
             {/* Counted up in whole ringgit; a week with sen in it is said exactly instead. */}
             <b>{week % 100 === 0 ? <>RM<CountUp value={week / 100} /></> : formatRinggit(week)}</b>
             <span>Paid this week</span>
-          </span>
-          <span className={styles.spark} data-spark="" aria-hidden="true">
-            {stats.week.map((sen, i) => (
-              <i key={i} data-today={i === stats.week.length - 1 || undefined} style={{ height: Math.max(4, Math.round((sen / top) * 38 * (grown ? 1 : 0.05))) }} />
-            ))}
           </span>
         </li>
       </ul>

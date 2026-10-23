@@ -368,36 +368,6 @@
   background: var(--paper);
 }
 
-.kind {
-  display: grid;
-  place-items: center;
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border-radius: 10px;
-  background: var(--biru-muda);
-  color: var(--biru);
-}
-
-.kind svg {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.kind[data-kind='whatsapp'] {
-  background: var(--hijau-muda);
-  color: var(--hijau);
-}
-
-.kind[data-kind='instagram'],
-.kind[data-kind='shop'] {
-  background: var(--rose-muda);
-  color: var(--rose);
-}
-
 .linkText {
   flex: 1;
   min-width: 0;

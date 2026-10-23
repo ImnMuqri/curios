@@ -28,12 +28,6 @@ export function PreviewFrame<Id extends string>({
 }) {
   return (
     <section className={styles.preview} aria-label={label}>
-      <span className={styles.blobs} aria-hidden="true">
-        <span />
-        <span />
-        <span />
-        <span />
-      </span>
       <div className={styles.phone}>
         <div className={styles.screen}>
           <div className={styles.scroll}>{children}</div>

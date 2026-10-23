@@ -11,24 +11,6 @@ import styles from './curios.module.css';
 
 export type LinkItem = { id: string; label: string; url: string; size: TileSize | null };
 
-type Kind = 'whatsapp' | 'instagram' | 'email' | 'web';
-
-/** What a link is, read off its address, for the row's icon. */
-export function linkKind(url: string): Kind {
-  // The host must end where the address's path does: instagram.com.evil.example is not Instagram.
-  if (/^(https?:\/\/)?(wa\.me|api\.whatsapp\.com|(www\.)?whatsapp\.com)([/?#]|$)|^tel:/i.test(url)) return 'whatsapp';
-  if (/^(https?:\/\/)?(www\.)?instagram\.com([/?#]|$)/i.test(url)) return 'instagram';
-  if (/^mailto:/i.test(url)) return 'email';
-  return 'web';
-}
-
-const KIND_ICON: Record<Kind, string> = {
-  whatsapp: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
-  instagram: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17.5 6.5h.01',
-  email: 'M3 5h18v14H3zM3 7l9 6 9-6',
-  web: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18',
-};
-
 /** An address as the row shows it: without the scheme nobody reads. */
 const shown = (url: string) => url.replace(/^https?:\/\/(www\.)?/i, '').replace(/^mailto:/i, '').replace(/\/$/, '');
 
@@ -183,7 +165,7 @@ export function LinksEditor({
 
   return (
     <section className={ui.section} aria-labelledby="links-title">
-      <SectionHead id="links-title" icon="link" tone="amber" title="Links" note="Top to bottom, as they appear" />
+      <SectionHead id="links-title" title="Links" note="Top to bottom, as they appear" />
 
       {links.length === 0 && !adding ? (
         <div className={ui.empty}>
@@ -283,7 +265,6 @@ function LinkRow({
   const [url, setUrl] = useState(link.url);
   const labelSave = useAutosave((value: string) => onPersist({ label: value }));
   const urlSave = useAutosave((value: string) => onPersist({ url: value }));
-  const kind = linkKind(link.url);
 
   const editButtonRef = useRef<HTMLButtonElement>(null);
   const removeButtonRef = useRef<HTMLButtonElement>(null);
@@ -357,11 +338,6 @@ function LinkRow({
 
   return (
     <li aria-label={link.label} className={styles.linkRow}>
-      <span className={styles.kind} data-kind={kind} aria-hidden="true">
-        <svg viewBox="0 0 24 24" width="16" height="16">
-          <path d={KIND_ICON[kind]} />
-        </svg>
-      </span>
       <button type="button" ref={editButtonRef} className={styles.linkText} aria-label={`Edit ${link.label}`} onClick={openEditor}>
         <b>{link.label}</b>
         <span>{shown(link.url)}</span>

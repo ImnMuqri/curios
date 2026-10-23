@@ -31,7 +31,7 @@ export function SearchIndexingForm({
   const [error, setError] = useState('');
 
   if (mode === 'BUSINESS') {
-    return <SettingRow icon="search" tone="amber" title="Search engines" note="Business pages always appear in search results." action={<Done>Always on</Done>} />;
+    return <SettingRow title="Search engines" note="Business pages always appear in search results." action={<Done>Always on</Done>} />;
   }
 
   async function change(next: boolean) {
@@ -50,8 +50,6 @@ export function SearchIndexingForm({
 
   return (
     <SettingRow
-      icon="search"
-      tone="amber"
       title="Search engines"
       note={
         on

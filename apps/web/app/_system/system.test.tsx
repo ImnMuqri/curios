@@ -60,3 +60,13 @@ describe('ErrorScreen', () => {
     expect(screen.getByRole('button', { name: 'Trying…' })).toBeDisabled();
   });
 });
+
+describe('SystemShell, without the template look', () => {
+  it('is flat paper: no gradient blobs and no grain', () => {
+    pathname = '/kekklina';
+    const { container } = render(<NotFoundScreen />);
+    expect(container.querySelector('[class*="blob"]')).toBeNull();
+    expect(container.querySelector('[class*="grain"]')).toBeNull();
+    expect(container.querySelector('filter')).toBeNull();
+  });
+});

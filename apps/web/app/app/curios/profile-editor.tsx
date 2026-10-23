@@ -80,7 +80,7 @@ export function ProfileEditor({
 
   return (
     <section className={ui.section} aria-labelledby="profile-title">
-      <SectionHead id="profile-title" icon="user" tone="hijau" title="You" note="Picture, name and a line about you" />
+      <SectionHead id="profile-title" title="You" note="Picture, name and a line about you" />
       <div className={styles.idRow}>
         <div className={styles.avatarCell}>
           <button
