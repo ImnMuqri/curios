@@ -132,12 +132,15 @@ export async function buildApp(overrides: AppOverrides = {}) {
   if (!sessionSecret) throw new Error('SESSION_SECRET is not set');
 
   await app.register(cookie, { secret: sessionSecret });
+  const appOrigin = process.env.APP_URL ?? 'http://localhost:3000';
+  const adminOrigin = process.env.ADMIN_ORIGIN;
+  // The admin app is allowed on /admin routes only, and only where ADMIN_ORIGIN is set; every
+  // other route allows the owner app alone.
   await app.register(cors, {
-    // Unchanged when ADMIN_ORIGIN is unset: the admin app is allowed only where it exists.
-    origin: [process.env.APP_URL ?? 'http://localhost:3000', process.env.ADMIN_ORIGIN].filter(
-      (origin): origin is string => Boolean(origin),
-    ),
-    credentials: true,
+    delegator: (request, callback) => {
+      const onAdmin = Boolean(adminOrigin) && /^\/admin(?:[/?]|$)/.test(request.url);
+      callback(null, { origin: onAdmin && adminOrigin ? [appOrigin, adminOrigin] : [appOrigin], credentials: true });
+    },
   });
   await app.register(errorsPlugin);
   await app.register(prismaPlugin);

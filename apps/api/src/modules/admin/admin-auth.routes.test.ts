@@ -173,3 +173,34 @@ describe('without ADMIN_ORIGIN', () => {
     expect((await bare.inject({ method: 'GET', url: '/health' })).statusCode).toBe(200);
   });
 });
+
+describe('CORS', () => {
+  const preflight = (a: FastifyInstance, url: string, origin: string) =>
+    a.inject({
+      method: 'OPTIONS',
+      url,
+      headers: { origin, 'access-control-request-method': 'POST', 'x-forwarded-for': from() },
+    });
+
+  it('allows the admin origin on /admin routes', async () => {
+    const res = await preflight(app, '/admin/signin', 'http://localhost:3002');
+    expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3002');
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('does not allow the admin origin on owner routes', async () => {
+    const res = await preflight(app, '/auth/me', 'http://localhost:3002');
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('still allows the owner app on owner routes', async () => {
+    const res = await preflight(app, '/auth/me', 'http://localhost:3000');
+    expect(res.headers['access-control-allow-origin']).toBe('http://localhost:3000');
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('allows no admin origin anywhere when ADMIN_ORIGIN is unset', async () => {
+    const res = await preflight(bare, '/admin/signin', 'http://localhost:3002');
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+});
