@@ -71,7 +71,7 @@ export function ItemsList({
             </span>
           </div>
           <h3>Your shelf is empty</h3>
-          <p>Add what you sell, with a photo and a price or sizes. It shows in your Shop tab, and the chat can quote it exactly.</p>
+          <p>Add what you sell, with a photo and a price or sizes. It shows in your shop, and the chat can quote it exactly.</p>
           <button type="button" className={ui.primaryButton} onClick={onAdd}>
             + Add your first item
           </button>

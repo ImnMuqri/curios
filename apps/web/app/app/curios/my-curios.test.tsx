@@ -243,19 +243,19 @@ describe('the preview tabs', () => {
   });
 });
 
-describe('the Shop tab switch', () => {
+describe('the Shop link switch', () => {
   it('is not offered on a personal page', async () => {
     show();
     await userEvent.click(editTab('Links'));
-    expect(screen.queryByRole('switch', { name: 'Show the Shop tab' })).toBeNull();
+    expect(screen.queryByRole('switch', { name: 'Show the Shop link' })).toBeNull();
   });
 
   it('opens the shop, and the preview gains the shop pill, not a tab', async () => {
     const { calls } = show(business);
     await userEvent.click(editTab('Links'));
-    expect(screen.getByText(/Sits next to Links and Ask · 2 items/)).toBeInTheDocument();
+    expect(screen.getByText(/Shown first in your links · 2 items/)).toBeInTheDocument();
 
-    const toggle = screen.getByRole('switch', { name: 'Show the Shop tab' });
+    const toggle = screen.getByRole('switch', { name: 'Show the Shop link' });
     expect(toggle).toHaveAttribute('aria-checked', 'false');
     await userEvent.click(toggle);
 
@@ -270,9 +270,9 @@ describe('the Shop tab switch', () => {
     calls.setShopOpen = vi.fn(async () => { throw new Error('Add a way to be paid before opening your shop.'); });
     show(business, calls);
     await userEvent.click(editTab('Links'));
-    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop tab' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop link' }));
 
-    expect(screen.getByRole('switch', { name: 'Show the Shop tab' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('switch', { name: 'Show the Shop link' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('alert')).toHaveTextContent('Add a way to be paid before opening your shop.');
   });
 
@@ -280,7 +280,7 @@ describe('the Shop tab switch', () => {
     show({ ...business, shopTab: { open: true, itemCount: 2, preview: [] }, shop: { position: 1, size: null, itemCount: 2, photoKey: null, photos: [] } });
     expect(within(preview()).getByText('2 items')).toBeInTheDocument();
     await userEvent.click(editTab('Links'));
-    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop tab' }));
+    await userEvent.click(screen.getByRole('switch', { name: 'Show the Shop link' }));
 
     expect(within(preview()).queryByText('2 items')).toBeNull();
   });

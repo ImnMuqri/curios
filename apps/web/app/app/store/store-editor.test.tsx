@@ -86,14 +86,14 @@ describe('the header', () => {
   it('counts a CHIP connection as a way to pay', async () => {
     const calls = show({ ...ready, enabled: false, bankName: null, bankAccountName: null, bankAccountNumber: null }, items, apis(), undefined, chipOn);
     expect(within(header()).getByText('Closed')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /A way to pay\s*CHIP/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP/ })).toBeInTheDocument();
     await act(async () => { fireEvent.click(within(header()).getByRole('switch', { name: 'Shop open' })); });
     expect(calls.settingsApi.save).toHaveBeenCalledWith({ enabled: true });
   });
 
   it('names CHIP beside the QR and bank account in the ready strip', () => {
     show({ ...ready, paymentQrKey: null }, items, apis(), undefined, chipOn);
-    expect(screen.getByRole('button', { name: /A way to pay\s*CHIP and bank account/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /A way to pay\s*Online payments through CHIP and bank account/ })).toBeInTheDocument();
   });
 
   it('opens a ready shop, and the link appears', async () => {
@@ -143,7 +143,7 @@ describe('ready to take orders', () => {
     show({ ...ready, enabled: false, bankName: null, pickupEnabled: false, deliveryMode: 'NONE' }, items.map((i) => ({ ...i, available: false })));
     expect(steps().getByRole('button', { name: /Items Switch an item on/ })).toHaveAttribute('data-ok', 'false');
     expect(steps().getByRole('button', { name: /Getting it to them Turn on pickup or delivery/ })).toBeInTheDocument();
-    fireEvent.click(steps().getByRole('button', { name: /A way to pay Add a QR or bank account/ }));
+    fireEvent.click(steps().getByRole('button', { name: /A way to pay Connect CHIP or add your QR/ }));
     expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
   });
 });

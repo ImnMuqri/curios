@@ -62,9 +62,10 @@ function trackedSettings(api: SettingsApi, track: SaveTrack): SettingsApi {
 function payWords(chip: boolean, qr: boolean, bank: boolean): string {
   if (!chip) return qr && bank ? 'QR and bank account' : qr ? 'DuitNow QR' : 'Bank account';
   const others = [...(qr ? ['QR'] : []), ...(bank ? ['bank account'] : [])];
-  if (others.length === 0) return 'CHIP';
-  if (others.length === 1) return `CHIP and ${others[0]}`;
-  return `CHIP, ${others.join(' and ')}`;
+  const online = 'Online payments through CHIP';
+  if (others.length === 0) return online;
+  if (others.length === 1) return `${online} and ${others[0]}`;
+  return `${online}, ${others.join(' and ')}`;
 }
 
 /** "Pickup and delivery RM10", "Rider delivery", ...: what "Getting it to them" says once it is set. */
@@ -281,7 +282,7 @@ export function StoreEditor({
           <ul className={styles.ready} aria-label="Ready to take orders">
             {[
               { ok: live.length > 0, title: 'Items', note: live.length > 0 ? `${live.length} in your shop` : items.length > 0 ? 'Switch an item on' : 'Add your first item', go: 'items' as const },
-              { ok: payOk, title: 'A way to pay', note: !payOk ? 'Add a QR or bank account' : payWords(chip.connected, qr.has, bankOk), go: 'payment' as const },
+              { ok: payOk, title: 'A way to pay', note: !payOk ? 'Connect CHIP or add your QR' : payWords(chip.connected, qr.has, bankOk), go: 'payment' as const },
               { ok: handOk, title: 'Getting it to them', note: handOk ? handOverWords(settings) : 'Turn on pickup or delivery', go: 'delivery' as const },
             ].map((step) => (
               <li key={step.title}>

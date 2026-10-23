@@ -41,7 +41,7 @@ export interface CuriosApi {
   updateLink: (id: string, patch: Partial<{ label: string; url: string }>) => Promise<LinkItem>;
   removeLink: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
-  /** Opens or closes the shop, which is what gives the page its Shop tab. */
+  /** Opens or closes the shop, which is what gives the page its Shop link. */
   setShopOpen: (open: boolean) => Promise<void>;
   saveAppearance: (patch: AppearancePatch) => Promise<unknown>;
   /** Resolves to the new picture's URL. */

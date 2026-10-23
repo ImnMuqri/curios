@@ -59,6 +59,8 @@ describe('ItemsList', () => {
   it('invites the first item on an empty shelf', () => {
     const props = show([]);
     expect(screen.getByRole('heading', { name: 'Your shelf is empty' })).toBeInTheDocument();
+    expect(screen.getByText(/It shows in your shop, and the chat/)).toBeInTheDocument();
+    expect(screen.queryByText(/Shop tab/)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: '+ Add your first item' }));
     expect(props.onAdd).toHaveBeenCalled();
     expect(screen.queryByRole('button', { name: '+ Add item' })).toBeNull();
