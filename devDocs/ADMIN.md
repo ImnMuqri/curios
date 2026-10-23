@@ -1,11 +1,18 @@
 # ADMIN.md
 
-> Intended path: repo root. Screens in `apps/web/app/admin`, routes in `apps/api/src/modules/admin`.
+> Screens in `apps/admin`, routes in `apps/api/src/modules/admin`, reads in `packages/db-read/src/admin`.
+> The design and the decisions behind it are in `devDocs/admin-design.md`; this is the standing rule
+> book. Where the two disagree, `admin-design.md` wins.
 
 The operator surface. Not a product, not a dashboard, and not for customers.
-It exists because three things in BACKEND.md require a human and were never
-given anywhere to stand: SSM documents that fail auto-approval, takedown
-reports, and handle claims that hit the trademark list.
+It exists because Curios is run by one person who should not have to open the
+database to see how it is doing, or to act on a page reported as a scam, a
+payment that failed, or a price that has to change, and because every one of
+those actions has to leave a record of who did it and why.
+
+Built in four parts. Part 1 is Overview, Pages and the Audit log. Reports,
+Controls, AI & usage, Reading sources and Payments follow, and a section that
+is not built yet is absent from the nav, not shown disabled.
 
 ---
 
@@ -13,125 +20,115 @@ reports, and handle claims that hit the trademark list.
 
 **Reading a person is an event.**
 
-Aggregates are free. Cost, counts, queue depth, cache hit rate — look at those
-all day. But a phone number, a transcript, or an SSM document is a person, and
+Aggregates are free. Cost, counts, queue depth, cache hit rate: look at those
+all day. But a phone number, a transcript, or a customer's name is a person, and
 every time admin renders one it writes a row saying who looked, at what, and
 why.
 
-Corollary for engineering: there is no screen that shows PII without a reveal
-action in front of it, and no code path that reveals before its audit row is
-committed. Committed first, not alongside — a crash mid-reveal should leave a
-record that someone looked, not a gap. If you find a path that does otherwise,
-it is a bug, not a shortcut.
+In part 1 the only screen that shows anything about a person's customers is See
+it as the owner, and it shows them masked (see PII). Its row, `VIEWED_AS_OWNER`,
+carries the reason, and the view renders only while that row is less than 15
+minutes old. Committed first, not alongside: a crash mid-view should leave a
+record that someone looked, not a gap. A direct visit to the address with no
+recent row shows nothing and goes back to the page's panel.
+
+Corollary for engineering: there is no screen that shows personal details
+without a logged reason in front of it, and no code path that shows them before
+its audit row is committed. If you find a path that does otherwise, it is a bug,
+not a shortcut.
+
+---
+
+## The admin app
+
+A separate Next.js app, `apps/admin`, deployed to its own subdomain
+(`admin.curios.my`) and run locally on port 3002 as part of `pnpm dev`. There is
+no `/admin` on curios.my and owners never receive admin code.
+
+- **Reads** go through `@curios/db-read/admin`, an entry the owner app never
+  imports, on the read-only database role. The admin app cannot write to the
+  database.
+- **Writes** go through the API's `/admin` routes. They are registered only when
+  `ADMIN_ORIGIN` is set, and CORS allows that origin for `/admin` alone, so a
+  deployment that forgets its env exposes nothing rather than everything.
+- The pages' `requireAdmin()` is the real gate. The middleware only checks that
+  the cookie is present.
 
 ---
 
 ## Operators
 
-Named accounts with roles, not a shared token.
+Named accounts, not a shared token.
 
 Do not "simplify" this to a shared bearer token in an env var. That is a
-reasonable design for an admin surface guarding cost metrics and job replay,
-where the worst case is someone reading a number. This one opens documents
-carrying an IC number and a home address. *Who looked at this* stops being a
-nicety the moment that is true, and retrofitting attribution after an incident is
-not possible — the rows you needed were never written.
+reasonable design for an admin surface guarding cost metrics, where the worst
+case is someone reading a number. This one can suspend a page, delete an account
+and give away a month of a paid plan. *Who did this* stops being a nicety the
+moment that is true, and retrofitting attribution after an incident is not
+possible: the rows you needed were never written.
 
 ```prisma
 model AdminUser {
-  id          String     @id @default(cuid())
-  email       String     @unique
-  name        String
-  role        AdminRole
-  totpSecret  String?                  // required before first privileged action
-  disabledAt  DateTime?
-  lastLoginAt DateTime?
-  createdAt   DateTime   @default(now())
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String
+  passwordHash String
+  role         AdminRole // OWNER, the only value for now
+  disabledAt   DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
 }
 
-enum AdminRole { OWNER REVIEWER SUPPORT }
+model AdminSession { /* id, adminUserId, expiresAt, createdAt, ip */ }
 ```
 
-| Role | Sees | Can do | Lands on |
-|---|---|---|---|
-| `OWNER` | everything | everything, plus manages `AdminUser` rows | `/admin` |
-| `REVIEWER` | the three queues | approve, reject, uphold, dismiss. no margin, no lead PII | `/admin/verification` |
-| `SUPPORT` | pages, conversations, leads | reveal with a reason. cannot decide a queue | `/admin/pages` |
-
-The landing column is not a detail. `/admin` is the margin screen and a
-`REVIEWER` cannot see it, so a role-blind redirect after login sends two of
-three roles to a 403 on every sign-in.
-
-The split is the point. Someone reviewing SSM documents has no business reading
-lead phone numbers, and someone answering "my lead never arrived" has no
-business approving a badge.
+One role, `OWNER`, for now. A teammate later is a new row, not a code change; a
+reviewer or support role comes when there is a second person to give it to.
 
 **Separate from customer auth.** `AdminUser` is its own table, not a column on
 `Account`. A role flag on the customer model means a privilege escalation path
-runs through the same login every visitor's owner uses. Admin sessions are their
-own cookie, their own TTL (8 hours, no refresh), and 2FA is not optional.
+runs through the same login every visitor's owner uses. The admin session is its
+own cookie (`curios_admin`), its own table, its own TTL (8 hours, absolute, no
+sliding refresh), httpOnly, SameSite strict, Secure in production. Owner routes
+ignore it and admin routes ignore the owner's `curios_session`.
 
 Owners sign in with Google. Admins do not, and that is the point: admin shares
 no identity provider, no cookie, and no code path with the customer flow, so a
-failure or compromise in either one cannot reach the other. Admin login is email
-and password with argon2id at the OWASP-recommended parameters — `memoryCost
-19456, timeCost 2, parallelism 1`, deliberately slow — plus TOTP, and one message
-for both a wrong password and an unknown address so the form cannot be used to
-discover who has an account.
+failure or compromise in either one cannot reach the other. Admin sign-in is
+email and password with argon2id (the owner app's helper), rate limited, and one
+message, `Wrong email or password.`, for a wrong password, an unknown address and
+a disabled admin, so the form cannot be used to discover who has an account.
 
-Routes stay unregistered when admin is not configured, so a deployment that
-forgets its env exposes nothing rather than everything.
+**TOTP is deferred.** Part 1 is email and password only. `AdminUser` has room to
+grow a secret later; nothing is built for it yet, and adding it is the first
+thing to do before a second admin is added.
+
+**No sign-up.** Admins are created by a command, never self-registered. The same
+command resets a password (see OPERATIONS.md).
 
 ---
 
 ## The audit log
 
-```prisma
-model AuditLog {
-  id          String      @id @default(cuid())
-  adminUserId String
-  action      AuditAction
-  targetType  String       // "Page" | "Lead" | "Message" | "VerificationRequest"
-  targetId    String
-  reason      String?      // required, and enforced, for every REVEAL_*
-  metadata    Json?
-  ip          String
-  createdAt   DateTime     @default(now())
+`AdminAction`: id, adminUserId, action, targetType, targetId, `targetLabel` (the
+handle, kept so a deleted page's rows still read), `reason`, metadata, ip,
+createdAt. The actions are `SIGNED_IN`, `SUSPENDED_PAGE`, `UNSUSPENDED_PAGE`,
+`GRANTED_MONTH`, `RESET_CONVERSATIONS`, `DELETED_ACCOUNT` and `VIEWED_AS_OWNER`;
+later parts add theirs.
 
-  @@index([targetType, targetId])
-  @@index([adminUserId, createdAt])
-}
-
-enum AuditAction {
-  REVEAL_LEAD_PHONE
-  REVEAL_TRANSCRIPT
-  REVEAL_VERIFICATION_DOCUMENT
-  VERIFICATION_APPROVE
-  VERIFICATION_REJECT
-  TAKEDOWN_UPHOLD
-  TAKEDOWN_DISMISS
-  HANDLE_APPROVE
-  HANDLE_REJECT
-  PAGE_UNPUBLISH
-  ADMIN_CREATE
-  ADMIN_DISABLE
-  ADMIN_ROLE_CHANGE
-}
-```
-
-The three queues get three tables — `VerificationRequest`, `TakedownRequest`,
-`HandleReview` — each carrying its own status enum, the deciding `adminUserId`,
-a decision timestamp, and a reason string that is required on every terminal
-state. They are listed rather than specified here for the same reason
-BACKEND.md names most of its models and only writes out `Fact`: the shape is
-ordinary, and the constraints below are what actually matter.
+Every action that changes something takes a reason, 1 to 500 characters,
+required. Deleting an account also takes the page's handle, typed out.
 
 Append only. No update route, no delete route, no admin screen that offers
-either. Written by the service layer as a side effect of the action, never by a
-caller who might forget.
+either. **Written by the service layer in the same transaction as the change**,
+never by a route and never by a caller who might forget; a change that rolls
+back leaves no row, and a row never exists for a change that did not happen.
+
+The screen shows when (Malaysia time), who, what, which page (or `everyone`) and
+the reason, newest first, 100 at a time with an Older link. No export.
 
 **Retention is 24 months, not 12.** BACKEND.md keeps `Lead` and `Message` for
-twelve. The record of who accessed those rows has to outlive the rows
+twelve. The record of who looked at those rows has to outlive the rows
 themselves, or a breach discovered in month thirteen is uninvestigable. Audit
 data is not customer data and does not expire with it.
 
@@ -140,128 +137,45 @@ data is not customer data and does not expire with it.
 ## Screens
 
 ```
-/admin                  margin. the landing screen, because it is the question.
-/admin/pages            page list, searchable, sorted by margin ascending
-/admin/pages/[id]       one page: facts, conversations, cost, enforcement actions
-/admin/verification     SSM queue
-/admin/takedowns        takedown queue
-/admin/handles          trademark-blocked handle claims
-/admin/audit            the log. read only.
-/admin/staff            AdminUser management. OWNER only.
+Look     Overview        the figures, what needs you, new pages
+         Pages           search and filter, a side panel, the actions
+         AI & usage      (part 4)
+Run      Reading sources (part 4)
+         Payments        (part 4)
+         Reports         (part 2)
+Change   Controls        (part 3)
+         Audit log       the record. read only.
 ```
 
-`admin` is already on BACKEND.md's reserved handle list, so the path is claimed
-and cannot collide with a page.
+Overview and Pages come from the board (`design/boards/Admin.dc.html`); the
+places the build departs from it are in `design/DEVIATIONS.md`. The board's
+sections took the place of this document's earlier margin-first screen list: the
+question the margin screen asked, which pages cost more than they pay, comes
+back as cost in AI & usage, from `ModelCall`, which has to be written from the
+first model call or that screen has no history.
 
----
+**Reports** (part 2) replace the earlier takedown queue. A public "Report this
+page" link, rate limited by IP with the IP stored hashed. Nothing happens to a
+page automatically: more than 5 open reports flag it, and an admin suspends it
+by hand. Suspending does not delete; deletion destroys the evidence for the
+decision that was just made.
 
-## Margin
-
-One question: **which pages cost more than they pay.**
-
-At Curios' margins that is not a vanity metric. README commits to inference as a
-cost of acquisition, with free pages getting a real AI. That model works right
-up until a handful of pages make it not work, and `ModelCall` is the only place
-that shows it.
-
-| Column | Source | Why it is here |
-|---|---|---|
-| handle, plan | `Page`, `Account` | who |
-| conversations | `UsageCounter` | volume against cap |
-| cost | `sum(ModelCall.costMilliCents)` | what they actually cost |
-| margin | plan price − cost | the answer |
-| cache hit rate | `cacheReadTokens / inputTokens` | the fixable one |
-
-Sorted worst margin first. A page at the bottom of this list is either priced
-wrong, being abused, or missing prompt cache — and cache hit rate tells you
-which without opening anything.
-
-Cache hit rate earns its column because of a specific trap: prompt caching has a
-~1024 token minimum prefix. A page with 30 facts can fall under it and silently
-cache nothing, so its cost per conversation is several times a comparable page's
-for a reason invisible everywhere else in the product.
-
-Costs are stored in milli-cents and rounded once, at render.
-
----
-
-## Queue: SSM verification
-
-BACKEND.md: auto-approve on a high-confidence name match, queue the rest for a
-human. Because the badge gates nothing, the queue only ever contains people who
-opted in, so it stays small by construction.
-
-**The sharp edge.** BACKEND.md says delete the document once extracted, and says
-it is not optional. A human reviewer has to see it. Both are correct, so the
-rule is time, not exemption:
-
-1. The R2 object survives only until a decision, never past it.
-2. A hard **7 day TTL**. On expiry the request auto-rejects with a plain reason
-   and the object is deleted regardless of queue depth. An unreviewed cert does
-   not sit in a bucket because someone was on leave.
-3. The reviewer sees it through a signed URL, five minute expiry, rendered
-   inline. No download, no proxy that caches, no attachment in an email.
-4. Opening it writes `REVEAL_VERIFICATION_DOCUMENT` with a reason.
-5. On decision, keep the number, the registered name, and a timestamp. Delete
-   everything else.
-
-**Deletion cannot be transactional, so do not write it as if it were.** R2 is a
-network call and Postgres cannot roll it back. The order is: null `documentKey`
-and record the outcome in one database transaction, then enqueue the object
-delete. The row stops pointing at the file before the file goes, so a crash
-between the two leaves an orphan rather than a live reference to a document the
-system believes is gone.
-
-That orphan is the failure this design accepts, so it needs a sweeper: a daily
-job deletes R2 objects under the verification prefix with no `documentKey`
-referencing them. Without it, "we delete the file" is true of the happy path
-only, and the happy path is not what a PDPA question is about.
-
-Rejections carry one plain reason and permit a retry. Never a queue with no
-feedback.
-
-The badge renders `SSM 20XXXXXXXXXX` with the registered name. Approving does
-not mean we verified a company exists — it means a human read a document that
-said so. The wording has to stay true to that, and a bare tick is not.
-
----
-
-## Queue: takedowns
-
-Every page footer links a public takedown form, so this endpoint is
-unauthenticated and writes to a table. Rate limit it by IP, and expect it to be
-used as a weapon between competing shops in the same market.
-
-Outcomes are `UPHELD` or `DISMISSED`, both requiring a reason, and upheld
-unpublishes the page rather than deleting it. Deletion destroys the evidence for
-the decision that was just made.
-
-The owner is told what happened and on what ground. A page that goes dark with
-no explanation produces a support thread that costs more than the review did.
-
----
-
-## Queue: trademark handles
-
-The only hard gate in the product. BACKEND.md is explicit that verification
-gates nothing functional and a paying customer with no SSM keeps every feature —
-but a handle matching the trademark seed list stays blocked until reviewed,
-paid or not.
-
-Approve releases the handle to the claimant. Reject releases it back to the
-namespace. Neither is reversible once someone else claims it, which is the
-reason this is a queue and not a heuristic.
+The SSM verification and trademark-handle queues this document once described
+are not part of this design. If the badge or the trademark gate comes back it
+comes back as its own section with its own rules.
 
 ---
 
 ## PII
 
-Default state everywhere: `+60••••••89`, transcript collapsed to turn count and
-timestamps, lead slots shown as filled-or-not rather than as values.
+Default state everywhere: `+60••••••89`, customer and lead names to initials
+(`Aisyah Rahman` is `A. R.`), a conversation as a count and times with no
+message text, no receipts, no addresses, no customer emails. A lead has no name
+to show, only the masked phone, the time and which slots it filled.
 
-Revealing is an action with a reason field that is required and stored. It
-reveals one record, not a page of them, and it expires with the screen — there
-is no "show all" and no session-wide unlock.
+See it as the owner is the one place this matters in part 1: a read-only summary
+of the owner's page, with a reason, masked as above. It reveals nothing the
+masking hides, and there is no "show more" and no session-wide unlock.
 
 BACKEND.md already forbids full phone numbers in application logs. That
 principle was never about logs specifically; the screen is the larger exposure,
@@ -278,58 +192,42 @@ not an entitlement.
 
 Delete on sight, same as DESIGN.md's list:
 
-- **Log in as an owner.** The most requested support feature and the worst one.
-  It makes every action in that session unattributable and every reassurance
-  about privacy false. If you need to see what they see, ask them.
+- **Log in as an owner, or act as one.** The most requested support feature and
+  the worst one. It makes every action in that session unattributable and every
+  reassurance about privacy false. The allowed version is See it as the owner: a
+  read-only summary, personal details masked, a reason logged first, no button
+  that changes anything, and an API that refuses writes from it. If you need
+  more than that, ask the owner.
 - Edit a customer's facts, links, or answers on their behalf. Support explains.
-  Enforcement unpublishes. Neither reaches into someone's page and types.
+  Enforcement suspends. Neither reaches into someone's page and types.
 - A big number on a card with no action attached to it. Total signups is not a
   decision.
 - A chart nobody has acted on in a month.
-- Bulk approve, bulk reject, bulk anything on a queue where each item is a
-  person's document.
-- A route that writes to `AuditLog` directly, or one that deletes from it.
+- Bulk anything on items that are each a person's.
+- A route that writes to `AdminAction` directly, or one that deletes from it.
 - Real time updates. This is a tool someone opens deliberately, not a wall
   display.
-- Exporting leads or transcripts to CSV. There is no legitimate operator need
-  and it converts a PDPA-scoped table into a file on a laptop.
+- Exporting leads, transcripts or the audit log to CSV. There is no legitimate
+  operator need and it converts a PDPA-scoped table into a file on a laptop.
 
 ---
 
 ## Design
 
-DESIGN.md applies unchanged. Same tokens, same type scale, same motion budget,
-same banned list. Admin is not exempt from being a good screen.
+DESIGN.md's discipline applies: same type scale, same motion budget, same banned
+list. Admin is not exempt from being a good screen. Its look is the board's, not
+the owner app's: a dark sidebar, an amber "Production" strip on every screen,
+the admin's name at the bottom. It is admin-only CSS in `apps/admin`.
 
-The accent mapping carries over cleanly: `kuning` means a human needs to act, so
-in admin it means exactly one thing — a queue item waiting on a decision. Queue
-depth is the only place it appears. `merah` stays destructive-only, which here
-means reject, uphold a takedown, and disable an admin.
-
-Every number is mono. Costs, counts, timestamps, queue depths.
-
-Empty queues are the goal, so state them as such: "No pending verifications."
-Not an illustration, not a celebration.
-
-No dark mode. Same reasoning as everywhere else, and no operator asked either.
+Every number is mono or tabular. Empty states are stated as such, plainly:
+"Nothing needs you." Not an illustration, not a celebration. English only.
 
 ---
 
 ## Definition of done
 
-An SSM document that fails auto-approval reaches a named reviewer, is opened
-under a signed URL that expires, is approved or rejected with a reason, stops
-being referenced the moment that decision is recorded, is gone from R2 shortly
-after, and the audit log can tell you six months later exactly who read it.
-
-Margin is second. Everything else on this page is third.
-
----
-
-## Not slice 1
-
-This surface is specced now because BACKEND.md created the obligation and left
-it homeless, not because it is next. Nothing here ships before the ingest →
-page → chat slice does. The one thing that reaches back into that slice is
-`ModelCall`, which has to be written from the first Haiku call or the margin
-screen has no history to show when it arrives.
+An admin signs in with their own email and password, sees what needs them,
+suspends a page, gives a month of Business or deletes an account with a reason,
+and the audit log can tell you six months later exactly who did it, when, to
+which page, and why, with no way for that row to have been edited or to have been
+missing.

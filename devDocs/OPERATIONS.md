@@ -511,3 +511,62 @@ the problem is downstream of the billing code, so look in the mail worker's
 logs and the mail provider rather than here. If it is null or an older value
 than `paidUntil`, the page has not been reminded for this period yet, and the
 daily run at 10:00 Malaysia time is the next chance.
+
+---
+
+## Admin
+
+The admin app (`apps/admin`) and its `/admin` API routes. What it is and the rules it keeps are in
+`devDocs/ADMIN.md`.
+
+### Creating an admin, or resetting one
+
+There is no sign-up. Run, from the repo root:
+
+```bash
+pnpm --filter @curios/api admin:create <email> "<name>"
+```
+
+It asks for the password twice at a prompt that does not echo (at least the minimum length it
+names); the password is never an argument, so it never reaches a shell history or a process list. A
+new email creates the admin. An email that already exists is a reset: the password is replaced, a
+disabled admin is enabled again, and **that admin's sessions are ended**, so anyone holding the old
+one is signed out. It uses `DATABASE_URL` from `.env`, so check which database that is before you
+run it against production.
+
+There is no "forgot password" on the page. A reset is this command again with a new password.
+
+### Environment
+
+| Variable | Where | What it does |
+|---|---|---|
+| `ADMIN_ORIGIN` | API | The admin app's address (`http://localhost:3002` locally, `https://admin.curios.my` in production). **Unset, the `/admin` routes are not registered and CORS is unchanged**; the API still starts. Set, CORS allows this origin for `/admin` only. |
+| `NEXT_PUBLIC_ADMIN_API_URL` | admin app | Where the admin app calls the API (`http://localhost:3001` locally). |
+| `COOKIE_DOMAIN` | API | Blank locally. In production `.curios.my`, so the admin cookie the API sets is shared with the admin subdomain. The `curios_admin` cookie is httpOnly, SameSite strict and Secure in production, 8 hours, no refresh. |
+| `TRUST_PROXY` | API | Admin sign-in is rate limited per caller address (10 per 15 minutes). Behind a load balancer this must be set, or every visitor is throttled as one caller. Prefer the proxy's address over `true`. |
+
+`.env` lags `.env.example`: after pulling, diff the variable names. An admin app with no
+`NEXT_PUBLIC_ADMIN_API_URL` cannot sign anyone in.
+
+### Running it locally
+
+`pnpm dev` starts it with the rest, on port 3002. Sign in at `http://localhost:3002` with an admin
+made by the command above. It needs the API on 3001, which needs Docker (Postgres and Redis) up.
+Its reads use the read-only role, so a restored or reset test database needs
+`packages/db/prisma/sql/readonly-role.sql` run again (see "Restoring the test database").
+
+### Deploying to a subdomain
+
+When admin goes live:
+
+1. Point `admin.curios.my` at `apps/admin` (`pnpm --filter @curios/admin build`, then `start`, port
+   3002 by default).
+2. Set the API's `ADMIN_ORIGIN` to `https://admin.curios.my`, the admin app's
+   `NEXT_PUBLIC_ADMIN_API_URL` to the API's public address, and `COOKIE_DOMAIN` to `.curios.my`.
+3. Set `TRUST_PROXY` so the sign-in limit sees real addresses.
+4. Consider Cloudflare Access (or any identity-aware proxy) in front of the whole subdomain. The
+   app's own sign-in does not need it, but a second door costs nothing while there is one admin and
+   TOTP is not built.
+5. Create the first admin on the production database with the command above.
+
+Owners must never be served admin code: do not route `curios.my/admin` anywhere.
