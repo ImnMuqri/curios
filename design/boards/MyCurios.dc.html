@@ -184,7 +184,16 @@ a{color:#2340c8}a:hover{color:#122686}
 .pv-links>span>span{display:block;padding:9px 12px;border-radius:999px;font-size:13px;font-weight:600}
 .pv-chat{display:flex;flex-direction:column;gap:7px;width:100%;text-align:left}
 .pv-q{align-self:flex-end;max-width:86%;padding:8px 12px;border-radius:16px 16px 5px 16px;background:#ffffff;color:#191f2c;font-size:12.5px}
-.pv-a{align-self:flex-start;max-width:90%;padding:8px 12px;border-radius:16px 16px 16px 5px;font-size:12.5px}
+.pv-a{align-self:flex-start;max-width:96%;font-size:13px;line-height:1.5}
+.pv-a::before{content:"Kek Lina's page";display:block;margin-bottom:3px;font-size:10.5px;font-weight:600;opacity:.65}
+.pv-shopl{display:flex;align-items:center;gap:10px;width:100%;margin-bottom:6px;padding:7px 14px 7px 9px;border-radius:999px;color:#fafbfc;text-align:left}
+.pv-th{display:flex;flex:none}
+.pv-th img{width:28px;height:28px;border-radius:50%;object-fit:cover;box-shadow:0 0 0 2px var(--sb)}
+.pv-th img+img{margin-left:-9px}
+.pv-st{flex:1;min-width:0}
+.pv-st b{display:block;font-size:13px}
+.pv-st small{display:block;font-size:10.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pv-shopl>svg{width:14px;height:14px;flex:none;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
 .pv-shop{display:grid;gap:6px;width:100%}
 .pv-shop>span{display:flex;align-items:center;gap:10px;padding:5px;border-radius:999px;text-align:left;font-size:12.5px;font-weight:600}
 .pv-shop img,.pv-shop i{width:30px;height:30px;flex:none;border-radius:50%;object-fit:cover}
@@ -361,6 +370,17 @@ a{color:#2340c8}a:hover{color:#122686}
 .it .avl{width:auto;font-size:0}
 .ready{grid-template-columns:minmax(0,1fr)}
 }
+
+/* plainer: fewer template tells */
+.stats{display:flex;gap:0;padding:18px 32px 0}
+.kpi{flex:1;min-width:0;gap:0;padding:2px 24px 2px 0;border:0;border-radius:0;background:transparent;overflow:visible}
+.kpi+.kpi{padding-left:24px;border-left:1px solid var(--line)}
+.kpi .si,.kpi .spark{display:none}
+.kpi b{font-size:22px}
+.ki,.wi,.fi,.sri,.chipi,.si2,.lav,.dic{display:none!important}
+.convo .a,.tchat .a{color:#fafbfc}
+.bl-r.hd2,.bl-r.hd2 span{color:#696e7b;opacity:1}
+@media (max-width:760px){.stats{padding:14px 16px 0}.kpi{padding-right:12px}.kpi+.kpi{padding-left:12px}.kpi b{font-size:18px}.kpi>span>span{font-size:11.5px}}
 </style>
 </helmet>
 
@@ -463,8 +483,8 @@ a{color:#2340c8}a:hover{color:#122686}
 <section class="sec">
 <div class="shoprow">
 <span class="ki" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path></svg></span>
-<span style="flex: 1"><b style="display: block; font-weight: 600">Shop tab</b><span style="font-size: 13px; color: #696e7b">Sits next to Links and Ask · 4 items</span></span>
-<button type="button" class="switch" role="switch" aria-checked="{{ shopOn }}" aria-label="Show the Shop tab" onClick="{{ toggleShop }}" style="background: {{shopBg}}"><i style="transform: translateX({{shopX}})"></i></button>
+<span style="flex: 1"><b style="display: block; font-weight: 600">Shop link</b><span style="font-size: 13px; color: #696e7b">Shown first in your links · 4 items</span></span>
+<button type="button" class="switch" role="switch" aria-checked="{{ shopOn }}" aria-label="Show the Shop link" onClick="{{ toggleShop }}" style="background: {{shopBg}}"><i style="transform: translateX({{shopX}})"></i></button>
 </div>
 </section>
 </div>
@@ -502,7 +522,6 @@ a{color:#2340c8}a:hover{color:#122686}
 </div>
 
 <div class="pv" aria-label="Live preview">
-<div class="blobs" aria-hidden="true" style="position: absolute"><span class="blob b1" style="background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span><span class="blob b2" style="background: radial-gradient(circle, #f6c9d5 0%, transparent 65%)"></span><span class="blob b3" style="background: radial-gradient(circle, #ffe2b8 0%, transparent 65%)"></span><span class="blob b4" style="background: radial-gradient(circle, #bfe3d6 0%, transparent 65%)"></span><svg class="grain"><filter id="pgn"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#pgn)"></rect></svg></div>
 <div class="phone">
 <div class="scr" style="background: {{pv.bg}}; color: {{pv.fg}}">
 <div class="pv-photo" style="opacity: {{pv.coverO}}"><sc-if value="{{ pv.hasCover }}" hint-placeholder-val="{{ true }}"><img src="{{pv.cover}}" alt="" style="object-position: {{pv.focus}}"></sc-if></div>
@@ -515,8 +534,8 @@ a{color:#2340c8}a:hover{color:#122686}
 <span class="pv-tabs" style="grid-template-columns: {{pv.tabCols}}; background: {{pv.tabTrack}}">
 <sc-for list="{{ pv.tabs }}" as="pt" hint-placeholder-count="3"><span style="background: {{pt.bg}}; color: {{pt.fg}}">{{pt.label}}</span></sc-for>
 </span>
-<sc-if value="{{ pv.noLinksShown }}" hint-placeholder-val="{{ false }}"><span style="display: block; width: 100%; padding: 14px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px; font-size: 12px; opacity: 0.8">Your links show here</span></sc-if><sc-if value="{{ pv.showLinks }}" hint-placeholder-val="{{ true }}"><span class="pv-links"><sc-for list="{{ pv.links }}" as="p" hint-placeholder-count="3"><span style="background: {{p.outer}}"><span style="background: {{p.inner}}; color: {{p.fg}}">{{p.name}}</span></span></sc-for></span></sc-if>
-<sc-if value="{{ pv.showAsk }}" hint-placeholder-val="{{ false }}"><span class="pv-chat"><span class="pv-q">Do you deliver to Klang?</span><span class="pv-a" style="background: {{pv.tint}}; color: #191f2c">Yes, delivery to Klang is RM15. Shah Alam is RM10.</span></span></sc-if>
+<sc-if value="{{ pv.noLinksShown }}" hint-placeholder-val="{{ false }}"><span style="display: block; width: 100%; padding: 14px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px; font-size: 12px; opacity: 0.8">Your links show here</span></sc-if><sc-if value="{{ pv.shopLink }}" hint-placeholder-val="{{ true }}"><span class="pv-shopl" style="background: {{pv.shopBgC}}; --sb: {{pv.shopBgC}}"><span class="pv-th"><img src="/_blob/63d877cef1ea5c67a363dfd5ea183c12" alt=""><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="object-position: 72% 80%"></span><span class="pv-st"><b>Shop</b><small>4 items · pickup Sat</small></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></sc-if><sc-if value="{{ pv.showLinks }}" hint-placeholder-val="{{ true }}"><span class="pv-links"><sc-for list="{{ pv.links }}" as="p" hint-placeholder-count="3"><span style="background: {{p.outer}}"><span style="background: {{p.inner}}; color: {{p.fg}}">{{p.name}}</span></span></sc-for></span></sc-if>
+<sc-if value="{{ pv.showAsk }}" hint-placeholder-val="{{ false }}"><span class="pv-chat"><span class="pv-q">Do you deliver to Klang?</span><span class="pv-a">Yes, delivery to Klang is RM15. Shah Alam is RM10.</span></span></sc-if>
 <sc-if value="{{ pv.showShop }}" hint-placeholder-val="{{ false }}"><span class="pv-shop">
 <span style="background: {{pv.rowBg}}"><img src="/_blob/63d877cef1ea5c67a363dfd5ea183c12" alt="">Kek coklat<em>RM95</em></span>
 <span style="background: {{pv.rowBg}}"><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="object-position: 72% 80%">Kek batik<em>RM45</em></span>
@@ -623,8 +642,8 @@ class Component extends DCLogic {
       stBg: st.save === 'saving' ? '#f3f4f7' : '#e8f3ef', stFg: st.save === 'saving' ? '#4b5060' : '#123b33',
       ulineX: st.tab * 116,
       listH: st.links.length * 60,
-      segX: (['links', 'ask', 'shop'].indexOf(st.pvTab)) * 76,
-      segs: [['links', 'Links'], ['ask', 'Ask'], ['shop', 'Shop']].map((g) => ({ label: g[1], on: st.pvTab === g[0], fg: st.pvTab === g[0] ? '#ffffff' : '#4b5060', go: () => self.setState({ pvTab: g[0], shopOn: g[0] === 'shop' ? true : st.shopOn }) })),
+      segX: (['links', 'ask'].indexOf(st.pvTab)) * 76,
+      segs: [['links', 'Links'], ['ask', 'Ask']].map((g) => ({ label: g[1], on: st.pvTab === g[0], fg: st.pvTab === g[0] ? '#ffffff' : '#4b5060', go: () => self.setState({ pvTab: g[0], shopOn: g[0] === 'shop' ? true : st.shopOn }) })),
       statusDot: st.save === 'saving' ? '#f2a33c' : '#1d6f5f',
       saveText: st.save === 'saving' ? 'Saving…' : 'Saved',
       coverName: (this.coverList.find((c) => c.id === st.cover) || {}).label,
@@ -677,14 +696,14 @@ class Component extends DCLogic {
       fonts: this.fontList.map((f) => ({ label: f[1], css: f[2], on: st.font === f[0], tickO: st.font === f[0] ? '1' : '0', rdBg: st.font === f[0] ? '#2340c8' : '#ffffff', rdRing: st.font === f[0] ? '0px' : '1.5px', rdC: '#c9ccd3', pick: () => self.change({ font: f[0] }) })),
       pv: {
         bg: pageBg, fg: fg, cover: cov.src, focus: cov.focus, hasCover: !noCover, coverO: noCover ? '0' : '1', bodyTop: noCover ? '9%' : '22%', font: font[2],
-        tabCols: st.shopOn ? '1fr 1fr 1fr' : '1fr 1fr',
+        tabCols: '1fr 1fr', shopLink: st.shopOn && st.pvTab === 'links', shopBgC: st.accent,
         tabTrack: dark ? 'rgba(250,251,252,0.14)' : 'rgba(25,31,44,0.07)',
         tabOn: dark ? '#fafbfc' : '#191f2c', tabOnFg: dark ? '#191f2c' : '#fafbfc',
         askRing: contrast ? '#191f2c' : 'transparent',
         tint: this.mix(st.accent, '#ffffff', 0.8),
         rowBg: dark ? 'rgba(250,251,252,0.1)' : 'rgba(25,31,44,0.05)',
-        showLinks: st.pvTab === 'links', showAsk: st.pvTab === 'ask', showShop: st.pvTab === 'shop' && st.shopOn,
-        tabs: ['Links', 'Ask'].concat(st.shopOn ? ['Shop'] : []).map((t) => { const on = t.toLowerCase() === st.pvTab; return { label: t, bg: on ? (dark ? '#fafbfc' : '#191f2c') : 'transparent', fg: on ? (dark ? '#191f2c' : '#fafbfc') : fg }; }),
+        showLinks: st.pvTab === 'links', showAsk: st.pvTab === 'ask', showShop: false,
+        tabs: ['Links', 'Ask'].map((t) => { const on = t.toLowerCase() === st.pvTab; return { label: t, bg: on ? (dark ? '#fafbfc' : '#191f2c') : 'transparent', fg: on ? (dark ? '#191f2c' : '#fafbfc') : fg }; }),
         links: pvLinks
       },
       toastOn: !!st.toast, toastText: st.toast

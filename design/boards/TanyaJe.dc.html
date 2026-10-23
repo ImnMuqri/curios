@@ -54,7 +54,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .tj{--d:'Bricolage Grotesque',system-ui,sans-serif;--m:'IBM Plex Mono',ui-monospace,monospace;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:17px;line-height:1.55;color:#191f2c;background:#fafbfc;overflow-x:clip}
 .tj *{box-sizing:border-box}
 .wrap{width:100%;max-width:1200px;margin:0 auto;padding:0 24px}
-.eyebrow{margin:0 0 16px;font-family:var(--m);font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#2340c8}
+.eyebrow{margin:0 0 14px;font-size:15px;font-weight:600;color:#2340c8}
 .h2{margin:0;max-width:16ch;font-family:var(--d);font-size:clamp(36px,24px + 2.6vw,60px);font-weight:800;line-height:1.02;letter-spacing:-.035em;text-wrap:balance}
 .lede{margin:20px 0 0;max-width:34em;color:#4b5060;text-wrap:pretty}
 .btn{display:inline-flex;align-items:center;justify-content:center;min-height:56px;padding:0 24px;border:0;border-radius:12px;background:#2340c8;color:#fafbfc;font:inherit;font-weight:600;text-decoration:none;cursor:pointer;white-space:nowrap}
@@ -137,7 +137,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 
 /* How it works rooms */
 .room{position:relative;display:grid;grid-template-columns:minmax(0,4fr) minmax(0,6fr);gap:40px;align-items:center;min-height:500px;padding:48px;border-radius:32px;overflow:hidden}
-.room-n{position:absolute;right:24px;top:-34px;font-family:var(--d);font-size:220px;font-weight:800;line-height:1;letter-spacing:-.06em;opacity:.16;pointer-events:none}
+.room-n{display:none;position:absolute;right:24px;top:-34px;font-family:var(--d);font-size:220px;font-weight:800;line-height:1;letter-spacing:-.06em;opacity:.16;pointer-events:none}
 .room-text{position:relative;display:flex;flex-direction:column;gap:12px}
 .room-h{margin:0;font-family:var(--d);font-size:42px;font-weight:800;letter-spacing:-.03em;line-height:1.02}
 .room-stage{position:relative}
@@ -531,8 +531,8 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .roll-strip{display:flex;flex-direction:column;transition:transform 560ms cubic-bezier(.34,1.25,.64,1)}
 .roll-strip span{display:block;height:1em}
 @supports (animation-timeline: view()){
-.reveal{animation:reveal linear both;animation-timeline:view();animation-range:entry 5% cover 35%}
-@keyframes reveal{from{opacity:.08;filter:blur(6px);transform:translateY(18px)}to{opacity:1;filter:none;transform:none}}
+.reveal{}
+@keyframes reveal{from{opacity:0;transform:translateY(14px)}to{opacity:1;filter:none;transform:none}}
 }
 .grid-hero{display:grid;grid-template-columns:minmax(0,1fr);gap:56px;align-items:center}
 .grid-who{display:grid;grid-template-columns:minmax(0,1fr);gap:48px;align-items:start}
@@ -600,17 +600,9 @@ details.q[open] summary::after{content:'–'}
 
 <!-- HERO -->
 <section onMouseMove="{{ onHeroMove }}" onMouseLeave="{{ onHeroLeave }}" style="position: relative; overflow: hidden; padding: 148px 0 96px; background: #fafbfc">
-<div class="blobs" aria-hidden="true">
-<span class="blob b1" style="background: radial-gradient(circle, #bfd1f9 0%, transparent 65%)"></span>
-<span class="blob b2" style="background: radial-gradient(circle, #f6c9d5 0%, transparent 65%)"></span>
-<span class="blob b3" style="background: radial-gradient(circle, #ffe2b8 0%, transparent 65%)"></span>
-<span class="blob b4" style="background: radial-gradient(circle, #bfe3d6 0%, transparent 65%)"></span>
-<svg class="grain" aria-hidden="true"><filter id="gh"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#gh)"></rect></svg>
-</div>
 <div class="wrap grid-hero" style="position: relative; z-index: 1">
 
 <div>
-<p class="eyebrow">Tanya je · just ask</p>
 <h1 style="margin: 0; font-family: var(--d); font-size: clamp(46px, 26px + 4.4vw, 88px); font-weight: 800; line-height: 1; letter-spacing: -0.04em; color: #191f2c">Don’t read the bio.<br>Ask
 <span style="display: inline-flex; vertical-align: bottom; box-sizing: content-box; width: {{rotW}}em; height: 1.08em; overflow: hidden; padding: 0 0.16em; border-radius: 0.14em; background: {{rotBg}}; color: #fafbfc; transition: background 400ms ease, width 520ms cubic-bezier(0.34, 1.2, 0.64, 1)">
 <span style="display: flex; flex-direction: column; transform: translateY(-{{rotY}}em); transition: {{rotTransition}}">
@@ -680,15 +672,7 @@ details.q[open] summary::after{content:'–'}
 </div>
 </section>
 
-<!-- Curved Loop -->
-<div aria-hidden="true" style="background: #eaf0ff; overflow: hidden">
-<svg viewBox="0 0 1440 180" preserveAspectRatio="none" style="display: block; width: 100%; height: 150px">
-<path id="loopPath" d="M -200 120 Q 360 10 720 90 T 1640 70" fill="none"></path>
-<text style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 56px; font-weight: 800; letter-spacing: -1.5px; fill: #122686">
-<textPath href="#loopPath" startOffset="{{loopOffset}}">tanya je · just ask · tanya je · just ask · tanya je · just ask · tanya je · just ask · tanya je · just ask ·</textPath>
-</text>
-</svg>
-</div>
+
 
 <!-- WHO IT'S FOR · Flowing Menu + the page -->
 <section id="who" style="padding: 112px 0 120px">
@@ -1031,7 +1015,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 </div>
 <ul class="ticks dark" style="margin: 28px 0 36px">
 <li><b>Everything in Personal, plus</b></li>
-<li>A shop with QR payment and payment proof</li>
+<li>A shop paid by FPX, e-wallet, card or your own QR</li>
 <li>Orders land in your dashboard</li>
 <li>Every lead emailed with their number and chat</li>
 <li>FAQ pages Google can find</li>
@@ -1092,13 +1076,6 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 
 <!-- CLOSING · Circular Gallery ring of pages + Split Text + Rotating Text + Click Spark + Magnet -->
 <section class="cl2" aria-labelledby="cl2-title">
-<div class="blobs dark" aria-hidden="true">
-<span class="blob b1" style="background: radial-gradient(circle, #2340c8 0%, transparent 62%)"></span>
-<span class="blob b2" style="background: radial-gradient(circle, #b5294e 0%, transparent 62%)"></span>
-<span class="blob b3" style="background: radial-gradient(circle, #f2a33c 0%, transparent 62%)"></span>
-<span class="blob b4" style="background: radial-gradient(circle, #1d6f5f 0%, transparent 62%)"></span>
-<svg class="grain" aria-hidden="true"><filter id="gc"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch"></feTurbulence></filter><rect width="100%" height="100%" filter="url(#gc)"></rect></svg>
-</div>
 <div class="wrap cl2-front">
 <h2 id="cl2-title" class="split" aria-label="Tanya je.">
 <sc-for list="{{ splitLetters }}" as="l" hint-placeholder-count="9"><span class="sl" aria-hidden="true"><span style="transform: translateY({{l.y}}); opacity: {{l.o}}; transition-delay: {{l.delay}}ms">{{l.ch}}</span></span></sc-for>
@@ -1531,7 +1508,7 @@ class Component extends DCLogic {
       onClaim: (e) => { e.preventDefault(); },
       focusWords: this.focus.map((w, i) => ({
         text: i === this.focus.length - 1 ? w + '.' : w + ',',
-        blur: i === this.state.f ? 'none' : 'blur(3px)',
+        blur: 'none',
         op: i === this.state.f ? '1' : '0.45',
         ring: i === this.state.f ? '0 0 0 3px #2340c8' : '0 0 0 0 transparent'
       })),
