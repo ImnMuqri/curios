@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit } from '@curios/core/store';
 import type { ShopItem } from '@curios/db-read';
-import { BASKET_EVENT, defaultStorageKey, priceBasket, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
+import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
 import { shopCopy } from '../copy.js';
 import styles from './product.module.css';
 
@@ -89,9 +89,7 @@ export function ProductView(props: {
   function add() {
     if (unitCents === null) return;
     const line: BasketLine = { itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity };
-    const current = readBasket(key);
-    const same = current.find((l) => l.itemId === line.itemId && l.optionId === line.optionId);
-    const next = same ? current.map((l) => (l === same ? { ...l, quantity: l.quantity + quantity } : l)) : [...current, line];
+    const next = addToBasket(readBasket(key), line);
     writeBasket(key, next);
     setAnnounce(
       copy.addedNamed(
@@ -202,7 +200,7 @@ export function ProductView(props: {
               −
             </button>
             <b data-testid="qty">{quantity}</b>
-            <button type="button" aria-label={copy.oneMore} onClick={() => setQuantity((n) => Math.min(99, n + 1))}>
+            <button type="button" aria-label={copy.oneMore} onClick={() => setQuantity((n) => Math.min(QUANTITY_MAX, n + 1))}>
               +
             </button>
           </span>

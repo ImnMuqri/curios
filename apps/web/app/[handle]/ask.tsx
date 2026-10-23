@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { BASKET_EVENT, defaultStorageKey, readBasket, writeBasket } from './shop/basket.js';
+import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, writeBasket } from './shop/basket.js';
 import { shopCopy } from './shop/copy.js';
 import styles from './page.module.css';
 
@@ -80,16 +80,10 @@ export function Ask({
   const onAddToBasket = useCallback(
     (card: { itemId: string; firstOptionId: string | null }) => {
       const key = defaultStorageKey(handle);
-      const lines = readBasket(key);
-      const same = lines.find((line) => line.itemId === card.itemId && line.optionId === card.firstOptionId);
-      writeBasket(
-        key,
-        same
-          ? lines.map((line) => (line === same ? { ...line, quantity: line.quantity + 1 } : line))
-          : [...lines, { itemId: card.itemId, optionId: card.firstOptionId, quantity: 1 }],
-      );
+      const next = addToBasket(readBasket(key), { itemId: card.itemId, optionId: card.firstOptionId, quantity: 1 });
+      writeBasket(key, next);
       // What the screen reader is told: how many of this item the basket now holds.
-      return (same?.quantity ?? 0) + 1;
+      return next.find((line) => line.itemId === card.itemId && line.optionId === card.firstOptionId)?.quantity ?? 1;
     },
     [handle],
   );

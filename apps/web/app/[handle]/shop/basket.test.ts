@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { shopCopy } from './copy.js';
-import { basketMessage, priceBasket, whatsappNumber, whatsappOrderUrl } from './basket.js';
+import { addToBasket, basketMessage, priceBasket, QUANTITY_MAX, whatsappNumber, whatsappOrderUrl } from './basket.js';
 
 const items = [
   { id: 'cake', name: 'Kek Batik', slug: 'cake', category: null, tag: null, description: null, photoKey: null, priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }, { id: 'k2', label: '2kg', priceCents: 17000 }] },
@@ -54,5 +54,23 @@ describe('basketMessage', () => {
   });
   it('encodes the message into the link', () => {
     expect(whatsappOrderUrl('60123456789', 'Hi & bye')).toBe('https://wa.me/60123456789?text=Hi%20%26%20bye');
+  });
+});
+
+describe('addToBasket', () => {
+  it('adds a new line, and adds to a line for the same item and option', () => {
+    const one = addToBasket([], { itemId: 'cake', optionId: 'k1', quantity: 1 });
+    expect(one).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 1 }]);
+    const two = addToBasket(one, { itemId: 'cake', optionId: 'k1', quantity: 2 });
+    expect(two).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 3 }]);
+    expect(addToBasket(two, { itemId: 'cake', optionId: 'k2', quantity: 1 })).toHaveLength(2);
+  });
+
+  it('never holds more of one line than the API takes, however it is added', () => {
+    expect(QUANTITY_MAX).toBe(99);
+    const full = addToBasket([{ itemId: 'cake', optionId: 'k1', quantity: 98 }], { itemId: 'cake', optionId: 'k1', quantity: 5 });
+    expect(full).toEqual([{ itemId: 'cake', optionId: 'k1', quantity: 99 }]);
+    expect(addToBasket(full, { itemId: 'cake', optionId: 'k1', quantity: 1 })[0]?.quantity).toBe(99);
+    expect(addToBasket([], { itemId: 'cookie', optionId: null, quantity: 150 })[0]?.quantity).toBe(99);
   });
 });

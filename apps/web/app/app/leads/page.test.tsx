@@ -42,6 +42,7 @@ const personal: OwnerPage = {
   allowSearchIndexing: false,
   avatarKey: null,
   chipRefused: false,
+  payByQr: true,
 };
 
 describe('LeadsPage', () => {

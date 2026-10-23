@@ -1,6 +1,6 @@
 import { extendPaidUntil } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
-import type { ChipPurchase } from './client.js';
+import { PAID_PURCHASE_STATUSES, type ChipPurchase } from './client.js';
 
 /**
  * A purchase as a grant needs it. Always one we fetched from CHIP ourselves -- after a
@@ -61,7 +61,8 @@ function cardLabel(method: string | null, maskedPan: string | null): string | nu
 export function evidenceFromPurchase(purchase: ChipPurchase): PaymentEvidence {
   return {
     providerRef: purchase.id,
-    paid: purchase.status === 'paid',
+    // Cleared and settled are later steps of a paid card purchase. A refunded one grants no time.
+    paid: PAID_PURCHASE_STATUSES.has(purchase.status),
     amountCents: purchase.totalCents,
     reference: purchase.reference,
     card: purchase.isRecurringToken

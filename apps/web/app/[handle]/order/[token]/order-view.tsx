@@ -5,11 +5,12 @@ import { customerSteps, isRiderDelivery, orderView, type OrderStatus } from '@cu
 import { formatRinggit } from '@curios/core/store';
 import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
-import { payingKey } from '../../shop/checkout/paying.js';
+import { payingKey, retryKey } from '../../shop/checkout/paying.js';
 import { Placed } from '../../shop/checkout/placed.js';
 import { apiFetch } from '../../../../lib/api.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { ReceiptUpload } from './receipt-upload.js';
+import { RetryPay } from './retry-pay.js';
 import checkout from '../../shop/checkout/checkout.module.css';
 import styles from './order.module.css';
 
@@ -47,6 +48,10 @@ export interface OrderViewProps {
   bank: { name: string | null; accountName: string | null; accountNumber: string | null };
   /** The shop's WhatsApp number; no button without one. */
   whatsapp: string | null;
+  /** What the shop's CHIP account takes, for "Try paying again"; null or absent when nothing online. */
+  chipMethods?: string[] | null;
+  /** Where paying again sends the browser. Tests pass a spy. */
+  navigate?: (url: string) => void;
   /** The server's clock when it rendered (ISO). */
   now: string;
 }
@@ -163,6 +168,16 @@ export function OrderView(props: OrderViewProps) {
       // No storage: straight to the order.
     }
   }, [paidOnline, props.token]);
+  // Checkout was told too many tries: the retry it could not offer is here.
+  const [triedTooOften, setTriedTooOften] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.sessionStorage.getItem(retryKey(props.token)) === '1') setTriedTooOften(true);
+    } catch {
+      // No storage: a failed payment still brings the retry.
+    }
+  }, [props.token]);
+
   function seeOrder() {
     try {
       window.sessionStorage.removeItem(payingKey(props.token));
@@ -187,6 +202,13 @@ export function OrderView(props: OrderViewProps) {
   const needPay = (view === 'awaitingPayment' || view === 'toCheck') && check !== 'checking';
   const stopped = order.status === 'CANCELLED';
   const total = formatRinggit(order.totalCents);
+  const payByQr = Boolean(props.qrUrl) || hasBank(props.bank);
+  const chipMethods = props.chipMethods ?? null;
+  // Online choices again (DEVIATIONS 178): once a payment failed or was tried too often, and
+  // always where online is the shop's only way to pay. Never while one is still in flight.
+  const retry = needPay && !inFlight && chipMethods !== null && (!payByQr || check === 'failed' || triedTooOften);
+  // A shop with no QR or bank: its WhatsApp, with the upload, or, with neither, the plain truth.
+  const askOnWhatsApp = !payByQr && !retry && props.whatsapp !== null;
 
   const stepList = [
     { label: copy.steps.placed, done: steps.placed },
@@ -309,7 +331,19 @@ export function OrderView(props: OrderViewProps) {
               {copy.notReceived(name)}
             </p>
           ) : null}
-          {props.qrUrl || hasBank(props.bank) ? (
+          {retry && chipMethods ? (
+            <RetryPay
+              token={props.token}
+              handle={props.handle}
+              displayName={name}
+              copy={copy}
+              totalCents={order.totalCents}
+              chipMethods={chipMethods}
+              withQr={payByQr}
+              navigate={props.navigate}
+            />
+          ) : null}
+          {payByQr ? (
             <PayBox
               name={name}
               qrUrl={props.qrUrl}
@@ -317,8 +351,10 @@ export function OrderView(props: OrderViewProps) {
               copy={copy}
               saveHref={`/${props.handle}/order/${encodeURIComponent(props.token)}/qr`}
             />
-          ) : (
+          ) : askOnWhatsApp ? (
             <p className={styles.askPay}>{copy.askHowToPay(name)}</p>
+          ) : retry ? null : (
+            <p className={styles.askPay}>{copy.cantPayOnline(name)}</p>
           )}
           {view === 'toCheck' ? (
             <div className={`${styles.upload} ${styles.sent}`}>
@@ -343,9 +379,9 @@ export function OrderView(props: OrderViewProps) {
           {view === 'toCheck' ? (
             // Until it is marked paid, a second receipt replaces the first.
             <ReceiptUpload token={props.token} displayName={name} copy={copy} replace />
-          ) : (
+          ) : payByQr || askOnWhatsApp ? (
             <ReceiptUpload token={props.token} displayName={name} copy={copy} />
-          )}
+          ) : null}
         </section>
       ) : null}
 

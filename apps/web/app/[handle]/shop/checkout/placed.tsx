@@ -56,7 +56,8 @@ export function Placed(props: {
 
   const path = `/${props.handle}/order/${props.token}`;
   const paid = props.onSeeOrder !== undefined;
-  const noWayToPay = !paid && props.payByQr === false;
+  // Too many tries: the order page has the retry, so the link there stays even with no QR.
+  const noWayToPay = !paid && props.payByQr === false && props.onlineUnavailable !== 'tooMany';
   const total = formatRinggit(props.totalCents);
   const arrow = (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -97,7 +98,7 @@ export function Placed(props: {
       {props.onlineUnavailable ? (
         <p className={styles.placedNotice} role="status">
           {props.onlineUnavailable === 'tooMany'
-            ? copy.payTooMany
+            ? copy.payTooManyLater
             : props.payByQr === false
               ? copy.onlineUnavailableWhatsApp(props.displayName)
               : copy.onlineUnavailable}

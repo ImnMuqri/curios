@@ -837,6 +837,17 @@
   stroke-linejoin: round;
 }
 
+/* CHIP took a second payment for an order paid another way: one is owed back. */
+.paidTwice {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--merah-muda);
+  color: var(--merah-deep);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* The Payment card of an order CHIP confirmed: no receipt to show, only the bank's word. */
 .paidOnline {
   display: flex;

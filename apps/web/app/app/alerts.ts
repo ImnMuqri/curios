@@ -46,6 +46,8 @@ export interface ShopAlertInput {
   storeEnabled: boolean;
   /** The shop's CHIP key was refused: online payment is off until the owner reconnects. */
   chipRefused?: boolean;
+  /** The shop has its own QR or bank details; without them a refused CHIP key leaves nothing to pay by. Absent reads as yes. */
+  payByQr?: boolean;
 }
 
 /**
@@ -58,7 +60,8 @@ function shopAlerts(orders: ShopAlertInput | undefined): Alert[] {
 }
 
 function chipAlert(orders: ShopAlertInput): Alert[] {
-  // No board draws it (DEVIATIONS 184). Amber: the shop still takes orders, by QR.
+  // No board draws it (DEVIATIONS 184). Amber: the shop still takes orders, by QR, or
+  // (CHIP its only way to pay) takes them with nothing to pay by, which it says.
   return orders.chipRefused
     ? [
         {
@@ -67,7 +70,10 @@ function chipAlert(orders: ShopAlertInput): Alert[] {
           where: '/app/orders',
           icon: 'shop',
           title: 'CHIP is disconnected',
-          text: 'Curios can’t use your CHIP key, so customers can only pay by QR or bank transfer until you reconnect it.',
+          text:
+            orders.payByQr === false
+              ? 'Curios can’t use your CHIP key, so customers can’t pay at all until you reconnect it or add a DuitNow QR.'
+              : 'Curios can’t use your CHIP key, so customers can only pay by QR or bank transfer until you reconnect it.',
           action: { href: '/app/store?tab=payment', label: 'Reconnect in Store' },
         },
       ]

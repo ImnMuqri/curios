@@ -474,6 +474,12 @@ export function OrderDetail({
                 {waitText}
               </div>
             )}
+            {/* CHIP took the money on top of the QR or a hand-marked payment (DEVIATIONS 187). */}
+            {order.chipPaidTwiceAt ? (
+              <p className={styles.paidTwice} role="note" aria-label="Paid twice">
+                Paid twice — refund {total} in CHIP
+              </p>
+            ) : null}
           </section>
 
           <section className={styles.card} aria-labelledby="order-getting">

@@ -572,8 +572,25 @@ describe('Checkout: how you’ll pay', () => {
     await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
     await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
 
-    expect(await screen.findByText(copy.payTooMany)).toBeInTheDocument();
+    // The retry is on the order page, so the placed screen sends the customer there.
+    expect(await screen.findByText(copy.payTooManyLater)).toBeInTheDocument();
+    expect(screen.queryByText(copy.payTooMany)).toBeNull();
     expect(screen.queryByText(copy.onlineUnavailable)).toBeNull();
+    expect(screen.getByRole('link', { name: copy.payNow('RM215') })).toHaveAttribute('href', '/keklina/order/tok_abc');
+    expect(window.sessionStorage.getItem('curios-retry:tok_abc')).toBe('1');
+  });
+
+  it('too many tries on a shop that only takes payment online still leads to the order page', async () => {
+    const user = userEvent.setup();
+    api({ pay: { error: { code: 'RATE_LIMITED', message: 'Too many tries just now.' } }, payStatus: 429 });
+    render(<Checkout {...connected} payByQr={false} navigate={vi.fn()} />);
+    await screen.findByText('Kek coklat moist');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    expect(await screen.findByText(copy.payTooManyLater)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: copy.payNow('RM215') })).toHaveAttribute('href', '/keklina/order/tok_abc');
   });
 
   it('an order already paid goes to its order page', async () => {

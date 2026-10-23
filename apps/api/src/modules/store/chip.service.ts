@@ -10,6 +10,7 @@ import {
   ChipNoTestMethodError,
   ChipNotConnectedError,
   ChipPaymentInFlightError,
+  ChipReconnectError,
   ChipTestKeyError,
   ChipTestRefusedError,
   InvalidChipKeyError,
@@ -219,7 +220,18 @@ export async function testChip(deps: ShopChipDeps, input: { accountId: string; n
   });
   if (!row) throw new ChipNotConnectedError();
 
-  const client = deps.clientFor({ secretKey: openSecret(row.secretKeyCiphertext, deps.secretsKey), brandId: row.brandId });
+  let secretKey: string;
+  try {
+    secretKey = openSecret(row.secretKeyCiphertext, deps.secretsKey);
+  } catch (error) {
+    // Sealed under a PAYMENT_SECRETS_KEY that has since changed: marked as a refused key
+    // is (the Store and the alert say so, checkout stops offering it), and only
+    // connecting again mends it.
+    deps.log.warn({ pageId: page.id, err: errName(error) }, 'shop chip key could not be opened');
+    await deps.prisma.shopPaymentAccount.updateMany({ where: { pageId: page.id }, data: { lastErrorAt: input.now } });
+    throw new ChipReconnectError();
+  }
+  const client = deps.clientFor({ secretKey, brandId: row.brandId });
   const noteRefusal = async <T>(call: () => Promise<T>, refused?: (status: number) => Error): Promise<T> => {
     try {
       return await withOwnerKey(call, refused);

@@ -24,6 +24,8 @@ export interface OwnerPage {
   avatarKey: string | null;
   /** The shop's CHIP key was refused or could not be opened: customers cannot pay online until it is reconnected. */
   chipRefused: boolean;
+  /** The shop has its own QR or full bank details to pay by (storeGaps's rule), so it never rests on CHIP alone. */
+  payByQr: boolean;
 }
 
 /**
@@ -62,11 +64,19 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       storeEnabled: true,
       allowSearchIndexing: true,
       avatarKey: true,
+      paymentQrKey: true,
+      bankName: true,
+      bankAccountName: true,
+      bankAccountNumber: true,
       // Whether, never the key: the sealed key is not selected by any page query.
       paymentAccount: { select: { lastErrorAt: true } },
     },
   });
   if (!page) return null;
-  const { paymentAccount, ...rest } = page;
-  return { ...rest, chipRefused: paymentAccount?.lastErrorAt != null };
+  const { paymentAccount, paymentQrKey, bankName, bankAccountName, bankAccountNumber, ...rest } = page;
+  return {
+    ...rest,
+    chipRefused: paymentAccount?.lastErrorAt != null,
+    payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
+  };
 }

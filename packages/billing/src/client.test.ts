@@ -1,5 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
-import { ChipRefusedError, ChipUnavailableError, createChipClient, type FetchLike } from './client.js';
+import {
+  ChipRefusedError,
+  ChipUnavailableError,
+  createChipClient,
+  DEAD_PURCHASE_STATUSES,
+  PAID_PURCHASE_STATUSES,
+  REVERSED_PURCHASE_STATUSES,
+  wasPaid,
+  type FetchLike,
+} from './client.js';
 
 // The shape of the Purchase example in CHIP's OpenAPI reference, trimmed to what matters.
 const purchaseJson = {
@@ -347,5 +356,20 @@ describe('failures', () => {
     expect(error).toBeInstanceOf(Error);
     expect(error).not.toBeInstanceOf(ChipUnavailableError);
     expect((error as Error).message).toMatch(/401/);
+  });
+});
+
+describe('purchase status families (CHIP Purchase.status)', () => {
+  it('paid, cleared and settled are paid; a refund or chargeback was paid first; overdue and the rest are dead', () => {
+    expect([...PAID_PURCHASE_STATUSES].sort()).toEqual(['cleared', 'paid', 'settled']);
+    expect([...REVERSED_PURCHASE_STATUSES].sort()).toEqual(['chargeback', 'pending_refund', 'refunded']);
+    for (const status of ['paid', 'cleared', 'settled', 'pending_refund', 'refunded', 'chargeback']) {
+      expect(wasPaid(status)).toBe(true);
+      expect(DEAD_PURCHASE_STATUSES.has(status)).toBe(false);
+    }
+    for (const status of ['created', 'sent', 'viewed', 'pending_execute', 'overdue', 'expired', 'cancelled', 'error', 'blocked']) {
+      expect(wasPaid(status)).toBe(false);
+    }
+    expect([...DEAD_PURCHASE_STATUSES].sort()).toEqual(['blocked', 'cancelled', 'error', 'expired', 'overdue']);
   });
 });

@@ -71,5 +71,5 @@ export { ACCOUNT_MAIL_FOOTER, escapeHtml, OWNER_MAIL_FOOTER, renderMailHtml } fr
 export type { MailBlock, MailButton, MailContent, MailTone } from './mail.js';
 export { autoRenewStoppedMail, capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, planEndedSaid, planEndingMail, renewalFailedMail, trialSpentMail } from './plan-mail.js';
 export type { PlanEndedShop } from './plan-mail.js';
-export { newOrderMail, paidAfterCancelMail, paidOrderMail, receiptMail } from './order-mail.js';
-export type { NewOrderMailInput, PaidAfterCancelMailInput, PaidOrderMailInput, ReceiptMailInput } from './order-mail.js';
+export { newOrderMail, paidAfterCancelMail, paidOrderMail, paidTwiceMail, receiptMail } from './order-mail.js';
+export type { NewOrderMailInput, PaidAfterCancelMailInput, PaidOrderMailInput, PaidTwiceMailInput, ReceiptMailInput } from './order-mail.js';

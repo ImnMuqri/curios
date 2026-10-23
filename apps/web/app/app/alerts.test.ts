@@ -223,6 +223,16 @@ describe('alertsFor, a CHIP key that was refused', () => {
     });
   });
 
+  it('on a shop with no QR or bank details, says customers cannot pay at all', () => {
+    const chipOnly = { ...page(), orders: { ...shop(), chipRefused: true, payByQr: false } };
+    expect(alertsFor(chipOnly).find((a) => a.id === 'chip-refused')).toMatchObject({
+      tone: 'warn',
+      title: 'CHIP is disconnected',
+      text: 'Curios can’t use your CHIP key, so customers can’t pay at all until you reconnect it or add a DuitNow QR.',
+      action: { href: '/app/store?tab=payment', label: 'Reconnect in Store' },
+    });
+  });
+
   it('is not shown while the key works, or while the shop is off', () => {
     expect(alertsFor(page()).some((a) => a.id === 'chip-refused')).toBe(false);
     expect(alertsFor(refused({ storeEnabled: false })).some((a) => a.id === 'chip-refused')).toBe(false);

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OWNER_MAIL_FOOTER } from './mail.js';
-import { newOrderMail, paidAfterCancelMail, paidOrderMail, receiptMail } from './order-mail.js';
+import { newOrderMail, paidAfterCancelMail, paidOrderMail, paidTwiceMail, receiptMail } from './order-mail.js';
 
 const order = {
   number: 12,
@@ -252,5 +252,23 @@ describe('paidAfterCancelMail', () => {
     expect(mail.html).toContain(said);
     expect(mail.text).toContain(said);
     expect(mail.html).toContain('>Open order #14</a>');
+  });
+});
+
+describe('paidTwiceMail', () => {
+  const twice = { number: 14, totalCents: 21_500, customerName: 'Nurul', via: 'FPX · Maybank2u', first: 'qr' as const, url: 'https://curios.my/app/orders?order=ord_14', appUrl: 'https://curios.my' };
+
+  it('says the order was paid twice, and which two ways', () => {
+    const mail = paidTwiceMail(twice);
+    expect(mail.subject).toBe('Order #14 was paid twice');
+    const said = 'Nurul paid RM215 by FPX · Maybank2u on top of the QR payment. Refund one of them in CHIP.';
+    expect(mail.html).toContain(said);
+    expect(mail.text).toContain(said);
+    expect(mail.text).toContain('Open order #14: https://curios.my/app/orders?order=ord_14');
+    expect(mail.html).toContain('>Open order #14</a>');
+  });
+
+  it('names a payment the owner marked by hand', () => {
+    expect(paidTwiceMail({ ...twice, first: 'hand' }).text).toContain('on top of the hand-marked payment.');
   });
 });

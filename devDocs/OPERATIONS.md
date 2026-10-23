@@ -486,10 +486,15 @@ A second try at paying never leaves a paid purchase behind: it makes a new purch
 earlier one is known to be dead or has been cancelled, and if cancelling fails because it was paid,
 the order is marked paid instead. While a placed order's purchase can still be paid (an hour from
 creation, `Order.chipPurchaseDueAt`), the owner cannot disconnect CHIP or swap in another CHIP
-account, and cancelling the order cancels the purchase first. Budgets: asking what a shop takes and
-starting a payment share `RATE_LIMIT_SHOP_PAY_PER_IP`; starting one is also limited per order
-(`RATE_LIMIT_SHOP_PAY_PER_ORDER`); the order page's checks have their own per-order budget
-(`RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER`), and CHIP is asked about one order at most every 5 seconds.
+account, and cancelling the order, or marking it paid by hand, cancels the purchase first. A
+purchase CHIP reports as `paid`, `cleared` or `settled` (or refunded or charged back since) was
+paid. If CHIP takes a payment for an order already paid by QR or by hand, the order records
+`Order.chipPaidTwiceAt`, a warning is logged with the order and purchase ids, and the owner is
+emailed once ("Order #N was paid twice"); Orders lists it under Refunds. Budgets: asking what a
+shop takes has `RATE_LIMIT_SHOP_PAY_METHODS_PER_IP` (per visitor and shop); starting a payment has
+`RATE_LIMIT_SHOP_PAY_PER_IP` and is also limited per order (`RATE_LIMIT_SHOP_PAY_PER_ORDER`); the
+order page's checks have their own per-order budget (`RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER`), and
+CHIP is asked about one order at most every 5 seconds.
 
 ---
 

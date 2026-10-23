@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
-import { BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
+import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
 import { shopCopy } from './copy.js';
 import type { ViewItem } from './shop-view.js';
 import styles from './shop-page.module.css';
@@ -86,12 +86,7 @@ export function ShopPageView(props: {
   const shown = category ? props.items.filter((item) => item.category?.trim() === category) : props.items;
 
   function add(line: BasketLine) {
-    const current = readBasket(key);
-    const same = current.find((l) => l.itemId === line.itemId && l.optionId === line.optionId);
-    writeBasket(
-      key,
-      same ? current.map((l) => (l === same ? { ...l, quantity: l.quantity + line.quantity } : l)) : [...current, line],
-    );
+    writeBasket(key, addToBasket(readBasket(key), line));
   }
 
   async function share() {

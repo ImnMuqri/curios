@@ -84,6 +84,21 @@ describe('getOwnerPage', () => {
     expect(page).not.toHaveProperty('paymentAccount');
   });
 
+  it('says whether the shop has a QR or full bank details to pay by, as storeGaps does', async () => {
+    const make = async (extra: Record<string, unknown>) => {
+      const slug = randomUUID().slice(0, 8);
+      const account = await write.account.create({
+        data: { email: `owner-page-qr-${randomUUID()}@example.com`, pages: { create: { handle: `oq-${slug}`, skeleton: `oq-${slug}`, displayName: 'A Shop', published: true, ...extra } } },
+        select: { id: true },
+      });
+      return (await getOwnerPage(account.id))?.payByQr;
+    };
+    expect(await make({})).toBe(false);
+    expect(await make({ paymentQrKey: 'qr/a.png' })).toBe(true);
+    expect(await make({ bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122' })).toBe(true);
+    expect(await make({ bankName: 'Maybank', bankAccountNumber: '1122' })).toBe(false);
+  });
+
   it('carries the plan columns the leads screen explains itself from', async () => {
     // Non-default values on purpose. A page left at mode BUSINESS, paidUntil
     // null and leadsCaptured 0 would pass an assertion against those defaults

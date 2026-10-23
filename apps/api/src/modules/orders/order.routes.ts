@@ -7,7 +7,7 @@ import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { cancelOrder, markCompleted, markNotReceived, markPaid, markRefunded } from './owner.service.js';
 import { uploadReceipt } from './receipt.service.js';
-import { cancelChipBeforeOrderCancel } from './pay-online.service.js';
+import { cancelChipBeforeOwnerMove } from './pay-online.service.js';
 import type { PayOnline } from './pay-online.routes.js';
 
 export interface OrderRouteOptions {
@@ -17,7 +17,7 @@ export interface OrderRouteOptions {
   store?: AvatarStore | null;
   /** How often the order page's check may ask CHIP about one order; tests pass 0. */
   payStatusEveryMs?: number;
-  /** Paying online, for the owner's cancel: it cancels CHIP's purchase first. Set by app.ts. */
+  /** Paying online, for the owner's cancel and mark paid: each cancels CHIP's purchase first. Set by app.ts. */
   payOnline?: PayOnline;
 }
 
@@ -168,8 +168,8 @@ export const ownerOrderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async 
       async (request, reply) => {
         if (!request.account) throw new UnauthenticatedError();
         const now = new Date();
-        if (action === 'cancel' && options.payOnline) {
-          await cancelChipBeforeOrderCancel({ ...options.payOnline, log: request.log }, request.account.id, request.params.id, now);
+        if ((action === 'cancel' || action === 'paid') && options.payOnline) {
+          await cancelChipBeforeOwnerMove({ ...options.payOnline, log: request.log }, request.account.id, request.params.id, now);
         }
         await run({ prisma: app.prisma, store, log: request.log }, request.account.id, request.params.id, now);
         // The id and the move: no customer detail belongs in the log.

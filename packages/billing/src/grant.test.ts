@@ -428,5 +428,8 @@ describe('evidenceFromPurchase', () => {
     expect(evidenceFromPurchase({ ...purchase, maskedPan: null }).card).toEqual({ token: 'pur-1', label: null });
     expect(evidenceFromPurchase({ ...purchase, paymentMethod: null }).card?.label).toBeNull();
     expect(evidenceFromPurchase({ ...purchase, status: 'created' }).paid).toBe(false);
+    // A card purchase CHIP has since cleared or settled is still paid.
+    expect(evidenceFromPurchase({ ...purchase, status: 'cleared' }).paid).toBe(true);
+    expect(evidenceFromPurchase({ ...purchase, status: 'settled' }).paid).toBe(true);
   });
 });

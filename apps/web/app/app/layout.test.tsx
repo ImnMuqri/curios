@@ -58,6 +58,7 @@ const page: OwnerPage = {
   allowSearchIndexing: false,
   avatarKey: null,
   chipRefused: false,
+  payByQr: true,
 };
 
 describe('the dashboard layout', () => {
@@ -144,6 +145,16 @@ describe('the dashboard layout', () => {
     expect(frame.props.alerts).toContainEqual(expect.objectContaining({ id: 'chip-refused', where: '/app/orders' }));
     // Not a billing matter: no dot there.
     expect(frame.props.billingDot).toBe(false);
+  });
+
+  it('says customers cannot pay at all when CHIP was the shop’s only way to pay', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, storeEnabled: true, ordersPlaced: 0, chipRefused: true, payByQr: false });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; text: string }[] } };
+
+    expect(frame.props.alerts.find((a) => a.id === 'chip-refused')?.text).toContain('customers can’t pay at all');
   });
 
   it('puts the paused banner on Orders when the free orders are spent', async () => {

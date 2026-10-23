@@ -102,8 +102,29 @@ export class ChipRefusedError extends Error {
   }
 }
 
-/** What CHIP says about a purchase that will never be paid. */
-export const DEAD_PURCHASE_STATUSES: ReadonlySet<string> = new Set(['expired', 'cancelled', 'error', 'blocked']);
+/**
+ * What CHIP says about a purchase that will never be paid. `overdue` is a purchase past
+ * its due time; every purchase here is made due_strict, so CHIP should say `expired`
+ * instead, but an overdue one is not waited on either (it is still cancelled before a
+ * new one is made, as it could still be paid).
+ */
+export const DEAD_PURCHASE_STATUSES: ReadonlySet<string> = new Set(['expired', 'cancelled', 'error', 'blocked', 'overdue']);
+
+/**
+ * What CHIP says about a purchase that is paid: `paid`, then for some card payments
+ * `cleared` and `settled` as the funds move on (CHIP's Purchase.status). All three are paid.
+ */
+export const PAID_PURCHASE_STATUSES: ReadonlySet<string> = new Set(['paid', 'cleared', 'settled']);
+
+/**
+ * A purchase that was paid and has since been (or is being) reversed: refunded in full or
+ * part, or charged back. The money was taken, so it is recorded as paid, never taken for
+ * a purchase that was not paid.
+ */
+export const REVERSED_PURCHASE_STATUSES: ReadonlySet<string> = new Set(['pending_refund', 'refunded', 'chargeback']);
+
+/** Whether CHIP took the money for this purchase at some point: paid, or paid and then reversed. */
+export const wasPaid = (status: string): boolean => PAID_PURCHASE_STATUSES.has(status) || REVERSED_PURCHASE_STATUSES.has(status);
 
 /** Card schemes a saved card can come from; CHIP only saves cards for recurring use. */
 const CARD_METHODS = ['visa', 'mastercard', 'maestro'];

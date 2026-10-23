@@ -138,8 +138,14 @@ export interface ShopCopy {
   onlineUnavailableWhatsApp: (name: string) => string;
   /** A shop with no QR, bank account or CHIP: its WhatsApp is how to pay. */
   payOnWhatsApp: (name: string) => string;
-  /** The API's limit on starting a payment answered 429. */
+  /** The API's limit on starting a payment answered 429, said beside a way to try again. */
   payTooMany: string;
+  /** The same on the placed screen, which has no retry: the order page does. */
+  payTooManyLater: string;
+  /** The order page's retry (DEVIATIONS 178): online choices only, once a payment failed or was tried too often. */
+  tryPayAgain: string;
+  /** A shop whose only way to pay is online, when online is not available. */
+  cantPayOnline: (name: string) => string;
   /** Under a wait the page cannot end: the QR is offered, but not twice. */
   dontPayAgain: (name: string) => string;
   /** CHIP's own words for how it was paid, in this language ("Visa card ending 4242"). */
@@ -377,6 +383,9 @@ const EN: ShopCopy = {
   onlineUnavailableWhatsApp: (name) => `Online payment isn’t available right now. WhatsApp ${name} to pay.`,
   payOnWhatsApp: (name) => `WhatsApp ${name} to pay.`,
   payTooMany: 'Too many tries. Wait a moment and try again.',
+  payTooManyLater: 'Too many tries just now. Open your order in a moment to try again.',
+  tryPayAgain: 'Try paying again',
+  cantPayOnline: (name) => `${name} can’t take payment online right now. Keep this page — it updates once you’ve paid.`,
   dontPayAgain: (name) => `If you already paid online, don’t pay again — WhatsApp ${name}.`,
   methodLabel: (label) => label,
   paidBy: (total, how) => `Paid ${total} by ${how}`,
@@ -568,6 +577,9 @@ const MS: ShopCopy = {
   onlineUnavailableWhatsApp: (name) => `Bayaran dalam talian tidak tersedia buat masa ini. WhatsApp ${name} untuk bayar.`,
   payOnWhatsApp: (name) => `WhatsApp ${name} untuk bayar.`,
   payTooMany: 'Terlalu banyak cubaan. Tunggu sebentar dan cuba lagi.',
+  payTooManyLater: 'Terlalu banyak cubaan tadi. Buka tempahan anda sebentar lagi untuk cuba semula.',
+  tryPayAgain: 'Cuba bayar sekali lagi',
+  cantPayOnline: (name) => `${name} tidak dapat menerima bayaran dalam talian buat masa ini. Simpan halaman ini — ia dikemas kini sebaik sahaja anda membayar.`,
   dontPayAgain: (name) => `Jika anda sudah membayar dalam talian, jangan bayar lagi — WhatsApp ${name}.`,
   methodLabel: (label) =>
     label.replace(/^(\w+) card ending (\d{4})$/, 'kad $1 berakhir $2').replace(/^(\w+) card$/, 'kad $1'),

@@ -58,6 +58,7 @@ process.env.CHIP_BASE_URL = 'https://chip.invalid/api/v1';
 process.env.RATE_LIMIT_BILLING_PER_ACCOUNT = '10';
 process.env.RATE_LIMIT_SHOP_CHIP_PER_ACCOUNT = '10';
 process.env.RATE_LIMIT_SHOP_PAY_PER_IP = '60';
+process.env.RATE_LIMIT_SHOP_PAY_METHODS_PER_IP = '60';
 process.env.RATE_LIMIT_SHOP_PAY_PER_ORDER = '10';
 process.env.RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER = '300';
 

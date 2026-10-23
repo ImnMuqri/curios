@@ -426,6 +426,18 @@ describe('runAutoRenewals', () => {
       expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
     });
 
+    it('is granted when CHIP says it was paid and has since settled, and nothing new is charged', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-20 * HOUR_MS), lastAttemptAt: at(-26 * HOUR_MS) });
+      const stuck = await aRenewalPayment(page.pageId, at(-26 * HOUR_MS));
+      const client = aChip();
+      client.getPurchase.mockImplementation(async (id) => purchaseFor(id, 'settled'));
+
+      expect(await run(client)).toMatchObject({ charged: 1 });
+
+      expect(client.chargePurchase).not.toHaveBeenCalled();
+      expect(await renewalsOf(page.pageId)).toMatchObject([{ id: stuck.id, status: 'PAID' }]);
+    });
+
     it('counts as a failure when CHIP says it is dead, then a fresh charge is tried', async () => {
       const page = await aRenewingPage({ paidUntil: at(-20 * HOUR_MS), lastAttemptAt: at(-26 * HOUR_MS) });
       const stuck = await aRenewalPayment(page.pageId, at(-26 * HOUR_MS));

@@ -82,13 +82,20 @@ describe('getOwnerOrders', () => {
     expect(orders[0]?.lines[0]).toMatchObject({ itemName: 'Kek', optionLabel: '1kg', unitPriceCents: 5000, quantity: 1, photoKey: null });
   });
 
+  it('says when CHIP took a second payment for an order paid another way', async () => {
+    const owner = await anOwner();
+    await anOrder(owner.pageId, { customerName: 'Twice', status: 'PAID', paidAt: NOW, paidVia: 'RECEIPT', chipPurchaseId: `p-${randomUUID()}`, chipPaidTwiceAt: NOW });
+    const [order] = await getOwnerOrders(owner.accountId);
+    expect(order).toMatchObject({ paidVia: 'RECEIPT', chipPaidTwiceAt: NOW });
+  });
+
   it('says how an order was paid, for Orders to tell an online payment from a hand-marked one', async () => {
     const owner = await anOwner();
     await anOrder(owner.pageId, { customerName: 'Online', status: 'PAID', paidAt: NOW, paidVia: 'CHIP', chipPurchaseId: `p-${randomUUID()}`, paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' });
     await anOrder(owner.pageId, { customerName: 'Hand' });
     const orders = await getOwnerOrders(owner.accountId);
     expect(orders.find((o) => o.customerName === 'Online')).toMatchObject({ paidVia: 'CHIP', paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' });
-    expect(orders.find((o) => o.customerName === 'Hand')).toMatchObject({ paidVia: null, paidMethodLabel: null, paidRef: null });
+    expect(orders.find((o) => o.customerName === 'Hand')).toMatchObject({ paidVia: null, paidMethodLabel: null, paidRef: null, chipPaidTwiceAt: null });
     // The purchase id and the payer's email stay on the server.
     expect(orders[0]).not.toHaveProperty('chipPurchaseId');
     expect(orders[0]).not.toHaveProperty('payerEmail');
@@ -234,6 +241,23 @@ describe('getOrderByToken', () => {
     const pendingToken = randomUUID();
     await anOrder(owner.pageId, { chipPurchaseId: `p-${randomUUID()}` }, pendingToken);
     expect(await getOrderByToken(pendingToken)).toMatchObject({ status: 'PLACED', chipPending: true, paidVia: null });
+  });
+
+  it('says what the shop takes online, for trying to pay again, and nothing once its key was refused', async () => {
+    const owner = await anOwner();
+    const token = randomUUID();
+    await anOrder(owner.pageId, {}, token);
+    expect((await getOrderByToken(token))?.page.chipMethods).toBeNull();
+
+    const account = { brandId: randomUUID(), secretKeyCiphertext: 'sealed', publicKeyPem: 'pem', methods: ['fpx', 'visa'], checkedAt: NOW };
+    await write.shopPaymentAccount.create({ data: { pageId: owner.pageId, ...account } });
+    const order = await getOrderByToken(token);
+    expect(order?.page.chipMethods).toEqual(['fpx', 'visa']);
+    // Never the sealed key, nor anything else of the account.
+    expect(JSON.stringify(order)).not.toContain('sealed');
+
+    await write.shopPaymentAccount.update({ where: { pageId: owner.pageId }, data: { lastErrorAt: NOW } });
+    expect((await getOrderByToken(token))?.page.chipMethods).toBeNull();
   });
 
   it('does not match on the hash itself', async () => {

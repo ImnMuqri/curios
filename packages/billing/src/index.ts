@@ -1,6 +1,14 @@
 export { CHIP_DEFAULT_BASE_URL, CHIP_ENV, billingDisabled, pemFromEnv } from './config.js';
 export { parsePublicKey, verifyChipSignature } from './signature.js';
-export { ChipRefusedError, ChipUnavailableError, createChipClient, DEAD_PURCHASE_STATUSES } from './client.js';
+export {
+  ChipRefusedError,
+  ChipUnavailableError,
+  createChipClient,
+  DEAD_PURCHASE_STATUSES,
+  PAID_PURCHASE_STATUSES,
+  REVERSED_PURCHASE_STATUSES,
+  wasPaid,
+} from './client.js';
 export type {
   ChargeResult,
   ChipClient,

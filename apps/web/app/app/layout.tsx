@@ -64,6 +64,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     state: orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
     storeEnabled: page.storeEnabled,
     chipRefused: page.chipRefused,
+    payByQr: page.payByQr,
   };
   return (
     <AppFrame

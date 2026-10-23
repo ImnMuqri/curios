@@ -37,6 +37,8 @@ export interface OwnerOrder {
   paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
   paidMethodLabel: string | null;
   paidRef: string | null;
+  /** When CHIP took a payment on top of one made another way (QR, by hand): one is owed back. */
+  chipPaidTwiceAt: Date | null;
   createdAt: Date;
   lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; photoKey: string | null }[];
 }
@@ -105,6 +107,7 @@ async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number): Pr
       paidVia: true,
       paidMethodLabel: true,
       paidRef: true,
+      chipPaidTwiceAt: true,
       createdAt: true,
       lines: {
         orderBy: { position: 'asc' },
@@ -213,7 +216,14 @@ export interface PublicOrder {
     bankName: string | null;
     bankAccountName: string | null;
     bankAccountNumber: string | null;
+    /** What the shop's CHIP account takes, for the order page's "Try paying again"; null when nothing (as getCheckout's). */
+    chipMethods: string[] | null;
   };
+}
+
+/** The methods a shop's CHIP account takes, or null: none connected, its key refused, or a test key in production. */
+function usableChipMethods(chip: { methods: string[]; isTest: boolean; lastErrorAt: Date | null } | null): string[] | null {
+  return chip && chip.lastErrorAt === null && !(chip.isTest && process.env.NODE_ENV === 'production') ? chip.methods : null;
 }
 
 /**
@@ -271,14 +281,23 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
           bankName: true,
           bankAccountName: true,
           bankAccountNumber: true,
+          // Never the sealed key: the read-only role cannot read that column at all.
+          paymentAccount: { select: { methods: true, isTest: true, lastErrorAt: true } },
         },
       },
     },
   });
   if (!row) return null;
-  const { day, lines, chipPurchaseId, ...order } = row;
+  const {
+    day,
+    lines,
+    chipPurchaseId,
+    page: { paymentAccount, ...page },
+    ...order
+  } = row;
   return {
     ...order,
+    page: { ...page, chipMethods: usableChipMethods(paymentAccount) },
     chipPending: order.status === 'PLACED' && chipPurchaseId !== null,
     day: dayText(day),
     lines: lines.map(({ item, ...line }) => ({ ...line, photoKey: item?.photoKey ?? null })),
@@ -328,14 +347,13 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
   });
   if (!page) return null;
   const { paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, ...plan } = page;
-  const usable = chip && chip.lastErrorAt === null && !(chip.isTest && process.env.NODE_ENV === 'production');
   return {
     ...shop,
     canTakeOrders: canTakeOrders({ ...plan, now }),
     // The same rule as storeGaps: a QR, or all three bank details.
     payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
     hasQr: Boolean(paymentQrKey),
-    chipMethods: usable ? chip.methods : null,
+    chipMethods: usableChipMethods(chip),
   };
 }
 

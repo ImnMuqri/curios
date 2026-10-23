@@ -10,6 +10,7 @@ import {
   notifyRenewalFailure,
   recordRenewalFailure,
   DEAD_PURCHASE_STATUSES,
+  PAID_PURCHASE_STATUSES,
   type ChipClient,
   type GrantOutcome,
   type RenewalFailureResult,
@@ -206,7 +207,7 @@ async function settlePending(deps: Deps, pageId: string, result: AutoRenewResult
     }
 
     const purchase = await deps.client.getPurchase(payment.providerRef);
-    if (purchase.status === 'paid') {
+    if (PAID_PURCHASE_STATUSES.has(purchase.status)) {
       const outcome = await grantPayment(deps.prisma, evidenceFromPurchase(purchase), { now: deps.now });
       logGrant(deps.log, pageId, payment.providerRef, outcome);
       if (outcome.kind === 'granted') result.charged += 1;

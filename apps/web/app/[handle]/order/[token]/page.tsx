@@ -74,6 +74,7 @@ export default async function OrderPage({ params }: Params) {
         receiptUrl={avatarUrl(order.receiptKey)}
         bank={{ name: page.bankName, accountName: page.bankAccountName, accountNumber: page.bankAccountNumber }}
         whatsapp={whatsappNumber(page.links)}
+        chipMethods={page.chipMethods}
         // The server's clock, so Ready lights on the day the server says it is.
         now={new Date().toISOString()}
       />

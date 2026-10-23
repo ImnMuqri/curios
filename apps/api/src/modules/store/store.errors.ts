@@ -126,6 +126,19 @@ export class ChipTestRefusedError extends Error {
   }
 }
 
+/**
+ * The kept key can no longer be opened (PAYMENT_SECRETS_KEY was rotated): only
+ * connecting again, with the key from CHIP's dashboard, mends it.
+ */
+export class ChipReconnectError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'CHIP_RECONNECT';
+  constructor() {
+    super('Connect CHIP again.');
+    this.name = 'ChipReconnectError';
+  }
+}
+
 export class ChipNotConnectedError extends Error {
   readonly statusCode = 409;
   readonly code = 'CHIP_NOT_CONNECTED';

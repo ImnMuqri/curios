@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { ChipRefusedError, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
-import { openSecret } from '@curios/core/secret-box';
+import { openSecret, sealSecret } from '@curios/core/secret-box';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
@@ -397,6 +397,20 @@ describe('POST /store/chip/test', () => {
     const res = await call(app, 'POST', '/store/chip/test', owner.cookie);
 
     expect(res.json().error.code).toBe('CHIP_KEY_REFUSED');
+    expect((await account(app, owner.pageId))?.lastErrorAt).not.toBeNull();
+  });
+
+  it('a key that can no longer be opened (PAYMENT_SECRETS_KEY rotated) asks to connect again, and is marked', async () => {
+    const owner = await anOwner(app);
+    await connect(app, owner.cookie);
+    await app.prisma.shopPaymentAccount.update({ where: { pageId: owner.pageId }, data: { secretKeyCiphertext: sealSecret(SECRET, randomBytes(32)) } });
+    client.createPurchase.mockClear();
+
+    const res = await call(app, 'POST', '/store/chip/test', owner.cookie);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'CHIP_RECONNECT', message: 'Connect CHIP again.' });
+    expect(client.createPurchase).not.toHaveBeenCalled();
     expect((await account(app, owner.pageId))?.lastErrorAt).not.toBeNull();
   });
 

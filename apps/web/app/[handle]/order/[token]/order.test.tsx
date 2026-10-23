@@ -391,6 +391,7 @@ const order: PublicOrder = {
     bankName: 'Maybank',
     bankAccountName: 'Lina binti Kamal',
     bankAccountNumber: '1642 3378 9021',
+    chipMethods: null,
   },
 };
 
@@ -500,6 +501,146 @@ describe('OrderView: paid online', () => {
   });
 });
 
+describe('OrderView: trying to pay again', () => {
+  const ALL = ['fpx', 'visa', 'mastercard', 'razer_tng', 'razer_grabpay', 'shopee_pay'];
+  const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
+  function api(routes: { payStatus?: unknown; pay?: unknown; payCode?: number; methods?: unknown } = {}) {
+    const spy = vi.fn(async (url: string, _init?: RequestInit) => {
+      if (url.includes('/pay-status')) return json(200, routes.payStatus ?? { state: 'failed' });
+      if (url.includes('/pay-methods')) return json(200, routes.methods ?? { fpx: true, wallets: ['tng', 'grab', 'spay'], card: true });
+      if (url.endsWith('/pay')) return json(routes.payCode ?? 200, routes.pay ?? { url: 'https://gate.chip-in.asia/p/y/?preferred=visa' });
+      return json(404, { error: { code: 'NOT_FOUND', message: 'no' } });
+    });
+    vi.stubGlobal('fetch', spy);
+    return spy;
+  }
+  const retry = () => screen.getByRole('region', { name: copy.tryPayAgain });
+  const choices = () =>
+    within(within(retry()).getByRole('radiogroup', { name: copy.howYoullPay }))
+      .getAllByRole('radio')
+      .map((radio) => radio.querySelector('b')?.textContent);
+  const chipOnly: Partial<Props> = { qrUrl: null, bank: { name: null, accountName: null, accountNumber: null }, whatsapp: null, chipMethods: ALL };
+
+  afterEach(() => window.sessionStorage.clear());
+
+  it('after a failed payment, offers the online choices again, beside the QR', async () => {
+    const user = userEvent.setup();
+    const fetch = api();
+    const navigate = vi.fn();
+    render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate })} />);
+
+    expect(await screen.findByText(copy.onlineFailed)).toBeInTheDocument();
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+    // Online choices only: the QR is already on the page.
+    expect(choices()).toEqual([copy.onlineBanking, copy.eWallet, copy.card]);
+    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
+
+    await user.click(within(retry()).getByRole('radio', { name: new RegExp(copy.card) }));
+    const go = within(retry()).getByRole('button', { name: copy.payByCard('RM215') });
+    expect(go).toBeDisabled();
+    await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(go);
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('https://gate.chip-in.asia/p/y/?preferred=visa'));
+    const call = fetch.mock.calls.find(([url]) => String(url).endsWith('/store/orders/tok_abc/pay'))!;
+    expect(call[1]).toMatchObject({ method: 'POST' });
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ method: 'card', email: 'mira@example.com' });
+    expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBe('1');
+  });
+
+  it('sends the bank chosen for FPX', async () => {
+    const user = userEvent.setup();
+    const fetch = api();
+    render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate: vi.fn() })} />);
+    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await user.click(within(retry()).getByRole('radio', { name: 'CIMB Clicks' }));
+    await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'CIMB Clicks') }));
+
+    await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/pay'))).toBe(true));
+    const call = fetch.mock.calls.find(([url]) => String(url).endsWith('/pay'))!;
+    expect(JSON.parse(call[1]!.body as string)).toEqual({ method: 'fpx', bank: 'cimb', email: 'mira@example.com' });
+  });
+
+  it('too many tries says so beside the retry, which stays', async () => {
+    const user = userEvent.setup();
+    api({ pay: { error: { code: 'RATE_LIMITED', message: 'Too many tries just now.' } }, payCode: 429 });
+    render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate: vi.fn() })} />);
+    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    expect(await within(retry()).findByText(copy.payTooMany)).toBeInTheDocument();
+    expect(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') })).toBeEnabled();
+  });
+
+  it('when online payment is not available after all, says so and keeps the QR', async () => {
+    const user = userEvent.setup();
+    api({ pay: { url: null } });
+    render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate: vi.fn() })} />);
+    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    expect(await screen.findByText(copy.onlineUnavailable)).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: 'Kek Lina DuitNow QR' })).toBeInTheDocument();
+  });
+
+  it('a payment already made after all reloads the order', async () => {
+    const user = userEvent.setup();
+    api({ pay: { error: { code: 'ORDER_ALREADY_PAID', message: 'This order is already paid.' } }, payCode: 409 });
+    const navigate = vi.fn();
+    render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL, navigate })} />);
+    await screen.findByRole('region', { name: copy.tryPayAgain });
+    await user.type(within(retry()).getByLabelText(new RegExp(copy.email)), 'mira@example.com');
+    await user.click(within(retry()).getByRole('button', { name: copy.payWith('RM215', 'Maybank2u') }));
+
+    await vi.waitFor(() => expect(navigate).toHaveBeenCalledWith('/keklina/order/tok_abc'));
+  });
+
+  it('after checkout was told too many tries, the order page offers the retry', async () => {
+    api();
+    window.sessionStorage.setItem('curios-retry:tok_abc', '1');
+    render(<OrderView {...withOrder({}, { chipMethods: ALL })} />);
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+  });
+
+  it('offers no retry on a shop that takes nothing online, nor before anything failed', () => {
+    api({ payStatus: { state: 'pending' } });
+    const { unmount } = render(<OrderView {...withOrder({ chipPending: true })} />);
+    expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
+    unmount();
+    render(<OrderView {...withOrder({}, { chipMethods: ALL })} />);
+    expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
+  });
+
+  it('a shop that only takes payment online, with no WhatsApp, still offers the retry', async () => {
+    api();
+    render(<OrderView {...withOrder({}, chipOnly)} />);
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+    expect(screen.queryByText(copy.askHowToPay('Kek Lina'))).toBeNull();
+  });
+
+  it('and when it cannot take payment online either, says so plainly', async () => {
+    api({ methods: { fpx: false, wallets: [], card: false } });
+    const { unmount } = render(<OrderView {...withOrder({}, { ...chipOnly, chipMethods: null })} />);
+    expect(screen.getByText(copy.cantPayOnline('Kek Lina'))).toBeInTheDocument();
+    expect(screen.queryByText(copy.uploadReceipt)).toBeNull();
+    unmount();
+    // Listed when last checked, but nothing CHIP takes at this total.
+    render(<OrderView {...withOrder({}, chipOnly)} />);
+    expect(await screen.findByText(copy.cantPayOnline('Kek Lina'))).toBeInTheDocument();
+  });
+
+  it('speaks Malay on a Malay page', async () => {
+    api();
+    const ms = shopCopy('ms');
+    render(<OrderView {...withOrder({}, { ...chipOnly, language: 'ms' })} />);
+    expect(await screen.findByRole('region', { name: ms.tryPayAgain })).toBeInTheDocument();
+    expect(ms.cantPayOnline('Kek Lina')).toBe('Kek Lina tidak dapat menerima bayaran dalam talian buat masa ini. Simpan halaman ini — ia dikemas kini sebaik sahaja anda membayar.');
+  });
+});
+
 describe('/[handle]/order/[token]', () => {
   beforeEach(() => vi.stubEnv('STORAGE_PUBLIC_URL', 'https://cdn.test'));
   afterEach(() => vi.unstubAllEnvs());
@@ -521,6 +662,19 @@ describe('/[handle]/order/[token]', () => {
     expect(screen.getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p1/abc.jpg');
     expect(screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
     expect(screen.getByRole('main').closest('[data-on-accent]')).not.toBeNull();
+  });
+
+  it('hands the shop’s online methods to the order page, for trying to pay again', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ fpx: true, wallets: [], card: false }), { status: 200, headers: { 'content-type': 'application/json' } })));
+    vi.mocked(getOrderByToken).mockResolvedValueOnce({
+      ...order,
+      receiptKey: null,
+      receiptType: null,
+      receiptUploadedAt: null,
+      page: { ...order.page, paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, links: [], chipMethods: ['fpx'] },
+    });
+    render(await OrderPage(params('keklina', 'tok')));
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
   });
 
   it('draws an order paid online as paid, from the server, with how and the reference', async () => {

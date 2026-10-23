@@ -141,6 +141,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   'ORDER_JUST_PAID',
   'CHIP_TEST_REFUSED',
   'CHIP_NOT_CONNECTED',
+  // The kept key will not open (PAYMENT_SECRETS_KEY rotated): connect again.
+  'CHIP_RECONNECT',
   // Development only, as BILLING_NOT_CONFIGURED: no PAYMENT_SECRETS_KEY to seal a key with.
   'CHIP_NOT_CONFIGURED',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is

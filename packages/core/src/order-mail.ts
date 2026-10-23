@@ -205,6 +205,46 @@ export function paidAfterCancelMail(o: PaidAfterCancelMailInput): Mail {
   };
 }
 
+export interface PaidTwiceMailInput {
+  number: number;
+  totalCents: number;
+  customerName: string;
+  /** How CHIP was paid: "FPX · Maybank2u". */
+  via: string;
+  /** The payment that came first: the owner's QR (a receipt was checked), or marked paid by hand. */
+  first: 'qr' | 'hand';
+  url: string;
+  appUrl?: string;
+}
+
+/**
+ * Sent to the owner when CHIP takes a payment for an order already paid another way
+ * (the QR, or marked paid by hand). No board draws it (DEVIATIONS 187).
+ */
+export function paidTwiceMail(o: PaidTwiceMailInput): Mail {
+  const total = formatRinggit(o.totalCents);
+  const subject = `Order #${o.number} was paid twice`;
+  const said = `${o.customerName} paid ${total} by ${o.via} on top of the ${o.first === 'qr' ? 'QR' : 'hand-marked'} payment. Refund one of them in CHIP.`;
+  const button = `Open order #${o.number}`;
+
+  return {
+    subject,
+    text: [`${subject}.`, '', said, '', `${button}: ${o.url}`].join('\n'),
+    html: renderMailHtml({
+      subject,
+      topRight: `Order #${o.number}`,
+      tag: { label: 'Paid twice', tone: 'merah' },
+      heading: subject,
+      blocks: [
+        { kind: 'p', text: said },
+        { kind: 'buttons', primary: { label: button, href: o.url } },
+      ],
+      footer: OWNER_MAIL_FOOTER,
+      appUrl: o.appUrl,
+    }),
+  };
+}
+
 export interface ReceiptMailInput {
   number: number;
   totalCents: number;

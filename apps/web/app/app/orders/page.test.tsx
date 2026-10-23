@@ -41,6 +41,7 @@ const page: OwnerPage = {
   allowSearchIndexing: false,
   avatarKey: null,
   chipRefused: false,
+  payByQr: true,
 };
 
 const order: OwnerOrder = {
@@ -68,6 +69,7 @@ const order: OwnerOrder = {
   paidVia: null,
   paidMethodLabel: null,
   paidRef: null,
+  chipPaidTwiceAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [{ itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 1, photoKey: 'items/p1/coklat.webp' }],
 };

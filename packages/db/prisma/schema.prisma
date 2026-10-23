@@ -809,6 +809,9 @@ model Order {
   chipPurchaseId    String?        @unique
   /// When that purchase stops being payable (its due_strict time): past it, nobody can pay it.
   chipPurchaseDueAt DateTime?
+  /// When CHIP took a payment for this order after it was paid another way (QR or by
+  /// hand): the customer paid twice, and one of the two is the owner's to refund in CHIP.
+  chipPaidTwiceAt   DateTime?
   /// The customer's email, asked for only when they pay online (CHIP needs one for the receipt).
   payerEmail        String?
   /// How CHIP says it was paid, for the order page: "FPX · Maybank2u".

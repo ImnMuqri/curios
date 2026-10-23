@@ -407,11 +407,11 @@ export function shopChipPerAccountLimit(redis: IORedis): RateLimitPluginOptions 
 }
 
 /**
- * Paying a shop online, per visitor: checkout asking which methods the shop takes,
- * starting a payment (each one creates a purchase on the owner's CHIP account), and
- * the order page checking whether it went through. Generous enough for that page's
- * few checks; a loop from one address is stopped before it can fill an owner's
- * CHIP account with purchases.
+ * Starting to pay a shop online, per visitor: each one creates a purchase on the owner's
+ * CHIP account, so a loop from one address is stopped before it can fill an owner's CHIP
+ * account with purchases. Only starting counts here: checkout asking what a shop takes
+ * has its own budget (below), so a busy shop's customers behind one carrier address
+ * never use up each other's paying.
  */
 export function shopPayPerIpLimit(redis: IORedis): RateLimitPluginOptions {
   return {
@@ -422,6 +422,24 @@ export function shopPayPerIpLimit(redis: IORedis): RateLimitPluginOptions {
     max: limit('RATE_LIMIT_SHOP_PAY_PER_IP', 60),
     timeWindow: '1 hour',
     keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
+  };
+}
+
+/**
+ * Checkout asking what one shop takes online, per visitor and shop: it asks again as the
+ * basket changes, so it is counted apart from paying, and one shop's checkouts never
+ * spend another's. Keyed on the `handle`, lowercased as the page is looked up.
+ */
+export function shopPayMethodsPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('shop-pay-methods-ip:'),
+    max: limit('RATE_LIMIT_SHOP_PAY_METHODS_PER_IP', 60),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => `${caller(request)}:${((request.params as { handle?: string }).handle ?? '-').toLowerCase()}`,
     errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
   };
 }

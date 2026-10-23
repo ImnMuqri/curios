@@ -12,6 +12,20 @@ export interface BasketLine {
   quantity: number;
 }
 
+/** The API's own bound on one line (`POST /store/:handle/orders`): a basket never holds more. */
+export const QUANTITY_MAX = 99;
+
+/**
+ * The basket with `line` added: to the line for the same item and option when there is
+ * one, as a new line otherwise, and never past QUANTITY_MAX, so a basket built by
+ * tapping + (on the shelf, the product page or in chat) can always be placed.
+ */
+export function addToBasket(lines: BasketLine[], line: BasketLine): BasketLine[] {
+  const same = lines.find((l) => l.itemId === line.itemId && l.optionId === line.optionId);
+  if (!same) return [...lines, { ...line, quantity: Math.min(QUANTITY_MAX, line.quantity) }];
+  return lines.map((l) => (l === same ? { ...l, quantity: Math.min(QUANTITY_MAX, l.quantity + line.quantity) } : l));
+}
+
 /** Where a shop's basket is kept, so the shelf and checkout read the same one. */
 export const defaultStorageKey = (handle: string) => `curios-basket:${handle}`;
 

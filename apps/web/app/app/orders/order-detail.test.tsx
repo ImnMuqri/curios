@@ -32,6 +32,7 @@ const mira: OrderRow = {
   paidVia: null,
   paidMethodLabel: null,
   paidRef: null,
+  chipPaidTwiceAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [
     { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: 'https://cdn.example/items/coklat.webp' },
@@ -442,5 +443,20 @@ describe('OrderDetail, an order paid online', () => {
     show(paid);
     expect(steps().getAllByRole('listitem').map((li) => li.querySelector('b')?.textContent)).toEqual(['Placed', 'Receipt', 'Paid', 'Completed']);
     expect(screen.queryByText(/through CHIP/)).toBeNull();
+  });
+});
+
+describe('OrderDetail, an order paid twice', () => {
+  it('says the second payment is to refund in CHIP, beside the first payment', () => {
+    show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') });
+    const note = screen.getByRole('note', { name: 'Paid twice' });
+    expect(note).toHaveTextContent('Paid twice — refund RM70 in CHIP');
+    // The first payment still stands: the order is paid and to be made.
+    expect(actionBox().getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
+  });
+
+  it('says nothing of it on an order paid once', () => {
+    show(paid);
+    expect(screen.queryByRole('note', { name: 'Paid twice' })).toBeNull();
   });
 });

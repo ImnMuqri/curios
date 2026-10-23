@@ -34,6 +34,7 @@ const base: OrderRow = {
   paidVia: null,
   paidMethodLabel: null,
   paidRef: null,
+  chipPaidTwiceAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [
     { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: null },
@@ -205,5 +206,19 @@ describe('OrdersScreen, orders paid online', () => {
     // Never a receipt to check.
     fireEvent.click(filter(/^To check/));
     expect(rows().queryByText('Nurul Izzah')).toBeNull();
+  });
+});
+
+describe('OrdersScreen, an order paid twice', () => {
+  const twice: OrderRow = { ...base, ...none, id: 'o15', number: 15, customerName: 'Laila Musa', status: 'PAID', paidAt: new Date('2026-10-16T03:20:00Z'), paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T03:30:00Z') };
+
+  it('is counted and listed under Refunds, and still under Paid', () => {
+    show([twice, ...orders]);
+    // Farid's refund owed, and Laila's second payment.
+    expect(filter(/^Refunds/)).toHaveTextContent('2');
+    expect(filter(/^Paid/)).toHaveTextContent('3');
+    fireEvent.click(filter(/^Refunds/));
+    expect(rows().getByText('Laila Musa')).toBeInTheDocument();
+    expect(rows().getAllByRole('listitem')).toHaveLength(2);
   });
 });

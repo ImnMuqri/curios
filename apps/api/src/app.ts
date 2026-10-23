@@ -26,6 +26,7 @@ import {
   receiptPerIpLimit,
   rateLimitPlugin,
   shopChipPerAccountLimit,
+  shopPayMethodsPerIpLimit,
   shopPayPerIpLimit,
   shopPayPerOrderLimit,
   shopPayStatusPerOrderLimit,
@@ -203,11 +204,11 @@ export async function buildApp(overrides: AppOverrides = {}) {
   });
 
   // Paying a shop online through the owner's own CHIP account: anonymous, on the order
-  // link. Asking what the shop takes and starting a payment share a per-IP budget, and
-  // starting one is also limited per order; the order page's check has its own, larger
-  // budget per order, so a page left open never stops the visitor paying.
+  // link. Asking what a shop takes has its own budget per visitor and shop; starting a
+  // payment has its own per visitor and per order; the order page's check has its own,
+  // larger budget per order, so a page left open never stops the visitor paying.
   await app.register(async (scope) => {
-    await scope.register(rateLimit, shopPayPerIpLimit(app.rateLimitRedis));
+    await scope.register(rateLimit, shopPayMethodsPerIpLimit(app.rateLimitRedis));
     await scope.register(shopPayMethodsRoutes, { payOnline });
   });
   await app.register(async (scope) => {
