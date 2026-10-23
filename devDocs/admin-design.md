@@ -74,8 +74,9 @@ change written to an audit log with his name and his reason.
 - **Answered-from-facts and the unsure rate count from when they are first stored.** If the unsure
   marker is not stored today, part 1 adds a column and the figures show "—" for periods before it.
   No backfill.
-- **The admin app talks to the API only**, never to the database directly. Overview aggregates are
-  API endpoints.
+- **The admin app reads and writes the way `apps/web` does**: reads through `@curios/db-read` (a
+  separate `@curios/db-read/admin` entry the owner app never imports, on the read-only role),
+  writes through the API. (Changed from "API only" while planning, to match the codebase.)
 - **IP and rate limits mirror the owner API** (`resolveTrustProxy` and `@fastify/rate-limit` in
   `apps/api/src/app.ts`).
 
