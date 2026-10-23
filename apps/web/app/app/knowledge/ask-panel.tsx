@@ -121,7 +121,7 @@ export function AskPanel({
           ),
         )}
         {thinking ? (
-          <PageReply name={pageName} className={styles.a} aria-label="Thinking">
+          <PageReply name={pageName} className={styles.a} label="Thinking">
             <span className={styles.dots}>
               <i />
               <i />

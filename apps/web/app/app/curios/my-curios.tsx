@@ -307,7 +307,7 @@ function PreviewAsk({ question, askPage, accent, name }: { question: string; ask
       {state.kind === 'answered' ? (
         <PageReply name={name}>{state.reply}</PageReply>
       ) : state.kind === 'asking' ? (
-        <PageReply name={name} aria-label="Asking">
+        <PageReply name={name} label="Thinking">
           <span className={styles.pvDots} aria-hidden="true">
             <i />
             <i />

@@ -23,7 +23,7 @@ function matches(order: OrderRow, filter: Filter): boolean {
   if (filter === 'check') return view === 'toCheck';
   if (filter === 'paid') return view === 'paid' || view === 'paidOnline';
   // A second payment CHIP took on top of the first is money owed back too, until it is marked refunded.
-  if (filter === 'refund') return view === 'refundOwed' || (order.chipPaidTwiceAt !== null && order.refundedAt === null);
+  if (filter === 'refund') return view === 'refundOwed' || (order.chipPaidTwiceAt !== null && order.secondRefundedAt === null);
   return true;
 }
 

@@ -39,6 +39,8 @@ export interface OwnerOrder {
   paidRef: string | null;
   /** When CHIP took a payment on top of one made another way (QR, by hand): one is owed back. */
   chipPaidTwiceAt: Date | null;
+  /** When the owner marked that second payment refunded (apart from a cancelled order's refundedAt). */
+  secondRefundedAt: Date | null;
   createdAt: Date;
   lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; photoKey: string | null }[];
 }
@@ -52,7 +54,7 @@ const dayText = (day: Date): string => day.toISOString().slice(0, 10);
  * badge, so nothing they count can fall off the list.
  */
 const NEEDS_OWNER = {
-  OR: [{ status: { in: ['PLACED' as const, 'PAID' as const] } }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }, { chipPaidTwiceAt: { not: null }, refundedAt: null }],
+  OR: [{ status: { in: ['PLACED' as const, 'PAID' as const] } }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }, { chipPaidTwiceAt: { not: null }, secondRefundedAt: null }],
 };
 
 const newestFirst = (a: { createdAt: Date; number: number }, b: { createdAt: Date; number: number }) =>
@@ -108,6 +110,7 @@ async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number): Pr
       paidMethodLabel: true,
       paidRef: true,
       chipPaidTwiceAt: true,
+      secondRefundedAt: true,
       createdAt: true,
       lines: {
         orderBy: { position: 'asc' },

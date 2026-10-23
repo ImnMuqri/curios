@@ -70,6 +70,7 @@ const order: OwnerOrder = {
   paidMethodLabel: null,
   paidRef: null,
   chipPaidTwiceAt: null,
+  secondRefundedAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [{ itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 1, photoKey: 'items/p1/coklat.webp' }],
 };

@@ -812,6 +812,10 @@ model Order {
   /// When CHIP took a payment for this order after it was paid another way (QR or by
   /// hand): the customer paid twice, and one of the two is the owner's to refund in CHIP.
   chipPaidTwiceAt   DateTime?
+  /// When the owner marked that second payment refunded. Kept apart from refundedAt,
+  /// which is the cancelled order's refund, so an order paid twice and then cancelled
+  /// still shows the refund it owes.
+  secondRefundedAt  DateTime?
   /// The customer's email, asked for only when they pay online (CHIP needs one for the receipt).
   payerEmail        String?
   /// How CHIP says it was paid, for the order page: "FPX · Maybank2u".

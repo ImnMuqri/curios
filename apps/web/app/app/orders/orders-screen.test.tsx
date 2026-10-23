@@ -35,6 +35,7 @@ const base: OrderRow = {
   paidMethodLabel: null,
   paidRef: null,
   chipPaidTwiceAt: null,
+  secondRefundedAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [
     { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: null },
@@ -214,7 +215,7 @@ describe('OrdersScreen, an order paid twice', () => {
   });
 
   it('leaves Refunds once the second payment is marked refunded', () => {
-    show([{ ...twice, refundedAt: new Date('2026-10-16T05:00:00Z') }, ...orders]);
+    show([{ ...twice, secondRefundedAt: new Date('2026-10-16T05:00:00Z') }, ...orders]);
     expect(filter(/^Refunds/)).toHaveTextContent('1');
     fireEvent.click(filter(/^Refunds/));
     expect(rows().queryByText('Laila Musa')).toBeNull();

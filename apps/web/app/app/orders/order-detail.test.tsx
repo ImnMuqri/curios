@@ -33,6 +33,7 @@ const mira: OrderRow = {
   paidMethodLabel: null,
   paidRef: null,
   chipPaidTwiceAt: null,
+  secondRefundedAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [
     { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: 'https://cdn.example/items/coklat.webp' },
@@ -484,7 +485,7 @@ describe('OrderDetail, an order paid twice', () => {
   });
 
   it('once refunded, goes quiet, keeps the order paid and still offers Mark completed', () => {
-    show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z'), refundedAt: new Date('2026-10-16T05:00:00Z') });
+    show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z'), secondRefundedAt: new Date('2026-10-16T05:00:00Z') });
     expect(screen.queryByRole('note', { name: 'Paid twice' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Mark refunded' })).toBeNull();
     expect(screen.getByText('Second payment refunded')).toBeInTheDocument();
@@ -495,5 +496,26 @@ describe('OrderDetail, an order paid twice', () => {
   it('offers Mark refunded on a completed paid-twice order too', () => {
     show({ ...paid, status: 'COMPLETED', completedAt: new Date('2026-10-16T08:00:00Z'), paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') });
     expect(screen.getByRole('button', { name: 'Mark refunded' })).toBeInTheDocument();
+  });
+
+  it('still owes the refund once an order paid twice, refunded once, is cancelled', () => {
+    show({ ...refundOwed, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z'), secondRefundedAt: new Date('2026-10-16T05:00:00Z') });
+    expect(screen.getByText('Send it back yourself, then mark it refunded.')).toBeInTheDocument();
+    expect(screen.getByText('Second payment refunded')).toBeInTheDocument();
+    expect(screen.queryByText('Refunded', { selector: '[data-badge]' })).toBeNull();
+  });
+
+  it('asks for both payments back when an order paid twice is cancelled first', () => {
+    show({ ...refundOwed, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') });
+    expect(screen.getByText('Send it back yourself and refund the CHIP payment too, then mark it refunded.')).toBeInTheDocument();
+    expect(screen.getByRole('note', { name: 'Paid twice' })).toBeInTheDocument();
+  });
+
+  it('says Refunded once, not Second payment refunded as well, on a refunded cancelled order paid twice', () => {
+    const at = new Date('2026-10-16T05:00:00Z');
+    show({ ...refundOwed, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z'), refundedAt: at, secondRefundedAt: at });
+    expect(screen.getByText('Refunded', { selector: '[data-badge]' })).toBeInTheDocument();
+    expect(screen.queryByText('Second payment refunded')).toBeNull();
+    expect(screen.queryByRole('note', { name: 'Paid twice' })).toBeNull();
   });
 });

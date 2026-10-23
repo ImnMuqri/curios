@@ -15,6 +15,14 @@ describe('PageReply', () => {
     expect(screen.getByText('Kek coklat 2kg is RM170.')).toBeInTheDocument();
   });
 
+  it('is a status a screen reader says while it waits, and nothing of the kind once it replies', () => {
+    const { unmount } = render(<PageReply name="Kek Lina" label="Thinking">…</PageReply>);
+    expect(screen.getByRole('status', { name: 'Thinking' })).toBeInTheDocument();
+    unmount();
+    render(<PageReply name="Kek Lina">Kek coklat 2kg is RM170.</PageReply>);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
   it('says "Your page" when it has no name', () => {
     render(<PageReply>Hello</PageReply>);
     expect(screen.getByText('Your page')).toBeInTheDocument();

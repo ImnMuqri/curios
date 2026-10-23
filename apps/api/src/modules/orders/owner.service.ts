@@ -53,16 +53,24 @@ export const cancelOrder = (deps: OwnerOrderDeps, accountId: string, id: string,
 
 /**
  * Money went back, and this says it did: a paid order that was cancelled, or
- * the second payment of an order paid twice (which stays paid otherwise).
+ * the second payment of an order paid twice (which stays paid otherwise). The
+ * two are marked apart (refundedAt, secondRefundedAt), so an order paid twice,
+ * refunded once and then cancelled still owes its refund. A cancelled order
+ * paid twice whose second payment is still owed is settled by one mark: the
+ * screen asks for both back before it.
  */
-export const markRefunded = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
-  move(
-    deps.prisma,
-    accountId,
-    id,
-    { refundedAt: null, OR: [{ status: 'CANCELLED', paidAt: { not: null } }, { status: { in: ['PAID', 'COMPLETED'] }, chipPaidTwiceAt: { not: null } }] },
-    { refundedAt: now },
-  );
+export async function markRefunded(deps: OwnerOrderDeps, accountId: string, id: string, now: Date): Promise<void> {
+  const current = await deps.prisma.order.findFirst({ where: { id, page: { accountId } }, select: { status: true } });
+  if (current?.status !== 'CANCELLED') {
+    await move(deps.prisma, accountId, id, { ...from('PAID', 'COMPLETED'), chipPaidTwiceAt: { not: null }, secondRefundedAt: null }, { secondRefundedAt: now });
+    return;
+  }
+  await move(deps.prisma, accountId, id, { ...from('CANCELLED'), paidAt: { not: null }, refundedAt: null }, { refundedAt: now });
+  await deps.prisma.order.updateMany({
+    where: { id, page: { accountId }, status: 'CANCELLED', chipPaidTwiceAt: { not: null }, secondRefundedAt: null },
+    data: { secondRefundedAt: now },
+  });
+}
 
 /**
  * The receipt did not arrive: clear it and mark the rejection, so the order

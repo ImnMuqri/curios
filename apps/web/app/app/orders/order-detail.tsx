@@ -140,7 +140,7 @@ export function OrderDetail({
   const via = order.paidMethodLabel ?? 'CHIP';
   // CHIP also took the money for an order paid another way: one of the two is owed back.
   const paidTwice = order.chipPaidTwiceAt !== null;
-  const secondOwed = paidTwice && order.refundedAt === null;
+  const secondOwed = paidTwice && order.secondRefundedAt === null;
 
   // A fresh read of this order: whatever was in flight has landed, and its buttons are live again.
   useEffect(() => {
@@ -229,7 +229,7 @@ export function OrderDetail({
     ask = {
       tone: 'merah',
       title: `You owe ${first} ${total}`,
-      text: 'Send it back yourself, then mark it refunded.',
+      text: secondOwed ? 'Send it back yourself and refund the CHIP payment too, then mark it refunded.' : 'Send it back yourself, then mark it refunded.',
       button: 'Mark refunded',
       action: 'refunded',
       toast: `#${order.number} marked refunded.`,
@@ -503,7 +503,8 @@ export function OrderDetail({
                   </span>
                 )}
               </div>
-            ) : paidTwice ? (
+            ) : paidTwice && !(cancelled && order.refundedAt) ? (
+              // Once a cancelled order is refunded, its Refunded badge says it all.
               <p className={styles.refundedQuiet}>Second payment refunded</p>
             ) : null}
           </section>

@@ -769,15 +769,41 @@ describe("the owner's transitions", () => {
     const doneTwice = await another(shop, { status: 'COMPLETED', paidAt: new Date(), completedAt: new Date(), chipPaidTwiceAt: new Date() });
     const once = await another(shop, { status: 'PAID', paidAt: new Date() });
     expect((await move(cookie, once.id, 'refunded')).statusCode).toBe(409);
-    expect((await row(once.id)).refundedAt).toBeNull();
+    expect((await row(once.id)).secondRefundedAt).toBeNull();
     expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(204);
     const first = await row(twice.id);
-    expect(first.refundedAt).not.toBeNull();
+    expect(first.secondRefundedAt).not.toBeNull();
+    expect(first.refundedAt).toBeNull();
     expect(first.status).toBe('PAID');
     expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(409);
-    expect((await row(twice.id)).refundedAt).toEqual(first.refundedAt);
+    expect((await row(twice.id)).secondRefundedAt).toEqual(first.secondRefundedAt);
     expect((await move(cookie, doneTwice.id, 'refunded')).statusCode).toBe(204);
     expect((await row(doneTwice.id)).status).toBe('COMPLETED');
+  });
+
+  it('still owes the refund of an order paid twice, refunded once and then cancelled', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const twice = await another(shop, { status: 'PAID', paidAt: new Date(), paidVia: 'RECEIPT', chipPaidTwiceAt: new Date() });
+    expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(204);
+    const second = (await row(twice.id)).secondRefundedAt;
+    expect((await move(cookie, twice.id, 'cancel')).statusCode).toBe(204);
+    expect((await row(twice.id)).refundedAt).toBeNull();
+    expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(204);
+    const after = await row(twice.id);
+    expect(after.refundedAt).not.toBeNull();
+    expect(after.secondRefundedAt).toEqual(second);
+    expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(409);
+  });
+
+  it('settles both payments with one mark when an order paid twice is cancelled first', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const twice = await another(shop, { status: 'CANCELLED', paidAt: new Date(), cancelledAt: new Date(), paidVia: 'RECEIPT', chipPaidTwiceAt: new Date() });
+    expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(204);
+    const after = await row(twice.id);
+    expect(after.refundedAt).not.toBeNull();
+    expect(after.secondRefundedAt).toEqual(after.refundedAt);
   });
 
   it('404s another owner\'s order, for every transition', async () => {
