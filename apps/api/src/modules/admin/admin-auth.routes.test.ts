@@ -13,6 +13,7 @@ let app: FastifyInstance;
 let bare: FastifyInstance;
 let previousOrigin: string | undefined;
 const made: string[] = [];
+const madeAccounts: string[] = [];
 
 let nth = 0;
 /** A fresh source address per request, so the limiter never sees a flood. */
@@ -30,6 +31,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await app.prisma.account.deleteMany({ where: { id: { in: madeAccounts } } });
   // AdminAction restricts deletion of its admin, so the audit rows go first (tests only).
   await app.prisma.adminAction.deleteMany({ where: { adminUserId: { in: made } } });
   await app.prisma.adminUser.deleteMany({ where: { id: { in: made } } });
@@ -111,6 +113,7 @@ describe('GET /admin/me', () => {
     const account = await app.prisma.account.create({
       data: { email: `owner-${randomUUID()}@example.com`, emailVerifiedAt: new Date() },
     });
+    madeAccounts.push(account.id);
     const owner = await createSession(app.prisma, account.id);
     const asOwner = await app.inject({
       method: 'GET',

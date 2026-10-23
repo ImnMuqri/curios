@@ -204,6 +204,8 @@ export async function deleteAccount(
   handle: string,
 ): Promise<void> {
   const keys = await deps.prisma.$transaction(async (tx) => {
+    // Lock the row first: a second delete at the same moment waits, then finds no page.
+    await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${id} FOR UPDATE`;
     const page = await loadPage(tx, id);
     if (handle.trim().toLowerCase() !== page.handle.toLowerCase()) throw new HandleMismatchError();
 

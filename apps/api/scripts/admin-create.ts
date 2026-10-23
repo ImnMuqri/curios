@@ -30,10 +30,16 @@ function hiddenPrompt() {
   };
 }
 
+/** The sign-in schema (admin-auth.routes.ts) caps the password here; a longer one could never sign in. */
+const MAX_PASSWORD_LENGTH = 200;
+
 async function main() {
-  const [rawEmail, name] = process.argv.slice(2);
+  const [rawEmail, rawName] = process.argv.slice(2);
+  const name = rawName?.trim();
   if (!rawEmail || !name) {
-    console.error('Usage: pnpm --filter @curios/api admin:create <email> "<name>"');
+    console.error(
+      'Usage: pnpm --filter @curios/api admin:create <email> "<name>"  (run it again with the same email to reset the password)',
+    );
     process.exit(1);
   }
   const email = rawEmail.trim().toLowerCase();
@@ -42,6 +48,10 @@ async function main() {
   const password = await prompt.ask('Password: ');
   if (password.length < MIN_PASSWORD_LENGTH) {
     console.error(`Use at least ${MIN_PASSWORD_LENGTH} characters.`);
+    process.exit(1);
+  }
+  if (password.length > MAX_PASSWORD_LENGTH) {
+    console.error(`Use at most ${MAX_PASSWORD_LENGTH} characters; sign-in accepts no more.`);
     process.exit(1);
   }
   const again = await prompt.ask('Password again: ');

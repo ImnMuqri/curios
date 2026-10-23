@@ -74,7 +74,8 @@ export function evidenceFromPurchase(purchase: ChipPurchase): PaymentEvidence {
 
 /**
  * The one step that turns a paid purchase into paid time. The webhook, the redirect, the
- * hourly check and the renewal job all come here, and nothing else writes Page.paidUntil.
+ * hourly check and the renewal job all come here, and nothing else writes Page.paidUntil, except the admin's granted month
+ * (admin-pages.service.ts grantMonth), under the same row lock.
  *
  * Binding first: the purchase must be one we created, found by its unique id; for the
  * amount we stored; and referencing this payment. Then one transaction. The payment is

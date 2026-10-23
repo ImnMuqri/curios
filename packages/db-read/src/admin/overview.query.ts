@@ -105,7 +105,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
         handle: true,
         mode: true,
         createdAt: true,
-        _count: { select: { facts: true } },
+        _count: { select: { facts: { where: { rejectedAt: null } } } },
         conversations: { take: 1, select: { id: true } },
       },
     }),

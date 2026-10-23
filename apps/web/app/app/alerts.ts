@@ -27,7 +27,6 @@ export interface Alert {
 
 const BILLING = '/app/billing';
 
-
 /** "Near" the conversation limit: about 80% of it, as the handoff asks. */
 export const NEAR_SHARE = 0.8;
 

@@ -528,13 +528,16 @@ pnpm --filter @curios/api admin:create <email> "<name>"
 ```
 
 It asks for the password twice at a prompt that does not echo (at least the minimum length it
-names); the password is never an argument, so it never reaches a shell history or a process list. A
+names, at most 200); the password is never an argument, so it never reaches a shell history or a process list. A
 new email creates the admin. An email that already exists is a reset: the password is replaced, a
 disabled admin is enabled again, and **that admin's sessions are ended**, so anyone holding the old
 one is signed out. It uses `DATABASE_URL` from `.env`, so check which database that is before you
 run it against production.
 
 There is no "forgot password" on the page. A reset is this command again with a new password.
+
+FAQ pages are cached for 60 seconds (`revalidate = 60`), so suspending or bringing back a page reaches
+its FAQ pages within that window; every other surface changes on the next request.
 
 ### Environment
 

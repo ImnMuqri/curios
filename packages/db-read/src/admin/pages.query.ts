@@ -144,7 +144,7 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
       ...ROW_SELECT,
       suspendReason: true,
       account: { select: { email: true, password: { select: { id: true } }, identities: { select: { provider: true } } } },
-      _count: { select: { facts: true } },
+      _count: { select: { facts: { where: { verified: true, rejectedAt: null } } } },
     },
   });
   if (!page) return null;

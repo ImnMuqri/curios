@@ -53,7 +53,12 @@ beforeAll(async () => {
     });
   }
   await write.fact.createMany({
-    data: ['a', 'b'].map((c) => ({ pageId: live, category: 'MISC' as const, claim: c, normalizedClaim: c, confidence: 1 })),
+    data: [
+      ...['a', 'b'].map((c) => ({ pageId: live, category: 'MISC' as const, claim: c, normalizedClaim: c, confidence: 1, verified: true })),
+      // Pending and rejected facts are not live, so the detail does not count them.
+      { pageId: live, category: 'MISC' as const, claim: 'p', normalizedClaim: 'p', confidence: 1 },
+      { pageId: live, category: 'MISC' as const, claim: 'r', normalizedClaim: 'r', confidence: 1, rejectedAt: NOW },
+    ],
   });
   await write.authIdentity.create({ data: { accountId: (await write.page.findUniqueOrThrow({ where: { id: live } })).accountId, provider: 'GOOGLE', providerUserId: randomUUID(), email: 'g@example.com' } });
   await write.passwordCredential.create({ data: { accountId: (await write.page.findUniqueOrThrow({ where: { id: live } })).accountId, hash: 'x' } });

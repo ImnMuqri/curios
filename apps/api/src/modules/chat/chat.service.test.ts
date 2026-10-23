@@ -827,7 +827,7 @@ describe('the monthly cap', () => {
   /**
    * Puts the page at `count` conversations for the current period, without
    * driving that many chats. The period key is `YYYY-MM`, which is what
-   * `currentPeriod()` in chat.service.ts produces.
+   * `currentPeriod()` in @curios/core (period.ts) produces.
    */
   async function usageAt(count: number) {
     const page = await prisma.page.findUniqueOrThrow({

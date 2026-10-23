@@ -77,6 +77,7 @@ beforeAll(async () => {
   await write.ingestion.create({ data: { pageId: ids.Chip!, status: 'FAILED', error: 'x', pastedText: 'p', updatedAt: new Date(NOW.getTime() - DAY) } });
   await write.ingestion.create({ data: { pageId: ids.Chip!, status: 'SUCCEEDED', pastedText: 'p' } });
   await write.fact.createMany({ data: ['a', 'b', 'c'].map((c) => ({ pageId: ids.Fresh!, category: 'MISC' as const, claim: c, normalizedClaim: c, confidence: 1 })) });
+  await write.fact.create({ data: { pageId: ids.Fresh!, category: 'MISC', claim: 'x', normalizedClaim: 'x', confidence: 1, rejectedAt: NOW } });
   await write.usageCounter.createMany({
     data: [
       { pageId: ids.Chip!, period: '2026-10', count: 200 },

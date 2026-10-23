@@ -377,7 +377,7 @@ describe('POST /chat/:handle, over the monthly cap', () => {
       select: { pages: { select: { id: true } } },
     });
     const pageId = account.pages[0]?.id ?? '';
-    // The period key currentPeriod() in chat.service.ts produces.
+    // The period key currentPeriod() in @curios/core (period.ts) produces.
     const period = new Date().toISOString().slice(0, 7);
     await app.prisma.usageCounter.upsert({
       where: { pageId_period: { pageId, period } },

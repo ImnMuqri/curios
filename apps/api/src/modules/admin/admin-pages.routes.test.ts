@@ -284,6 +284,17 @@ describe('DELETE /admin/pages/:id', () => {
     );
   });
 
+  it('two deletes at once: one 204, one 404, one audit row', async () => {
+    const page = await aPage();
+    const send = () => call('DELETE', `/admin/pages/${page.id}`, { reason: 'Owner asked', handle: page.handle });
+    const results = await Promise.all([send(), send()]);
+    expect(results.map((r) => r.statusCode).sort()).toEqual([204, 404]);
+    const gone = results.find((r) => r.statusCode === 404)!;
+    expect(gone.json().error.code).toBe('PAGE_NOT_FOUND');
+    const audit = await actions(page.id);
+    expect(audit.filter((a) => a.action === 'DELETED_ACCOUNT')).toHaveLength(1);
+  });
+
   it('does not try to remove a stock cover, and survives a failed removal', async () => {
     const page = await aPage({ coverKey: 'stock/kedai', avatarKey: 'avatars/b.png' });
     store.remove.mockRejectedValueOnce(new Error('r2 down'));

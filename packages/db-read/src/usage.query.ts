@@ -14,7 +14,7 @@ export interface ConversationUsage {
  * This month's conversation usage for one page.
  *
  * The period is `now.toISOString().slice(0, 7)` because that is exactly what
- * `currentPeriod()` in the API's chat service uses to increment the counter.
+ * `currentPeriod()` in @curios/core (period.ts) uses to increment the counter.
  * Two different definitions of "this month" would show an owner a number that
  * nothing enforces, which is worse than showing no number at all.
  *
