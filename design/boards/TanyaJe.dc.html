@@ -252,14 +252,16 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .lb-tabs{left:50%;top:188px;display:grid;grid-template-columns:1fr 1fr;width:150px;margin-left:-75px;padding:3px;border-radius:999px;background:rgba(250,251,252,.14);font-size:12px;font-weight:600}
 .lb-tabs>span{padding:7px 0;border-radius:999px;text-align:center}
 .lb-tabs>.on{background:#fafbfc;color:#191f2c}
-.lb-shop{left:16px;right:16px;top:242px;display:flex;align-items:center;gap:12px;height:60px;padding:0 16px 0 12px;border-radius:999px;background:#b5294e;transition:transform 120ms ease}
+.lb-shop{left:16px;right:16px;top:242px;display:flex;align-items:center;gap:12px;height:60px;padding:0 18px 0 14px;border-radius:999px;background:#b5294e;transition:transform 120ms ease}
 .lb-th{display:flex}
-.lb-th>i{position:relative;display:block;flex:none;width:32px;height:32px;overflow:hidden;border-radius:50%;background:#e9d6c9;box-shadow:0 0 0 2px #b5294e}
-.lb-th>i+i{margin-left:-9px}
+.lb-th>i{position:relative;display:block;flex:none;width:30px;height:30px;overflow:hidden;border-radius:50%;background:#e9d6c9;box-shadow:0 0 0 2px #b5294e}
+.lb-th>i+i{margin-left:-10px}
+.lb-th{flex:none}
+.lb-shop>svg{flex:none}
 .lb-th img{position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;object-fit:cover}
 .lb-st{flex:1;min-width:0}
 .lb-st>b{display:block;font-size:13.5px}
-.lb-st>small{display:block;font-size:10.5px;opacity:.85;white-space:nowrap}
+.lb-st>small{display:block;overflow:hidden;text-overflow:ellipsis;font-size:10.5px;opacity:.85;white-space:nowrap}
 .lb-l{left:16px;right:16px;display:grid;place-items:center;height:44px;border-radius:999px;background:rgba(250,251,252,.14);font-size:12.5px;font-weight:600}
 .lb-ft{left:0;right:0;top:486px;margin:0;text-align:center;font-size:10.5px;opacity:.6}
 
@@ -917,7 +919,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 <p class="abs lb-nm">Kek Lina</p>
 <p class="abs lb-hd">Homemade cakes and desserts in Shah Alam.</p>
 <span class="abs lb-tabs"><span class="on">Links</span><span>Ask</span></span>
-<span class="abs lb-shop" style="transform: scale({{of.libS}})"><span class="lb-th"><i style="background: #f3dde3"><img src="/_blob/63d877cef1ea5c67a363dfd5ea183c12" alt="" style="object-position: 50% 50%"></i><i><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="object-position: 72% 80%"></i><i style="background: #f6c9d5"></i></span><span class="lb-st"><b>Shop</b><small>8 items · next pickup Sat 17 Oct</small></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
+<span class="abs lb-shop" style="transform: scale({{of.libS}})"><span class="lb-th"><i style="background: #f3dde3"><img src="/_blob/63d877cef1ea5c67a363dfd5ea183c12" alt="" style="object-position: 50% 50%"></i><i><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="object-position: 72% 80%"></i><i style="background: #f6c9d5"></i></span><span class="lb-st"><b>Shop</b><small>8 items · pickup Sat</small></span><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"></path></svg></span>
 <span class="abs lb-l" style="top: 318px">Order on WhatsApp</span>
 <span class="abs lb-l" style="top: 372px">Cake photos on Instagram</span>
 <span class="abs lb-l" style="top: 426px">Find us in Seksyen 7</span>
