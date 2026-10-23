@@ -120,6 +120,7 @@ export function OrderDetail({
   onChanged: () => void;
 }) {
   const [confirming, setConfirming] = useState<'cancel' | 'not-received' | null>(null);
+  const [refunding, setRefunding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [zoom, setZoom] = useState(false);
@@ -137,6 +138,9 @@ export function OrderDetail({
   // Confirmed by CHIP: no receipt, nothing for the owner to check.
   const online = order.paidVia === 'CHIP' && order.paidAt !== null;
   const via = order.paidMethodLabel ?? 'CHIP';
+  // CHIP also took the money for an order paid another way: one of the two is owed back.
+  const paidTwice = order.chipPaidTwiceAt !== null;
+  const secondOwed = paidTwice && order.refundedAt === null;
 
   // A fresh read of this order: whatever was in flight has landed, and its buttons are live again.
   useEffect(() => {
@@ -240,6 +244,7 @@ export function OrderDetail({
     try {
       await move(order.id, action);
       setConfirming(null);
+      setRefunding(false);
       setSparks((n) => n + 1);
       say(toast);
       // Still busy: the buttons on screen are this order's old state until
@@ -268,7 +273,7 @@ export function OrderDetail({
     view === 'toCheck'
       ? { label: 'Receipt to check', tone: 'kuning' }
       : order.paidAt
-        ? order.refundedAt
+        ? order.refundedAt && cancelled
           ? { label: 'Refunded', tone: 'grey' }
           : { label: `Paid ${when(order.paidAt)}`, tone: 'hijau' }
         : { label: 'Not paid', tone: BADGES[view].tone };
@@ -431,10 +436,11 @@ export function OrderDetail({
                   <b>
                     {total} paid by {via}
                   </b>
-                  <span>{`Confirmed by the bank through CHIP, so there is no receipt to check.${order.paidRef ? ` Ref ${order.paidRef}.` : ''}`}</span>
+                  <span>{`Confirmed by the bank through CHIP${paidTwice && hasReceipt ? '. A receipt was also sent — check it before you refund one.' : ', so there is no receipt to check.'}${order.paidRef ? ` Ref ${order.paidRef}.` : ''}`}</span>
                 </span>
               </div>
-            ) : hasReceipt ? (
+            ) : null}
+            {hasReceipt && (!online || paidTwice) ? (
               <div className={styles.receipt}>
                 {order.receiptUrl && isPdf ? (
                   <a className={styles.receiptThumb} data-pdf="" href={order.receiptUrl} target="_blank" rel="noopener noreferrer" aria-label="Open the receipt">
@@ -463,22 +469,42 @@ export function OrderDetail({
                     </svg>
                     Should show {total}
                   </span>
-                  <span className={styles.hint}>Check it landed in your account before you mark it paid.</span>
+                  {online ? null : <span className={styles.hint}>Check it landed in your account before you mark it paid.</span>}
                 </span>
               </div>
-            ) : (
+            ) : !online ? (
               <div className={styles.waitbox}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d={CLOCK} />
                 </svg>
                 {waitText}
               </div>
-            )}
+            ) : null}
             {/* CHIP took the money on top of the QR or a hand-marked payment (DEVIATIONS 187). */}
-            {order.chipPaidTwiceAt ? (
-              <p className={styles.paidTwice} role="note" aria-label="Paid twice">
-                Paid twice — refund {total} in CHIP
-              </p>
+            {secondOwed ? (
+              <div className={styles.paidTwice} role="note" aria-label="Paid twice">
+                <p>Paid twice — refund {total} in CHIP</p>
+                {cancelled ? null : refunding ? (
+                  <span className={styles.confirm} role="group" aria-label="Confirm the second payment was refunded">
+                    Marked the second payment refunded?
+                    <button type="button" data-tone="merah" disabled={busy} onClick={() => void run('refunded', `#${order.number}: second payment marked refunded.`)}>
+                      Yes, refunded
+                    </button>
+                    <button type="button" disabled={busy} onClick={() => setRefunding(false)}>
+                      Keep
+                    </button>
+                  </span>
+                ) : (
+                  <span className={styles.refundAsk}>
+                    <span>You owe {total}. Refund it in CHIP, then mark it refunded.</span>
+                    <button type="button" className={styles.outline} disabled={busy} onClick={() => setRefunding(true)}>
+                      Mark refunded
+                    </button>
+                  </span>
+                )}
+              </div>
+            ) : paidTwice ? (
+              <p className={styles.refundedQuiet}>Second payment refunded</p>
             ) : null}
           </section>
 

@@ -221,4 +221,11 @@ describe('OrdersScreen, an order paid twice', () => {
     expect(rows().getByText('Laila Musa')).toBeInTheDocument();
     expect(rows().getAllByRole('listitem')).toHaveLength(2);
   });
+
+  it('leaves Refunds once the second payment is marked refunded', () => {
+    show([{ ...twice, refundedAt: new Date('2026-10-16T05:00:00Z') }, ...orders]);
+    expect(filter(/^Refunds/)).toHaveTextContent('1');
+    fireEvent.click(filter(/^Refunds/));
+    expect(rows().queryByText('Laila Musa')).toBeNull();
+  });
 });

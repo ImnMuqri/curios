@@ -89,6 +89,16 @@ describe('getOwnerOrders', () => {
     expect(order).toMatchObject({ paidVia: 'RECEIPT', chipPaidTwiceAt: NOW });
   });
 
+  it('keeps a completed order with a second payment owed back among the ones that need the owner', async () => {
+    const owner = await anOwner();
+    await anOrder(owner.pageId, { customerName: 'DoneTwice', status: 'COMPLETED', paidAt: NOW, paidVia: 'RECEIPT', chipPurchaseId: `p-${randomUUID()}`, chipPaidTwiceAt: NOW });
+    await anOrder(owner.pageId, { customerName: 'Fine', status: 'COMPLETED', paidAt: NOW });
+    const orders = await getOwnerOrders(owner.accountId, { limit: 1 });
+    expect(orders.map((o) => o.customerName).sort()).toEqual(['DoneTwice', 'Fine']);
+    const trimmed = await getOwnerOrders(owner.accountId, { limit: 0 });
+    expect(trimmed.map((o) => o.customerName)).toEqual(['DoneTwice']);
+  });
+
   it('says how an order was paid, for Orders to tell an online payment from a hand-marked one', async () => {
     const owner = await anOwner();
     await anOrder(owner.pageId, { customerName: 'Online', status: 'PAID', paidAt: NOW, paidVia: 'CHIP', chipPurchaseId: `p-${randomUUID()}`, paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' });

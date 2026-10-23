@@ -848,6 +848,25 @@
   font-weight: 600;
 }
 
+.paidTwice p {
+  margin: 0;
+}
+
+.refundAsk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-top: 8px;
+  font-weight: 500;
+}
+
+.refundedQuiet {
+  margin: 10px 0 0;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+
 /* The Payment card of an order CHIP confirmed: no receipt to show, only the bank's word. */
 .paidOnline {
   display: flex;

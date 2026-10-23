@@ -52,7 +52,7 @@ const dayText = (day: Date): string => day.toISOString().slice(0, 10);
  * badge, so nothing they count can fall off the list.
  */
 const NEEDS_OWNER = {
-  OR: [{ status: { in: ['PLACED' as const, 'PAID' as const] } }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }],
+  OR: [{ status: { in: ['PLACED' as const, 'PAID' as const] } }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }, { chipPaidTwiceAt: { not: null }, refundedAt: null }],
 };
 
 const newestFirst = (a: { createdAt: Date; number: number }, b: { createdAt: Date; number: number }) =>

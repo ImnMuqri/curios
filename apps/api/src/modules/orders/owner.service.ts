@@ -51,9 +51,18 @@ export const markCompleted = (deps: OwnerOrderDeps, accountId: string, id: strin
 export const cancelOrder = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
   move(deps.prisma, accountId, id, from('PLACED', 'PAID'), { status: 'CANCELLED', cancelledAt: now });
 
-/** A paid order that was cancelled: the money goes back, and this says it did. */
+/**
+ * Money went back, and this says it did: a paid order that was cancelled, or
+ * the second payment of an order paid twice (which stays paid otherwise).
+ */
 export const markRefunded = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
-  move(deps.prisma, accountId, id, { status: 'CANCELLED', paidAt: { not: null }, refundedAt: null }, { refundedAt: now });
+  move(
+    deps.prisma,
+    accountId,
+    id,
+    { refundedAt: null, OR: [{ status: 'CANCELLED', paidAt: { not: null } }, { status: { in: ['PAID', 'COMPLETED'] }, chipPaidTwiceAt: { not: null } }] },
+    { refundedAt: now },
+  );
 
 /**
  * The receipt did not arrive: clear it and mark the rejection, so the order

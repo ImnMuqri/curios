@@ -459,4 +459,41 @@ describe('OrderDetail, an order paid twice', () => {
     show(paid);
     expect(screen.queryByRole('note', { name: 'Paid twice' })).toBeNull();
   });
+
+  it('shows the CHIP payment and the kept receipt together, and does not say there is none', () => {
+    show({ ...paid, paidVia: 'CHIP', paidRef: 'CH0042', paidMethodLabel: 'FPX · Maybank2u', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') });
+    expect(screen.getByText('RM70 paid by FPX · Maybank2u')).toBeInTheDocument();
+    expect(screen.getByText(/Confirmed by the bank through CHIP\. A receipt was also sent — check it before you refund one\. Ref CH0042\./)).toBeInTheDocument();
+    expect(screen.queryByText(/so there is no receipt to check/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Open the receipt' })).toBeInTheDocument();
+  });
+
+  it('still says there is no receipt to check for an online payment paid once', () => {
+    show({ ...paid, paidVia: 'CHIP', receiptUploadedAt: null, receiptUrl: null });
+    expect(screen.getByText(/so there is no receipt to check/)).toBeInTheDocument();
+  });
+
+  it('offers Mark refunded, asks first, and moves the order the owner way', async () => {
+    const { move, say } = show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') });
+    expect(screen.getByText('You owe RM70. Refund it in CHIP, then mark it refunded.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Mark refunded' }));
+    expect(move).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Yes, refunded' }));
+    await waitFor(() => expect(move).toHaveBeenCalledWith('o11', 'refunded'));
+    expect(say).toHaveBeenCalledWith('#11: second payment marked refunded.');
+  });
+
+  it('once refunded, goes quiet, keeps the order paid and still offers Mark completed', () => {
+    show({ ...paid, paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z'), refundedAt: new Date('2026-10-16T05:00:00Z') });
+    expect(screen.queryByRole('note', { name: 'Paid twice' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark refunded' })).toBeNull();
+    expect(screen.getByText('Second payment refunded')).toBeInTheDocument();
+    expect(screen.queryByText('Refunded')).toBeNull();
+    expect(actionBox().getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
+  });
+
+  it('offers Mark refunded on a completed paid-twice order too', () => {
+    show({ ...paid, status: 'COMPLETED', completedAt: new Date('2026-10-16T08:00:00Z'), paidVia: 'RECEIPT', chipPaidTwiceAt: new Date('2026-10-16T04:00:00Z') });
+    expect(screen.getByRole('button', { name: 'Mark refunded' })).toBeInTheDocument();
+  });
 });

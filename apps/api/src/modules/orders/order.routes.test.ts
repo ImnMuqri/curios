@@ -762,6 +762,24 @@ describe("the owner's transitions", () => {
     expect((await row(owed.id)).refundedAt).toEqual(first.refundedAt);
   });
 
+  it('marks the second payment of a paid-twice order refunded, once, and leaves the order paid', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const twice = await another(shop, { status: 'PAID', paidAt: new Date(), paidVia: 'RECEIPT', chipPaidTwiceAt: new Date() });
+    const doneTwice = await another(shop, { status: 'COMPLETED', paidAt: new Date(), completedAt: new Date(), chipPaidTwiceAt: new Date() });
+    const once = await another(shop, { status: 'PAID', paidAt: new Date() });
+    expect((await move(cookie, once.id, 'refunded')).statusCode).toBe(409);
+    expect((await row(once.id)).refundedAt).toBeNull();
+    expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(204);
+    const first = await row(twice.id);
+    expect(first.refundedAt).not.toBeNull();
+    expect(first.status).toBe('PAID');
+    expect((await move(cookie, twice.id, 'refunded')).statusCode).toBe(409);
+    expect((await row(twice.id)).refundedAt).toEqual(first.refundedAt);
+    expect((await move(cookie, doneTwice.id, 'refunded')).statusCode).toBe(204);
+    expect((await row(doneTwice.id)).status).toBe('COMPLETED');
+  });
+
   it('404s another owner\'s order, for every transition', async () => {
     const mine = await aShop();
     const theirs = await aShop();
