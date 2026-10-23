@@ -337,6 +337,18 @@ A pass to make the product look less AI-generated. Follow these over anything ol
 - Copy fixes: the conversation limit is **200** (Billing said 2,000). The landing's Business card
   says "A shop paid by FPX, e-wallet, card or your own QR". Store's checklist shows "Online
   payments through CHIP" when CHIP is connected.
+- **Second pass (to ~10%):**
+  - Landing nav is a plain full-width bar with a hairline under it, not a frosted floating pill.
+  - Hero shows **one straight phone**. The other sample pages swap in place, no tilted stack.
+  - "Ask about my rates," highlights the current word by brightness only, no box. The closing
+    "One page for freelancers" rotates the word in plain white, no blue pill.
+  - No mono uppercase labels anywhere ("You pasted", "It found", "The customer's phone" are
+    Inter). Mono is only for addresses like curios.my/keklina. "Keep scrolling" is removed.
+  - Orders, Questions and Leads filters are **underlined text tabs**, not a pill track; counts
+    are plain grey numbers.
+  - System pages use **Peek** instead of the generic spot illustrations: looking up (forgot),
+    happy (sent, changed, verified), glancing (verifying), flat mouth (broken link, expired,
+    error).
 
 ## Open decisions (ask Iman before building these)
 
