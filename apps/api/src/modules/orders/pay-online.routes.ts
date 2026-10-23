@@ -19,11 +19,14 @@ import {
   startOnlinePayment,
   type PayOnlineDeps,
 } from './pay-online.service.js';
+import type { OrderMailQueue } from './place.service.js';
 
 export interface PayOnlineOptions {
   chip?: ShopChipRouteOptions;
   /** As OrderRouteOptions.store: where a receipt sent before paying online is removed from. */
   store?: AvatarStore | null;
+  /** As OrderRouteOptions.mailQueue, read when the first email is queued (the app's queue exists only later). */
+  mailQueue?: () => OrderMailQueue;
   /** How often the order page's check may ask CHIP about one order. Tests pass 0. */
   payStatusEveryMs?: number;
 }
@@ -60,6 +63,9 @@ function payOnlineSettings(options: PayOnlineOptions) {
     callbackBaseUrl: callbackBaseUrl ? callbackBaseUrl.replace(/\/+$/, '') : null,
     appUrl: (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, ''),
     store: resolveStore(options.store),
+    mailQueue: options.mailQueue ?? (() => {
+      throw new Error('no mail queue');
+    }),
   };
 }
 

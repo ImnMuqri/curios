@@ -418,8 +418,8 @@ describe('POST /store/chip/callback/:orderId', () => {
     expect(again.statusCode).toBe(200);
     expect(again.json()).toEqual({ status: 'already-paid' });
     expect((await orderOf(app, shop.orderId)).paidAt).toEqual(order.paidAt);
-    // The paid email is Task 14's: nothing is mailed here, and the new-order email is not sent again.
-    expect(mailQueue.add).not.toHaveBeenCalled();
+    // One paid email, for the first settle only: the repeat mails nothing (the new-order email is placement's).
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
   });
 
   it('believes nothing in the body but the id: CHIP must say paid, with this order’s number, total and purchase', async () => {
@@ -669,5 +669,96 @@ describe('fix round 1: the owner cancels an order being paid online', () => {
 
     expect(res.json()).toEqual({ status: 'paid-after-cancel' });
     expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidVia: 'CHIP', paidAt: expect.any(Date), paidMethodLabel: 'Visa card ending 4242', refundedAt: null });
+  });
+
+  it('the owner is emailed once that the order is paid, not told to wait for a receipt', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u', referenceGenerated: 'CH0042' });
+    mailQueue.add.mockClear();
+
+    await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+    await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+    await payStatus(app, shop.token);
+
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const [name, data, opts] = mailQueue.add.mock.calls[0]!;
+    expect(name).toBe('mail');
+    expect(data).toMatchObject({ subject: 'New order #1 · RM220 · Paid' });
+    expect(data.to).toMatch(/^pay-.*@example\.com$/);
+    expect(data.html).toContain('Aisyah ordered and paid RM220');
+    expect(data.html).toContain('FPX · Maybank2u · Ref CH0042');
+    expect(data.html).toContain(`/app/orders?order=${shop.orderId}`);
+    expect(data.html).not.toContain('Waiting for payment');
+    expect(opts).toMatchObject({ attempts: 5 });
+  });
+
+  it('the order page settling the payment sends the same single email', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u' });
+    mailQueue.add.mockClear();
+
+    await payStatus(app, shop.token);
+    await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    expect(mailQueue.add.mock.calls[0]![1].subject).toBe('New order #1 · RM220 · Paid');
+  });
+
+  it('no email when the owner switched order emails off, and none for a payment that did not settle', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    mailQueue.add.mockClear();
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'pending_execute' });
+    await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+    expect(mailQueue.add).not.toHaveBeenCalled();
+
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { notifyOrders: false } });
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx' });
+    const res = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+    expect(res.json()).toEqual({ status: 'paid' });
+    expect(mailQueue.add).not.toHaveBeenCalled();
+  });
+
+  it('a mail that cannot be queued never breaks the callback', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx' });
+    mailQueue.add.mockRejectedValueOnce(new Error('redis down'));
+
+    const res = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'paid' });
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP' });
+
+    // And a queue that throws on the spot, rather than rejects.
+    const second = await aShopWithOrder(app);
+    const p2 = await startPayment(app, second);
+    client.getPurchase.mockResolvedValue({ ...p2, status: 'paid', paymentMethod: 'fpx' });
+    mailQueue.add.mockImplementationOnce(() => {
+      throw new Error('queue closed');
+    });
+    const again = await callback(app, second.orderId, p2.id, ownerKey.privateKey);
+    expect(again.json()).toEqual({ status: 'paid' });
+  });
+
+  it('a payment after the cancel tells the owner to refund it in CHIP', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    client.cancelPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    expect((await cancel(app, shop)).statusCode).toBe(204);
+    mailQueue.add.mockClear();
+
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u' });
+    await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+    await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const data = mailQueue.add.mock.calls[0]![1];
+    expect(data.subject).toBe('Order #1 was paid after you cancelled it');
+    expect(data.text).toContain('Aisyah paid RM220 by FPX · Maybank2u after you cancelled it. Refund them in CHIP, then mark it refunded in Orders.');
   });
 });

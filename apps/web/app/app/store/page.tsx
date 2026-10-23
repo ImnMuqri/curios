@@ -33,9 +33,14 @@ function pausedWhy(page: Pick<OwnerPage, 'mode' | 'paidUntil' | 'ordersPlaced' |
   }
 }
 
-export default async function StorePage() {
+/** `?tab=payment` (the CHIP alert's link) opens that tab; anything else opens Items. */
+const TAB_NAMES = ['items', 'payment', 'delivery'] as const;
+
+export default async function StorePage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
+  const asked = (await searchParams).tab;
+  const initialTab = TAB_NAMES.find((name) => name === asked) ?? 'items';
   const [store, page, owned] = await Promise.all([getOwnerStore(owner.accountId), getMyCurios(owner.accountId), getOwnerPage(owner.accountId)]);
   if (!store || !page || !owned) redirect('/app/onboarding');
 
@@ -80,6 +85,7 @@ export default async function StorePage() {
       today={todayInMalaysia()}
       now={new Date()}
       chip={store.chip}
+      initialTab={initialTab}
       orders={{ paused: pausedWhy(owned, new Date()), nextNumber: owned.ordersPlaced + 1 }}
     />
   );

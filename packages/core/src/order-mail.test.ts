@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { OWNER_MAIL_FOOTER } from './mail.js';
-import { newOrderMail, receiptMail } from './order-mail.js';
+import { newOrderMail, paidAfterCancelMail, paidOrderMail, receiptMail } from './order-mail.js';
 
 const order = {
   number: 12,
@@ -149,5 +149,108 @@ describe('receiptMail', () => {
     const mail = receiptMail({ ...receipt, customerName: '<b>Ali</b>' });
     expect(mail.html).not.toContain('<b>Ali');
     expect(mail.html).toContain('&lt;b&gt;Ali&lt;/b&gt; sent a receipt');
+  });
+});
+
+describe('the wordmark host', () => {
+  it('comes from appUrl in the new-order and receipt emails, not from production', () => {
+    const appUrl = 'http://localhost:3000/';
+    expect(newOrderMail({ ...order, appUrl }).html).toContain('src="http://localhost:3000/email/wordmark@2x.png"');
+    const receipt = receiptMail({ number: 12, totalCents: 19_000, customerName: 'Aisyah', uploadedAt: new Date('2026-10-15T07:42:00Z'), fileName: 'r.jpg', url: 'https://curios.my/x', appUrl });
+    expect(receipt.html).toContain('src="http://localhost:3000/email/wordmark@2x.png"');
+  });
+});
+
+describe('paidOrderMail', () => {
+  const paid = {
+    number: 14,
+    totalCents: 21_500,
+    customerName: 'Nurul',
+    phone: '+60137782041',
+    method: 'PICKUP' as const,
+    deliveryCents: 0,
+    day: '2026-10-17',
+    via: 'FPX · Maybank2u',
+    ref: 'CHIP-4K2X' as string | null,
+    lines: [
+      { itemName: 'Kek coklat moist', optionLabel: '2kg', quantity: 1, lineCents: 17_000 },
+      { itemName: 'Kek batik', optionLabel: 'Box of 12', quantity: 1, lineCents: 4_500 },
+    ],
+    url: 'https://curios.my/app/orders?order=ord_14',
+    appUrl: 'https://curios.my',
+  };
+
+  it('says paid in the subject', () => {
+    expect(paidOrderMail(paid).subject).toBe('New order #14 · RM215 · Paid');
+  });
+
+  it('tags it Paid by the first part of how, and heads it with who paid how much', () => {
+    const mail = paidOrderMail(paid);
+    expect(mail.html).toContain('Paid by FPX</span>');
+    expect(mail.html).not.toContain('Paid by FPX ·');
+    expect(mail.html).toContain('>Nurul ordered and paid RM215</h1>');
+    expect(mail.text).toContain('Nurul ordered and paid RM215');
+  });
+
+  it('says there is nothing to check, and names the weekday to get it ready for', () => {
+    const said = 'The bank confirmed it through CHIP, so there’s nothing to check. Just get it ready for Saturday.';
+    const mail = paidOrderMail(paid);
+    expect(mail.html).toContain(said);
+    expect(mail.text).toContain(said);
+  });
+
+  it('labels the lines total Paid, and has no receipt line or note', () => {
+    const mail = paidOrderMail(paid);
+    expect(mail.html).toContain('>Paid<');
+    expect(mail.html).not.toContain('>Total<');
+    expect(mail.html).toContain('>RM215<');
+    expect(mail.html).not.toMatch(/receipt/i);
+    expect(mail.html).not.toContain('>Note<');
+    expect(mail.text).toContain('Paid: RM215');
+  });
+
+  it('gives how they get it, who they are, and how they paid with the reference', () => {
+    const mail = paidOrderMail(paid);
+    expect(mail.html).toContain('Pickup · Sat 17 Oct');
+    expect(mail.html).toContain('Nurul · +60 13-778 2041');
+    expect(mail.html).toContain('>Paid with<');
+    expect(mail.html).toContain('FPX · Maybank2u · Ref CHIP-4K2X');
+    expect(mail.text).toContain('Paid with: FPX · Maybank2u · Ref CHIP-4K2X');
+  });
+
+  it('leaves the reference out when CHIP gave none', () => {
+    const mail = paidOrderMail({ ...paid, ref: null });
+    expect(mail.html).toContain('>FPX · Maybank2u</td>');
+    expect(mail.html).not.toContain('Ref ');
+  });
+
+  it('opens the order, and says where the money is', () => {
+    const mail = paidOrderMail(paid);
+    expect(mail.html).toContain('>Open order #14</a>');
+    expect(mail.html).toContain('href="https://curios.my/app/orders?order=ord_14"');
+    const small = 'The money is in your CHIP account. CHIP pays it out to your bank on its usual schedule.';
+    expect(mail.html).toContain(small);
+    expect(mail.text).toContain(small);
+    expect(mail.html).toContain(OWNER_MAIL_FOOTER);
+  });
+
+  it('uses the app host for the wordmark', () => {
+    expect(paidOrderMail({ ...paid, appUrl: 'http://localhost:3000' }).html).toContain('src="http://localhost:3000/email/wordmark@2x.png"');
+  });
+});
+
+describe('paidAfterCancelMail', () => {
+  const late = { number: 14, totalCents: 21_500, customerName: 'Nurul', via: 'FPX · Maybank2u', url: 'https://curios.my/app/orders?order=ord_14', appUrl: 'https://curios.my' };
+
+  it('says the order was paid after it was cancelled', () => {
+    expect(paidAfterCancelMail(late).subject).toBe('Order #14 was paid after you cancelled it');
+  });
+
+  it('says what to do: refund in CHIP, then mark it refunded', () => {
+    const mail = paidAfterCancelMail(late);
+    const said = 'Nurul paid RM215 by FPX · Maybank2u after you cancelled it. Refund them in CHIP, then mark it refunded in Orders.';
+    expect(mail.html).toContain(said);
+    expect(mail.text).toContain(said);
+    expect(mail.html).toContain('>Open order #14</a>');
   });
 });

@@ -41,6 +41,7 @@ const personal: OwnerPage = {
   storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
+  chipRefused: false,
 };
 
 describe('LeadsPage', () => {

@@ -61,6 +61,8 @@ export const BADGES: Record<OrderView, { label: string; tone: 'grey' | 'kuning' 
   awaitingPayment: { label: 'Awaiting payment', tone: 'grey' },
   toCheck: { label: 'To check', tone: 'kuning' },
   paid: { label: 'Paid', tone: 'biru' },
+  // CHIP confirmed it: green like Completed, so it reads apart from a payment the owner marked by hand.
+  paidOnline: { label: 'Paid online', tone: 'hijau' },
   completed: { label: 'Completed', tone: 'hijau' },
   refundOwed: { label: 'Refund owed', tone: 'merah' },
   refunded: { label: 'Cancelled', tone: 'muted' },
@@ -132,6 +134,9 @@ export function OrderDetail({
   const cancelled = order.status === 'CANCELLED';
   const hasReceipt = order.receiptUploadedAt !== null;
   const when = (date: Date) => orderWhen(date, now);
+  // Confirmed by CHIP: no receipt, nothing for the owner to check.
+  const online = order.paidVia === 'CHIP' && order.paidAt !== null;
+  const via = order.paidMethodLabel ?? 'CHIP';
 
   // A fresh read of this order: whatever was in flight has landed, and its buttons are live again.
   useEffect(() => {
@@ -167,7 +172,14 @@ export function OrderDetail({
         ['Paid', order.paidAt ? when(order.paidAt) : 'No', order.paidAt !== null],
         [order.refundedAt ? 'Refunded' : 'Cancelled', when(order.refundedAt ?? order.cancelledAt ?? order.createdAt), true],
       ]
-    : [
+    : online
+      ? [
+          ['Placed', when(order.createdAt), true],
+          ['Paid by ' + via.split(' · ')[0], when(order.paidAt!), true],
+          ['Checked', 'By the bank', true],
+          ['Completed', order.completedAt ? when(order.completedAt) : dayLabel(order.day), order.completedAt !== null],
+        ]
+      : [
         ['Placed', when(order.createdAt), true],
         // Marked paid some other way: there is no receipt to wait for.
         ['Receipt', order.receiptUploadedAt ? when(order.receiptUploadedAt) : order.paidAt ? 'None' : 'Waiting', hasReceipt],
@@ -200,7 +212,7 @@ export function OrderDetail({
       action: 'paid',
       toast: `#${order.number} marked paid.`,
     };
-  else if (view === 'paid')
+  else if (view === 'paid' || view === 'paidOnline')
     ask = {
       tone: 'hijau',
       title: `Paid. Ready on ${dayLabel(order.day)}`,
@@ -408,7 +420,21 @@ export function OrderDetail({
                 {paymentBadge.label}
               </span>
             </h3>
-            {hasReceipt ? (
+            {online ? (
+              <div className={styles.paidOnline}>
+                <span className={styles.paidTick} aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d={TICK} />
+                  </svg>
+                </span>
+                <span>
+                  <b>
+                    {total} paid by {via}
+                  </b>
+                  <span>{`Confirmed by the bank through CHIP, so there is no receipt to check.${order.paidRef ? ` Ref ${order.paidRef}.` : ''}`}</span>
+                </span>
+              </div>
+            ) : hasReceipt ? (
               <div className={styles.receipt}>
                 {order.receiptUrl && isPdf ? (
                   <a className={styles.receiptThumb} data-pdf="" href={order.receiptUrl} target="_blank" rel="noopener noreferrer" aria-label="Open the receipt">

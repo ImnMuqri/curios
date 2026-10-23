@@ -125,6 +125,7 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
       case 'toCheck':
         return [`${name} is checking your receipt`, `Receipt sent · ${name} is checking`, 'check'];
       case 'paid':
+      case 'paidOnline':
         return steps.ready
           ? [order.method === 'PICKUP' ? 'Ready for pickup' : 'Ready for delivery', 'Ready', 'ok']
           : [`Paid. ${name} is getting it ready`, `Paid · ${name} is getting it ready`, 'ok'];

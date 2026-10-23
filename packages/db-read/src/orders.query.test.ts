@@ -82,6 +82,18 @@ describe('getOwnerOrders', () => {
     expect(orders[0]?.lines[0]).toMatchObject({ itemName: 'Kek', optionLabel: '1kg', unitPriceCents: 5000, quantity: 1, photoKey: null });
   });
 
+  it('says how an order was paid, for Orders to tell an online payment from a hand-marked one', async () => {
+    const owner = await anOwner();
+    await anOrder(owner.pageId, { customerName: 'Online', status: 'PAID', paidAt: NOW, paidVia: 'CHIP', chipPurchaseId: `p-${randomUUID()}`, paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' });
+    await anOrder(owner.pageId, { customerName: 'Hand' });
+    const orders = await getOwnerOrders(owner.accountId);
+    expect(orders.find((o) => o.customerName === 'Online')).toMatchObject({ paidVia: 'CHIP', paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CH0042' });
+    expect(orders.find((o) => o.customerName === 'Hand')).toMatchObject({ paidVia: null, paidMethodLabel: null, paidRef: null });
+    // The purchase id and the payer's email stay on the server.
+    expect(orders[0]).not.toHaveProperty('chipPurchaseId');
+    expect(orders[0]).not.toHaveProperty('payerEmail');
+  });
+
   it('gives a line its item photo while the item exists', async () => {
     const owner = await anOwner();
     const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Kek', slug: 'kek', photoKey: 'items/kek.jpg', position: 0 } });

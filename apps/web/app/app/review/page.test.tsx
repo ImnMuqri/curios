@@ -57,6 +57,7 @@ const page: OwnerPage = {
   storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
+  chipRefused: false,
 };
 
 const unreviewed: ReviewFact[] = [

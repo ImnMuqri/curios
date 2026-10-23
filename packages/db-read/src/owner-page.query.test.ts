@@ -68,6 +68,22 @@ describe('getOwnerPage', () => {
     expect(await getOwnerPage(stranger)).toBeNull();
   });
 
+  it('says whether the shop’s CHIP key was refused, without reading the key', async () => {
+    const slug = randomUUID().slice(0, 8);
+    const account = await write.account.create({
+      data: { email: `owner-page-chip-${randomUUID()}@example.com`, pages: { create: { handle: `op-${slug}`, skeleton: `op-${slug}`, displayName: 'A Shop', published: true } } },
+      select: { id: true, pages: { select: { id: true } } },
+    });
+    expect(await getOwnerPage(account.id)).toMatchObject({ chipRefused: false });
+    const pageId = account.pages[0]!.id;
+    await write.shopPaymentAccount.create({ data: { pageId, brandId: randomUUID(), secretKeyCiphertext: 'x', publicKeyPem: 'y', methods: ['fpx'], checkedAt: new Date() } });
+    expect(await getOwnerPage(account.id)).toMatchObject({ chipRefused: false });
+    await write.shopPaymentAccount.update({ where: { pageId }, data: { lastErrorAt: new Date() } });
+    const page = await getOwnerPage(account.id);
+    expect(page).toMatchObject({ chipRefused: true });
+    expect(page).not.toHaveProperty('paymentAccount');
+  });
+
   it('carries the plan columns the leads screen explains itself from', async () => {
     // Non-default values on purpose. A page left at mode BUSINESS, paidUntil
     // null and leadsCaptured 0 would pass an assertion against those defaults

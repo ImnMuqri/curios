@@ -208,6 +208,32 @@ describe('alertsFor, the shop', () => {
   });
 });
 
+describe('alertsFor, a CHIP key that was refused', () => {
+  const refused = (p: Parameters<typeof page>[0] = {}) => ({ ...page(p), orders: { ...shop(p), chipRefused: true } });
+
+  it('says CHIP is disconnected, on Orders, and links to Store’s Payment tab', () => {
+    expect(alertsFor(refused())).toContainEqual({
+      id: 'chip-refused',
+      tone: 'warn',
+      where: '/app/orders',
+      icon: 'shop',
+      title: 'CHIP is disconnected',
+      text: 'Curios can’t use your CHIP key, so customers can only pay by QR or bank transfer until you reconnect it.',
+      action: { href: '/app/store?tab=payment', label: 'Reconnect in Store' },
+    });
+  });
+
+  it('is not shown while the key works, or while the shop is off', () => {
+    expect(alertsFor(page()).some((a) => a.id === 'chip-refused')).toBe(false);
+    expect(alertsFor(refused({ storeEnabled: false })).some((a) => a.id === 'chip-refused')).toBe(false);
+  });
+
+  it('leaves the 200-conversation and free-order alerts as they were', () => {
+    const ids = alertsFor(refused({ ordersPlaced: 1 })).filter((a) => a.where === '/app/orders').map((a) => a.id);
+    expect(ids).toEqual(['chip-refused', 'orders-trial-1']);
+  });
+});
+
 describe('billingNeedsYou', () => {
   it('dots Billing for a paused shop too, even with free leads left', () => {
     const dot = (p: Parameters<typeof page>[0]) => {

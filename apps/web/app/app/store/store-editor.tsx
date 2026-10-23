@@ -93,6 +93,7 @@ export function StoreEditor({
   now,
   chip: initialChip,
   orders,
+  initialTab = 'items',
   settingsApi: rawSettings,
   itemsApi: rawItems,
   chipApi,
@@ -113,6 +114,8 @@ export function StoreEditor({
    * while it may), and the number the next order will get, for the preview.
    */
   orders: { paused: string | null; nextNumber: number };
+  /** The tab to open on; Items when there is none. */
+  initialTab?: Tab;
   settingsApi: SettingsApi;
   itemsApi: ItemsApi;
   chipApi: ChipApi;
@@ -131,11 +134,11 @@ export function StoreEditor({
     itemsRef.current = next;
     setItems(next);
   };
-  const [tab, setTab] = useState<Tab>('items');
+  const [tab, setTab] = useState<Tab>(initialTab);
   /** The item open on its own: an id, 'new', or null for the list. */
   const [editing, setEditing] = useState<string | null>(null);
   const [draftItem, setDraftItem] = useState<EditorItem | null>(null);
-  const [previewTab, setPreviewTab] = useState<PreviewTab>('shop');
+  const [previewTab, setPreviewTab] = useState<PreviewTab>(initialTab === 'items' ? 'shop' : 'pay');
   /** A row tapped in the preview's shop: the Item screen shows it, until the owner opens another item. */
   const [picked, setPicked] = useState<string | null>(null);
   const [listError, setListError] = useState('');

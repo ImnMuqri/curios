@@ -134,6 +134,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   const payOnline = createPayOnline(app.prisma, {
     chip: overrides.shopChip,
     store: overrides.orders?.store,
+    mailQueue: () => overrides.orders?.mailQueue ?? app.mailQueue,
     payStatusEveryMs: overrides.orders?.payStatusEveryMs,
   });
   await app.register(sessionPlugin);

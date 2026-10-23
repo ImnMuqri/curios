@@ -221,6 +221,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
           lineCents: line.unitCents * line.quantity,
         })),
         url: `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${placed.orderId}`,
+        appUrl: deps.appUrl,
       });
       // Not awaited. The queue's connection retries without limit
       // (maxRetriesPerRequest: null), so during a Redis reconnect an awaited

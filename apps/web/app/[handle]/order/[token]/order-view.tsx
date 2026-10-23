@@ -125,6 +125,7 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
     case 'toCheck':
       return { text: copy.statusChecking(name), tone: 'check' };
     case 'paid':
+    case 'paidOnline':
       return ready ? { text: copy.statusReady, tone: 'ok' } : { text: copy.statusPaid(name), tone: 'ok' };
     case 'completed':
       return { text: copy.statusDone, tone: 'ok' };

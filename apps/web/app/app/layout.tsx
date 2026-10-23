@@ -63,6 +63,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const orders = {
     state: orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
     storeEnabled: page.storeEnabled,
+    chipRefused: page.chipRefused,
   };
   return (
     <AppFrame

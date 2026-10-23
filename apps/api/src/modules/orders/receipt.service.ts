@@ -103,6 +103,7 @@ export async function uploadReceipt(
         uploadedAt: now,
         fileName: key.slice(key.lastIndexOf('/') + 1),
         url: `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${order.id}`,
+        appUrl: deps.appUrl,
       });
       // Not awaited, as the new-order email is not: the reply never waits on the queue.
       void deps.mailQueue

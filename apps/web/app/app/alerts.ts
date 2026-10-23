@@ -44,11 +44,37 @@ function fifths(used: number, cap: number): boolean[] {
 export interface ShopAlertInput {
   state: OrderState;
   storeEnabled: boolean;
+  /** The shop's CHIP key was refused: online payment is off until the owner reconnects. */
+  chipRefused?: boolean;
 }
 
-/** The shop's stop states, on Orders: the free orders counted, then checkout paused. */
+/**
+ * The shop's alerts, on Orders: a refused CHIP key first (amber beats the blue
+ * count under it in `pickAlert`), then the free orders counted or checkout paused.
+ */
 function shopAlerts(orders: ShopAlertInput | undefined): Alert[] {
   if (!orders?.storeEnabled) return [];
+  return [...chipAlert(orders), ...orderAlerts(orders)];
+}
+
+function chipAlert(orders: ShopAlertInput): Alert[] {
+  // No board draws it (DEVIATIONS 184). Amber: the shop still takes orders, by QR.
+  return orders.chipRefused
+    ? [
+        {
+          id: 'chip-refused',
+          tone: 'warn',
+          where: '/app/orders',
+          icon: 'shop',
+          title: 'CHIP is disconnected',
+          text: 'Curios can’t use your CHIP key, so customers can only pay by QR or bank transfer until you reconnect it.',
+          action: { href: '/app/store?tab=payment', label: 'Reconnect in Store' },
+        },
+      ]
+    : [];
+}
+
+function orderAlerts(orders: ShopAlertInput): Alert[] {
   const { state } = orders;
   const paused = (text: string): Alert => ({
     id: 'paused',

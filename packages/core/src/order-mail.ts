@@ -29,9 +29,12 @@ export interface NewOrderMailInput {
   lines: { itemName: string; optionLabel: string | null; quantity: number; lineCents: number }[];
   /** The owner's order screen, opened on this order. */
   url: string;
+  /** The site's address, where the wordmark image is hosted. */
+  appUrl?: string;
 }
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 /** "Sat 17 Oct". The day is already a Malaysian calendar day, so it is read as written. */
@@ -91,6 +94,113 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
         { kind: 'buttons', primary: { label: button, href: o.url } },
       ],
       footer: OWNER_MAIL_FOOTER,
+      appUrl: o.appUrl,
+    }),
+  };
+}
+
+export interface PaidOrderMailInput extends Omit<NewOrderMailInput, 'note'> {
+  /** How CHIP says it was paid, as stored: "FPX · Maybank2u". */
+  via: string;
+  /** CHIP's reference, when it gave one. */
+  ref: string | null;
+}
+
+/**
+ * Sent to the owner when CHIP confirms a customer's online payment, unless they
+ * switched order emails off. The Emails board's "Paid order": nothing to check.
+ */
+export function paidOrderMail(o: PaidOrderMailInput): Mail {
+  const total = formatRinggit(o.totalCents);
+  const subject = `New order #${o.number} · ${total} · Paid`;
+  const tag = `Paid by ${o.via.split(' · ')[0]}`;
+  const heading = `${o.customerName} ordered and paid ${total}`;
+  const weekday = WEEKDAY_NAMES[new Date(`${o.day}T00:00:00Z`).getUTCDay()];
+  const said = `The bank confirmed it through CHIP, so there’s nothing to check. Just get it ready for ${weekday}.`;
+  const small = 'The money is in your CHIP account. CHIP pays it out to your bank on its usual schedule.';
+  const gettingIt = `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}${isRiderDelivery(o) ? ' · Rider fee paid separately' : ''}`;
+  const facts: [string, string][] = [
+    ['Getting it', gettingIt],
+    ['Customer', `${o.customerName} · ${formatMalaysianPhone(o.phone)}`],
+    ['Paid with', o.ref ? `${o.via} · Ref ${o.ref}` : o.via],
+  ];
+  const button = `Open order #${o.number}`;
+
+  return {
+    subject,
+    text: [
+      `${heading}.`,
+      '',
+      said,
+      '',
+      ...o.lines.map((l) => `${[l.itemName, l.optionLabel].filter(Boolean).join(', ')}, ${l.quantity}×: ${formatRinggit(l.lineCents)}`),
+      `Paid: ${total}`,
+      '',
+      ...facts.map(([label, value]) => `${label}: ${value}`),
+      '',
+      `${button}: ${o.url}`,
+      '',
+      small,
+    ].join('\n'),
+    html: renderMailHtml({
+      subject,
+      topRight: `Order #${o.number}`,
+      tag: { label: tag, tone: 'hijau' },
+      heading,
+      blocks: [
+        { kind: 'p', text: said },
+        {
+          kind: 'lines',
+          rows: o.lines.map((l) => ({
+            name: l.itemName,
+            detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
+            amount: formatRinggit(l.lineCents),
+          })),
+          total: { label: 'Paid', amount: total },
+        },
+        { kind: 'facts', rows: facts },
+        { kind: 'buttons', primary: { label: button, href: o.url } },
+        { kind: 'small', text: small },
+      ],
+      footer: OWNER_MAIL_FOOTER,
+      appUrl: o.appUrl,
+    }),
+  };
+}
+
+export interface PaidAfterCancelMailInput {
+  number: number;
+  totalCents: number;
+  customerName: string;
+  via: string;
+  url: string;
+  appUrl?: string;
+}
+
+/**
+ * Sent to the owner when a customer's online payment lands after the owner
+ * cancelled the order. No board draws it (DEVIATIONS 183).
+ */
+export function paidAfterCancelMail(o: PaidAfterCancelMailInput): Mail {
+  const total = formatRinggit(o.totalCents);
+  const subject = `Order #${o.number} was paid after you cancelled it`;
+  const said = `${o.customerName} paid ${total} by ${o.via} after you cancelled it. Refund them in CHIP, then mark it refunded in Orders.`;
+  const button = `Open order #${o.number}`;
+
+  return {
+    subject,
+    text: [`${subject}.`, '', said, '', `${button}: ${o.url}`].join('\n'),
+    html: renderMailHtml({
+      subject,
+      topRight: `Order #${o.number}`,
+      tag: { label: 'Refund owed', tone: 'merah' },
+      heading: subject,
+      blocks: [
+        { kind: 'p', text: said },
+        { kind: 'buttons', primary: { label: button, href: o.url } },
+      ],
+      footer: OWNER_MAIL_FOOTER,
+      appUrl: o.appUrl,
     }),
   };
 }
@@ -104,6 +214,8 @@ export interface ReceiptMailInput {
   fileName: string;
   /** The owner's order screen, opened on this order. */
   url: string;
+  /** The site's address, where the wordmark image is hosted. */
+  appUrl?: string;
 }
 
 /** "Thu 15 Oct, 3:42pm", Malaysian time (UTC+8, no daylight saving). */
@@ -146,6 +258,7 @@ export function receiptMail(o: ReceiptMailInput): Mail {
         { kind: 'small', text: small },
       ],
       footer: OWNER_MAIL_FOOTER,
+      appUrl: o.appUrl,
     }),
   };
 }

@@ -54,6 +54,17 @@ const editTab = (name: string) => within(screen.getByRole('tablist', { name: 'St
 beforeEach(() => window.sessionStorage.clear());
 afterEach(() => vi.useRealTimers());
 
+describe('opening on a tab', () => {
+  it('opens on Payment when the link says so, and on Items otherwise', () => {
+    const calls = apis();
+    const { unmount } = render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="payment" {...calls} />);
+    expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
+    unmount();
+    show();
+    expect(editTab('Items')).toHaveAttribute('aria-selected', 'true');
+  });
+});
+
 describe('the header', () => {
   it('says the shop is open, and links to it', () => {
     show();

@@ -837,6 +837,50 @@
   stroke-linejoin: round;
 }
 
+/* The Payment card of an order CHIP confirmed: no receipt to show, only the bank's word. */
+.paidOnline {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--hijau-wash);
+}
+
+.paidTick {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--hijau);
+}
+
+.paidTick svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--card);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.paidOnline b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--hijau-ink);
+}
+
+.paidOnline span > span {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
 .kv {
   display: flex;
   gap: 12px;

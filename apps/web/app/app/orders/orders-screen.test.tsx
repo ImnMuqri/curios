@@ -31,6 +31,9 @@ const base: OrderRow = {
   completedAt: null,
   cancelledAt: null,
   refundedAt: null,
+  paidVia: null,
+  paidMethodLabel: null,
+  paidRef: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [
     { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: null },
@@ -184,5 +187,23 @@ describe('OrdersScreen, before the first order', () => {
     expect(screen.getByRole('button', { name: 'Copy your link' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Set up your shop' })).toHaveAttribute('href', '/app/store');
     expect(figures().getByText('Paid this week').previousSibling).toHaveTextContent('RM0');
+  });
+});
+
+describe('OrdersScreen, orders paid online', () => {
+  const online: OrderRow = { ...base, ...none, id: 'o14', number: 14, customerName: 'Nurul Izzah', status: 'PAID', paidAt: new Date('2026-10-16T03:20:00Z'), paidVia: 'CHIP', paidMethodLabel: 'FPX · Maybank2u', paidRef: 'CHIP-4K2X' };
+
+  it('reads Paid online in the list, and is counted and listed under Paid', () => {
+    show([online, ...orders]);
+    expect(within(rows().getByText('Nurul Izzah').closest('li')!).getByText('Paid online')).toBeInTheDocument();
+    // Wei Ling and Aina were marked paid by hand and still read Paid.
+    expect(within(rows().getByText('Wei Ling').closest('li')!).getByText('Paid')).toBeInTheDocument();
+    expect(filter(/^Paid/)).toHaveTextContent('3');
+    fireEvent.click(filter(/^Paid/));
+    expect(rows().getAllByRole('listitem').map((li) => li.textContent)).toEqual(expect.arrayContaining([expect.stringContaining('Nurul Izzah')]));
+    expect(rows().getAllByRole('listitem')).toHaveLength(3);
+    // Never a receipt to check.
+    fireEvent.click(filter(/^To check/));
+    expect(rows().queryByText('Nurul Izzah')).toBeNull();
   });
 });

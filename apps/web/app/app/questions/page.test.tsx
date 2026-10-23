@@ -42,6 +42,7 @@ const business: OwnerPage = {
   storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
+  chipRefused: false,
 };
 
 describe('QuestionsPage', () => {

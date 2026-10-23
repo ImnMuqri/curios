@@ -53,6 +53,7 @@ const page: OwnerPage = {
   storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
+  chipRefused: false,
 };
 
 async function renderWith(owned: OwnerPage | null, payment?: string, card?: string) {

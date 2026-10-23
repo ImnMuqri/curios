@@ -29,6 +29,9 @@ const mira: OrderRow = {
   completedAt: null,
   cancelledAt: null,
   refundedAt: null,
+  paidVia: null,
+  paidMethodLabel: null,
+  paidRef: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [
     { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: 'https://cdn.example/items/coklat.webp' },
@@ -365,5 +368,79 @@ describe('OrderDetail, the next step', () => {
     // The refreshed order arrives: its own next step, live.
     rerender(<OrderDetail order={{ ...mira, status: 'PAID', paidAt: new Date('2026-10-16T05:59:00Z') }} {...props} />);
     expect(actionBox().getByRole('button', { name: 'Mark completed' })).toBeEnabled();
+  });
+});
+
+// The board's sample #14: Nurul paid RM215 by FPX, so there is no receipt and nothing to check.
+const online: OrderRow = {
+  ...paid,
+  id: 'o14',
+  number: 14,
+  customerName: 'Nurul Izzah',
+  phone: '+60137782041',
+  day: '2026-10-17',
+  itemsCents: 21500,
+  totalCents: 21500,
+  receiptUrl: null,
+  receiptType: null,
+  receiptUploadedAt: null,
+  // 11:18am and 11:20am in Malaysia.
+  createdAt: new Date('2026-10-16T03:18:00Z'),
+  paidAt: new Date('2026-10-16T03:20:00Z'),
+  paidVia: 'CHIP',
+  paidMethodLabel: 'FPX · Maybank2u',
+  paidRef: 'CHIP-4K2X',
+  lines: [
+    { itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1, photoUrl: null },
+    { itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
+  ],
+};
+
+describe('OrderDetail, an order paid online', () => {
+  it('draws Placed, Paid by FPX, Checked by the bank, Completed', () => {
+    show(online);
+    const items = steps().getAllByRole('listitem');
+    expect(items.map((li) => li.textContent)).toEqual(['Placedtoday, 11:18am', 'Paid by FPXtoday, 11:20am', 'CheckedBy the bank', 'CompletedSat 17 Oct']);
+    expect(items[3]).toHaveAttribute('aria-current', 'step');
+  });
+
+  it('says the bank confirmed it through CHIP, with the reference, and has no receipt to check', () => {
+    show(online);
+    expect(screen.getByText('RM215 paid by FPX · Maybank2u')).toBeInTheDocument();
+    expect(screen.getByText('Confirmed by the bank through CHIP, so there is no receipt to check. Ref CHIP-4K2X.')).toBeInTheDocument();
+    expect(screen.getByText('Paid today, 11:20am', { selector: '[data-badge]' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open the receipt' })).toBeNull();
+    expect(screen.queryByText(/receipt was uploaded/)).toBeNull();
+  });
+
+  it('leaves the reference out when CHIP gave none', () => {
+    show({ ...online, paidRef: null });
+    expect(screen.getByText('Confirmed by the bank through CHIP, so there is no receipt to check.')).toBeInTheDocument();
+  });
+
+  it('has Mark completed as its only move, besides cancelling', async () => {
+    const { move } = show(online);
+    expect(actionBox().getByText('Paid. Ready on Sat 17 Oct')).toBeInTheDocument();
+    expect(actionBox().queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    expect(actionBox().queryByRole('button', { name: 'Not received' })).toBeNull();
+    expect(actionBox().getAllByRole('button').map((b) => b.textContent)).toEqual(['Cancel order', 'Mark completed']);
+    fireEvent.click(actionBox().getByRole('button', { name: 'Mark completed' }));
+    await waitFor(() => expect(move).toHaveBeenCalledWith('o14', 'completed'));
+  });
+
+  it('keeps the hand-marked Refund flow when it is cancelled: Mark refunded', async () => {
+    const cancelledOnline: OrderRow = { ...online, status: 'CANCELLED', cancelledAt: new Date('2026-10-16T04:00:00Z') };
+    const { move } = show(cancelledOnline);
+    expect(actionBox().getByText('You owe Nurul RM215')).toBeInTheDocument();
+    // The Payment card still says how it was paid.
+    expect(screen.getByText('RM215 paid by FPX · Maybank2u')).toBeInTheDocument();
+    fireEvent.click(actionBox().getByRole('button', { name: 'Mark refunded' }));
+    await waitFor(() => expect(move).toHaveBeenCalledWith('o14', 'refunded'));
+  });
+
+  it('leaves an order the owner marked paid as it was: Paid, with a receipt step', () => {
+    show(paid);
+    expect(steps().getAllByRole('listitem').map((li) => li.querySelector('b')?.textContent)).toEqual(['Placed', 'Receipt', 'Paid', 'Completed']);
+    expect(screen.queryByText(/through CHIP/)).toBeNull();
   });
 });

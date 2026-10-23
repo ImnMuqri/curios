@@ -1,5 +1,5 @@
 import { ChipRefusedError, DEAD_PURCHASE_STATUSES, type ChipClient, type ChipPurchase, type PurchaseProduct } from '@curios/billing';
-import { hashSessionValue } from '@curios/core';
+import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidOrderMail } from '@curios/core';
 import { openSecret } from '@curios/core/secret-box';
 import { chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, type OnlineChoice, type OnlineOffer } from '@curios/core/shop-pay';
 import type { PrismaClient } from '@curios/db';
@@ -7,6 +7,7 @@ import { errName } from '../billing/billing.service.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
 import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError } from './order.errors.js';
+import type { OrderMailQueue } from './place.service.js';
 
 type Log = {
   info: (obj: object, msg: string) => void;
@@ -75,6 +76,8 @@ export interface PayOnlineDeps {
   /** Where CHIP calls back (CHIP_CALLBACK_BASE_URL); null leaves the callback out, and the order page's check settles it. */
   callbackBaseUrl: string | null;
   store: AvatarStore | null;
+  /** The owner's emails; a function because the queue is built after the settings are read. */
+  mailQueue: () => OrderMailQueue;
   methods: MethodsCache;
   lookups: LookupCache;
   log: Log;
@@ -378,8 +381,9 @@ export async function settleChipPurchase(
     },
   });
   if (count === 1) {
-    // Task 14 sends the owner's "paid" email from here: this is the one moment
-    // the order becomes PAID through CHIP, and it happens once.
+    // The one moment the order becomes PAID through CHIP, and it happens once: so the
+    // owner's "paid" email is sent from here and nowhere else.
+    await mailOwner(deps, order.id, 'paid');
     if (before?.receiptKey && deps.store) {
       await deps.store.remove(before.receiptKey).catch((error: unknown) =>
         deps.log.warn({ orderId: order.id, err: errName(error) }, 'receipt of an order paid online could not be removed'),
@@ -390,19 +394,70 @@ export async function settleChipPurchase(
   const after = await deps.prisma.order.findUnique({ where: { id: order.id }, select: { status: true } });
   if (after && (after.status === 'PAID' || after.status === 'COMPLETED')) return 'already-paid';
   // Paid at CHIP after the owner cancelled: recorded on the cancelled order, which then
-  // reads as a refund owed (orderView). The money is in the owner's CHIP account. Task 14
-  // tells the owner from here.
+  // reads as a refund owed (orderView). The money is in the owner's CHIP account, so the
+  // owner is told, once, to refund it there.
   const late = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'CANCELLED', paidAt: null, chipPurchaseId: purchase.id },
     data: paid,
   });
   if (late.count === 1) {
     deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online after it was cancelled');
+    await mailOwner(deps, order.id, 'paid-after-cancel');
     return 'paid-after-cancel';
   }
   if (after?.status === 'CANCELLED') return 'already-paid';
   deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online but no longer placed');
   return 'not-placed';
+}
+
+/**
+ * Tells the owner an order was paid online (or paid after they cancelled it), under the
+ * same switch as the new-order email (Page.notifyOrders). Called from the one conditional
+ * update that changes the order, so once per order. Queued, not awaited, like every order
+ * email; a failure of any kind is logged with ids only and never reaches the caller.
+ */
+async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'paid-after-cancel'): Promise<void> {
+  try {
+    const order = await deps.prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        number: true,
+        totalCents: true,
+        customerName: true,
+        phone: true,
+        method: true,
+        day: true,
+        deliveryCents: true,
+        paidMethodLabel: true,
+        paidRef: true,
+        lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
+        page: { select: { notifyOrders: true, account: { select: { email: true } } } },
+      },
+    });
+    if (!order?.page.notifyOrders) return;
+    const base = { number: order.number, totalCents: order.totalCents, customerName: order.customerName, via: order.paidMethodLabel ?? 'CHIP' };
+    const url = `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${orderId}`;
+    const mail =
+      kind === 'paid'
+        ? paidOrderMail({
+            ...base,
+            phone: order.phone,
+            method: order.method,
+            deliveryCents: order.deliveryCents,
+            day: order.day.toISOString().slice(0, 10),
+            ref: order.paidRef,
+            lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
+            url,
+            appUrl: deps.appUrl,
+          })
+        : paidAfterCancelMail({ ...base, url, appUrl: deps.appUrl });
+    const warn = (error: unknown) => deps.log.warn({ orderId, err: errName(error) }, 'could not queue the order-paid email');
+    void deps.mailQueue()
+      .add(MAIL_QUEUE, { to: order.page.account.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+      .catch(warn);
+  } catch (error) {
+    deps.log.warn({ orderId, err: errName(error) }, 'could not queue the order-paid email');
+  }
 }
 
 const ORDER_FOR_SETTLE = {

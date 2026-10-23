@@ -57,6 +57,7 @@ const page: OwnerPage = {
   storeEnabled: false,
   allowSearchIndexing: false,
   avatarKey: null,
+  chipRefused: false,
 };
 
 describe('the dashboard layout', () => {
@@ -130,6 +131,18 @@ describe('the dashboard layout', () => {
     const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
 
     expect(frame.props.alerts).toContainEqual(expect.objectContaining({ id: 'orders-trial-1', where: '/app/orders' }));
+    expect(frame.props.billingDot).toBe(false);
+  });
+
+  it('warns on Orders when the shop’s CHIP key was refused', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, storeEnabled: true, ordersPlaced: 0, chipRefused: true });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string }[]; billingDot: boolean } };
+
+    expect(frame.props.alerts).toContainEqual(expect.objectContaining({ id: 'chip-refused', where: '/app/orders' }));
+    // Not a billing matter: no dot there.
     expect(frame.props.billingDot).toBe(false);
   });
 

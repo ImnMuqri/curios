@@ -22,6 +22,8 @@ export interface OwnerPage {
   allowSearchIndexing: boolean;
   /** The owner's picture, for the sidebar's account row. */
   avatarKey: string | null;
+  /** The shop's CHIP key was refused or could not be opened: customers cannot pay online until it is reconnected. */
+  chipRefused: boolean;
 }
 
 /**
@@ -44,7 +46,7 @@ export interface OwnerPage {
  * that leads stopped arriving.
  */
 export async function getOwnerPage(accountId: string): Promise<OwnerPage | null> {
-  return prismaRead.page.findUnique({
+  const page = await prismaRead.page.findUnique({
     where: { accountId },
     select: {
       id: true,
@@ -60,6 +62,11 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       storeEnabled: true,
       allowSearchIndexing: true,
       avatarKey: true,
+      // Whether, never the key: the sealed key is not selected by any page query.
+      paymentAccount: { select: { lastErrorAt: true } },
     },
   });
+  if (!page) return null;
+  const { paymentAccount, ...rest } = page;
+  return { ...rest, chipRefused: paymentAccount?.lastErrorAt != null };
 }

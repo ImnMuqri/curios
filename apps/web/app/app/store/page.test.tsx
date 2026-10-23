@@ -56,7 +56,7 @@ describe('StorePage', () => {
   it('tells a personal page why there is no store, and where that changes', async () => {
     getOwnerStore.mockResolvedValue({ mode: 'PERSONAL', settings, items: [], chip: noChip });
 
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText(/Shops are part of business pages/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
@@ -66,7 +66,7 @@ describe('StorePage', () => {
   it('renders the screen for a business page, with its settings and the storage facts', async () => {
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
 
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
 
     expect(StoreScreen).toHaveBeenCalledTimes(1);
     const props = StoreScreen.mock.calls[0]![0];
@@ -80,7 +80,7 @@ describe('StorePage', () => {
 
   it("hands the preview the page's look and the number the basket goes to", async () => {
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0].look).toEqual({
       handle: 'nadia', displayName: 'Nadia Bakes', bio: 'Cakes.', language: 'ms',
       avatarUrl: 'https://files.example/avatars/n.webp', coverUrl: '/covers/bunga.webp',
@@ -95,11 +95,21 @@ describe('StorePage', () => {
     vi.setSystemTime(new Date('2026-10-16T17:00:00Z'));
     try {
       getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
-      render(await StorePage());
+      render(await StorePage({ searchParams: Promise.resolve({}) }));
       expect(StoreScreen.mock.calls[0]![0].today).toBe('2026-10-17');
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('opens on the tab the link names, and on Items otherwise', async () => {
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
+    render(await StorePage({ searchParams: Promise.resolve({ tab: 'payment' }) }));
+    expect(StoreScreen.mock.calls[0]![0].initialTab).toBe('payment');
+    render(await StorePage({ searchParams: Promise.resolve({ tab: 'nonsense' }) }));
+    expect(StoreScreen.mock.calls[1]![0].initialTab).toBe('items');
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
+    expect(StoreScreen.mock.calls[2]![0].initialTab).toBe('items');
   });
 
   it('hands the items over with their picture URLs worked out here', async () => {
@@ -110,7 +120,7 @@ describe('StorePage', () => {
       items: [{ ...base, id: 'a', name: 'Kek', photoKey: 'items/k.webp' }, { ...base, id: 'b', name: 'Tart', photoKey: null }],
       chip: noChip,
     });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     const items = StoreScreen.mock.calls[0]![0].items as { id: string; photoUrl: string | null }[];
     expect(items.map((i) => [i.id, i.photoUrl])).toEqual([['a', 'https://files.example/items/k.webp'], ['b', null]]);
   });
@@ -118,7 +128,7 @@ describe('StorePage', () => {
   it('hands over the CHIP connection as the read gives it, with the time to count from', async () => {
     const chip = { connected: true, brandName: 'Nadia Bakes', methods: ['fpx'], checkedAt: new Date('2026-10-16T01:00:00Z'), isTest: false };
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0].chip).toEqual(chip);
     expect(StoreScreen.mock.calls[0]![0].now).toBeInstanceOf(Date);
   });
@@ -126,43 +136,43 @@ describe('StorePage', () => {
   it('turns uploads off when storage is not configured', async () => {
     vi.stubEnv('STORAGE_PUBLIC_URL', '');
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings: { ...settings, paymentQrKey: null }, items: [], chip: noChip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0]).toMatchObject({ uploadsEnabled: false, publicBase: '', qrUrl: null });
   });
 
   it('hands over the next order number, and no pause while orders are allowed', async () => {
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0].orders).toEqual({ paused: null, nextNumber: 13 });
   });
 
   it('says orders are paused once the free orders are used', async () => {
     getOwnerPage.mockResolvedValue({ ...owned, paidUntil: null, ordersPlaced: 3 });
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0].orders).toEqual({ paused: 'Paused: your 3 free orders are used.', nextNumber: 4 });
   });
 
   it('says orders are paused since the plan ended', async () => {
     getOwnerPage.mockResolvedValue({ ...owned, paidUntil: new Date('2026-10-14T04:00:00Z'), ordersPlaced: 9 });
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0].orders).toMatchObject({ paused: 'Paused: your plan ended on 14 Oct 2026.' });
   });
 
   it('sends an owner with no page to onboarding', async () => {
     getOwnerStore.mockResolvedValue(null);
-    await expect(StorePage()).rejects.toThrow('NEXT_REDIRECT:/app/onboarding');
+    await expect(StorePage({ searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_REDIRECT:/app/onboarding');
   });
 
   it('sends a signed-out visitor to sign in', async () => {
     resolveOwner.mockResolvedValue(null);
-    await expect(StorePage()).rejects.toThrow('NEXT_REDIRECT:/signin');
+    await expect(StorePage({ searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_REDIRECT:/signin');
   });
 
   it('renders no main of its own', async () => {
     getOwnerStore.mockResolvedValue({ mode: 'PERSONAL', settings, items: [], chip: noChip });
-    render(await StorePage());
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(screen.queryByRole('main')).toBeNull();
   });
 });

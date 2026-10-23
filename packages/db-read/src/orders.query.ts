@@ -33,6 +33,10 @@ export interface OwnerOrder {
   completedAt: Date | null;
   cancelledAt: Date | null;
   refundedAt: Date | null;
+  /** How it was paid, and for CHIP how and by what reference ("FPX · Maybank2u"): Orders says so. */
+  paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+  paidMethodLabel: string | null;
+  paidRef: string | null;
   createdAt: Date;
   lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; photoKey: string | null }[];
 }
@@ -98,6 +102,9 @@ async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number): Pr
       completedAt: true,
       cancelledAt: true,
       refundedAt: true,
+      paidVia: true,
+      paidMethodLabel: true,
+      paidRef: true,
       createdAt: true,
       lines: {
         orderBy: { position: 'asc' },

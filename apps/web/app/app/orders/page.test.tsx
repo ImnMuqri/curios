@@ -40,6 +40,7 @@ const page: OwnerPage = {
   storeEnabled: true,
   allowSearchIndexing: false,
   avatarKey: null,
+  chipRefused: false,
 };
 
 const order: OwnerOrder = {
@@ -64,6 +65,9 @@ const order: OwnerOrder = {
   completedAt: null,
   cancelledAt: null,
   refundedAt: null,
+  paidVia: null,
+  paidMethodLabel: null,
+  paidRef: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
   lines: [{ itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 1, photoKey: 'items/p1/coklat.webp' }],
 };

@@ -23,6 +23,7 @@ export function StoreScreen({
   now,
   chip,
   orders,
+  initialTab,
 }: {
   initial: StoreSettings;
   items: EditorItem[];
@@ -34,6 +35,8 @@ export function StoreScreen({
   now: Date;
   chip: ChipState;
   orders: { paused: string | null; nextNumber: number };
+  /** The tab to open on (`?tab=payment`); Items when there is none. */
+  initialTab?: 'items' | 'payment' | 'delivery';
 }) {
   const settingsApi: SettingsApi = {
     save: async (patch) => (await apiFetch<{ settings: StoreSettings }>('/store/settings', { method: 'PATCH', body: JSON.stringify(patch) })).settings,
@@ -89,6 +92,7 @@ export function StoreScreen({
       now={now}
       chip={chip}
       orders={orders}
+      initialTab={initialTab}
       settingsApi={settingsApi}
       itemsApi={itemsApi}
       chipApi={chipApi}

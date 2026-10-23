@@ -135,6 +135,14 @@ describe('orderView', () => {
     expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, refundedAt: at })).toBe('refunded');
     expect(orderView({ ...o, status: 'CANCELLED' })).toBe('cancelled');
   });
+  it('tells a payment CHIP confirmed from one the owner marked', () => {
+    expect(orderView({ ...o, status: 'PAID', paidAt: at, paidVia: 'CHIP' })).toBe('paidOnline');
+    expect(orderView({ ...o, status: 'PAID', paidAt: at, paidVia: 'MANUAL' })).toBe('paid');
+    expect(orderView({ ...o, status: 'PAID', paidAt: at, paidVia: 'RECEIPT' })).toBe('paid');
+    // Done is done, and a refund owed is a refund owed, however it was paid.
+    expect(orderView({ ...o, status: 'COMPLETED', paidAt: at, paidVia: 'CHIP' })).toBe('completed');
+    expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, paidVia: 'CHIP' })).toBe('refundOwed');
+  });
 });
 
 describe('customerSteps', () => {

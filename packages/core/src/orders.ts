@@ -136,6 +136,7 @@ export type OrderView =
   | 'awaitingPayment'
   | 'toCheck'
   | 'paid'
+  | 'paidOnline'
   | 'completed'
   | 'refundOwed'
   | 'refunded'
@@ -144,19 +145,22 @@ export type OrderView =
 /**
  * The badge the Orders board shows. Refund owed and refunded are not
  * statuses: they are a cancelled order that had been paid, told apart by
- * whether the owner has marked the money back.
+ * whether the owner has marked the money back. `paidOnline` is a paid order
+ * CHIP confirmed (no receipt, nothing for the owner to check); one the owner
+ * marked paid by hand stays `paid`.
  */
 export function orderView(o: {
   status: OrderStatus;
   receiptUploadedAt: Date | null;
   paidAt: Date | null;
   refundedAt: Date | null;
+  paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
 }): OrderView {
   switch (o.status) {
     case 'PLACED':
       return o.receiptUploadedAt !== null ? 'toCheck' : 'awaitingPayment';
     case 'PAID':
-      return 'paid';
+      return o.paidVia === 'CHIP' ? 'paidOnline' : 'paid';
     case 'COMPLETED':
       return 'completed';
     case 'CANCELLED':

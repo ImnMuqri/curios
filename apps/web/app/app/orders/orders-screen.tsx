@@ -21,7 +21,7 @@ type Filter = 'all' | 'check' | 'paid' | 'refund';
 function matches(order: OrderRow, filter: Filter): boolean {
   const view = orderView(order);
   if (filter === 'check') return view === 'toCheck';
-  if (filter === 'paid') return view === 'paid';
+  if (filter === 'paid') return view === 'paid' || view === 'paidOnline';
   if (filter === 'refund') return view === 'refundOwed';
   return true;
 }
