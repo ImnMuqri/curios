@@ -1,0 +1,38 @@
+:root {
+  --line: #e9ebef;
+  --soft: #696e7b;
+  --ink: #191f2c;
+  --paper: #ffffff;
+  --side: #191f2c;
+  --side-ink: #c9ccd3;
+  --side-soft: #7c8291;
+  --side-bright: #fafbfc;
+  --amber: #f2a33c;
+  --amber-wash: #fff7eb;
+  --amber-line: #fbe3c2;
+  --amber-ink: #7a4a0c;
+  --blue: #2340c8;
+  --bad: #b4321f;
+  --font-d: var(--font-bricolage), system-ui, sans-serif;
+  --font-m: var(--font-plex-mono), ui-monospace, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-plex-sans), system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
