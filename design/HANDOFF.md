@@ -338,6 +338,45 @@ A pass to make the product look less AI-generated. Follow these over anything ol
   says "A shop paid by FPX, e-wallet, card or your own QR". Store's checklist shows "Online
   payments through CHIP" when CHIP is connected.
 
+## Admin (Curios team only), 23 Oct 2026
+
+Board: `design/boards/Admin.dc.html`. Screens: `design/screens/Admin_*`. Not built yet; this is the
+design to build from. Desktop first, works on a phone for emergencies.
+
+**Access and safety**
+- Separate route group, e.g. `/admin`, behind an allowlist of admin accounts (start with Iman).
+  Not visible to owners at all; 404 for anyone else.
+- Dark sidebar and a permanent amber "Production" strip so it never looks like the owner app.
+- Every action that changes something asks for a **reason** and writes an **audit log** row
+  (who, what, page, reason, when). Deleting an account also needs the handle typed out.
+- "See it as the owner" opens their dashboard **read-only** and is logged.
+
+**Sections**
+- **Overview:** live pages, paying Business, revenue, conversations, answered-from-facts rate,
+  AI cost (with cost per conversation), a conversations-per-day chart, "Needs you" (reports,
+  failed webhooks, failed reads, pages at the cap, plans ending), new pages, Personal vs Business.
+- **Pages:** search by handle, name or owner email; filters All, Business, Personal, Lapsed,
+  Hidden or suspended. Side panel: owner, sign-in method, plan, paid until, usage against 200,
+  facts. Actions: open page, see as owner, give one month of Business (no charge, not revenue),
+  reset this month's conversations, suspend or bring back, delete account.
+- **AI & usage:** from `ModelCall`: calls, typical and slow answer time, cost per conversation,
+  "I'm not sure" rate, failed calls; cost by job; recent "I'm not sure" answers; pages near 200.
+- **Reading sources:** from `Ingestion`: waiting, reading, failed, typical time; table with error
+  text; Retry, Retry all failed (walled sources are skipped), Pause the queue.
+- **Payments:** Business payments through Curios's own CHIP account, webhook log with Replay,
+  and a count of shop orders paid online (owners' money, shown for scale only).
+- **Reports:** visitors report a page from a "Report this page" footer link. Dismiss, Email
+  owner, Suspend page. 3 reports in a day hides the page from search automatically.
+- **Controls:** kill switches (chat answers, sign-ups, reading sources, CHIP payments, owner
+  emails), limits and prices (cap 200, free leads 3, free orders 3, RM49, RM490) saved with a
+  confirm, and a banner shown on every owner's dashboard.
+- **Audit log:** newest first.
+
+**New data this needs** (suggested): `Account.isAdmin` or an `AdminUser` table, `Page.suspendedAt`
+and `Page.suspendReason`, a `Report` table, an `AdminAction` audit table, a `SystemSetting`
+key-value table for the switches, limits, prices and banner, and a webhook event log.
+`Payment` still names Billplz columns; those move to CHIP as already noted.
+
 ## Open decisions (ask Iman before building these)
 
 1. **Price.** The code has RM39 a month (`PLAN_PRICES_CENTS` 3900 / 39000). The landing and Billing
