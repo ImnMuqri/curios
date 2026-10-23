@@ -2,6 +2,7 @@ import { randomBytes } from 'node:crypto';
 import { hashSessionValue, MAIL_QUEUE, receiptMail } from '@curios/core';
 import { RECEIPT_MAX_BYTES } from '@curios/core/orders';
 import type { PrismaClient } from '@curios/db';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { decodeReceipt } from '../pages/avatar.js';
 import { StorageNotConfiguredError } from '../pages/page.routes.js';
 import type { AvatarStore } from '../pages/storage.js';
@@ -40,10 +41,11 @@ export async function uploadReceipt(
 ): Promise<{ receiptUploadedAt: Date }> {
   const found = await deps.prisma.order.findUnique({
     where: { tokenHash: hashSessionValue(token) },
-    select: { id: true, status: true, page: { select: { mode: true } } },
+    select: { id: true, status: true, page: { select: { mode: true, suspendedAt: true } } },
   });
   if (!found) throw new OrderNotFoundError();
   if (found.page.mode !== 'BUSINESS') throw new StoreBusinessOnlyError();
+  if (found.page.suspendedAt !== null) throw new PageUnavailableError();
   const early = refuse(found.status);
   if (early) throwRefusal(early);
   if (!deps.store) throw new StorageNotConfiguredError();

@@ -4,7 +4,8 @@ import type { FaqAnswer } from '@curios/db-read';
 
 const getFaqEntry = vi.fn();
 const getFaqRedirect = vi.fn();
-vi.mock('@curios/db-read', () => ({ getFaqEntry, getFaqRedirect }));
+const getPageAvailability = vi.fn(async (): Promise<{ status: string; language: string }> => ({ status: 'missing', language: 'en' }));
+vi.mock('@curios/db-read', () => ({ getFaqEntry, getFaqRedirect, getPageAvailability }));
 
 const notFound = vi.fn(() => {
   throw new Error('NEXT_NOT_FOUND');
@@ -98,6 +99,21 @@ describe('one FAQ answer', () => {
     getFaqRedirect.mockResolvedValueOnce(null);
 
     await expect(FaqEntryPage(params('nadia', 'gone'))).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('says the page is unavailable, and not indexed, when it is suspended', async () => {
+    getFaqEntry.mockResolvedValue(null);
+    getPageAvailability.mockResolvedValue({ status: 'suspended', language: 'en' });
+    try {
+      render(await FaqEntryPage(params('nadia', 'berapa-harga')));
+      expect(screen.getByRole('heading', { name: 'This page is unavailable' })).toBeInTheDocument();
+      expect(screen.getByText('It’s been taken down for now.')).toBeInTheDocument();
+      const { generateMetadata } = await import('./page.js');
+      expect((await generateMetadata(params('nadia', 'berapa-harga'))).robots).toMatchObject({ index: false });
+    } finally {
+      getFaqEntry.mockReset();
+      getPageAvailability.mockResolvedValue({ status: 'missing', language: 'en' });
+    }
   });
 
   it('does not look for a redirect when the entry is live', async () => {

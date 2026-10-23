@@ -286,6 +286,24 @@ describe('POST /store/orders/:token/pay', () => {
     expect(await orderOf(app, shop.orderId)).toMatchObject({ chipPurchaseId: second.id, payerEmail: 'b@example.com' });
   });
 
+  it('refuses to start a payment for a suspended page with 410, makes no purchase, and works again once it is back', async () => {
+    const shop = await aShopWithOrder(app);
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: new Date(), suspendReason: 'x' } });
+
+    const res = await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' });
+
+    expect(res.statusCode).toBe(410);
+    expect(res.json().error.code).toBe('PAGE_UNAVAILABLE');
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PLACED', chipPurchaseId: null });
+
+    const methods = await app.inject({ method: 'GET', url: `/store/${shop.handle}/pay-methods?amount=22000`, remoteAddress: from() });
+    expect(methods.json()).toEqual({ fpx: false, wallets: [], card: false });
+
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: null, suspendReason: null } });
+    await startPayment(app, shop);
+  });
+
   it('refuses to start a payment once a receipt is sent, and makes no purchase', async () => {
     const shop = await aShopWithOrder(app);
     await app.prisma.order.update({ where: { id: shop.orderId }, data: { receiptKey: `receipts/${shop.pageId}/r.png`, receiptType: 'image/png', receiptUploadedAt: new Date() } });

@@ -50,6 +50,15 @@ describe('getOwnerPage', () => {
     expect(page?.handle).toMatch(/^op-/);
   });
 
+  it('carries a suspension and its reason, and null when there is none', async () => {
+    const accountId = await anAccount({ published: true });
+    expect(await getOwnerPage(accountId)).toMatchObject({ suspendedAt: null, suspendReason: null });
+
+    const at = new Date('2026-10-20T03:00:00Z');
+    await write.page.update({ where: { accountId }, data: { suspendedAt: at, suspendReason: 'Scam reports' } });
+    expect(await getOwnerPage(accountId)).toMatchObject({ suspendedAt: at, suspendReason: 'Scam reports' });
+  });
+
   it('returns a published page too', async () => {
     const page = await getOwnerPage(await anAccount({ published: true }));
 

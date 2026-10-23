@@ -32,6 +32,8 @@ const personal: OwnerPage = {
   handle: 'nadia',
   displayName: 'Nadia',
   published: true,
+  suspendedAt: null,
+  suspendReason: null,
   mode: 'PERSONAL',
   paidUntil: null,
   leadsCaptured: 0,

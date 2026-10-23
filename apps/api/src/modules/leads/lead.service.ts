@@ -8,6 +8,7 @@ import {
   type LeadJobData,
 } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 
 export interface LeadQueueLike {
   add(name: string, data: LeadJobData, opts?: unknown): Promise<{ id?: string }>;
@@ -79,7 +80,7 @@ export async function captureLead(
     select: {
       id: true,
       pageId: true,
-      page: { select: { mode: true, paidUntil: true, leadsCaptured: true } },
+      page: { select: { mode: true, paidUntil: true, leadsCaptured: true, suspendedAt: true } },
       lead: { select: { id: true } },
       messages: {
         where: { role: 'USER' },
@@ -91,6 +92,8 @@ export async function captureLead(
   // An unknown conversation is not qualified, and saying so rather than "no
   // such conversation" keeps this endpoint from confirming which ids exist.
   if (!conversation) throw new NotQualifiedError();
+  // A suspended page keeps no new leads. Said plainly: the visitor already has the page's own 410 on every other surface.
+  if (conversation.page.suspendedAt !== null) throw new PageUnavailableError();
   if (conversation.lead) throw new AlreadyCapturedError();
 
   const eligible = qualifies({

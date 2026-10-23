@@ -1,4 +1,5 @@
 import { FREE_LEADS, FREE_ORDERS, planEndedSaid, type OrderState, type PlanState } from '@curios/core';
+import { SUSPENDED_ALERT_ID } from './alert-ids.js';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
 /**
@@ -17,7 +18,7 @@ export interface Alert {
   id: string;
   tone: 'info' | 'warn' | 'stop';
   where: 'all' | '/app/leads' | '/app/questions' | '/app/orders';
-  icon: 'lead' | 'card' | 'chat' | 'shop';
+  icon: 'lead' | 'card' | 'chat' | 'shop' | 'page';
   title: string;
   text: string;
   meter?: boolean[];
@@ -25,6 +26,7 @@ export interface Alert {
 }
 
 const BILLING = '/app/billing';
+
 
 /** "Near" the conversation limit: about 80% of it, as the handoff asks. */
 export const NEAR_SHARE = 0.8;
@@ -120,9 +122,29 @@ function orderAlerts(orders: ShopAlertInput): Alert[] {
  * board's (the owner's decision of 2026-10-16), keeping the repo's meaning
  * where the old trial notice on Leads said the same thing.
  */
-export function alertsFor(input: { plan: PlanState; usage: { used: number; cap: number }; now: Date; orders?: ShopAlertInput }): Alert[] {
+export function alertsFor(input: {
+  plan: PlanState;
+  usage: { used: number; cap: number };
+  now: Date;
+  orders?: ShopAlertInput;
+  /** Set while the Curios team has the page suspended: the reason they gave. */
+  suspension?: { reason: string | null };
+}): Alert[] {
   const { plan, usage, now } = input;
   const alerts: Alert[] = [];
+
+  // First, and on every screen: nothing else matters while visitors cannot reach the page.
+  if (input.suspension) {
+    alerts.push({
+      id: SUSPENDED_ALERT_ID,
+      tone: 'stop',
+      where: 'all',
+      icon: 'page',
+      title: 'Your page is suspended',
+      text: input.suspension.reason?.trim() || 'The Curios team has taken your page down. Contact support to find out why.',
+      action: { href: 'mailto:support@curios.my', label: 'Contact support' },
+    });
+  }
 
   switch (plan.kind) {
     case 'lapsed':

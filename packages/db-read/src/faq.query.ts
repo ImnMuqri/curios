@@ -1,3 +1,4 @@
+import { PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { HeadingFont, PageBackground } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 
@@ -52,7 +53,7 @@ const MAX_LIMIT = 100;
  */
 function publishedBusinessPage(handle: string) {
   return prismaRead.page.findFirst({
-    where: { handle: handle.toLowerCase(), published: true, mode: 'BUSINESS' },
+    where: { handle: handle.toLowerCase(), ...PUBLIC_PAGE_WHERE, mode: 'BUSINESS' },
     select: { id: true, handle: true, displayName: true, accentColor: true, headingFont: true, background: true, backgroundColor: true },
   });
 }

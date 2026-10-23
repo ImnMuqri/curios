@@ -3,7 +3,12 @@ import { render, screen } from '@testing-library/react';
 import type { PublicPage } from '@curios/db-read';
 import { FREE_LEADS } from '@curios/core';
 
-vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn() }));
+vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
+vi.mock('next/navigation', () => ({
+  notFound: vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND');
+  }),
+}));
 
 // Mocked so `HandlePage` can be inspected for what it decided, not just what
 // `Ask` does with it -- `ask.test.tsx` already proves the prop-to-DOM half of
@@ -13,9 +18,9 @@ vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn()
 // internals for tests that were never about `Ask`.
 vi.mock('./ask.js', () => ({ Ask: vi.fn(() => null) }));
 
-const { getFaqIndex, getPublicPage } = await import('@curios/db-read');
+const { getFaqIndex, getPageAvailability, getPublicPage } = await import('@curios/db-read');
 const { Ask } = await import('./ask.js');
-const HandlePage = (await import('./page.js')).default;
+const { default: HandlePage, generateMetadata } = await import('./page.js');
 
 const page: PublicPage = {
   id: 'p1',
@@ -51,6 +56,39 @@ const page: PublicPage = {
   socials: [],
   shopOrdering: null,
 };
+
+describe('a suspended page', () => {
+  it('says This page is unavailable at the same address, in the page language, and is not indexed', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue(null);
+    vi.mocked(getPageAvailability).mockResolvedValue({ status: 'suspended', language: 'en' });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.getByRole('heading', { name: 'This page is unavailable' })).toBeInTheDocument();
+    expect(screen.getByText('It’s been taken down for now.')).toBeInTheDocument();
+    expect(screen.queryByText('Nadia Bakes')).toBeNull();
+    expect((await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) })).robots).toEqual({ index: false, follow: false });
+  });
+
+  it('speaks Malay for a Malay page', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue(null);
+    vi.mocked(getPageAvailability).mockResolvedValue({ status: 'suspended', language: 'ms' });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(screen.getByRole('heading', { name: 'Halaman ini tidak tersedia' })).toBeInTheDocument();
+    expect(screen.getByText('Ia diturunkan buat masa ini.')).toBeInTheDocument();
+  });
+
+  it('is still a 404 for an address nobody holds, and renders normally once the page is back', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue(null);
+    vi.mocked(getPageAvailability).mockResolvedValue({ status: 'missing', language: 'en' });
+    await expect(HandlePage({ params: Promise.resolve({ handle: 'nobody' }) })).rejects.toThrow('NEXT_NOT_FOUND');
+    expect(await generateMetadata({ params: Promise.resolve({ handle: 'nobody' }) })).toEqual({});
+
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    expect(screen.getByText('Nadia Bakes')).toBeDefined();
+  });
+});
 
 describe('public page', () => {
   it('renders the owner name and every link as a real anchor', async () => {

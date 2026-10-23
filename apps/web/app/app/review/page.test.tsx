@@ -48,6 +48,8 @@ const page: OwnerPage = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
   published: false,
+  suspendedAt: null,
+  suspendReason: null,
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,

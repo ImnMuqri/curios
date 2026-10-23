@@ -20,6 +20,34 @@ const page = (
   orders: shop(p),
 });
 
+describe('a suspended page', () => {
+  const suspension = { reason: 'Customers reported being asked to pay before an order.' };
+
+  it('puts a red alert on every screen with the reason as its text, and Contact support as its action', () => {
+    const alerts = alertsFor({ ...page(), suspension });
+
+    expect(alerts[0]).toEqual({
+      id: 'suspended',
+      tone: 'stop',
+      where: 'all',
+      icon: 'page',
+      title: 'Your page is suspended',
+      text: 'Customers reported being asked to pay before an order.',
+      action: { href: 'mailto:support@curios.my', label: 'Contact support' },
+    });
+  });
+
+  it('comes before the plan alerts, and is gone once the page is brought back', () => {
+    const lapsed = page({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2026-10-13T20:00:00.000Z') });
+    expect(alertsFor({ ...lapsed, suspension }).map((a) => a.id)[0]).toBe('suspended');
+    expect(alertsFor(lapsed).map((a) => a.id)).not.toContain('suspended');
+  });
+
+  it('still says something when no reason was kept', () => {
+    expect(alertsFor({ ...page(), suspension: { reason: null } })[0]?.text).toMatch(/Contact support/);
+  });
+});
+
 describe('alertsFor', () => {
   it('counts a running trial on Leads, in blue, one segment per free lead', () => {
     const [alert] = alertsFor({ plan: plan({ leadsCaptured: 1 }), usage: quiet, now: NOW });

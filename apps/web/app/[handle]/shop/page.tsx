@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getCheckout } from '@curios/db-read';
+import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../_system/unavailable.js';
 import { PageTheme } from '../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../lib/avatar-url.js';
 import { BasketBar } from './basket-bar.js';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const shop = await getCheckout(handle);
-  if (!shop) return {};
+  if (!shop) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   return { title: `${shop.displayName} · Shop` };
 }
 
@@ -31,7 +32,11 @@ export default async function ShopPage({
   const { handle } = await params;
   const { item } = await searchParams;
   const shop = await getCheckout(handle);
-  if (!shop) notFound();
+  if (!shop) {
+    const suspended = await suspendedLanguage(handle);
+    if (suspended) return <UnavailableScreen language={suspended} />;
+    notFound();
+  }
 
   // Links shared before the product page (the chat's "Order" chips among them) name the item by id.
   const shared = item ? shop.items.find((candidate) => candidate.id === item) : undefined;

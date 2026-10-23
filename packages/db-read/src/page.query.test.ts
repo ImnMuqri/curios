@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { getPublicPage } from './page.query.js';
+import { getPageAvailability, getPageStatus, getPublicPage } from './page.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -77,6 +77,27 @@ describe('getPublicPage', () => {
 
   it('returns null for an unpublished page', async () => {
     expect(await getPublicPage('draft')).toBeNull();
+  });
+
+  it('hides a suspended page and says why it is hidden, in its own language, until it is brought back', async () => {
+    const account = await write.account.create({
+      data: {
+        email: 'suspended-page@example.com',
+        pages: { create: { handle: 'suspended-one', skeleton: 'suspendedone', displayName: 'Sus', language: 'ms', published: true, suspendedAt: new Date(), suspendReason: 'Scam reports' } },
+      },
+      select: { pages: { select: { id: true } } },
+    });
+
+    expect(await getPublicPage('suspended-one')).toBeNull();
+    expect(await getPageStatus('suspended-one')).toBe('suspended');
+    expect(await getPageAvailability('Suspended-One')).toEqual({ status: 'suspended', language: 'ms' });
+    expect(await getPageStatus('nadia')).toBe('live');
+    expect(await getPageStatus('draft')).toBe('missing');
+    expect(await getPageStatus('nobody')).toBe('missing');
+
+    await write.page.update({ where: { id: account.pages[0]!.id }, data: { suspendedAt: null, suspendReason: null } });
+    expect(await getPublicPage('suspended-one')).not.toBeNull();
+    expect(await getPageStatus('suspended-one')).toBe('live');
   });
 
   it('carries what the capture gate needs', async () => {

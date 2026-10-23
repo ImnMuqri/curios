@@ -148,6 +148,22 @@ describe('POST /leads', () => {
     expect(await app.prisma.lead.findUnique({ where: { id: res.json().leadId } })).not.toBeNull();
   });
 
+  it('refuses a suspended page with 410 PAGE_UNAVAILABLE, and works again once it is back', async () => {
+    const conversationId = await aPageWithConversation();
+    const conversation = await app.prisma.conversation.findUniqueOrThrow({ where: { id: conversationId }, select: { pageId: true } });
+    await app.prisma.page.update({ where: { id: conversation.pageId }, data: { suspendedAt: new Date(), suspendReason: 'x' } });
+    const post = () =>
+      app.inject({ method: 'POST', url: '/leads', remoteAddress: from(), payload: { conversationId, phone: '0123456789', consent: true } });
+
+    const refused = await post();
+    expect(refused.statusCode).toBe(410);
+    expect(refused.json().error.code).toBe('PAGE_UNAVAILABLE');
+    expect(await app.prisma.lead.count({ where: { pageId: conversation.pageId } })).toBe(0);
+
+    await app.prisma.page.update({ where: { id: conversation.pageId }, data: { suspendedAt: null, suspendReason: null } });
+    expect((await post()).statusCode).toBe(201);
+  });
+
   it('refuses a trial-spent conversation with 400 NOT_QUALIFIED', async () => {
     const conversationId = await aPageWithConversation({ leadsCaptured: FREE_LEADS });
 

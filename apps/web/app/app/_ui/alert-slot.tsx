@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
+import { SUSPENDED_ALERT_ID } from '../alert-ids.js';
 import type { Alert } from '../alerts.js';
 import styles from './alert-slot.module.css';
 
@@ -17,6 +18,7 @@ const ICONS = {
   card: 'M3 6h18v13H3zM3 10h18',
   chat: 'M4 5h16v11H8l-4 4zM8 9h8M8 12h5',
   shop: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5',
+  page: 'M6 3h9l4 4v14H6zM15 3v4h4',
 } as const;
 
 const KEY = (id: string) => `curios:alert-dismissed:${id}`;
@@ -35,6 +37,9 @@ function readDismissed(id: string): boolean {
  * does not), then one for every screen, then the one about this screen.
  */
 export function pickAlert(alerts: Alert[], pathname: string): Alert | null {
+  // A suspended page says so on every screen, whatever else is red there.
+  const suspended = alerts.find((a) => a.id === SUSPENDED_ALERT_ID);
+  if (suspended) return suspended;
   const here = alerts.filter((a) => a.where !== 'all' && pathname.startsWith(a.where));
   return here.find((a) => a.tone === 'stop') ?? alerts.find((a) => a.where === 'all') ?? here[0] ?? null;
 }

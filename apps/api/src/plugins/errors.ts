@@ -19,6 +19,8 @@ interface DomainError extends Error {
 // browser anyway. One list now, and this is it.
 export const DOMAIN_ERROR_CODES = new Set([
   'PAGE_NOT_FOUND',
+  // A suspended page: chat, leads, orders, paying and receipts all answer this (410).
+  'PAGE_UNAVAILABLE',
   // Reaches a client through the SSE error event rather than a status code:
   // headers are already sent by the time the chat service can throw. Listed
   // here anyway, because this set is the one answer to "which codes may reach

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getFaqIndex } from '@curios/db-read';
+import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../_system/unavailable.js';
 import { PageTheme } from '../../_bento/BentoPage.js';
 import { FaqList } from './faq-list.js';
 import styles from './faq.module.css';
@@ -29,7 +30,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { handle } = await params;
   const index = await getFaqIndex(handle);
-  if (!index) return {};
+  if (!index) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   return {
     title: `Questions about ${index.displayName}`,
     description: `What people ask ${index.displayName}, answered by ${index.displayName}.`,
@@ -43,6 +44,11 @@ export default async function FaqIndexPage({
 }) {
   const { handle } = await params;
   const index = await getFaqIndex(handle);
+
+  if (!index) {
+    const suspended = await suspendedLanguage(handle);
+    if (suspended) return <UnavailableScreen language={suspended} />;
+  }
 
   // An index with no entries is a page with no reason to exist. 404 rather
   // than publish an empty one -- a thin page indexed is worse than no page.

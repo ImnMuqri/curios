@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { canCapture, shouldIndex } from '@curios/core';
 import { getFaqIndex, getPublicPage } from '@curios/db-read';
+import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../_system/unavailable.js';
 import { BentoPage, FAQ_SHOWN } from '../_bento/BentoPage.js';
 import { avatarUrl, coverUrl } from '../../lib/avatar-url.js';
 import { Ask } from './ask.js';
@@ -44,7 +45,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { handle } = await params;
   const page = await getPublicPage(handle);
-  if (!page) return {};
+  if (!page) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
 
   return {
     title: page.displayName,
@@ -59,7 +60,12 @@ export async function generateMetadata({
 export default async function HandlePage({ params }: { params: Promise<{ handle: string }> }) {
   const { handle } = await params;
   const page = await getPublicPage(handle);
-  if (!page) notFound();
+  if (!page) {
+    // Suspended by the Curios team: the same address says so, rather than 404.
+    const suspended = await suspendedLanguage(handle);
+    if (suspended) return <UnavailableScreen language={suspended} />;
+    notFound();
+  }
 
   // Facts now reach a visitor only through the ask bar's cycling questions and
   // the FAQ pages, per slice 13 -- this page renders no fact list of its own.

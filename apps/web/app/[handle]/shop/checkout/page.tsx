@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { getCheckout } from '@curios/db-read';
+import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../basket.js';
@@ -14,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export async function generateMetadata({ params }: { params: Promise<{ handle: string }> }): Promise<Metadata> {
   const { handle } = await params;
   const shop = await getCheckout(handle);
-  if (!shop) return {};
+  if (!shop) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   return { title: `${shop.displayName} · Checkout` };
 }
 
@@ -22,7 +23,11 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
   const { handle } = await params;
   const now = new Date();
   const shop = await getCheckout(handle, now);
-  if (!shop) notFound();
+  if (!shop) {
+    const suspended = await suspendedLanguage(handle);
+    if (suspended) return <UnavailableScreen language={suspended} />;
+    notFound();
+  }
   // Paused: back to the shop, whose basket bar is the WhatsApp fallback.
   if (!shop.canTakeOrders) redirect(`/${shop.handle}/shop`);
 

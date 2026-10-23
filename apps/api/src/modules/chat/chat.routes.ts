@@ -5,6 +5,7 @@ import { createAnthropicGateway, type Gateway } from '@curios/gateway';
 import { createOpenAiEmbedder, type Embedder } from '@curios/embeddings';
 import { answer, MAX_HISTORY_MESSAGES } from './chat.service.js';
 import { testAnswer } from './chat-test.service.js';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
 
 export interface ChatRouteOptions {
@@ -76,6 +77,11 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       },
     },
     async (request, reply) => {
+      // Before the stream opens, so a suspended page is a real 410 the widget can read, not a 200 with an error inside it.
+      // (The service checks again: it is the check that counts.)
+      const status = await app.prisma.page.findUnique({ where: { handle: request.params.handle.toLowerCase() }, select: { published: true, suspendedAt: true } });
+      if (status?.published && status.suspendedAt !== null) throw new PageUnavailableError();
+
       // hijack() takes the raw response out of Fastify's own reply lifecycle --
       // required for a manual setHeader()/writeHead()/write()/end() sequence
       // like this one. Without it, Fastify's own reply handling (which never

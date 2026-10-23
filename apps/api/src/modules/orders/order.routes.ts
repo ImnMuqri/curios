@@ -72,6 +72,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
             items: z.array(shelfItem).optional(),
             delivery: z.object({ mode: z.enum(['NONE', 'FLAT', 'RIDER']), feeCents: z.number().nullable() }).optional(),
           }),
+          410: errorSchema,
         },
       },
     },
@@ -121,7 +122,7 @@ export const receiptRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (ap
       schema: {
         params: z.object({ token: z.string().min(1).max(128) }),
         body: z.object({ contentType: z.string().max(40), data: z.string().max(7_000_000) }),
-        response: { 200: z.object({ receiptUploadedAt: z.string() }), 400: errorSchema, 403: errorSchema, 404: errorSchema, 409: errorSchema, 503: errorSchema },
+        response: { 200: z.object({ receiptUploadedAt: z.string() }), 400: errorSchema, 403: errorSchema, 404: errorSchema, 409: errorSchema, 410: errorSchema, 503: errorSchema },
       },
     },
     async (request) => {

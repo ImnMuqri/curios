@@ -3,7 +3,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { FaqIndex } from '@curios/db-read';
 
 const getFaqIndex = vi.fn();
-vi.mock('@curios/db-read', () => ({ getFaqIndex }));
+const getPageAvailability = vi.fn(async (): Promise<{ status: string; language: string }> => ({ status: 'missing', language: 'en' }));
+vi.mock('@curios/db-read', () => ({ getFaqIndex, getPageAvailability }));
 
 // Throws, because the real `notFound` throws NEXT_NOT_FOUND. A recording mock
 // lets control fall past a 404 the route must not survive.
@@ -73,6 +74,21 @@ describe('the FAQ index', () => {
     getFaqIndex.mockResolvedValueOnce({ ...index, entries: [] });
 
     await expect(FaqIndexPage(params('nadia'))).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('says the page is unavailable, in its language and not indexed, when it is suspended', async () => {
+    getFaqIndex.mockResolvedValue(null);
+    getPageAvailability.mockResolvedValue({ status: 'suspended', language: 'ms' });
+    try {
+      render(await FaqIndexPage(params('nadia')));
+      expect(screen.getByRole('heading', { name: 'Halaman ini tidak tersedia' })).toBeInTheDocument();
+      expect(screen.getByText('Ia diturunkan buat masa ini.')).toBeInTheDocument();
+      const { generateMetadata } = await import('./page.js');
+      expect((await generateMetadata(params('nadia'))).robots).toMatchObject({ index: false });
+    } finally {
+      getFaqIndex.mockReset();
+      getPageAvailability.mockResolvedValue({ status: 'missing', language: 'en' });
+    }
   });
 
   it('404s a handle with no published business page', async () => {

@@ -465,6 +465,19 @@ describe('answer', () => {
     expect(chatSpy).not.toHaveBeenCalled();
     expect(await prisma.conversation.count()).toBe(0);
   });
+
+  it('refuses a suspended page with PAGE_UNAVAILABLE: no answer, no tokens spent, no conversation', async () => {
+    await prisma.page.update({ where: { handle: 'nadia' }, data: { suspendedAt: new Date(), suspendReason: 'x' } });
+    const gateway = gatewaySaying('should not be used');
+    const chatSpy = vi.spyOn(gateway, 'chat');
+
+    await expect(
+      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' })),
+    ).rejects.toMatchObject({ code: 'PAGE_UNAVAILABLE', statusCode: 410 });
+
+    expect(chatSpy).not.toHaveBeenCalled();
+    expect(await prisma.conversation.count()).toBe(0);
+  });
 });
 
 describe('threading a conversation', () => {

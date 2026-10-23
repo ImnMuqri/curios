@@ -9,7 +9,7 @@ beforeEach(async () => {
   await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
 });
 
-async function seedPage(input: { published?: boolean; mode?: 'PERSONAL' | 'BUSINESS' } = {}) {
+async function seedPage(input: { published?: boolean; mode?: 'PERSONAL' | 'BUSINESS'; suspended?: boolean } = {}) {
   const account = await write.account.create({
     data: { email: `faqr-${randomUUID()}@example.com` },
     select: { id: true },
@@ -23,6 +23,7 @@ async function seedPage(input: { published?: boolean; mode?: 'PERSONAL' | 'BUSIN
       displayName: 'Nadia Bakes',
       published: input.published ?? true,
       mode: input.mode ?? 'BUSINESS',
+      ...(input.suspended ? { suspendedAt: new Date(), suspendReason: 'x' } : {}),
     },
     select: { id: true, handle: true },
   });
@@ -128,6 +129,15 @@ describe('getFaqIndex', () => {
     await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });
 
     expect(await getFaqIndex(page.handle)).toBeNull();
+  });
+
+  it('refuses a suspended page: the index, an entry and a retired slug', async () => {
+    const page = await seedPage({ suspended: true });
+    await seedAnswered(page.id, { text: 'Berapa harga?', slug: 'berapa-harga' });
+
+    expect(await getFaqIndex(page.handle)).toBeNull();
+    expect(await getFaqEntry(page.handle, 'berapa-harga')).toBeNull();
+    expect(await getFaqRedirect(page.handle, 'berapa-harga')).toBeNull();
   });
 
   it('returns null for a handle nobody has claimed', async () => {

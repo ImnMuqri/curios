@@ -104,7 +104,7 @@ export const shopPayStartRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = 
           // CHIP needs an email for its receipt (owner's answer 2: asked only for an online method).
           email: z.string().trim().min(3).max(254).email(),
         }),
-        response: { 200: z.object({ url: z.string().nullable() }), 400: errorSchema, 404: errorSchema, 409: errorSchema },
+        response: { 200: z.object({ url: z.string().nullable() }), 400: errorSchema, 404: errorSchema, 409: errorSchema, 410: errorSchema },
       },
     },
     async (request) => {

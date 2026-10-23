@@ -42,6 +42,7 @@ beforeAll(async () => {
   await seed('sq-closed', { storeEnabled: false });
   await seed('sq-personal', { mode: 'PERSONAL' });
   await seed('sq-draft', { published: false });
+  await seed('sq-suspended', { suspendedAt: new Date(), suspendReason: 'Scam reports' });
   await seed('sq-many', {
     items: { create: ['M1', 'M2', 'M3', 'M4'].map((name, position) => ({ name, slug: name.toLowerCase(), position, available: true })) },
   });
@@ -105,6 +106,11 @@ describe('getPublicShop', () => {
     expect(await getPublicShop('sq-closed')).toBeNull();
     expect(await getPublicShop('sq-personal')).toBeNull();
     expect(await getPublicShop('sq-draft')).toBeNull();
+  });
+
+  it('is null for a suspended page, and the tile with it', async () => {
+    expect(await getPublicShop('sq-suspended')).toBeNull();
+    expect(await getPublicPage('sq-suspended')).toBeNull();
   });
 });
 

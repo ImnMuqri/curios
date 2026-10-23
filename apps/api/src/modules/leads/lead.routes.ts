@@ -22,6 +22,7 @@ export const leadRoutes: FastifyPluginAsyncZod = async (app) => {
           201: z.object({ leadId: z.string() }),
           400: errorSchema,
           409: errorSchema,
+          410: errorSchema,
         },
       },
     },

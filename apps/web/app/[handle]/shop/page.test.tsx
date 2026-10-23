@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { Checkout } from '@curios/db-read';
 
-vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn() }));
+vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
 vi.mock('next/navigation', () => ({
   redirect: vi.fn((to: string) => {
     throw new Error(`NEXT_REDIRECT ${to}`);
@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./shop-page.js', () => ({ ShopPageView: vi.fn(() => null) }));
 
-const { getCheckout } = await import('@curios/db-read');
+const { getCheckout, getPageAvailability } = await import('@curios/db-read');
 const { redirect } = await import('next/navigation');
 const { ShopPageView } = await import('./shop-page.js');
 const { default: ShopPage, generateMetadata } = await import('./page.js');
@@ -66,6 +66,16 @@ describe('/[handle]/shop', () => {
   it('is a 404 when there is no shop to show', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(null);
     await expect(ShopPage({ params: Promise.resolve({ handle: 'nope' }), searchParams: Promise.resolve({}) })).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('says the shop is unavailable, and not indexed, when the page is suspended', async () => {
+    vi.mocked(getCheckout).mockResolvedValue(null);
+    vi.mocked(getPageAvailability).mockResolvedValueOnce({ status: 'suspended', language: 'en' });
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
+    expect(screen.getByRole('heading', { name: 'This page is unavailable' })).toBeInTheDocument();
+    vi.mocked(getPageAvailability).mockResolvedValueOnce({ status: 'suspended', language: 'en' });
+    expect((await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) })).robots).toMatchObject({ index: false });
+    vi.mocked(getCheckout).mockReset();
   });
 
   it('hands the view its items with photo URLs and the language', async () => {

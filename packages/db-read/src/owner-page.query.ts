@@ -5,6 +5,10 @@ export interface OwnerPage {
   handle: string;
   displayName: string;
   published: boolean;
+  /** When the Curios team suspended the page, or null; the dashboard says so on every screen. */
+  suspendedAt: Date | null;
+  /** What the team wrote as the reason, shown to the owner. */
+  suspendReason: string | null;
   mode: 'PERSONAL' | 'BUSINESS';
   /** Paid through this instant, or null for never paid. */
   paidUntil: Date | null;
@@ -55,6 +59,8 @@ export async function getOwnerPage(accountId: string): Promise<OwnerPage | null>
       handle: true,
       displayName: true,
       published: true,
+      suspendedAt: true,
+      suspendReason: true,
       mode: true,
       paidUntil: true,
       leadsCaptured: true,

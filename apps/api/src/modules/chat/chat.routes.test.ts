@@ -156,6 +156,20 @@ describe('POST /chat/:handle', () => {
     expect(conversationIdOf(second.payload)).toBe(conversationId);
   });
 
+  it('answers a suspended page 410 PAGE_UNAVAILABLE before any stream, and answers again once it is back', async () => {
+    const suspended = (suspendedAt: Date | null) => app.prisma.page.update({ where: { handle }, data: { suspendedAt, suspendReason: suspendedAt ? 'Scam reports' : null } });
+    await suspended(new Date());
+    try {
+      const res = await app.inject({ method: 'POST', url: `/chat/${handle}`, remoteAddress: from(), payload: { question: 'harga kek?' } });
+      expect(res.statusCode).toBe(410);
+      expect(res.json().error.code).toBe('PAGE_UNAVAILABLE');
+    } finally {
+      await suspended(null);
+    }
+    const back = await app.inject({ method: 'POST', url: `/chat/${handle}`, remoteAddress: from(), payload: { question: 'harga kek?' } });
+    expect(back.statusCode).toBe(200);
+  });
+
   it('reports a dead conversation inside the stream, not as a status code', async () => {
     // Headers are already sent by the time the service can throw, so this can
     // never be a 404 on the wire. It has to arrive as an error event.

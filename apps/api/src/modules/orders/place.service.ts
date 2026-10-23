@@ -3,6 +3,7 @@ import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, normalizeMal
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 import { PageNotFoundError } from '../chat/chat.service.js';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { InvalidPhoneError } from '../leads/lead.service.js';
 import { StoreBusinessOnlyError } from '../store/store.errors.js';
 import {
@@ -90,9 +91,10 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   // check that counts.
   const found = await deps.prisma.page.findUnique({
     where: { handle: input.handle.toLowerCase(), published: true },
-    select: { id: true, mode: true, storeEnabled: true, minNoticeDays: true, closedDays: true },
+    select: { id: true, mode: true, storeEnabled: true, minNoticeDays: true, closedDays: true, suspendedAt: true },
   });
   if (!found) throw new PageNotFoundError();
+  if (found.suspendedAt !== null) throw new PageUnavailableError();
   if (found.mode !== 'BUSINESS') throw new StoreBusinessOnlyError();
   if (!found.storeEnabled) throw new StoreClosedError();
   if (!isOrderDay(input.day, { now, minNoticeDays: found.minNoticeDays, closedDays: found.closedDays })) {
@@ -107,6 +109,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       where: { id: found.id },
       select: {
         published: true,
+        suspendedAt: true,
         mode: true,
         storeEnabled: true,
         paidUntil: true,
@@ -122,6 +125,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       },
     });
     if (!page.published) throw new PageNotFoundError();
+    if (page.suspendedAt !== null) throw new PageUnavailableError();
     if (page.mode !== 'BUSINESS') throw new StoreBusinessOnlyError();
     if (!page.storeEnabled) throw new StoreClosedError();
     if (!canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now })) {

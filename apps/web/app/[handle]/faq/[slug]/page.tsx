@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { serialiseJsonLd } from '@curios/core';
 import { getFaqEntry, getFaqRedirect } from '@curios/db-read';
+import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
 import styles from '../faq.module.css';
 
@@ -49,7 +50,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { handle, slug } = await params;
   const entry = await getFaqEntry(handle, slug);
-  if (!entry) return {};
+  if (!entry) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   return {
     title: `${entry.question} — ${entry.displayName}`,
     // The answer is the description: it is what a searcher wants to see in the
@@ -67,6 +68,8 @@ export default async function FaqEntryPage({
   const entry = await getFaqEntry(handle, slug);
 
   if (!entry) {
+    const suspended = await suspendedLanguage(handle);
+    if (suspended) return <UnavailableScreen language={suspended} />;
     // A slug retired by a merge or split points at its topic's live page; the
     // permanent redirect carries search ranking over. Every other failure (no
     // such handle, personal or unpublished page, unknown slug, withdrawn

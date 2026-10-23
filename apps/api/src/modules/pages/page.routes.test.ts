@@ -411,6 +411,16 @@ describe('GET /pages/near', () => {
     expect(await near(real.toUpperCase().slice(0, -1) + (real.endsWith('z') ? 'Y' : 'Z'))).toEqual({ handle: real });
   });
 
+  it('does not name a suspended page', async () => {
+    const real = `n${randomUUID().slice(0, 8)}`;
+    await published(real);
+    const typo = `${real.slice(0, -1)}${real.endsWith('z') ? 'y' : 'z'}`;
+    expect(await near(typo)).toEqual({ handle: real });
+
+    await app.prisma.page.update({ where: { handle: real }, data: { suspendedAt: new Date(), suspendReason: 'x' } });
+    expect(await near(typo)).toEqual({ handle: null });
+  });
+
   it('suggests nothing for a live address, a far one, or a page not published', async () => {
     const real = `n${randomUUID().slice(0, 8)}`;
     const hidden = `n${randomUUID().slice(0, 8)}`;

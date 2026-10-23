@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getShopItem } from '@curios/db-read';
 import { formatRinggit, fromPrice } from '@curios/core/store';
+import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../../lib/avatar-url.js';
 import { nextOrderDay } from '../pill.js';
@@ -21,7 +22,7 @@ type Params = Promise<{ handle: string; slug: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { handle, slug } = await params;
   const found = await findItem(handle, slug);
-  if (!found) return {};
+  if (!found) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
   const { shop, item } = found;
   const photo = avatarUrl(item.photoKey);
   const from = fromPrice(item);
@@ -37,7 +38,11 @@ export default async function ProductPage({ params }: { params: Params }) {
   const { handle, slug } = await params;
   // Unknown, taken down, another shop's, a closed shop or a personal page: all one 404.
   const found = await findItem(handle, slug);
-  if (!found) notFound();
+  if (!found) {
+    const suspended = await suspendedLanguage(handle);
+    if (suspended) return <UnavailableScreen language={suspended} />;
+    notFound();
+  }
   const { shop, item } = found;
 
   return (

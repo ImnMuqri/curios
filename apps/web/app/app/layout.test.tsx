@@ -48,6 +48,8 @@ const page: OwnerPage = {
   handle: 'nadia',
   displayName: 'Nadia Bakes',
   published: false,
+  suspendedAt: null,
+  suspendReason: null,
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,
@@ -122,6 +124,26 @@ describe('the dashboard layout', () => {
     expect(frame.props.alerts).toEqual([expect.objectContaining({ id: 'spent', where: '/app/leads' })]);
     expect(frame.props.billingDot).toBe(true);
     expect(getConversationUsage).toHaveBeenCalledWith('p1', expect.any(Date));
+  });
+
+  it('puts the suspension, with its reason, on every screen of a suspended page', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce({ ...page, suspendedAt: new Date('2026-10-20T03:00:00Z'), suspendReason: 'Scam reports' });
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string; where: string; text: string }[] } };
+
+    expect(frame.props.alerts[0]).toMatchObject({ id: 'suspended', where: 'all', text: 'Scam reports' });
+  });
+
+  it('says nothing about suspension for a live page', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce(page);
+    countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+
+    const frame = (await AppLayout({ children: null })) as { props: { alerts: { id: string }[] } };
+
+    expect(frame.props.alerts.map((a) => a.id)).not.toContain('suspended');
   });
 
   it('counts the free orders from the trial reset, on Orders', async () => {

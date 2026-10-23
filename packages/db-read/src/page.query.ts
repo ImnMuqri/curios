@@ -1,4 +1,4 @@
-import { canTakeOrders } from '@curios/core';
+import { canTakeOrders, PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { DeliveryMode } from '@curios/core/store';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
@@ -67,6 +67,28 @@ export interface PublicPage {
   } | null;
 }
 
+export type PageStatus = 'live' | 'suspended' | 'missing';
+
+/**
+ * What a visitor should be told about an address: live, suspended by the
+ * Curios team (the routes show the unavailable page, not a 404), or missing
+ * (never claimed, or not published yet -- a draft is not announced). Carries
+ * the page's language so the unavailable page can speak it.
+ */
+export async function getPageStatus(handle: string): Promise<PageStatus> {
+  return (await getPageAvailability(handle)).status;
+}
+
+export async function getPageAvailability(handle: string): Promise<{ status: PageStatus; language: 'en' | 'ms' }> {
+  const page = await prismaRead.page.findUnique({
+    where: { handle: handle.toLowerCase() },
+    select: { published: true, suspendedAt: true, language: true },
+  });
+  const language = page?.language === 'ms' ? 'ms' : 'en';
+  if (!page || !page.published) return { status: 'missing', language };
+  return { status: page.suspendedAt === null ? 'live' : 'suspended', language };
+}
+
 /**
  * Everything the public page renders, in one query.
  *
@@ -77,7 +99,7 @@ export interface PublicPage {
  */
 export async function getPublicPage(handle: string): Promise<PublicPage | null> {
   const page = await prismaRead.page.findUnique({
-    where: { handle: handle.toLowerCase(), published: true },
+    where: { handle: handle.toLowerCase(), ...PUBLIC_PAGE_WHERE },
     select: {
       id: true,
       handle: true,

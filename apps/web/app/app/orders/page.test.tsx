@@ -31,6 +31,8 @@ const page: OwnerPage = {
   handle: 'keklina',
   displayName: 'Kek Lina',
   published: true,
+  suspendedAt: null,
+  suspendReason: null,
   mode: 'BUSINESS',
   paidUntil: null,
   leadsCaptured: 0,

@@ -1,3 +1,4 @@
+import { PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import type { DeliveryMode } from '@curios/core/store';
 import { prismaRead } from './client.js';
@@ -113,7 +114,7 @@ export interface PublicShop {
  */
 export async function getPublicShop(handle: string): Promise<PublicShop | null> {
   const page = await prismaRead.page.findUnique({
-    where: { handle: handle.toLowerCase(), published: true },
+    where: { handle: handle.toLowerCase(), ...PUBLIC_PAGE_WHERE },
     select: {
       mode: true,
       storeEnabled: true,

@@ -212,6 +212,15 @@ describe('getOrderByToken', () => {
     expect(await getOrderByToken('nope-' + randomUUID())).toBeNull();
   });
 
+  it('still returns the order of a suspended page: its customer can read it, and only paying and uploading are refused', async () => {
+    const owner = await anOwner({ suspendedAt: new Date(), suspendReason: 'x' });
+    const token = randomUUID();
+    await anOrder(owner.pageId, { customerName: 'Aina' }, token);
+
+    expect(await getOrderByToken(token)).toMatchObject({ customerName: 'Aina', page: { handle: owner.handle } });
+    expect(await getCheckout(owner.handle, NOW)).toBeNull();
+  });
+
   it('returns the order with its page, payment details and links', async () => {
     const owner = await anOwner({ bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122334455', paymentQrKey: 'qr/a.png' });
     await write.link.create({ data: { pageId: owner.pageId, label: 'WhatsApp', url: 'https://wa.me/60123456789', position: 0 } });

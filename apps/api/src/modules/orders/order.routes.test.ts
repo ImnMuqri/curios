@@ -371,6 +371,21 @@ describe('POST /store/:handle/orders', () => {
     expect(res.json().error.code).toBe('PAGE_NOT_FOUND');
   });
 
+  it('refuses a suspended page with 410, and takes orders again once it is back', async () => {
+    const shop = await aShop();
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: new Date(), suspendReason: 'Scam reports' } });
+
+    const res = await place(shop.handle, aBasket(shop));
+
+    expect(res.statusCode).toBe(410);
+    expect(res.json().error.code).toBe('PAGE_UNAVAILABLE');
+    expect(await app.prisma.order.count({ where: { pageId: shop.pageId } })).toBe(0);
+    expect(await ordersPlaced(shop.pageId)).toBe(0);
+
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: null, suspendReason: null } });
+    expect((await place(shop.handle, aBasket(shop))).statusCode).toBe(201);
+  });
+
   it('refuses a personal page', async () => {
     const shop = await aShop({ mode: 'PERSONAL' });
 
@@ -539,6 +554,22 @@ describe('POST /store/orders/:token/receipt', () => {
     expect(row.receiptRejectedAt).toBeNull();
     expect(store.put).toHaveBeenCalledWith(row.receiptKey, expect.any(Buffer), 'image/jpeg');
     expect(store.remove).not.toHaveBeenCalled();
+  });
+
+  it('refuses a receipt for a suspended page with 410, keeping nothing', async () => {
+    const shop = await aShop();
+    const order = await anOrder(shop);
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: new Date(), suspendReason: 'x' } });
+
+    const res = await upload(order.token, { contentType: 'image/jpeg', data: JPEG });
+
+    expect(res.statusCode).toBe(410);
+    expect(res.json().error.code).toBe('PAGE_UNAVAILABLE');
+    expect((await app.prisma.order.findUniqueOrThrow({ where: { id: order.id } })).receiptKey).toBeNull();
+    expect(store.put).not.toHaveBeenCalled();
+
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: null, suspendReason: null } });
+    expect((await upload(order.token, { contentType: 'image/jpeg', data: JPEG })).statusCode).toBe(200);
   });
 
   it('takes a PDF', async () => {

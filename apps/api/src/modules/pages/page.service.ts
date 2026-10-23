@@ -96,7 +96,7 @@ export function editDistance(a: string, b: string): number {
 const NEAR_SCAN_LIMIT = 5000;
 
 /**
- * The published page an address was probably meant to be, for the 404's
+ * The published, not suspended page an address was probably meant to be, for the 404's
  * "Did you mean curios.my/keklina?": one or two letters out (one for a short
  * address, where two would match half the list), nearest first, then
  * alphabetical so the answer is the same every time. Null when nothing is
@@ -113,7 +113,7 @@ export async function nearestPage(prisma: PrismaClient, raw: string): Promise<st
 
   const rows = await prisma.$queryRaw<{ handle: string }[]>`
     SELECT handle FROM "Page"
-    WHERE published AND length(handle) BETWEEN ${tried.length - most} AND ${tried.length + most}
+    WHERE published AND "suspendedAt" IS NULL AND length(handle) BETWEEN ${tried.length - most} AND ${tried.length + most}
     LIMIT ${NEAR_SCAN_LIMIT}`;
   if (rows.some((row) => row.handle === tried)) return null;
 

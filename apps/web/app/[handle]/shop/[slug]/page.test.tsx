@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { Checkout, ShopItem } from '@curios/db-read';
 
-vi.mock('@curios/db-read', () => ({ getShopItem: vi.fn() }));
+vi.mock('@curios/db-read', () => ({ getShopItem: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
@@ -10,7 +10,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./product-view.js', () => ({ ProductView: vi.fn(() => null) }));
 
-const { getShopItem } = await import('@curios/db-read');
+const { getShopItem, getPageAvailability } = await import('@curios/db-read');
 const { ProductView } = await import('./product-view.js');
 const { default: ProductPage, generateMetadata } = await import('./page.js');
 
@@ -64,6 +64,16 @@ describe('/[handle]/shop/[slug]', () => {
     vi.mocked(getShopItem).mockResolvedValueOnce(null);
     await expect(ProductPage({ params: params('nope') })).rejects.toThrow('NEXT_NOT_FOUND');
     expect(getShopItem).toHaveBeenCalledWith('keklina', 'nope');
+  });
+
+  it('says the page is unavailable, and not indexed, when it is suspended', async () => {
+    vi.mocked(getShopItem).mockResolvedValue(null);
+    vi.mocked(getPageAvailability).mockResolvedValueOnce({ status: 'suspended', language: 'ms' });
+    render(await ProductPage({ params: params() }));
+    expect(screen.getByRole('heading', { name: 'Halaman ini tidak tersedia' })).toBeInTheDocument();
+    vi.mocked(getPageAvailability).mockResolvedValueOnce({ status: 'suspended', language: 'ms' });
+    expect((await generateMetadata({ params: params() })).robots).toMatchObject({ index: false });
+    vi.mocked(getShopItem).mockReset();
   });
 
   it('gives the view the item with its photo URL, and what the notice line needs', async () => {

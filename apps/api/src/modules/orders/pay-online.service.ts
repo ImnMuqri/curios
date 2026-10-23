@@ -4,6 +4,7 @@ import { openSecret } from '@curios/core/secret-box';
 import { chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, type OnlineChoice, type OnlineOffer } from '@curios/core/shop-pay';
 import type { PrismaClient } from '@curios/db';
 import { errName } from '../billing/billing.service.js';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
 import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
@@ -157,10 +158,10 @@ const NOTHING_ONLINE: OnlineOffer = { fpx: false, wallets: [], card: false };
 export async function payMethodsFor(deps: PayOnlineDeps, handle: string, amountCents: number, now: Date): Promise<OnlineOffer> {
   const page = await deps.prisma.page.findUnique({
     where: { handle: handle.toLowerCase() },
-    select: { mode: true, storeEnabled: true, paymentAccount: { select: ACCOUNT_SELECT } },
+    select: { mode: true, storeEnabled: true, suspendedAt: true, paymentAccount: { select: ACCOUNT_SELECT } },
   });
   const account = page?.paymentAccount;
-  if (!page || page.mode !== 'BUSINESS' || !page.storeEnabled || !account || !canTakePayment(deps, account)) return NOTHING_ONLINE;
+  if (!page || page.suspendedAt !== null || page.mode !== 'BUSINESS' || !page.storeEnabled || !account || !canTakePayment(deps, account)) return NOTHING_ONLINE;
   const client = await openOwnerClient(deps, account, now);
   if (!client) return NOTHING_ONLINE;
   const methods = await methodsAt(deps, account, client, amountCents, now);
@@ -203,10 +204,12 @@ export async function startOnlinePayment(
       chipPurchaseId: true,
       receiptKey: true,
       lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
-      page: { select: { handle: true, displayName: true, mode: true, paymentAccount: { select: ACCOUNT_SELECT } } },
+      page: { select: { handle: true, displayName: true, mode: true, suspendedAt: true, paymentAccount: { select: ACCOUNT_SELECT } } },
     },
   });
   if (!order || order.page.mode !== 'BUSINESS') throw new OrderNotFoundError();
+  // Paying a suspended page's order is refused; the order itself stays readable, and a payment already made still settles.
+  if (order.page.suspendedAt !== null) throw new PageUnavailableError();
   refuseFor(order.status);
   // A receipt is with the shop to check: a second payment now would leave two for one order.
   if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);

@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import type { Checkout } from '@curios/db-read';
 
-vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn() }));
+vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./checkout.js', () => ({ Checkout: vi.fn(() => null) }));
 
-const { getCheckout } = await import('@curios/db-read');
+const { getCheckout, getPageAvailability } = await import('@curios/db-read');
 const { Checkout: CheckoutView } = await import('./checkout.js');
 const { default: CheckoutPage, generateMetadata } = await import('./page.js');
 
@@ -55,6 +55,14 @@ describe('/[handle]/shop/checkout', () => {
   it('is a 404 when there is no shop', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(null);
     await expect(CheckoutPage(params('nope'))).rejects.toThrow('NEXT_NOT_FOUND');
+  });
+
+  it('says the page is unavailable when it is suspended', async () => {
+    vi.mocked(getCheckout).mockResolvedValueOnce(null);
+    vi.mocked(getPageAvailability).mockResolvedValueOnce({ status: 'suspended', language: 'en' });
+    render(await CheckoutPage(params('keklina')));
+    expect(screen.getByRole('heading', { name: 'This page is unavailable' })).toBeInTheDocument();
+    expect(vi.mocked(CheckoutView)).not.toHaveBeenCalled();
   });
 
   it('sends the visitor back to the shop, whose bar is the WhatsApp fallback, when orders are paused', async () => {

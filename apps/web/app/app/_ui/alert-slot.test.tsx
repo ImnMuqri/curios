@@ -26,6 +26,24 @@ const slot = (alerts: Alert[]) =>
     </AlertsProvider>,
   );
 
+describe('a suspended page', () => {
+  const suspended: Alert = { ...ended, id: 'suspended', icon: 'page', title: 'Your page is suspended', text: 'Scam reports', action: { href: 'mailto:support@curios.my', label: 'Contact support' } };
+
+  it('wins on every screen, even over a red alert about that screen', () => {
+    const paused: Alert = { ...ended, id: 'paused', where: '/app/orders', icon: 'shop' };
+    expect(pickAlert([suspended, paused], '/app/orders')).toBe(suspended);
+    expect(pickAlert([suspended], '/app/curios')).toBe(suspended);
+  });
+
+  it('renders with its reason and a support link', () => {
+    pathname = '/app/curios';
+    slot([suspended]);
+    expect(screen.getByText('Your page is suspended')).toBeInTheDocument();
+    expect(screen.getByText('Scam reports')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Contact support' })).toHaveAttribute('href', 'mailto:support@curios.my');
+  });
+});
+
 describe('pickAlert', () => {
   it('shows an every-screen alert first, then the one about this screen, and nothing elsewhere', () => {
     expect(pickAlert([trial, ended], '/app/leads')).toBe(ended);

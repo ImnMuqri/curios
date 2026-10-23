@@ -3,6 +3,7 @@ import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type Prism
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
 import { lookUpOrder, productCard, type OrderCard, type ProductCard } from './order-lookup.js';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { unsureFilter } from './unsure.js';
@@ -364,10 +365,12 @@ export async function* answer(
     // answer visitor questions -- doing so both shows unreviewed facts and
     // spends tokens on a page nobody was supposed to be able to reach yet.
     where: { handle: input.handle.toLowerCase(), published: true },
-    select: ANSWER_PAGE_SELECT,
+    select: { ...ANSWER_PAGE_SELECT, suspendedAt: true },
   });
 
   if (!page) throw new PageNotFoundError();
+  // Suspended by the Curios team: told apart from a missing page so the widget can say so, and refused before a token is spent.
+  if (page.suspendedAt !== null) throw new PageUnavailableError();
 
   // Resolved before anything is written. A conversation id is a bearer token
   // for a thread, so it is scoped to THIS page inside the query rather than

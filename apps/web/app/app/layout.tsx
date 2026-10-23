@@ -73,7 +73,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       planLabel={planLabel({ ...page, now })}
       badges={badges}
       mode={page.mode}
-      alerts={alertsFor({ plan, usage, now, orders })}
+      alerts={alertsFor({ plan, usage, now, orders, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
       billingDot={billingNeedsYou(plan, orders)}
     >
       {children}
