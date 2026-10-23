@@ -20,7 +20,6 @@ Rebuilt from the design handoff's TanyaJe board (`design/boards/TanyaJe.dc.html`
 | Nav | `Nav.tsx` | A frosted pill over the page, as the board draws it: the one frosted surface DESIGN.md allows. Opaque where a browser cannot blur. |
 | Hero | `Hero.tsx`, `PageCard.tsx` | "Don't read the bio. Ask Aisyah." The name rolls to the front page of a deck of five sample pages; a cursor taps Ask and the answer types out. Pressing the deck moves it on. |
 | What people ask | `AskStrip.tsx` | "Ask about my rates, services…", one word in focus at a time. |
-| The loop | `Loop.tsx` | "curious? just ask" along a curve (SVG `textPath`), scaled, never stretched. |
 | Who it's for | `Who.tsx` | Five kinds of owner; pointing at one slides its band in and shows its page. |
 | How it works | `How.tsx`, `HowParts.tsx` | Three rooms. Where the browser has scroll-driven animations they slide sideways as the page scrolls; elsewhere they are a row to swipe. |
 | For business | `Business.tsx`, `order-scene.ts` | The order played out between two phones, from the board's frame function, plays once the stage is fully in view. |

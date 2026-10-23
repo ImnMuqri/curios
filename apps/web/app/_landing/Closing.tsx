@@ -54,18 +54,6 @@ export function Closing({ locale }: { locale: Locale }) {
 
   return (
     <section ref={section} className={styles.closing} aria-labelledby="closing-title">
-      <div className={`${styles.blobs} ${styles.dark}`} aria-hidden="true">
-        <span className={`${styles.blob} ${styles.b1}`} style={{ background: 'radial-gradient(circle, var(--biru) 0%, transparent 62%)' }} />
-        <span className={`${styles.blob} ${styles.b2}`} style={{ background: 'radial-gradient(circle, var(--tj-rose) 0%, transparent 62%)' }} />
-        <span className={`${styles.blob} ${styles.b3}`} style={{ background: 'radial-gradient(circle, var(--kuning) 0%, transparent 62%)' }} />
-        <span className={`${styles.blob} ${styles.b4}`} style={{ background: 'radial-gradient(circle, var(--hijau) 0%, transparent 62%)' }} />
-        <svg className={styles.grain}>
-          <filter id="grain-close">
-            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#grain-close)" />
-        </svg>
-      </div>
       <div className={`${styles.wrap} ${styles.closingFront}`}>
         <h2 id="closing-title" className={styles.split} aria-label={copy.title} data-in={reduced || inView || undefined}>
           {/* Letters rise one by one. The line may only break after the question, never inside "Just ask". */}

@@ -104,22 +104,8 @@ export function Hero({ locale }: { locale: Locale }) {
 
   return (
     <section className={styles.hero}>
-      <div className={styles.blobs} aria-hidden="true">
-        <span className={`${styles.blob} ${styles.b1}`} style={{ background: 'radial-gradient(circle, var(--tj-blob-blue) 0%, transparent 65%)' }} />
-        <span className={`${styles.blob} ${styles.b2}`} style={{ background: 'radial-gradient(circle, var(--tj-blob-pink) 0%, transparent 65%)' }} />
-        <span className={`${styles.blob} ${styles.b3}`} style={{ background: 'radial-gradient(circle, var(--tj-blob-peach) 0%, transparent 65%)' }} />
-        <span className={`${styles.blob} ${styles.b4}`} style={{ background: 'radial-gradient(circle, var(--tj-blob-mint) 0%, transparent 65%)' }} />
-        <svg className={styles.grain}>
-          <filter id="grain-hero">
-            <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" stitchTiles="stitch" />
-          </filter>
-          <rect width="100%" height="100%" filter="url(#grain-hero)" />
-        </svg>
-      </div>
-
       <div className={`${styles.wrap} ${styles.heroGrid}`}>
         <div>
-          <p className={styles.eyebrow}>{copy.hero.eyebrow}</p>
           <h1 className={styles.heroTitle}>
             {copy.hero.line}
             <br />

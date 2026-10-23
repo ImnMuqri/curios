@@ -86,7 +86,6 @@ export function How({ locale }: { locale: Locale }) {
             <ol ref={track} className={styles.howTrack}>
               <li className={styles.howSlide}>
                 <div className={`${styles.room} ${styles.room1}`}>
-                  <span className={styles.roomN} aria-hidden="true">01</span>
                   <div className={styles.roomText}>
                     <h3 className={styles.roomH}>{one!.title}</h3>
                     <p className={styles.roomP}>{one!.body}</p>
@@ -99,7 +98,6 @@ export function How({ locale }: { locale: Locale }) {
 
               <li className={styles.howSlide}>
                 <div className={`${styles.room} ${styles.room2}`}>
-                  <span className={styles.roomN} aria-hidden="true">02</span>
                   <div className={styles.roomText}>
                     <h3 className={styles.roomH}>{two!.title}</h3>
                     <p className={styles.roomP}>{two!.body}</p>
@@ -112,7 +110,6 @@ export function How({ locale }: { locale: Locale }) {
 
               <li className={styles.howSlide}>
                 <div className={`${styles.room} ${styles.room3}`}>
-                  <span className={styles.roomN} aria-hidden="true">03</span>
                   <div className={styles.roomText}>
                     <h3 className={styles.roomH}>{three!.title}</h3>
                     <p className={styles.roomP}>{three!.body}</p>

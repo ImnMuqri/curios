@@ -51,7 +51,6 @@ export interface LandingCopy {
     other: { href: string; short: string; name: string; lang: Locale };
   };
   hero: {
-    eyebrow: string;
     line: string;
     ask: string;
     /** The whole headline with the first page's name, for the share card. */
@@ -71,7 +70,6 @@ export interface LandingCopy {
     askTab: string;
   };
   askStrip: { eyebrow: string; lead: string; words: string[]; body: string };
-  loop: string;
   who: {
     eyebrow: string;
     title: string;
@@ -107,6 +105,7 @@ export interface LandingCopy {
     customer: string;
     yours: string;
     shopPath: string;
+    lib: { bio: string; shop: string; shopSub: string; links: string[]; foot: string };
     open: string;
     facts: string;
     cats: string[];
@@ -228,7 +227,6 @@ const EN: LandingCopy = {
     other: { href: '/ms', short: 'BM', name: 'Bahasa Melayu', lang: 'ms' },
   },
   hero: {
-    eyebrow: 'Curious? Just ask',
     line: 'Don’t read the bio.',
     ask: 'Ask',
     title: 'Don’t read the bio. Ask Aisyah.',
@@ -251,7 +249,6 @@ const EN: LandingCopy = {
     words: ['rates', 'services', 'hours', 'experience', 'prices'],
     body: 'Whatever you put in, it can answer. Whatever you didn’t, it says it’ll check with you, and the question waits on your list.',
   },
-  loop: 'curious? just ask · ',
   who: {
     eyebrow: 'Who it’s for',
     title: 'One page for whoever’s asking.',
@@ -313,10 +310,17 @@ const EN: LandingCopy = {
       { title: 'Order received', body: 'They get a confirmation with the order number.' },
       { title: 'It lands in your Orders', body: 'Already paid, nothing to check. Mark it completed when they collect.' },
     ],
-    stage: 'A customer adds items, checks out and pays from their bank through CHIP; the order arrives in Lina’s Curios Orders, already paid',
+    stage: 'A customer opens the shop from Lina’s link in bio, adds items, checks out and pays from their bank through CHIP; the order arrives in Lina’s Curios Orders, already paid',
     customer: 'The customer’s phone',
     yours: 'Your phone',
     shopPath: 'curios.my/keklina/shop',
+    lib: {
+      bio: 'Homemade cakes and desserts in Shah Alam.',
+      shop: 'Shop',
+      shopSub: '8 items · pickup Sat',
+      links: ['Order on WhatsApp', 'Cake photos on Instagram', 'Find us in Seksyen 7'],
+      foot: 'Questions · Made with Curios',
+    },
     open: 'Open for orders',
     facts: 'Seksyen 7, Shah Alam · Pickup or delivery',
     cats: ['All', 'Kek', 'Kuih', 'Raya'],
@@ -404,7 +408,7 @@ const EN: LandingCopy = {
       noteYearly: `RM${ANNUAL_A_MONTH} a month, paid once a year.`,
       plus: 'Everything in Personal, plus',
       points: [
-        'A shop with QR payment and payment proof',
+        'A shop paid by FPX, e-wallet, card or your own QR',
         'Orders land in your dashboard',
         'Every lead emailed with their number and chat',
         'FAQ pages Google can find',
@@ -479,7 +483,6 @@ const MS: LandingCopy = {
     other: { href: '/', short: 'EN', name: 'English', lang: 'en' },
   },
   hero: {
-    eyebrow: 'Curious? Tanya je',
     line: 'Tak payah baca bio.',
     ask: 'Tanya',
     title: 'Tak payah baca bio. Tanya Aisyah.',
@@ -502,7 +505,6 @@ const MS: LandingCopy = {
     words: ['harga', 'servis', 'waktu buka', 'pengalaman', 'pakej'],
     body: 'Apa yang anda masukkan, ia boleh jawab. Apa yang tiada, ia kata akan semak dengan anda, dan soalan itu tunggu dalam senarai anda.',
   },
-  loop: 'curious? tanya je · ',
   who: {
     eyebrow: 'Untuk siapa',
     title: 'Satu halaman untuk sesiapa yang bertanya.',
@@ -564,10 +566,17 @@ const MS: LandingCopy = {
       { title: 'Tempahan diterima', body: 'Mereka dapat pengesahan dengan nombor tempahan.' },
       { title: 'Masuk dalam Tempahan anda', body: 'Sudah dibayar, tiada apa perlu disemak. Tandakan selesai bila mereka ambil.' },
     ],
-    stage: 'Pelanggan tambah barang, daftar keluar dan bayar dari bank mereka melalui CHIP; tempahan sampai dalam Tempahan Curios Lina, sudah dibayar',
+    stage: 'Pelanggan buka kedai daripada link bio Lina, tambah barang, daftar keluar dan bayar dari bank mereka melalui CHIP; tempahan sampai dalam Tempahan Curios Lina, sudah dibayar',
     customer: 'Telefon pelanggan',
     yours: 'Telefon anda',
     shopPath: 'curios.my/keklina/shop',
+    lib: {
+      bio: 'Kek dan pencuci mulut buatan sendiri di Shah Alam.',
+      shop: 'Kedai',
+      shopSub: '8 barang · ambil Sabtu',
+      links: ['Tempah di WhatsApp', 'Gambar kek di Instagram', 'Jumpa kami di Seksyen 7'],
+      foot: 'Soalan · Dibuat dengan Curios',
+    },
     open: 'Buka untuk tempahan',
     facts: 'Seksyen 7, Shah Alam · Ambil sendiri atau hantar',
     cats: ['Semua', 'Kek', 'Kuih', 'Raya'],
@@ -655,7 +664,7 @@ const MS: LandingCopy = {
       noteYearly: `RM${ANNUAL_A_MONTH} sebulan, bayar sekali setahun.`,
       plus: 'Semua dalam Peribadi, dan',
       points: [
-        'Kedai dengan bayaran QR dan bukti bayaran',
+        'Kedai yang dibayar melalui FPX, e-dompet, kad atau QR anda sendiri',
         'Tempahan masuk dalam dashboard anda',
         'Setiap lead diemel dengan nombor dan perbualan mereka',
         'Halaman soalan lazim yang Google boleh jumpa',

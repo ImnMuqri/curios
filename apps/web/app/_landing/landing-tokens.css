@@ -22,7 +22,7 @@
    * ---- The TanyaJe board's own colours (design handoff, 2026-10-16) ----
    * Taken as drawn, not derived: the deep inks of the dark sections, the rose
    * of the sample bakery's business section, the pale green of the Personal
-   * card, and the four soft blob colours behind the hero and the close.
+   * card, and the soft pastels the sample pages borrow.
    */
   --tj-ink-950: #141925;
   --tj-ink-850: #1d2433;
@@ -177,11 +177,9 @@
 
   /* ---- Motion ---- */
   --l-dur-press: 120ms; /* colour on press and hover, the product's own budget */
-  --l-dur-reveal: 280ms; /* scroll reveals: under the 300ms ceiling */
   --l-dur-step: 260ms; /* a step arriving in the paid moment */
   --l-ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
   --l-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1); /* the product's sheet curve */
-  --l-reveal-rise: 12px; /* under the 16px ceiling */
 }
 
 @media (min-width: 768px) {

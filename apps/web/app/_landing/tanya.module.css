@@ -1,6 +1,6 @@
 /*
  * The landing page, from the design handoff's TanyaJe board. Bricolage for
- * display, IBM Plex Sans for reading, IBM Plex Mono for eyebrows and handles.
+ * display, IBM Plex Sans for reading, IBM Plex Mono for handles; section labels are Inter.
  * Motion is the landing's exemption (DESIGN.md): every moving part here is
  * either inside `prefers-reduced-motion: no-preference` or switched off by its
  * component when the visitor asks for less.
@@ -58,11 +58,10 @@
 }
 
 .eyebrow {
-  margin: 0 0 16px;
-  font-family: var(--m);
-  font-size: 13px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 0 0 14px;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--biru);
 }
 
@@ -131,63 +130,6 @@
   50% {
     opacity: 0;
   }
-}
-
-/* ---- Soft colour backgrounds, with grain ---- */
-
-.blobs {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-
-.blob {
-  position: absolute;
-  width: 62%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  filter: blur(30px);
-  opacity: 0.95;
-}
-
-.b1 { left: -12%; top: -30%; }
-.b2 { right: -14%; top: -20%; }
-.b3 { left: 22%; bottom: -45%; }
-.b4 { right: 4%; bottom: -40%; width: 48%; }
-
-@media (prefers-reduced-motion: no-preference) {
-  .blob {
-    animation: 20s ease-in-out infinite alternate;
-  }
-  .b1 { animation-name: bl1; animation-duration: 19s; }
-  .b2 { animation-name: bl2; animation-duration: 23s; }
-  .b3 { animation-name: bl3; animation-duration: 21s; }
-  .b4 { animation-name: bl4; animation-duration: 26s; }
-}
-
-@keyframes bl1 { to { transform: translate(28%, 22%) scale(1.15); } }
-@keyframes bl2 { to { transform: translate(-26%, 30%) scale(0.9); } }
-@keyframes bl3 { to { transform: translate(-20%, -30%) scale(1.2); } }
-@keyframes bl4 { to { transform: translate(-34%, -18%) scale(1.1); } }
-
-.dark .blob {
-  opacity: 0.42;
-  filter: blur(50px);
-}
-
-.grain {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0.12;
-  mix-blend-mode: multiply;
-}
-
-.dark .grain {
-  opacity: 0.14;
-  mix-blend-mode: screen;
 }
 
 /* ---- Nav: a frosted pill floating over the page (the one frosted surface DESIGN.md allows) ---- */
@@ -817,13 +759,11 @@
 .focusWord {
   padding: 0 0.08em;
   border-radius: 0.12em;
-  filter: blur(3px);
   opacity: 0.45;
-  transition: filter 420ms ease, opacity 420ms ease, box-shadow 420ms ease;
+  transition: opacity 420ms ease, box-shadow 420ms ease;
 }
 
 .focusWord[data-on] {
-  filter: none;
   opacity: 1;
   box-shadow: 0 0 0 3px var(--biru);
 }
@@ -832,33 +772,6 @@
   margin: 6px 0 0;
   max-width: 40em;
   color: var(--l-ink-300);
-}
-
-/* ---- The curved loop ---- */
-
-.loop {
-  overflow: hidden;
-  background: var(--biru-muda);
-}
-
-.loop svg {
-  display: block;
-  width: 100%;
-  height: 150px;
-}
-
-@media (max-width: 760px) {
-  .loop svg {
-    height: 110px;
-  }
-}
-
-.loop text {
-  font-family: var(--d);
-  font-size: 3.5rem;
-  font-weight: 800;
-  letter-spacing: -1.5px;
-  fill: var(--l-biru-800);
 }
 
 /* ---- Who it's for ---- */
@@ -1151,23 +1064,6 @@
 .room1 { background: var(--biru-muda); color: var(--ink); }
 .room2 { background: var(--ink); color: var(--paper); }
 .room3 { background: var(--biru); color: var(--paper); }
-
-.roomN {
-  position: absolute;
-  right: 24px;
-  top: -34px;
-  font-family: var(--d);
-  font-size: 13.75rem;
-  font-weight: 800;
-  line-height: 1;
-  letter-spacing: -0.06em;
-  opacity: 0.16;
-  pointer-events: none;
-}
-
-.room1 .roomN { color: var(--biru); }
-.room2 .roomN { color: var(--l-biru-300); }
-.room3 .roomN { color: var(--l-biru-200); }
 
 .roomText {
   position: relative;
@@ -1570,10 +1466,6 @@
   .roomH {
     font-size: 34px;
   }
-
-  .roomN {
-    font-size: 9.375rem;
-  }
 }
 
 /* ---- For business: the order, played out (TanyaJe board "Business v2") ---- */
@@ -1735,6 +1627,167 @@
   background: var(--tj-rose-deep);
   color: var(--paper);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+.csLib {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: var(--tj-rose-deep);
+  will-change: transform;
+}
+
+.lbAv {
+  left: 50%;
+  top: 52px;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  margin-left: -29px;
+  border-radius: 50%;
+  background: var(--tj-rose);
+  font-family: var(--d);
+  font-size: 24px;
+  font-weight: 800;
+}
+
+.lbNm {
+  left: 0;
+  right: 0;
+  top: 120px;
+  margin: 0;
+  text-align: center;
+  font-family: var(--d);
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.lbHd {
+  left: 18px;
+  right: 18px;
+  top: 158px;
+  margin: 0;
+  text-align: center;
+  font-size: 11.5px;
+  opacity: 0.8;
+}
+
+.lbTabs {
+  left: 50%;
+  top: 188px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 150px;
+  margin-left: -75px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.lbTabs > span {
+  padding: 7px 0;
+  border-radius: 999px;
+  text-align: center;
+}
+
+.lbTabs > span[data-on] {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.lbShop {
+  left: 16px;
+  right: 16px;
+  top: 242px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 60px;
+  padding: 0 18px 0 14px;
+  border-radius: 999px;
+  background: var(--tj-rose);
+  transition: transform 120ms ease;
+}
+
+.lbShop > svg {
+  flex: none;
+}
+
+.lbTh {
+  display: flex;
+  flex: none;
+}
+
+.lbTh > i {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--tj-card-latte);
+  box-shadow: 0 0 0 2px var(--tj-rose);
+}
+
+.lbTh > i + i {
+  margin-left: -10px;
+}
+
+.lbTh img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+}
+
+.lbSt {
+  flex: 1;
+  min-width: 0;
+}
+
+.lbSt > b {
+  display: block;
+  font-size: 13.5px;
+}
+
+.lbSt > small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10.5px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.lbL {
+  left: 16px;
+  right: 16px;
+  display: grid;
+  place-items: center;
+  height: 44px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.lbFt {
+  left: 0;
+  right: 0;
+  top: 486px;
+  margin: 0;
+  text-align: center;
+  font-size: 10.5px;
+  opacity: 0.6;
 }
 
 .csTop {

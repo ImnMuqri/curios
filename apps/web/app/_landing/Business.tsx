@@ -20,7 +20,7 @@ const AVATAR_TONES = ['var(--tj-blob-pink)', 'var(--tj-blob-blue)', 'var(--tj-bl
 
 /**
  * Have a business? The order, played out between the customer's phone and
- * yours: they add two items, check out, pick online banking and Maybank2u,
+ * yours: they open the shop from Kek Lina's link in bio, add two items, check out, pick online banking and Maybank2u,
  * approve in the bank and come straight back; it lands in your Orders already
  * paid. It plays while the stage is in view (each step at its own pace, with a
  * progress line), pauses while a phone is hovered, and a step can be clicked
@@ -272,6 +272,41 @@ export function Business({ locale }: { locale: Locale }) {
                 </div>
                 <p className={styles.succTitle}>{copy.received}</p>
                 <p className={styles.succNote}>{copy.receivedNote}</p>
+              </div>
+
+              <div className={styles.csLib} style={{ transform: `translateX(${s.lib.x}%)` }}>
+                <p className={`${styles.abs} ${styles.csTop}`} style={{ justifyContent: 'center' }}>
+                  <span>{copy.shopPath.replace(/\/shop$/, '')}</span>
+                </p>
+                <span className={`${styles.abs} ${styles.lbAv}`}>K</span>
+                <p className={`${styles.abs} ${styles.lbNm}`}>Kek Lina</p>
+                <p className={`${styles.abs} ${styles.lbHd}`}>{copy.lib.bio}</p>
+                <span className={`${styles.abs} ${styles.lbTabs}`}>
+                  <span data-on>{COPY[locale].hero.linksTab}</span>
+                  <span>{COPY[locale].hero.askTab}</span>
+                </span>
+                <span className={`${styles.abs} ${styles.lbShop}`} style={{ transform: `scale(${s.lib.pressed ? 0.97 : 1})` }}>
+                  <span className={styles.lbTh}>
+                    <i style={{ background: 'var(--tj-card-rose)' }} />
+                    <i>
+                      <img src="/landing/hero-baker.webp" alt="" style={{ objectPosition: '72% 80%' }} />
+                    </i>
+                    <i style={{ background: 'var(--tj-blob-pink)' }} />
+                  </span>
+                  <span className={styles.lbSt}>
+                    <b>{copy.lib.shop}</b>
+                    <small>{copy.lib.shopSub}</small>
+                  </span>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </span>
+                {copy.lib.links.map((link, i) => (
+                  <span key={link} className={`${styles.abs} ${styles.lbL}`} style={{ top: 318 + i * 54 }}>
+                    {link}
+                  </span>
+                ))}
+                <p className={`${styles.abs} ${styles.lbFt}`}>{copy.lib.foot}</p>
               </div>
 
               <Cursor {...s.cursor} />

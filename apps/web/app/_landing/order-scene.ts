@@ -1,6 +1,7 @@
 /**
  * The For business section's little film, as a function of progress `p` from
- * 0 to 1: a customer taps two cakes into the basket, checks out, picks online
+ * 0 to 1: a customer taps Kek Lina's Shop link in her link in bio, the shop
+ * opens, they tap two cakes into the basket, checks out, picks online
  * banking and Maybank2u, approves in the bank and comes straight back; the
  * order flies across and lands in the owner's Orders, already paid, to be
  * marked completed. Ported from the TanyaJe board's `ofVals` and `ofDriver`,
@@ -32,7 +33,7 @@ function path(p: number, points: [number, number, number][]): [number, number] {
 
 /** Where each of the five steps starts, as progress, and how long each takes. */
 export const STEP_STARTS = [0, 0.24, 0.5, 0.64, 0.76, 1];
-export const STEP_MS = [3800, 4600, 4800, 2600, 4000];
+export const STEP_MS = [5800, 4600, 4800, 2600, 4000];
 /** How long the finished frame is held before the film starts over. */
 export const HOLD_MS = 2600;
 
@@ -60,6 +61,15 @@ export function advance(p: number, dt: number): number {
 export function stepStart(i: number): number {
   return Math.max(STEP_STARTS[i]! + 0.0005, i === 2 ? 0.506 : 0);
 }
+
+/**
+ * The link in bio takes the first 0.085 of the film (about 2s of the first
+ * step's 5.8s): the cursor arrives, taps Shop (.045), the page slides away
+ * (.06-.085). From there the shop plays as it did, its progress stretched over
+ * the rest of the first step.
+ */
+const LIB_END = 0.085;
+const LIB_CLICK = [0.045, 0.057];
 
 const NAME = 'Mira';
 const PHONE = '012-345 6789';
@@ -93,6 +103,8 @@ export interface OrderScene {
   successCheck: number;
   burst: { x: number; y: number; r: number; o: number; c: string }[];
   cursor: { x: number; y: number; o: number; pressed: boolean };
+  /** The link in bio over the shop: how far it has slid left (0 to -100, in %), and the Shop link pressed. */
+  lib: { x: number; pressed: boolean };
   token: { x: number; y: number; s: number; o: number };
   notif: { y: number; o: number };
   card: { inserted: number; ring: boolean; isNew: boolean };
@@ -103,12 +115,17 @@ export interface OrderScene {
   owner: { x: number; y: number; o: number; pressed: boolean };
 }
 
-export function scene(p: number): OrderScene {
+export function scene(progress: number): OrderScene {
+  // The shop's own clock: held at 0 while the link in bio is on screen.
+  const p = progress < 0.24 ? (Math.max(0, progress - LIB_END) / (0.24 - LIB_END)) * 0.24 : progress;
   const seg = (a: number, b: number) => clamp((p - a) / (b - a));
+  const bio = (a: number, b: number) => clamp((progress - a) / (b - a));
+  const libClick = progress >= LIB_CLICK[0]! && progress < LIB_CLICK[1]!;
   const near = (ts: number[]) => ts.some((t) => p >= t && p < t + 0.012);
 
-  const [cx, cy] = path(p, [
-    [0, 200, 470], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564],
+  const arrive = ease(bio(0, 0.04));
+  const [cx, cy] = progress < LIB_END ? [200 + (128 - 200) * arrive, 470 + (268 - 470) * arrive] : path(p, [
+    [0, 128, 268], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564],
     [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381],
     [0.48, 86, 381], [0.5, 150, 552], [0.51, 150, 552], [0.522, 150, 245], [0.535, 150, 245], [0.543, 84, 452],
     [0.556, 84, 452], [0.566, 150, 552], [0.578, 150, 552], [0.6, 230, 480], [0.66, 230, 480],
@@ -155,7 +172,13 @@ export function scene(p: number): OrderScene {
         c: ['var(--tj-rose)', 'var(--biru)', 'var(--kuning)', 'var(--hijau)'][i % 4]!,
       };
     }),
-    cursor: { x: Math.round(cx), y: Math.round(cy), o: p < 0.66 ? seg(0, 0.02) : 1 - seg(0.66, 0.68), pressed: near(CLICKS) },
+    cursor: {
+      x: Math.round(cx),
+      y: Math.round(cy),
+      o: p < 0.66 ? bio(0, 0.02) : 1 - seg(0.66, 0.68),
+      pressed: near(CLICKS) || libClick,
+    },
+    lib: { x: -100 * ease(bio(0.06, LIB_END)) || 0, pressed: libClick },
     token: {
       x: Math.round(362 * t),
       y: Math.round(-60 * t - 130 * Math.sin(Math.PI * t)),

@@ -4,7 +4,6 @@ import { COPY, type Locale } from './copy.js';
 import { Nav } from './Nav.js';
 import { Hero } from './Hero.js';
 import { AskStrip } from './AskStrip.js';
-import { Loop } from './Loop.js';
 import { Who } from './Who.js';
 import { How } from './How.js';
 import { Business } from './Business.js';
@@ -68,7 +67,6 @@ export function LandingPage({ locale }: { locale: Locale }) {
       <main id="main">
         <Hero locale={locale} />
         <AskStrip locale={locale} />
-        <Loop text={copy.loop} />
         <Who locale={locale} />
         <How locale={locale} />
         <Business locale={locale} />

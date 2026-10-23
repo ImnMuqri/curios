@@ -6,8 +6,8 @@ import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
 /**
- * "Ask about my rates, services, hours…": one word in focus at a time, the
- * rest blurred. With reduced motion every word stays sharp.
+ * "Ask about my rates, services, hours…": one word in focus at a time, ringed,
+ * the rest dimmed. With reduced motion every word is lit.
  */
 export function AskStrip({ locale }: { locale: Locale }) {
   const copy = COPY[locale].askStrip;

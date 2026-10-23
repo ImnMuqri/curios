@@ -207,8 +207,9 @@ describe('pricing', () => {
 describe('the order, played out', () => {
   it('starts empty and ends completed, with the basket and the sheet in between', () => {
     expect(scene(0)).toMatchObject({ basketCount: 0, sheet: 0, view: 'form', completed: false });
-    expect(scene(0.2)).toMatchObject({ basketCount: 3, basketTotal: 235, step: 0 });
-    expect(scene(0.2).rows.map((r) => r.qty)).toEqual([2, 1, 0, 0]);
+    expect(scene(0.2)).toMatchObject({ basketCount: 2, basketTotal: 190, step: 0 });
+    expect(scene(0.23)).toMatchObject({ basketCount: 3, basketTotal: 235, step: 0 });
+    expect(scene(0.23).rows.map((r) => r.qty)).toEqual([2, 1, 0, 0]);
     expect(scene(0.4)).toMatchObject({ view: 'form', step: 1 });
     expect(scene(0.4).sheet).toBe(100);
     expect(scene(1)).toMatchObject({ completed: true, step: 4, success: 1 });
@@ -233,13 +234,66 @@ describe('the order, played out', () => {
   });
 
   it('gives each step its own duration', () => {
-    expect(STEP_MS).toEqual([3800, 4600, 4800, 2600, 4000]);
+    expect(STEP_MS).toEqual([5800, 4600, 4800, 2600, 4000]);
     expect(STEP_STARTS).toEqual([0, 0.24, 0.5, 0.64, 0.76, 1]);
-    expect(advance(0, 3800)).toBeCloseTo(0.24);
+    expect(advance(0, 5800)).toBeCloseTo(0.24);
     expect(advance(0.24, 4600)).toBeCloseTo(0.5);
     expect(advance(0.64, 2600)).toBeCloseTo(0.76);
     expect(stepProgress(0.37, 1)).toBeCloseTo(50);
     expect(stepProgress(0.1, 3)).toBe(0);
+  });
+});
+
+describe('the order, from the link in bio', () => {
+  it('starts on Kek Lina’s link in bio, with nothing in the basket', () => {
+    expect(scene(0)).toMatchObject({ lib: { x: 0, pressed: false }, basketCount: 0, step: 0 });
+    // The cursor comes up from below to the Shop link, the first link.
+    expect(scene(0).cursor).toMatchObject({ x: 200, y: 470, o: 0 });
+    expect(scene(0.04).cursor).toMatchObject({ x: 128, y: 268, o: 1, pressed: false });
+  });
+
+  it('taps the Shop link, the page slides away and the shop opens', () => {
+    expect(scene(0.05)).toMatchObject({ lib: { x: 0, pressed: true } });
+    expect(scene(0.05).cursor.pressed).toBe(true);
+    expect(scene(0.058).lib.pressed).toBe(false);
+    expect(scene(0.0725).lib.x).toBeLessThan(0);
+    expect(scene(0.0725).lib.x).toBeGreaterThan(-100);
+    expect(scene(0.085).lib.x).toBe(-100);
+    expect(scene(0.5).lib.x).toBe(-100);
+    expect(scene(1).lib.x).toBe(-100);
+  });
+
+  it('shows the shop untouched until the link has been tapped, then plays the old first step', () => {
+    expect(scene(0.085)).toMatchObject({ basketCount: 0, sheet: 0, step: 0 });
+    expect(scene(0.085).cursor).toMatchObject({ x: 128, y: 268 });
+    // The tap on the first cake lands once the shop is open: 0.09 of the old film.
+    expect(scene(0.085 + 0.155 * (0.095 / 0.24)).rows[0]!.qty).toBe(1);
+    expect(scene(0.24)).toMatchObject({ step: 1, basketCount: 3 });
+  });
+
+  it('draws the link in bio as the board does, the Shop link first', async () => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale="en" />);
+    const biz = container.querySelector('#business') as HTMLElement;
+    await userEvent.click(within(biz).getByRole('button', { name: new RegExp(en.business.caps[0]!.title) }));
+    const lib = biz.querySelector('[class*="csLib"]') as HTMLElement;
+    expect(lib).not.toBeNull();
+    expect(lib.style.transform).toBe('translateX(0%)');
+    expect(lib).toHaveTextContent('curios.my/keklina');
+    expect(lib).toHaveTextContent('Kek Lina');
+    expect(lib).toHaveTextContent(en.business.lib.bio);
+    expect(lib).toHaveTextContent(en.hero.linksTab);
+    expect(lib).toHaveTextContent(en.hero.askTab);
+    const links = [...lib.querySelectorAll('[class*="lbShop"], [class*="lbL"]')].map((l) => l.textContent);
+    expect(links[0]).toContain(en.business.lib.shop);
+    expect(links[0]).toContain(en.business.lib.shopSub);
+    expect(links.slice(1)).toEqual(en.business.lib.links);
+    // Three overlapping thumbnails on the Shop link.
+    expect(lib.querySelectorAll('[class*="lbTh"] > i')).toHaveLength(3);
+    expect(lib).toHaveTextContent(en.business.lib.foot);
+    // The stage says it starts there, for assistive tech.
+    expect(biz.querySelector('[role="img"]')).toHaveAccessibleName(/link in bio/);
+    expect(ms.business.lib.shop).not.toBe('');
   });
 });
 
@@ -395,6 +449,70 @@ describe('brand colours', () => {
       card: read('card'),
       muted: read('muted'),
     });
+  });
+});
+
+describe('less template', () => {
+  const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+  const rule = (selector: string) => {
+    const escaped = selector.replace(/[.[\]]/g, (c) => `\\${c}`);
+    return css.match(new RegExp(`(?:^|\\n)${escaped} \\{([^}]*)\\}`))?.[1] ?? '';
+  };
+
+  it.each(LOCALES)('%s: no 01/02/03 watermark numbers in How it works', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    expect(container.querySelector('[class*="roomN"]')).toBeNull();
+    expect(css).not.toMatch(/roomN/);
+  });
+
+  it.each(LOCALES)('%s: no curved marquee between the sections', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    expect(container.querySelector('[class*="loop"]')).toBeNull();
+    expect(container.querySelector('textPath[href^="#loop"]')).toBeNull();
+    expect(COPY[locale]).not.toHaveProperty('loop');
+    expect(css).not.toMatch(/\.loop\b/);
+  });
+
+  it('has no blur-in, scroll-reveal or blur on the rotating words', () => {
+    expect(css).not.toMatch(/reveal/);
+    expect(css).not.toMatch(/filter:\s*blur\(3px\)/);
+    expect(rule('.focusWord')).not.toMatch(/filter/);
+    expect(rule('.focusWord')).not.toMatch(/transition:[^;]*filter/);
+    expect(rule('.focusWord[data-on]')).not.toMatch(/filter/);
+  });
+
+  it('sets section labels in plain sentence case, Inter 15px semibold', () => {
+    const eyebrow = rule('.eyebrow');
+    expect(eyebrow).toMatch(/font-family:\s*var\(--font-inter\)/);
+    expect(eyebrow).toMatch(/font-size:\s*15px/);
+    expect(eyebrow).toMatch(/font-weight:\s*600/);
+    expect(eyebrow).not.toMatch(/text-transform|letter-spacing|var\(--m\)/);
+    for (const copy of [en, ms]) {
+      for (const label of [copy.who.eyebrow, copy.how.eyebrow, copy.business.eyebrow, copy.pricing.eyebrow]) {
+        expect(label).not.toBe(label.toUpperCase());
+      }
+    }
+  });
+
+  it.each(LOCALES)('%s: no label above the hero headline', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    const hero = container.querySelector('section')!;
+    expect(hero.querySelector('[class*="eyebrow"]')).toBeNull();
+    expect(COPY[locale].hero).not.toHaveProperty('eyebrow');
+    expect(hero.querySelector('h1')!.previousElementSibling).toBeNull();
+  });
+
+  it.each(LOCALES)('%s: no gradient blobs or grain in the hero and the closing section', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    expect(container.querySelector('[class*="blob"], [class*="grain"], feTurbulence')).toBeNull();
+    expect(css).not.toMatch(/\.blobs?\b|\.grain\b|\.b[1-4]\b|@keyframes bl[1-4]/);
+  });
+
+  it('says the Business card is paid by FPX, e-wallet, card or the owner’s own QR', () => {
+    expect(en.pricing.business.points).toContain('A shop paid by FPX, e-wallet, card or your own QR');
+    expect(en.pricing.business.points).not.toContain('A shop with QR payment and payment proof');
+    expect(ms.pricing.business.points).toContain('Kedai yang dibayar melalui FPX, e-dompet, kad atau QR anda sendiri');
+    expect(ms.pricing.business.points).not.toContain('Kedai dengan bayaran QR dan bukti bayaran');
   });
 });
 
