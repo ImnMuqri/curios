@@ -392,6 +392,7 @@ const order: PublicOrder = {
     bankAccountName: 'Lina binti Kamal',
     bankAccountNumber: '1642 3378 9021',
     chipMethods: null,
+    suspended: false,
   },
 };
 
@@ -673,6 +674,31 @@ describe('/[handle]/order/[token]', () => {
     expect(screen.getByRole('link', { name: 'receipt-14.jpg' })).toHaveAttribute('href', 'https://cdn.test/receipts/p1/abc.jpg');
     expect(screen.getByRole('link', { name: 'WhatsApp Kek Lina about this order' })).toHaveAttribute('href', expect.stringContaining('wa.me/60123456789'));
     expect(screen.getByRole('main').closest('[data-on-accent]')).not.toBeNull();
+  });
+
+  it('for a suspended page shows the order and the unavailable line, but nothing to pay with', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce({
+      ...order,
+      page: { ...order.page, suspended: true, paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, chipMethods: null },
+    });
+    render(await OrderPage(params('keklina', 'tok')));
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.getByText(/Kek batik/)).toBeInTheDocument();
+    expect(screen.getByText('This page is unavailable')).toBeInTheDocument();
+    expect(screen.getByText(/taken down for now/)).toBeInTheDocument();
+    expect(screen.queryByText(/1642/)).toBeNull();
+    expect(screen.queryByText(/Maybank/)).toBeNull();
+    expect(screen.queryByRole('link', { name: /save/i })).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+    expect(document.querySelector('[href$="/qr"]')).toBeNull();
+  });
+
+  it('speaks Malay about a suspended Malay page', () => {
+    render(<OrderView {...withOrder({}, { language: 'ms', suspended: true })} />);
+    expect(screen.getByText('Halaman ini tidak tersedia')).toBeInTheDocument();
+    expect(screen.getByText(/Ia diturunkan buat masa ini/)).toBeInTheDocument();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 
   it('hands the shop’s online methods to the order page, for trying to pay again', async () => {

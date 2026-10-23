@@ -18,7 +18,7 @@ const notFound = () => new Response('Not found', { status: 404, headers: { 'Cach
 export async function GET(_request: Request, { params }: { params: Promise<{ handle: string; token: string }> }) {
   const { handle, token } = await params;
   const order = await getOrderByToken(token);
-  if (!order || order.page.handle !== handle.toLowerCase()) return notFound();
+  if (!order || order.page.handle !== handle.toLowerCase() || order.page.suspended) return notFound();
   const url = avatarUrl(order.page.paymentQrKey);
   if (!url) return notFound();
 

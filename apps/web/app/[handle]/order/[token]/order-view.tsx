@@ -7,6 +7,7 @@ import { shopCopy, type ShopCopy } from '../../shop/copy.js';
 import { whatsappOrderUrl } from '../../shop/basket.js';
 import { payingKey, retryKey } from '../../shop/checkout/paying.js';
 import { Placed } from '../../shop/checkout/placed.js';
+import { unavailableCopy } from '../../../_system/unavailable-copy.js';
 import { apiFetch } from '../../../../lib/api.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { ReceiptUpload } from './receipt-upload.js';
@@ -50,6 +51,8 @@ export interface OrderViewProps {
   whatsapp: string | null;
   /** What the shop's CHIP account takes, for "Try paying again"; null or absent when nothing online. */
   chipMethods?: string[] | null;
+  /** The page is suspended: the order shows, but not how to pay it, and the page says it is unavailable. */
+  suspended?: boolean;
   /** Where paying again sends the browser. Tests pass a spy. */
   navigate?: (url: string) => void;
   /** The server's clock when it rendered (ISO). */
@@ -199,7 +202,8 @@ export function OrderView(props: OrderViewProps) {
   // While a payment is being checked the QR stays away, so nobody pays twice; once the wait
   // drags on, it comes back under the wait, with a word against paying twice.
   const inFlight = check === 'checking' || check === 'waiting';
-  const needPay = (view === 'awaitingPayment' || view === 'toCheck') && check !== 'checking';
+  const suspended = props.suspended === true;
+  const needPay = !suspended && (view === 'awaitingPayment' || view === 'toCheck') && check !== 'checking';
   const stopped = order.status === 'CANCELLED';
   const total = formatRinggit(order.totalCents);
   const payByQr = Boolean(props.qrUrl) || hasBank(props.bank);
@@ -313,6 +317,14 @@ export function OrderView(props: OrderViewProps) {
               ) : null}
             </span>
           </div>
+        </section>
+      ) : null}
+
+      {suspended ? (
+        <section className={checkout.section} aria-labelledby="order-unavailable">
+          <p className={styles.askPay}>
+            <b id="order-unavailable">{unavailableCopy(props.language).title}</b> {unavailableCopy(props.language).lede}
+          </p>
         </section>
       ) : null}
 

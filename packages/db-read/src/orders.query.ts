@@ -220,6 +220,8 @@ export interface PublicOrder {
     bankAccountNumber: string | null;
     /** What the shop's CHIP account takes, for the order page's "Try paying again"; null when nothing (as getCheckout's). */
     chipMethods: string[] | null;
+    /** The Curios team has suspended the page: the order is readable, but how to pay it is withheld (QR, bank and CHIP come back empty). */
+    suspended: boolean;
   };
 }
 
@@ -271,6 +273,7 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
           handle: true,
           displayName: true,
           language: true,
+          suspendedAt: true,
           style: true,
           accentColor: true,
           headingFont: true,
@@ -294,12 +297,16 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
     day,
     lines,
     chipPurchaseId,
-    page: { paymentAccount, ...page },
+    page: { paymentAccount, suspendedAt, ...page },
     ...order
   } = row;
   return {
     ...order,
-    page: { ...page, chipMethods: usableChipMethods(paymentAccount) },
+    // A suspended page's order stays readable, but nothing says how to pay it: no QR, no bank, no CHIP.
+    page:
+      suspendedAt === null
+        ? { ...page, suspended: false, chipMethods: usableChipMethods(paymentAccount) }
+        : { ...page, suspended: true, paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, chipMethods: null },
     chipPending: order.status === 'PLACED' && chipPurchaseId !== null,
     day: dayText(day),
     lines: lines.map(({ item, ...line }) => ({ ...line, photoKey: item?.photoKey ?? null })),

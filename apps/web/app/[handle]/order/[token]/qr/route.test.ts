@@ -6,9 +6,9 @@ vi.mock('@curios/db-read', () => ({ getOrderByToken: vi.fn() }));
 const { getOrderByToken } = await import('@curios/db-read');
 const { GET } = await import('./route.js');
 
-const page = (paymentQrKey: string | null) =>
-  ({ handle: 'keklina', displayName: 'Kek Lina', paymentQrKey }) as unknown as PublicOrder['page'];
-const order = (paymentQrKey: string | null = 'qr/p1/abc.png') => ({ page: page(paymentQrKey) }) as unknown as PublicOrder;
+const page = (paymentQrKey: string | null, suspended = false) =>
+  ({ handle: 'keklina', displayName: 'Kek Lina', paymentQrKey, suspended }) as unknown as PublicOrder['page'];
+const order = (paymentQrKey: string | null = 'qr/p1/abc.png', suspended = false) => ({ page: page(paymentQrKey, suspended) }) as unknown as PublicOrder;
 
 const call = (handle: string, token = 'tok') => GET(new Request(`http://localhost/${handle}/order/${token}/qr`), { params: Promise.resolve({ handle, token }) });
 
@@ -43,6 +43,14 @@ describe('GET /[handle]/order/[token]/qr', () => {
     vi.mocked(getOrderByToken).mockResolvedValueOnce(order());
     expect((await call('otherpage')).status).toBe(404);
     vi.mocked(getOrderByToken).mockResolvedValueOnce(order(null));
+    expect((await call('keklina')).status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('is a 404 for a suspended page, even if a QR is still stored', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order('qr/p1/abc.png', true));
     expect((await call('keklina')).status).toBe(404);
     expect(fetchSpy).not.toHaveBeenCalled();
   });

@@ -2,11 +2,7 @@ import type { Metadata } from 'next';
 import { getPageAvailability } from '@curios/db-read';
 import { SystemCard, SystemShell } from './SystemShell.js';
 import { PadlockArt } from './art.js';
-
-const COPY = {
-  en: { title: 'This page is unavailable', lede: 'It’s been taken down for now.', home: 'Go to Curios' },
-  ms: { title: 'Halaman ini tidak tersedia', lede: 'Ia diturunkan buat masa ini.', home: 'Pergi ke Curios' },
-} as const;
+import { unavailableCopy } from './unavailable-copy.js';
 
 /** Not for search results, and not followed: a suspended page leaves the index. */
 export const UNAVAILABLE_METADATA: Metadata = { title: 'Unavailable · Curios', robots: { index: false, follow: false } };
@@ -17,7 +13,7 @@ export const UNAVAILABLE_METADATA: Metadata = { title: 'Unavailable · Curios', 
  * owner's to read, never the visitor's.
  */
 export function UnavailableScreen({ language }: { language: string }) {
-  const copy = language === 'ms' ? COPY.ms : COPY.en;
+  const copy = unavailableCopy(language);
   return (
     <SystemShell>
       <SystemCard art={<PadlockArt />} title={copy.title} lede={copy.lede} />

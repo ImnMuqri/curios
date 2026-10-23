@@ -213,11 +213,14 @@ describe('getOrderByToken', () => {
   });
 
   it('still returns the order of a suspended page: its customer can read it, and only paying and uploading are refused', async () => {
-    const owner = await anOwner({ suspendedAt: new Date(), suspendReason: 'x' });
+    const owner = await anOwner({ suspendedAt: new Date(), suspendReason: 'x', bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122334455', paymentQrKey: 'qr/a.png' });
     const token = randomUUID();
     await anOrder(owner.pageId, { customerName: 'Aina' }, token);
 
-    expect(await getOrderByToken(token)).toMatchObject({ customerName: 'Aina', page: { handle: owner.handle } });
+    expect(await getOrderByToken(token)).toMatchObject({
+      customerName: 'Aina',
+      page: { handle: owner.handle, suspended: true, paymentQrKey: null, bankName: null, bankAccountNumber: null, chipMethods: null },
+    });
     expect(await getCheckout(owner.handle, NOW)).toBeNull();
   });
 
