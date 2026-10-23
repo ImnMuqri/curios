@@ -1,4 +1,4 @@
-import { capReachedMail, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, type GroupJobData, type MailJobData } from '@curios/core';
+import { capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, type GroupJobData, type MailJobData } from '@curios/core';
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
@@ -230,11 +230,6 @@ export class ConversationNotFoundError extends Error {
  * with thousands of answered topics cannot slow every turn down.
  */
 export const OWNER_ANSWERS_MAX = 200;
-
-/** Billing period. The anniversary rule arrives with billing; the shape does not change. */
-export function currentPeriod(now = new Date()): string {
-  return now.toISOString().slice(0, 7);
-}
 
 /**
  * The over-cap reply. Malay first, then English.

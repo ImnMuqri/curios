@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from '@curios/db';
+import type { Prisma } from '@curios/db';
 import type { ADMIN_ACTIONS } from '@curios/core';
 
 export interface AuditEntry {
@@ -19,7 +19,7 @@ export interface AuditEntry {
  * or delete for the table anywhere.
  */
 export async function writeAudit(
-  tx: Prisma.TransactionClient | PrismaClient,
+  tx: Prisma.TransactionClient,
   entry: AuditEntry,
 ): Promise<void> {
   await tx.adminAction.create({

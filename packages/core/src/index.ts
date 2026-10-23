@@ -73,4 +73,6 @@ export { autoRenewStoppedMail, capReachedMail, PLAN_MAIL_FOOTER, planEndedMail, 
 export type { PlanEndedShop } from './plan-mail.js';
 export { newOrderMail, paidAfterCancelMail, paidOrderMail, paidTwiceMail, receiptMail } from './order-mail.js';
 export type { NewOrderMailInput, PaidAfterCancelMailInput, PaidOrderMailInput, PaidTwiceMailInput, ReceiptMailInput } from './order-mail.js';
+export { pageRestoredMail, pageSuspendedMail } from './admin-mail.js';
+export { currentPeriod } from './period.js';
 export { ADMIN_ACTIONS, ADMIN_COOKIE, ADMIN_SESSION_TTL_MS, initials, maskPhone } from './admin.js';

@@ -11,11 +11,12 @@ import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
 import { requireSession, sessionPlugin } from './plugins/session.js';
-import { adminSessionPlugin } from './plugins/admin-session.js';
+import { adminSessionPlugin, requireAdmin } from './plugins/admin-session.js';
 import {
   adminSigninRoutes,
   adminSessionRoutes,
 } from './modules/admin/admin-auth.routes.js';
+import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/admin-pages.routes.js';
 import {
   adminSigninPerIpLimit,
   authPerEmailLimit,
@@ -91,6 +92,7 @@ export interface AppOverrides {
   pages?: PageRouteOptions;
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
+  admin?: AdminPagesRouteOptions;
 }
 
 /** `/store/orders/<token>/receipt` -> `/store/orders/:token/receipt`; any other URL is returned as it came. */
@@ -308,6 +310,10 @@ export async function buildApp(overrides: AppOverrides = {}) {
       await scope.register(adminSigninRoutes);
     });
     await app.register(adminSessionRoutes);
+    await app.register(async (scope) => {
+      scope.addHook('onRequest', requireAdmin);
+      await scope.register(adminPagesRoutes, overrides.admin ?? {});
+    });
   }
 
   return app;

@@ -1,11 +1,10 @@
-import { isOverCap, normalizeClaim } from '@curios/core';
+import { currentPeriod, isOverCap, normalizeClaim } from '@curios/core';
 import { recordModelCall } from '@curios/db';
 import { CHAT_MODEL } from '@curios/gateway';
 import {
   ANSWER_PAGE_SELECT,
   answeredTopicFor,
   CAP_REACHED_REPLY,
-  currentPeriod,
   MAX_HISTORY_MESSAGES,
   PageNotFoundError,
   promptFor,

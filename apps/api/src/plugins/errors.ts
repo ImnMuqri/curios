@@ -46,6 +46,9 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_CREDENTIALS',
   // Admin sign-in: one answer for an unknown email, a wrong password and a disabled admin.
   'ADMIN_SIGNIN_FAILED',
+  // Admin actions: the page is not there, is not in a state the action allows, or the typed handle is not its handle.
+  'PAGE_STATE',
+  'HANDLE_MISMATCH',
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
   'OAUTH_STATE_MISMATCH',
