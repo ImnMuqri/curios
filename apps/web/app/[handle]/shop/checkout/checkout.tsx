@@ -247,7 +247,7 @@ export function Checkout(props: CheckoutProps) {
             return;
           }
         } catch (error) {
-          if (error instanceof ApiError && error.code === 'ORDER_ALREADY_PAID') {
+          if (error instanceof ApiError && (error.code === 'ORDER_ALREADY_PAID' || error.code === 'ORDER_RECEIPT_SENT')) {
             // Paid already (an earlier try went through): its order page says so.
             leaving = true;
             (props.navigate ?? goTo)(`/${props.handle}/order/${encodeURIComponent(result.token)}`);

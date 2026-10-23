@@ -548,6 +548,17 @@ describe('OrderView: trying to pay again', () => {
     expect(window.sessionStorage.getItem('curios-paying:tok_abc')).toBe('1');
   });
 
+  it('offers no retry once a receipt is sent, even after a failed payment; with no receipt it does', async () => {
+    api();
+    const sent = { chipPending: true, receiptUploadedAt: '2026-10-15T03:00:00.000Z', receiptType: 'image/jpeg' };
+    const { unmount } = render(<OrderView {...withOrder(sent, { chipMethods: ALL })} />);
+    expect(await screen.findByText(copy.onlineFailed)).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
+    unmount();
+    render(<OrderView {...withOrder({ chipPending: true }, { chipMethods: ALL })} />);
+    expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+  });
+
   it('sends the bank chosen for FPX', async () => {
     const user = userEvent.setup();
     const fetch = api();

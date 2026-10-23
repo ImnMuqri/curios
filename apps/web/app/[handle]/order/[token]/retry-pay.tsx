@@ -73,7 +73,7 @@ export function RetryPay(props: {
       }
       setNote('unavailable');
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'ORDER_ALREADY_PAID') {
+      if (error instanceof ApiError && (error.code === 'ORDER_ALREADY_PAID' || error.code === 'ORDER_RECEIPT_SENT')) {
         // An earlier try went through after all: the order page, read again, says so.
         leaving = true;
         navigate(`/${props.handle}/order/${encodeURIComponent(props.token)}`);

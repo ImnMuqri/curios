@@ -205,8 +205,9 @@ export function OrderView(props: OrderViewProps) {
   const payByQr = Boolean(props.qrUrl) || hasBank(props.bank);
   const chipMethods = props.chipMethods ?? null;
   // Online choices again (DEVIATIONS 178): once a payment failed or was tried too often, and
-  // always where online is the shop's only way to pay. Never while one is still in flight.
-  const retry = needPay && !inFlight && chipMethods !== null && (!payByQr || check === 'failed' || triedTooOften);
+  // always where online is the shop's only way to pay. Never while one is still in flight,
+  // and never once a receipt is sent: a second payment would leave two for one order.
+  const retry = view === 'awaitingPayment' && needPay && !inFlight && chipMethods !== null && (!payByQr || check === 'failed' || triedTooOften);
   // A shop with no QR or bank: its WhatsApp, with the upload, or, with neither, the plain truth.
   const askOnWhatsApp = !payByQr && !retry && props.whatsapp !== null;
 

@@ -286,6 +286,18 @@ describe('POST /store/orders/:token/pay', () => {
     expect(await orderOf(app, shop.orderId)).toMatchObject({ chipPurchaseId: second.id, payerEmail: 'b@example.com' });
   });
 
+  it('refuses to start a payment once a receipt is sent, and makes no purchase', async () => {
+    const shop = await aShopWithOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { receiptKey: `receipts/${shop.pageId}/r.png`, receiptType: 'image/png', receiptUploadedAt: new Date() } });
+
+    const res = await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' });
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'ORDER_RECEIPT_SENT', message: "Your receipt is with Kek Lina to check. They'll confirm it soon." });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PLACED', chipPurchaseId: null, receiptKey: `receipts/${shop.pageId}/r.png` });
+  });
+
   it('a second attempt after the first was paid marks the order paid instead of charging again', async () => {
     const shop = await aShopWithOrder(app);
     const first = await startPayment(app, shop);
@@ -390,7 +402,6 @@ describe('POST /store/chip/callback/:orderId', () => {
   it('a verified callback marks the order paid once', async () => {
     const shop = await aShopWithOrder(app);
     const purchase = await startPayment(app, shop);
-    await app.prisma.order.update({ where: { id: shop.orderId }, data: { receiptKey: `receipts/${shop.pageId}/r.png`, receiptType: 'image/png', receiptUploadedAt: new Date() } });
     client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u', referenceGenerated: 'CH0042' });
     clientFor.mockClear();
 
@@ -412,7 +423,7 @@ describe('POST /store/chip/callback/:orderId', () => {
       receiptType: null,
       receiptUploadedAt: null,
     });
-    expect(store.remove).toHaveBeenCalledWith(`receipts/${shop.pageId}/r.png`);
+    expect(store.remove).not.toHaveBeenCalled();
 
     const again = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
     expect(again.statusCode).toBe(200);
@@ -879,6 +890,33 @@ describe('final review: a second payment is never invisible', () => {
     expect(data.subject).toBe('Order #1 was paid twice');
     expect(data.text).toContain('Aisyah paid RM220 by FPX · Maybank2u on top of the QR payment. Refund one of them in CHIP.');
     expect(data.text).toContain(`Open order #1: ${APP_URL}/app/orders?order=${shop.orderId}`);
+  });
+
+  it('a payment that settles on an order with a receipt keeps the receipt and records the second payment, telling the owner once', async () => {
+    const shop = await aShopWithOrder(app);
+    const purchase = await startPayment(app, shop);
+    const receiptKey = `receipts/${shop.pageId}/r.png`;
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { receiptKey, receiptType: 'image/png', receiptUploadedAt: new Date() } });
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u' });
+    mailQueue.add.mockClear();
+
+    const res = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+    expect(res.json()).toEqual({ status: 'paid-twice' });
+    expect((await callback(app, shop.orderId, purchase.id, ownerKey.privateKey)).json()).toEqual({ status: 'already-paid' });
+
+    expect(await orderOf(app, shop.orderId)).toMatchObject({
+      status: 'PAID',
+      paidVia: 'CHIP',
+      receiptKey,
+      receiptType: 'image/png',
+      receiptUploadedAt: expect.any(Date),
+      chipPaidTwiceAt: expect.any(Date),
+    });
+    expect(store.remove).not.toHaveBeenCalled();
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const data = mailQueue.add.mock.calls[0]![1];
+    expect(data.subject).toBe('Order #1 was paid twice');
+    expect(data.text).toContain('on top of the QR payment.');
   });
 
   it('says hand-marked for an order the owner marked paid by hand', async () => {

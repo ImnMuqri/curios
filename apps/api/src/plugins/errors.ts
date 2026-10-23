@@ -128,6 +128,7 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_RECEIPT',
   'ORDER_ALREADY_PAID',
   'ORDER_CANCELLED',
+  'ORDER_RECEIPT_SENT',
   'ORDER_STATE',
   // Connecting the owner's own CHIP account (Store -> Payment): each says what to fix --
   // the key's shape, the key CHIP refused, a test key in production, an account with

@@ -6,7 +6,7 @@ import type { PrismaClient } from '@curios/db';
 import { errName } from '../billing/billing.service.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
-import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError } from './order.errors.js';
+import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
 import type { OrderMailQueue } from './place.service.js';
 
 type Log = {
@@ -203,11 +203,13 @@ export async function startOnlinePayment(
       chipPurchaseId: true,
       receiptKey: true,
       lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
-      page: { select: { handle: true, mode: true, paymentAccount: { select: ACCOUNT_SELECT } } },
+      page: { select: { handle: true, displayName: true, mode: true, paymentAccount: { select: ACCOUNT_SELECT } } },
     },
   });
   if (!order || order.page.mode !== 'BUSINESS') throw new OrderNotFoundError();
   refuseFor(order.status);
+  // A receipt is with the shop to check: a second payment now would leave two for one order.
+  if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
   const unavailable = (reason: string) => {
     deps.log.info({ orderId: order.id, reason }, 'online payment not available');
     return { url: null };
@@ -226,7 +228,7 @@ export async function startOnlinePayment(
   if (previousId) {
     const settled = async (purchase: ChipPurchase) => {
       const outcome = await settleChipPurchase(deps, { ...order, pageId: account.pageId }, purchase, now);
-      if (outcome === 'paid' || outcome === 'already-paid') throw new OrderAlreadyPaidError();
+      if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderAlreadyPaidError();
     };
     let previous: ChipPurchase;
     try {
@@ -377,29 +379,28 @@ export async function settleChipPurchase(
     // CHIP's own reference, or none: the purchase id is not a reference to show anyone.
     paidRef: purchase.referenceGenerated ?? null,
   };
-  // Read for the file only: the update clears the receipt fields whatever they hold.
-  const before = await deps.prisma.order.findUnique({ where: { id: order.id }, select: { receiptKey: true } });
+  // A receipt already sent is the customer's first payment (the API refuses to start an
+  // online one after it, so this is a race): it is never erased. The first update takes
+  // an order with no receipt; the second, one with a receipt, keeps it and records CHIP's
+  // payment beside it as a second payment.
   const { count } = await deps.prisma.order.updateMany({
-    where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id },
-    data: {
-      status: 'PAID',
-      ...paid,
-      // A receipt sent while paying online is not needed: CHIP's word is the proof.
-      receiptKey: null,
-      receiptType: null,
-      receiptUploadedAt: null,
-    },
+    where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id, receiptKey: null },
+    data: { status: 'PAID', ...paid },
   });
   if (count === 1) {
     // The one moment the order becomes PAID through CHIP, and it happens once: so the
     // owner's "paid" email is sent from here and nowhere else.
     await mailOwner(deps, order.id, 'paid');
-    if (before?.receiptKey && deps.store) {
-      await deps.store.remove(before.receiptKey).catch((error: unknown) =>
-        deps.log.warn({ orderId: order.id, err: errName(error) }, 'receipt of an order paid online could not be removed'),
-      );
-    }
     return 'paid';
+  }
+  const withReceipt = await deps.prisma.order.updateMany({
+    where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id, receiptKey: { not: null } },
+    data: { status: 'PAID', ...paid, chipPaidTwiceAt: now },
+  });
+  if (withReceipt.count === 1) {
+    deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online after a receipt was sent');
+    await mailOwner(deps, order.id, 'paid-twice', paid.paidMethodLabel, 'qr');
+    return 'paid-twice';
   }
   const after = await deps.prisma.order.findUnique({ where: { id: order.id }, select: { status: true, paidVia: true } });
   if (after && (after.status === 'PAID' || after.status === 'COMPLETED')) {
@@ -447,7 +448,7 @@ export async function settleChipPurchase(
  * update that changes the order, so once per order. Queued, not awaited, like every order
  * email; a failure of any kind is logged with ids only and never reaches the caller.
  */
-async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'paid-after-cancel' | 'paid-twice', twiceVia?: string | null): Promise<void> {
+async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'paid-after-cancel' | 'paid-twice', twiceVia?: string | null, twiceFirst?: 'qr' | 'hand'): Promise<void> {
   try {
     const order = await deps.prisma.order.findUnique({
       where: { id: orderId },
@@ -472,7 +473,7 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
     const mail =
       kind === 'paid-twice'
         ? // The order's own paid fields are the first payment's; CHIP's way of paying comes from the purchase.
-          paidTwiceMail({ ...base, via: twiceVia ?? 'CHIP', first: order.paidVia === 'RECEIPT' ? 'qr' : 'hand', url, appUrl: deps.appUrl })
+          paidTwiceMail({ ...base, via: twiceVia ?? 'CHIP', first: twiceFirst ?? (order.paidVia === 'RECEIPT' ? 'qr' : 'hand'), url, appUrl: deps.appUrl })
         : kind === 'paid'
         ? paidOrderMail({
             ...base,
@@ -603,7 +604,7 @@ export async function cancelChipBeforeOwnerMove(deps: PayOnlineDeps, accountId: 
   const purchase = await client.getPurchase(order.chipPurchaseId).catch(() => null);
   if (!purchase || !wasPaid(purchase.status)) return;
   const outcome = await settleChipPurchase(deps, order, purchase, now);
-  if (outcome === 'paid' || outcome === 'already-paid') throw new OrderJustPaidError();
+  if (outcome === 'paid' || outcome === 'already-paid' || outcome === 'paid-twice') throw new OrderJustPaidError();
 }
 
 /** The callback's order: what verifying and settling it needs. */

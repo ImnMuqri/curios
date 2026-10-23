@@ -120,6 +120,16 @@ export class OrderAlreadyPaidError extends Error {
   }
 }
 
+/** A receipt is already with the shop: paying online as well would be a second payment, so none is started. */
+export class OrderReceiptSentError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ORDER_RECEIPT_SENT';
+  constructor(shop: string) {
+    super(`Your receipt is with ${shop} to check. They'll confirm it soon.`);
+    this.name = 'OrderReceiptSentError';
+  }
+}
+
 export class OrderCancelledError extends Error {
   readonly statusCode = 409;
   readonly code = 'ORDER_CANCELLED';
