@@ -344,7 +344,7 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
       });
       // A failed first payment is the owner's to retry at checkout; only a renewal charge
       // is ours to count.
-      if (!payment?.autoRenewal) return reply.send({ status: 'ignored' });
+      if (!payment?.autoRenewal || !payment.pageId) return reply.send({ status: 'ignored' });
       const result = await recordRenewalFailure(app.prisma, payment.id, new Date());
       request.log.info({ purchaseId, source: 'webhook', outcome: `renewal-${result.kind}` }, 'chip purchase handled');
       await onRenewalFailure(payment.pageId, result);

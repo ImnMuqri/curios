@@ -81,6 +81,12 @@ enum PaymentStatus {
 enum PaymentProvider {
   BILLPLZ
   CHIP
+  /// A month given by the Curios team from the admin app; no money moved.
+  GRANT
+}
+
+enum AdminRole {
+  OWNER
 }
 
 enum TileSize {
@@ -190,6 +196,10 @@ model Page {
   /// does; there is no subscription to activate, suspend or reconcile, because
   /// each payment simply moves this date. Lapsed is a comparison.
   paidUntil           DateTime?
+  /// Set when the Curios team suspends the page; the public page then shows the
+  /// unavailable notice. Null means live.
+  suspendedAt         DateTime?
+  suspendReason       String?
   /// Leads ever captured, and never decremented. A counter rather than
   /// count(Lead) because slice 5 gave owners a lead delete -- counting rows
   /// would let somebody delete their three trial leads and get three more.
@@ -681,10 +691,15 @@ model FaqRedirect {
 
 model Payment {
   id                  String          @id @default(cuid())
-  pageId              String
-  /// Restrict, not Cascade like every other table here: a payment is a financial
-  /// record, and it must not disappear as a side effect of removing a page.
-  page                Page            @relation(fields: [pageId], references: [id], onDelete: Restrict)
+  /// Null once the Curios team deletes the page (SetNull): a payment is a
+  /// financial record and outlives its page, which is why the handle and the
+  /// owner's email are copied onto the row below.
+  pageId              String?
+  page                Page?           @relation(fields: [pageId], references: [id], onDelete: SetNull)
+  /// The page's handle and its owner's email, kept so the record still says whose
+  /// it was after the page is gone.
+  pageHandle          String?
+  ownerEmail          String?
   plan                BillingPlan
   /// What was billed, fixed at creation. A grant is checked against this -- never
   /// against today's price, which may have changed since the bill was raised.
@@ -848,4 +863,50 @@ model OrderLine {
   @@index([orderId, position])
   // Deleting an item sets this null (SetNull): without it, every deleted item scans OrderLine.
   @@index([itemId])
+}
+
+/// A member of the Curios team who signs in to the admin app. Separate from
+/// Account: owners and admins never share a login or a session.
+model AdminUser {
+  id           String         @id @default(cuid())
+  email        String         @unique
+  name         String
+  passwordHash String
+  role         AdminRole      @default(OWNER)
+  disabledAt   DateTime?
+  lastLoginAt  DateTime?
+  createdAt    DateTime       @default(now())
+  sessions     AdminSession[]
+  actions      AdminAction[]
+}
+
+/// Like Session: id is the hashed cookie value. Absolute expiry only.
+model AdminSession {
+  id          String    @id
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  expiresAt   DateTime
+  ip          String
+  createdAt   DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
+/// The audit trail. Written by the API service layer in the same transaction as
+/// the change; never updated or deleted.
+model AdminAction {
+  id          String    @id @default(cuid())
+  adminUserId String
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+  action      String
+  targetType  String
+  targetId    String
+  targetLabel String
+  reason      String
+  metadata    Json?
+  ip          String
+  createdAt   DateTime  @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
 }

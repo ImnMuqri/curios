@@ -30,3 +30,13 @@ BEGIN
       ON "ShopPaymentAccount" TO curios_readonly;
   END IF;
 END $$;
+
+-- Every column of an admin user but the password hash.
+DO $$
+BEGIN
+  IF to_regclass('"AdminUser"') IS NOT NULL THEN
+    REVOKE SELECT ON "AdminUser" FROM curios_readonly;
+    GRANT SELECT ("id", "email", "name", "role", "disabledAt", "lastLoginAt", "createdAt")
+      ON "AdminUser" TO curios_readonly;
+  END IF;
+END $$;

@@ -416,15 +416,21 @@ describe('the owner surface columns', () => {
     await expect(prisma.payment.create({ data })).resolves.toBeTruthy();
   });
 
-  it('will not delete a page that has a payment', async () => {
-    // Restrict, where every other table cascades: a payment is a financial
-    // record and must not vanish as a side effect of removing a page.
+  it('keeps a payment, with its page handle and owner email, when the page is deleted', async () => {
+    // SetNull: a payment is a financial record and outlives its page; the copied
+    // handle and email still say whose it was.
     const pageId = await aPageForPayments();
-    await prisma.payment.create({
-      data: { pageId, plan: 'MONTHLY', amountCents: 3900 },
+    const { id } = await prisma.payment.create({
+      data: { pageId, plan: 'MONTHLY', amountCents: 3900, pageHandle: 'gone-shop', ownerEmail: 'gone@example.com' },
     });
 
-    await expect(prisma.page.delete({ where: { id: pageId } })).rejects.toMatchObject({ code: 'P2003' });
+    await prisma.page.delete({ where: { id: pageId } });
+
+    await expect(prisma.payment.findUniqueOrThrow({ where: { id } })).resolves.toMatchObject({
+      pageId: null,
+      pageHandle: 'gone-shop',
+      ownerEmail: 'gone@example.com',
+    });
   });
 
   it('keeps one renewal card per page, deleted with the page', async () => {

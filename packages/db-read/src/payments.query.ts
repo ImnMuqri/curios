@@ -4,8 +4,8 @@ export interface OwnerPayment {
   id: string;
   plan: 'MONTHLY' | 'ANNUAL';
   amountCents: number;
-  /** Which processor took it. Old rows are Billplz; everything new is CHIP. */
-  provider: 'BILLPLZ' | 'CHIP';
+  /** Which processor took it. Old rows are Billplz; a GRANT is a month the Curios team gave. */
+  provider: 'BILLPLZ' | 'CHIP' | 'GRANT';
   status: 'PENDING' | 'PAID' | 'FAILED' | 'EXPIRED';
   /** A renewal charge made by the job against the saved card, not a checkout the owner started. */
   autoRenewal: boolean;

@@ -103,7 +103,8 @@ export async function grantPayment(
       status: true,
     },
   });
-  if (!payment) return { kind: 'unknown-payment' };
+  if (!payment?.pageId) return { kind: 'unknown-payment' };
+  const pageId = payment.pageId;
   if (payment.amountCents !== evidence.amountCents) return { kind: 'mismatch', reason: 'amount' };
   if (evidence.reference !== payment.id) return { kind: 'mismatch', reason: 'reference' };
   if (payment.status === 'PAID') return { kind: 'already-granted' };
@@ -121,13 +122,13 @@ export async function grantPayment(
     }
 
     const rows = await tx.$queryRaw<{ paidUntil: Date | null }[]>`
-      SELECT "paidUntil" FROM "Page" WHERE "id" = ${payment.pageId} FOR UPDATE
+      SELECT "paidUntil" FROM "Page" WHERE "id" = ${pageId} FOR UPDATE
     `;
     const current = rows[0]?.paidUntil ?? null;
     if (options.afterRead) await options.afterRead();
 
     const paidUntil = extendPaidUntil({ paidUntil: current, now: options.now, plan: payment.plan });
-    await tx.page.update({ where: { id: payment.pageId }, data: { paidUntil } });
+    await tx.page.update({ where: { id: pageId }, data: { paidUntil } });
     await tx.payment.update({ where: { id: payment.id }, data: { grantedUntil: paidUntil } });
 
     // Asked for auto-renew and CHIP kept the card: one card per page, so a new one
@@ -142,8 +143,8 @@ export async function grantPayment(
         lastFailedAt: null,
       };
       await tx.renewalCard.upsert({
-        where: { pageId: payment.pageId },
-        create: { pageId: payment.pageId, ...card },
+        where: { pageId },
+        create: { pageId, ...card },
         update: card,
       });
       cardSaved = true;
@@ -153,7 +154,7 @@ export async function grantPayment(
     // next period counts from zero. updateMany, so a page with no card is not an error.
     if (!cardSaved) {
       await tx.renewalCard.updateMany({
-        where: { pageId: payment.pageId },
+        where: { pageId },
         data: { failedAttempts: 0, lastFailedAt: null },
       });
     }
@@ -192,7 +193,8 @@ export async function recordRenewalFailure(
       where: { id: paymentId },
       select: { pageId: true, autoRenewal: true },
     });
-    if (!payment?.autoRenewal) return { kind: 'ignored' as const };
+    if (!payment?.autoRenewal || !payment.pageId) return { kind: 'ignored' as const };
+    const pageId = payment.pageId;
 
     const claimed = await tx.payment.updateMany({
       where: { id: paymentId, status: 'PENDING' },
@@ -201,24 +203,24 @@ export async function recordRenewalFailure(
     if (claimed.count === 0) return { kind: 'ignored' as const };
 
     const cards = await tx.$queryRaw<{ failedAttempts: number }[]>`
-      SELECT "failedAttempts" FROM "RenewalCard" WHERE "pageId" = ${payment.pageId} FOR UPDATE
+      SELECT "failedAttempts" FROM "RenewalCard" WHERE "pageId" = ${pageId} FOR UPDATE
     `;
     const card = cards[0];
     // Auto-renew is already off; there is nothing to count and no one to tell.
     if (!card) return { kind: 'ignored' as const };
 
     const page = await tx.page.findUniqueOrThrow({
-      where: { id: payment.pageId },
+      where: { id: pageId },
       select: { paidUntil: true },
     });
     const attempts = card.failedAttempts + 1;
     const lapsed = page.paidUntil !== null && page.paidUntil.getTime() < now.getTime() - GRACE_MS;
     if (attempts >= MAX_RENEWAL_ATTEMPTS || lapsed) {
-      await tx.renewalCard.deleteMany({ where: { pageId: payment.pageId } });
+      await tx.renewalCard.deleteMany({ where: { pageId } });
       return { kind: 'stopped' as const, reason: attempts >= MAX_RENEWAL_ATTEMPTS ? ('attempts' as const) : ('lapsed' as const) };
     }
     await tx.renewalCard.updateMany({
-      where: { pageId: payment.pageId },
+      where: { pageId },
       data: { failedAttempts: attempts, lastFailedAt: now },
     });
     return { kind: 'retry' as const, attempts };
