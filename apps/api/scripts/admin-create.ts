@@ -1,6 +1,7 @@
 import { Writable } from 'node:stream';
 import { createInterface } from 'node:readline';
 import { prisma } from '@curios/db';
+import { createOrResetAdmin } from '../src/modules/admin/admin-user.service.js';
 import { hashPassword, MIN_PASSWORD_LENGTH } from '../src/modules/auth/password.service.js';
 
 /**
@@ -52,17 +53,12 @@ async function main() {
 
   const passwordHash = await hashPassword(password);
   try {
-    const existing = await prisma.adminUser.findUnique({ where: { email }, select: { id: true } });
-    if (existing) {
-      await prisma.adminUser.update({
-        where: { id: existing.id },
-        data: { passwordHash, name, disabledAt: null },
-      });
-      console.log(`Reset the password for ${email} and enabled the account.`);
-    } else {
-      await prisma.adminUser.create({ data: { email, name, passwordHash } });
-      console.log(`Created admin ${email}.`);
-    }
+    const result = await createOrResetAdmin(prisma, { email, name, passwordHash });
+    console.log(
+      result === 'reset'
+        ? `Reset the password for ${email}, enabled the account and ended its sessions.`
+        : `Created admin ${email}.`,
+    );
   } finally {
     await prisma.$disconnect();
   }
