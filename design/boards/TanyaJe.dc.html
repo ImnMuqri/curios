@@ -168,7 +168,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .shop-thumb{display:block;width:38px;height:38px;flex:none;overflow:hidden;border-radius:50%}
 .shop-add{display:grid;place-items:center;width:34px;height:34px;flex:none;border:0;border-radius:50%;background:#fafbfc;color:#3d0f1e;font:inherit;font-size:18px;font-weight:600;cursor:pointer}
 .biz-row{display:grid;grid-template-columns:56px 1fr;gap:12px;padding:22px 4px;border-top:1px solid #e4e7eb}
-.biz-n{font-weight:600;font-size:13px;color:#b5294e;padding-top:6px}
+.biz-n{font-family:var(--m);font-size:13px;color:#b5294e;padding-top:6px}
 .biz-h{display:block;font-family:var(--d);font-size:24px;font-weight:700;letter-spacing:-.02em}
 .biz-p{display:block;margin-top:4px;max-width:30em;color:#4b5060;font-size:15px}
 /* Business: order flow played by scroll */
@@ -178,13 +178,13 @@ a{color:#191f2c}a:hover{color:#2340c8}
 @media (min-width:1000px){.of-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}}
 .of-caps{display:grid;gap:22px;margin-top:36px}
 .of-cap{display:grid;grid-template-columns:44px 1fr;gap:10px}
-.of-n{font-weight:600;font-size:13px;color:#b5294e;padding-top:8px}
+.of-n{font-family:var(--m);font-size:13px;color:#b5294e;padding-top:8px}
 .of-h{display:block;font-family:var(--d);font-size:30px;font-weight:800;letter-spacing:-.025em;line-height:1.1}
 .of-p{display:block;margin-top:6px;max-width:26em;color:#4b5060;font-size:16px}
 .of-bar{display:none;margin-top:28px;height:3px;width:220px;border-radius:2px;background:#ecd3da;overflow:hidden}
 .of-fill{display:block;height:100%;background:#b5294e;transform-origin:left}
 .of-stage{position:relative;display:flex;justify-content:center;align-items:flex-start;gap:72px;flex-wrap:wrap}
-.of-label{font-size:13px;font-weight:500;color:#4b5060}
+.of-label{font-family:var(--m);font-size:12px;color:#4b5060}
 .lay{position:absolute;inset:0}
 .lay-inline{position:absolute;left:16px;top:50%;transform:translateY(-50%);white-space:nowrap}
 .sr-txt{flex:1;min-width:0;display:flex;flex-direction:column;text-align:left}
@@ -463,7 +463,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .sl{display:inline-block;overflow:hidden;padding-bottom:.06em}
 .sl>span{display:inline-block;white-space:pre;transition:transform 700ms cubic-bezier(.22,1,.36,1),opacity 500ms ease}
 .cl2-rot{margin:14px 0 0;display:flex;align-items:center;gap:.3em;font-family:var(--d);font-size:clamp(24px,16px + 1.4vw,36px);font-weight:700;letter-spacing:-.02em;color:#b3b7c1}
-.cl2-reel{display:inline-flex;height:1.2em;overflow:hidden;color:#fafbfc;line-height:1.2}
+.cl2-reel{display:inline-flex;height:1.2em;overflow:hidden;padding:0 .3em;border-radius:.25em;background:#2340c8;color:#fafbfc;line-height:1.2}
 .cl2-reel>span{display:flex;flex-direction:column}
 .cl2-reel>span>span{display:block;height:1.2em;white-space:nowrap}
 .cl2-claim{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0 4px;width:100%;max-width:680px;margin-top:34px}
@@ -516,8 +516,8 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .blobs.dark .grain{opacity:.14;mix-blend-mode:screen}
 @media (prefers-reduced-motion: reduce){.blob{animation:none}}
 /* Floating glass pill nav */
-.navwrap{position:sticky;top:0;z-index:40;height:0;padding:0}
-.navpill{display:flex;align-items:center;gap:18px;height:72px;margin:0;padding:0 max(32px, calc((100% - 1152px) / 2));background:#fafbfc;box-shadow:0 1px 0 #e4e7eb}
+.navwrap{position:sticky;top:0;z-index:40;height:0;padding:0 32px}
+.navpill{display:flex;align-items:center;gap:18px;max-width:1120px;height:68px;margin:0 auto;padding:0 14px 0 36px;border-radius:999px;transform:translateY(14px);background:rgba(250,251,252,.5);-webkit-backdrop-filter:blur(18px) saturate(170%);backdrop-filter:blur(18px) saturate(170%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.7),0 0 0 1px rgba(25,31,44,.06)}
 .navlinks{display:flex;gap:2px}
 .navlinks a,.navright a{display:inline-flex;align-items:center;height:40px;padding:0 14px;border-radius:999px;color:#191f2c;font-size:15px;font-weight:500;text-decoration:none;white-space:nowrap;transition:background 180ms ease}
 .navlinks a:hover,.navright a:not(.navcta):hover{background:rgba(25,31,44,.07);color:#191f2c}
@@ -525,7 +525,7 @@ a{color:#191f2c}a:hover{color:#2340c8}
 .navright .navcta{height:46px;margin-left:8px;padding:0 22px;background:#2340c8;color:#fafbfc;font-weight:600}
 .navright .navcta:hover{background:#1a31a8;color:#fafbfc}
 @media (max-width:1100px){.navlinks a:nth-child(n+4){display:none}}
-@media (max-width:760px){.navpill{gap:6px;padding:0 16px 0 20px}.navlinks{display:none}}
+@media (max-width:760px){.navpill{gap:6px;padding:0 10px 0 20px}.navlinks{display:none}}
 /* Pricing: rolling price */
 .roll{display:inline-block;height:1em;overflow:hidden;line-height:1;vertical-align:bottom}
 .roll-strip{display:flex;flex-direction:column;transition:transform 560ms cubic-bezier(.34,1.25,.64,1)}
@@ -558,8 +558,8 @@ details.q[open] summary::after{content:'–'}
 @media (max-width:960px){.navlinks{display:none}.navright{margin-left:auto}}
 #claim-tj{width:0}
 @media (max-width:560px){
-.navwrap{padding:0}
-.navpill{gap:4px;padding:0 16px}
+.navwrap{padding:0 12px}
+.navpill{gap:4px;padding:0 6px 0 16px}
 .navright a[hreflang]{display:none}
 .navcta{height:42px;margin-left:2px;padding:0 16px}
 .deckstage{width:470px;margin:0 auto;zoom:.72}
@@ -739,11 +739,11 @@ details.q[open] summary::after{content:'–'}
 </div>
 <div class="room-stage" style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start">
 <div style="padding: 18px; border-radius: 20px; background: #ffffff; font-size: 14px; line-height: 1.65; color: #4b5060">
-<p style="margin: 0 0 10px; font-size: 13px; font-weight: 600; color: #696e7b">You pasted</p>
+<p style="margin: 0 0 10px; font-family: var(--m); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #696e7b">You pasted</p>
 I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; border-radius: 4px; transition: background 300ms ease">Portraits from RM250</mark>, <mark style="background: {{hl1}}; color: inherit; border-radius: 4px; transition: background 300ms ease">book covers from RM900</mark>. I take <mark style="background: {{hl2}}; color: inherit; border-radius: 4px; transition: background 300ms ease">four commissions a month</mark> and <mark style="background: {{hl3}}; color: inherit; border-radius: 4px; transition: background 300ms ease">reply within two days</mark>.
 </div>
 <div aria-live="polite" style="display: flex; flex-direction: column; gap: 8px">
-<p style="margin: 0 0 2px; font-size: 13px; font-weight: 600; color: #122686">It found</p>
+<p style="margin: 0 0 2px; font-family: var(--m); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #122686">It found</p>
 <sc-for list="{{ found }}" as="f" hint-placeholder-count="4">
 <span class="pop" style="display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 14px; background: #2340c8; color: #fafbfc; font-size: 14px; font-weight: 600"><span aria-hidden="true" style="display: grid; place-items: center; width: 20px; height: 20px; flex: none; border-radius: 50%; background: #fafbfc; color: #2340c8; font-size: 11px">✓</span><span style="font-family: {{f.font}}">{{f.text}}</span></span>
 </sc-for>
@@ -809,7 +809,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 
 </ol>
 </div>
-
+<p style="margin: 20px 0 0; font-family: var(--m); font-size: 12px; color: #696e7b">Keep scrolling →</p>
 </div>
 </div>
 </section>
@@ -1461,9 +1461,9 @@ class Component extends DCLogic {
         showRipple: intro && this.state.intro === 2,
         aShown: front ? c.a.slice(0, this.state.typed) : c.a,
         typing: front && this.state.typed < c.a.length,
-        tf: 'translateY(' + (pos * 10) + 'px)',
+        tf: 'translate(' + (pos * 30) + 'px, ' + (-pos * 6) + 'px) rotate(' + (pos * 4.5) + 'deg) scale(' + (1 - pos * 0.05).toFixed(3) + ')',
         z: String(n - pos),
-        op: pos === 0 ? '1' : '0'
+        op: pos >= 3 ? '0' : '1'
       });
     });
     const steps = this.stepsData.map((s, i) => ({
@@ -1510,7 +1510,7 @@ class Component extends DCLogic {
         text: i === this.focus.length - 1 ? w + '.' : w + ',',
         blur: 'none',
         op: i === this.state.f ? '1' : '0.45',
-        ring: 'none'
+        ring: i === this.state.f ? '0 0 0 3px #2340c8' : '0 0 0 0 transparent'
       })),
       loopOffset: '-' + this.state.loop.toFixed(2) + '%',
       who: this.whoRows.map((r, i) => ({
