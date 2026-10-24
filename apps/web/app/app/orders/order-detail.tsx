@@ -241,6 +241,15 @@ export function OrderDetail({
       action: 'paid',
       toast: `#${order.number} marked paid. ${first} can see it on their order page.`,
     };
+  else if (view === 'awaitingPayment' && sendsMail)
+    ask = {
+      tone: 'grey',
+      title: `Waiting for ${first} to pay`,
+      text: digitalOnly ? `Paid some other way? Mark it paid and their ${only} goes to ${order.email}.` : `Paid some other way? Mark it paid and their digital items go to ${order.email}.`,
+      button: 'Mark paid and send',
+      action: 'paid',
+      toast: digitalOnly ? `#${order.number} paid. It’s on its way to ${first}’s email.` : `#${order.number} marked paid. The digital items are on their way to ${first}’s email.`,
+    };
   else if (view === 'awaitingPayment')
     ask = {
       tone: 'grey',
@@ -545,6 +554,15 @@ export function OrderDetail({
           </section>
 
           {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} onChanged={onChanged} /> : null}
+
+          {digitalOnly && order.note ? (
+            <section className={styles.card} aria-label="Note">
+              <div className={styles.note}>
+                <b>Note from {first}</b>
+                {order.note}
+              </div>
+            </section>
+          ) : null}
 
           {digitalOnly ? null : <section className={styles.card} aria-labelledby="order-getting">
             <h3 className={styles.cardTitle} id="order-getting">

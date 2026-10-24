@@ -24,6 +24,8 @@ export interface SessionReminderDeps {
   now: Date;
   /** The web app, for the order page. */
   appUrl: string;
+  /** The API's public origin, for the order's download links (resolveApiUrl, once at boot). */
+  apiUrl: string;
   /** PAYMENT_SECRETS_KEY; null sends the reminder with the time and place but no links. */
   secretsKey: Buffer | null;
   log?: { info?: (details: object, message: string) => void; warn?: (details: object, message: string) => void };
@@ -43,7 +45,7 @@ export async function sendSessionReminders(deps: SessionReminderDeps): Promise<n
   const { from, to } = tomorrowInMalaysia(deps.now);
   const paid = { status: { in: ['PAID', 'COMPLETED'] as ('PAID' | 'COMPLETED')[] }, sentAt: { not: null }, email: { not: null } };
   const due = await deps.prisma.sessionBooking.findMany({
-    where: { remindedAt: null, session: { startsAt: { gte: from, lt: to } }, orderLine: { order: paid } },
+    where: { remindedAt: null, session: { startsAt: { gte: from, lt: to } }, orderLine: { order: { ...paid, page: { suspendedAt: null } } } },
     select: {
       id: true,
       sessionId: true,
@@ -76,7 +78,7 @@ export async function sendSessionReminders(deps: SessionReminderDeps): Promise<n
     take: BATCH,
   });
 
-  const api = trimSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001');
+  const api = trimSlash(deps.apiUrl);
   const app = trimSlash(deps.appUrl);
   let queued = 0;
   for (const booking of due) {
@@ -85,7 +87,7 @@ export async function sendSessionReminders(deps: SessionReminderDeps): Promise<n
     if (!order.email || !line.sessionMinutes || !line.sessionPlace || !line.sessionWhere) continue;
 
     const claim = await deps.prisma.sessionBooking.updateMany({
-      where: { id: booking.id, remindedAt: null, sessionId: booking.sessionId, orderLine: { order: paid } },
+      where: { id: booking.id, remindedAt: null, sessionId: booking.sessionId, orderLine: { order: { ...paid, page: { suspendedAt: null } } } },
       data: { remindedAt: deps.now },
     });
     if (claim.count === 0) continue;

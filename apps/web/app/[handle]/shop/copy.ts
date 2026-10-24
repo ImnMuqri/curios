@@ -601,6 +601,7 @@ const EN: ShopCopy = {
       TIME_FULL: 'That class time is full or has passed. Pick another time.',
       TIME_REQUIRED: 'Pick a time for your class first.',
       EMAIL_REQUIRED: 'Add the email where we should send your digital items.',
+      INVALID_ORDER: 'Your basket changed. Reload the page and try again.',
     })[code] ?? null,
 };
 
@@ -873,6 +874,7 @@ const MS: ShopCopy = {
       TIME_FULL: 'Masa kelas itu sudah penuh atau sudah berlalu. Pilih masa lain.',
       TIME_REQUIRED: 'Pilih masa untuk kelas anda dahulu.',
       EMAIL_REQUIRED: 'Masukkan e-mel ke mana kami patut hantar barang digital anda.',
+      INVALID_ORDER: 'Bakul anda telah berubah. Muat semula halaman dan cuba lagi.',
     })[code] ?? null,
 };
 

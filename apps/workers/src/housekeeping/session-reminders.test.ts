@@ -108,7 +108,7 @@ describe('sendSessionReminders', () => {
   it('reminds once per booking, with the join link, the shop as sender and escaped owner text', async () => {
     const { bookingId } = await aBooking(tomorrow8pm);
     const box = mailbox();
-    const deps = { prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', secretsKey: key };
+    const deps = { prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key };
     expect(await sendSessionReminders(deps)).toBeGreaterThanOrEqual(1);
     const mine = box.added.filter((m) => m.subject.includes('Kelas <i>batik</i>'));
     expect(mine).toHaveLength(1);
@@ -134,14 +134,14 @@ describe('sendSessionReminders', () => {
     const today = await aBooking(new Date('2026-10-24T11:00:00Z'));
     const later = await aBooking(new Date('2026-10-26T12:00:00Z'));
     const box = mailbox();
-    await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', secretsKey: key });
+    await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key });
     for (const b of [cancelled, unsent, today, later]) expect(await reminded(b.bookingId)).toBeNull();
   });
 
   it('includes the order’s files with their download links', async () => {
     await aBooking(tomorrow8pm, { withFile: true });
     const box = mailbox();
-    await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', secretsKey: key });
+    await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key });
     const mail = box.added.find((m) => m.text.includes('list.pdf'));
     expect(mail?.text).toMatch(/\/store\/orders\/tok123\/files\//);
     expect(mail?.html).toContain('220 KB');
@@ -150,17 +150,33 @@ describe('sendSessionReminders', () => {
   it('sends the time and place without links when the order link cannot be opened', async () => {
     const { bookingId } = await aBooking(tomorrow8pm, { sealed: false, where: 'https://meet.example/nolink' });
     const box = mailbox();
-    await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', secretsKey: key });
+    await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key });
     const mail = box.added.find((m) => m.text.includes('meet.example/nolink'));
     expect(mail).toBeDefined();
     expect(mail!.text).not.toContain('/order/');
     expect(await reminded(bookingId)).not.toBeNull();
   });
 
+  it('sends no reminder for a suspended shop, and sends it once the shop is back', async () => {
+    const { bookingId } = await aBooking(tomorrow8pm);
+    await prisma.page.update({ where: { id: pageId }, data: { suspendedAt: new Date() } });
+    try {
+      const box = mailbox();
+      await sendSessionReminders({ prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key });
+      expect(box.added).toHaveLength(0);
+      expect(await reminded(bookingId)).toBeNull();
+    } finally {
+      await prisma.page.update({ where: { id: pageId }, data: { suspendedAt: null } });
+    }
+    const after = mailbox();
+    await sendSessionReminders({ prisma, mailQueue: after.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key });
+    expect(await reminded(bookingId)).toEqual(now);
+  });
+
   it('reminds a moved booking again, for its new time', async () => {
     const { bookingId, orderId } = await aBooking(tomorrow8pm);
     const box = mailbox();
-    const deps = { prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', secretsKey: key };
+    const deps = { prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key };
     await sendSessionReminders(deps);
     expect(await reminded(bookingId)).not.toBeNull();
     // The owner moves it to another time (Task 5 resets remindedAt), also tomorrow here.
@@ -175,7 +191,7 @@ describe('sendSessionReminders', () => {
   it('two runs at once send one email per booking', async () => {
     const { bookingId } = await aBooking(tomorrow8pm, { where: 'https://meet.example/race' });
     const box = mailbox();
-    const deps = { prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', secretsKey: key };
+    const deps = { prisma, mailQueue: box.mailQueue, now, appUrl: 'https://curios.example', apiUrl: 'https://api.curios.example', secretsKey: key };
     await Promise.all([sendSessionReminders(deps), sendSessionReminders(deps)]);
     expect(box.added.filter((m) => m.text.includes('meet.example/race'))).toHaveLength(1);
     expect(await reminded(bookingId)).not.toBeNull();

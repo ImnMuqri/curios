@@ -136,7 +136,7 @@ export function createHousekeepingWorker(deps: {
   prisma: PrismaClient;
   removeObjects: RemoveObjects | null;
   /** The class reminders go out through the mail queue, with order links opened by `secretsKey`. */
-  reminders: { mailQueue: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> }; appUrl: string; secretsKey: Buffer | null };
+  reminders: { mailQueue: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> }; appUrl: string; apiUrl: string; secretsKey: Buffer | null };
   log?: { info: (details: object, message: string) => void; warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
 }): Worker {
   return new Worker(

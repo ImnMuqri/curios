@@ -248,6 +248,34 @@ describe('ending an unpaid order releases what it held', () => {
   }
   const basket = (shop: Shop) => digital([line(shop.voucher), line(shop.cls, { sessionId: shop.time })], 11_000);
 
+  it('gives two lines of the same codes item (different options) distinct codes', async () => {
+    const shop = await aShop();
+    const item = await app.prisma.item.create({
+      data: {
+        pageId: shop.pageId,
+        name: 'Top-up',
+        slug: 'topup',
+        priceCents: 1_000,
+        position: 9,
+        kind: 'DIGITAL',
+        delivery: 'CODES',
+        options: { create: [{ label: 'RM10', priceCents: 1_000, position: 0 }, { label: 'RM20', priceCents: 2_000, position: 1 }] },
+        codes: { create: [{ code: 'T-1' }, { code: 'T-2' }, { code: 'T-3' }] },
+      },
+      select: { id: true, options: { orderBy: { position: 'asc' }, select: { id: true } } },
+    });
+    const [small, large] = item.options;
+    const res = await place(shop.handle, digital([line(item.id, { optionId: small!.id }), line(item.id, { optionId: large!.id })], 3_000));
+    expect(res.statusCode).toBe(201);
+    const order = await orderOf(res.json().token);
+    expect(order.lines).toHaveLength(2);
+    const held = await app.prisma.itemCode.findMany({ where: { itemId: item.id, orderLineId: { not: null } }, select: { code: true, orderLineId: true } });
+    expect(held).toHaveLength(2);
+    expect(new Set(held.map((h) => h.code)).size).toBe(2);
+    expect(new Set(held.map((h) => h.orderLineId))).toEqual(new Set(order.lines.map((l) => l.id)));
+    expect(await app.prisma.itemCode.count({ where: { itemId: item.id, orderLineId: null } })).toBe(1);
+  });
+
   it('cancelling frees the code and the seat, so the next buyer gets them', async () => {
     const shop = await aShop();
     const first = await place(shop.handle, basket(shop));
@@ -260,7 +288,7 @@ describe('ending an unpaid order releases what it held', () => {
     expect((await place(shop.handle, basket(shop))).statusCode).toBe(201);
   });
 
-  it('cancelling a paid order keeps the code given and the seat', async () => {
+  it('cancelling a paid order keeps the code given and frees the seat', async () => {
     const shop = await aShop();
     const first = await place(shop.handle, basket(shop));
     const order = await orderOf(first.json().token);
@@ -268,7 +296,7 @@ describe('ending an unpaid order releases what it held', () => {
     expect((await move(cookie, order.id, 'paid')).statusCode).toBe(204);
     expect((await move(cookie, order.id, 'cancel')).statusCode).toBe(204);
     expect(await app.prisma.itemCode.count({ where: { itemId: shop.voucher, orderLineId: { not: null } } })).toBe(1);
-    expect(await app.prisma.sessionBooking.count({ where: { sessionId: shop.time } })).toBe(1);
+    expect(await app.prisma.sessionBooking.count({ where: { sessionId: shop.time } })).toBe(0);
   });
 
   it('not received leaves the order placed and keeps what it holds', async () => {

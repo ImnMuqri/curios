@@ -203,7 +203,7 @@ describe('Checkout with digital items', () => {
   });
 
   it('words the server’s digital refusals in the page’s language, not the API’s English', async () => {
-    for (const [code, key] of [['SOLD_OUT', 'SOLD_OUT'], ['TIME_FULL', 'TIME_FULL'], ['TIME_REQUIRED', 'TIME_REQUIRED']] as const) {
+    for (const [code, key] of [['SOLD_OUT', 'SOLD_OUT'], ['TIME_FULL', 'TIME_FULL'], ['TIME_REQUIRED', 'TIME_REQUIRED'], ['INVALID_ORDER', 'INVALID_ORDER']] as const) {
       window.sessionStorage.clear();
       basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
       reply(409, { error: { code, message: 'ENGLISH FROM THE API' } });
@@ -217,6 +217,8 @@ describe('Checkout with digital items', () => {
       expect(screen.queryByText('ENGLISH FROM THE API')).toBeNull();
       view.unmount();
     }
+    expect(ms.digitalError('INVALID_ORDER')).toBe('Bakul anda telah berubah. Muat semula halaman dan cuba lagi.');
+    expect(en.digitalError('INVALID_ORDER')).toBe('Your basket changed. Reload the page and try again.');
     expect(en.digitalError('EMAIL_REQUIRED')).toMatch(/email/);
     expect(ms.digitalError('EMAIL_REQUIRED')).toMatch(/e-mel/);
   });

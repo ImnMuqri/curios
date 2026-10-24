@@ -75,6 +75,8 @@ export interface PayOnlineDeps {
   secretsKey: Buffer | null;
   production: boolean;
   appUrl: string;
+  /** The API's public origin, for the links in the delivery email. */
+  apiUrl: string;
   /** Where CHIP calls back (CHIP_CALLBACK_BASE_URL); null leaves the callback out, and the order page's check settles it. */
   callbackBaseUrl: string | null;
   store: AvatarStore | null;
@@ -463,7 +465,7 @@ export async function settleChipPurchase(
 
 /** Queues the buyer's delivery email for an order this path just delivered (best-effort, logged). */
 const mailBuyer = (deps: PayOnlineDeps, orderId: string) =>
-  queueDeliveryMail({ prisma: deps.prisma, mailQueue: deps.mailQueue(), secretsKey: deps.secretsKey, appUrl: deps.appUrl, log: deps.log }, orderId);
+  queueDeliveryMail({ prisma: deps.prisma, mailQueue: deps.mailQueue(), secretsKey: deps.secretsKey, appUrl: deps.appUrl, apiUrl: deps.apiUrl, log: deps.log }, orderId);
 
 /**
  * Tells the owner an order was paid online (or paid after they cancelled it), under the

@@ -515,6 +515,8 @@ the order was placed, the token no longer opens: the API logs "order link could 
 (PAYMENT_SECRETS_KEY changed?)" and the email goes out without links. Rotating the key (see Shop CHIP
 keys) therefore also affects digital orders paid before the change but not yet delivered.
 
+**`NEXT_PUBLIC_API_URL` for the API and the workers.** It is the API's public origin; delivery and reminder emails build download links from it. Both processes refuse to start in production without it (development falls back to `http://localhost:3001`).
+
 **Jobs.** Both run in the workers app with the housekeeping jobs:
 
 - `expire-holds`, hourly at :20. An unpaid order holding codes or class seats is cancelled after 24

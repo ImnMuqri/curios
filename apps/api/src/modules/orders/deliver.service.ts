@@ -3,6 +3,7 @@ import { digitalDeliveryMail, MAIL_QUEUE, type DigitalMailItem } from '@curios/c
 import { DOWNLOAD_DAYS, DOWNLOAD_USES, seatsLeft } from '@curios/core/digital';
 import { openSecret } from '@curios/core/secret-box';
 import type { Prisma, PrismaClient } from '@curios/db';
+import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { OrderNotFoundError, OrderStateError, SoldOutError, TimeFullError } from './order.errors.js';
 import type { OrderMailQueue } from './place.service.js';
 
@@ -60,11 +61,12 @@ export interface DeliveryMailDeps {
   secretsKey: Buffer | null;
   /** The web app, for the order page. */
   appUrl: string;
+  /** The API's public origin, for the download and link URLs (resolveApiUrl, once at boot). */
+  apiUrl: string;
   log?: { warn?: (obj: object, msg: string) => void };
 }
 
 const trimSlash = (url: string) => url.replace(/\/+$/, '');
-const apiBase = () => trimSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001');
 
 /** The order's token, or null where it was not sealed or its key has changed. */
 function openToken(sealed: string | null, key: Buffer | null, log?: DeliveryMailDeps['log']): string | null {
@@ -122,7 +124,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
       return;
     }
     const token = openToken(order.tokenSealed, deps.secretsKey, deps.log);
-    const api = apiBase();
+    const api = trimSlash(deps.apiUrl);
     const app = trimSlash(deps.appUrl);
     const items: DigitalMailItem[] = [];
     let until: Date | null = null;
@@ -178,9 +180,11 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
 async function sentOrder(tx: Pick<Prisma.TransactionClient, 'order'>, accountId: string, id: string) {
   const order = await tx.order.findFirst({
     where: { id, page: { accountId } },
-    select: { id: true, status: true, sentAt: true },
+    select: { id: true, status: true, sentAt: true, page: { select: { suspendedAt: true } } },
   });
   if (!order) throw new OrderNotFoundError();
+  // A suspended shop's owner cannot send buyers links, codes or a class's Join URL.
+  if (order.page.suspendedAt !== null) throw new PageUnavailableError();
   if (order.sentAt === null || (order.status !== 'PAID' && order.status !== 'COMPLETED')) throw new OrderStateError();
   return order;
 }

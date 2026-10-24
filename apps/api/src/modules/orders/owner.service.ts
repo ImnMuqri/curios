@@ -1,4 +1,4 @@
-import { releaseUnpaidStock, type Prisma, type PrismaClient } from '@curios/db';
+import { releaseOrderStock, type Prisma, type PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
 import { deliverOrder, queueDeliveryMail, type DeliveryMailDeps } from './deliver.service.js';
 import { OrderNotFoundError, OrderStateError } from './order.errors.js';
@@ -58,13 +58,13 @@ export const markCompleted = (deps: OwnerOrderDeps, accountId: string, id: strin
   move(deps.prisma, accountId, id, from('PAID'), { status: 'COMPLETED', completedAt: now });
 
 /**
- * Cancelling an order that was never paid gives back its codes and class seats, in the
- * same transaction (releaseUnpaidStock); one that was paid keeps what the buyer was given.
+ * Cancelling gives back the class seats, and the codes of an order that was never paid, in the
+ * same transaction (releaseOrderStock); a paid order keeps the codes the buyer was given.
  */
 export const cancelOrder = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
   deps.prisma.$transaction(async (tx) => {
     await move(tx, accountId, id, from('PLACED', 'PAID'), { status: 'CANCELLED', cancelledAt: now });
-    await releaseUnpaidStock(tx, id);
+    await releaseOrderStock(tx, id);
   });
 
 /**

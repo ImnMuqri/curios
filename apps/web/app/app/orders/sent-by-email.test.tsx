@@ -230,6 +230,34 @@ describe('a digital-only order in Orders', () => {
     expect(say).toHaveBeenCalledWith('#15 paid. It’s on its way to Mira’s email.');
   });
 
+  it('offers Mark paid and send while a digital order waits for payment, with the same toast', async () => {
+    const order: OrderRow = { ...base, status: 'PLACED', paidAt: null, paidVia: null, sentAt: null, receiptUploadedAt: null, lines: [line('lf', 'Kek coklat recipe e-book', digital())] };
+    expect(ownerView(order)).toBe('awaitingPayment');
+    const move = vi.fn(async () => undefined);
+    const say = vi.fn();
+    render(<OrderDetail order={order} now={now} pickupNote={null} move={move} act={vi.fn()} say={say} onChanged={vi.fn()} />);
+    const box = within(screen.getByRole('region', { name: 'What to do next' }));
+    expect(box.queryByRole('button', { name: 'Mark paid' })).toBeNull();
+    fireEvent.click(box.getByRole('button', { name: 'Mark paid and send' }));
+    await waitFor(() => expect(move).toHaveBeenCalledWith('o15', 'paid'));
+    expect(say).toHaveBeenCalledWith('#15 paid. It’s on its way to Mira’s email.');
+  });
+
+  it('keeps the plain Mark paid for an unpaid order with no digital line', () => {
+    const order: OrderRow = { ...base, status: 'PLACED', paidAt: null, paidVia: null, sentAt: null, receiptUploadedAt: null, method: 'PICKUP', day: '2026-10-17', lines: [physical] };
+    show(order);
+    expect(within(screen.getByRole('region', { name: 'What to do next' })).getByRole('button', { name: 'Mark paid' })).toBeInTheDocument();
+  });
+
+  it('shows the buyer’s note on a digital-only order, and nothing where there is none', () => {
+    const { unmount } = render(<OrderDetail order={{ ...base, note: 'Please send it to my work email too.' }} now={now} pickupNote={null} move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />);
+    expect(screen.getByText('Note from Mira')).toBeInTheDocument();
+    expect(screen.getByText(/Please send it to my work email too\./)).toBeInTheDocument();
+    unmount();
+    show(base);
+    expect(screen.queryByText('Note from Mira')).toBeNull();
+  });
+
   it('keeps Mark completed on a mixed order, once paid', () => {
     const mixed: OrderRow = { ...base, method: 'PICKUP', day: '2026-10-17', paidVia: 'MANUAL', lines: [physical, base.lines[0]!] };
     show(mixed);

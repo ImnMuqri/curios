@@ -132,6 +132,7 @@ export const DOMAIN_ERROR_CODES = new Set([
   'SEATS_BOOKED',
   'SESSION_BOOKED',
   'ITEM_HAS_BOOKINGS',
+  'ITEM_HAS_SALES',
   // Placing an order (slice 18): each tells the visitor what to do next --
   // order on WhatsApp, reload the basket, or fix one field.
   'STORE_CLOSED',

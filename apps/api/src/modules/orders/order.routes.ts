@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import { resolveApiUrl } from '@curios/core/digital';
 import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX } from '@curios/core/orders';
 import { PricesChangedError } from './order.errors.js';
 import { placeOrder, type OrderMailQueue } from './place.service.js';
@@ -174,12 +175,16 @@ export const ownerOrderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async 
     refunded: markRefunded,
   } as const;
 
+  // Resolved once at registration (throws in production when unset), not per request.
+  const apiUrl = options.payOnline?.apiUrl ?? resolveApiUrl(process.env);
+
   /** The buyer's delivery email, for the owner's paid mark and "send again". */
   const mailDeps = (log: DeliveryMailDeps['log']): DeliveryMailDeps => ({
     prisma: app.prisma,
     mailQueue: options.mailQueue ?? app.mailQueue,
     secretsKey: options.payOnline?.secretsKey ?? null,
     appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+    apiUrl,
     log,
   });
 

@@ -152,5 +152,19 @@ export function digitalFacts(stock: DigitalStock, now: Date): DigitalFacts {
   };
 }
 
+/**
+ * The API's public origin, for the download and link URLs that delivery and reminder emails carry.
+ * Production must set NEXT_PUBLIC_API_URL: a localhost fallback there would mail dead links, so
+ * it throws at boot instead. Development keeps the localhost fallback. No trailing slash.
+ */
+export function resolveApiUrl(env: { NEXT_PUBLIC_API_URL?: string; NODE_ENV?: string }): string {
+  const url = env.NEXT_PUBLIC_API_URL?.trim();
+  if (!url) {
+    if (env.NODE_ENV === 'production') throw new Error('NEXT_PUBLIC_API_URL is not set (the API public origin; delivery and reminder emails build download links from it)');
+    return 'http://localhost:3001';
+  }
+  return url.replace(/\/+$/, '');
+}
+
 /** The facts of an item that is not digital. */
 export const PHYSICAL_FACTS: DigitalFacts = { kind: 'PHYSICAL', delivery: null, format: null, soldOut: false, sessions: [], minutes: null, place: null };

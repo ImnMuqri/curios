@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { digitalFacts, digitalFileType, fileKind, isDigitalOnly, parseCodes, seatsLeft } from './digital.js';
+import { resolveApiUrl, digitalFacts, digitalFileType, fileKind, isDigitalOnly, parseCodes, seatsLeft } from './digital.js';
 
 describe('parseCodes', () => {
   it('trims, drops blanks and duplicates, keeps order', () => {
@@ -77,5 +77,19 @@ describe('digitalFileType', () => {
     expect(digitalFileType('a', 'image/')).toBeNull();
     expect(digitalFileType('a.exe', 'application/x-msdownload')).toBeNull();
     expect(digitalFileType('a.zip', 'text/html')).toBeNull();
+  });
+});
+
+describe('resolveApiUrl', () => {
+  it('trims the trailing slash and uses what is set', () => {
+    expect(resolveApiUrl({ NEXT_PUBLIC_API_URL: 'https://api.curios.example//', NODE_ENV: 'production' })).toBe('https://api.curios.example');
+  });
+  it('falls back to localhost in development and test', () => {
+    expect(resolveApiUrl({})).toBe('http://localhost:3001');
+    expect(resolveApiUrl({ NODE_ENV: 'test' })).toBe('http://localhost:3001');
+  });
+  it('throws in production when it is unset or blank', () => {
+    expect(() => resolveApiUrl({ NODE_ENV: 'production' })).toThrow(/NEXT_PUBLIC_API_URL/);
+    expect(() => resolveApiUrl({ NODE_ENV: 'production', NEXT_PUBLIC_API_URL: '  ' })).toThrow(/NEXT_PUBLIC_API_URL/);
   });
 });

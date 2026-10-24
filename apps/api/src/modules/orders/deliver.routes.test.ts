@@ -354,6 +354,41 @@ describe('GET /store/orders/:token/files/:grantId', () => {
     expect((await download(token, grants[1]!.id)).statusCode).toBe(200);
   });
 
+  it('sends a browser to the order page when the download is used up, expired or the order unpaid; JSON for anything else', async () => {
+    const { shop, token, order, grants } = await sentEbook();
+    const html = { accept: 'text/html,application/xhtml+xml' };
+    const get = (url: string, headers?: Record<string, string>) => app.inject({ method: 'GET', url, headers, remoteAddress: from() });
+    const files = (id: string) => `/store/orders/${token}/files/${id}`;
+    const orderPage = `/${shop.handle}/order/${token}#downloads`;
+    for (let n = 1; n <= 5; n++) expect((await get(files(grants[0]!.id))).statusCode).toBe(200);
+    const sixth = await get(files(grants[0]!.id), html);
+    expect(sixth.statusCode).toBe(303);
+    expect(String(sixth.headers.location).endsWith(orderPage)).toBe(true);
+    const json = await get(files(grants[0]!.id));
+    expect(json.statusCode).toBe(410);
+    expect(json.json().error.code).toBe('DOWNLOAD_USED_UP');
+
+    await app.prisma.downloadGrant.update({ where: { id: grants[1]!.id }, data: { expiresAt: new Date(Date.now() - 1_000) } });
+    expect((await get(files(grants[1]!.id), html)).statusCode).toBe(303);
+    expect((await get(files('nope'), html)).statusCode).toBe(303);
+    // A wrong token is not an order of ours: no redirect, even for a browser.
+    expect((await get(`/store/orders/wrong-token/files/${grants[0]!.id}`, html)).statusCode).toBe(404);
+
+    expect((await ownerPost(shop, order.id, 'cancel')).statusCode).toBe(204);
+    expect((await get(files(grants[1]!.id), html)).statusCode).toBe(303);
+    expect((await get(files(grants[1]!.id))).statusCode).toBe(410);
+  });
+
+  it('the link route sends a browser to the order page when the order is unpaid', async () => {
+    const shop = await aShop();
+    const { token, order } = await placeDigital(shop, [line(shop.course)], 7_900);
+    const url = `/store/orders/${token}/link/${order.lines[0]!.id}`;
+    const res = await app.inject({ method: 'GET', url, headers: { accept: 'text/html' }, remoteAddress: from() });
+    expect(res.statusCode).toBe(303);
+    expect(res.headers.location).toContain(`/${shop.handle}/order/${token}#downloads`);
+    expect((await app.inject({ method: 'GET', url, remoteAddress: from() })).statusCode).toBe(410);
+  });
+
   it('counts exactly five when eight ask at once', async () => {
     const { token, grants } = await sentEbook();
     const results = await Promise.all(Array.from({ length: 8 }, () => download(token, grants[0]!.id)));
@@ -443,6 +478,40 @@ describe('GET /store/orders/:token/link/:lineId', () => {
     await ownerPost(shop, b.order.id, 'paid');
     expect((await app.inject({ method: 'GET', url: `/store/orders/${a.token}/link/${b.order.lines[0]!.id}`, remoteAddress: from() })).statusCode).toBe(404);
     expect((await app.inject({ method: 'GET', url: `/store/orders/${b.token}/link/${b.order.lines[0]!.id}`, remoteAddress: from() })).statusCode).toBe(404);
+  });
+});
+
+describe('an item edited after the sale', () => {
+  it('still delivers what was sold when the items are made physical before the order is marked paid', async () => {
+    const shop = await aShop();
+    const linkOrder = await placeDigital(shop, [line(shop.course)], 7_900);
+    const filesOrder = await placeDigital(shop, [line(shop.ebook)], 2_500);
+    // The owner switches both items to physical before marking either order paid.
+    for (const id of [shop.course, shop.ebook]) {
+      const patched = await app.inject({ method: 'PATCH', url: `/store/items/${id}`, remoteAddress: from(), cookies: { [SESSION_COOKIE]: await cookieOf(shop.accountId) }, payload: { kind: 'PHYSICAL' } });
+      expect(patched.statusCode).toBe(200);
+    }
+    mailQueue.add.mockClear();
+    expect((await ownerPost(shop, linkOrder.order.id, 'paid')).statusCode).toBe(204);
+    expect((await ownerPost(shop, filesOrder.order.id, 'paid')).statusCode).toBe(204);
+
+    // Files: one grant per file the item has, and the download works.
+    const grants = await grantsOf(filesOrder.order.id);
+    expect(grants.map((g) => g.fileName).sort()).toEqual(['recipe one.pdf', 'recipe two.pdf']);
+    expect((await download(filesOrder.token, grants[0]!.id)).statusCode).toBe(200);
+    // Link: the SOLD url, from the line's own copy.
+    const lineId = linkOrder.order.lines[0]!.id;
+    const res = await app.inject({ method: 'GET', url: `/store/orders/${linkOrder.token}/link/${lineId}`, remoteAddress: from() });
+    expect(res.statusCode).toBe(302);
+    expect(res.headers.location).toBe('https://example.com/course');
+    // The delivery mail is built from the snapshots on the lines.
+    const mails = mailTo('mira@example.com');
+    expect(mails).toHaveLength(2);
+    const linkMail = mails.find((m) => m.text.includes(`/link/${lineId}`))!;
+    expect(linkMail.text).toContain('Video course');
+    expect(linkMail.text).toContain('Start with video one');
+    const filesMail = mails.find((m) => m.text.includes('recipe one.pdf'))!;
+    for (const g of grants) expect(filesMail.text).toContain(`/files/${g.id}`);
   });
 });
 
@@ -553,6 +622,26 @@ describe('owner actions on a delivered order', () => {
     ]);
     expect(results.map((r) => r.statusCode).sort()).toEqual([204, 409]);
     expect(await app.prisma.sessionBooking.count({ where: { sessionId: shop.times[1] } })).toBe(1);
+  });
+
+  it('refuses every owner action with 410 PAGE_UNAVAILABLE while the shop is suspended', async () => {
+    const shop = await aShop();
+    const { order } = await placeDigital(shop, [line(shop.ebook), line(shop.voucher), line(shop.cls, { sessionId: shop.times[0] })], 13_500);
+    expect((await ownerPost(shop, order.id, 'paid')).statusCode).toBe(204);
+    const lines = await app.prisma.orderLine.findMany({ where: { orderId: order.id }, select: { id: true, delivery: true } });
+    const codeLine = lines.find((l) => l.delivery === 'CODES')!.id;
+    const timeLine = lines.find((l) => l.delivery === 'SESSION')!.id;
+    await app.prisma.page.update({ where: { id: shop.pageId }, data: { suspendedAt: new Date() } });
+    mailQueue.add.mockClear();
+    const grantsBefore = (await grantsOf(order.id)).length;
+    for (const [action, payload] of [['resend'], ['new-links'], ['new-code', { lineId: codeLine }], ['move-time', { lineId: timeLine, sessionId: shop.times[1] }]] as const) {
+      const res = await ownerPost(shop, order.id, action, payload);
+      expect(res.statusCode, action).toBe(410);
+      expect(res.json().error.code, action).toBe('PAGE_UNAVAILABLE');
+    }
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    expect(await grantsOf(order.id)).toHaveLength(grantsBefore);
+    expect((await app.prisma.sessionBooking.findFirstOrThrow({ where: { orderLine: { orderId: order.id } } })).sessionId).toBe(shop.times[0]);
   });
 
   it('every action needs the owner’s own order and a session', async () => {

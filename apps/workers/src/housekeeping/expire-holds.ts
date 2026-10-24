@@ -1,4 +1,4 @@
-import { releaseUnpaidStock, type Prisma, type PrismaClient } from '@curios/db';
+import { releaseOrderStock, type Prisma, type PrismaClient } from '@curios/db';
 
 export const EXPIRE_HOLDS_JOB = 'expire-holds';
 
@@ -42,7 +42,7 @@ export async function expireUnpaidHolds(deps: { prisma: PrismaClient; now: Date;
     const done = await deps.prisma.$transaction(async (tx) => {
       const { count } = await tx.order.updateMany({ where: { ...where, id }, data: { status: 'CANCELLED', cancelledAt: deps.now } });
       if (count === 0) return false;
-      await releaseUnpaidStock(tx, id);
+      await releaseOrderStock(tx, id);
       return true;
     });
     if (done) cancelled += 1;

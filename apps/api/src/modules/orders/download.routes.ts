@@ -16,15 +16,27 @@ const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.st
 const params = z.object({ token: z.string().min(1).max(128) });
 
 /** The order the token opens, which must be paid and not cancelled. The token is the credential, so it is hashed and looked up. */
-async function paidOrder(prisma: PrismaClient, token: string): Promise<{ id: string }> {
+async function paidOrder(prisma: PrismaClient, token: string): Promise<{ id: string; handle: string; paid: boolean }> {
   const order = await prisma.order.findUnique({
     where: { tokenHash: hashSessionValue(token) },
-    select: { id: true, status: true, page: { select: { suspendedAt: true } } },
+    select: { id: true, status: true, page: { select: { suspendedAt: true, handle: true } } },
   });
   if (!order) throw new OrderNotFoundError();
   if (order.page.suspendedAt !== null) throw new PageUnavailableError();
-  if (order.status !== 'PAID' && order.status !== 'COMPLETED') throw new OrderNotPaidError();
-  return order;
+  return { id: order.id, handle: order.page.handle, paid: order.status === 'PAID' || order.status === 'COMPLETED' };
+}
+
+/**
+ * A buyer who clicked from their email or order page is in a browser: where the
+ * order cannot hand the thing over (used up, expired, not paid, gone), the
+ * order page says so in their language, instead of raw JSON. Anything that is
+ * not asking for HTML keeps the JSON error. Only after a valid order token.
+ */
+function orderPageInstead(error: unknown, accept: string | undefined, handle: string, token: string): string | null {
+  const known = error instanceof OrderNotPaidError || error instanceof DownloadUsedUpError || error instanceof DownloadExpiredError || error instanceof OrderNotFoundError;
+  if (!known || !accept?.includes('text/html')) return null;
+  const app = (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, '');
+  return `${app}/${handle}/order/${encodeURIComponent(token)}#downloads`;
 }
 
 /**
@@ -48,26 +60,34 @@ export const downloadRoutes: FastifyPluginAsyncZod<DownloadRouteOptions> = async
     async (request, reply) => {
       const now = new Date();
       const order = await paidOrder(app.prisma, request.params.token);
-      // The grant by its id, and only if it belongs to this order: another order's id is a 404.
-      const grant = await app.prisma.downloadGrant.findFirst({
-        where: { id: request.params.grantId, orderLine: { orderId: order.id } },
-        select: { id: true, fileName: true, usesLeft: true, expiresAt: true, file: { select: { key: true, contentType: true, sizeBytes: true } } },
-      });
-      if (!grant) throw new OrderNotFoundError();
-      if (grant.expiresAt.getTime() <= now.getTime()) throw new DownloadExpiredError();
-      if (grant.usesLeft <= 0) throw new DownloadUsedUpError();
-      // The owner removed the file after the sale: nothing to give, and no use is spent.
-      if (!grant.file) throw new OrderNotFoundError();
-      if (!files) throw new StorageNotConfiguredError();
+      let grant;
+      try {
+        if (!order.paid) throw new OrderNotPaidError();
+        // The grant by its id, and only if it belongs to this order: another order's id is a 404.
+        grant = await app.prisma.downloadGrant.findFirst({
+          where: { id: request.params.grantId, orderLine: { orderId: order.id } },
+          select: { id: true, fileName: true, usesLeft: true, expiresAt: true, file: { select: { key: true, contentType: true, sizeBytes: true } } },
+        });
+        if (!grant) throw new OrderNotFoundError();
+        if (grant.expiresAt.getTime() <= now.getTime()) throw new DownloadExpiredError();
+        if (grant.usesLeft <= 0) throw new DownloadUsedUpError();
+        // The owner removed the file after the sale: nothing to give, and no use is spent.
+        if (!grant.file) throw new OrderNotFoundError();
+        if (!files) throw new StorageNotConfiguredError();
 
-      // One conditional update spends the use: six at once, or a replay, cannot get a sixth.
-      const spent = await app.prisma.downloadGrant.updateMany({
-        where: { id: grant.id, usesLeft: { gt: 0 }, expiresAt: { gt: now } },
-        data: { usesLeft: { decrement: 1 }, lastUsedAt: now },
-      });
-      if (spent.count === 0) {
-        const again = await app.prisma.downloadGrant.findUnique({ where: { id: grant.id }, select: { expiresAt: true } });
-        throw again && again.expiresAt.getTime() <= now.getTime() ? new DownloadExpiredError() : new DownloadUsedUpError();
+        // One conditional update spends the use: six at once, or a replay, cannot get a sixth.
+        const spent = await app.prisma.downloadGrant.updateMany({
+          where: { id: grant.id, usesLeft: { gt: 0 }, expiresAt: { gt: now } },
+          data: { usesLeft: { decrement: 1 }, lastUsedAt: now },
+        });
+        if (spent.count === 0) {
+          const again = await app.prisma.downloadGrant.findUnique({ where: { id: grant.id }, select: { expiresAt: true } });
+          throw again && again.expiresAt.getTime() <= now.getTime() ? new DownloadExpiredError() : new DownloadUsedUpError();
+        }
+      } catch (error) {
+        const page = orderPageInstead(error, request.headers.accept, order.handle, request.params.token);
+        if (page === null) throw error;
+        return reply.redirect(page, 303);
       }
 
       let delivery;
@@ -102,12 +122,20 @@ export const downloadRoutes: FastifyPluginAsyncZod<DownloadRouteOptions> = async
     async (request, reply) => {
       const now = new Date();
       const order = await paidOrder(app.prisma, request.params.token);
-      // What was sold, as it stood: the line's own copy of the link, never the live item.
-      const line = await app.prisma.orderLine.findFirst({
-        where: { id: request.params.lineId, orderId: order.id, kind: 'DIGITAL', delivery: 'LINK' },
-        select: { id: true, accessUrl: true },
-      });
-      if (!line || !line.accessUrl || !line.accessUrl.startsWith('https://')) throw new OrderNotFoundError();
+      let line;
+      try {
+        if (!order.paid) throw new OrderNotPaidError();
+        // What was sold, as it stood: the line's own copy of the link, never the live item.
+        line = await app.prisma.orderLine.findFirst({
+          where: { id: request.params.lineId, orderId: order.id, kind: 'DIGITAL', delivery: 'LINK' },
+          select: { id: true, accessUrl: true },
+        });
+        if (!line || !line.accessUrl || !line.accessUrl.startsWith('https://')) throw new OrderNotFoundError();
+      } catch (error) {
+        const page = orderPageInstead(error, request.headers.accept, order.handle, request.params.token);
+        if (page === null) throw error;
+        return reply.redirect(page, 303);
+      }
       await app.prisma.orderLine.updateMany({ where: { id: line.id, linkOpenedAt: null }, data: { linkOpenedAt: now } });
       return reply.header('Cache-Control', 'private, no-store').header('Referrer-Policy', 'no-referrer').redirect(line.accessUrl, 302);
     },

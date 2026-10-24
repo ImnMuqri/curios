@@ -281,6 +281,16 @@ export class ItemHasBookingsError extends Error {
   }
 }
 
+/** An item whose codes were given to buyers cannot be removed: deleting it would delete their codes. */
+export class ItemHasSalesError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ITEM_HAS_SALES';
+  constructor() {
+    super('Buyers hold codes from this item. Mark it unavailable instead.');
+    this.name = 'ItemHasSalesError';
+  }
+}
+
 export class FileNotFoundError extends Error {
   readonly statusCode = 404;
   readonly code = 'NOT_FOUND';

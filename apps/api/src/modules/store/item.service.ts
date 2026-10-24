@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from '@curios/db';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_TAG_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
 import { itemSlug } from '@curios/core/slug';
-import { InvalidItemError, ItemHasBookingsError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError } from './store.errors.js';
+import { InvalidItemError, ItemHasBookingsError, ItemHasSalesError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError } from './store.errors.js';
 import { DIGITAL_COLUMNS, DIGITAL_RELATIONS, NO_DIGITAL, digitalDetail, hasBookings, resolveDigital, type DigitalDetail, type DigitalFields, type DigitalInput } from './digital-item.service.js';
 import { storePageFor } from './store-page.js';
 
@@ -175,6 +175,8 @@ export async function removeItem(prisma: PrismaClient, accountId: string, id: st
     if (!item) throw new ItemNotFoundError();
     // The foreign key only objects at commit; refuse here, with a sentence.
     if (await hasBookings(tx, id)) throw new ItemHasBookingsError();
+    // The codes cascade with the item; the ones buyers were given are theirs.
+    if ((await tx.itemCode.count({ where: { itemId: id, givenAt: { not: null } } })) > 0) throw new ItemHasSalesError();
     await tx.item.delete({ where: { id } });
     await tx.item.updateMany({ where: { pageId: page.id, position: { gt: item.position } }, data: { position: { decrement: 1 } } });
     return { photoKey: item.photoKey, fileKeys: item.files.map((f) => f.key) };

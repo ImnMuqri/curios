@@ -19,4 +19,4 @@ export { MergeWouldDropAnswerError, mergeTopics, moveWording, refreshTopic, reti
 
 export { questionVectors, shortlistTopics } from './question-match.js';
 
-export { releaseUnpaidStock } from './order-stock.js';
+export { releaseOrderStock } from './order-stock.js';
