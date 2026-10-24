@@ -30,6 +30,13 @@ const shelfItem = z.object({
   photoKey: z.string().nullable(),
   priceCents: z.number().nullable(),
   options: z.array(z.object({ id: z.string(), label: z.string(), priceCents: z.number() })),
+  kind: z.enum(['PHYSICAL', 'DIGITAL']),
+  delivery: z.enum(['FILES', 'LINK', 'CODES', 'SESSION']).nullable(),
+  format: z.object({ kinds: z.array(z.string()), count: z.number() }).nullable(),
+  soldOut: z.boolean(),
+  sessions: z.array(z.object({ id: z.string(), startsAt: z.string(), seatsLeft: z.number() })),
+  minutes: z.number().nullable(),
+  place: z.enum(['ONLINE', 'IN_PERSON']).nullable(),
 });
 
 /** The visitor's checkout. Anonymous and rate-limited (app.ts), like POST /leads. */
@@ -46,14 +53,20 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
                 itemId: z.string().min(1).max(64),
                 optionId: z.string().min(1).max(64).nullable(),
                 quantity: z.number().int().min(1).max(99),
+                // The class time, on a SESSION item's line only.
+                sessionId: z.string().min(1).max(64).nullable().optional(),
               }),
             )
             .min(1)
             .max(50),
-          method: z.enum(['PICKUP', 'DELIVERY']),
+          // Both absent for a digital-only basket, both present as soon as it holds a
+          // physical item: the basket decides, so placeOrder checks it (INVALID_ORDER).
+          method: z.enum(['PICKUP', 'DELIVERY']).nullable().optional(),
           // Its shape and whether the shop takes that day are isOrderDay's to
           // say, so a bad one gets the same ORDER_DATE sentence either way.
-          day: z.string().max(10),
+          day: z.string().max(10).nullable().optional(),
+          // Where digital items go; placeOrder requires it (EMAIL_REQUIRED) when any line is digital.
+          email: z.string().max(254).nullable().optional(),
           customerName: z.string().trim().min(1).max(NAME_MAX),
           phone: z.string().min(1).max(24),
           address: z.string().max(ADDRESS_MAX).nullable(),

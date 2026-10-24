@@ -264,6 +264,19 @@ describe('POST /store/orders/:token/pay', () => {
     expect((await pay(app, card.token, { method: 'card', email: 'a@example.com' })).json().url).toBe('https://gate.chip-in.asia/p/order-purchase/?preferred=visa');
   });
 
+  it('uses the order’s own email when none is sent, and asks when it has none', async () => {
+    const withEmail = await aShopWithOrder(app);
+    await app.prisma.order.update({ where: { id: withEmail.orderId }, data: { email: 'buyer@example.com' } });
+    const res = await pay(app, withEmail.token, { method: 'card' });
+    expect(res.statusCode).toBe(200);
+    expect(client.createPurchase.mock.calls.at(-1)![0]).toMatchObject({ email: 'buyer@example.com' });
+    expect(await orderOf(app, withEmail.orderId)).toMatchObject({ payerEmail: 'buyer@example.com' });
+    const without = await aShopWithOrder(app);
+    const refused = await pay(app, without.token, { method: 'card' });
+    expect(refused.statusCode).toBe(400);
+    expect(refused.json().error.code).toBe('EMAIL_REQUIRED');
+  });
+
   it('an online choice asks for an email', async () => {
     const shop = await aShopWithOrder(app);
     for (const payload of [{ method: 'card' }, { method: 'card', email: '' }, { method: 'card', email: 'not-an-email' }]) {

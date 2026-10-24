@@ -45,6 +45,8 @@ export function Placed(props: {
   /** The shop has a QR or bank account to pay by instead. */
   payByQr?: boolean;
   whatsapp?: string | null;
+  /** A digital order's small line, under the way to pay. */
+  digitalNote?: string | null;
 }) {
   const { copy } = props;
   const [copied, setCopied] = useState(false);
@@ -142,6 +144,7 @@ export function Placed(props: {
           {arrow}
         </a>
       )}
+      {props.digitalNote ? <p className={styles.digitalNote}>{props.digitalNote}</p> : null}
       {props.phone ? (
         <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
           {copy.sendLink}

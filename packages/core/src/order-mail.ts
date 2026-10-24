@@ -20,11 +20,12 @@ export interface NewOrderMailInput {
   customerName: string;
   /** E.164, as stored. */
   phone: string;
-  method: 'PICKUP' | 'DELIVERY';
+  /** Null for a digital-only order: it reaches the buyer by email. */
+  method: 'PICKUP' | 'DELIVERY' | null;
   /** Sen. None on a delivery means a rider, paid separately (isRiderDelivery). */
   deliveryCents: number;
   /** The order's calendar day in Malaysia, `YYYY-MM-DD`. */
-  day: string;
+  day: string | null;
   note: string | null;
   lines: { itemName: string; optionLabel: string | null; quantity: number; lineCents: number }[];
   /** The owner's order screen, opened on this order. */
@@ -51,7 +52,10 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
   // Not the board's "She’s paying by DuitNow QR": we know neither how they will
   // pay nor who they are (DEVIATIONS 101).
   const said = 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
-  const gettingIt = `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}${isRiderDelivery(o) ? ' · Rider fee paid separately' : ''}`;
+  const gettingIt =
+    o.method === null || o.day === null
+      ? 'By email'
+      : `${o.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${shortDay(o.day)}${isRiderDelivery({ method: o.method, deliveryCents: o.deliveryCents }) ? ' · Rider fee paid separately' : ''}`;
   const customer = `${o.customerName} · ${formatMalaysianPhone(o.phone)}`;
   const facts: [string, string][] = [
     ['Getting it', gettingIt],
@@ -99,7 +103,9 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
   };
 }
 
-export interface PaidOrderMailInput extends Omit<NewOrderMailInput, 'note'> {
+export interface PaidOrderMailInput extends Omit<NewOrderMailInput, 'note' | 'method' | 'day'> {
+  method: 'PICKUP' | 'DELIVERY';
+  day: string;
   /** How CHIP says it was paid, as stored: "FPX · Maybank2u". */
   via: string;
   /** CHIP's reference, when it gave one. */

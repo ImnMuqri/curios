@@ -1,3 +1,4 @@
+import { digitalFacts, type DigitalFacts } from '@curios/core/digital';
 import type { Pricing } from '@curios/core/store';
 import type { MyCurios, OwnerStore } from '@curios/db-read';
 
@@ -17,6 +18,27 @@ export const PHYSICAL_ITEM = {
   codesLeft: 0,
   sessions: [],
 } as const satisfies Pick<EditorItem, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'>;
+
+/** An editor item as the shop draws it: the owner's counts turned into what a visitor is shown. */
+export function previewItem(item: EditorItem, now = new Date()): Omit<EditorItem, keyof DigitalFacts | 'files' | 'codesLeft' | 'accessUrl' | 'accessNote' | 'sessionWhere' | 'sessionMinutes' | 'sessionPlace'> & DigitalFacts {
+  const { files, codesLeft, sessions, accessUrl, accessNote: _note, sessionWhere: _where, sessionMinutes, sessionPlace, ...rest } = item;
+  return {
+    ...rest,
+    ...digitalFacts(
+      {
+        kind: item.kind,
+        delivery: item.delivery,
+        accessUrl,
+        sessionMinutes,
+        sessionPlace,
+        files: files.map((f) => ({ name: f.name, contentType: '' })),
+        codesLeft,
+        sessions: sessions.map((t) => ({ id: t.id, startsAt: t.startsAt, seats: t.seats, booked: t.booked })),
+      },
+      now,
+    ),
+  };
+}
 
 /** What the API returns for an item. Declared here: the web app never imports from apps/api. */
 export type ItemRow = {

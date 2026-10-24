@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { hashSessionValue, MAIL_QUEUE, type MailJobData } from '@curios/core';
+import { PHYSICAL_FACTS } from '@curios/core/digital';
 import { malaysiaToday, openDays } from '@curios/core/orders';
 import { buildApp } from '../../app.js';
 import type { AvatarStore } from '../pages/storage.js';
@@ -228,6 +229,7 @@ describe('POST /store/:handle/orders', () => {
     // getPublicShop's item shape, so the basket can reload from it.
     expect(body.items).toEqual([
       {
+        ...PHYSICAL_FACTS,
         id: shop.cakeId,
         name: 'Kek coklat moist',
         description: null,
@@ -238,7 +240,7 @@ describe('POST /store/:handle/orders', () => {
           { id: shop.cake2kg, label: '2kg', priceCents: 17_000 },
         ],
       },
-      { id: shop.tartId, name: 'Tart nenas', description: null, photoKey: null, priceCents: 2_000, options: [] },
+      { ...PHYSICAL_FACTS, id: shop.tartId, name: 'Tart nenas', description: null, photoKey: null, priceCents: 2_000, options: [] },
     ]);
     // A fee change moves the total too, so checkout reloads the delivery as well.
     expect(body.delivery).toEqual({ mode: 'FLAT', feeCents: 1_000 });

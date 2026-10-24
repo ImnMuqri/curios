@@ -142,6 +142,12 @@ export const DOMAIN_ERROR_CODES = new Set([
   'METHOD_OFF',
   'ADDRESS_REQUIRED',
   'ORDER_TOO_LARGE',
+  // Digital lines (slice 19): sold out, a full class time, a missing email, or a basket whose shape contradicts its method and day.
+  'SOLD_OUT',
+  'TIME_FULL',
+  'TIME_REQUIRED',
+  'EMAIL_REQUIRED',
+  'INVALID_ORDER',
   // A receipt on the order link (slice 18).
   'ORDER_NOT_FOUND',
   'INVALID_RECEIPT',

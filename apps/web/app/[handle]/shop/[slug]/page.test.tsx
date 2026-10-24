@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { Checkout, ShopItem } from '@curios/db-read';
+import { PHYSICAL_FACTS } from '@curios/core/digital';
+import type { Checkout, PublicItem } from '@curios/db-read';
 
 vi.mock('@curios/db-read', () => ({ getShopItem: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
 vi.mock('next/navigation', () => ({
@@ -14,7 +15,8 @@ const { getShopItem, getPageAvailability } = await import('@curios/db-read');
 const { ProductView } = await import('./product-view.js');
 const { default: ProductPage, generateMetadata } = await import('./page.js');
 
-const item: ShopItem = {
+const item: PublicItem = {
+  ...PHYSICAL_FACTS,
   id: 'cake',
   name: 'Kek Coklat Moist',
   slug: 'kek-coklat-moist',

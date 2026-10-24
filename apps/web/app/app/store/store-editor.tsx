@@ -20,7 +20,7 @@ import { ItemsList } from './items-list.js';
 import { PayPreview } from './pay-preview.js';
 import { PaymentTab } from './payment-tab.js';
 import { orNull, useSettingText } from './setting-field.js';
-import type { ChipApi, ChipState, EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
+import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
 import styles from './store.module.css';
 
 const TABS = [
@@ -442,8 +442,8 @@ export function StoreEditor({
                     handle={look.handle}
                     displayName={look.displayName}
                     language={look.language}
-                    item={previewFocus}
-                    items={previewItems}
+                    item={previewItem(previewFocus)}
+                    items={previewItems.map((i) => previewItem(i))}
                     halal={settings.shopHalal}
                     noticeDays={settings.minNoticeDays}
                     nextDay={nextOrderDay({ ...settings, canTakeOrders: true }, new Date())}
@@ -458,7 +458,7 @@ export function StoreEditor({
                     handle={look.handle}
                     displayName={look.displayName}
                     language={look.language}
-                    items={previewItems}
+                    items={previewItems.map((i) => previewItem(i))}
                     whatsapp={look.whatsapp}
                     description={orNull(description.text)}
                     pickupEnabled={settings.pickupEnabled}

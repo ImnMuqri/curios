@@ -1,6 +1,6 @@
 import { PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
-import { seatsLeft } from '@curios/core/digital';
+import { digitalFacts, seatsLeft, type DigitalFacts } from '@curios/core/digital';
 import type { DeliveryMode } from '@curios/core/store';
 import { prismaRead } from './client.js';
 
@@ -27,6 +27,12 @@ export interface ShopItem {
   options: { id: string; label: string; priceCents: number }[];
 }
 
+/**
+ * An item as a visitor sees it: the shelf fields plus what a buyer is told of a digital
+ * one (see digitalFacts). The link, the codes and the files themselves never leave here.
+ */
+export type PublicItem = ShopItem & DigitalFacts;
+
 const ITEM_SELECT = {
   id: true,
   name: true,
@@ -37,6 +43,19 @@ const ITEM_SELECT = {
   photoKey: true,
   priceCents: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+} as const;
+
+const PUBLIC_ITEM_SELECT = {
+  ...ITEM_SELECT,
+  kind: true,
+  delivery: true,
+  // Read only to know whether there is a link; stripped before the item leaves this file.
+  accessUrl: true,
+  sessionMinutes: true,
+  sessionPlace: true,
+  files: { orderBy: { position: 'asc' }, select: { name: true, contentType: true } },
+  sessions: { select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
+  _count: { select: { codes: { where: { orderLineId: null } } } },
 } as const;
 
 /** The columns a tile is computed from, for page.query.ts and my-curios.query.ts to select. */
@@ -105,7 +124,7 @@ export interface PublicShop {
   /** Weekdays no order can be for, 0 = Sunday to 6 = Saturday. */
   closedDays: number[];
   deliveryNote: string | null;
-  items: ShopItem[];
+  items: PublicItem[];
 }
 
 /**
@@ -113,7 +132,7 @@ export interface PublicShop {
  * Bank details and the QR are not here: nothing on this route takes payment
  * until slice 18's order page, which reads them for one order at a time.
  */
-export async function getPublicShop(handle: string): Promise<PublicShop | null> {
+export async function getPublicShop(handle: string, now = new Date()): Promise<PublicShop | null> {
   const page = await prismaRead.page.findUnique({
     where: { handle: handle.toLowerCase(), ...PUBLIC_PAGE_WHERE },
     select: {
@@ -140,12 +159,28 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
       minNoticeDays: true,
       closedDays: true,
       deliveryNote: true,
-      items: { where: { available: true }, orderBy: { position: 'asc' }, select: ITEM_SELECT },
+      items: { where: { available: true }, orderBy: { position: 'asc' }, select: PUBLIC_ITEM_SELECT },
     },
   });
   if (!page || page.mode !== 'BUSINESS' || !page.storeEnabled) return null;
-  const { mode: _mode, storeEnabled: _open, ...shop } = page;
-  return shop;
+  const { mode: _mode, storeEnabled: _open, items, ...shop } = page;
+  const publicItems: PublicItem[] = items.map(({ files, sessions, _count, accessUrl, sessionMinutes, sessionPlace, kind, delivery, ...item }) => ({
+    ...item,
+    ...digitalFacts(
+      {
+        kind,
+        delivery,
+        accessUrl,
+        sessionMinutes,
+        sessionPlace,
+        files,
+        codesLeft: _count.codes,
+        sessions: sessions.map((t) => ({ id: t.id, startsAt: t.startsAt, seats: t.seats, booked: t.bookings.reduce((n, b) => n + b.seats, 0) })),
+      },
+      now,
+    ),
+  }));
+  return { ...shop, items: publicItems };
 }
 
 /**

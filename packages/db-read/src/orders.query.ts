@@ -4,7 +4,7 @@ import type { HeadingFont, PageBackground, PageStyle } from '@curios/core/bento'
 import type { DeliveryMode } from '@curios/core/store';
 import type { Prisma } from '@prisma/client';
 import { prismaRead } from './client.js';
-import { getPublicShop, type PublicShop, type ShopItem } from './shop.query.js';
+import { getPublicShop, type PublicItem, type PublicShop } from './shop.query.js';
 
 type OrderStatus = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
 type OrderMethod = 'PICKUP' | 'DELIVERY';
@@ -338,7 +338,7 @@ export interface Checkout extends PublicShop {
 
 /** The shop plus what checkout draws; null for a personal page or a closed Store. */
 export async function getCheckout(handle: string, now = new Date()): Promise<Checkout | null> {
-  const shop = await getPublicShop(handle);
+  const shop = await getPublicShop(handle, now);
   if (!shop) return null;
   const page = await prismaRead.page.findUnique({
     where: { handle: handle.toLowerCase() },
@@ -373,7 +373,7 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
  * for an unknown or unavailable slug, a personal page or a closed Store. The
  * slug is unique per page, so the handle is part of the question.
  */
-export async function getShopItem(handle: string, slug: string, now = new Date()): Promise<{ shop: Checkout; item: ShopItem } | null> {
+export async function getShopItem(handle: string, slug: string, now = new Date()): Promise<{ shop: Checkout; item: PublicItem } | null> {
   const shop = await getCheckout(handle, now);
   const item = shop?.items.find((candidate) => candidate.slug === slug);
   return shop && item ? { shop, item } : null;

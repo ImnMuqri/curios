@@ -979,6 +979,12 @@ model OrderLine {
   /// Copies of Item.kind and Item.delivery at the time of the order.
   kind           ItemKind         @default(PHYSICAL)
   delivery       DigitalDelivery?
+  /// Copies of the item's access fields at the time of the order: what the buyer bought, whatever the owner edits later.
+  accessUrl      String?
+  accessNote     String?
+  sessionMinutes Int?
+  sessionPlace   SessionPlace?
+  sessionWhere   String?
   /// When the buyer first opened a LINK item's page.
   linkOpenedAt   DateTime?
   codes          ItemCode[]

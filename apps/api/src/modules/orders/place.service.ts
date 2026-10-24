@@ -1,5 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
+import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 import { PageNotFoundError } from '../chat/chat.service.js';
@@ -8,13 +9,18 @@ import { InvalidPhoneError } from '../leads/lead.service.js';
 import { StoreBusinessOnlyError } from '../store/store.errors.js';
 import {
   AddressRequiredError,
+  EmailRequiredError,
   ItemUnavailableError,
   MethodOffError,
   OrderDateError,
   OrdersPausedError,
+  OrderShapeError,
   OrderTooLargeError,
   PricesChangedError,
+  SoldOutError,
   StoreClosedError,
+  TimeFullError,
+  TimeRequiredError,
   type ShelfItem,
 } from './order.errors.js';
 
@@ -32,10 +38,14 @@ export interface PlaceDeps {
 
 export interface PlaceInput {
   handle: string;
-  lines: { itemId: string; optionId: string | null; quantity: number }[];
-  method: 'PICKUP' | 'DELIVERY';
-  /** A Malaysian calendar day, `YYYY-MM-DD`. */
-  day: string;
+  /** `sessionId` is the class time picked, for a SESSION item's line; absent on every other. */
+  lines: { itemId: string; optionId: string | null; quantity: number; sessionId?: string | null }[];
+  /** Absent for a digital-only basket, present (with `day`) as soon as it holds a physical item. */
+  method?: 'PICKUP' | 'DELIVERY' | null;
+  /** A Malaysian calendar day, `YYYY-MM-DD`; absent as `method` is. */
+  day?: string | null;
+  /** Where digital items are sent: required when any line is digital. */
+  email?: string | null;
   customerName: string;
   phone: string;
   address: string | null;
@@ -59,7 +69,18 @@ const SHELF_SELECT = {
   photoKey: true,
   priceCents: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+  kind: true,
+  delivery: true,
+  accessUrl: true,
+  sessionMinutes: true,
+  sessionPlace: true,
+  files: { orderBy: { position: 'asc' }, select: { name: true, contentType: true } },
+  sessions: { select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
+  _count: { select: { codes: { where: { orderLineId: null } } } },
 } as const;
+
+/** Enough to catch a typo; the mail server says the rest. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Codes are 4 of 31 characters, so a page needs hundreds of thousands of orders before this many collide. */
 const CODE_ATTEMPTS = 5;
@@ -84,6 +105,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   if (!phone) throw new InvalidPhoneError();
   const customerName = input.customerName.trim();
   const address = input.method === 'DELIVERY' ? blankToNull(input.address) : null;
+  const email = blankToNull(input.email ?? null);
   const note = blankToNull(input.note);
 
   // An early, unlocked read: the cheap refusals happen before a lock is taken.
@@ -97,7 +119,8 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   if (found.suspendedAt !== null) throw new PageUnavailableError();
   if (found.mode !== 'BUSINESS') throw new StoreBusinessOnlyError();
   if (!found.storeEnabled) throw new StoreClosedError();
-  if (!isOrderDay(input.day, { now, minNoticeDays: found.minNoticeDays, closedDays: found.closedDays })) {
+  // A day is only asked about when one came (a digital-only basket sends none); a missing one is judged under the lock, once the basket says whether it needs one.
+  if (input.day && !isOrderDay(input.day, { now, minNoticeDays: found.minNoticeDays, closedDays: found.closedDays })) {
     throw new OrderDateError();
   }
 
@@ -134,23 +157,48 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
 
     const lines = await priceLines(tx, found.id, input.lines);
 
-    if (input.method === 'PICKUP' ? !page.pickupEnabled : page.deliveryMode === 'NONE') {
-      throw new MethodOffError(input.method);
+    // Digital-only: nothing to pick up or send, so no method, no day and no fee. Anything physical keeps all three.
+    const digitalOnly = isDigitalOnly(lines);
+    const anyDigital = lines.some((line) => line.kind === 'DIGITAL');
+    const method = digitalOnly ? null : (input.method ?? null);
+    const day = digitalOnly ? null : (input.day ?? null);
+    if (digitalOnly && (input.method || input.day)) {
+      throw new OrderShapeError('A digital order has no pickup, delivery or day. Remove them and try again.');
     }
-    if (!isOrderDay(input.day, { now, minNoticeDays: page.minNoticeDays, closedDays: page.closedDays })) {
-      throw new OrderDateError();
+    if (!digitalOnly) {
+      if (method === null) throw new OrderShapeError('Pick pickup or delivery.');
+      if (day === null) throw new OrderDateError();
+      if (method === 'PICKUP' ? !page.pickupEnabled : page.deliveryMode === 'NONE') throw new MethodOffError(method);
+      if (!isOrderDay(day, { now, minNoticeDays: page.minNoticeDays, closedDays: page.closedDays })) throw new OrderDateError();
+      if (method === 'DELIVERY' && address === null) throw new AddressRequiredError();
     }
-    if (input.method === 'DELIVERY' && address === null) throw new AddressRequiredError();
+    if (anyDigital && (email === null || email.length > 254 || !EMAIL.test(email))) throw new EmailRequiredError();
 
-    const totals = orderTotals(lines, { method: input.method, mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
+    const totals = orderTotals(lines, { method: method ?? 'PICKUP', mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
     // Before anything else reads the total: past this it would not fit the Int columns it is stored in.
     if (totals.totalCents > ORDER_TOTAL_MAX_CENTS) throw new OrderTooLargeError();
     if (totals.totalCents !== input.seenTotalCents) {
-      const shelf: ShelfItem[] = await tx.item.findMany({
+      const rows = await tx.item.findMany({
         where: { pageId: found.id, available: true },
         orderBy: { position: 'asc' },
         select: SHELF_SELECT,
       });
+      const shelf: ShelfItem[] = rows.map(({ files, sessions, _count, accessUrl, sessionMinutes, sessionPlace, kind, delivery, ...item }) => ({
+        ...item,
+        ...digitalFacts(
+          {
+            kind,
+            delivery,
+            accessUrl,
+            sessionMinutes,
+            sessionPlace,
+            files,
+            codesLeft: _count.codes,
+            sessions: sessions.map((t) => ({ id: t.id, startsAt: t.startsAt, seats: t.seats, booked: t.bookings.reduce((n, b) => n + b.seats, 0) })),
+          },
+          now,
+        ),
+      }));
       throw new PricesChangedError(shelf, { mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
     }
 
@@ -177,8 +225,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         tokenHash: hashSessionValue(token),
         customerName,
         phone,
-        method: input.method,
-        day: new Date(`${input.day}T00:00:00Z`),
+        method,
+        day: day === null ? null : new Date(`${day}T00:00:00Z`),
+        email: anyDigital ? email : null,
         address,
         note,
         ...totals,
@@ -190,13 +239,24 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
             unitPriceCents: line.unitCents,
             quantity: line.quantity,
             position,
+            // What was sold, as it stood: later steps read the line, never the live item.
+            kind: line.kind,
+            delivery: line.delivery,
+            accessUrl: line.accessUrl,
+            accessNote: line.accessNote,
+            sessionMinutes: line.sessionMinutes,
+            sessionPlace: line.sessionPlace,
+            sessionWhere: line.sessionWhere,
           })),
         },
       },
-      select: { id: true },
+      select: { id: true, lines: { orderBy: { position: 'asc' }, select: { id: true } } },
     });
 
-    return { orderId: order.id, number, code, totals, lines, notify: page.notifyOrders, ownerEmail: page.account.email };
+    // Last, so a refusal costs nothing: codes and seats are taken under their own locks, and a throw rolls the order back with them.
+    await reserveStock(tx, lines, order.lines.map((l) => l.id), now);
+
+    return { orderId: order.id, number, code, totals, lines, method, day, notify: page.notifyOrders, ownerEmail: page.account.email };
     // Above Prisma's 2s/5s defaults: a burst on one shop queues on the row
     // lock, one placement after another, and the last in line must not be
     // refused for waiting its turn.
@@ -214,9 +274,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         totalCents: placed.totals.totalCents,
         customerName,
         phone,
-        method: input.method,
+        method: placed.method,
         deliveryCents: placed.totals.deliveryCents,
-        day: input.day,
+        day: placed.day,
         note,
         lines: placed.lines.map((line) => ({
           itemName: line.itemName,
@@ -248,17 +308,42 @@ interface PricedLine {
   optionLabel: string | null;
   unitCents: number;
   quantity: number;
+  kind: 'PHYSICAL' | 'DIGITAL';
+  delivery: 'FILES' | 'LINK' | 'CODES' | 'SESSION' | null;
+  accessUrl: string | null;
+  accessNote: string | null;
+  sessionMinutes: number | null;
+  sessionPlace: 'ONLINE' | 'IN_PERSON' | null;
+  sessionWhere: string | null;
+  /** The class time picked, for a SESSION line. */
+  sessionId: string | null;
 }
 
 /**
  * Each line priced from the shelf: an available item of this page, with one of
  * its own options when it has options and none when it has one price.
- * Anything else is refused, naming the item when it is this shop's.
+ * Anything else is refused, naming the item when it is this shop's. A digital
+ * item with nothing to give (no file, no link) is refused as sold out here;
+ * codes and seats are counted under their locks, in reserveStock.
  */
 async function priceLines(tx: Prisma.TransactionClient, pageId: string, lines: PlaceInput['lines']): Promise<PricedLine[]> {
   const items = await tx.item.findMany({
     where: { pageId, id: { in: [...new Set(lines.map((line) => line.itemId))] } },
-    select: { id: true, name: true, available: true, priceCents: true, options: { select: { id: true, label: true, priceCents: true } } },
+    select: {
+      id: true,
+      name: true,
+      available: true,
+      priceCents: true,
+      options: { select: { id: true, label: true, priceCents: true } },
+      kind: true,
+      delivery: true,
+      accessUrl: true,
+      accessNote: true,
+      sessionMinutes: true,
+      sessionPlace: true,
+      sessionWhere: true,
+      _count: { select: { files: true } },
+    },
   });
   const byId = new Map(items.map((item) => [item.id, item]));
 
@@ -267,12 +352,78 @@ async function priceLines(tx: Prisma.TransactionClient, pageId: string, lines: P
     if (!item) throw new ItemUnavailableError(null);
     if (!item.available) throw new ItemUnavailableError(item.name);
 
+    let optionLabel: string | null = null;
+    let unitCents: number;
     if (item.options.length > 0) {
       const option = item.options.find((o) => o.id === line.optionId);
       if (!option) throw new ItemUnavailableError(item.name);
-      return { itemId: item.id, itemName: item.name, optionLabel: option.label, unitCents: option.priceCents, quantity: line.quantity };
+      optionLabel = option.label;
+      unitCents = option.priceCents;
+    } else {
+      if (line.optionId !== null || item.priceCents === null) throw new ItemUnavailableError(item.name);
+      unitCents = item.priceCents;
     }
-    if (line.optionId !== null || item.priceCents === null) throw new ItemUnavailableError(item.name);
-    return { itemId: item.id, itemName: item.name, optionLabel: null, unitCents: item.priceCents, quantity: line.quantity };
+
+    const digital = item.kind === 'DIGITAL';
+    const sessionId = line.sessionId ?? null;
+    if (digital) {
+      if (item.delivery === null) throw new SoldOutError(item.name);
+      if (item.delivery === 'FILES' && item._count.files === 0) throw new SoldOutError(item.name);
+      if (item.delivery === 'LINK' && !item.accessUrl) throw new SoldOutError(item.name);
+      if (item.delivery === 'SESSION' && sessionId === null) throw new TimeRequiredError(item.name);
+    }
+    if (sessionId !== null && !(digital && item.delivery === 'SESSION')) throw new ItemUnavailableError(item.name);
+
+    return {
+      itemId: item.id,
+      itemName: item.name,
+      optionLabel,
+      unitCents,
+      quantity: line.quantity,
+      kind: item.kind,
+      delivery: digital ? item.delivery : null,
+      accessUrl: digital && item.delivery === 'LINK' ? item.accessUrl : null,
+      accessNote: digital && item.delivery === 'LINK' ? item.accessNote : null,
+      sessionMinutes: digital && item.delivery === 'SESSION' ? item.sessionMinutes : null,
+      sessionPlace: digital && item.delivery === 'SESSION' ? item.sessionPlace : null,
+      sessionWhere: digital && item.delivery === 'SESSION' ? item.sessionWhere : null,
+      sessionId,
+    };
   });
+}
+
+/**
+ * Takes what the digital lines are for, under their own locks and inside the
+ * placement's transaction: `quantity` unused codes per CODES line (rows locked
+ * with SKIP LOCKED, and never the same code twice in one order), and a booking
+ * of `quantity` seats at the picked time per SESSION line (the time's row
+ * locked FOR UPDATE, the lock the owner's time edits take). Short of either,
+ * the whole order is refused and rolled back with them.
+ */
+async function reserveStock(tx: Prisma.TransactionClient, lines: PricedLine[], lineIds: string[], now: Date): Promise<void> {
+  const taken: string[] = [];
+  for (const [index, line] of lines.entries()) {
+    const lineId = lineIds[index];
+    if (!lineId) throw new Error('an order line was not created');
+    if (line.delivery === 'CODES') {
+      const free = await tx.$queryRaw<{ id: string }[]>`
+        SELECT "id" FROM "ItemCode"
+        WHERE "itemId" = ${line.itemId} AND "orderLineId" IS NULL AND "id" <> ALL(${taken}::text[])
+        ORDER BY "createdAt", "id"
+        LIMIT ${line.quantity}
+        FOR UPDATE SKIP LOCKED`;
+      if (free.length < line.quantity) throw new SoldOutError(line.itemName);
+      const ids = free.map((row) => row.id);
+      await tx.itemCode.updateMany({ where: { id: { in: ids } }, data: { orderLineId: lineId } });
+      taken.push(...ids);
+    } else if (line.delivery === 'SESSION' && line.sessionId) {
+      const [time] = await tx.$queryRaw<{ itemId: string; startsAt: Date; seats: number }[]>`
+        SELECT "itemId", "startsAt", "seats" FROM "ItemSession" WHERE "id" = ${line.sessionId} FOR UPDATE`;
+      // Another item's time, a deleted one and a past one all read the same: not bookable.
+      if (!time || time.itemId !== line.itemId || time.startsAt.getTime() <= now.getTime()) throw new TimeFullError(line.itemName);
+      const booked = await tx.sessionBooking.aggregate({ where: { sessionId: line.sessionId }, _sum: { seats: true } });
+      if (seatsLeft(time, booked._sum.seats ?? 0) < line.quantity) throw new TimeFullError(line.itemName);
+      await tx.sessionBooking.create({ data: { sessionId: line.sessionId, orderLineId: lineId, seats: line.quantity } });
+    }
+  }
 }

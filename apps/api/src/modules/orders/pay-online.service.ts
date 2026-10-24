@@ -7,7 +7,7 @@ import { errName } from '../billing/billing.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
-import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
+import { EmailRequiredError, OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
 import type { OrderMailQueue } from './place.service.js';
 
 type Log = {
@@ -188,7 +188,8 @@ const refuseFor = (status: string): void => {
 export async function startOnlinePayment(
   deps: PayOnlineDeps,
   token: string,
-  input: OnlineChoice & { email: string },
+  /** `email` may be left out when the order has its own (a digital order's buyer already gave one). */
+  input: OnlineChoice & { email?: string },
   now: Date,
 ): Promise<{ url: string | null }> {
   const order = await deps.prisma.order.findUnique({
@@ -201,6 +202,7 @@ export async function startOnlinePayment(
       deliveryCents: true,
       customerName: true,
       phone: true,
+      email: true,
       chipPurchaseId: true,
       receiptKey: true,
       lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
@@ -211,6 +213,9 @@ export async function startOnlinePayment(
   // Paying a suspended page's order is refused; the order itself stays readable, and a payment already made still settles.
   if (order.page.suspendedAt !== null) throw new PageUnavailableError();
   refuseFor(order.status);
+  // CHIP's receipt goes to the email typed for it, or else to the one the order was placed with.
+  const payerEmail = input.email ?? order.email;
+  if (!payerEmail) throw new EmailRequiredError();
   // A receipt is with the shop to check: a second payment now would leave two for one order.
   if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
   const unavailable = (reason: string) => {
@@ -278,7 +283,7 @@ export async function startOnlinePayment(
   let purchase: ChipPurchase;
   try {
     purchase = await client.createPurchase({
-      email: input.email,
+      email: payerEmail,
       fullName: order.customerName,
       phone: chipPhone(order.phone),
       productName: `Order #${order.number}`,
@@ -319,7 +324,7 @@ export async function startOnlinePayment(
   // make one, and only one of them may stay on the order.
   const { count } = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'PLACED', chipPurchaseId: previousId },
-    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail: input.email },
+    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail },
   });
   if (count === 0) {
     // Another attempt won, or the order moved on (the owner cancelled, or it was paid).

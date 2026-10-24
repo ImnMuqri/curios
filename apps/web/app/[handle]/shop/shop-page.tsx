@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
 import { shopCopy } from './copy.js';
@@ -75,15 +75,17 @@ export function ShopPageView(props: {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  const categories = useMemo(() => {
+  // Digital items are their own category, whatever the owner typed for them.
+  const categoryOf = (item: ViewItem) => (item.kind === 'DIGITAL' ? copy.digital : item.category?.trim());
+  const categories = (() => {
     const counts = new Map<string, number>();
     for (const item of props.items) {
-      const name = item.category?.trim();
+      const name = categoryOf(item);
       if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
     }
     return [...counts];
-  }, [props.items]);
-  const shown = category ? props.items.filter((item) => item.category?.trim() === category) : props.items;
+  })();
+  const shown = category ? props.items.filter((item) => categoryOf(item) === category) : props.items;
 
   function add(line: BasketLine) {
     writeBasket(key, addToBasket(readBasket(key), line));
@@ -194,15 +196,23 @@ export function ShopPageView(props: {
             {shown.map((item) => {
               const from = fromPrice(item);
               const inBasket = basket.filter((line) => line.itemId === item.id).reduce((sum, line) => sum + line.quantity, 0);
-              const buyable = item.options.length > 0 || item.priceCents !== null;
+              const soldOut = item.soldOut === true;
+              const buyable = !soldOut && (item.options.length > 0 || item.priceCents !== null);
+              const href = `/${props.handle}/shop/${item.slug}`;
+              const tag = item.kind === 'DIGITAL' ? copy.digital : item.tag;
               return (
                 <li key={item.id} className={styles.card}>
                   <span className={styles.pic}>
-                    <a className={styles.photo} href={`/${props.handle}/shop/${item.slug}`} tabIndex={-1} aria-hidden="true">
+                    <a className={styles.photo} href={href} tabIndex={-1} aria-hidden="true">
                       {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
                     </a>
-                    {item.tag ? <span className={styles.tag}>{item.tag}</span> : null}
-                    {buyable ? (
+                    {tag ? <span className={styles.tag}>{tag}</span> : null}
+                    {buyable && item.delivery === 'SESSION' ? (
+                      // A class needs its time first: the product page has the picker.
+                      <button type="button" className={styles.add} aria-label={`${copy.pickATime}: ${item.name}`} onClick={() => window.location.assign(href)}>
+                        +
+                      </button>
+                    ) : buyable ? (
                       <button
                         type="button"
                         className={styles.add}
@@ -217,11 +227,12 @@ export function ShopPageView(props: {
                       </button>
                     ) : null}
                   </span>
-                  <a className={styles.cn} href={`/${props.handle}/shop/${item.slug}`}>
+                  <a className={styles.cn} href={href}>
                     {item.name}
                   </a>
                   <span className={styles.cp}>
                     {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}
+                    {soldOut ? <span className={styles.soldOut}>{copy.soldOut}</span> : null}
                   </span>
                 </li>
               );

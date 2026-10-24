@@ -1,7 +1,7 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import { HOUSEKEEPING_QUEUE, LEAD_RETENTION_MONTHS, RETENTION_JOB } from '@curios/core';
-import type { PrismaClient } from '@curios/db';
+import type { Prisma, PrismaClient } from '@curios/db';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import type { SchedulerQueue } from '../billing/pending-check.js';
 import type { RemoveObjects } from '../lib/storage.js';
@@ -99,8 +99,18 @@ async function sweepOrders(
     after = old[old.length - 1]!.id;
 
     const ids = old.map((order) => order.id);
+    // Deleting an order frees the codes on its lines (SetNull) and removes its class bookings
+    // (Cascade): right for an order never paid. A paid order's code was given to its buyer, so
+    // it goes with the order instead of becoming a free code for the next one.
+    const deleteOrders = async (where: Prisma.OrderWhereInput): Promise<number> => {
+      const [, deleted] = await deps.prisma.$transaction([
+        deps.prisma.itemCode.deleteMany({ where: { orderLine: { order: { ...where, paidAt: { not: null } } } } }),
+        deps.prisma.order.deleteMany({ where }),
+      ]);
+      return deleted.count;
+    };
     if (!deps.removeObjects) {
-      orders += (await deps.prisma.order.deleteMany({ where: { id: { in: ids }, createdAt: { lt: before } } })).count;
+      orders += await deleteOrders({ id: { in: ids }, createdAt: { lt: before } });
     } else {
       const keys = old.flatMap((order) => (order.receiptKey ? [order.receiptKey] : []));
       const { failed } = keys.length > 0 ? await deps.removeObjects(keys) : { failed: [] };
@@ -108,14 +118,10 @@ async function sweepOrders(
       const removed = keys.filter((key) => !failed.includes(key));
       countReceipts(removed.length);
       const bare = old.filter((order) => !order.receiptKey).map((order) => order.id);
-      orders += (
-        await deps.prisma.order.deleteMany({
-          where: {
-            createdAt: { lt: before },
-            OR: [{ id: { in: bare }, receiptKey: null }, { id: { in: ids }, receiptKey: { in: removed } }],
-          },
-        })
-      ).count;
+      orders += await deleteOrders({
+        createdAt: { lt: before },
+        OR: [{ id: { in: bare }, receiptKey: null }, { id: { in: ids }, receiptKey: { in: removed } }],
+      });
     }
 
     if (old.length < batchSize) break;

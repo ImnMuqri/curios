@@ -102,14 +102,15 @@ export const shopPayStartRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = 
           method: z.enum(['fpx', 'tng', 'grab', 'spay', 'card']),
           bank: z.string().max(20).optional(),
           // CHIP needs an email for its receipt (owner's answer 2: asked only for an online method).
-          email: z.string().trim().min(3).max(254).email(),
+          // Left out, the order's own email is used (a digital order has one from checkout).
+          email: z.string().trim().min(3).max(254).email().optional(),
         }),
         response: { 200: z.object({ url: z.string().nullable() }), 400: errorSchema, 404: errorSchema, 409: errorSchema, 410: errorSchema },
       },
     },
     async (request) => {
       const { method, bank, email } = request.body;
-      return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), email }, new Date());
+      return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), ...(email ? { email } : {}) }, new Date());
     },
   );
 };

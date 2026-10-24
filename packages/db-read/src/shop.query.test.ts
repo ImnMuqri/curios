@@ -225,6 +225,36 @@ describe('getOwnerStore', () => {
     expect(store?.items[2]?.sessions.map((s) => [s.seats, s.booked, s.seatsLeft])).toEqual([[12, 3, 9], [5, 0, 5]]);
   });
 
+  it('tells a visitor what a digital item is, whether it is sold out, and nothing private', async () => {
+    const before = new Date('2026-11-01T00:00:00Z');
+    const shop = await getPublicShop('sq-digital', before);
+    const [book, codes, session, cake] = shop?.items ?? [];
+    expect(book).toMatchObject({ kind: 'DIGITAL', delivery: 'FILES', format: { kinds: ['PDF'], count: 2 }, soldOut: false, sessions: [] });
+    expect(codes).toMatchObject({ delivery: 'CODES', soldOut: false });
+    // Times to come only, soonest first, with the seats left and where it runs, never the meeting link.
+    expect(session).toMatchObject({ delivery: 'SESSION', minutes: 90, place: 'ONLINE', soldOut: false });
+    expect(session?.sessions.map((t) => [t.startsAt, t.seatsLeft])).toEqual([['2026-12-01T12:00:00.000Z', 9], ['2026-12-02T12:00:00.000Z', 5]]);
+    // Leftover files and codes on a physical item change nothing.
+    expect(cake).toMatchObject({ kind: 'PHYSICAL', format: null, soldOut: false, sessions: [] });
+    const json = JSON.stringify(shop);
+    for (const secret of ['meet.example', 'AAA', 'BBB', 'digital/p/i']) expect(json).not.toContain(secret);
+    expect(json).not.toContain('accessUrl');
+  });
+
+  it('is sold out with no codes left, and with no time to come that has a seat', async () => {
+    const page = await write.page.findFirstOrThrow({ where: { accountId: digitalAccountId }, select: { id: true } });
+    const line = await write.orderLine.findFirstOrThrow({ where: { order: { pageId: page.id } }, select: { id: true } });
+    expect((await getPublicShop('sq-digital', new Date('2027-01-01T00:00:00Z')))?.items[2]).toMatchObject({ soldOut: true, sessions: [] });
+    await write.itemCode.updateMany({ where: { item: { pageId: page.id }, orderLineId: null }, data: { orderLineId: line.id } });
+    expect((await getPublicShop('sq-digital', new Date('2026-11-01T00:00:00Z')))?.items[1]).toMatchObject({ soldOut: true });
+    // A FILES item with no file, and a LINK item with no link, are sold out as well.
+    await write.item.create({ data: { pageId: page.id, name: 'Empty', slug: 'empty', position: 9, available: true, priceCents: 100, kind: 'DIGITAL', delivery: 'FILES' } });
+    await write.item.create({ data: { pageId: page.id, name: 'Nolink', slug: 'nolink', position: 10, available: true, priceCents: 100, kind: 'DIGITAL', delivery: 'LINK' } });
+    const items = (await getPublicShop('sq-digital'))?.items ?? [];
+    expect(items.find((i) => i.slug === 'empty')?.soldOut).toBe(true);
+    expect(items.find((i) => i.slug === 'nolink')?.soldOut).toBe(true);
+  });
+
   it('says whether CHIP is connected, and nothing about the key', async () => {
     const store = await getOwnerStore(chipAccountId);
     expect(store?.chip).toEqual({ connected: true, brandName: 'Kek Lina Bakes', methods: ['fpx', 'visa'], checkedAt: CHECKED, isTest: false });

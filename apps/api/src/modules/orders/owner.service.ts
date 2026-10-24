@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
 import { OrderNotFoundError, OrderStateError } from './order.errors.js';
+import { releaseUnpaidStock } from './release.js';
 
 export interface OwnerOrderDeps {
   prisma: PrismaClient;
@@ -19,7 +20,7 @@ type Status = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
  * another owner's order is indistinguishable from one that does not exist.
  */
 async function move(
-  prisma: PrismaClient,
+  prisma: Pick<Prisma.TransactionClient, 'order'>,
   accountId: string,
   id: string,
   where: Prisma.OrderWhereInput,
@@ -48,8 +49,15 @@ export async function markPaid(deps: OwnerOrderDeps, accountId: string, id: stri
 export const markCompleted = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
   move(deps.prisma, accountId, id, from('PAID'), { status: 'COMPLETED', completedAt: now });
 
+/**
+ * Cancelling an order that was never paid gives back its codes and class seats, in the
+ * same transaction (releaseUnpaidStock); one that was paid keeps what the buyer was given.
+ */
 export const cancelOrder = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>
-  move(deps.prisma, accountId, id, from('PLACED', 'PAID'), { status: 'CANCELLED', cancelledAt: now });
+  deps.prisma.$transaction(async (tx) => {
+    await move(tx, accountId, id, from('PLACED', 'PAID'), { status: 'CANCELLED', cancelledAt: now });
+    await releaseUnpaidStock(tx, id);
+  });
 
 /**
  * Money went back, and this says it did: a paid order that was cancelled, or

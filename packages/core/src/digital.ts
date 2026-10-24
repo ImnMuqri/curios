@@ -38,3 +38,100 @@ export function isDigitalOnly(lines: { kind: ItemKind }[]): boolean {
 export function seatsLeft(session: { seats: number }, booked: number): number {
   return Math.max(0, session.seats - booked);
 }
+
+export type DigitalDelivery = 'FILES' | 'LINK' | 'CODES' | 'SESSION';
+
+/** What a visitor sees of one session time: never the booked count, only what is left. */
+export interface PublicSession {
+  id: string;
+  /** An ISO instant: the same text on the server render and in an API reply. */
+  startsAt: string;
+  seatsLeft: number;
+}
+
+/** How a digital item's files read in a line: their types (upper-case extensions) and how many. */
+export interface DigitalFormat {
+  kinds: string[];
+  count: number;
+}
+
+export interface DigitalFacts {
+  kind: ItemKind;
+  delivery: DigitalDelivery | null;
+  /** FILES items only: null for everything else, and for FILES with no file yet. */
+  format: DigitalFormat | null;
+  /** Not orderable: no file, no link, no code left, or no coming time with a seat. */
+  soldOut: boolean;
+  /** SESSION items only: the times still to come, full ones included (seatsLeft 0). */
+  sessions: PublicSession[];
+  /** SESSION items only: how long it runs and where (the place's address or meeting link is never public). */
+  minutes: number | null;
+  place: 'ONLINE' | 'IN_PERSON' | null;
+}
+
+/** The unused codes, files, link and times of one item, as the shop reads them. */
+export interface DigitalStock {
+  kind: ItemKind;
+  delivery: DigitalDelivery | null;
+  accessUrl: string | null;
+  sessionMinutes?: number | null;
+  sessionPlace?: 'ONLINE' | 'IN_PERSON' | null;
+  files: { name: string; contentType: string }[];
+  codesLeft: number;
+  /** Every time with the seats already booked; past ones are dropped here. */
+  sessions: { id: string; startsAt: Date; seats: number; booked: number }[];
+}
+
+const TYPE_KIND: [RegExp, string][] = [
+  [/^application\/pdf$/, 'PDF'],
+  [/^application\/zip$/, 'ZIP'],
+  [/^image\//, 'IMAGE'],
+  [/^audio\//, 'AUDIO'],
+  [/^video\//, 'VIDEO'],
+];
+
+/** "PDF" from `guide.pdf`; the content type's family when the name has no usable extension. */
+export function fileKind(file: { name: string; contentType: string }): string {
+  const ext = /\.([A-Za-z0-9]{1,5})$/.exec(file.name)?.[1];
+  if (ext) return ext.toUpperCase();
+  return TYPE_KIND.find(([re]) => re.test(file.contentType))?.[1] ?? 'FILE';
+}
+
+/** Whether a digital item can be bought right now, and what the shop shows of it. */
+export function digitalFacts(stock: DigitalStock, now: Date): DigitalFacts {
+  if (stock.kind !== 'DIGITAL') return { kind: 'PHYSICAL', delivery: null, format: null, soldOut: false, sessions: [], minutes: null, place: null };
+  const sessions =
+    stock.delivery === 'SESSION'
+      ? stock.sessions
+          .filter((s) => s.startsAt.getTime() > now.getTime())
+          .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())
+          .map((s) => ({ id: s.id, startsAt: s.startsAt.toISOString(), seatsLeft: seatsLeft(s, s.booked) }))
+      : [];
+  const soldOut =
+    stock.delivery === 'FILES'
+      ? stock.files.length === 0
+      : stock.delivery === 'LINK'
+        ? !stock.accessUrl
+        : stock.delivery === 'CODES'
+          ? stock.codesLeft <= 0
+          : stock.delivery === 'SESSION'
+            ? !sessions.some((s) => s.seatsLeft > 0)
+            : true;
+  const format =
+    stock.delivery === 'FILES' && stock.files.length > 0
+      ? { kinds: [...new Set(stock.files.map(fileKind))].slice(0, 3), count: stock.files.length }
+      : null;
+  const session = stock.delivery === 'SESSION';
+  return {
+    kind: 'DIGITAL',
+    delivery: stock.delivery,
+    format,
+    soldOut,
+    sessions,
+    minutes: session ? (stock.sessionMinutes ?? null) : null,
+    place: session ? (stock.sessionPlace ?? null) : null,
+  };
+}
+
+/** The facts of an item that is not digital. */
+export const PHYSICAL_FACTS: DigitalFacts = { kind: 'PHYSICAL', delivery: null, format: null, soldOut: false, sessions: [], minutes: null, place: null };
