@@ -995,6 +995,16 @@ a{color:#2340c8}a:hover{color:#122686}
 .convo .a,.tchat .a{color:#fafbfc}
 .bl-r.hd2,.bl-r.hd2 span{color:#696e7b;opacity:1}
 @media (max-width:760px){.stats{padding:14px 16px 0}.kpi{padding-right:12px}.kpi+.kpi{padding-left:12px}.kpi b{font-size:18px}.kpi>span>span{font-size:11.5px}}
+
+/* previews match the real page */
+.pv-q,.bq,.convo .u,.tchat .u,.vchat .q{background:rgba(250,251,252,.14)!important;color:#fafbfc!important;border-radius:16px!important}
+.pv-a::before,.ba::before,.convo .a::before,.tchat .a::before,.vchat .a::before{padding-left:20px;line-height:16px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 7px 8px,#b5294e 6.5px,transparent 7px) no-repeat}
+.leadc2{align-self:stretch;display:block;padding:12px;border-radius:14px;background:#fafbfc;color:#191f2c}
+.leadc2 b{display:block;font-size:13px;font-weight:600}
+.leadc2 small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:#4b5060}
+.leadc2 .lrow{display:flex;gap:6px;margin-top:8px}
+.leadc2 i{flex:1;min-width:0;height:34px;padding:0 10px;border:1.5px solid #dfe1e6;border-radius:9px;font-style:normal;font-size:12px;line-height:31px;color:#9aa0ab}
+.leadc2 em{display:grid;place-items:center;height:34px;padding:0 12px;border-radius:9px;background:#b5294e;color:#fafbfc;font-style:normal;font-size:12px;font-weight:600}
 </style>
 </helmet>
 
@@ -1048,7 +1058,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <p class="wh" style="text-align: center">What a visitor sees</p>
 <div class="vph"><div class="vscr">
 <div class="vhd"><b>Kek Lina</b><span>{{v.url}}</span><sc-if value="{{ v.tabsOn }}" hint-placeholder-val="{{ true }}"><span class="vtb" style="grid-template-columns: {{v.cols}}"><sc-for list="{{ v.tabs }}" as="t" hint-placeholder-count="2"><span style="background: {{t.bg}}; color: {{t.fg}}">{{t.l}}</span></sc-for></span></sc-if></div>
-<sc-if value="{{ v.chat }}" hint-placeholder-val="{{ true }}"><div class="vchat"><span class="q">{{v.q}}</span><span class="a">{{v.a}}</span><sc-if value="{{ v.card }}" hint-placeholder-val="{{ false }}"><span class="vcard"><b>Lina can answer this one</b><span>Leave your WhatsApp number</span><i>Leave number</i></span></sc-if><sc-if value="{{ v.waBtn }}" hint-placeholder-val="{{ false }}"><span class="vwa">WhatsApp Kek Lina</span></sc-if></div></sc-if>
+<sc-if value="{{ v.chat }}" hint-placeholder-val="{{ true }}"><div class="vchat"><span class="q">{{v.q}}</span><span class="a">{{v.a}}</span><sc-if value="{{ v.card }}" hint-placeholder-val="{{ false }}"><span class="leadc2"><b>Lina can answer this one</b><small>Leave your WhatsApp number and she’ll get back to you, usually the same day.</small><span class="lrow"><i>012-345 6789</i><em>Send</em></span></span></sc-if><sc-if value="{{ v.waBtn }}" hint-placeholder-val="{{ false }}"><span class="vwa">WhatsApp Kek Lina</span></sc-if></div></sc-if>
 <sc-if value="{{ v.shop }}" hint-placeholder-val="{{ false }}"><div class="vshop"><span class="vrow"><i style="background: #f6c9d5"></i><b>Kek coklat moist</b><em>1×</em></span><span class="vrow"><i style="background: #ffe2b8"></i><b>Kek batik</b><em>1×</em></span><span class="vnote">Checkout is paused. Send your basket to Kek Lina on WhatsApp instead.</span><span class="vmsg"><small>Message ready to send</small>Hi Kek Lina! I’d like to order:<br>1× Kek coklat moist (2kg) RM170<br>1× Kek batik RM45<br>Total RM215. Pickup Sat 17 Oct?</span><span class="vbar"><span>2 items · RM215</span><em>Order on WhatsApp</em></span></div></sc-if>
 <sc-if value="{{ v.normal }}" hint-placeholder-val="{{ false }}"><div class="vok">Everything works as usual.</div></sc-if>
 </div></div>
