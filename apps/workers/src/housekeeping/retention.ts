@@ -1,11 +1,12 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
-import { HOUSEKEEPING_QUEUE, LEAD_RETENTION_MONTHS, RETENTION_JOB } from '@curios/core';
+import { HOUSEKEEPING_QUEUE, LEAD_RETENTION_MONTHS, RETENTION_JOB, type MailJobData } from '@curios/core';
 import type { Prisma, PrismaClient } from '@curios/db';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import type { SchedulerQueue } from '../billing/pending-check.js';
 import type { RemoveObjects } from '../lib/storage.js';
 import { EXPIRE_HOLDS_JOB, expireUnpaidHolds } from './expire-holds.js';
+import { SESSION_REMINDERS_JOB, sendSessionReminders } from './session-reminders.js';
 
 /** The moment before which a lead or a message is past keeping. */
 export function retentionCutoff(now: Date): Date {
@@ -134,6 +135,8 @@ export function createHousekeepingWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   removeObjects: RemoveObjects | null;
+  /** The class reminders go out through the mail queue, with order links opened by `secretsKey`. */
+  reminders: { mailQueue: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> }; appUrl: string; secretsKey: Buffer | null };
   log?: { info: (details: object, message: string) => void; warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
 }): Worker {
   return new Worker(
@@ -144,6 +147,8 @@ export function createHousekeepingWorker(deps: {
         deps.log?.info(deleted, 'retention sweep done');
       } else if (job.name === EXPIRE_HOLDS_JOB) {
         await expireUnpaidHolds({ prisma: deps.prisma, now: new Date(), log: deps.log });
+      } else if (job.name === SESSION_REMINDERS_JOB) {
+        await sendSessionReminders({ prisma: deps.prisma, now: new Date(), log: deps.log, ...deps.reminders });
       }
     },
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.housekeeping },
@@ -155,4 +160,6 @@ export async function scheduleHousekeepingJobs(queue: SchedulerQueue): Promise<v
   await queue.upsertJobScheduler(RETENTION_JOB, { pattern: '0 3 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: RETENTION_JOB });
   // Hourly: unpaid orders holding codes or class seats are let go of after a day.
   await queue.upsertJobScheduler(EXPIRE_HOLDS_JOB, { pattern: '20 * * * *' }, { name: EXPIRE_HOLDS_JOB });
+  // Class reminders for the next Malaysian day, at a civil hour; the claim on each booking makes a re-run harmless.
+  await queue.upsertJobScheduler(SESSION_REMINDERS_JOB, { pattern: '0 9 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: SESSION_REMINDERS_JOB });
 }

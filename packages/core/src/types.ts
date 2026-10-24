@@ -90,6 +90,8 @@ export interface MailJobData {
   text: string;
   /** The same email laid out (renderMailHtml). Optional, so a job queued before it existed still sends. */
   html?: string;
+  /** A shop's name: the sender then reads "{name} via Curios", at Curios' own address. */
+  fromName?: string;
 }
 
 /**

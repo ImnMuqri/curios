@@ -90,6 +90,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
       where: { id: orderId },
       select: {
         number: true,
+        totalCents: true,
         customerName: true,
         email: true,
         tokenSealed: true,
@@ -109,7 +110,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
             sessionPlace: true,
             sessionWhere: true,
             codes: { orderBy: [{ givenAt: 'asc' }, { createdAt: 'asc' }], select: { code: true } },
-            grants: { orderBy: { createdAt: 'desc' }, select: { id: true, fileId: true, fileName: true, file: { select: { position: true } } } },
+            grants: { orderBy: { createdAt: 'desc' }, select: { id: true, fileId: true, fileName: true, expiresAt: true, file: { select: { position: true, sizeBytes: true } } } },
             booking: { select: { session: { select: { startsAt: true } } } },
           },
         },
@@ -124,28 +125,30 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
     const api = apiBase();
     const app = trimSlash(deps.appUrl);
     const items: DigitalMailItem[] = [];
+    let until: Date | null = null;
     for (const line of order.lines) {
       if (!line.delivery) continue;
       const seen = new Set<string>();
-      const downloads: { name: string; url: string | null; position: number }[] = [];
+      const downloads: { name: string; url: string | null; sizeBytes: number | null; position: number }[] = [];
       for (const g of line.grants) {
         // Newest first: a later "new links" supersedes the grants it left to expire.
         const key = g.fileId ?? g.fileName;
         if (seen.has(key)) continue;
         seen.add(key);
-        downloads.push({ name: g.fileName, url: token ? `${api}/store/orders/${token}/files/${g.id}` : null, position: g.file?.position ?? 999 });
+        downloads.push({ name: g.fileName, url: token ? `${api}/store/orders/${token}/files/${g.id}` : null, sizeBytes: g.file?.sizeBytes ?? null, position: g.file?.position ?? 999 });
+        if (!until || g.expiresAt > until) until = g.expiresAt;
       }
       items.push({
         name: line.itemName,
         optionLabel: line.optionLabel,
         quantity: line.quantity,
         delivery: line.delivery,
-        downloads: line.delivery === 'FILES' ? downloads.sort((a, b) => a.position - b.position).map(({ name, url }) => ({ name, url })) : [],
+        downloads: line.delivery === 'FILES' ? downloads.sort((a, b) => a.position - b.position).map(({ name, url, sizeBytes }) => ({ name, url, sizeBytes })) : [],
         link: line.delivery === 'LINK' && line.accessUrl ? { url: token ? `${api}/store/orders/${token}/link/${line.id}` : null, note: line.accessNote } : null,
         codes: line.delivery === 'CODES' ? line.codes.map((c) => c.code) : [],
         session:
           line.delivery === 'SESSION' && line.booking && line.sessionMinutes && line.sessionPlace && line.sessionWhere
-            ? { startsAt: line.booking.session.startsAt, minutes: line.sessionMinutes, place: line.sessionPlace, where: line.sessionWhere }
+            ? { startsAt: line.booking.session.startsAt, minutes: line.sessionMinutes, place: line.sessionPlace, where: line.sessionWhere, lineId: line.id }
             : null,
       });
     }
@@ -157,10 +160,13 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
       customerName: order.customerName,
       items,
       orderUrl: token ? `${app}/${order.page.handle}/order/${token}` : null,
+      handle: order.page.handle,
+      totalCents: order.totalCents,
+      downloadsUntil: until,
       appUrl: deps.appUrl,
     });
     void deps.mailQueue
-      .add(MAIL_QUEUE, { to: order.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+      .add(MAIL_QUEUE, { to: order.email, ...mail, fromName: order.page.displayName }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
       .catch((error: unknown) => deps.log?.warn?.({ orderId, err: error instanceof Error ? error.name : 'error' }, 'could not queue the delivery email'));
   } catch (error) {
     deps.log?.warn?.({ orderId, err: error instanceof Error ? error.name : 'error' }, 'could not queue the delivery email');

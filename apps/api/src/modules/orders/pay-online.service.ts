@@ -479,6 +479,7 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
         number: true,
         totalCents: true,
         customerName: true,
+        email: true,
         phone: true,
         method: true,
         day: true,
@@ -503,6 +504,7 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
           paidAndSentOwnerMail({
             ...base,
             ref: order.paidRef,
+            customerEmail: order.email,
             lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
             url,
             appUrl: deps.appUrl,
