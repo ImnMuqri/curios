@@ -54,6 +54,17 @@ describe('GET /[handle]/order/[token]/calendar', () => {
     expect(await (await call()).text()).toContain('LOCATION:Studio 3\\, Bangsar\r\n');
   });
 
+  it('leaves the meeting link out of a suspended shop’s file, but keeps an in-person place', async () => {
+    const suspended = { page: { handle: 'keklina', displayName: 'Kek Lina', suspended: true } } as unknown as Partial<PublicOrder>;
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order(suspended));
+    const online = await (await call()).text();
+    expect(online).toContain('DTSTART:20261107T120000Z');
+    expect(online).not.toContain('meet.example');
+    expect(online).not.toContain('LOCATION');
+    vi.mocked(getOrderByToken).mockResolvedValueOnce(order(suspended, { sessionPlace: 'IN_PERSON', sessionWhere: 'Studio 3, Bangsar' }));
+    expect(await (await call()).text()).toContain('LOCATION:Studio 3\\, Bangsar');
+  });
+
   it.each([
     ['unpaid', '?line=l4', 'keklina', order({ status: 'PLACED' })],
     ['cancelled', '?line=l4', 'keklina', order({ status: 'CANCELLED' })],

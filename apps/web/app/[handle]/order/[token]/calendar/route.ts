@@ -30,7 +30,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ hand
     minutes: line.sessionMinutes,
     title: line.itemName,
     // The meeting URL or the place, as sold (null if the line has neither).
-    where: line.sessionWhere,
+    // A suspended shop hands out no meeting link: only a place (in person) still goes in the file.
+    where: order.page.suspended && line.sessionPlace === 'ONLINE' ? null : line.sessionWhere,
     shopName: order.page.displayName,
     orderUrl: `${origin}/${order.page.handle}/order/${encodeURIComponent(token)}`,
   });
