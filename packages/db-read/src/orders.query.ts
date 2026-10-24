@@ -171,6 +171,44 @@ export async function getOrderStats(accountId: string, now = new Date()): Promis
   return { toCheck, toMake, paidThisWeekCents };
 }
 
+/** A grant to download one file of a FILES line (the newest per file; older ones are only made obsolete by new links). */
+export interface PublicGrant {
+  id: string;
+  fileName: string;
+  sizeBytes: number | null;
+  usesLeft: number;
+  expiresAt: Date;
+}
+
+/**
+ * One line of the customer's order, all from what was sold (the line's snapshots).
+ * What the buyer is only given once paid (codes, the meeting place, the downloads)
+ * comes back empty until the order is PAID or COMPLETED.
+ */
+export interface PublicOrderLine {
+  id: string;
+  itemName: string;
+  optionLabel: string | null;
+  unitPriceCents: number;
+  quantity: number;
+  photoKey: string | null;
+  kind: 'PHYSICAL' | 'DIGITAL';
+  delivery: 'FILES' | 'LINK' | 'CODES' | 'SESSION' | null;
+  /** The owner's note for a LINK line (the URL itself never leaves: the API's link route opens it). */
+  accessNote: string | null;
+  /** Whether a LINK line has a link to open. */
+  hasLink: boolean;
+  sessionMinutes: number | null;
+  sessionPlace: 'ONLINE' | 'IN_PERSON' | null;
+  /** The meeting URL or the place; null before payment. */
+  sessionWhere: string | null;
+  /** The booked time of a SESSION line. */
+  sessionStartsAt: Date | null;
+  /** The codes this line was given, after payment. */
+  codes: string[];
+  grants: PublicGrant[];
+}
+
 export interface PublicOrder {
   id: string;
   number: number;
@@ -200,8 +238,12 @@ export interface PublicOrder {
   paidRef: string | null;
   /** Placed, with a CHIP purchase started for it: the order page checks it. The purchase id itself stays on the server. */
   chipPending: boolean;
+  /** Where the digital items were sent; null on an order with none. */
+  email: string | null;
+  /** When the digital items were delivered; null until then. */
+  sentAt: Date | null;
   createdAt: Date;
-  lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; photoKey: string | null }[];
+  lines: PublicOrderLine[];
   page: {
     handle: string;
     displayName: string;
@@ -264,10 +306,32 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
       paidMethodLabel: true,
       paidRef: true,
       chipPurchaseId: true,
+      email: true,
+      sentAt: true,
       createdAt: true,
       lines: {
         orderBy: { position: 'asc' },
-        select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true, item: { select: { photoKey: true } } },
+        select: {
+          id: true,
+          itemName: true,
+          optionLabel: true,
+          unitPriceCents: true,
+          quantity: true,
+          kind: true,
+          delivery: true,
+          accessUrl: true,
+          accessNote: true,
+          sessionMinutes: true,
+          sessionPlace: true,
+          sessionWhere: true,
+          item: { select: { photoKey: true } },
+          booking: { select: { session: { select: { startsAt: true } } } },
+          codes: { where: { givenAt: { not: null } }, orderBy: { givenAt: 'asc' }, select: { code: true } },
+          grants: {
+            orderBy: { createdAt: 'desc' },
+            select: { id: true, fileId: true, fileName: true, usesLeft: true, expiresAt: true, file: { select: { sizeBytes: true } } },
+          },
+        },
       },
       page: {
         select: {
@@ -310,7 +374,50 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
         : { ...page, suspended: true, paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, chipMethods: null },
     chipPending: order.status === 'PLACED' && chipPurchaseId !== null,
     day: dayText(day),
-    lines: lines.map(({ item, ...line }) => ({ ...line, photoKey: item?.photoKey ?? null })),
+    lines: lines.map((line) => publicLine(line, order.status === 'PAID' || order.status === 'COMPLETED')),
+  };
+}
+
+type LineRow = Prisma.OrderLineGetPayload<{
+  select: {
+    id: true;
+    itemName: true;
+    optionLabel: true;
+    unitPriceCents: true;
+    quantity: true;
+    kind: true;
+    delivery: true;
+    accessUrl: true;
+    accessNote: true;
+    sessionMinutes: true;
+    sessionPlace: true;
+    sessionWhere: true;
+    item: { select: { photoKey: true } };
+    booking: { select: { session: { select: { startsAt: true } } } };
+    codes: { select: { code: true } };
+    grants: { select: { id: true; fileId: true; fileName: true; usesLeft: true; expiresAt: true; file: { select: { sizeBytes: true } } } };
+  };
+}>;
+
+/** What the customer may see of a line; the gifts (codes, place, downloads) only once paid. */
+function publicLine(line: LineRow, paid: boolean): PublicOrderLine {
+  const { item, booking, codes, grants, accessUrl, sessionWhere, ...rest } = line;
+  // The newest grant per file (the rows come newest first); an older one is what "new links" left to expire.
+  const seen = new Set<string>();
+  const newest = grants.filter((g) => {
+    const key = g.fileId ?? g.fileName;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+  return {
+    ...rest,
+    photoKey: item?.photoKey ?? null,
+    hasLink: accessUrl !== null,
+    sessionWhere: paid ? sessionWhere : null,
+    sessionStartsAt: booking?.session.startsAt ?? null,
+    codes: paid ? codes.map((c) => c.code) : [],
+    grants: paid ? newest.map((g) => ({ id: g.id, fileName: g.fileName, sizeBytes: g.file?.sizeBytes ?? null, usesLeft: g.usesLeft, expiresAt: g.expiresAt })) : [],
   };
 }
 

@@ -281,6 +281,45 @@ describe('getOrderByToken', () => {
     expect((await getOrderByToken(token))?.page.chipMethods).toBeNull();
   });
 
+  it('reads a digital order from its lines: the newest grant per file, the given codes, the booked time, and nothing handed out before payment', async () => {
+    const owner = await anOwner();
+    const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Pack', slug: `pack-${randomUUID().slice(0, 6)}`, priceCents: 2500, kind: 'DIGITAL', delivery: 'FILES', position: 0 } });
+    const file = await write.itemFile.create({ data: { itemId: item.id, key: 'k/a.pdf', name: 'a.pdf', sizeBytes: 4_400_000, contentType: 'application/pdf', position: 0 } });
+    const token = randomUUID();
+    const orderId = await anOrder(owner.pageId, { method: null, day: null, email: 'mira@example.com', lines: { create: [] } }, token);
+    const mk = (position: number, extra: Record<string, unknown>) =>
+      write.orderLine.create({ data: { orderId, itemId: item.id, itemName: 'Pack', unitPriceCents: 2500, quantity: 1, position, kind: 'DIGITAL', ...extra }, select: { id: true } });
+    const files = await mk(0, { delivery: 'FILES' });
+    const codes = await mk(1, { delivery: 'CODES' });
+    const session = await mk(2, { delivery: 'SESSION', sessionMinutes: 60, sessionPlace: 'ONLINE', sessionWhere: 'https://meet.example/x' });
+    const link = await mk(3, { delivery: 'LINK', accessUrl: 'https://course.example/secret', accessNote: 'Watch in order' });
+    await write.downloadGrant.create({ data: { token: randomUUID(), orderLineId: files.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 0, expiresAt: new Date('2026-11-01T00:00:00Z'), createdAt: new Date('2026-10-01T00:00:00Z') } });
+    const fresh = await write.downloadGrant.create({ data: { token: randomUUID(), orderLineId: files.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 5, expiresAt: new Date('2026-11-20T00:00:00Z'), createdAt: new Date('2026-10-10T00:00:00Z') } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'GIVEN-1', orderLineId: codes.id, givenAt: NOW } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'HELD-2', orderLineId: codes.id } });
+    const slot = await write.itemSession.create({ data: { itemId: item.id, startsAt: new Date('2026-11-07T12:00:00Z'), seats: 5 } });
+    await write.sessionBooking.create({ data: { sessionId: slot.id, orderLineId: session.id, seats: 1 } });
+
+    // Unpaid: the booked time and the note show, but no code, place or download.
+    const before = await getOrderByToken(token);
+    const pick = (o: typeof before, id: string) => o?.lines.find((l) => l.id === id);
+    expect(before).toMatchObject({ email: 'mira@example.com', sentAt: null, method: null, day: null });
+    expect(pick(before, codes.id)?.codes).toEqual([]);
+    expect(pick(before, files.id)?.grants).toEqual([]);
+    expect(pick(before, session.id)).toMatchObject({ sessionWhere: null, sessionMinutes: 60, sessionStartsAt: new Date('2026-11-07T12:00:00Z') });
+
+    await write.order.update({ where: { id: orderId }, data: { status: 'PAID', paidAt: NOW, sentAt: NOW } });
+    const after = await getOrderByToken(token);
+    // Only the given code; only the newest grant of the file, with the file's size.
+    expect(pick(after, codes.id)?.codes).toEqual(['GIVEN-1']);
+    expect(pick(after, files.id)?.grants).toEqual([{ id: fresh.id, fileName: 'a.pdf', sizeBytes: 4_400_000, usesLeft: 5, expiresAt: new Date('2026-11-20T00:00:00Z') }]);
+    expect(pick(after, session.id)?.sessionWhere).toBe('https://meet.example/x');
+    expect(pick(after, link.id)).toMatchObject({ hasLink: true, accessNote: 'Watch in order' });
+    // The private link itself never leaves; the API's link route opens it.
+    expect(JSON.stringify(after)).not.toContain('course.example');
+    expect(after?.sentAt).toEqual(NOW);
+  });
+
   it('does not match on the hash itself', async () => {
     const token = randomUUID();
     await anOrder(mine.pageId, {}, token);

@@ -29,4 +29,4 @@ export type { OwnerNotifications } from './notifications.query.js';
 export { getAuthLink } from './auth-link.query.js';
 export type { AuthLink } from './auth-link.query.js';
 export { getOwnerOrders, getOrderStats, getOrderByToken, getCheckout, getShopItem } from './orders.query.js';
-export type { OwnerOrder, OrderStats, PublicOrder, Checkout } from './orders.query.js';
+export type { OwnerOrder, OrderStats, PublicOrder, PublicOrderLine, PublicGrant, Checkout } from './orders.query.js';

@@ -47,6 +47,8 @@ export function Placed(props: {
   whatsapp?: string | null;
   /** A digital order's small line, under the way to pay. */
   digitalNote?: string | null;
+  /** Paid online, and everything in the order is digital: "Paid. It's on its way to your email" and "Get your files". */
+  paidDigital?: { what: string } | null;
   /** The order holds a code or a class seat until it is paid: says they are released after a day. */
   holds?: boolean;
 }) {
@@ -96,9 +98,11 @@ export function Placed(props: {
         </svg>
       </div>
       <h1 ref={heading} className={styles.placedTitle} tabIndex={-1}>
-        {paid ? copy.paidPlaced : copy.orderPlaced}
+        {paid ? (props.paidDigital ? copy.paidPlacedDigital : copy.paidPlaced) : copy.orderPlaced}
       </h1>
-      <p className={styles.placedSub}>{paid ? copy.paidPlacedSub(total, props.displayName) : copy.placedSub(props.displayName)}</p>
+      <p className={styles.placedSub}>
+        {paid ? (props.paidDigital ? copy.paidPlacedDigitalSub(total, props.paidDigital.what) : copy.paidPlacedSub(total, props.displayName)) : copy.placedSub(props.displayName)}
+      </p>
       {props.onlineUnavailable ? (
         <p className={styles.placedNotice} role="status">
           {props.onlineUnavailable === 'tooMany'
@@ -128,7 +132,7 @@ export function Placed(props: {
 
       {paid ? (
         <button type="button" className={styles.pay} onClick={props.onSeeOrder}>
-          {copy.seeOrder}
+          {props.paidDigital ? copy.getYour(props.paidDigital.what) : copy.seeOrder}
           {arrow}
         </button>
       ) : noWayToPay ? (
