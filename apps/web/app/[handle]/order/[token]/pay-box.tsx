@@ -66,6 +66,8 @@ export interface PayBoxProps {
   copy: ShopCopy;
   /** Where the QR saves from; left out, the QR has no save button (the Store preview). */
   saveHref?: string;
+  /** The Store editor's picture: Save QR is a drawing, not a link, and Copy copies nothing. */
+  preview?: boolean;
 }
 
 /** Whether the shop has a bank account to show. */
@@ -92,7 +94,15 @@ export function PayBox(props: PayBoxProps) {
       {props.qrUrl ? (
         <span className={styles.qr}>
           <img src={props.qrUrl} alt={copy.qrLabel(props.name)} width={104} height={104} referrerPolicy="no-referrer" />
-          {props.saveHref ? <SaveQr href={props.saveHref} copy={copy} /> : null}
+          {props.preview ? (
+            <span className={styles.save} aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M12 4v12M7 11l5 5 5-5M5 20h14" />
+              </svg>
+            </span>
+          ) : props.saveHref ? (
+            <SaveQr href={props.saveHref} copy={copy} />
+          ) : null}
         </span>
       ) : null}
       <span className={styles.bank}>
@@ -101,7 +111,7 @@ export function PayBox(props: PayBoxProps) {
         {bank.accountNumber ? (
           <span className={styles.account}>
             <code>{bank.accountNumber}</code>
-            <button type="button" className={styles.textButton} onClick={() => copyAccount(bank.accountNumber ?? '')}>
+            <button type="button" className={styles.textButton} onClick={props.preview ? undefined : () => copyAccount(bank.accountNumber ?? '')}>
               {accountCopied ? copy.copied : copy.copy}
             </button>
           </span>

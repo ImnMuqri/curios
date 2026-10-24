@@ -407,7 +407,8 @@ export function OrderView(props: OrderViewProps) {
               qrUrl={props.qrUrl}
               bank={props.bank}
               copy={copy}
-              saveHref={`/${props.handle}/order/${encodeURIComponent(props.token)}/qr`}
+              saveHref={preview ? undefined : `/${props.handle}/order/${encodeURIComponent(props.token)}/qr`}
+              preview={preview}
             />
           ) : askOnWhatsApp ? (
             <p className={styles.askPay}>{copy.askHowToPay(name)}</p>

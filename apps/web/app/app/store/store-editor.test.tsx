@@ -278,6 +278,17 @@ describe('the preview', () => {
     expect(within(preview()).getByRole('radio', { name: /2kg/ })).toBeInTheDocument();
   });
 
+  it('the Pay screen has no link and copies nothing: its QR and Copy are pictures', () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    show();
+    fireEvent.click(screenTab('Pay'));
+    expect(preview().querySelector('a[download], a[href*="/qr"]')).toBeNull();
+    fireEvent.click(within(preview()).getByRole('button', { name: 'Copy' }));
+    fireEvent.click(within(preview()).getByRole('button', { name: 'Copy code' }));
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
   it('the Pay screen is the real order page: its code and timeline', () => {
     show();
     fireEvent.click(screenTab('Pay'));
