@@ -7,7 +7,7 @@
 | `/`, `/ms` | `app/(landing)/page.tsx`, `app/(landing)/ms/page.tsx` → `LandingPage.tsx` |
 | Share images | `app/(landing)/opengraph-image.tsx`, `app/(landing)/ms/opengraph-image.tsx` → `og-image.tsx` |
 | `robots.txt`, `sitemap.xml` | `app/robots.ts`, `app/sitemap.ts` |
-| Favicon, home-screen icon | `app/icon.svg`, `app/apple-icon.tsx` |
+| Favicon, home-screen icon | `app/icon.svg`, `app/apple-icon.png` |
 
 ## Direction: Tanya je (2026-10-16)
 

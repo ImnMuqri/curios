@@ -498,6 +498,32 @@ CHIP is asked about one order at most every 5 seconds.
 
 ---
 
+## Digital products
+
+Digital items (files, a private link, codes, class sessions) add storage, one secret use and two jobs.
+
+**`STORAGE_PRIVATE_BUCKET`.** The private bucket that holds the files owners upload for sale. It is
+separate from `STORAGE_BUCKET` (public pictures) and must never be public: a customer reaches a file
+only through the API's download route, which checks the order's link and counts the use. Production
+needs it (with the same `STORAGE_ENDPOINT` and keys as the public bucket). Left unset in
+development, files are kept under `apps/api/.files/` instead; that folder is gitignored and safe to
+delete, and the files in it go with it.
+
+**`PAYMENT_SECRETS_KEY` also seals order links.** A digital order keeps its token sealed with this
+key, so the delivery email can carry the order link and the file links. If the key has changed since
+the order was placed, the token no longer opens: the API logs "order link could not be opened
+(PAYMENT_SECRETS_KEY changed?)" and the email goes out without links. Rotating the key (see Shop CHIP
+keys) therefore also affects digital orders paid before the change but not yet delivered.
+
+**Jobs.** Both run in the workers app with the housekeeping jobs:
+
+- `expire-holds`, hourly at :20. An unpaid order holding codes or class seats is cancelled after 24
+  hours, which frees them. Paid orders are never touched.
+- `session-reminders`, daily at 09:00 Malaysia time. Each customer with a class booked for the next
+  day gets the reminder email. An order paid after that day's run gets no reminder.
+
+---
+
 ## An owner says the renewal reminder never arrived
 
 ```bash
