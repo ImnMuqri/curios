@@ -94,7 +94,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
         customerName: true,
         email: true,
         tokenSealed: true,
-        page: { select: { handle: true, displayName: true, language: true } },
+        page: { select: { handle: true, displayName: true, language: true, accentColor: true } },
         lines: {
           where: { kind: 'DIGITAL' },
           orderBy: { position: 'asc' },
@@ -161,6 +161,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
       items,
       orderUrl: token ? `${app}/${order.page.handle}/order/${token}` : null,
       handle: order.page.handle,
+      accent: order.page.accentColor,
       totalCents: order.totalCents,
       downloadsUntil: until,
       appUrl: deps.appUrl,

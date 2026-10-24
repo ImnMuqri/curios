@@ -38,6 +38,7 @@ export interface SessionReminderDeps {
  * are never picked. Losing one reminder to a queue failure is the accepted failure, as with
  * the plan reminders. Returns how many were queued.
  */
+// An order paid after the day's run for a class the next morning gets no reminder: its delivery email, sent when it was paid, covers it.
 export async function sendSessionReminders(deps: SessionReminderDeps): Promise<number> {
   const { from, to } = tomorrowInMalaysia(deps.now);
   const paid = { status: { in: ['PAID', 'COMPLETED'] as ('PAID' | 'COMPLETED')[] }, sentAt: { not: null }, email: { not: null } };
@@ -60,7 +61,7 @@ export async function sendSessionReminders(deps: SessionReminderDeps): Promise<n
               number: true,
               email: true,
               tokenSealed: true,
-              page: { select: { handle: true, displayName: true, language: true } },
+              page: { select: { handle: true, displayName: true, language: true, accentColor: true } },
               lines: {
                 where: { delivery: 'FILES' },
                 orderBy: { position: 'asc' },
@@ -115,6 +116,7 @@ export async function sendSessionReminders(deps: SessionReminderDeps): Promise<n
       number: order.number,
       shopName: order.page.displayName,
       handle: order.page.handle,
+      accent: order.page.accentColor,
       itemName: line.itemName,
       session: { startsAt: booking.session.startsAt, minutes: line.sessionMinutes, place: line.sessionPlace, where: line.sessionWhere, lineId: line.id },
       files: files.map(({ name, url, sizeBytes }) => ({ name, url, sizeBytes })),

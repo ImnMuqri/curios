@@ -116,3 +116,21 @@ describe('sessionReminderMail', () => {
     expect(mail.text).toContain('list.pdf');
   });
 });
+
+describe('the shop colour', () => {
+  it('uses the page accent for buttons and mark, with readable text and a tint of it', () => {
+    const green = digitalDeliveryMail({ ...base, lang: 'en', accent: '#1d6f5f' });
+    expect(green.html).toContain('background:#1d6f5f;color:#ffffff');
+    expect(green.html).not.toContain('#b5294e');
+    // A pale accent gets dark text.
+    const pale = sessionReminderMail({ lang: 'en', number: 1, shopName: 'K', itemName: 'C', session: { startsAt: new Date('2026-11-07T12:00:00Z'), minutes: 60, place: 'ONLINE', where: 'https://m.example/x' }, files: [], orderUrl: null, accent: '#ffe08a' });
+    expect(pale.html).toContain('background:#ffe08a;color:#191f2c');
+  });
+
+  it('falls back to the board crimson when the accent is absent or not a colour', () => {
+    for (const accent of [undefined, 'red', '#12', 'javascript:1']) {
+      const mail = digitalDeliveryMail({ ...base, lang: 'en', accent });
+      expect(mail.html).toContain('background:#b5294e;color:#ffffff');
+    }
+  });
+});

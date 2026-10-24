@@ -42,6 +42,8 @@ export interface DigitalDeliveryMailInput {
   orderUrl: string | null;
   /** The shop's page address, for the footer ("curios.my/keklina"). */
   handle?: string;
+  /** The shop's accent colour (Page.accentColor). */
+  accent?: string;
   /** What the order came to; the tag then reads "Paid · RM214". */
   totalCents?: number;
   /** When the download links stop working. */
@@ -256,6 +258,7 @@ export function digitalDeliveryMail(o: DigitalDeliveryMailInput): Mail {
     html: renderMailHtml({
       subject,
       shop: o.shopName,
+      accent: o.accent,
       topRight: c.orderLine(o.number),
       tag: { label: o.totalCents !== undefined ? c.tagTotal(formatRinggit(o.totalCents)) : c.tag, tone: 'hijau' },
       heading,
@@ -271,6 +274,8 @@ export interface SessionReminderMailInput {
   number: number;
   shopName: string;
   handle?: string;
+  /** The shop's accent colour (Page.accentColor). */
+  accent?: string;
   /** The class as sold. */
   itemName: string;
   session: NonNullable<DigitalMailItem['session']>;
@@ -308,6 +313,7 @@ export function sessionReminderMail(o: SessionReminderMailInput): Mail {
     html: renderMailHtml({
       subject,
       shop: o.shopName,
+      accent: o.accent,
       topRight: c.orderLine(o.number),
       tag: { label: r.tag(clock), tone: 'biru' },
       heading,

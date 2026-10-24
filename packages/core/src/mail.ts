@@ -10,6 +10,8 @@
  * (a lead's transcript) without thinking about it, and a link must be http(s).
  */
 
+import { readableOn, tintOf } from './bento.js';
+
 /**
  * The palette, as literal values: email clients read no CSS variables. Copied
  * from packages/ui/src/tokens.css, the one home of these colours; change both.
@@ -38,8 +40,16 @@ const C = {
   merahMuda: '#fdecea',
   /** A shop's own colour in the emails to its customers (the Emails board's Kek Lina). */
   shop: '#b5294e',
-  shopMuda: '#fbf2f5',
 } as const;
+
+/** The shop's colour in one email: buttons and mark, the text on them, and a light tint of it. Set by renderMailHtml, which is synchronous. */
+let accent = shopAccent(undefined);
+
+/** A shop's accent (#rrggbb) for an email, or the board's crimson when it is absent or not a colour. */
+export function shopAccent(hex: string | undefined): { bg: string; fg: string; tint: string } {
+  const bg = hex && /^#[0-9a-f]{6}$/i.test(hex) ? hex.toLowerCase() : C.shop;
+  return { bg, fg: readableOn(bg) === 'dark' ? C.ink : '#ffffff', tint: tintOf(bg, 0.06) };
+}
 
 const FONT = "'IBM Plex Sans', -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 const MONO = "'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace";
@@ -83,6 +93,8 @@ export type MailCardPart =
   | { kind: 'quote'; text: string };
 
 export interface MailContent {
+  /** The shop's accent colour (#rrggbb) for its buttons and mark; the board's crimson when absent or invalid. */
+  accent?: string;
   /** A shop's name: the email then opens with the shop's mark, not Curios' wordmark. */
   shop?: string;
   /** The inbox line, also the <title>. */
@@ -125,8 +137,9 @@ const TAGS: Record<MailTone, { bg: string; fg: string }> = {
 };
 
 function button(b: MailButton): string {
-  const bg = b.tone === 'hijau' ? C.hijau : b.tone === 'shop' ? C.shop : C.biru;
-  return `<a href="${safeHref(b.href)}" style="display:inline-block;padding:13px 24px;margin:10px 6px 4px 0;border-radius:999px;background:${bg};color:#ffffff;font-family:${FONT};font-size:15px;font-weight:600;line-height:20px;text-decoration:none;">${escapeHtml(b.label)}</a>`;
+  const bg = b.tone === 'hijau' ? C.hijau : b.tone === 'shop' ? accent.bg : C.biru;
+  const fg = b.tone === 'shop' ? accent.fg : '#ffffff';
+  return `<a href="${safeHref(b.href)}" style="display:inline-block;padding:13px 24px;margin:10px 6px 4px 0;border-radius:999px;background:${bg};color:${fg};font-family:${FONT};font-size:15px;font-weight:600;line-height:20px;text-decoration:none;">${escapeHtml(b.label)}</a>`;
 }
 
 function quietButton(b: { label: string; href: string }): string {
@@ -134,8 +147,8 @@ function quietButton(b: { label: string; href: string }): string {
 }
 
 function pill(label: string, href: string, ghost = false): string {
-  const bg = ghost ? C.field : C.shop;
-  const fg = ghost ? C.ink : '#ffffff';
+  const bg = ghost ? C.field : accent.bg;
+  const fg = ghost ? C.ink : accent.fg;
   return `<a href="${safeHref(href)}" style="display:inline-block;padding:9px 16px;margin:0 8px 8px 0;border-radius:999px;background:${bg};color:${fg};font-family:${FONT};font-size:13px;font-weight:600;line-height:18px;text-decoration:none;">${escapeHtml(label)}</a>`;
 }
 
@@ -151,7 +164,7 @@ function cardPart(p: MailCardPart): string {
     case 'actions':
       return `<div style="margin:0;">${pill(p.primary.label, p.primary.href)}${p.secondary ? pill(p.secondary.label, p.secondary.href, true) : ''}</div>`;
     case 'code':
-      return `<div style="margin:0;padding:12px 14px;border-radius:12px;background:${C.shopMuda};font-family:${MONO};font-size:18px;font-weight:500;letter-spacing:1.4px;text-align:center;color:${C.ink};">${escapeHtml(p.value)}</div>`;
+      return `<div style="margin:0;padding:12px 14px;border-radius:12px;background:${accent.tint};font-family:${MONO};font-size:18px;font-weight:500;letter-spacing:1.4px;text-align:center;color:${C.ink};">${escapeHtml(p.value)}</div>`;
     case 'quote':
       return `<p style="margin:0 0 12px;font-family:${FONT};font-size:13.5px;line-height:20px;color:${C.inkSoft};">${lines(p.text)}</p>`;
   }
@@ -200,6 +213,7 @@ function block(b: MailBlock): string {
 
 /** The whole email as HTML, one document, ready to send. */
 export function renderMailHtml(mail: MailContent): string {
+  accent = shopAccent(mail.accent);
   const appUrl = (mail.appUrl ?? 'https://curios.my').replace(/\/+$/, '');
   const tag = mail.tag
     ? `<span style="display:inline-block;padding:3px 10px;border-radius:999px;background:${TAGS[mail.tag.tone].bg};color:${TAGS[mail.tag.tone].fg};font-family:${FONT};font-size:12px;font-weight:600;line-height:18px;">&#9679;&nbsp;${escapeHtml(mail.tag.label)}</span>`
@@ -225,7 +239,7 @@ export function renderMailHtml(mail: MailContent): string {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" class="paper" style="max-width:600px;border-collapse:separate;border-radius:18px;background:#ffffff;">
 <tr><td class="px" style="padding:28px 36px 0;">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
-${mail.shop ? `<td style="font-family:'Bricolage Grotesque',${FONT};font-size:20px;font-weight:700;letter-spacing:-0.4px;color:${C.ink};"><span style="display:inline-block;width:32px;height:32px;margin-right:10px;border-radius:16px;background:${C.shop};color:#ffffff;font-size:15px;line-height:32px;text-align:center;vertical-align:middle;">${escapeHtml([...mail.shop][0]?.toUpperCase() ?? '')}</span><span style="vertical-align:middle;">${escapeHtml(mail.shop)}</span></td>` : `<td><img src="${escapeHtml(appUrl)}/email/wordmark@2x.png" width="${WORDMARK_W}" height="28" alt="curios" style="display:block;border:0"></td>`}
+${mail.shop ? `<td style="font-family:'Bricolage Grotesque',${FONT};font-size:20px;font-weight:700;letter-spacing:-0.4px;color:${C.ink};"><span style="display:inline-block;width:32px;height:32px;margin-right:10px;border-radius:16px;background:${accent.bg};color:${accent.fg};font-size:15px;line-height:32px;text-align:center;vertical-align:middle;">${escapeHtml([...mail.shop][0]?.toUpperCase() ?? '')}</span><span style="vertical-align:middle;">${escapeHtml(mail.shop)}</span></td>` : `<td><img src="${escapeHtml(appUrl)}/email/wordmark@2x.png" width="${WORDMARK_W}" height="28" alt="curios" style="display:block;border:0"></td>`}
 ${mail.topRight ? `<td align="right" style="font-family:${FONT};font-size:12.5px;color:${C.muted};">${escapeHtml(mail.topRight)}</td>` : ''}
 </tr></table>
 </td></tr>
