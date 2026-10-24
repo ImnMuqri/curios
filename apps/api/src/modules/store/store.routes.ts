@@ -212,14 +212,14 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
         schema: { params },
         // Before any byte is read: a wrong type or an oversize length costs nothing.
         onRequest: async (request) => {
-          assertFileType(request.headers['content-type']);
+          assertFileType(request.headers['content-type'], request.headers['x-file-name'] as string | undefined);
           declaredLength(request.headers['content-length']);
         },
       },
       async (request, reply) => {
         if (!request.account) throw new UnauthenticatedError();
         if (!privateFiles) throw new StorageNotConfiguredError();
-        const contentType = allowedFileType(request.headers['content-type']);
+        const contentType = allowedFileType(request.headers['content-type'], request.headers['x-file-name'] as string | undefined);
         if (!contentType) throw new InvalidFileError('Files can be a PDF, image, ZIP, audio or video.');
         const name = cleanFileName(request.headers['x-file-name']);
         const length = declaredLength(request.headers['content-length']);

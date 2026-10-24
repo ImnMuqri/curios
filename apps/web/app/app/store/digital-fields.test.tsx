@@ -132,6 +132,13 @@ describe('files', () => {
     expect(calls.uploadFile).toHaveBeenCalledTimes(1);
   });
 
+  it('takes a ZIP the way Windows browsers name it, or with no type at all', async () => {
+    const { calls } = show(digital({ delivery: 'FILES' }));
+    fireEvent.change(screen.getByLabelText('Files they get'), { target: { files: [picked('pack.zip', MB, 'application/x-zip-compressed'), picked('other.zip', MB, '')] } });
+    await act(async () => undefined);
+    expect(calls.uploadFile).toHaveBeenCalledTimes(2);
+  });
+
   it('refuses a type the shop cannot hand over', async () => {
     const { calls } = show(digital({ delivery: 'FILES' }));
     fireEvent.change(screen.getByLabelText('Files they get'), { target: { files: [picked('run.exe', MB, 'application/x-msdownload')] } });

@@ -172,6 +172,14 @@ describe('POST /store/items/:id/files', () => {
     expect(await app.prisma.itemFile.count({ where: { itemId: id } })).toBe(4);
   });
 
+  it('takes a ZIP the way Windows browsers send it and stores it as application/zip', async () => {
+    const owner = await anOwner();
+    const id = await fileItem(owner);
+    const res = await upload(owner, id, PDF, { 'content-type': 'application/x-zip-compressed', 'x-file-name': 'pack.zip' });
+    expect(res.statusCode).toBe(201);
+    expect((await app.prisma.itemFile.findFirstOrThrow({ where: { itemId: id } })).contentType).toBe('application/zip');
+  });
+
   it('refuses a file over 100 MB from its declared length, 413 FILE_TOO_BIG, before reading it', async () => {
     const owner = await anOwner();
     const id = await fileItem(owner);

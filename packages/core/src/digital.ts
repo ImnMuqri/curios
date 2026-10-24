@@ -16,6 +16,25 @@ export const ACCESS_NOTE_MAX = 200;
 /** The file types a digital item accepts: PDF, images, ZIP, audio, video. */
 export const DIGITAL_FILE_TYPES = ['application/pdf', 'image/*', 'application/zip', 'audio/*', 'video/*'] as const;
 
+const ZIP_ALIASES = ['application/x-zip-compressed', 'application/x-zip'];
+
+/**
+ * The type a file is stored and sent as, or null when it is not one a shop can hand over. Windows
+ * browsers call a ZIP `application/x-zip-compressed` and some give no type at all, so the name
+ * settles those: an empty type with a .zip or .pdf name is that type.
+ */
+export function digitalFileType(name: string, type: string): string | null {
+  let bare = type.split(';')[0]?.trim().toLowerCase() ?? '';
+  if (ZIP_ALIASES.includes(bare)) bare = 'application/zip';
+  if (bare === '') {
+    const ext = /\.([A-Za-z0-9]{1,5})$/.exec(name)?.[1]?.toLowerCase();
+    bare = ext === 'zip' ? 'application/zip' : ext === 'pdf' ? 'application/pdf' : '';
+  }
+  if (bare === '') return null;
+  const ok = DIGITAL_FILE_TYPES.some((t) => (t.endsWith('/*') ? bare.startsWith(t.slice(0, -1)) && bare.length > t.length - 1 : bare === t));
+  return ok ? bare : null;
+}
+
 /** Codes pasted one per line: trimmed, blanks and duplicates dropped, first-seen order kept. */
 export function parseCodes(text: string): string[] {
   const seen = new Set<string>();

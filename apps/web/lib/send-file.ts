@@ -1,3 +1,4 @@
+import { digitalFileType } from '@curios/core/digital';
 import { API_BASE, ApiError } from './api.js';
 
 /**
@@ -10,7 +11,8 @@ export function sendFile<T>(path: string, file: File, onProgress: (done: number)
     const request = new XMLHttpRequest();
     request.open('POST', `${API_BASE}${path}`);
     request.withCredentials = true;
-    request.setRequestHeader('content-type', file.type);
+    // Windows says a ZIP is application/x-zip-compressed, and some files have no type: send what the API stores.
+    request.setRequestHeader('content-type', digitalFileType(file.name, file.type) ?? file.type);
     request.setRequestHeader('x-file-name', encodeURIComponent(file.name));
     request.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);

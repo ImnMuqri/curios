@@ -2,7 +2,7 @@
 
 import { useRef, useState, type CSSProperties, type DragEvent } from 'react';
 import { Callout } from '@curios/ui';
-import { ACCESS_NOTE_MAX, MAX_DIGITAL_FILES, MAX_DIGITAL_FILE_BYTES, fileKind, parseCodes } from '@curios/core/digital';
+import { ACCESS_NOTE_MAX, MAX_DIGITAL_FILES, MAX_DIGITAL_FILE_BYTES, digitalFileType, fileKind, parseCodes } from '@curios/core/digital';
 import ui from '../_ui/editor.module.css';
 import { checkDigital, type DigitalDraft } from './digital-draft.js';
 import { timeLabel, toInstant, toMalaysia } from './session-time.js';
@@ -26,8 +26,6 @@ export function sizeLabel(bytes: number): string {
   const mb = bytes / 1_048_576;
   return `${mb >= 10 ? Math.round(mb) : mb.toFixed(1).replace(/\.0$/, '')} MB`;
 }
-
-const allowedType = (type: string) => type === 'application/pdf' || type === 'application/zip' || /^(image|audio|video)\/./.test(type);
 
 /** "What it is": Physical or Digital, above Price. */
 export function KindSwitch({ draft, onDraft }: { draft: DigitalDraft; onDraft: (change: Partial<DigitalDraft>) => void }) {
@@ -119,7 +117,7 @@ function FilesPanel({ item, api, ready, patchItem }: PanelProps) {
       // The limits are checked here, before a byte leaves: the API would refuse them too, but only after the upload.
       if (held >= MAX_DIGITAL_FILES) return setError(`${MAX_DIGITAL_FILES} files is the most an item holds. Remove one to add another.`);
       if (file.size > MAX_DIGITAL_FILE_BYTES) return setError(`${file.name} is ${sizeLabel(file.size)}. The most for one file is ${LIMIT_MB} MB.`);
-      if (!allowedType(file.type)) return setError(`${file.name} is not a PDF, image, ZIP, audio or video file.`);
+      if (!digitalFileType(file.name, file.type)) return setError(`${file.name} is not a PDF, image, ZIP, audio or video file.`);
       const current = await ready('FILES');
       if (!current) return setError(NOT_YET);
       setSending({ name: file.name, done: 0 });

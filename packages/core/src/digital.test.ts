@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { digitalFacts, fileKind, isDigitalOnly, parseCodes, seatsLeft } from './digital.js';
+import { digitalFacts, digitalFileType, fileKind, isDigitalOnly, parseCodes, seatsLeft } from './digital.js';
 
 describe('parseCodes', () => {
   it('trims, drops blanks and duplicates, keeps order', () => {
@@ -55,5 +55,27 @@ describe('digitalFacts', () => {
     expect(fileKind({ name: 'guide.pdf', contentType: 'application/pdf' })).toBe('PDF');
     expect(fileKind({ name: 'song', contentType: 'audio/mpeg' })).toBe('AUDIO');
     expect(digitalFacts({ ...stock, delivery: 'FILES', files: [{ name: 'a.pdf', contentType: '' }, { name: 'b.PDF', contentType: '' }, { name: 'c.zip', contentType: '' }] }, now).format).toEqual({ kinds: ['PDF', 'ZIP'], count: 3 });
+  });
+});
+
+describe('digitalFileType', () => {
+  it('turns the ZIP names Windows browsers use into application/zip', () => {
+    expect(digitalFileType('a.zip', 'application/x-zip-compressed')).toBe('application/zip');
+    expect(digitalFileType('a.zip', 'application/x-zip')).toBe('application/zip');
+    expect(digitalFileType('a.zip', 'Application/Zip; charset=x')).toBe('application/zip');
+  });
+
+  it('lets the name settle an empty type for a ZIP or a PDF', () => {
+    expect(digitalFileType('a.ZIP', '')).toBe('application/zip');
+    expect(digitalFileType('guide.pdf', '')).toBe('application/pdf');
+    expect(digitalFileType('notes.txt', '')).toBeNull();
+  });
+
+  it('keeps the families and refuses the rest', () => {
+    expect(digitalFileType('a.png', 'image/png')).toBe('image/png');
+    expect(digitalFileType('a.mp3', 'audio/mpeg')).toBe('audio/mpeg');
+    expect(digitalFileType('a', 'image/')).toBeNull();
+    expect(digitalFileType('a.exe', 'application/x-msdownload')).toBeNull();
+    expect(digitalFileType('a.zip', 'text/html')).toBeNull();
   });
 });

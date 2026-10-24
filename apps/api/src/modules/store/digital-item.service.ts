@@ -1,7 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { Transform } from 'node:stream';
 import type { Prisma, PrismaClient } from '@curios/db';
-import { ACCESS_NOTE_MAX, DIGITAL_FILE_TYPES, MAX_DIGITAL_FILES, MAX_DIGITAL_FILE_BYTES, parseCodes, seatsLeft } from '@curios/core/digital';
+import { ACCESS_NOTE_MAX, digitalFileType, MAX_DIGITAL_FILES, MAX_DIGITAL_FILE_BYTES, parseCodes, seatsLeft } from '@curios/core/digital';
 import type { PrivateFiles } from './private-files.js';
 import {
   CodeNotFoundError,
@@ -188,18 +188,19 @@ async function ownItem(tx: Prisma.TransactionClient | PrismaClient, accountId: s
 
 export const FILE_NAME_MAX = 200;
 
-const FILE_TYPE_PATTERNS = DIGITAL_FILE_TYPES.map((type) => (type.endsWith('/*') ? { prefix: type.slice(0, -1) } : { exact: type }));
-
-/** The bare media type of a Content-Type header, lower-cased, or null if it is not an allowed file type. */
-export function allowedFileType(header: string | undefined): string | null {
-  const type = (header ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
-  if (type === '') return null;
-  const ok = FILE_TYPE_PATTERNS.some((p) => ('exact' in p ? type === p.exact : type.startsWith(p.prefix) && type.length > p.prefix.length));
-  return ok ? type : null;
+/** The bare media type a file is stored as, or null if it is not an allowed file type; the name settles a ZIP or PDF a browser sent untyped. */
+export function allowedFileType(header: string | undefined, nameHeader?: string): string | null {
+  let name = nameHeader ?? '';
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    // an odd name is judged by cleanFileName later; here it just settles nothing
+  }
+  return digitalFileType(name, header ?? '');
 }
 
-export function assertFileType(header: string | undefined): string {
-  const type = allowedFileType(header);
+export function assertFileType(header: string | undefined, nameHeader?: string): string {
+  const type = allowedFileType(header, nameHeader);
   if (!type) throw new FileTypeError();
   return type;
 }
