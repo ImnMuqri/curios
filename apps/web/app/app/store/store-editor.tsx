@@ -44,6 +44,12 @@ function trackedItems(api: ItemsApi, track: SaveTrack): ItemsApi {
     reorder: (ids) => track(api.reorder(ids)),
     uploadPhoto: (id, file) => track(api.uploadPhoto(id, file)),
     removePhoto: (id) => track(api.removePhoto(id)),
+    uploadFile: (id, file, onProgress) => track(api.uploadFile(id, file, onProgress)),
+    removeFile: (id, fileId) => track(api.removeFile(id, fileId)),
+    addCodes: (id, text) => track(api.addCodes(id, text)),
+    addSession: (id, input) => track(api.addSession(id, input)),
+    updateSession: (id, sessionId, patch) => track(api.updateSession(id, sessionId, patch)),
+    removeSession: (id, sessionId) => track(api.removeSession(id, sessionId)),
   };
 }
 

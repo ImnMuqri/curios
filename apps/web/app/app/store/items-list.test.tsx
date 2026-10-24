@@ -17,6 +17,11 @@ function show(list = items) {
 }
 
 describe('ItemsList', () => {
+  it('says Digital before the price of a digital item', () => {
+    show([{ ...base, id: 'd', name: 'E-book', priceCents: 2500, available: true, kind: 'DIGITAL', delivery: 'FILES' }]);
+    expect(screen.getByRole('listitem', { name: 'E-book' })).toHaveTextContent('Digital · RM25');
+  });
+
   it('counts the items and how many are in the shop', () => {
     show();
     expect(screen.getByText('3 items · 2 in your shop')).toBeInTheDocument();

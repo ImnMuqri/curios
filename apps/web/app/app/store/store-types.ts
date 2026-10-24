@@ -52,20 +52,53 @@ export type ItemRow = {
   available: boolean;
   priceCents: number | null;
   options: { id: string; label: string; priceCents: number }[];
+  kind: 'PHYSICAL' | 'DIGITAL';
+  delivery: Delivery | null;
+  accessUrl: string | null;
+  accessNote: string | null;
+  sessionMinutes: number | null;
+  sessionPlace: 'ONLINE' | 'IN_PERSON' | null;
+  sessionWhere: string | null;
+  files: { id: string; name: string; sizeBytes: number }[];
+  codesLeft: number;
+  /** `startsAt` is an ISO string on the wire. */
+  sessions: { id: string; startsAt: string; seats: number; booked: number; seatsLeft: number }[];
 };
 
-export type ItemPatch = { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; pricing?: Pricing };
+/** What the API says for an item that is not digital. */
+export const PHYSICAL_ROW: Pick<ItemRow, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'> = { kind: 'PHYSICAL', delivery: null, accessUrl: null, accessNote: null, sessionMinutes: null, sessionPlace: null, sessionWhere: null, files: [], codesLeft: 0, sessions: [] };
+
+export type Delivery = 'FILES' | 'LINK' | 'CODES' | 'SESSION';
+
+/** The digital fields of an item as the API takes them: a physical item sends only its kind, which clears the rest. */
+export type DigitalFields =
+  | { kind: 'PHYSICAL' }
+  | { kind: 'DIGITAL'; delivery: Delivery; accessUrl?: string; accessNote?: string | null; sessionMinutes?: number; sessionPlace?: 'ONLINE' | 'IN_PERSON'; sessionWhere?: string };
+
+export type ItemPatch = { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; pricing?: Pricing } & Partial<DigitalFields>;
+
+export type StoredFile = { id: string; name: string; sizeBytes: number };
+export type StoredSession = { id: string; startsAt: string; seats: number; booked: number; seatsLeft: number };
 
 // Function-typed properties, not method shorthand: they are handed around as
 // bare values, and method syntax's implicit `this` trips unbound-method.
 export type ItemsApi = {
-  add: (input: { name: string; description: string | null; category: string | null; tag: string | null; pricing: Pricing }) => Promise<ItemRow>;
+  add: (input: { name: string; description: string | null; category: string | null; tag: string | null; pricing: Pricing; digital?: DigitalFields }) => Promise<ItemRow>;
   update: (id: string, patch: ItemPatch) => Promise<ItemRow>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
   /** Resolves to the public URL of the stored picture. */
   uploadPhoto: (id: string, file: File) => Promise<string>;
   removePhoto: (id: string) => Promise<void>;
+  /** Sends one file's bytes, telling `onProgress` how far along it is (0 to 1). */
+  uploadFile: (id: string, file: File, onProgress: (done: number) => void) => Promise<StoredFile>;
+  removeFile: (id: string, fileId: string) => Promise<void>;
+  /** Adds the pasted codes (the API drops blanks and ones it has); says how many were new and how many are left to give out. */
+  addCodes: (id: string, text: string) => Promise<{ added: number; left: number }>;
+  /** `startsAt` carries its UTC offset. */
+  addSession: (id: string, input: { startsAt: string; seats: number }) => Promise<StoredSession>;
+  updateSession: (id: string, sessionId: string, patch: { startsAt?: string; seats?: number }) => Promise<StoredSession>;
+  removeSession: (id: string, sessionId: string) => Promise<void>;
 };
 
 export type StoreSettings = OwnerStore['settings'];

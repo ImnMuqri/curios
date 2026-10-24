@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ItemEditor } from './item-editor.js';
-import { PHYSICAL_ITEM, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 
 const batik: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
 const coklat: EditorItem = {
@@ -9,7 +9,7 @@ const coklat: EditorItem = {
   options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }],
 };
 
-const row = (over: Partial<ItemRow> = {}): ItemRow => ({ id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
+const row = (over: Partial<ItemRow> = {}): ItemRow => ({ ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
 
 function api(over: Partial<ItemsApi> = {}): ItemsApi {
   return {
@@ -19,6 +19,12 @@ function api(over: Partial<ItemsApi> = {}): ItemsApi {
     reorder: vi.fn(async () => undefined),
     uploadPhoto: vi.fn(async () => 'https://files.example/items/a.webp'),
     removePhoto: vi.fn(async () => undefined),
+    uploadFile: vi.fn(async (_id, file) => ({ id: 'f1', name: file.name, sizeBytes: file.size })),
+    removeFile: vi.fn(async () => undefined),
+    addCodes: vi.fn(async () => ({ added: 0, left: 0 })),
+    addSession: vi.fn(),
+    updateSession: vi.fn(),
+    removeSession: vi.fn(async () => undefined),
     ...over,
   };
 }

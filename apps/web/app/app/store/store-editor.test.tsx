@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StoreEditor } from './store-editor.js';
-import { PHYSICAL_ITEM, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -28,11 +28,17 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   };
   const itemsApi: ItemsApi = {
     add: vi.fn(),
-    update: vi.fn(async (id, patch) => ({ id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
+    update: vi.fn(async (id, patch) => ({ ...PHYSICAL_ROW, id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
     remove: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
     uploadPhoto: vi.fn(),
     removePhoto: vi.fn(),
+    uploadFile: vi.fn(),
+    removeFile: vi.fn(),
+    addCodes: vi.fn(),
+    addSession: vi.fn(),
+    updateSession: vi.fn(),
+    removeSession: vi.fn(),
   };
   const chipApi: ChipApi = { connect: vi.fn(), disconnect: vi.fn(async () => undefined), test: vi.fn() };
   return { settingsApi, itemsApi, chipApi };
