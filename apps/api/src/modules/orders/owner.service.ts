@@ -1,5 +1,6 @@
 import { releaseUnpaidStock, type Prisma, type PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
+import { deliverOrder, queueDeliveryMail, type DeliveryMailDeps } from './deliver.service.js';
 import { OrderNotFoundError, OrderStateError } from './order.errors.js';
 
 export interface OwnerOrderDeps {
@@ -7,6 +8,8 @@ export interface OwnerOrderDeps {
   /** Null: uploads are off here, so there is no file to remove. */
   store: AvatarStore | null;
   log?: { warn?: (obj: object, msg: string) => void };
+  /** The buyer's delivery email; absent where no mail is queued (tests of the move alone). */
+  mail?: DeliveryMailDeps;
 }
 
 type Status = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
@@ -42,7 +45,13 @@ const from = (...statuses: Status[]): Prisma.OrderWhereInput => ({ status: { in:
 export async function markPaid(deps: OwnerOrderDeps, accountId: string, id: string, now: Date): Promise<void> {
   const current = await deps.prisma.order.findFirst({ where: { id, page: { accountId } }, select: { receiptKey: true } });
   const receiptKey = current?.receiptKey ?? null;
-  await move(deps.prisma, accountId, id, { ...from('PLACED'), receiptKey }, { status: 'PAID', paidAt: now, paidVia: receiptKey ? 'RECEIPT' : 'MANUAL' });
+  // Paid and delivered in one transaction: the order is never PAID with digital lines still unsent.
+  const sent = await deps.prisma.$transaction(async (tx) => {
+    await move(tx, accountId, id, { ...from('PLACED'), receiptKey }, { status: 'PAID', paidAt: now, paidVia: receiptKey ? 'RECEIPT' : 'MANUAL' });
+    return deliverOrder(tx, id, now);
+  });
+  // After the commit. The owner marked this paid themselves, so they get no email of their own.
+  if (sent && deps.mail) await queueDeliveryMail(deps.mail, id);
 }
 
 export const markCompleted = (deps: OwnerOrderDeps, accountId: string, id: string, now: Date) =>

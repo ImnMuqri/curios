@@ -89,3 +89,5 @@ export {
   seatsLeft,
 } from './digital.js';
 export type { ItemKind } from './digital.js';
+export { digitalDeliveryMail, paidAndSentOwnerMail, sessionTimeText } from './digital-mail.js';
+export type { DigitalDeliveryMailInput, DigitalMailItem, MailLang, PaidAndSentOwnerMailInput } from './digital-mail.js';

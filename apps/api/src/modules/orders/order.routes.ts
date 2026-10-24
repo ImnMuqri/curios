@@ -5,6 +5,7 @@ import { PricesChangedError } from './order.errors.js';
 import { placeOrder, type OrderMailQueue } from './place.service.js';
 import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
+import { moveTime, newCode, newLinks, resendDelivery, type DeliveryMailDeps } from './deliver.service.js';
 import { cancelOrder, markCompleted, markNotReceived, markPaid, markRefunded } from './owner.service.js';
 import { uploadReceipt } from './receipt.service.js';
 import { cancelChipBeforeOwnerMove } from './pay-online.service.js';
@@ -19,6 +20,8 @@ export interface OrderRouteOptions {
   payStatusEveryMs?: number;
   /** Paying online, for the owner's cancel and mark paid: each cancels CHIP's purchase first. Set by app.ts. */
   payOnline?: PayOnline;
+  /** PAYMENT_SECRETS_KEY, set by app.ts: placing seals the order token with it. */
+  secretsKey?: Buffer | null;
 }
 
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
@@ -98,6 +101,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
             mailQueue: options.mailQueue ?? app.mailQueue,
             log: request.log,
             appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+            secretsKey: options.secretsKey ?? null,
           },
           { handle: request.params.handle, ...body },
           new Date(),
@@ -170,6 +174,15 @@ export const ownerOrderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async 
     refunded: markRefunded,
   } as const;
 
+  /** The buyer's delivery email, for the owner's paid mark and "send again". */
+  const mailDeps = (log: DeliveryMailDeps['log']): DeliveryMailDeps => ({
+    prisma: app.prisma,
+    mailQueue: options.mailQueue ?? app.mailQueue,
+    secretsKey: options.payOnline?.secretsKey ?? null,
+    appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+    log,
+  });
+
   for (const [action, run] of Object.entries(moves)) {
     app.post(
       `/orders/:id/${action}`,
@@ -185,11 +198,48 @@ export const ownerOrderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async 
         if ((action === 'cancel' || action === 'paid') && options.payOnline) {
           await cancelChipBeforeOwnerMove({ ...options.payOnline, log: request.log }, request.account.id, request.params.id, now);
         }
-        await run({ prisma: app.prisma, store, log: request.log }, request.account.id, request.params.id, now);
+        await run({ prisma: app.prisma, store, log: request.log, mail: mailDeps(request.log) }, request.account.id, request.params.id, now);
         // The id and the move: no customer detail belongs in the log.
         request.log.info({ orderId: request.params.id, action }, 'order moved');
         return reply.status(204).send(null);
       },
     );
   }
+
+  // Digital orders: each acts on a paid, delivered order the owner owns (404 otherwise, 409 ORDER_STATE if not delivered).
+  const idParams = z.object({ id: z.string().min(1).max(64) });
+  const lineBody = z.object({ lineId: z.string().min(1).max(64) });
+  const ownerResponse = { 204: z.null(), 404: errorSchema, 409: errorSchema };
+
+  app.post('/orders/:id/resend', { schema: { params: idParams, response: ownerResponse } }, async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+    await resendDelivery(mailDeps(request.log), request.account.id, request.params.id);
+    request.log.info({ orderId: request.params.id, action: 'resend' }, 'order moved');
+    return reply.status(204).send(null);
+  });
+
+  app.post('/orders/:id/new-links', { schema: { params: idParams, response: ownerResponse } }, async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+    await newLinks({ prisma: app.prisma }, request.account.id, request.params.id, new Date());
+    request.log.info({ orderId: request.params.id, action: 'new-links' }, 'order moved');
+    return reply.status(204).send(null);
+  });
+
+  app.post('/orders/:id/new-code', { schema: { params: idParams, body: lineBody, response: ownerResponse } }, async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+    await newCode({ prisma: app.prisma }, request.account.id, request.params.id, request.body.lineId, new Date());
+    request.log.info({ orderId: request.params.id, action: 'new-code' }, 'order moved');
+    return reply.status(204).send(null);
+  });
+
+  app.post(
+    '/orders/:id/move-time',
+    { schema: { params: idParams, body: lineBody.extend({ sessionId: z.string().min(1).max(64) }), response: ownerResponse } },
+    async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      await moveTime({ prisma: app.prisma }, request.account.id, request.params.id, request.body.lineId, request.body.sessionId, new Date());
+      request.log.info({ orderId: request.params.id, action: 'move-time' }, 'order moved');
+      return reply.status(204).send(null);
+    },
+  );
 };

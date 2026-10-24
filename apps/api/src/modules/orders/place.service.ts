@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, normalizeMalaysianPhone, type MailJobData } from '@curios/core';
 import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
+import { sealSecret } from '@curios/core/secret-box';
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 import { PageNotFoundError } from '../chat/chat.service.js';
@@ -34,6 +35,8 @@ export interface PlaceDeps {
   log?: { warn?: (obj: object, msg: string) => void };
   /** Where the owner's order screen lives, for the email's button. */
   appUrl: string;
+  /** PAYMENT_SECRETS_KEY: seals the order token so later emails can carry the order link. Null leaves it unsealed. */
+  secretsKey?: Buffer | null;
 }
 
 export interface PlaceInput {
@@ -223,6 +226,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         number,
         code,
         tokenHash: hashSessionValue(token),
+        tokenSealed: deps.secretsKey ? sealSecret(token, deps.secretsKey) : null,
         customerName,
         phone,
         method,

@@ -446,7 +446,7 @@ model SessionBooking {
 
 model DownloadGrant {
   id          String    @id @default(cuid())
-  /// hashSessionValue of the download secret, like Order.tokenHash.
+  /// An opaque random id for the grant. Not a secret: a download is addressed by the order token and the grant's id.
   token       String    @unique
   orderLineId String
   orderLine   OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
@@ -899,6 +899,8 @@ model Order {
   /// hashSessionValue of the order link's secret. Only the hash is stored, so
   /// a database read cannot open anybody's order page.
   tokenHash         String         @unique
+  /// The order token sealed with PAYMENT_SECRETS_KEY (sealSecret), so later emails can carry the order link. Null where there is no key.
+  tokenSealed       String?
   customerName      String
   /// E.164, as Lead.phone is.
   phone             String

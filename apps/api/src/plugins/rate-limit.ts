@@ -213,6 +213,24 @@ export function receiptPerIpLimit(redis: IORedis): RateLimitPluginOptions {
 }
 
 /**
+ * Downloads and access links on an order, per visitor across every order. The
+ * order link is the only credential and a download streams up to 100 MB, so a
+ * loop from one address must not drain bandwidth or the grants' uses.
+ */
+export function downloadPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('download-ip:'),
+    max: limit('RATE_LIMIT_DOWNLOAD_PER_IP', 60),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany((after) => `Too many downloads just now. Try again in ${after}.`),
+  };
+}
+
+/**
  * Per shop, whoever asks: what bounds the junk many addresses can pour into
  * one owner's orders and inbox in a day. Keyed on the `handle` route param,
  * lowercased as the page is looked up, so every casing is the same budget.

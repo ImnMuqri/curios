@@ -213,3 +213,33 @@ export class OrderShapeError extends Error {
     this.name = 'OrderShapeError';
   }
 }
+
+/** A download or access link was asked for on an order that is not paid (or was cancelled). */
+export class OrderNotPaidError extends Error {
+  readonly statusCode = 410;
+  readonly code = 'ORDER_NOT_PAID';
+  constructor() {
+    super('This order is not paid, so there is nothing to download. Open your order page to see where it is.');
+    this.name = 'OrderNotPaidError';
+  }
+}
+
+/** The grant's five uses are spent. */
+export class DownloadUsedUpError extends Error {
+  readonly statusCode = 410;
+  readonly code = 'DOWNLOAD_USED_UP';
+  constructor() {
+    super('This download has been used the most times it allows. Ask the shop for new links.');
+    this.name = 'DownloadUsedUpError';
+  }
+}
+
+/** The grant's 30 days are over. */
+export class DownloadExpiredError extends Error {
+  readonly statusCode = 410;
+  readonly code = 'DOWNLOAD_EXPIRED';
+  constructor() {
+    super('This download link has expired. Ask the shop for new links.');
+    this.name = 'DownloadExpiredError';
+  }
+}

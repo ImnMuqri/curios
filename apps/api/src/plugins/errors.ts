@@ -148,6 +148,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   'TIME_REQUIRED',
   'EMAIL_REQUIRED',
   'INVALID_ORDER',
+  // Downloading what was bought (slice 19): the order is not paid, or the grant is spent or old.
+  'ORDER_NOT_PAID',
+  'DOWNLOAD_USED_UP',
+  'DOWNLOAD_EXPIRED',
   // A receipt on the order link (slice 18).
   'ORDER_NOT_FOUND',
   'INVALID_RECEIPT',
