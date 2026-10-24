@@ -185,7 +185,7 @@ describe('ReviewQueue', () => {
   it('draws the chat’s reply as plain text under "{Name}’s page"', () => {
     render(<ReviewQueue facts={facts} pageName="Nadia" onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
     const label = screen.getByText('Nadia’s page');
-    expect(label.nextElementSibling).toHaveTextContent('Kuih lapis is RM12 a box');
+    expect(label.parentElement!.nextElementSibling).toHaveTextContent('Kuih lapis is RM12 a box');
   });
 
   it('shows what the chat would say, live as the claim is edited', async () => {

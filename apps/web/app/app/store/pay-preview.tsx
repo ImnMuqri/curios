@@ -1,12 +1,9 @@
 'use client';
 
-import { isRiderDelivery, openDays, orderTotals } from '@curios/core/orders';
-import { formatRinggit } from '@curios/core/store';
+import { openDays, orderTotals } from '@curios/core/orders';
 import { PageTheme } from '../../_bento/BentoPage.js';
-import { shopCopy } from '../../[handle]/shop/copy.js';
-import { hasBank, PayBox } from '../../[handle]/order/[token]/pay-box.js';
-import checkout from '../../[handle]/shop/checkout/checkout.module.css';
-import order from '../../[handle]/order/[token]/order.module.css';
+import { OrderView, type OrderViewProps } from '../../[handle]/order/[token]/order-view.js';
+import type { DigitalLineView } from '../../[handle]/order/[token]/digital-section.js';
 import type { EditorItem, ShopLook, StoreSettings } from './store-types.js';
 import styles from './store.module.css';
 
@@ -17,12 +14,32 @@ function firstPrice(item: EditorItem): { cents: number; option: string | null } 
   return first ? { cents: first.priceCents, option: first.label } : null;
 }
 
+/** What a sample digital line carries: only what the order page draws before payment. */
+function digitalLine(item: EditorItem): DigitalLineView | null {
+  if (item.kind !== 'DIGITAL' || item.delivery === null) return null;
+  const first = item.sessions[0];
+  return {
+    id: item.id,
+    name: item.name,
+    delivery: item.delivery,
+    note: null,
+    hasLink: false,
+    minutes: item.sessionMinutes,
+    place: item.sessionPlace,
+    where: null,
+    startsAt: first ? first.startsAt.toISOString() : null,
+    codes: [],
+    files: item.files.map((f) => ({ id: f.id, name: f.name, sizeBytes: f.sizeBytes, usesLeft: 5, expiresAt: '' })),
+  };
+}
+
 /**
- * The preview's Pay screen (Store board, `pay`): the order page a customer
- * lands on after checkout, drawn with the order page's own pieces and its pay
- * box, for a sample order of one of each of the first two items. Delivery
- * when the shop delivers, else pickup, on the earliest day a customer could
- * pick. Nothing here uploads or copies anything that matters: it is a picture.
+ * The preview's Pay screen (Store board, `pay`): the real order page, given a
+ * sample order of one of each of the first two items, built from the editor's
+ * draft so it follows every edit. Delivery when the shop delivers, else
+ * pickup, on the earliest day a customer could pick; an order of digital
+ * items only has neither. The page's `preview` mode keeps it a picture:
+ * nothing uploads, copies or opens.
  */
 export function PayPreview({
   look,
@@ -43,91 +60,52 @@ export function PayPreview({
   today: string;
   nextNumber: number;
 }) {
-  const copy = shopCopy(look.language);
-  const lines = items.flatMap((item) => {
+  const sample = items.flatMap((item) => {
     const price = firstPrice(item);
-    return price ? [{ name: item.name, option: price.option, unitCents: price.cents, quantity: 1 }] : [];
+    return price ? [{ item, option: price.option, unitCents: price.cents }] : [];
   }).slice(0, 2);
-  const method = settings.deliveryMode === 'NONE' ? 'PICKUP' : 'DELIVERY';
-  const totals = orderTotals(lines, { method, mode: settings.deliveryMode, feeCents: settings.deliveryFeeCents });
+  const lines = sample.map(({ item, option, unitCents }) => ({ name: item.name, option, unitCents, quantity: 1 }));
+  const digitalOnly = sample.length > 0 && sample.every(({ item }) => item.kind === 'DIGITAL');
+  const method = digitalOnly ? null : settings.deliveryMode === 'NONE' ? 'PICKUP' : 'DELIVERY';
+  const totals = orderTotals(lines, { method: method ?? 'PICKUP', mode: settings.deliveryMode, feeCents: method === 'DELIVERY' ? settings.deliveryFeeCents : 0 });
   // Midday in Malaysia, so the day is today's there whatever the browser's zone.
-  const day = openDays({ now: new Date(`${today}T04:00:00Z`), minNoticeDays: settings.minNoticeDays, closedDays: settings.closedDays }, 1)[0] ?? today;
-  const bank = { name: settings.bankName, accountName: settings.bankAccountName, accountNumber: settings.bankAccountNumber };
-  const total = formatRinggit(totals.totalCents);
+  const day = method === null ? null : (openDays({ now: new Date(`${today}T04:00:00Z`), minNoticeDays: settings.minNoticeDays, closedDays: settings.closedDays }, 1)[0] ?? today);
   // A QR saved but with no address to show it from (storage off) draws nothing, so it cannot count.
   const shownQr = hasQr ? qrUrl : null;
-  const canPay = Boolean(shownQr) || hasBank(bank);
+  const order: OrderViewProps['order'] = {
+    number: nextNumber,
+    code: '7Q4M',
+    method,
+    day,
+    itemsCents: totals.itemsCents,
+    deliveryCents: totals.deliveryCents,
+    totalCents: totals.totalCents,
+    status: 'PLACED',
+    receiptType: null,
+    receiptUploadedAt: null,
+    receiptRejectedAt: null,
+    paidAt: null,
+    refundedAt: null,
+    lines: sample.map(({ item, option, unitCents }) => ({ itemName: item.name, optionLabel: option, unitPriceCents: unitCents, quantity: 1, digital: digitalLine(item) })),
+    email: null,
+    sentAt: null,
+  };
 
   return (
     <PageTheme theme={look} className={styles.payStage}>
-      <div className={`${checkout.column} ${styles.payColumn}`}>
-        <div className={checkout.top}>
-          <span>{look.displayName}</span>
-        </div>
-        <div className={order.titleRow}>
-          <h2 className={`${checkout.title} ${styles.payTitle}`}>{copy.orderTitle(nextNumber)}</h2>
-          <span className={order.pill} data-tone="wait">
-            <i aria-hidden="true" />
-            {copy.statusWaiting}
-          </span>
-        </div>
-
-        <section className={checkout.section}>
-          <div className={checkout.head}>
-            <h3 className={styles.payHead}>{copy.payTitle(total)}</h3>
-            <span>{copy.payTo(look.displayName)}</span>
-          </div>
-          {canPay ? (
-            <PayBox name={look.displayName} qrUrl={shownQr} bank={bank} copy={copy} />
-          ) : (
-            <p className={order.askPay}>{copy.noWayToPay}</p>
-          )}
-          <div className={`${order.upload} ${styles.payUpload}`}>
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
-            </svg>
-            <span>
-              <b>{copy.uploadReceipt}</b>
-              <span>{copy.uploadHint}</span>
-            </span>
-          </div>
-        </section>
-
-        <section className={checkout.section}>
-          <div className={checkout.head}>
-            <h3 className={styles.payHead}>{copy.yourOrder}</h3>
-            <span>
-              {method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel} · {copy.dayLong(day)}
-              {isRiderDelivery({ method, deliveryCents: totals.deliveryCents }) ? ` · ${copy.riderPaidSeparately}` : null}
-            </span>
-          </div>
-          <ul className={order.lines}>
-            {lines.map((line, i) => (
-              <li key={i} className={order.line}>
-                <span>
-                  <b>
-                    {line.quantity}× {line.name}
-                  </b>
-                  {line.option ? <span>{line.option}</span> : null}
-                </span>
-                <span>{formatRinggit(line.unitCents * line.quantity)}</span>
-              </li>
-            ))}
-            {totals.deliveryCents > 0 ? (
-              <li className={order.line}>
-                <span>
-                  <b>{copy.deliveryLabel}</b>
-                </span>
-                <span>{formatRinggit(totals.deliveryCents)}</span>
-              </li>
-            ) : null}
-          </ul>
-          <div className={order.total}>
-            <span>{copy.total}</span>
-            <span>{total}</span>
-          </div>
-        </section>
-      </div>
+      <OrderView
+        preview
+        token="preview"
+        handle={look.handle}
+        displayName={look.displayName}
+        language={look.language}
+        order={order}
+        qrUrl={shownQr}
+        receiptUrl={null}
+        bank={{ name: settings.bankName, accountName: settings.bankAccountName, accountNumber: settings.bankAccountNumber }}
+        whatsapp={null}
+        now={new Date(`${today}T04:00:00Z`).toISOString()}
+      />
     </PageTheme>
   );
 }

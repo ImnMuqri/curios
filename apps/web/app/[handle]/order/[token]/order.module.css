@@ -25,7 +25,7 @@
   padding: 0 20px;
 }
 
-.titleRow h1 {
+.titleRow > :first-child {
   margin: 0;
   padding: 0;
 }

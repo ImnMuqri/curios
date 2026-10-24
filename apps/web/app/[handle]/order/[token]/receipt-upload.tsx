@@ -66,7 +66,28 @@ function base64(file: File): Promise<string> {
  * different receipt" under that line: until the order is paid, a second
  * receipt replaces the first.
  */
-export function ReceiptUpload(props: { token: string; displayName: string; copy: ShopCopy; replace?: boolean }) {
+export function ReceiptUpload(props: { token: string; displayName: string; copy: ShopCopy; replace?: boolean; preview?: boolean }) {
+  // The Store editor's picture: the box as drawn, with no picker (and no router) behind it.
+  if (props.preview) {
+    const { copy } = props;
+    return props.replace ? (
+      <span className={styles.replace}>{copy.uploadDifferent}</span>
+    ) : (
+      <div className={styles.upload}>
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 16V4M7 9l5-5 5 5M5 20h14" />
+        </svg>
+        <span>
+          <b>{copy.uploadReceipt}</b>
+          <span>{copy.uploadHint}</span>
+        </span>
+      </div>
+    );
+  }
+  return <LiveReceiptUpload {...props} />;
+}
+
+function LiveReceiptUpload(props: { token: string; displayName: string; copy: ShopCopy; replace?: boolean }) {
   const { copy } = props;
   const router = useRouter();
   const problemId = useId();

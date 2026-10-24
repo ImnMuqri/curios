@@ -36,8 +36,10 @@ describe('PageReply', () => {
     expect(reply).not.toMatch(/background|border|padding|radius/);
     expect(reply).not.toMatch(/(^|[\s;])color:\s*(?!inherit)/);
     expect(who).toMatch(/font-size:\s*10\.5px/);
-    expect(who).toMatch(/opacity:\s*0\.65/);
-    expect(who).not.toMatch(/(^|[\s;])color:/);
+    // The words dim to 65%; the dot beside them does not.
+    expect(block(source, '.whoName')).toMatch(/opacity:\s*0\.65/);
+    expect(who).not.toMatch(/opacity|(^|[\s;])color:/);
+    expect(block(source, '.dot')).toMatch(/background:\s*var\(--accent/);
     expect(source).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 });

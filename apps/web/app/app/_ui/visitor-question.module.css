@@ -1,0 +1,13 @@
+/* The board's .pv-q / .bq / .u: the panel's own text at 14%, 16px corners. */
+.question {
+  display: block;
+  align-self: flex-end;
+  max-width: 88%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

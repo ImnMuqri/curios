@@ -5,6 +5,7 @@ import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { apiFetch } from '../../../lib/api.js';
 import { PageReply } from '../_ui/page-reply.js';
+import { VisitorQuestion } from '../_ui/visitor-question.js';
 import styles from './knowledge.module.css';
 
 /** The page's colours, for the chat. */
@@ -97,9 +98,9 @@ export function AskPanel({
         ) : null}
         {turns.map((turn, i) =>
           turn.role === 'user' ? (
-            <span key={i} className={styles.u}>
+            <VisitorQuestion key={i} className={styles.u}>
               {turn.content}
-            </span>
+            </VisitorQuestion>
           ) : (
             <span key={i} style={{ display: 'contents' }}>
               <PageReply name={pageName} className={styles.a}>

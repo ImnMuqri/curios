@@ -62,6 +62,12 @@ export interface OrderViewProps {
   navigate?: (url: string) => void;
   /** The server's clock when it rendered (ISO). */
   now: string;
+  /**
+   * The Store editor's picture of this page: the same page, but nothing in it
+   * reaches the network or the clipboard (the receipt box does not open a
+   * picker), and it is a section of the dashboard, not a document of its own.
+   */
+  preview?: boolean;
 }
 
 type Tone = 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
@@ -165,7 +171,9 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
  * and the receipt. Every name and number is this order's and this shop's.
  */
 export function OrderView(props: OrderViewProps) {
-  const { displayName: name } = props;
+  const { displayName: name, preview = false } = props;
+  const Root = preview ? 'div' : 'main';
+  const Title = preview ? 'h2' : 'h1';
   const copy = shopCopy(props.language);
   const [codeCopied, copyCode] = useCopied();
   const { check, paid: confirmed } = usePaymentCheck(props.token, props.order.status === 'PLACED' && props.order.chipPending === true);
@@ -280,14 +288,14 @@ export function OrderView(props: OrderViewProps) {
   }
 
   return (
-    <main className={checkout.column}>
+    <Root className={checkout.column}>
       <div className={checkout.top}>
         <span>{name}</span>
         <span className={styles.bookmark}>{copy.bookmark}</span>
       </div>
 
       <div className={styles.titleRow}>
-        <h1 className={checkout.title}>{copy.orderTitle(order.number)}</h1>
+        <Title className={checkout.title}>{copy.orderTitle(order.number)}</Title>
         <span className={styles.pill} data-tone={status.tone}>
           <i aria-hidden="true" />
           {status.text}
@@ -297,7 +305,7 @@ export function OrderView(props: OrderViewProps) {
       <div className={`${checkout.sheet} ${styles.sheet}`} data-testid="sheet">
       <p className={styles.code}>
         {copy.orderCode} <b>{order.code}</b>
-        <button type="button" className={styles.textButton} onClick={() => copyCode(order.code)}>
+        <button type="button" className={styles.textButton} onClick={preview ? undefined : () => copyCode(order.code)}>
           {codeCopied ? copy.copied : copy.copyCode}
         </button>
       </p>
@@ -404,7 +412,8 @@ export function OrderView(props: OrderViewProps) {
           ) : askOnWhatsApp ? (
             <p className={styles.askPay}>{copy.askHowToPay(name)}</p>
           ) : retry ? null : (
-            <p className={styles.askPay}>{copy.cantPayOnline(name)}</p>
+            // The editor's picture says what the owner must do; a customer is told the shop cannot take it online.
+            <p className={styles.askPay}>{preview ? copy.noWayToPay : copy.cantPayOnline(name)}</p>
           )}
           {view === 'toCheck' ? (
             <div className={`${styles.upload} ${styles.sent}`}>
@@ -428,9 +437,9 @@ export function OrderView(props: OrderViewProps) {
           ) : null}
           {view === 'toCheck' ? (
             // Until it is marked paid, a second receipt replaces the first.
-            <ReceiptUpload token={props.token} displayName={name} copy={copy} replace />
+            <ReceiptUpload token={props.token} displayName={name} copy={copy} replace preview={preview} />
           ) : payByQr || askOnWhatsApp ? (
-            <ReceiptUpload token={props.token} displayName={name} copy={copy} />
+            <ReceiptUpload token={props.token} displayName={name} copy={copy} preview={preview} />
           ) : null}
         </section>
       ) : null}
@@ -517,6 +526,6 @@ export function OrderView(props: OrderViewProps) {
         </a>
       ) : null}
       </div>
-    </main>
+    </Root>
   );
 }

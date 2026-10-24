@@ -1203,8 +1203,26 @@
 
 /* ---- The preview ---- */
 
+.previewStage {
+  min-height: 100%;
+}
+
+/* The shop and the item as customers open them, in the owner's colours, filling the phone. */
 .previewShop {
-  padding: 0 14px;
+  --veil-1: color-mix(in srgb, var(--page-fg) 7%, transparent);
+  --veil-2: color-mix(in srgb, var(--page-fg) 12%, transparent);
+  --veil-3: color-mix(in srgb, var(--page-fg) 16%, transparent);
+  --warm: color-mix(in srgb, var(--accent) 20%, var(--card));
+  container: shop / inline-size;
+  position: relative;
+  box-sizing: border-box;
+  min-height: 100%;
+  padding-bottom: 12px;
+  background: var(--page-bg);
+  color: var(--page-fg);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 /* The preview's Pay screen: the order page's column, filling the phone instead of the window. */
@@ -1212,27 +1230,9 @@
   min-height: 100%;
 }
 
-.payStage .payColumn {
+.payStage > div {
   min-height: 100%;
-  padding-bottom: 28px;
-  box-shadow: none;
   animation: none;
-}
-
-.payStage .payTitle {
-  margin: 0;
-  font-size: 24px;
-}
-
-.payStage .payHead {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-/* A picture of the upload box: nothing to press. */
-.payStage .payUpload {
-  cursor: default;
 }
 
 /* ---- Narrower ---- */

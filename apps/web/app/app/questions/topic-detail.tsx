@@ -5,7 +5,9 @@ import { Callout } from '@curios/ui';
 import type { OwnerTopic, OwnerWording } from '@curios/db-read';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
+import { firstName, LeadCard } from '../_ui/lead-card.js';
 import { PageReply } from '../_ui/page-reply.js';
+import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { relativeTime } from '../_ui/relative-time.js';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
@@ -304,14 +306,18 @@ export function TopicDetail({
                 <i aria-hidden="true" />
                 On your page
               </span>
-              <span className={styles.asked}>{topic.wordings[0]?.text ?? topic.title}</span>
+              <VisitorQuestion>{topic.wordings[0]?.text ?? topic.title}</VisitorQuestion>
               {live ? (
                 <PageReply name={pageName}>
                   {typing ? typing.text.slice(0, typing.shown) : answer}
                   {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
                 </PageReply>
               ) : (
-                <span className={styles.replyNote}>Without your answer, the chat replies from your facts, or says it isn&apos;t sure.</span>
+                <>
+                  <PageReply name={pageName}>I’m not sure about that one. Leave your number and {firstName(pageName)} will get back to you.</PageReply>
+                  <LeadCard name={pageName} />
+                  <span className={styles.replyNote}>Without your answer, the chat replies from your facts, or says it isn&apos;t sure.</span>
+                </>
               )}
             </div>
           </div>

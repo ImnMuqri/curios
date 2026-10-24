@@ -238,15 +238,54 @@ describe('the items', () => {
 
   it('opens the product screen in the preview from a tapped row, and returns to the shop after an add', () => {
     show();
-    fireEvent.click(within(preview()).getByRole('button', { name: /Kek batik/ }));
+    fireEvent.click(within(preview()).getByRole('link', { name: 'Kek batik' }));
     expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
     fireEvent.click(within(preview()).getByRole('button', { name: /^Add to basket/ }));
-    expect(within(preview()).getByText(/in basket/)).toBeInTheDocument();
+    expect(within(preview()).getByText('1 item · RM45')).toBeInTheDocument();
   });
 });
 
 describe('the preview', () => {
   const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
+
+  // The previews are the customer pages themselves, so each carries a landmark only the real page has.
+  it('the Shop screen is the real shop page: its facts list and category chips, and no link leaves the editor', () => {
+    const list: EditorItem[] = [
+      { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true, category: 'Cakes' },
+      { ...base, id: 'c', name: 'Online class', priceCents: 6000, available: true, ...{ kind: 'DIGITAL' as const, delivery: 'FILES' as const } },
+    ];
+    show(ready, list);
+    const shop = within(preview());
+    expect(shop.getByText('Open for orders')).toBeInTheDocument();
+    expect(shop.getByText('Seksyen 7')).toBeInTheDocument();
+    expect(shop.getByText('Pickup or delivery')).toBeInTheDocument();
+    expect(shop.getByRole('group', { name: 'Categories' })).toBeInTheDocument();
+    expect(shop.getByRole('button', { name: /^Cakes/ })).toBeInTheDocument();
+    expect(shop.getByRole('button', { name: /^Digital/ })).toBeInTheDocument();
+    const click = fireEvent.click(shop.getByRole('link', { name: `Back to ${look.displayName}` }));
+    // A prevented click: the editor stays where it is.
+    expect(click).toBe(false);
+  });
+
+  it('the Item screen is the real item page: Size boxes for options, and Pick a time for a session', () => {
+    const list: EditorItem[] = [
+      { ...base, id: 'a', name: 'Kek coklat', priceCents: null, available: true, options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }] },
+    ];
+    show(ready, list);
+    fireEvent.click(screenTab('Item'));
+    expect(within(preview()).getByRole('radiogroup', { name: 'Size' })).toBeInTheDocument();
+    expect(within(preview()).getByRole('radio', { name: /1kg/ })).toBeInTheDocument();
+    expect(within(preview()).getByRole('radio', { name: /2kg/ })).toBeInTheDocument();
+  });
+
+  it('the Pay screen is the real order page: its code and timeline', () => {
+    show();
+    fireEvent.click(screenTab('Pay'));
+    const pay = within(preview());
+    expect(pay.getByText('7Q4M')).toBeInTheDocument();
+    const steps = pay.getByRole('list', { name: 'Order progress' });
+    expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Placed, done', 'Paid', 'Ready', 'Done']);
+  });
 
   it('ends the shop in the board’s basket bar, empty, with Checkout', () => {
     show();
