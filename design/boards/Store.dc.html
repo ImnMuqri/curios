@@ -593,6 +593,91 @@ a{color:#2340c8}a:hover{color:#122686}
 .pi-dig{display:inline-block;margin-bottom:3px;padding:2px 8px;border-radius:999px;background:#eaf0ff;color:#122686;font-size:10.5px;font-weight:600}
 .pi-get{margin:8px 0 0!important;padding:8px 10px;border-radius:10px;background:#f6f8ff;color:#122686;font-size:12px!important;line-height:1.45}
 @media (max-width:760px){.dg-tiles{grid-template-columns:repeat(2,minmax(0,1fr))!important}.dg-sh,.dg-slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px}.dg-sh span:nth-child(3),.dg-seat{grid-column:1 / -1}.dg-sh span:nth-child(3){display:none}.dg-where{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* previews match the real page */
+.pv-q,.bq,.convo .u,.tchat .u,.vchat .q{background:rgba(250,251,252,.14)!important;color:#fafbfc!important;border-radius:16px!important}
+.pv-a::before,.ba::before,.convo .a::before,.tchat .a::before,.vchat .a::before{padding-left:20px;line-height:16px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 7px 8px,#b5294e 6.5px,transparent 7px) no-repeat}
+.leadc2{align-self:stretch;display:block;padding:12px;border-radius:14px;background:#fafbfc;color:#191f2c}
+.leadc2 b{display:block;font-size:13px;font-weight:600}
+.leadc2 small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:#4b5060}
+.leadc2 .lrow{display:flex;gap:6px;margin-top:8px}
+.leadc2 i{flex:1;min-width:0;height:34px;padding:0 10px;border:1.5px solid #dfe1e6;border-radius:9px;font-style:normal;font-size:12px;line-height:31px;color:#9aa0ab}
+.leadc2 em{display:grid;place-items:center;height:34px;padding:0 12px;border-radius:9px;background:#b5294e;color:#fafbfc;font-style:normal;font-size:12px;font-weight:600}
+
+/* previews that match the real customer pages */
+.sf2-facts{display:grid;gap:3px;margin:6px 0 0;padding:0;list-style:none;font-size:10.5px;opacity:.85}
+.sf2-facts li{display:flex;align-items:center;gap:6px}
+.sf2-facts svg{width:11px;height:11px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sf2-b small{display:block;margin-top:3px;font-size:9.5px;color:#b5294e}
+.sf2-cats{display:flex;gap:5px;margin-top:10px;overflow:hidden}
+.sf2-cats>span{flex:none;padding:5px 9px;border-radius:999px;background:rgba(250,251,252,.12);font-size:10.5px;font-weight:600}
+.sf2-cats>span.on{background:#fafbfc;color:#3d0f1e}
+.sf2-cats em{margin-left:4px;font-style:normal;font-weight:500;opacity:.6}
+.pi2{position:absolute;inset:0;display:flex;flex-direction:column;background:#542339;color:#fafbfc;animation:fadeUp 320ms cubic-bezier(.22,1,.36,1) both}
+.pi2-top{display:flex;align-items:center;gap:8px;padding:16px 12px 0;font-size:11.5px;font-weight:600}
+.pi2-top>span:nth-child(2){flex:1;text-align:center}
+.pi2-c{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;background:rgba(250,251,252,.12)}
+.pi2-c svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.pi2-scroll{flex:1;min-height:0;overflow:hidden;padding-bottom:64px}
+.pi2-hero{position:relative;display:grid;place-items:center;height:168px;margin:10px 12px 0;overflow:hidden;border-radius:20px;font-family:'Outfit',sans-serif;font-size:48px;font-weight:800}
+.pi2-hero img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pi2-pd{padding:12px 14px 0}
+.pi2-tag,.pi2-hid{display:inline-flex;margin-bottom:6px;padding:2px 8px;border-radius:999px;background:#fafbfc;color:#3d0f1e;font-size:10px;font-weight:700}
+.pi2-hid{background:#ffebd6;color:#7a4a0c;margin-right:4px}
+.pi2-pd h4{margin:0;font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
+.pi2-price{margin:3px 0 0;font-size:13.5px;font-weight:600}
+.pi2-desc{margin:6px 0 0;font-size:11.5px;line-height:1.5;opacity:.85}
+.pi2-lbl{display:block;margin:10px 0 6px;font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.65}
+.pi2-opts{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pi2-opts>span{padding:7px 9px;border-radius:12px;background:rgba(250,251,252,.08);box-shadow:inset 0 0 0 1px rgba(250,251,252,.14)}
+.pi2-opts>span.on{background:rgba(250,251,252,.16);box-shadow:inset 0 0 0 1.5px #fafbfc}
+.pi2-opts>span.full{opacity:.4}
+.pi2-opts b{display:block;font-size:11.5px}
+.pi2-opts span span{display:block;font-size:10px;opacity:.75}
+.pi2-facts{margin-top:10px;border-radius:12px;background:rgba(250,251,252,.07)}
+.pi2-facts>div{display:flex;align-items:center;gap:8px;padding:8px 10px;font-size:10.5px;line-height:1.4}
+.pi2-facts>div+div{border-top:1px solid rgba(250,251,252,.08)}
+.pi2-facts svg,.pi2-ask svg{width:13px;height:13px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
+.pi2-ask{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;border-radius:12px;background:rgba(250,251,252,.07)}
+.pi2-ask>span{flex:1;min-width:0}
+.pi2-ask b{display:block;font-size:11px}
+.pi2-ask small{display:block;font-size:9.5px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pi2-bar{position:absolute;left:10px;right:10px;bottom:12px;display:flex;align-items:center;gap:6px;padding:4px;border-radius:999px;background:#fafbfc;box-shadow:0 10px 24px -12px rgba(0,0,0,.5)}
+.pi2-q{display:flex;align-items:center;gap:8px;padding:0 6px;color:#191f2c;font-size:12px}
+.pi2-q i{display:grid;place-items:center;width:24px;height:24px;border-radius:50%;background:#f0f1f4;font-style:normal}
+.pi2-add{flex:1;display:grid;place-items:center;height:34px;border-radius:999px;background:#b5294e;color:#fafbfc;font-size:11.5px;font-weight:600}
+.po2{position:absolute;inset:0;display:flex;flex-direction:column;background:#542339;color:#fafbfc;animation:fadeUp 320ms cubic-bezier(.22,1,.36,1) both}
+.po2-top{display:flex;align-items:center;padding:18px 16px 0;font-size:12px;font-weight:600}
+.po2-top small{margin-left:auto;font-size:10px;font-weight:400;opacity:.6}
+.po2-h{display:flex;align-items:center;gap:8px;padding:10px 16px 12px}
+.po2-h b{font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;letter-spacing:-.02em}
+.po2-st{display:inline-flex;align-items:center;gap:5px;margin-left:auto;padding:3px 8px;border-radius:999px;background:#ffebd6;color:#7a4a0c;font-size:9.5px;font-weight:600}
+.po2-st i{width:5px;height:5px;border-radius:50%;background:#f2a33c}
+.po2-sheet{flex:1;min-height:0;overflow:hidden;padding:12px 14px;border-radius:22px 22px 0 0;background:#fafbfc;color:#191f2c}
+.po2-code{display:flex;align-items:center;gap:6px;margin:0;font-size:10.5px;color:#696e7b}
+.po2-code b{font-family:var(--m);font-weight:500;color:#191f2c}
+.po2-code span{color:#b5294e;font-weight:600}
+.po2-tl{display:flex;justify-content:space-between;margin:10px 0 12px;font-size:9.5px;color:#9aa0ab}
+.po2-tl>span{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1}
+.po2-tl i{width:12px;height:12px;border-radius:50%;box-shadow:inset 0 0 0 1.5px #e3cbd3}
+.po2-tl .dn{color:#191f2c}.po2-tl .dn i{background:#1d6f5f;box-shadow:none}
+.po2-tl .nw{color:#191f2c}.po2-tl .nw i{box-shadow:0 0 0 1.5px #b5294e,0 0 0 4px #f4dbe2}
+.po2-hd{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px;padding-top:10px;border-top:1px solid #eef0f3}
+.po2-hd b{font-size:12.5px;font-weight:600}
+.po2-hd span{font-size:9.5px;color:#8a8f9b}
+.po2-pay{display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;box-shadow:inset 0 0 0 1px #e4e7eb}
+.po2-bk{min-width:0;font-size:9.5px;color:#696e7b}
+.po2-bk span,.po2-bk b,.po2-bk code{display:block}
+.po2-bk b{margin-top:3px;font-size:10.5px;color:#191f2c}
+.po2-bk code{margin-top:2px;font-family:var(--m);font-size:10px;color:#191f2c}
+.po2-up{display:flex;align-items:center;gap:8px;margin-top:8px;padding:10px;border-radius:14px;background:#fbf2f5}
+.po2-up svg{width:15px;height:15px;flex:none;fill:none;stroke:#b5294e;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.po2-up b{display:block;font-size:11px}
+.po2-up small{display:block;font-size:9.5px;color:#8a8f9b}
+.po2-ln{display:flex;justify-content:space-between;gap:8px;padding:3px 0;font-size:10.5px}
+.po2-ln b{font-weight:500}
+.po2-tot{margin-top:4px;padding-top:6px;border-top:1px solid #eef0f3;font-weight:600}
+.po2-tot b{font-weight:700}
 </style>
 </helmet>
 
@@ -839,8 +924,9 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="sf2">
 <span class="sf2-open"><i></i>Open for orders</span>
 <p class="sf2-nm">Kek Lina</p>
-<p class="sf2-nt">{{noticeLine}}</p>
-<sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><div class="sf2-own"><span class="sf2-av" aria-hidden="true">L</span><span class="sf2-b">{{shopDesc}}</span></div></sc-if>
+<ul class="sf2-facts"><li><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg>Seksyen 7, Shah Alam</li><li><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path></svg>{{getLine}}</li><li><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v5M16 3v5"></path></svg>{{nextLine}}</li></ul>
+<sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><div class="sf2-own"><span class="sf2-av" aria-hidden="true">L</span><span class="sf2-b">{{shopDesc}}<small>Lina · 15 Oct</small></span></div></sc-if>
+<div class="sf2-cats"><sc-for list="{{ pvCats }}" as="c" hint-placeholder-count="3"><span class="{{c.cls}}">{{c.l}}<em>{{c.n}}</em></span></sc-for></div>
 <div class="sf2-g">
 <sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="sf2-card" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="sf2-ph" style="background: {{s.tint}}; color: {{s.ink}}">{{s.initial}}<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if><sc-if value="{{ s.dig }}" hint-placeholder-val="{{ false }}"><span class="sf2-dig">Digital</span></sc-if><span class="sf2-add" aria-hidden="true">+</span></span><b>{{s.name}}</b><span>{{s.from}}</span></button></sc-for>
 </div>
@@ -851,38 +937,44 @@ a{color:#2340c8}a:hover{color:#122686}
 </sc-if>
 
 <sc-if value="{{ pvItem }}" hint-placeholder-val="{{ false }}">
-<div class="dim"></div>
-<div class="isheet">
-<span class="grab"></span>
-<sc-if value="{{ pi.hidden }}" hint-placeholder-val="{{ false }}"><span class="hidden-chip">Hidden from your shop</span></sc-if>
-<div class="ihead"><span class="iph" style="background: {{pi.tint}}; color: {{pi.ink}}"><sc-if value="{{ pi.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{pi.photo}}" alt="" style="object-position: {{pi.focus}}"></sc-if>{{pi.initial}}</span><span style="min-width: 0"><sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><span class="pi-dig">Digital</span></sc-if><h4>{{pi.name}}</h4><span class="pr">{{pi.price}}</span></span></div>
-<p>{{pi.desc}}</p>
-<sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><p class="pi-get">{{pi.get}}</p></sc-if>
-<sc-if value="{{ pi.hasSlots }}" hint-placeholder-val="{{ false }}"><span class="pills"><sc-for list="{{ pi.slots }}" as="po" hint-placeholder-count="2"><span style="background: {{po.bg}}; color: {{po.fg}}">{{po.label}}</span></sc-for></span></sc-if>
-<sc-if value="{{ pi.hasOpts }}" hint-placeholder-val="{{ true }}"><span class="pills"><sc-for list="{{ pi.opts }}" as="po" hint-placeholder-count="2"><span style="background: {{po.bg}}; color: {{po.fg}}">{{po.label}}</span></sc-for></span></sc-if>
-<div class="bar" style="background: #b5294e; color: #fafbfc"><span style="display: inline-flex; align-items: center; gap: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(250,251,252,0.16)">−<b>1</b>+</span><span style="margin-left: auto; padding-right: 10px">Add to basket · {{pi.addPrice}}</span></div>
+<div class="pi2">
+<div class="pi2-top"><span class="pi2-c"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span><span>Kek Lina’s shop</span><span class="pi2-c"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1.4 11.2a1 1 0 0 1-1 .8H7.4a1 1 0 0 1-1-.8zM9 8V6a3 3 0 0 1 6 0v2"></path></svg></span></div>
+<div class="pi2-scroll">
+<div class="pi2-hero" style="background: {{pi.tint}}; color: {{pi.ink}}">{{pi.initial}}<sc-if value="{{ pi.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{pi.photo}}" alt="" style="object-position: {{pi.focus}}"></sc-if></div>
+<div class="pi2-pd">
+<sc-if value="{{ pi.hidden }}" hint-placeholder-val="{{ false }}"><span class="pi2-hid">Hidden from your shop</span></sc-if>
+<sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><span class="pi2-tag">Digital</span></sc-if>
+<h4>{{pi.name}}</h4>
+<p class="pi2-price">{{pi.price}}</p>
+<sc-if value="{{ pi.hasDesc }}" hint-placeholder-val="{{ true }}"><p class="pi2-desc">{{pi.desc}}</p></sc-if>
+<sc-if value="{{ pi.hasOpts }}" hint-placeholder-val="{{ true }}"><span class="pi2-lbl">Size</span><div class="pi2-opts"><sc-for list="{{ pi.opts }}" as="po" hint-placeholder-count="2"><span class="{{po.cls}}"><b>{{po.l}}</b><span>{{po.p}}</span></span></sc-for></div></sc-if>
+<sc-if value="{{ pi.hasSlots }}" hint-placeholder-val="{{ false }}"><span class="pi2-lbl">Pick a time</span><div class="pi2-opts"><sc-for list="{{ pi.slots }}" as="po" hint-placeholder-count="2"><span class="{{po.cls}}"><b>{{po.l}}</b><span>{{po.p}}</span></span></sc-for></div></sc-if>
+<div class="pi2-facts"><div><sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg></sc-if><sc-if value="{{ pi.phys }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg></sc-if><span>{{pi.f1}}</span></div><div><sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg></sc-if><sc-if value="{{ pi.phys }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM17 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"></path></svg></sc-if><span>{{pi.f2}}</span></div></div>
+<div class="pi2-ask"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"></path></svg><span><b>Ask about this</b><small>{{pi.askHint}}</small></span><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></div>
+</div>
+</div>
+<div class="pi2-bar"><span class="pi2-q"><i>−</i><b>1</b><i>+</i></span><span class="pi2-add">Add to basket · {{pi.addPrice}}</span></div>
 </div>
 </sc-if>
 
 <sc-if value="{{ pvPay }}" hint-placeholder-val="{{ false }}">
-<div class="sp">
-<div class="sp-top"><span class="circ" style="background: rgba(250,251,252,0.12)"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span><span style="flex: 1; font-weight: 600; font-size: 13px">Order #13</span></div>
-<div class="pay">
-<span class="stat">Waiting for payment</span>
-<div class="pay-card" style="background: rgba(250,251,252,0.08)">
-<sc-for list="{{ payLines }}" as="pl" hint-placeholder-count="3"><div class="ln"><span>{{pl.label}}</span><b style="font-weight: 500">{{pl.amt}}</b></div></sc-for>
-<div class="tot" style="border-top: 1px solid rgba(250,251,252,0.14)"><span style="opacity: .75">{{payWhen}}</span><b>{{payTotal}}</b></div>
+<div class="po2">
+<div class="po2-top"><span>Kek Lina</span><small>Bookmark this page</small></div>
+<div class="po2-h"><b>Order #13</b><span class="po2-st"><i></i>Waiting for payment</span></div>
+<div class="po2-sheet">
+<p class="po2-code">Order code <b>7Q4M</b><span>Copy code</span></p>
+<div class="po2-tl"><span class="dn"><i></i>Placed</span><span class="nw"><i></i>Paid</span><span><i></i>Ready</span><span><i></i>Done</span></div>
+<div class="po2-hd"><b>Pay {{payTotal}}</b><span>To Kek Lina, directly</span></div>
+<sc-if value="{{ canPay }}" hint-placeholder-val="{{ true }}"><div class="po2-pay">
+<sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}"><svg viewBox="-1 -1 27 27" width="78" height="78" aria-label="DuitNow QR" role="img" style="flex: none"><path d="{{qrPath}}" fill="#191f2c"></path></svg></sc-if>
+<span class="po2-bk"><sc-if value="{{ bankOk }}" hint-placeholder-val="{{ true }}"><span>Scan with any bank app, or transfer to</span><b>{{bankName}} · {{accName}}</b><code>{{accNo}}</code></sc-if><sc-if value="{{ qrOnly }}" hint-placeholder-val="{{ false }}"><span>Scan with any bank app</span><b>DuitNow QR</b></sc-if></span>
+</div></sc-if>
+<sc-if value="{{ cantPay }}" hint-placeholder-val="{{ false }}"><div class="po2-pay" style="background: #ffebd6; color: #7a4a0c; font-size: 11px">No way to pay yet. Add a QR or your bank account.</div></sc-if>
+<div class="po2-up"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg><span><b>Upload your receipt</b><small>A screenshot from your bank app</small></span></div>
+<div class="po2-hd" style="margin-top: 12px"><b>Your order</b><span>{{payWhen}}</span></div>
+<sc-for list="{{ payLines }}" as="pl" hint-placeholder-count="3"><div class="po2-ln"><span>{{pl.label}}</span><b>{{pl.amt}}</b></div></sc-for>
+<div class="po2-ln po2-tot"><span>Total</span><b>{{payTotal}}</b></div>
 </div>
-<sc-if value="{{ canPay }}" hint-placeholder-val="{{ true }}">
-<div class="payto">
-<sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}"><svg viewBox="-1 -1 27 27" width="{{qrSize}}" height="{{qrSize}}" aria-label="DuitNow QR" role="img" style="flex: none"><path d="{{qrPath}}" fill="#191f2c"></path></svg></sc-if>
-<sc-if value="{{ bankOk }}" hint-placeholder-val="{{ true }}"><span class="bkl"><span>Or transfer to</span><b>{{bankName}}</b><span>{{accName}}</span><code>{{accNo}}</code></span></sc-if>
-<sc-if value="{{ qrOnly }}" hint-placeholder-val="{{ false }}"><span class="bkl"><b>Scan to pay</b><span>DuitNow QR, any bank app</span></span></sc-if>
-</div>
-</sc-if>
-<sc-if value="{{ cantPay }}" hint-placeholder-val="{{ false }}"><div class="payto" style="background: #ffebd6; color: #7a4a0c; font-size: 12px">No way to pay yet. Add a QR or your bank account.</div></sc-if>
-</div>
-<div class="bar" style="background: #fafbfc; color: #191f2c; justify-content: center; padding: 0"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg>Upload receipt</div>
 </div>
 </sc-if>
 
@@ -1088,8 +1180,11 @@ class Component extends DCLogic {
       pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.16)' : 'transparent', name: x.name, dig: !!x.digital, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
       pvEmpty: live.length === 0,
       spBottom: pvKey === 'item' ? '140px' : '0px',
-      scrBg: pvKey === 'item' ? '#fafbfc' : '#542339',
-      pvBase: pvKey !== 'pay', pvItem: pvKey === 'item', pvPay: pvKey === 'pay',
+      scrBg: '#542339',
+      pvBase: pvKey === 'shop', pvItem: pvKey === 'item', pvPay: pvKey === 'pay',
+      getLine: st.pickup && st.delivery !== 'NONE' ? 'Pickup or delivery' : st.pickup ? 'Pickup only' : st.delivery !== 'NONE' ? 'Delivery only' : 'Pickup or delivery',
+      nextLine: 'Next pickup ' + earliestLabel,
+      pvCats: (function () { const cats = [['All', live.length]]; const nd = live.filter((x) => x.digital).length; if (live.length - nd) cats.push(['Cakes and more', live.length - nd]); if (nd) cats.push(['Digital', nd]); return cats.map((c, i) => ({ l: c[0], n: c[1], cls: i === 0 ? 'on' : '' })); })(),
       shopDesc: st.shopDesc, hasShopDesc: !!st.shopDesc.trim(), shopDescCount: st.shopDesc.length,
       setShopDesc: (e) => self.change({ shopDesc: String(e.target.value || '').slice(0, 160) }),
       noticeLine: (st.notice === 0 ? 'Same day orders' : 'Order ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + ' ahead') + ' · ' + (st.pickup && st.delivery !== 'NONE' ? 'Pickup or delivery' : st.pickup ? 'Pickup only' : st.delivery !== 'NONE' ? 'Delivery only' : 'Closed for now'),
@@ -1101,13 +1196,17 @@ class Component extends DCLogic {
     if (pvIt) {
       const lk = self.look(pvIt), p = self.pricing(pvIt);
       out.pi = Object.assign(lk, {
-        noPhoto: !lk.hasPhoto, name: pvIt.name || 'Untitled item', desc: pvIt.desc, hidden: !pvIt.available,
-        price: p.error ? 'Price to come' : (pvIt.mode === 'options' ? 'from ' : '') + self.rm(p.from),
+        noPhoto: !lk.hasPhoto, name: pvIt.name || 'Untitled item', desc: pvIt.desc, hasDesc: !!String(pvIt.desc || '').trim(), hidden: !pvIt.available,
+        phys: !pvIt.digital,
+        f1: pvIt.digital ? self.getLine(pvIt) : (st.notice === 0 ? 'Same day orders welcome.' : 'Needs ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + '. Earliest pickup ' + earliestLabel + '.'),
+        f2: pvIt.digital ? ({ files: 'PDF, ' + (pvIt.files || []).length + ' files. Download up to 5 times.', link: 'Watch on any phone or laptop.', codes: 'One code per voucher.', session: (pvIt.dur || '') + (pvIt.where === 'person' ? ', in person.' : ' online. Seats are limited.') }[pvIt.dk] || '') : (st.pickup && st.delivery !== 'NONE' ? 'Pickup at Seksyen 7, or delivery.' : st.pickup ? 'Pickup at Seksyen 7.' : 'Delivered to you.'),
+        askHint: pvIt.digital ? 'Is it in Malay? Can I share it?' : 'Can I add a name on top? Is it OK for kids?',
+        price: p.error ? 'Price to come' : self.rm(p.opts && p.opts.length ? p.opts[0].c : p.from),
         hasOpts: !p.error && p.opts.length > 0,
-        opts: (p.opts || []).map((o, i) => ({ label: o.label + ' · ' + self.rm(o.c), bg: i === 0 ? '#191f2c' : '#f0f1f4', fg: i === 0 ? '#fafbfc' : '#191f2c' })),
+        opts: (p.opts || []).map((o, i) => ({ l: o.label, p: self.rm(o.c), cls: i === 0 ? 'on' : '' })),
         addPrice: p.error ? 'RM0' : self.rm(p.from),
         dig: !!pvIt.digital, get: self.getLine(pvIt),
-        hasSlots: !!pvIt.digital && pvIt.dk === 'session', slots: (pvIt.slots || []).map((sl, i) => { const left = (Number(sl.seats) || 0) - sl.taken; return { label: sl.day + ', ' + sl.time + (left <= 0 ? ' · full' : ''), bg: i === 0 ? '#191f2c' : '#f0f1f4', fg: i === 0 ? '#fafbfc' : left <= 0 ? '#9aa0ab' : '#191f2c' }; })
+        hasSlots: !!pvIt.digital && pvIt.dk === 'session', slots: (pvIt.slots || []).map((sl, i) => { const left = (Number(sl.seats) || 0) - sl.taken; return { l: sl.day + ', ' + sl.time, p: left <= 0 ? 'Full' : left + ' seats left', cls: left <= 0 ? 'full' : i === 0 ? 'on' : '' }; })
       });
     } else out.pi = {};
     if (editing) {

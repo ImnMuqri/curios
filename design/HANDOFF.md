@@ -431,6 +431,20 @@ voucher (codes) and an online Kek batik class (session).
   happened (downloads used, seat booked, code given, link opened), with actions New links,
   Move time, New code, and Resend the email.
 
+**Previews in the dashboard must match the real pages** (fixed 24 Oct, see
+`design/screens/Previews_matched.png`). Build them from the same components as the customer
+pages, scaled down, rather than separate mock-ups:
+- Store "Item" preview is the real item page: photo on top, tag, name, price of the first size,
+  Size boxes (or Pick a time), the facts box, Ask about this, and the add bar.
+- Store "Pay" preview is the real order page: order code, timeline, Pay with QR and bank,
+  Upload your receipt, Your order.
+- Store "Shop" preview has the real facts list and the category chips.
+- My Curios links preview ends with People often ask, not an ask bar (the ask bar is only on
+  the Ask tab).
+- Chat previews everywhere: the visitor's question is a translucent bubble, the answer is plain
+  text under a "Kek Lina's page" label with the accent dot, and the lead card is "Lina can
+  answer this one" with a number field and Send.
+
 **Data this needs** (suggested): `Item.kind` (PHYSICAL or DIGITAL) and `Item.delivery`
 (FILES, LINK, CODES, SESSION); `ItemFile` (storage key, name, size); `Item.accessUrl` and
 `Item.accessNote`; `ItemCode` (code, orderLineId when given); `ItemSession` (startsAt,

@@ -381,6 +381,23 @@ a{color:#2340c8}a:hover{color:#122686}
 .convo .a,.tchat .a{color:#fafbfc}
 .bl-r.hd2,.bl-r.hd2 span{color:#696e7b;opacity:1}
 @media (max-width:760px){.stats{padding:14px 16px 0}.kpi{padding-right:12px}.kpi+.kpi{padding-left:12px}.kpi b{font-size:18px}.kpi>span>span{font-size:11.5px}}
+
+/* previews match the real page */
+.pv-q,.bq,.convo .u,.tchat .u,.vchat .q{background:rgba(250,251,252,.14)!important;color:#fafbfc!important;border-radius:16px!important}
+.pv-a::before,.ba::before,.convo .a::before,.tchat .a::before,.vchat .a::before{padding-left:20px;line-height:16px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 7px 8px,#b5294e 6.5px,transparent 7px) no-repeat}
+.leadc2{align-self:stretch;display:block;padding:12px;border-radius:14px;background:#fafbfc;color:#191f2c}
+.leadc2 b{display:block;font-size:13px;font-weight:600}
+.leadc2 small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:#4b5060}
+.leadc2 .lrow{display:flex;gap:6px;margin-top:8px}
+.leadc2 i{flex:1;min-width:0;height:34px;padding:0 10px;border:1.5px solid #dfe1e6;border-radius:9px;font-style:normal;font-size:12px;line-height:31px;color:#9aa0ab}
+.leadc2 em{display:grid;place-items:center;height:34px;padding:0 12px;border-radius:9px;background:#b5294e;color:#fafbfc;font-style:normal;font-size:12px;font-weight:600}
+
+.pv-faq{display:block;width:100%;margin-top:10px;padding:10px 12px;border-radius:14px;background:rgba(250,251,252,.08);text-align:left}
+.pv-faq b{display:flex;justify-content:space-between;font-size:11.5px;font-weight:600}
+.pv-faq b em{font-style:normal;font-weight:500;opacity:.7}
+.pv-faq>span{display:flex;justify-content:space-between;padding:7px 0 0;font-size:11px;font-weight:500}
+.pv-faq>span+span{margin-top:6px;border-top:1px solid rgba(250,251,252,.1)}
+.pv-faq i{font-style:normal;opacity:.7}
 </style>
 </helmet>
 
@@ -541,7 +558,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <span style="background: {{pv.rowBg}}"><img src="/_blob/0791b6197dd4490d1b3e6683114d06d7" alt="" style="object-position: 72% 80%">Kek batik<em>RM45</em></span>
 <span style="background: {{pv.rowBg}}"><i style="background: #f6c9d5"></i>Cookies balang<em>RM25</em></span>
 </span></sc-if>
-<span class="pv-ask" style="box-shadow: inset 0 0 0 1.5px {{pv.askRing}}">Ask {{name}} anything<span class="pv-send" style="background: {{accent}}"><svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></span>
+<sc-if value="{{ pv.showLinks }}" hint-placeholder-val="{{ true }}"><span class="pv-faq"><b>People often ask<em>See all 5</em></b><span>Do you deliver to Klang?<i>+</i></span><span>Is it halal?<i>+</i></span></span></sc-if><sc-if value="{{ pv.showAsk }}" hint-placeholder-val="{{ false }}"><span class="pv-ask" style="box-shadow: inset 0 0 0 1.5px {{pv.askRing}}">Ask {{name}} anything<span class="pv-send" style="background: {{accent}}"><svg aria-hidden="true" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#fafbfc" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></span></span></sc-if>
 </div>
 </div>
 </div>
