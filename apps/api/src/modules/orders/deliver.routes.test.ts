@@ -397,6 +397,23 @@ describe('GET /store/orders/:token/files/:grantId', () => {
   });
 });
 
+describe('HEAD on the download routes', () => {
+  it('spends no use and opens no link', async () => {
+    const { token, grants, order, shop } = await sentEbook();
+    const head = await app.inject({ method: 'HEAD', url: `/store/orders/${token}/files/${grants[0]!.id}`, remoteAddress: from() });
+    expect(head.statusCode).toBe(404);
+    expect((await app.prisma.downloadGrant.findUniqueOrThrow({ where: { id: grants[0]!.id } })).usesLeft).toBe(5);
+
+    const placed = await placeDigital(shop, [line(shop.course)], 7_900);
+    await ownerPost(shop, placed.order.id, 'paid');
+    const lineId = placed.order.lines[0]!.id;
+    const headLink = await app.inject({ method: 'HEAD', url: `/store/orders/${placed.token}/link/${lineId}`, remoteAddress: from() });
+    expect(headLink.statusCode).toBe(404);
+    expect((await app.prisma.orderLine.findUniqueOrThrow({ where: { id: lineId } })).linkOpenedAt).toBeNull();
+    void order;
+  });
+});
+
 describe('GET /store/orders/:token/link/:lineId', () => {
   it('redirects to the link as sold, and records that it was opened once', async () => {
     const shop = await aShop();

@@ -67,11 +67,12 @@ const trimSlash = (url: string) => url.replace(/\/+$/, '');
 const apiBase = () => trimSlash(process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001');
 
 /** The order's token, or null where it was not sealed or its key has changed. */
-function openToken(sealed: string | null, key: Buffer | null): string | null {
+function openToken(sealed: string | null, key: Buffer | null, log?: DeliveryMailDeps['log']): string | null {
   if (!sealed || !key) return null;
   try {
     return openSecret(sealed, key);
   } catch {
+    log?.warn?.({}, 'order link could not be opened (PAYMENT_SECRETS_KEY changed?), so the email carries no links');
     return null;
   }
 }
@@ -119,7 +120,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
       deps.log?.warn?.({ orderId }, 'delivery email has no address');
       return;
     }
-    const token = openToken(order.tokenSealed, deps.secretsKey);
+    const token = openToken(order.tokenSealed, deps.secretsKey, deps.log);
     const api = apiBase();
     const app = trimSlash(deps.appUrl);
     const items: DigitalMailItem[] = [];

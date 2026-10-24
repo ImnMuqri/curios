@@ -38,6 +38,8 @@ export const downloadRoutes: FastifyPluginAsyncZod<DownloadRouteOptions> = async
   app.get(
     '/store/orders/:token/files/:grantId',
     {
+      // A HEAD (link checkers, scanners) must not spend a use: Fastify would otherwise run this handler for it.
+      exposeHeadRoute: false,
       schema: {
         params: params.extend({ grantId: z.string().min(1).max(64) }),
         response: { 404: errorSchema, 410: errorSchema, 503: errorSchema },
@@ -91,6 +93,7 @@ export const downloadRoutes: FastifyPluginAsyncZod<DownloadRouteOptions> = async
   app.get(
     '/store/orders/:token/link/:lineId',
     {
+      exposeHeadRoute: false,
       schema: {
         params: params.extend({ lineId: z.string().min(1).max(64) }),
         response: { 404: errorSchema, 410: errorSchema },
