@@ -1,4 +1,4 @@
-import type { Prisma } from '@curios/db';
+import type { Prisma } from '@prisma/client';
 
 /**
  * Gives back what an order that ends unpaid was holding: its codes go back to

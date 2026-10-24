@@ -152,6 +152,75 @@ describe('Checkout with digital items', () => {
     expect(screen.getByRole('button', { name: en.placeOrder('RM50') })).toBeDisabled();
   });
 
+  it('stops a class line with no time, a time that is gone, or too few seats, and links to the item page', async () => {
+    const user = userEvent.setup();
+    basket([{ itemId: 'class', optionId: null, quantity: 1 }]);
+    const { unmount } = render(<Checkout {...base} />);
+    const line = (await screen.findByText('Online class')).closest('li') as HTMLElement;
+    expect(within(line).getByText(en.pickTimeFirst)).toBeInTheDocument();
+    expect(within(line).getByRole('link', { name: en.pickATime })).toHaveAttribute('href', '/keklina/shop/class');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
+    expect(screen.getByRole('button', { name: en.placeOrder('RM60') })).toBeDisabled();
+    unmount();
+
+    window.sessionStorage.clear();
+    basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'deleted' }]);
+    const again = render(<Checkout {...base} />);
+    expect(await screen.findByText(en.pickTimeFirst)).toBeInTheDocument();
+    again.unmount();
+
+    window.sessionStorage.clear();
+    basket([{ itemId: 'class', optionId: null, quantity: 5, sessionId: 'time1' }]);
+    render(<Checkout {...base} />);
+    expect(await screen.findByText(en.seatsLeft(3))).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: en.placeOrder('RM300') })).toBeDisabled();
+  });
+
+  it('says the unpaid hold on the placed screen for a code or a seat, in both languages, and not otherwise', async () => {
+    const user = userEvent.setup();
+    basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
+    reply(201, { number: 7, code: 'HOLD', token: 'tk', totalCents: 6000 });
+    render(<Checkout {...base} language="ms" />);
+    await screen.findByText('Online class');
+    await fillDetails(user, ms);
+    await user.type(screen.getByLabelText(new RegExp(ms.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: ms.placeOrder('RM60') }));
+    expect(await screen.findByText(ms.holdNote)).toBeInTheDocument();
+  });
+
+  it('does not say it for files, which hold nothing', async () => {
+    const user = userEvent.setup();
+    basket([{ itemId: 'ebook', optionId: null, quantity: 1 }]);
+    reply(201, { number: 8, code: 'FILE', token: 'tk2', totalCents: 2500 });
+    render(<Checkout {...base} />);
+    await screen.findByText('Recipe e-book');
+    await fillDetails(user);
+    await user.type(screen.getByLabelText(new RegExp(en.email)), 'mira@example.com');
+    await user.click(screen.getByRole('button', { name: en.placeOrder('RM25') }));
+    expect(await screen.findByText(en.digitalPlacedNote(false, 'mira@example.com'))).toBeInTheDocument();
+    expect(screen.queryByText(en.holdNote)).toBeNull();
+  });
+
+  it('words the server’s digital refusals in the page’s language, not the API’s English', async () => {
+    for (const [code, key] of [['SOLD_OUT', 'SOLD_OUT'], ['TIME_FULL', 'TIME_FULL'], ['TIME_REQUIRED', 'TIME_REQUIRED']] as const) {
+      window.sessionStorage.clear();
+      basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
+      reply(409, { error: { code, message: 'ENGLISH FROM THE API' } });
+      const user = userEvent.setup();
+      const view = render(<Checkout {...base} language="ms" />);
+      await screen.findByText('Online class');
+      await fillDetails(user, ms);
+      await user.type(screen.getByLabelText(new RegExp(ms.email)), 'mira@example.com');
+      await user.click(screen.getByRole('button', { name: ms.placeOrder('RM60') }));
+      expect(await screen.findByText(ms.digitalError(key)!)).toBeInTheDocument();
+      expect(screen.queryByText('ENGLISH FROM THE API')).toBeNull();
+      view.unmount();
+    }
+    expect(en.digitalError('EMAIL_REQUIRED')).toMatch(/email/);
+    expect(ms.digitalError('EMAIL_REQUIRED')).toMatch(/e-mel/);
+  });
+
   it('reads in Malay on a Malay page', async () => {
     basket([{ itemId: 'class', optionId: null, quantity: 1, sessionId: 'time1' }]);
     render(<Checkout {...base} language="ms" />);

@@ -5,6 +5,7 @@ import type { Prisma, PrismaClient } from '@curios/db';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import type { SchedulerQueue } from '../billing/pending-check.js';
 import type { RemoveObjects } from '../lib/storage.js';
+import { EXPIRE_HOLDS_JOB, expireUnpaidHolds } from './expire-holds.js';
 
 /** The moment before which a lead or a message is past keeping. */
 export function retentionCutoff(now: Date): Date {
@@ -141,6 +142,8 @@ export function createHousekeepingWorker(deps: {
       if (job.name === RETENTION_JOB) {
         const deleted = await runRetention({ prisma: deps.prisma, now: new Date(), removeObjects: deps.removeObjects, log: deps.log });
         deps.log?.info(deleted, 'retention sweep done');
+      } else if (job.name === EXPIRE_HOLDS_JOB) {
+        await expireUnpaidHolds({ prisma: deps.prisma, now: new Date(), log: deps.log });
       }
     },
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.housekeeping },
@@ -150,4 +153,6 @@ export function createHousekeepingWorker(deps: {
 /** 03:00 in Malaysia, when the fewest visitors are mid-conversation. Upserted under a fixed id. */
 export async function scheduleHousekeepingJobs(queue: SchedulerQueue): Promise<void> {
   await queue.upsertJobScheduler(RETENTION_JOB, { pattern: '0 3 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: RETENTION_JOB });
+  // Hourly: unpaid orders holding codes or class seats are let go of after a day.
+  await queue.upsertJobScheduler(EXPIRE_HOLDS_JOB, { pattern: '20 * * * *' }, { name: EXPIRE_HOLDS_JOB });
 }

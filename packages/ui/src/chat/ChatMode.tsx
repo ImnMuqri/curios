@@ -37,6 +37,9 @@ export interface ProductCardCopy {
   inBasket: string;
   from: (price: string) => string;
   open: (name: string) => string;
+  /** A class card's button, which opens the page to pick a time; and a sold-out card's label. */
+  pick?: string;
+  soldOut?: string;
   /** Said aloud after an add: "{name} added. {n} in basket." */
   added: (name: string, inBasket: number) => string;
 }
@@ -462,7 +465,15 @@ export function ChatMode({
                     </span>
                   )}
                 </span>
-                {onAddToBasket && turn.productCard.fromPriceCents !== null ? (
+                {turn.productCard.buy === 'soldOut' ? (
+                  <span className={styles.productAdd} aria-disabled="true" data-done="">
+                    {cardCopy.soldOut ?? 'Sold out'}
+                  </span>
+                ) : turn.productCard.buy === 'pick' && turn.productCard.fromPriceCents !== null ? (
+                  <a className={styles.productAdd} href={`${shopPath}/${encodeURIComponent(turn.productCard.slug)}`}>
+                    {cardCopy.pick ?? 'Pick a time'}
+                  </a>
+                ) : onAddToBasket && turn.productCard.fromPriceCents !== null ? (
                   <button
                     type="button"
                     className={styles.productAdd}

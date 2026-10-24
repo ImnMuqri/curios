@@ -149,6 +149,7 @@ describe('productCard', () => {
       fromPriceCents: 900,
       photoUrl: null,
       firstOptionId: null,
+      buy: 'add',
     });
   });
 
@@ -160,7 +161,19 @@ describe('productCard', () => {
       fromPriceCents: 9500,
       photoUrl: 'https://files.example/items/p/batik.webp',
       firstOptionId: 'o2',
+      buy: 'add',
     });
+  });
+
+  it('sends a class to its page for a time, and sells a sold-out item to no one', () => {
+    const now = new Date('2026-10-24T00:00:00Z');
+    const cls = { id: 'c1', name: 'Online Class', slug: 'online-class', priceCents: 6000, photoKey: null, options: [], kind: 'DIGITAL' as const, delivery: 'SESSION' as const, sessions: [{ id: 's', startsAt: new Date('2026-11-01T00:00:00Z'), seats: 5, bookings: [] }] };
+    expect(productCard('Join the online class', [cls], null, now)?.buy).toBe('pick');
+    const full = { ...cls, sessions: [{ ...cls.sessions[0]!, bookings: [{ seats: 5 }] }] };
+    expect(productCard('Join the online class', [full], null, now)?.buy).toBe('soldOut');
+    const voucher = { id: 'v', name: 'Gift Voucher', slug: 'gift', priceCents: 5000, photoKey: null, options: [], kind: 'DIGITAL' as const, delivery: 'CODES' as const, _count: { codes: 0 } };
+    expect(productCard('A gift voucher', [voucher], null, now)?.buy).toBe('soldOut');
+    expect(productCard('A gift voucher', [{ ...voucher, _count: { codes: 2 } }], null, now)?.buy).toBe('add');
   });
 
   it('has no photo URL when storage is not configured', () => {

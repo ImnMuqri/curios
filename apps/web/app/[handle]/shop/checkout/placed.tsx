@@ -47,6 +47,8 @@ export function Placed(props: {
   whatsapp?: string | null;
   /** A digital order's small line, under the way to pay. */
   digitalNote?: string | null;
+  /** The order holds a code or a class seat until it is paid: says they are released after a day. */
+  holds?: boolean;
 }) {
   const { copy } = props;
   const [copied, setCopied] = useState(false);
@@ -145,6 +147,7 @@ export function Placed(props: {
         </a>
       )}
       {props.digitalNote ? <p className={styles.digitalNote}>{props.digitalNote}</p> : null}
+      {props.holds && !paid ? <p className={styles.digitalNote}>{copy.holdNote}</p> : null}
       {props.phone ? (
         <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
           {copy.sendLink}

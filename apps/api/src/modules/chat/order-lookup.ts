@@ -1,4 +1,5 @@
 import { normalizeClaim } from '@curios/core';
+import { digitalFacts, type DigitalDelivery, type ItemKind } from '@curios/core/digital';
 import { customerSteps, isOrderCodeShape, orderView, type OrderStatus } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 
@@ -240,6 +241,8 @@ export interface ProductCard {
   fromPriceCents: number | null;
   photoUrl: string | null;
   firstOptionId: string | null;
+  /** What the card's button does: add it, open its page to pick a class time first, or nothing (sold out). */
+  buy: 'add' | 'pick' | 'soldOut';
 }
 
 interface CardItem {
@@ -249,6 +252,13 @@ interface CardItem {
   priceCents: number | null;
   photoKey: string | null;
   options: { id: string; priceCents: number }[];
+  /** Digital stock, as the shop reads it; absent reads as a physical item. */
+  kind?: ItemKind;
+  delivery?: DigitalDelivery | null;
+  accessUrl?: string | null;
+  files?: { name: string; contentType: string }[];
+  sessions?: { id: string; startsAt: Date; seats: number; bookings: { seats: number }[] }[];
+  _count?: { codes: number };
 }
 
 /**
@@ -257,7 +267,7 @@ interface CardItem {
  * one card. `storageBase` is STORAGE_PUBLIC_URL, joined to the photo key as
  * every other public item photo is.
  */
-export function productCard(answer: string, items: CardItem[], storageBase: string | null): ProductCard | null {
+export function productCard(answer: string, items: CardItem[], storageBase: string | null, now = new Date()): ProductCard | null {
   const said = ` ${normalizeClaim(answer)} `;
   let best: { item: CardItem; at: number } | null = null;
   for (const item of items) {
@@ -268,6 +278,17 @@ export function productCard(answer: string, items: CardItem[], storageBase: stri
   if (!best) return null;
   const { item } = best;
   const prices = item.options.map((option) => option.priceCents);
+  const facts = digitalFacts(
+    {
+      kind: item.kind ?? 'PHYSICAL',
+      delivery: item.delivery ?? null,
+      accessUrl: item.accessUrl ?? null,
+      files: item.files ?? [],
+      codesLeft: item._count?.codes ?? 0,
+      sessions: (item.sessions ?? []).map((s) => ({ id: s.id, startsAt: s.startsAt, seats: s.seats, booked: s.bookings.reduce((n, b) => n + b.seats, 0) })),
+    },
+    now,
+  );
   return {
     itemId: item.id,
     slug: item.slug,
@@ -275,5 +296,6 @@ export function productCard(answer: string, items: CardItem[], storageBase: stri
     fromPriceCents: prices.length > 0 ? Math.min(...prices) : item.priceCents,
     photoUrl: item.photoKey && storageBase ? `${storageBase.replace(/\/+$/, '')}/${item.photoKey}` : null,
     firstOptionId: item.options[0]?.id ?? null,
+    buy: facts.soldOut ? 'soldOut' : facts.delivery === 'SESSION' ? 'pick' : 'add',
   };
 }

@@ -1,7 +1,6 @@
-import type { Prisma, PrismaClient } from '@curios/db';
+import { releaseUnpaidStock, type Prisma, type PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
 import { OrderNotFoundError, OrderStateError } from './order.errors.js';
-import { releaseUnpaidStock } from './release.js';
 
 export interface OwnerOrderDeps {
   prisma: PrismaClient;

@@ -254,6 +254,10 @@ export interface ShopCopy {
   pickTimeFirst: string;
   /** The placed screen's small line under a digital order. */
   digitalPlacedNote: (paid: boolean, email: string) => string;
+  /** The placed screen, for an unpaid order holding a code or a class seat. */
+  holdNote: string;
+  /** The API's refusals for digital lines, in this language. */
+  digitalError: (code: string) => string | null;
 }
 
 /** `YYYY-MM-DD` read as a calendar day, so its weekday and month never depend on the browser's zone. */
@@ -524,6 +528,14 @@ const EN: ShopCopy = {
   byEmail: 'By email',
   pickTimeFirst: 'Pick a time for this class.',
   digitalPlacedNote: (paid, email) => (paid ? `Sent to ${email}. It’s on your order page too.` : 'Your items unlock as soon as your payment is confirmed.'),
+  holdNote: 'Unpaid orders are released after 24 hours.',
+  digitalError: (code) =>
+    ({
+      SOLD_OUT: 'Something in your basket is sold out. Remove it and try again.',
+      TIME_FULL: 'That class time is full or has passed. Pick another time.',
+      TIME_REQUIRED: 'Pick a time for your class first.',
+      EMAIL_REQUIRED: 'Add the email where we should send your digital items.',
+    })[code] ?? null,
 };
 
 const MS: ShopCopy = {
@@ -755,6 +767,14 @@ const MS: ShopCopy = {
   byEmail: 'Melalui e-mel',
   pickTimeFirst: 'Pilih masa untuk kelas ini.',
   digitalPlacedNote: (paid, email) => (paid ? `Dihantar ke ${email}. Ia juga ada di halaman tempahan anda.` : 'Barang anda dibuka sebaik bayaran anda disahkan.'),
+  holdNote: 'Tempahan yang belum dibayar dilepaskan selepas 24 jam.',
+  digitalError: (code) =>
+    ({
+      SOLD_OUT: 'Ada barang dalam bakul anda yang sudah habis dijual. Buangnya dan cuba lagi.',
+      TIME_FULL: 'Masa kelas itu sudah penuh atau sudah berlalu. Pilih masa lain.',
+      TIME_REQUIRED: 'Pilih masa untuk kelas anda dahulu.',
+      EMAIL_REQUIRED: 'Masukkan e-mel ke mana kami patut hantar barang digital anda.',
+    })[code] ?? null,
 };
 
 export function shopCopy(language: string): ShopCopy {

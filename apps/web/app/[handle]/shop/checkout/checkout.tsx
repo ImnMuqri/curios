@@ -74,6 +74,8 @@ interface PlacedOrder {
   onlineUnavailable: 'unavailable' | 'tooMany' | null;
   /** The small line under a digital order. */
   digitalNote: string | null;
+  /** The order holds a code or a class seat until it is paid. */
+  holds: boolean;
 }
 
 const goTo = (url: string) => window.location.assign(url);
@@ -185,7 +187,16 @@ export function Checkout(props: CheckoutProps) {
   const digitalOnly = isDigitalOnly(priced.lines.map((l) => ({ kind: l.digital ? ('DIGITAL' as const) : ('PHYSICAL' as const) })));
   const anyDigital = priced.lines.some((l) => l.digital);
   const mixed = anyDigital && !digitalOnly;
-  const soldOutLine = priced.lines.some((l) => l.soldOut);
+  // A class line needs a time that is still one of the item's and has the seats: else it says so and blocks Place order.
+  const timeIssue = (line: (typeof priced.lines)[number]): string | null => {
+    const item = items.find((i) => i.id === line.itemId);
+    if (item?.delivery !== 'SESSION') return null;
+    const time = line.sessionId ? item.sessions?.find((t) => t.id === line.sessionId) : undefined;
+    if (!time) return copy.pickTimeFirst;
+    if (time.seatsLeft === 0) return copy.full;
+    return time.seatsLeft < line.quantity ? copy.seatsLeft(time.seatsLeft) : null;
+  };
+  const soldOutLine = priced.lines.some((l) => l.soldOut || timeIssue(l) !== null);
   const digitalKinds = [...new Set(priced.lines.flatMap((l) => (l.digital ? [items.find((i) => i.id === l.itemId)?.delivery ?? null] : [])))];
   const onlyKind = digitalKinds.length === 1 ? digitalKinds[0] : null;
   const emailWhat = onlyKind ? ({ FILES: 'files', LINK: 'link', CODES: 'codes', SESSION: 'session' } as const)[onlyKind] : 'mixed';
@@ -291,6 +302,7 @@ export function Checkout(props: CheckoutProps) {
         phone: sentPhone,
         onlineUnavailable,
         digitalNote: anyDigital ? copy.digitalPlacedNote(false, email.trim()) : null,
+        holds: priced.lines.some((l) => l.digital && ['CODES', 'SESSION'].includes(items.find((i) => i.id === l.itemId)?.delivery ?? '')),
       });
       top.current?.scrollIntoView?.();
     } catch (error) {
@@ -322,7 +334,7 @@ export function Checkout(props: CheckoutProps) {
       } else if (error.code === 'ORDER_TOO_LARGE') {
         setFallback('tooLarge');
       } else {
-        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: error.message });
+        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: copy.digitalError(error.code) ?? error.message });
       }
     } finally {
       if (!leaving) setSending(false);
@@ -344,6 +356,7 @@ export function Checkout(props: CheckoutProps) {
           phone={placed.phone}
           onlineUnavailable={placed.onlineUnavailable}
           digitalNote={placed.digitalNote}
+          holds={placed.holds}
           payByQr={payByQr}
           whatsapp={props.whatsapp}
         />
@@ -400,6 +413,7 @@ export function Checkout(props: CheckoutProps) {
               {priced.lines.map((line) => {
                 const item = items.find((i) => i.id === line.itemId);
                 const time = line.sessionId ? item?.sessions?.find((t) => t.id === line.sessionId)?.startsAt : undefined;
+                const issue = timeIssue(line);
                 return (
                   <li key={`${line.itemId}:${line.optionId ?? ''}:${line.sessionId ?? ''}`} className={styles.line}>
                     <span className={styles.thumb} aria-hidden="true">
@@ -410,6 +424,8 @@ export function Checkout(props: CheckoutProps) {
                       <span>
                         {line.soldOut
                           ? copy.soldOut
+                          : issue
+                            ? issue
                           : line.digital
                             ? copy.digitalSub(
                                 { delivery: item?.delivery ?? null, format: item?.format ?? null, minutes: item?.minutes ?? null, place: item?.place ?? null },
@@ -417,6 +433,11 @@ export function Checkout(props: CheckoutProps) {
                               )
                             : `${line.optionLabel ? `${line.optionLabel} · ` : ''}${copy.each(formatRinggit(line.unitCents))}`}
                       </span>
+                      {issue && !line.soldOut && item ? (
+                        <a className={styles.lite} href={`${shopHref}/${item.slug}`}>
+                          {copy.pickATime}
+                        </a>
+                      ) : null}
                     </span>
                     <span className={styles.stepper}>
                       <button type="button" aria-label={copy.oneLess} onClick={() => step(line, -1)}>

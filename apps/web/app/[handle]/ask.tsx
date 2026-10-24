@@ -234,7 +234,7 @@ export function Ask({
           onAddToBasket={onAddToBasket}
           basketItemIds={basketItemIds}
           replyLabel={copy.askLabel(displayName)}
-          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed }}
+          cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed, pick: copy.pickATime, soldOut: copy.soldOut }}
           initialDraft={prefill}
         />
       ) : null}
