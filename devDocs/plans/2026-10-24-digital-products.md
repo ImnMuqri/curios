@@ -136,3 +136,18 @@ From the Orders board diff: rows say "Digital" instead of pickup/delivery; statu
 **Files:** `apps/web/app/icon.svg`, `apple-icon.png`, `favicon.ico`, the email avatar asset and the landing badge if they use the old icon (copy from `design/brand/` per HANDOFF), `apps/admin/app/` icons if admin has any; `design/DEVIATIONS.md` (row 206: 100 MB; plus anything earlier tasks logged); `devDocs/OPERATIONS.md` (`STORAGE_PRIVATE_BUCKET`, the dev `.files` folder, the reminder job).
 
 - [ ] **Step 1:** a test that `apps/web/app/icon.svg` equals `design/brand/icon.svg`. **Steps 2–5.** Commit `feat(brand): Peek's eyes favicon, and the docs for digital products`.
+
+### Task 11: Previews match the real pages
+
+**Spec:** HANDOFF "Previews in the dashboard must match the real pages" (added in the design commit c18ea54) and `design/screens/Previews_matched.png`; the board delta is `git diff 2618d32 c18ea54 -- design/boards/`.
+
+**Files:** the Store previews (`apps/web/app/app/store/**` item, pay and shop previews), the My Curios links preview (`apps/web/app/app/curios/**`, `apps/web/app/_bento/**` as needed), the chat previews (`apps/web/app/app/_ui/page-reply.*` and every preview that shows a visitor question or a lead card: Leads, Questions, Review, Facts & sources tester, My Curios Ask, Alerts if it has one), tests.
+
+Build the previews from the same components as the customer pages (`apps/web/app/[handle]/shop/**`, `apps/web/app/[handle]/order/[token]/**`, the public page), scaled down, not separate mock-ups:
+- Store "Item" preview = the real item page: photo on top, tag, name, price of the first size, Size boxes (or Pick a time for a session), the facts box, Ask about this, the add bar.
+- Store "Pay" preview = the real order page: order code, timeline, Pay with QR and bank, Upload your receipt, Your order.
+- Store "Shop" preview has the real facts list and the category chips.
+- My Curios links preview ends with "People often ask" (with "See all N"), not an ask bar; the ask bar shows only on the Ask tab.
+- Chat previews: the visitor's question is a translucent bubble (`rgba(250,251,252,.14)`, 16px radius); the answer is plain text under the "{Name}'s page" label with the accent dot; the lead card reads "{First name} can answer this one" with a number field and Send.
+
+- [ ] **Step 1: Tests** — each preview renders the real component (assert on a landmark the real page has, e.g. the item page's Size boxes, the order page's timeline); the links preview has "People often ask" and no ask bar; the chat preview's question has the bubble class and the label has the dot; the lead card text. **Steps 2–4**, plus screenshots of the Store item/pay/shop previews and My Curios. **Step 5: Commit** `feat(app): the dashboard previews are the real pages`.
