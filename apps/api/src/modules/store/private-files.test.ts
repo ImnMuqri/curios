@@ -35,6 +35,41 @@ describe('disk private files', () => {
     expect(await readdir(path.join(root, 'item1'))).toEqual([]);
   });
 
+  it('leaves nothing behind when a write fails, and keeps an existing file', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'curios-files-'));
+    roots.push(root);
+    const files = createDiskPrivateFiles(root);
+    const broken = () =>
+      new Readable({
+        read() {
+          this.push(Buffer.from('partial'));
+          this.destroy(new Error('connection lost'));
+        },
+      });
+    await expect(files.put('item1/new.pdf', broken(), 'application/pdf', 99)).rejects.toThrow('connection lost');
+    await expect(files.deliver('item1/new.pdf', 'new.pdf')).rejects.toThrow();
+    expect(await readdir(path.join(root, 'item1'))).toEqual([]);
+
+    await files.put('item1/keep.pdf', Buffer.from('original'), 'application/pdf', 8);
+    await expect(files.put('item1/keep.pdf', broken(), 'text/html', 99)).rejects.toThrow('connection lost');
+    const kept = await files.deliver('item1/keep.pdf', 'keep.pdf');
+    if (!('stream' in kept)) throw new Error('expected a stream');
+    expect(kept.contentType).toBe('application/pdf');
+    expect((await read(kept.stream)).toString()).toBe('original');
+    expect((await readdir(path.join(root, 'item1'))).sort()).toEqual(['keep.pdf', 'keep.pdf.type']);
+  });
+
+  it('delivers an attachment disposition for a non-ASCII name', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'curios-files-'));
+    roots.push(root);
+    const files = createDiskPrivateFiles(root);
+    await files.put('item1/p.svg', Buffer.from('<svg/>'), 'image/svg+xml', 6);
+    const out = await files.deliver('item1/p.svg', 'Resipi é.svg');
+    if (!('stream' in out)) throw new Error('expected a stream');
+    expect(out.disposition).toBe("attachment; filename*=UTF-8''Resipi%20%C3%A9.svg");
+    out.stream.resume();
+  });
+
   it.each(['../x', 'a/../../x', '/etc/passwd', 'a\\b', 'C:/x', '', 'a//b', './a'])('refuses the key %j', async (key) => {
     const files = createDiskPrivateFiles(path.join(tmpdir(), 'curios-never-written'));
     await expect(files.put(key, Buffer.from('x'), 'text/plain', 1)).rejects.toThrow('Invalid file key');

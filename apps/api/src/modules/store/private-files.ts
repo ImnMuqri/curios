@@ -1,5 +1,6 @@
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { randomBytes } from 'node:crypto';
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
@@ -16,10 +17,16 @@ export const PRIVATE_LINK_SECONDS = 300;
 export interface PrivateFiles {
   put: (key: string, body: NodeJS.ReadableStream | Buffer, contentType: string, sizeBytes: number) => Promise<void>;
   remove: (key: string) => Promise<void>;
+  /**
+   * A redirect is a presigned link that already forces a download. A stream
+   * carries `disposition`: the caller MUST send it as Content-Disposition,
+   * together with `X-Content-Type-Options: nosniff`, so a stored text/html or
+   * image/svg+xml never renders inline from the API origin.
+   */
   deliver: (
     key: string,
     fileName: string,
-  ) => Promise<{ redirect: string } | { stream: NodeJS.ReadableStream; contentType: string }>;
+  ) => Promise<{ redirect: string } | { stream: NodeJS.ReadableStream; contentType: string; disposition: string }>;
 }
 
 /** `attachment; filename*=UTF-8''...` -- RFC 5987 encoding, so any name is safe in a header. */
@@ -55,19 +62,32 @@ export function createDiskPrivateFiles(root: string = DEFAULT_ROOT): PrivateFile
     async put(key, body, contentType) {
       const file = locate(key);
       await mkdir(path.dirname(file), { recursive: true });
-      if (Buffer.isBuffer(body)) await writeFile(file, body);
-      else await pipeline(body as Readable, createWriteStream(file));
-      await writeFile(`${file}.type`, contentType, 'utf8');
+      // Written beside the target and renamed into place only once the bytes
+      // and the sidecar are both down, so a failure leaves nothing partial
+      // (and an existing file under the key untouched).
+      const tmp = `${file}.tmp-${randomBytes(6).toString('hex')}`;
+      try {
+        if (Buffer.isBuffer(body)) await writeFile(tmp, body);
+        else await pipeline(body as Readable, createWriteStream(tmp));
+        await writeFile(`${tmp}.type`, contentType, 'utf8');
+        await rename(tmp, file);
+        await rename(`${tmp}.type`, `${file}.type`);
+      } catch (err) {
+        await rm(tmp, { force: true });
+        await rm(`${tmp}.type`, { force: true });
+        throw err;
+      }
     },
     async remove(key) {
       const file = locate(key);
       await rm(file, { force: true });
       await rm(`${file}.type`, { force: true });
     },
-    async deliver(key) {
+    async deliver(key, fileName) {
       const file = locate(key);
+      await stat(file);
       const contentType = await readFile(`${file}.type`, 'utf8').catch(() => 'application/octet-stream');
-      return { stream: createReadStream(file), contentType };
+      return { stream: createReadStream(file), contentType, disposition: attachmentDisposition(fileName) };
     },
   };
 }
