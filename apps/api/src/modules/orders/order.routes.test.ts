@@ -166,7 +166,7 @@ describe('POST /store/:handle/orders', () => {
       totalCents: 21_000,
       status: 'PLACED',
     });
-    expect(order.day.toISOString().slice(0, 10)).toBe(firstDay());
+    expect(order.day?.toISOString().slice(0, 10)).toBe(firstDay());
     expect(await ordersPlaced(shop.pageId)).toBe(1);
   });
 

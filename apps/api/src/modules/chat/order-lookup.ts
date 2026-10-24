@@ -98,8 +98,9 @@ const EN_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
 export interface CardOrder {
   number: number;
   code: string;
-  method: 'PICKUP' | 'DELIVERY';
-  day: Date;
+  /** Null for a digital-only order. */
+  method: 'PICKUP' | 'DELIVERY' | null;
+  day: Date | null;
   totalCents: number;
   status: OrderStatus;
   receiptUploadedAt: Date | null;
@@ -114,7 +115,7 @@ export interface CardOrder {
  * the same way (order-view.tsx, `pill`): change one, change both.
  */
 export function orderCard(order: CardOrder, name: string, now: Date): OrderCard {
-  const day = order.day.toISOString().slice(0, 10);
+  const day = order.day ? order.day.toISOString().slice(0, 10) : null;
   const view = orderView(order);
   const steps = customerSteps({ status: order.status, paidAt: order.paidAt, day }, now);
 
@@ -140,7 +141,7 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
     }
   })();
 
-  const date = new Date(`${day}T00:00:00Z`);
+  const date = day === null ? null : new Date(`${day}T00:00:00Z`);
   const needsPay = view === 'awaitingPayment' || view === 'toCheck';
 
   return {
@@ -153,7 +154,8 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
     summary: order.lines
       .map((line) => `${line.quantity}× ${line.itemName}${line.optionLabel ? ` ${line.optionLabel}` : ''}`)
       .join(', '),
-    when: `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${EN_DAY[date.getUTCDay()]} ${date.getUTCDate()} ${EN_MONTH[date.getUTCMonth()]}`,
+    // A digital-only order has no day to show yet.
+    when: date === null ? '' : `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${EN_DAY[date.getUTCDay()]} ${date.getUTCDate()} ${EN_MONTH[date.getUTCMonth()]}`,
     totalCents: order.totalCents,
     note: needsPay ? 'Your order page has the full details and how to pay.' : 'Your order page has the full details.',
   };

@@ -471,6 +471,9 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
       },
     });
     if (!order?.page.notifyOrders) return;
+    // A digital-only order has no method or day for this email; its owner mail comes with the digital emails.
+    const { method, day } = order;
+    if (kind === 'paid' && (method === null || day === null)) return;
     const base = { number: order.number, totalCents: order.totalCents, customerName: order.customerName, via: order.paidMethodLabel ?? 'CHIP' };
     const url = `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${orderId}`;
     const mail =
@@ -481,9 +484,9 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
         ? paidOrderMail({
             ...base,
             phone: order.phone,
-            method: order.method,
+            method: method as 'PICKUP' | 'DELIVERY',
             deliveryCents: order.deliveryCents,
-            day: order.day.toISOString().slice(0, 10),
+            day: (day as Date).toISOString().slice(0, 10),
             ref: order.paidRef,
             lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
             url,

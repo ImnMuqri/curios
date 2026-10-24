@@ -217,7 +217,7 @@ export function OrdersScreen({
                             {matches(order, 'check') ? <span className={styles.dot} aria-label="Receipt to check" title="Receipt to check" /> : null}
                           </b>
                           <span>
-                            #{order.number} · {plural(n, 'item')} · {order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} {dayLabel(order.day).split(' ')[0]}
+                            #{order.number} · {plural(n, 'item')}{order.method === null ? null : ` · ${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} ${dayLabel(order.day).split(' ')[0]}`}
                           </span>
                         </span>
                         <span className={styles.rowEnd}>

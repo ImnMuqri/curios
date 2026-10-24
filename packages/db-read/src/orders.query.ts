@@ -15,9 +15,10 @@ export interface OwnerOrder {
   code: string;
   customerName: string;
   phone: string;
-  method: OrderMethod;
-  /** The calendar day (Malaysia), `YYYY-MM-DD`. */
-  day: string;
+  /** Null for a digital-only order. */
+  method: OrderMethod | null;
+  /** The calendar day (Malaysia), `YYYY-MM-DD`; null for a digital-only order. */
+  day: string | null;
   address: string | null;
   note: string | null;
   itemsCents: number;
@@ -45,7 +46,7 @@ export interface OwnerOrder {
   lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; photoKey: string | null }[];
 }
 
-const dayText = (day: Date): string => day.toISOString().slice(0, 10);
+const dayText = (day: Date | null): string | null => (day ? day.toISOString().slice(0, 10) : null);
 
 /**
  * What still needs the owner: a receipt to check or a payment to wait for
@@ -176,8 +177,8 @@ export interface PublicOrder {
   code: string;
   customerName: string;
   phone: string;
-  method: OrderMethod;
-  day: string;
+  method: OrderMethod | null;
+  day: string | null;
   address: string | null;
   note: string | null;
   itemsCents: number;

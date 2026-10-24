@@ -16,6 +16,7 @@
     "./store": "./src/store.ts",
     "./slug": "./src/slug.ts",
     "./orders": "./src/orders.ts",
+    "./digital": "./src/digital.ts",
     "./secret-box": "./src/secret-box.ts",
     "./shop-pay": "./src/shop-pay.ts"
   },

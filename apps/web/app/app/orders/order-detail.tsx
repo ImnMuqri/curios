@@ -44,7 +44,8 @@ export function orderWhen(date: Date, now: Date): string {
 }
 
 /** "Sat 17 Oct", from the order's calendar day. */
-export function dayLabel(day: string): string {
+export function dayLabel(day: string | null): string {
+  if (day === null) return '';
   const parts = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).formatToParts(new Date(`${day}T00:00:00Z`));
   const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
   return `${part('weekday')} ${part('day')} ${part('month')}`;
@@ -521,7 +522,7 @@ export function OrderDetail({
               </span>
               <span>
                 <b>
-                  {order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · {dayLabel(order.day)}
+                  {order.method === null ? null : `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${dayLabel(order.day)}`}
                 </b>
                 {(order.method === 'PICKUP' ? pickupNote : order.address) ? <span>{order.method === 'PICKUP' ? pickupNote : order.address}</span> : null}
               </span>

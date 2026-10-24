@@ -40,7 +40,8 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 export default async function OrderPage({ params }: Params) {
   const { handle, token } = await params;
   const order = await load(handle, token);
-  if (!order) notFound();
+  // A digital-only order (no method, no day) has no page here yet.
+  if (!order || order.method === null || order.day === null) notFound();
   const { page } = order;
 
   return (
