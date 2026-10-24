@@ -145,9 +145,6 @@ enum OrderMethod {
   DELIVERY
 }
 
-/// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
-/// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
-/// so the fee is never part of what the shop charges.
 /// What an item is: something posted or collected, or something delivered by email.
 enum ItemKind {
   PHYSICAL
@@ -167,6 +164,9 @@ enum SessionPlace {
   IN_PERSON
 }
 
+/// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
+/// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
+/// so the fee is never part of what the shop charges.
 enum DeliveryMode {
   NONE
   FLAT
@@ -432,7 +432,7 @@ model ItemSession {
 model SessionBooking {
   id          String      @id @default(cuid())
   sessionId   String
-  session     ItemSession @relation(fields: [sessionId], references: [id], onDelete: Restrict)
+  session     ItemSession @relation(fields: [sessionId], references: [id], onDelete: NoAction)
   orderLineId String
   orderLine   OrderLine   @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
   seats       Int

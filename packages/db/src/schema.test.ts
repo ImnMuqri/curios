@@ -723,8 +723,17 @@ describe('digital items', () => {
     await prisma.sessionBooking.create({ data: { sessionId: session.id, orderLineId: line.id, seats: 1 } });
     await expect(prisma.sessionBooking.create({ data: { sessionId: session.id, orderLineId: line.id, seats: 1 } })).rejects.toThrow();
     await expect(prisma.itemSession.delete({ where: { id: session.id } })).rejects.toThrow();
-    await prisma.sessionBooking.deleteMany({ where: { sessionId: session.id } });
+    await expect(prisma.item.delete({ where: { id: item.id } })).rejects.toThrow();
     await prisma.account.delete({ where: { id: account.id } });
+  });
+
+  it('deleting an account whose shop has a booked session succeeds and removes the booking', async () => {
+    const { account, item, line } = await shopWithDigitalLine();
+    const session = await prisma.itemSession.create({ data: { itemId: item.id, startsAt: new Date(), seats: 2 } });
+    const booking = await prisma.sessionBooking.create({ data: { sessionId: session.id, orderLineId: line.id, seats: 1 } });
+    await prisma.account.delete({ where: { id: account.id } });
+    expect(await prisma.sessionBooking.findUnique({ where: { id: booking.id } })).toBeNull();
+    expect(await prisma.itemSession.findUnique({ where: { id: session.id } })).toBeNull();
   });
 
   it('a download grant keeps its file name when the file is deleted', async () => {
