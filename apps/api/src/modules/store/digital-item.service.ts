@@ -322,10 +322,14 @@ export async function removeCode(prisma: PrismaClient, accountId: string, itemId
   const page = await storePageFor(prisma, accountId);
   return prisma.$transaction(async (tx) => {
     await lockItem(tx, itemId);
-    const code = await tx.itemCode.findFirst({ where: { id: codeId, itemId, item: { pageId: page.id } }, select: { orderLineId: true } });
-    if (!code) throw new CodeNotFoundError();
-    if (code.orderLineId !== null) throw new CodeUsedError();
-    await tx.itemCode.delete({ where: { id: codeId } });
+    // One conditional delete: a code handed to a buyer a moment ago is not matched.
+    const owned = await tx.itemCode.findFirst({ where: { id: codeId, itemId, item: { pageId: page.id } }, select: { id: true } });
+    if (!owned) throw new CodeNotFoundError();
+    const deleted = await tx.itemCode.deleteMany({ where: { id: codeId, itemId, orderLineId: null } });
+    if (deleted.count === 0) {
+      const again = await tx.itemCode.findUnique({ where: { id: codeId }, select: { id: true } });
+      throw again ? new CodeUsedError() : new CodeNotFoundError();
+    }
     return { left: await tx.itemCode.count({ where: { itemId, orderLineId: null } }) };
   });
 }
@@ -374,6 +378,10 @@ export async function updateSession(
     const owned = await tx.itemSession.findFirst({ where: { id: sessionId, itemId, item: { pageId: page.id } }, select: { id: true } });
     if (!owned) throw new SessionNotFoundError();
     await tx.$queryRaw`SELECT id FROM "ItemSession" WHERE id = ${sessionId} FOR UPDATE`;
+    if (startsAt !== undefined) {
+      const current = await tx.itemSession.findUniqueOrThrow({ where: { id: sessionId }, select: { startsAt: true } });
+      if (current.startsAt.getTime() !== startsAt.getTime() && (await tx.sessionBooking.count({ where: { sessionId } })) > 0) throw new SessionBookedError();
+    }
     if (seats !== undefined) {
       const booked = (await tx.sessionBooking.aggregate({ where: { sessionId }, _sum: { seats: true } }))._sum.seats ?? 0;
       if (seats < booked) throw new SeatsBookedError(booked);

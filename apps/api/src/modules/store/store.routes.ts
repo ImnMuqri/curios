@@ -58,7 +58,7 @@ const digital = {
 };
 const sessionStart = z.string().max(40).transform((value, ctx) => {
   const date = new Date(value);
-  if (!/^\d{4}-\d{2}-\d{2}T/.test(value) || Number.isNaN(date.getTime())) {
+  if (!/^\d{4}-\d{2}-\d{2}T[\d:.]+(Z|[+-]\d{2}:\d{2})$/i.test(value) || Number.isNaN(date.getTime())) {
     ctx.addIssue({ code: 'custom', message: 'Pick a date and time.' });
     return z.NEVER;
   }

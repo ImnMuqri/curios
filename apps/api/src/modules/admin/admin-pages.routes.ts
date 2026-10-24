@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import type { MailJobData } from '@curios/core';
+import { resolvePrivateFiles, type PrivateFiles } from '../store/private-files.js';
 import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import {
   deleteAccount,
@@ -17,6 +18,8 @@ export interface AdminPagesRouteOptions {
   mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
   /** undefined builds from the environment, null is uploads off, tests pass a stub. */
   store?: AvatarStore | null;
+  /** As the store routes: undefined builds from the environment, null is off. */
+  privateFiles?: PrivateFiles | null;
 }
 
 const params = z.object({ id: z.string().min(1).max(64) });
@@ -27,10 +30,12 @@ const withHandle = z.object({ reason, handle: z.string().trim().min(1).max(100) 
 /** Every route here sits behind requireAdmin, added by the scope that registers this plugin. */
 export const adminPagesRoutes: FastifyPluginAsyncZod<AdminPagesRouteOptions> = async (app, options) => {
   const store = resolveStore(options.store);
+  const privateFiles = resolvePrivateFiles(options.privateFiles);
   const deps = (log: AdminPagesDeps['log']): AdminPagesDeps => ({
     prisma: app.prisma,
     mailQueue: options.mailQueue ?? app.mailQueue,
     store,
+    privateFiles,
     log,
   });
   const actor = (request: { admin: { id: string } | null; ip: string }): AdminActor => ({

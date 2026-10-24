@@ -369,9 +369,11 @@ describe('sessions', () => {
     await booked(owner, id, sessionId, 7);
     const listed = (await call('GET', '/store', owner.cookie)).json().items[0].sessions;
     expect(listed).toEqual([{ id: sessionId, startsAt, seats: 12, booked: 7, seatsLeft: 5 }]);
+    const patched = await call('PATCH', `/store/items/${id}/sessions/${sessionId}`, owner.cookie, { seats: 20 });
+    expect(patched.json().session).toMatchObject({ startsAt, seats: 20, booked: 7, seatsLeft: 13 });
+    const free = (await call('POST', `/store/items/${id}/sessions`, owner.cookie, { startsAt: inFuture(9), seats: 4 })).json().session.id as string;
     const later = inFuture(8);
-    const patched = await call('PATCH', `/store/items/${id}/sessions/${sessionId}`, owner.cookie, { startsAt: later, seats: 20 });
-    expect(patched.json().session).toMatchObject({ startsAt: later, seats: 20, booked: 7, seatsLeft: 13 });
+    expect((await call('PATCH', `/store/items/${id}/sessions/${free}`, owner.cookie, { startsAt: later })).json().session).toMatchObject({ startsAt: later });
   });
 
   it('refuses seats below the booked count with 409 SEATS_BOOKED, but allows exactly that many', async () => {
@@ -383,6 +385,27 @@ describe('sessions', () => {
     expect(refused.statusCode).toBe(409);
     expect(refused.json().error.code).toBe('SEATS_BOOKED');
     expect((await call('PATCH', `/store/items/${id}/sessions/${sessionId}`, owner.cookie, { seats: 4 })).json().session).toMatchObject({ seats: 4, seatsLeft: 0 });
+  });
+
+  it('needs an explicit UTC offset on a time', async () => {
+    const owner = await anOwner();
+    const id = await sessionItem(owner);
+    const bare = inFuture(5).replace(/\.\d+Z$/, '');
+    const post = (startsAt: string) => call('POST', `/store/items/${id}/sessions`, owner.cookie, { startsAt, seats: 5 });
+    expect((await post(bare)).statusCode).toBe(400);
+    expect((await post(inFuture(5))).statusCode).toBe(201);
+    expect((await post(bare + '+08:00')).statusCode).toBe(201);
+  });
+
+  it('will not move a time that has bookings, but still lets seats change', async () => {
+    const owner = await anOwner();
+    const id = await sessionItem(owner);
+    const sessionId = (await call('POST', `/store/items/${id}/sessions`, owner.cookie, { startsAt: inFuture(3), seats: 5 })).json().session.id as string;
+    await booked(owner, id, sessionId, 1);
+    const moved = await call('PATCH', `/store/items/${id}/sessions/${sessionId}`, owner.cookie, { startsAt: inFuture(4) });
+    expect(moved.statusCode).toBe(409);
+    expect(moved.json().error.code).toBe('SESSION_BOOKED');
+    expect((await call('PATCH', `/store/items/${id}/sessions/${sessionId}`, owner.cookie, { seats: 8 })).statusCode).toBe(200);
   });
 
   it('deletes a time with no bookings, and refuses one with bookings (409 SESSION_BOOKED)', async () => {

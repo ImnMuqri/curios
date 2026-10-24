@@ -318,7 +318,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await app.register(adminSessionRoutes);
     await app.register(async (scope) => {
       scope.addHook('onRequest', requireAdmin);
-      await scope.register(adminPagesRoutes, overrides.admin ?? {});
+      await scope.register(adminPagesRoutes, { ...(overrides.admin ?? {}), privateFiles: overrides.admin?.privateFiles ?? overrides.privateFiles });
     });
   }
 
