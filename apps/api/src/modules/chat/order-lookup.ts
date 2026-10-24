@@ -107,6 +107,8 @@ export interface CardOrder {
   receiptUploadedAt: Date | null;
   paidAt: Date | null;
   refundedAt: Date | null;
+  /** When the digital items were emailed; null until then (and on an order with none). */
+  sentAt?: Date | null;
   lines: { itemName: string; optionLabel: string | null; quantity: number }[];
 }
 
@@ -128,11 +130,13 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
         return [`${name} is checking your receipt`, `Receipt sent · ${name} is checking`, 'check'];
       case 'paid':
       case 'paidOnline':
+        // A digital-only order has no method or day: nothing to get ready, it is paid and then sent.
+        if (order.method === null) return order.sentAt ? ['Paid. It was sent to your email', 'Paid · Sent to your email', 'ok'] : ['Paid', 'Paid', 'ok'];
         return steps.ready
           ? [order.method === 'PICKUP' ? 'Ready for pickup' : 'Ready for delivery', 'Ready', 'ok']
           : [`Paid. ${name} is getting it ready`, `Paid · ${name} is getting it ready`, 'ok'];
       case 'completed':
-        return ['All done', 'Done', 'ok'];
+        return order.method === null ? ['Paid. It was sent to your email', 'Paid · Sent to your email', 'ok'] : ['All done', 'Done', 'ok'];
       case 'cancelled':
         return ['This order was cancelled', 'Cancelled', 'stop'];
       case 'refundOwed':
@@ -174,6 +178,7 @@ const CARD_SELECT = {
   receiptUploadedAt: true,
   paidAt: true,
   refundedAt: true,
+  sentAt: true,
   lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, quantity: true } },
 } satisfies Prisma.OrderSelect;
 

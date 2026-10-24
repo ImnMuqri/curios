@@ -10,6 +10,7 @@ import { ApiError } from '../../../lib/api.js';
 import inbox from '../_ui/inbox.module.css';
 import { waNumber } from '../leads/first-message.js';
 import styles from './orders.module.css';
+import { SentByEmail, type DigitalAct } from './sent-by-email.js';
 
 /** An order as the screen gets it: the receipt and photos as addresses, never storage keys. */
 export type OrderRow = Omit<OwnerOrder, 'receiptKey' | 'lines'> & {
@@ -57,14 +58,25 @@ export const itemCount = (order: OrderRow) => order.lines.reduce((sum, line) => 
 
 export const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
 
+/** `orderView`, plus Sent: a digital-only order that has been delivered (the board's `view()` reads it as Sent, not Completed). */
+export type OwnerView = OrderView | 'sent';
+
+export function ownerView(order: OrderRow): OwnerView {
+  const view = orderView(order);
+  const delivered = view === 'paid' || view === 'paidOnline' || view === 'completed';
+  return delivered && order.method === null && order.sentAt !== null ? 'sent' : view;
+}
+
 /** The board's badges, by `orderView`. A refunded order reads Cancelled in the list, as the board's `view()` has it. */
-export const BADGES: Record<OrderView, { label: string; tone: 'grey' | 'kuning' | 'biru' | 'hijau' | 'merah' | 'muted' }> = {
+export const BADGES: Record<OwnerView, { label: string; tone: 'grey' | 'kuning' | 'biru' | 'hijau' | 'merah' | 'muted' }> = {
   awaitingPayment: { label: 'Awaiting payment', tone: 'grey' },
   toCheck: { label: 'To check', tone: 'kuning' },
   paid: { label: 'Paid', tone: 'biru' },
   // CHIP confirmed it: green like Completed, so it reads apart from a payment the owner marked by hand.
   paidOnline: { label: 'Paid online', tone: 'hijau' },
   completed: { label: 'Completed', tone: 'hijau' },
+  // A digital-only order, delivered: nothing to make and nothing to complete, so Sent is where it ends.
+  sent: { label: 'Sent', tone: 'hijau' },
   refundOwed: { label: 'Refund owed', tone: 'merah' },
   refunded: { label: 'Cancelled', tone: 'muted' },
   cancelled: { label: 'Cancelled', tone: 'muted' },
@@ -107,6 +119,7 @@ export function OrderDetail({
   now,
   pickupNote,
   move,
+  act,
   say,
   onChanged,
 }: {
@@ -115,6 +128,8 @@ export function OrderDetail({
   /** Where pickup happens, as the Store settings say it. */
   pickupNote: string | null;
   move: OrderMove;
+  /** The owner's moves on what was sent by email: new links, a new code, another time, the email again. */
+  act: DigitalAct;
   /** The screen's toast, which outlives this panel. */
   say: (text: string) => void;
   /** After a move: read the server again, for the list and the figures. */
@@ -130,7 +145,10 @@ export function OrderDetail({
   const zoomTrigger = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
-  const view = orderView(order);
+  const view = ownerView(order);
+  // A digital-only order has no method and no day: it is paid, then sent, and nothing is made or completed.
+  const digitalOnly = order.method === null;
+  const hasDigital = order.lines.some((line) => line.digital !== null);
   const first = firstName(order.customerName);
   const total = formatRinggit(order.totalCents);
   const cancelled = order.status === 'CANCELLED';
@@ -169,6 +187,10 @@ export function OrderDetail({
     return () => clearTimeout(t);
   }, [sparks]);
 
+  // The last step: Completed, or Sent for a digital-only order (when it was delivered, or what delivers it).
+  const end: [string, string, boolean] = digitalOnly
+    ? ['Sent', order.sentAt ? when(order.sentAt) : online ? 'Not yet' : 'When you mark it paid', order.sentAt !== null]
+    : ['Completed', order.completedAt ? when(order.completedAt) : dayLabel(order.day), order.completedAt !== null];
   // The board's stepsRaw: [label, when, done].
   const steps: [string, string, boolean][] = cancelled
     ? [
@@ -182,14 +204,14 @@ export function OrderDetail({
           ['Placed', when(order.createdAt), true],
           ['Paid by ' + via.split(' · ')[0], when(order.paidAt!), true],
           ['Checked', 'By the bank', true],
-          ['Completed', order.completedAt ? when(order.completedAt) : dayLabel(order.day), order.completedAt !== null],
+          end,
         ]
       : [
         ['Placed', when(order.createdAt), true],
         // Marked paid some other way: there is no receipt to wait for.
         ['Receipt', order.receiptUploadedAt ? when(order.receiptUploadedAt) : order.paidAt ? 'None' : 'Waiting', hasReceipt],
         ['Paid', order.paidAt ? when(order.paidAt) : hasReceipt ? 'Your check' : 'Not yet', order.paidAt !== null],
-        ['Completed', order.completedAt ? when(order.completedAt) : dayLabel(order.day), order.completedAt !== null],
+        end,
       ];
   const doneCount = steps.filter((s) => s[2]).length;
   const lastDone = steps.reduce((at, s, i) => (s[2] ? i : at), 0);
@@ -198,8 +220,19 @@ export function OrderDetail({
   const next = cancelled ? steps.findIndex((s) => !s[2]) : steps.findIndex((s, i) => !s[2] && i > lastDone);
   const fill = doneCount <= 1 ? 0 : (lastDone / 3) * 75;
 
+  const sendsMail = hasDigital && order.email !== null;
+  const only = order.lines.length === 1 ? order.lines[0]!.itemName.toLowerCase() : 'items';
   let ask: Ask | null = null;
-  if (view === 'toCheck')
+  if (view === 'toCheck' && sendsMail)
+    ask = {
+      tone: 'biru',
+      title: 'Check the receipt, then mark it paid',
+      text: digitalOnly ? `Their ${only} goes to ${order.email} the moment you do.` : `Make sure ${total} reached your account. Their digital items go to ${order.email} the moment you do.`,
+      button: 'Mark paid and send',
+      action: 'paid',
+      toast: digitalOnly ? `#${order.number} paid. It’s on its way to ${first}’s email.` : `#${order.number} marked paid. The digital items are on their way to ${first}’s email.`,
+    };
+  else if (view === 'toCheck')
     ask = {
       tone: 'biru',
       title: 'Check the receipt, then mark it paid',
@@ -217,7 +250,8 @@ export function OrderDetail({
       action: 'paid',
       toast: `#${order.number} marked paid.`,
     };
-  else if (view === 'paid' || view === 'paidOnline')
+  // A digital-only order has nothing to make: once paid it is sent, and Sent is where it ends.
+  else if ((view === 'paid' || view === 'paidOnline') && !digitalOnly)
     ask = {
       tone: 'hijau',
       title: `Paid. Ready on ${dayLabel(order.day)}`,
@@ -510,7 +544,9 @@ export function OrderDetail({
             ) : null}
           </section>
 
-          <section className={styles.card} aria-labelledby="order-getting">
+          {hasDigital ? <SentByEmail order={order} first={first} when={when} act={act} say={say} onChanged={onChanged} /> : null}
+
+          {digitalOnly ? null : <section className={styles.card} aria-labelledby="order-getting">
             <h3 className={styles.cardTitle} id="order-getting">
               Getting it to them
             </h3>
@@ -533,7 +569,7 @@ export function OrderDetail({
                 {order.note}
               </div>
             ) : null}
-          </section>
+          </section>}
         </div>
       </div>
 

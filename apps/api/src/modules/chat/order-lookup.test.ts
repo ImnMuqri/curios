@@ -123,6 +123,16 @@ describe('orderCard', () => {
     });
     expect(orderCard({ ...base, status: 'COMPLETED', paidAt: now }, 'Kek Lina', now)).toMatchObject({ pill: 'Done', tone: 'ok' });
   });
+
+  it('says a digital order was sent, not that it is ready for delivery', () => {
+    const digital = { ...base, method: null, day: null, status: 'PAID' as const, paidAt: now, lines: [{ itemName: 'Recipe e-book', optionLabel: null, quantity: 1 }] };
+    const sent = orderCard({ ...digital, sentAt: now }, 'Kek Lina', now);
+    expect(sent).toMatchObject({ status: 'Paid. It was sent to your email', pill: 'Paid · Sent to your email', tone: 'ok', when: '' });
+    expect(orderCard({ ...digital, sentAt: null }, 'Kek Lina', now)).toMatchObject({ status: 'Paid', pill: 'Paid' });
+    expect(orderCard({ ...digital, status: 'COMPLETED', sentAt: now }, 'Kek Lina', now).pill).toBe('Paid · Sent to your email');
+    // Unpaid, it is still the ordinary waiting words.
+    expect(orderCard({ ...digital, status: 'PLACED', paidAt: null }, 'Kek Lina', now).pill).toBe('Waiting for payment');
+  });
 });
 
 describe('productCard', () => {

@@ -2,7 +2,6 @@
 
 import { useState, type CSSProperties } from 'react';
 import { useRouter } from 'next/navigation';
-import { orderView } from '@curios/core/orders';
 import { formatRinggit } from '@curios/core/store';
 import type { OrderStats } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
@@ -12,14 +11,15 @@ import inbox from '../_ui/inbox.module.css';
 import { PageHead } from '../_ui/page-head.js';
 import { useToast } from '../_ui/toast.js';
 import panel from '../panel.module.css';
-import { BADGES, dayLabel, Initial, itemCount, OrderDetail, plural, type OrderMove, type OrderRow } from './order-detail.js';
+import { BADGES, dayLabel, Initial, itemCount, OrderDetail, ownerView, plural, type OrderMove, type OrderRow } from './order-detail.js';
+import type { DigitalAct } from './sent-by-email.js';
 import styles from './orders.module.css';
 
 type Filter = 'all' | 'check' | 'paid' | 'refund';
 
 /** The board's `match`. */
 function matches(order: OrderRow, filter: Filter): boolean {
-  const view = orderView(order);
+  const view = ownerView(order);
   if (filter === 'check') return view === 'toCheck';
   if (filter === 'paid') return view === 'paid' || view === 'paidOnline';
   // A second payment CHIP took on top of the first is money owed back too, until it is marked refunded.
@@ -55,6 +55,7 @@ export function OrdersScreen({
   publicUrl,
   pickupNote,
   move,
+  act,
   onChanged,
 }: {
   orders: OrderRow[];
@@ -69,6 +70,7 @@ export function OrdersScreen({
   publicUrl: string;
   pickupNote: string | null;
   move: OrderMove;
+  act: DigitalAct;
   onChanged: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
@@ -199,7 +201,7 @@ export function OrdersScreen({
             ) : (
               <ul className={inbox.rows} aria-label="Orders">
                 {shown.map((order, i) => {
-                  const badge = BADGES[orderView(order)];
+                  const badge = BADGES[ownerView(order)];
                   const n = itemCount(order);
                   return (
                     <li key={order.id}>
@@ -217,7 +219,8 @@ export function OrdersScreen({
                             {matches(order, 'check') ? <span className={styles.dot} aria-label="Receipt to check" title="Receipt to check" /> : null}
                           </b>
                           <span>
-                            #{order.number} · {plural(n, 'item')}{order.method === null ? null : ` · ${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} ${dayLabel(order.day).split(' ')[0]}`}
+                            #{order.number} · {plural(n, 'item')}
+                            {order.method === null ? ' · Digital' : ` · ${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} ${dayLabel(order.day).split(' ')[0]}`}
                           </span>
                         </span>
                         <span className={styles.rowEnd}>
@@ -234,7 +237,7 @@ export function OrdersScreen({
             )}
           </div>
           <div className={inbox.detail}>
-            {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} move={move} say={say} onChanged={onChanged} /> : null}
+            {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} move={move} act={act} say={say} onChanged={onChanged} /> : null}
           </div>
         </div>
       )}
@@ -244,10 +247,13 @@ export function OrdersScreen({
 }
 
 /** Supplies the real moves; a Server Component may not hand closures across the RSC boundary. */
-export function Orders(props: Omit<Parameters<typeof OrdersScreen>[0], 'move' | 'onChanged' | 'now'> & { now: string }) {
+export function Orders(props: Omit<Parameters<typeof OrdersScreen>[0], 'move' | 'act' | 'onChanged' | 'now'> & { now: string }) {
   const router = useRouter();
   const move: OrderMove = async (id, action) => {
     await apiFetch(`/orders/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
   };
-  return <OrdersScreen {...props} now={new Date(props.now)} move={move} onChanged={() => router.refresh()} />;
+  const act: DigitalAct = async (id, action, body) => {
+    await apiFetch(`/orders/${encodeURIComponent(id)}/${action}`, { method: 'POST', ...(body ? { body: JSON.stringify(body) } : {}) });
+  };
+  return <OrdersScreen {...props} now={new Date(props.now)} move={move} act={act} onChanged={() => router.refresh()} />;
 }
