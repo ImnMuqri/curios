@@ -413,6 +413,8 @@ function publicLine(line: LineRow, paid: boolean): PublicOrderLine {
   return {
     ...rest,
     photoKey: item?.photoKey ?? null,
+    // The owner's note may hold a password: like the codes, only once paid.
+    accessNote: paid ? rest.accessNote : null,
     hasLink: accessUrl !== null,
     sessionWhere: paid ? sessionWhere : null,
     sessionStartsAt: booking?.session.startsAt ?? null,

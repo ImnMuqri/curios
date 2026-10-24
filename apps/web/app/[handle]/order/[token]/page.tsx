@@ -31,17 +31,19 @@ const load = cache(async (handle: string, token: string): Promise<PublicOrder | 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
 
 /** A digital line as the browser may see it. db-read already withholds codes, places and files until it is paid. */
-function digitalLine(line: PublicOrderLine): DigitalLineView | null {
+function digitalLine(line: PublicOrderLine, suspended: boolean): DigitalLineView | null {
   if (line.kind !== 'DIGITAL' || line.delivery === null) return null;
+  // A suspended shop hands nothing out but the buyer's own record (codes): no link note, no meeting URL.
+  const online = line.sessionPlace === 'ONLINE';
   return {
     id: line.id,
     name: line.itemName,
     delivery: line.delivery,
-    note: line.accessNote,
+    note: suspended ? null : line.accessNote,
     hasLink: line.hasLink,
     minutes: line.sessionMinutes,
     place: line.sessionPlace,
-    where: line.sessionWhere,
+    where: suspended && online ? null : line.sessionWhere,
     startsAt: iso(line.sessionStartsAt),
     codes: line.codes,
     files: line.grants.map((g) => ({ id: g.id, name: g.fileName, sizeBytes: g.sizeBytes, usesLeft: g.usesLeft, expiresAt: g.expiresAt.toISOString() })),
@@ -94,7 +96,7 @@ export default async function OrderPage({ params }: Params) {
             optionLabel: line.optionLabel,
             unitPriceCents: line.unitPriceCents,
             quantity: line.quantity,
-            digital: digitalLine(line),
+            digital: digitalLine(line, page.suspended),
           })),
         }}
         qrUrl={avatarUrl(page.paymentQrKey)}

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { PublicOrder, PublicOrderLine } from '@curios/db-read';
 import { shopCopy } from '../../shop/copy.js';
@@ -237,7 +237,9 @@ describe('a digital order after it is paid', () => {
   });
 
   it('a suspended shop still shows what was paid for, without buttons the API would refuse', () => {
-    render(<OrderView {...digital({}, [filesLine(), codesLine], { suspended: true })} />);
+    render(<OrderView {...digital({}, [filesLine(), codesLine, sessionLine, linkLine], { suspended: true })} />);
+    expect(screen.queryByRole('link', { name: copy.joinClass })).toBeNull();
+    expect(screen.queryByRole('link', { name: copy.openLink })).toBeNull();
     const section = screen.getByRole('region', { name: copy.dgTitle(false) });
     expect(within(section).getByText('KL50-AAAA')).toBeInTheDocument();
     expect(within(section).queryByRole('link', { name: copy.download })).toBeNull();
@@ -319,6 +321,34 @@ describe('the order page route', () => {
       page: { handle: 'keklina', displayName: 'Kek Lina', language: 'en', style: 'SOFT', accentColor: '#b5294e', headingFont: 'JAKARTA', avatarKey: null, coverKey: null, background: 'PAPER', backgroundColor: null, links: [], paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, chipMethods: null, suspended: false },
       ...patch,
     }) as unknown as PublicOrder;
+
+  it('puts nothing of a private link or meeting in the page before payment or for a suspended shop', async () => {
+    const mixed = (patch: Partial<PublicOrder>, suspended = false) =>
+      order({
+        ...patch,
+        page: { ...order({}).page, suspended },
+        lines: [
+          line({ id: 'l2', delivery: 'LINK', hasLink: true, accessNote: patch.status === 'PAID' ? 'the password is hunter2' : null }),
+          line({ id: 'l4', delivery: 'SESSION', sessionPlace: 'ONLINE', sessionMinutes: 60, sessionStartsAt: new Date('2026-11-07T12:00:00Z'), sessionWhere: patch.status === 'PAID' ? 'https://meet.example/secret' : null }),
+        ],
+      });
+    const html = async (o: PublicOrder) => {
+      vi.mocked(getOrderByToken).mockResolvedValue(o);
+      const { container } = render(await OrderPage({ params: Promise.resolve({ handle: 'keklina', token: 'tok_abc' }) }));
+      return container.innerHTML;
+    };
+    const unpaid = await html(mixed({ status: 'PLACED', paidAt: null, sentAt: null }));
+    expect(unpaid).not.toContain('hunter2');
+    expect(unpaid).not.toContain('meet.example');
+    cleanup();
+    const suspended = await html(mixed({ status: 'PAID' }, true));
+    expect(suspended).not.toContain('hunter2');
+    expect(suspended).not.toContain('meet.example');
+    expect(screen.queryByRole('link', { name: copy.joinClass })).toBeNull();
+    expect(screen.getByRole('link', { name: copy.addToCalendar })).toBeInTheDocument();
+    cleanup();
+    expect(await html(mixed({ status: 'PAID' }))).toContain('hunter2');
+  });
 
   it('renders a digital-only order instead of a 404', async () => {
     vi.mocked(getOrderByToken).mockResolvedValue(order({}));

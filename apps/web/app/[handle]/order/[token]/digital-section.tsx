@@ -79,7 +79,7 @@ export function DigitalSection(props: {
         const dead = line.files.filter((f) => f.usesLeft <= 0 || new Date(f.expiresAt).getTime() <= now);
         const latest = line.files.reduce<string | null>((max, f) => (max === null || f.expiresAt > max ? f.expiresAt : max), null);
         const startsAt = line.startsAt;
-        const joinUrl = line.place === 'ONLINE' && line.where?.startsWith('https://') ? line.where : null;
+        const joinUrl = !props.paused && line.place === 'ONLINE' && line.where?.startsWith('https://') ? line.where : null;
         return (
           <div key={line.id} className={styles.dg} data-delivery={line.delivery}>
             <p className={styles.dgName}>{line.name}</p>

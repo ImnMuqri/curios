@@ -306,6 +306,8 @@ describe('getOrderByToken', () => {
     expect(before).toMatchObject({ email: 'mira@example.com', sentAt: null, method: null, day: null });
     expect(pick(before, codes.id)?.codes).toEqual([]);
     expect(pick(before, files.id)?.grants).toEqual([]);
+    expect(pick(before, link.id)).toMatchObject({ accessNote: null, hasLink: true });
+    expect(JSON.stringify(before)).not.toContain('Watch in order');
     expect(pick(before, session.id)).toMatchObject({ sessionWhere: null, sessionMinutes: 60, sessionStartsAt: new Date('2026-11-07T12:00:00Z') });
 
     await write.order.update({ where: { id: orderId }, data: { status: 'PAID', paidAt: NOW, sentAt: NOW } });
