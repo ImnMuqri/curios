@@ -461,7 +461,7 @@ describe('PAYMENT_SECRETS_KEY in production', () => {
     process.env.NODE_ENV = 'production';
     delete process.env.PAYMENT_SECRETS_KEY;
     try {
-      await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(/PAYMENT_SECRETS_KEY is not set/);
+      await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null })).rejects.toThrow(/PAYMENT_SECRETS_KEY is not set/);
     } finally {
       process.env.NODE_ENV = saved.NODE_ENV;
       process.env.PAYMENT_SECRETS_KEY = saved.PAYMENT_SECRETS_KEY;

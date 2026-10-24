@@ -7,7 +7,7 @@ import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
 import { blankOption, checkFields, draftOf, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
-import type { EditorItem, ItemRow, ItemsApi } from './store-types.js';
+import { PHYSICAL_ITEM, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 import styles from './store.module.css';
 
 const message = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
@@ -16,7 +16,7 @@ const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 
 /** An API row as the screen holds it, keeping the picture URL the row does not carry. */
 export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
-  return { id: row.id, name: row.name, slug: row.slug, description: row.description, category: row.category, tag: row.tag, photoKey: row.photoKey, available: row.available, priceCents: row.priceCents, options: row.options, photoUrl };
+  return { ...PHYSICAL_ITEM, id: row.id, name: row.name, slug: row.slug, description: row.description, category: row.category, tag: row.tag, photoKey: row.photoKey, available: row.available, priceCents: row.priceCents, options: row.options, photoUrl };
 }
 
 /**
@@ -104,6 +104,7 @@ export function ItemEditor({
       return;
     }
     onPreview({
+      ...PHYSICAL_ITEM,
       id: saved?.id ?? 'new',
       name: checked.name,
       slug: saved?.slug ?? '',

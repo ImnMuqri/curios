@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StoreEditor } from './store-editor.js';
-import type { ChipApi, ChipState, EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
+import { PHYSICAL_ITEM, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -9,7 +9,7 @@ const ready: StoreSettings = {
   bankAccountName: 'Lina', bankAccountNumber: '1234567890', tileSize: null,
 };
 
-const base = { slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
+const base = { ...PHYSICAL_ITEM, slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
 const items: EditorItem[] = [
   { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true },
   { ...base, id: 'b', name: 'Burnt cheesecake', priceCents: 8500, available: false },

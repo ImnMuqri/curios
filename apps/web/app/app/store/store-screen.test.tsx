@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { EditorItem, ShopLook, StoreSettings } from './store-types.js';
+import { PHYSICAL_ITEM, type EditorItem, type ShopLook, type StoreSettings } from './store-types.js';
 
 const apiFetch = vi.fn();
 vi.mock('../../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
@@ -20,7 +20,7 @@ const settings: StoreSettings = {
 };
 
 const items: EditorItem[] = [
-  { id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
+  { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
 ];
 
 const look: ShopLook = {

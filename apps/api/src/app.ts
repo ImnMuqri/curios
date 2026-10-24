@@ -43,6 +43,7 @@ import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/cha
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
+import type { PrivateFiles } from './modules/store/private-files.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
 import {
@@ -93,6 +94,8 @@ export interface AppOverrides {
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
   admin?: AdminPagesRouteOptions;
+  /** Private storage for digital files; tests pass a disk one rooted in a temp dir. */
+  privateFiles?: PrivateFiles | null;
 }
 
 /** `/store/orders/<token>/receipt` -> `/store/orders/:token/receipt`; any other URL is returned as it came. */
@@ -275,7 +278,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(neverSayRoutes);
     await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
-    await scope.register(storeRoutes, overrides.pages ?? {});
+    await scope.register(storeRoutes, { ...(overrides.pages ?? {}), privateFiles: overrides.privateFiles });
     await scope.register(ownerOrderRoutes, { ...(overrides.orders ?? {}), payOnline });
   });
 

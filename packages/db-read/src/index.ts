@@ -1,7 +1,7 @@
 export { getPublicPage, getPageStatus, getPageAvailability } from './page.query.js';
 export type { PublicPage, PublicLink, PublicFact, PageStatus } from './page.query.js';
 export { getPublicShop, getOwnerStore } from './shop.query.js';
-export type { PublicShop, ShopItem, ShopTile, OwnerStore } from './shop.query.js';
+export type { PublicShop, ShopItem, ShopTile, OwnerStore, OwnerItem } from './shop.query.js';
 export { getOwnerSession } from './session.query.js';
 export { getReviewQueue } from './review.query.js';
 export type { ReviewFact } from './review.query.js';

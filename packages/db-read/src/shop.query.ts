@@ -1,5 +1,6 @@
 import { PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
+import { seatsLeft } from '@curios/core/digital';
 import type { DeliveryMode } from '@curios/core/store';
 import { prismaRead } from './client.js';
 
@@ -147,6 +148,25 @@ export async function getPublicShop(handle: string): Promise<PublicShop | null> 
   return shop;
 }
 
+/**
+ * An item as the owner's editor sees it. Files carry no key and codes no text: the editor
+ * shows "N left", and a code is only ever shown to the buyer it was given to. Files, codes
+ * and times appear only while the item is digital and set to deliver them.
+ */
+export interface OwnerItem extends ShopItem {
+  available: boolean;
+  kind: 'PHYSICAL' | 'DIGITAL';
+  delivery: 'FILES' | 'LINK' | 'CODES' | 'SESSION' | null;
+  accessUrl: string | null;
+  accessNote: string | null;
+  sessionMinutes: number | null;
+  sessionPlace: 'ONLINE' | 'IN_PERSON' | null;
+  sessionWhere: string | null;
+  files: { id: string; name: string; sizeBytes: number }[];
+  codesLeft: number;
+  sessions: { id: string; startsAt: Date; seats: number; booked: number; seatsLeft: number }[];
+}
+
 export interface OwnerStore {
   mode: 'PERSONAL' | 'BUSINESS';
   settings: {
@@ -166,7 +186,7 @@ export interface OwnerStore {
     bankAccountNumber: string | null;
     tileSize: TileSize | null;
   };
-  items: (ShopItem & { available: boolean })[];
+  items: OwnerItem[];
   /**
    * The owner's own CHIP account, as Store -> Payment shows it. Never the key: it is
    * not selected here, and this role cannot read that column anyway (readonly-role.sql).
@@ -195,7 +215,23 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
       bankAccountName: true,
       bankAccountNumber: true,
       shopTileSize: true,
-      items: { orderBy: { position: 'asc' }, select: { ...ITEM_SELECT, available: true } },
+      items: {
+        orderBy: { position: 'asc' },
+        select: {
+          ...ITEM_SELECT,
+          available: true,
+          kind: true,
+          delivery: true,
+          accessUrl: true,
+          accessNote: true,
+          sessionMinutes: true,
+          sessionPlace: true,
+          sessionWhere: true,
+          files: { orderBy: { position: 'asc' }, select: { id: true, name: true, sizeBytes: true } },
+          sessions: { orderBy: { startsAt: 'asc' }, select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
+          _count: { select: { codes: { where: { orderLineId: null } } } },
+        },
+      },
       paymentAccount: { select: { brandName: true, methods: true, checkedAt: true, isTest: true } },
     },
   });
@@ -204,5 +240,19 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
   const chip = paymentAccount
     ? { connected: true, ...paymentAccount }
     : { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
-  return { mode, items, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest }, chip };
+  const ownerItems: OwnerItem[] = items.map(({ files, sessions, _count, ...item }) => {
+    const on = (delivery: OwnerItem['delivery']) => item.kind === 'DIGITAL' && item.delivery === delivery;
+    return {
+      ...item,
+      files: on('FILES') ? files : [],
+      codesLeft: on('CODES') ? _count.codes : 0,
+      sessions: on('SESSION')
+        ? sessions.map((s) => {
+            const booked = s.bookings.reduce((sum, b) => sum + b.seats, 0);
+            return { id: s.id, startsAt: s.startsAt, seats: s.seats, booked, seatsLeft: seatsLeft(s, booked) };
+          })
+        : [],
+    };
+  });
+  return { mode, items: ownerItems, settings: { enabled: storeEnabled, tileSize: shopTileSize, ...rest }, chip };
 }

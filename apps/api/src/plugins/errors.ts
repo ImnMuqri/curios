@@ -120,6 +120,18 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_ITEM',
   'ITEM_LIMIT',
   'ITEM_ORDER_STALE',
+  // Digital items: files, codes and session times (each says what to change).
+  'TOO_MANY_FILES',
+  'FILE_TOO_BIG',
+  'FILE_TYPE',
+  'INVALID_FILE',
+  'WRONG_DELIVERY',
+  'INVALID_CODES',
+  'CODE_USED',
+  'INVALID_SESSION',
+  'SEATS_BOOKED',
+  'SESSION_BOOKED',
+  'ITEM_HAS_BOOKINGS',
   // Placing an order (slice 18): each tells the visitor what to do next --
   // order on WhatsApp, reload the basket, or fix one field.
   'STORE_CLOSED',

@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ItemEditor } from './item-editor.js';
-import type { EditorItem, ItemRow, ItemsApi } from './store-types.js';
+import { PHYSICAL_ITEM, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 
-const batik: EditorItem = { id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
+const batik: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
 const coklat: EditorItem = {
-  id: 'c', name: 'Kek coklat', slug: 'c', category: null, tag: null, description: null, photoKey: null, priceCents: null, available: true, photoUrl: null,
+  ...PHYSICAL_ITEM, id: 'c', name: 'Kek coklat', slug: 'c', category: null, tag: null, description: null, photoKey: null, priceCents: null, available: true, photoUrl: null,
   options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }],
 };
 

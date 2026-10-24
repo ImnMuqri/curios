@@ -4,6 +4,20 @@ import type { MyCurios, OwnerStore } from '@curios/db-read';
 /** An item as the Store screen holds it: the stored row plus its picture's URL. */
 export type EditorItem = OwnerStore['items'][number] & { photoUrl: string | null };
 
+/** The digital fields of an item that is not digital: what a physical item holds. The editor for digital items builds on the rest. */
+export const PHYSICAL_ITEM = {
+  kind: 'PHYSICAL',
+  delivery: null,
+  accessUrl: null,
+  accessNote: null,
+  sessionMinutes: null,
+  sessionPlace: null,
+  sessionWhere: null,
+  files: [],
+  codesLeft: 0,
+  sessions: [],
+} as const satisfies Pick<EditorItem, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'>;
+
 /** What the API returns for an item. Declared here: the web app never imports from apps/api. */
 export type ItemRow = {
   id: string;

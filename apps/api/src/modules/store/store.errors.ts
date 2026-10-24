@@ -170,3 +170,140 @@ export class ChipPaymentInFlightError extends Error {
     this.name = 'ChipPaymentInFlightError';
   }
 }
+
+/** The item already holds the most files it may. */
+export class TooManyFilesError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'TOO_MANY_FILES';
+  constructor(max: number) {
+    super(`An item holds at most ${max} files. Remove one to add another.`);
+    this.name = 'TooManyFilesError';
+  }
+}
+
+/** A file over the size limit, by its declared length or by the bytes that actually arrived. */
+export class FileTooBigError extends Error {
+  readonly statusCode = 413;
+  readonly code = 'FILE_TOO_BIG';
+  constructor(mb: number) {
+    super(`That file is over ${mb} MB. Choose a smaller one.`);
+    this.name = 'FileTooBigError';
+  }
+}
+
+/** A file of a type a digital item does not take. */
+export class FileTypeError extends Error {
+  readonly statusCode = 415;
+  readonly code = 'FILE_TYPE';
+  constructor() {
+    super('Files can be a PDF, image, ZIP, audio or video.');
+    this.name = 'FileTypeError';
+  }
+}
+
+/** A file with no usable name or length, or whose bytes did not match its length. */
+export class InvalidFileError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_FILE';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidFileError';
+  }
+}
+
+/** Files, codes and times belong to an item set up to deliver them. */
+export class WrongDeliveryError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'WRONG_DELIVERY';
+  constructor(what: string) {
+    super(`Set this item to ${what} first.`);
+    this.name = 'WrongDeliveryError';
+  }
+}
+
+/** Codes that are too long, or too many for one item. */
+export class InvalidCodesError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_CODES';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidCodesError';
+  }
+}
+
+/** A code already given to a buyer cannot be removed. */
+export class CodeUsedError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'CODE_USED';
+  constructor() {
+    super('That code was given to a buyer, so it stays.');
+    this.name = 'CodeUsedError';
+  }
+}
+
+/** A session time or seat count that fails its rule. */
+export class InvalidSessionError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_SESSION';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidSessionError';
+  }
+}
+
+/** Seats cannot drop below the seats already booked. */
+export class SeatsBookedError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'SEATS_BOOKED';
+  constructor(booked: number) {
+    super(`${booked} seats are already booked. Seats cannot go below that.`);
+    this.name = 'SeatsBookedError';
+  }
+}
+
+/** A session time with bookings cannot be removed. */
+export class SessionBookedError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'SESSION_BOOKED';
+  constructor() {
+    super('This time has bookings, so it stays.');
+    this.name = 'SessionBookedError';
+  }
+}
+
+/** An item with booked sessions cannot be removed. */
+export class ItemHasBookingsError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'ITEM_HAS_BOOKINGS';
+  constructor() {
+    super('This item has booked times, so it stays. Hide it from your shop instead.');
+    this.name = 'ItemHasBookingsError';
+  }
+}
+
+export class FileNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+  constructor() {
+    super('No such file.');
+    this.name = 'FileNotFoundError';
+  }
+}
+
+export class CodeNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+  constructor() {
+    super('No such code.');
+    this.name = 'CodeNotFoundError';
+  }
+}
+
+export class SessionNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+  constructor() {
+    super('No such time.');
+    this.name = 'SessionNotFoundError';
+  }
+}
