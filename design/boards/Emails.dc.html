@@ -119,20 +119,41 @@ html,body{margin:0;background:#ffffff}
 .em-cta,.em-cta2{display:flex;justify-content:center;width:100%;margin-left:0}
 .em-view{background:#ffffff}
 }
+
+/* digital */
+.em-shop{display:inline-flex;align-items:center;gap:10px;font-family:'Bricolage Grotesque',system-ui,sans-serif;font-size:20px;font-weight:700;letter-spacing:-.02em;color:#191f2c}
+.em-shop i{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:#b5294e;color:#ffffff;font-style:normal;font-size:15px}
+.em-dg{margin:16px 0 0;padding:16px;border:1px solid var(--line);border-radius:14px}
+.em-dgh{margin:0 0 10px;font-size:14.5px;font-weight:600}
+.em-dgs{margin:8px 0 0;font-size:12.5px;color:var(--soft)}
+.em-file{display:flex;align-items:center;gap:12px;padding:8px 0}
+.em-file+.em-file{border-top:1px solid var(--line)}
+.em-file>span:nth-child(2){flex:1;min-width:0}
+.em-file b{display:block;overflow:hidden;font-size:13.5px;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+.em-file small{display:block;font-size:12px;color:var(--soft)}
+.em-ext{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:8px;background:#f3f4f7;color:#4b5060;font-family:var(--m);font-size:10px}
+.em-file a,.em-btn{display:inline-flex;align-items:center;gap:6px;flex:none;height:36px;padding:0 14px;border-radius:999px;background:#b5294e;color:#ffffff!important;font-size:13px;font-weight:600;text-decoration:none}
+.em-file a svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.em-btn.ghost{background:#f3f4f7;color:#191f2c!important}
+.em-row{display:flex;flex-wrap:wrap;gap:8px}
+.em-when{margin:0 0 12px;font-size:13px;color:var(--soft)}
+.em-when b{display:block;font-size:17px;font-weight:600;color:#191f2c}
+.em-code{padding:12px 14px;border-radius:12px;background:#fbf2f5;font-family:var(--m);font-size:18px;font-weight:500;letter-spacing:.08em;text-align:center}
+.em-quote{margin:0 0 12px;font-size:13.5px;line-height:1.5;color:#4b5060}
 </style>
 </helmet>
 
 <div class="em-app">
 <aside class="em-list" aria-label="Inbox">
 <div class="em-lh"><b>Inbox</b><span>lina@keklina.example</span></div>
-<sc-for list="{{ groups }}" as="g" hint-placeholder-count="2"><div><span class="em-kind">{{g.label}}</span><sc-for list="{{ g.items }}" as="m" hint-placeholder-count="3"><button type="button" class="em-item" aria-current="{{ m.on }}" onClick="{{ m.go }}"><span class="em-av" style="background: {{m.bg}}; color: {{m.fg}}"><svg viewBox="0 0 24 24"><path d="{{m.icon}}"></path></svg></span><span class="em-it"><span><b>Curios</b><em>{{m.time}}</em></span><strong>{{m.subject}}</strong><small>{{m.preview}}</small></span></button></sc-for></div></sc-for>
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="2"><div><span class="em-kind">{{g.label}}</span><sc-for list="{{ g.items }}" as="m" hint-placeholder-count="3"><button type="button" class="em-item" aria-current="{{ m.on }}" onClick="{{ m.go }}"><span class="em-av" style="background: {{m.bg}}; color: {{m.fg}}"><svg viewBox="0 0 24 24"><path d="{{m.icon}}"></path></svg></span><span class="em-it"><span><b>{{m.sender}}</b><em>{{m.time}}</em></span><strong>{{m.subject}}</strong><small>{{m.preview}}</small></span></button></sc-for></div></sc-for>
 </aside>
 
 <main class="em-view">
-<div class="em-meta"><span class="em-from" aria-hidden="true" style="background: transparent; overflow: hidden; border-radius: 10px"><svg width="100%" height="100%" style="display:block" viewBox="0 0 32 32"><defs><clipPath id="crf"><rect width="32" height="32" rx="8"/></clipPath></defs><g clip-path="url(#crf)"><rect width="32" height="32" fill="#2340c8"/><path d="M4 33V21.5a12 12 0 0 1 24 0V33z" fill="#fafbfc"/><circle cx="12" cy="20.6" r="3.8" fill="#191f2c"/><circle cx="20" cy="20.6" r="3.8" fill="#191f2c"/><circle cx="13.1" cy="19.1" r="1.2" fill="#fafbfc"/><circle cx="21.1" cy="19.1" r="1.2" fill="#fafbfc"/></g></svg></span><span class="em-mt"><b>{{e.subject}}</b><span>Curios &lt;hello@curios.my&gt; to {{e.to}}</span></span><em>{{e.time}}</em></div>
+<div class="em-meta"><span class="em-from" aria-hidden="true" style="background: transparent; overflow: hidden; border-radius: 10px"><svg width="100%" height="100%" style="display:block" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="#2340c8"/><ellipse cx="10.8" cy="16" rx="4.9" ry="5.8" fill="#fff"/><ellipse cx="21.2" cy="16" rx="4.9" ry="5.8" fill="#fff"/><circle cx="11.700000000000001" cy="17.2" r="2.9" fill="#191f2c"/><circle cx="22.099999999999998" cy="17.2" r="2.9" fill="#191f2c"/><circle cx="12.715000000000002" cy="15.895" r="0.9279999999999999" fill="#fff"/><circle cx="23.115" cy="15.895" r="0.9279999999999999" fill="#fff"/></svg></span><span class="em-mt"><b>{{e.subject}}</b><span>{{e.from}} to {{e.to}}</span></span><em>{{e.time}}</em></div>
 <div class="em-scroll">
 <article class="em-paper">
-<div class="em-top"><span class="mark" aria-label="Curios"><span aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span></span><span>{{e.topRight}}</span></div>
+<div class="em-top"><sc-if value="{{ e.cust }}" hint-placeholder-val="{{ false }}"><span class="em-shop"><i>K</i>Kek Lina</span></sc-if><sc-if value="{{ e.own }}" hint-placeholder-val="{{ true }}"><span class="mark" aria-label="Curios"><span aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span></span></sc-if><span>{{e.topRight}}</span></div>
 <div class="em-body">
 
 <sc-if value="{{ is.order }}" hint-placeholder-val="{{ true }}"><div>
@@ -207,6 +228,67 @@ html,body{margin:0;background:#ffffff}
 <p class="em-small">If that was not you, you can ignore this message. Nothing has changed on your account.</p>
 </div></sc-if>
 
+<sc-if value="{{ is.dpaid }}" hint-placeholder-val="{{ false }}"><div>
+<span class="em-tag" style="background: #e8f3ef; color: #1d6f5f"><i></i>Paid and sent</span>
+<h2>Mira bought RM214 of digital items</h2>
+<p>Paid by FPX and sent to her straight away. There’s nothing for you to do.</p>
+<div class="em-box">
+<div class="em-ln"><i style="background: #bfd1f9"></i><span><b>Kek coklat recipe e-book</b><small>2 files · download links sent</small></span><em>RM25</em></div>
+<div class="em-ln"><i style="background: #bfe3d6"></i><span><b>Online class: Kek batik</b><small>Sat 7 Nov, 8:00pm · 6 of 12 seats now taken</small></span><em>RM60</em></div>
+<div class="em-ln"><i style="background: #ffe2b8"></i><span><b>Gift voucher RM50</b><small>Code KL50-8F2K-QM given · 7 codes left</small></span><em>RM50</em></div>
+<div class="em-ln"><i style="background: #f6c9d5"></i><span><b>Video course: Basic cakes</b><small>Course link sent</small></span><em>RM79</em></div>
+<div class="em-sum"><span>Paid</span><span>RM214</span></div>
+</div>
+<dl class="em-dl"><dt>Customer</dt><dd>Mira Hassan · mira.hassan@gmail.example</dd><dt>Paid with</dt><dd>FPX · Maybank2u · Ref CHIP-7Q4M</dd></dl>
+<a class="em-cta" href="#">Open order #15</a>
+<p class="em-small">If she can’t find it, open the order and press Resend. Running low on voucher codes? Add more in Store.</p>
+</div></sc-if>
+
+<sc-if value="{{ is.cdel }}" hint-placeholder-val="{{ false }}"><div>
+<span class="em-tag" style="background: #e8f3ef; color: #1d6f5f"><i></i>Paid · RM214</span>
+<h2>Here’s everything you bought, Mira</h2>
+<p>Thanks for your order. It’s all below, and on your order page any time.</p>
+<div class="em-dg">
+<p class="em-dgh">Kek coklat recipe e-book</p>
+<div class="em-file"><span class="em-ext">PDF</span><span><b>Kek-coklat-moist-recipe.pdf</b><small>4.2 MB</small></span><a href="#"><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"></path></svg>Download</a></div>
+<div class="em-file"><span class="em-ext">PDF</span><span><b>Ganache-guide.pdf</b><small>1.1 MB</small></span><a href="#"><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"></path></svg>Download</a></div>
+<p class="em-dgs">Each link works 5 times, until 14 Nov.</p>
+</div>
+<div class="em-dg">
+<p class="em-dgh">Online class: Kek batik</p>
+<p class="em-when"><b>Sat 7 Nov, 8:00pm</b>90 minutes · Online, on Google Meet</p>
+<span class="em-row"><a class="em-btn" href="#">Join the class</a><a class="em-btn ghost" href="#">Add to calendar</a></span>
+<p class="em-dgs">The link opens 10 minutes before. We’ll remind you the day before.</p>
+</div>
+<div class="em-dg">
+<p class="em-dgh">Gift voucher RM50</p>
+<div class="em-code">KL50-8F2K-QM</div>
+<p class="em-dgs">Use it at checkout in Kek Lina’s shop. Valid until 31 Dec 2026.</p>
+</div>
+<div class="em-dg">
+<p class="em-dgh">Video course: Basic cakes</p>
+<p class="em-quote">“Watch in order. Start with the creaming video, then the sponge.” · Lina</p>
+<a class="em-btn" href="#">Open the course</a>
+<p class="em-dgs">This link is just for you. Please don’t share it.</p>
+</div>
+<dl class="em-dl"><dt>Order</dt><dd>#15 · code 7Q4M</dd><dt>Paid with</dt><dd>FPX · Maybank2u</dd></dl>
+<a class="em-cta" href="#" style="background: #b5294e">Open your order page</a>
+</div></sc-if>
+
+<sc-if value="{{ is.cremind }}" hint-placeholder-val="{{ false }}"><div>
+<span class="em-tag" style="background: #eaf0ff; color: #2340c8"><i></i>Tomorrow, 8:00pm</span>
+<h2>Your Kek batik class is tomorrow</h2>
+<p>Here’s the shopping list Lina asked us to send, and your link to join.</p>
+<div class="em-dg">
+<p class="em-when"><b>Sat 7 Nov, 8:00pm</b>90 minutes · Online, on Google Meet</p>
+<span class="em-row"><a class="em-btn" href="#">Join the class</a><a class="em-btn ghost" href="#">Add to calendar</a></span>
+</div>
+<div class="em-dg">
+<p class="em-dgh">Shopping list</p>
+<div class="em-file"><span class="em-ext">PDF</span><span><b>Kek-batik-shopping-list.pdf</b><small>220 KB</small></span><a href="#"><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"></path></svg>Download</a></div>
+</div>
+<p class="em-small">Can’t make it? Reply to this email and Lina can move you to another time.</p>
+</div></sc-if>
 </div>
 <div class="em-foot">{{e.foot}}<br>Curios · curios.my · Kuala Lumpur</div>
 </article>
@@ -233,22 +315,26 @@ class Component extends DCLogic {
     };
     const ownerFoot = 'You get this because this email is on in Settings, under Notifications.';
     const authFoot = 'You get this because someone used this address on Curios.';
+    const custFoot = 'You get this because you ordered from curios.my/keklina. Kek Lina sees your name, number and email for this order only.';
     const M = [
       { id: 'order', grp: 'Your shop', l: 'New order', subject: 'New order #12 · RM190', preview: 'Aisyah · Pickup Sat 17 Oct · waiting for payment', time: '3:20pm', icon: I.order, bg: '#fdf0dc', fg: '#8f5c15', top: 'Order #12', foot: ownerFoot },
       { id: 'paid', grp: 'Your shop', l: 'Paid order', subject: 'New order #14 · RM215 · Paid', preview: 'Nurul · Paid by FPX · Pickup Sat 17 Oct', time: '11:20am', icon: I.order, bg: '#e8f3ef', fg: '#1d6f5f', top: 'Order #14', foot: ownerFoot },
       { id: 'receipt', grp: 'Your shop', l: 'Receipt', subject: 'Receipt uploaded for #12', preview: 'Check RM190 reached your account, then confirm', time: '3:42pm', icon: I.receipt, bg: '#eaf0ff', fg: '#2340c8', top: 'Order #12', foot: ownerFoot },
+      { id: 'dpaid', grp: 'Your shop', l: 'Digital order', subject: 'New order #15 · RM214 · Paid and sent', preview: 'Mira · 4 digital items, sent automatically', time: '4:05pm', icon: I.order, bg: '#e8f3ef', fg: '#1d6f5f', top: 'Order #15', foot: ownerFoot },
       { id: 'lead', grp: 'Your shop', l: 'New lead', subject: 'New lead · +60 17-882 4410', preview: 'Asked: Boleh buat kek kahwin 3 tingkat?', time: '2:15pm', icon: I.lead, bg: '#e8f3ef', fg: '#1d6f5f', top: 'From your page', foot: ownerFoot },
+      { id: 'cdel', grp: 'To customers', l: 'Customer: downloads', subject: 'Your order from Kek Lina: downloads and access', preview: 'Recipe e-book, class on Sat 7 Nov, voucher code, course link', time: '4:05pm', icon: I.receipt, bg: '#fbeef1', fg: '#b5294e', top: 'Order #15', foot: custFoot, cust: true },
+      { id: 'cremind', grp: 'To customers', l: 'Customer: class reminder', subject: 'Your Kek batik class is tomorrow, 8:00pm', preview: 'Join link and the shopping list', time: 'Fri', icon: I.mail, bg: '#fbeef1', fg: '#b5294e', top: 'Order #15', foot: custFoot, cust: true },
       { id: 'verify', grp: 'Your account', l: 'Confirm email', subject: 'Confirm your email', preview: 'Confirm your address to finish setting up Curios', time: 'Mon', icon: I.mail, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot },
       { id: 'reset', grp: 'Your account', l: 'Reset password', subject: 'Reset your password', preview: 'This link works once and expires in an hour', time: 'Tue', icon: I.key, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot },
       { id: 'exists', grp: 'Your account', l: 'Already signed up', subject: 'You already have a Curios account', preview: 'Someone tried to sign up with this address', time: 'Tue', icon: I.user, bg: '#f0f1f4', fg: '#4b5060', top: '', foot: authFoot }
     ];
     const cur = M.find((x) => x.id === k);
     const go = (id) => () => self.setState({ m: id });
-    const groups = ['Your shop', 'Your account'].map((g) => ({ label: g, items: M.filter((x) => x.grp === g).map((x) => ({ subject: x.subject, preview: x.preview, time: x.time, icon: x.icon, bg: x.bg, fg: x.fg, on: x.id === k, go: go(x.id) })) }));
+    const groups = ['Your shop', 'To customers', 'Your account'].map((g) => ({ label: g, items: M.filter((x) => x.grp === g).map((x) => ({ sender: x.cust ? 'Kek Lina via Curios' : 'Curios', subject: x.subject, preview: x.preview, time: x.time, icon: x.icon, bg: x.bg, fg: x.fg, on: x.id === k, go: go(x.id) })) }));
     const is = {}; M.forEach((x) => { is[x.id] = x.id === k; });
     return {
       groups, is,
-      e: { subject: cur.subject, to: 'lina@keklina.example', time: cur.time, topRight: cur.top, foot: cur.foot },
+      e: { subject: cur.subject, to: cur.cust ? 'mira.hassan@gmail.example' : 'lina@keklina.example', from: cur.cust ? 'Kek Lina via Curios <orders@curios.my>' : 'Curios <hello@curios.my>', cust: !!cur.cust, own: !cur.cust, time: cur.time, topRight: cur.top, foot: cur.foot },
       picks: M.map((x) => ({ l: x.l, on: x.id === k, go: go(x.id) }))
     };
   }

@@ -565,6 +565,34 @@ a{color:#2340c8}a:hover{color:#122686}
 .convo .a,.tchat .a{color:#fafbfc}
 .bl-r.hd2,.bl-r.hd2 span{color:#696e7b;opacity:1}
 @media (max-width:760px){.stats{padding:14px 16px 0}.kpi{padding-right:12px}.kpi+.kpi{padding-left:12px}.kpi b{font-size:18px}.kpi>span>span{font-size:11.5px}}
+
+/* digital items */
+.dg-tiles{grid-template-columns:repeat(4,minmax(0,1fr))}
+.dg-tiles .dtile{gap:0;height:auto;min-height:64px;padding:12px 30px 12px 12px}
+.dg{margin-top:12px;animation:fadeUp 300ms ease both}
+.dg-file{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 12px;border:1px solid #dfe1e6;border-radius:10px;margin-bottom:8px}
+.dg-ext{display:grid;place-items:center;width:38px;height:38px;flex:none;border-radius:8px;background:#f0f1f4;color:#4b5060;font-family:var(--m);font-size:10.5px;font-weight:500;text-transform:uppercase}
+.dg-fn{flex:1;min-width:0}
+.dg-fn b{display:block;overflow:hidden;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+.dg-fn small{display:block;font-size:12px;color:var(--soft)}
+.dg-drop{height:110px}
+.dg-note{margin:10px 0 0;font-size:12.5px;line-height:1.5;color:var(--soft)}
+.dg-count{display:flex;align-items:baseline;gap:8px;margin:10px 0 0;font-size:13px}
+.dg-count b{font-size:15px;font-weight:600}
+.dg-count span{color:var(--soft)}
+.dg-sh,.dg-slot{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr) 150px 34px;gap:8px;align-items:center}
+.dg-sh{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--soft)}
+.dg-slot{margin-bottom:8px}
+.dg-slot input{width:100%;height:40px;padding:0 10px;border:1px solid #dfe1e6;border-radius:9px;font:inherit;color:#191f2c;outline:none}
+.dg-slot input:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
+.dg-seat{display:flex;align-items:center;gap:8px}
+.dg-seat input{width:64px;text-align:center}
+.dg-seat small{font-size:12px;color:var(--soft);white-space:nowrap}
+.dg-where{align-self:center;grid-template-columns:repeat(2,124px)}
+.sf2-dig{position:absolute;left:6px;top:6px;z-index:1;padding:2px 7px;border-radius:999px;background:rgba(25,31,44,.78);color:#fafbfc;font-family:'Inter',sans-serif;font-size:9.5px;font-weight:600;letter-spacing:.01em}
+.pi-dig{display:inline-block;margin-bottom:3px;padding:2px 8px;border-radius:999px;background:#eaf0ff;color:#122686;font-size:10.5px;font-weight:600}
+.pi-get{margin:8px 0 0!important;padding:8px 10px;border-radius:10px;background:#f6f8ff;color:#122686;font-size:12px!important;line-height:1.45}
+@media (max-width:760px){.dg-tiles{grid-template-columns:repeat(2,minmax(0,1fr))!important}.dg-sh,.dg-slot{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 34px}.dg-sh span:nth-child(3),.dg-seat{grid-column:1 / -1}.dg-sh span:nth-child(3){display:none}.dg-where{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </helmet>
 
@@ -648,6 +676,48 @@ a{color:#2340c8}a:hover{color:#122686}
 <label class="fl"><em>Description</em><textarea maxlength="280" onChange="{{ ed.setDesc }}" value="{{ ed.desc }}" style="height: 84px"></textarea><small>{{ed.descCount}}/280</small></label>
 </div>
 </div>
+
+<div class="sub"><b>What it is</b><span>{{ed.kindHint}}</span></div>
+<div class="seg2" role="tablist" aria-label="What it is">
+<span class="seg2-th" style="transform: translateX({{ed.kindX}}px)"></span>
+<sc-for list="{{ ed.kinds }}" as="m" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{m.on}}" onClick="{{ m.go }}" style="color: {{m.fg}}">{{m.label}}</button></sc-for>
+</div>
+<sc-if value="{{ ed.dig }}" hint-placeholder-val="{{ false }}">
+<div class="sub"><b>How they get it</b><span>Sent after they pay, on their order page and by email</span></div>
+<div class="tiles dg-tiles"><sc-for list="{{ ed.dks }}" as="d" hint-placeholder-count="4"><button type="button" class="tile dtile {{d.cls}}" aria-pressed="{{d.on}}" onClick="{{ d.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span><b>{{d.label}}</b><span>{{d.note}}</span></span></button></sc-for></div>
+
+<sc-if value="{{ ed.dkFiles }}" hint-placeholder-val="{{ true }}"><div class="dg">
+<sc-for list="{{ ed.files }}" as="fl" hint-placeholder-count="2"><div class="dg-file"><span class="dg-ext">{{fl.ext}}</span><span class="dg-fn"><b>{{fl.n}}</b><small>{{fl.s}}</small></span><button type="button" class="icb" aria-label="Remove {{fl.n}}" onClick="{{ fl.remove }}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div></sc-for>
+<button type="button" class="drop dg-drop" onClick="{{ ed.addFile }}"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg><b style="font-weight: 600">{{ed.dropTitle}}</b><small>PDF, images, ZIP, audio or video. Up to 200 MB each, 5 files.</small></button>
+<p class="dg-note">Each buyer gets their own download links. They work 5 times each, for 30 days, and you can resend them from Orders.</p>
+</div></sc-if>
+
+<sc-if value="{{ ed.dkLink }}" hint-placeholder-val="{{ false }}"><div class="dg">
+<label class="fl"><em>Link they get</em><input value="{{ ed.link }}" onChange="{{ ed.setLink }}" inputmode="url" placeholder="https://" style="font-family: var(--m)"></label>
+<label class="fl" style="margin-top: 10px"><em>Note with the link</em><textarea maxlength="200" value="{{ ed.linkNote }}" onChange="{{ ed.setLinkNote }}" style="height: 74px"></textarea><small>{{ed.linkNoteCount}}/200</small></label>
+<p class="dg-note">Only shown after payment. Use a link meant for buyers, like an unlisted YouTube playlist, a private Notion page or a Google Drive folder.</p>
+</div></sc-if>
+
+<sc-if value="{{ ed.dkCodes }}" hint-placeholder-val="{{ false }}"><div class="dg">
+<label class="fl"><em>Codes, one per line</em><textarea value="{{ ed.codes }}" onChange="{{ ed.setCodes }}" style="height: 132px; font-family: var(--m); font-size: 13px"></textarea></label>
+<p class="dg-count"><b>{{ed.codesLeft}}</b><span>{{ed.codesNote}}</span></p>
+<p class="dg-note">Each buyer gets one code nobody else gets. When they run out, the item shows Sold out until you add more.</p>
+</div></sc-if>
+
+<sc-if value="{{ ed.dkSession }}" hint-placeholder-val="{{ false }}"><div class="dg">
+<div class="dg-slots"><p class="dg-sh"><span>Date</span><span>Time</span><span>Seats</span><span></span></p>
+<sc-for list="{{ ed.slots }}" as="sl" hint-placeholder-count="2"><div class="dg-slot"><input value="{{ sl.day }}" onChange="{{ sl.setDay }}" aria-label="Date"><input value="{{ sl.time }}" onChange="{{ sl.setTime }}" aria-label="Time"><span class="dg-seat"><input value="{{ sl.seats }}" onChange="{{ sl.setSeats }}" inputmode="numeric" aria-label="Seats"><small>{{sl.taken}} booked</small></span><button type="button" class="icb" aria-label="Remove this time" disabled="{{ sl.only }}" onClick="{{ sl.remove }}"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></button></div></sc-for>
+</div>
+<button type="button" class="addrow" onClick="{{ ed.addSlot }}">+ Add a time</button>
+<div class="grid2" style="margin-top: 10px">
+<label class="fl"><em>How long</em><input value="{{ ed.dur }}" onChange="{{ ed.setDur }}" placeholder="90 minutes"></label>
+<span class="seg2 dg-where" role="tablist" aria-label="Where"><span class="seg2-th" style="transform: translateX({{ed.whereX}}px)"></span><sc-for list="{{ ed.wheres }}" as="w" hint-placeholder-count="2"><button type="button" role="tab" aria-selected="{{w.on}}" onClick="{{ w.go }}" style="color: {{w.fg}}">{{w.label}}</button></sc-for></span>
+</div>
+<sc-if value="{{ ed.online }}" hint-placeholder-val="{{ true }}"><label class="fl" style="margin-top: 10px"><em>Meeting link, sent after they pay</em><input value="{{ ed.meet }}" onChange="{{ ed.setMeet }}" style="font-family: var(--m)"></label></sc-if>
+<sc-if value="{{ ed.inPerson }}" hint-placeholder-val="{{ false }}"><label class="fl" style="margin-top: 10px"><em>Where, sent after they pay</em><input value="{{ ed.venue }}" onChange="{{ ed.setVenue }}"></label></sc-if>
+<p class="dg-note">Buyers pick a time. Each booking takes a seat, and a full time can't be picked. They get a reminder email the day before.</p>
+</div></sc-if>
+</sc-if>
 
 <div class="sub"><b>Price</b><span>Options suit sizes, like 1kg and 2kg</span></div>
 <div class="seg2" role="tablist" aria-label="How it is priced">
@@ -772,7 +842,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <p class="sf2-nt">{{noticeLine}}</p>
 <sc-if value="{{ hasShopDesc }}" hint-placeholder-val="{{ true }}"><div class="sf2-own"><span class="sf2-av" aria-hidden="true">L</span><span class="sf2-b">{{shopDesc}}</span></div></sc-if>
 <div class="sf2-g">
-<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="sf2-card" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="sf2-ph" style="background: {{s.tint}}; color: {{s.ink}}">{{s.initial}}<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if><span class="sf2-add" aria-hidden="true">+</span></span><b>{{s.name}}</b><span>{{s.from}}</span></button></sc-for>
+<sc-for list="{{ pvItems }}" as="s" hint-placeholder-count="3"><button type="button" class="sf2-card" onClick="{{ s.open }}" style="background: {{s.rowBg}}"><span class="sf2-ph" style="background: {{s.tint}}; color: {{s.ink}}">{{s.initial}}<sc-if value="{{ s.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{s.photo}}" alt="" style="object-position: {{s.focus}}"></sc-if><sc-if value="{{ s.dig }}" hint-placeholder-val="{{ false }}"><span class="sf2-dig">Digital</span></sc-if><span class="sf2-add" aria-hidden="true">+</span></span><b>{{s.name}}</b><span>{{s.from}}</span></button></sc-for>
 </div>
 <sc-if value="{{ pvEmpty }}" hint-placeholder-val="{{ false }}"><p class="sf2-nt" style="width: 100%; margin-top: 8px; padding: 18px 12px; border: 1.5px dashed rgba(250,251,252,0.3); border-radius: 18px; text-align: center">New items are coming soon.</p></sc-if>
 </div>
@@ -785,8 +855,10 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="isheet">
 <span class="grab"></span>
 <sc-if value="{{ pi.hidden }}" hint-placeholder-val="{{ false }}"><span class="hidden-chip">Hidden from your shop</span></sc-if>
-<div class="ihead"><span class="iph" style="background: {{pi.tint}}; color: {{pi.ink}}"><sc-if value="{{ pi.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{pi.photo}}" alt="" style="object-position: {{pi.focus}}"></sc-if>{{pi.initial}}</span><span style="min-width: 0"><h4>{{pi.name}}</h4><span class="pr">{{pi.price}}</span></span></div>
+<div class="ihead"><span class="iph" style="background: {{pi.tint}}; color: {{pi.ink}}"><sc-if value="{{ pi.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{pi.photo}}" alt="" style="object-position: {{pi.focus}}"></sc-if>{{pi.initial}}</span><span style="min-width: 0"><sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><span class="pi-dig">Digital</span></sc-if><h4>{{pi.name}}</h4><span class="pr">{{pi.price}}</span></span></div>
 <p>{{pi.desc}}</p>
+<sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><p class="pi-get">{{pi.get}}</p></sc-if>
+<sc-if value="{{ pi.hasSlots }}" hint-placeholder-val="{{ false }}"><span class="pills"><sc-for list="{{ pi.slots }}" as="po" hint-placeholder-count="2"><span style="background: {{po.bg}}; color: {{po.fg}}">{{po.label}}</span></sc-for></span></sc-if>
 <sc-if value="{{ pi.hasOpts }}" hint-placeholder-val="{{ true }}"><span class="pills"><sc-for list="{{ pi.opts }}" as="po" hint-placeholder-count="2"><span style="background: {{po.bg}}; color: {{po.fg}}">{{po.label}}</span></sc-for></span></sc-if>
 <div class="bar" style="background: #b5294e; color: #fafbfc"><span style="display: inline-flex; align-items: center; gap: 12px; padding: 4px 10px; border-radius: 999px; background: rgba(250,251,252,0.16)">−<b>1</b>+</span><span style="margin-left: auto; padding-right: 10px">Add to basket · {{pi.addPrice}}</span></div>
 </div>
@@ -851,7 +923,9 @@ class Component extends DCLogic {
         { id: 1, name: 'Kek coklat moist', desc: 'Our bestseller. Rich, soft and not too sweet, with a thick ganache on top.', photo: 0, tint: 0, mode: 'options', price: '', options: [{ k: 1, label: '1kg', price: '95' }, { k: 2, label: '2kg', price: '170' }], available: true },
         { id: 2, name: 'Kek batik', desc: 'Old school, with Marie biscuits and plenty of chocolate. Cut into 12 slices.', photo: 1, tint: 1, mode: 'single', price: '45', options: [{ k: 3, label: '', price: '' }], available: true },
         { id: 3, name: 'Cookies balang', desc: 'A jar of 40 chocolate chip cookies. Good for Raya and open houses.', photo: 4, tint: 0, mode: 'single', price: '25', options: [{ k: 4, label: '', price: '' }], available: true },
-        { id: 4, name: 'Burnt cheesecake', desc: 'Creamy in the middle, caramelised outside. Back in December.', photo: 4, tint: 1, mode: 'options', price: '', options: [{ k: 5, label: '6 inch', price: '85' }, { k: 6, label: '8 inch', price: '120' }], available: false }
+        { id: 4, name: 'Burnt cheesecake', desc: 'Creamy in the middle, caramelised outside. Back in December.', photo: 4, tint: 1, mode: 'options', price: '', options: [{ k: 5, label: '6 inch', price: '85' }, { k: 6, label: '8 inch', price: '120' }], available: false },
+        { id: 5, name: 'Kek coklat recipe e-book', desc: 'Our moist chocolate cake, step by step with photos. Includes the ganache and a 1kg and 2kg chart.', photo: 4, tint: 3, mode: 'single', price: '25', options: [{ k: 7, label: '', price: '' }], available: true, digital: true, dk: 'files', files: [{ k: 1, n: 'Kek-coklat-moist-recipe.pdf', s: '4.2 MB' }, { k: 2, n: 'Ganache-guide.pdf', s: '1.1 MB' }], link: '', linkNote: '', codes: '', slots: [{ k: 1, day: 'Sat 7 Nov', time: '8:00pm', seats: '12', taken: 7 }], dur: '90 minutes', where: 'online', meet: 'meet.google.com/kek-batik-lina', venue: '' },
+        { id: 6, name: 'Online class: Kek batik', desc: 'Bake along with Lina over video. You get the shopping list the day before.', photo: 1, tint: 2, mode: 'single', price: '60', options: [{ k: 8, label: '', price: '' }], available: true, digital: true, dk: 'session', files: [], link: '', linkNote: '', codes: '', slots: [{ k: 1, day: 'Sat 7 Nov', time: '8:00pm', seats: '12', taken: 7 }, { k: 2, day: 'Sun 15 Nov', time: '3:00pm', seats: '12', taken: 2 }], dur: '90 minutes', where: 'online', meet: 'meet.google.com/kek-batik-lina', venue: 'Seksyen 7, Shah Alam' }
       ]
     };
   }
@@ -895,6 +969,14 @@ class Component extends DCLogic {
   }
   updItem(id, patch) {
     this.change({ items: this.state.items.map((x) => x.id === id ? Object.assign({}, x, patch) : x) });
+  }
+  getLine(it) {
+    if (!it.digital) return '';
+    if (it.dk === 'files') { const n = (it.files || []).length; return 'You get ' + (n === 1 ? '1 file' : n + ' files') + ' to download, right after you pay.'; }
+    if (it.dk === 'link') return 'You get a private link, right after you pay.';
+    if (it.dk === 'codes') return 'You get your own code, right after you pay.';
+    if (it.dk === 'session') return (it.where === 'online' ? 'Online' : 'In person') + ' · ' + (it.dur || '') + '. Pick a time below. The ' + (it.where === 'online' ? 'link' : 'address') + ' comes after you pay.';
+    return '';
   }
   look(it) {
     const ph = this.photos[it.photo];
@@ -954,7 +1036,7 @@ class Component extends DCLogic {
       items: st.items.map((x, i) => {
         const lk = self.look(x), p = self.pricing(x);
         return Object.assign(lk, {
-          y: i * 76, name: x.name || 'Untitled item', line: p.error ? 'Needs a price' : p.line,
+          y: i * 76, name: x.name || 'Untitled item', line: p.error ? 'Needs a price' : (x.digital ? 'Digital · ' : '') + p.line,
           dim: x.available ? '1' : '0.5', gray: x.available ? '0' : '0.8',
           available: x.available, swBg: x.available ? '#2340c8' : '#d5d8de', swX: x.available ? '14px' : '0px', avText: x.available ? 'In your shop' : 'Hidden',
           first: i === 0, last: i === st.items.length - 1,
@@ -1003,7 +1085,7 @@ class Component extends DCLogic {
       }),
       earliestText: st.notice === 0 ? 'Customers can order for today.' : 'The earliest date a customer can pick is ' + earliestLabel + '.',
       shopSub: st.notice === 0 ? 'Same day orders welcome' : 'Order ' + (st.notice === 1 ? '1 day' : st.notice + ' days') + ' ahead',
-      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.16)' : 'transparent', name: x.name, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
+      pvItems: live.map((x) => { const lk = self.look(x), p = self.pricing(x); return Object.assign(lk, { rowBg: pvKey === 'item' && pvIt && pvIt.id === x.id ? 'rgba(250,251,252,0.16)' : 'transparent', name: x.name, dig: !!x.digital, from: (x.mode === 'options' ? 'from ' : '') + self.rm(p.from), open: () => self.setState({ pv: 'item', pvId: x.id }) }); }),
       pvEmpty: live.length === 0,
       spBottom: pvKey === 'item' ? '140px' : '0px',
       scrBg: pvKey === 'item' ? '#fafbfc' : '#542339',
@@ -1023,7 +1105,9 @@ class Component extends DCLogic {
         price: p.error ? 'Price to come' : (pvIt.mode === 'options' ? 'from ' : '') + self.rm(p.from),
         hasOpts: !p.error && p.opts.length > 0,
         opts: (p.opts || []).map((o, i) => ({ label: o.label + ' · ' + self.rm(o.c), bg: i === 0 ? '#191f2c' : '#f0f1f4', fg: i === 0 ? '#fafbfc' : '#191f2c' })),
-        addPrice: p.error ? 'RM0' : self.rm(p.from)
+        addPrice: p.error ? 'RM0' : self.rm(p.from),
+        dig: !!pvIt.digital, get: self.getLine(pvIt),
+        hasSlots: !!pvIt.digital && pvIt.dk === 'session', slots: (pvIt.slots || []).map((sl, i) => { const left = (Number(sl.seats) || 0) - sl.taken; return { label: sl.day + ', ' + sl.time + (left <= 0 ? ' · full' : ''), bg: i === 0 ? '#191f2c' : '#f0f1f4', fg: i === 0 ? '#fafbfc' : left <= 0 ? '#9aa0ab' : '#191f2c' }; })
       });
     } else out.pi = {};
     if (editing) {
@@ -1045,6 +1129,32 @@ class Component extends DCLogic {
           remove: () => self.updItem(x.id, { options: x.options.filter((y) => y.k !== o.k) })
         })),
         addOption: () => { if (x.options.length >= 10) return; self.keySeq += 1; self.updItem(x.id, { options: x.options.concat([{ k: self.keySeq, label: '', price: '' }]) }); },
+        dig: !!x.digital,
+        kindHint: x.digital ? 'No day, pickup or delivery at checkout' : 'Customers pick a day, and pickup or delivery',
+        kindX: x.digital ? 124 : 0,
+        kinds: [[false, 'Physical'], [true, 'Digital']].map((m) => ({ label: m[1], on: !!x.digital === m[0], fg: !!x.digital === m[0] ? '#191f2c' : '#696e7b', go: () => self.updItem(x.id, Object.assign({ digital: m[0] }, m[0] && !x.dk ? { dk: 'files', files: x.files || [], slots: x.slots || [{ k: 1, day: '', time: '', seats: '10', taken: 0 }], codes: x.codes || '', link: x.link || '', linkNote: x.linkNote || '', dur: x.dur || '', where: x.where || 'online', meet: x.meet || '', venue: x.venue || '' } : {})) })),
+        dks: [['files', 'Files', 'PDF, template, video'], ['link', 'A link', 'Course, private page'], ['codes', 'Codes', 'Vouchers, licence keys'], ['session', 'A session', 'A class or a call']].map((d) => ({ label: d[1], note: d[2], on: x.dk === d[0], cls: x.dk === d[0] ? 'on' : '', pick: () => self.updItem(x.id, { dk: d[0] }) })),
+        dkFiles: x.digital && x.dk === 'files', dkLink: x.digital && x.dk === 'link', dkCodes: x.digital && x.dk === 'codes', dkSession: x.digital && x.dk === 'session',
+        files: (x.files || []).map((fl) => ({ n: fl.n, s: fl.s, ext: (fl.n.split('.').pop() || '').slice(0, 4), remove: () => self.updItem(x.id, { files: x.files.filter((y) => y.k !== fl.k) }) })),
+        dropTitle: (x.files || []).length ? 'Add another file' : 'Upload the files they get',
+        addFile: () => { const fs = x.files || []; if (fs.length >= 5) return; const names = [['Shopping-list.pdf', '220 KB'], ['Bonus-video.mp4', '86 MB'], ['Cake-sizes-chart.png', '640 KB']]; const nx = names[fs.length % names.length]; self.updItem(x.id, { files: fs.concat([{ k: Date.now(), n: nx[0], s: nx[1] }]) }); },
+        link: x.link || '', setLink: (e) => self.updItem(x.id, { link: String(e.target.value || '').trim() }),
+        linkNote: x.linkNote || '', linkNoteCount: (x.linkNote || '').length, setLinkNote: (e) => self.updItem(x.id, { linkNote: String(e.target.value || '').slice(0, 200) }),
+        codes: x.codes || '', setCodes: (e) => self.updItem(x.id, { codes: String(e.target.value || '') }),
+        codesLeft: (function () { const n = String(x.codes || '').split(/\n/).map((c) => c.trim()).filter(Boolean).length; return n === 1 ? '1 code' : n + ' codes'; })(),
+        codesNote: String(x.codes || '').trim() ? 'left to give out' : 'Paste them from your voucher sheet or licence list',
+        slots: (x.slots || []).map((sl) => ({ day: sl.day, time: sl.time, seats: sl.seats, taken: sl.taken, only: x.slots.length === 1,
+          setDay: (e) => self.updItem(x.id, { slots: x.slots.map((y) => y.k === sl.k ? Object.assign({}, y, { day: String(e.target.value || '') }) : y) }),
+          setTime: (e) => self.updItem(x.id, { slots: x.slots.map((y) => y.k === sl.k ? Object.assign({}, y, { time: String(e.target.value || '') }) : y) }),
+          setSeats: (e) => self.updItem(x.id, { slots: x.slots.map((y) => y.k === sl.k ? Object.assign({}, y, { seats: String(e.target.value || '').replace(/[^0-9]/g, '') }) : y) }),
+          remove: () => self.updItem(x.id, { slots: x.slots.filter((y) => y.k !== sl.k) }) })),
+        addSlot: () => { const sl = x.slots || []; if (sl.length >= 12) return; self.updItem(x.id, { slots: sl.concat([{ k: Date.now(), day: '', time: '', seats: (sl[sl.length - 1] || {}).seats || '10', taken: 0 }]) }); },
+        dur: x.dur || '', setDur: (e) => self.updItem(x.id, { dur: String(e.target.value || '').slice(0, 30) }),
+        whereX: x.where === 'person' ? 124 : 0,
+        wheres: [['online', 'Online'], ['person', 'In person']].map((w) => ({ label: w[1], on: (x.where || 'online') === w[0], fg: (x.where || 'online') === w[0] ? '#191f2c' : '#696e7b', go: () => self.updItem(x.id, { where: w[0] }) })),
+        online: (x.where || 'online') === 'online', inPerson: x.where === 'person',
+        meet: x.meet || '', setMeet: (e) => self.updItem(x.id, { meet: String(e.target.value || '').trim() }),
+        venue: x.venue || '', setVenue: (e) => self.updItem(x.id, { venue: String(e.target.value || '').slice(0, 120) }),
         ok: !p.error, bad: !!p.error,
         plText: p.error ? p.error : 'Customers see ' + p.line,
         plBg: p.error ? '#fdecea' : '#f6f8ff', plFg: p.error ? '#b3261e' : '#122686',
