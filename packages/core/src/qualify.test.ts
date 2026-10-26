@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MIN_VISITOR_TURNS, qualifies } from './qualify.js';
+import { MIN_VISITOR_TURNS, qualifies, wantsContact } from './qualify.js';
 
 const specific = ['nak order kek 2kg', 'untuk 20 Mac', 'hantar ke Klang boleh?'];
 
@@ -57,5 +57,37 @@ describe('qualifies', () => {
     // qualify every conversation on the page -- this is the shape that makes
     // that mistake impossible to make quietly.
     expect(qualifies({ mode: 'BUSINESS', visitorMessages: ['hai', 'ada apa', 'ok'] })).toBe(false);
+  });
+});
+
+describe('wantsContact', () => {
+  it.each([
+    'Can I left my number here',
+    'can I leave my phone number?',
+    'please contact me',
+    'whatsapp me',
+    'boleh tinggal nombor?',
+    'saya nak bagi no wasap',
+    'hubungi saya',
+    'my number is 012-345 6789',
+  ])('hears %j', (message) => {
+    expect(wantsContact(message)).toBe(true);
+  });
+
+  it.each(['what is your phone number?', 'how can I contact iman', 'berapa harga kek 2kg?', 'do you take WhatsApp orders?', 'no thanks'])(
+    'does not hear %j',
+    (message) => {
+      expect(wantsContact(message)).toBe(false);
+    },
+  );
+});
+
+describe('qualifies, asked to be contacted', () => {
+  it('offers the card at once, on the first turn, on a business page', () => {
+    expect(qualifies({ mode: 'BUSINESS', visitorMessages: ['Can I left my number here'] })).toBe(true);
+  });
+
+  it('still never on a personal page', () => {
+    expect(qualifies({ mode: 'PERSONAL', visitorMessages: ['please contact me'] })).toBe(false);
   });
 });

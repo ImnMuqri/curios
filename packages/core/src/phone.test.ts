@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMalaysianPhone, normalizeMalaysianPhone, withoutContactDetails } from './phone.js';
+import { formatMalaysianPhone, normalizeMalaysianPhone, phoneNumbersIn, withoutContactDetails, withoutPhoneNumbers } from './phone.js';
 
 describe('normalizeMalaysianPhone', () => {
   it.each([
@@ -67,4 +67,26 @@ describe('withoutContactDetails', () => {
       expect(withoutContactDetails(text)).toBe(text);
     },
   );
+});
+
+describe('phoneNumbersIn', () => {
+  it('reads one number however it is written, links included', () => {
+    expect(phoneNumbersIn('Call +601129539716, 011-2953 9716 or wa.me/601129539716')).toEqual(['1129539716', '1129539716', '1129539716']);
+    expect(phoneNumbersIn('Pejabat (03) 7956 1234')).toEqual(['379561234']);
+    expect(phoneNumbersIn('London +44 20 7946 0958')).toEqual(['442079460958']);
+  });
+
+  it('finds none in prices, dates, postcodes or a bank account', () => {
+    expect(phoneNumbersIn('RM1,500.00 on 2026-10-26 at 40150 Shah Alam, Maybank 5140 1234 5678')).toEqual([]);
+  });
+});
+
+describe('withoutPhoneNumbers', () => {
+  it('removes the phone number and keeps the email beside it', () => {
+    expect(withoutPhoneNumbers('Reach Iman at +601129539716 or iman@example.com.')).toBe('Reach Iman at [removed] or iman@example.com.');
+  });
+
+  it('leaves a price and a date as they were', () => {
+    expect(withoutPhoneNumbers('Logo RM350, siap 7 hari, 26 Okt 2026.')).toBe('Logo RM350, siap 7 hari, 26 Okt 2026.');
+  });
 });

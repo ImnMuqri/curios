@@ -747,6 +747,17 @@ describe('threading a conversation', () => {
     });
   });
 
+  it('offers capture on the first turn to a visitor who asks to leave their number', async () => {
+    const events = await ask(depsSaying(), 'Can I left my number here');
+    expect(events.find((e) => e.type === 'done')).toMatchObject({ intent: { qualified: true } });
+  });
+
+  it('never repeats a phone number from a fact, and keeps the rest of the reply', async () => {
+    const events = await ask(depsSaying('You can reach Nadia at +60 11-2953 9716. Or ask here.'), 'how can I contact nadia');
+    const streamed = events.filter((e) => e.type === 'text').map((e) => (e as { text: string }).text).join('');
+    expect(streamed).toBe('Or ask here.');
+  });
+
   it('offers capture once the conversation is three specific turns deep', async () => {
     const deps = depsSaying();
     const conversationId = conversationIdOf(await ask(deps, 'ada kek butter?'));

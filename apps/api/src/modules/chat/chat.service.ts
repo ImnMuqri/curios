@@ -1,4 +1,4 @@
-import { capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, withoutContactDetails, type GroupJobData, type MailJobData } from '@curios/core';
+import { canCapture, capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, withoutContactDetails, type GroupJobData, type MailJobData } from '@curios/core';
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
@@ -264,6 +264,9 @@ export const ANSWER_PAGE_SELECT = {
   displayName: true,
   // Read for qualification: a personal page never offers the capture card.
   mode: true,
+  // With mode, whether the plan takes numbers now (canCapture), which the prompt tells the model.
+  paidUntil: true,
+  leadsCaptured: true,
   // The structured profile: small, always sent, so "how do I reach you?"
   // and "what's your Instagram?" are answered from the page's own links.
   bio: true,
@@ -349,6 +352,8 @@ export async function promptFor(
     neverSay: page.neverSay.map((n) => n.phrase),
     ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
     shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
+    // The same rule the capture card is offered by, so the model never points to a box that is not there.
+    capture: canCapture({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }),
   });
 
   return {
@@ -765,8 +770,8 @@ export async function* answer(
       text += rest;
       yield { type: 'text', text: rest };
     }
-    if (guard.dropped['never-say'] + guard.dropped.amount > 0) {
-      deps.log?.info?.({ pageId: page.id, neverSay: guard.dropped['never-say'], amount: guard.dropped.amount, replaced: guard.replaced }, 'reply sentences dropped');
+    if (guard.dropped['never-say'] + guard.dropped.amount + guard.dropped.phone > 0) {
+      deps.log?.info?.({ pageId: page.id, neverSay: guard.dropped['never-say'], amount: guard.dropped.amount, phone: guard.dropped.phone, replaced: guard.replaced }, 'reply sentences dropped');
     }
     // A reply that was all dropped is the fallback now: nothing was answered.
     const answered = !filter.unsure && !guard.replaced;

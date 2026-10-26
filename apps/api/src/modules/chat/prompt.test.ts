@@ -316,3 +316,28 @@ describe('the shop', () => {
     expect(prompt).toContain('<item name="Kek &quot;Special&quot;">RM1</item>');
   });
 });
+
+describe('buildSystemPrompt: phone numbers and the number box', () => {
+  const page = { displayName: 'Iman Muqri', mode: 'BUSINESS' as const, neverSay: [] };
+
+  it('sends a fact without its phone number, and keeps its email', () => {
+    const prompt = buildSystemPrompt({ ...page, facts: [{ category: 'MISC', claim: 'Reach Iman at +60 11-2953 9716 or iman@example.com.' }] });
+    expect(prompt).not.toContain('9716');
+    expect(prompt).toContain('iman@example.com');
+  });
+
+  it('keeps a number the owner published in their links', () => {
+    const prompt = buildSystemPrompt({ ...page, facts: [], profile: { bio: null, links: [{ label: 'WhatsApp', url: 'https://wa.me/601129539716' }] } });
+    expect(prompt).toContain('wa.me/601129539716');
+  });
+
+  it('tells the model about the number box only where it is offered, and says nothing when it is not asked', () => {
+    expect(buildSystemPrompt({ ...page, facts: [], capture: true })).toContain('leave it in that box');
+    const off = buildSystemPrompt({ ...page, facts: [], capture: false });
+    expect(off).toContain("does not take visitors' numbers");
+    expect(off).not.toContain('leave it in that box');
+    const silent = buildSystemPrompt({ ...page, facts: [] });
+    expect(silent).not.toContain('leave it in that box');
+    expect(silent).not.toContain("does not take visitors' numbers");
+  });
+});
