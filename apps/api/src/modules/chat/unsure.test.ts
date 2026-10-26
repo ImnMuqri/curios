@@ -21,4 +21,15 @@ describe('unsureFilter', () => {
     expect(run(['[', 'Note] RM95'])).toEqual({ out: '[Note] RM95', unsure: false });
     expect(run(['['])).toEqual({ out: '[', unsure: false });
   });
+
+  it('removes a marker the model put after answering part of the question, without making the reply unsure', () => {
+    expect(run(['Ada pilihan less-sugar. Untuk lain-lain, [?] saya tanya Nadia.'])).toEqual({ out: 'Ada pilihan less-sugar. Untuk lain-lain, saya tanya Nadia.', unsure: false });
+    expect(run(['Ada pilihan less-sugar. ', '[', '?', '] saya tanya Nadia.'])).toEqual({ out: 'Ada pilihan less-sugar. saya tanya Nadia.', unsure: false });
+    expect(run(['[?] Tak pasti. [?] Saya tanya Nadia.'])).toEqual({ out: 'Tak pasti. Saya tanya Nadia.', unsure: true });
+  });
+
+  it('leaves brackets that are not the marker, mid-reply and at the very end', () => {
+    expect(run(['Saiz [6 inci] ', 'RM85 [', 'tanya]'])).toEqual({ out: 'Saiz [6 inci] RM85 [tanya]', unsure: false });
+    expect(run(['RM85 [', '?'])).toEqual({ out: 'RM85 [?', unsure: false });
+  });
 });
