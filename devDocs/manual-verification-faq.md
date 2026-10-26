@@ -262,8 +262,6 @@ docker exec -i curios-postgres psql -U curios -d curios -c 'SELECT r.slug, t."fa
 Note which checks you ran and what you saw, in this file, with the date. Report any not
 run rather than leaving them ambiguous — that ambiguity is why this document exists.
 
-## Recording the result
-
 | Date | Who | Checks passed | Checks failed, and what was seen |
 |---|---|---|---|
 | 2026-10-26 | Claude (agent) | 1, 7.1, 7.3 | 3 not run (Google's Rich Results Test needs a public URL); the page's JSON-LD parses as an FAQPage with the question and the owner's answer. A topic answered at 2 asks had no slug; the third ask from a visitor gave it `berapa-lama-kek-boleh-tahan` and a 200 page (1). On a Linux production build (`next start`) an edited answer and a hidden question both showed on the very next request, entry and index (7.3, 7.1): **the FAQ routes build as dynamic (ƒ), so the 60-second ISR window this file times does not exist**: each view reads the database. Fresher than promised; the cost is a read per view. |

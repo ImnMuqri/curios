@@ -238,8 +238,6 @@ failing silently on a refusal.
 Note which checks you ran and what you saw, in this file, with the date. Report any not
 run rather than leaving them ambiguous — that ambiguity is why this document exists.
 
-## Recording the result
-
 | Date | Who | Checks passed | Checks failed, and what was seen |
 |---|---|---|---|
 | 2026-10-26 | Claude (agent) | 1, 2, 4, 5, 6 | None. keklina (never paid): a qualifying three-turn chat offered the card and a number sent from it made a lead, `leadsCaptured` 0 → 1 (1); at `leadsCaptured = 3` the same chat offered no card (2), while the page's text was unchanged, the chat still answered and `/keklina/faq` was 200 (6); nadia (paid) at 10 leads offered the card (4); keklina switched to PERSONAL offered none (5). States put back afterwards. |
