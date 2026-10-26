@@ -668,7 +668,7 @@ const MS: ShopCopy = {
   greeting: (shop) => `Hai ${shop}, saya nak tempah:`,
   totalLine: (total) => `Jumlah: ${total}`,
   empty: 'Tiada barang dijual buat masa ini. Datang lagi nanti.',
-  checkout: 'Daftar keluar',
+  checkout: 'Teruskan',
   basketEmpty: 'Bakul kosong',
   noWayToPay: 'Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.',
   paysOnlinePreview: 'Pelanggan bayar di sini dalam talian melalui CHIP, dengan FPX, kad atau e-dompet.',
