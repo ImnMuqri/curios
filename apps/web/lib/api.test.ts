@@ -57,6 +57,21 @@ describe('apiFetch', () => {
     await expect(apiFetch('/pages')).rejects.toBeInstanceOf(ApiError);
   });
 
+  it('says in a sentence when the API cannot be reached, not "Failed to fetch"', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(new TypeError('Failed to fetch'))));
+    await expect(apiFetch('/pages/cover', { method: 'DELETE' })).rejects.toMatchObject({
+      code: 'NETWORK',
+      status: 0,
+      message: 'Could not reach Curios. Check your connection and try again.',
+    });
+  });
+
+  it('lets a deliberate abort through as itself', async () => {
+    const abort = new DOMException('The operation was aborted.', 'AbortError');
+    vi.stubGlobal('fetch', vi.fn(async () => Promise.reject(abort)));
+    await expect(apiFetch('/pages')).rejects.toBe(abort);
+  });
+
   it('sends a JSON body on a bodyless mutation, not just the content type', async () => {
     const spy = stubFetch(200, { status: 'verified' });
 
