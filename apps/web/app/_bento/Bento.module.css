@@ -73,8 +73,12 @@
   --page-soft: color-mix(in oklab, var(--paper) 76%, var(--custom-bg));
 }
 
-/* On a dark page the pills are the page's own text at low strength, not white. */
-.page:is([data-bg='BIRU'], [data-bg='INK'], [data-bg-text='light']) {
+/*
+ * On a dark page, and on any colour the owner picked, the pills are the page's own text at low
+ * strength (glass), not white: on a custom colour a white pill sat on it like a sticker, where the
+ * glass takes the colour in. The built-in light grounds keep their white pills, as the board draws.
+ */
+.page:is([data-bg='BIRU'], [data-bg='INK'], [data-bg='CUSTOM']) {
   --veil-1: color-mix(in srgb, var(--page-fg) 8%, transparent);
   --pill: var(--veil-3);
   --pill-ring: var(--veil-1);
