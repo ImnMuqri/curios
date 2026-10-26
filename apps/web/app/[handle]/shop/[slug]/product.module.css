@@ -124,7 +124,8 @@
   display: grid;
   place-items: center;
   aspect-ratio: 4 / 3;
-  margin: 0 20px;
+  /* Apart from the top bar: its round buttons sat right on the photo's edge. */
+  margin: 16px 20px 0;
   overflow: hidden;
   border-radius: 24px;
   background: var(--warm);
