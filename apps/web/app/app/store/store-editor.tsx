@@ -166,7 +166,7 @@ export function StoreEditor({
   );
   const toggleHalal = () => void save({ shopHalal: !settings.shopHalal }).catch(() => undefined);
 
-  const readiness = { ...settings, paymentQrKey: qr.has ? 'qr' : null, chipConnected: chip.connected };
+  const readiness = { ...settings, paymentQrKey: qr.has ? 'qr' : null, chipConnected: chip.connected, physicalItems: items.some((item) => item.kind !== 'DIGITAL') };
   const bankOk = Boolean(settings.bankName && settings.bankAccountName && settings.bankAccountNumber);
   const gaps = storeGaps(readiness);
   const live = items.filter((item) => item.available);

@@ -183,7 +183,8 @@ async function paymentInFlight(prisma: PrismaClient, pageId: string, now: Date):
 /** Whether the shop can lose CHIP: closed, or open with a QR or bank details to pay by. */
 async function canSpareChip(prisma: PrismaClient, accountId: string): Promise<boolean> {
   const settings = await getStoreSettings(prisma, accountId);
-  return !(settings.enabled && storeGaps({ ...settings, chipConnected: false }).includes('payment'));
+  // Only the payment gap is asked about, which does not depend on what the shop lists.
+  return !(settings.enabled && storeGaps({ ...settings, chipConnected: false, physicalItems: false }).includes('payment'));
 }
 
 /**

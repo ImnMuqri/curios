@@ -1,7 +1,7 @@
 import type { Prisma, PrismaClient } from '@curios/db';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_TAG_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
 import { itemSlug } from '@curios/core/slug';
-import { InvalidItemError, ItemHasBookingsError, ItemHasSalesError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError } from './store.errors.js';
+import { InvalidItemError, ItemHasBookingsError, ItemHasSalesError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError, StoreNotReadyError } from './store.errors.js';
 import { DIGITAL_COLUMNS, DIGITAL_RELATIONS, NO_DIGITAL, digitalDetail, hasBookings, resolveDigital, type DigitalDetail, type DigitalFields, type DigitalInput } from './digital-item.service.js';
 import { storePageFor } from './store-page.js';
 
@@ -98,6 +98,18 @@ export async function listItems(prisma: PrismaClient, accountId: string): Promis
 }
 
 /** Appended last. Count-then-create can overshoot MAX_ITEMS by one under a race; a product limit, not a safety one -- as addLink argues. */
+/**
+ * An open shop with neither pickup nor delivery can sell digital items only (storeGaps): one that
+ * would list a physical item has to turn one on first, or a customer could order what nobody can
+ * hand over.
+ */
+async function checkCanHandOver(tx: Pick<PrismaClient, 'page'>, pageId: string): Promise<void> {
+  const page = await tx.page.findUniqueOrThrow({ where: { id: pageId }, select: { storeEnabled: true, pickupEnabled: true, deliveryMode: true } });
+  if (page.storeEnabled && !page.pickupEnabled && page.deliveryMode === 'NONE') {
+    throw new StoreNotReadyError('Your shop is open with no pickup or delivery, so it can sell digital items only. Turn on pickup or delivery to add a physical one.');
+  }
+}
+
 export async function addItem(
   prisma: PrismaClient,
   accountId: string,
@@ -113,6 +125,7 @@ export async function addItem(
 
   const count = await prisma.item.count({ where: { pageId: page.id } });
   if (count >= MAX_ITEMS) throw new ItemLimitError(MAX_ITEMS);
+  if (digital.kind === 'PHYSICAL') await checkCanHandOver(prisma, page.id);
 
   // The slug is made here, once, and no update ever writes it: a renamed item
   // keeps the link that was shared. Two requests can pick the same one; the
@@ -163,7 +176,10 @@ export async function updateItem(
       await tx.itemOption.deleteMany({ where: { itemId: id } });
       if (pricing.options.length > 0) await tx.itemOption.createMany({ data: pricing.options.map((o) => ({ ...o, itemId: id })) });
     }
-    return toRow(await tx.item.findUniqueOrThrow({ where: { id }, select: SELECT }));
+    const row = toRow(await tx.item.findUniqueOrThrow({ where: { id }, select: SELECT }));
+    // Made physical: the shop must be able to hand it over (a rollback, if not).
+    if (row.kind === 'PHYSICAL' && input.kind === 'PHYSICAL') await checkCanHandOver(tx, page.id);
+    return row;
   });
 }
 

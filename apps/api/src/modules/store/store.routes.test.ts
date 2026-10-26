@@ -128,9 +128,40 @@ describe('PATCH /store/settings', () => {
 
   it('refuses to take away the last way to hand over while open', async () => {
     const owner = await anOwner(app);
+    await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek batik', pricing: { kind: 'single', priceCents: 4500 } });
     await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, pickupEnabled: true, ...bank });
     const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { pickupEnabled: false });
     expect(res.json().error.code).toBe('STORE_NOT_READY');
+  });
+
+  it('opens a shop of digital items alone with no pickup or delivery', async () => {
+    const owner = await anOwner(app);
+    await call(app, 'POST', '/store/items', owner.cookie, { name: 'Voucher', pricing: { kind: 'single', priceCents: 1000 }, kind: 'DIGITAL', delivery: 'CODES' });
+    const res = await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, ...bank });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().settings).toMatchObject({ enabled: true, pickupEnabled: false, deliveryMode: 'NONE' });
+  });
+
+  it('keeps an open digital-only shop from listing a physical item until it can hand one over', async () => {
+    const owner = await anOwner(app);
+    const made = await call(app, 'POST', '/store/items', owner.cookie, { name: 'Voucher', pricing: { kind: 'single', priceCents: 1000 }, kind: 'DIGITAL', delivery: 'CODES' });
+    const voucher = made.json().item.id as string;
+    await call(app, 'PATCH', '/store/settings', owner.cookie, { enabled: true, ...bank });
+
+    const added = await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek batik', pricing: { kind: 'single', priceCents: 4500 } });
+    expect(added.statusCode).toBe(400);
+    expect(added.json().error).toMatchObject({ code: 'STORE_NOT_READY', message: 'Your shop is open with no pickup or delivery, so it can sell digital items only. Turn on pickup or delivery to add a physical one.' });
+    const madePhysical = await call(app, 'PATCH', `/store/items/${voucher}`, owner.cookie, { kind: 'PHYSICAL' });
+    expect(madePhysical.json().error.code).toBe('STORE_NOT_READY');
+    expect((await app.prisma.item.findUniqueOrThrow({ where: { id: voucher } })).kind).toBe('DIGITAL');
+
+    await call(app, 'PATCH', '/store/settings', owner.cookie, { pickupEnabled: true });
+    expect((await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek batik', pricing: { kind: 'single', priceCents: 4500 } })).statusCode).toBe(201);
+  });
+
+  it('keeps a closed shop free to list physical items with no pickup or delivery yet', async () => {
+    const owner = await anOwner(app);
+    expect((await call(app, 'POST', '/store/items', owner.cookie, { name: 'Kek batik', pricing: { kind: 'single', priceCents: 4500 } })).statusCode).toBe(201);
   });
 
   it('needs a fee for flat delivery, and drops it for any other mode', async () => {
