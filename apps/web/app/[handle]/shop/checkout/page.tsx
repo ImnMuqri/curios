@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { getCheckout } from '@curios/db-read';
+import { getCheckout, getSettings } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../../lib/avatar-url.js';
@@ -30,6 +30,9 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
   }
   // Paused: back to the shop, whose basket bar is the WhatsApp fallback.
   if (!shop.canTakeOrders) redirect(`/${shop.handle}/shop`);
+  // With CHIP payments off (the admin's switch) checkout offers only the owner's own QR or bank:
+  // no CHIP methods are drawn, and none is asked for.
+  const { switches } = await getSettings();
 
   return (
     <PageTheme theme={shop} className={styles.stage}>
@@ -48,7 +51,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
         closedDays={shop.closedDays}
         payByQr={shop.payByQr}
         hasQr={shop.hasQr}
-        chipMethods={shop.chipMethods}
+        chipMethods={switches.chipPayments ? shop.chipMethods : null}
         // The server's clock, so the day pills the browser draws are the ones it rendered.
         now={now.toISOString()}
       />

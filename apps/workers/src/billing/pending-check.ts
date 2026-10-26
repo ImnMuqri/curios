@@ -1,6 +1,7 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import { BILLING_QUEUE, PENDING_CHECK_JOB, RENEWAL_REMINDER_JOB } from '@curios/core';
+import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import { DEAD_PURCHASE_STATUSES, evidenceFromPurchase, grantPayment, type ChipClient } from '@curios/billing';
 import { errName, runAutoRenewals } from './auto-renew.js';
@@ -128,6 +129,8 @@ export function createBillingWorker(deps: {
   /** The API's public origin, for the renewal purchases' callback. */
   callbackBaseUrl: string;
   log?: BillingLog;
+  /** The admin's settings, read at the start of each daily run. */
+  settings: { get(): Promise<Settings> };
 }): Worker {
   return new Worker(
     BILLING_QUEUE,
@@ -148,6 +151,7 @@ export function createBillingWorker(deps: {
             appUrl: deps.appUrl,
             callbackBaseUrl: deps.callbackBaseUrl,
             log: deps.log,
+            settings: await deps.settings.get(),
           });
           deps.log?.info(renewed, 'auto-renew run finished');
         } catch (error) {

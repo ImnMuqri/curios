@@ -23,7 +23,7 @@ export const sourceRoutes: FastifyPluginAsyncZod = async (app) => {
 export const sourceRecheckRoutes: FastifyPluginAsyncZod = async (app) => {
   app.post('/sources/:id/recheck', { schema: { params } }, async (request, reply) => {
     if (!request.account) throw new UnauthenticatedError();
-    const result = await recheckSource({ prisma: app.prisma, queue: app.ingestQueue }, request.account.id, request.params.id);
+    const result = await recheckSource({ prisma: app.prisma, queue: app.ingestQueue, settings: await app.settings.get() }, request.account.id, request.params.id);
     return reply.status(202).send(result);
   });
 };

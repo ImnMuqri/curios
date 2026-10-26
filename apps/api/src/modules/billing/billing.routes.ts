@@ -108,7 +108,7 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
       if (!chip) throw new BillingNotConfiguredError();
 
       const result = await createPurchaseForOwner(
-        { prisma: app.prisma, client: chip.client, callbackBaseUrl: chip.callbackBaseUrl, log: request.log },
+        { prisma: app.prisma, client: chip.client, callbackBaseUrl: chip.callbackBaseUrl, log: request.log, settings: await app.settings.get() },
         {
           accountId: request.account.id,
           plan: request.body.plan,

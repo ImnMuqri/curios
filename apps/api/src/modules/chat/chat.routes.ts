@@ -81,6 +81,8 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       // (The service checks again: it is the check that counts.)
       const status = await app.prisma.page.findUnique({ where: { handle: request.params.handle.toLowerCase() }, select: { published: true, suspendedAt: true } });
       if (status?.published && status.suspendedAt !== null) throw new PageUnavailableError();
+      // The admin's switches, read before the stream opens (never throws: a database that is down gives the defaults).
+      const settings = await app.settings.get();
 
       // hijack() takes the raw response out of Fastify's own reply lifecycle --
       // required for a manual setHeader()/writeHead()/write()/end() sequence
@@ -107,7 +109,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       reply.raw.writeHead(200);
 
       const stream = answer(
-        { prisma: app.prisma, gateway, cap, embedder, log: request.log, groupQueue: app.groupQueue, mailQueue: app.mailQueue },
+        { prisma: app.prisma, gateway, cap, embedder, log: request.log, groupQueue: app.groupQueue, mailQueue: app.mailQueue, settings },
         {
           handle: request.params.handle,
           question: request.body.question,
@@ -174,7 +176,7 @@ export const chatTestRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (ap
     async (request) => {
       if (!request.account) throw new UnauthenticatedError();
       return testAnswer(
-        { prisma: app.prisma, gateway, embedder, log: request.log, cap },
+        { prisma: app.prisma, gateway, embedder, log: request.log, cap, settings: await app.settings.get() },
         { accountId: request.account.id, question: request.body.question, history: request.body.history },
       );
     },

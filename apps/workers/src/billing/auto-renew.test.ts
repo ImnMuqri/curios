@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { extendPaidUntil } from '@curios/core';
+import { defaultSettings, type Settings } from '@curios/core/settings';
 import { ChipUnavailableError, type ChargeResult, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { runAutoRenewals } from './auto-renew.js';
 import type { MailQueueLike } from './renewal-reminder.js';
@@ -117,6 +118,8 @@ function run(
     beforeCharge?: () => Promise<void>;
     afterLapsedRead?: () => Promise<void>;
     now?: Date;
+    settings?: Settings;
+    log?: { info: (details: object, message: string) => void; error: (details: object, message: string) => void };
   } = {},
 ) {
   return runAutoRenewals({
@@ -126,6 +129,7 @@ function run(
     now: NOW,
     appUrl: APP_URL,
     callbackBaseUrl: CALLBACK_BASE_URL,
+    settings: defaultSettings(),
     ...extra,
   });
 }
@@ -167,6 +171,29 @@ describe('runAutoRenewals', () => {
     expect(client.chargePurchase).toHaveBeenCalledWith(payment?.providerRef, page.token);
     expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
     expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: NOW });
+  });
+
+  it('skips the whole run while CHIP payments are off, and charges on the next run once they are on', async () => {
+    const paidUntil = at(12 * HOUR_MS);
+    const page = await aRenewingPage({ paidUntil });
+    // A lapsed card too: the run that would drop it is skipped as well.
+    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+    const client = aChip();
+    const mailQueue = aMailQueue();
+    const log = { info: vi.fn(), error: vi.fn() };
+    const off = defaultSettings();
+    off.switches.chipPayments = false;
+
+    expect(await run(client, mailQueue, { settings: off, log })).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 0 });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(client.chargePurchase).not.toHaveBeenCalled();
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: null });
+    expect(await cardOf(lapsed.pageId)).not.toBeNull();
+    expect(log.info).toHaveBeenCalledWith({}, 'auto-renew skipped: CHIP payments are off');
+
+    expect(await run(client, mailQueue)).toMatchObject({ charged: 1 });
+    expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
   });
 
   it('does not charge a suspended page, and charges it once it is back', async () => {

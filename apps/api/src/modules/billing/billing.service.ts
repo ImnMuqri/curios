@@ -1,7 +1,9 @@
 import { PLAN_PRICES_CENTS, type BillingPlan } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { billDescription, type ChipClient } from '@curios/billing';
+import type { Settings } from '@curios/core/settings';
 import { NoPageError } from '../pages/page.service.js';
+import { PaymentsOffError } from '../../lib/switches.js';
 
 export class NotABusinessPageError extends Error {
   readonly statusCode = 400;
@@ -33,6 +35,8 @@ const PURCHASE_LIFETIME_MS = 60 * 60 * 1000;
  * reference -- the field a fetched purchase is later checked against. If CHIP fails,
  * that row stays PENDING with no providerRef, which is harmless: no purchase can ever
  * match it, and the hourly check skips rows without one.
+ *
+ * Refused, with nothing written, while the admin has CHIP payments switched off.
  */
 export async function createPurchaseForOwner(
   deps: {
@@ -42,9 +46,12 @@ export async function createPurchaseForOwner(
     callbackBaseUrl: string;
     /** Optional, like `assignFaqSlug`'s -- `request.log` fits it without a new dependency. */
     log?: { error: (obj: unknown, msg: string) => void };
+    /** The admin's settings in force (`app.settings.get()`). */
+    settings: Settings;
   },
   input: { accountId: string; plan: BillingPlan; autoRenew: boolean; now: Date },
 ): Promise<{ url: string }> {
+  if (!deps.settings.switches.chipPayments) throw new PaymentsOffError();
   const page = await deps.prisma.page.findUnique({
     where: { accountId: input.accountId },
     select: { id: true, mode: true, displayName: true, account: { select: { email: true } } },

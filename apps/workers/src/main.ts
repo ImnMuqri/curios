@@ -1,5 +1,5 @@
 import pino from 'pino';
-import { prisma } from '@curios/db';
+import { createSettingsReader, prisma } from '@curios/db';
 import { createAnthropicGateway } from '@curios/gateway';
 import { createOpenAiEmbedder, EMBEDDING_BATCH_TIMEOUT_MS } from '@curios/embeddings';
 import { Queue } from 'bullmq';
@@ -63,6 +63,9 @@ const redis = () => {
 
 const connection = redis();
 const gateway = createAnthropicGateway(apiKey);
+// The admin's switches, one reader for every worker here: cached 30 s, so a change made in
+// admin reaches the mail and billing jobs within that window.
+const settings = createSettingsReader(prisma, { log });
 
 const openAiKey = process.env.OPENAI_API_KEY;
 if (!openAiKey) throw new Error('OPENAI_API_KEY is not set');
@@ -76,7 +79,7 @@ const worker = createIngestionWorker({ connection, prisma, gateway, embedder, lo
 // slow extraction stall every outgoing verification and reset link. Held rather
 // than discarded, so it can be closed on the way out.
 const mailConnection = redis();
-const mailWorker = createMailWorker({ connection: mailConnection });
+const mailWorker = createMailWorker({ connection: mailConnection, settings, log });
 
 // Its own connection, for the reason above: BullMQ blocks on one per worker,
 // so a lead sharing the ingestion connection would wait behind a crawl.
@@ -139,6 +142,7 @@ if (billing) {
     appUrl,
     callbackBaseUrl: billing.callbackBaseUrl,
     log,
+    settings,
   });
   billingWorker.on('failed', (job, err) =>
     log.error({ jobId: job?.id, err: err.message }, 'billing job failed'),

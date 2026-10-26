@@ -296,7 +296,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       // add would hold the visitor's 201 open, and a visitor who gives up and
       // retries places the order twice. The order is already committed.
       void deps.mailQueue
-        .add(MAIL_QUEUE, { to: placed.ownerEmail, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+        .add(MAIL_QUEUE, { to: placed.ownerEmail, ...mail, audience: 'owner' }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
         .catch(warn);
     } catch (error) {
       warn(error);

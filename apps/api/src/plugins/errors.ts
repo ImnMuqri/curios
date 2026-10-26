@@ -183,6 +183,12 @@ export const DOMAIN_ERROR_CODES = new Set([
   'CHIP_RECONNECT',
   // Development only, as BILLING_NOT_CONFIGURED: no PAYMENT_SECRETS_KEY to seal a key with.
   'CHIP_NOT_CONFIGURED',
+  // The admin's switches (Controls): sign-ups closed, reading new sources paused, online
+  // payments off. 503s whose message is the visitor's or owner's own sentence; see
+  // SWITCH_CODES below.
+  'SIGNUPS_CLOSED',
+  'READING_PAUSED',
+  'PAYMENTS_OFF',
   // `OAUTH_EXCHANGE_FAILED` (`OAuthExchangeError`, oauth.service.ts) is
   // deliberately NOT here. It is a 502 -- Google answered, but the exchange
   // itself failed, typically a misconfigured client secret or redirect URI --
@@ -192,6 +198,13 @@ export const DOMAIN_ERROR_CODES = new Set([
   // message that tells every affected user to just try again. Do not add it
   // here as a kindness; that undoes the reason it exists.
 ]);
+
+/**
+ * The 503s a switch in Controls answers with. Not a fault: the admin turned that thing off on
+ * purpose, so the message is shown as written rather than replaced with "something failed", and
+ * nothing is logged as an error.
+ */
+export const SWITCH_CODES = new Set(['SIGNUPS_CLOSED', 'READING_PAUSED', 'PAYMENTS_OFF']);
 
 /**
  * Domain errors are mapped once, here. Messages are user-facing and follow the
@@ -207,7 +220,8 @@ export const errorsPlugin = fp(async (app: FastifyInstance) => {
 
     // The real code -- Prisma's included -- stays in the server-side log
     // regardless of what the client receives.
-    if (statusCode >= 500) request.log.error({ err: error }, 'unhandled error');
+    const switchedOff = SWITCH_CODES.has(code);
+    if (statusCode >= 500 && !switchedOff) request.log.error({ err: error }, 'unhandled error');
 
     // BIG_CHANGE says which prices tripped it.
     const fields = code === 'BIG_CHANGE' && 'fields' in error ? { fields: error.fields } : {};
@@ -216,7 +230,7 @@ export const errorsPlugin = fp(async (app: FastifyInstance) => {
       error: {
         code,
         ...fields,
-        message: statusCode >= 500 ? 'Something failed on our side. Try again.' : error.message,
+        message: statusCode >= 500 && !switchedOff ? 'Something failed on our side. Try again.' : error.message,
       },
     });
   });

@@ -36,7 +36,7 @@ async function mailOwner(
       return;
     }
     const mail = build({ displayName: page.displayName, paidUntil: page.paidUntil });
-    await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
+    await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail, audience: 'owner' });
   } catch (error) {
     deps.log?.error({ pageId, err: String(error) }, 'renewal email could not be queued');
   }

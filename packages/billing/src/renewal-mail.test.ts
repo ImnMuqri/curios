@@ -45,6 +45,8 @@ describe('notifyRenewalFailure', () => {
     expect(name).toBe(MAIL_QUEUE);
     expect(mail?.to).toBe(email);
     expect(mail?.subject).toBe("We couldn't renew your Curios plan");
+    // An owner's notification: the admin's "Emails to owners" switch stops it.
+    expect(mail?.audience).toBe('owner');
     expect(mail?.text).toContain("We'll try again tomorrow.");
   });
 

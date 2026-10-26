@@ -985,7 +985,7 @@ describe('the monthly cap', () => {
   it('emails the owner once a month when the limit is reached, and never twice', async () => {
     await usageAt(500);
     const { gateway } = chatSpyGateway();
-    const mailQueue = { add: vi.fn(async (_name: string, _data: { subject: string; html?: string }, _opts?: unknown) => ({})) };
+    const mailQueue = { add: vi.fn(async (_name: string, _data: { subject: string; html?: string; audience?: 'owner' }, _opts?: unknown) => ({})) };
 
     await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'harga?' }));
     await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'ada delivery?' }));
@@ -993,6 +993,8 @@ describe('the monthly cap', () => {
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
     const mail = mailQueue.add.mock.calls[0]?.[1];
     expect(mail?.subject).toBe('Your page reached its monthly limit');
+    // An owner's notification: the admin's "Emails to owners" switch stops it.
+    expect(mail?.audience).toBe('owner');
     expect(mail?.html).toContain('Limit reached');
   });
 

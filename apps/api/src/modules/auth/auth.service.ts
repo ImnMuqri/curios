@@ -1,4 +1,6 @@
 import type { PrismaClient } from '@curios/db';
+import type { Settings } from '@curios/core/settings';
+import { SignupsClosedError } from '../../lib/switches.js';
 import type { Mailer } from '../../lib/mailer.js';
 import { alreadySignedUpMail, resetMail, verifyMail } from './auth-mail.js';
 import {
@@ -38,10 +40,14 @@ export class UnverifiedEmailError extends Error {
  * A new sub is never linked to an existing account by matching the address.
  * That is the account-takeover path: someone registers your address through a
  * provider that does not verify it, and your sign-in merges you into theirs.
+ *
+ * With sign-ups closed (the admin's switch) an existing account still signs in;
+ * only making a new one is refused, with SignupsClosedError.
  */
 export async function findOrCreateAccountForGoogle(
   prisma: PrismaClient,
   profile: GoogleProfile,
+  settings: Settings,
 ): Promise<{ accountId: string }> {
   if (!profile.emailVerified) throw new UnverifiedEmailError();
 
@@ -51,6 +57,7 @@ export async function findOrCreateAccountForGoogle(
   });
 
   if (existing) return { accountId: existing.accountId };
+  if (!settings.switches.signups) throw new SignupsClosedError();
 
   // Account.email is unique, so a second person with a colliding address gets a
   // disambiguated value rather than being merged into someone else's account.
@@ -129,11 +136,15 @@ const normaliseEmail = (email: string): string => email.trim().toLowerCase();
  * An existing address writes NO row. `Account.email` is unique, so a second
  * insert would either fail or force the disambiguation the Google path uses,
  * producing a duplicate account the owner could never explain.
+ *
+ * With sign-ups closed (the admin's switch) every address is refused alike,
+ * before anything is read, so the refusal says nothing about who has an account.
  */
 export async function signUpWithPassword(
-  deps: { prisma: PrismaClient; mailer: Mailer; fetcher?: Fetcher },
+  deps: { prisma: PrismaClient; mailer: Mailer; fetcher?: Fetcher; settings: Settings },
   input: { email: string; password: string },
 ): Promise<void> {
+  if (!deps.settings.switches.signups) throw new SignupsClosedError();
   const email = normaliseEmail(input.email);
 
   if (input.password.length < MIN_PASSWORD_LENGTH) {

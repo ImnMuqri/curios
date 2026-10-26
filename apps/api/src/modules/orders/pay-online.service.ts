@@ -2,9 +2,11 @@ import { ChipRefusedError, DEAD_PURCHASE_STATUSES, wasPaid, type ChipClient, typ
 import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidAndSentOwnerMail, paidOrderMail, paidTwiceMail } from '@curios/core';
 import { openSecret } from '@curios/core/secret-box';
 import { chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, type OnlineChoice, type OnlineOffer } from '@curios/core/shop-pay';
+import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import { errName } from '../billing/billing.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
+import { PaymentsOffError } from '../../lib/switches.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
 import { deliverOrder, queueDeliveryMail } from './deliver.service.js';
@@ -157,8 +159,12 @@ async function methodsAt(deps: PayOnlineDeps, account: ShopAccount, client: Chip
 
 const NOTHING_ONLINE: OnlineOffer = { fpx: false, wallets: [], card: false };
 
-/** What checkout may offer online for this shop at this total: the board's choices CHIP lists for the owner's key. */
-export async function payMethodsFor(deps: PayOnlineDeps, handle: string, amountCents: number, now: Date): Promise<OnlineOffer> {
+/**
+ * What checkout may offer online for this shop at this total: the board's choices CHIP lists for
+ * the owner's key. Nothing, without asking CHIP, while the admin has CHIP payments switched off.
+ */
+export async function payMethodsFor(deps: PayOnlineDeps, handle: string, amountCents: number, now: Date, settings: Settings): Promise<OnlineOffer> {
+  if (!settings.switches.chipPayments) return NOTHING_ONLINE;
   const page = await deps.prisma.page.findUnique({
     where: { handle: handle.toLowerCase() },
     select: { mode: true, storeEnabled: true, suspendedAt: true, paymentAccount: { select: ACCOUNT_SELECT } },
@@ -186,7 +192,8 @@ const refuseFor = (status: string): void => {
  * to send the customer. `{ url: null }` says online payment is not available
  * right now (CHIP down, the key refused or unopenable, a test key in
  * production, a method not offered): the order stays placed, and checkout
- * offers the owner's QR instead.
+ * offers the owner's QR instead. With CHIP payments switched off by the admin
+ * it is refused outright (PAYMENTS_OFF), before CHIP is asked anything.
  */
 export async function startOnlinePayment(
   deps: PayOnlineDeps,
@@ -194,6 +201,7 @@ export async function startOnlinePayment(
   /** `email` may be left out when the order has its own (a digital order's buyer already gave one). */
   input: OnlineChoice & { email?: string },
   now: Date,
+  settings: Settings,
 ): Promise<{ url: string | null }> {
   const order = await deps.prisma.order.findUnique({
     where: { tokenHash: hashSessionValue(token) },
@@ -221,6 +229,7 @@ export async function startOnlinePayment(
   if (!payerEmail) throw new EmailRequiredError();
   // A receipt is with the shop to check: a second payment now would leave two for one order.
   if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
+  if (!settings.switches.chipPayments) throw new PaymentsOffError();
   const unavailable = (reason: string) => {
     deps.log.info({ orderId: order.id, reason }, 'online payment not available');
     return { url: null };
@@ -526,7 +535,7 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
         : paidAfterCancelMail({ ...base, url, appUrl: deps.appUrl });
     const warn = (error: unknown) => deps.log.warn({ orderId, err: errName(error) }, 'could not queue the order-paid email');
     void deps.mailQueue()
-      .add(MAIL_QUEUE, { to: order.page.account.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+      .add(MAIL_QUEUE, { to: order.page.account.email, ...mail, audience: 'owner' }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
       .catch(warn);
   } catch (error) {
     deps.log.warn({ orderId, err: errName(error) }, 'could not queue the order-paid email');

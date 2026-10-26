@@ -72,6 +72,8 @@ describe('runRenewalReminders', () => {
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
     const [, mail] = mailQueue.add.mock.calls[0] ?? [];
     expect(mail?.to).toBe(page.email);
+    // An owner's notification: the admin's "Emails to owners" switch stops it.
+    expect(mail?.audience).toBe('owner');
     expect(mail?.text).toContain(`${APP_URL}/app/billing`);
     expect(await reminderMark(page.pageId)).toEqual(paidUntil);
   });
@@ -234,6 +236,7 @@ describe('runPlanEndedMails', () => {
     const mail = mailQueue.add.mock.calls[0]?.[1];
     expect(mail?.to).toBe(page.email);
     expect(mail?.subject).toBe('Your Curios plan for Nadia Bakes has ended');
+    expect(mail?.audience).toBe('owner');
     expect(mail?.html).toContain('Plan ended');
     expect(mail?.text).toContain(`${APP_URL}/app/billing`);
   });

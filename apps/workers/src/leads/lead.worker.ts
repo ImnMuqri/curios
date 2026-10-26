@@ -110,6 +110,7 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
       subject: mail.subject,
       text: mail.text,
       html: mail.html,
+      audience: 'owner',
     });
   }
 
@@ -118,7 +119,7 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
   // email, so it goes whether or not the lead email is on.
   if (data.lastFreeLead) {
     const spent = trialSpentMail({ displayName: lead.page.displayName, appUrl: deps.appUrl ?? 'http://localhost:3000' });
-    await deps.mailQueue.add(MAIL_QUEUE, { to: lead.page.account.email, ...spent });
+    await deps.mailQueue.add(MAIL_QUEUE, { to: lead.page.account.email, ...spent, audience: 'owner' });
   }
 }
 

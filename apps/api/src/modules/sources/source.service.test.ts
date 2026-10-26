@@ -1,10 +1,13 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { INGEST_QUEUE } from '@curios/core';
+import { defaultSettings } from '@curios/core/settings';
 import type { QueueLike } from '../ingest/ingest.service.js';
 import { NotRecheckableError, recheckSource, removeSource, SourceBusyError, SourceNotFoundError } from './source.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
+/** Every switch on: reading not paused. The routes' suite covers it paused. */
+const settings = defaultSettings();
 
 beforeEach(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
@@ -129,7 +132,7 @@ describe('recheckSource', () => {
     });
     const q = queue();
 
-    await expect(recheckSource({ prisma, queue: q }, accountId, source.id)).resolves.toEqual({ ingestionId: source.id });
+    await expect(recheckSource({ prisma, queue: q, settings }, accountId, source.id)).resolves.toEqual({ ingestionId: source.id });
 
     const row = await prisma.ingestion.findUniqueOrThrow({ where: { id: source.id } });
     expect(row).toMatchObject({ status: 'QUEUED', error: null, extractedCount: 0, progress: 0, tracked: true });
@@ -148,7 +151,7 @@ describe('recheckSource', () => {
     const source = await aSource(pageId, { status });
     const q = queue();
 
-    await expect(recheckSource({ prisma, queue: q }, accountId, source.id)).rejects.toBeInstanceOf(SourceBusyError);
+    await expect(recheckSource({ prisma, queue: q, settings }, accountId, source.id)).rejects.toBeInstanceOf(SourceBusyError);
     expect(q.add).not.toHaveBeenCalled();
   });
 
@@ -157,7 +160,7 @@ describe('recheckSource', () => {
     const source = await aSource(pageId, { pasted: true });
     const q = queue();
 
-    await expect(recheckSource({ prisma, queue: q }, accountId, source.id)).rejects.toBeInstanceOf(NotRecheckableError);
+    await expect(recheckSource({ prisma, queue: q, settings }, accountId, source.id)).rejects.toBeInstanceOf(NotRecheckableError);
     expect(q.add).not.toHaveBeenCalled();
   });
 
@@ -166,7 +169,7 @@ describe('recheckSource', () => {
     const source = await aSource(pageId);
     const q = { add: vi.fn<QueueLike['add']>(async () => { throw new Error('redis down'); }) };
 
-    await expect(recheckSource({ prisma, queue: q }, accountId, source.id)).rejects.toThrow('redis down');
+    await expect(recheckSource({ prisma, queue: q, settings }, accountId, source.id)).rejects.toThrow('redis down');
     expect((await prisma.ingestion.findUniqueOrThrow({ where: { id: source.id } })).status).toBe('FAILED');
   });
 
@@ -176,7 +179,7 @@ describe('recheckSource', () => {
     const theirs = await aSource(them.pageId);
     const q = queue();
 
-    await expect(recheckSource({ prisma, queue: q }, me.accountId, theirs.id)).rejects.toBeInstanceOf(SourceNotFoundError);
+    await expect(recheckSource({ prisma, queue: q, settings }, me.accountId, theirs.id)).rejects.toBeInstanceOf(SourceNotFoundError);
     expect(q.add).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,7 @@ import { createQueueMailer, type Mailer } from '../../lib/mailer.js';
 import type { Fetcher } from './password.service.js';
 import { requireSession, UnauthenticatedError } from '../../plugins/session.js';
 import { DOMAIN_ERROR_CODES } from '../../plugins/errors.js';
+import { SignupsClosedError } from '../../lib/switches.js';
 import {
   addPassword,
   findOrCreateAccountForGoogle,
@@ -105,7 +106,7 @@ export const authRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (app, o
   const fetcher = options.fetcher;
 
   app.post('/auth/signup', { schema: { body: credentials } }, async (request, reply) => {
-    await signUpWithPassword({ prisma: app.prisma, mailer, fetcher }, request.body);
+    await signUpWithPassword({ prisma: app.prisma, mailer, fetcher, settings: await app.settings.get() }, request.body);
     // 202, not 200: the account is not usable until the address is confirmed.
     return reply.status(202).send({ status: 'check_your_email' });
   });
@@ -292,7 +293,7 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
           return reply.redirect(`${appUrl}/app/settings?linked=google`);
         }
 
-        const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile);
+        const { accountId } = await findOrCreateAccountForGoogle(app.prisma, profile, await app.settings.get());
         const { value, ...cookie } = sessionCookie((await createSession(app.prisma, accountId)).value);
 
         return reply.setCookie(SESSION_COOKIE, value, cookie).redirect(`${appUrl}/app`);
@@ -305,6 +306,9 @@ export const authFlowRoutes: FastifyPluginAsyncZod<AuthRouteOptions> = async (ap
         // every failure ends in a redirect and never a JSON body. The real
         // error still goes to the log; only the code reaching the browser is
         // filtered through the allow-list above.
+        // Sign-ups closed and this Google account has none yet: back to the sign-up page, which
+        // says Curios is full. Not a failure, so not logged as one.
+        if (error instanceof SignupsClosedError) return reply.redirect(`${appUrl}/signup?closed=1`);
         request.log.error({ err: error }, 'google oauth callback failed');
         return reply.redirect(`${failureUrl}?error=${callbackErrorCode(error)}`);
       }

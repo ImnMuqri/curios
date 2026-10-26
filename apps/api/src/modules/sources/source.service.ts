@@ -1,6 +1,8 @@
 import type { PrismaClient } from '@curios/db';
 import { INGEST_QUEUE } from '@curios/core';
+import type { Settings } from '@curios/core/settings';
 import type { QueueLike } from '../ingest/ingest.service.js';
+import { ReadingPausedError } from '../../lib/switches.js';
 
 export class SourceNotFoundError extends Error {
   readonly statusCode = 404;
@@ -82,9 +84,12 @@ export async function removeSource(
  *
  * No host guard here: the address passed it when the source was added, and
  * the worker's own fetch is guarded at connect time either way.
+ *
+ * Refused while the admin has reading paused: a new source still waits in the
+ * paused queue, but a re-read is the owner's to ask again for later.
  */
 export async function recheckSource(
-  deps: { prisma: PrismaClient; queue: QueueLike },
+  deps: { prisma: PrismaClient; queue: QueueLike; settings: Settings },
   accountId: string,
   sourceId: string,
 ): Promise<{ ingestionId: string }> {
@@ -94,6 +99,7 @@ export async function recheckSource(
   });
   if (!source) throw new SourceNotFoundError();
   if (source.sourceUrl === null) throw new NotRecheckableError();
+  if (!deps.settings.switches.reading) throw new ReadingPausedError();
 
   const claimed = await deps.prisma.ingestion.updateMany({
     where: { id: source.id, page: { accountId }, status: { in: [...SETTLED] } },

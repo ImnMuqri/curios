@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
+import { defaultSettings } from '@curios/core/settings';
 
 const getOwnerPage = vi.fn();
 const getConversationUsage = vi.fn();
@@ -9,7 +10,8 @@ const countLeadsThisMonth = vi.fn();
 const countOrdersThisMonth = vi.fn();
 const getSignInMethods = vi.fn();
 const getRenewalCard = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getRenewalCard, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods }));
+const getSettings = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getRenewalCard, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods, getSettings }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -93,6 +95,25 @@ describe('BillingPage', () => {
     countOrdersThisMonth.mockResolvedValue(7);
     getSignInMethods.mockResolvedValue({ email: 'nadia@example.com' });
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
+    getSettings.mockReset();
+    getSettings.mockResolvedValue(defaultSettings());
+  });
+
+  it('says online payments are paused, in place of the pay buttons, while CHIP payments are off', async () => {
+    const off = defaultSettings();
+    off.switches.chipPayments = false;
+    getSettings.mockResolvedValue(off);
+    await renderWith(page);
+
+    expect(screen.getByText('Online payments are paused for a moment. Try again soon.')).toBeInTheDocument();
+    expect(PayButtons).not.toHaveBeenCalled();
+  });
+
+  it('offers the pay buttons again once CHIP payments are back on, with no paused line', async () => {
+    await renderWith(page);
+
+    expect(PayButtons).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Online payments are paused for a moment. Try again soon.')).toBeNull();
   });
 
   it('offers both plans at their published prices to a business page', async () => {

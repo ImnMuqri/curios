@@ -51,6 +51,8 @@ beforeAll(async () => {
   await Promise.all([app.ready(), live.ready(), throttled.ready()]);
 });
 afterAll(async () => {
+  // SystemSetting is reached by no truncate cascade: the payments switch's row goes here.
+  await app.prisma.systemSetting.deleteMany({ where: { key: 'switch.chipPayments' } });
   await Promise.all([app.close(), live.close(), throttled.close()]);
 });
 
@@ -749,7 +751,8 @@ describe('fix round 1: the owner cancels an order being paid online', () => {
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
     const [name, data, opts] = mailQueue.add.mock.calls[0]!;
     expect(name).toBe('mail');
-    expect(data).toMatchObject({ subject: 'New order #1 · RM220 · Paid' });
+    // An owner's notification: the admin's "Emails to owners" switch stops it.
+    expect(data).toMatchObject({ subject: 'New order #1 · RM220 · Paid', audience: 'owner' });
     expect(data.to).toMatch(/^pay-.*@example\.com$/);
     expect(data.html).toContain('Aisyah ordered and paid RM220');
     expect(data.html).toContain('FPX · Maybank2u · Ref CH0042');
@@ -993,5 +996,34 @@ describe('final review: a second payment is never invisible', () => {
     client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'paid', paymentMethod: 'fpx' });
     expect((await callback(app, shop.orderId, purchase.id, ownerKey.privateKey)).json()).toEqual({ status: 'paid-twice' });
     expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'MANUAL', chipPaidTwiceAt: expect.any(Date) });
+  });
+});
+
+describe('the CHIP payments switch', () => {
+  /** The switch as the admin's route stores it, then the cache cleared, as that route does. */
+  async function paymentsSwitch(on: boolean) {
+    await app.prisma.systemSetting.upsert({ where: { key: 'switch.chipPayments' }, create: { key: 'switch.chipPayments', value: on }, update: { value: on } });
+    app.settings.clear();
+  }
+
+  it('off: checkout is offered nothing online and paying is a 503 PAYMENTS_OFF, with no purchase made; on again, both work', async () => {
+    const shop = await aShopWithOrder(app);
+    client.listPaymentMethods.mockResolvedValue(ALL_METHODS);
+    client.createPurchase.mockResolvedValue(aPurchase());
+    await paymentsSwitch(false);
+    try {
+      const methods = await app.inject({ method: 'GET', url: `/store/${shop.handle}/pay-methods?amount=22000`, remoteAddress: from() });
+      expect(methods.json()).toEqual({ fpx: false, wallets: [], card: false });
+      const res = await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' });
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'PAYMENTS_OFF', message: 'Online payments are paused for a moment. Try again soon.' });
+      expect(client.createPurchase).not.toHaveBeenCalled();
+      expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PLACED', chipPurchaseId: null });
+    } finally {
+      await paymentsSwitch(true);
+    }
+    const methods = await app.inject({ method: 'GET', url: `/store/${shop.handle}/pay-methods?amount=22000`, remoteAddress: from() });
+    expect(methods.json()).toEqual({ fpx: true, wallets: ['tng', 'grab', 'spay'], card: true });
+    expect((await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' })).statusCode).toBe(200);
   });
 });

@@ -12,9 +12,10 @@ vi.mock('next/navigation', () => ({
   }),
   useRouter: () => ({ refresh }),
 }));
-vi.mock('@curios/db-read', () => ({ getOrderByToken: vi.fn() }));
+// The settings in force: every switch on, unless a test turns one off.
+vi.mock('@curios/db-read', async () => ({ getOrderByToken: vi.fn(), getSettings: vi.fn(async () => (await import('@curios/core/settings')).defaultSettings()) }));
 
-const { getOrderByToken } = await import('@curios/db-read');
+const { getOrderByToken, getSettings } = await import('@curios/db-read');
 const { OrderView } = await import('./order-view.js');
 const { default: OrderPage, generateMetadata } = await import('./page.js');
 
@@ -733,6 +734,27 @@ describe('/[handle]/order/[token]', () => {
     });
     render(await OrderPage(params('keklina', 'tok')));
     expect(await screen.findByRole('region', { name: copy.tryPayAgain })).toBeInTheDocument();
+  });
+
+  it('offers no online way to try again while CHIP payments are off', async () => {
+    const off = (await import('@curios/core/settings')).defaultSettings();
+    off.switches.chipPayments = false;
+    vi.mocked(getSettings).mockResolvedValueOnce(off);
+    const fetch = vi.fn();
+    vi.stubGlobal('fetch', fetch);
+    vi.mocked(getOrderByToken).mockResolvedValueOnce({
+      ...order,
+      receiptKey: null,
+      receiptType: null,
+      receiptUploadedAt: null,
+      // CHIP the only way to pay, so the retry would be offered if the switch let it.
+      page: { ...order.page, paymentQrKey: null, bankName: null, bankAccountName: null, bankAccountNumber: null, links: [], chipMethods: ['fpx'] },
+    });
+    render(await OrderPage(params('keklina', 'tok')));
+    expect(screen.getByRole('heading', { level: 1, name: 'Order #14' })).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: copy.tryPayAgain })).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
   });
 
   it('draws an order paid online as paid, from the server, with how and the reference', async () => {

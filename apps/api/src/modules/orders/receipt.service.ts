@@ -109,7 +109,7 @@ export async function uploadReceipt(
       });
       // Not awaited, as the new-order email is not: the reply never waits on the queue.
       void deps.mailQueue
-        .add(MAIL_QUEUE, { to: order.page.account.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+        .add(MAIL_QUEUE, { to: order.page.account.email, ...mail, audience: 'owner' }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
         .catch(warn);
     } catch (error) {
       warn(error);

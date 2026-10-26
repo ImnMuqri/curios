@@ -13,7 +13,7 @@ import {
   type OrderState,
   type PlanState,
 } from '@curios/core';
-import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSignInMethods } from '@curios/db-read';
+import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSettings, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { cardOffBanner, daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 import { AutoRenew } from './auto-renew.js';
@@ -142,6 +142,8 @@ export default async function BillingPage({
 
   // A personal page pays nothing and has no billing story to tell, so it is
   // asked for none of these.
+  // While the admin has CHIP payments off, the pay buttons give way to a line that says so.
+  const paymentsOn = personal ? true : (await getSettings()).switches.chipPayments;
   const [usage, leads, orders, payments, account, card] = personal
     ? [null, 0, 0, [], null, null]
     : await Promise.all([
@@ -251,11 +253,15 @@ export default async function BillingPage({
                 </p>
                 <UpgradeToBusiness />
               </div>
-            ) : (
+            ) : paymentsOn ? (
               <PayButtons
                 options={options}
                 timeline={state.kind === 'paid' || state.kind === 'lapsed' ? { today: shortDate(now), paidUntil: paidUntil ? shortDate(paidUntil) : null } : undefined}
               />
+            ) : (
+              <p className={styles.banner} role="status">
+                Online payments are paused for a moment. Try again soon.
+              </p>
             )}
 
             {canReset ? (

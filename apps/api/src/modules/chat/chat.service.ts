@@ -2,6 +2,7 @@ import { canCapture, capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
+import type { Settings } from '@curios/core/settings';
 import { lookUpOrder, productCard, type OrderCard, type ProductCard } from './order-lookup.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
@@ -73,7 +74,16 @@ export interface ChatDeps {
    * time a month's conversations run out. Optional, like groupQueue.
    */
   mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
+  /**
+   * The admin's settings in force for this turn (`app.settings.get()`, read per request by the
+   * routes). With the chat switch off, every turn gets the fixed reply and no model is asked.
+   * Left out, every switch counts as on, which only tests rely on: the routes always pass it.
+   */
+  settings?: Settings;
 }
+
+/** Whether the admin has switched the chat off for everyone. */
+export const chatSwitchedOff = (deps: Pick<ChatDeps, 'settings'>): boolean => deps.settings?.switches.chat === false;
 
 /**
  * Tells the owner, once a month, that their page reached its limit. Claimed
@@ -98,7 +108,7 @@ async function mailCapReached(deps: ChatDeps, page: { id: string; displayName: s
       resets: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
       appUrl: process.env.APP_URL ?? 'http://localhost:3000',
     });
-    await deps.mailQueue.add(MAIL_QUEUE, { to: owner.account.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true });
+    await deps.mailQueue.add(MAIL_QUEUE, { to: owner.account.email, ...mail, audience: 'owner' }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true });
   } catch (error) {
     deps.log?.warn?.({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'could not queue the monthly-limit email');
   }
@@ -372,6 +382,9 @@ export async function* answer(
   input: { handle: string; question: string; conversationId?: string },
 ): AsyncIterable<AnswerEvent> {
   const { prisma, gateway, cap } = deps;
+  // Switched off by the admin: the turn is kept as one over the cap is, and answered with the same
+  // fixed reply, but nothing is asked of a model, not even the free answers' same-question check.
+  const chatOff = chatSwitchedOff(deps);
 
   const page = await prisma.page.findUnique({
     // An unpublished page is a draft: it has not been reviewed, so it must not
@@ -404,7 +417,7 @@ export async function* answer(
   // no conversation on the meter. The conversation row exists only to hold
   // which order it is waiting on; the meter counts it when its first real
   // question is written (below). Free, so it works over the cap too.
-  const lookup = await lookUpOrder(prisma, page, thread?.pendingOrderId ?? null, input.question);
+  const lookup = chatOff ? null : await lookUpOrder(prisma, page, thread?.pendingOrderId ?? null, input.question);
   if (lookup) {
     let lookupConversationId: string;
     if (thread) {
@@ -532,7 +545,7 @@ export async function* answer(
     // A new wording of a question the owner already answered joins that
     // topic now, decided (groupedAt set, so the grouping job leaves it be),
     // and the pinned branch below answers it with the owner's words.
-    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, asked);
+    const answeredTopicId = chatOff ? null : await answeredTopicFor(deps, page, conversationId, asked);
 
     // Created together: a wording is never without its topic. A concurrent
     // first ask of the same wording loses the unique race and is retried as
@@ -645,7 +658,7 @@ export async function* answer(
       select: { answer: true },
     });
 
-    if (topic?.answer) {
+    if (topic?.answer && !chatOff) {
       await markAsk(true);
       yield { type: 'text', text: topic.answer };
       await prisma.message.create({
@@ -674,7 +687,7 @@ export async function* answer(
       select: { count: true },
     });
 
-    if (isOverCap({ used: used?.count ?? 0, cap })) {
+    if (chatOff || isOverCap({ used: used?.count ?? 0, cap })) {
       // The same two events the pinned branch yields, so the sheet renders this
       // through a path it already has. `intent` is untouched: a capped page
       // still offers the capture card, because the lead is what the owner is
@@ -686,11 +699,18 @@ export async function* answer(
       // manual-verification-caps.md's checks 6 and 7 -- a spend control whose
       // stated failure mode is being indistinguishable from success should not
       // also be invisible when it succeeds.
-      deps.log?.info?.(
-        { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
-        'conversation cap reached; chat degraded to the fixed reply',
-      );
-      await mailCapReached(deps, page);
+      //
+      // The chat switch takes the same path, but it is not the cap: no "reached its monthly
+      // limit" email, and the month's counter is left unclaimed for when the switch is back on.
+      if (chatOff) {
+        deps.log?.info?.({ pageId: page.id, handle: input.handle }, 'chat is switched off; the fixed reply');
+      } else {
+        deps.log?.info?.(
+          { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
+          'conversation cap reached; chat degraded to the fixed reply',
+        );
+        await mailCapReached(deps, page);
+      }
       yield { type: 'text', text: CAP_REACHED_REPLY };
       await prisma.message.create({
         data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },

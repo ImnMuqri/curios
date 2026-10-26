@@ -105,7 +105,7 @@ export async function runRenewalReminders(deps: {
         : null,
     });
     try {
-      await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
+      await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail, audience: 'owner' });
     } catch (error) {
       // One page's email failing -- Redis briefly unreachable, say -- must not
       // stop the rest. The claim above already stands, so this page stays
@@ -184,7 +184,7 @@ export async function runPlanEndedMails(deps: {
     };
     const mail = planEndedMail({ displayName: page.displayName, paidUntil, appUrl: deps.appUrl, shop });
     try {
-      await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail });
+      await deps.mailQueue.add(MAIL_QUEUE, { to: page.account.email, ...mail, audience: 'owner' });
     } catch (error) {
       // As above: the claim stands, and losing one is the accepted failure.
       deps.log?.error({ pageId: page.id, err: String(error) }, 'plan-ended email could not be queued');

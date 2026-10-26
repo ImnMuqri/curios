@@ -211,6 +211,8 @@ describe('delivering a paid order', () => {
     expect(mails).toHaveLength(1);
     const text = mails[0]!.text;
     expect(mails[0]!.subject).toContain(`#${order.number}`);
+    // The customer's email: no audience, so "Emails to owners" off never stops it.
+    expect(mails[0]!.audience).toBeUndefined();
     for (const g of grants) expect(text).toContain(`/store/orders/${token}/files/${g.id}`);
     expect(text).toContain(`/store/orders/${token}/link/${order.lines[1]!.id}`);
     expect(text).not.toContain('https://example.com/course');

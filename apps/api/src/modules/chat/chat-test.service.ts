@@ -5,6 +5,7 @@ import {
   ANSWER_PAGE_SELECT,
   answeredTopicFor,
   CAP_REACHED_REPLY,
+  chatSwitchedOff,
   MAX_HISTORY_MESSAGES,
   PageNotFoundError,
   promptFor,
@@ -123,13 +124,15 @@ async function citedSources(
  *   reply, so does the tester (the Alerts board: "the tester shows the fixed
  *   reply too"), and no model is called.
  * - No `intent`, so the lead card is never offered.
+ * - The chat switched off by the admin: the fixed reply, as a visitor gets,
+ *   and no model is called.
  * - Works before the page is published: checking it is the point.
  *
  * The model calls it makes are recorded against the page like any other, so
  * their cost is visible; the per-account rate limit is what bounds them.
  */
 export async function testAnswer(
-  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'cap'>,
+  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'cap' | 'settings'>,
   input: { accountId: string; question: string; history: TestTurn[] },
 ): Promise<TestReply> {
   const { prisma, gateway } = deps;
@@ -139,6 +142,8 @@ export async function testAnswer(
     select: ANSWER_PAGE_SELECT,
   });
   if (!page) throw new PageNotFoundError();
+  // As on the live chat: switched off, even the owner's own answers give way to the fixed reply.
+  if (chatSwitchedOff(deps)) return { reply: CAP_REACHED_REPLY, from: 'limit' };
 
   // The owner's own answer wins, as on the live chat: a wording already in
   // an answered topic, or (for a new wording) the same judge the chat uses.

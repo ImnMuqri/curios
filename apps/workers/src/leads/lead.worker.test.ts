@@ -100,7 +100,8 @@ describe('runLeadJob', () => {
     await runLeadJob({ prisma, gateway, mailQueue }, { leadId });
 
     const job = mailQueue.add.mock.calls[0]?.[1];
-    expect(job).toMatchObject({ to: 'n@example.com' });
+    // An owner's notification: the admin's "Emails to owners" switch stops it.
+    expect(job).toMatchObject({ to: 'n@example.com', audience: 'owner' });
     expect(job?.text).toContain('nak kek butter 2kg');
     expect(job?.text).toContain('https://wa.me/60123456789');
   });
@@ -157,6 +158,6 @@ describe('runLeadJob', () => {
     await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue }, { leadId, lastFreeLead: true });
 
     expect(mailQueue.add).toHaveBeenCalledOnce();
-    expect(mailQueue.add.mock.calls[0]?.[1]).toMatchObject({ to: 'n@example.com', subject: 'Your page stopped taking numbers' });
+    expect(mailQueue.add.mock.calls[0]?.[1]).toMatchObject({ to: 'n@example.com', subject: 'Your page stopped taking numbers', audience: 'owner' });
   });
 });

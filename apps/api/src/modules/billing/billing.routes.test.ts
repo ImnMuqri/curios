@@ -29,8 +29,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // SystemSetting is reached by no truncate cascade: the payments switch's row goes here.
+  await app.prisma.systemSetting.deleteMany({ where: { key: 'switch.chipPayments' } });
   await app.close();
 });
+
+/** The switch as the admin's route stores it, then the cache cleared, as that route does. */
+async function paymentsSwitch(on: boolean) {
+  await app.prisma.systemSetting.upsert({ where: { key: 'switch.chipPayments' }, create: { key: 'switch.chipPayments', value: on }, update: { value: on } });
+  app.settings.clear();
+}
 
 beforeEach(() => {
   for (const fn of Object.values(client)) fn.mockReset();
@@ -206,6 +214,21 @@ describe('POST /billing/purchases', () => {
       select: { providerRef: true, status: true },
     });
     expect(payment).toEqual({ providerRef: null, status: 'PENDING' });
+  });
+
+  it('is a 503 PAYMENTS_OFF while CHIP payments are off, with no payment and no purchase, and starts again once on', async () => {
+    const owner = await anOwner();
+    await paymentsSwitch(false);
+    try {
+      const res = await start(owner.cookie);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'PAYMENTS_OFF', message: 'Online payments are paused for a moment. Try again soon.' });
+      expect(await app.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
+      expect(client.createPurchase).not.toHaveBeenCalled();
+    } finally {
+      await paymentsSwitch(true);
+    }
+    expect((await start(owner.cookie)).statusCode).toBe(201);
   });
 
   it('fails rather than hand out a checkout URL when the purchase id cannot be recorded, leaving an orphaned purchase behind', async () => {

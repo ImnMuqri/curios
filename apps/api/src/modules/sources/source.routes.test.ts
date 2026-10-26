@@ -13,8 +13,16 @@ beforeAll(async () => {
   await app.ready();
 });
 afterAll(async () => {
+  // SystemSetting is reached by no truncate cascade: the reading switch's row goes here.
+  await app.prisma.systemSetting.deleteMany({ where: { key: 'switch.reading' } });
   await app.close();
 });
+
+/** The switch as the admin's route stores it, then the cache cleared, as that route does. */
+async function readingSwitch(on: boolean) {
+  await app.prisma.systemSetting.upsert({ where: { key: 'switch.reading' }, create: { key: 'switch.reading', value: on }, update: { value: on } });
+  app.settings.clear();
+}
 
 async function anOwnerWithASource(status: 'SUCCEEDED' | 'RUNNING' = 'SUCCEEDED') {
   const slug = randomUUID().slice(0, 8);
@@ -121,5 +129,20 @@ describe('POST /sources/:id/recheck', () => {
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('SOURCE_NOT_RECHECKABLE');
     expect((await app.prisma.ingestion.findUniqueOrThrow({ where: { id: mine.sourceId } })).status).toBe('SUCCEEDED');
+  });
+
+  it('is a 503 READING_PAUSED while reading is paused, and leaves the source as it was', async () => {
+    const mine = await anOwnerWithASource();
+    await readingSwitch(false);
+    try {
+      const res = await call(mine.cookie, 'POST', `/sources/${mine.sourceId}/recheck`);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'READING_PAUSED', message: 'Reading new sources is paused for now. Try again later.' });
+      expect((await app.prisma.ingestion.findUniqueOrThrow({ where: { id: mine.sourceId } })).status).toBe('SUCCEEDED');
+    } finally {
+      await readingSwitch(true);
+    }
+    // Back on: re-read as usual.
+    expect((await call(mine.cookie, 'POST', `/sources/${mine.sourceId}/recheck`)).statusCode).toBe(202);
   });
 });

@@ -1,5 +1,6 @@
 import { PLAN_PRICES_CENTS } from '@curios/core';
 import { malaysiaToday } from '@curios/core/orders';
+import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import {
   billDescription,
@@ -64,6 +65,8 @@ type Deps = {
   /** The API's public origin, where CHIP sends the renewal purchase's callback. */
   callbackBaseUrl: string;
   log?: BillingLog;
+  /** The admin's settings in force for this run. With CHIP payments off the run is skipped. */
+  settings: Settings;
   /**
    * Test-only. Runs after the cards are read and before any is claimed, so a test can
    * change a card or its page in that window and prove the claim -- not the read -- decides.
@@ -111,8 +114,16 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
  * A suspended page is paused: never charged, and its card is never dropped for lapsing
  * while it is suspended. Brought back, it is charged on the next run if its plan is still
  * in the window, or its card goes the usual way if the plan ran out past the grace.
+ *
+ * While the admin has CHIP payments switched off the whole run is skipped: nothing is
+ * charged, settled or dropped, and nobody is mailed. The next day's run tries again, inside
+ * the same three days' grace.
  */
 export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
+  if (!deps.settings.switches.chipPayments) {
+    deps.log?.info({}, 'auto-renew skipped: CHIP payments are off');
+    return { charged: 0, pending: 0, failed: 0, stopped: 0 };
+  }
   const cards = await deps.prisma.renewalCard.findMany({
     where: { page: { mode: 'BUSINESS', paidUntil: chargeWindow(deps.now), suspendedAt: null } },
     select: {

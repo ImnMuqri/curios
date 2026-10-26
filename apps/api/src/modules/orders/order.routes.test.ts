@@ -448,6 +448,8 @@ describe('POST /store/:handle/orders', () => {
     const order = await app.prisma.order.findFirstOrThrow({ where: { pageId: shop.pageId }, select: { id: true } });
     expect(data.to).toBe(shop.email);
     expect(data.subject).toBe('New order #1 · RM210');
+    // An owner's notification: the admin's "Emails to owners" switch stops it.
+    expect(data.audience).toBe('owner');
     expect(data.html).toContain(`/app/orders?order=${order.id}`);
     expect(data.html).toContain('Aisyah ordered RM210 from your shop');
 
@@ -675,6 +677,7 @@ describe('POST /store/orders/:token/receipt', () => {
     expect(name).toBe(MAIL_QUEUE);
     expect(data.to).toBe(shop.email);
     expect(data.subject).toBe('Receipt uploaded for #12');
+    expect(data.audience).toBe('owner');
     expect(data.html).toContain('Aisyah sent a receipt for order #12');
     expect(data.html).toContain(`/app/orders?order=${order.id}`);
   });
