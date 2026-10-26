@@ -1,9 +1,8 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ApiError, apiFetch } from '../../../lib/api.js';
-import styles from './pages.module.css';
+import { ReasonDialog } from '../reason-dialog.js';
 
 export type ActionKind = 'suspend' | 'unsuspend' | 'del' | 'comp' | 'reset' | 'owner';
 
@@ -104,106 +103,39 @@ export function ActionDialog({
 }) {
   const router = useRouter();
   const copy = copyFor(kind, page);
-  const ids = useId();
-  const reasonRef = useRef<HTMLInputElement>(null);
-  const [reason, setReason] = useState('');
-  const [typed, setTyped] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    reasonRef.current?.focus();
-  }, []);
-
-  const mustType = kind === 'del';
-  const blocked = busy || !reason.trim() || (mustType && typed.trim() !== page.handle);
-
-  async function confirm() {
-    if (blocked) return;
-    setBusy(true);
-    setError(null);
+  async function confirm(reason: string) {
     try {
       const base = `/admin/pages/${encodeURIComponent(page.id)}`;
       if (kind === 'del') {
-        await apiFetch(base, { method: 'DELETE', body: JSON.stringify({ reason: reason.trim(), handle: typed.trim() }) });
+        await apiFetch(base, { method: 'DELETE', body: JSON.stringify({ reason, handle: page.handle }) });
       } else {
-        await apiFetch(`${base}/${ROUTE[kind]}`, { method: 'POST', body: JSON.stringify({ reason: reason.trim() }) });
+        await apiFetch(`${base}/${ROUTE[kind]}`, { method: 'POST', body: JSON.stringify({ reason }) });
       }
-      if (kind === 'owner') {
-        // The API wrote the VIEWED_AS_OWNER row; the route behind this only reads.
-        router.push(`/pages/${page.id}/as-owner`);
-        onDone('');
-        return;
-      }
-      router.refresh();
-      onDone(copy.toast);
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Something failed. Try again.');
-      setBusy(false);
+      throw e instanceof ApiError ? e : new Error('Something failed. Try again.');
     }
+    if (kind === 'owner') {
+      // The API wrote the VIEWED_AS_OWNER row; the route behind this only reads.
+      router.push(`/pages/${page.id}/as-owner`);
+      onDone('');
+      return;
+    }
+    router.refresh();
+    onDone(copy.toast);
   }
 
   return (
-    <div className={styles.scrim} onClick={busy ? undefined : onClose}>
-      <div
-        className={styles.modal}
-        role="dialog"
-        aria-modal="true"
-        aria-label={copy.title}
-        onClick={(e) => e.stopPropagation()}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape' && !busy) onClose();
-        }}
-      >
-        <h3>{copy.title}</h3>
-        <p>{copy.body}</p>
-
-        <label htmlFor={`${ids}-why`}>Reason, for the audit log</label>
-        <input
-          ref={reasonRef}
-          id={`${ids}-why`}
-          value={reason}
-          maxLength={500}
-          placeholder={copy.placeholder}
-          onChange={(e) => setReason(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void confirm();
-          }}
-        />
-        {(kind === 'suspend' || kind === 'unsuspend') && <small className={styles.hint}>The owner sees this.</small>}
-
-        {mustType && (
-          <>
-            <label htmlFor={`${ids}-type`}>Type {page.handle} to confirm</label>
-            <input
-              id={`${ids}-type`}
-              value={typed}
-              autoComplete="off"
-              onChange={(e) => setTyped(e.target.value)}
-            />
-          </>
-        )}
-
-        {error && (
-          <p className={styles.err} role="alert">
-            {error}
-          </p>
-        )}
-
-        <div className={styles.mact}>
-          <button type="button" className={styles.ghost} onClick={onClose} disabled={busy}>
-            Cancel
-          </button>
-          <button
-            type="button"
-            className={copy.danger ? styles.danger : styles.prim}
-            disabled={blocked}
-            onClick={() => void confirm()}
-          >
-            {copy.confirm}
-          </button>
-        </div>
-      </div>
-    </div>
+    <ReasonDialog
+      title={copy.title}
+      text={copy.body}
+      confirmLabel={copy.confirm}
+      placeholder={copy.placeholder}
+      danger={copy.danger}
+      ownerSees={kind === 'suspend' || kind === 'unsuspend'}
+      typeToConfirm={kind === 'del' ? page.handle : undefined}
+      onConfirm={confirm}
+      onClose={onClose}
+    />
   );
 }
