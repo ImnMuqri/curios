@@ -151,7 +151,7 @@ export function createBillingWorker(deps: {
             appUrl: deps.appUrl,
             callbackBaseUrl: deps.callbackBaseUrl,
             log: deps.log,
-            settings: await deps.settings.get(),
+            settings: deps.settings,
           });
           deps.log?.info(renewed, 'auto-renew run finished');
         } catch (error) {

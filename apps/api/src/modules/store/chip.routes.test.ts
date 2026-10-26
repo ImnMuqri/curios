@@ -36,6 +36,8 @@ beforeAll(async () => {
   await Promise.all([app.ready(), live.ready(), unconfigured.ready()]);
 });
 afterAll(async () => {
+  // SystemSetting is reached by no truncate cascade: the payments switch's row goes here.
+  await app.prisma.systemSetting.deleteMany({ where: { key: 'switch.chipPayments' } });
   await Promise.all([app.close(), live.close(), unconfigured.close()]);
 });
 
@@ -419,6 +421,27 @@ describe('POST /store/chip/test', () => {
     const res = await call(app, 'POST', '/store/chip/test', owner.cookie);
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('CHIP_NOT_CONNECTED');
+  });
+
+  it('is a 503 PAYMENTS_OFF, with no purchase, while CHIP payments are off, and starts again once on', async () => {
+    /** The switch as the admin's route stores it, then the cache cleared, as that route does. */
+    const paymentsSwitch = async (on: boolean) => {
+      await app.prisma.systemSetting.upsert({ where: { key: 'switch.chipPayments' }, create: { key: 'switch.chipPayments', value: on }, update: { value: on } });
+      app.settings.clear();
+    };
+    const owner = await anOwner(app);
+    await connect(app, owner.cookie);
+    client.createPurchase.mockClear();
+    await paymentsSwitch(false);
+    try {
+      const res = await call(app, 'POST', '/store/chip/test', owner.cookie);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'PAYMENTS_OFF', message: 'Online payments are paused for a moment. Try again soon.' });
+      expect(client.createPurchase).not.toHaveBeenCalled();
+    } finally {
+      await paymentsSwitch(true);
+    }
+    expect((await call(app, 'POST', '/store/chip/test', owner.cookie)).statusCode).toBe(200);
   });
 });
 

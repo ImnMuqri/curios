@@ -29,10 +29,10 @@ describe('/signup', () => {
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/signin');
   });
 
-  it('says so too when Google sent the browser back closed', async () => {
+  it('shows the form on ?closed=1 once sign-ups are open again: only the switch decides', async () => {
     await renderWith(true, '1');
-    expect(screen.getByText('Curios is full for now. Try again soon.')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Email')).toBeNull();
+    expect(screen.getByLabelText('Email')).toBeInTheDocument();
+    expect(screen.queryByText('Curios is full for now. Try again soon.')).toBeNull();
   });
 
   it('shows the form while sign-ups are open', async () => {

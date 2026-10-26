@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import type { Gateway } from '@curios/gateway';
 import { currentPeriod, type MailJobData } from '@curios/core';
@@ -78,6 +78,15 @@ afterAll(async () => {
   await app.close();
 });
 
+// Here, not in the test: a failing assertion must not leave the mailQueue spy on for the next one.
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
+/** This month's conversations on the page's meter. */
+const used = async () =>
+  (await app.prisma.usageCounter.findUnique({ where: { pageId_period: { pageId, period: currentPeriod() } }, select: { count: true } }))?.count ?? 0;
+
 beforeEach(async () => {
   modelCalls.mockClear();
   await chatSwitch(true);
@@ -103,6 +112,7 @@ describe('the chat switch', () => {
       return {} as never;
     });
     await chatSwitch(false);
+    const before = await used();
 
     const res = await ask('Berapa harga kek butter?');
     expect(res.statusCode).toBe(200);
@@ -124,9 +134,10 @@ describe('the chat switch', () => {
     expect(asks).toEqual([{ answered: null }]);
     // Not the cap: no "reached its monthly limit" email, and the month's counter is not claimed.
     expect(mailed).toEqual([]);
+    // Nobody was answered, so the owner's month is not spent.
+    expect(await used()).toBe(before);
     const counter = await app.prisma.usageCounter.findUnique({ where: { pageId_period: { pageId, period: currentPeriod() } }, select: { capMailedAt: true } });
     expect(counter?.capMailedAt ?? null).toBeNull();
-    vi.restoreAllMocks();
   });
 
   it('off: even the owner’s own answer gives way to the fixed reply', async () => {
@@ -154,7 +165,9 @@ describe('the chat switch', () => {
     await chatSwitch(false);
     await chatSwitch(true);
 
+    const before = await used();
     const visitor = await ask('Kek butter berapa?');
+    expect(await used()).toBe(before + 1);
     expect(textOf(visitor.payload)).toBe('Kek butter 1kg RM95.');
 
     const tester = await app.inject({

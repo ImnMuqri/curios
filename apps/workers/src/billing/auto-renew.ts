@@ -65,8 +65,11 @@ type Deps = {
   /** The API's public origin, where CHIP sends the renewal purchase's callback. */
   callbackBaseUrl: string;
   log?: BillingLog;
-  /** The admin's settings in force for this run. With CHIP payments off the run is skipped. */
-  settings: Settings;
+  /**
+   * The admin's settings (the workers' reader, cached 30 s). Read at the start of the run and
+   * again before each page's charge, so CHIP payments switched off mid-run stop the rest.
+   */
+  settings: { get(): Promise<Settings> };
   /**
    * Test-only. Runs after the cards are read and before any is claimed, so a test can
    * change a card or its page in that window and prove the claim -- not the read -- decides.
@@ -117,10 +120,16 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
  *
  * While the admin has CHIP payments switched off the whole run is skipped: nothing is
  * charged, settled or dropped, and nobody is mailed. The next day's run tries again, inside
- * the same three days' grace.
+ * the same three days' grace. The switch is read again before each page, so turning it off
+ * mid-run charges no further card, and the lapsed cards are left for a later run too.
+ *
+ * A skip that outlasts the grace lets a plan fall out of the charge window: once it ended
+ * more than three days ago the card is never charged for it, and the first run with
+ * payments back on drops that card as lapsed and tells the owner, as for a CHIP outage.
  */
 export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
-  if (!deps.settings.switches.chipPayments) {
+  const paymentsOn = async () => (await deps.settings.get()).switches.chipPayments;
+  if (!(await paymentsOn())) {
     deps.log?.info({}, 'auto-renew skipped: CHIP payments are off');
     return { charged: 0, pending: 0, failed: 0, stopped: 0 };
   }
@@ -138,6 +147,11 @@ export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
 
   const result: AutoRenewResult = { charged: 0, pending: 0, failed: 0, stopped: 0 };
   for (const card of cards) {
+    // Before the page is claimed, so a page left here is charged on the next run.
+    if (!(await paymentsOn())) {
+      deps.log?.info({}, 'auto-renew stopped: CHIP payments were turned off');
+      return result;
+    }
     // A failure counted while settling an earlier renewal, told only if today brings no
     // fresh attempt that answers it (see renewPage).
     const page: PageRun = { untold: null };

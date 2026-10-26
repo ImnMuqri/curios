@@ -467,7 +467,10 @@ export async function* answer(
   // accident while every call created a conversation, and a rule now that
   // threads are real. Atomic upsert: two visitors opening the sheet at once
   // on a popular page would otherwise race a read-then-write.
-  if (firstQuestion) {
+  //
+  // Not while the chat is switched off: a conversation nobody answered must not spend the
+  // owner's month, or a page would come back from an outage over its cap.
+  if (firstQuestion && !chatOff) {
     await prisma.usageCounter.upsert({
       where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
       create: { pageId: page.id, period: currentPeriod(), count: 1 },

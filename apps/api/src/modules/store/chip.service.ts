@@ -3,6 +3,8 @@ import { ChipRefusedError, ChipUnavailableError, type ChipClient } from '@curios
 import { openSecret, sealSecret } from '@curios/core/secret-box';
 import { storeGaps } from '@curios/core/store';
 import { errName } from '../billing/billing.service.js';
+import type { Settings } from '@curios/core/settings';
+import { PaymentsOffError } from '../../lib/switches.js';
 import { getStoreSettings } from './settings.service.js';
 import {
   ChipKeyRefusedError,
@@ -212,8 +214,12 @@ export async function disconnectChip(prisma: PrismaClient, accountId: string, no
  * changed its mind about the key. The purchase is cancelled and the request refused; the
  * connection is removed when the shop can spare it, and otherwise kept with lastErrorAt
  * set, so an open shop is never left with nothing to pay by.
+ *
+ * A CHIP purchase like any other, so refused (PAYMENTS_OFF) while the admin has CHIP
+ * payments switched off, before anything is read or CHIP is asked.
  */
-export async function testChip(deps: ShopChipDeps, input: { accountId: string; now: Date }): Promise<{ url: string }> {
+export async function testChip(deps: ShopChipDeps, input: { accountId: string; now: Date; settings: Settings }): Promise<{ url: string }> {
+  if (!input.settings.switches.chipPayments) throw new PaymentsOffError();
   const page = await storePageFor(deps.prisma, input.accountId);
   const row = await deps.prisma.shopPaymentAccount.findUnique({
     where: { pageId: page.id },
