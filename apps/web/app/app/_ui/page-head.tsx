@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { AlertSlot } from './alert-slot.js';
+import { NavProgress } from './nav-progress.js';
 import { ThemeSwitch } from './theme-switch.js';
 import styles from './page-head.module.css';
 
@@ -10,7 +11,8 @@ import styles from './page-head.module.css';
  * its actions need the room. The theme switch closes every header, inside the frame.
  *
  * Under it, the frame's alert for this screen if there is one (AlertSlot),
- * so every screen shows its banner in the same place, after its title.
+ * so every screen shows its banner in the same place, after its title. Along
+ * its bottom edge, the bar that runs while the next screen loads (NavProgress).
  */
 export function PageHead({
   title,
@@ -31,6 +33,7 @@ export function PageHead({
         {note ? <p className={styles.note}>{note}</p> : null}
         {children ? <div className={styles.actions}>{children}</div> : null}
         <ThemeSwitch className={styles.theme} />
+        <NavProgress />
       </header>
       <AlertSlot />
     </>

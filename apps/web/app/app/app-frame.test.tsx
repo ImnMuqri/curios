@@ -3,7 +3,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { NavBadges } from '@curios/db-read';
 import { parseTheme, THEME_COOKIE, type Theme } from './theme.js';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios', useSearchParams: () => new URLSearchParams() }));
 const { AppFrame } = await import('./app-frame.js');
 const { PageHead } = await import('./_ui/page-head.js');
 

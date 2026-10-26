@@ -39,7 +39,7 @@ const redirect = vi.fn((url: string) => {
   throw new Error(`NEXT_REDIRECT:${url}`);
 });
 let pathname = '/app/curios';
-vi.mock('next/navigation', () => ({ redirect, usePathname: () => pathname }));
+vi.mock('next/navigation', () => ({ redirect, usePathname: () => pathname, useSearchParams: () => new URLSearchParams() }));
 
 const AppLayout = (await import('./layout.js')).default;
 

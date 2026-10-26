@@ -7,6 +7,7 @@ import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
 import type { Alert } from './alerts.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
+import { NavProgressProvider } from './_ui/nav-progress.js';
 import { ThemeContext } from './_ui/theme-switch.js';
 import { THEME_COOKIE, type Theme } from './theme.js';
 import styles from './app-frame.module.css';
@@ -176,7 +177,9 @@ export function AppFrame({
         </aside>
 
         <main className={styles.main}>
-          <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
+          <NavProgressProvider>
+            <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
+          </NavProgressProvider>
         </main>
       </div>
     </ThemeContext.Provider>
