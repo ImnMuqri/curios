@@ -8,14 +8,32 @@ const declarations = (block: string) =>
 
 const frame = read('./app-frame.module.css');
 const dark = frame.slice(frame.indexOf('@media (prefers-color-scheme: dark)'));
-const darkBlock = declarations(dark.slice(dark.indexOf('.frame {'), dark.indexOf('.frame [data-island]')));
-const islandBlock = declarations(dark.slice(dark.indexOf('.frame [data-island]')));
+/** The declarations of the rule that opens with `selector {`, up to its closing brace. */
+const rule = (selector: string) => {
+  const start = dark.indexOf(`${selector} {`);
+  expect(start, selector).toBeGreaterThan(-1);
+  return declarations(dark.slice(start, dark.indexOf('}', start)));
+};
+// Dark by the device, unless the owner chose Light; and dark by the owner's own choice.
+const darkBlock = rule(".frame:not([data-theme='light'])");
+const chosenBlock = rule(".frame[data-theme='dark']");
+const islandBlock = rule('.frame [data-island]');
 const tokens = declarations(read('../../../../packages/ui/src/tokens.css'));
 
 describe('dashboard dark mode', () => {
   it('swaps tokens only on the dashboard frame, never on :root', () => {
     expect(dark).not.toMatch(/:root/);
     expect(Object.keys(darkBlock).length).toBeGreaterThan(30);
+  });
+
+  it('follows the device only inside the media query, and the switch outside it', () => {
+    const media = dark.slice(0, dark.indexOf('\n}\n'));
+    expect(media).toContain(".frame:not([data-theme='light'])");
+    expect(media).not.toContain(".frame[data-theme='dark']");
+  });
+
+  it('gives Dark from the switch exactly the dark the device gets', () => {
+    expect(chosenBlock).toEqual(darkBlock);
   });
 
   it('takes every dark value from tokens.css, which defines it', () => {

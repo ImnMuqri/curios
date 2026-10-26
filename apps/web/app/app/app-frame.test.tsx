@@ -1,9 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { NavBadges } from '@curios/db-read';
+import { parseTheme, THEME_COOKIE, type Theme } from './theme.js';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios' }));
 const { AppFrame } = await import('./app-frame.js');
+const { PageHead } = await import('./_ui/page-head.js');
 
 const frame = ({
   badges = { review: 3, questions: 0, leads: 0, orders: 0 },
@@ -110,5 +112,59 @@ describe('AppFrame', () => {
   it('puts no dot on Billing otherwise', () => {
     frame();
     expect(screen.queryByText(/needs you/)).toBeNull();
+  });
+});
+
+describe('the theme switch', () => {
+  const themed = (theme?: Theme) =>
+    render(
+      <AppFrame displayName="Iman Muqri" avatarUrl={null} planLabel="Personal page" badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL" {...(theme ? { theme } : {})}>
+        <PageHead title="My Curios" />
+      </AppFrame>,
+    );
+  const frameOf = (container: HTMLElement) => container.firstElementChild as HTMLElement;
+  const option = (name: string) => within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name });
+
+  afterEach(() => {
+    document.cookie = `${THEME_COOKIE}=; Path=/app; Max-Age=0`;
+  });
+
+  it('follows the device when nothing was chosen', () => {
+    const { container } = themed();
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'system');
+    expect(option('Match device')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('starts in the theme the layout read from the cookie', () => {
+    const { container } = themed('dark');
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'dark');
+    expect(option('Dark')).toHaveAttribute('aria-pressed', 'true');
+    expect(option('Light')).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('switches the frame and remembers the choice in the cookie', () => {
+    const cookie = vi.spyOn(document, 'cookie', 'set');
+    const { container } = themed();
+    fireEvent.click(option('Dark'));
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'dark');
+    expect(cookie).toHaveBeenLastCalledWith(`${THEME_COOKIE}=dark; Path=/app; Max-Age=31536000; SameSite=Lax`);
+    fireEvent.click(option('Match device'));
+    expect(frameOf(container)).toHaveAttribute('data-theme', 'system');
+    expect(cookie).toHaveBeenLastCalledWith(`${THEME_COOKIE}=; Path=/app; Max-Age=0; SameSite=Lax`);
+    cookie.mockRestore();
+  });
+
+  it('is not drawn outside the frame', () => {
+    render(<PageHead title="Alone" />);
+    expect(screen.queryByRole('group', { name: 'Theme' })).toBeNull();
+  });
+});
+
+describe('parseTheme', () => {
+  it('keeps Light and Dark, and reads anything else as following the device', () => {
+    expect(parseTheme('light')).toBe('light');
+    expect(parseTheme('dark')).toBe('dark');
+    expect(parseTheme(undefined)).toBe('system');
+    expect(parseTheme('blue')).toBe('system');
   });
 });

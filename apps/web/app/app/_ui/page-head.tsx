@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import { AlertSlot } from './alert-slot.js';
+import { ThemeSwitch } from './theme-switch.js';
 import styles from './page-head.module.css';
 
 /**
  * A screen's header bar: its title on the left, then a short note and any
  * actions on the right. `beside` sits right after the title (a "Saved"
  * status). The note is the first thing to go on a phone, where the title and
- * its actions need the room.
+ * its actions need the room. The theme switch closes every header, inside the frame.
  *
  * Under it, the frame's alert for this screen if there is one (AlertSlot),
  * so every screen shows its banner in the same place, after its title.
@@ -29,6 +30,7 @@ export function PageHead({
         {beside}
         {note ? <p className={styles.note}>{note}</p> : null}
         {children ? <div className={styles.actions}>{children}</div> : null}
+        <ThemeSwitch className={styles.theme} />
       </header>
       <AlertSlot />
     </>
