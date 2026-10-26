@@ -31,8 +31,11 @@ export function PreviewFrame<Id extends string>({
     <section className={styles.preview} aria-label={label}>
       <div className={styles.phone}>
         <div className={styles.screen} data-island="">
-          <div className={styles.scroll}>{children}</div>
-          {overlay}
+          {/* A real phone's width, scaled into the frame: the page's own sizes, not squeezed. */}
+          <div className={styles.device}>
+            <div className={styles.scroll}>{children}</div>
+            {overlay}
+          </div>
         </div>
       </div>
       <div

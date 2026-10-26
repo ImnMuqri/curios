@@ -660,6 +660,23 @@
   border-radius: 36px;
 }
 
+/*
+ * The page is laid out at a phone's real width, 390px (by 780, the frame's 1:2), then scaled to
+ * the 300px frame. Laid out at 300px it kept a phone's type sizes in a narrower screen, so it read
+ * a size too big beside the landing's phone, whose shop name is 30px where the page's is 40px:
+ * 40 at 300/390 is 31. Positioned and transformed, so what the page lays over itself (the item
+ * sheet, the ask bar) is held, and scaled, with it.
+ */
+.device {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 390px;
+  height: 780px;
+  transform: scale(calc(300 / 390));
+  transform-origin: 0 0;
+}
+
 /* The page scrolls inside the phone, with no scrollbar; whatever is laid over it stays put. */
 .scroll {
   height: 100%;
