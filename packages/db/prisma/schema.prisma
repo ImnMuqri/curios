@@ -1013,6 +1013,7 @@ model AdminUser {
   sessions     AdminSession[]
   actions      AdminAction[]
   reportsDecided Report[]
+  settingsChanged SystemSetting[]
 }
 
 /// Like Session: id is the hashed cookie value. Absolute expiry only.
@@ -1077,4 +1078,14 @@ model Report {
 
   @@index([pageId, status])
   @@index([status, createdAt])
+}
+
+/// One row per setting the admin has changed; a key with no row is at its default (see
+/// `defaultSettings()` in @curios/core). The value's shape is checked on read, not here.
+model SystemSetting {
+  key         String     @id
+  value       Json
+  updatedAt   DateTime   @updatedAt
+  updatedById String?
+  updatedBy   AdminUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
 }
