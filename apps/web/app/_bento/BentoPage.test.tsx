@@ -247,11 +247,11 @@ describe('BentoPage, a custom background', () => {
     expect(container.firstElementChild).not.toHaveAttribute('data-bg-text');
   });
 
-  it('gives a dark custom colour the dark bands\' treatment, read from the stylesheet', () => {
+  it('gives a dark custom colour light text, and every custom colour glass pills, read from the stylesheet', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\[data-bg='CUSTOM'\]\[data-bg-text='light'\]\s*\{[^}]*--page-fg:\s*var\(--paper\)/);
-    // A dark page's soft pills are its own text, faintly, not white.
-    expect(css).toMatch(/\[data-bg-text='light'\]\)\s*\{[^}]*--pill:\s*var\(--veil-3\)/s);
+    // On any custom colour, light or dark, the pills are the page's own text, faintly, not white (DEVIATIONS 218).
+    expect(css).toMatch(/\[data-bg='CUSTOM'\]\)\s*\{[^}]*--pill:\s*var\(--veil-3\)/s);
   });
 });
 
