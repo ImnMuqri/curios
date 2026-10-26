@@ -1,4 +1,4 @@
-import { conversationCap } from './cap.js';
+import { conversationCap, FREE_CONVERSATIONS_PER_MONTH } from './cap.js';
 import { PLAN_PRICES_CENTS } from './billing.js';
 import { FREE_LEADS, FREE_ORDERS } from './plan.js';
 
@@ -27,9 +27,17 @@ const SWITCH_KEYS: readonly SwitchKey[] = ['chat', 'signups', 'reading', 'chipPa
  * defaults: a table nobody has written to behaves exactly as the code did before there was one.
  */
 export function defaultSettings(): Settings {
+  // conversationCap() throws on a malformed override, which the API wants at boot; here it must not,
+  // or a typo in the environment would take every settings read down with it.
+  let cap = FREE_CONVERSATIONS_PER_MONTH;
+  try {
+    cap = conversationCap();
+  } catch (err) {
+    console.warn('CONVERSATION_CAP_PER_MONTH is malformed; the default cap applies', err);
+  }
   return {
     switches: { chat: true, signups: true, reading: true, chipPayments: true, ownerEmails: true },
-    cap: conversationCap(),
+    cap,
     freeLeads: FREE_LEADS,
     freeOrders: FREE_ORDERS,
     prices: { MONTHLY: PLAN_PRICES_CENTS.MONTHLY, ANNUAL: PLAN_PRICES_CENTS.ANNUAL },
@@ -102,28 +110,34 @@ export function createSettingsCache(
   let value: Settings | null = null;
   let expiresAt = 0;
   let inflight: Promise<Settings> | null = null;
+  // Bumped by clear(), so a load that was already running when it was called cannot write its
+  // older answer back over a cache the writer has just emptied.
+  let generation = 0;
   return {
     get() {
       if (value && Date.now() < expiresAt) return Promise.resolve(value);
-      inflight ??= load()
-        .then((fresh) => {
-          value = fresh;
-          return fresh;
-        })
-        .catch((err: unknown) => {
-          opts.onError?.(err);
-          return value ?? defaultSettings();
-        })
-        .then((result) => {
+      if (inflight) return inflight;
+      const mine = generation;
+      const settle = (result: Settings): Settings => {
+        if (mine === generation) {
+          // A fallback is cached too, so a database that is down is asked once per window.
+          value = result;
           expiresAt = Date.now() + ttlMs;
           inflight = null;
-          return result;
-        });
+        }
+        return result;
+      };
+      inflight = load().then(settle, (err: unknown) => {
+        opts.onError?.(err);
+        return settle(value ?? defaultSettings());
+      });
       return inflight;
     },
     clear() {
+      generation += 1;
       value = null;
       expiresAt = 0;
+      inflight = null;
     },
   };
 }

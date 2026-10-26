@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { BANNER_MAX, defaultSettings, isBigPriceChange, resolveSettings } from './settings.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { BANNER_MAX, createSettingsCache, defaultSettings, isBigPriceChange, resolveSettings } from './settings.js';
 
 describe('resolveSettings', () => {
   it('is the defaults when nothing is stored', () => {
@@ -87,5 +87,63 @@ describe('isBigPriceChange', () => {
   });
   it('is false at exactly half', () => {
     expect(isBigPriceChange(4900, 7350)).toBe(false);
+  });
+});
+
+describe('a malformed cap override', () => {
+  const was = process.env.CONVERSATION_CAP_PER_MONTH;
+  beforeEach(() => {
+    process.env.CONVERSATION_CAP_PER_MONTH = 'abc';
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+  });
+  afterEach(() => {
+    if (was === undefined) delete process.env.CONVERSATION_CAP_PER_MONTH;
+    else process.env.CONVERSATION_CAP_PER_MONTH = was;
+    vi.restoreAllMocks();
+  });
+
+  it('does not stop defaultSettings(), resolveSettings() or the cache', async () => {
+    expect(defaultSettings().cap).toBe(200);
+    expect(resolveSettings([]).cap).toBe(200);
+    const cache = createSettingsCache(async () => {
+      throw new Error('down');
+    });
+    expect((await cache.get()).cap).toBe(200);
+  });
+});
+
+describe('createSettingsCache', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => vi.useRealTimers());
+
+  it('asks once per window when the first load fails', async () => {
+    const load = vi.fn(async (): Promise<ReturnType<typeof defaultSettings>> => {
+      throw new Error('down');
+    });
+    const cache = createSettingsCache(load, { ttlMs: 1_000 });
+    await cache.get();
+    await cache.get();
+    await cache.get();
+    expect(load).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1_500);
+    await cache.get();
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not let a load that was running at clear() write its old answer back', async () => {
+    let release: (s: ReturnType<typeof defaultSettings>) => void = () => {};
+    const old = { ...defaultSettings(), cap: 11 };
+    const fresh = { ...defaultSettings(), cap: 22 };
+    const load = vi
+      .fn()
+      .mockImplementationOnce(() => new Promise((resolve) => (release = resolve)))
+      .mockResolvedValue(fresh);
+    const cache = createSettingsCache(load);
+    const first = cache.get();
+    cache.clear();
+    release(old);
+    await first;
+    expect((await cache.get()).cap).toBe(22);
+    expect(load).toHaveBeenCalledTimes(2);
   });
 });
