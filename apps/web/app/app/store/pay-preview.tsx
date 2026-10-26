@@ -5,6 +5,7 @@ import { PageTheme } from '../../_bento/BentoPage.js';
 import { OrderView, type OrderViewProps } from '../../[handle]/order/[token]/order-view.js';
 import type { DigitalLineView } from '../../[handle]/order/[token]/digital-section.js';
 import type { EditorItem, ShopLook, StoreSettings } from './store-types.js';
+import checkout from '../../[handle]/shop/checkout/checkout.module.css';
 import styles from './store.module.css';
 
 /** An item's first price: its own, or its first option's, as the board's sample order takes it. */
@@ -49,6 +50,7 @@ export function PayPreview({
   hasQr,
   today,
   nextNumber,
+  paysOnline = false,
 }: {
   look: ShopLook;
   settings: StoreSettings;
@@ -59,6 +61,8 @@ export function PayPreview({
   /** Today in Malaysia, YYYY-MM-DD. */
   today: string;
   nextNumber: number;
+  /** The shop's CHIP account takes payment: said in place of "no way to pay" when there is no QR or bank. */
+  paysOnline?: boolean;
 }) {
   const sample = items.flatMap((item) => {
     const price = firstPrice(item);
@@ -92,7 +96,8 @@ export function PayPreview({
   };
 
   return (
-    <PageTheme theme={look} className={styles.payStage}>
+    // The order page's own stage: the title on the page's colours, the sheet below it.
+    <PageTheme theme={look} className={`${checkout.stage} ${styles.payStage}`}>
       <OrderView
         preview
         token="preview"
@@ -105,6 +110,7 @@ export function PayPreview({
         bank={{ name: settings.bankName, accountName: settings.bankAccountName, accountNumber: settings.bankAccountNumber }}
         whatsapp={null}
         now={new Date(`${today}T04:00:00Z`).toISOString()}
+        previewPaysOnline={paysOnline}
       />
     </PageTheme>
   );

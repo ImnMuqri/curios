@@ -56,6 +56,8 @@ export interface OrderViewProps {
   whatsapp: string | null;
   /** What the shop's CHIP account takes, for "Try paying again"; null or absent when nothing online. */
   chipMethods?: string[] | null;
+  /** Preview only: the shop takes payment online, so the picture says so rather than "no way to pay". */
+  previewPaysOnline?: boolean;
   /** The page is suspended: the order shows, but not how to pay it, and the page says it is unavailable. */
   suspended?: boolean;
   /** Where paying again sends the browser. Tests pass a spy. */
@@ -414,7 +416,7 @@ export function OrderView(props: OrderViewProps) {
             <p className={styles.askPay}>{copy.askHowToPay(name)}</p>
           ) : retry ? null : (
             // The editor's picture says what the owner must do; a customer is told the shop cannot take it online.
-            <p className={styles.askPay}>{preview ? copy.noWayToPay : copy.cantPayOnline(name)}</p>
+            <p className={styles.askPay}>{preview ? (props.previewPaysOnline ? copy.paysOnlinePreview : copy.noWayToPay) : copy.cantPayOnline(name)}</p>
           )}
           {view === 'toCheck' ? (
             <div className={`${styles.upload} ${styles.sent}`}>

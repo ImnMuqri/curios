@@ -358,7 +358,7 @@ export function StoreEditor({
                     </small>
                   </div>
                   <SaveState status={description.autosave.status} error={description.autosave.error} retry={description.autosave.retry} />
-                  <div className={styles.row}>
+                  <div className={`${styles.row} ${styles.halalRow}`}>
                     <span className={styles.rowText}>
                       <b>Halal shop</b>
                       <span>{settings.shopHalal ? 'Your shop and its items say halal' : 'Switch on if everything you sell is halal'}</span>
@@ -422,6 +422,7 @@ export function StoreEditor({
               hasQr={qr.has}
               today={today}
               nextNumber={orders.nextNumber}
+              paysOnline={chip.connected && chip.methods.length > 0}
             />
           ) : (
             // The shop and the item are the customer pages themselves, on the owner's own colours.

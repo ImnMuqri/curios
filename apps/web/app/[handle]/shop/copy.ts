@@ -80,6 +80,8 @@ export interface ShopCopy {
   basketEmpty: string;
   /** The Store preview's Pay screen, for a shop with no QR or bank account yet. */
   noWayToPay: string;
+  /** The Store preview's line when the shop takes payment online only (no QR or bank to draw). */
+  paysOnlinePreview: string;
   paused: (name: string) => string;
   // Checkout.
   backToShop: string;
@@ -394,6 +396,7 @@ const EN: ShopCopy = {
   checkout: 'Checkout',
   basketEmpty: 'Basket is empty',
   noWayToPay: 'No way to pay yet. Add a QR or your bank account.',
+  paysOnlinePreview: 'Customers pay here online through CHIP, by FPX, card or e-wallet.',
   paused: (name) => `Checkout is paused. Send your basket to ${name} on WhatsApp instead.`,
   backToShop: 'Back to the shop',
   yourOrder: 'Your order',
@@ -668,6 +671,7 @@ const MS: ShopCopy = {
   checkout: 'Daftar keluar',
   basketEmpty: 'Bakul kosong',
   noWayToPay: 'Belum ada cara untuk bayar. Tambah QR atau akaun bank anda.',
+  paysOnlinePreview: 'Pelanggan bayar di sini dalam talian melalui CHIP, dengan FPX, kad atau e-dompet.',
   paused: (name) => `Tempahan di sini ditangguhkan. Hantar bakul anda kepada ${name} di WhatsApp.`,
   backToShop: 'Kembali ke kedai',
   yourOrder: 'Tempahan anda',

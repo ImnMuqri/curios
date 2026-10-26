@@ -70,7 +70,7 @@
 }
 
 .brand {
-  --l-wordmark: 22px;
+  --l-wordmark: 30px;
   display: inline-flex;
   align-self: flex-start;
   padding: 6px 10px 20px;

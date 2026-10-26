@@ -149,13 +149,12 @@
   font-weight: 600;
 }
 
+/* Wraps rather than cuts: the note is what the step needs ("Online payments through CHIP"). */
 .stepText span {
   display: block;
-  overflow: hidden;
   font-size: 12px;
   color: var(--muted);
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
 
 /* ---- Items ---- */
@@ -1008,6 +1007,11 @@
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
+}
+
+/* The Halal switch under the shop description: its own box, set apart from the field above. */
+.halalRow {
+  margin-top: 12px;
 }
 
 .rowText {
