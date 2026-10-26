@@ -7,6 +7,7 @@ import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { unsureFilter } from './unsure.js';
+import { neverSayFilter } from './never-say-filter.js';
 import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
@@ -705,8 +706,10 @@ export async function* answer(
     });
 
     let text = '';
-    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts).
+    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts), and a sentence
+    // with a never-say word in it is dropped whatever the model meant by it (never-say-filter.ts).
     const filter = unsureFilter();
+    const guard = neverSayFilter(page.neverSay.map((n) => n.phrase));
     try {
       for await (const event of gateway.chat({
         systemPrompt: prompt.systemPrompt,
@@ -714,7 +717,7 @@ export async function* answer(
         cachePrompt: prompt.cachePrompt,
       })) {
         if (event.type === 'text') {
-          const shown = filter.push(event.text);
+          const shown = guard.push(filter.push(event.text));
           if (shown) {
             text += shown;
             yield { type: 'text', text: shown };
@@ -752,12 +755,17 @@ export async function* answer(
       throw error;
     }
 
-    const rest = filter.end();
+    const rest = guard.push(filter.end()) + guard.end();
     if (rest) {
       text += rest;
       yield { type: 'text', text: rest };
     }
-    await markAsk(!filter.unsure);
+    if (guard.dropped > 0) {
+      deps.log?.info?.({ pageId: page.id, dropped: guard.dropped, replaced: guard.replaced }, 'never-say sentences dropped');
+    }
+    // A reply that was all never-say is the fallback now: nothing was answered.
+    const answered = !filter.unsure && !guard.replaced;
+    await markAsk(answered);
 
     await prisma.message.create({
       data: {
@@ -778,7 +786,7 @@ export async function* answer(
     // better next step than leaving a number. Only after a model answer:
     // never on a pinned answer or the cap's reply.
     const card =
-      page.mode === 'BUSINESS' && page.storeEnabled && !filter.unsure
+      page.mode === 'BUSINESS' && page.storeEnabled && answered
         ? productCard(text, page.items, process.env.STORAGE_PUBLIC_URL ?? null)
         : null;
     if (card) {

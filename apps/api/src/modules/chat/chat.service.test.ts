@@ -11,6 +11,7 @@ import {
   type Embedder,
 } from '@curios/embeddings';
 import { answer, CAP_REACHED_REPLY, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
+import { NEVER_SAY_FALLBACK } from './never-say-filter.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -498,6 +499,27 @@ describe('threading a conversation', () => {
     if (!done?.conversationId) throw new Error('no done event with a conversation id');
     return done.conversationId;
   }
+
+  it('never lets a never-say word through: the sentence goes, in the stream and in what is stored', async () => {
+    const pageId = await pageIdFor('nadia');
+    await prisma.neverSay.create({ data: { pageId, phrase: 'jamin' } });
+    const events = await ask(depsSaying('Saya tak boleh jamin harga tak naik. Kek butter 1kg RM95.'), 'boleh jamin harga tak naik?');
+    const streamed = events.filter((e) => e.type === 'text').map((e) => (e as { text: string }).text).join('');
+    expect(streamed).toBe('Kek butter 1kg RM95.');
+    const stored = await prisma.message.findFirstOrThrow({ where: { role: 'ASSISTANT' } });
+    expect(stored.content).toBe('Kek butter 1kg RM95.');
+  });
+
+  it('answers with the fallback, counted as not answered, when every sentence carried a never-say word', async () => {
+    const pageId = await pageIdFor('nadia');
+    await prisma.neverSay.create({ data: { pageId, phrase: 'halal' } });
+    const events = await ask(depsSaying('Ya, kek kami halal.'), 'kek halal ke?');
+    const streamed = events.filter((e) => e.type === 'text').map((e) => (e as { text: string }).text).join('');
+    expect(streamed).toBe(NEVER_SAY_FALLBACK);
+    expect(streamed.toLowerCase()).not.toContain('halal');
+    const asked = await prisma.questionAsk.findFirstOrThrow({ select: { answered: true } });
+    expect(asked.answered).toBe(false);
+  });
 
   it('creates a conversation when given no id, and returns it', async () => {
     const events = await ask(depsSaying(), 'harga?');
