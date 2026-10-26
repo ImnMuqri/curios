@@ -126,6 +126,14 @@
   outline: none;
 }
 
+/* A phone zooms the whole page into a field whose text is under 16px when it takes focus (iOS
+   Safari), and the visitor has to pinch back out. 16px on touch screens; the design's size elsewhere. */
+@media (pointer: coarse) {
+  .search input {
+    font-size: 16px;
+  }
+}
+
 .list {
   display: grid;
   gap: 8px;

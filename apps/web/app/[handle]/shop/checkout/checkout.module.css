@@ -368,6 +368,15 @@
   transition: box-shadow 160ms;
 }
 
+/* A phone zooms the whole page into a field whose text is under 16px when it takes focus (iOS
+   Safari), and the visitor has to pinch back out. 16px on touch screens; the design's size elsewhere. */
+@media (pointer: coarse) {
+  .field input,
+  .field textarea {
+    font-size: 16px;
+  }
+}
+
 .field textarea {
   height: 80px;
   padding: 12px 14px;
