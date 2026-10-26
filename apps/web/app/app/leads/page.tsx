@@ -22,8 +22,9 @@ import panel from '../panel.module.css';
  */
 const LEADS_PER_PAGE = 50;
 
-export default async function LeadsPage({ searchParams }: { searchParams?: Promise<{ before?: string }> } = {}) {
-  const before = (await searchParams)?.before || undefined;
+export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ before?: string | string[] }> }) {
+  const query = await searchParams;
+  const before = typeof query.before === 'string' && query.before ? query.before : undefined;
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 

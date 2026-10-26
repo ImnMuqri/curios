@@ -66,8 +66,9 @@ Nothing claims ratings or reviews.
 1. ~~**A native speaker reads the Malay** in `copy.ts`.~~ Done: the owner read
    it on 2026-10-22 (DEVIATIONS 10).
 2. **Font preloading is broken app-wide** (`devDocs/deferred-findings.md`).
-3. **The sitemap lists only the landing page** and the Terms, Privacy and
-   Refund pages, not business pages.
+3. ~~**The sitemap lists only the landing page** and the Terms, Privacy and
+   Refund pages, not business pages.~~ Done 2026-10-26: it lists every
+   indexable page with its shop and FAQ entries (`getSitemapPages`).
 4. **Not re-measured.** The 2026-10-03 Lighthouse figures were for a different
    page. Measure this one before launch.
 

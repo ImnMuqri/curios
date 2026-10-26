@@ -63,7 +63,7 @@ describe('LeadsPage', () => {
   it('tells a personal page why it has no leads, and where that changes', async () => {
     getOwnerPage.mockResolvedValue(personal);
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText(/Personal pages don't collect phone numbers/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
@@ -74,7 +74,7 @@ describe('LeadsPage', () => {
   it('shows a business page its leads', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(Leads).toHaveBeenCalledTimes(1);
   });
@@ -82,7 +82,7 @@ describe('LeadsPage', () => {
   it('hands over the figures, the page, and one moment for the whole screen', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS', paidUntil: new Date('2099-01-01') });
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     const props = Leads.mock.calls[0]![0];
     const now = getLeadStats.mock.calls[0]![1] as Date;
@@ -130,7 +130,7 @@ describe('LeadsPage', () => {
   it('renders no main of its own', async () => {
     getOwnerPage.mockResolvedValue(personal);
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.queryByRole('main')).toBeNull();
   });

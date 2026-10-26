@@ -30,3 +30,5 @@ export { getAuthLink } from './auth-link.query.js';
 export type { AuthLink } from './auth-link.query.js';
 export { getOwnerOrders, getOwnerOrdersPage, getOrderStats, getOrderByToken, getCheckout, getShopItem } from './orders.query.js';
 export type { OwnerOrder, OrderStats, PublicOrder, PublicOrderLine, PublicGrant, Checkout } from './orders.query.js';
+export { getSitemapPages, SITEMAP_URL_LIMIT } from './sitemap.query.js';
+export type { SitemapPage } from './sitemap.query.js';
