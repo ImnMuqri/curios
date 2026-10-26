@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
@@ -95,6 +96,8 @@ export function AppFrame({
 }) {
   const pathname = usePathname() ?? '';
   const [theme, setTheme] = useState(savedTheme);
+  const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
+  const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
   const choose = (next: Theme) => {
     setTheme(next);
     // A year, and only for the dashboard. Match device is no cookie at all.
@@ -114,10 +117,10 @@ export function AppFrame({
     <ThemeContext.Provider value={{ theme, choose }}>
       <div className={styles.frame} data-theme={theme}>
         <aside className={styles.side}>
-          <a href="/app/curios" className={styles.brand}>
+          <Link href="/app/curios" className={styles.brand}>
             <Wordmark />
             <span className={styles.srOnly}>Curios dashboard</span>
-          </a>
+          </Link>
           <nav aria-label="Dashboard" className={styles.nav}>
             {GROUPS.map((group) => {
               const items = group.items.filter((item) => !item.business || mode === 'BUSINESS');
@@ -126,10 +129,21 @@ export function AppFrame({
                   <p className={styles.groupTitle}>{group.title}</p>
                   {items.map((item) => {
                     const count = item.count ? badges[item.count] : 0;
+                    // Link, not <a>: a client-side navigation fetches only the screen, where a full
+                    // load re-sent the whole document, its styles and the frame (about 85 kB and a
+                    // re-hydrate per click, measured on a busy shop). The counts come with the
+                    // frame, so they refresh with any change made (router.refresh) or a reload.
                     return (
-                      <a
+                      <Link
                         key={item.href}
                         href={item.href}
+                        // The whole screen, its data and its code, is fetched once the owner points
+                        // at it (hover, touch or focus), so the click has little left to wait for.
+                        // Not before: prefetching all nine on every load would render each one.
+                        prefetch={pointedAt.has(item.href) ? true : null}
+                        onMouseEnter={() => point(item.href)}
+                        onTouchStart={() => point(item.href)}
+                        onFocus={() => point(item.href)}
                         className={styles.item}
                         aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
                       >
@@ -141,7 +155,7 @@ export function AppFrame({
                             <span className={styles.srOnly}>, needs you</span>
                           </span>
                         ) : null}
-                      </a>
+                      </Link>
                     );
                   })}
                 </div>

@@ -35,6 +35,10 @@ const config: NextConfig = {
     // the landing page, it removed Lighthouse's render-blocking finding.
     inlineCss: true,
     extensionAlias: { '.js': ['.ts', '.tsx', '.js'] },
+    // How long a screen the dashboard's sidebar prefetched on hover may be shown as it was. The
+    // default is five minutes, too long for an inbox; 30 seconds is the least Next allows. Any
+    // change an owner makes calls router.refresh(), which drops these at once.
+    staleTimes: { static: 30 },
   },
 };
 

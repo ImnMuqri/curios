@@ -61,8 +61,10 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const selected = typeof query.order === 'string' ? query.order : null;
   const shopUrl = `/${page.handle}/shop`;
 
+  // Keyed by the cursor, as Leads is: each page of orders starts fresh after a client-side navigation.
   return (
     <Orders
+      key={before ?? ''}
       orders={rows}
       paging={{ older, paged: before !== undefined }}
       stats={stats}

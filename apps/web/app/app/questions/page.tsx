@@ -45,6 +45,8 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   // request time that no gate catches.
   return (
     <Questions
+      // Keyed by the page, as Leads is: each page of topics starts fresh after a client-side navigation.
+      key={pageNumber}
       topics={topics.slice(0, TOPICS_PER_PAGE)}
       paging={{ page: pageNumber, hasNext: topics.length > TOPICS_PER_PAGE }}
       askedThisWeek={askedThisWeek}

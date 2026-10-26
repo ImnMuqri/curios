@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { OwnerTopic } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
@@ -211,8 +212,8 @@ export function QuestionsScreen({
             )}
             {paging.page > 1 || paging.hasNext ? (
               <nav className={inbox.pager} aria-label="More topics">
-                {paging.page > 1 ? <a href={paging.page === 2 ? '/app/questions' : `/app/questions?page=${paging.page - 1}`}>Previous</a> : null}
-                {paging.hasNext ? <a href={`/app/questions?page=${paging.page + 1}`}>Next</a> : null}
+                {paging.page > 1 ? <Link href={paging.page === 2 ? '/app/questions' : `/app/questions?page=${paging.page - 1}`}>Previous</Link> : null}
+                {paging.hasNext ? <Link href={`/app/questions?page=${paging.page + 1}`}>Next</Link> : null}
               </nav>
             ) : null}
           </div>
