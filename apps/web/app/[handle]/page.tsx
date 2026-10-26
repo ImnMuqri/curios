@@ -49,7 +49,8 @@ export async function generateMetadata({
 
   return {
     title: page.displayName,
-    description: page.bio ?? undefined,
+    // Never left empty: a page without one would show search results no snippet, or another page's.
+    description: page.bio ?? `${page.displayName} on Curios. Ask anything, or find their links.`,
     // One rule, in @curios/core: every business page, and a personal page only
     // once its owner has opted in. There is no sitemap, so this tag is the
     // whole of the control.

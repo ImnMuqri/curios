@@ -197,6 +197,9 @@
 
 /* A link beside a field's label: "Forgot your password?". */
 .aside {
+  /* A taller hit area (21 px to 29) that moves nothing around it; .switch and .terms links do the same. */
+  padding-block: 4px;
+  margin-block: -4px;
   color: var(--biru);
   font-size: 13.5px;
   font-weight: 500;
@@ -229,6 +232,8 @@
 }
 
 .switch a {
+  padding-block: 4px;
+  margin-block: -4px;
   color: var(--biru);
   font-weight: 600;
 }
@@ -242,6 +247,8 @@
 }
 
 .terms a {
+  padding-block: 4px;
+  margin-block: -4px;
   color: inherit;
   text-decoration: underline;
 }

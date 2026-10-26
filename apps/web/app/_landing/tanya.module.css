@@ -3596,11 +3596,15 @@
 .footLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  gap: 0 24px;
   font-size: 14px;
 }
 
+/* 32 px tall, so a thumb can hit one (the text alone is 22); the rows lost their 8 px gap to pay for it. */
 .footLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   color: var(--paper);
   text-decoration: none;
 }

@@ -46,6 +46,11 @@ persona without one is drawn in the colour alone. They are in
 head-and-shoulders for the small round faces (How it works, the pricing chip);
 only Aisyah has one. All are made-up people, as the footer says.
 
+Each photo also has smaller copies beside it (`aisyah-360.webp`, `hero-baker-96.webp`),
+listed in `photos.ts`, so a 26 px chip does not download a 1024 px photo; a test
+checks they exist. `/landing/*` is cached for 30 days (next.config.ts), so a
+redrawn photo takes a new file name, and its copies are made again.
+
 **Claims slice 18 made true.** The For business section and two Business
 pricing lines show checkout, paying by the owner's QR with proof, and Orders.
 Slice 18 (orders) built them as the board draws them, so the `SLICE 18`

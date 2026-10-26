@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { HOLD_MS, advance, scene, stepProgress, stepStart } from './order-scene.js';
+import { photo } from './photos.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
@@ -288,7 +289,7 @@ export function Business({ locale }: { locale: Locale }) {
                   <span className={styles.lbTh}>
                     <i style={{ background: 'var(--tj-card-rose)' }} />
                     <i>
-                      <img src="/landing/hero-baker.webp" alt="" style={{ objectPosition: '72% 80%' }} />
+                      <img {...photo('/landing/hero-baker.webp', 30)} alt={copy.lib.shopPhoto} style={{ objectPosition: '72% 80%' }} loading="lazy" />
                     </i>
                     <i style={{ background: 'var(--tj-blob-pink)' }} />
                   </span>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { PERSONAS } from './personas.js';
+import { photo } from './photos.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
@@ -97,7 +98,7 @@ export function Pricing({ locale }: { locale: Locale }) {
             <p className={styles.planBody}>{personal.body}</p>
             <div className={styles.chipRow} aria-hidden="true">
               <span>
-                <img className={styles.chipFace} src={PERSONAS.aisyah.face} alt="" />curios.my/aisyahdraws
+                <img className={styles.chipFace} {...photo(PERSONAS.aisyah.face!, 26)} alt={PERSONAS.aisyah.name} loading="lazy" />curios.my/aisyahdraws
               </span>
               <span>Links</span>
               <span data-on>Ask</span>
@@ -137,7 +138,7 @@ export function Pricing({ locale }: { locale: Locale }) {
               <p className={styles.planBody}>{yearly ? business.noteYearly : business.noteMonthly}</p>
               <div className={styles.chipRow} aria-hidden="true">
                 <span>
-                  <img className={styles.chipFace} src={PERSONAS.lina.photo!.src} alt="" style={{ objectPosition: PERSONAS.lina.photo!.focus }} />curios.my/keklina
+                  <img className={styles.chipFace} {...photo(PERSONAS.lina.photo!.src, 26)} alt={PERSONAS.lina.name} style={{ objectPosition: PERSONAS.lina.photo!.focus }} loading="lazy" />curios.my/keklina
                 </span>
                 <span>Links</span>
                 <span>Ask</span>

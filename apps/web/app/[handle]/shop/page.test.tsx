@@ -136,9 +136,14 @@ describe('/[handle]/shop', () => {
     expect(container.querySelector('header')).toBeNull();
   });
 
-  it('titles the tab with the shop name, and nothing for a missing shop', async () => {
+  it('titles the tab with the shop name, describes it, and gives nothing for a missing shop', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
-    expect(await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) })).toEqual({ title: 'Nadia Bakes · Shop' });
+    expect(await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) })).toEqual({ title: 'Nadia Bakes · Shop', description: 'Cakes for every Raya.' });
+    vi.mocked(getCheckout).mockResolvedValueOnce({ ...shop, shopDescription: null });
+    expect(await generateMetadata({ params: Promise.resolve({ handle: 'nadia' }) })).toEqual({
+      title: 'Nadia Bakes · Shop',
+      description: 'Order from Nadia Bakes on Curios.',
+    });
     vi.mocked(getCheckout).mockResolvedValueOnce(null);
     expect(await generateMetadata({ params: Promise.resolve({ handle: 'nope' }) })).toEqual({});
   });

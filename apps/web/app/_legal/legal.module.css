@@ -21,6 +21,9 @@
 }
 
 .legal a:not(.brand, .lang, .back) {
+  /* A taller hit area (19 px to 27) that moves no line of the text; .lang and .back do the same. */
+  padding-block: 4px;
+  margin-block: -4px;
   color: var(--biru);
   overflow-wrap: anywhere;
 }
@@ -45,6 +48,8 @@
 }
 
 .lang {
+  padding-block: 4px;
+  margin-block: -4px;
   font-size: 14px;
   color: var(--ink-soft);
   text-decoration: none;
@@ -164,7 +169,8 @@
 
 .back {
   display: inline-block;
-  margin-top: 20px;
+  margin-top: 16px;
+  padding-block: 4px;
   font-size: 14px;
   color: var(--ink-soft);
 }

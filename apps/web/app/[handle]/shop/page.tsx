@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const { handle } = await params;
   const shop = await getCheckout(handle);
   if (!shop) return (await suspendedLanguage(handle)) ? UNAVAILABLE_METADATA : {};
-  return { title: `${shop.displayName} · Shop` };
+  return { title: `${shop.displayName} · Shop`, description: shop.shopDescription ?? `Order from ${shop.displayName} on Curios.` };
 }
 
 export default async function ShopPage({

@@ -105,7 +105,7 @@ export interface LandingCopy {
     customer: string;
     yours: string;
     shopPath: string;
-    lib: { bio: string; shop: string; shopSub: string; links: string[]; foot: string };
+    lib: { bio: string; shop: string; shopSub: string; shopPhoto: string; links: string[]; foot: string };
     open: string;
     facts: string;
     cats: string[];
@@ -318,6 +318,7 @@ const EN: LandingCopy = {
       bio: 'Homemade cakes and desserts in Shah Alam.',
       shop: 'Shop',
       shopSub: '8 items · pickup Sat',
+      shopPhoto: 'Kek Lina baking',
       links: ['Order on WhatsApp', 'Cake photos on Instagram', 'Find us in Seksyen 7'],
       foot: 'Questions · Made with Curios',
     },
@@ -574,6 +575,7 @@ const MS: LandingCopy = {
       bio: 'Kek dan pencuci mulut buatan sendiri di Shah Alam.',
       shop: 'Kedai',
       shopSub: '8 barang · ambil Sabtu',
+      shopPhoto: 'Kek Lina sedang membakar kek',
       links: ['Tempah di WhatsApp', 'Gambar kek di Instagram', 'Jumpa kami di Seksyen 7'],
       foot: 'Soalan · Dibuat dengan Curios',
     },

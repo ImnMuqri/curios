@@ -1,6 +1,9 @@
+import type { Metadata } from 'next';
 import { getAuthLink } from '@curios/db-read';
 import { BadLink } from '../_system/BadLink.js';
 import { Expired, Verified, Verify } from './verify-client.js';
+
+export const metadata: Metadata = { title: 'Confirm your email · Curios', robots: { index: false, follow: false } };
 
 /**
  * Email confirmation, from the System board. The link is looked at (not
