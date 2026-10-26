@@ -36,7 +36,7 @@ export {
   requirePublicAddresses,
 } from './source-url.js';
 export type { ResolvedAddress, SourceUrlVerdict } from './source-url.js';
-export { formatMalaysianPhone, normalizeMalaysianPhone } from './phone.js';
+export { formatMalaysianPhone, normalizeMalaysianPhone, withoutContactDetails } from './phone.js';
 export { MIN_VISITOR_TURNS, qualifies } from './qualify.js';
 export { conversationCap, FREE_CONVERSATIONS_PER_MONTH, isOverCap } from './cap.js';
 export { canCapture, canTakeOrders, FREE_LEADS, FREE_ORDERS, orderState, planState } from './plan.js';

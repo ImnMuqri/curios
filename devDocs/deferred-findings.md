@@ -17,7 +17,21 @@ trip), `manual-verification-leads.md` (slice 5, the leads screen — **not run**
 
 ## Cross-cutting
 
-### No font is preloaded anywhere, because Next's font manifest builds empty
+### No font is preloaded anywhere, because Next's font manifest builds empty — resolved: Windows builds only
+
+Resolved 2026-10-26. The cause is Next itself, on Windows: its `NextFontManifestPlugin` finds font
+modules by `mod.request.includes('/next-font-loader/index.js?')`, and on Windows webpack's request
+is a backslash path, so nothing ever matches (a read-only probe in the build printed the requests).
+The same commit built in Linux (`node:22-bookworm`) writes the manifest with the root layout's five
+`*.p.woff2` faces and `appUsingSizeAdjust: true`, and the served landing carries five
+`<link rel="preload" as="font">`. **Build for production on Linux**, as any host or CI does; a
+Windows `next build` is fine for checking that it builds, not for measuring. Lighthouse 13.5.0 on
+that Linux build, mobile: the landing 84 (CLS 0, LCP 4.0 s, TBT 30 ms, FCP 1.5 s) and a business
+page 90 (CLS 0, LCP 3.5 s). The 0.035 CLS this entry blamed on the font swap is gone. The landing's
+LCP is its hero lede, held 2.5 s by render delay with an instant first byte and nothing
+render-blocking: main-thread work under Lighthouse's 4x CPU slowdown, the next thing to look at if
+the score matters. The finding as it was:
+
 
 Found 2026-10-03 while measuring the landing page. A production build writes
 `server/next-font-manifest.json` as `{"pages":{},"app":{},"appUsingSizeAdjust":false}`,
@@ -105,7 +119,14 @@ Fix: lift `replyLanguage` and the greeting builder from
 `normalizeMalaysianPhone`, and use it from both. Deferred because that is a
 workers refactor, not a leads-screen edit.
 
-### The transcript fetch is unbounded
+### The transcript fetch is unbounded — fixed
+
+Fixed 2026-10-26: `getLeads` sends each lead's first `TRANSCRIPT_LIMIT` (60) messages and a
+`messageCount`, and the drawer says "The first 60 of N messages." when a chat ran longer.
+The Leads and Orders screens also page now (`?before=`, "Older leads" / "Older orders"),
+so nothing past the newest 50 leads or 100 finished orders is out of reach. The finding as
+it was:
+
 
 `packages/db-read/src/leads.query.ts` selects `messages` with no `take`. 50
 leads × every message in each conversation, all serialised into the RSC
@@ -118,7 +139,12 @@ only what goes into the prompt, and persistence has no cap. A `take: 40` on
 the messages select, or fetching the transcript on expand, removes the
 assumption.
 
-### A lead delete is not a right-to-erasure primitive
+### A lead delete is not a right-to-erasure primitive — resolved
+
+Resolved 2026-10-26, the owner's decision: deleting a lead deletes its conversation's messages
+in the same transaction, and chat blanks phone numbers and emails out of the question wording
+and topic title it keeps (`withoutContactDetails`). The finding as it was:
+
 
 Recorded in the docstring on `deleteLead` as of `749165b`, and repeated here
 because it is a product question, not a code one: a phone number typed into
@@ -342,7 +368,12 @@ that an `ACCESS EXCLUSIVE` lock would be felt.
 
 Opened 2026-09-26, from the whole-branch review of `slice-12/retrieval`.
 
-### There is no scheduled vector backfill
+### There is no scheduled vector backfill — fixed
+
+Fixed 2026-10-26: the workers run `syncFactEmbeddings(prisma, embedder, {})` nightly at
+04:00 Kuala Lumpur (`apps/workers/src/housekeeping/embeddings-backfill.ts`). The finding
+as it was:
+
 
 `scripts/backfill-fact-embeddings.ts` (`pnpm exec tsx scripts/backfill-fact-embeddings.ts`)
 only ever runs when someone remembers to run it by hand. Nothing calls

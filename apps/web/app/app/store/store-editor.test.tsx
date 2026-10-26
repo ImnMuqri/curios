@@ -163,6 +163,11 @@ describe('ready to take orders', () => {
     fireEvent.click(steps().getByRole('button', { name: /A way to pay Connect CHIP or add your QR/ }));
     expect(editTab('Payment')).toHaveAttribute('aria-selected', 'true');
   });
+
+  it('asks a shop of digital items alone for no pickup or delivery', () => {
+    show({ ...ready, enabled: false, pickupEnabled: false, deliveryMode: 'NONE' }, items.map((i) => ({ ...i, kind: 'DIGITAL' as const, delivery: 'CODES' as const })));
+    expect(steps().queryByRole('button', { name: /Turn on pickup or delivery/ })).toBeNull();
+  });
 });
 
 describe('the halal switch', () => {

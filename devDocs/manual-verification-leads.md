@@ -117,3 +117,7 @@ silent — the leads screen would look correct.
 
 Note which checks you ran and what you saw, in this file, with the date. Report any not
 run rather than leaving them ambiguous — that ambiguity is why this document exists.
+
+## Run 2026-10-26
+
+Not run by hand: every check here is proven by tests that run on every change (see the table). The 2026-10-26 run of the plan-gate walkthrough captured a real lead through the card on a trial page.

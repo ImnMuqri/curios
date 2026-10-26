@@ -269,7 +269,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           body: [
             {
               list: [
-                'Chats, numbers left in chats, and orders with their receipts: deleted automatically 12 months after they were made. An owner can delete a lead sooner.',
+                'Chats, numbers left in chats, and orders with their receipts: deleted automatically 12 months after they were made. An owner can delete a lead sooner, and its chat goes with it.',
                 'The questions people ask, without who asked: kept while the page exists, as part of what the page knows. The owner can delete them.',
                 'Your account and page: kept until you ask us to close your account.',
                 'Payment records: kept for 7 years, as Malaysian tax law requires.',
@@ -541,7 +541,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           body: [
             {
               list: [
-                'Sembang, nombor yang ditinggalkan dalam sembang, dan tempahan bersama resitnya: dipadam secara automatik 12 bulan selepas ia dibuat. Pemilik boleh memadam lead lebih awal.',
+                'Sembang, nombor yang ditinggalkan dalam sembang, dan tempahan bersama resitnya: dipadam secara automatik 12 bulan selepas ia dibuat. Pemilik boleh memadam lead lebih awal, bersama sembangnya.',
                 'Soalan yang ditanya, tanpa maklumat siapa yang bertanya: disimpan selagi halaman wujud, sebagai sebahagian daripada apa yang diketahui oleh halaman. Pemilik boleh memadamnya.',
                 'Akaun dan halaman anda: disimpan sehingga anda meminta kami menutup akaun anda.',
                 'Rekod bayaran: disimpan selama 7 tahun, seperti yang dikehendaki oleh undang-undang cukai Malaysia.',

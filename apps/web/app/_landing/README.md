@@ -65,11 +65,14 @@ Nothing claims ratings or reviews.
 
 1. ~~**A native speaker reads the Malay** in `copy.ts`.~~ Done: the owner read
    it on 2026-10-22 (DEVIATIONS 10).
-2. **Font preloading is broken app-wide** (`devDocs/deferred-findings.md`).
-3. **The sitemap lists only the landing page** and the Terms, Privacy and
-   Refund pages, not business pages.
-4. **Not re-measured.** The 2026-10-03 Lighthouse figures were for a different
-   page. Measure this one before launch.
+2. ~~**Font preloading is broken app-wide**~~ Resolved 2026-10-26: only a Windows
+   build loses it; a Linux build preloads (`devDocs/deferred-findings.md`).
+3. ~~**The sitemap lists only the landing page** and the Terms, Privacy and
+   Refund pages, not business pages.~~ Done 2026-10-26: it lists every
+   indexable page with its shop and FAQ entries (`getSitemapPages`).
+4. ~~**Not re-measured.**~~ Measured 2026-10-26 on a Linux production build,
+   Lighthouse 13.5.0 mobile: 84, CLS 0, LCP 4.0 s (the hero lede, held by
+   render delay), TBT 30 ms, FCP 1.5 s.
 
 ## History
 

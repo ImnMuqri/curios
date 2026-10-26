@@ -119,6 +119,8 @@ export interface StoreReadiness {
   bankAccountNumber: string | null;
   /** The owner connected their own CHIP account (Store -> Payment), so customers can pay online. */
   chipConnected: boolean;
+  /** The shop has a physical item, switched on or not: something will have to be handed over. */
+  physicalItems: boolean;
 }
 
 export type StoreGap = 'payment' | 'fulfilment';
@@ -126,13 +128,15 @@ export type StoreGap = 'payment' | 'fulfilment';
 /**
  * What stops this shop from opening. A customer will pay the moment they
  * order (slice 18), so a shop with no way to pay would take orders nobody can
- * pay for; and one with neither pickup nor delivery has no way to hand them over.
+ * pay for; and one with neither pickup nor delivery has no way to hand them over --
+ * which matters only while it lists something physical: a shop of digital items alone
+ * sends everything by email, and needs neither.
  */
 export function storeGaps(s: StoreReadiness): StoreGap[] {
   const gaps: StoreGap[] = [];
   const bank = Boolean(s.bankName && s.bankAccountName && s.bankAccountNumber);
   if (!s.paymentQrKey && !bank && !s.chipConnected) gaps.push('payment');
-  if (!s.pickupEnabled && s.deliveryMode === 'NONE') gaps.push('fulfilment');
+  if (s.physicalItems && !s.pickupEnabled && s.deliveryMode === 'NONE') gaps.push('fulfilment');
   return gaps;
 }
 

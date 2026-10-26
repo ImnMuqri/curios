@@ -175,9 +175,12 @@ not a figure worth budgeting around.
 **Safe to re-run.** It only ever selects facts that need a vector, so running it against
 an already-backfilled database scans everything and writes nothing.
 
-Run it twice in this slice's life: once after the migration that added `FactEmbedding`,
-and again every time `EMBEDDING_MODEL` changes — a fact whose stored vector came from an
-older model is re-embedded, not skipped.
+**The workers run it every night**, at 04:00 Kuala Lumpur (`embeddings-backfill` on the
+housekeeping queue), so a page left short a vector by an embeddings outage is mended by
+the next morning with nobody remembering to. Run it by hand when you cannot wait for that:
+after the migration that added `FactEmbedding`, after an outage you want cleared now, and
+every time `EMBEDDING_MODEL` changes — a fact whose stored vector came from an older model
+is re-embedded, not skipped.
 
 ---
 
@@ -539,6 +542,33 @@ the problem is downstream of the billing code, so look in the mail worker's
 logs and the mail provider rather than here. If it is null or an older value
 than `paidUntil`, the page has not been reminded for this period yet, and the
 daily run at 10:00 Malaysia time is the next chance.
+
+---
+
+## Error tracking
+
+Sentry, switched on by `SENTRY_DSN` (API, workers, web and admin servers) and
+`NEXT_PUBLIC_SENTRY_DSN` (the browser, built in at `next build`). Unset, nothing is
+reported and the browser never loads the SDK; in production the API and workers warn at
+startup.
+
+**What is reported.** Every line logged at error level or above, through a pino hook
+(`errorReportingHook` in `@curios/core/error-report`): a failed job, "renewal paid at CHIP
+but not granted", a 500. Plus what nothing logged: uncaught exceptions and unhandled
+rejections, server render errors (`onRequestError` in each app's `instrumentation.ts`), and
+client render errors caught by `app/error.tsx`. Errors only; tracing is off.
+
+**What is not.** Order tokens are masked everywhere in an event (they are an order's only
+credential and ride in the URL), only a log line's flat fields travel, and no cookies,
+headers, request bodies or query strings are sent (`scrubEvent`, `scrubBreadcrumb`).
+
+**Turbo passes `SENTRY_DSN` and `SENTRY_ENVIRONMENT` through** (`globalPassThroughEnv` in
+`turbo.json`); its strict mode would otherwise drop them for any process started with
+`turbo run`. `NEXT_PUBLIC_*` passes on its own.
+
+Worth setting up in Sentry: an alert on any event whose message is "renewal paid at CHIP
+but not granted" or "auto-renew could not finish a page", since each means money taken
+with no time given until someone looks.
 
 ---
 

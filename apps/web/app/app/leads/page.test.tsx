@@ -63,7 +63,7 @@ describe('LeadsPage', () => {
   it('tells a personal page why it has no leads, and where that changes', async () => {
     getOwnerPage.mockResolvedValue(personal);
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.getByText(/Personal pages don't collect phone numbers/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
@@ -74,7 +74,7 @@ describe('LeadsPage', () => {
   it('shows a business page its leads', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(Leads).toHaveBeenCalledTimes(1);
   });
@@ -82,7 +82,7 @@ describe('LeadsPage', () => {
   it('hands over the figures, the page, and one moment for the whole screen', async () => {
     getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS', paidUntil: new Date('2099-01-01') });
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     const props = Leads.mock.calls[0]![0];
     const now = getLeadStats.mock.calls[0]![1] as Date;
@@ -96,12 +96,41 @@ describe('LeadsPage', () => {
     });
   });
 
+  it('shows fifty, and offers older ones only when a fifty-first came back', async () => {
+    getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
+    const many = Array.from({ length: 51 }, (_, i) => ({ id: `l${i}` }));
+    getLeads.mockResolvedValue(many);
+
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
+
+    expect(getLeads).toHaveBeenCalledWith('acc1', { limit: 51, before: undefined });
+    const props = Leads.mock.calls[0]![0] as { leads: unknown[]; paging: unknown };
+    expect(props.leads).toHaveLength(50);
+    expect(props.paging).toEqual({ older: 'l49', paged: false });
+  });
+
+  it('reads the next page from ?before, and offers no older link at the end', async () => {
+    getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
+    getLeads.mockResolvedValue([{ id: 'l60' }]);
+
+    render(await LeadsPage({ searchParams: Promise.resolve({ before: 'l49' }) }));
+
+    expect(getLeads).toHaveBeenCalledWith('acc1', { limit: 51, before: 'l49' });
+    expect((Leads.mock.calls[0]![0] as { paging: unknown }).paging).toEqual({ older: null, paged: true });
+  });
+
+  it('sends a cursor that pages nothing back to the newest leads', async () => {
+    getOwnerPage.mockResolvedValue({ ...personal, mode: 'BUSINESS' });
+
+    await expect(LeadsPage({ searchParams: Promise.resolve({ before: 'gone' }) })).rejects.toThrow('NEXT_REDIRECT:/app/leads');
+  });
+
   // Fix round 2, Important #3: AppFrame renders its own main around every
   // screen it wraps, this one included, so a second one here would nest.
   it('renders no main of its own', async () => {
     getOwnerPage.mockResolvedValue(personal);
 
-    render(await LeadsPage());
+    render(await LeadsPage({ searchParams: Promise.resolve({}) }));
 
     expect(screen.queryByRole('main')).toBeNull();
   });

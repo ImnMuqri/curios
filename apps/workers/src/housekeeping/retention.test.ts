@@ -74,6 +74,20 @@ describe('retentionCutoff', () => {
 });
 
 describe('runRetention', () => {
+  it('goes through more old leads, messages and conversations than one batch holds', async () => {
+    const gone = await Promise.all([1, 2, 3, 4, 5].map(() => aConversation(old, true)));
+    const kept = await aConversation(recent, true);
+    const result = await runRetention({ prisma, now, batchSize: 2 });
+    expect(result.leads).toBeGreaterThanOrEqual(5);
+    expect(result.messages).toBeGreaterThanOrEqual(5);
+    expect(result.conversations).toBeGreaterThanOrEqual(5);
+    expect(await prisma.conversation.count({ where: { id: { in: gone } } })).toBe(0);
+    expect(await prisma.lead.count({ where: { conversationId: { in: gone } } })).toBe(0);
+    expect(await prisma.message.count({ where: { conversationId: { in: gone } } })).toBe(0);
+    expect(await prisma.conversation.count({ where: { id: kept } })).toBe(1);
+    expect(await prisma.message.count({ where: { conversationId: kept } })).toBe(1);
+  });
+
   it('deletes leads and messages past twelve months, with their emptied conversations, and keeps the rest', async () => {
     const gone = await aConversation(old, true);
     const kept = await aConversation(recent, true);

@@ -1,8 +1,8 @@
 # Manual verification — getting paid
 
-**Status: NOT RUN against CHIP.** The billing code moved from Billplz to CHIP on 2026-10-22
-(`devDocs/chip-payments-design.md`). Nothing below has been run against CHIP's test mode yet; record
-the first run at the bottom of this file.
+**Status: RUN against CHIP test mode on 2026-10-26, all but checks 2 and 11** (see the record at the
+bottom). Check 2 needs the webhook registered in CHIP's portal and a public tunnel; check 11 needs a
+declining test card. Both are still for a person with access to the CHIP portal.
 
 Re-run it after any change to `packages/billing`, `apps/api/src/modules/billing`, or
 `apps/workers/src/billing`, and before any live CHIP key goes into an environment.
@@ -183,3 +183,15 @@ Add a line per run, newest first.
 
 | Date | Who | Checks passed | Checks failed, and what was seen |
 |---|---|---|---|
+| 2026-10-26 | Claude (agent), CHIP test keys, no tunnel; checkout driven in headless Chrome, jobs run by hand with `now` moved | 1, 3, 4, 5, 6, 7*, 8, 9*, 10, 12 | None failed. **Not run:** 2 (webhook: needs it registered in the portal and a tunnel on 443; the callback is skipped without one) and 11 (needs a declining test card). Seen: RM49.00 on CHIP's page; "Test Success" granted once from the return (`outcome: granted`), a replayed return said `already-granted` and changed nothing; `paidUntil` moved one calendar month; "Test Failure" left the payment unpaid and CHIP's status `error` (the failed banner); a paid purchase with its return blocked was granted by the hourly check run 3 hours ahead, and the failed one marked EXPIRED; the reminder reached Mailpit 3 days out saying nothing is charged; auto-renew on a card page offered card only with "Remember my card", kept "Visa ending 1111", and the job charged it on the last day (a second run that day charged nothing); turning it off dropped the card and the next period's run charged nothing. *7 and 9 rest on their tests. The test account does keep cards, so recurring payments are on in test; **confirm the live account has them too.** |
+
+### Shops paying through their own CHIP account (2026-10-26, same run)
+
+Not a numbered check above; recorded here because no other walkthrough covers it. The seeded page
+connected the same test key in Store → Payment (`connected: true`, the RM1 key check passed, methods
+read, key stored sealed); a voucher item (`kind: DIGITAL`, `delivery: CODES`) was ordered with an email;
+`POST /store/orders/<token>/pay` with FPX and Maybank returned CHIP's page, test mode completed it, the
+browser came back to the order page reading "Dibayar · Dihantar ke e-mel anda" with "RM10 melalui FPX"
+and CHIP's reference, the order was `PAID` via `CHIP`, and the buyer's email in Mailpit carried the
+code. Found on the way and fixed: a shop selling only digital items could not open without pickup or
+delivery (`storeGaps`).

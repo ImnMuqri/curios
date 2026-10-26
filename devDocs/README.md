@@ -104,6 +104,11 @@ All eight are built, the last in slice 10 — see `slice-10-build-spec.md`.
 
 ## Definition of done for v1
 
-An owner pastes an Instagram handle, fixes three wrong facts, shares the link,
-and receives a WhatsApp message containing a phone number and a transcript.
-Everything else is decoration until that works.
+An owner pastes their website or Linktree link (or their bio as text), fixes
+three wrong facts, shares the link, and receives a WhatsApp message containing a
+phone number and a transcript. Everything else is decoration until that works.
+
+*Amended 2026-10-26:* it read "pastes an Instagram handle". Instagram and TikTok
+do not let a third party read a profile, so `instagram.adapter.ts` is a stub that
+refuses with a sentence, and the landing's FAQ says "Not yet" in both languages.
+Reading Instagram waits on platform access, not on code.

@@ -47,6 +47,7 @@ const RECEIPT = 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4';
  */
 export function OrdersScreen({
   orders,
+  paging = { older: null, paged: false },
   stats,
   now,
   selected,
@@ -59,6 +60,8 @@ export function OrdersScreen({
   onChanged,
 }: {
   orders: OrderRow[];
+  /** `older`: the last finished order shown, when there are more below it. `paged`: this is not the first page. */
+  paging?: { older: string | null; paged: boolean };
   stats: OrderStats;
   now: Date;
   /** The order `?order=` names, opened first. */
@@ -235,6 +238,12 @@ export function OrdersScreen({
                 })}
               </ul>
             )}
+            {paging.older || paging.paged ? (
+              <nav className={styles.pager} aria-label="More orders">
+                {paging.paged ? <a href="/app/orders">Newest</a> : null}
+                {paging.older ? <a href={`/app/orders?before=${encodeURIComponent(paging.older)}`}>Older orders</a> : null}
+              </nav>
+            ) : null}
           </div>
           <div className={inbox.detail}>
             {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} move={move} act={act} say={say} onChanged={onChanged} /> : null}

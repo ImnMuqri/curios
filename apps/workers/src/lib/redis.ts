@@ -1,5 +1,7 @@
 import IORedis from 'ioredis';
 
+export type Redis = IORedis;
+
 export function createRedis(): IORedis {
   const url = process.env.REDIS_URL;
   if (!url) throw new Error('REDIS_URL is not set');

@@ -139,7 +139,7 @@ export async function updateStoreSettings(prisma: PrismaClient, accountId: strin
   if (patch.enabled !== undefined) next.enabled = patch.enabled;
 
   if (next.enabled) {
-    const gaps = storeGaps({ ...next, chipConnected: await chipConnected(prisma, page.id) });
+    const gaps = storeGaps({ ...next, chipConnected: await chipConnected(prisma, page.id), physicalItems: await hasPhysicalItems(prisma, page.id) });
     if (gaps.length > 0) throw new StoreNotReadyError(storeGapMessage(gaps));
   }
 
@@ -159,12 +159,17 @@ export async function setPaymentQr(prisma: PrismaClient, pageId: string, key: st
   return before.paymentQrKey;
 }
 
+/** The shop has a physical item, switched on or not: storeGaps's `physicalItems`, which asks for pickup or delivery. */
+export async function hasPhysicalItems(prisma: Pick<PrismaClient, 'item'>, pageId: string): Promise<boolean> {
+  return (await prisma.item.count({ where: { pageId, kind: 'PHYSICAL' } })) > 0;
+}
+
 /** Clears the QR unless it is an open shop's only way to pay. Returns the removed key. */
 export async function clearPaymentQr(prisma: PrismaClient, pageId: string): Promise<string | null> {
   const row = await prisma.page.findUniqueOrThrow({ where: { id: pageId }, select: SELECT });
   const settings = toSettings(row);
   if (settings.enabled) {
-    const gaps = storeGaps({ ...settings, paymentQrKey: null, chipConnected: await chipConnected(prisma, pageId) });
+    const gaps = storeGaps({ ...settings, paymentQrKey: null, chipConnected: await chipConnected(prisma, pageId), physicalItems: await hasPhysicalItems(prisma, pageId) });
     if (gaps.length > 0) {
       throw new StoreNotReadyError('Your shop is open and this QR is its only way to pay. Add bank details, connect CHIP, or close the shop first.');
     }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { SystemCard, SystemShell, systemStyles as styles } from './_system/SystemShell.js';
 import { UnpluggedArt } from './_system/art.js';
+import { reportClientError } from '../lib/report-client-error.js';
 
 /**
  * Something broke on our side, from the System board. "Try again" re-renders
@@ -14,6 +15,7 @@ export default function ErrorScreen({ error, reset }: { error: Error & { digest?
 
   useEffect(() => {
     console.error(error);
+    reportClientError(error);
   }, [error]);
 
   // A retry that fails again lands back here with a new error; that is the

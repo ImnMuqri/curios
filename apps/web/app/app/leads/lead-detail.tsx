@@ -191,7 +191,7 @@ export function LeadDetail({
         <div className={styles.pair}>
           <div>
             <h3 className={styles.pairTitle}>
-              The conversation<span>{lead.transcript.length} messages</span>
+              The conversation<span>{lead.messageCount} messages</span>
             </h3>
             <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} aria-label="The conversation">
               {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
@@ -207,6 +207,11 @@ export function LeadDetail({
                 <Line key={lead.capturedAfter + i} line={line} name={displayName} />
               ))}
             </div>
+            {lead.messageCount > lead.transcript.length ? (
+              <p className={styles.more}>
+                The first {lead.transcript.length} of {lead.messageCount} messages.
+              </p>
+            ) : null}
           </div>
           <div>
             <h3 className={styles.pairTitle}>
@@ -252,7 +257,7 @@ export function LeadDetail({
         <span className={styles.footEnd}>
           {confirming ? (
             <span className={styles.confirm} role="group" aria-label="Confirm deleting this lead">
-              Delete this number? It cannot be brought back.
+              Delete this number and the conversation with it? It cannot be brought back.
               <button type="button" disabled={busy} onClick={() => void remove()}>
                 Yes, delete
               </button>

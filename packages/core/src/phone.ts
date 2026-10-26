@@ -42,3 +42,19 @@ export function formatMalaysianPhone(e164: string): string {
   const [, prefix, middle, last] = match;
   return `+60 ${prefix}-${middle} ${last}`;
 }
+
+/** What a contact detail is replaced with in stored wording. */
+export const REMOVED = '[removed]';
+
+/**
+ * A visitor's wording with any email address and any phone-shaped number blanked out, for what is
+ * kept as the page's own statistics (a question's wording, a topic's title -- which an FAQ page can
+ * show). A phone-shaped number is nine to fifteen digits, spaced or dashed or bracketed however:
+ * every Malaysian number, landline or mobile, with or without +60, and bank account numbers too.
+ * Prices, dates and order numbers are shorter and stay.
+ */
+export function withoutContactDetails(text: string): string {
+  return text
+    .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, REMOVED)
+    .replace(/[+(]?\d(?:[\s\-().]*\d){8,14}/g, REMOVED);
+}

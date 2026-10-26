@@ -108,6 +108,34 @@ export async function getOwnerOrders(accountId: string, options: { limit?: numbe
   return [...open, ...done].sort(newestFirst);
 }
 
+/**
+ * The Orders screen a page at a time. The first page is `getOwnerOrders`'s: every order that still
+ * needs the owner, and the newest `perPage` of the rest. `before` (the last finished order of the
+ * page above) is the next `perPage` finished orders below it, on their own -- what still needs the
+ * owner is on the first page already. `older` is the cursor for the page after, or null at the end;
+ * null altogether when `before` is not one of this owner's finished orders.
+ */
+export async function getOwnerOrdersPage(
+  accountId: string,
+  options: { before?: string; perPage?: number; now?: Date } = {},
+): Promise<{ orders: OwnerOrder[]; older: string | null } | null> {
+  const scope = { page: { accountId } };
+  const perPage = Math.min(Math.max(options.perPage ?? 100, 1), 100);
+  const done: Prisma.OrderWhereInput[] = [scope, { NOT: NEEDS_OWNER }];
+  if (options.before) {
+    const cursor = await prismaRead.order.findFirst({ where: { AND: [...done, { id: options.before }] }, select: { createdAt: true, number: true } });
+    if (!cursor) return null;
+    // The list's own order, createdAt then number, so a page boundary neither skips nor repeats.
+    done.push({ OR: [{ createdAt: { lt: cursor.createdAt } }, { createdAt: cursor.createdAt, number: { lt: cursor.number } }] });
+  }
+  const [open, finished] = await Promise.all([
+    options.before ? [] : readOwnerOrders({ AND: [scope, NEEDS_OWNER] }, undefined, options.now),
+    readOwnerOrders({ AND: done }, perPage + 1, options.now),
+  ]);
+  const shown = finished.slice(0, perPage);
+  return { orders: [...open, ...shown].sort(newestFirst), older: finished.length > perPage ? (shown.at(-1)?.id ?? null) : null };
+}
+
 async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number, now = new Date()): Promise<OwnerOrder[]> {
   const rows = await prismaRead.order.findMany({
     where,

@@ -1,3 +1,5 @@
+import { errorReportingHook } from '@curios/core/error-report';
+import { reportError } from './lib/error-tracking.js';
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import cookie from '@fastify/cookie';
 import cors from '@fastify/cors';
@@ -113,6 +115,8 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // development is unaffected and nothing can spoof its own address.
   const options: FastifyServerOptions = {
     logger: {
+      // Every error-level line goes to error tracking as well, when it is on (lib/error-tracking.ts).
+      hooks: { logMethod: errorReportingHook(reportError) },
       serializers: {
         // Fastify's own req serializer, but for the URL. An order link's token
         // is the order's only credential and it rides in the path, so every

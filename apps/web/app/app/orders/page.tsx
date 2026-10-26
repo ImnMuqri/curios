@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { LEAD_RETENTION_MONTHS, SESSION_COOKIE } from '@curios/core';
-import { getOrderStats, getOwnerOrders, getOwnerPage, getOwnerStore } from '@curios/db-read';
+import { getOrderStats, getOwnerOrdersPage, getOwnerPage, getOwnerStore } from '@curios/db-read';
 import { Callout } from '@curios/ui';
 import { avatarUrl } from '../../../lib/avatar-url.js';
 import { PageHead } from '../_ui/page-head.js';
@@ -15,12 +15,13 @@ import { Orders } from './orders-screen.js';
  * orders down the left, and the chosen one on the right with its receipt and
  * the one thing to do next.
  *
- * `getOwnerOrders` scopes to this owner inside the query. Keys never leave the
+ * `getOwnerOrdersPage` scopes to this owner inside the query. Keys never leave the
  * server: the receipt and item photos go down as addresses, built here as
  * every other screen builds them. `?order=<id>` (the new-order email's link)
- * opens that order.
+ * opens that order. `?before=<id>` is the next hundred finished orders, from
+ * "Older orders"; what still needs the owner is always on the first page.
  */
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ order?: string | string[] }> }) {
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ order?: string | string[]; before?: string | string[] }> }) {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
   const page = await getOwnerPage(owner.accountId);
@@ -42,12 +43,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
 
   // One moment for the whole screen, so "today, 10:02am" and the week read the same on the server and in the browser.
   const now = new Date();
-  const [orders, stats, store, query] = await Promise.all([
-    getOwnerOrders(owner.accountId, { limit: 100 }),
+  const query = await searchParams;
+  const before = typeof query.before === 'string' && query.before ? query.before : undefined;
+  const [listed, stats, store] = await Promise.all([
+    getOwnerOrdersPage(owner.accountId, { before, now }),
     getOrderStats(owner.accountId, now),
     getOwnerStore(owner.accountId),
-    searchParams,
   ]);
+  // A cursor that pages nothing (the order deleted, or never this owner's finished one) is the first page again.
+  if (!listed) redirect('/app/orders');
+  const { orders, older } = listed;
   const rows: OrderRow[] = orders.map(({ receiptKey, lines, ...order }) => ({
     ...order,
     receiptUrl: avatarUrl(receiptKey),
@@ -59,6 +64,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   return (
     <Orders
       orders={rows}
+      paging={{ older, paged: before !== undefined }}
       stats={stats}
       now={now.toISOString()}
       selected={selected}

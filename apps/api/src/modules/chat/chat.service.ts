@@ -1,4 +1,4 @@
-import { capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, type GroupJobData, type MailJobData } from '@curios/core';
+import { capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, withoutContactDetails, type GroupJobData, type MailJobData } from '@curios/core';
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
@@ -7,6 +7,7 @@ import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { unsureFilter } from './unsure.js';
+import { replyGuard } from './reply-guard.js';
 import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
@@ -492,7 +493,10 @@ export async function* answer(
   //
   // A wording is looked up by its normalised text, so a repeat in other
   // capitals or punctuation is the same wording: it counts, and queues nothing.
-  const normalizedQuestion = normalizeClaim(input.question);
+  // What is kept is the page's statistics, and a topic's title can reach an FAQ page: a number or an
+  // email the visitor typed into their question is not kept with it (the message itself has it).
+  const asked = withoutContactDetails(input.question);
+  const normalizedQuestion = normalizeClaim(asked);
   const existing = await prisma.question.findUnique({
     where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
     select: { id: true, topicId: true },
@@ -523,7 +527,7 @@ export async function* answer(
     // A new wording of a question the owner already answered joins that
     // topic now, decided (groupedAt set, so the grouping job leaves it be),
     // and the pinned branch below answers it with the owner's words.
-    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, input.question);
+    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, asked);
 
     // Created together: a wording is never without its topic. A concurrent
     // first ask of the same wording loses the unique race and is retried as
@@ -537,7 +541,7 @@ export async function* answer(
               data: {
                 pageId: page.id,
                 topicId: answeredTopicId,
-                text: input.question,
+                text: asked,
                 normalizedQuestion,
                 groupedAt: new Date(),
               },
@@ -556,11 +560,11 @@ export async function* answer(
       } else {
         wording = await prisma.$transaction(async (tx) => {
           const topic = await tx.topic.create({
-            data: { pageId: page.id, title: input.question, askCount: 1 },
+            data: { pageId: page.id, title: asked, askCount: 1 },
             select: { id: true },
           });
           return tx.question.create({
-            data: { pageId: page.id, topicId: topic.id, text: input.question, normalizedQuestion },
+            data: { pageId: page.id, topicId: topic.id, text: asked, normalizedQuestion },
             select: { id: true, topicId: true },
           });
         });
@@ -702,8 +706,15 @@ export async function* answer(
     });
 
     let text = '';
-    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts).
+    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts). A sentence with a
+    // never-say word, or an amount the model was not given, is dropped (reply-guard.ts): amounts of
+    // money in the prompt and its own earlier replies, and any number the visitor typed.
     const filter = unsureFilter();
+    const guard = replyGuard({
+      neverSay: page.neverSay.map((n) => n.phrase),
+      given: [prompt.systemPrompt, ...messages.filter((m) => m.role === 'assistant').map((m) => m.content)].join(' '),
+      visitor: messages.filter((m) => m.role === 'user').map((m) => m.content).join(' '),
+    });
     try {
       for await (const event of gateway.chat({
         systemPrompt: prompt.systemPrompt,
@@ -711,7 +722,7 @@ export async function* answer(
         cachePrompt: prompt.cachePrompt,
       })) {
         if (event.type === 'text') {
-          const shown = filter.push(event.text);
+          const shown = guard.push(filter.push(event.text));
           if (shown) {
             text += shown;
             yield { type: 'text', text: shown };
@@ -749,12 +760,17 @@ export async function* answer(
       throw error;
     }
 
-    const rest = filter.end();
+    const rest = guard.push(filter.end()) + guard.end();
     if (rest) {
       text += rest;
       yield { type: 'text', text: rest };
     }
-    await markAsk(!filter.unsure);
+    if (guard.dropped['never-say'] + guard.dropped.amount > 0) {
+      deps.log?.info?.({ pageId: page.id, neverSay: guard.dropped['never-say'], amount: guard.dropped.amount, replaced: guard.replaced }, 'reply sentences dropped');
+    }
+    // A reply that was all dropped is the fallback now: nothing was answered.
+    const answered = !filter.unsure && !guard.replaced;
+    await markAsk(answered);
 
     await prisma.message.create({
       data: {
@@ -775,7 +791,7 @@ export async function* answer(
     // better next step than leaving a number. Only after a model answer:
     // never on a pinned answer or the cap's reply.
     const card =
-      page.mode === 'BUSINESS' && page.storeEnabled && !filter.unsure
+      page.mode === 'BUSINESS' && page.storeEnabled && answered
         ? productCard(text, page.items, process.env.STORAGE_PUBLIC_URL ?? null)
         : null;
     if (card) {

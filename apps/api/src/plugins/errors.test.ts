@@ -27,6 +27,9 @@ beforeAll(async () => {
     throw error;
   });
 
+  // Fastify's own schema check, as every route with a schema has.
+  app.get('/needs-amount', { schema: { querystring: { type: 'object', required: ['amount'], properties: { amount: { type: 'number' } } } } }, async () => ({ ok: true }));
+
   await app.ready();
 });
 
@@ -50,6 +53,12 @@ describe('errorsPlugin', () => {
   // never reach the client. Only whitelisted domain codes are echoed back;
   // everything else -- including a code that merely looks legitimate --
   // defaults to INTERNAL_ERROR.
+  it('names a request its schema refused INVALID_REQUEST, not INTERNAL_ERROR', async () => {
+    const res = await app.inject({ method: 'GET', url: '/needs-amount' });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_REQUEST');
+  });
+
   it('never leaks a raw Prisma error code to the client on a 500', async () => {
     const res = await app.inject({ method: 'GET', url: '/prisma-error' });
     expect(res.statusCode).toBe(500);

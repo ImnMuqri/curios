@@ -15,17 +15,18 @@ const lead: OwnerLead = {
     { role: 'ASSISTANT', content: 'Kek coklat moist 2kg is RM170.' },
     { role: 'USER', content: 'ok terima kasih' },
   ],
+  messageCount: 3,
   // The number was left after the second message, before the thanks.
   capturedAfter: 2,
 };
 
-function show(calls: Partial<LeadActions> = {}) {
+function show(calls: Partial<LeadActions> = {}, shown: OwnerLead = lead) {
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onDeleted = vi.fn();
   const say = vi.fn();
   render(
     <LeadDetail
-      lead={lead}
+      lead={shown}
       status="NEW"
       handle="keklina"
       displayName="Kek Lina"
@@ -77,6 +78,17 @@ describe('LeadDetail', () => {
     expect(screen.getByText('3 messages')).toBeInTheDocument();
   });
 
+  it('says when a long conversation is shown only in part', () => {
+    show({}, { ...lead, messageCount: 75 });
+    expect(screen.getByText('75 messages')).toBeInTheDocument();
+    expect(screen.getByText('The first 3 of 75 messages.')).toBeInTheDocument();
+  });
+
+  it('says nothing more when the whole conversation is there', () => {
+    show();
+    expect(screen.queryByText(/The first \d+ of/)).toBeNull();
+  });
+
   it('drafts a first message to edit, and sends what was typed', () => {
     show();
     const box = screen.getByRole('textbox', { name: 'WhatsApp message' });
@@ -100,7 +112,7 @@ describe('LeadDetail', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete lead' }));
     expect(actions.remove).not.toHaveBeenCalled();
     const confirm = screen.getByRole('group', { name: 'Confirm deleting this lead' });
-    expect(confirm).toHaveTextContent('Delete this number? It cannot be brought back.');
+    expect(confirm).toHaveTextContent('Delete this number and the conversation with it? It cannot be brought back.');
     await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete' })); });
     expect(actions.remove).toHaveBeenCalledWith('l1');
     expect(onDeleted).toHaveBeenCalled();

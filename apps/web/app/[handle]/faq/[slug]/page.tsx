@@ -16,6 +16,16 @@ export const runtime = 'nodejs';
 // deployables, which is what choosing ISR was meant to avoid.
 export const revalidate = 60;
 
+/**
+ * None at build time, so `pnpm build` still needs no database. Its presence is what makes the
+ * route ISR: without it Next 15 renders a dynamic segment on every request and `revalidate` above
+ * does nothing (measured 2026-10-26 on a production build: every view read Postgres). With it, the
+ * first visitor to an address renders it and the next 60 seconds of visitors get that HTML.
+ */
+export function generateStaticParams(): { handle: string; slug: string }[] {
+  return [];
+}
+
 /** Google's own guidance for a meta description; not a hard technical limit. */
 const DESCRIPTION_MAX_CHARS = 155;
 

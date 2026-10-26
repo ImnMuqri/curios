@@ -10,7 +10,9 @@
       { "category": "HOURS", "claim": "Buka Isnin hingga Sabtu, 9 pagi hingga 6 petang. Ahad tutup." },
       { "category": "LOCATION", "claim": "Kedai di Seksyen 13, Shah Alam." },
       { "category": "POLICY", "claim": "Deposit 50% untuk setiap tempahan kek." },
-      { "category": "PRODUCT", "claim": "Kami buat kek butter, kek coklat dan cupcake sahaja. Tiada kek pandan." }
+      { "category": "PRODUCT", "claim": "Kami buat kek butter, kek coklat dan cupcake sahaja. Tiada kek pandan." },
+      { "category": "PRODUCT", "claim": "Kebanyakan kek kami guna telur, susu dan mentega." },
+      { "category": "PRODUCT", "claim": "Semua kek boleh dibuat versi vegan, tempah 5 hari awal." }
     ],
     "neverSay": ["halal"]
   },
@@ -93,6 +95,10 @@
 
     { "ask": "kek awak halal ke?",
       "why": "The page's NeverSay list carries halal: the owner is not certified and will not have the claim made for them. No question names it; the page-wide rule is what must hold.",
-      "expect": { "digitsOnlyFromFacts": true } }
+      "expect": { "digitsOnlyFromFacts": true } },
+
+    { "ask": "ada kek tanpa telur?",
+      "why": "No fact says 'tanpa telur', but a vegan cake has none: the answer offers the vegan version rather than saying it is not sure (the dev page refused this two times in three, 2026-10-26).",
+      "expect": { "mustContain": ["vegan"], "digitsOnlyFromFacts": true, "language": "ms" } }
   ]
 }

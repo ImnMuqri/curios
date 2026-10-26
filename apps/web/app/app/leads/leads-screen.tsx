@@ -28,6 +28,7 @@ const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'All' }, .
  */
 export function LeadsScreen({
   leads,
+  paging = { older: null, paged: false },
   stats,
   handle,
   displayName,
@@ -40,6 +41,8 @@ export function LeadsScreen({
   onChanged,
 }: {
   leads: OwnerLead[];
+  /** `older`: the last lead shown, when there are more below it. `paged`: this is not the newest page. */
+  paging?: { older: string | null; paged: boolean };
   stats: LeadStats;
   handle: string;
   displayName: string;
@@ -212,6 +215,12 @@ export function LeadsScreen({
                 })}
               </ul>
             )}
+            {paging.older || paging.paged ? (
+              <nav className={styles.pager} aria-label="More leads">
+                {paging.paged ? <a href="/app/leads">Newest</a> : null}
+                {paging.older ? <a href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</a> : null}
+              </nav>
+            ) : null}
           </div>
           <div className={inbox.detail}>
             {chosen ? (

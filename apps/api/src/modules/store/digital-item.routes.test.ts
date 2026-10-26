@@ -365,6 +365,29 @@ describe('codes', () => {
     expect((await call('DELETE', `/store/items/${free}`, owner.cookie)).statusCode).toBe(200);
   });
 
+  it('waits for a checkout mid-way through taking a code, then refuses to remove the item', async () => {
+    const owner = await anOwner();
+    const id = await codeItem(owner);
+    await call('PUT', `/store/items/${id}/codes`, owner.cookie, { text: 'AAA' });
+    let removal: ReturnType<typeof call> | undefined;
+    // What checkout does, held open: the page's lock, the order, its code taken -- and the owner's
+    // removal arriving before it commits.
+    await app.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${owner.pageId} FOR UPDATE`;
+      const order = await tx.order.create({
+        data: { pageId: owner.pageId, number: 1, code: 'ABCD', tokenHash: randomUUID(), customerName: 'A', phone: '+60123456789', itemsCents: 1, deliveryCents: 0, totalCents: 1, lines: { create: { itemId: id, itemName: 'x', unitPriceCents: 1, quantity: 1, position: 0 } } },
+        select: { lines: { select: { id: true } } },
+      });
+      await tx.itemCode.updateMany({ where: { itemId: id }, data: { orderLineId: order.lines[0]?.id } });
+      removal = call('DELETE', `/store/items/${id}`, owner.cookie);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+    const refused = await removal!;
+    expect(refused.statusCode).toBe(409);
+    expect(refused.json().error.code).toBe('ITEM_HAS_SALES');
+    expect(await app.prisma.itemCode.count({ where: { itemId: id } })).toBe(1);
+  });
+
   it('refuses over-long codes, another owner, a non-code item, and no session', async () => {
     const a = await anOwner();
     const b = await anOwner();

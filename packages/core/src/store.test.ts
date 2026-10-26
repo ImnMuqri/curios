@@ -109,6 +109,7 @@ describe('storeGaps', () => {
     bankAccountName: null,
     bankAccountNumber: null,
     chipConnected: false,
+    physicalItems: true,
   };
   it('is ready with a QR and pickup', () => {
     expect(storeGaps(ready)).toEqual([]);
@@ -128,6 +129,11 @@ describe('storeGaps', () => {
   it('needs pickup or delivery', () => {
     expect(storeGaps({ ...ready, pickupEnabled: false })).toEqual(['fulfilment']);
     expect(storeGaps({ ...ready, pickupEnabled: false, deliveryMode: 'RIDER' })).toEqual([]);
+  });
+
+  it('asks a shop of digital items alone for no pickup or delivery, only a way to pay', () => {
+    expect(storeGaps({ ...ready, pickupEnabled: false, physicalItems: false })).toEqual([]);
+    expect(storeGaps({ ...ready, pickupEnabled: false, physicalItems: false, paymentQrKey: null })).toEqual(['payment']);
   });
   it('says what is missing in one sentence', () => {
     expect(storeGapMessage(['payment', 'fulfilment'])).toBe(

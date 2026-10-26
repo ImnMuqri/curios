@@ -27,8 +27,8 @@
       "why": "Sen must survive: RM38.50, never RM38 or RM39.",
       "expect": { "mustContain": ["38.50"], "digitsOnlyFromFacts": true, "language": "en" } },
     { "ask": "ada kek red velvet?",
-      "why": "Not on the shelf. The page must not invent an item or a price for it.",
-      "expect": { "mustNotContain": ["RM"], "language": "ms" } },
+      "why": "Not on the shelf. The page must not invent an item or a price for it. RM followed by a digit or a space, not RM alone: a bare 'rm' matches the 'rm' in 'berminat', which failed a correct answer (2026-10-26).",
+      "expect": { "mustNotContain": ["RM0", "RM1", "RM2", "RM3", "RM4", "RM5", "RM6", "RM7", "RM8", "RM9", "RM "], "language": "ms" } },
     { "ask": "macam mana nak order kek batik",
       "why": "Ordering points to the shop on this page. It must not invent a link, a number or a process.",
       "expect": { "digitsOnlyFromFacts": true, "mustNotContain": ["http", "wa.me"], "language": "ms" } }

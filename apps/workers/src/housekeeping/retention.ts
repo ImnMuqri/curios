@@ -2,9 +2,11 @@ import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import { HOUSEKEEPING_QUEUE, LEAD_RETENTION_MONTHS, RETENTION_JOB, type MailJobData } from '@curios/core';
 import type { Prisma, PrismaClient } from '@curios/db';
+import type { Embedder } from '@curios/embeddings';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import type { SchedulerQueue } from '../billing/pending-check.js';
 import type { RemoveObjects } from '../lib/storage.js';
+import { EMBEDDINGS_BACKFILL_JOB, runEmbeddingsBackfill } from './embeddings-backfill.js';
 import { EXPIRE_HOLDS_JOB, expireUnpaidHolds } from './expire-holds.js';
 import { SESSION_REMINDERS_JOB, sendSessionReminders } from './session-reminders.js';
 
@@ -62,22 +64,51 @@ export async function runRetention(deps: {
   };
 
   // Messages before conversations, which go only once emptied; orders last, so
-  // storage trouble in their sweep comes after everything else is done.
-  const leads = await step('leads', async () => (await deps.prisma.lead.deleteMany({ where: { createdAt: { lt: before } } })).count);
-  const messages = await step('messages', async () => (await deps.prisma.message.deleteMany({ where: { createdAt: { lt: before } } })).count);
-  const conversations = await step(
-    'conversations',
-    async () => (await deps.prisma.conversation.deleteMany({ where: { createdAt: { lt: before }, messages: { none: {} }, lead: null } })).count,
+  // storage trouble in their sweep comes after everything else is done. Each in
+  // batches, so a year of chat is many short deletes rather than one long lock.
+  const batchSize = deps.batchSize ?? RETENTION_BATCH;
+  const leads = await step('leads', () =>
+    inBatches(batchSize, (take) => deps.prisma.lead.findMany({ where: { createdAt: { lt: before } }, select: { id: true }, take }), async (ids) =>
+      (await deps.prisma.lead.deleteMany({ where: { id: { in: ids }, createdAt: { lt: before } } })).count,
+    ),
+  );
+  const messages = await step('messages', () =>
+    inBatches(batchSize, (take) => deps.prisma.message.findMany({ where: { createdAt: { lt: before } }, select: { id: true }, take }), async (ids) =>
+      (await deps.prisma.message.deleteMany({ where: { id: { in: ids }, createdAt: { lt: before } } })).count,
+    ),
+  );
+  const emptied = { createdAt: { lt: before }, messages: { none: {} }, lead: null } satisfies Prisma.ConversationWhereInput;
+  const conversations = await step('conversations', () =>
+    inBatches(batchSize, (take) => deps.prisma.conversation.findMany({ where: emptied, select: { id: true }, take }), async (ids) =>
+      (await deps.prisma.conversation.deleteMany({ where: { ...emptied, id: { in: ids } } })).count,
+    ),
   );
   let receipts = 0;
   const orders = await step('orders', () =>
-    sweepOrders(deps, before, deps.batchSize ?? RETENTION_BATCH, (removed) => {
+    sweepOrders(deps, before, batchSize, (removed) => {
       receipts += removed;
     }),
   );
 
   if (failures.length > 0) throw failures[0];
   return { leads, messages, conversations, orders, receipts };
+}
+
+/**
+ * Reads up to `take` ids that still match and deletes them, until a read comes back short. Each
+ * delete repeats its own filter, so a row that stopped matching between the read and the delete stays.
+ */
+async function inBatches(
+  take: number,
+  find: (take: number) => Promise<{ id: string }[]>,
+  remove: (ids: string[]) => Promise<number>,
+): Promise<number> {
+  let deleted = 0;
+  for (;;) {
+    const ids = (await find(take)).map((row) => row.id);
+    if (ids.length > 0) deleted += await remove(ids);
+    if (ids.length < take) return deleted;
+  }
 }
 
 /** The old orders, a batch at a time by id: files first, then the rows whose files went. */
@@ -135,6 +166,8 @@ export function createHousekeepingWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   removeObjects: RemoveObjects | null;
+  /** For the nightly vector backfill. */
+  embedder: Embedder;
   /** The class reminders go out through the mail queue, with order links opened by `secretsKey`. */
   reminders: { mailQueue: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> }; appUrl: string; apiUrl: string; secretsKey: Buffer | null };
   log?: { info: (details: object, message: string) => void; warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
@@ -149,6 +182,8 @@ export function createHousekeepingWorker(deps: {
         await expireUnpaidHolds({ prisma: deps.prisma, now: new Date(), log: deps.log });
       } else if (job.name === SESSION_REMINDERS_JOB) {
         await sendSessionReminders({ prisma: deps.prisma, now: new Date(), log: deps.log, ...deps.reminders });
+      } else if (job.name === EMBEDDINGS_BACKFILL_JOB) {
+        await runEmbeddingsBackfill({ prisma: deps.prisma, embedder: deps.embedder, log: deps.log });
       }
     },
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.housekeeping },
@@ -162,4 +197,6 @@ export async function scheduleHousekeepingJobs(queue: SchedulerQueue): Promise<v
   await queue.upsertJobScheduler(EXPIRE_HOLDS_JOB, { pattern: '20 * * * *' }, { name: EXPIRE_HOLDS_JOB });
   // Class reminders for the next Malaysian day, at a civil hour; the claim on each booking makes a re-run harmless.
   await queue.upsertJobScheduler(SESSION_REMINDERS_JOB, { pattern: '0 9 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: SESSION_REMINDERS_JOB });
+  // Daily is plenty: a fact short a vector costs tokens, never a wrong answer.
+  await queue.upsertJobScheduler(EMBEDDINGS_BACKFILL_JOB, { pattern: '0 4 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: EMBEDDINGS_BACKFILL_JOB });
 }

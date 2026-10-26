@@ -10,10 +10,9 @@ import styles from './faq.module.css';
 // /[handle].
 export const runtime = 'nodejs';
 
-// ISR, per FRONTEND.md's route table. Deliberately without
-// generateStaticParams -- enumerating every qualifying question at build time
-// would make `pnpm build` require a live database, which it does not today.
-// The first visitor renders; everyone after gets cached HTML.
+// ISR, per FRONTEND.md's route table. generateStaticParams below lists nothing:
+// enumerating every qualifying question at build time would make `pnpm build`
+// require a live database, which it does not today.
 // 60 seconds, not the 24 hours FRONTEND.md's route table first specified. These
 // pages carry a customer's own words, and an owner who takes one down must not
 // wait a day to see it gone -- that latency was half of the takedown gap
@@ -22,6 +21,16 @@ export const runtime = 'nodejs';
 // calling revalidatePath from the API, needs a shared secret and couples two
 // deployables, which is what choosing ISR was meant to avoid.
 export const revalidate = 60;
+
+/**
+ * None at build time, so `pnpm build` still needs no database. Its presence is what makes the
+ * route ISR: without it Next 15 renders a dynamic segment on every request and `revalidate` above
+ * does nothing (measured 2026-10-26 on a production build: every view read Postgres). With it, the
+ * first visitor to an address renders it and the next 60 seconds of visitors get that HTML.
+ */
+export function generateStaticParams(): { handle: string }[] {
+  return [];
+}
 
 export async function generateMetadata({
   params,
