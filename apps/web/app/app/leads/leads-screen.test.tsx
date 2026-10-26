@@ -10,17 +10,18 @@ const transcript = [
   { role: 'ASSISTANT' as const, content: 'Kek coklat moist 2kg is RM170.' },
 ];
 const leads: OwnerLead[] = [
-  { id: 'l1', phone: '+60127814402', score: 3, slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, status: 'NEW', createdAt: new Date('2026-10-17T05:35:00Z'), transcript, capturedAfter: 2 },
-  { id: 'l2', phone: '+601120457788', score: 1, slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, status: 'CONTACTED', createdAt: new Date('2026-10-16T03:00:00Z'), transcript, capturedAfter: 2 },
-  { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript, capturedAfter: 2 },
+  { id: 'l1', phone: '+60127814402', score: 3, slots: { product: 'Kek coklat, 2kg', date: 'Sat 24 Oct', location: 'Klang' }, status: 'NEW', createdAt: new Date('2026-10-17T05:35:00Z'), transcript, messageCount: 2, capturedAfter: 2 },
+  { id: 'l2', phone: '+601120457788', score: 1, slots: { product: 'Wedding cake, 3 tiers', date: null, location: null }, status: 'CONTACTED', createdAt: new Date('2026-10-16T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2 },
+  { id: 'l3', phone: '+60135576610', score: 0, slots: null, status: 'CLOSED', createdAt: new Date('2026-10-13T03:00:00Z'), transcript, messageCount: 2, capturedAfter: 2 },
 ];
 
-function show(list = leads, calls?: Partial<LeadActions>) {
+function show(list = leads, calls?: Partial<LeadActions>, paging?: { older: string | null; paged: boolean }) {
   const actions: LeadActions = { setStatus: vi.fn(async () => undefined), remove: vi.fn(async () => undefined), ...calls };
   const onChanged = vi.fn();
   render(
     <LeadsScreen
       leads={list}
+      paging={paging}
       stats={{ waiting: 1, thisWeek: 3, sold: 1 }}
       handle="keklina"
       displayName="Kek Lina"
@@ -167,5 +168,17 @@ describe('LeadsScreen, without the template look', () => {
     const after = screen.getByRole('heading', { name: /What they’re after|What they're after/ }).closest('section')!;
     expect(after.querySelector('[class*="slotIcon"]')).toBeNull();
     expect(after).toHaveTextContent('Kek coklat, 2kg');
+  });
+
+  it('offers no paging on a first page that holds them all', () => {
+    show();
+    expect(screen.queryByRole('navigation', { name: 'More leads' })).toBeNull();
+  });
+
+  it('links to older leads below the last one shown, and back to the newest from further down', () => {
+    show(leads, undefined, { older: 'l3', paged: true });
+    const nav = screen.getByRole('navigation', { name: 'More leads' });
+    expect(within(nav).getByRole('link', { name: 'Older leads' })).toHaveAttribute('href', '/app/leads?before=l3');
+    expect(within(nav).getByRole('link', { name: 'Newest' })).toHaveAttribute('href', '/app/leads');
   });
 });

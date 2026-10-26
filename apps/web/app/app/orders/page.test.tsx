@@ -2,11 +2,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { OwnerOrder, OwnerPage } from '@curios/db-read';
 
-const getOwnerOrders = vi.fn();
+const getOwnerOrdersPage = vi.fn();
 const getOrderStats = vi.fn();
 const getOwnerPage = vi.fn();
 const getOwnerStore = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerOrders, getOrderStats, getOwnerPage, getOwnerStore }));
+vi.mock('@curios/db-read', () => ({ getOwnerOrdersPage, getOrderStats, getOwnerPage, getOwnerStore }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -87,7 +87,7 @@ describe('OrdersPage', () => {
     vi.stubEnv('STORAGE_PUBLIC_URL', 'https://cdn.example/');
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockResolvedValue(page);
-    getOwnerOrders.mockResolvedValue([order]);
+    getOwnerOrdersPage.mockResolvedValue({ orders: [order], older: null });
     getOrderStats.mockResolvedValue({ toCheck: 1, toMake: 0, paidThisWeekCents: 0 });
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings: { pickupNote: 'Seksyen 7, Shah Alam' }, items: [] });
   });
@@ -101,7 +101,7 @@ describe('OrdersPage', () => {
     expect(screen.getByText(/Orders come from a shop/)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
     expect(Orders).not.toHaveBeenCalled();
-    expect(getOwnerOrders).not.toHaveBeenCalled();
+    expect(getOwnerOrdersPage).not.toHaveBeenCalled();
   });
 
   it('hands the screen its orders, with the receipt and the item photos as addresses, not keys', async () => {
@@ -120,6 +120,23 @@ describe('OrdersPage', () => {
     render(await OrdersPage(params('o1')));
 
     expect(Orders.mock.calls[0]![0]).toMatchObject({ selected: 'o1' });
+  });
+
+  it('hands the screen the older-orders cursor, and reads the next page from ?before', async () => {
+    getOwnerOrdersPage.mockResolvedValue({ orders: [order], older: 'o1' });
+    render(await OrdersPage(params()));
+    expect(getOwnerOrdersPage).toHaveBeenCalledWith('acc1', { before: undefined, now: expect.any(Date) });
+    expect(Orders.mock.calls[0]![0]).toMatchObject({ paging: { older: 'o1', paged: false } });
+
+    getOwnerOrdersPage.mockResolvedValue({ orders: [order], older: null });
+    render(await OrdersPage({ searchParams: Promise.resolve({ before: 'o9' }) }));
+    expect(getOwnerOrdersPage).toHaveBeenLastCalledWith('acc1', { before: 'o9', now: expect.any(Date) });
+    expect(Orders.mock.calls[1]![0]).toMatchObject({ paging: { older: null, paged: true } });
+  });
+
+  it('sends a cursor that pages nothing back to the first page', async () => {
+    getOwnerOrdersPage.mockResolvedValue(null);
+    await expect(OrdersPage({ searchParams: Promise.resolve({ before: 'gone' }) })).rejects.toThrow('NEXT_REDIRECT:/app/orders');
   });
 
   it('sends an owner with no page to onboarding', async () => {

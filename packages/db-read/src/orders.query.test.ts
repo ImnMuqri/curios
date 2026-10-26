@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { hashSessionValue } from '@curios/core';
-import { getCheckout, getOrderByToken, getShopItem, getOrderStats, getOwnerOrders } from './orders.query.js';
+import { getCheckout, getOrderByToken, getShopItem, getOrderStats, getOwnerOrders, getOwnerOrdersPage } from './orders.query.js';
 import { countNavBadges } from './my-curios.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -181,6 +181,36 @@ describe('getOwnerOrders', () => {
     });
     expect(await getOwnerOrders(owner.accountId, { limit: 500 })).toHaveLength(100);
     expect(await getOwnerOrders(owner.accountId, { limit: 5 })).toHaveLength(5);
+  });
+});
+
+describe('getOwnerOrdersPage', () => {
+  it('pages through the finished orders once each, ties included, with what needs the owner on the first page only', async () => {
+    const owner = await anOwner();
+    const at = new Date('2026-10-05T00:00:00Z');
+    for (const name of ['D1', 'D2', 'D3', 'D4', 'D5']) await anOrder(owner.pageId, { customerName: name, status: 'COMPLETED', paidAt: at, createdAt: at });
+    await anOrder(owner.pageId, { customerName: 'Open', createdAt: new Date('2026-09-01T00:00:00Z') });
+
+    const first = (await getOwnerOrdersPage(owner.accountId, { perPage: 2 }))!;
+    expect(first.orders.map((o) => o.customerName)).toContain('Open');
+    expect(first.orders).toHaveLength(3);
+    const second = (await getOwnerOrdersPage(owner.accountId, { perPage: 2, before: first.older! }))!;
+    const third = (await getOwnerOrdersPage(owner.accountId, { perPage: 2, before: second.older! }))!;
+    expect(third.older).toBeNull();
+    const done = [...first.orders, ...second.orders, ...third.orders].map((o) => o.customerName).filter((n) => n !== 'Open');
+    expect(done.sort()).toEqual(['D1', 'D2', 'D3', 'D4', 'D5']);
+    expect([...second.orders, ...third.orders].map((o) => o.customerName)).not.toContain('Open');
+  });
+
+  it('has no older page when everything fits, and pages nothing from a cursor that is not this owner’s finished order', async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    await anOrder(owner.pageId, { customerName: 'Open' });
+    const theirs = await anOrder(other.pageId, { customerName: 'Theirs', status: 'COMPLETED', paidAt: NOW });
+    const page = (await getOwnerOrdersPage(owner.accountId))!;
+    expect(page.older).toBeNull();
+    expect(await getOwnerOrdersPage(owner.accountId, { before: page.orders[0]!.id })).toBeNull();
+    expect(await getOwnerOrdersPage(owner.accountId, { before: theirs })).toBeNull();
   });
 });
 

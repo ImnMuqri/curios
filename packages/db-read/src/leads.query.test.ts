@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { getLeadStats, getLeads } from './leads.query.js';
+import { getLeadStats, getLeads, TRANSCRIPT_LIMIT } from './leads.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -113,6 +113,39 @@ describe('getLeads', () => {
 
   it('does not write, so the read-only role can run it', async () => {
     await expect(getLeads(mine)).resolves.toBeDefined();
+  });
+
+  it('pages on from the last lead shown, and another owner’s lead as the cursor pages nothing', async () => {
+    const [newest, older] = await getLeads(mine);
+    expect((await getLeads(mine, { limit: 1 })).map((l) => l.id)).toEqual([newest!.id]);
+    expect((await getLeads(mine, { limit: 1, before: newest!.id })).map((l) => l.id)).toEqual([older!.id]);
+    expect(await getLeads(mine, { before: older!.id })).toEqual([]);
+    const [stranger] = await getLeads(theirs);
+    expect(await getLeads(mine, { before: stranger!.id })).toEqual([]);
+  });
+
+  it('never splits or repeats leads left in the same instant across a page boundary', async () => {
+    const { pageId, accountId } = await anOwnerWithAPage();
+    const at = new Date('2026-09-10T10:00:00Z');
+    const ids = await Promise.all(['+60120000001', '+60120000002', '+60120000003'].map((phone) => aLead(pageId, phone, { createdAt: at })));
+    const first = await getLeads(accountId, { limit: 2 });
+    const rest = await getLeads(accountId, { limit: 2, before: first.at(-1)!.id });
+    expect([...first, ...rest].map((l) => l.id).sort()).toEqual([...ids].sort());
+  });
+
+  it('sends the first TRANSCRIPT_LIMIT messages of a long chat and says how many there were', async () => {
+    const { pageId, accountId } = await anOwnerWithAPage();
+    const conversation = await write.conversation.create({ data: { pageId } });
+    const total = TRANSCRIPT_LIMIT + 5;
+    await write.message.createMany({
+      data: Array.from({ length: total }, (_, i) => ({ conversationId: conversation.id, role: 'USER' as const, content: `m${i}`, createdAt: new Date(Date.UTC(2026, 9, 1, 0, i)) })),
+    });
+    await write.lead.create({ data: { pageId, conversationId: conversation.id, phone: '+60127814402', createdAt: new Date(Date.UTC(2026, 9, 1, 0, 2, 30)) } });
+    const [lead] = await getLeads(accountId);
+    expect(lead?.transcript).toHaveLength(TRANSCRIPT_LIMIT);
+    expect(lead?.transcript[0]?.content).toBe('m0');
+    expect(lead?.messageCount).toBe(total);
+    expect(lead?.capturedAfter).toBe(3);
   });
 });
 

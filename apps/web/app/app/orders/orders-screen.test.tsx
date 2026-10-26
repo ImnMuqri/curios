@@ -58,12 +58,13 @@ const orders: OrderRow[] = [
 
 const stats: OrderStats = { toCheck: 1, toMake: 2, paidThisWeekCents: 17000 };
 
-function show(list = orders, extra: { selected?: string | null; stats?: OrderStats } = {}) {
+function show(list = orders, extra: { selected?: string | null; stats?: OrderStats; paging?: { older: string | null; paged: boolean } } = {}) {
   const move = vi.fn(async () => undefined);
   const onChanged = vi.fn();
   render(
     <OrdersScreen
       orders={list}
+      paging={extra.paging}
       stats={extra.stats ?? stats}
       now={now}
       selected={extra.selected ?? null}
@@ -264,5 +265,17 @@ describe('OrdersScreen, a digital-only order', () => {
     expect(filter(/^Paid/)).toHaveTextContent('2');
     fireEvent.click(filter(/^Paid/));
     expect(rows().queryByText('Farah Nadia')).toBeNull();
+  });
+
+  it('offers no paging when every order fits', () => {
+    show();
+    expect(screen.queryByRole('navigation', { name: 'More orders' })).toBeNull();
+  });
+
+  it('links to older orders below the last finished one, and back to the newest from further down', () => {
+    show(orders, { paging: { older: 'o3', paged: true } });
+    const nav = screen.getByRole('navigation', { name: 'More orders' });
+    expect(within(nav).getByRole('link', { name: 'Older orders' })).toHaveAttribute('href', '/app/orders?before=o3');
+    expect(within(nav).getByRole('link', { name: 'Newest' })).toHaveAttribute('href', '/app/orders');
   });
 });

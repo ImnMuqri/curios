@@ -16,8 +16,14 @@ import panel from '../panel.module.css';
  * here re-filters or re-sorts, on purpose: a second opinion about ordering
  * on the read side is exactly how "newest first" quietly stops being true.
  * The figures are counted in the database, not from those fifty.
+ *
+ * `?before=<lead id>` is the next fifty down, from "Older leads". One more
+ * than a page is read, only to know whether to offer that link.
  */
-export default async function LeadsPage() {
+const LEADS_PER_PAGE = 50;
+
+export default async function LeadsPage({ searchParams }: { searchParams?: Promise<{ before?: string }> } = {}) {
+  const before = (await searchParams)?.before || undefined;
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
@@ -28,12 +34,16 @@ export default async function LeadsPage() {
   // trial means for capture is the frame's banner (alerts.ts), shown under
   // this screen's header.
   const [leads, stats, page, look] = await Promise.all([
-    getLeads(owner.accountId),
+    getLeads(owner.accountId, { limit: LEADS_PER_PAGE + 1, before }),
     getLeadStats(owner.accountId, now),
     getOwnerPage(owner.accountId),
     getMyCurios(owner.accountId),
   ]);
   if (!page || !look) redirect('/app/onboarding');
+  // A cursor that pages nothing (its lead deleted, or never this owner's) is the first page again.
+  if (before && leads.length === 0) redirect('/app/leads');
+  const shown = leads.slice(0, LEADS_PER_PAGE);
+  const paging = { older: leads.length > LEADS_PER_PAGE ? (shown.at(-1)?.id ?? null) : null, paged: before !== undefined };
 
   if (page.mode === 'PERSONAL') {
     // A personal page never offers the capture card, so there will never be
@@ -54,7 +64,8 @@ export default async function LeadsPage() {
 
   return (
     <Leads
-      leads={leads}
+      leads={shown}
+      paging={paging}
       stats={stats}
       handle={page.handle}
       displayName={page.displayName}

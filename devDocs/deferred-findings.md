@@ -105,7 +105,14 @@ Fix: lift `replyLanguage` and the greeting builder from
 `normalizeMalaysianPhone`, and use it from both. Deferred because that is a
 workers refactor, not a leads-screen edit.
 
-### The transcript fetch is unbounded
+### The transcript fetch is unbounded — fixed
+
+Fixed 2026-10-26: `getLeads` sends each lead's first `TRANSCRIPT_LIMIT` (60) messages and a
+`messageCount`, and the drawer says "The first 60 of N messages." when a chat ran longer.
+The Leads and Orders screens also page now (`?before=`, "Older leads" / "Older orders"),
+so nothing past the newest 50 leads or 100 finished orders is out of reach. The finding as
+it was:
+
 
 `packages/db-read/src/leads.query.ts` selects `messages` with no `take`. 50
 leads × every message in each conversation, all serialised into the RSC
