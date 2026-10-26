@@ -17,10 +17,11 @@ const actions = (): TopicActions => ({
   answer: vi.fn(), withdraw: vi.fn(), suppress: vi.fn(), rename: vi.fn(), merge: vi.fn(), resolve: vi.fn(), deleteTopic: vi.fn(), split: vi.fn(), deleteWording: vi.fn(),
 });
 
-function show(list = topics, publishesFaq = true, answerRate = { answered: 0, recorded: 0 }) {
+function show(list = topics, publishesFaq = true, answerRate = { answered: 0, recorded: 0 }, paging?: { page: number; hasNext: boolean }) {
   render(
     <QuestionsScreen
       topics={list}
+      paging={paging}
       askedThisWeek={23}
       answerRate={answerRate}
       publishesFaq={publishesFaq}
@@ -122,5 +123,17 @@ describe('QuestionsScreen, without the template look', () => {
     expect(within(figures).getAllByRole('listitem')).toHaveLength(3);
     expect(figures.querySelector('svg')).toBeNull();
     expect(figures.querySelector('[data-tone]')).toBeNull();
+  });
+
+  it('offers no paging when every topic fits on one screen', () => {
+    show();
+    expect(screen.queryByRole('navigation', { name: 'More topics' })).toBeNull();
+  });
+
+  it('links to the next and previous fifty, the first page without ?page', () => {
+    show(topics, true, { answered: 0, recorded: 0 }, { page: 2, hasNext: true });
+    const nav = screen.getByRole('navigation', { name: 'More topics' });
+    expect(within(nav).getByRole('link', { name: 'Previous' })).toHaveAttribute('href', '/app/questions');
+    expect(within(nav).getByRole('link', { name: 'Next' })).toHaveAttribute('href', '/app/questions?page=3');
   });
 });

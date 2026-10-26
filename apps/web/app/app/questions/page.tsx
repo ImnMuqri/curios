@@ -14,7 +14,12 @@ import { Questions } from './questions-screen.js';
  * Manglish and English -- see its refusal rule. A question asked nine times is
  * a gap either way.
  */
-export default async function QuestionsPage() {
+/** Topics a screen shows; `?page=2` is the next fifty, most asked first. */
+const TOPICS_PER_PAGE = 50;
+
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
+  const query = await searchParams;
+  const pageNumber = Math.max(1, Number.parseInt(typeof query.page === 'string' ? query.page : '1', 10) || 1);
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
@@ -22,7 +27,8 @@ export default async function QuestionsPage() {
   // week of asks read the same on the server and in the browser.
   const now = new Date();
   const [topics, askedThisWeek, answerRate, owned, page] = await Promise.all([
-    getTopics(owner.accountId, { now }),
+    // One more than a screen, only to know whether to offer the next.
+    getTopics(owner.accountId, { now, limit: TOPICS_PER_PAGE + 1, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
     countQuestionsThisWeek(owner.accountId, now),
     getAnswerRate(owner.accountId, now),
     getOwnerPage(owner.accountId),
@@ -30,6 +36,8 @@ export default async function QuestionsPage() {
     getMyCurios(owner.accountId),
   ]);
   if (!owned || !page) redirect('/app/onboarding');
+  // Past the last page (topics merged or deleted since the link was made): the first one.
+  if (pageNumber > 1 && topics.length === 0) redirect('/app/questions');
 
   // Plain data across the boundary: strings, numbers, booleans and Dates all
   // cross fine. The handlers live inside `Questions`, a client component -- a
@@ -37,7 +45,8 @@ export default async function QuestionsPage() {
   // request time that no gate catches.
   return (
     <Questions
-      topics={topics}
+      topics={topics.slice(0, TOPICS_PER_PAGE)}
+      paging={{ page: pageNumber, hasNext: topics.length > TOPICS_PER_PAGE }}
       askedThisWeek={askedThisWeek}
       answerRate={answerRate}
       publishesFaq={owned.mode === 'BUSINESS'}

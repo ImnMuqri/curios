@@ -239,7 +239,7 @@ export function OrdersScreen({
               </ul>
             )}
             {paging.older || paging.paged ? (
-              <nav className={styles.pager} aria-label="More orders">
+              <nav className={inbox.pager} aria-label="More orders">
                 {paging.paged ? <a href="/app/orders">Newest</a> : null}
                 {paging.older ? <a href={`/app/orders?before=${encodeURIComponent(paging.older)}`}>Older orders</a> : null}
               </nav>

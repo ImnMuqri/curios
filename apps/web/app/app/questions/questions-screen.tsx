@@ -31,6 +31,7 @@ const FILTERS: { id: Filter; label: string }[] = [
  */
 export function QuestionsScreen({
   topics,
+  paging = { page: 1, hasNext: false },
   askedThisWeek,
   answerRate,
   publishesFaq,
@@ -46,6 +47,8 @@ export function QuestionsScreen({
   onChanged,
 }: {
   topics: OwnerTopic[];
+  /** Which fifty, most asked first, and whether more follow. */
+  paging?: { page: number; hasNext: boolean };
   askedThisWeek: number;
   /** Of the last thirty days' asks with a recorded outcome, how many the chat could answer. */
   answerRate: { answered: number; recorded: number };
@@ -206,6 +209,12 @@ export function QuestionsScreen({
                 })}
               </ul>
             )}
+            {paging.page > 1 || paging.hasNext ? (
+              <nav className={inbox.pager} aria-label="More topics">
+                {paging.page > 1 ? <a href={paging.page === 2 ? '/app/questions' : `/app/questions?page=${paging.page - 1}`}>Previous</a> : null}
+                {paging.hasNext ? <a href={`/app/questions?page=${paging.page + 1}`}>Next</a> : null}
+              </nav>
+            ) : null}
           </div>
           <div className={inbox.detail}>
             {chosen ? (

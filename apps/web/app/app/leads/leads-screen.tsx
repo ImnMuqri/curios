@@ -216,7 +216,7 @@ export function LeadsScreen({
               </ul>
             )}
             {paging.older || paging.paged ? (
-              <nav className={styles.pager} aria-label="More leads">
+              <nav className={inbox.pager} aria-label="More leads">
                 {paging.paged ? <a href="/app/leads">Newest</a> : null}
                 {paging.older ? <a href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</a> : null}
               </nav>

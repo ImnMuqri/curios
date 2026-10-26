@@ -78,6 +78,15 @@ afterAll(async () => {
 });
 
 describe('getTopics', () => {
+  it('pages through topics that tie on asks and time, each exactly once', async () => {
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const at = '2026-10-20T00:00:00Z';
+    const ids = (await Promise.all(['a', 'b', 'c', 'd', 'e'].map((t) => topic(pageId, t, 2, at)))).map((t) => t.id);
+    const pages = await Promise.all([0, 2, 4].map((offset) => getTopics(accountId, { limit: 2, offset })));
+    expect(pages.map((p) => p.length)).toEqual([2, 2, 1]);
+    expect(pages.flat().map((t) => t.id).sort()).toEqual([...ids].sort());
+  });
+
   it('orders by askCount, then most recently asked', async () => {
     const topics = await getTopics(ownerA);
     expect(topics.map((t) => t.title)).toEqual(['Berapa harga kek?', 'Ada delivery?', 'Ada halal?', 'Boleh tempah?']);

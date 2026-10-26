@@ -25,13 +25,17 @@ const MAX_LIMIT = 100;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** One row per topic, most asked first. Scoped through the page's owner in the query. */
-export async function getTopics(accountId: string, options: { limit?: number; now?: Date } = {}): Promise<OwnerTopic[]> {
+/**
+ * One row per topic, most asked first. Scoped through the page's owner in the query. `offset` skips
+ * that many, for the Questions screen's later pages; the id settles a tie, so pages never overlap.
+ */
+export async function getTopics(accountId: string, options: { limit?: number; offset?: number; now?: Date } = {}): Promise<OwnerTopic[]> {
   const now = options.now ?? new Date();
   const topics = await prismaRead.topic.findMany({
     where: { page: { accountId } },
-    orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }],
+    orderBy: [{ askCount: 'desc' }, { lastAskedAt: 'desc' }, { id: 'asc' }],
     take: Math.min(Math.max(options.limit ?? DEFAULT_LIMIT, 1), MAX_LIMIT),
+    skip: Math.max(options.offset ?? 0, 0),
     select: {
       id: true,
       title: true,
