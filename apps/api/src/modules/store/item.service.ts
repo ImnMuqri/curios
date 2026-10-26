@@ -175,8 +175,8 @@ export async function removeItem(prisma: PrismaClient, accountId: string, id: st
     if (!item) throw new ItemNotFoundError();
     // The foreign key only objects at commit; refuse here, with a sentence.
     if (await hasBookings(tx, id)) throw new ItemHasBookingsError();
-    // The codes cascade with the item; the ones buyers were given are theirs.
-    if ((await tx.itemCode.count({ where: { itemId: id, givenAt: { not: null } } })) > 0) throw new ItemHasSalesError();
+    // The codes cascade with the item; the ones buyers were given, or an unpaid order holds, are theirs.
+    if ((await tx.itemCode.count({ where: { itemId: id, orderLineId: { not: null } } })) > 0) throw new ItemHasSalesError();
     await tx.item.delete({ where: { id } });
     await tx.item.updateMany({ where: { pageId: page.id, position: { gt: item.position } }, data: { position: { decrement: 1 } } });
     return { photoKey: item.photoKey, fileKeys: item.files.map((f) => f.key) };

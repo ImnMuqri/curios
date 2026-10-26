@@ -341,7 +341,7 @@ describe('codes', () => {
     expect(gone.json()).toEqual({ status: 'removed', left: 0 });
   });
 
-  it('refuses to remove an item whose codes buyers hold (409 ITEM_HAS_SALES), but removes one with only free codes', async () => {
+  it('refuses to remove an item whose codes buyers hold or have reserved (409 ITEM_HAS_SALES), but removes one with only free codes', async () => {
     const owner = await anOwner();
     const id = await codeItem(owner);
     await call('PUT', `/store/items/${id}/codes`, owner.cookie, { text: 'AAA\nBBB' });
@@ -355,6 +355,10 @@ describe('codes', () => {
     expect(refused.statusCode).toBe(409);
     expect(refused.json().error.code).toBe('ITEM_HAS_SALES');
     expect(refused.json().error.message).toBe('Buyers hold codes from this item. Mark it unavailable instead.');
+    expect(await app.prisma.itemCode.count({ where: { itemId: id } })).toBe(2);
+    // A code an unpaid order has reserved, not yet given, is held as well.
+    await app.prisma.itemCode.update({ where: { id: used.id }, data: { givenAt: null } });
+    expect((await call('DELETE', `/store/items/${id}`, owner.cookie)).json().error.code).toBe('ITEM_HAS_SALES');
     expect(await app.prisma.itemCode.count({ where: { itemId: id } })).toBe(2);
     const free = await codeItem(owner);
     await call('PUT', `/store/items/${free}/codes`, owner.cookie, { text: 'ZZZ' });
