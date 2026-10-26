@@ -171,6 +171,9 @@ export async function updateItem(
 export async function removeItem(prisma: PrismaClient, accountId: string, id: string): Promise<{ photoKey: string | null; fileKeys: string[] }> {
   const page = await storePageFor(prisma, accountId);
   return prisma.$transaction(async (tx) => {
+    // Checkout's lock: an order mid-way through taking this item's codes or seats is waited for, so
+    // the counts below see it, and a checkout that comes after finds the item gone.
+    await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${page.id} FOR UPDATE`;
     const item = await tx.item.findFirst({ where: { id, pageId: page.id }, select: { position: true, photoKey: true, files: { select: { key: true } } } });
     if (!item) throw new ItemNotFoundError();
     // The foreign key only objects at commit; refuse here, with a sentence.
