@@ -1395,7 +1395,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent, var(--biru));
+  /* On the page itself, like the reply's dot: the text colour where the accent would vanish. */
+  background: var(--accent-mark, var(--accent, var(--biru)));
   animation: dot 1s ease-in-out infinite;
 }
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  accentShowsOn,
   arrangeTiles,
   charCount,
   isHexColor,
@@ -198,5 +199,24 @@ describe('withShopTile', () => {
 
   it('works with no links at all', () => {
     expect(withShopTile([], { position: 4, size: null }).map((entry) => entry.id)).toEqual([SHOP_TILE_ID]);
+  });
+});
+
+describe('accentShowsOn', () => {
+  it('hides only an accent the page would swallow: ink on Dark, the darker accents on Biru', () => {
+    expect(accentShowsOn('#191f2c', 'INK')).toBe(false);
+    expect(accentShowsOn('#2340c8', 'BIRU')).toBe(false);
+    expect(accentShowsOn('#6d3fb3', 'BIRU')).toBe(false);
+    expect(accentShowsOn('#191f2c', 'PAPER')).toBe(true);
+    expect(accentShowsOn('#2340c8', 'INK')).toBe(true);
+    // Orange on a light band is a low ratio the design chose, and keeps its accent.
+    expect(accentShowsOn('#e08a1e', 'PAPER')).toBe(true);
+    expect(accentShowsOn('#e08a1e', 'KUNING')).toBe(true);
+  });
+
+  it('measures a Custom band by its own colour, and trusts what it cannot read', () => {
+    expect(accentShowsOn('#f69697', 'CUSTOM', '#f69697')).toBe(false);
+    expect(accentShowsOn('#191f2c', 'CUSTOM', '#f69697')).toBe(true);
+    expect(accentShowsOn('#191f2c', 'CUSTOM', null)).toBe(true);
   });
 });

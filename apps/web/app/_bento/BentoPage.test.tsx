@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { BentoPage, type BentoPageProps } from './BentoPage.js';
+import { BentoPage, themeAttrs, type BentoPageProps } from './BentoPage.js';
 
 const base: BentoPageProps = {
   displayName: 'Iman Muqri',
@@ -375,5 +375,17 @@ describe('People often ask', () => {
     expect(screen.queryByText('People often ask')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Questions' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Made with Curios' })).toBeInTheDocument();
+  });
+});
+
+describe('the chat dot against the page', () => {
+  const mark = (accentColor: string, background: 'PAPER' | 'INK' | 'BIRU') =>
+    (themeAttrs({ accentColor, headingFont: 'JAKARTA', background }).style as Record<string, string>)['--accent-mark'];
+
+  it('takes the text colour where the accent would vanish, and stays the accent everywhere else', () => {
+    expect(mark('#191f2c', 'INK')).toBe('var(--page-fg)');
+    expect(mark('#2340c8', 'BIRU')).toBe('var(--page-fg)');
+    expect(mark('#191f2c', 'PAPER')).toBeUndefined();
+    expect(mark('#2340c8', 'INK')).toBeUndefined();
   });
 });

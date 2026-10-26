@@ -157,6 +157,31 @@ export function readableOn(hex: string): 'dark' | 'light' {
   return withInk >= withPaper ? 'dark' : 'light';
 }
 
+/** Each band's colour as tokens.css draws it (Kuning is a 20% tint toward paper there too). */
+const BAND_HEX: Record<Exclude<PageBackground, 'CUSTOM'>, string> = {
+  PAPER: '#fafbfc',
+  MUDA: '#eaf0ff',
+  KUNING: '#fcedd8',
+  BIRU: '#2340c8',
+  INK: '#191f2c',
+};
+
+/** Below this the accent all but vanishes on the page: the ink accent on Dark, most accents on Biru. */
+const ACCENT_MARK_MIN_CONTRAST = 2;
+
+/**
+ * Whether the accent can be seen against the page's own background, for the
+ * marks drawn straight on the page in it (the chat's dot). Where it cannot,
+ * those marks take the page's text colour instead. `background` is the band
+ * in force, and `custom` its colour when the band is Custom.
+ */
+export function accentShowsOn(accent: string, background: PageBackground, custom: string | null = null): boolean {
+  const bg = background === 'CUSTOM' ? custom : BAND_HEX[background];
+  if (!bg || !isHexColor(bg) || !isHexColor(accent)) return true;
+  const [hi, lo] = [luminance(accent), luminance(bg)].sort((a, b) => b - a) as [number, number];
+  return (hi + 0.05) / (lo + 0.05) >= ACCENT_MARK_MIN_CONTRAST;
+}
+
 /**
  * A colour taken toward paper: `share` of the colour, the rest white. What a
  * Custom background starts as -- a light tint of the page's own accent, so a
