@@ -281,7 +281,7 @@ Delete on sight, no discussion:
   current default look of AI-generated design and it will date within a year.
 - Testimonials from businesses that do not exist yet.
 - A robot mascot. This product's personality is the *owner's*, not ours.
-- Dark mode before launch. It doubles the surface area and no shop owner asked.
+- ~~Dark mode before launch. It doubles the surface area and no shop owner asked.~~ *Changed 2026-10-26, the owner's decision:* the owner's dashboard (`/app`) follows the device's dark setting. Only there: public pages, checkout, the order page and emails keep their own colours, and the previews inside the dashboard stay as customers see them (`data-island`). The tokens are swapped on the dashboard frame in `app-frame.module.css`; a new screen needs nothing more as long as it uses the tokens, and colour drawn over a photo is set outright, since it must not follow the theme.
 
 ---
 

@@ -189,7 +189,7 @@ export function AppearanceEditor({
                 }
               >
                 <Tick />
-                <span className={`${bento.theme} ${styles.backgroundMini}`} {...themeAttrs({ ...look, background: drawn })} aria-hidden="true">
+                <span className={`${bento.theme} ${styles.backgroundMini}`} {...themeAttrs({ ...look, background: drawn })} data-island="" aria-hidden="true">
                   <b />
                   <i data-accent />
                   <i />

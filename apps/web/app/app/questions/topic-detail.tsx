@@ -301,7 +301,7 @@ export function TopicDetail({
                 </button>
               </div>
             </div>
-            <div className={`${bento.theme} ${styles.chat}`} {...themeAttrs(look)} aria-label="How the chat replies">
+            <div className={`${bento.theme} ${styles.chat}`} {...themeAttrs(look)} data-island="" aria-label="How the chat replies">
               <span className={styles.chatLabel}>
                 <i aria-hidden="true" />
                 On your page

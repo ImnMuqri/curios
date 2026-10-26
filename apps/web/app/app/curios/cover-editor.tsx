@@ -85,7 +85,7 @@ export function CoverEditor({
               : undefined
           }
         >
-          <span className={`${bento.theme} ${styles.solid}`} {...themeAttrs(look)} aria-hidden="true">
+          <span className={`${bento.theme} ${styles.solid}`} {...themeAttrs(look)} data-island="" aria-hidden="true">
             <i />
             <em />
             <em />

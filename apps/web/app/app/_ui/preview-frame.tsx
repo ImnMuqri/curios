@@ -29,7 +29,7 @@ export function PreviewFrame<Id extends string>({
   return (
     <section className={styles.preview} aria-label={label}>
       <div className={styles.phone}>
-        <div className={styles.screen}>
+        <div className={styles.screen} data-island="">
           <div className={styles.scroll}>{children}</div>
           {overlay}
         </div>
