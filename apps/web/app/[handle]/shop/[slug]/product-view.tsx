@@ -2,12 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { formatRinggit } from '@curios/core/store';
+import type { DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
 import { shopCopy } from '../copy.js';
 import styles from './product.module.css';
 
-export type ProductItem = ShopItem & { photoUrl: string | null };
+/** The digital facts are absent on the Store preview's physical items. */
+export type ProductItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null };
 
 const ICON = {
   back: 'M15 6l-6 6 6 6',
@@ -15,6 +17,7 @@ const ICON = {
   clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
   shield: 'M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z',
   chat: 'M4 5h16v11H8l-4 4z',
+  mail: 'M3 5h18v14H3zM3 7l9 6 9-6',
   more: 'M9 6l6 6-6 6',
 };
 
@@ -59,6 +62,8 @@ export function ProductView(props: {
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [optionId, setOptionId] = useState<string | null>(item.options[0]?.id ?? null);
   const [quantity, setQuantity] = useState(1);
+  const times = item.sessions ?? [];
+  const [sessionId, setSessionId] = useState<string | null>(times.find((t) => t.seatsLeft > 0)?.id ?? null);
   const [announce, setAnnounce] = useState('');
 
   useEffect(() => {
@@ -77,6 +82,12 @@ export function ProductView(props: {
   const option = item.options.find((candidate) => candidate.id === optionId) ?? null;
   const unitCents = item.options.length > 0 ? (option?.priceCents ?? null) : item.priceCents;
   const total = unitCents === null ? null : formatRinggit(unitCents * quantity);
+  const digital = item.kind === 'DIGITAL';
+  const session = digital && item.delivery === 'SESSION';
+  const soldOut = item.soldOut === true;
+  const seats = session ? (times.find((t) => t.id === sessionId)?.seatsLeft ?? 0) : QUANTITY_MAX;
+  const maxQuantity = Math.min(QUANTITY_MAX, seats);
+  const look = { delivery: item.delivery ?? null, format: item.format ?? null, minutes: item.minutes ?? null, place: item.place ?? null };
 
   const day = props.nextDay ? copy.dayLong(props.nextDay) : null;
   const notice = copy.productNotice(props.noticeDays, day, props.pickup);
@@ -87,8 +98,8 @@ export function ProductView(props: {
   const q = encodeURIComponent(copy.askPrefill(item.name));
 
   function add() {
-    if (unitCents === null) return;
-    const line: BasketLine = { itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity };
+    if (unitCents === null || soldOut || (session && sessionId === null)) return;
+    const line: BasketLine = { itemId: item.id, optionId: item.options.length > 0 ? optionId : null, quantity: Math.min(quantity, maxQuantity), ...(session ? { sessionId } : {}) };
     const next = addToBasket(readBasket(key), line);
     writeBasket(key, next);
     setAnnounce(
@@ -125,13 +136,14 @@ export function ProductView(props: {
       </div>
 
       <div className={styles.pd}>
-        {item.tag ? <span className={styles.ptag}>{item.tag}</span> : null}
+        {digital || item.tag ? <span className={styles.ptag}>{digital ? copy.digital : item.tag}</span> : null}
         <h1>{item.name}</h1>
         {unitCents !== null ? (
           <p className={styles.price} data-testid="price">
             {formatRinggit(unitCents)}
           </p>
         ) : null}
+        {soldOut ? <p className={styles.soldOut}>{copy.soldOut}</p> : null}
         {item.description ? <p className={styles.desc}>{item.description}</p> : null}
 
         {item.options.length > 0 ? (
@@ -166,7 +178,44 @@ export function ProductView(props: {
           </>
         ) : null}
 
-        {notice || props.halal ? (
+        {session ? (
+          <>
+            <span className={styles.lbl} id="product-time">
+              {copy.pickATime}
+            </span>
+            <div className={styles.opts} role="radiogroup" aria-labelledby="product-time">
+              {times.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  role="radio"
+                  aria-checked={t.id === sessionId}
+                  disabled={t.seatsLeft === 0}
+                  onClick={() => {
+                    setSessionId(t.id);
+                    setQuantity((n) => Math.min(n, t.seatsLeft));
+                  }}
+                >
+                  <b>{copy.sessionTime(t.startsAt)}</b>
+                  <span>{t.seatsLeft === 0 ? copy.full : copy.seatsLeft(t.seatsLeft)}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {digital && item.delivery ? (
+          <div className={styles.facts}>
+            <div>
+              <Icon d={ICON.mail} />
+              {copy.getLine(item.delivery)}
+            </div>
+            <div>
+              <Icon d={ICON.shield} />
+              {copy.fmtLine(look)}
+            </div>
+          </div>
+        ) : notice || props.halal ? (
           <div className={styles.facts}>
             {notice ? (
               <div>
@@ -193,14 +242,20 @@ export function ProductView(props: {
         </a>
       </div>
 
-      {unitCents !== null ? (
+      {unitCents !== null && soldOut ? (
+        <div className={styles.bar}>
+          <button type="button" className={styles.go} disabled>
+            {copy.soldOut}
+          </button>
+        </div>
+      ) : unitCents !== null ? (
         <div className={styles.bar}>
           <span className={styles.qty}>
             <button type="button" aria-label={copy.oneLess} onClick={() => setQuantity((n) => Math.max(1, n - 1))}>
               −
             </button>
             <b data-testid="qty">{quantity}</b>
-            <button type="button" aria-label={copy.oneMore} onClick={() => setQuantity((n) => Math.min(QUANTITY_MAX, n + 1))}>
+            <button type="button" aria-label={copy.oneMore} onClick={() => setQuantity((n) => Math.min(maxQuantity, n + 1))}>
               +
             </button>
           </span>

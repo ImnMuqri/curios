@@ -8,6 +8,7 @@ import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { FactCard } from './fact-card.js';
 import { PageReply } from '../_ui/page-reply.js';
+import { VisitorQuestion } from '../_ui/visitor-question.js';
 import styles from './review.module.css';
 
 /** The page's colours, for the chat preview. */
@@ -303,7 +304,7 @@ export function ReviewQueue({
               <i aria-hidden="true" />
               On your page
             </span>
-            {top?.question ? <span className={styles.asked}>{top.question}</span> : null}
+            {top?.question ? <VisitorQuestion>{top.question}</VisitorQuestion> : null}
             <PageReply name={pageName}>{top ? (draft ?? claimOf(top)) || '…' : 'Everything here is checked. The chat only says what you accepted.'}</PageReply>
           </div>
         </section>

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
+import type { DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import {
   basketMessage,
@@ -9,13 +10,15 @@ import {
   priceBasket,
   readBasket,
   whatsappOrderUrl,
+  sameLine,
   writeBasket,
   type BasketLine,
 } from './basket.js';
 import { shopCopy } from './copy.js';
 import styles from './shop.module.css';
 
-export type ViewItem = ShopItem & { photoUrl: string | null };
+/** A shelf item as a view draws it; the digital facts are absent on the landing demo and the Store preview's physical items. */
+export type ViewItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null };
 
 export function ShopView(props: {
   handle: string;
@@ -137,7 +140,7 @@ export function ShopView(props: {
         <div className={styles.basket}>
           <ul className={styles.lines}>
             {priced.lines.map((line) => (
-              <li key={`${line.itemId}:${line.optionId ?? ''}`}>
+              <li key={`${line.itemId}:${line.optionId ?? ''}:${line.sessionId ?? ''}`}>
                 <span>
                   {line.quantity} × {line.name}
                   {line.optionLabel ? ` (${line.optionLabel})` : ''} — {formatRinggit(line.lineCents)}
@@ -145,7 +148,7 @@ export function ShopView(props: {
                 <button
                   type="button"
                   className={styles.remove}
-                  onClick={() => setBasket((current) => current.filter((l) => !(l.itemId === line.itemId && l.optionId === line.optionId)))}
+                  onClick={() => setBasket((current) => current.filter((l) => !sameLine(l, line)))}
                 >
                   {copy.remove}
                 </button>

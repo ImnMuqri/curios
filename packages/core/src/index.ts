@@ -77,3 +77,18 @@ export type { NewOrderMailInput, PaidAfterCancelMailInput, PaidOrderMailInput, P
 export { pageRestoredMail, pageSuspendedMail } from './admin-mail.js';
 export { currentPeriod } from './period.js';
 export { ADMIN_ACTIONS, ADMIN_COOKIE, ADMIN_SESSION_TTL_MS, initials, maskPhone } from './admin.js';
+export {
+  ACCESS_NOTE_MAX,
+  DIGITAL_FILE_TYPES,
+  digitalFileType,
+  DOWNLOAD_DAYS,
+  DOWNLOAD_USES,
+  MAX_DIGITAL_FILE_BYTES,
+  MAX_DIGITAL_FILES,
+  isDigitalOnly,
+  parseCodes,
+  seatsLeft,
+} from './digital.js';
+export type { ItemKind } from './digital.js';
+export { clockText, digitalDeliveryMail, paidAndSentOwnerMail, sessionReminderMail, sessionTimeText } from './digital-mail.js';
+export type { DigitalDeliveryMailInput, DigitalMailItem, MailLang, PaidAndSentOwnerMailInput, SessionReminderMailInput } from './digital-mail.js';

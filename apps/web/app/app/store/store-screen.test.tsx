@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { EditorItem, ShopLook, StoreSettings } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ShopLook, type StoreSettings } from './store-types.js';
 
 const apiFetch = vi.fn();
 vi.mock('../../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
@@ -20,7 +20,7 @@ const settings: StoreSettings = {
 };
 
 const items: EditorItem[] = [
-  { id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
+  { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
 ];
 
 const look: ShopLook = {
@@ -90,7 +90,7 @@ describe('StoreScreen, against the API', () => {
 
   it('adds with POST /store/items once the new item has a name and a price', async () => {
     vi.useFakeTimers();
-    apiFetch.mockResolvedValue({ item: { id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
+    apiFetch.mockResolvedValue({ item: { ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
     screenWith();
     fireEvent.click(screen.getByRole('button', { name: '+ Add item' }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });

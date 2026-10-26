@@ -174,11 +174,11 @@ export function orderView(o: {
  * day (Malaysia) has come; a completed order is past ready, so it stays lit.
  */
 export function customerSteps(
-  o: { status: OrderStatus; paidAt: Date | null; day: string },
+  o: { status: OrderStatus; paidAt: Date | null; day: string | null },
   now: Date,
 ): { placed: true; paid: boolean; ready: boolean; done: boolean } {
   const done = o.status === 'COMPLETED';
   const paid = o.status === 'PAID' || done;
-  const ready = done || (o.status === 'PAID' && o.day <= malaysiaToday(now));
+  const ready = done || (o.status === 'PAID' && (o.day === null || o.day <= malaysiaToday(now)));
   return { placed: true, paid, ready, done };
 }

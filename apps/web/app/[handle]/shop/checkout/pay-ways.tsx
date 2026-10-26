@@ -45,11 +45,14 @@ export function useOnlineOffer(handle: string, chipMethods: string[] | null, tot
  * offer (the owner's QR only where `withQr`), the bank or e-wallet under them, and the
  * email an online choice asks for (owner's answer 2).
  */
-export function usePayChoice(offer: OnlineOffer | null, withQr: boolean) {
+export function usePayChoice(offer: OnlineOffer | null, withQr: boolean, fixedEmail: string | null = null) {
   const [way, setWay] = useState<Way | null>(null);
   const [bank, setBank] = useState<FpxBankId>('maybank');
   const [wallet, setWallet] = useState<WalletId | null>(null);
-  const [email, setEmail] = useState('');
+  const [typedEmail, setEmail] = useState('');
+  // An order with digital items already asks for an email at checkout: it is CHIP's too, so it is not asked twice.
+  const emailFixed = fixedEmail !== null;
+  const email = fixedEmail ?? typedEmail;
 
   const ways: Way[] = [];
   if (offer?.fpx) ways.push('fpx');
@@ -64,7 +67,7 @@ export function usePayChoice(offer: OnlineOffer | null, withQr: boolean) {
   /** An online choice is ready to send: its email looks right and an e-wallet is picked. */
   const ready = !online || (EMAIL.test(email.trim()) && (how !== 'wallet' || walletPick !== null));
 
-  return { ways, how, setWay, bank, setBank, walletPick, setWallet, email, setEmail, online, choice, ready };
+  return { ways, how, setWay, bank, setBank, walletPick, setWallet, email, setEmail, emailFixed, online, choice, ready };
 }
 
 export type PayChoice = ReturnType<typeof usePayChoice>;
@@ -160,7 +163,7 @@ export function PayWays({
           </div>
         </>
       ) : null}
-      {pick.online ? (
+      {pick.online && !pick.emailFixed ? (
         <div className={styles.field}>
           <label htmlFor={`${idPrefix}-email`}>
             {copy.email} <i>{copy.forReceipt}</i>

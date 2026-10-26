@@ -1,10 +1,12 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
-import { HOUSEKEEPING_QUEUE, LEAD_RETENTION_MONTHS, RETENTION_JOB } from '@curios/core';
-import type { PrismaClient } from '@curios/db';
+import { HOUSEKEEPING_QUEUE, LEAD_RETENTION_MONTHS, RETENTION_JOB, type MailJobData } from '@curios/core';
+import type { Prisma, PrismaClient } from '@curios/db';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import type { SchedulerQueue } from '../billing/pending-check.js';
 import type { RemoveObjects } from '../lib/storage.js';
+import { EXPIRE_HOLDS_JOB, expireUnpaidHolds } from './expire-holds.js';
+import { SESSION_REMINDERS_JOB, sendSessionReminders } from './session-reminders.js';
 
 /** The moment before which a lead or a message is past keeping. */
 export function retentionCutoff(now: Date): Date {
@@ -99,8 +101,18 @@ async function sweepOrders(
     after = old[old.length - 1]!.id;
 
     const ids = old.map((order) => order.id);
+    // Deleting an order frees the codes on its lines (SetNull) and removes its class bookings
+    // (Cascade): right for an order never paid. A paid order's code was given to its buyer, so
+    // it goes with the order instead of becoming a free code for the next one.
+    const deleteOrders = async (where: Prisma.OrderWhereInput): Promise<number> => {
+      const [, deleted] = await deps.prisma.$transaction([
+        deps.prisma.itemCode.deleteMany({ where: { orderLine: { order: { ...where, paidAt: { not: null } } } } }),
+        deps.prisma.order.deleteMany({ where }),
+      ]);
+      return deleted.count;
+    };
     if (!deps.removeObjects) {
-      orders += (await deps.prisma.order.deleteMany({ where: { id: { in: ids }, createdAt: { lt: before } } })).count;
+      orders += await deleteOrders({ id: { in: ids }, createdAt: { lt: before } });
     } else {
       const keys = old.flatMap((order) => (order.receiptKey ? [order.receiptKey] : []));
       const { failed } = keys.length > 0 ? await deps.removeObjects(keys) : { failed: [] };
@@ -108,14 +120,10 @@ async function sweepOrders(
       const removed = keys.filter((key) => !failed.includes(key));
       countReceipts(removed.length);
       const bare = old.filter((order) => !order.receiptKey).map((order) => order.id);
-      orders += (
-        await deps.prisma.order.deleteMany({
-          where: {
-            createdAt: { lt: before },
-            OR: [{ id: { in: bare }, receiptKey: null }, { id: { in: ids }, receiptKey: { in: removed } }],
-          },
-        })
-      ).count;
+      orders += await deleteOrders({
+        createdAt: { lt: before },
+        OR: [{ id: { in: bare }, receiptKey: null }, { id: { in: ids }, receiptKey: { in: removed } }],
+      });
     }
 
     if (old.length < batchSize) break;
@@ -127,6 +135,8 @@ export function createHousekeepingWorker(deps: {
   connection: IORedis;
   prisma: PrismaClient;
   removeObjects: RemoveObjects | null;
+  /** The class reminders go out through the mail queue, with order links opened by `secretsKey`. */
+  reminders: { mailQueue: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> }; appUrl: string; apiUrl: string; secretsKey: Buffer | null };
   log?: { info: (details: object, message: string) => void; warn: (details: object, message: string) => void; error?: (details: object, message: string) => void };
 }): Worker {
   return new Worker(
@@ -135,6 +145,10 @@ export function createHousekeepingWorker(deps: {
       if (job.name === RETENTION_JOB) {
         const deleted = await runRetention({ prisma: deps.prisma, now: new Date(), removeObjects: deps.removeObjects, log: deps.log });
         deps.log?.info(deleted, 'retention sweep done');
+      } else if (job.name === EXPIRE_HOLDS_JOB) {
+        await expireUnpaidHolds({ prisma: deps.prisma, now: new Date(), log: deps.log });
+      } else if (job.name === SESSION_REMINDERS_JOB) {
+        await sendSessionReminders({ prisma: deps.prisma, now: new Date(), log: deps.log, ...deps.reminders });
       }
     },
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.housekeeping },
@@ -144,4 +158,8 @@ export function createHousekeepingWorker(deps: {
 /** 03:00 in Malaysia, when the fewest visitors are mid-conversation. Upserted under a fixed id. */
 export async function scheduleHousekeepingJobs(queue: SchedulerQueue): Promise<void> {
   await queue.upsertJobScheduler(RETENTION_JOB, { pattern: '0 3 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: RETENTION_JOB });
+  // Hourly: unpaid orders holding codes or class seats are let go of after a day.
+  await queue.upsertJobScheduler(EXPIRE_HOLDS_JOB, { pattern: '20 * * * *' }, { name: EXPIRE_HOLDS_JOB });
+  // Class reminders for the next Malaysian day, at a civil hour; the claim on each booking makes a re-run harmless.
+  await queue.upsertJobScheduler(SESSION_REMINDERS_JOB, { pattern: '0 9 * * *', tz: 'Asia/Kuala_Lumpur' }, { name: SESSION_REMINDERS_JOB });
 }

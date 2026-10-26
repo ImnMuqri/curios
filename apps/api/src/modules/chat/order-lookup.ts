@@ -1,4 +1,5 @@
 import { normalizeClaim } from '@curios/core';
+import { digitalFacts, type DigitalDelivery, type ItemKind } from '@curios/core/digital';
 import { customerSteps, isOrderCodeShape, orderView, type OrderStatus } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
 
@@ -98,13 +99,16 @@ const EN_MONTH = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
 export interface CardOrder {
   number: number;
   code: string;
-  method: 'PICKUP' | 'DELIVERY';
-  day: Date;
+  /** Null for a digital-only order. */
+  method: 'PICKUP' | 'DELIVERY' | null;
+  day: Date | null;
   totalCents: number;
   status: OrderStatus;
   receiptUploadedAt: Date | null;
   paidAt: Date | null;
   refundedAt: Date | null;
+  /** When the digital items were emailed; null until then (and on an order with none). */
+  sentAt?: Date | null;
   lines: { itemName: string; optionLabel: string | null; quantity: number }[];
 }
 
@@ -114,7 +118,7 @@ export interface CardOrder {
  * the same way (order-view.tsx, `pill`): change one, change both.
  */
 export function orderCard(order: CardOrder, name: string, now: Date): OrderCard {
-  const day = order.day.toISOString().slice(0, 10);
+  const day = order.day ? order.day.toISOString().slice(0, 10) : null;
   const view = orderView(order);
   const steps = customerSteps({ status: order.status, paidAt: order.paidAt, day }, now);
 
@@ -126,11 +130,13 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
         return [`${name} is checking your receipt`, `Receipt sent · ${name} is checking`, 'check'];
       case 'paid':
       case 'paidOnline':
+        // A digital-only order has no method or day: nothing to get ready, it is paid and then sent.
+        if (order.method === null) return order.sentAt ? ['Paid. It was sent to your email', 'Paid · Sent to your email', 'ok'] : ['Paid', 'Paid', 'ok'];
         return steps.ready
           ? [order.method === 'PICKUP' ? 'Ready for pickup' : 'Ready for delivery', 'Ready', 'ok']
           : [`Paid. ${name} is getting it ready`, `Paid · ${name} is getting it ready`, 'ok'];
       case 'completed':
-        return ['All done', 'Done', 'ok'];
+        return order.method === null ? ['Paid. It was sent to your email', 'Paid · Sent to your email', 'ok'] : ['All done', 'Done', 'ok'];
       case 'cancelled':
         return ['This order was cancelled', 'Cancelled', 'stop'];
       case 'refundOwed':
@@ -140,7 +146,7 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
     }
   })();
 
-  const date = new Date(`${day}T00:00:00Z`);
+  const date = day === null ? null : new Date(`${day}T00:00:00Z`);
   const needsPay = view === 'awaitingPayment' || view === 'toCheck';
 
   return {
@@ -153,7 +159,8 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
     summary: order.lines
       .map((line) => `${line.quantity}× ${line.itemName}${line.optionLabel ? ` ${line.optionLabel}` : ''}`)
       .join(', '),
-    when: `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${EN_DAY[date.getUTCDay()]} ${date.getUTCDate()} ${EN_MONTH[date.getUTCMonth()]}`,
+    // A digital-only order has no day to show yet.
+    when: date === null ? '' : `${order.method === 'PICKUP' ? 'Pickup' : 'Delivery'} · ${EN_DAY[date.getUTCDay()]} ${date.getUTCDate()} ${EN_MONTH[date.getUTCMonth()]}`,
     totalCents: order.totalCents,
     note: needsPay ? 'Your order page has the full details and how to pay.' : 'Your order page has the full details.',
   };
@@ -171,6 +178,7 @@ const CARD_SELECT = {
   receiptUploadedAt: true,
   paidAt: true,
   refundedAt: true,
+  sentAt: true,
   lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, quantity: true } },
 } satisfies Prisma.OrderSelect;
 
@@ -238,6 +246,8 @@ export interface ProductCard {
   fromPriceCents: number | null;
   photoUrl: string | null;
   firstOptionId: string | null;
+  /** What the card's button does: add it, open its page to pick a class time first, or nothing (sold out). */
+  buy: 'add' | 'pick' | 'soldOut';
 }
 
 interface CardItem {
@@ -247,6 +257,13 @@ interface CardItem {
   priceCents: number | null;
   photoKey: string | null;
   options: { id: string; priceCents: number }[];
+  /** Digital stock, as the shop reads it; absent reads as a physical item. */
+  kind?: ItemKind;
+  delivery?: DigitalDelivery | null;
+  accessUrl?: string | null;
+  files?: { name: string; contentType: string }[];
+  sessions?: { id: string; startsAt: Date; seats: number; bookings: { seats: number }[] }[];
+  _count?: { codes: number };
 }
 
 /**
@@ -255,7 +272,7 @@ interface CardItem {
  * one card. `storageBase` is STORAGE_PUBLIC_URL, joined to the photo key as
  * every other public item photo is.
  */
-export function productCard(answer: string, items: CardItem[], storageBase: string | null): ProductCard | null {
+export function productCard(answer: string, items: CardItem[], storageBase: string | null, now = new Date()): ProductCard | null {
   const said = ` ${normalizeClaim(answer)} `;
   let best: { item: CardItem; at: number } | null = null;
   for (const item of items) {
@@ -266,6 +283,17 @@ export function productCard(answer: string, items: CardItem[], storageBase: stri
   if (!best) return null;
   const { item } = best;
   const prices = item.options.map((option) => option.priceCents);
+  const facts = digitalFacts(
+    {
+      kind: item.kind ?? 'PHYSICAL',
+      delivery: item.delivery ?? null,
+      accessUrl: item.accessUrl ?? null,
+      files: item.files ?? [],
+      codesLeft: item._count?.codes ?? 0,
+      sessions: (item.sessions ?? []).map((s) => ({ id: s.id, startsAt: s.startsAt, seats: s.seats, booked: s.bookings.reduce((n, b) => n + b.seats, 0) })),
+    },
+    now,
+  );
   return {
     itemId: item.id,
     slug: item.slug,
@@ -273,5 +301,6 @@ export function productCard(answer: string, items: CardItem[], storageBase: stri
     fromPriceCents: prices.length > 0 ? Math.min(...prices) : item.priceCents,
     photoUrl: item.photoKey && storageBase ? `${storageBase.replace(/\/+$/, '')}/${item.photoKey}` : null,
     firstOptionId: item.options[0]?.id ?? null,
+    buy: facts.soldOut ? 'soldOut' : facts.delivery === 'SESSION' ? 'pick' : 'add',
   };
 }

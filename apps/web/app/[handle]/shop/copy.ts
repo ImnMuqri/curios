@@ -2,6 +2,14 @@
  * The shop's words, in the page's language. Two languages, like the landing
  * copy: a page whose language is anything else reads English.
  */
+/** What the copy needs of a digital item to describe it. */
+export interface DigitalLook {
+  delivery: 'FILES' | 'LINK' | 'CODES' | 'SESSION' | null;
+  format: { kinds: string[]; count: number } | null;
+  minutes: number | null;
+  place: 'ONLINE' | 'IN_PERSON' | null;
+}
+
 export interface ShopCopy {
   visit: string;
   /** The shop pill's title. */
@@ -187,7 +195,7 @@ export interface ShopCopy {
   orderTitle: (number: number) => string;
   orderCode: string;
   orderProgress: string;
-  steps: { placed: string; paid: string; ready: string; done: string };
+  steps: { placed: string; paid: string; ready: string; done: string; sent: string };
   statusWaiting: string;
   statusChecking: (name: string) => string;
   statusPaid: (name: string) => string;
@@ -222,6 +230,67 @@ export interface ShopCopy {
   receiptsOff: (name: string) => string;
   whatsappAbout: (name: string) => string;
   whatsappOrderText: (number: number, code: string) => string;
+  // Digital items (the Public board's digital frames).
+  /** The tag on a digital item's card and page, and its own category chip. */
+  digital: string;
+  soldOut: string;
+  pickATime: string;
+  seatsLeft: (n: number) => string;
+  full: string;
+  /** "Sat 7 Nov, 8:00pm", in Malaysia. */
+  sessionTime: (iso: string) => string;
+  /** The product page's two facts for a digital item. */
+  getLine: (delivery: 'FILES' | 'LINK' | 'CODES' | 'SESSION') => string;
+  fmtLine: (item: DigitalLook) => string;
+  /** A digital line's small print in the basket and at checkout. */
+  digitalSub: (item: DigitalLook, time: string | null) => string;
+  byEmailRightAfter: string;
+  byEmailBody: string;
+  mixedLine: string;
+  /** "Email  where we send your files". */
+  emailFor: (what: 'files' | 'link' | 'codes' | 'session' | 'mixed') => string;
+  digitalItems: string;
+  byEmail: string;
+  pickTimeFirst: string;
+  /** The placed screen's small line under a digital order. */
+  digitalPlacedNote: (paid: boolean, email: string) => string;
+  /** The placed screen, for an unpaid order holding a code or a class seat. */
+  holdNote: string;
+  /** The order page's digital part (Public board, `order`). */
+  statusSent: string;
+  statusPaidDigital: string;
+  /** What a set of digital kinds is called: "files", "link", "code", "class details", or "downloads and access". */
+  digWhat: (kinds: string[]) => string;
+  paidPlacedDigital: string;
+  paidPlacedDigitalSub: (total: string, what: string) => string;
+  getYour: (what: string) => string;
+  dgLockTitle: (what: string) => string;
+  dgLockCheck: (name: string) => string;
+  dgLockPay: string;
+  dgTitle: (onlyFiles: boolean) => string;
+  alsoSentTo: (email: string) => string;
+  download: string;
+  downloadsLeft: (n: number) => string;
+  usedUp: string;
+  expired: string;
+  linksUntil: (date: string, name: string) => string;
+  linksSomeDead: (name: string) => string;
+  /** A short date, "14 Nov", in Malaysia. */
+  shortDate: (iso: string) => string;
+  openLink: string;
+  linkPrivate: string;
+  copyShort: string;
+  codeNote: (name: string) => string;
+  minutesLong: (n: number) => string;
+  online: string;
+  inPerson: (where: string | null) => string;
+  joinClass: string;
+  addToCalendar: string;
+  sessionNote: string;
+  sendingNow: string;
+  pausedDownloads: (name: string) => string;
+  /** The API's refusals for digital lines, in this language. */
+  digitalError: (code: string) => string | null;
 }
 
 /** `YYYY-MM-DD` read as a calendar day, so its weekday and month never depend on the browser's zone. */
@@ -423,7 +492,7 @@ const EN: ShopCopy = {
   orderTitle: (number) => `Order #${number}`,
   orderCode: 'Order code',
   orderProgress: 'Order progress',
-  steps: { placed: 'Placed', paid: 'Paid', ready: 'Ready', done: 'Done' },
+  steps: { placed: 'Placed', paid: 'Paid', ready: 'Ready', done: 'Done', sent: 'Sent' },
   statusWaiting: 'Waiting for payment',
   statusChecking: (name) => `Receipt sent · ${name} is checking`,
   statusPaid: (name) => `Paid · ${name} is getting it ready`,
@@ -454,6 +523,86 @@ const EN: ShopCopy = {
   receiptsOff: (name) => `Receipts can’t be uploaded right now. Send yours to ${name} on WhatsApp instead.`,
   whatsappAbout: (name) => `WhatsApp ${name} about this order`,
   whatsappOrderText: (number, code) => `Hi, about my order #${number} (code ${code}).`,
+  digital: 'Digital',
+  soldOut: 'Sold out',
+  pickATime: 'Pick a time',
+  seatsLeft: (n) => `${n} ${n === 1 ? 'seat' : 'seats'} left`,
+  full: 'Full',
+  sessionTime: (iso) => {
+    const at = malaysiaTime(iso);
+    const hour = at.getUTCHours() % 12 || 12;
+    return `${EN_DAY[at.getUTCDay()]} ${at.getUTCDate()} ${EN_MONTH[at.getUTCMonth()]}, ${hour}:${pad(at.getUTCMinutes())}${at.getUTCHours() < 12 ? 'am' : 'pm'}`;
+  },
+  getLine: (delivery) =>
+    ({
+      FILES: 'Sent by email right after you pay, and kept on your order page.',
+      LINK: 'Your private link comes by email right after you pay.',
+      CODES: 'Your own code comes by email right after you pay.',
+      SESSION: 'The class details come by email right after you pay.',
+    })[delivery],
+  fmtLine: (item) => {
+    if (item.delivery === 'FILES') return item.format ? `${item.format.kinds.join(', ')}, ${item.format.count} ${item.format.count === 1 ? 'file' : 'files'}. Download up to 5 times.` : 'Download up to 5 times.';
+    if (item.delivery === 'LINK') return 'Open it on any phone or laptop, as often as you like.';
+    if (item.delivery === 'CODES') return 'One code for each one you buy.';
+    const how = item.place === 'IN_PERSON' ? 'in person' : 'online';
+    return `${item.minutes ? `${item.minutes} ${item.minutes === 1 ? 'minute' : 'minutes'}` : 'Live'}, ${how}. Seats are limited.`;
+  },
+  digitalSub: (item, time) => {
+    if (item.delivery === 'FILES') return item.format ? `${item.format.kinds.join(', ')} · ${item.format.count} ${item.format.count === 1 ? 'file' : 'files'}` : 'Files';
+    if (item.delivery === 'LINK') return 'Private link';
+    if (item.delivery === 'CODES') return 'Your own code';
+    return [time, item.minutes ? `${item.minutes} ${item.minutes === 1 ? 'minute' : 'minutes'}` : null].filter(Boolean).join(' · ');
+  },
+  byEmailRightAfter: 'By email, right after you pay',
+  byEmailBody: 'Also on your order page. Nothing to pick up, no delivery fee.',
+  mixedLine: 'The digital items in your order come by email. This is for the rest.',
+  emailFor: (what) => `where we send your ${{ files: 'files', link: 'link', codes: 'code', session: 'class details', mixed: 'downloads and access' }[what]}`,
+  digitalItems: 'Digital items',
+  byEmail: 'By email',
+  pickTimeFirst: 'Pick a time for this class.',
+  digitalPlacedNote: (paid, email) => (paid ? `Sent to ${email}. It’s on your order page too.` : 'Your items unlock as soon as your payment is confirmed.'),
+  holdNote: 'Unpaid orders are released after 24 hours.',
+  statusSent: 'Paid · Sent to your email',
+  statusPaidDigital: 'Paid',
+  digWhat: (kinds) => (kinds.length === 1 ? ({ FILES: 'files', LINK: 'link', CODES: 'code', SESSION: 'class details' } as Record<string, string>)[kinds[0]!] ?? 'downloads and access' : 'downloads and access'),
+  paidPlacedDigital: 'Paid. It’s on its way to your email',
+  paidPlacedDigitalSub: (total, what) => `${total} paid. Your ${what} are ready now.`,
+  getYour: (what) => `Get your ${what}`,
+  dgLockTitle: (what) => `Your ${what} unlock once you’ve paid`,
+  dgLockCheck: (name) => `${name} is checking your receipt. You’ll get an email the moment it’s confirmed.`,
+  dgLockPay: 'Pay above, and they come straight to this page and your email.',
+  dgTitle: (onlyFiles) => (onlyFiles ? 'Your downloads' : 'Your downloads and access'),
+  alsoSentTo: (email) => `Also sent to ${email}`,
+  download: 'Download',
+  downloadsLeft: (n) => (n === 1 ? '1 download left' : `${n} downloads left`),
+  usedUp: '0 left',
+  expired: 'Expired',
+  linksUntil: (date, name) => `Links work until ${date}. Lost them? ${name} can send new ones.`,
+  linksSomeDead: (name) => `Some links are used up or have expired. Ask ${name} for new ones.`,
+  shortDate: (iso) => {
+    const at = malaysiaTime(iso);
+    return `${at.getUTCDate()} ${EN_MONTH[at.getUTCMonth()]}`;
+  },
+  openLink: 'Open your link',
+  linkPrivate: 'This link is just for you. Please don’t share it.',
+  copyShort: 'Copy',
+  codeNote: (name) => `Your own code from ${name}. Keep it safe.`,
+  minutesLong: (n) => `${n} ${n === 1 ? 'minute' : 'minutes'}`,
+  online: 'Online',
+  inPerson: (where) => (where ? `In person, ${where}` : 'In person'),
+  joinClass: 'Join the class',
+  addToCalendar: 'Add to calendar',
+  sessionNote: 'We’ll remind you by email the day before.',
+  sendingNow: 'Being sent to your email now.',
+  pausedDownloads: (name) => `${name}’s page is unavailable right now, so downloads and links are paused.`,
+  digitalError: (code) =>
+    ({
+      SOLD_OUT: 'Something in your basket is sold out. Remove it and try again.',
+      TIME_FULL: 'That class time is full or has passed. Pick another time.',
+      TIME_REQUIRED: 'Pick a time for your class first.',
+      EMAIL_REQUIRED: 'Add the email where we should send your digital items.',
+      INVALID_ORDER: 'Your basket changed. Reload the page and try again.',
+    })[code] ?? null,
 };
 
 const MS: ShopCopy = {
@@ -617,7 +766,7 @@ const MS: ShopCopy = {
   orderTitle: (number) => `Tempahan #${number}`,
   orderCode: 'Kod tempahan',
   orderProgress: 'Kemajuan tempahan',
-  steps: { placed: 'Dibuat', paid: 'Dibayar', ready: 'Sedia', done: 'Selesai' },
+  steps: { placed: 'Dibuat', paid: 'Dibayar', ready: 'Sedia', done: 'Selesai', sent: 'Dihantar' },
   statusWaiting: 'Menunggu bayaran',
   statusChecking: (name) => `Resit dihantar · ${name} sedang menyemak`,
   statusPaid: (name) => `Dibayar · ${name} sedang menyediakannya`,
@@ -648,6 +797,85 @@ const MS: ShopCopy = {
   receiptsOff: (name) => `Resit tidak dapat dimuat naik buat masa ini. Hantar resit anda kepada ${name} di WhatsApp.`,
   whatsappAbout: (name) => `WhatsApp ${name} tentang tempahan ini`,
   whatsappOrderText: (number, code) => `Hai, tentang tempahan saya #${number} (kod ${code}).`,
+  digital: 'Digital',
+  soldOut: 'Habis dijual',
+  pickATime: 'Pilih masa',
+  seatsLeft: (n) => `${n} tempat lagi`,
+  full: 'Penuh',
+  sessionTime: (iso) => {
+    const at = malaysiaTime(iso);
+    return `${MS_DAY[at.getUTCDay()]} ${at.getUTCDate()} ${MS_MONTH[at.getUTCMonth()]}, ${at.getUTCHours()}:${pad(at.getUTCMinutes())}`;
+  },
+  getLine: (delivery) =>
+    ({
+      FILES: 'Dihantar melalui e-mel sebaik anda membayar, dan disimpan di halaman tempahan anda.',
+      LINK: 'Pautan peribadi anda datang melalui e-mel sebaik anda membayar.',
+      CODES: 'Kod anda sendiri datang melalui e-mel sebaik anda membayar.',
+      SESSION: 'Butiran kelas datang melalui e-mel sebaik anda membayar.',
+    })[delivery],
+  fmtLine: (item) => {
+    if (item.delivery === 'FILES') return item.format ? `${item.format.kinds.join(', ')}, ${item.format.count} fail. Muat turun sehingga 5 kali.` : 'Muat turun sehingga 5 kali.';
+    if (item.delivery === 'LINK') return 'Buka di mana-mana telefon atau komputer riba, sebanyak mana anda suka.';
+    if (item.delivery === 'CODES') return 'Satu kod untuk setiap satu yang anda beli.';
+    const how = item.place === 'IN_PERSON' ? 'bersemuka' : 'dalam talian';
+    return `${item.minutes ? `${item.minutes} minit` : 'Secara langsung'}, ${how}. Tempat terhad.`;
+  },
+  digitalSub: (item, time) => {
+    if (item.delivery === 'FILES') return item.format ? `${item.format.kinds.join(', ')} · ${item.format.count} fail` : 'Fail';
+    if (item.delivery === 'LINK') return 'Pautan peribadi';
+    if (item.delivery === 'CODES') return 'Kod anda sendiri';
+    return [time, item.minutes ? `${item.minutes} minit` : null].filter(Boolean).join(' · ');
+  },
+  byEmailRightAfter: 'Melalui e-mel, sebaik anda membayar',
+  byEmailBody: 'Juga di halaman tempahan anda. Tiada apa untuk diambil, tiada caj penghantaran.',
+  mixedLine: 'Barang digital dalam tempahan anda datang melalui e-mel. Ini untuk yang lain.',
+  emailFor: (what) => `ke mana kami hantar ${{ files: 'fail', link: 'pautan', codes: 'kod', session: 'butiran kelas', mixed: 'muat turun dan akses' }[what]} anda`,
+  digitalItems: 'Barang digital',
+  byEmail: 'Melalui e-mel',
+  pickTimeFirst: 'Pilih masa untuk kelas ini.',
+  digitalPlacedNote: (paid, email) => (paid ? `Dihantar ke ${email}. Ia juga ada di halaman tempahan anda.` : 'Barang anda dibuka sebaik bayaran anda disahkan.'),
+  holdNote: 'Tempahan yang belum dibayar dilepaskan selepas 24 jam.',
+  statusSent: 'Dibayar · Dihantar ke e-mel anda',
+  statusPaidDigital: 'Dibayar',
+  digWhat: (kinds) => (kinds.length === 1 ? ({ FILES: 'fail', LINK: 'pautan', CODES: 'kod', SESSION: 'butiran kelas' } as Record<string, string>)[kinds[0]!] ?? 'muat turun dan akses' : 'muat turun dan akses'),
+  paidPlacedDigital: 'Dibayar. Dalam perjalanan ke e-mel anda',
+  paidPlacedDigitalSub: (total, what) => `${total} dibayar. ${what.charAt(0).toUpperCase()}${what.slice(1)} anda sudah sedia.`,
+  getYour: (what) => `Dapatkan ${what} anda`,
+  dgLockTitle: (what) => `${what.charAt(0).toUpperCase()}${what.slice(1)} anda dibuka sebaik anda membayar`,
+  dgLockCheck: (name) => `${name} sedang menyemak resit anda. Anda akan terima e-mel sebaik ia disahkan.`,
+  dgLockPay: 'Bayar di atas, dan ia terus datang ke halaman ini dan e-mel anda.',
+  dgTitle: (onlyFiles) => (onlyFiles ? 'Muat turun anda' : 'Muat turun dan akses anda'),
+  alsoSentTo: (email) => `Juga dihantar ke ${email}`,
+  download: 'Muat turun',
+  downloadsLeft: (n) => `${n} muat turun lagi`,
+  usedUp: '0 lagi',
+  expired: 'Tamat tempoh',
+  linksUntil: (date, name) => `Pautan berfungsi sehingga ${date}. Hilang? ${name} boleh hantar yang baharu.`,
+  linksSomeDead: (name) => `Ada pautan yang sudah habis digunakan atau tamat tempoh. Minta yang baharu daripada ${name}.`,
+  shortDate: (iso) => {
+    const at = malaysiaTime(iso);
+    return `${at.getUTCDate()} ${MS_MONTH[at.getUTCMonth()]}`;
+  },
+  openLink: 'Buka pautan anda',
+  linkPrivate: 'Pautan ini untuk anda sahaja. Jangan kongsikannya.',
+  copyShort: 'Salin',
+  codeNote: (name) => `Kod anda sendiri daripada ${name}. Simpan baik-baik.`,
+  minutesLong: (n) => `${n} minit`,
+  online: 'Dalam talian',
+  inPerson: (where) => (where ? `Bersemuka, ${where}` : 'Bersemuka'),
+  joinClass: 'Sertai kelas',
+  addToCalendar: 'Tambah ke kalendar',
+  sessionNote: 'Kami akan ingatkan anda melalui e-mel sehari sebelum.',
+  sendingNow: 'Sedang dihantar ke e-mel anda.',
+  pausedDownloads: (name) => `Halaman ${name} tidak tersedia buat masa ini, jadi muat turun dan pautan dijeda.`,
+  digitalError: (code) =>
+    ({
+      SOLD_OUT: 'Ada barang dalam bakul anda yang sudah habis dijual. Buangnya dan cuba lagi.',
+      TIME_FULL: 'Masa kelas itu sudah penuh atau sudah berlalu. Pilih masa lain.',
+      TIME_REQUIRED: 'Pilih masa untuk kelas anda dahulu.',
+      EMAIL_REQUIRED: 'Masukkan e-mel ke mana kami patut hantar barang digital anda.',
+      INVALID_ORDER: 'Bakul anda telah berubah. Muat semula halaman dan cuba lagi.',
+    })[code] ?? null,
 };
 
 export function shopCopy(language: string): ShopCopy {

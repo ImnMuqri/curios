@@ -1,5 +1,5 @@
 import { ChipRefusedError, DEAD_PURCHASE_STATUSES, wasPaid, type ChipClient, type ChipPurchase, type PurchaseProduct } from '@curios/billing';
-import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidOrderMail, paidTwiceMail } from '@curios/core';
+import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidAndSentOwnerMail, paidOrderMail, paidTwiceMail } from '@curios/core';
 import { openSecret } from '@curios/core/secret-box';
 import { chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, type OnlineChoice, type OnlineOffer } from '@curios/core/shop-pay';
 import type { PrismaClient } from '@curios/db';
@@ -7,7 +7,8 @@ import { errName } from '../billing/billing.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { ChipClientFor } from '../store/chip.service.js';
-import { OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
+import { deliverOrder, queueDeliveryMail } from './deliver.service.js';
+import { EmailRequiredError, OrderAlreadyPaidError, OrderCancelledError, OrderJustPaidError, OrderNotFoundError, OrderReceiptSentError } from './order.errors.js';
 import type { OrderMailQueue } from './place.service.js';
 
 type Log = {
@@ -74,6 +75,8 @@ export interface PayOnlineDeps {
   secretsKey: Buffer | null;
   production: boolean;
   appUrl: string;
+  /** The API's public origin, for the links in the delivery email. */
+  apiUrl: string;
   /** Where CHIP calls back (CHIP_CALLBACK_BASE_URL); null leaves the callback out, and the order page's check settles it. */
   callbackBaseUrl: string | null;
   store: AvatarStore | null;
@@ -188,7 +191,8 @@ const refuseFor = (status: string): void => {
 export async function startOnlinePayment(
   deps: PayOnlineDeps,
   token: string,
-  input: OnlineChoice & { email: string },
+  /** `email` may be left out when the order has its own (a digital order's buyer already gave one). */
+  input: OnlineChoice & { email?: string },
   now: Date,
 ): Promise<{ url: string | null }> {
   const order = await deps.prisma.order.findUnique({
@@ -201,6 +205,7 @@ export async function startOnlinePayment(
       deliveryCents: true,
       customerName: true,
       phone: true,
+      email: true,
       chipPurchaseId: true,
       receiptKey: true,
       lines: { orderBy: { position: 'asc' }, select: { itemName: true, optionLabel: true, unitPriceCents: true, quantity: true } },
@@ -211,6 +216,9 @@ export async function startOnlinePayment(
   // Paying a suspended page's order is refused; the order itself stays readable, and a payment already made still settles.
   if (order.page.suspendedAt !== null) throw new PageUnavailableError();
   refuseFor(order.status);
+  // CHIP's receipt goes to the email typed for it, or else to the one the order was placed with.
+  const payerEmail = input.email ?? order.email;
+  if (!payerEmail) throw new EmailRequiredError();
   // A receipt is with the shop to check: a second payment now would leave two for one order.
   if (order.receiptKey) throw new OrderReceiptSentError(order.page.displayName);
   const unavailable = (reason: string) => {
@@ -278,7 +286,7 @@ export async function startOnlinePayment(
   let purchase: ChipPurchase;
   try {
     purchase = await client.createPurchase({
-      email: input.email,
+      email: payerEmail,
       fullName: order.customerName,
       phone: chipPhone(order.phone),
       productName: `Order #${order.number}`,
@@ -319,7 +327,7 @@ export async function startOnlinePayment(
   // make one, and only one of them may stay on the order.
   const { count } = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'PLACED', chipPurchaseId: previousId },
-    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail: input.email },
+    data: { chipPurchaseId: purchase.id, chipPurchaseDueAt: dueAt, payerEmail },
   });
   if (count === 0) {
     // Another attempt won, or the order moved on (the owner cancelled, or it was paid).
@@ -386,21 +394,31 @@ export async function settleChipPurchase(
   // online one after it, so this is a race): it is never erased. The first update takes
   // an order with no receipt; the second, one with a receipt, keeps it and records CHIP's
   // payment beside it as a second payment.
-  const { count } = await deps.prisma.order.updateMany({
-    where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id, receiptKey: null },
-    data: { status: 'PAID', ...paid },
+  // Each move to PAID delivers in the same transaction (deliverOrder is itself conditional, so
+  // a callback and the order page at once, or a replayed webhook, deliver once).
+  const { count, sent } = await deps.prisma.$transaction(async (tx) => {
+    const moved = await tx.order.updateMany({
+      where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id, receiptKey: null },
+      data: { status: 'PAID', ...paid },
+    });
+    return { count: moved.count, sent: moved.count === 1 ? await deliverOrder(tx, order.id, now) : false };
   });
   if (count === 1) {
     // The one moment the order becomes PAID through CHIP, and it happens once: so the
     // owner's "paid" email is sent from here and nowhere else.
+    if (sent) await mailBuyer(deps, order.id);
     await mailOwner(deps, order.id, 'paid');
     return 'paid';
   }
-  const withReceipt = await deps.prisma.order.updateMany({
-    where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id, receiptKey: { not: null } },
-    data: { status: 'PAID', ...paid, chipPaidTwiceAt: now },
+  const withReceipt = await deps.prisma.$transaction(async (tx) => {
+    const moved = await tx.order.updateMany({
+      where: { id: order.id, status: 'PLACED', chipPurchaseId: purchase.id, receiptKey: { not: null } },
+      data: { status: 'PAID', ...paid, chipPaidTwiceAt: now },
+    });
+    return { count: moved.count, sent: moved.count === 1 ? await deliverOrder(tx, order.id, now) : false };
   });
   if (withReceipt.count === 1) {
+    if (withReceipt.sent) await mailBuyer(deps, order.id);
     deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online after a receipt was sent');
     await mailOwner(deps, order.id, 'paid-twice', paid.paidMethodLabel, 'qr');
     return 'paid-twice';
@@ -445,6 +463,10 @@ export async function settleChipPurchase(
   return 'not-placed';
 }
 
+/** Queues the buyer's delivery email for an order this path just delivered (best-effort, logged). */
+const mailBuyer = (deps: PayOnlineDeps, orderId: string) =>
+  queueDeliveryMail({ prisma: deps.prisma, mailQueue: deps.mailQueue(), secretsKey: deps.secretsKey, appUrl: deps.appUrl, apiUrl: deps.apiUrl, log: deps.log }, orderId);
+
 /**
  * Tells the owner an order was paid online (or paid after they cancelled it), under the
  * same switch as the new-order email (Page.notifyOrders). Called from the one conditional
@@ -459,6 +481,7 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
         number: true,
         totalCents: true,
         customerName: true,
+        email: true,
         phone: true,
         method: true,
         day: true,
@@ -471,19 +494,30 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
       },
     });
     if (!order?.page.notifyOrders) return;
+    const { method, day } = order;
     const base = { number: order.number, totalCents: order.totalCents, customerName: order.customerName, via: order.paidMethodLabel ?? 'CHIP' };
     const url = `${deps.appUrl.replace(/\/+$/, '')}/app/orders?order=${orderId}`;
     const mail =
       kind === 'paid-twice'
         ? // The order's own paid fields are the first payment's; CHIP's way of paying comes from the purchase.
           paidTwiceMail({ ...base, via: twiceVia ?? 'CHIP', first: twiceFirst ?? (order.paidVia === 'RECEIPT' ? 'qr' : 'hand'), url, appUrl: deps.appUrl })
+        : kind === 'paid' && (method === null || day === null)
+        ? // A digital-only order has no method or day: it was delivered when it was paid, so the owner is told it is paid and sent.
+          paidAndSentOwnerMail({
+            ...base,
+            ref: order.paidRef,
+            customerEmail: order.email,
+            lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
+            url,
+            appUrl: deps.appUrl,
+          })
         : kind === 'paid'
         ? paidOrderMail({
             ...base,
             phone: order.phone,
-            method: order.method,
+            method: method as 'PICKUP' | 'DELIVERY',
             deliveryCents: order.deliveryCents,
-            day: order.day.toISOString().slice(0, 10),
+            day: (day as Date).toISOString().slice(0, 10),
             ref: order.paidRef,
             lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
             url,

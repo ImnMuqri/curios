@@ -288,6 +288,13 @@ export const ANSWER_PAGE_SELECT = {
       description: true,
       priceCents: true,
       options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+      // So a card never offers a class without its time, or an item that is sold out.
+      kind: true,
+      delivery: true,
+      accessUrl: true,
+      files: { select: { name: true, contentType: true } },
+      sessions: { select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
+      _count: { select: { codes: { where: { orderLineId: null } } } },
     },
   },
 } satisfies Prisma.PageSelect;

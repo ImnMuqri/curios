@@ -120,6 +120,19 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_ITEM',
   'ITEM_LIMIT',
   'ITEM_ORDER_STALE',
+  // Digital items: files, codes and session times (each says what to change).
+  'TOO_MANY_FILES',
+  'FILE_TOO_BIG',
+  'FILE_TYPE',
+  'INVALID_FILE',
+  'WRONG_DELIVERY',
+  'INVALID_CODES',
+  'CODE_USED',
+  'INVALID_SESSION',
+  'SEATS_BOOKED',
+  'SESSION_BOOKED',
+  'ITEM_HAS_BOOKINGS',
+  'ITEM_HAS_SALES',
   // Placing an order (slice 18): each tells the visitor what to do next --
   // order on WhatsApp, reload the basket, or fix one field.
   'STORE_CLOSED',
@@ -130,6 +143,16 @@ export const DOMAIN_ERROR_CODES = new Set([
   'METHOD_OFF',
   'ADDRESS_REQUIRED',
   'ORDER_TOO_LARGE',
+  // Digital lines (slice 19): sold out, a full class time, a missing email, or a basket whose shape contradicts its method and day.
+  'SOLD_OUT',
+  'TIME_FULL',
+  'TIME_REQUIRED',
+  'EMAIL_REQUIRED',
+  'INVALID_ORDER',
+  // Downloading what was bought (slice 19): the order is not paid, or the grant is spent or old.
+  'ORDER_NOT_PAID',
+  'DOWNLOAD_USED_UP',
+  'DOWNLOAD_EXPIRED',
   // A receipt on the order link (slice 18).
   'ORDER_NOT_FOUND',
   'INVALID_RECEIPT',

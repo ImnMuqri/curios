@@ -2,9 +2,10 @@
 
 import { apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
+import { sendFile } from '../../../lib/send-file.js';
 import { resizeContained, resizeImage } from '../curios/resize-image.js';
 import { StoreEditor } from './store-editor.js';
-import type { ChipApi, ChipState, EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings } from './store-types.js';
 
 /**
  * Supplies the real API calls. Thin on purpose: a Server Component cannot hand
@@ -51,7 +52,7 @@ export function StoreScreen({
   };
 
   const itemsApi: ItemsApi = {
-    add: async (input) => (await apiFetch<{ item: ItemRow }>('/store/items', { method: 'POST', body: JSON.stringify(input) })).item,
+    add: async ({ digital, ...input }) => (await apiFetch<{ item: ItemRow }>('/store/items', { method: 'POST', body: JSON.stringify({ ...input, ...digital }) })).item,
     update: async (id, patch) => (await apiFetch<{ item: ItemRow }>(`/store/items/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).item,
     remove: async (id) => {
       await apiFetch(`/store/items/${id}`, { method: 'DELETE' });
@@ -66,6 +67,17 @@ export function StoreScreen({
     },
     removePhoto: async (id) => {
       await apiFetch(`/store/items/${id}/photo`, { method: 'DELETE' });
+    },
+    uploadFile: (id, file, onProgress) => sendFile<StoredFile>(`/store/items/${id}/files`, file, onProgress),
+    removeFile: async (id, fileId) => {
+      await apiFetch(`/store/items/${id}/files/${fileId}`, { method: 'DELETE' });
+    },
+    addCodes: (id, text) => apiFetch<{ added: number; left: number }>(`/store/items/${id}/codes`, { method: 'PUT', body: JSON.stringify({ text }) }),
+    addSession: async (id, input) => (await apiFetch<{ session: StoredSession }>(`/store/items/${id}/sessions`, { method: 'POST', body: JSON.stringify(input) })).session,
+    updateSession: async (id, sessionId, patch) =>
+      (await apiFetch<{ session: StoredSession }>(`/store/items/${id}/sessions/${sessionId}`, { method: 'PATCH', body: JSON.stringify(patch) })).session,
+    removeSession: async (id, sessionId) => {
+      await apiFetch(`/store/items/${id}/sessions/${sessionId}`, { method: 'DELETE' });
     },
   };
 

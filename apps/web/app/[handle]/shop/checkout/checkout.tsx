@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX, openDays, orderTotals } from '@curios/core/orders';
 import { formatRinggit, type DeliveryMode } from '@curios/core/store';
+import { isDigitalOnly, type DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
 import {
@@ -11,6 +12,7 @@ import {
   priceBasket,
   QUANTITY_MAX,
   readBasket,
+  sameLine,
   whatsappOrderUrl,
   writeBasket,
   type BasketLine,
@@ -21,13 +23,15 @@ import { payButtonText, PayWays, useOnlineOffer, usePayChoice } from './pay-ways
 import { Placed } from './placed.js';
 import styles from './checkout.module.css';
 
-type ViewItem = ShopItem & { photoUrl: string | null };
+type ViewItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null };
 type Method = 'PICKUP' | 'DELIVERY';
 
 /** About five show at phone width; the rest are a sideways scroll away. */
 const DAYS_SHOWN = 14;
 /** A Malaysian mobile without its 0 is nine digits at the least. */
 const PHONE_MIN_DIGITS = 9;
+/** Enough to catch a typo; the API and the mail server say the rest. */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface CheckoutProps {
   handle: string;
@@ -68,12 +72,16 @@ interface PlacedOrder {
   phone: string;
   /** Paying online could not start (or was tried too often): the order waits for the QR (or WhatsApp) instead. */
   onlineUnavailable: 'unavailable' | 'tooMany' | null;
+  /** The small line under a digital order. */
+  digitalNote: string | null;
+  /** The order holds a code or a class seat until it is paid. */
+  holds: boolean;
 }
 
 const goTo = (url: string) => window.location.assign(url);
 
 /** Where a refusal is said: under the field it is about, or above Place order. */
-type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'form'; message: string };
+type Problem = { field: 'phone' | 'address' | 'day' | 'method' | 'email' | 'form'; message: string };
 
 /** The refusals that belong to one field. Anything else is said above Place order. */
 const FIELD_OF: Record<string, Problem['field']> = {
@@ -81,6 +89,7 @@ const FIELD_OF: Record<string, Problem['field']> = {
   ADDRESS_REQUIRED: 'address',
   ORDER_DATE: 'day',
   METHOD_OFF: 'method',
+  EMAIL_REQUIRED: 'email',
 };
 
 /** What PRICES_CHANGED sends back: the shelf and the delivery as they are now. */
@@ -115,6 +124,7 @@ export function Checkout(props: CheckoutProps) {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [email, setEmail] = useState('');
   const [note, setNote] = useState('');
   const [sending, setSending] = useState(false);
   const [problem, setProblem] = useState<Problem | null>(null);
@@ -126,6 +136,7 @@ export function Checkout(props: CheckoutProps) {
   const payByQr = props.payByQr ?? true;
   const top = useRef<HTMLDivElement>(null);
   const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
   const addressRef = useRef<HTMLTextAreaElement>(null);
   const daysRef = useRef<HTMLDivElement>(null);
   const methodsRef = useRef<HTMLDivElement>(null);
@@ -137,6 +148,7 @@ export function Checkout(props: CheckoutProps) {
     if (!problem) return;
     const target = {
       phone: phoneRef.current,
+      email: emailRef.current,
       address: addressRef.current,
       day: daysRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]') ?? daysRef.current?.querySelector('button') ?? null,
       method: methodsRef.current?.querySelector<HTMLElement>('[role="radio"]') ?? null,
@@ -160,7 +172,7 @@ export function Checkout(props: CheckoutProps) {
     const quantity = Math.min(QUANTITY_MAX, line.quantity + by);
     changeLines(
       lines
-        .map((l) => (l.itemId === line.itemId && l.optionId === line.optionId ? { ...l, quantity } : l))
+        .map((l) => (sameLine(l, line) ? { ...l, quantity } : l))
         // At 0 the line goes, as the board's minus at 1 does.
         .filter((l) => l.quantity > 0),
     );
@@ -171,8 +183,25 @@ export function Checkout(props: CheckoutProps) {
     [props.now, props.minNoticeDays, props.closedDays],
   );
   const priced = useMemo(() => priceBasket(lines, items), [lines, items]);
+  // Digital items need no pickup, delivery or day; any physical one in the basket keeps all three.
+  const digitalOnly = isDigitalOnly(priced.lines.map((l) => ({ kind: l.digital ? ('DIGITAL' as const) : ('PHYSICAL' as const) })));
+  const anyDigital = priced.lines.some((l) => l.digital);
+  const mixed = anyDigital && !digitalOnly;
+  // A class line needs a time that is still one of the item's and has the seats: else it says so and blocks Place order.
+  const timeIssue = (line: (typeof priced.lines)[number]): string | null => {
+    const item = items.find((i) => i.id === line.itemId);
+    if (item?.delivery !== 'SESSION') return null;
+    const time = line.sessionId ? item.sessions?.find((t) => t.id === line.sessionId) : undefined;
+    if (!time) return copy.pickTimeFirst;
+    if (time.seatsLeft === 0) return copy.full;
+    return time.seatsLeft < line.quantity ? copy.seatsLeft(time.seatsLeft) : null;
+  };
+  const soldOutLine = priced.lines.some((l) => l.soldOut || timeIssue(l) !== null);
+  const digitalKinds = [...new Set(priced.lines.flatMap((l) => (l.digital ? [items.find((i) => i.id === l.itemId)?.delivery ?? null] : [])))];
+  const onlyKind = digitalKinds.length === 1 ? digitalKinds[0] : null;
+  const emailWhat = onlyKind ? ({ FILES: 'files', LINK: 'link', CODES: 'codes', SESSION: 'session' } as const)[onlyKind] : 'mixed';
   const totals = orderTotals(priced.lines, {
-    method: method ?? 'PICKUP',
+    method: digitalOnly ? 'PICKUP' : (method ?? 'PICKUP'),
     mode: delivery.mode,
     feeCents: delivery.feeCents,
   });
@@ -181,7 +210,7 @@ export function Checkout(props: CheckoutProps) {
   const offer = useOnlineOffer(props.handle, chip, totals.totalCents);
   // The owner's own QR or bank account, when there is one; storeGaps keeps an open shop
   // without CHIP from having neither, and a shop that slips through gets the WhatsApp line.
-  const pick = usePayChoice(offer, payByQr);
+  const pick = usePayChoice(offer, payByQr, anyDigital ? email.trim() : null);
   const { ways, how, online } = pick;
 
   const flatFee = delivery.mode === 'FLAT' && delivery.feeCents ? formatRinggit(delivery.feeCents) : null;
@@ -191,14 +220,14 @@ export function Checkout(props: CheckoutProps) {
     priced.lines.length > 0 &&
     name.trim() !== '' &&
     phone.replace(/\D/g, '').length >= PHONE_MIN_DIGITS &&
-    day !== null &&
-    method !== null &&
-    (method !== 'DELIVERY' || address.trim() !== '') &&
+    (digitalOnly || (day !== null && method !== null && (method !== 'DELIVERY' || address.trim() !== ''))) &&
+    (!anyDigital || EMAIL.test(email.trim())) &&
+    !soldOutLine &&
     pick.ready &&
     !sending;
 
   async function place() {
-    if (!canPlace || !method || !day) return;
+    if (!canPlace || (!digitalOnly && (!method || !day))) return;
     const sentPhone = phoneToSend(phone);
     setSending(true);
     setProblem(null);
@@ -212,12 +241,12 @@ export function Checkout(props: CheckoutProps) {
         {
           method: 'POST',
           body: JSON.stringify({
-            lines: priced.lines.map(({ itemId, optionId, quantity }) => ({ itemId, optionId, quantity })),
-            method,
-            day,
+            lines: priced.lines.map(({ itemId, optionId, quantity, sessionId }) => ({ itemId, optionId, quantity, ...(sessionId ? { sessionId } : {}) })),
+            ...(digitalOnly ? {} : { method, day }),
+            ...(anyDigital ? { email: email.trim() } : {}),
             customerName: name.trim(),
             phone: sentPhone,
-            address: method === 'DELIVERY' ? address.trim() : null,
+            address: !digitalOnly && method === 'DELIVERY' ? address.trim() : null,
             note: note.trim() === '' ? null : note.trim(),
             // Placing the order under the line that says where the number goes is the consent, as on the lead card.
             consent: true,
@@ -265,7 +294,16 @@ export function Checkout(props: CheckoutProps) {
         }
         onlineUnavailable ??= 'unavailable';
       }
-      setPlaced({ number: result.number, code: result.code, token: result.token, totalCents: result.totalCents, phone: sentPhone, onlineUnavailable });
+      setPlaced({
+        number: result.number,
+        code: result.code,
+        token: result.token,
+        totalCents: result.totalCents,
+        phone: sentPhone,
+        onlineUnavailable,
+        digitalNote: anyDigital ? copy.digitalPlacedNote(false, email.trim()) : null,
+        holds: priced.lines.some((l) => l.digital && ['CODES', 'SESSION'].includes(items.find((i) => i.id === l.itemId)?.delivery ?? '')),
+      });
       top.current?.scrollIntoView?.();
     } catch (error) {
       if (!(error instanceof ApiError)) {
@@ -296,7 +334,7 @@ export function Checkout(props: CheckoutProps) {
       } else if (error.code === 'ORDER_TOO_LARGE') {
         setFallback('tooLarge');
       } else {
-        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: error.message });
+        setProblem({ field: FIELD_OF[error.code] ?? 'form', message: copy.digitalError(error.code) ?? error.message });
       }
     } finally {
       if (!leaving) setSending(false);
@@ -317,6 +355,8 @@ export function Checkout(props: CheckoutProps) {
           totalCents={placed.totalCents}
           phone={placed.phone}
           onlineUnavailable={placed.onlineUnavailable}
+          digitalNote={placed.digitalNote}
+          holds={placed.holds}
           payByQr={payByQr}
           whatsapp={props.whatsapp}
         />
@@ -372,17 +412,32 @@ export function Checkout(props: CheckoutProps) {
             <ul className={styles.lines}>
               {priced.lines.map((line) => {
                 const item = items.find((i) => i.id === line.itemId);
+                const time = line.sessionId ? item?.sessions?.find((t) => t.id === line.sessionId)?.startsAt : undefined;
+                const issue = timeIssue(line);
                 return (
-                  <li key={`${line.itemId}:${line.optionId ?? ''}`} className={styles.line}>
+                  <li key={`${line.itemId}:${line.optionId ?? ''}:${line.sessionId ?? ''}`} className={styles.line}>
                     <span className={styles.thumb} aria-hidden="true">
                       {item?.photoUrl ? <img src={item.photoUrl} alt="" /> : line.name.trim().charAt(0).toUpperCase()}
                     </span>
                     <span className={styles.what}>
                       <b>{line.name}</b>
                       <span>
-                        {line.optionLabel ? `${line.optionLabel} · ` : ''}
-                        {copy.each(formatRinggit(line.unitCents))}
+                        {line.soldOut
+                          ? copy.soldOut
+                          : issue
+                            ? issue
+                          : line.digital
+                            ? copy.digitalSub(
+                                { delivery: item?.delivery ?? null, format: item?.format ?? null, minutes: item?.minutes ?? null, place: item?.place ?? null },
+                                time ? copy.sessionTime(time) : null,
+                              )
+                            : `${line.optionLabel ? `${line.optionLabel} · ` : ''}${copy.each(formatRinggit(line.unitCents))}`}
                       </span>
+                      {issue && !line.soldOut && item ? (
+                        <a className={styles.lite} href={`${shopHref}/${item.slug}`}>
+                          {copy.pickATime}
+                        </a>
+                      ) : null}
                     </span>
                     <span className={styles.stepper}>
                       <button type="button" aria-label={copy.oneLess} onClick={() => step(line, -1)}>
@@ -405,10 +460,27 @@ export function Checkout(props: CheckoutProps) {
             </ul>
           </section>
 
+          {digitalOnly ? (
+            <section className={styles.section} aria-labelledby="ck-getting">
+              <div className={styles.head}>
+                <h2 id="ck-getting">{copy.gettingIt}</h2>
+              </div>
+              <div className={styles.byEmail}>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M3 5h18v14H3zM3 7l9 6 9-6" />
+                </svg>
+                <span>
+                  <b>{copy.byEmailRightAfter}</b>
+                  <span>{copy.byEmailBody}</span>
+                </span>
+              </div>
+            </section>
+          ) : (
           <section className={styles.section} aria-labelledby="ck-getting">
             <div className={styles.head}>
               <h2 id="ck-getting">{copy.gettingIt}</h2>
             </div>
+            {mixed ? <p className={styles.mixed}>{copy.mixedLine}</p> : null}
             {deliveryOff ? (
               <p className={styles.notice} role="status">
                 {copy.deliveryOff}
@@ -503,6 +575,7 @@ export function Checkout(props: CheckoutProps) {
               </p>
             ) : null}
           </section>
+          )}
 
           <section className={styles.section} aria-labelledby="ck-details">
             <div className={styles.head}>
@@ -538,6 +611,33 @@ export function Checkout(props: CheckoutProps) {
                 </p>
               ) : null}
             </div>
+            {anyDigital ? (
+              <div className={styles.field}>
+                <label htmlFor="ck-email">
+                  {copy.email} <i>{copy.emailFor(emailWhat)}</i>
+                </label>
+                <input
+                  ref={emailRef}
+                  id="ck-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  maxLength={254}
+                  value={email}
+                  aria-invalid={problem?.field === 'email' || undefined}
+                  aria-describedby={problem?.field === 'email' ? 'ck-email-error' : undefined}
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    if (problem?.field === 'email') setProblem(null);
+                  }}
+                />
+                {problem?.field === 'email' ? (
+                  <p id="ck-email-error" className={styles.error}>
+                    {problem.message}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
             <div className={styles.field}>
               <label htmlFor="ck-note">
                 {copy.noteFor(props.displayName)} <i>{copy.optional}</i>
@@ -581,16 +681,24 @@ export function Checkout(props: CheckoutProps) {
               <span>{copy.items}</span>
               <span>{formatRinggit(totals.itemsCents)}</span>
             </div>
-            {method ? (
+            {!digitalOnly && method ? (
               <div>
                 <span>{method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel}</span>
                 <span>{method === 'PICKUP' ? copy.free : deliveryPrice}</span>
               </div>
             ) : null}
-            <div>
-              <span>{method === 'DELIVERY' ? copy.deliveryOn : copy.pickupOn}</span>
-              <span>{day ? copy.dayLong(day) : copy.pickADay}</span>
-            </div>
+            {!digitalOnly ? (
+              <div>
+                <span>{method === 'DELIVERY' ? copy.deliveryOn : copy.pickupOn}</span>
+                <span>{day ? copy.dayLong(day) : copy.pickADay}</span>
+              </div>
+            ) : null}
+            {anyDigital ? (
+              <div>
+                <span>{copy.digitalItems}</span>
+                <span>{copy.byEmail}</span>
+              </div>
+            ) : null}
             <div className={styles.total}>
               <span>{copy.total}</span>
               <span>{total}</span>

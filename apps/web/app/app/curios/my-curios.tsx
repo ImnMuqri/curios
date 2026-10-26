@@ -5,9 +5,10 @@ import type { MyCurios } from '@curios/db-read';
 import type { HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
 import { shopCopy } from '../../[handle]/shop/copy.js';
-import { BentoPage } from '../../_bento/BentoPage.js';
+import { BentoPage, type BentoPageProps } from '../../_bento/BentoPage.js';
 import { PageHead } from '../_ui/page-head.js';
 import { PageReply } from '../_ui/page-reply.js';
+import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
 import { SaveStatus, useSaveStatus } from '../_ui/save-status.js';
 import { UnderlineTabs } from '../_ui/underline-tabs.js';
@@ -62,6 +63,8 @@ export type EditorPage = MyCurios & {
   shopItems: { name: string; priceCents: number | null; photoUrl: string | null }[];
   /** The question the preview's Ask tab offers: the most asked, or a starter. */
   previewQuestion: string;
+  /** The page's most asked answered questions, for "People often ask" on the Links tab. */
+  faq?: BentoPageProps['faq'];
 };
 
 const TABS = [
@@ -249,6 +252,8 @@ export function MyCuriosEditor({
           selected={shownPreview}
           onSelect={setPreviewTab}
           overlay={
+            // The ask bar belongs to the Ask tab; the Links tab ends with the FAQ, as the page does.
+            shownPreview === 'ask' ? (
             <span className={styles.askBar} style={{ '--accent': page.accentColor } as CSSProperties} aria-hidden="true">
               Ask {page.displayName} anything
               <i>
@@ -257,11 +262,13 @@ export function MyCuriosEditor({
                 </svg>
               </i>
             </span>
+            ) : null
           }
         >
           <BentoPage
             {...page}
             shop={previewPill}
+            faq={page.faq}
             mode={shownPreview === 'ask' ? 'chat' : undefined}
             interactive={false}
             nameAs="p"
@@ -303,7 +310,7 @@ function PreviewAsk({ question, askPage, accent, name }: { question: string; ask
 
   return (
     <span className={styles.pvChat} style={{ '--accent': accent } as CSSProperties}>
-      <span className={styles.pvQ}>{question}</span>
+      <VisitorQuestion>{question}</VisitorQuestion>
       {state.kind === 'answered' ? (
         <PageReply name={name}>{state.reply}</PageReply>
       ) : state.kind === 'asking' ? (

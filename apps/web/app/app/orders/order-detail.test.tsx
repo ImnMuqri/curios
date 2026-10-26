@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { ApiError } from '../../../lib/api.js';
 import { OrderDetail, type OrderMove, type OrderRow } from './order-detail.js';
+import type { DigitalAct } from './sent-by-email.js';
 
 // Friday 16 Oct 2026, 2pm in Malaysia.
 const now = new Date('2026-10-16T06:00:00Z');
@@ -35,9 +36,11 @@ const mira: OrderRow = {
   chipPaidTwiceAt: null,
   secondRefundedAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
+  email: null,
+  sentAt: null,
   lines: [
-    { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: 'https://cdn.example/items/coklat.webp' },
-    { itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
+    { id: 'l1', digital: null, itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: 'https://cdn.example/items/coklat.webp' },
+    { id: 'l1', digital: null, itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
   ],
 };
 
@@ -55,7 +58,7 @@ const awaiting: OrderRow = {
   receiptUrl: null,
   receiptType: null,
   receiptUploadedAt: null,
-  lines: [{ itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1, photoUrl: null }],
+  lines: [{ id: 'l1', digital: null, itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1, photoUrl: null }],
 };
 
 const paid: OrderRow = {
@@ -69,7 +72,7 @@ const paid: OrderRow = {
   totalCents: 7000,
   status: 'PAID',
   paidAt: new Date('2026-10-15T13:41:00Z'),
-  lines: [{ itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null }, { itemName: 'Cookies balang', optionLabel: null, unitPriceCents: 2500, quantity: 1, photoUrl: null }],
+  lines: [{ id: 'l1', digital: null, itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null }, { id: 'l1', digital: null, itemName: 'Cookies balang', optionLabel: null, unitPriceCents: 2500, quantity: 1, photoUrl: null }],
 };
 
 const refundOwed: OrderRow = {
@@ -82,17 +85,19 @@ const refundOwed: OrderRow = {
   totalCents: 12000,
   status: 'CANCELLED',
   createdAt: new Date('2026-10-12T02:02:00Z'),
+  email: null,
+  sentAt: null,
   receiptUploadedAt: new Date('2026-10-12T03:20:00Z'),
   paidAt: new Date('2026-10-12T04:05:00Z'),
   cancelledAt: new Date('2026-10-13T01:00:00Z'),
-  lines: [{ itemName: 'Burnt cheesecake', optionLabel: '8 inch', unitPriceCents: 12000, quantity: 1, photoUrl: null }],
+  lines: [{ id: 'l1', digital: null, itemName: 'Burnt cheesecake', optionLabel: '8 inch', unitPriceCents: 12000, quantity: 1, photoUrl: null }],
 };
 
-function show(order: OrderRow, move: OrderMove = vi.fn(async () => undefined)) {
+function show(order: OrderRow, move: OrderMove = vi.fn(async () => undefined), act: DigitalAct = vi.fn(async () => undefined)) {
   const say = vi.fn();
   const onChanged = vi.fn();
-  render(<OrderDetail order={order} now={now} pickupNote="Seksyen 7, Shah Alam. 10am to 6pm." move={move} say={say} onChanged={onChanged} />);
-  return { move, say, onChanged };
+  render(<OrderDetail order={order} now={now} pickupNote="Seksyen 7, Shah Alam. 10am to 6pm." move={move} act={act} say={say} onChanged={onChanged} />);
+  return { move, act, say, onChanged };
 }
 
 const actionBox = () => within(screen.getByRole('region', { name: 'What to do next' }));
@@ -160,7 +165,7 @@ describe('OrderDetail, who and where it is', () => {
 
   it('shows the item’s photo, the pickup place and the customer’s note', () => {
     const { container } = render(
-      <OrderDetail order={mira} now={now} pickupNote="Seksyen 7, Shah Alam. 10am to 6pm." move={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />,
+      <OrderDetail order={mira} now={now} pickupNote="Seksyen 7, Shah Alam. 10am to 6pm." move={vi.fn()} act={vi.fn()} say={vi.fn()} onChanged={vi.fn()} />,
     );
     expect(container.querySelector('img[src="https://cdn.example/items/coklat.webp"]')).not.toBeNull();
     expect(screen.getByText('3 items')).toBeInTheDocument();
@@ -352,7 +357,7 @@ describe('OrderDetail, the next step', () => {
     const move = vi.fn(() => new Promise<void>((resolve) => (finish = resolve)));
     const say = vi.fn();
     const onChanged = vi.fn();
-    const props = { now, pickupNote: null, move, say, onChanged };
+    const props = { now, pickupNote: null, move, act: vi.fn(), say, onChanged };
     const { rerender } = render(<OrderDetail order={mira} {...props} />);
 
     const button = actionBox().getByRole('button', { name: 'Mark paid' });
@@ -388,13 +393,15 @@ const online: OrderRow = {
   receiptUploadedAt: null,
   // 11:18am and 11:20am in Malaysia.
   createdAt: new Date('2026-10-16T03:18:00Z'),
+  email: null,
+  sentAt: null,
   paidAt: new Date('2026-10-16T03:20:00Z'),
   paidVia: 'CHIP',
   paidMethodLabel: 'FPX · Maybank2u',
   paidRef: 'CHIP-4K2X',
   lines: [
-    { itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1, photoUrl: null },
-    { itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
+    { id: 'l1', digital: null, itemName: 'Kek coklat moist', optionLabel: '2kg', unitPriceCents: 17000, quantity: 1, photoUrl: null },
+    { id: 'l1', digital: null, itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
   ],
 };
 

@@ -745,6 +745,22 @@ describe('ChatMode, the product card', () => {
     expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
   });
 
+  it('a class card opens the item page to pick a time, and never adds', async () => {
+    const onAddToBasket = vi.fn();
+    await askOnce(named({ productCard: { ...productCard, buy: 'pick' } }), { onAddToBasket });
+    const pick = await screen.findByRole('link', { name: 'Pick a time' });
+    expect(pick).toHaveAttribute('href', '/keklina/shop/kek-batik');
+    expect(screen.queryByRole('button', { name: 'Add to basket' })).not.toBeInTheDocument();
+    await userEvent.click(pick);
+    expect(onAddToBasket).not.toHaveBeenCalled();
+  });
+
+  it('a sold-out card says so and offers no add', async () => {
+    await askOnce(named({ productCard: { ...productCard, buy: 'soldOut' } }), { onAddToBasket: vi.fn(), cardCopy: { add: 'Add', inBasket: 'In', from: (p) => p, open: (n) => `Open ${n}`, added: () => '', soldOut: 'Habis dijual' } });
+    expect(await screen.findByText('Habis dijual')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add' })).not.toBeInTheDocument();
+  });
+
   it('keeps keyboard focus on the button after adding, and says so in one live region', async () => {
     const onAddToBasket = vi.fn().mockReturnValue(1);
     const { rerender } = await askOnce(named(), { onAddToBasket, basketItemIds: [] });

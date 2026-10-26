@@ -8,6 +8,7 @@ import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import inbox from '../_ui/inbox.module.css';
 import { PageReply } from '../_ui/page-reply.js';
+import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { relativeTime } from '../_ui/relative-time.js';
 import { firstMessage, waNumber } from './first-message.js';
 import styles from './leads.module.css';
@@ -39,7 +40,7 @@ const SLOTS = [
 
 /** One line of the chat: the visitor's in a bubble, the page's as plain text. */
 function Line({ line, name }: { line: OwnerLead['transcript'][number]; name: string }) {
-  return line.role === 'USER' ? <span className={styles.fromVisitor}>{line.content}</span> : <PageReply name={name}>{line.content}</PageReply>;
+  return line.role === 'USER' ? <VisitorQuestion>{line.content}</VisitorQuestion> : <PageReply name={name}>{line.content}</PageReply>;
 }
 
 const READY = ['Start with hello', 'Ask a little more', 'Almost there', 'Ready to quote'];

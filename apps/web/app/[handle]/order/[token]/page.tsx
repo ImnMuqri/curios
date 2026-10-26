@@ -1,10 +1,11 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getOrderByToken, type PublicOrder } from '@curios/db-read';
+import { getOrderByToken, type PublicOrder, type PublicOrderLine } from '@curios/db-read';
 import { PageTheme } from '../../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../../shop/basket.js';
+import type { DigitalLineView } from './digital-section.js';
 import { OrderView } from './order-view.js';
 import styles from '../../shop/checkout/checkout.module.css';
 
@@ -28,6 +29,26 @@ const load = cache(async (handle: string, token: string): Promise<PublicOrder | 
 });
 
 const iso = (date: Date | null) => (date ? date.toISOString() : null);
+
+/** A digital line as the browser may see it. db-read already withholds codes, places and files until it is paid. */
+function digitalLine(line: PublicOrderLine, suspended: boolean): DigitalLineView | null {
+  if (line.kind !== 'DIGITAL' || line.delivery === null) return null;
+  // A suspended shop hands nothing out but the buyer's own record (codes): no link note, no meeting URL.
+  const online = line.sessionPlace === 'ONLINE';
+  return {
+    id: line.id,
+    name: line.itemName,
+    delivery: line.delivery,
+    note: suspended ? null : line.accessNote,
+    hasLink: line.hasLink,
+    minutes: line.sessionMinutes,
+    place: line.sessionPlace,
+    where: suspended && online ? null : line.sessionWhere,
+    startsAt: iso(line.sessionStartsAt),
+    codes: line.codes,
+    files: line.grants.map((g) => ({ id: g.id, name: g.fileName, sizeBytes: g.sizeBytes, usesLeft: g.usesLeft, expiresAt: g.expiresAt.toISOString() })),
+  };
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { handle, token } = await params;
@@ -68,7 +89,15 @@ export default async function OrderPage({ params }: Params) {
           paidMethodLabel: order.paidMethodLabel,
           paidRef: order.paidRef,
           chipPending: order.chipPending,
-          lines: order.lines.map(({ itemName, optionLabel, unitPriceCents, quantity }) => ({ itemName, optionLabel, unitPriceCents, quantity })),
+          email: order.email,
+          sentAt: iso(order.sentAt),
+          lines: order.lines.map((line) => ({
+            itemName: line.itemName,
+            optionLabel: line.optionLabel,
+            unitPriceCents: line.unitPriceCents,
+            quantity: line.quantity,
+            digital: digitalLine(line, page.suspended),
+          })),
         }}
         qrUrl={avatarUrl(page.paymentQrKey)}
         receiptUrl={avatarUrl(order.receiptKey)}

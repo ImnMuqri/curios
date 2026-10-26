@@ -7,7 +7,9 @@ import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
 import { blankOption, checkFields, draftOf, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
-import type { EditorItem, ItemRow, ItemsApi } from './store-types.js';
+import { DigitalPanels, KindSwitch } from './digital-fields.js';
+import { checkDigital, digitalDraftOf, type DigitalDraft } from './digital-draft.js';
+import { PHYSICAL_ITEM, type Delivery, type DigitalFields, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 import styles from './store.module.css';
 
 const message = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
@@ -16,7 +18,52 @@ const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 
 /** An API row as the screen holds it, keeping the picture URL the row does not carry. */
 export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
-  return { id: row.id, name: row.name, slug: row.slug, description: row.description, category: row.category, tag: row.tag, photoKey: row.photoKey, available: row.available, priceCents: row.priceCents, options: row.options, photoUrl };
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    description: row.description,
+    category: row.category,
+    tag: row.tag,
+    photoKey: row.photoKey,
+    available: row.available,
+    priceCents: row.priceCents,
+    options: row.options,
+    kind: row.kind,
+    delivery: row.delivery,
+    accessUrl: row.accessUrl,
+    accessNote: row.accessNote,
+    sessionMinutes: row.sessionMinutes,
+    sessionPlace: row.sessionPlace,
+    sessionWhere: row.sessionWhere,
+    files: row.files,
+    codesLeft: row.codesLeft,
+    sessions: row.sessions.map((t) => ({ ...t, startsAt: new Date(t.startsAt) })),
+    photoUrl,
+  };
+}
+
+/** What an autosave carries: the checked fields, and the digital ones whenever they are, or were, in play. */
+type Draft = CheckedItem & { digital?: DigitalFields };
+
+/** The digital state of the item as the preview draws it: what is typed, with the files, codes and times the API holds. */
+function previewDigital(draft: DigitalDraft, saved: EditorItem | null): Pick<EditorItem, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'> {
+  if (draft.kind !== 'DIGITAL') return PHYSICAL_ITEM;
+  const stored = saved?.kind === 'DIGITAL' && saved.delivery === draft.delivery ? saved : null;
+  const fields = checkDigital(draft);
+  const sent = 'fields' in fields && fields.fields.kind === 'DIGITAL' ? fields.fields : null;
+  return {
+    kind: 'DIGITAL',
+    delivery: draft.delivery,
+    accessUrl: sent?.accessUrl ?? null,
+    accessNote: sent?.accessNote ?? null,
+    sessionMinutes: sent?.sessionMinutes ?? null,
+    sessionPlace: sent?.sessionPlace ?? null,
+    sessionWhere: sent?.sessionWhere ?? null,
+    files: stored?.files ?? [],
+    codesLeft: stored?.codesLeft ?? 0,
+    sessions: stored?.sessions ?? [],
+  };
 }
 
 /**
@@ -59,6 +106,7 @@ export function ItemEditor({
   const [category, setCategory] = useState(item?.category ?? '');
   const [tag, setTag] = useState(item?.tag ?? '');
   const [draft, setDraft] = useState<PricingDraft>(() => draftOf(item));
+  const [digital, setDigital] = useState<DigitalDraft>(() => digitalDraftOf(item));
   const listId = useId();
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -72,18 +120,20 @@ export function ItemEditor({
   savedRef.current = saved;
 
   const checked = checkFields(name, description, draft, { category, tag });
-  const problem = 'error' in checked ? checked.error : null;
+  const checkedDigital = checkDigital(digital);
+  const problem = 'error' in checked ? checked.error : 'error' in checkedDigital ? checkedDigital.error : null;
 
-  const autosave = useAutosave(async (fields: CheckedItem) => {
+  const autosave = useAutosave(async (fields: Draft) => {
     const current = savedRef.current ?? (creating.current ? await creating.current : null);
+    const { digital: kinds, ...rest } = fields;
     if (current) {
-      const row = await api.update(current.id, fields);
+      const row = await api.update(current.id, { ...rest, ...kinds });
       const next = fromRow(row, current.photoUrl);
       setSaved(next);
       onSaved(next);
       return;
     }
-    creating.current = api.add(fields).then((row) => fromRow(row, null));
+    creating.current = api.add(kinds ? { ...rest, digital: kinds } : rest).then((row) => fromRow(row, null));
     try {
       const next = await creating.current;
       setSaved(next);
@@ -104,6 +154,8 @@ export function ItemEditor({
       return;
     }
     onPreview({
+      ...PHYSICAL_ITEM,
+      ...previewDigital(digital, saved),
       id: saved?.id ?? 'new',
       name: checked.name,
       slug: saved?.slug ?? '',
@@ -118,22 +170,47 @@ export function ItemEditor({
       options: pricedFields(checked.pricing).options.map((option, i) => ({ id: `draft-${i}`, ...option })),
     });
     // `checked` is derived from the first three; listing it would re-run on every render.
-  }, [name, description, category, tag, draft, saved]);
+  }, [name, description, category, tag, draft, digital, saved]);
 
-  function edit(next: { name?: string; description?: string; category?: string; tag?: string; draft?: PricingDraft }) {
+  function edit(next: { name?: string; description?: string; category?: string; tag?: string; draft?: PricingDraft; digital?: DigitalDraft }) {
     const nextName = next.name ?? name;
     const nextDescription = next.description ?? description;
     const nextCategory = next.category ?? category;
     const nextTag = next.tag ?? tag;
     const nextDraft = next.draft ?? draft;
+    const nextDigital = next.digital ?? digital;
     if (next.name !== undefined) setName(next.name);
     if (next.description !== undefined) setDescription(next.description);
     if (next.category !== undefined) setCategory(next.category);
     if (next.tag !== undefined) setTag(next.tag);
     if (next.draft) setDraft(next.draft);
+    if (next.digital) setDigital(next.digital);
     setError('');
     const fields = checkFields(nextName, nextDescription, nextDraft, { category: nextCategory, tag: nextTag });
-    if (!('error' in fields)) autosave.schedule(fields);
+    const kinds = checkDigital(nextDigital);
+    // A digital item that is not yet complete (no link, no length) is not sent: it would be saved as the wrong thing.
+    if ('error' in fields || 'error' in kinds) return;
+    const wasDigital = savedRef.current?.kind === 'DIGITAL';
+    autosave.schedule(nextDigital.kind === 'DIGITAL' || wasDigital ? { ...fields, digital: kinds.fields } : fields);
+  }
+
+  const editDigital = (change: Partial<DigitalDraft>) => edit({ digital: { ...digital, ...change } });
+
+  /** Applies a change to the saved item (a file, a code count, a time) and tells the screen. */
+  function patchItem(change: (current: EditorItem) => EditorItem) {
+    const current = savedRef.current;
+    if (!current) return;
+    const next = change(current);
+    savedRef.current = next;
+    setSaved(next);
+    onSaved(next);
+  }
+
+  /** Sends anything waiting, so a file, code or time goes to an item the API already knows as this kind of digital item. */
+  async function ready(delivery: Delivery): Promise<EditorItem | null> {
+    await autosave.flushPending();
+    const current = savedRef.current;
+    return current && current.kind === 'DIGITAL' && current.delivery === delivery ? current : null;
   }
 
   function setKind(kind: PricingDraft['kind']) {
@@ -293,6 +370,9 @@ export function ItemEditor({
           </datalist>
         </label>
       </div>
+
+      <KindSwitch draft={digital} onDraft={editDigital} />
+      {digital.kind === 'DIGITAL' ? <DigitalPanels draft={digital} onDraft={editDigital} item={saved} api={api} ready={ready} patchItem={patchItem} /> : null}
 
       <div className={styles.sub}>
         <b id="price-title">Price</b>

@@ -71,6 +71,8 @@ describe('MyCuriosEditor', () => {
     await userEvent.type(name, 'Iman M.');
 
     expect(within(preview()).getByText('Iman M.')).toBeInTheDocument();
+    // The ask bar is the Ask tab's.
+    await userEvent.click(within(screen.getByRole('tablist', { name: 'Preview tab' })).getByRole('tab', { name: 'Ask' }));
     expect(within(preview()).getByText(/Ask Iman M\. anything/)).toBeInTheDocument();
   });
 
@@ -180,6 +182,30 @@ describe('the tabs', () => {
 
 describe('the preview tabs', () => {
   const previewTabs = () => within(screen.getByRole('tablist', { name: 'Preview tab' }));
+
+  it('ends the Links tab with People often ask, from the page’s real questions, and has no ask bar there', async () => {
+    const faq = {
+      total: 5,
+      entries: [
+        { slug: 'klang', question: 'Do you deliver to Klang?', answer: 'Yes, RM15.' },
+        { slug: 'halal', question: 'Is it halal?', answer: 'Yes.' },
+      ],
+    };
+    show({ ...business, faq });
+    expect(within(preview()).getByText('People often ask')).toBeInTheDocument();
+    expect(within(preview()).getByText('See all 5')).toBeInTheDocument();
+    expect(within(preview()).getByText('Do you deliver to Klang?')).toBeInTheDocument();
+    expect(within(preview()).queryByText(/Ask .* anything/)).toBeNull();
+    await userEvent.click(previewTabs().getByRole('tab', { name: 'Ask' }));
+    expect(within(preview()).getByText(/Ask Iman Muqri anything/)).toBeInTheDocument();
+    // The page folds the FAQ away on Ask, as it does for visitors.
+    expect(preview().querySelector('[data-bento-page]')).toHaveAttribute('data-mode', 'chat');
+  });
+
+  it('has no People often ask while the page has no answered questions', () => {
+    show(business);
+    expect(within(preview()).queryByText('People often ask')).toBeNull();
+  });
 
   it('offers Links and Ask only, the shop open or not', () => {
     show(business);

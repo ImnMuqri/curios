@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { ADMIN_COOKIE, extendPaidUntil, MAIL_QUEUE, type MailJobData } from '@curios/core';
@@ -6,6 +9,7 @@ import { buildApp } from '../../app.js';
 import type { AvatarStore } from '../pages/storage.js';
 import { hashPassword } from '../auth/password.service.js';
 import { createAdminSession } from './admin-session.service.js';
+import { createDiskPrivateFiles } from '../store/private-files.js';
 
 const mailQueue = { add: vi.fn(async (_name: string, _data: MailJobData, _opts?: unknown) => ({})) };
 const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> } = {
@@ -14,6 +18,8 @@ const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<t
 };
 
 let app: FastifyInstance;
+let privateRoot = '';
+const privateFiles = createDiskPrivateFiles(path.join(tmpdir(), 'curios-admin-private'));
 let previousOrigin: string | undefined;
 let adminId: string;
 let cookie: string;
@@ -22,7 +28,9 @@ const madeAccounts: string[] = [];
 beforeAll(async () => {
   previousOrigin = process.env.ADMIN_ORIGIN;
   process.env.ADMIN_ORIGIN = 'http://localhost:3002';
-  app = await buildApp({ admin: { mailQueue, store } });
+  privateRoot = await mkdtemp(path.join(tmpdir(), 'curios-admin-'));
+  Object.assign(privateFiles, createDiskPrivateFiles(privateRoot));
+  app = await buildApp({ admin: { mailQueue, store, privateFiles } });
   await app.ready();
 
   const admin = await app.prisma.adminUser.create({
@@ -41,6 +49,7 @@ afterAll(async () => {
   if (previousOrigin === undefined) delete process.env.ADMIN_ORIGIN;
   else process.env.ADMIN_ORIGIN = previousOrigin;
   await app.close();
+  await rm(privateRoot, { recursive: true, force: true });
 });
 
 beforeEach(() => {
@@ -282,6 +291,18 @@ describe('DELETE /admin/pages/:id', () => {
     expect(store.remove.mock.calls.map((c) => c[0]).sort()).toEqual(
       ['avatars/a.png', 'covers/c.jpg', 'items/t.jpg', 'qr/q.png', 'receipts/r.jpg'],
     );
+  });
+
+  it('removes the private digital files of the deleted account', async () => {
+    const page = await aPage();
+    const item = await app.prisma.item.create({ data: { pageId: page.id, name: 'Book', slug: 'book', position: 0, kind: 'DIGITAL', delivery: 'FILES' } });
+    const key = `digital/${page.id}/${item.id}/abc`;
+    await privateFiles.put(key, Buffer.from('%PDF'), 'application/pdf', 4);
+    await app.prisma.itemFile.create({ data: { itemId: item.id, key, name: 'a.pdf', sizeBytes: 4, contentType: 'application/pdf', position: 0 } });
+    await expect(privateFiles.deliver(key, 'a.pdf')).resolves.toBeDefined();
+    const res = await call('DELETE', `/admin/pages/${page.id}`, { reason: 'Owner asked', handle: page.handle });
+    expect(res.statusCode).toBe(204);
+    await expect(privateFiles.deliver(key, 'a.pdf')).rejects.toThrow();
   });
 
   it('two deletes at once: one 204, one 404, one audit row', async () => {

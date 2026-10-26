@@ -961,7 +961,7 @@ describe('with billing switched off', () => {
       // production check (storage is unset throughout this suite -- see
       // vitest.setup.ts) so this test isolates the one setting it actually
       // means to prove: CHIP's.
-      await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(/CHIP_SECRET_KEY is not set/);
+      await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null })).rejects.toThrow(/CHIP_SECRET_KEY is not set/);
     } finally {
       process.env.NODE_ENV = savedNodeEnv;
     }
@@ -986,7 +986,7 @@ describe('in production', () => {
     for (const name of CHIP_ENV) process.env[name] = 'https://api.curios.invalid';
     delete process.env.CHIP_WEBHOOK_PUBLIC_KEY;
 
-    await expect(buildApp({ pages: { store: null }, orders: { store: null } })).rejects.toThrow(
+    await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null })).rejects.toThrow(
       /CHIP_WEBHOOK_PUBLIC_KEY is not set/,
     );
   });

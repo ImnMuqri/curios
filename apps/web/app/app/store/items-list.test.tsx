@@ -1,9 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ItemsList } from './items-list.js';
-import type { EditorItem } from './store-types.js';
+import { PHYSICAL_ITEM, type EditorItem } from './store-types.js';
 
-const base = { slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
+const base = { ...PHYSICAL_ITEM, slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
 const items: EditorItem[] = [
   { ...base, id: 'a', name: 'Kek coklat', priceCents: null, available: true, options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }] },
   { ...base, id: 'b', name: 'Kek batik', priceCents: 4500, available: true },
@@ -17,6 +17,11 @@ function show(list = items) {
 }
 
 describe('ItemsList', () => {
+  it('says Digital before the price of a digital item', () => {
+    show([{ ...base, id: 'd', name: 'E-book', priceCents: 2500, available: true, kind: 'DIGITAL', delivery: 'FILES' }]);
+    expect(screen.getByRole('listitem', { name: 'E-book' })).toHaveTextContent('Digital · RM25');
+  });
+
   it('counts the items and how many are in the shop', () => {
     show();
     expect(screen.getByText('3 items · 2 in your shop')).toBeInTheDocument();

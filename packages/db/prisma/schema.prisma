@@ -145,6 +145,25 @@ enum OrderMethod {
   DELIVERY
 }
 
+/// What an item is: something posted or collected, or something delivered by email.
+enum ItemKind {
+  PHYSICAL
+  DIGITAL
+}
+
+/// How a digital item reaches the buyer once paid.
+enum DigitalDelivery {
+  FILES
+  LINK
+  CODES
+  SESSION
+}
+
+enum SessionPlace {
+  ONLINE
+  IN_PERSON
+}
+
 /// How a shop hands over an order. FLAT adds Page.deliveryFeeCents to the
 /// total; RIDER means the customer pays the rider (Lalamove, Grab) directly,
 /// so the fee is never part of what the shop charges.
@@ -346,9 +365,102 @@ model Item {
   createdAt   DateTime     @default(now())
   options     ItemOption[]
   orderLines  OrderLine[]
+  /// PHYSICAL items are posted or collected; DIGITAL ones are delivered by `delivery`.
+  kind        ItemKind     @default(PHYSICAL)
+  delivery    DigitalDelivery?
+  /// LINK: the https URL, never shown before payment.
+  accessUrl   String?
+  /// LINK: an optional note, at most ACCESS_NOTE_MAX characters.
+  accessNote  String?
+  /// SESSION: how long it runs.
+  sessionMinutes Int?
+  sessionPlace   SessionPlace?
+  /// SESSION: the meeting URL (ONLINE) or the place (IN_PERSON).
+  sessionWhere   String?
+  files       ItemFile[]
+  codes       ItemCode[]
+  sessions    ItemSession[]
 
   @@unique([pageId, slug])
   @@index([pageId, position])
+}
+
+model ItemFile {
+  id          String          @id @default(cuid())
+  itemId      String
+  item        Item            @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  /// An object key in storage.
+  key         String
+  name        String
+  sizeBytes   Int
+  contentType String
+  position    Int
+  createdAt   DateTime        @default(now())
+  grants      DownloadGrant[]
+
+  @@index([itemId, position])
+}
+
+model ItemCode {
+  id          String     @id @default(cuid())
+  itemId      String
+  item        Item       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  code        String
+  /// The order line that was given this code; null while unused.
+  orderLineId String?
+  orderLine   OrderLine? @relation(fields: [orderLineId], references: [id], onDelete: SetNull)
+  givenAt     DateTime?
+  createdAt   DateTime   @default(now())
+
+  @@unique([itemId, code])
+  @@index([itemId, orderLineId])
+  @@index([orderLineId])
+}
+
+model ItemSession {
+  id        String           @id @default(cuid())
+  itemId    String
+  item      Item             @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  startsAt  DateTime
+  seats     Int
+  createdAt DateTime         @default(now())
+  bookings  SessionBooking[]
+
+  @@index([itemId, startsAt])
+}
+
+model SessionBooking {
+  id          String      @id @default(cuid())
+  sessionId   String
+  session     ItemSession @relation(fields: [sessionId], references: [id], onDelete: NoAction)
+  orderLineId String
+  orderLine   OrderLine   @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+  seats       Int
+  /// When the day-before reminder email went out.
+  remindedAt  DateTime?
+  createdAt   DateTime    @default(now())
+
+  @@unique([orderLineId])
+  @@index([sessionId])
+}
+
+model DownloadGrant {
+  id          String    @id @default(cuid())
+  /// An opaque random id for the grant. Not a secret: a download is addressed by the order token and the grant's id.
+  token       String    @unique
+  orderLineId String
+  orderLine   OrderLine @relation(fields: [orderLineId], references: [id], onDelete: Cascade)
+  fileId      String?
+  file        ItemFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  /// The file's name when the grant was made, kept if the file is deleted.
+  fileName    String
+  usesLeft    Int
+  expiresAt   DateTime
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+
+  @@index([orderLineId])
+  @@index([fileId])
 }
 
 model ItemOption {
@@ -787,12 +899,15 @@ model Order {
   /// hashSessionValue of the order link's secret. Only the hash is stored, so
   /// a database read cannot open anybody's order page.
   tokenHash         String         @unique
+  /// The order token sealed with PAYMENT_SECRETS_KEY (sealSecret), so later emails can carry the order link. Null where there is no key.
+  tokenSealed       String?
   customerName      String
   /// E.164, as Lead.phone is.
   phone             String
-  method            OrderMethod
-  /// The calendar day (Malaysia) of pickup or delivery.
-  day               DateTime       @db.Date
+  /// Null for a digital-only order.
+  method            OrderMethod?
+  /// The calendar day (Malaysia) of pickup or delivery. Null for a digital-only order.
+  day               DateTime?      @db.Date
   /// Set only for DELIVERY.
   address           String?
   note              String?
@@ -833,6 +948,10 @@ model Order {
   secondRefundedAt  DateTime?
   /// The customer's email, asked for only when they pay online (CHIP needs one for the receipt).
   payerEmail        String?
+  /// Where digital items are sent; required at checkout when any line is digital.
+  email             String?
+  /// When the digital items were delivered (the email sent).
+  sentAt            DateTime?
   /// How CHIP says it was paid, for the order page: "FPX · Maybank2u".
   paidMethodLabel   String?
   /// CHIP's reference for the payment, shown beside it.
@@ -859,6 +978,20 @@ model OrderLine {
   unitPriceCents Int
   quantity       Int
   position       Int
+  /// Copies of Item.kind and Item.delivery at the time of the order.
+  kind           ItemKind         @default(PHYSICAL)
+  delivery       DigitalDelivery?
+  /// Copies of the item's access fields at the time of the order: what the buyer bought, whatever the owner edits later.
+  accessUrl      String?
+  accessNote     String?
+  sessionMinutes Int?
+  sessionPlace   SessionPlace?
+  sessionWhere   String?
+  /// When the buyer first opened a LINK item's page.
+  linkOpenedAt   DateTime?
+  codes          ItemCode[]
+  booking        SessionBooking?
+  grants         DownloadGrant[]
 
   @@index([orderId, position])
   // Deleting an item sets this null (SetNull): without it, every deleted item scans OrderLine.

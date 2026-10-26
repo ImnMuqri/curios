@@ -284,9 +284,9 @@ describe('Ask, and the page tabs', () => {
 });
 
 describe('Ask, the product card', () => {
-  const productCard = { itemId: 'i1', slug: 'kek-batik', name: 'Kek Batik', fromPriceCents: 9500, photoUrl: null, firstOptionId: 'o1' };
+  const productCard = { itemId: 'i1', slug: 'kek-batik', name: 'Kek Batik', fromPriceCents: 9500, photoUrl: null, firstOptionId: 'o1', buy: 'add' };
 
-  function stubNamingFetch() {
+  function stubNamingFetch(card: object = productCard) {
     vi.stubGlobal(
       'fetch',
       vi.fn(async () =>
@@ -295,7 +295,7 @@ describe('Ask, the product card', () => {
             start(controller) {
               const enc = new TextEncoder();
               controller.enqueue(enc.encode('data: {"type":"text","text":"Kek batik is RM95."}\n\n'));
-              controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, productCard })}\n\n`));
+              controller.enqueue(enc.encode(`data: ${JSON.stringify({ type: 'done', conversationId: 'c1', intent: { qualified: false }, productCard: card })}\n\n`));
               controller.close();
             },
           }),
@@ -316,6 +316,14 @@ describe('Ask, the product card', () => {
   }
 
   afterEach(() => window.sessionStorage.clear());
+
+  it('a class card sends the visitor to the item page for a time, adding nothing; a sold-out one is not offered', async () => {
+    stubNamingFetch({ ...productCard, buy: 'pick' });
+    await askAboutBatik();
+    expect(await screen.findByRole('link', { name: 'Pick a time' })).toHaveAttribute('href', '/nadia/shop/kek-batik');
+    expect(screen.queryByRole('button', { name: 'Add to basket' })).toBeNull();
+    expect(window.sessionStorage.getItem('curios-basket:nadia')).toBeNull();
+  });
 
   it('Add to basket writes the first option into the shop’s basket and turns into "In your basket"', async () => {
     stubNamingFetch();

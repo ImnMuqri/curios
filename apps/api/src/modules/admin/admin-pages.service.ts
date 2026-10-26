@@ -10,6 +10,7 @@ import {
 import { stockCoverName } from '@curios/core/bento';
 import type { Prisma, PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
+import type { PrivateFiles } from '../store/private-files.js';
 import { writeAudit } from './audit.js';
 
 export interface AdminPagesDeps {
@@ -17,6 +18,8 @@ export interface AdminPagesDeps {
   mailQueue: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
   /** Null: uploads are off here, so there are no files to remove. */
   store: AvatarStore | null;
+  /** Null: private storage is off, so there are no digital files to remove. */
+  privateFiles?: PrivateFiles | null;
   log?: { warn?: (o: object, m: string) => void };
 }
 
@@ -203,20 +206,21 @@ export async function deleteAccount(
   reason: string,
   handle: string,
 ): Promise<void> {
-  const keys = await deps.prisma.$transaction(async (tx) => {
+  const { keys, digitalKeys } = await deps.prisma.$transaction(async (tx) => {
     // Lock the row first: a second delete at the same moment waits, then finds no page.
     await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${id} FOR UPDATE`;
     const page = await loadPage(tx, id);
     if (handle.trim().toLowerCase() !== page.handle.toLowerCase()) throw new HandleMismatchError();
 
     // Everything stored for the page, read before the rows go.
-    const [row, items, orders] = await Promise.all([
+    const [row, items, orders, digital] = await Promise.all([
       tx.page.findUniqueOrThrow({
         where: { id },
         select: { accountId: true, avatarKey: true, coverKey: true, paymentQrKey: true },
       }),
       tx.item.findMany({ where: { pageId: id, photoKey: { not: null } }, select: { photoKey: true } }),
       tx.order.findMany({ where: { pageId: id, receiptKey: { not: null } }, select: { receiptKey: true } }),
+      tx.itemFile.findMany({ where: { item: { pageId: id } }, select: { key: true } }),
     ]);
 
     // Payments outlive the page (pageId goes null). Checkout does not fill these two
@@ -235,8 +239,22 @@ export async function deleteAccount(
       ...items.map((i) => i.photoKey),
       ...orders.map((o) => o.receiptKey),
     ];
-    return stored.filter((key): key is string => Boolean(key));
+    return { keys: stored.filter((key): key is string => Boolean(key)), digitalKeys: digital.map((f) => f.key) };
   });
+
+  const priv = deps.privateFiles;
+  if (priv) {
+    await Promise.all(
+      digitalKeys.map((key) =>
+        priv.remove(key).catch((error: unknown) =>
+          deps.log?.warn?.(
+            { pageId: id, key, err: error instanceof Error ? error.message : String(error) },
+            'a deleted page’s file could not be removed',
+          ),
+        ),
+      ),
+    );
+  }
 
   const store = deps.store;
   if (!store) return;

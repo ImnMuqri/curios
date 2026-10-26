@@ -74,7 +74,9 @@ const order: OwnerOrder = {
   chipPaidTwiceAt: null,
   secondRefundedAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
-  lines: [{ itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 1, photoKey: 'items/p1/coklat.webp' }],
+  email: null,
+  sentAt: null,
+  lines: [{ id: 'l1', digital: null, itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 1, photoKey: 'items/p1/coklat.webp' }],
 };
 
 const params = (order?: string) => ({ searchParams: Promise.resolve(order ? { order } : {}) });

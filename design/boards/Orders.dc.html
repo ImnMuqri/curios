@@ -643,6 +643,27 @@ a{color:#2340c8}a:hover{color:#122686}
 .convo .a,.tchat .a{color:#fafbfc}
 .bl-r.hd2,.bl-r.hd2 span{color:#696e7b;opacity:1}
 @media (max-width:760px){.stats{padding:14px 16px 0}.kpi{padding-right:12px}.kpi+.kpi{padding-left:12px}.kpi b{font-size:18px}.kpi>span>span{font-size:11.5px}}
+
+/* digital */
+.dgx-to{margin:-4px 0 6px;font-size:12.5px;color:var(--soft)}
+.dgx{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+.dgx>span{flex:1;min-width:0}
+.dgx b{display:block;font-size:13.5px;font-weight:500}
+.dgx>span>span{display:block;font-size:12.5px;color:var(--soft)}
+.dgx-b{flex:none;height:30px;padding:0 12px;border:1px solid #dfe1e6;border-radius:8px;background:#ffffff;font:inherit;font-size:12.5px;font-weight:500;color:#191f2c;cursor:pointer}
+.dgx-b:hover{border-color:#c9ccd3}
+.dgx-resend{display:inline-flex;align-items:center;gap:8px;margin-top:10px;height:36px;padding:0 14px;border:0;border-radius:8px;background:#f0f1f4;font:inherit;font-size:13px;font-weight:500;color:#191f2c;cursor:pointer}
+.dgx-resend svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* previews match the real page */
+.pv-q,.bq,.convo .u,.tchat .u,.vchat .q{background:rgba(250,251,252,.14)!important;color:#fafbfc!important;border-radius:16px!important}
+.pv-a::before,.ba::before,.convo .a::before,.tchat .a::before,.vchat .a::before{padding-left:20px;line-height:16px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 7px 8px,#b5294e 6.5px,transparent 7px) no-repeat}
+.leadc2{align-self:stretch;display:block;padding:12px;border-radius:14px;background:#fafbfc;color:#191f2c}
+.leadc2 b{display:block;font-size:13px;font-weight:600}
+.leadc2 small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:#4b5060}
+.leadc2 .lrow{display:flex;gap:6px;margin-top:8px}
+.leadc2 i{flex:1;min-width:0;height:34px;padding:0 10px;border:1.5px solid #dfe1e6;border-radius:9px;font-style:normal;font-size:12px;line-height:31px;color:#9aa0ab}
+.leadc2 em{display:grid;place-items:center;height:34px;padding:0 12px;border-radius:9px;background:#b5294e;color:#fafbfc;font-style:normal;font-size:12px;font-weight:600}
 </style>
 </helmet>
 
@@ -738,13 +759,19 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ d.isOnline }}" hint-placeholder-val="{{ false }}"><div class="paidol"><span class="pok"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span><b>{{d.total}} paid by {{d.via}}</b><span>Confirmed by the bank through CHIP, so there is no receipt to check. Ref {{d.ref}}.</span></span></div></sc-if>
 <sc-if value="{{ d.noReceipt }}" hint-placeholder-val="{{ false }}"><div class="waitbox"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>{{d.waitText}}</div></sc-if>
 </div>
-<div class="card">
+<sc-if value="{{ d.dig }}" hint-placeholder-val="{{ false }}"><div class="card">
+<h3>Sent by email <span class="obadge" style="background: {{d.sBg}}; color: {{d.sFg}}">{{d.sentText}}</span></h3>
+<p class="dgx-to">To {{d.email}}</p>
+<sc-for list="{{ d.dlines }}" as="g" hint-placeholder-count="3"><div class="dgx"><span><b>{{g.name}}</b><span>{{g.state}}</span></span><sc-if value="{{ g.hasAct }}" hint-placeholder-val="{{ false }}"><button type="button" class="dgx-b" onClick="{{ g.act }}">{{g.actText}}</button></sc-if></div></sc-for>
+<sc-if value="{{ d.sent }}" hint-placeholder-val="{{ true }}"><button type="button" class="dgx-resend" onClick="{{ d.resend }}"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg>Resend the email</button></sc-if>
+</div></sc-if>
+<sc-if value="{{ d.phys }}" hint-placeholder-val="{{ true }}"><div class="card">
 <h3>Getting it to them</h3>
 <div class="kv">
 <div><span class="ic" style="background: {{d.mBg}}; color: {{d.mFg}}"><svg viewBox="0 0 24 24"><path d="{{d.mIcon}}"></path></svg></span><span><b>{{d.method}} · {{d.date}}</b><span>{{d.where}}</span></span></div>
 </div>
 <sc-if value="{{ d.hasNote }}" hint-placeholder-val="{{ true }}"><div class="note"><b>Note from {{d.first}}</b>{{d.note}}</div></sc-if>
-</div>
+</div></sc-if>
 </div>
 </div>
 </div>
@@ -766,12 +793,15 @@ class Component extends DCLogic {
       coklat: ['/_blob/63d877cef1ea5c67a363dfd5ea183c12', '50% 50%', '#f6c9d5', '#7a1f3a'],
       batik: ['/_blob/0791b6197dd4490d1b3e6683114d06d7', '72% 80%', '#ffe2b8', '#7a4a0c'],
       cookies: ['', '', '#f6c9d5', '#7a1f3a'],
-      cheese: ['', '', '#ffe2b8', '#7a4a0c']
+      cheese: ['', '', '#ffe2b8', '#7a4a0c'],
+      ebook: ['', '', '#bfd1f9', '#122686'], klass: ['/_blob/0791b6197dd4490d1b3e6683114d06d7', '72% 80%', '#bfe3d6', '#123b33'], voucher: ['', '', '#ffe2b8', '#7a4a0c'], course: ['', '', '#f6c9d5', '#7a1f3a']
     };
-    const L = (key, name, opt, q, each) => ({ key: key, name: name, opt: opt, q: q, each: each });
+    const L = (key, name, opt, q, each, dk) => ({ key: key, name: name, opt: opt, q: q, each: each, dk: dk || null });
     this.state = {
-      filter: 'all', sel: 13, confirm: false, zoom: false, sparkOn: false, toast: '', grow: 0,
+      filter: 'all', sel: 16, confirm: false, zoom: false, sparkOn: false, toast: '', grow: 0,
       orders: [
+        { num: 16, name: 'Farah Nadia', tone: '#dfe8fd', phone: '014-662 3091', email: 'farah.n@gmail.example', placed: 'today, 1:30pm', status: 'PLACED', receipt: 'today, 1:34pm', paidAt: null, doneAt: null, cancelAt: null, refundAt: null, method: 'Digital', date: '', fee: 0, digital: true, note: '', lines: [L('ebook', 'Kek coklat recipe e-book', '', 1, 25, 'files')] },
+        { num: 15, name: 'Mira Hassan', tone: '#f6c9d5', phone: '012-345 6789', email: 'mira.hassan@gmail.example', placed: 'today, 4:04pm', status: 'COMPLETED', via: 'FPX · Maybank2u', ref: 'CHIP-7Q4M', receipt: null, paidAt: 'today, 4:05pm', doneAt: 'today, 4:05pm', cancelAt: null, refundAt: null, method: 'Digital', date: '', fee: 0, digital: true, note: '', lines: [L('ebook', 'Kek coklat recipe e-book', '', 1, 25, 'files'), L('klass', 'Online class: Kek batik', 'Sat 7 Nov, 8:00pm', 1, 60, 'session'), L('voucher', 'Gift voucher RM50', '', 1, 50, 'codes'), L('course', 'Video course: Basic cakes', '', 1, 79, 'link')] },
         { num: 14, name: 'Nurul Izzah', tone: '#bfe3d6', phone: '013-778 2041', placed: 'today, 11:18am', status: 'PAID', via: 'FPX · Maybank2u', ref: 'CHIP-4K2X', receipt: null, paidAt: 'today, 11:20am', doneAt: null, cancelAt: null, refundAt: null, method: 'Pickup', date: 'Sat 17 Oct', fee: 0, lines: [L('coklat', 'Kek coklat moist', '2kg', 1, 170), L('batik', 'Kek batik', '', 1, 45)] },
         { num: 13, name: 'Mira Hassan', tone: '#f6c9d5', phone: '012-345 6789', placed: 'today, 10:02am', status: 'PLACED', receipt: 'today, 10:09am', paidAt: null, doneAt: null, cancelAt: null, refundAt: null, method: 'Pickup', date: 'Sat 17 Oct', fee: 0, note: "Please write 'Selamat hari jadi Aisyah' on the coklat one. Thank you!", lines: [L('coklat', 'Kek coklat moist', '1kg', 2, 95), L('batik', 'Kek batik', '', 1, 45)] },
         { num: 12, name: 'Hakim Rahman', tone: '#bfd1f9', phone: '019-882 1034', placed: 'today, 8:40am', status: 'PLACED', receipt: null, paidAt: null, doneAt: null, cancelAt: null, refundAt: null, method: 'Delivery', date: 'Sat 17 Oct', fee: 10, address: '12, Jalan Bunga Raya 7/3, Seksyen 7, Shah Alam', note: '', lines: [L('coklat', 'Kek coklat moist', '2kg', 1, 170)] },
@@ -794,7 +824,7 @@ class Component extends DCLogic {
   view(o) {
     if (o.status === 'PLACED') return o.receipt ? ['To check', '#ffebd6', '#7a4a0c'] : ['Awaiting payment', '#f0f1f4', '#4b5060'];
     if (o.status === 'PAID') return o.via ? ['Paid online', '#e8f3ef', '#123b33'] : ['Paid', '#eaf0ff', '#122686'];
-    if (o.status === 'COMPLETED') return ['Completed', '#e8f3ef', '#123b33'];
+    if (o.status === 'COMPLETED') return o.digital ? ['Sent', '#e8f3ef', '#123b33'] : ['Completed', '#e8f3ef', '#123b33'];
     if (o.paidAt && !o.refundAt) return ['Refund owed', '#fdecea', '#b3261e'];
     return ['Cancelled', '#f0f1f4', '#696e7b'];
   }
@@ -829,7 +859,7 @@ class Component extends DCLogic {
       filters: fl.map((f) => ({ label: f[1], on: st.filter === f[0], fg: st.filter === f[0] ? '#191f2c' : '#696e7b', hasN: f[2] > 0, n: f[2], nBg: f[0] === 'check' ? '#f2a33c' : f[0] === 'refund' ? '#d8452f' : '#2340c8', nFg: f[0] === 'check' ? '#191f2c' : '#ffffff', go: () => self.setState({ filter: f[0], confirm: false }) })),
       rows: shown.map((o, i) => { const v = self.view(o); const on = sel && sel.num === o.num; const items = o.lines.reduce((a, l) => a + l.q, 0); return {
         num: o.num, name: o.name, ini: o.name[0], tone: o.tone, total: self.rm(self.total(o)), badge: v[0], bBg: v[1], bFg: v[2],
-        sum: items + (items === 1 ? ' item' : ' items') + ' · ' + o.method + ' ' + o.date.split(' ')[0],
+        sum: items + (items === 1 ? ' item' : ' items') + ' · ' + (o.digital ? 'Digital' : o.method + ' ' + o.date.split(' ')[0]),
         toCheck: self.match(o, 'check'), on: on ? 'true' : 'false', bg: on ? '#ffffff' : 'transparent', ring: on ? '0 0 0 1.5px #2340c8, 0 8px 18px -12px rgba(35,64,200,.5)' : 'none', delay: i * 40,
         pick: () => self.setState({ sel: o.num, confirm: false })
       }; }),
@@ -845,20 +875,22 @@ class Component extends DCLogic {
       const cancelled = o.status === 'CANCELLED';
       const stepsRaw = cancelled
         ? [['Placed', o.placed, true], ['Receipt', o.receipt || 'None', !!o.receipt], ['Paid', o.paidAt || 'No', !!o.paidAt], [o.refundAt ? 'Refunded' : 'Cancelled', o.refundAt || o.cancelAt, true]]
-        : o.via ? [['Placed', o.placed, true], ['Paid by ' + o.via.split(' · ')[0], o.paidAt, true], ['Checked', 'By the bank', true], ['Completed', o.doneAt || o.date, !!o.doneAt]] : [['Placed', o.placed, true], ['Receipt', o.receipt || 'Waiting', !!o.receipt], ['Paid', o.paidAt || (o.receipt ? 'Your check' : 'Not yet'), !!o.paidAt], ['Completed', o.doneAt || o.date, !!o.doneAt]];
+        : o.via ? [['Placed', o.placed, true], ['Paid by ' + o.via.split(' · ')[0], o.paidAt, true], ['Checked', 'By the bank', true], [o.digital ? 'Sent' : 'Completed', o.doneAt || o.date, !!o.doneAt]]
+        : o.digital ? [['Placed', o.placed, true], ['Receipt', o.receipt || 'Waiting', !!o.receipt], ['Paid', o.paidAt || (o.receipt ? 'Your check' : 'Not yet'), !!o.paidAt], ['Sent', o.doneAt || 'When you mark it paid', !!o.doneAt]] : [['Placed', o.placed, true], ['Receipt', o.receipt || 'Waiting', !!o.receipt], ['Paid', o.paidAt || (o.receipt ? 'Your check' : 'Not yet'), !!o.paidAt], ['Completed', o.doneAt || o.date, !!o.doneAt]];
       const doneN = stepsRaw.filter((x) => x[2]).length;
       const lastDone = stepsRaw.reduce((a, x, i) => x[2] ? i : a, 0);
       const nextI = stepsRaw.findIndex((x) => !x[2]);
       let ab = null;
-      if (o.status === 'PLACED' && o.receipt) ab = { t: 'Check the receipt, then mark it paid', x: 'Make sure ' + tot + ' reached your account.', b: 'Mark paid', c: '#2340c8', bg: '#f6f8ff', ring: '#dfe8fd', fg: '#122686', go: () => self.update(o.num, { status: 'PAID', paidAt: 'just now' }, '#' + o.num + ' marked paid. ' + first + ' can see it on their order page.') };
+      if (o.status === 'PLACED' && o.receipt && o.digital) ab = { t: 'Check the receipt, then mark it paid', x: 'Their ' + (o.lines.length === 1 ? o.lines[0].name.toLowerCase() : 'items') + ' goes to ' + o.email + ' the moment you do.', b: 'Mark paid and send', c: '#2340c8', bg: '#f6f8ff', ring: '#dfe8fd', fg: '#122686', go: () => self.update(o.num, { status: 'COMPLETED', paidAt: 'just now', doneAt: 'just now' }, '#' + o.num + ' paid. It\u2019s on its way to ' + first + '\u2019s email.') };
+      else if (o.status === 'PLACED' && o.receipt) ab = { t: 'Check the receipt, then mark it paid', x: 'Make sure ' + tot + ' reached your account.', b: 'Mark paid', c: '#2340c8', bg: '#f6f8ff', ring: '#dfe8fd', fg: '#122686', go: () => self.update(o.num, { status: 'PAID', paidAt: 'just now' }, '#' + o.num + ' marked paid. ' + first + ' can see it on their order page.') };
       else if (o.status === 'PLACED') ab = { t: 'Waiting for ' + first + ' to pay', x: 'Paid some other way? You can still mark it paid.', b: 'Mark paid', c: '#191f2c', bg: '#fafbfc', ring: '#e4e7eb', fg: '#4b5060', go: () => self.update(o.num, { status: 'PAID', paidAt: 'just now' }, '#' + o.num + ' marked paid.') };
       else if (o.status === 'PAID') ab = { t: 'Paid. Ready on ' + o.date, x: 'Mark it completed once ' + first + ' has it.', b: 'Mark completed', c: '#1d6f5f', bg: '#f1f8f5', ring: '#d3e8e1', fg: '#123b33', go: () => self.update(o.num, { status: 'COMPLETED', doneAt: 'just now' }, '#' + o.num + ' completed. Nice one.') };
       else if (refundOwed) ab = { t: 'You owe ' + first + ' ' + tot, x: 'Send it back yourself, then mark it refunded.', b: 'Mark refunded', c: '#d8452f', bg: '#fef4f2', ring: '#f8d5ce', fg: '#8a2a1a', go: () => self.update(o.num, { refundAt: 'just now' }, '#' + o.num + ' marked refunded.') };
       const mIcon = o.method === 'Pickup' ? 'M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z' : 'M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z';
       out.d = {
         num: o.num, name: o.name, first: first, ini: o.name[0], tone: o.tone, phone: o.phone, placed: o.placed, total: tot,
-        count: o.lines.reduce((a, l) => a + l.q, 0) + ' items',
-        lines: o.lines.map((l) => { const p = self.P[l.key]; return { name: l.name, opt: (l.opt ? l.opt + ' · ' : '') + self.rm(l.each) + ' each', q: l.q, amt: self.rm(l.q * l.each), hasPhoto: !!p[0], photo: p[0], focus: p[1], tint: p[2], ink: p[3], ini: p[0] ? '' : l.name[0] }; }),
+        count: (function () { const n = o.lines.reduce((a, l) => a + l.q, 0); return n + (n === 1 ? ' item' : ' items'); })(),
+        lines: o.lines.map((l) => { const p = self.P[l.key]; return { name: l.name, opt: l.dk ? ({ files: 'PDF · 2 files', session: l.opt, codes: 'Gift code', link: 'Course link' }[l.dk] + ' · ' + self.rm(l.each)) : (l.opt ? l.opt + ' · ' : '') + self.rm(l.each) + ' each', q: l.q, amt: self.rm(l.q * l.each), hasPhoto: !!p[0], photo: p[0], focus: p[1], tint: p[2], ink: p[3], ini: p[0] ? '' : l.name[0] }; }),
         hasFee: o.fee > 0, fee: self.rm(o.fee),
         fill: doneN <= 1 ? 0 : (lastDone / 3) * 75, fillC: cancelled ? '#d8452f' : '#2340c8',
         steps: stepsRaw.map((x, i) => { const isCancel = cancelled && i === 3; return {
@@ -881,7 +913,20 @@ class Component extends DCLogic {
         waitText: o.status === 'CANCELLED' ? 'No receipt was uploaded.' : first + ' has not uploaded a receipt yet. Their order page shows your QR and bank details.',
         method: o.method, date: o.date, where: o.method === 'Pickup' ? 'Seksyen 7, Shah Alam. 10am to 6pm.' : o.address,
         mBg: o.method === 'Pickup' ? '#fdf0dc' : '#e8f3ef', mFg: o.method === 'Pickup' ? '#8f5c15' : '#1d6f5f', mIcon: mIcon,
-        hasNote: !!o.note, note: o.note
+        hasNote: !!o.note, note: o.note,
+        dig: !!o.digital, phys: !o.digital, email: o.email || '', sent: !!o.doneAt,
+        sentText: o.doneAt ? 'Sent ' + o.doneAt : 'Not sent yet', sBg: o.doneAt ? '#e8f3ef' : '#f0f1f4', sFg: o.doneAt ? '#123b33' : '#4b5060',
+        resend: () => self.update(o.num, {}, 'Sent again to ' + o.email + '.'),
+        dlines: o.lines.map((l) => {
+          const sent = !!o.doneAt;
+          const D = {
+            files: [sent ? 'Downloaded once · 4 downloads left · links until 14 Nov' : 'Download links go out when it\u2019s paid', sent ? 'New links' : '', () => self.update(o.num, {}, 'New download links sent to ' + first + '.')],
+            session: [sent ? l.opt + ' · seat 6 of 12 · reminder goes Fri' : 'Seat held for ' + l.opt, sent ? 'Move time' : '', () => self.update(o.num, {}, first + ' gets an email to pick another time.')],
+            codes: [sent ? 'Gave code KL50-8F2K-QM · 7 codes left' : 'A code is given when it\u2019s paid', sent ? 'New code' : '', () => self.update(o.num, {}, 'Gave ' + first + ' a new code. The old one stops working.')],
+            link: [sent ? 'Link sent · opened today, 4:12pm' : 'Link goes out when it\u2019s paid', '', null]
+          }[l.dk] || ['', '', null];
+          return { name: l.name, state: D[0], hasAct: !!D[1], actText: D[1], act: D[2] || (() => {}) };
+        })
       };
     }
     return out;

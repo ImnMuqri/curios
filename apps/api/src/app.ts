@@ -30,6 +30,7 @@ import {
   nearPerIpLimit,
   orderPerIpLimit,
   orderPerPageLimit,
+  downloadPerIpLimit,
   receiptPerIpLimit,
   rateLimitPlugin,
   shopChipPerAccountLimit,
@@ -43,7 +44,9 @@ import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/cha
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
+import type { PrivateFiles } from './modules/store/private-files.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
+import { downloadRoutes } from './modules/orders/download.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
 import {
   createPayOnline,
@@ -93,6 +96,8 @@ export interface AppOverrides {
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
   admin?: AdminPagesRouteOptions;
+  /** Private storage for digital files; tests pass a disk one rooted in a temp dir. */
+  privateFiles?: PrivateFiles | null;
 }
 
 /** `/store/orders/<token>/receipt` -> `/store/orders/:token/receipt`; any other URL is returned as it came. */
@@ -207,7 +212,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, orderPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, orderPerPageLimit(app.rateLimitRedis));
-    await scope.register(orderRoutes, overrides.orders ?? {});
+    await scope.register(orderRoutes, { ...(overrides.orders ?? {}), secretsKey: payOnline.secretsKey });
   });
 
   // The receipt on an order's link: anonymous too, with its own per-IP budget
@@ -215,6 +220,13 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, receiptPerIpLimit(app.rateLimitRedis));
     await scope.register(receiptRoutes, overrides.orders ?? {});
+  });
+
+  // What a buyer downloads or opens from their order: anonymous, the order link is the credential,
+  // and its own per-IP budget (a download can stream 100 MB).
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, downloadPerIpLimit(app.rateLimitRedis));
+    await scope.register(downloadRoutes, { privateFiles: overrides.privateFiles });
   });
 
   // Paying a shop online through the owner's own CHIP account: anonymous, on the order
@@ -275,7 +287,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(neverSayRoutes);
     await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
-    await scope.register(storeRoutes, overrides.pages ?? {});
+    await scope.register(storeRoutes, { ...(overrides.pages ?? {}), privateFiles: overrides.privateFiles });
     await scope.register(ownerOrderRoutes, { ...(overrides.orders ?? {}), payOnline });
   });
 
@@ -315,7 +327,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await app.register(adminSessionRoutes);
     await app.register(async (scope) => {
       scope.addHook('onRequest', requireAdmin);
-      await scope.register(adminPagesRoutes, overrides.admin ?? {});
+      await scope.register(adminPagesRoutes, { ...(overrides.admin ?? {}), privateFiles: overrides.admin?.privateFiles ?? overrides.privateFiles });
     });
   }
 

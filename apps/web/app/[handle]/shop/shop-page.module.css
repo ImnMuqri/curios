@@ -369,6 +369,12 @@
   opacity: 0.75;
 }
 
+.soldOut {
+  margin-left: 8px;
+  font-weight: 700;
+  opacity: 1;
+}
+
 .foot {
   margin: 28px 20px 0;
   padding: 16px;

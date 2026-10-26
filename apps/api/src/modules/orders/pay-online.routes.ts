@@ -2,6 +2,7 @@ import type { FastifyReply } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { CHIP_DEFAULT_BASE_URL, createChipClient, verifyChipSignature } from '@curios/billing';
+import { resolveApiUrl } from '@curios/core/digital';
 import { ORDER_TOTAL_MAX_CENTS } from '@curios/core/orders';
 import { rawJson } from '../../plugins/raw-json.js';
 import { errName } from '../billing/billing.service.js';
@@ -51,6 +52,8 @@ export function createPayOnline(prisma: PayOnlineDeps['prisma'], options: PayOnl
 }
 
 function payOnlineSettings(options: PayOnlineOptions) {
+  // First, so a production boot without it fails on this and not on something later.
+  const apiUrl = resolveApiUrl(process.env);
   const chip = options.chip ?? {};
   const production = chip.production ?? process.env.NODE_ENV === 'production';
   const baseUrl = process.env.CHIP_BASE_URL || CHIP_DEFAULT_BASE_URL;
@@ -61,6 +64,7 @@ function payOnlineSettings(options: PayOnlineOptions) {
     secretsKey: resolveSecretsKey(chip, production),
     clientFor: chip.clientFor ?? ((({ secretKey, brandId }) => createChipClient({ secretKey, brandId, baseUrl })) satisfies ChipClientFor),
     callbackBaseUrl: callbackBaseUrl ? callbackBaseUrl.replace(/\/+$/, '') : null,
+    apiUrl,
     appUrl: (process.env.APP_URL ?? 'http://localhost:3000').replace(/\/+$/, ''),
     store: resolveStore(options.store),
     mailQueue: options.mailQueue ?? (() => {
@@ -102,14 +106,15 @@ export const shopPayStartRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = 
           method: z.enum(['fpx', 'tng', 'grab', 'spay', 'card']),
           bank: z.string().max(20).optional(),
           // CHIP needs an email for its receipt (owner's answer 2: asked only for an online method).
-          email: z.string().trim().min(3).max(254).email(),
+          // Left out, the order's own email is used (a digital order has one from checkout).
+          email: z.string().trim().min(3).max(254).email().optional(),
         }),
         response: { 200: z.object({ url: z.string().nullable() }), 400: errorSchema, 404: errorSchema, 409: errorSchema, 410: errorSchema },
       },
     },
     async (request) => {
       const { method, bank, email } = request.body;
-      return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), email }, new Date());
+      return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), ...(email ? { email } : {}) }, new Date());
     },
   );
 };

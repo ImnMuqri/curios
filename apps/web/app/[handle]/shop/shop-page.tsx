@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
 import { shopCopy } from './copy.js';
@@ -45,9 +45,21 @@ export function ShopPageView(props: {
   nextDay: string | null;
   description: string | null;
   halal: boolean;
+  /**
+   * The Store editor's picture of this page: the same page, but no link leaves
+   * the editor (a tapped item opens the editor's item screen), nothing is
+   * shared, and the basket it fills is the preview's own.
+   */
+  preview?: { storageKey: string; onOpenItem: (id: string) => void };
 }) {
   const copy = shopCopy(props.language);
-  const key = defaultStorageKey(props.handle);
+  const key = props.preview?.storageKey ?? defaultStorageKey(props.handle);
+  const { preview } = props;
+  // In the editor a link only stays put (and, on an item, opens it there).
+  const stay = preview ? (id?: string) => (event: { preventDefault: () => void }) => {
+    event.preventDefault();
+    if (id) preview.onOpenItem(id);
+  } : () => undefined;
   const [basket, setBasket] = useState<BasketLine[]>([]);
   const [category, setCategory] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -75,21 +87,24 @@ export function ShopPageView(props: {
     return () => window.clearTimeout(timer);
   }, [copied]);
 
-  const categories = useMemo(() => {
+  // Digital items are their own category, whatever the owner typed for them.
+  const categoryOf = (item: ViewItem) => (item.kind === 'DIGITAL' ? copy.digital : item.category?.trim());
+  const categories = (() => {
     const counts = new Map<string, number>();
     for (const item of props.items) {
-      const name = item.category?.trim();
+      const name = categoryOf(item);
       if (name) counts.set(name, (counts.get(name) ?? 0) + 1);
     }
     return [...counts];
-  }, [props.items]);
-  const shown = category ? props.items.filter((item) => item.category?.trim() === category) : props.items;
+  })();
+  const shown = category ? props.items.filter((item) => categoryOf(item) === category) : props.items;
 
   function add(line: BasketLine) {
     writeBasket(key, addToBasket(readBasket(key), line));
   }
 
   async function share() {
+    if (preview) return;
     const url = `${window.location.origin}/${props.handle}/shop`;
     try {
       if (typeof navigator.share === 'function') {
@@ -111,7 +126,7 @@ export function ShopPageView(props: {
   return (
     <div className={styles.shop}>
       <div className={styles.top}>
-        <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)}>
+        <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)} onClick={stay()}>
           <Icon d={ICON.back} />
         </a>
         <span>curios.my/{props.handle}/shop</span>
@@ -194,15 +209,23 @@ export function ShopPageView(props: {
             {shown.map((item) => {
               const from = fromPrice(item);
               const inBasket = basket.filter((line) => line.itemId === item.id).reduce((sum, line) => sum + line.quantity, 0);
-              const buyable = item.options.length > 0 || item.priceCents !== null;
+              const soldOut = item.soldOut === true;
+              const buyable = !soldOut && (item.options.length > 0 || item.priceCents !== null);
+              const href = `/${props.handle}/shop/${item.slug}`;
+              const tag = item.kind === 'DIGITAL' ? copy.digital : item.tag;
               return (
                 <li key={item.id} className={styles.card}>
                   <span className={styles.pic}>
-                    <a className={styles.photo} href={`/${props.handle}/shop/${item.slug}`} tabIndex={-1} aria-hidden="true">
+                    <a className={styles.photo} href={href} tabIndex={-1} aria-hidden="true" onClick={stay(item.id)}>
                       {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
                     </a>
-                    {item.tag ? <span className={styles.tag}>{item.tag}</span> : null}
-                    {buyable ? (
+                    {tag ? <span className={styles.tag}>{tag}</span> : null}
+                    {buyable && item.delivery === 'SESSION' ? (
+                      // A class needs its time first: the product page has the picker.
+                      <button type="button" className={styles.add} aria-label={`${copy.pickATime}: ${item.name}`} onClick={preview ? () => preview.onOpenItem(item.id) : () => window.location.assign(href)}>
+                        +
+                      </button>
+                    ) : buyable ? (
                       <button
                         type="button"
                         className={styles.add}
@@ -217,11 +240,12 @@ export function ShopPageView(props: {
                       </button>
                     ) : null}
                   </span>
-                  <a className={styles.cn} href={`/${props.handle}/shop/${item.slug}`}>
+                  <a className={styles.cn} href={href} onClick={stay(item.id)}>
                     {item.name}
                   </a>
                   <span className={styles.cp}>
                     {from === null ? '' : item.options.length > 0 ? copy.from(formatRinggit(from)) : formatRinggit(from)}
+                    {soldOut ? <span className={styles.soldOut}>{copy.soldOut}</span> : null}
                   </span>
                 </li>
               );
@@ -231,7 +255,7 @@ export function ShopPageView(props: {
             <b>{copy.wantMore}</b>
             {copy.wantMoreBody(props.displayName)}
             <br />
-            <a href={`/${props.handle}#ask`}>{copy.askQuestion}</a>
+            <a href={`/${props.handle}#ask`} onClick={stay()}>{copy.askQuestion}</a>
           </div>
         </>
       ) : (
@@ -241,7 +265,7 @@ export function ShopPageView(props: {
           </span>
           <b>{copy.emptyTitle}</b>
           <p>{copy.emptyBody(props.displayName)}</p>
-          <a className={styles.lite} href={`/${props.handle}#ask`}>
+          <a className={styles.lite} href={`/${props.handle}#ask`} onClick={stay()}>
             {copy.askName(props.displayName)}
           </a>
         </div>

@@ -123,6 +123,16 @@ describe('orderCard', () => {
     });
     expect(orderCard({ ...base, status: 'COMPLETED', paidAt: now }, 'Kek Lina', now)).toMatchObject({ pill: 'Done', tone: 'ok' });
   });
+
+  it('says a digital order was sent, not that it is ready for delivery', () => {
+    const digital = { ...base, method: null, day: null, status: 'PAID' as const, paidAt: now, lines: [{ itemName: 'Recipe e-book', optionLabel: null, quantity: 1 }] };
+    const sent = orderCard({ ...digital, sentAt: now }, 'Kek Lina', now);
+    expect(sent).toMatchObject({ status: 'Paid. It was sent to your email', pill: 'Paid · Sent to your email', tone: 'ok', when: '' });
+    expect(orderCard({ ...digital, sentAt: null }, 'Kek Lina', now)).toMatchObject({ status: 'Paid', pill: 'Paid' });
+    expect(orderCard({ ...digital, status: 'COMPLETED', sentAt: now }, 'Kek Lina', now).pill).toBe('Paid · Sent to your email');
+    // Unpaid, it is still the ordinary waiting words.
+    expect(orderCard({ ...digital, status: 'PLACED', paidAt: null }, 'Kek Lina', now).pill).toBe('Waiting for payment');
+  });
 });
 
 describe('productCard', () => {
@@ -149,6 +159,7 @@ describe('productCard', () => {
       fromPriceCents: 900,
       photoUrl: null,
       firstOptionId: null,
+      buy: 'add',
     });
   });
 
@@ -160,7 +171,19 @@ describe('productCard', () => {
       fromPriceCents: 9500,
       photoUrl: 'https://files.example/items/p/batik.webp',
       firstOptionId: 'o2',
+      buy: 'add',
     });
+  });
+
+  it('sends a class to its page for a time, and sells a sold-out item to no one', () => {
+    const now = new Date('2026-10-24T00:00:00Z');
+    const cls = { id: 'c1', name: 'Online Class', slug: 'online-class', priceCents: 6000, photoKey: null, options: [], kind: 'DIGITAL' as const, delivery: 'SESSION' as const, sessions: [{ id: 's', startsAt: new Date('2026-11-01T00:00:00Z'), seats: 5, bookings: [] }] };
+    expect(productCard('Join the online class', [cls], null, now)?.buy).toBe('pick');
+    const full = { ...cls, sessions: [{ ...cls.sessions[0]!, bookings: [{ seats: 5 }] }] };
+    expect(productCard('Join the online class', [full], null, now)?.buy).toBe('soldOut');
+    const voucher = { id: 'v', name: 'Gift Voucher', slug: 'gift', priceCents: 5000, photoKey: null, options: [], kind: 'DIGITAL' as const, delivery: 'CODES' as const, _count: { codes: 0 } };
+    expect(productCard('A gift voucher', [voucher], null, now)?.buy).toBe('soldOut');
+    expect(productCard('A gift voucher', [{ ...voucher, _count: { codes: 2 } }], null, now)?.buy).toBe('add');
   });
 
   it('has no photo URL when storage is not configured', () => {

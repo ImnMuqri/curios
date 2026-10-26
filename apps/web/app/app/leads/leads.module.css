@@ -321,17 +321,6 @@
   font-family: var(--font-inter), sans-serif;
 }
 
-.fromVisitor {
-  align-self: flex-end;
-  max-width: 85%;
-  padding: 8px 12px;
-  border-radius: 16px 16px 5px 16px;
-  background: var(--paper);
-  color: var(--ink);
-  font-size: 13px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-}
 
 .leftNumber {
   display: inline-flex;

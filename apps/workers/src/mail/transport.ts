@@ -54,6 +54,19 @@ export function smtpOptions(): SmtpOptions {
   };
 }
 
+/** `"Kek Lina via Curios" <orders@curios.my>`: the shop's name, made safe to sit in a header, over the configured address. */
+export function senderFor(fromName: string | undefined, configured: string): string {
+  const name = [...(fromName ?? '')]
+    .map((ch) => (ch.charCodeAt(0) < 32 || ch.charCodeAt(0) === 127 || ch === '"' || ch === '\\' || ch === '<' || ch === '>' ? ' ' : ch))
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 60);
+  if (!name) return configured;
+  const address = /<([^>]+)>/.exec(configured)?.[1] ?? configured.trim();
+  return `"${name} via Curios" <${address}>`;
+}
+
 /**
  * The only module that knows how mail leaves this system.
  *
@@ -73,7 +86,7 @@ export function createMailer(transport?: Transport): Mailer {
   return {
     async send(message: MailMessage): Promise<void> {
       await resolved.sendMail({
-        from: process.env.MAIL_FROM ?? 'Curios <hello@curios.my>',
+        from: senderFor(message.fromName, process.env.MAIL_FROM ?? 'Curios <hello@curios.my>'),
         to: message.to,
         subject: message.subject,
         text: message.text,

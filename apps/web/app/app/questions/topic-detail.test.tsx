@@ -154,6 +154,15 @@ describe('TopicDetail, the answer', () => {
     expect(within(screen.getByLabelText('How the chat replies')).getByText(/replies from your facts, or says it isn.t sure/)).toBeInTheDocument();
   });
 
+  it('without an answer, shows the unsure reply and the lead card, as the page would', () => {
+    show();
+    const chat = within(screen.getByLabelText('How the chat replies'));
+    expect(chat.getByText(/not sure about that one. Leave your number and Kek will get back to you/)).toBeInTheDocument();
+    expect(chat.getByText('Kek can answer this one')).toBeInTheDocument();
+    expect(chat.getByPlaceholderText('012-345 6789')).toBeInTheDocument();
+    expect(chat.getByRole('button', { name: 'Send' })).toBeInTheDocument();
+  });
+
   it('withdraws an answer', async () => {
     const { calls } = show(halal);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Withdraw' })); });

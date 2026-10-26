@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createMailer, smtpOptions } from './transport.js';
+import { createMailer, senderFor, smtpOptions } from './transport.js';
 
 function recordingTransport() {
   const sent: Array<Record<string, string>> = [];
@@ -123,5 +123,14 @@ describe('smtpOptions', () => {
 
     // Number('') is 0, and nodemailer treats a falsy port as "use 587".
     expect(smtpOptions().port).toBe(1075);
+  });
+});
+
+describe('senderFor', () => {
+  it('reads "{Shop} via Curios" at the configured address, and cannot be bent by the shop name', () => {
+    expect(senderFor('Kek Lina', 'Curios <hello@curios.my>')).toBe('"Kek Lina via Curios" <hello@curios.my>');
+    expect(senderFor('Kek "Lina"\r\nBcc: x@y.z <evil>', 'hello@curios.my')).toBe('"Kek Lina Bcc: x@y.z evil via Curios" <hello@curios.my>');
+    expect(senderFor(undefined, 'Curios <hello@curios.my>')).toBe('Curios <hello@curios.my>');
+    expect(senderFor('  ', 'Curios <hello@curios.my>')).toBe('Curios <hello@curios.my>');
   });
 });

@@ -1,16 +1,21 @@
 import { formatRinggit } from '@curios/core/store';
-import type { ShopItem } from '@curios/db-read';
+import type { PublicItem, ShopItem } from '@curios/db-read';
 import type { ShopCopy } from './copy.js';
 
 /** What pricing a basket needs of an item: the shelf's name, price and options. */
-export type PricedItem = Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options'>;
+export type PricedItem = Pick<ShopItem, 'id' | 'name' | 'priceCents' | 'options'> & Partial<Pick<PublicItem, 'kind' | 'delivery' | 'soldOut'>>;
 
 /** What the browser keeps: ids and counts, never prices -- a price is always read from the shelf as it is now. */
 export interface BasketLine {
   itemId: string;
   optionId: string | null;
   quantity: number;
+  /** The class time picked, for a session item; absent on every other line. */
+  sessionId?: string | null;
 }
+
+/** One line's identity: the same item, size and time. */
+export const sameLine = (a: BasketLine, b: BasketLine) => a.itemId === b.itemId && a.optionId === b.optionId && (a.sessionId ?? null) === (b.sessionId ?? null);
 
 /** The API's own bound on one line (`POST /store/:handle/orders`): a basket never holds more. */
 export const QUANTITY_MAX = 99;
@@ -21,7 +26,7 @@ export const QUANTITY_MAX = 99;
  * tapping + (on the shelf, the product page or in chat) can always be placed.
  */
 export function addToBasket(lines: BasketLine[], line: BasketLine): BasketLine[] {
-  const same = lines.find((l) => l.itemId === line.itemId && l.optionId === line.optionId);
+  const same = lines.find((l) => sameLine(l, line));
   if (!same) return [...lines, { ...line, quantity: Math.min(QUANTITY_MAX, line.quantity) }];
   return lines.map((l) => (l === same ? { ...l, quantity: Math.min(QUANTITY_MAX, l.quantity + line.quantity) } : l));
 }
@@ -38,7 +43,8 @@ function isBasketLine(value: unknown): value is BasketLine {
     (line.optionId === null || typeof line.optionId === 'string') &&
     typeof line.quantity === 'number' &&
     Number.isInteger(line.quantity) &&
-    line.quantity > 0
+    line.quantity > 0 &&
+    (line.sessionId === undefined || line.sessionId === null || typeof line.sessionId === 'string')
   );
 }
 
@@ -70,6 +76,10 @@ export interface PricedLine extends BasketLine {
   optionLabel: string | null;
   unitCents: number;
   lineCents: number;
+  /** The item is digital (no pickup, no day), as the shelf says now. */
+  digital: boolean;
+  /** The shelf says it cannot be bought now. */
+  soldOut: boolean;
 }
 
 /**
@@ -94,7 +104,7 @@ export function priceBasket(lines: BasketLine[], items: PricedItem[]): { lines: 
       }
     }
     if (unitCents === null) continue;
-    priced.push({ ...line, name: item.name, optionLabel, unitCents, lineCents: unitCents * line.quantity });
+    priced.push({ ...line, name: item.name, optionLabel, unitCents, lineCents: unitCents * line.quantity, digital: item.kind === 'DIGITAL', soldOut: item.soldOut === true });
   }
   return { lines: priced, totalCents: priced.reduce((sum, line) => sum + line.lineCents, 0) };
 }

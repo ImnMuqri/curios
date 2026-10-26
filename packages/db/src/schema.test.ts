@@ -651,3 +651,101 @@ describe('QuestionEmbedding', () => {
     await prisma.questionEmbedding.deleteMany({ where: { key } });
   });
 });
+
+describe('digital items', () => {
+  async function shopWithDigitalLine() {
+    const account = await prisma.account.create({
+      data: {
+        email: `digital-${randomUUID()}@example.com`,
+        pages: { create: { handle: `d${randomUUID().slice(0, 8)}`, skeleton: randomUUID(), displayName: 'Digital Shop' } },
+      },
+      include: { pages: true },
+    });
+    const page = account.pages[0]!;
+    const item = await prisma.item.create({
+      data: { pageId: page.id, name: 'Planner PDF', slug: 'planner', position: 0, priceCents: 1500, kind: 'DIGITAL', delivery: 'CODES' },
+    });
+    const order = await prisma.order.create({
+      data: {
+        pageId: page.id,
+        number: 1,
+        code: 'AB12',
+        tokenHash: randomUUID(),
+        customerName: 'Aina',
+        phone: '+60123456789',
+        email: 'aina@example.com',
+        itemsCents: 1500,
+        deliveryCents: 0,
+        totalCents: 1500,
+        lines: { create: { itemId: item.id, itemName: 'Planner PDF', unitPriceCents: 1500, quantity: 1, position: 0, kind: 'DIGITAL', delivery: 'CODES' } },
+      },
+      include: { lines: true },
+    });
+    return { account, item, order, line: order.lines[0]! };
+  }
+
+  it('defaults items and lines to PHYSICAL, and lets an order have no method or day', async () => {
+    const { account, item, order } = await shopWithDigitalLine();
+    const plain = await prisma.item.create({ data: { pageId: item.pageId, name: 'Cake', slug: 'cake', position: 1, priceCents: 100 } });
+    expect(plain.kind).toBe('PHYSICAL');
+    expect(plain.delivery).toBeNull();
+    expect(order.method).toBeNull();
+    expect(order.day).toBeNull();
+    await prisma.account.delete({ where: { id: account.id } });
+  });
+
+  it('deleting an item with a given code keeps the order line; the code goes with the item', async () => {
+    const { account, item, order, line } = await shopWithDigitalLine();
+    const code = await prisma.itemCode.create({ data: { itemId: item.id, code: 'SERIAL-1', orderLineId: line.id, givenAt: new Date() } });
+    await expect(prisma.itemCode.create({ data: { itemId: item.id, code: 'SERIAL-1' } })).rejects.toThrow();
+
+    await prisma.item.delete({ where: { id: item.id } });
+
+    expect(await prisma.itemCode.findUnique({ where: { id: code.id } })).toBeNull();
+    const kept = await prisma.orderLine.findUniqueOrThrow({ where: { id: line.id } });
+    expect(kept.orderId).toBe(order.id);
+    expect(kept.itemId).toBeNull();
+    await prisma.account.delete({ where: { id: account.id } });
+  });
+
+  it('an order line keeps kind and delivery after the item changes', async () => {
+    const { account, item, line } = await shopWithDigitalLine();
+    await prisma.item.update({ where: { id: item.id }, data: { kind: 'PHYSICAL', delivery: null } });
+    const kept = await prisma.orderLine.findUniqueOrThrow({ where: { id: line.id } });
+    expect(kept.kind).toBe('DIGITAL');
+    expect(kept.delivery).toBe('CODES');
+    await prisma.account.delete({ where: { id: account.id } });
+  });
+
+  it('a time with bookings cannot be deleted, and a line books once', async () => {
+    const { account, item, line } = await shopWithDigitalLine();
+    const session = await prisma.itemSession.create({ data: { itemId: item.id, startsAt: new Date(), seats: 2 } });
+    await prisma.sessionBooking.create({ data: { sessionId: session.id, orderLineId: line.id, seats: 1 } });
+    await expect(prisma.sessionBooking.create({ data: { sessionId: session.id, orderLineId: line.id, seats: 1 } })).rejects.toThrow();
+    await expect(prisma.itemSession.delete({ where: { id: session.id } })).rejects.toThrow();
+    await expect(prisma.item.delete({ where: { id: item.id } })).rejects.toThrow();
+    await prisma.account.delete({ where: { id: account.id } });
+  });
+
+  it('deleting an account whose shop has a booked session succeeds and removes the booking', async () => {
+    const { account, item, line } = await shopWithDigitalLine();
+    const session = await prisma.itemSession.create({ data: { itemId: item.id, startsAt: new Date(), seats: 2 } });
+    const booking = await prisma.sessionBooking.create({ data: { sessionId: session.id, orderLineId: line.id, seats: 1 } });
+    await prisma.account.delete({ where: { id: account.id } });
+    expect(await prisma.sessionBooking.findUnique({ where: { id: booking.id } })).toBeNull();
+    expect(await prisma.itemSession.findUnique({ where: { id: session.id } })).toBeNull();
+  });
+
+  it('a download grant keeps its file name when the file is deleted', async () => {
+    const { account, item, line } = await shopWithDigitalLine();
+    const file = await prisma.itemFile.create({ data: { itemId: item.id, key: 'k', name: 'a.pdf', sizeBytes: 1, contentType: 'application/pdf', position: 0 } });
+    const grant = await prisma.downloadGrant.create({
+      data: { token: randomUUID(), orderLineId: line.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 5, expiresAt: new Date() },
+    });
+    await prisma.itemFile.delete({ where: { id: file.id } });
+    const kept = await prisma.downloadGrant.findUniqueOrThrow({ where: { id: grant.id } });
+    expect(kept.fileId).toBeNull();
+    expect(kept.fileName).toBe('a.pdf');
+    await prisma.account.delete({ where: { id: account.id } });
+  });
+});

@@ -64,3 +64,21 @@ describe('CORS on the chat SSE route', () => {
     expect(res.headers['access-control-allow-origin']).toBe(ORIGIN);
   });
 });
+
+describe('NEXT_PUBLIC_API_URL', () => {
+  it('stops a production boot when it is unset, and lets development fall back', async () => {
+    const saved = { url: process.env.NEXT_PUBLIC_API_URL, env: process.env.NODE_ENV };
+    try {
+      delete process.env.NEXT_PUBLIC_API_URL;
+      process.env.NODE_ENV = 'production';
+      await expect(buildApp()).rejects.toThrow(/NEXT_PUBLIC_API_URL/);
+      process.env.NODE_ENV = 'test';
+      const dev = await buildApp();
+      await dev.close();
+    } finally {
+      if (saved.url === undefined) delete process.env.NEXT_PUBLIC_API_URL;
+      else process.env.NEXT_PUBLIC_API_URL = saved.url;
+      process.env.NODE_ENV = saved.env;
+    }
+  });
+});

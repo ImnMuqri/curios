@@ -9,6 +9,7 @@ import { payingKey, retryKey } from '../../shop/checkout/paying.js';
 import { Placed } from '../../shop/checkout/placed.js';
 import { unavailableCopy } from '../../../_system/unavailable-copy.js';
 import { apiFetch } from '../../../../lib/api.js';
+import { DigitalSection, type DigitalLineView } from './digital-section.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { ReceiptUpload } from './receipt-upload.js';
 import { RetryPay } from './retry-pay.js';
@@ -24,8 +25,9 @@ export interface OrderViewProps {
   order: {
     number: number;
     code: string;
-    method: 'PICKUP' | 'DELIVERY';
-    day: string;
+    /** Null for a digital-only order: nothing to pick up or deliver. */
+    method: 'PICKUP' | 'DELIVERY' | null;
+    day: string | null;
     itemsCents: number;
     deliveryCents: number;
     totalCents: number;
@@ -42,7 +44,10 @@ export interface OrderViewProps {
     paidRef?: string | null;
     /** Placed, with a CHIP purchase started for it: the page asks the API how it went. */
     chipPending?: boolean;
-    lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number }[];
+    lines: { itemName: string; optionLabel: string | null; unitPriceCents: number; quantity: number; digital?: DigitalLineView | null }[];
+    /** Where the digital items were sent, and when they were (ISO). */
+    email?: string | null;
+    sentAt?: string | null;
   };
   qrUrl: string | null;
   receiptUrl: string | null;
@@ -57,6 +62,12 @@ export interface OrderViewProps {
   navigate?: (url: string) => void;
   /** The server's clock when it rendered (ISO). */
   now: string;
+  /**
+   * The Store editor's picture of this page: the same page, but nothing in it
+   * reaches the network or the clipboard (the receipt box does not open a
+   * picker), and it is a section of the dashboard, not a document of its own.
+   */
+  preview?: boolean;
 }
 
 type Tone = 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
@@ -121,12 +132,21 @@ function usePaymentCheck(token: string, pending: boolean) {
   return { check, paid };
 }
 
+/** The kinds and count of a FILES line's files, for the line's small print. */
+function lineFormat(line: DigitalLineView): { kinds: string[]; count: number } | null {
+  if (line.delivery !== 'FILES' || line.files.length === 0) return null;
+  const kinds = [...new Set(line.files.map((f) => (f.name.includes('.') ? f.name.split('.').pop()!.toUpperCase() : '')).filter(Boolean))];
+  return { kinds, count: line.files.length };
+}
+
 const date = (iso: string | null) => (iso ? new Date(iso) : null);
 
 const EXTENSION: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
 /** The pill's words and colour, from the Orders board's view and the customer's steps. */
-function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, copy: ShopCopy): { text: string; tone: Tone } {
+function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, copy: ShopCopy, digital?: { sent: boolean }): { text: string; tone: Tone } {
+  // A digital-only order has nothing to get ready: paid, then sent.
+  if (digital && (view === 'paid' || view === 'paidOnline')) return { text: digital.sent ? copy.statusSent : copy.statusPaidDigital, tone: 'ok' };
   switch (view) {
     case 'awaitingPayment':
       return { text: copy.statusWaiting, tone: 'wait' };
@@ -151,7 +171,9 @@ function pill(view: ReturnType<typeof orderView>, ready: boolean, name: string, 
  * and the receipt. Every name and number is this order's and this shop's.
  */
 export function OrderView(props: OrderViewProps) {
-  const { displayName: name } = props;
+  const { displayName: name, preview = false } = props;
+  const Root = preview ? 'div' : 'main';
+  const Title = preview ? 'h2' : 'h1';
   const copy = shopCopy(props.language);
   const [codeCopied, copyCode] = useCopied();
   const { check, paid: confirmed } = usePaymentCheck(props.token, props.order.status === 'PLACED' && props.order.chipPending === true);
@@ -181,7 +203,16 @@ export function OrderView(props: OrderViewProps) {
     }
   }, [props.token]);
 
+  // "Get your files" lands on the downloads once the placed screen has gone.
+  const [jump, setJump] = useState(false);
+  useEffect(() => {
+    if (celebrate || !jump) return;
+    setJump(false);
+    document.getElementById('downloads')?.scrollIntoView({ block: 'start' });
+  }, [celebrate, jump]);
+
   function seeOrder() {
+    if (props.order.method === null) setJump(true);
     try {
       window.sessionStorage.removeItem(payingKey(props.token));
     } catch {
@@ -198,7 +229,12 @@ export function OrderView(props: OrderViewProps) {
   };
   const view = orderView(facts);
   const steps = customerSteps({ status: order.status, paidAt: facts.paidAt, day: order.day }, new Date(props.now));
-  const status = pill(view, steps.ready, name, copy);
+  const digitalOnly = order.method === null;
+  const digitalLines = order.lines.flatMap((line) => (line.digital ? [line.digital] : []));
+  const hasDigital = order.lines.some((line) => line.digital);
+  const sent = (order.sentAt ?? null) !== null;
+  const isPaid = order.status === 'PAID' || order.status === 'COMPLETED';
+  const status = pill(view, steps.ready, name, copy, digitalOnly ? { sent } : undefined);
   // While a payment is being checked the QR stays away, so nobody pays twice; once the wait
   // drags on, it comes back under the wait, with a word against paying twice.
   const inFlight = check === 'checking' || check === 'waiting';
@@ -215,15 +251,22 @@ export function OrderView(props: OrderViewProps) {
   // A shop with no QR or bank: its WhatsApp, with the upload, or, with neither, the plain truth.
   const askOnWhatsApp = !payByQr && !retry && props.whatsapp !== null;
 
-  const stepList = [
-    { label: copy.steps.placed, done: steps.placed },
-    { label: copy.steps.paid, done: steps.paid },
-    { label: copy.steps.ready, done: steps.ready },
-    { label: copy.steps.done, done: steps.done },
-  ];
+  const stepList = digitalOnly
+    ? [
+        { label: copy.steps.placed, done: steps.placed },
+        { label: copy.steps.paid, done: steps.paid },
+        { label: copy.steps.sent, done: steps.paid && sent },
+      ]
+    : [
+        { label: copy.steps.placed, done: steps.placed },
+        { label: copy.steps.paid, done: steps.paid },
+        { label: copy.steps.ready, done: steps.ready },
+        { label: copy.steps.done, done: steps.done },
+      ];
   // The step being waited on: the first one not yet lit.
   const nowAt = stepList.findIndex((step) => !step.done);
 
+  const kinds = [...new Set(digitalLines.map((line) => line.delivery))];
   const receiptName = `receipt-${order.number}.${EXTENSION[order.receiptType ?? ''] ?? 'jpg'}`;
 
   if (celebrate) {
@@ -237,20 +280,22 @@ export function OrderView(props: OrderViewProps) {
           token={props.token}
           totalCents={order.totalCents}
           onSeeOrder={seeOrder}
+          paidDigital={digitalOnly ? { what: copy.digWhat(kinds) } : null}
+          digitalNote={hasDigital && order.email ? copy.digitalPlacedNote(true, order.email) : null}
         />
       </main>
     );
   }
 
   return (
-    <main className={checkout.column}>
+    <Root className={checkout.column}>
       <div className={checkout.top}>
         <span>{name}</span>
         <span className={styles.bookmark}>{copy.bookmark}</span>
       </div>
 
       <div className={styles.titleRow}>
-        <h1 className={checkout.title}>{copy.orderTitle(order.number)}</h1>
+        <Title className={checkout.title}>{copy.orderTitle(order.number)}</Title>
         <span className={styles.pill} data-tone={status.tone}>
           <i aria-hidden="true" />
           {status.text}
@@ -260,7 +305,7 @@ export function OrderView(props: OrderViewProps) {
       <div className={`${checkout.sheet} ${styles.sheet}`} data-testid="sheet">
       <p className={styles.code}>
         {copy.orderCode} <b>{order.code}</b>
-        <button type="button" className={styles.textButton} onClick={() => copyCode(order.code)}>
+        <button type="button" className={styles.textButton} onClick={preview ? undefined : () => copyCode(order.code)}>
           {codeCopied ? copy.copied : copy.copyCode}
         </button>
       </p>
@@ -362,12 +407,14 @@ export function OrderView(props: OrderViewProps) {
               qrUrl={props.qrUrl}
               bank={props.bank}
               copy={copy}
-              saveHref={`/${props.handle}/order/${encodeURIComponent(props.token)}/qr`}
+              saveHref={preview ? undefined : `/${props.handle}/order/${encodeURIComponent(props.token)}/qr`}
+              preview={preview}
             />
           ) : askOnWhatsApp ? (
             <p className={styles.askPay}>{copy.askHowToPay(name)}</p>
           ) : retry ? null : (
-            <p className={styles.askPay}>{copy.cantPayOnline(name)}</p>
+            // The editor's picture says what the owner must do; a customer is told the shop cannot take it online.
+            <p className={styles.askPay}>{preview ? copy.noWayToPay : copy.cantPayOnline(name)}</p>
           )}
           {view === 'toCheck' ? (
             <div className={`${styles.upload} ${styles.sent}`}>
@@ -391,19 +438,53 @@ export function OrderView(props: OrderViewProps) {
           ) : null}
           {view === 'toCheck' ? (
             // Until it is marked paid, a second receipt replaces the first.
-            <ReceiptUpload token={props.token} displayName={name} copy={copy} replace />
+            <ReceiptUpload token={props.token} displayName={name} copy={copy} replace preview={preview} />
           ) : payByQr || askOnWhatsApp ? (
-            <ReceiptUpload token={props.token} displayName={name} copy={copy} />
+            <ReceiptUpload token={props.token} displayName={name} copy={copy} preview={preview} />
           ) : null}
         </section>
+      ) : null}
+
+      {hasDigital && !stopped && (view === 'awaitingPayment' || view === 'toCheck') ? (
+        <section className={checkout.section}>
+          <div className={styles.dgLock}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3" />
+            </svg>
+            <span>
+              <b>{copy.dgLockTitle(copy.digWhat(kinds))}</b>
+              {view === 'toCheck' ? <span>{copy.dgLockCheck(name)}</span> : needPay ? <span>{copy.dgLockPay}</span> : null}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
+      {hasDigital && isPaid ? (
+        <DigitalSection
+          lines={digitalLines}
+          token={props.token}
+          handle={props.handle}
+          name={name}
+          email={order.email ?? null}
+          copy={copy}
+          now={props.now}
+          paused={suspended}
+          onlyFiles={kinds.length === 1 && kinds[0] === 'FILES'}
+        />
       ) : null}
 
       <section className={checkout.section} aria-labelledby="order-lines">
         <div className={checkout.head}>
           <h2 id="order-lines">{copy.yourOrder}</h2>
           <span>
-            {order.method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel} · {copy.dayLong(order.day)}
-            {isRiderDelivery(order) ? ` · ${copy.riderPaidSeparately}` : null}
+            {order.method === null || order.day === null ? (
+              copy.byEmail
+            ) : (
+              <>
+                {order.method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel} · {copy.dayLong(order.day)}
+                {isRiderDelivery({ method: order.method, deliveryCents: order.deliveryCents }) ? ` · ${copy.riderPaidSeparately}` : null}
+              </>
+            )}
           </span>
         </div>
         <ul className={styles.lines}>
@@ -413,7 +494,11 @@ export function OrderView(props: OrderViewProps) {
                 <b>
                   {line.quantity}× {line.itemName}
                 </b>
-                {line.optionLabel ? <span>{line.optionLabel}</span> : null}
+                {line.digital ? (
+                  <span>{copy.digitalSub({ delivery: line.digital.delivery, format: lineFormat(line.digital), minutes: line.digital.minutes, place: line.digital.place }, line.digital.startsAt ? copy.sessionTime(line.digital.startsAt) : null)}</span>
+                ) : line.optionLabel ? (
+                  <span>{line.optionLabel}</span>
+                ) : null}
               </span>
               <span>{formatRinggit(line.unitPriceCents * line.quantity)}</span>
             </li>
@@ -442,6 +527,6 @@ export function OrderView(props: OrderViewProps) {
         </a>
       ) : null}
       </div>
-    </main>
+    </Root>
   );
 }

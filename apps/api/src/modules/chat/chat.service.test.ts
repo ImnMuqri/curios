@@ -1789,6 +1789,7 @@ describe('product card', () => {
         fromPriceCents: 2500,
         photoUrl: 'https://files.example/items/p/batik.webp',
         firstOptionId: null,
+        buy: 'add',
       });
       expect(done?.orderChips).toBeUndefined();
       expect(done?.intent).toEqual({ qualified: false });

@@ -6,7 +6,8 @@ const getMyCurios = vi.fn();
 // No topics yet, and a business page: the preview offers the first business starter.
 const getTopics = vi.fn(async () => [] as { title: string }[]);
 const getOwnerPage = vi.fn(async () => ({ mode: 'BUSINESS' }));
-vi.mock('@curios/db-read', () => ({ getMyCurios, getTopics, getOwnerPage }));
+const getFaqIndex = vi.fn(async () => null as { entries: { slug: string; question: string; answer: string; askCount: number }[]; total: number } | null);
+vi.mock('@curios/db-read', () => ({ getMyCurios, getTopics, getOwnerPage, getFaqIndex }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -82,11 +83,23 @@ describe('MyCuriosPage', () => {
 
     expect(MyCurios).toHaveBeenCalledTimes(1);
     const props = MyCurios.mock.calls[0]?.[0] as { initial: MyCuriosData & { avatarUrl: string | null }; uploadsEnabled: boolean; publicBase: string };
-    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null, shopItems: [], previewQuestion: 'How much is it?' });
+    expect(props.initial).toEqual({ ...page, avatarUrl: 'https://cdn.example/avatars/p1.jpg', coverUrl: null, shopItems: [], previewQuestion: 'How much is it?', faq: null });
     expect(props.uploadsEnabled).toBe(true);
     // The client component cannot read a server-only env var itself, so the
     // wrapper needs it passed down to build an uploaded picture's URL.
     expect(props.publicBase).toBe('https://cdn.example');
+  });
+
+  it('hands the editor the page’s real FAQ for the preview’s People often ask', async () => {
+    resolveOwner.mockResolvedValue({ accountId: 'acc-1' });
+    getMyCurios.mockResolvedValue({ ...page, shopTab: { open: false, itemCount: 0, preview: [] } });
+    getFaqIndex.mockResolvedValueOnce({ total: 4, entries: [{ slug: 'klang', question: 'Do you deliver to Klang?', answer: 'Yes.', askCount: 9 }] });
+
+    render(await MyCuriosPage());
+
+    const props = MyCurios.mock.calls[0]?.[0] as { initial: { faq: unknown } };
+    expect(getFaqIndex).toHaveBeenCalledWith('imnmuqri', { limit: 3 });
+    expect(props.initial.faq).toEqual({ total: 4, entries: [{ slug: 'klang', question: 'Do you deliver to Klang?', answer: 'Yes.', askCount: 9 }] });
   });
 
   it("hands the editor the page's full address, for the copy button", async () => {

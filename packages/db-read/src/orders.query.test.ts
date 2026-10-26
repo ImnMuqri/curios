@@ -184,6 +184,72 @@ describe('getOwnerOrders', () => {
   });
 });
 
+describe('getOwnerOrders, digital orders', () => {
+  it('reads what the Sent by email card needs: downloads spent over every grant, link opened, the codes, the booking and the other times with room', async () => {
+    const owner = await anOwner();
+    const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Pack', slug: `pack-${randomUUID().slice(0, 6)}`, priceCents: 2500, kind: 'DIGITAL', delivery: 'SESSION', position: 0 } });
+    const file = await write.itemFile.create({ data: { itemId: item.id, key: 'k/a.pdf', name: 'a.pdf', sizeBytes: 100, contentType: 'application/pdf', position: 0 } });
+    const orderId = await anOrder(owner.pageId, { method: null, day: null, email: 'mira@example.com', status: 'PAID', paidAt: NOW, sentAt: NOW, lines: { create: [] } });
+    const mk = (position: number, extra: Record<string, unknown>) =>
+      write.orderLine.create({ data: { orderId, itemId: item.id, itemName: 'Pack', unitPriceCents: 2500, quantity: 1, position, kind: 'DIGITAL', ...extra }, select: { id: true } });
+    const files = await mk(0, { delivery: 'FILES' });
+    const codes = await mk(1, { delivery: 'CODES' });
+    const session = await mk(2, { delivery: 'SESSION' });
+    const link = await mk(3, { delivery: 'LINK', accessUrl: 'https://course.example/secret', linkOpenedAt: NOW });
+    // An old grant with 3 uses spent and the fresh one with 1: four downloads of the one file, 4 left on the newest.
+    await write.downloadGrant.create({ data: { token: randomUUID(), orderLineId: files.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 2, expiresAt: new Date('2026-11-01T00:00:00Z'), createdAt: new Date('2026-10-01T00:00:00Z') } });
+    await write.downloadGrant.create({ data: { token: randomUUID(), orderLineId: files.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 4, expiresAt: new Date('2026-11-20T00:00:00Z'), createdAt: new Date('2026-10-10T00:00:00Z') } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'GIVEN-1', orderLineId: codes.id, givenAt: NOW } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'FREE-1' } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'FREE-2' } });
+    const mine1 = await write.itemSession.create({ data: { itemId: item.id, startsAt: new Date('2026-11-07T12:00:00Z'), seats: 5 } });
+    await write.sessionBooking.create({ data: { sessionId: mine1.id, orderLineId: session.id, seats: 1 } });
+    const roomy = await write.itemSession.create({ data: { itemId: item.id, startsAt: new Date('2026-11-14T12:00:00Z'), seats: 5 } });
+    const full = await write.itemSession.create({ data: { itemId: item.id, startsAt: new Date('2026-11-21T12:00:00Z'), seats: 1 } });
+    const other = await anOrder(owner.pageId);
+    const otherLine = await write.orderLine.create({ data: { orderId: other, itemId: item.id, itemName: 'Pack', unitPriceCents: 2500, quantity: 1, position: 0, kind: 'DIGITAL', delivery: 'SESSION' }, select: { id: true } });
+    await write.sessionBooking.create({ data: { sessionId: full.id, orderLineId: otherLine.id, seats: 1 } });
+    await write.itemSession.create({ data: { itemId: item.id, startsAt: new Date('2026-10-01T12:00:00Z'), seats: 5 } });
+
+    const [order] = (await getOwnerOrders(owner.accountId, { now: NOW })).filter((o) => o.id === orderId);
+    expect(order).toMatchObject({ email: 'mira@example.com', sentAt: NOW, method: null, day: null });
+    const pick = (id: string) => order?.lines.find((l) => l.id === id)?.digital;
+    expect(pick(files.id)?.files).toEqual([{ name: 'a.pdf', used: 4, left: 4, expiresAt: new Date('2026-11-20T00:00:00Z') }]);
+    expect(pick(codes.id)).toMatchObject({ codes: ['GIVEN-1'], codesLeft: 2 });
+    expect(pick(link.id)).toMatchObject({ linkOpenedAt: NOW });
+    expect(JSON.stringify(order)).not.toContain('course.example');
+    expect(pick(session.id)?.session).toMatchObject({ startsAt: new Date('2026-11-07T12:00:00Z'), seats: 1, remindedAt: null });
+    // Not its own time, not the full one, not a past one.
+    expect(pick(session.id)?.times).toEqual([{ id: roomy.id, startsAt: new Date('2026-11-14T12:00:00Z'), seatsLeft: 5 }]);
+  });
+
+  it('gives a physical line no digital part', async () => {
+    const owner = await anOwner();
+    await anOrder(owner.pageId);
+    const [order] = await getOwnerOrders(owner.accountId);
+    expect(order?.lines[0]?.digital).toBeNull();
+    expect(order).toMatchObject({ email: null, sentAt: null });
+  });
+
+  it('treats a sent digital-only order as done, and a sent mixed one as still to make', async () => {
+    const owner = await anOwner();
+    const digitalLine = { itemName: 'E-book', unitPriceCents: 2500, quantity: 1, position: 0, kind: 'DIGITAL' as const, delivery: 'LINK' as const };
+    const sent = await anOrder(owner.pageId, { method: null, day: null, status: 'PAID', paidAt: NOW, sentAt: NOW, createdAt: new Date('2026-01-01T00:00:00Z'), lines: { create: [digitalLine] } });
+    const mixed = await anOrder(owner.pageId, {
+      status: 'PAID',
+      paidAt: NOW,
+      sentAt: NOW,
+      createdAt: new Date('2026-01-02T00:00:00Z'),
+      lines: { create: [digitalLine, { itemName: 'Kek', unitPriceCents: 5000, quantity: 1, position: 1 }] },
+    });
+    expect((await getOrderStats(owner.accountId, NOW)).toMake).toBe(1);
+    // Beyond the cap of finished orders, the mixed one is still listed: it needs the owner. The sent one is a finished order.
+    const listed = await getOwnerOrders(owner.accountId, { limit: 0 });
+    expect(listed.map((o) => o.id)).toEqual([mixed]);
+    expect((await getOwnerOrders(owner.accountId)).map((o) => o.id).sort()).toEqual([sent, mixed].sort());
+  });
+});
+
 describe('getOrderStats', () => {
   it('counts to-check (PLACED with a receipt), to-make (PAID) and paid sen per Malaysian day', async () => {
     const owner = await anOwner();
@@ -279,6 +345,47 @@ describe('getOrderByToken', () => {
 
     await write.shopPaymentAccount.update({ where: { pageId: owner.pageId }, data: { lastErrorAt: NOW } });
     expect((await getOrderByToken(token))?.page.chipMethods).toBeNull();
+  });
+
+  it('reads a digital order from its lines: the newest grant per file, the given codes, the booked time, and nothing handed out before payment', async () => {
+    const owner = await anOwner();
+    const item = await write.item.create({ data: { pageId: owner.pageId, name: 'Pack', slug: `pack-${randomUUID().slice(0, 6)}`, priceCents: 2500, kind: 'DIGITAL', delivery: 'FILES', position: 0 } });
+    const file = await write.itemFile.create({ data: { itemId: item.id, key: 'k/a.pdf', name: 'a.pdf', sizeBytes: 4_400_000, contentType: 'application/pdf', position: 0 } });
+    const token = randomUUID();
+    const orderId = await anOrder(owner.pageId, { method: null, day: null, email: 'mira@example.com', lines: { create: [] } }, token);
+    const mk = (position: number, extra: Record<string, unknown>) =>
+      write.orderLine.create({ data: { orderId, itemId: item.id, itemName: 'Pack', unitPriceCents: 2500, quantity: 1, position, kind: 'DIGITAL', ...extra }, select: { id: true } });
+    const files = await mk(0, { delivery: 'FILES' });
+    const codes = await mk(1, { delivery: 'CODES' });
+    const session = await mk(2, { delivery: 'SESSION', sessionMinutes: 60, sessionPlace: 'ONLINE', sessionWhere: 'https://meet.example/x' });
+    const link = await mk(3, { delivery: 'LINK', accessUrl: 'https://course.example/secret', accessNote: 'Watch in order' });
+    await write.downloadGrant.create({ data: { token: randomUUID(), orderLineId: files.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 0, expiresAt: new Date('2026-11-01T00:00:00Z'), createdAt: new Date('2026-10-01T00:00:00Z') } });
+    const fresh = await write.downloadGrant.create({ data: { token: randomUUID(), orderLineId: files.id, fileId: file.id, fileName: 'a.pdf', usesLeft: 5, expiresAt: new Date('2026-11-20T00:00:00Z'), createdAt: new Date('2026-10-10T00:00:00Z') } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'GIVEN-1', orderLineId: codes.id, givenAt: NOW } });
+    await write.itemCode.create({ data: { itemId: item.id, code: 'HELD-2', orderLineId: codes.id } });
+    const slot = await write.itemSession.create({ data: { itemId: item.id, startsAt: new Date('2026-11-07T12:00:00Z'), seats: 5 } });
+    await write.sessionBooking.create({ data: { sessionId: slot.id, orderLineId: session.id, seats: 1 } });
+
+    // Unpaid: the booked time and the note show, but no code, place or download.
+    const before = await getOrderByToken(token);
+    const pick = (o: typeof before, id: string) => o?.lines.find((l) => l.id === id);
+    expect(before).toMatchObject({ email: 'mira@example.com', sentAt: null, method: null, day: null });
+    expect(pick(before, codes.id)?.codes).toEqual([]);
+    expect(pick(before, files.id)?.grants).toEqual([]);
+    expect(pick(before, link.id)).toMatchObject({ accessNote: null, hasLink: true });
+    expect(JSON.stringify(before)).not.toContain('Watch in order');
+    expect(pick(before, session.id)).toMatchObject({ sessionWhere: null, sessionMinutes: 60, sessionStartsAt: new Date('2026-11-07T12:00:00Z') });
+
+    await write.order.update({ where: { id: orderId }, data: { status: 'PAID', paidAt: NOW, sentAt: NOW } });
+    const after = await getOrderByToken(token);
+    // Only the given code; only the newest grant of the file, with the file's size.
+    expect(pick(after, codes.id)?.codes).toEqual(['GIVEN-1']);
+    expect(pick(after, files.id)?.grants).toEqual([{ id: fresh.id, fileName: 'a.pdf', sizeBytes: 4_400_000, usesLeft: 5, expiresAt: new Date('2026-11-20T00:00:00Z') }]);
+    expect(pick(after, session.id)?.sessionWhere).toBe('https://meet.example/x');
+    expect(pick(after, link.id)).toMatchObject({ hasLink: true, accessNote: 'Watch in order' });
+    // The private link itself never leaves; the API's link route opens it.
+    expect(JSON.stringify(after)).not.toContain('course.example');
+    expect(after?.sentAt).toEqual(NOW);
   });
 
   it('does not match on the hash itself', async () => {

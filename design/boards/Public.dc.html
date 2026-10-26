@@ -500,6 +500,40 @@ body{margin:0;background:#2a0b16}
 @media (min-width:1000px){.routes{top:16px;left:16px;flex-direction:column;align-items:stretch;border-radius:18px;transform:none}.routes button{text-align:left;border-radius:12px}}
 @media (max-width:760px){.routes{top:10px;left:12px;right:12px;max-width:none;transform:none}.demo{top:52px;bottom:auto;left:50%;transform:translateX(-50%)}}
 @media (prefers-reduced-motion: reduce){.body,.lp,.chat .q,.chat .a,.lead,.scrim,.sheet,.dots i{animation:none}.tabs .th,.seg .st{transition:none}}
+
+/* digital */
+.sp-opts button[disabled]{opacity:.4;cursor:default}
+.dg-get{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:14px;background:#f6f8ff}
+.dg-get svg{width:20px;height:20px;flex:none;margin-top:1px;fill:none;stroke:#2340c8;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.dg-get b{display:block;font-size:14px;font-weight:600}
+.dg-get>span>span{display:block;margin-top:2px;font-size:12.5px;color:#696e7b}
+.dg-mix{margin:-4px 0 12px;font-size:12.5px;color:#696e7b}
+.dgo-lock{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:16px;background:#f3f4f7}
+.dgo-lock svg{width:20px;height:20px;flex:none;fill:none;stroke:#696e7b;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dgo-lock b{display:block;font-size:14px;font-weight:600}
+.dgo-lock>span>span{display:block;margin-top:2px;font-size:12.5px;color:#8a8f9b}
+.dgo{padding:14px 0}
+.dgo+.dgo{border-top:1px solid #eef0f3}
+.dgo-n{margin:0 0 10px;font-size:14px;font-weight:600}
+.dgo-f{display:flex;align-items:center;gap:12px;padding:10px 10px 10px 12px;border-radius:14px;box-shadow:inset 0 0 0 1px #e4e7eb}
+.dgo-f+.dgo-f{margin-top:8px}
+.dgo-ext{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:9px;background:#f3f4f7;color:#4b5060;font-family:var(--m);font-size:10px;font-weight:500;text-transform:uppercase}
+.dgo-fn{flex:1;min-width:0}
+.dgo-fn b{display:block;overflow:hidden;font-size:13.5px;font-weight:500;white-space:nowrap;text-overflow:ellipsis}
+.dgo-fn small{display:block;font-size:12px;color:#8a8f9b}
+.dgo-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:none;height:38px;padding:0 14px;border-radius:999px;background:var(--acc);color:#ffffff!important;font-size:13px;font-weight:600;text-decoration:none}
+.dgo-btn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dgo-btn.wide{display:flex;width:100%;height:44px;font-size:14px}
+.dgo-btn.ghost{background:#f3f4f7;color:#191f2c!important}
+.dgo-row{display:flex;gap:8px;flex-wrap:wrap}
+.dgo-note{margin:0 0 10px;font-size:13.5px;line-height:1.5;color:#4b5060}
+.dgo-sm{margin:8px 0 0;font-size:12px;color:#8a8f9b}
+.dgo-code{display:flex;align-items:center;gap:10px;padding:6px 6px 6px 14px;border-radius:14px;background:#fbf2f5}
+.dgo-code code{flex:1;font-family:var(--m);font-size:17px;font-weight:500;letter-spacing:.06em;color:#191f2c}
+.dgo-code button{height:34px;padding:0 14px;border:0;border-radius:999px;background:#ffffff;font:inherit;font-size:13px;font-weight:600;color:var(--acc);cursor:pointer}
+.dgo-when{margin:0 0 10px}
+.dgo-when b{display:block;font-size:17px;font-weight:600}
+.dgo-when span{display:block;margin-top:2px;font-size:13px;color:#696e7b}
 </style>
 </helmet>
 
@@ -564,7 +598,9 @@ body{margin:0;background:#2a0b16}
 <p class="sp-price">{{pi.price}}</p>
 <p class="sp-desc">{{pi.desc}}</p>
 <sc-if value="{{ pi.hasOpts }}" hint-placeholder-val="{{ true }}"><span class="sp-lbl">Size</span><div class="sp-opts" role="radiogroup" aria-label="Size"><sc-for list="{{ pi.opts }}" as="o" hint-placeholder-count="2"><button type="button" role="radio" class="{{o.cls}}" aria-checked="{{ o.on }}" onClick="{{ o.go }}"><b>{{o.l}}</b><span>{{o.sub}}</span></button></sc-for></div></sc-if>
-<div class="sp-facts2"><div><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>Needs 2 days. Earliest pickup Sat 17 Oct.</div><div><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"></path></svg>Halal ingredients. Add a note at checkout for less sugar.</div></div>
+<sc-if value="{{ pi.isSession }}" hint-placeholder-val="{{ false }}"><span class="sp-lbl">Pick a time</span><div class="sp-opts" role="radiogroup" aria-label="Pick a time"><sc-for list="{{ pi.slots }}" as="o" hint-placeholder-count="3"><button type="button" role="radio" class="{{o.cls}}" aria-checked="{{ o.on }}" disabled="{{ o.full }}" onClick="{{ o.go }}"><b>{{o.l}}</b><span>{{o.sub}}</span></button></sc-for></div></sc-if>
+<sc-if value="{{ pi.dig }}" hint-placeholder-val="{{ false }}"><div class="sp-facts2"><div><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg>{{pi.getLine}}</div><div><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"></path></svg>{{pi.fmt}}</div></div></sc-if>
+<sc-if value="{{ pi.phys }}" hint-placeholder-val="{{ true }}"><div class="sp-facts2"><div><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>Needs 2 days. Earliest pickup Sat 17 Oct.</div><div><svg viewBox="0 0 24 24"><path d="M12 3l7 4v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V7z"></path></svg>Halal ingredients. Add a note at checkout for less sugar.</div></div></sc-if>
 <button type="button" class="sp-askit" onClick="{{ goAsk }}"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"></path></svg><span><b>Ask about this</b><small>Can I add a name on top? Is it OK for kids?</small></span><svg viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"></path></svg></button>
 </div>
 <div class="bar sp-addbar"><span class="sp-qty"><button type="button" aria-label="One less" onClick="{{ shLess }}">−</button><b>{{shQty}}</b><button type="button" aria-label="One more" onClick="{{ shMore }}">+</button></span><button type="button" class="go" onClick="{{ itemAdd }}" style="flex: 1">Add to basket · {{shTotal}}</button></div>
@@ -581,7 +617,9 @@ body{margin:0;background:#2a0b16}
 <sc-for list="{{ lines }}" as="l" hint-placeholder-count="2"><div class="c2l"><span class="th" style="background: {{l.tint}}; color: {{l.ink}}"><sc-if value="{{ l.hasPhoto }}" hint-placeholder-val="{{ true }}"><img src="{{l.photo}}" alt="" style="object-position: {{l.focus}}"></sc-if>{{l.ini}}</span><span class="nm"><b>{{l.name}}</b><span>{{l.sub}}</span></span><span class="q2"><button type="button" aria-label="One less" onClick="{{ l.less }}">−</button><b>{{l.q}}</b><button type="button" aria-label="One more" onClick="{{ l.more }}">+</button></span><span class="am">{{l.amt}}</span></div></sc-for>
 </section>
 
-<section class="c2s"><div class="c2h"><b>Getting it</b></div>
+<sc-if value="{{ allDig }}" hint-placeholder-val="{{ false }}"><section class="c2s"><div class="c2h"><b>Getting it</b></div><div class="dg-get"><svg viewBox="0 0 24 24"><path d="M3 5h18v14H3zM3 7l9 6 9-6"></path></svg><span><b>By email, right after you pay</b><span>Also on your order page. Nothing to pick up, no delivery fee.</span></span></div></section></sc-if>
+<sc-if value="{{ needGet }}" hint-placeholder-val="{{ true }}"><section class="c2s"><div class="c2h"><b>Getting it</b></div>
+<sc-if value="{{ mixed }}" hint-placeholder-val="{{ false }}"><p class="dg-mix">The digital items in your order come by email. This is for the rest.</p></sc-if>
 <div class="c2r" role="radiogroup" aria-label="Pickup or delivery">
 <button type="button" role="radio" aria-checked="{{ isPickup }}" onClick="{{ setPickup }}"><i class="rd {{pickCls}}"></i><span><b>Pickup</b><span>Seksyen 7, Shah Alam · 10am to 6pm</span></span><em>Free</em></button>
 <button type="button" role="radio" aria-checked="{{ isDelivery }}" onClick="{{ setDelivery }}"><i class="rd {{delCls}}"></i><span><b>Delivery</b><span>Around Shah Alam · 2pm to 6pm</span></span><em>RM10</em></button>
@@ -589,12 +627,13 @@ body{margin:0;background:#2a0b16}
 <sc-if value="{{ isDelivery }}" hint-placeholder-val="{{ false }}"><label class="c2f"><span>Address</span><textarea placeholder="House number, street, area"></textarea></label></sc-if>
 <div class="c2h" style="margin-top: 18px"><b>Day</b><span>2 days’ notice · closed Sundays</span></div>
 <div class="c2d"><sc-for list="{{ daysOpen }}" as="d" hint-placeholder-count="5"><button type="button" onClick="{{ d.go }}" class="{{d.cls}}">{{d.wd}} {{d.n}}</button></sc-for></div>
-</section>
+</section></sc-if>
 
 <section class="c2s"><div class="c2h"><b>Your details</b></div>
 <label class="c2f"><span>Name</span><input value="{{ cname }}" onChange="{{ setCname }}" autocomplete="name"></label>
 <label class="c2f"><span>WhatsApp number</span><div class="tel2"><em>+60</em><input value="{{ cphone }}" onChange="{{ setCphone }}" inputmode="tel" autocomplete="tel"></div></label>
-<label class="c2f"><span>Note for Lina <i>optional</i></span><textarea value="{{ note }}" onChange="{{ setNote }}" placeholder="Writing on the cake, less sweet, anything else"></textarea></label>
+<sc-if value="{{ anyDig }}" hint-placeholder-val="{{ false }}"><label class="c2f"><span>Email <i>where we send your {{digWhat}}</i></span><input value="{{ cemail }}" onChange="{{ setCemail }}" inputmode="email" autocomplete="email"></label></sc-if>
+<label class="c2f"><span>Note for Lina <i>optional</i></span><textarea value="{{ note }}" onChange="{{ setNote }}" placeholder="{{notePh}}"></textarea></label>
 </section>
 
 <section class="c2s"><div class="c2h"><b>How you’ll pay</b><span>To Kek Lina, directly</span></div>
@@ -602,7 +641,7 @@ body{margin:0;background:#2a0b16}
 <sc-if value="{{ hasSub }}" hint-placeholder-val="{{ true }}"><div class="c2h" style="margin-top: 16px"><b>{{subLabel}}</b></div><div class="pbk" role="radiogroup" aria-label="{{subLabel}}"><sc-for list="{{ subOpts }}" as="k" hint-placeholder-count="6"><button type="button" role="radio" class="{{k.cls}}" aria-checked="{{ k.on }}" onClick="{{ k.go }}"><i style="background: {{k.c}}">{{k.i}}</i>{{k.n}}</button></sc-for></div></sc-if>
 </section>
 
-<section class="c2s c2sum"><div><span>Items</span><span>{{itemsRM}}</span></div><div><span>{{feeLabel}}</span><span>{{feeRM}}</span></div><div><span>{{whenLabel}}</span><span>{{dayLabel}}</span></div><div class="t"><span>Total</span><span>{{totalRM}}</span></div><p>{{payNote}}</p></section>
+<section class="c2s c2sum"><div><span>Items</span><span>{{itemsRM}}</span></div><sc-if value="{{ needGet }}" hint-placeholder-val="{{ true }}"><div><span>{{feeLabel}}</span><span>{{feeRM}}</span></div><div><span>{{whenLabel}}</span><span>{{dayLabel}}</span></div></sc-if><sc-if value="{{ anyDig }}" hint-placeholder-val="{{ false }}"><div><span>Digital items</span><span>By email</span></div></sc-if><div class="t"><span>Total</span><span>{{totalRM}}</span></div><p>{{payNote}}</p></section>
 <button type="button" class="c2go" onClick="{{ placeOrder }}" disabled="{{ cantPlace }}">{{goText}}</button>
 </sc-if>
 <sc-if value="{{ noBasket }}" hint-placeholder-val="{{ false }}"><div class="lpe"><span class="ei"><svg viewBox="0 0 24 24"><path d="M5 8h14l-1.5 11h-11zM9 8V6a3 3 0 0 1 6 0v2"></path></svg></span><b>Your basket is empty</b><p>Add something from the shop and it shows up here.</p><button type="button" class="lite" onClick="{{ toShop }}">Back to the shop</button></div></sc-if>
@@ -621,7 +660,7 @@ body{margin:0;background:#2a0b16}
 <p><b>Keep this code.</b> Ask Kek Lina’s page “where is my order {{code}}?” any time and it shows you the status.</p>
 </div>
 <button type="button" class="cta2" onClick="{{ toOrderPay }}">{{placedCta}}<svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></button>
-<p class="sm2">We also sent the order link to your WhatsApp.</p>
+<p class="sm2">{{placedNote}}</p>
 </div>
 </sc-if>
 
@@ -642,6 +681,16 @@ body{margin:0;background:#2a0b16}
 </sc-if>
 
 <sc-if value="{{ paidOnline }}" hint-placeholder-val="{{ false }}"><section class="c2s"><div class="o3up done2"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg><span><b>Paid {{orderRM}} by {{paidVia}}</b><span>15 Oct, 3:42pm · Ref CHIP-{{code}}</span></span></div></section></sc-if>
+<sc-if value="{{ dgLocked }}" hint-placeholder-val="{{ false }}"><section class="c2s"><div class="dgo-lock"><svg viewBox="0 0 24 24"><path d="M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3"></path></svg><span><b>Your {{digWhat}} unlock once you’ve paid</b><span>{{lockNote}}</span></span></div></section></sc-if>
+<sc-if value="{{ dgOpen }}" hint-placeholder-val="{{ false }}"><section class="c2s"><div class="c2h"><b>{{dgTitle}}</b><span>Also sent to {{cemail}}</span></div>
+<sc-for list="{{ dgo }}" as="g" hint-placeholder-count="4"><div class="dgo">
+<p class="dgo-n">{{g.name}}</p>
+<sc-if value="{{ g.isFiles }}" hint-placeholder-val="{{ true }}"><sc-for list="{{ g.files }}" as="fl" hint-placeholder-count="2"><div class="dgo-f"><span class="dgo-ext">{{fl.ext}}</span><span class="dgo-fn"><b>{{fl.n}}</b><small>{{fl.s}} · 5 downloads left</small></span><a class="dgo-btn" href="#download"><svg viewBox="0 0 24 24"><path d="M12 4v12M7 11l5 5 5-5M5 20h14"></path></svg>Download</a></div></sc-for><p class="dgo-sm">Links work until 14 Nov. Lost them? Kek Lina can send new ones.</p></sc-if>
+<sc-if value="{{ g.isLink }}" hint-placeholder-val="{{ false }}"><p class="dgo-note">“Watch in order. Start with the creaming video, then the sponge.” · Lina</p><a class="dgo-btn wide" href="#course">Open the course<svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"></path></svg></a><p class="dgo-sm">This link is just for you. Please don’t share it.</p></sc-if>
+<sc-if value="{{ g.isCode }}" hint-placeholder-val="{{ false }}"><div class="dgo-code"><code>{{g.code}}</code><button type="button" onClick="{{ g.copy }}">{{g.copyText}}</button></div><p class="dgo-sm">Use it at checkout in Kek Lina’s shop. Worth RM50, valid until 31 Dec 2026.</p></sc-if>
+<sc-if value="{{ g.isSession }}" hint-placeholder-val="{{ false }}"><p class="dgo-when"><b>{{g.when}}</b><span>{{g.dur}} · Online, on Google Meet</span></p><span class="dgo-row"><a class="dgo-btn" href="#join">Join the class</a><a class="dgo-btn ghost" href="#cal">Add to calendar</a></span><p class="dgo-sm">The link opens 10 minutes before. We’ll remind you by email the day before.</p></sc-if>
+</div></sc-for>
+</section></sc-if>
 <section class="c2s"><div class="c2h"><b>Your order</b><span>{{whenText}}</span></div>
 <sc-for list="{{ olines }}" as="l" hint-placeholder-count="2"><div class="o3l"><span><b>{{l.name}}</b><span>{{l.sub}}</span></span><span>{{l.amt}}</span></div></sc-for>
 <div class="o3t"><span>Total</span><span>{{orderRM}}</span></div>
@@ -697,7 +746,11 @@ class Component extends DCLogic {
     this.ITEMS = [
       { id: 'coklat', cat: 'Kek', tag: 'Best seller', name: 'Kek coklat moist', desc: 'Our bestseller. Rich, soft and not too sweet, with a thick ganache on top.', opts: [['1kg', 95], ['2kg', 170]], photo: '/_blob/63d877cef1ea5c67a363dfd5ea183c12', focus: '50% 50%', tint: '#f6c9d5', ink: '#7a1f3a' },
       { id: 'batik', cat: 'Kek', name: 'Kek batik', desc: 'Old school, with Marie biscuits and plenty of chocolate. Cut into 12 slices.', opts: [['', 45]], photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '72% 80%', tint: '#ffe2b8', ink: '#7a4a0c' },
-      { id: 'cookies', cat: 'Raya', tag: 'Raya', name: 'Cookies balang', desc: 'A jar of 40 chocolate chip cookies. Good for Raya and open houses.', opts: [['', 25]], photo: '', focus: '', tint: '#f6c9d5', ink: '#7a1f3a' }
+      { id: 'cookies', cat: 'Raya', tag: 'Raya', name: 'Cookies balang', desc: 'A jar of 40 chocolate chip cookies. Good for Raya and open houses.', opts: [['', 25]], photo: '', focus: '', tint: '#f6c9d5', ink: '#7a1f3a' },
+      { id: 'ebook', cat: 'Digital', tag: 'Digital', dig: 'files', name: 'Kek coklat recipe e-book', desc: 'Our moist chocolate cake, step by step with photos. Includes the ganache and a 1kg and 2kg chart.', opts: [['', 25]], photo: '', focus: '', tint: '#bfd1f9', ink: '#122686', files: [['Kek-coklat-moist-recipe.pdf', '4.2 MB'], ['Ganache-guide.pdf', '1.1 MB']] },
+      { id: 'class', cat: 'Digital', tag: 'Digital', dig: 'session', name: 'Online class: Kek batik', desc: 'Bake along with Lina over video. You get the shopping list the day before.', opts: [['', 60]], photo: '/_blob/0791b6197dd4490d1b3e6683114d06d7', focus: '72% 80%', tint: '#bfe3d6', ink: '#123b33', slots: [['Sat 7 Nov', '8:00pm', 5], ['Sun 15 Nov', '3:00pm', 10], ['Sat 21 Nov', '8:00pm', 0]], dur: '90 minutes' },
+      { id: 'voucher', cat: 'Digital', tag: 'Digital', dig: 'codes', name: 'Gift voucher RM50', desc: 'For birthdays and Raya. They use the code at checkout in this shop.', opts: [['', 50]], photo: '', focus: '', tint: '#ffe2b8', ink: '#7a4a0c' },
+      { id: 'course', cat: 'Digital', tag: 'Digital', dig: 'link', name: 'Video course: Basic cakes', desc: 'Six short videos, from creaming butter to a level sponge. Watch at your own pace.', opts: [['', 79]], photo: '', focus: '', tint: '#f6c9d5', ink: '#7a1f3a' }
     ];
     this.FAQ = [
       ['Do you deliver to Klang?', 'Yes. Delivery to Klang is RM15, and anywhere in Shah Alam is RM10. Order at least 2 days ahead.', 14],
@@ -712,8 +765,10 @@ class Component extends DCLogic {
       msgs: [], ask: '', thinking: false, leadOpen: false, leadSent: false, leadQ: '', phone: '',
       basket: [{ id: 'coklat', opt: 1, q: 1 }, { id: 'batik', opt: 0, q: 1 }],
       sheet: null, shOpt: 0, shQty: 1, method: 'pickup', day: 2, cname: 'Mira Hassan', cphone: '012-345 6789',
-      pay: 'waiting', copied: false, fq: '', faqId: 0, note: '', code: '7Q4M', copiedCode: false, awaitingDigits: false, faqOpen: 0
+      pay: 'waiting', copied: false, fq: '', faqId: 0, note: '', code: '7Q4M', copiedCode: false, awaitingDigits: false, faqOpen: 0, cemail: 'mira.hassan@gmail.example', slot: 0
     };
+    this.B0 = [{ id: 'coklat', opt: 1, q: 1 }, { id: 'batik', opt: 0, q: 1 }];
+    this.BD = [{ id: 'ebook', opt: 0, q: 1 }, { id: 'class', opt: 0, q: 1, slot: 0 }, { id: 'voucher', opt: 0, q: 1 }, { id: 'course', opt: 0, q: 1 }];
   }
   componentWillUnmount() { clearTimeout(this.at); clearTimeout(this.ct); clearTimeout(this.cc); }
   rm(n) { return 'RM' + n; }
@@ -746,8 +801,13 @@ class Component extends DCLogic {
     const items = E ? [] : this.ITEMS;
     const basket = E ? [] : st.basket;
     const linesRaw = basket.map((b) => { const it = self.item(b.id), o = it.opts[b.opt]; return { b: b, it: it, o: o, sum: o[1] * b.q }; });
+    const anyDig = linesRaw.some((l) => !!l.it.dig), allDig = linesRaw.length > 0 && linesRaw.every((l) => !!l.it.dig);
+    const digKinds = Array.from(new Set(linesRaw.filter((l) => l.it.dig).map((l) => l.it.dig)));
+    const digWhat = digKinds.length === 1 ? { files: 'files', link: 'link', codes: 'code', session: 'class details' }[digKinds[0]] : 'downloads and access';
+    const slotLbl = (it, k) => { const sl = (it.slots || [])[k || 0]; return sl ? sl[0] + ', ' + sl[1] : ''; };
+    const digSub = (l) => ({ files: 'PDF · ' + ((l.it.files || []).length) + ' files', link: 'Private video link', codes: 'Gift code', session: slotLbl(l.it, l.b.slot) + ' · ' + (l.it.dur || '') }[l.it.dig]);
     const itemsTotal = linesRaw.reduce((a, l) => a + l.sum, 0);
-    const fee = st.method === 'delivery' ? 10 : 0;
+    const fee = st.method === 'delivery' && !allDig ? 10 : 0;
     const count = basket.reduce((a, b) => a + b.q, 0);
     const tabsAll = [['links', 'Links'], ['ask', 'Ask']].filter((t) => !(E && t[0] === 'links'));
     const tab = E && st.tab === 'links' ? 'ask' : (st.tab === 'shop' ? 'links' : st.tab);
@@ -766,9 +826,9 @@ class Component extends DCLogic {
     };
     return {
       rShop: st.route === 'shop', rItem: st.route === 'item', rPlaced: st.route === 'placed', rPage: st.route === 'page', rCheckout: st.route === 'checkout', rOrder: st.route === 'order', rFaq: st.route === 'faq', rFaqQ: st.route === 'faqq',
-      routes: [['page', 'Page', { tab: 'links' }], ['ask', 'Ask', { tab: 'ask' }], ['shop', 'Shop'], ['item', 'Product', { item: 'coklat', shOpt: 0, shQty: 1 }], ['checkout', 'Checkout'], ['placed', 'Order placed'], ['order', 'Order page'], ['faq', 'FAQ'], ['faqq', 'FAQ question']].map((r) => {
+      routes: [['page', 'Page', { tab: 'links' }], ['ask', 'Ask', { tab: 'ask' }], ['shop', 'Shop'], ['item', 'Product', { item: 'coklat', shOpt: 0, shQty: 1, dmode: false }], ['checkout', 'Checkout', { dmode: false, basket: self.B0 }], ['placed', 'Order placed', { dmode: false, basket: self.B0 }], ['order', 'Order page', { dmode: false, basket: self.B0 }], ['item', 'Digital item', { item: 'class', shOpt: 0, shQty: 1, slot: 0, dmode: true }], ['checkout', 'Checkout, digital', { dmode: true, basket: self.BD }], ['order', 'Order, digital', { dmode: true, basket: self.BD, pay: 'paid' }], ['faq', 'FAQ'], ['faqq', 'FAQ question']].map((r) => {
         const route = r[0] === 'ask' ? 'page' : r[0];
-        const on = st.route === route && (route !== 'page' || (r[2] && r[2].tab === tab));
+        const on = st.route === route && (route !== 'page' || (r[2] && r[2].tab === tab)) && (!r[2] || r[2].dmode === undefined || !!st.dmode === r[2].dmode);
         return { label: r[1], on: on, go: go(route, r[2]) };
       }),
       demoFull: !E, demoEmpty: E,
@@ -795,19 +855,22 @@ class Component extends DCLogic {
       cats: [['all', 'All']].concat(Array.from(new Set(items.map((x) => x.cat))).map((c) => [c, c])).map((c) => ({ l: c[1], n: c[0] === 'all' ? items.length : items.filter((x) => x.cat === c[0]).length, on: (st.cat || 'all') === c[0], go: () => self.setState({ cat: c[0] }) })),
       shopItems: items.filter((it) => !st.cat || st.cat === 'all' || it.cat === st.cat).map((it) => { const inB = basket.filter((b) => b.id === it.id).reduce((a, b) => a + b.q, 0); return { name: it.name, price: self.price(it), photo: it.photo, hasPhoto: !!it.photo, focus: it.focus, tint: it.tint, ink: it.ink, ini: it.photo ? '' : it.name[0], hasTag: !!it.tag, tag: it.tag || '', addTxt: inB ? String(inB) : '+', addCls: inB ? 'has' : '', open: go('item', { item: it.id, shOpt: 0, shQty: 1 }), add: (e) => { if (e && e.stopPropagation) e.stopPropagation(); const ex = self.state.basket.find((b) => b.id === it.id && b.opt === 0); const next = ex ? self.state.basket.map((b) => b === ex ? Object.assign({}, b, { q: b.q + 1 }) : b) : self.state.basket.concat([{ id: it.id, opt: 0, q: 1 }]); self.setState({ basket: next }); } }; }),
       dayShort: 'Pickup Sat 17 Oct',
-      pi: (() => { const it = self.item(st.item || 'coklat'); const o = it.opts[st.shOpt] || it.opts[0]; return { name: it.name, desc: it.desc, tag: it.tag || '', hasTag: !!it.tag, price: 'RM' + o[1], tint: it.tint, ink: it.ink, ini: it.photo ? '' : it.name[0], hasPhoto: !!it.photo, photo: it.photo, focus: it.focus, hasOpts: it.opts.length > 1, opts: it.opts.map((x, i) => ({ l: x[0], sub: 'RM' + x[1], on: i === st.shOpt, cls: i === st.shOpt ? 'on' : '', go: () => self.setState({ shOpt: i }) })) }; })(),
-      itemAdd: () => { const id = st.item || 'coklat'; const ex = st.basket.find((b) => b.id === id && b.opt === st.shOpt); const next = ex ? st.basket.map((b) => b === ex ? Object.assign({}, b, { q: b.q + st.shQty }) : b) : st.basket.concat([{ id: id, opt: st.shOpt, q: st.shQty }]); self.setState({ basket: next, route: 'shop' }); },
+      pi: (() => { const it = self.item(st.item || 'coklat'); const o = it.opts[st.shOpt] || it.opts[0]; return { name: it.name, desc: it.desc, tag: it.tag || '', hasTag: !!it.tag, price: 'RM' + o[1], tint: it.tint, ink: it.ink, ini: it.photo ? '' : it.name[0], hasPhoto: !!it.photo, photo: it.photo, focus: it.focus, hasOpts: it.opts.length > 1, opts: it.opts.map((x, i) => ({ l: x[0], sub: 'RM' + x[1], on: i === st.shOpt, cls: i === st.shOpt ? 'on' : '', go: () => self.setState({ shOpt: i }) })) , dig: !!it.dig, phys: !it.dig, isSession: it.dig === 'session', getLine: { files: 'Sent by email right after you pay, and kept on your order page.', link: 'Your private link comes by email right after you pay.', codes: 'Your own code comes by email right after you pay.', session: 'The class link comes by email right after you pay.' }[it.dig] || '', fmt: { files: 'PDF, ' + ((it.files || []).length) + ' files. Download up to 5 times.', link: 'Watch on any phone or laptop, as often as you like.', codes: 'One code per voucher. Valid until 31 Dec 2026.', session: (it.dur || '') + ' on Google Meet. Seats are limited.' }[it.dig] || '', slots: (it.slots || []).map((sl, k) => ({ l: sl[0] + ', ' + sl[1], sub: sl[2] <= 0 ? 'Full' : sl[2] + ' seats left', full: sl[2] <= 0, on: (st.slot || 0) === k, cls: (st.slot || 0) === k ? 'on' : '', go: () => { if (sl[2] > 0) self.setState({ slot: k }); } })) }; })(),
+      itemAdd: () => { const id = st.item || 'coklat'; const ex = st.basket.find((b) => b.id === id && b.opt === st.shOpt); const next = ex ? st.basket.map((b) => b === ex ? Object.assign({}, b, { q: b.q + st.shQty }) : b) : st.basket.concat([{ id: id, opt: st.shOpt, q: st.shQty, slot: st.slot || 0 }]); self.setState({ basket: next, route: 'shop' }); },
       hasBasket: count > 0, noBasket: count === 0, count: count,
       basketText: count + (count === 1 ? ' item' : ' items') + ' · ' + self.rm(itemsTotal), basketCount: count + (count === 1 ? ' item' : ' items'),
       toCheckout: go('checkout'), toShop: go('shop'), toPage: go('page', { tab: 'links' }), toFaq: go('faq'),
-      lines: linesRaw.map((l) => ({ amt: self.rm(l.sum), name: l.it.name, sub: (l.o[0] ? l.o[0] + ' · ' : '') + self.rm(l.o[1]) + ' each', q: l.b.q, photo: l.it.photo, hasPhoto: !!l.it.photo, focus: l.it.focus, tint: l.it.tint, ink: l.it.ink, ini: l.it.photo ? '' : l.it.name[0], less: setLine(l.b, -1), more: setLine(l.b, 1) })),
+      lines: linesRaw.map((l) => ({ amt: self.rm(l.sum), name: l.it.name, sub: l.it.dig ? digSub(l) : (l.o[0] ? l.o[0] + ' · ' : '') + self.rm(l.o[1]) + ' each', q: l.b.q, photo: l.it.photo, hasPhoto: !!l.it.photo, focus: l.it.focus, tint: l.it.tint, ink: l.it.ink, ini: l.it.photo ? '' : l.it.name[0], less: setLine(l.b, -1), more: setLine(l.b, 1) })),
       segX: st.method === 'pickup' ? 0 : 100, isPickup: st.method === 'pickup', isDelivery: st.method === 'delivery',
       setPickup: () => self.setState({ method: 'pickup' }), setDelivery: () => self.setState({ method: 'delivery' }),
       days: Array.from({ length: 9 }, (_, i) => { const d = new Date(2026, 9, 15 + i); const off = i < 2 || d.getDay() === 0; const on = st.day === i; return { cls: on ? 'on' : off ? 'off' : '', wd: i === 0 ? 'Today' : wd[d.getDay()], n: d.getDate(), off: off, bg: on ? '#b5294e' : off ? '#f7f0f2' : '#ffffff', fg: on ? '#ffffff' : off ? '#c9b7bd' : '#191f2c', s: on ? '1.04' : '1', go: () => { if (!off) self.setState({ day: i }); } }; }),
       cname: st.cname, setCname: (e) => self.setState({ cname: String(e.target.value || '') }),
       cphone: st.cphone, setCphone: (e) => self.setState({ cphone: String(e.target.value || '') }),
+      anyDig: anyDig, allDig: allDig, needGet: !allDig, mixed: anyDig && !allDig, digWhat: digWhat,
+      cemail: st.cemail, setCemail: (e) => self.setState({ cemail: String(e.target.value || '').trim() }),
+      notePh: allDig ? 'Anything Lina should know' : 'Writing on the cake, less sweet, anything else',
       itemsRM: self.rm(itemsTotal), feeLabel: st.method === 'pickup' ? 'Pickup' : 'Delivery', feeRM: st.method === 'pickup' ? 'Free' : self.rm(fee), totalRM: self.rm(itemsTotal + fee),
-      cantPlace: !(st.cname.trim() && st.cphone.replace(/\D/g, '').length >= 9),
+      cantPlace: !(st.cname.trim() && st.cphone.replace(/\D/g, '').length >= 9 && (!anyDig || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(st.cemail))),
       placeOrder: go('placed', { pay: how === 'qr' ? 'waiting' : 'paid' }), toOrderPay: go('order', { pay: st.pay }),
       payWays: (chipOn ? [['fpx', 'Online banking', 'FPX · Maybank2u, CIMB Clicks, RHB and more', [['FPX', '#eaf0ff', '#122686']]], ['wallet', 'E-wallet', 'Touch ’n Go, GrabPay, Boost, ShopeePay', [['TNG', '#e6f0ff', '#0b4dbd'], ['Grab', '#e3f6ea', '#0d7a3e']]], ['card', 'Card', 'Debit or credit card', [['VISA', '#eef0ff', '#1a1f71'], ['MC', '#fff1e8', '#c2410c']]], ['qr', 'DuitNow QR', 'Scan Kek Lina’s QR, then upload your receipt', [['QR', '#fdecef', '#b5294e']]]] : [['qr', 'DuitNow QR or bank transfer', 'Pay Kek Lina directly, then upload your receipt', [['QR', '#fdecef', '#b5294e']]]]).map((w) => ({ l: w[1], sub: w[2], marks: w[3].map((m) => ({ t: m[0], bg: m[1], fg: m[2] })), on: how === w[0], cls: how === w[0] ? 'on' : '', go: () => self.setState({ how: w[0] }) })),
       hasSub: how === 'fpx' || how === 'wallet', subLabel: how === 'wallet' ? 'Your e-wallet' : 'Your bank',
@@ -815,9 +878,10 @@ class Component extends DCLogic {
       goText: how === 'qr' ? 'Place order · ' + self.rm(itemsTotal + fee) : 'Pay ' + self.rm(itemsTotal + fee) + (how === 'card' ? ' by card' : ' with ' + (how === 'wallet' ? { tng: 'Touch ’n Go', grab: 'GrabPay', boost: 'Boost', spay: 'ShopeePay' }[st.wallet || 'tng'] : { maybank: 'Maybank2u', cimb: 'CIMB Clicks', pbb: 'Public Bank', rhb: 'RHB Now', bislam: 'Bank Islam', hlb: 'Hong Leong' }[st.bank || 'maybank'])),
       payNote: how === 'qr' ? 'You pay Kek Lina directly on the next step, then upload your receipt. Your name and number go to Kek Lina only.' : (how === 'card' ? 'You’ll enter your card on a secure page, then come straight back here.' : 'You’ll go straight to ' + (how === 'wallet' ? 'your e-wallet' : 'your bank') + ' to approve it, then come back here.') + ' Payments are processed by CHIP, and the money goes to Kek Lina’s own account.',
       paidOnline: payIdx === 2 && how !== 'qr', paidVia: how === 'wallet' ? { tng: 'Touch ’n Go eWallet', grab: 'GrabPay', boost: 'Boost', spay: 'ShopeePay' }[st.wallet || 'tng'] : how === 'card' ? 'Visa card ending 4242' : 'FPX · ' + { maybank: 'Maybank2u', cimb: 'CIMB Clicks', pbb: 'Public Bank', rhb: 'RHB Now', bislam: 'Bank Islam', hlb: 'Hong Leong' }[st.bank || 'maybank'],
-      placedTitle: payIdx === 2 && how !== 'qr' ? 'Paid. Order placed' : 'Order placed',
-      placedSub: payIdx === 2 && how !== 'qr' ? self.rm(itemsTotal + fee) + ' paid. Kek Lina has your order and will get it ready.' : 'Kek Lina has it. Pay on the next screen to confirm it.',
-      placedCta: payIdx === 2 && how !== 'qr' ? 'See your order' : 'Pay ' + self.rm(itemsTotal + fee) + ' now',
+      placedTitle: payIdx === 2 && how !== 'qr' ? (allDig ? 'Paid. It’s on its way to your email' : 'Paid. Order placed') : 'Order placed',
+      placedNote: anyDig ? (payIdx === 2 && how !== 'qr' ? 'Sent to ' + st.cemail + '. It’s on your order page too.' : 'Your ' + digWhat + ' unlock as soon as your payment is confirmed.') : 'We also sent the order link to your WhatsApp.',
+      placedSub: payIdx === 2 && how !== 'qr' ? (allDig ? self.rm(itemsTotal + fee) + ' paid. Your ' + digWhat + ' are ready now.' : self.rm(itemsTotal + fee) + ' paid. Kek Lina has your order and will get it ready.') : 'Kek Lina has it. Pay on the next screen to confirm it.',
+      placedCta: payIdx === 2 && how !== 'qr' ? (allDig ? 'Get your ' + digWhat : 'See your order') : 'Pay ' + self.rm(itemsTotal + fee) + ' now',
       daysOpen: Array.from({ length: 10 }, (_, i) => ({ i: i, d: new Date(2026, 9, 15 + i) })).filter((x) => x.i >= 2 && x.d.getDay() !== 0).slice(0, 6).map((x) => ({ wd: wd[x.d.getDay()], n: x.d.getDate(), cls: st.day === x.i ? 'on' : '', go: () => self.setState({ day: x.i }) })),
       pickCls: st.method === 'pickup' ? 'on' : '', delCls: st.method === 'delivery' ? 'on' : '',
       dayHint: 'Lina needs 2 days’ notice and is closed on Sundays. ' + (st.method === 'pickup' ? 'Pickup 10am to 6pm.' : 'Delivery between 2pm and 6pm.'),
@@ -833,8 +897,8 @@ class Component extends DCLogic {
       ocard: { status: ['Waiting for your payment', 'Lina is checking your receipt', 'Paid. Lina is baking it'][payIdx], pill: ['Not paid', 'Checking', 'Paid'][payIdx], items: '1× Kek coklat moist 2kg, 1× Kek batik', btn: payIdx === 0 ? 'Pay now' : 'Open order page' },
       faqCount: faqs.length,
       topFaq: faqs.slice(0, 3).map((f, i) => ({ q: f[0], a: f[1], open: st.faqOpen === i, rot: st.faqOpen === i ? 45 : 0, toggle: () => self.setState({ faqOpen: st.faqOpen === i ? -1 : i }) })),
-      os: [['Waiting for payment', '#ffebd6', '#7a4a0c'], ['Receipt sent · Lina is checking', '#eaf0ff', '#122686'], ['Paid · Lina is baking it', '#e8f3ef', '#123b33']].map((x) => ({ text: x[0], bg: x[1], fg: x[2] }))[payIdx],
-      tl: [['Placed', 0], ['Paid', 2], ['Ready', 3], ['Done', 4]].map((t, i) => { const done = i === 0 || payIdx >= t[1]; const next = !done && (i === 1 || (i === 2 && payIdx >= 2)); return { cls: done ? 'is-done' : next ? 'is-now' : '', label: t[0], done: done, bg: done ? '#1d6f5f' : '#ffffff', ring: done ? 'none' : next ? '0 0 0 2px #b5294e, 0 0 0 6px #f4dbe2' : 'inset 0 0 0 2px #e3cbd3', lc: done ? '#1d6f5f' : '#ecdde2' }; }),
+      os: [['Waiting for payment', '#ffebd6', '#7a4a0c'], ['Receipt sent · Lina is checking', '#eaf0ff', '#122686'], [allDig ? 'Paid · Sent to your email' : 'Paid · Lina is baking it', '#e8f3ef', '#123b33']].map((x) => ({ text: x[0], bg: x[1], fg: x[2] }))[payIdx],
+      tl: (allDig ? [['Placed', 0], ['Paid', 2], ['Sent', 2]] : [['Placed', 0], ['Paid', 2], ['Ready', 3], ['Done', 4]]).map((t, i) => { const done = i === 0 || payIdx >= t[1]; const next = !done && (i === 1 || (i === 2 && payIdx >= 2)); return { cls: done ? 'is-done' : next ? 'is-now' : '', label: t[0], done: done, bg: done ? '#1d6f5f' : '#ffffff', ring: done ? 'none' : next ? '0 0 0 2px #b5294e, 0 0 0 6px #f4dbe2' : 'inset 0 0 0 2px #e3cbd3', lc: done ? '#1d6f5f' : '#ecdde2' }; }),
       needPay: payIdx < 2, noReceipt: payIdx === 0, hasReceipt: payIdx === 1,
       upload: () => self.setState({ pay: 'uploaded' }),
       saveQr: () => { clearTimeout(self.qt); self.setState({ qrSaved: true }); self.qt = setTimeout(() => self.setState({ qrSaved: false }), 1600); },
@@ -842,8 +906,15 @@ class Component extends DCLogic {
       qr: this.QR, copyText: st.copied ? 'Copied' : 'Copy',
       copyAcc: () => { clearTimeout(self.ct); self.setState({ copied: true }); self.ct = setTimeout(() => self.setState({ copied: false }), 1500); },
       orderRM: self.rm(itemsTotal + fee || 215),
-      olines: (linesRaw.length ? linesRaw : [{ it: this.ITEMS[0], o: this.ITEMS[0].opts[1], b: { q: 1 }, sum: 170 }, { it: this.ITEMS[1], o: this.ITEMS[1].opts[0], b: { q: 1 }, sum: 45 }]).map((l) => ({ name: l.b.q + '× ' + l.it.name, sub: l.o[0] || 'One box', amt: self.rm(l.sum) })),
-      whenText: (st.method === 'pickup' ? 'Pickup' : 'Delivery') + ' · Sat 17 Oct',
+      olines: (linesRaw.length ? linesRaw : [{ it: this.ITEMS[0], o: this.ITEMS[0].opts[1], b: { q: 1 }, sum: 170 }, { it: this.ITEMS[1], o: this.ITEMS[1].opts[0], b: { q: 1 }, sum: 45 }]).map((l) => ({ name: l.b.q + '× ' + l.it.name, sub: l.it.dig ? digSub(l) : (l.o[0] || 'One box'), amt: self.rm(l.sum) })),
+      dgLocked: anyDig && payIdx < 2, dgOpen: anyDig && payIdx === 2,
+      lockNote: payIdx === 1 ? 'Lina is checking your receipt. You’ll get an email the moment it’s confirmed.' : 'Pay above, and they come straight to this page and your email.',
+      dgTitle: digKinds.length === 1 && digKinds[0] === 'files' ? 'Your downloads' : 'Your downloads and access',
+      dgo: linesRaw.filter((l) => l.it.dig).map((l) => ({ name: l.it.name, isFiles: l.it.dig === 'files', isLink: l.it.dig === 'link', isCode: l.it.dig === 'codes', isSession: l.it.dig === 'session',
+        files: (l.it.files || []).map((fl) => ({ n: fl[0], s: fl[1], ext: fl[0].split('.').pop() })),
+        code: 'KL50-8F2K-QM', copyText: st.copiedGift ? 'Copied' : 'Copy', copy: () => { clearTimeout(self.gc); self.setState({ copiedGift: true }); self.gc = setTimeout(() => self.setState({ copiedGift: false }), 1500); },
+        when: slotLbl(l.it, l.b.slot), dur: l.it.dur || '' })),
+      whenText: allDig ? 'By email' : (st.method === 'pickup' ? 'Pickup' : 'Delivery') + ' · Sat 17 Oct',
       hasFaq: faqs.length > 0, noFaq: faqs.length === 0, fq: st.fq, setFq: (e) => self.setState({ fq: String(e.target.value || '') }),
       faqs: faqShown.map((x) => ({ q: x.f[0], n: x.f[2], open: go('faqq', { faqId: x.i }) })), faqNoMatch: faqs.length > 0 && faqShown.length === 0,
       fqq: { q: fqq[0], a: fqq[1], n: fqq[2] },

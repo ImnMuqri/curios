@@ -32,9 +32,15 @@ export function BasketBar(props: {
   whatsapp: string | null;
   /** The small line under the count: a string says that, true says "Still in your basket" (the default), false says nothing. */
   note?: boolean | string;
+  /**
+   * The Store editor's picture of the bar: held inside the phone, always there
+   * ("Basket is empty" until something is added), reading the preview's own
+   * basket, and its Checkout turns the phone to the Pay screen.
+   */
+  preview?: { storageKey: string; onCheckout: () => void };
 }) {
   const copy = shopCopy(props.language);
-  const key = defaultStorageKey(props.handle);
+  const key = props.preview?.storageKey ?? defaultStorageKey(props.handle);
   const [basket, setBasket] = useState<BasketLine[]>([]);
 
   useEffect(() => {
@@ -50,20 +56,24 @@ export function BasketBar(props: {
   }, [key]);
 
   const priced = useMemo(() => priceBasket(basket, props.items), [basket, props.items]);
-  if (priced.lines.length === 0) return null;
+  if (priced.lines.length === 0 && !props.preview) return null;
 
   const count = priced.lines.reduce((sum, line) => sum + line.quantity, 0);
   const paused = !props.canTakeOrders;
 
   return (
-    <div className={styles.bar}>
+    <div className={styles.bar} data-preview={props.preview ? '' : undefined}>
       {paused ? <p className={styles.paused}>{copy.paused(props.displayName)}</p> : null}
       <div className={styles.row}>
         <span className={styles.text}>
-          {copy.barText(count, formatRinggit(priced.totalCents))}
-          {props.note !== false ? <small className={styles.note}>{typeof props.note === 'string' ? props.note : copy.stillInBasket}</small> : null}
+          {priced.lines.length === 0 ? <span className={styles.empty}>{copy.basketEmpty}</span> : copy.barText(count, formatRinggit(priced.totalCents))}
+          {priced.lines.length > 0 && props.note !== false ? <small className={styles.note}>{typeof props.note === 'string' ? props.note : copy.stillInBasket}</small> : null}
         </span>
-        {!paused ? (
+        {props.preview ? (
+          <button type="button" className={styles.go} onClick={props.preview.onCheckout}>
+            {copy.checkout}
+          </button>
+        ) : !paused ? (
           <a className={styles.go} href={`/${props.handle}/shop/checkout`}>
             {copy.checkout}
           </a>

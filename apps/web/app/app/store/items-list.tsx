@@ -83,7 +83,7 @@ export function ItemsList({
               <Thumb item={item} tint={index} />
               <button type="button" className={styles.itemText} onClick={() => onEdit(item.id)}>
                 <b>{item.name}</b>
-                <span>{priceLine(item) || 'Needs a price'}</span>
+                <span>{item.kind === 'DIGITAL' ? 'Digital · ' : ''}{priceLine(item) || 'Needs a price'}</span>
               </button>
               <span className={styles.available}>
                 <button

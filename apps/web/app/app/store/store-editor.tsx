@@ -2,10 +2,11 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { SHOP_DESCRIPTION_MAX, formatRinggit, storeGapMessage, storeGaps } from '@curios/core/store';
-import { BentoPage } from '../../_bento/BentoPage.js';
+import { PageTheme } from '../../_bento/BentoPage.js';
 import { nextOrderDay } from '../../[handle]/shop/pill.js';
 import { ProductView } from '../../[handle]/shop/[slug]/product-view.js';
-import { ShopView } from '../../[handle]/shop/shop-view.js';
+import { BasketBar } from '../../[handle]/shop/basket-bar.js';
+import { ShopPageView } from '../../[handle]/shop/shop-page.js';
 import { PageHead } from '../_ui/page-head.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
 import { SaveState } from '../_ui/save-state.js';
@@ -20,7 +21,7 @@ import { ItemsList } from './items-list.js';
 import { PayPreview } from './pay-preview.js';
 import { PaymentTab } from './payment-tab.js';
 import { orNull, useSettingText } from './setting-field.js';
-import type { ChipApi, ChipState, EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
+import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
 import styles from './store.module.css';
 
 const TABS = [
@@ -44,6 +45,12 @@ function trackedItems(api: ItemsApi, track: SaveTrack): ItemsApi {
     reorder: (ids) => track(api.reorder(ids)),
     uploadPhoto: (id, file) => track(api.uploadPhoto(id, file)),
     removePhoto: (id) => track(api.removePhoto(id)),
+    uploadFile: (id, file, onProgress) => track(api.uploadFile(id, file, onProgress)),
+    removeFile: (id, fileId) => track(api.removeFile(id, fileId)),
+    addCodes: (id, text) => track(api.addCodes(id, text)),
+    addSession: (id, input) => track(api.addSession(id, input)),
+    updateSession: (id, sessionId, patch) => track(api.updateSession(id, sessionId, patch)),
+    removeSession: (id, sessionId) => track(api.removeSession(id, sessionId)),
   };
 }
 
@@ -242,6 +249,7 @@ export function StoreEditor({
   const previewFocus = shown.find((item) => item.id === picked) ?? draftItem ?? editingItem ?? live[0] ?? null;
   const previewItems = shown.filter((item) => item.available || (previewTab === 'item' && item.id === previewFocus?.id));
 
+  const previewNextDay = nextOrderDay({ ...settings, canTakeOrders: true }, new Date());
   const [year, month, day] = today.split('-').map(Number);
   const todayDate = new Date(year ?? 2026, (month ?? 1) - 1, day ?? 1);
 
@@ -416,24 +424,8 @@ export function StoreEditor({
               nextNumber={orders.nextNumber}
             />
           ) : (
-            <BentoPage
-              displayName={look.displayName}
-              handle={look.handle}
-              bio={look.bio}
-              avatarUrl={look.avatarUrl}
-              coverUrl={look.coverUrl}
-              links={[]}
-              style={look.style}
-              accentColor={look.accentColor}
-              headingFont={look.headingFont}
-              background={look.background}
-              backgroundColor={look.backgroundColor}
-              language={look.language}
-              socials={look.socials}
-              mode="shop"
-              interactive={false}
-              nameAs="p"
-            >
+            // The shop and the item are the customer pages themselves, on the owner's own colours.
+            <PageTheme theme={look} className={styles.previewStage}>
               <div className={styles.previewShop}>
                 {previewTab === 'item' && previewFocus ? (
                   <ProductView
@@ -442,43 +434,54 @@ export function StoreEditor({
                     handle={look.handle}
                     displayName={look.displayName}
                     language={look.language}
-                    item={previewFocus}
-                    items={previewItems}
+                    item={previewItem(previewFocus)}
+                    items={previewItems.map((i) => previewItem(i))}
                     halal={settings.shopHalal}
                     noticeDays={settings.minNoticeDays}
-                    nextDay={nextOrderDay({ ...settings, canTakeOrders: true }, new Date())}
+                    nextDay={previewNextDay}
                     pickup={settings.pickupEnabled}
                     storageKey="curios-store-preview"
                     inline
                     onDone={() => setPreviewTab('shop')}
                   />
                 ) : (
-                  <ShopView
-                    key={previewTab}
-                    handle={look.handle}
-                    displayName={look.displayName}
-                    language={look.language}
-                    items={previewItems}
-                    whatsapp={look.whatsapp}
-                    description={orNull(description.text)}
-                    pickupEnabled={settings.pickupEnabled}
-                    pickupNote={settings.pickupNote}
-                    deliveryMode={settings.deliveryMode}
-                    deliveryFeeCents={settings.deliveryFeeCents}
-                    minNoticeDays={settings.minNoticeDays}
-                    onOpenItem={(id) => {
-                      setPicked(id);
-                      setPreviewTab('item');
-                    }}
-                    showBack={false}
-                    variant="embedded"
-                    storageKey="curios-store-preview"
-                    // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
-                    onCheckout={() => setPreviewTab('pay')}
-                  />
+                  <>
+                    <ShopPageView
+                      key={previewTab}
+                      handle={look.handle}
+                      displayName={look.displayName}
+                      language={look.language}
+                      items={previewItems.map((i) => ({ ...previewItem(i), photoUrl: i.photoUrl }))}
+                      pickupEnabled={settings.pickupEnabled}
+                      pickupNote={settings.pickupNote}
+                      deliveryMode={settings.deliveryMode}
+                      canTakeOrders
+                      nextDay={previewNextDay}
+                      description={orNull(description.text)}
+                      halal={settings.shopHalal}
+                      preview={{
+                        storageKey: 'curios-store-preview',
+                        onOpenItem: (id) => {
+                          setPicked(id);
+                          setPreviewTab('item');
+                        },
+                      }}
+                    />
+                    <BasketBar
+                      handle={look.handle}
+                      displayName={look.displayName}
+                      language={look.language}
+                      items={previewItems.map((i) => previewItem(i))}
+                      canTakeOrders
+                      whatsapp={null}
+                      note={false}
+                      // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
+                      preview={{ storageKey: 'curios-store-preview', onCheckout: () => setPreviewTab('pay') }}
+                    />
+                  </>
                 )}
               </div>
-            </BentoPage>
+            </PageTheme>
           )}
         </PreviewFrame>
       </div>

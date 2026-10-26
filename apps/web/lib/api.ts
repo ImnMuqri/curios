@@ -22,6 +22,8 @@ export class ApiError extends Error {
 }
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+/** Where the API is, for the one caller that cannot use apiFetch (an upload that reports its progress). */
+export const API_BASE = BASE;
 
 /**
  * The only way this app talks to `apps/api`.

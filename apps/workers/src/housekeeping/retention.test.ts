@@ -110,6 +110,21 @@ describe('runRetention', () => {
     expect(result.receipts).toBe(keys.length);
   });
 
+  it('frees the code of an old unpaid order and removes the code of an old paid one', async () => {
+    const item = await prisma.item.create({ data: { pageId, name: 'Voucher', slug: `v-${randomUUID().slice(0, 6)}`, priceCents: 500, position: 0, kind: 'DIGITAL', delivery: 'CODES' } });
+    const unpaid = await anOrder(old, null);
+    const paid = await anOrder(old, null);
+    await prisma.order.update({ where: { id: paid.id }, data: { status: 'PAID', paidAt: old } });
+    const lineOf = async (orderId: string) => (await prisma.orderLine.findFirstOrThrow({ where: { orderId } })).id;
+    await prisma.itemCode.create({ data: { itemId: item.id, code: 'UNPAID', orderLineId: await lineOf(unpaid.id) } });
+    await prisma.itemCode.create({ data: { itemId: item.id, code: 'PAID', orderLineId: await lineOf(paid.id) } });
+
+    await runRetention({ prisma, now, removeObjects: null });
+
+    const codes = await prisma.itemCode.findMany({ where: { itemId: item.id } });
+    expect(codes.map((c) => [c.code, c.orderLineId])).toEqual([['UNPAID', null]]);
+  });
+
   it('removes the files before the rows', async () => {
     const order = await anOrder(old, `receipts/${pageId}/${randomUUID()}.jpg`);
     let rowWhileRemoving: unknown = 'not called';

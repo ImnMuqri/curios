@@ -37,13 +37,15 @@ const base: OrderRow = {
   chipPaidTwiceAt: null,
   secondRefundedAt: null,
   createdAt: new Date('2026-10-16T02:02:00Z'),
+  email: null,
+  sentAt: null,
   lines: [
-    { itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: null },
-    { itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
+    { id: 'l1', digital: null, itemName: 'Kek coklat moist', optionLabel: '1kg', unitPriceCents: 9500, quantity: 2, photoUrl: null },
+    { id: 'l1', digital: null, itemName: 'Kek batik', optionLabel: null, unitPriceCents: 4500, quantity: 1, photoUrl: null },
   ],
 };
 const none = { receiptUrl: null, receiptType: null, receiptUploadedAt: null };
-const one = (name: string, cents: number) => [{ itemName: name, optionLabel: null, unitPriceCents: cents, quantity: 1, photoUrl: null }];
+const one = (name: string, cents: number) => [{ id: 'l1', digital: null, itemName: name, optionLabel: null, unitPriceCents: cents, quantity: 1, photoUrl: null }];
 
 const orders: OrderRow[] = [
   base,
@@ -70,6 +72,7 @@ function show(list = orders, extra: { selected?: string | null; stats?: OrderSta
       publicUrl="https://curios.my/keklina/shop"
       pickupNote="Seksyen 7, Shah Alam. 10am to 6pm."
       move={move}
+      act={vi.fn()}
       onChanged={onChanged}
     />,
   );
@@ -230,5 +233,36 @@ describe('OrdersScreen, without the template look', () => {
     expect(stats.querySelector('svg')).toBeNull();
     expect(stats.querySelector('[data-tone]')).toBeNull();
     expect(stats.querySelector('i')).toBeNull();
+  });
+});
+
+describe('OrdersScreen, a digital-only order', () => {
+  const sent: OrderRow = {
+    ...base,
+    id: 'o20',
+    number: 20,
+    customerName: 'Farah Nadia',
+    method: null,
+    day: null,
+    status: 'PAID',
+    paidAt: new Date('2026-10-16T05:00:00Z'),
+    paidVia: 'CHIP',
+    email: 'farah@example.com',
+    sentAt: new Date('2026-10-16T05:00:00Z'),
+    lines: [{ id: 'ld', itemName: 'Recipe e-book', optionLabel: null, unitPriceCents: 2500, quantity: 1, photoUrl: null, digital: { delivery: 'LINK', files: [], linkOpenedAt: null, codes: [], codesLeft: null, session: null, times: [] } }],
+  };
+
+  it('says Digital instead of a method and day, and Sent instead of Paid', () => {
+    show([sent, ...orders]);
+    const item = within(rows().getByText('Farah Nadia').closest('li')!);
+    expect(item.getByText('#20 · 1 item · Digital')).toBeInTheDocument();
+    expect(item.getByText('Sent')).toBeInTheDocument();
+  });
+
+  it('is not counted or listed under Paid: there is nothing to make', () => {
+    show([sent, ...orders]);
+    expect(filter(/^Paid/)).toHaveTextContent('2');
+    fireEvent.click(filter(/^Paid/));
+    expect(rows().queryByText('Farah Nadia')).toBeNull();
   });
 });

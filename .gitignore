@@ -24,6 +24,7 @@ packages/db/prisma/*.db-journal
 
 # local storage stand-in for R2
 .storage/
+apps/api/.files/
 
 # test + coverage
 coverage/

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { PHYSICAL_FACTS } from '@curios/core/digital';
 import type { Checkout } from '@curios/db-read';
 
 vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
@@ -44,8 +45,8 @@ const shop: Checkout = {
   closedDays: [],
   deliveryNote: null,
   items: [
-    { id: 'cake', name: 'Kek Batik', slug: 'cake', category: null, tag: null, description: null, photoKey: 'items/cake.webp', priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }] },
-    { id: 'cookie', name: 'Cookies', slug: 'cookie', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [] },
+    { ...PHYSICAL_FACTS, id: 'cake', name: 'Kek Batik', slug: 'cake', category: null, tag: null, description: null, photoKey: 'items/cake.webp', priceCents: null, options: [{ id: 'k1', label: '1kg', priceCents: 9500 }] },
+    { ...PHYSICAL_FACTS, id: 'cookie', name: 'Cookies', slug: 'cookie', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [] },
   ],
   canTakeOrders: true,
   payByQr: true,

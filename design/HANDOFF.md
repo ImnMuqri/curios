@@ -256,8 +256,9 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
   `.mo-e` (eyes) and `.mo-h` (happy).
 
 **Favicon and app icon**
-- Option c, "peeking up": a white head with two eyes rising from the bottom of a blue rounded
-  square.
+- **Updated 24 Oct 2026:** Peek's eyes. Two big white oval eyes with dark pupils (looking a
+  little down and right) on a brand blue (#2340c8) rounded square. Replaces the older
+  "peeking up" white head, so it matches the new Peek.
 - Files are in `design/brand/`:
   - `icon.svg` → `apps/web/app/icon.svg`
   - `apple-icon.png` (180, full bleed) → `apps/web/app/apple-icon.png` (or keep the
@@ -267,7 +268,7 @@ rows in `DEVIATIONS.md` that touch the Shop tab, the item sheet, the preview's t
 - The email sender avatar and the landing's notification badge use it too.
 
 **Peek, the mascot** (`design/brand/peek-mascot.png`)
-- The favicon's character, in brand blue, living **behind an edge** with two small hands holding
+- Brand blue, living **behind an edge** with two small hands holding
   it.
 - Build it as two layers: the body (`.pk`, z 0) behind the field, and the hands (`.pk-front`,
   z 3) in front. The edge sits at 64 of 96 in the viewBox.
@@ -376,6 +377,79 @@ design to build from. Desktop first, works on a phone for emergencies.
 and `Page.suspendReason`, a `Report` table, an `AdminAction` audit table, a `SystemSetting`
 key-value table for the switches, limits, prices and banner, and a webhook event log.
 `Payment` still names Billplz columns; those move to CHIP as already noted.
+
+## Digital products, 24 Oct 2026
+
+Boards: `Store`, `Public`, `Emails`, `Orders`. Screens: `design/screens/Digital_*`.
+Sample items in Kek Lina's shop: a recipe e-book (files), a video course (link), a RM50 gift
+voucher (codes) and an online Kek batik class (session).
+
+**Store editor**
+- New "What it is" switch: **Physical** or **Digital**, above Price. Price and options work the
+  same for both.
+- Digital asks "How they get it", one of four:
+  - **Files:** upload up to 5 files, 200 MB each (PDF, images, ZIP, audio, video). Each buyer
+    gets their own download links: 5 downloads per file, valid 30 days, resendable.
+  - **A link:** the URL plus an optional note (200 characters). Only shown after payment.
+  - **Codes:** paste codes, one per line. Each buyer gets one unused code. Shows how many are
+    left; at 0 the item shows Sold out.
+  - **A session:** one or more times (date, time, seats), how long, and Online (meeting link)
+    or In person (place). Buyers pick a time; a full time can't be picked. Reminder email the
+    day before.
+- The shop list line reads "Digital · RM25". Store preview shows a "Digital" tag.
+
+**Shop and checkout**
+- Digital items get a "Digital" tag on the card and item page, and their own category.
+- Item page: instead of "Needs 2 days, earliest pickup", it says how it arrives and the format.
+  Sessions show "Pick a time" with seats left; full times are disabled.
+- Checkout with **only digital items** skips Getting it (pickup or delivery) and Day entirely,
+  shows "By email, right after you pay", and has no delivery fee.
+- **Mixed baskets** keep Getting it and Day for the physical items, with a line saying the
+  digital ones come by email.
+- Any digital item adds a required **Email** field ("where we send your files").
+- Summary shows "Digital items · By email".
+
+**Delivery rules**
+- Delivered only once paid. CHIP payments: straight away. DuitNow QR: the moment the owner
+  marks it paid (their button reads "Mark paid and send").
+- Order page: before payment, a locked note ("unlock once you've paid"). After payment, a
+  "Your downloads and access" section: Download buttons per file, the course link with the
+  owner's note, the code with Copy, and session time with Join and Add to calendar.
+- Digital-only orders have a 3-step timeline: Placed, Paid, Sent. Status reads "Sent".
+- Placed screen after an online payment: "Paid. It's on its way to your email", and the
+  button goes to the downloads.
+
+**Emails**
+- New, to the customer, from "Kek Lina via Curios": everything they bought, with download
+  buttons, link, code and session, plus "Open your order page".
+- New, to the customer: class reminder the day before, with the join link and any files.
+- New, to the owner: "New order #15 · RM214 · Paid and sent", nothing to do.
+
+**Owner's Orders**
+- Rows say "Digital" instead of pickup or delivery. Status "Sent" once delivered.
+- A "Sent by email" card replaces "Getting it to them": who it went to, and per item what
+  happened (downloads used, seat booked, code given, link opened), with actions New links,
+  Move time, New code, and Resend the email.
+
+**Previews in the dashboard must match the real pages** (fixed 24 Oct, see
+`design/screens/Previews_matched.png`). Build them from the same components as the customer
+pages, scaled down, rather than separate mock-ups:
+- Store "Item" preview is the real item page: photo on top, tag, name, price of the first size,
+  Size boxes (or Pick a time), the facts box, Ask about this, and the add bar.
+- Store "Pay" preview is the real order page: order code, timeline, Pay with QR and bank,
+  Upload your receipt, Your order.
+- Store "Shop" preview has the real facts list and the category chips.
+- My Curios links preview ends with People often ask, not an ask bar (the ask bar is only on
+  the Ask tab).
+- Chat previews everywhere: the visitor's question is a translucent bubble, the answer is plain
+  text under a "Kek Lina's page" label with the accent dot, and the lead card is "Lina can
+  answer this one" with a number field and Send.
+
+**Data this needs** (suggested): `Item.kind` (PHYSICAL or DIGITAL) and `Item.delivery`
+(FILES, LINK, CODES, SESSION); `ItemFile` (storage key, name, size); `Item.accessUrl` and
+`Item.accessNote`; `ItemCode` (code, orderLineId when given); `ItemSession` (startsAt,
+seats, durationMin, where, meetingUrl or place) and a booking per order line; `Order.email`;
+a `DownloadGrant` per order line and file (token, uses left, expiresAt); `Order.sentAt`.
 
 ## Open decisions (all three settled; kept for the record)
 

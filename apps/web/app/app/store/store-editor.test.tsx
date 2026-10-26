@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StoreEditor } from './store-editor.js';
-import type { ChipApi, ChipState, EditorItem, ItemsApi, SettingsApi, SettingsPatch, ShopLook, StoreSettings } from './store-types.js';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -9,7 +9,7 @@ const ready: StoreSettings = {
   bankAccountName: 'Lina', bankAccountNumber: '1234567890', tileSize: null,
 };
 
-const base = { slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
+const base = { ...PHYSICAL_ITEM, slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
 const items: EditorItem[] = [
   { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true },
   { ...base, id: 'b', name: 'Burnt cheesecake', priceCents: 8500, available: false },
@@ -28,11 +28,17 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   };
   const itemsApi: ItemsApi = {
     add: vi.fn(),
-    update: vi.fn(async (id, patch) => ({ id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
+    update: vi.fn(async (id, patch) => ({ ...PHYSICAL_ROW, id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
     remove: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
     uploadPhoto: vi.fn(),
     removePhoto: vi.fn(),
+    uploadFile: vi.fn(),
+    removeFile: vi.fn(),
+    addCodes: vi.fn(),
+    addSession: vi.fn(),
+    updateSession: vi.fn(),
+    removeSession: vi.fn(),
   };
   const chipApi: ChipApi = { connect: vi.fn(), disconnect: vi.fn(async () => undefined), test: vi.fn() };
   return { settingsApi, itemsApi, chipApi };
@@ -232,15 +238,65 @@ describe('the items', () => {
 
   it('opens the product screen in the preview from a tapped row, and returns to the shop after an add', () => {
     show();
-    fireEvent.click(within(preview()).getByRole('button', { name: /Kek batik/ }));
+    fireEvent.click(within(preview()).getByRole('link', { name: 'Kek batik' }));
     expect(within(preview()).getByRole('heading', { level: 1, name: 'Kek batik' })).toBeInTheDocument();
     fireEvent.click(within(preview()).getByRole('button', { name: /^Add to basket/ }));
-    expect(within(preview()).getByText(/in basket/)).toBeInTheDocument();
+    expect(within(preview()).getByText('1 item · RM45')).toBeInTheDocument();
   });
 });
 
 describe('the preview', () => {
   const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
+
+  // The previews are the customer pages themselves, so each carries a landmark only the real page has.
+  it('the Shop screen is the real shop page: its facts list and category chips, and no link leaves the editor', () => {
+    const list: EditorItem[] = [
+      { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true, category: 'Cakes' },
+      { ...base, id: 'c', name: 'Online class', priceCents: 6000, available: true, ...{ kind: 'DIGITAL' as const, delivery: 'FILES' as const } },
+    ];
+    show(ready, list);
+    const shop = within(preview());
+    expect(shop.getByText('Open for orders')).toBeInTheDocument();
+    expect(shop.getByText('Seksyen 7')).toBeInTheDocument();
+    expect(shop.getByText('Pickup or delivery')).toBeInTheDocument();
+    expect(shop.getByRole('group', { name: 'Categories' })).toBeInTheDocument();
+    expect(shop.getByRole('button', { name: /^Cakes/ })).toBeInTheDocument();
+    expect(shop.getByRole('button', { name: /^Digital/ })).toBeInTheDocument();
+    const click = fireEvent.click(shop.getByRole('link', { name: `Back to ${look.displayName}` }));
+    // A prevented click: the editor stays where it is.
+    expect(click).toBe(false);
+  });
+
+  it('the Item screen is the real item page: Size boxes for options, and Pick a time for a session', () => {
+    const list: EditorItem[] = [
+      { ...base, id: 'a', name: 'Kek coklat', priceCents: null, available: true, options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }] },
+    ];
+    show(ready, list);
+    fireEvent.click(screenTab('Item'));
+    expect(within(preview()).getByRole('radiogroup', { name: 'Size' })).toBeInTheDocument();
+    expect(within(preview()).getByRole('radio', { name: /1kg/ })).toBeInTheDocument();
+    expect(within(preview()).getByRole('radio', { name: /2kg/ })).toBeInTheDocument();
+  });
+
+  it('the Pay screen has no link and copies nothing: its QR and Copy are pictures', () => {
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    show();
+    fireEvent.click(screenTab('Pay'));
+    expect(preview().querySelector('a[download], a[href*="/qr"]')).toBeNull();
+    fireEvent.click(within(preview()).getByRole('button', { name: 'Copy' }));
+    fireEvent.click(within(preview()).getByRole('button', { name: 'Copy code' }));
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it('the Pay screen is the real order page: its code and timeline', () => {
+    show();
+    fireEvent.click(screenTab('Pay'));
+    const pay = within(preview());
+    expect(pay.getByText('7Q4M')).toBeInTheDocument();
+    const steps = pay.getByRole('list', { name: 'Order progress' });
+    expect(within(steps).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Placed, done', 'Paid', 'Ready', 'Done']);
+  });
 
   it('ends the shop in the board’s basket bar, empty, with Checkout', () => {
     show();

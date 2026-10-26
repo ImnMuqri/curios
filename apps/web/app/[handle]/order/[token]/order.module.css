@@ -25,7 +25,7 @@
   padding: 0 20px;
 }
 
-.titleRow h1 {
+.titleRow > :first-child {
   margin: 0;
   padding: 0;
 }
@@ -515,4 +515,248 @@
 
 .upload.checking svg {
   stroke: var(--biru-ink);
+}
+
+/* "Your downloads and access" and its locked note (Public board, the dgo pieces). */
+.dgLock {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--ghost-a);
+}
+
+.dgLock svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dgLock b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dgLock > span > span {
+  display: block;
+  margin-top: 2px;
+  color: var(--hint);
+  font-size: 12.5px;
+}
+
+.downloads {
+  scroll-margin-top: 16px;
+  padding: 20px 0 6px;
+  border-bottom: 1px solid var(--ghost-b);
+}
+
+.dgHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dgHead h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.dgHead > span {
+  color: var(--hint);
+  font-size: 12.5px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.dg {
+  padding: 14px 0;
+}
+
+.dg + .dg {
+  border-top: 1px solid var(--ghost-b);
+}
+
+.dgName {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.dgFile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 10px 10px 12px;
+  border-radius: 14px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.dgFile + .dgFile {
+  margin-top: 8px;
+}
+
+.dgFile[data-dead] {
+  opacity: 0.6;
+}
+
+.dgExt {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 9px;
+  background: var(--ghost-a);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.dgFileName {
+  flex: 1;
+  min-width: 0;
+}
+
+.dgFileName b {
+  display: block;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.dgFileName small {
+  display: block;
+  color: var(--hint);
+  font-size: 12px;
+}
+
+.dgButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: none;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent, var(--paper));
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.dgButton svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dgButton:focus-visible,
+.dgCode button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.dgWide {
+  display: flex;
+  width: 100%;
+  height: 44px;
+  font-size: 14px;
+}
+
+.dgGhost {
+  background: var(--ghost-a);
+  color: var(--ink);
+}
+
+.dgRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dgNote {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 13.5px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.dgSmall {
+  margin: 8px 0 0;
+  color: var(--hint);
+  font-size: 12px;
+}
+
+.dgCode {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 6px 6px 14px;
+  border-radius: 14px;
+  background: var(--lp-tint);
+}
+
+.dgCode + .dgCode {
+  margin-top: 8px;
+}
+
+.dgCode code {
+  flex: 1;
+  min-width: 0;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 17px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  overflow-wrap: anywhere;
+}
+
+.dgCode button {
+  height: 34px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dgWhen {
+  margin: 0 0 10px;
+}
+
+.dgWhen b {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.dgWhen span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 13px;
 }

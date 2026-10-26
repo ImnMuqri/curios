@@ -9,6 +9,7 @@ const EMAIL = '@shop-query.example.com';
 let openAccountId = '';
 let orderAccountId = '';
 let chipAccountId = '';
+let digitalAccountId = '';
 const CHECKED = new Date('2026-10-23T02:00:00Z');
 
 const shelf = [
@@ -50,6 +51,20 @@ beforeAll(async () => {
     paymentAccount: {
       create: { brandId: 'brand-1a2b', brandName: 'Kek Lina Bakes', secretKeyCiphertext: 'sealed-box', publicKeyPem: 'pem', methods: ['fpx', 'visa'], checkedAt: CHECKED },
     },
+  });
+  digitalAccountId = await seed('sq-digital', {
+    items: { create: [
+      { name: 'Book', slug: 'book', position: 0, available: true, priceCents: 2500, kind: 'DIGITAL', delivery: 'FILES', files: { create: [
+        { key: 'digital/p/i/k2', name: 'two.pdf', sizeBytes: 20, contentType: 'application/pdf', position: 1 },
+        { key: 'digital/p/i/k1', name: 'one.pdf', sizeBytes: 10, contentType: 'application/pdf', position: 0 },
+      ] } },
+      { name: 'Codes', slug: 'codes', position: 1, available: true, priceCents: 900, kind: 'DIGITAL', delivery: 'CODES', codes: { create: [{ code: 'AAA' }, { code: 'BBB' }, { code: 'CCC' }] } },
+      { name: 'Class', slug: 'class', position: 2, available: true, priceCents: 6000, kind: 'DIGITAL', delivery: 'SESSION', sessionMinutes: 90, sessionPlace: 'ONLINE', sessionWhere: 'https://meet.example.com/x', sessions: { create: [
+        { startsAt: new Date('2026-12-02T12:00:00Z'), seats: 5 },
+        { startsAt: new Date('2026-12-01T12:00:00Z'), seats: 12 },
+      ] } },
+      { name: 'Cake', slug: 'cake', position: 3, available: true, priceCents: 4500, files: { create: [{ key: 'digital/p/i/old', name: 'old.pdf', sizeBytes: 5, contentType: 'application/pdf', position: 0 }] }, codes: { create: [{ code: 'OLD' }] } },
+    ] },
   });
   // Created in the reverse of their positions, so insertion order cannot pass for position order.
   orderAccountId = await seed('sq-order', {
@@ -177,6 +192,67 @@ describe('getOwnerStore', () => {
 
   it('carries the closed days and the delivery note', async () => {
     expect((await getOwnerStore(openAccountId))?.settings).toMatchObject({ closedDays: [0, 3], deliveryNote: 'Around Shah Alam' });
+  });
+
+  it('carries per digital item its files, codes left and sessions with seats left, and no key or code', async () => {
+    const store = await getOwnerStore(digitalAccountId);
+    const [book, codes, session, cake] = store?.items ?? [];
+    expect(book).toMatchObject({ kind: 'DIGITAL', delivery: 'FILES', files: [{ name: 'one.pdf', sizeBytes: 10 }, { name: 'two.pdf', sizeBytes: 20 }], codesLeft: 0, sessions: [] });
+    expect(codes).toMatchObject({ delivery: 'CODES', codesLeft: 3, files: [] });
+    expect(session).toMatchObject({ delivery: 'SESSION', sessionMinutes: 90, sessionPlace: 'ONLINE', sessionWhere: 'https://meet.example.com/x' });
+    expect(session?.sessions.map((s) => [s.seats, s.booked, s.seatsLeft])).toEqual([[12, 0, 12], [5, 0, 5]]);
+    // Rows left from before the item went physical are kept but not offered.
+    expect(cake).toMatchObject({ kind: 'PHYSICAL', delivery: null, files: [], codesLeft: 0, sessions: [] });
+    const json = JSON.stringify(store);
+    expect(json).not.toContain('digital/p/i');
+    expect(json).not.toContain('AAA');
+  });
+
+  it('counts a booking against the seats and a given code out of the codes left', async () => {
+    const page = await write.page.findFirstOrThrow({ where: { accountId: digitalAccountId }, select: { id: true } });
+    const items = await write.item.findMany({ where: { pageId: page.id, slug: { in: ['codes', 'class'] } }, select: { id: true, slug: true, sessions: { select: { id: true, seats: true } } } });
+    const codesItem = items.find((i) => i.slug === 'codes');
+    const classItem = items.find((i) => i.slug === 'class');
+    const order = await write.order.create({
+      data: { pageId: page.id, number: 1, code: 'ABCD', tokenHash: 'sq-digital-hash', customerName: 'A', phone: '+60123456789', itemsCents: 1, deliveryCents: 0, totalCents: 1, lines: { create: [{ itemId: classItem?.id, itemName: 'x', unitPriceCents: 1, quantity: 3, position: 0 }, { itemId: codesItem?.id, itemName: 'y', unitPriceCents: 1, quantity: 1, position: 1 }] } },
+      select: { lines: { orderBy: { position: 'asc' }, select: { id: true } } },
+    });
+    const twelve = classItem?.sessions.find((s) => s.seats === 12);
+    await write.sessionBooking.create({ data: { sessionId: twelve?.id ?? '', orderLineId: order.lines[0]?.id ?? '', seats: 3 } });
+    await write.itemCode.updateMany({ where: { itemId: codesItem?.id, code: 'AAA' }, data: { orderLineId: order.lines[1]?.id } });
+    const store = await getOwnerStore(digitalAccountId);
+    expect(store?.items[1]?.codesLeft).toBe(2);
+    expect(store?.items[2]?.sessions.map((s) => [s.seats, s.booked, s.seatsLeft])).toEqual([[12, 3, 9], [5, 0, 5]]);
+  });
+
+  it('tells a visitor what a digital item is, whether it is sold out, and nothing private', async () => {
+    const before = new Date('2026-11-01T00:00:00Z');
+    const shop = await getPublicShop('sq-digital', before);
+    const [book, codes, session, cake] = shop?.items ?? [];
+    expect(book).toMatchObject({ kind: 'DIGITAL', delivery: 'FILES', format: { kinds: ['PDF'], count: 2 }, soldOut: false, sessions: [] });
+    expect(codes).toMatchObject({ delivery: 'CODES', soldOut: false });
+    // Times to come only, soonest first, with the seats left and where it runs, never the meeting link.
+    expect(session).toMatchObject({ delivery: 'SESSION', minutes: 90, place: 'ONLINE', soldOut: false });
+    expect(session?.sessions.map((t) => [t.startsAt, t.seatsLeft])).toEqual([['2026-12-01T12:00:00.000Z', 9], ['2026-12-02T12:00:00.000Z', 5]]);
+    // Leftover files and codes on a physical item change nothing.
+    expect(cake).toMatchObject({ kind: 'PHYSICAL', format: null, soldOut: false, sessions: [] });
+    const json = JSON.stringify(shop);
+    for (const secret of ['meet.example', 'AAA', 'BBB', 'digital/p/i']) expect(json).not.toContain(secret);
+    expect(json).not.toContain('accessUrl');
+  });
+
+  it('is sold out with no codes left, and with no time to come that has a seat', async () => {
+    const page = await write.page.findFirstOrThrow({ where: { accountId: digitalAccountId }, select: { id: true } });
+    const line = await write.orderLine.findFirstOrThrow({ where: { order: { pageId: page.id } }, select: { id: true } });
+    expect((await getPublicShop('sq-digital', new Date('2027-01-01T00:00:00Z')))?.items[2]).toMatchObject({ soldOut: true, sessions: [] });
+    await write.itemCode.updateMany({ where: { item: { pageId: page.id }, orderLineId: null }, data: { orderLineId: line.id } });
+    expect((await getPublicShop('sq-digital', new Date('2026-11-01T00:00:00Z')))?.items[1]).toMatchObject({ soldOut: true });
+    // A FILES item with no file, and a LINK item with no link, are sold out as well.
+    await write.item.create({ data: { pageId: page.id, name: 'Empty', slug: 'empty', position: 9, available: true, priceCents: 100, kind: 'DIGITAL', delivery: 'FILES' } });
+    await write.item.create({ data: { pageId: page.id, name: 'Nolink', slug: 'nolink', position: 10, available: true, priceCents: 100, kind: 'DIGITAL', delivery: 'LINK' } });
+    const items = (await getPublicShop('sq-digital'))?.items ?? [];
+    expect(items.find((i) => i.slug === 'empty')?.soldOut).toBe(true);
+    expect(items.find((i) => i.slug === 'nolink')?.soldOut).toBe(true);
   });
 
   it('says whether CHIP is connected, and nothing about the key', async () => {

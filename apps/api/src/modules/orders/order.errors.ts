@@ -1,5 +1,7 @@
+import type { DigitalFacts } from '@curios/core/digital';
+
 /** What PRICES_CHANGED hands back: the shelf, in getPublicShop's item shape. */
-export interface ShelfItem {
+interface ShelfBase {
   id: string;
   name: string;
   description: string | null;
@@ -7,6 +9,9 @@ export interface ShelfItem {
   priceCents: number | null;
   options: { id: string; label: string; priceCents: number }[];
 }
+
+/** A shelf item with the digital facts the shop shows (see digitalFacts). */
+export type ShelfItem = ShelfBase & DigitalFacts;
 
 /** The Store is off: there is no shop to order from. */
 export class StoreClosedError extends Error {
@@ -156,5 +161,85 @@ export class OrderJustPaidError extends Error {
   constructor() {
     super('This order was just paid online.');
     this.name = 'OrderJustPaidError';
+  }
+}
+
+/** A digital item with nothing left to give: no file, no link, or the last code or seat is gone. */
+export class SoldOutError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'SOLD_OUT';
+  constructor(name: string) {
+    super(`${name} is sold out.`);
+    this.name = 'SoldOutError';
+  }
+}
+
+/** The class time picked is full, has passed, or is not one of this item's. */
+export class TimeFullError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'TIME_FULL';
+  constructor(name: string) {
+    super(`That time for ${name} is full or has passed. Pick another time.`);
+    this.name = 'TimeFullError';
+  }
+}
+
+/** A digital item in the basket and no email to send it to. */
+export class EmailRequiredError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'EMAIL_REQUIRED';
+  constructor() {
+    super('Add the email where we should send your digital items.');
+    this.name = 'EmailRequiredError';
+  }
+}
+
+/** A session item with no time picked in the basket line. */
+export class TimeRequiredError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'TIME_REQUIRED';
+  constructor(name: string) {
+    super(`Pick a time for ${name}.`);
+    this.name = 'TimeRequiredError';
+  }
+}
+
+/** How to get the order contradicts its basket: a day or method on a digital-only order, or none on one with a physical item. */
+export class OrderShapeError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_ORDER';
+  constructor(message: string) {
+    super(message);
+    this.name = 'OrderShapeError';
+  }
+}
+
+/** A download or access link was asked for on an order that is not paid (or was cancelled). */
+export class OrderNotPaidError extends Error {
+  readonly statusCode = 410;
+  readonly code = 'ORDER_NOT_PAID';
+  constructor() {
+    super('This order is not paid, so there is nothing to download. Open your order page to see where it is.');
+    this.name = 'OrderNotPaidError';
+  }
+}
+
+/** The grant's five uses are spent. */
+export class DownloadUsedUpError extends Error {
+  readonly statusCode = 410;
+  readonly code = 'DOWNLOAD_USED_UP';
+  constructor() {
+    super('This download has been used the most times it allows. Ask the shop for new links.');
+    this.name = 'DownloadUsedUpError';
+  }
+}
+
+/** The grant's 30 days are over. */
+export class DownloadExpiredError extends Error {
+  readonly statusCode = 410;
+  readonly code = 'DOWNLOAD_EXPIRED';
+  constructor() {
+    super('This download link has expired. Ask the shop for new links.');
+    this.name = 'DownloadExpiredError';
   }
 }
