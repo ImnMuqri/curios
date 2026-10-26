@@ -299,7 +299,7 @@ export function ReviewQueue({
           <h3>
             Once accepted, the chat can say<span>Live as you edit</span>
           </h3>
-          <div className={`${bento.theme} ${styles.chat}`} {...(look ? themeAttrs(look) : {})}>
+          <div className={`${bento.theme} ${styles.chat}`} {...(look ? themeAttrs(look) : {})} data-island="">
             <span className={styles.chatLabel}>
               <i aria-hidden="true" />
               On your page

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import {
   isHexColor,
+  accentShowsOn,
   readableOn,
   type HeadingFont,
   type PageBackground,
@@ -104,6 +105,8 @@ export function themeAttrs(theme: {
     'data-on-accent': readableOn(theme.accentColor),
     style: {
       '--accent': theme.accentColor,
+      // The chat's dot sits on the page itself: where the accent would vanish into it, the text colour.
+      ...(accentShowsOn(theme.accentColor, background, custom) ? {} : { '--accent-mark': 'var(--page-fg)' }),
       '--font-heading': HEADING_FONT_VAR[theme.headingFont],
       ...(custom ? { '--custom-bg': custom } : {}),
     } as CSSProperties,

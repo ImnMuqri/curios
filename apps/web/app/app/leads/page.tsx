@@ -63,8 +63,11 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   }
 
 
+  // Keyed by the cursor: "Older leads" is a client-side navigation, and each page of leads starts
+  // fresh (no filter, its first lead open), as it did when every page was a full load.
   return (
     <Leads
+      key={before ?? ''}
       leads={shown}
       paging={paging}
       stats={stats}

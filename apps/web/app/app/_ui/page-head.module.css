@@ -1,4 +1,5 @@
 .head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 14px;
@@ -32,6 +33,16 @@
   margin-left: 0;
 }
 
+/* Last, at the far end: pushed there itself only when no note or actions did it already. */
+.theme {
+  margin-left: auto;
+}
+
+.note ~ .theme,
+.actions ~ .theme {
+  margin-left: 0;
+}
+
 @media (max-width: 760px) {
   .head {
     flex-wrap: wrap;
@@ -47,5 +58,11 @@
   /* The actions flow after the title one by one, wrapping as they need to. */
   .actions {
     display: contents;
+  }
+
+  /* With no note to push it and the actions flowing, the switch keeps to the right of its line. */
+  .note ~ .theme,
+  .actions ~ .theme {
+    margin-left: auto;
   }
 }

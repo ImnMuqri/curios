@@ -167,6 +167,13 @@ describe('ready to take orders', () => {
   it('asks a shop of digital items alone for no pickup or delivery', () => {
     show({ ...ready, enabled: false, pickupEnabled: false, deliveryMode: 'NONE' }, items.map((i) => ({ ...i, kind: 'DIGITAL' as const, delivery: 'CODES' as const })));
     expect(steps().queryByRole('button', { name: /Turn on pickup or delivery/ })).toBeNull();
+    // And says how they do reach the customer, rather than nothing.
+    expect(steps().getByRole('button', { name: /Getting it to them Sent by email/ })).toHaveAttribute('data-ok', 'true');
+  });
+
+  it('names free delivery, which has no fee to show', () => {
+    show({ ...ready, pickupEnabled: false, deliveryMode: 'FLAT', deliveryFeeCents: 0 });
+    expect(steps().getByRole('button', { name: /Getting it to them Free delivery/ })).toBeInTheDocument();
   });
 });
 
@@ -251,6 +258,31 @@ describe('the items', () => {
 });
 
 describe('the preview', () => {
+  it('offers no Item or Pay screen while there is nothing to open or buy, and says why', () => {
+    show(ready, []);
+    const tab = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Item' });
+    expect(tab).toBeDisabled();
+    expect(tab).toHaveAttribute('title', 'Add an item to see its page here');
+    const pay = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Pay' });
+    expect(pay).toBeDisabled();
+    expect(pay).toHaveAttribute('title', 'Add an item to see how paying looks');
+  });
+
+  it('shows the shop, never an order of nothing, when it opens on Payment with no items', () => {
+    render(<StoreEditor initial={ready} items={[]} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="payment" {...apis()} />);
+    const tabs = within(screen.getByRole('tablist', { name: 'Preview screen' }));
+    expect(tabs.getByRole('tab', { name: 'Shop' })).toHaveAttribute('aria-selected', 'true');
+    expect(tabs.getByRole('tab', { name: 'Pay' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.queryByText('RM0')).toBeNull();
+  });
+
+  it('says orders are paused on the phone when the shop is off, and open when it is on', () => {
+    show({ ...ready, enabled: false });
+    const phone = within(screen.getByRole('region', { name: 'Live preview of your shop' }));
+    expect(phone.getByText('Orders paused')).toBeInTheDocument();
+    expect(phone.queryByText('Open for orders')).toBeNull();
+  });
+
   const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
 
   // The previews are the customer pages themselves, so each carries a landmark only the real page has.

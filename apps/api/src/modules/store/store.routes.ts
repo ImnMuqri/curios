@@ -10,6 +10,7 @@ import { AVATAR_MAX_BYTES, decodeImage } from '../pages/avatar.js';
 import { StorageNotConfiguredError } from '../pages/page.routes.js';
 import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import { clearPaymentQr, getStoreSettings, setPaymentQr, updateStoreSettings } from './settings.service.js';
+import { redrawDuitNowQr, REDRAWN_PREFIX } from './payment-qr.js';
 import { addItem, clearItemPhoto, listItems, removeItem, reorderItems, setItemPhoto, updateItem } from './item.service.js';
 import {
   addCodes,
@@ -112,10 +113,13 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
     if (!request.account) throw new UnauthenticatedError();
     const page = await storePageFor(app.prisma, request.account.id);
     if (!store) throw new StorageNotConfiguredError();
-    const { body, ext } = decodeImage(request.body, AVATAR_MAX_BYTES);
+    const { body } = decodeImage(request.body, AVATAR_MAX_BYTES);
+    // What is kept is not the picture but the QR read out of it, redrawn in DuitNow pink
+    // (payment-qr.ts); a picture with no DuitNow QR to read is refused here, before storage.
+    const qr = await redrawDuitNowQr(body);
     // Random, so a replaced QR is never served from a stale cache.
-    const key = `qr/${page.id}/${randomUUID()}.${ext}`;
-    await store.put(key, body, request.body.contentType);
+    const key = `qr/${page.id}/${REDRAWN_PREFIX}${randomUUID()}.png`;
+    await store.put(key, qr, 'image/png');
     const old = await setPaymentQr(app.prisma, page.id, key);
     if (old) {
       await store.remove(old).catch((error: unknown) =>

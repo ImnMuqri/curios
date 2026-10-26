@@ -58,3 +58,38 @@ export function withoutContactDetails(text: string): string {
     .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, REMOVED)
     .replace(/[+(]?\d(?:[\s\-().]*\d){8,14}/g, REMOVED);
 }
+
+/**
+ * A run of digits, spaced, dashed or bracketed however, long enough to be a phone number. Whether
+ * it is one is `phoneKey`'s call.
+ */
+const PHONE_CANDIDATE = /\+?\(?\d(?:[\s\-().]*\d){7,14}/g;
+
+/**
+ * A phone number's digits without its country code or trunk zero -- "+60 11-2953 9716",
+ * "011-29539716" and "wa.me/601129539716" are all "1129539716" -- or null when the candidate is
+ * not a phone number. A phone number is Malaysian (60 or 0, then 8 to 10 digits) or any number
+ * written with a +. A price, a date, a postcode or a bank account is none of these.
+ */
+function phoneKey(candidate: string): string | null {
+  const digits = candidate.replace(/\D/g, '');
+  if (candidate.trimStart().startsWith('+') && digits.length >= 8 && digits.length <= 15) {
+    return digits.startsWith('60') ? digits.slice(2) : digits;
+  }
+  if (/^60\d{8,10}$/.test(digits)) return digits.slice(2);
+  if (/^0\d{8,10}$/.test(digits)) return digits.slice(1);
+  return null;
+}
+
+/** Every phone number in `text`, as `phoneKey` gives them, so two spellings of one number match. */
+export function phoneNumbersIn(text: string): string[] {
+  return [...text.matchAll(PHONE_CANDIDATE)].flatMap((m) => {
+    const key = phoneKey(m[0]);
+    return key ? [key] : [];
+  });
+}
+
+/** The text with every phone number in it replaced. An email or any other number is left alone. */
+export function withoutPhoneNumbers(text: string, replacement = REMOVED): string {
+  return text.replace(PHONE_CANDIDATE, (m) => (phoneKey(m) ? replacement : m));
+}

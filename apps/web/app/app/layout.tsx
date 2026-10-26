@@ -11,6 +11,7 @@ import { AppFrame } from './app-frame.js';
 import { alertsFor, billingNeedsYou } from './alerts.js';
 import { planLabel } from './plan-label.js';
 import { resolveOwner } from './session.js';
+import { parseTheme, THEME_COOKIE } from './theme.js';
 
 /**
  * The second of the three session layers, and the first that proves anything.
@@ -20,7 +21,8 @@ import { resolveOwner } from './session.js';
  * and this is where the database is asked.
  */
 export default async function AppLayout({ children }: { children: ReactNode }) {
-  const value = (await cookies()).get(SESSION_COOKIE)?.value;
+  const jar = await cookies();
+  const value = jar.get(SESSION_COOKIE)?.value;
   const owner = await resolveOwner(value);
 
   if (!owner) redirect('/signin');
@@ -75,6 +77,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       mode={page.mode}
       alerts={alertsFor({ plan, usage, now, orders, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
       billingDot={billingNeedsYou(plan, orders)}
+      theme={parseTheme(jar.get(THEME_COOKIE)?.value)}
     >
       {children}
     </AppFrame>

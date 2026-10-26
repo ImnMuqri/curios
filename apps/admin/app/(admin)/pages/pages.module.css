@@ -450,3 +450,19 @@
     padding: 18px 16px 48px;
   }
 }
+
+/* Previous and Next under the table, as the audit log's Older and Newest. */
+.more {
+  display: flex;
+  gap: 16px;
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+.more a {
+  color: #2340c8;
+  font-weight: 500;
+  text-decoration: none;
+}
+.more a:hover {
+  text-decoration: underline;
+}

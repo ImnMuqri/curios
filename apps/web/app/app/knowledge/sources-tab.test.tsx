@@ -151,6 +151,8 @@ describe('SourceList', () => {
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalledTimes(1));
     expect(screen.getByText('3 new facts are waiting for you.')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Go to Review' })).toHaveAttribute('href', '/app/review');
+    // A space between the sentence and the link, not "you.Go to Review".
+    expect(screen.getByRole('link', { name: 'Go to Review' }).parentElement).toHaveTextContent('3 new facts are waiting for you. Go to Review', { normalizeWhitespace: false });
   });
 
   it('does not re-read while a row is still reading', async () => {

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { OwnerTopic } from '@curios/db-read';
+import type { OwnerTopic, TopicChoice, TopicTotals } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { PageHead } from '../_ui/page-head.js';
 import ui from '../_ui/editor.module.css';
@@ -31,6 +32,11 @@ const FILTERS: { id: Filter; label: string }[] = [
  */
 export function QuestionsScreen({
   topics,
+  paging = { page: 1, hasNext: false },
+  show = 'all',
+  onShow,
+  totals,
+  choices,
   askedThisWeek,
   answerRate,
   publishesFaq,
@@ -46,6 +52,16 @@ export function QuestionsScreen({
   onChanged,
 }: {
   topics: OwnerTopic[];
+  /** Which seven, most asked first, and whether more follow. */
+  paging?: { page: number; hasNext: boolean };
+  /** The filter the server applied before paging (`?show=`). */
+  show?: Filter;
+  /** Asks the server for another filter's list; left out, a filter only narrows the topics in hand. */
+  onShow?: (show: Filter) => void;
+  /** Figures over every topic, not this screenful; left out, they are counted from `topics`. */
+  totals?: TopicTotals;
+  /** Every topic, to merge into from any page; left out, the topics in hand. */
+  choices?: TopicChoice[];
   askedThisWeek: number;
   /** Of the last thirty days' asks with a recorded outcome, how many the chat could answer. */
   answerRate: { answered: number; recorded: number };
@@ -63,14 +79,15 @@ export function QuestionsScreen({
   actions: TopicActions;
   onChanged: () => void;
 }) {
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(show);
   const [selected, setSelected] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const { say, toast } = useToast(2600);
 
   const needs = topics.filter((topic) => topicState(topic) !== 'answered');
-  const totalAsks = topics.reduce((sum, topic) => sum + topic.askCount, 0);
-  const answeredAsks = topics.filter((topic) => topicState(topic) === 'answered').reduce((sum, topic) => sum + topic.askCount, 0);
+  const waiting = totals?.needs ?? needs.length;
+  const totalAsks = totals?.asks ?? topics.reduce((sum, topic) => sum + topic.askCount, 0);
+  const answeredAsks = totals?.answeredAsks ?? topics.filter((topic) => topicState(topic) === 'answered').reduce((sum, topic) => sum + topic.askCount, 0);
   // The board's figure, from what the chat recorded of each ask; until it has
   // recorded any, the share with the owner's own answer, which is the most
   // that can be said without guessing (and never more than the true share).
@@ -113,7 +130,7 @@ export function QuestionsScreen({
         </li>
         <li className={inbox.kpi}>
           <span>
-            <b>{needs.length}</b>
+            <b>{waiting}</b>
             <span>Topics waiting for your answer</span>
           </span>
         </li>
@@ -125,7 +142,8 @@ export function QuestionsScreen({
         </li>
       </ul>
 
-      {topics.length === 0 ? (
+      {/* No topics at all: a filter that matches none is the list's own empty line, below. */}
+      {(choices ? choices.length : topics.length) === 0 ? (
         <div className={inbox.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <div className={inbox.detail} style={{ display: 'grid', placeItems: 'center', minHeight: 420 }}>
             <div className={ui.empty} style={{ border: 0 }}>
@@ -159,9 +177,12 @@ export function QuestionsScreen({
           <div className={inbox.list}>
             <div className={inbox.filters} role="tablist" aria-label="Show topics" style={{ '--at': FILTERS.findIndex((f) => f.id === filter), '--n': FILTERS.length } as CSSProperties}>
               {FILTERS.map((f) => (
-                <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
+                <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => {
+                  setFilter(f.id);
+                  onShow?.(f.id);
+                }}>
                   {f.label}
-                  {f.id === 'needs' && needs.length > 0 ? <i aria-label={`${needs.length} waiting`}>{needs.length}</i> : null}
+                  {f.id === 'needs' && waiting > 0 ? <i aria-label={`${waiting} waiting`}>{waiting}</i> : null}
                 </button>
               ))}
             </div>
@@ -206,13 +227,19 @@ export function QuestionsScreen({
                 })}
               </ul>
             )}
+            {paging.page > 1 || paging.hasNext ? (
+              <nav className={inbox.pager} aria-label="More topics">
+                {paging.page > 1 ? <Link href={listHref(show, paging.page - 1)}>Previous</Link> : null}
+                {paging.hasNext ? <Link href={listHref(show, paging.page + 1)}>Next</Link> : null}
+              </nav>
+            ) : null}
           </div>
           <div className={inbox.detail}>
             {chosen ? (
               <TopicDetail
                 key={chosen.id}
                 topic={chosen}
-                others={topics.filter((topic) => topic.id !== chosen.id)}
+                others={(choices ?? topics).filter((topic) => topic.id !== chosen.id)}
                 publishesFaq={publishesFaq}
                 faqMinAsks={faqMinAsks}
                 handle={handle}
@@ -235,10 +262,19 @@ export function QuestionsScreen({
   );
 }
 
+/** The list's address for a filter and page: the first page of All is plain /app/questions. */
+export function listHref(show: Filter, page = 1): string {
+  const query = new URLSearchParams();
+  if (show !== 'all') query.set('show', show);
+  if (page > 1) query.set('page', String(page));
+  const text = query.toString();
+  return text ? `/app/questions?${text}` : '/app/questions';
+}
+
 const post = (path: string, body: unknown) => apiFetch(path, { method: 'POST', body: JSON.stringify(body) }).then(() => undefined);
 
 /** Supplies the real mutations; a Server Component may not hand closures across the RSC boundary. */
-export function Questions(props: Omit<Parameters<typeof QuestionsScreen>[0], 'actions' | 'onChanged' | 'now'> & { now: string }) {
+export function Questions(props: Omit<Parameters<typeof QuestionsScreen>[0], 'actions' | 'onChanged' | 'now' | 'onShow'> & { now: string }) {
   const router = useRouter();
 
   const actions: TopicActions = {
@@ -253,5 +289,5 @@ export function Questions(props: Omit<Parameters<typeof QuestionsScreen>[0], 'ac
     deleteWording: (id) => apiFetch(`/questions/${id}`, { method: 'DELETE' }).then(() => undefined),
   };
 
-  return <QuestionsScreen {...props} now={new Date(props.now)} actions={actions} onChanged={() => router.refresh()} />;
+  return <QuestionsScreen {...props} now={new Date(props.now)} actions={actions} onChanged={() => router.refresh()} onShow={(show) => router.push(listHref(show))} />;
 }

@@ -193,7 +193,7 @@ export function LeadDetail({
             <h3 className={styles.pairTitle}>
               The conversation<span>{lead.messageCount} messages</span>
             </h3>
-            <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} aria-label="The conversation">
+            <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} data-island="" aria-label="The conversation">
               {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
                 <Line key={i} line={line} name={displayName} />
               ))}

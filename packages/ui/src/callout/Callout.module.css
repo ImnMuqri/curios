@@ -5,6 +5,16 @@
   font-size: var(--callout-size, var(--text-body));
 }
 
+/*
+ * Room above, when something comes before it: an error shown after the thing that failed (a
+ * gallery, a list, a button) would otherwise sit flush against it. In block flow this collapses
+ * into a larger margin above it, so a callout after a field, which already leaves 16px, moves not
+ * at all.
+ */
+* + .callout {
+  margin-top: 12px;
+}
+
 .error {
   background: var(--paper);
   border: 1.5px solid var(--merah);

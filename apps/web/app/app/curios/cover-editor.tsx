@@ -64,6 +64,11 @@ export function CoverEditor({
       setBusy(false);
     }
   };
+  const remove = () =>
+    void run(async () => {
+      await removeCover();
+      return { coverKey: null, coverUrl: null };
+    }, 'That did not save. Try again.');
 
   return (
     <section className={ui.section} aria-labelledby="cover-title">
@@ -76,27 +81,28 @@ export function CoverEditor({
           aria-pressed={!coverKey}
           aria-label="No photo"
           disabled={busy}
-          onClick={() =>
-            coverKey
-              ? void run(async () => {
-                  await removeCover();
-                  return { coverKey: null, coverUrl: null };
-                }, 'That did not save. Try again.')
-              : undefined
-          }
+          onClick={() => (coverKey ? remove() : undefined)}
         >
-          <span className={`${bento.theme} ${styles.solid}`} {...themeAttrs(look)} aria-hidden="true">
+          <span className={`${bento.theme} ${styles.solid}`} {...themeAttrs(look)} data-island="" aria-hidden="true">
             <i />
             <em />
             <em />
           </span>
           <span className={styles.caption} aria-hidden="true">No photo</span>
         </button>
+        {/* The delete sits beside the tile, not in it: a button cannot hold another. Deleting goes back to No photo. */}
         {ownPhoto ? (
-          <button type="button" className={styles.galleryTile} aria-pressed aria-label="Your own photo" disabled={busy}>
-            <img src={ownPhoto} alt="" />
-            <span className={styles.caption} aria-hidden="true">Your photo</span>
-          </button>
+          <span className={styles.ownTile}>
+            <button type="button" className={styles.galleryTile} aria-pressed aria-label="Your own photo" disabled={busy}>
+              <img src={ownPhoto} alt="" />
+              <span className={styles.caption} aria-hidden="true">Your photo</span>
+            </button>
+            <button type="button" className={styles.deleteCover} aria-label="Delete your photo" title="Delete" disabled={busy} onClick={remove}>
+              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                <path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />
+              </svg>
+            </button>
+          </span>
         ) : null}
         {STOCK_COVERS.map((name) => (
           <button
@@ -108,7 +114,9 @@ export function CoverEditor({
             disabled={busy}
             onClick={() => (chosenStock === name ? undefined : void run(() => chooseStock(name), 'That did not save. Try again.'))}
           >
-            <img src={`/covers/${name}.webp`} alt="" loading="lazy" />
+            {/* A 480px thumbnail: the tile is at most about 200px wide, and the six full covers were
+                half of everything My Curios downloaded on opening. */}
+            <img src={`/covers/thumbs/${name}.webp`} alt="" loading="lazy" />
             <span className={styles.caption} aria-hidden="true">{STOCK_NAMES[name]}</span>
           </button>
         ))}

@@ -48,12 +48,21 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
   // the wire is the cheaper trade.
   const requestBody = init.body === undefined && method !== 'GET' && method !== 'HEAD' ? '{}' : init.body;
 
-  const response = await fetch(`${BASE}${path}`, {
-    ...init,
-    body: requestBody,
-    credentials: 'include',
-    headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${BASE}${path}`, {
+      ...init,
+      body: requestBody,
+      credentials: 'include',
+      headers: { 'content-type': 'application/json', ...(init.headers ?? {}) },
+    });
+  } catch (failure) {
+    // No answer at all: offline, or the API is down. The browser's own words for it ("Failed to
+    // fetch", "Load failed", "NetworkError when...") differ by browser and mean nothing to an
+    // owner, so this says it in one sentence, as send-file.ts does. A deliberate abort stays one.
+    if (failure instanceof DOMException && failure.name === 'AbortError') throw failure;
+    throw new ApiError(0, 'NETWORK', 'Could not reach Curios. Check your connection and try again.');
+  }
 
   if (response.ok) return (await response.json().catch(() => null)) as T;
 

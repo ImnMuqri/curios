@@ -20,7 +20,8 @@ export function PreviewFrame<Id extends string>({
 }: {
   label: string;
   tabsLabel: string;
-  tabs: readonly { id: Id; label: string }[];
+  /** `hint` says why a tab cannot be chosen yet, as its tooltip; such a tab is disabled. */
+  tabs: readonly { id: Id; label: string; hint?: string }[];
   selected: Id;
   onSelect: (id: Id) => void;
   overlay?: ReactNode;
@@ -29,9 +30,12 @@ export function PreviewFrame<Id extends string>({
   return (
     <section className={styles.preview} aria-label={label}>
       <div className={styles.phone}>
-        <div className={styles.screen}>
-          <div className={styles.scroll}>{children}</div>
-          {overlay}
+        <div className={styles.screen} data-island="">
+          {/* A real phone's width, scaled into the frame: the page's own sizes, not squeezed. */}
+          <div className={styles.device}>
+            <div className={styles.scroll}>{children}</div>
+            {overlay}
+          </div>
         </div>
       </div>
       <div
@@ -42,7 +46,7 @@ export function PreviewFrame<Id extends string>({
       >
         <span className={styles.segThumb} aria-hidden="true" />
         {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={selected === t.id} onClick={() => onSelect(t.id)}>
+          <button key={t.id} type="button" role="tab" aria-selected={selected === t.id} disabled={t.hint !== undefined} title={t.hint} onClick={() => onSelect(t.id)}>
             {t.label}
           </button>
         ))}

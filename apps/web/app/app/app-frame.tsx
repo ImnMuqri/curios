@@ -1,11 +1,15 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
 import type { Alert } from './alerts.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
+import { NavProgressProvider } from './_ui/nav-progress.js';
+import { ThemeContext } from './_ui/theme-switch.js';
+import { THEME_COOKIE, type Theme } from './theme.js';
 import styles from './app-frame.module.css';
 
 type Item = { href: string; label: string; icon: ReactNode; count?: keyof NavBadges; business?: true };
@@ -71,6 +75,7 @@ export function AppFrame({
   alerts = [],
   billingDot = false,
   bare = false,
+  theme: savedTheme = 'system',
   children,
 }: {
   displayName: string;
@@ -86,9 +91,22 @@ export function AppFrame({
   billingDot?: boolean;
   /** No page yet: no frame, only the screen. */
   bare?: boolean;
+  /** The owner's choice from the header's switch (theme.ts); the layout reads it from the cookie. */
+  theme?: Theme;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
+  const [theme, setTheme] = useState(savedTheme);
+  const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
+  const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
+  const choose = (next: Theme) => {
+    setTheme(next);
+    // A year, and only for the dashboard. Match device is no cookie at all.
+    document.cookie =
+      next === 'system'
+        ? `${THEME_COOKIE}=; Path=/app; Max-Age=0; SameSite=Lax`
+        : `${THEME_COOKIE}=${next}; Path=/app; Max-Age=31536000; SameSite=Lax`;
+  };
   // Onboarding is its own full screen, as the design handoff's Onboarding
   // board draws it, before and after the page exists. Both of those return
   // the screen in the same place, so claiming the page mid-onboarding does
@@ -97,58 +115,73 @@ export function AppFrame({
   const initials = displayName.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
 
   return (
-    <div className={styles.frame}>
-      <aside className={styles.side}>
-        <a href="/app/curios" className={styles.brand}>
-          <Wordmark />
-          <span className={styles.srOnly}>Curios dashboard</span>
-        </a>
-        <nav aria-label="Dashboard" className={styles.nav}>
-          {GROUPS.map((group) => {
-            const items = group.items.filter((item) => !item.business || mode === 'BUSINESS');
-            return (
-              <div key={group.title} className={styles.group}>
-                <p className={styles.groupTitle}>{group.title}</p>
-                {items.map((item) => {
-                  const count = item.count ? badges[item.count] : 0;
-                  return (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      className={styles.item}
-                      aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
-                    >
-                      {item.icon}
-                      <span className={styles.label}>{item.label}</span>
-                      {count > 0 ? <span className={styles.count}>{count}</span> : null}
-                      {billingDot && item.href === '/app/billing' ? (
-                        <span className={styles.dot}>
-                          <span className={styles.srOnly}>, needs you</span>
-                        </span>
-                      ) : null}
-                    </a>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </nav>
-        <div className={styles.who}>
-          {avatarUrl ? (
-            <img className={styles.avatar} src={avatarUrl} alt="" width={30} height={30} />
-          ) : (
-            <span className={styles.avatar} aria-hidden="true">{initials}</span>
-          )}
-          <span className={styles.whoText}>
-            <b>{displayName}</b>
-            <span>{planLabel}</span>
-          </span>
-        </div>
-      </aside>
+    <ThemeContext.Provider value={{ theme, choose }}>
+      <div className={styles.frame} data-theme={theme}>
+        <aside className={styles.side}>
+          <Link href="/app/curios" className={styles.brand}>
+            <Wordmark />
+            <span className={styles.srOnly}>Curios dashboard</span>
+          </Link>
+          <nav aria-label="Dashboard" className={styles.nav}>
+            {GROUPS.map((group) => {
+              const items = group.items.filter((item) => !item.business || mode === 'BUSINESS');
+              return (
+                <div key={group.title} className={styles.group}>
+                  <p className={styles.groupTitle}>{group.title}</p>
+                  {items.map((item) => {
+                    const count = item.count ? badges[item.count] : 0;
+                    // Link, not <a>: a client-side navigation fetches only the screen, where a full
+                    // load re-sent the whole document, its styles and the frame (about 85 kB and a
+                    // re-hydrate per click, measured on a busy shop). The counts come with the
+                    // frame, so they refresh with any change made (router.refresh) or a reload.
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        // The whole screen, its data and its code, is fetched once the owner points
+                        // at it (hover, touch or focus), so the click has little left to wait for.
+                        // Not before: prefetching all nine on every load would render each one.
+                        prefetch={pointedAt.has(item.href) ? true : null}
+                        onMouseEnter={() => point(item.href)}
+                        onTouchStart={() => point(item.href)}
+                        onFocus={() => point(item.href)}
+                        className={styles.item}
+                        aria-current={pathname.startsWith(item.href) ? 'page' : undefined}
+                      >
+                        {item.icon}
+                        <span className={styles.label}>{item.label}</span>
+                        {count > 0 ? <span className={styles.count}>{count}</span> : null}
+                        {billingDot && item.href === '/app/billing' ? (
+                          <span className={styles.dot}>
+                            <span className={styles.srOnly}>, needs you</span>
+                          </span>
+                        ) : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </nav>
+          <div className={styles.who}>
+            {avatarUrl ? (
+              <img className={styles.avatar} src={avatarUrl} alt="" width={30} height={30} />
+            ) : (
+              <span className={styles.avatar} aria-hidden="true">{initials}</span>
+            )}
+            <span className={styles.whoText}>
+              <b>{displayName}</b>
+              <span>{planLabel}</span>
+            </span>
+          </div>
+        </aside>
 
-      <main className={styles.main}>
-        <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
-      </main>
-    </div>
+        <main className={styles.main}>
+          <NavProgressProvider>
+            <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
+          </NavProgressProvider>
+        </main>
+      </div>
+    </ThemeContext.Provider>
   );
 }

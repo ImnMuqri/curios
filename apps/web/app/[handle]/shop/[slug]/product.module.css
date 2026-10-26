@@ -48,7 +48,8 @@
   align-items: center;
   gap: 10px;
   height: 60px;
-  padding: 0 12px;
+  /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
+  padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
   background: var(--page-bg);
 }
 
@@ -123,7 +124,8 @@
   display: grid;
   place-items: center;
   aspect-ratio: 4 / 3;
-  margin: 0 20px;
+  /* Apart from the top bar: its round buttons sat right on the photo's edge. */
+  margin: 16px 20px 0;
   overflow: hidden;
   border-radius: 24px;
   background: var(--warm);
@@ -323,11 +325,22 @@
   box-shadow: 0 14px 30px -14px rgb(0 0 0 / 60%);
 }
 
-/* In the Store editor's phone, the bar stays inside the phone. */
+/* In the Store editor's phone, the bar stays inside the phone, and fits its narrower screen. */
 .view[data-inline] .bar {
   position: sticky;
-  bottom: 12px;
-  margin-top: 20px;
+  bottom: var(--phone-inset-bottom, 12px);
+  /* The phone is the screen: the full width of its column, not a screen's width less a margin. */
+  width: auto;
+  margin: 20px var(--phone-inset-x, 8px) 0;
+}
+
+.view[data-inline] .qty button {
+  width: 30px;
+  height: 30px;
+}
+
+.view[data-inline] .go {
+  padding: 0 12px;
 }
 
 .qty {
@@ -371,6 +384,10 @@
   font: inherit;
   font-weight: 600;
   white-space: nowrap;
+  /* A flex item will not shrink below its text unless told: a long price would push the bar wide. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 

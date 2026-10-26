@@ -417,7 +417,7 @@ export function SourceList({
                   {!isReading && outcome ? (
                     outcome.found > 0 ? (
                       <span className={styles.newFacts}>
-                        {outcome.found === 1 ? '1 new fact is waiting for you.' : `${outcome.found} new facts are waiting for you.`}
+                        {outcome.found === 1 ? '1 new fact is waiting for you.' : `${outcome.found} new facts are waiting for you.`}{' '}
                         <a href="/app/review">Go to Review</a>
                       </span>
                     ) : outcome.recheck ? (

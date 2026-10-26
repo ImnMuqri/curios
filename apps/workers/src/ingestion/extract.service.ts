@@ -1,6 +1,7 @@
 import {
   normalizeClaim,
   parseFactBlocks,
+  phoneNumbersIn,
   type IngestJobData,
   type ParsedFact,
   type SourceDocument,
@@ -106,9 +107,14 @@ export async function runExtraction(
     const failure: { error: Error | null } = { error: null };
 
     const writeNew = async (facts: ParsedFact[]) => {
-      const fresh = facts.slice(written);
+      // A fact carrying a phone number is not kept: a CV or a website can hold the owner's private
+      // number, and a fact is what the chat answers from. The owner publishes a number they want
+      // shared as a link (WhatsApp) on My Curios instead.
+      const fresh = facts.slice(written).filter((fact) => phoneNumbersIn(fact.claim).length === 0);
+      const reached = facts.length;
+      if (reached === written) return;
+      written = reached;
       if (fresh.length === 0) return;
-      written = facts.length;
       // skipDuplicates against @@unique([pageId, normalizedClaim]) is what
       // makes re-running this job produce one set of facts rather than two.
       const result = await prisma.fact.createMany({ data: fresh.map((fact) => factRow(job, fact, source)), skipDuplicates: true });

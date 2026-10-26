@@ -40,8 +40,15 @@ const WORDS = { saving: 'Saving…', failed: 'Not saved', saved: 'Saved' } as co
 export function SaveStatus({ state }: { state: keyof typeof WORDS }) {
   return (
     <span className={styles.status} data-state={state} aria-live="polite">
-      <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true">
-        {state === 'saving' ? <path d="M12 3a9 9 0 1 0 9 9" className={styles.spin} /> : state === 'failed' ? <path d="M12 7v6M12 17h.01" /> : <path d="M5 12.5l4.5 4.5L19 7.5" />}
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+        {/* Not saved is a ringed "!": a bare stroke and dot read as a speck beside the tick. */}
+        {state === 'saving' ? (
+          <path d="M12 3a9 9 0 1 0 9 9" className={styles.spin} />
+        ) : state === 'failed' ? (
+          <path d="M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7.5v5.5M12 16.6v.4" />
+        ) : (
+          <path d="M5 12.5l4.5 4.5L19 7.5" />
+        )}
       </svg>
       {WORDS[state]}
     </span>

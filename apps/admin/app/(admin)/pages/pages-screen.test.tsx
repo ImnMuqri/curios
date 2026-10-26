@@ -103,5 +103,21 @@ describe('PagesScreen', () => {
     expect(pagesHref({})).toBe('/pages');
     expect(pagesHref({ filter: 'all' })).toBe('/pages');
     expect(pagesHref({ filter: 'flagged', page: 'x' })).toBe('/pages?filter=flagged&page=x');
+    expect(pagesHref({ q: 'lina', p: 1 })).toBe('/pages?q=lina');
+    expect(pagesHref({ q: 'lina', filter: 'business', p: 3, page: 'x' })).toBe('/pages?q=lina&filter=business&p=3&page=x');
+  });
+
+  it('offers no paging when every row fits', () => {
+    render(<PagesScreen {...base} />);
+    expect(screen.queryByRole('navigation', { name: 'More pages' })).toBeNull();
+  });
+
+  it('pages on with the search and filter kept, and opens a row without losing its page', () => {
+    render(<PagesScreen {...base} q="lina" filter="business" paging={{ page: 2, hasNext: true }} />);
+    const nav = screen.getByRole('navigation', { name: 'More pages' });
+    expect(within(nav).getByRole('link', { name: 'Previous' })).toHaveAttribute('href', '/pages?q=lina&filter=business');
+    expect(within(nav).getByRole('link', { name: 'Next' })).toHaveAttribute('href', '/pages?q=lina&filter=business&p=3');
+    const rowLink = screen.getAllByRole('link').find((a) => (a.getAttribute('href') ?? '').includes('page='));
+    expect(rowLink?.getAttribute('href')).toContain('p=2');
   });
 });

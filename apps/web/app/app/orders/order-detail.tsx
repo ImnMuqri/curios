@@ -24,11 +24,17 @@ export type OrderMove = (orderId: string, action: OrderAction) => Promise<void>;
 
 const KL = 'Asia/Kuala_Lumpur';
 const DAY_MS = 86_400_000;
-const dayOf = (date: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: KL }).format(date);
+// Built once, not per call: the list formats a day for every order it shows.
+const DAY_FORMAT = new Intl.DateTimeFormat('en-CA', { timeZone: KL });
+const CLOCK_FORMAT = new Intl.DateTimeFormat('en-GB', { timeZone: KL, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+const WEEKDAY_FORMAT = new Intl.DateTimeFormat('en-GB', { weekday: 'short', timeZone: KL });
+const DATE_FORMAT = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', timeZone: KL });
+const LABEL_FORMAT = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+const dayOf = (date: Date) => DAY_FORMAT.format(date);
 
 /** "10:02am", in Malaysia. */
 function clock(date: Date): string {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: KL, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(date);
+  const parts = CLOCK_FORMAT.formatToParts(date);
   const hour = Number(parts.find((p) => p.type === 'hour')?.value ?? 0);
   const minute = parts.find((p) => p.type === 'minute')?.value ?? '00';
   return `${hour % 12 || 12}:${minute}${hour < 12 ? 'am' : 'pm'}`;
@@ -39,15 +45,14 @@ export function orderWhen(date: Date, now: Date): string {
   const day = dayOf(date);
   if (day === dayOf(now)) return `today, ${clock(date)}`;
   if (day === dayOf(new Date(now.getTime() - DAY_MS))) return `yesterday, ${clock(date)}`;
-  const options: Intl.DateTimeFormatOptions =
-    now.getTime() - date.getTime() < 7 * DAY_MS ? { weekday: 'short', timeZone: KL } : { day: 'numeric', month: 'short', timeZone: KL };
-  return `${new Intl.DateTimeFormat('en-GB', options).format(date)}, ${clock(date)}`;
+  const format = now.getTime() - date.getTime() < 7 * DAY_MS ? WEEKDAY_FORMAT : DATE_FORMAT;
+  return `${format.format(date)}, ${clock(date)}`;
 }
 
 /** "Sat 17 Oct", from the order's calendar day. */
 export function dayLabel(day: string | null): string {
   if (day === null) return '';
-  const parts = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' }).formatToParts(new Date(`${day}T00:00:00Z`));
+  const parts = LABEL_FORMAT.formatToParts(new Date(`${day}T00:00:00Z`));
   const part = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
   return `${part('weekday')} ${part('day')} ${part('month')}`;
 }

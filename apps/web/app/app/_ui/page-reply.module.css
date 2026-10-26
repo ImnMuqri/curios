@@ -20,13 +20,14 @@
   white-space: normal;
 }
 
-/* The page's accent, as on the public chat's label; it is not dimmed with the words. */
+/* The page's accent, as on the public chat's label (its text colour where the accent would vanish into
+   the page: --accent-mark, from themeAttrs); it is not dimmed with the words. */
 .dot {
   width: 12px;
   height: 12px;
   flex: none;
   border-radius: 50%;
-  background: var(--accent, var(--biru));
+  background: var(--accent-mark, var(--accent, var(--biru)));
 }
 
 .whoName {

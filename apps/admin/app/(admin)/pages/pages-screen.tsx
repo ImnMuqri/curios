@@ -27,10 +27,11 @@ const HEADS: [string, boolean][] = [
 ];
 
 /** The list's own address, with whatever of search, filter and open page is set. */
-export function pagesHref(p: { q?: string; filter?: PageFilter; page?: string }): string {
+export function pagesHref(p: { q?: string; filter?: PageFilter; page?: string; p?: number }): string {
   const qs = new URLSearchParams();
   if (p.q) qs.set('q', p.q);
   if (p.filter && p.filter !== 'all') qs.set('filter', p.filter);
+  if (p.p && p.p > 1) qs.set('p', String(p.p));
   if (p.page) qs.set('page', p.page);
   const s = qs.toString();
   return s ? `/pages?${s}` : '/pages';
@@ -38,6 +39,7 @@ export function pagesHref(p: { q?: string; filter?: PageFilter; page?: string })
 
 export function PagesScreen({
   rows,
+  paging = { page: 1, hasNext: false },
   q,
   filter,
   selectedId,
@@ -45,6 +47,8 @@ export function PagesScreen({
   appUrl,
 }: {
   rows: AdminPageRow[];
+  /** Which fifty, newest first, and whether more follow. */
+  paging?: { page: number; hasNext: boolean };
   q: string;
   filter: PageFilter;
   selectedId?: string | undefined;
@@ -121,11 +125,11 @@ export function PagesScreen({
                   className={`${styles.row} ${styles.pick}`}
                   role="row"
                   aria-selected={p.id === selectedId}
-                  onClick={() => router.push(pagesHref({ q, filter, page: p.id }))}
+                  onClick={() => router.push(pagesHref({ q, filter, p: paging.page, page: p.id }))}
                 >
                   <div className={styles.c} role="cell">
                     <span className={styles.pg}>
-                      <Link href={pagesHref({ q, filter, page: p.id })} onClick={(e) => e.stopPropagation()}>
+                      <Link href={pagesHref({ q, filter, p: paging.page, page: p.id })} onClick={(e) => e.stopPropagation()}>
                         {p.displayName}
                       </Link>
                       <code>curios.my/{p.handle}</code>
@@ -170,6 +174,12 @@ export function PagesScreen({
                 </div>
               )}
             </div>
+            {paging.page > 1 || paging.hasNext ? (
+              <nav className={styles.more} aria-label="More pages">
+                {paging.page > 1 && <Link href={pagesHref({ q, filter, p: paging.page - 1 })}>Previous</Link>}
+                {paging.hasNext && <Link href={pagesHref({ q, filter, p: paging.page + 1 })}>Next</Link>}
+              </nav>
+            ) : null}
           </div>
 
           {detail && (
@@ -177,7 +187,7 @@ export function PagesScreen({
               key={detail.id}
               page={detail}
               appUrl={appUrl}
-              listHref={pagesHref({ q, filter })}
+              listHref={pagesHref({ q, filter, p: paging.page })}
               onToast={setToast}
             />
           )}

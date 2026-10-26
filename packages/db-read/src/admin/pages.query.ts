@@ -89,6 +89,8 @@ export async function listAdminPages(options: {
   q?: string;
   filter?: PageFilter;
   limit?: number;
+  /** Rows to skip, for the table's later pages; createdAt then id orders them, so pages never overlap. */
+  offset?: number;
   now?: Date;
 }): Promise<AdminPageRow[]> {
   const now = options.now ?? new Date();
@@ -111,6 +113,7 @@ export async function listAdminPages(options: {
     where,
     orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: Math.min(Math.max(options.limit ?? 50, 1), 200),
+    skip: Math.max(options.offset ?? 0, 0),
     select: ROW_SELECT,
   });
   if (pages.length === 0) return [];

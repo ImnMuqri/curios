@@ -119,7 +119,7 @@
   font-family: var(--font-body);
 }
 
-/* The dot is the page's accent; the words are 75% of the page's text colour. */
+/* The dot is the page's accent (its text colour where the accent would vanish: --accent-mark); the words are 75% of the page's text colour. */
 .who {
   display: block;
   margin-bottom: 6px;
@@ -128,7 +128,7 @@
   font-weight: 600;
   line-height: 22px;
   color: color-mix(in srgb, var(--page-fg, var(--ink)) 75%, transparent);
-  background: radial-gradient(circle at 11px 11px, var(--accent, var(--biru)) 10.5px, transparent 11px) no-repeat;
+  background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--biru))) 10.5px, transparent 11px) no-repeat;
 }
 
 /*
@@ -477,9 +477,16 @@
   border-radius: 999px;
   background: transparent;
   font-family: var(--font-body);
-  /* 17px: below 16px a phone zooms the page in when the field takes focus. */
   font-size: 14px;
   color: var(--ink);
+}
+
+/* A phone zooms the whole page into a field whose text is under 16px when it takes focus (iOS
+   Safari), and the visitor has to pinch back out. 16px on touch screens; the design's size elsewhere. */
+@media (pointer: coarse) {
+  .input {
+    font-size: 16px;
+  }
 }
 
 .input::placeholder {

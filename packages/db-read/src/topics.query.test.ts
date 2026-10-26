@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { countQuestionsThisWeek, getAnswerRate, getTopics } from './topics.query.js';
+import { countQuestionsThisWeek, getAnswerRate, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -78,6 +78,15 @@ afterAll(async () => {
 });
 
 describe('getTopics', () => {
+  it('pages through topics that tie on asks and time, each exactly once', async () => {
+    const { accountId, pageId } = await anOwnerWithAPage();
+    const at = '2026-10-20T00:00:00Z';
+    const ids = (await Promise.all(['a', 'b', 'c', 'd', 'e'].map((t) => topic(pageId, t, 2, at)))).map((t) => t.id);
+    const pages = await Promise.all([0, 2, 4].map((offset) => getTopics(accountId, { limit: 2, offset })));
+    expect(pages.map((p) => p.length)).toEqual([2, 2, 1]);
+    expect(pages.flat().map((t) => t.id).sort()).toEqual([...ids].sort());
+  });
+
   it('orders by askCount, then most recently asked', async () => {
     const topics = await getTopics(ownerA);
     expect(topics.map((t) => t.title)).toEqual(['Berapa harga kek?', 'Ada delivery?', 'Ada halal?', 'Boleh tempah?']);
@@ -184,5 +193,38 @@ describe('getAnswerRate', () => {
 
     // Two answered of three recorded; the unrecorded one and the old one are left out.
     expect(await getAnswerRate(accountId, now)).toEqual({ answered: 2, recorded: 3 });
+  });
+});
+
+describe('a filtered list, and figures over every topic', () => {
+  let owner = '';
+  let other = '';
+  beforeAll(async () => {
+    const page = await anOwnerWithAPage();
+    owner = page.accountId;
+    await topic(page.pageId, 'harga', 9, '2026-10-20T00:00:00Z');
+    await topic(page.pageId, 'hantar', 7, '2026-10-20T00:00:00Z', { answer: 'Ya' });
+    await topic(page.pageId, 'halal', 5, '2026-10-20T00:00:00Z', { answer: 'Ya', conflictAnswer: 'Tidak' });
+    await topic(page.pageId, 'buka', 3, '2026-10-20T00:00:00Z', { answer: '9 pagi' });
+    await topic(page.pageId, 'tutup', 1, '2026-10-20T00:00:00Z');
+    other = (await anOwnerWithAPage()).accountId;
+  });
+
+  it('filters before paging, so each filter pages through every topic it matches', async () => {
+    const titles = async (show: 'needs' | 'answered', offset: number) =>
+      (await getTopics(owner, { show, limit: 2, offset })).map((t) => t.title);
+    expect(await titles('needs', 0)).toEqual(['harga', 'halal']);
+    expect(await titles('needs', 2)).toEqual(['tutup']);
+    expect(await titles('answered', 0)).toEqual(['hantar', 'buka']);
+  });
+
+  it('counts what needs the owner and the asks across all of them, and only this owner\'s', async () => {
+    expect(await getTopicTotals(owner)).toEqual({ needs: 3, asks: 25, answeredAsks: 10 });
+    expect(await getTopicTotals(other)).toEqual({ needs: 0, asks: 0, answeredAsks: 0 });
+  });
+
+  it('lists every topic to merge into, most asked first', async () => {
+    expect((await getTopicChoices(owner)).map((t) => t.title)).toEqual(['harga', 'hantar', 'halal', 'buka', 'tutup']);
+    expect(await getTopicChoices(other)).toEqual([]);
   });
 });

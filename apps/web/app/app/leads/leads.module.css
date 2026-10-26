@@ -569,30 +569,6 @@
   }
 }
 
-/* Newest and Older leads, under the list: quiet, since most owners never have fifty. */
-.pager {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 16px;
-  border-top: 1px solid var(--line);
-  font-size: 13px;
-}
-
-.pager a {
-  color: var(--ink-soft);
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.pager a:last-child {
-  margin-left: auto;
-}
-
-.pager a:hover {
-  color: var(--ink);
-  text-decoration: underline;
-}
 
 .more {
   margin: 8px 0 0;

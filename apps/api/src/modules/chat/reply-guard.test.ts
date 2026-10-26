@@ -21,7 +21,7 @@ describe('replyGuard: never-say', () => {
   it('drops the sentence that carries a never-say word and keeps the rest', () => {
     expect(run({ neverSay: ['jamin'], known: 'RM95' }, ['Saya tak boleh jamin tentang harga masa depan. Harga kek butter 1kg kami RM95.'])).toEqual({
       out: 'Harga kek butter 1kg kami RM95.',
-      dropped: { 'never-say': 1, amount: 0 },
+      dropped: { 'never-say': 1, amount: 0, phone: 0 },
       replaced: false,
     });
   });
@@ -41,7 +41,7 @@ describe('replyGuard: amounts', () => {
   it('drops a price the model worked out, and keeps the ones it was given', () => {
     expect(run({ known }, ['Kek butter 1kg kami RM95. Untuk 2kg, harga akan jadi RM190. ', 'Tempah 3 hari awal.'])).toEqual({
       out: 'Kek butter 1kg kami RM95. Tempah 3 hari awal.',
-      dropped: { 'never-say': 0, amount: 1 },
+      dropped: { 'never-say': 0, amount: 1, phone: 0 },
       replaced: false,
     });
   });
@@ -66,11 +66,29 @@ describe('replyGuard: amounts', () => {
   });
 });
 
+describe('replyGuard: phone numbers', () => {
+  it('never says a phone number the owner did not put out, however it is written', () => {
+    expect(run({ known: 'PROFILE Instagram: iman' }, ['You can reach Iman at +60 11-2953 9716. ', 'Or email iman@example.com.'])).toEqual({
+      out: 'Or email iman@example.com.',
+      dropped: { 'never-say': 0, amount: 0, phone: 1 },
+      replaced: false,
+    });
+  });
+
+  it('says one the owner published, in a link, spelled any way', () => {
+    expect(run({ known: 'PROFILE WhatsApp: Chat -- https://wa.me/601129539716' }, ['WhatsApp Iman at 011-2953 9716.']).out).toBe('WhatsApp Iman at 011-2953 9716.');
+  });
+
+  it('says back the number a visitor typed', () => {
+    expect(run({ known: '', visitor: 'my number is 012-345 6789' }, ['Got it, 012-345 6789.']).out).toBe('Got it, 012-345 6789.');
+  });
+});
+
 describe('replyGuard: the reply as a whole', () => {
   it('sends the fallback when every sentence was dropped, never an empty reply', () => {
     expect(run({ neverSay: ['halal'], known: 'RM95' }, ['Kek kami halal. ', '2kg jadi RM190!'])).toEqual({
       out: REPLY_FALLBACK,
-      dropped: { 'never-say': 1, amount: 1 },
+      dropped: { 'never-say': 1, amount: 1, phone: 0 },
       replaced: true,
     });
   });
@@ -79,7 +97,7 @@ describe('replyGuard: the reply as a whole', () => {
     const reply = 'Cupcake RM9.50 sebiji.\n\nKedai buka Isnin hingga Sabtu, 9 pagi hingga 6 petang';
     expect(run({ neverSay: ['halal'], known: 'cupcake RM9.50' }, [reply.slice(0, 13), reply.slice(13)])).toEqual({
       out: reply,
-      dropped: { 'never-say': 0, amount: 0 },
+      dropped: { 'never-say': 0, amount: 0, phone: 0 },
       replaced: false,
     });
   });

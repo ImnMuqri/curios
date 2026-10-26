@@ -75,12 +75,16 @@ function payWords(chip: boolean, qr: boolean, bank: boolean): string {
   return `${online}, ${others.join(' and ')}`;
 }
 
-/** "Pickup and delivery RM10", "Rider delivery", ...: what "Getting it to them" says once it is set. */
-function handOverWords(s: StoreSettings): string {
+/**
+ * "Pickup and delivery RM10", "Rider delivery", "Sent by email", ...: what "Getting it to them"
+ * says once it is set. A shop of digital items only has nothing to hand over: they go by email.
+ */
+function handOverWords(s: StoreSettings, physicalItems: boolean): string {
   const parts = [
     ...(s.pickupEnabled ? ['pickup'] : []),
-    ...(s.deliveryMode === 'FLAT' && s.deliveryFeeCents ? [`delivery ${formatRinggit(s.deliveryFeeCents)}`] : s.deliveryMode === 'RIDER' ? ['rider delivery'] : []),
+    ...(s.deliveryMode === 'FLAT' ? [s.deliveryFeeCents ? `delivery ${formatRinggit(s.deliveryFeeCents)}` : 'free delivery'] : s.deliveryMode === 'RIDER' ? ['rider delivery'] : []),
   ].join(' and ');
+  if (!parts) return physicalItems ? '' : 'Sent by email';
   return parts.charAt(0).toUpperCase() + parts.slice(1);
 }
 
@@ -247,9 +251,15 @@ export function StoreEditor({
   const shown = items.map((item) => (draftItem && item.id === draftItem.id ? draftItem : item));
   if (draftItem && !shown.some((item) => item.id === draftItem.id)) shown.push(draftItem);
   const previewFocus = shown.find((item) => item.id === picked) ?? draftItem ?? editingItem ?? live[0] ?? null;
-  const previewItems = shown.filter((item) => item.available || (previewTab === 'item' && item.id === previewFocus?.id));
+  // What the phone shows: the chosen screen, or the shop when that one has nothing to show (no item
+  // to open, nothing to pay for) -- also when the choice was made before the last item went.
+  const shownTab: PreviewTab = (previewTab === 'pay' && live.length === 0) || (previewTab === 'item' && !previewFocus) ? 'shop' : previewTab;
+  const previewItems = shown.filter((item) => item.available || (shownTab === 'item' && item.id === previewFocus?.id));
 
-  const previewNextDay = nextOrderDay({ ...settings, canTakeOrders: true }, new Date());
+  // The preview's pill tells the truth about the switch: a shop that is off, or paused by its plan,
+  // reads "Orders paused" and promises no day, rather than "Open for orders".
+  const previewTakesOrders = settings.enabled && paused === null;
+  const previewNextDay = nextOrderDay({ ...settings, canTakeOrders: previewTakesOrders }, new Date());
   const [year, month, day] = today.split('-').map(Number);
   const todayDate = new Date(year ?? 2026, (month ?? 1) - 1, day ?? 1);
 
@@ -291,7 +301,7 @@ export function StoreEditor({
             {[
               { ok: live.length > 0, title: 'Items', note: live.length > 0 ? `${live.length} in your shop` : items.length > 0 ? 'Switch an item on' : 'Add your first item', go: 'items' as const },
               { ok: payOk, title: 'A way to pay', note: !payOk ? 'Connect CHIP or add your QR' : payWords(chip.connected, qr.has, bankOk), go: 'payment' as const },
-              { ok: handOk, title: 'Getting it to them', note: handOk ? handOverWords(settings) : 'Turn on pickup or delivery', go: 'delivery' as const },
+              { ok: handOk, title: 'Getting it to them', note: handOk ? handOverWords(settings, readiness.physicalItems) : 'Turn on pickup or delivery', go: 'delivery' as const },
             ].map((step) => (
               <li key={step.title}>
                 <button
@@ -358,7 +368,7 @@ export function StoreEditor({
                     </small>
                   </div>
                   <SaveState status={description.autosave.status} error={description.autosave.error} retry={description.autosave.retry} />
-                  <div className={styles.row}>
+                  <div className={`${styles.row} ${styles.halalRow}`}>
                     <span className={styles.rowText}>
                       <b>Halal shop</b>
                       <span>{settings.shopHalal ? 'Your shop and its items say halal' : 'Switch on if everything you sell is halal'}</span>
@@ -407,13 +417,15 @@ export function StoreEditor({
           tabsLabel="Preview screen"
           tabs={[
             { id: 'shop', label: 'Shop' },
-            { id: 'item', label: 'Item' },
-            { id: 'pay', label: 'Pay' },
+            // Nothing to open with no items: say so, rather than show the shop again under "Item".
+            { id: 'item', label: 'Item', ...(previewFocus ? {} : { hint: 'Add an item to see its page here' }) },
+            // An order of nothing (RM0) is not what a customer would ever see: Pay waits for an item too.
+            { id: 'pay', label: 'Pay', ...(live.length > 0 ? {} : { hint: 'Add an item to see how paying looks' }) },
           ]}
-          selected={previewTab}
+          selected={shownTab}
           onSelect={setPreviewTab}
         >
-          {previewTab === 'pay' ? (
+          {shownTab === 'pay' ? (
             <PayPreview
               look={look}
               settings={settings}
@@ -422,12 +434,13 @@ export function StoreEditor({
               hasQr={qr.has}
               today={today}
               nextNumber={orders.nextNumber}
+              paysOnline={chip.connected && chip.methods.length > 0}
             />
           ) : (
             // The shop and the item are the customer pages themselves, on the owner's own colours.
             <PageTheme theme={look} className={styles.previewStage}>
               <div className={styles.previewShop}>
-                {previewTab === 'item' && previewFocus ? (
+                {shownTab === 'item' && previewFocus ? (
                   <ProductView
                     // A new key per item, so choosing another starts from its first size.
                     key={previewFocus.id}
@@ -447,7 +460,7 @@ export function StoreEditor({
                 ) : (
                   <>
                     <ShopPageView
-                      key={previewTab}
+                      key={shownTab}
                       handle={look.handle}
                       displayName={look.displayName}
                       language={look.language}
@@ -455,7 +468,7 @@ export function StoreEditor({
                       pickupEnabled={settings.pickupEnabled}
                       pickupNote={settings.pickupNote}
                       deliveryMode={settings.deliveryMode}
-                      canTakeOrders
+                      canTakeOrders={previewTakesOrders}
                       nextDay={previewNextDay}
                       description={orNull(description.text)}
                       halal={settings.shopHalal}

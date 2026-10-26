@@ -2,24 +2,68 @@
  * kuning, and this is the first thing in the product to use it. DESIGN.md
  * reserves it for "a human needs to act" and threatens deletion for decorative
  * use -- a customer waiting on a reply is the case it was reserved for.
+ *
+ * Inside it, the chat's own voice rather than a sign-up form's: one family, the
+ * thread's sizes (the title as a visitor's question, the note as the chat's
+ * small print), and the field and button as pills, like the chat's own input
+ * and send. The --field-* and --button-* hooks carry it to the shared parts.
  */
 .card {
+  --field-label-font: var(--font-body);
+  --field-label-size: 12.5px;
+  --field-label-weight: 600;
+  --field-label-case: none;
+  --field-label-tracking: 0;
+  --field-label-color: var(--ink-soft);
+  --field-label-gap: 6px;
+  --field-size: 14px;
+  --button-height: 42px;
+  --button-padding: 0 20px;
+  --button-radius: 999px;
+  --button-size: 14px;
+  --button-weight: 600;
+  --callout-size: 13px;
+  --callout-radius: 12px;
+
   margin-top: 12px;
-  padding: 16px;
+  padding: 18px;
   border: 1.5px solid var(--kuning);
   border-radius: 20px;
   background: var(--paper);
   color: var(--ink);
+  font-family: var(--font-body);
 }
 
 .lead {
   margin: 0 0 4px;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .consent {
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   font-size: 13px;
+  line-height: 1.5;
   color: var(--muted);
+}
+
+/* The Field's box, as a pill to match the chat's input; its margin is the gap to the button. */
+.card input {
+  min-height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  /* Field's own edge (--surface) all but disappears on the card's paper; focus still turns it biru. */
+  border-color: color-mix(in srgb, var(--ink) 16%, var(--paper));
+}
+
+.card button[type='submit'] {
+  width: 100%;
+}
+
+/* A phone zooms the page into a field under 16px when it takes focus (iOS Safari). */
+@media (pointer: coarse) {
+  .card {
+    --field-size: 16px;
+  }
 }

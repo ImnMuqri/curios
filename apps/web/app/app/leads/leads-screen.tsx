@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type CSSProperties } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import type { LeadStats, OwnerLead } from '@curios/db-read';
@@ -216,9 +217,9 @@ export function LeadsScreen({
               </ul>
             )}
             {paging.older || paging.paged ? (
-              <nav className={styles.pager} aria-label="More leads">
-                {paging.paged ? <a href="/app/leads">Newest</a> : null}
-                {paging.older ? <a href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</a> : null}
+              <nav className={inbox.pager} aria-label="More leads">
+                {paging.paged ? <Link href="/app/leads">Newest</Link> : null}
+                {paging.older ? <Link href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</Link> : null}
               </nav>
             ) : null}
           </div>

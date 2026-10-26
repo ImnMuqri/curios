@@ -554,6 +554,10 @@
   min-height: 58px;
   padding: 10px 10px 10px 16px;
   animation: fadeUp 300ms ease both;
+  /* A page can know hundreds of facts: the rows off screen are laid out (and animated) only as
+     they scroll near, which took a fifth off opening this screen, measured with 300 facts. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 58px;
 }
 
 .row:hover .acts,
@@ -1391,7 +1395,8 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--accent, var(--biru));
+  /* On the page itself, like the reply's dot: the text colour where the accent would vanish. */
+  background: var(--accent-mark, var(--accent, var(--biru)));
   animation: dot 1s ease-in-out infinite;
 }
 

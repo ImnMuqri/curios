@@ -1,3 +1,5 @@
+import { phoneNumbersIn } from './phone.js';
+
 /** BACKEND.md's `turn_3`. Two turns is still browsing. */
 export const MIN_VISITOR_TURNS = 3;
 
@@ -13,6 +15,29 @@ export const MIN_VISITOR_TURNS = 3;
  * exactly the inflated lead count this rule exists to avoid.
  */
 const SPECIFIC = /(?<![A-Za-z\d])\d+/;
+
+/**
+ * A visitor asking to leave their number or to be contacted, in English, Malay or a mix of both:
+ * "can I leave my number", "contact me", "boleh tinggal nombor", "hubungi saya", "wasap saya".
+ * Matched loosely on purpose: the card it brings is one tap to ignore.
+ */
+const WANTS_CONTACT = [
+  /\b(leave|left|give|share|drop|send)\b[^.?!]{0,24}\b(number|no\.?|phone|contact|whats ?app|wa)\b/i,
+  /\b(call|contact|whats ?app|text|reach)\s+me\b/i,
+  /\b(tinggal(kan)?|bagi|beri|kasi|hantar|letak|ambil)\b[^.?!]{0,24}\b(nombor|no\.?|nombor telefon|fon|telefon|whats ?app|wasap|wa)\b/i,
+  /\b(hubungi|call|wasap|whats ?app|telefon)\s+(saya|aku)\b/i,
+  // Asking how to reach the owner is the same wish from the other side: "how can I contact Iman",
+  // "does he have a phone number", "contact info?", "macam mana nak hubungi", "ada nombor telefon?".
+  /\bhow\s+(can|could|do|should|to)\b[^.?!]{0,16}\b(contact|reach|call|message|whats ?app|text)\b/i,
+  /\b(phone|contact|whats ?app|wa)\s+(number|no\.?|details|info(rmation)?)\b/i,
+  /\b(macam ?mana|camne|cemana|bagaimana)\b[^.?!]{0,20}\b(hubungi|contact|call|telefon|wasap|whats ?app)\b/i,
+  /\b(nombor|no\.?)\s+(telefon|fon|whats ?app|wasap|wa|hp)\b/i,
+];
+
+/** The visitor wants to be contacted: they asked to be, or typed their own phone number. */
+export function wantsContact(message: string): boolean {
+  return phoneNumbersIn(message).length > 0 || WANTS_CONTACT.some((pattern) => pattern.test(message));
+}
 
 /**
  * Whether the capture card may be offered.
@@ -36,6 +61,8 @@ export function qualifies(input: {
   visitorMessages: string[];
 }): boolean {
   if (input.mode !== 'BUSINESS') return false;
+  // Asking to be contacted is the plainest intent there is: no waiting for a third turn.
+  if (input.visitorMessages.some(wantsContact)) return true;
   if (input.visitorMessages.length < MIN_VISITOR_TURNS) return false;
   return input.visitorMessages.some((message) => SPECIFIC.test(message));
 }

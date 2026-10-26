@@ -26,7 +26,8 @@
   max-width: 460px;
   min-height: 100vh;
   margin: 0 auto;
-  padding: 20px 0 0;
+  /* On a phone the page starts below its status bar; a preview's phone sets this inset. */
+  padding: calc(20px + var(--phone-inset-top, 0px)) 0 0;
   color: var(--page-fg);
   font-family: var(--font-inter), system-ui, sans-serif;
   font-size: 15px;
@@ -58,7 +59,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 0 20px;
+  padding: 0 max(20px, var(--phone-inset-x, 0px));
   color: color-mix(in srgb, var(--page-fg) 85%, transparent);
   font-size: 14px;
   font-weight: 500;
@@ -365,6 +366,15 @@
   font-size: 14.5px;
   outline: none;
   transition: box-shadow 160ms;
+}
+
+/* A phone zooms the whole page into a field whose text is under 16px when it takes focus (iOS
+   Safari), and the visitor has to pinch back out. 16px on touch screens; the design's size elsewhere. */
+@media (pointer: coarse) {
+  .field input,
+  .field textarea {
+    font-size: 16px;
+  }
 }
 
 .field textarea {

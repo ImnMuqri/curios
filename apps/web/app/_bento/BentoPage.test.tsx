@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { BentoPage, type BentoPageProps } from './BentoPage.js';
+import { BentoPage, themeAttrs, type BentoPageProps } from './BentoPage.js';
 
 const base: BentoPageProps = {
   displayName: 'Iman Muqri',
@@ -247,11 +247,11 @@ describe('BentoPage, a custom background', () => {
     expect(container.firstElementChild).not.toHaveAttribute('data-bg-text');
   });
 
-  it('gives a dark custom colour the dark bands\' treatment, read from the stylesheet', () => {
+  it('gives a dark custom colour light text, and every custom colour glass pills, read from the stylesheet', () => {
     const css = readFileSync(join(import.meta.dirname, 'Bento.module.css'), 'utf8');
     expect(css).toMatch(/\[data-bg='CUSTOM'\]\[data-bg-text='light'\]\s*\{[^}]*--page-fg:\s*var\(--paper\)/);
-    // A dark page's soft pills are its own text, faintly, not white.
-    expect(css).toMatch(/\[data-bg-text='light'\]\)\s*\{[^}]*--pill:\s*var\(--veil-3\)/s);
+    // On any custom colour, light or dark, the pills are the page's own text, faintly, not white (DEVIATIONS 218).
+    expect(css).toMatch(/\[data-bg='CUSTOM'\]\)\s*\{[^}]*--pill:\s*var\(--veil-3\)/s);
   });
 });
 
@@ -375,5 +375,17 @@ describe('People often ask', () => {
     expect(screen.queryByText('People often ask')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Questions' })).toBeNull();
     expect(screen.getByRole('link', { name: 'Made with Curios' })).toBeInTheDocument();
+  });
+});
+
+describe('the chat dot against the page', () => {
+  const mark = (accentColor: string, background: 'PAPER' | 'INK' | 'BIRU') =>
+    (themeAttrs({ accentColor, headingFont: 'JAKARTA', background }).style as Record<string, string>)['--accent-mark'];
+
+  it('takes the text colour where the accent would vanish, and stays the accent everywhere else', () => {
+    expect(mark('#191f2c', 'INK')).toBe('var(--page-fg)');
+    expect(mark('#2340c8', 'BIRU')).toBe('var(--page-fg)');
+    expect(mark('#191f2c', 'PAPER')).toBeUndefined();
+    expect(mark('#2340c8', 'INK')).toBeUndefined();
   });
 });

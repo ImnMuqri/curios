@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
-import type { OwnerTopic, OwnerWording } from '@curios/db-read';
+import type { OwnerTopic, OwnerWording, TopicChoice } from '@curios/db-read';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { firstName, LeadCard } from '../_ui/lead-card.js';
@@ -65,7 +65,8 @@ export function TopicDetail({
 }: {
   topic: OwnerTopic;
   /** Every other topic, for "Same question as…". */
-  others: OwnerTopic[];
+  /** Every other topic, from any page of the list: what this one can merge into. */
+  others: TopicChoice[];
   publishesFaq: boolean;
   faqMinAsks: number;
   handle: string;
@@ -301,7 +302,7 @@ export function TopicDetail({
                 </button>
               </div>
             </div>
-            <div className={`${bento.theme} ${styles.chat}`} {...themeAttrs(look)} aria-label="How the chat replies">
+            <div className={`${bento.theme} ${styles.chat}`} {...themeAttrs(look)} data-island="" aria-label="How the chat replies">
               <span className={styles.chatLabel}>
                 <i aria-hidden="true" />
                 On your page

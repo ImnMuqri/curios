@@ -88,7 +88,7 @@ export function AskPanel({
       <h2>Ask your page</h2>
       <p>Test what the chat says, using only what&apos;s here.</p>
 
-      <div ref={chat} className={`${bento.theme} ${styles.tchat}`} {...(theme ?? {})} role="log" aria-live="polite" aria-label="Your page's answers">
+      <div ref={chat} className={`${bento.theme} ${styles.tchat}`} {...(theme ?? {})} data-island="" role="log" aria-live="polite" aria-label="Your page's answers">
         {turns.length === 0 && !thinking ? (
           <span className={styles.tchatEmpty}>
             Ask something, the way a customer would.

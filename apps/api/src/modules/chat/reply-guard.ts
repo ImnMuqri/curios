@@ -23,6 +23,8 @@
  * they wrote them.
  */
 
+import { phoneNumbersIn } from '@curios/core';
+
 /** Sent when every sentence of a reply was dropped: the question is one for the owner. */
 export const REPLY_FALLBACK =
   'Yang itu saya perlu semak dengan pemilik dulu.\n\nThat one I need to check with the owner first.';
@@ -56,7 +58,7 @@ function sentenceEnd(text: string): number {
   return match ? match.index + match[0].length : -1;
 }
 
-export type DropReason = 'never-say' | 'amount';
+export type DropReason = 'never-say' | 'amount' | 'phone';
 
 /**
  * Filters a reply's stream: `push` each piece and send on what it returns; `end` when the stream
@@ -69,14 +71,19 @@ export type DropReason = 'never-say' | 'amount';
 export function replyGuard(input: { neverSay: readonly string[]; given: string; visitor: string }) {
   const banned = input.neverSay.map(normalise).map((p) => p.trim()).filter(Boolean);
   const allowed = new Set([...amountsIn(input.given), ...numbersIn(input.visitor)]);
+  // A phone number is private unless the owner put it out: in their links, bio or own answers
+  // (all in the prompt; the facts' numbers are removed before it, see prompt.ts), or the visitor
+  // typed it. A number read off a source -- a CV, a website -- is never said.
+  const phones = new Set([...phoneNumbersIn(input.given), ...phoneNumbersIn(input.visitor)]);
   let pending = '';
   let sent = 0;
-  const dropped: Record<DropReason, number> = { 'never-say': 0, amount: 0 };
+  const dropped: Record<DropReason, number> = { 'never-say': 0, amount: 0, phone: 0 };
 
   const reasonFor = (sentence: string): DropReason | null => {
     const text = normalise(sentence);
     if (banned.some((phrase) => text.includes(phrase))) return 'never-say';
     if (amountsIn(sentence).some((amount) => !allowed.has(amount))) return 'amount';
+    if (phoneNumbersIn(sentence).some((phone) => !phones.has(phone))) return 'phone';
     return null;
   };
 
@@ -90,7 +97,7 @@ export function replyGuard(input: { neverSay: readonly string[]; given: string; 
     return sentence;
   };
 
-  const droppedAny = () => dropped['never-say'] + dropped.amount > 0;
+  const droppedAny = () => dropped['never-say'] + dropped.amount + dropped.phone > 0;
 
   return {
     push(text: string): string {
