@@ -341,115 +341,115 @@
 /*
  * Dark mode, for the owner's dashboard only (owner decision 2026-10-26; DESIGN.md). It follows
  * the device's setting. The tokens are swapped on the frame, so nothing outside the dashboard
- * changes: public pages, checkout and emails keep their own colours.
+ * changes: public pages, checkout and emails keep their own colours. The values live in
+ * tokens.css (`--dark-*`, `--light-*`), as every colour does.
  *
  * Inside the dashboard, a preview of something a customer sees -- the phone in Store and My
- * Curios, the chat and conversation in Questions, Leads and Review -- is marked `data-island` and
- * keeps the light values, because that is how customers will see it. Those values are the
- * tokens.css ones, repeated: dark-mode.test.ts holds the two lists to each other.
+ * Curios, the chat in Questions, Review and Facts & sources, the conversation in Leads -- is
+ * marked `data-island` and takes the light values back, because that is how customers see it.
  */
 @media (prefers-color-scheme: dark) {
   .frame {
     color-scheme: dark;
-    --paper: #0f131b;
-    --card: #161b25;
-    --surface: #1d2330;
-    --field: #1a202c;
-    --soft-page: #12161f;
-    --ink: #e9ecf2;
-    --ink-soft: #c2c7d2;
-    --muted: #9aa1ae;
-    --faint: #6f7685;
-    --hint: #7c8392;
-    --line: #262d3b;
-    --edge: #313949;
-    --phone-edge: #2b3242;
-    --biru: #4f6cf0;
-    --biru-muda: #1c2650;
-    --biru-ring: #2a3870;
-    --biru-ink: #b9c6ff;
-    --biru-lembut: #7d93f2;
-    --hijau: #2f9a82;
-    --hijau-muda: #13302a;
-    --hijau-line: #22463d;
-    --hijau-ink: #9fe0cc;
-    --hijau-deep: #6fd0b5;
-    --merah: #e9604a;
-    --merah-muda: #3a1916;
-    --merah-deep: #ff8f7c;
-    --merah-ink: #ffb3a6;
-    --merah-lembut: #f08a74;
-    --rose: #e2668a;
-    --rose-muda: #3a1824;
-    --amber-muda: #382a13;
-    --amber-ink: #f3bd6a;
-    --kuning: #f2a33c;
-    --kuning-muda: #3a2a12;
-    --kuning-ink: #f6c47a;
-    --ungu: #a27ce6;
-    --ungu-muda: #2a2042;
-    --jingga: #f0a040;
-    --blob-blue: #23315e;
-    --blob-pink: #4a2533;
-    --blob-peach: #4a3720;
-    --blob-mint: #1f4238;
-    --ghost-a: #1b2130;
-    --ghost-b: #202736;
-    --ghost-line: #3a4254;
-    --ghost-ink: #c9cfdc;
-    --soft-shadow: rgb(0 0 0 / 35%);
-    --scrim: rgb(0 0 0 / 60%);
+    --paper: var(--dark-paper);
+    --card: var(--dark-card);
+    --surface: var(--dark-surface);
+    --field: var(--dark-field);
+    --soft-page: var(--dark-soft-page);
+    --ink: var(--dark-ink);
+    --ink-soft: var(--dark-ink-soft);
+    --muted: var(--dark-muted);
+    --faint: var(--dark-faint);
+    --hint: var(--dark-hint);
+    --line: var(--dark-line);
+    --edge: var(--dark-edge);
+    --phone-edge: var(--dark-phone-edge);
+    --biru: var(--dark-biru);
+    --biru-muda: var(--dark-biru-muda);
+    --biru-ring: var(--dark-biru-ring);
+    --biru-ink: var(--dark-biru-ink);
+    --biru-lembut: var(--dark-biru-lembut);
+    --hijau: var(--dark-hijau);
+    --hijau-muda: var(--dark-hijau-muda);
+    --hijau-line: var(--dark-hijau-line);
+    --hijau-ink: var(--dark-hijau-ink);
+    --hijau-deep: var(--dark-hijau-deep);
+    --merah: var(--dark-merah);
+    --merah-muda: var(--dark-merah-muda);
+    --merah-deep: var(--dark-merah-deep);
+    --merah-ink: var(--dark-merah-ink);
+    --merah-lembut: var(--dark-merah-lembut);
+    --rose: var(--dark-rose);
+    --rose-muda: var(--dark-rose-muda);
+    --amber-muda: var(--dark-amber-muda);
+    --amber-ink: var(--dark-amber-ink);
+    --kuning: var(--dark-kuning);
+    --kuning-muda: var(--dark-kuning-muda);
+    --kuning-ink: var(--dark-kuning-ink);
+    --ungu: var(--dark-ungu);
+    --ungu-muda: var(--dark-ungu-muda);
+    --jingga: var(--dark-jingga);
+    --blob-blue: var(--dark-blob-blue);
+    --blob-pink: var(--dark-blob-pink);
+    --blob-peach: var(--dark-blob-peach);
+    --blob-mint: var(--dark-blob-mint);
+    --ghost-a: var(--dark-ghost-a);
+    --ghost-b: var(--dark-ghost-b);
+    --ghost-line: var(--dark-ghost-line);
+    --ghost-ink: var(--dark-ghost-ink);
+    --soft-shadow: var(--dark-soft-shadow);
+    --scrim: var(--dark-scrim);
   }
 
   .frame [data-island] {
     color-scheme: light;
-    --paper: #fafbfc;
-    --card: #ffffff;
-    --surface: #f0f1f4;
-    --field: #f6f7fb;
-    --soft-page: #f5f5f7;
-    --ink: #191f2c;
-    --ink-soft: #4b5060;
-    --muted: #696e7b;
-    --faint: #9aa0ab;
-    --hint: #8a8f9b;
-    --line: #e4e7eb;
-    --edge: #dfe1e6;
-    --phone-edge: #e1e4e9;
-    --biru: #2340c8;
-    --biru-muda: #eaf0ff;
-    --biru-ring: #dfe8fd;
-    --biru-ink: #122686;
-    --biru-lembut: #86a2ea;
-    --hijau: #1d6f5f;
-    --hijau-muda: #e8f3ef;
-    --hijau-line: #cfe5dd;
-    --hijau-ink: #123b33;
-    --hijau-deep: #155a4d;
-    --merah: #d8452f;
-    --merah-muda: #fdecea;
-    --merah-deep: #b3261e;
-    --merah-ink: #8a2a1a;
-    --merah-lembut: #f08a74;
-    --rose: #b5294e;
-    --rose-muda: #fbeef1;
-    --amber-muda: #fdf0dc;
-    --amber-ink: #8f5c15;
-    --kuning: #f2a33c;
-    --kuning-muda: #ffebd6;
-    --kuning-ink: #7a4a0c;
-    --ungu: #6d3fb3;
-    --ungu-muda: #efe7fb;
-    --jingga: #e08a1e;
-    --blob-blue: #bfd1f9;
-    --blob-pink: #f6c9d5;
-    --blob-peach: #ffe2b8;
-    --blob-mint: #bfe3d6;
-    --ghost-a: #f3f4f7;
-    --ghost-b: #eef0f4;
-    --ghost-line: #c9ccd3;
-    --ghost-ink: #2a3248;
-    --soft-shadow: rgb(25 31 44 / 6%);
-    --scrim: rgb(25 31 44 / 45%);
+    --paper: var(--light-paper);
+    --card: var(--light-card);
+    --surface: var(--light-surface);
+    --field: var(--light-field);
+    --soft-page: var(--light-soft-page);
+    --ink: var(--light-ink);
+    --ink-soft: var(--light-ink-soft);
+    --muted: var(--light-muted);
+    --faint: var(--light-faint);
+    --hint: var(--light-hint);
+    --line: var(--light-line);
+    --edge: var(--light-edge);
+    --phone-edge: var(--light-phone-edge);
+    --biru: var(--light-biru);
+    --biru-muda: var(--light-biru-muda);
+    --biru-ring: var(--light-biru-ring);
+    --biru-ink: var(--light-biru-ink);
+    --biru-lembut: var(--light-biru-lembut);
+    --hijau: var(--light-hijau);
+    --hijau-muda: var(--light-hijau-muda);
+    --hijau-line: var(--light-hijau-line);
+    --hijau-ink: var(--light-hijau-ink);
+    --hijau-deep: var(--light-hijau-deep);
+    --merah: var(--light-merah);
+    --merah-muda: var(--light-merah-muda);
+    --merah-deep: var(--light-merah-deep);
+    --merah-ink: var(--light-merah-ink);
+    --merah-lembut: var(--light-merah-lembut);
+    --rose: var(--light-rose);
+    --rose-muda: var(--light-rose-muda);
+    --amber-muda: var(--light-amber-muda);
+    --amber-ink: var(--light-amber-ink);
+    --kuning: var(--light-kuning);
+    --kuning-muda: var(--light-kuning-muda);
+    --kuning-ink: var(--light-kuning-ink);
+    --ungu: var(--light-ungu);
+    --ungu-muda: var(--light-ungu-muda);
+    --jingga: var(--light-jingga);
+    --blob-blue: var(--light-blob-blue);
+    --blob-pink: var(--light-blob-pink);
+    --blob-peach: var(--light-blob-peach);
+    --blob-mint: var(--light-blob-mint);
+    --ghost-a: var(--light-ghost-a);
+    --ghost-b: var(--light-ghost-b);
+    --ghost-line: var(--light-ghost-line);
+    --ghost-ink: var(--light-ghost-ink);
+    --soft-shadow: var(--light-soft-shadow);
+    --scrim: var(--light-scrim);
   }
 }

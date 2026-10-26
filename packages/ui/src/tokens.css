@@ -154,3 +154,111 @@
   --font-body: var(--font-inter, Inter, system-ui, sans-serif);
   --font-mono: var(--font-plex-mono, 'IBM Plex Mono', ui-monospace, monospace);
 }
+
+/*
+ * The owner's dashboard in dark mode (app-frame.module.css swaps these in on the dashboard's frame
+ * only). `--dark-*` are the dark values. `--light-*` hold each token's light value as resolved here
+ * on :root: a custom property inherits its resolved value, so they stay light inside the dark frame,
+ * and the previews of what customers see (`data-island`) take them back.
+ */
+:root {
+  --dark-paper: #0f131b;
+  --dark-card: #161b25;
+  --dark-surface: #1d2330;
+  --dark-field: #1a202c;
+  --dark-soft-page: #12161f;
+  --dark-ink: #e9ecf2;
+  --dark-ink-soft: #c2c7d2;
+  --dark-muted: #9aa1ae;
+  --dark-faint: #6f7685;
+  --dark-hint: #7c8392;
+  --dark-line: #262d3b;
+  --dark-edge: #313949;
+  --dark-phone-edge: #2b3242;
+  --dark-biru: #4f6cf0;
+  --dark-biru-muda: #1c2650;
+  --dark-biru-ring: #2a3870;
+  --dark-biru-ink: #b9c6ff;
+  --dark-biru-lembut: #7d93f2;
+  --dark-hijau: #2f9a82;
+  --dark-hijau-muda: #13302a;
+  --dark-hijau-line: #22463d;
+  --dark-hijau-ink: #9fe0cc;
+  --dark-hijau-deep: #6fd0b5;
+  --dark-merah: #e9604a;
+  --dark-merah-muda: #3a1916;
+  --dark-merah-deep: #ff8f7c;
+  --dark-merah-ink: #ffb3a6;
+  --dark-merah-lembut: #f08a74;
+  --dark-rose: #e2668a;
+  --dark-rose-muda: #3a1824;
+  --dark-amber-muda: #382a13;
+  --dark-amber-ink: #f3bd6a;
+  --dark-kuning: #f2a33c;
+  --dark-kuning-muda: #3a2a12;
+  --dark-kuning-ink: #f6c47a;
+  --dark-ungu: #a27ce6;
+  --dark-ungu-muda: #2a2042;
+  --dark-jingga: #f0a040;
+  --dark-blob-blue: #23315e;
+  --dark-blob-pink: #4a2533;
+  --dark-blob-peach: #4a3720;
+  --dark-blob-mint: #1f4238;
+  --dark-ghost-a: #1b2130;
+  --dark-ghost-b: #202736;
+  --dark-ghost-line: #3a4254;
+  --dark-ghost-ink: #c9cfdc;
+  --dark-soft-shadow: rgb(0 0 0 / 35%);
+  --dark-scrim: rgb(0 0 0 / 60%);
+
+  --light-paper: var(--paper);
+  --light-card: var(--card);
+  --light-surface: var(--surface);
+  --light-field: var(--field);
+  --light-soft-page: var(--soft-page);
+  --light-ink: var(--ink);
+  --light-ink-soft: var(--ink-soft);
+  --light-muted: var(--muted);
+  --light-faint: var(--faint);
+  --light-hint: var(--hint);
+  --light-line: var(--line);
+  --light-edge: var(--edge);
+  --light-phone-edge: var(--phone-edge);
+  --light-biru: var(--biru);
+  --light-biru-muda: var(--biru-muda);
+  --light-biru-ring: var(--biru-ring);
+  --light-biru-ink: var(--biru-ink);
+  --light-biru-lembut: var(--biru-lembut);
+  --light-hijau: var(--hijau);
+  --light-hijau-muda: var(--hijau-muda);
+  --light-hijau-line: var(--hijau-line);
+  --light-hijau-ink: var(--hijau-ink);
+  --light-hijau-deep: var(--hijau-deep);
+  --light-merah: var(--merah);
+  --light-merah-muda: var(--merah-muda);
+  --light-merah-deep: var(--merah-deep);
+  --light-merah-ink: var(--merah-ink);
+  --light-merah-lembut: var(--merah-lembut);
+  --light-rose: var(--rose);
+  --light-rose-muda: var(--rose-muda);
+  --light-amber-muda: var(--amber-muda);
+  --light-amber-ink: var(--amber-ink);
+  --light-kuning: var(--kuning);
+  --light-kuning-muda: var(--kuning-muda);
+  --light-kuning-ink: var(--kuning-ink);
+  --light-ungu: var(--ungu);
+  --light-ungu-muda: var(--ungu-muda);
+  --light-jingga: var(--jingga);
+  --light-blob-blue: var(--blob-blue);
+  --light-blob-pink: var(--blob-pink);
+  --light-blob-peach: var(--blob-peach);
+  --light-blob-mint: var(--blob-mint);
+  --light-ghost-a: var(--ghost-a);
+  --light-ghost-b: var(--ghost-b);
+  --light-ghost-line: var(--ghost-line);
+  --light-ghost-ink: var(--ghost-ink);
+  --light-soft-shadow: var(--soft-shadow);
+  --light-scrim: var(--scrim);
+  /* Text drawn on a photo under a dark tint: white whatever the theme. */
+  --on-photo: #ffffff;
+}

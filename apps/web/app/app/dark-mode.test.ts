@@ -8,20 +8,28 @@ const declarations = (block: string) =>
 
 const frame = read('./app-frame.module.css');
 const dark = frame.slice(frame.indexOf('@media (prefers-color-scheme: dark)'));
-const darkBlock = dark.slice(dark.indexOf('.frame {'), dark.indexOf('.frame [data-island]'));
-const islandBlock = dark.slice(dark.indexOf('.frame [data-island]'));
+const darkBlock = declarations(dark.slice(dark.indexOf('.frame {'), dark.indexOf('.frame [data-island]')));
+const islandBlock = declarations(dark.slice(dark.indexOf('.frame [data-island]')));
 const tokens = declarations(read('../../../../packages/ui/src/tokens.css'));
 
 describe('dashboard dark mode', () => {
   it('swaps tokens only on the dashboard frame, never on :root', () => {
     expect(dark).not.toMatch(/:root/);
-    expect(Object.keys(declarations(darkBlock)).length).toBeGreaterThan(30);
+    expect(Object.keys(darkBlock).length).toBeGreaterThan(30);
   });
 
-  it('gives every swapped token back its light value inside a preview island, exactly as tokens.css has it', () => {
-    const swapped = Object.keys(declarations(darkBlock));
-    const island = declarations(islandBlock);
-    expect(Object.keys(island).sort()).toEqual([...swapped].sort());
-    for (const name of swapped) expect(island[name], name).toBe(tokens[name]);
+  it('takes every dark value from tokens.css, which defines it', () => {
+    for (const [name, value] of Object.entries(darkBlock)) {
+      expect(value, name).toBe(`var(--dark-${name.slice(2)})`);
+      expect(tokens[`--dark-${name.slice(2)}`], name).toBeDefined();
+    }
+  });
+
+  it('gives every swapped token its light value back in a preview island, from the light alias of that same token', () => {
+    expect(Object.keys(islandBlock).sort()).toEqual(Object.keys(darkBlock).sort());
+    for (const name of Object.keys(darkBlock)) {
+      expect(islandBlock[name], name).toBe(`var(--light-${name.slice(2)})`);
+      expect(tokens[`--light-${name.slice(2)}`], name).toBe(`var(${name})`);
+    }
   });
 });

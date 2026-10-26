@@ -407,7 +407,7 @@
   height: 30px;
   border-radius: 999px;
   background: rgb(25 31 44 / 62%);
-  color: #fff; /* on a photo under a dark tint: white in either theme */
+  color: var(--on-photo);
   font-family: var(--font-plex-sans), sans-serif;
   font-size: 12px;
   font-weight: 600;
