@@ -20,7 +20,8 @@ export function PreviewFrame<Id extends string>({
 }: {
   label: string;
   tabsLabel: string;
-  tabs: readonly { id: Id; label: string }[];
+  /** `hint` says why a tab cannot be chosen yet, as its tooltip; such a tab is disabled. */
+  tabs: readonly { id: Id; label: string; hint?: string }[];
   selected: Id;
   onSelect: (id: Id) => void;
   overlay?: ReactNode;
@@ -42,7 +43,7 @@ export function PreviewFrame<Id extends string>({
       >
         <span className={styles.segThumb} aria-hidden="true" />
         {tabs.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={selected === t.id} onClick={() => onSelect(t.id)}>
+          <button key={t.id} type="button" role="tab" aria-selected={selected === t.id} disabled={t.hint !== undefined} title={t.hint} onClick={() => onSelect(t.id)}>
             {t.label}
           </button>
         ))}

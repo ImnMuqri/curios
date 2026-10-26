@@ -1207,8 +1207,18 @@
 
 /* ---- The preview ---- */
 
+/*
+ * A column the shop grows to fill: the stage has only a minimum height, so a child's
+ * `min-height: 100%` resolves to nothing and a short shop left the phone's foot bare.
+ */
 .previewStage {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
+}
+
+.previewStage > * {
+  flex: 1 0 auto;
 }
 
 /* The shop and the item as customers open them, in the owner's colours, filling the phone. */

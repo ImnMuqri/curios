@@ -249,7 +249,10 @@ export function StoreEditor({
   const previewFocus = shown.find((item) => item.id === picked) ?? draftItem ?? editingItem ?? live[0] ?? null;
   const previewItems = shown.filter((item) => item.available || (previewTab === 'item' && item.id === previewFocus?.id));
 
-  const previewNextDay = nextOrderDay({ ...settings, canTakeOrders: true }, new Date());
+  // The preview's pill tells the truth about the switch: a shop that is off, or paused by its plan,
+  // reads "Orders paused" and promises no day, rather than "Open for orders".
+  const previewTakesOrders = settings.enabled && paused === null;
+  const previewNextDay = nextOrderDay({ ...settings, canTakeOrders: previewTakesOrders }, new Date());
   const [year, month, day] = today.split('-').map(Number);
   const todayDate = new Date(year ?? 2026, (month ?? 1) - 1, day ?? 1);
 
@@ -407,7 +410,8 @@ export function StoreEditor({
           tabsLabel="Preview screen"
           tabs={[
             { id: 'shop', label: 'Shop' },
-            { id: 'item', label: 'Item' },
+            // Nothing to open with no items: say so, rather than show the shop again under "Item".
+            { id: 'item', label: 'Item', ...(previewFocus ? {} : { hint: 'Add an item to see its page here' }) },
             { id: 'pay', label: 'Pay' },
           ]}
           selected={previewTab}
@@ -456,7 +460,7 @@ export function StoreEditor({
                       pickupEnabled={settings.pickupEnabled}
                       pickupNote={settings.pickupNote}
                       deliveryMode={settings.deliveryMode}
-                      canTakeOrders
+                      canTakeOrders={previewTakesOrders}
                       nextDay={previewNextDay}
                       description={orNull(description.text)}
                       halal={settings.shopHalal}

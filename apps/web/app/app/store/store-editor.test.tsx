@@ -251,6 +251,20 @@ describe('the items', () => {
 });
 
 describe('the preview', () => {
+  it('offers no Item screen while there is no item to open, and says why', () => {
+    show(ready, []);
+    const tab = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Item' });
+    expect(tab).toBeDisabled();
+    expect(tab).toHaveAttribute('title', 'Add an item to see its page here');
+  });
+
+  it('says orders are paused on the phone when the shop is off, and open when it is on', () => {
+    show({ ...ready, enabled: false });
+    const phone = within(screen.getByRole('region', { name: 'Live preview of your shop' }));
+    expect(phone.getByText('Orders paused')).toBeInTheDocument();
+    expect(phone.queryByText('Open for orders')).toBeNull();
+  });
+
   const screenTab = (name: string) => within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name });
 
   // The previews are the customer pages themselves, so each carries a landmark only the real page has.

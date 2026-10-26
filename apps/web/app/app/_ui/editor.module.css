@@ -723,6 +723,12 @@
   color: var(--card);
 }
 
+/* A screen with nothing to show yet: dimmed, and its tooltip says why. */
+.seg button:disabled {
+  color: var(--faint);
+  cursor: not-allowed;
+}
+
 .seg button:focus-visible {
   outline: 2px solid var(--biru);
   outline-offset: 2px;
