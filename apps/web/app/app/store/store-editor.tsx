@@ -412,7 +412,8 @@ export function StoreEditor({
             { id: 'shop', label: 'Shop' },
             // Nothing to open with no items: say so, rather than show the shop again under "Item".
             { id: 'item', label: 'Item', ...(previewFocus ? {} : { hint: 'Add an item to see its page here' }) },
-            { id: 'pay', label: 'Pay' },
+            // An order of nothing (RM0) is not what a customer would ever see: Pay waits for an item too.
+            { id: 'pay', label: 'Pay', ...(live.length > 0 ? {} : { hint: 'Add an item to see how paying looks' }) },
           ]}
           selected={previewTab}
           onSelect={setPreviewTab}

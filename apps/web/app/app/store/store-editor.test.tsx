@@ -251,11 +251,14 @@ describe('the items', () => {
 });
 
 describe('the preview', () => {
-  it('offers no Item screen while there is no item to open, and says why', () => {
+  it('offers no Item or Pay screen while there is nothing to open or buy, and says why', () => {
     show(ready, []);
     const tab = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Item' });
     expect(tab).toBeDisabled();
     expect(tab).toHaveAttribute('title', 'Add an item to see its page here');
+    const pay = within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Pay' });
+    expect(pay).toBeDisabled();
+    expect(pay).toHaveAttribute('title', 'Add an item to see how paying looks');
   });
 
   it('says orders are paused on the phone when the shop is off, and open when it is on', () => {

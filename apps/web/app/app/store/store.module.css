@@ -1240,12 +1240,21 @@
 }
 
 /* The preview's Pay screen: the order page's column, filling the phone instead of the window. */
-.payStage {
+/*
+ * The order page's stage, held to the phone: checkout's own stage is `min-height: 100vh`, and in
+ * here 100vh is the browser window, so the page ran on past the phone in its own colour with the
+ * sheet stopping short. `:is(div)` outranks that one-class rule wherever the stylesheets load. A
+ * column, so the order's column grows to the foot and its sheet (flex: 1 in checkout) with it.
+ */
+.payStage:is(div) {
+  display: flex;
+  flex-direction: column;
   min-height: 100%;
 }
 
-.payStage > div {
-  min-height: 100%;
+.payStage:is(div) > div {
+  flex: 1 0 auto;
+  min-height: 0;
   animation: none;
 }
 
