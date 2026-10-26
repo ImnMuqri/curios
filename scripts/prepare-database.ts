@@ -4,7 +4,7 @@ import { prisma } from '@curios/db';
 
 /**
  * Brings a deployed database up to this release, before the new API takes traffic. Railway runs it
- * as the API service's pre-deploy command (railway/api.json); a failure stops that deploy and the
+ * as the API service's pre-deploy command (devDocs/OPERATIONS.md, Deploying on Railway); a failure stops that deploy and the
  * running one stays up.
  *
  *   node --import tsx scripts/prepare-database.ts
