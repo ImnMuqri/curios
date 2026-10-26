@@ -7,7 +7,10 @@ const getOwnerPage = vi.fn();
 const getMyCurios = vi.fn();
 const countQuestionsThisWeek = vi.fn();
 const getAnswerRate = vi.fn(async () => ({ answered: 0, recorded: 0 }));
-vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek, getAnswerRate }));
+const totals = { needs: 4, asks: 60, answeredAsks: 20 };
+const getTopicTotals = vi.fn(async () => totals);
+const getTopicChoices = vi.fn(async () => [{ id: 't1', title: 'Harga', answer: null }]);
+vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -82,20 +85,37 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), limit: 51, offset: 0 });
-    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3, paging: { page: 1, hasNext: false } });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 8, offset: 0 });
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3, paging: { page: 1, hasNext: false }, show: 'all', totals, choices: [{ id: 't1', title: 'Harga', answer: null }] });
   });
 
-  it('shows fifty topics a page, offers the next when a fifty-first came back, and reads ?page', async () => {
+  it('shows seven topics a page, offers the next when an eighth came back, and reads ?page', async () => {
     getOwnerPage.mockResolvedValue(business);
-    getTopics.mockResolvedValue(Array.from({ length: 51 }, (_, i) => ({ id: `t${i}` })));
+    getTopics.mockResolvedValue(Array.from({ length: 8 }, (_, i) => ({ id: `t${i}` })));
 
     render(await QuestionsPage({ searchParams: Promise.resolve({ page: '3' }) }));
 
-    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), limit: 51, offset: 100 });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 8, offset: 14 });
     const props = Topics.mock.calls[0]![0] as { topics: unknown[]; paging: unknown };
-    expect(props.topics).toHaveLength(50);
+    expect(props.topics).toHaveLength(7);
     expect(props.paging).toEqual({ page: 3, hasNext: true });
+  });
+
+  it('filters with ?show before paging, ignoring a filter it does not know', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getTopics.mockResolvedValue([{ id: 't1' }]);
+    render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'needs', page: '2' }) }));
+    expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), show: 'needs', limit: 8, offset: 7 });
+    expect(Topics.mock.lastCall?.[0]).toMatchObject({ show: 'needs' });
+
+    render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'everything' }) }));
+    expect(getTopics).toHaveBeenLastCalledWith('acc1', expect.objectContaining({ show: 'all' }));
+  });
+
+  it('sends a page past the last of a filter back to the first page of that filter', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    getTopics.mockResolvedValue([]);
+    await expect(QuestionsPage({ searchParams: Promise.resolve({ show: 'needs', page: '9' }) })).rejects.toThrow('NEXT_REDIRECT:/app/questions?show=needs');
   });
 
   it('sends a page past the last back to the first', async () => {

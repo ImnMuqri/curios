@@ -137,3 +137,56 @@ describe('QuestionsScreen, without the template look', () => {
     expect(within(nav).getByRole('link', { name: 'Next' })).toHaveAttribute('href', '/app/questions?page=3');
   });
 });
+
+describe('QuestionsScreen, a list longer than a page', () => {
+  const across = (extra: Partial<Parameters<typeof QuestionsScreen>[0]> = {}) =>
+    render(
+      <QuestionsScreen
+        topics={[topics[0]!]}
+        paging={{ page: 2, hasNext: true }}
+        show="needs"
+        totals={{ needs: 11, asks: 400, answeredAsks: 100 }}
+        choices={[
+          { id: topics[0]!.id, title: topics[0]!.title, answer: null },
+          { id: 'elsewhere', title: 'On another page', answer: 'Ya' },
+        ]}
+        askedThisWeek={23}
+        answerRate={{ answered: 0, recorded: 0 }}
+        publishesFaq
+        faqMinAsks={3}
+        handle="keklina"
+        publicUrl="https://curios.my/keklina"
+        answerMax={2000}
+        titleMax={200}
+        pageName="Kek Lina"
+        look={{ accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null }}
+        now={now}
+        actions={actions()}
+        onChanged={vi.fn()}
+        {...extra}
+      />,
+    );
+
+  it('counts what waits and the answered share over every topic, not the page in hand', () => {
+    across();
+    expect(stats().getByText('11').nextSibling).toHaveTextContent('Topics waiting for your answer');
+    expect(stats().getByText('25%')).toBeInTheDocument();
+    expect(filter(/Needs you/)).toHaveTextContent('11');
+  });
+
+  it('asks the server for another filter, and pages within the one in force', () => {
+    const onShow = vi.fn();
+    across({ onShow });
+    fireEvent.click(filter(/^Answered/));
+    expect(onShow).toHaveBeenCalledWith('answered');
+    const nav = screen.getByRole('navigation', { name: 'More topics' });
+    expect(within(nav).getByRole('link', { name: 'Previous' })).toHaveAttribute('href', '/app/questions?show=needs');
+    expect(within(nav).getByRole('link', { name: 'Next' })).toHaveAttribute('href', '/app/questions?show=needs&page=3');
+  });
+
+  it('offers a topic on another page to merge into', () => {
+    across();
+    fireEvent.click(screen.getByRole('button', { name: 'Same question as…' }));
+    expect(screen.getByRole('button', { name: 'On another page' })).toBeInTheDocument();
+  });
+});

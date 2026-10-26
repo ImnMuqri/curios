@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ANSWER_MAX, FAQ_MIN_ASKS, SESSION_COOKIE, TOPIC_TITLE_MAX } from '@curios/core';
-import { countQuestionsThisWeek, getAnswerRate, getMyCurios, getOwnerPage, getTopics } from '@curios/db-read';
+import { countQuestionsThisWeek, getAnswerRate, getMyCurios, getOwnerPage, getTopicChoices, getTopics, getTopicTotals, type TopicShow } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { Questions } from './questions-screen.js';
 
@@ -14,30 +14,36 @@ import { Questions } from './questions-screen.js';
  * Manglish and English -- see its refusal rule. A question asked nine times is
  * a gap either way.
  */
-/** Topics a screen shows; `?page=2` is the next fifty, most asked first. */
-const TOPICS_PER_PAGE = 50;
+/** Topics a screen shows; `?page=2` is the next seven, most asked first. `?show=needs|answered` filters, before paging. */
+const TOPICS_PER_PAGE = 7;
 
-export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
+const SHOWS: readonly TopicShow[] = ['all', 'needs', 'answered'];
+
+export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[]; show?: string | string[] }> }) {
   const query = await searchParams;
   const pageNumber = Math.max(1, Number.parseInt(typeof query.page === 'string' ? query.page : '1', 10) || 1);
+  const show: TopicShow = SHOWS.find((s) => s === query.show) ?? 'all';
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
   // One moment for the whole screen, handed down, so "12 min ago" and the
   // week of asks read the same on the server and in the browser.
   const now = new Date();
-  const [topics, askedThisWeek, answerRate, owned, page] = await Promise.all([
+  const [topics, askedThisWeek, answerRate, owned, page, totals, choices] = await Promise.all([
     // One more than a screen, only to know whether to offer the next.
-    getTopics(owner.accountId, { now, limit: TOPICS_PER_PAGE + 1, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
+    getTopics(owner.accountId, { now, show, limit: TOPICS_PER_PAGE + 1, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
     countQuestionsThisWeek(owner.accountId, now),
     getAnswerRate(owner.accountId, now),
     getOwnerPage(owner.accountId),
     // For the chat preview's colours.
     getMyCurios(owner.accountId),
+    // Over every topic, not this screenful: the filter's count, the answered share, what to merge into.
+    getTopicTotals(owner.accountId),
+    getTopicChoices(owner.accountId),
   ]);
   if (!owned || !page) redirect('/app/onboarding');
   // Past the last page (topics merged or deleted since the link was made): the first one.
-  if (pageNumber > 1 && topics.length === 0) redirect('/app/questions');
+  if (pageNumber > 1 && topics.length === 0) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
 
   // Plain data across the boundary: strings, numbers, booleans and Dates all
   // cross fine. The handlers live inside `Questions`, a client component -- a
@@ -46,9 +52,12 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   return (
     <Questions
       // Keyed by the page, as Leads is: each page of topics starts fresh after a client-side navigation.
-      key={pageNumber}
+      key={`${show}-${pageNumber}`}
       topics={topics.slice(0, TOPICS_PER_PAGE)}
       paging={{ page: pageNumber, hasNext: topics.length > TOPICS_PER_PAGE }}
+      show={show}
+      totals={totals}
+      choices={choices}
       askedThisWeek={askedThisWeek}
       answerRate={answerRate}
       publishesFaq={owned.mode === 'BUSINESS'}
