@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import { DOCS, LEGAL_DOCS, LEGAL_PATH, OPERATOR, type Block } from './content.js';
 import { LegalPage, legalMetadata } from './LegalPage.js';
+import { defaultSettings } from '@curios/core/settings';
+
+/** The prices and allowances in force: the defaults, as a database with no rows gives. */
+const PLAN = defaultSettings();
 
 const text = (block: Block) => (typeof block === 'string' ? [block] : block.list);
 
 describe('LegalPage', () => {
   it('shows the page’s title, marks its tab, and links the same page in the other language', () => {
-    render(<LegalPage doc="privacy" locale="en" />);
+    render(<LegalPage doc="privacy" locale="en" plan={PLAN} />);
     expect(screen.getByRole('heading', { level: 1, name: 'Privacy Policy' })).toBeInTheDocument();
     const tabs = screen.getByRole('navigation', { name: 'Policies' });
     expect(within(tabs).getByRole('link', { name: 'Privacy' })).toHaveAttribute('aria-current', 'page');
@@ -16,14 +20,14 @@ describe('LegalPage', () => {
   });
 
   it('sets the Malay page’s language, and links back to the English one', () => {
-    const { container } = render(<LegalPage doc="refunds" locale="ms" />);
+    const { container } = render(<LegalPage doc="refunds" locale="ms" plan={PLAN} />);
     expect(container.firstElementChild).toHaveAttribute('lang', 'ms');
     expect(screen.getByRole('heading', { level: 1, name: 'Dasar Bayaran Balik' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'English' })).toHaveAttribute('href', '/refunds');
   });
 
   it('turns the support address and the other pages’ names into links', () => {
-    render(<LegalPage doc="terms" locale="en" />);
+    render(<LegalPage doc="terms" locale="en" plan={PLAN} />);
     for (const link of screen.getAllByRole('link', { name: 'support@curios.my' })) {
       expect(link).toHaveAttribute('href', 'mailto:support@curios.my');
     }
@@ -31,10 +35,30 @@ describe('LegalPage', () => {
     expect(screen.getAllByRole('link', { name: 'Privacy Policy' })[0]).toHaveAttribute('href', '/privacy');
   });
 
+  it('states the prices and free counts in force, in both languages', () => {
+    /** The shared fixture: price.MONTHLY at 5900, five free leads. */
+    const raised = { ...PLAN, freeLeads: 5, prices: { ...PLAN.prices, MONTHLY: 5900 } };
+    const { unmount } = render(<LegalPage doc="terms" locale="en" plan={raised} />);
+    expect(document.body).toHaveTextContent('its first 5 leads and its first 3 orders cost nothing. After that, the Business plan is RM59 a month or RM490 a year.');
+    unmount();
+    render(<LegalPage doc="terms" locale="ms" plan={raised} />);
+    expect(document.body).toHaveTextContent('5 lead pertama dan 3 tempahan pertamanya tidak dikenakan bayaran. Selepas itu, pelan Bisnes berharga RM59 sebulan atau RM490 setahun.');
+  });
+
+  it('says a price change applies from the next payment, auto-renew included, in both languages', () => {
+    const all = (locale: 'en' | 'ms') => DOCS[locale].terms.sections.flatMap((s) => s.body.flatMap(text)).join(' ');
+    expect(all('en')).toContain('We may change our prices. A change applies from your next payment, including an auto-renew charge, which is made at the price in force on the day it is charged.');
+    expect(all('ms')).toContain('Kami mungkin menukar harga kami. Perubahan terpakai mulai bayaran anda yang seterusnya, termasuk caj auto-renew, yang dibuat pada harga yang berkuat kuasa pada hari ia dicaj.');
+    expect(all('en')).toContain('we then charge your card when each paid period ends');
+    expect(all('en')).not.toContain('the same amount');
+    expect(all('ms')).toContain('kami kemudian mengecaj kad anda apabila setiap tempoh berbayar tamat');
+    expect(all('ms')).not.toContain('dengan jumlah yang sama');
+  });
+
   it('leaves no placeholder token unrendered, in any page or language', () => {
     for (const locale of ['en', 'ms'] as const) {
       for (const doc of LEGAL_DOCS) {
-        const { container, unmount } = render(<LegalPage doc={doc} locale={locale} />);
+        const { container, unmount } = render(<LegalPage doc={doc} locale={locale} plan={PLAN} />);
         expect(container.textContent).not.toMatch(/\{[a-z]+\}/);
         unmount();
       }
@@ -70,7 +94,7 @@ describe('LegalPage', () => {
 
   it('names who runs Curios on the Terms and Privacy pages', () => {
     for (const doc of ['terms', 'privacy'] as const) {
-      const { container, unmount } = render(<LegalPage doc={doc} locale="en" />);
+      const { container, unmount } = render(<LegalPage doc={doc} locale="en" plan={PLAN} />);
       expect(container.textContent).toContain(OPERATOR.name);
       unmount();
     }

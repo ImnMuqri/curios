@@ -1,5 +1,6 @@
 import type { MailJobData } from '@curios/core';
-import { MAIL_QUEUE, orderState, PLAN_PRICES_CENTS, planEndedMail, planEndingMail } from '@curios/core';
+import { MAIL_QUEUE, orderState, planEndedMail, planEndingMail } from '@curios/core';
+import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import type { BillingLog } from './pending-check.js';
 
@@ -56,7 +57,10 @@ export async function runRenewalReminders(deps: {
   now: Date;
   appUrl: string;
   log?: BillingLog;
+  /** The admin's settings: the reminder quotes the price in force. */
+  settings: { get(): Promise<Settings> };
 }): Promise<{ reminded: number }> {
+  const { prices } = await deps.settings.get();
   const due = await deps.prisma.page.findMany({
     where: {
       mode: 'BUSINESS',
@@ -99,9 +103,10 @@ export async function runRenewalReminders(deps: {
       displayName: page.displayName,
       paidUntil,
       appUrl: deps.appUrl,
-      // What the renewal job will charge: the price of the plan the card was saved for.
+      // What the renewal job will charge: today's price of the plan the card was saved for. A
+      // change before the charge applies to it, as the Terms say.
       card: page.renewalCard
-        ? { label: page.renewalCard.cardLabel, amountCents: PLAN_PRICES_CENTS[page.renewalCard.plan] }
+        ? { label: page.renewalCard.cardLabel, amountCents: prices[page.renewalCard.plan] }
         : null,
     });
     try {
@@ -142,7 +147,10 @@ export async function runPlanEndedMails(deps: {
   now: Date;
   appUrl: string;
   log?: BillingLog;
+  /** The admin's settings: the shop's free orders are counted against `freeOrders`. */
+  settings: { get(): Promise<Settings> };
 }): Promise<{ told: number }> {
+  const { freeOrders } = await deps.settings.get();
   const ended = await deps.prisma.page.findMany({
     where: {
       mode: 'BUSINESS',
@@ -179,7 +187,7 @@ export async function runPlanEndedMails(deps: {
 
     // The shop by the rule checkout uses: free orders left keep it open.
     const shop = {
-      state: orderState({ mode: 'BUSINESS', paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now: deps.now }),
+      state: orderState({ mode: 'BUSINESS', paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now: deps.now }, freeOrders),
       storeEnabled: page.storeEnabled,
     };
     const mail = planEndedMail({ displayName: page.displayName, paidUntil, appUrl: deps.appUrl, shop });

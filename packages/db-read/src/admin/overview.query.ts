@@ -1,5 +1,6 @@
-import { conversationCap, currentPeriod } from '@curios/core';
+import { currentPeriod } from '@curios/core';
 import { prismaRead } from '../client.js';
+import { getSettings } from '../settings.query.js';
 import type { ReportReasonKey } from '@curios/core/report';
 import { DAY_MS, malaysiaDay, malaysiaMidnight } from './days.js';
 import { listReportGroups } from './reports.query.js';
@@ -62,6 +63,8 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
   const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
   const inPeriod = { gte: start, lte: now };
   const firstDay = malaysiaMidnight(now, 6);
+  // At the cap means at the admin's cap, the one the chat enforces.
+  const { cap } = await getSettings();
 
   const [
     liveCount,
@@ -98,7 +101,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     prismaRead.conversation.findMany({ where: { createdAt: { gte: firstDay, lte: now } }, select: { createdAt: true } }),
     prismaRead.ingestion.count({ where: { status: 'FAILED', updatedAt: { gt: weekAgo, lte: now } } }),
     prismaRead.usageCounter.findMany({
-      where: { period: currentPeriod(now), count: { gte: conversationCap() } },
+      where: { period: currentPeriod(now), count: { gte: cap } },
       orderBy: { count: 'desc' },
       select: { page: { select: { displayName: true } } },
     }),

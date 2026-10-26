@@ -1,7 +1,9 @@
 import type { Prisma } from '@prisma/client';
-import { conversationCap, currentPeriod, planState } from '@curios/core';
+import { currentPeriod, planState } from '@curios/core';
+import type { Settings } from '@curios/core/settings';
 import { FLAG_OVER, isFlagged } from '@curios/core/report';
 import { prismaRead } from '../client.js';
+import { getSettings } from '../settings.query.js';
 
 export type PageFilter = 'all' | 'business' | 'personal' | 'lapsed' | 'flagged';
 export type AdminPageStatus = 'Live' | 'Draft' | 'Lapsed' | 'Suspended' | 'Flagged';
@@ -72,7 +74,8 @@ interface Counts {
 
 const monthStartOf = (now: Date) => new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
 
-function rowOf(page: RowSource, now: Date, counts: Counts): AdminPageRow {
+/** `settings`: the admin's, for the cap and the free leads a trial is counted against. */
+function rowOf(page: RowSource, now: Date, counts: Counts, settings: Settings): AdminPageRow {
   return {
     id: page.id,
     handle: page.handle,
@@ -81,10 +84,10 @@ function rowOf(page: RowSource, now: Date, counts: Counts): AdminPageRow {
     status: statusOf(page, now, counts.openReports),
     ownerEmail: page.account.email,
     createdAt: page.createdAt,
-    plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now),
+    plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now, settings.freeLeads),
     paidUntil: page.paidUntil,
     conversationsThisMonth: counts.conversations,
-    cap: conversationCap(),
+    cap: settings.cap,
     leadsThisMonth: counts.leads,
     ordersThisMonth: counts.orders,
   };
@@ -139,11 +142,12 @@ export async function listAdminPages(options: {
   // Three grouped reads for the whole list, not three per row.
   const pageIds = pages.map((p) => p.id);
   const inMonth = { pageId: { in: pageIds }, createdAt: { gte: monthStartOf(now), lte: now } };
-  const [counters, leads, orders, reports] = await Promise.all([
+  const [counters, leads, orders, reports, settings] = await Promise.all([
     prismaRead.usageCounter.findMany({ where: { pageId: { in: pageIds }, period: currentPeriod(now) }, select: { pageId: true, count: true } }),
     prismaRead.lead.groupBy({ by: ['pageId'], where: inMonth, _count: { _all: true } }),
     prismaRead.order.groupBy({ by: ['pageId'], where: inMonth, _count: { _all: true } }),
     prismaRead.report.groupBy({ by: ['pageId'], where: { pageId: { in: pageIds }, status: 'OPEN' }, _count: { _all: true } }),
+    getSettings(),
   ]);
   const conversations = new Map(counters.map((c) => [c.pageId, c.count]));
   const leadCount = new Map(leads.map((l) => [l.pageId, l._count._all]));
@@ -156,7 +160,7 @@ export async function listAdminPages(options: {
       leads: leadCount.get(page.id) ?? 0,
       orders: orderCount.get(page.id) ?? 0,
       openReports: reportCount.get(page.id) ?? 0,
-    }),
+    }, settings),
   );
 }
 
@@ -174,12 +178,13 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
   if (!page) return null;
 
   const inMonth = { pageId: id, createdAt: { gte: monthStartOf(now), lte: now } };
-  const [counter, grantedMonths, leads, orders, openReports] = await Promise.all([
+  const [counter, grantedMonths, leads, orders, openReports, settings] = await Promise.all([
     prismaRead.usageCounter.findUnique({ where: { pageId_period: { pageId: id, period: currentPeriod(now) } }, select: { count: true } }),
     prismaRead.payment.count({ where: { pageId: id, provider: 'GRANT', status: 'PAID' } }),
     prismaRead.lead.count({ where: inMonth }),
     prismaRead.order.count({ where: inMonth }),
     prismaRead.report.count({ where: { pageId: id, status: 'OPEN' } }),
+    getSettings(),
   ]);
 
   const signInMethods: ('google' | 'password')[] = [];
@@ -187,7 +192,7 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
   if (page.account.password) signInMethods.push('password');
 
   return {
-    ...rowOf(page, now, { conversations: counter?.count ?? 0, leads, orders, openReports }),
+    ...rowOf(page, now, { conversations: counter?.count ?? 0, leads, orders, openReports }, settings),
     openReports,
     signInMethods,
     factCount: page._count.facts,
@@ -200,10 +205,10 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
 /**
  * The admin's plan label from `planState`. A plan that ran out is Lapsed even
  * while free leads remain (as the owner's own label has it); a business page
- * that never paid is a trial, spent or not.
+ * that never paid is a trial, spent or not. `freeLeads` is the allowance in force.
  */
-export function planOf(mode: 'PERSONAL' | 'BUSINESS', paidUntil: Date | null, leadsCaptured: number, now: Date): AdminPlan {
-  const state = planState({ mode, paidUntil, leadsCaptured, now });
+export function planOf(mode: 'PERSONAL' | 'BUSINESS', paidUntil: Date | null, leadsCaptured: number, now: Date, freeLeads: number): AdminPlan {
+  const state = planState({ mode, paidUntil, leadsCaptured, now }, freeLeads);
   switch (state.kind) {
     case 'personal':
       return 'Personal';

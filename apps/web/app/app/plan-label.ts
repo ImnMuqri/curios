@@ -1,8 +1,8 @@
 import { planState, type PlanInput } from '@curios/core';
 
-/** The line under the owner's name in the sidebar: where their plan stands. */
-export function planLabel(input: PlanInput): string {
-  const state = planState(input);
+/** The line under the owner's name in the sidebar: where their plan stands, against the free leads in force. */
+export function planLabel(input: PlanInput, freeLeads: number): string {
+  const state = planState(input, freeLeads);
   switch (state.kind) {
     case 'personal':
       return 'Personal page';

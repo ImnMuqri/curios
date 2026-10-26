@@ -4,11 +4,24 @@ import { PrismaClient } from '@prisma/client';
 import { hashSessionValue } from '@curios/core';
 import { getCheckout, getOrderByToken, getShopItem, getOrderStats, getOwnerOrders, getOwnerOrdersPage } from './orders.query.js';
 import { countNavBadges } from './my-curios.query.js';
+import { clearSettingsCache } from './settings.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 // Sunday 2026-10-18, 23:30 in Malaysia (15:30Z).
 const NOW = new Date('2026-10-18T15:30:00Z');
+
+/** A limit as the admin's route stores it, then the cache forgotten; `undo` takes it away again. */
+async function withSetting(key: string, value: number, run: () => Promise<void>) {
+  await write.systemSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  clearSettingsCache();
+  try {
+    await run();
+  } finally {
+    await write.systemSetting.deleteMany({ where: { key } });
+    clearSettingsCache();
+  }
+}
 
 interface Owner {
   accountId: string;
@@ -443,6 +456,13 @@ describe('getCheckout', () => {
     expect((await getCheckout(spent.handle, NOW))?.canTakeOrders).toBe(false);
     const paid = await anOwner({ ordersPlaced: 3, paidUntil: new Date('2026-12-01T00:00:00Z') });
     expect((await getCheckout(paid.handle, NOW))?.canTakeOrders).toBe(true);
+  });
+
+  it('counts the free orders the admin set: with 5, a page with 3 placed still takes orders', async () => {
+    const owner = await anOwner({ ordersPlaced: 3 });
+    await withSetting('freeOrders', 5, async () => {
+      expect((await getCheckout(owner.handle, NOW))?.canTakeOrders).toBe(true);
+    });
   });
 
   it('says whether the shop takes a QR or bank transfer, and which methods its CHIP account listed', async () => {

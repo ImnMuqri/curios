@@ -29,8 +29,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // SystemSetting is reached by no truncate cascade: the payments switch's row goes here.
-  await app.prisma.systemSetting.deleteMany({ where: { key: 'switch.chipPayments' } });
+  // SystemSetting is reached by no truncate cascade: the payments switch's and the price's rows go here.
+  await app.prisma.systemSetting.deleteMany({ where: { key: { in: ['switch.chipPayments', 'price.MONTHLY'] } } });
   await app.close();
 });
 
@@ -162,6 +162,21 @@ describe('POST /billing/purchases', () => {
     const hour = (input?.dueAt.getTime() ?? 0) - Date.now();
     expect(hour).toBeGreaterThan(59 * 60_000);
     expect(hour).toBeLessThanOrEqual(60 * 60_000);
+  });
+
+  it('charges the price the admin set: with price.MONTHLY at 5900 the purchase is created at 5900', async () => {
+    await app.prisma.systemSetting.upsert({ where: { key: 'price.MONTHLY' }, create: { key: 'price.MONTHLY', value: 5900 }, update: { value: 5900 } });
+    app.settings.clear();
+    try {
+      const owner = await anOwner();
+      expect((await start(owner.cookie)).statusCode).toBe(201);
+      const payment = await app.prisma.payment.findFirstOrThrow({ where: { pageId: owner.pageId }, select: { amountCents: true } });
+      expect(payment.amountCents).toBe(5900);
+      expect(client.createPurchase.mock.calls[0]?.[0]).toMatchObject({ amountCents: 5900 });
+    } finally {
+      await app.prisma.systemSetting.deleteMany({ where: { key: 'price.MONTHLY' } });
+      app.settings.clear();
+    }
   });
 
   it('asks CHIP for a card token only when autoRenew is ticked', async () => {

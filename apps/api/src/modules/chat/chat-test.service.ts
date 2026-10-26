@@ -132,7 +132,7 @@ async function citedSources(
  * their cost is visible; the per-account rate limit is what bounds them.
  */
 export async function testAnswer(
-  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'cap' | 'settings'>,
+  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'settings'>,
   input: { accountId: string; question: string; history: TestTurn[] },
 ): Promise<TestReply> {
   const { prisma, gateway } = deps;
@@ -168,7 +168,7 @@ export async function testAnswer(
     where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
     select: { count: true },
   });
-  if (isOverCap({ used: (used?.count ?? 0) + 1, cap: deps.cap })) return { reply: CAP_REACHED_REPLY, from: 'limit' };
+  if (isOverCap({ used: (used?.count ?? 0) + 1, cap: deps.settings.cap })) return { reply: CAP_REACHED_REPLY, from: 'limit' };
 
   // The last turns, starting on the visitor's side as the model expects.
   const earlier = input.history.slice(-(MAX_HISTORY_MESSAGES - 1));

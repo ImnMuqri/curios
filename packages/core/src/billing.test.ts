@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extendPaidUntil, PLAN_PRICES_CENTS } from './billing.js';
+import { extendPaidUntil, monthsFree, PLAN_PRICES_CENTS } from './billing.js';
 
 const at = (iso: string) => new Date(iso);
 
@@ -58,5 +58,18 @@ describe('extendPaidUntil', () => {
     expect(
       extendPaidUntil({ paidUntil: null, now: at('2028-02-29T09:00:00.000Z'), plan: 'ANNUAL' }),
     ).toEqual(at('2029-02-28T09:00:00.000Z'));
+  });
+});
+
+describe('monthsFree', () => {
+  it('is the whole months a year saves, as the prices are published', () => {
+    expect(monthsFree({ MONTHLY: 4900, ANNUAL: 49000 })).toBe(2);
+    expect(monthsFree({ MONTHLY: 5900, ANNUAL: 53100 })).toBe(3);
+  });
+
+  it('is null when the prices give no whole month, or none at all', () => {
+    expect(monthsFree({ MONTHLY: 5900, ANNUAL: 49000 })).toBeNull();
+    expect(monthsFree({ MONTHLY: 4900, ANNUAL: 58800 })).toBeNull();
+    expect(monthsFree({ MONTHLY: 4900, ANNUAL: 70000 })).toBeNull();
   });
 });

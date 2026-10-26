@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { defaultSettings, type Settings } from '@curios/core/settings';
 import { buildRenewalReminder, runPlanEndedMails, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -10,6 +11,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60_000;
 const APP_URL = 'https://curios.example';
 const inDays = (days: number) => new Date(NOW.getTime() + days * DAY_MS);
+
+/** The workers' settings reader, answering the defaults, or the settings given. */
+const reader = (settings: Settings = defaultSettings()) => ({ get: async () => settings });
+const settings = reader();
 
 function aMailQueue() {
   return { add: vi.fn<MailQueueLike['add']>(async () => ({ id: 'queued' })) };
@@ -66,7 +71,7 @@ describe('runRenewalReminders', () => {
     const page = await aPage({ paidUntil });
     const mailQueue = aMailQueue();
 
-    const result = await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+    const result = await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings });
 
     expect(result).toEqual({ reminded: 1 });
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
@@ -82,20 +87,31 @@ describe('runRenewalReminders', () => {
     await aPage({ paidUntil: inDays(2), card: { label: 'Visa ending 1111', plan: 'ANNUAL' } });
     const mailQueue = aMailQueue();
 
-    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings });
 
     const [, mail] = mailQueue.add.mock.calls[0] ?? [];
     expect(mail?.text).toContain("We'll charge RM490 to Visa ending 1111 on");
     expect(mail?.html).toContain('>See billing</a>');
   });
 
+  it('quotes the price in force, which is what the renewal will charge', async () => {
+    await aPage({ paidUntil: inDays(2), card: { label: 'Visa ending 1111', plan: 'MONTHLY' } });
+    const mailQueue = aMailQueue();
+    const raised = reader({ ...defaultSettings(), prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings: raised });
+
+    const [, mail] = mailQueue.add.mock.calls[0] ?? [];
+    expect(mail?.text).toContain("We'll charge RM59 to Visa ending 1111 on");
+  });
+
   it('never sends a second reminder for the same period', async () => {
     const paidUntil = inDays(2);
     const page = await aPage({ paidUntil });
 
-    await runRenewalReminders({ prisma, mailQueue: aMailQueue(), now: NOW, appUrl: APP_URL });
+    await runRenewalReminders({ prisma, mailQueue: aMailQueue(), now: NOW, appUrl: APP_URL, settings });
     const second = aMailQueue();
-    const result = await runRenewalReminders({ prisma, mailQueue: second, now: NOW, appUrl: APP_URL });
+    const result = await runRenewalReminders({ prisma, mailQueue: second, now: NOW, appUrl: APP_URL, settings });
 
     expect(result).toEqual({ reminded: 0 });
     expect(second.add).not.toHaveBeenCalled();
@@ -109,7 +125,7 @@ describe('runRenewalReminders', () => {
     await prisma.page.update({ where: { id: page.pageId }, data: { paidUntil: inDays(2.5) } });
     const mailQueue = aMailQueue();
 
-    expect(await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL })).toEqual({
+    expect(await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings })).toEqual({
       reminded: 1,
     });
   });
@@ -118,7 +134,7 @@ describe('runRenewalReminders', () => {
     await aPage({ paidUntil: new Date(NOW.getTime() + 3 * DAY_MS) });
     const mailQueue = aMailQueue();
 
-    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings });
 
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
   });
@@ -127,7 +143,7 @@ describe('runRenewalReminders', () => {
     await aPage({ paidUntil: new Date(NOW.getTime() + 3 * DAY_MS + MINUTE_MS) });
     const mailQueue = aMailQueue();
 
-    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings });
 
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
@@ -138,7 +154,7 @@ describe('runRenewalReminders', () => {
     await aPage({ paidUntil: new Date(NOW.getTime() - MINUTE_MS) });
     const mailQueue = aMailQueue();
 
-    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings });
 
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
@@ -147,7 +163,7 @@ describe('runRenewalReminders', () => {
     await aPage({ paidUntil: inDays(2), mode: 'PERSONAL' });
     const mailQueue = aMailQueue();
 
-    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL });
+    await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings });
 
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
@@ -176,7 +192,7 @@ describe('runRenewalReminders', () => {
     // One page's email failing must not stop the rest: the run itself does
     // not reject, and the page behind the failure still gets reminded.
     await expect(
-      runRenewalReminders({ prisma, mailQueue: failingOnce, now: NOW, appUrl: APP_URL }),
+      runRenewalReminders({ prisma, mailQueue: failingOnce, now: NOW, appUrl: APP_URL, settings }),
     ).resolves.toEqual({ reminded: 1 });
 
     // The failed page stays claimed -- losing one reminder rather than
@@ -223,7 +239,7 @@ describe('buildRenewalReminder', () => {
 });
 
 describe('runPlanEndedMails', () => {
-  const run = (mailQueue: ReturnType<typeof aMailQueue>, now = NOW) => runPlanEndedMails({ prisma, mailQueue, now, appUrl: APP_URL });
+  const run = (mailQueue: ReturnType<typeof aMailQueue>, now = NOW) => runPlanEndedMails({ prisma, mailQueue, now, appUrl: APP_URL, settings });
 
   it('tells an owner whose plan ended in the last day, laid out, once', async () => {
     const page = await aPage({ paidUntil: inDays(-0.5) });
@@ -255,6 +271,15 @@ describe('runPlanEndedMails', () => {
     const text = mailQueue.add.mock.calls[0]?.[1]?.text ?? '';
     expect(text).toContain(said);
     if (!shop.storeEnabled || shop.ordersPlaced < 3) expect(text).not.toContain('stopped taking orders');
+  });
+
+  it('counts the shop’s free orders against the allowance in force', async () => {
+    await aPage({ paidUntil: inDays(-0.5), ordersPlaced: 3, storeEnabled: true });
+    const mailQueue = aMailQueue();
+
+    await runPlanEndedMails({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings: reader({ ...defaultSettings(), freeOrders: 5 }) });
+
+    expect(mailQueue.add.mock.calls[0]?.[1]?.text).toContain('Your shop still has 2 free orders.');
   });
 
   it('skips the plan-ended mail while a renewal card exists', async () => {

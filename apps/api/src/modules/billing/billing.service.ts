@@ -1,4 +1,4 @@
-import { PLAN_PRICES_CENTS, type BillingPlan } from '@curios/core';
+import type { BillingPlan } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { billDescription, type ChipClient } from '@curios/billing';
 import type { Settings } from '@curios/core/settings';
@@ -59,7 +59,9 @@ export async function createPurchaseForOwner(
   if (!page) throw new NoPageError();
   if (page.mode !== 'BUSINESS') throw new NotABusinessPageError();
 
-  const amountCents = PLAN_PRICES_CENTS[input.plan];
+  // The price in force now, which Billing and the landing page show too. The Payment keeps it, so a
+  // later change never alters what this purchase was billed at.
+  const amountCents = deps.settings.prices[input.plan];
   const payment = await deps.prisma.payment.create({
     data: { pageId: page.id, plan: input.plan, amountCents, provider: 'CHIP', autoRenew: input.autoRenew },
     select: { id: true },

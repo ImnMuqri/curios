@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 // barrel's transitive node:crypto import is fine. The split between the two
 // is deliberate -- see the comment in middleware.ts.
 import { orderState, planState, SESSION_COOKIE } from '@curios/core';
-import { countNavBadges, getConversationUsage, getOwnerPage } from '@curios/db-read';
+import { countNavBadges, getConversationUsage, getOwnerPage, getSettings } from '@curios/db-read';
 import { avatarUrl } from '../../lib/avatar-url.js';
 import { AppFrame } from './app-frame.js';
 import { alertsFor, billingNeedsYou } from './alerts.js';
@@ -57,13 +57,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const now = new Date();
-  const [badges, usage] = await Promise.all([countNavBadges(owner.accountId), getConversationUsage(page.id, now)]);
+  const [badges, usage, { freeLeads, freeOrders }] = await Promise.all([countNavBadges(owner.accountId), getConversationUsage(page.id, now), getSettings()]);
   // The stop states (trial, limit, plan ended), decided once here for every
-  // screen; each screen's header shows the one that is about it.
-  const plan = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
+  // screen; each screen's header shows the one that is about it. Counted
+  // against the allowances the admin set, as the API counts them.
+  const plan = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now }, freeLeads);
   // The shop's own count, by the one rule the shop and the API use too.
   const orders = {
-    state: orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
+    state: orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }, freeOrders),
     storeEnabled: page.storeEnabled,
     chipRefused: page.chipRefused,
     payByQr: page.payByQr,
@@ -72,10 +73,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppFrame
       displayName={page.displayName}
       avatarUrl={avatarUrl(page.avatarKey)}
-      planLabel={planLabel({ ...page, now })}
+      planLabel={planLabel({ ...page, now }, freeLeads)}
       badges={badges}
       mode={page.mode}
-      alerts={alertsFor({ plan, usage, now, orders, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
+      alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
       billingDot={billingNeedsYou(plan, orders)}
       theme={parseTheme(jar.get(THEME_COOKIE)?.value)}
     >

@@ -1,6 +1,5 @@
-import { PLAN_PRICES_CENTS } from './billing.js';
 import { renderMailHtml } from './mail.js';
-import { FREE_LEADS, type OrderState } from './plan.js';
+import type { OrderState } from './plan.js';
 
 /**
  * The emails about an owner's plan and its limits: the free leads used up,
@@ -40,12 +39,15 @@ function longDay(date: Date): string {
 
 const ringgit = (cents: number) => `RM${cents / 100}`;
 const billingUrl = (appUrl: string) => `${appUrl.replace(/\/+$/, '')}/app/billing`;
-const prices = `Business is ${ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month, or ${ringgit(PLAN_PRICES_CENTS.ANNUAL)} a year.`;
 
-/** Sent once, when the last free lead is captured. */
-export function trialSpentMail(input: { displayName: string; appUrl: string }): Mail {
+/**
+ * Sent once, when the last free lead is captured. `freeLeads` and `prices` are the ones in force
+ * (`Settings`), so the mail never quotes a price CHIP would not charge.
+ */
+export function trialSpentMail(input: { displayName: string; appUrl: string; freeLeads: number; prices: { MONTHLY: number; ANNUAL: number } }): Mail {
   const subject = 'Your page stopped taking numbers';
-  const said = `Your ${FREE_LEADS} free leads are used, so the capture card is no longer shown on ${input.displayName}. Everything else still works: your page, your FAQ pages and the chat.`;
+  const prices = `Business is ${ringgit(input.prices.MONTHLY)} a month, or ${ringgit(input.prices.ANNUAL)} a year.`;
+  const said = `Your ${input.freeLeads} free leads are used, so the capture card is no longer shown on ${input.displayName}. Everything else still works: your page, your FAQ pages and the chat.`;
   const more = `${prices} Paying turns the capture card back on straight away.`;
   const url = billingUrl(input.appUrl);
   return {
@@ -56,7 +58,7 @@ export function trialSpentMail(input: { displayName: string; appUrl: string }): 
       appUrl: input.appUrl,
       topRight: input.displayName,
       tag: { label: 'Trial used up', tone: 'amber' },
-      heading: `Your ${FREE_LEADS} free leads are used`,
+      heading: `Your ${input.freeLeads} free leads are used`,
       blocks: [
         // The heading already says the leads are used; the body says what that changed.
         { kind: 'p', text: `The capture card is no longer shown on ${input.displayName}. Everything else still works: your page, your FAQ pages and the chat.` },

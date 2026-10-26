@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { getOverview } from './overview.query.js';
+import { clearSettingsCache } from '../settings.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -10,6 +11,18 @@ const NOW = new Date('2026-10-21T02:00:00.000Z');
 const MIDNIGHT = new Date('2026-10-20T16:00:00.000Z');
 const DAY = 86_400_000;
 const NEXT_MONTH = new Date(NOW.getTime() + 25 * DAY);
+
+/** A limit as the admin's route stores it, then the cache forgotten; `undo` takes it away again. */
+async function withSetting(key: string, value: number, run: () => Promise<void>) {
+  await write.systemSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  clearSettingsCache();
+  try {
+    await run();
+  } finally {
+    await write.systemSetting.deleteMany({ where: { key } });
+    clearSettingsCache();
+  }
+}
 
 const ids: Record<string, string> = {};
 
@@ -141,6 +154,12 @@ describe('getOverview', () => {
     expect(o.needsYou.atCap.count).toBe(1);
     expect(o.needsYou.atCap.names).toEqual(['Chip']);
     expect(o.needsYou.plansEnding).toBe(1); // Ending, not EndingGrant
+  });
+
+  it('counts pages at the cap the admin set', async () => {
+    await withSetting('cap', 199, async () => {
+      expect((await getOverview('7d', NOW)).needsYou.atCap.names.sort()).toEqual(['Chip', 'Gifted']);
+    });
   });
 
   it('counts reported pages and names the one with the most reports', async () => {

@@ -54,14 +54,12 @@ export function chatDependencies(options: ChatRouteOptions): { gateway: Gateway;
 export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
   const { gateway, embedder } = chatDependencies(options);
 
-  // Resolved once here, at registration -- the same moment the API key above
-  // is checked, and for the same reason: this route already builds its
-  // dependencies from the environment at boot rather than per request, which
-  // is what lets a bad value fail the deploy instead of one visitor's chat.
-  // `conversationCap()` throws on a malformed CONVERSATION_CAP_PER_MONTH; see
-  // ChatDeps.cap in chat.service.ts for what calling it per request used to
-  // cost.
-  const cap = conversationCap();
+  // Checked once here, at registration -- the same moment the API key above
+  // is checked, and for the same reason: a malformed CONVERSATION_CAP_PER_MONTH
+  // (`conversationCap()` throws on one) fails the deploy instead of passing
+  // unnoticed. It is only the default: the cap in force is `settings.cap`,
+  // read per request, so the admin's change applies without a restart.
+  conversationCap();
 
   app.post(
     '/chat/:handle',
@@ -109,7 +107,7 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
       reply.raw.writeHead(200);
 
       const stream = answer(
-        { prisma: app.prisma, gateway, cap, embedder, log: request.log, groupQueue: app.groupQueue, mailQueue: app.mailQueue, settings },
+        { prisma: app.prisma, gateway, embedder, log: request.log, groupQueue: app.groupQueue, mailQueue: app.mailQueue, settings },
         {
           handle: request.params.handle,
           question: request.body.question,
@@ -157,8 +155,8 @@ export const chatRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, o
  */
 export const chatTestRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (app, options) => {
   const { gateway, embedder } = chatDependencies(options);
-  // Resolved at registration, as chatRoutes does, so a malformed value fails the deploy.
-  const cap = conversationCap();
+  // Checked at registration, as chatRoutes does, so a malformed value fails the deploy.
+  conversationCap();
 
   app.post(
     '/chat/test',
@@ -176,7 +174,7 @@ export const chatTestRoutes: FastifyPluginAsyncZod<ChatRouteOptions> = async (ap
     async (request) => {
       if (!request.account) throw new UnauthenticatedError();
       return testAnswer(
-        { prisma: app.prisma, gateway, embedder, log: request.log, cap, settings: await app.settings.get() },
+        { prisma: app.prisma, gateway, embedder, log: request.log, settings: await app.settings.get() },
         { accountId: request.account.id, question: request.body.question, history: request.body.history },
       );
     },

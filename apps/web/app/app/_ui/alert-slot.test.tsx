@@ -118,7 +118,7 @@ describe('AlertSlot', () => {
 
   it('tells a lapsed open shop on Orders that checkout is paused, and every other screen that the plan ended', async () => {
     const { alertsFor } = await import('../alerts.js');
-    const { orderState, planState } = await import('@curios/core');
+    const { FREE_LEADS, FREE_ORDERS, orderState, planState } = await import('@curios/core');
     const now = new Date('2026-10-15T04:00:00.000Z');
     const row = { mode: 'BUSINESS' as const, paidUntil: new Date('2026-10-13T20:00:00.000Z'), now };
     const alerts = alertsFor({
@@ -126,6 +126,8 @@ describe('AlertSlot', () => {
       usage: { used: 0, cap: 200 },
       now,
       orders: { state: orderState({ ...row, ordersPlaced: 3, ordersAtTrialReset: 0 }), storeEnabled: true },
+      freeLeads: FREE_LEADS,
+      freeOrders: FREE_ORDERS,
     });
 
     pathname = '/app/orders';

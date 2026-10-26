@@ -16,6 +16,9 @@ export interface Settings {
   banner: string | null;
 }
 
+/** What a plan costs and allows: the part of `Settings` that pricing copy, Terms and mails print. */
+export type PlanTerms = Pick<Settings, 'freeLeads' | 'freeOrders' | 'prices'>;
+
 export const BANNER_MAX = 160;
 /** Above this a price change is "big" and the admin must confirm it. */
 export const PRICE_MAX_RM = 999;

@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { PASTED_TEXT_MAX, PLAN_PRICES_CENTS, SESSION_COOKIE } from '@curios/core';
-import { getOwnerPage, getReviewQueue } from '@curios/db-read';
+import { PASTED_TEXT_MAX, SESSION_COOKIE } from '@curios/core';
+import { getOwnerPage, getReviewQueue, getSettings } from '@curios/db-read';
 
 import { resolveOwner } from '../session.js';
 import { ringgit } from '../billing/billing-copy.js';
@@ -22,12 +22,15 @@ export default async function OnboardingPage() {
 
   const page = await getOwnerPage(owner.accountId);
   const facts = page ? await getReviewQueue(owner.accountId, { limit: 50 }) : [];
+  // The price and free leads in force, as Billing and the landing page quote them.
+  const { prices, freeLeads } = await getSettings();
 
   return (
     <Onboarding
       page={page ? { id: page.id, handle: page.handle, displayName: page.displayName, mode: page.mode } : null}
       facts={facts.map((fact) => ({ id: fact.id, category: fact.category, claim: fact.claim, question: fact.question }))}
-      monthlyPrice={ringgit(PLAN_PRICES_CENTS.MONTHLY)}
+      monthlyPrice={ringgit(prices.MONTHLY)}
+      freeLeads={freeLeads}
       pastedTextMax={PASTED_TEXT_MAX}
     />
   );

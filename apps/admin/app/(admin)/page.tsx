@@ -1,4 +1,4 @@
-import { conversationCap } from '@curios/core';
+import { getSettings } from '@curios/db-read';
 import { getOverview } from '@curios/db-read/admin';
 import { Overview } from './overview.js';
 import { parsePeriod } from './period.js';
@@ -13,7 +13,8 @@ export default async function OverviewPage({
 }) {
   await requireAdmin();
   const period = parsePeriod((await searchParams).period);
-  const overview = await getOverview(period, new Date());
+  // The cap in force, the admin's, which getOverview counted "at the limit" against.
+  const [overview, { cap }] = await Promise.all([getOverview(period, new Date()), getSettings()]);
 
-  return <Overview overview={overview} period={period} cap={conversationCap()} />;
+  return <Overview overview={overview} period={period} cap={cap} />;
 }

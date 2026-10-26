@@ -1,4 +1,4 @@
-import { FREE_LEADS, FREE_ORDERS, planEndedSaid, type OrderState, type PlanState } from '@curios/core';
+import { planEndedSaid, type OrderState, type PlanState } from '@curios/core';
 import { SUSPENDED_ALERT_ID } from './alert-ids.js';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
@@ -55,9 +55,9 @@ export interface ShopAlertInput {
  * The shop's alerts, on Orders: a refused CHIP key first (amber beats the blue
  * count under it in `pickAlert`), then the free orders counted or checkout paused.
  */
-function shopAlerts(orders: ShopAlertInput | undefined): Alert[] {
+function shopAlerts(orders: ShopAlertInput | undefined, freeOrders: number): Alert[] {
   if (!orders?.storeEnabled) return [];
-  return [...chipAlert(orders), ...orderAlerts(orders)];
+  return [...chipAlert(orders), ...orderAlerts(orders, freeOrders)];
 }
 
 function chipAlert(orders: ShopAlertInput): Alert[] {
@@ -81,7 +81,7 @@ function chipAlert(orders: ShopAlertInput): Alert[] {
     : [];
 }
 
-function orderAlerts(orders: ShopAlertInput): Alert[] {
+function orderAlerts(orders: ShopAlertInput, freeOrders: number): Alert[] {
   const { state } = orders;
   const paused = (text: string): Alert => ({
     id: 'paused',
@@ -100,14 +100,14 @@ function orderAlerts(orders: ShopAlertInput): Alert[] {
           tone: 'info',
           where: '/app/orders',
           icon: 'shop',
-          title: `${state.used} of your ${FREE_ORDERS} free orders used`,
-          text: `After ${FREE_ORDERS}, checkout pauses and baskets come to you on WhatsApp until you subscribe.`,
-          meter: Array.from({ length: FREE_ORDERS }, (_, i) => i < state.used),
+          title: `${state.used} of your ${freeOrders} free orders used`,
+          text: `After ${freeOrders}, checkout pauses and baskets come to you on WhatsApp until you subscribe.`,
+          meter: Array.from({ length: freeOrders }, (_, i) => i < state.used),
           action: { href: BILLING, label: 'See plans' },
         },
       ];
     case 'trialSpent':
-      return [paused(`Your ${FREE_ORDERS} free orders are used.`)];
+      return [paused(`Your ${freeOrders} free orders are used.`)];
     case 'lapsed':
       return [{ ...paused(`Your Business plan ended on ${shortDate(state.paidUntil, true)}.`), id: `paused-${state.paidUntil.toISOString().slice(0, 10)}` }];
     case 'paid':
@@ -128,8 +128,11 @@ export function alertsFor(input: {
   orders?: ShopAlertInput;
   /** Set while the Curios team has the page suspended: the reason they gave. */
   suspension?: { reason: string | null };
+  /** The allowances in force (`Settings`): what "of your 3 free leads" counts to, and its meter's length. */
+  freeLeads: number;
+  freeOrders: number;
 }): Alert[] {
-  const { plan, usage, now } = input;
+  const { plan, usage, now, freeLeads } = input;
   const alerts: Alert[] = [];
 
   // First, and on every screen: nothing else matters while visitors cannot reach the page.
@@ -170,7 +173,7 @@ export function alertsFor(input: {
           icon: 'card',
           title: `Your Business plan ended on ${shortDate(plan.lapsedOn, true)}`,
           text: `You have ${plan.remaining} free ${plan.remaining === 1 ? 'lead' : 'leads'} left. After ${plan.remaining === 1 ? 'that' : 'those'}, the capture card stops appearing on your page. Your page and chat still work.`,
-          meter: Array.from({ length: FREE_LEADS }, (_, i) => i < plan.used),
+          meter: Array.from({ length: freeLeads }, (_, i) => i < plan.used),
           action: { href: BILLING, label: 'Renew your plan' },
         });
       } else {
@@ -179,9 +182,9 @@ export function alertsFor(input: {
           tone: 'info',
           where: '/app/leads',
           icon: 'lead',
-          title: `${plan.used} of your ${FREE_LEADS} free leads used`,
-          text: `After ${FREE_LEADS}, the capture card stops appearing on your page until you subscribe.`,
-          meter: Array.from({ length: FREE_LEADS }, (_, i) => i < plan.used),
+          title: `${plan.used} of your ${freeLeads} free leads used`,
+          text: `After ${freeLeads}, the capture card stops appearing on your page until you subscribe.`,
+          meter: Array.from({ length: freeLeads }, (_, i) => i < plan.used),
           action: { href: BILLING, label: 'See plans' },
         });
       }
@@ -192,9 +195,9 @@ export function alertsFor(input: {
         tone: 'warn',
         where: '/app/leads',
         icon: 'lead',
-        title: `Your ${FREE_LEADS} free leads are used`,
+        title: `Your ${freeLeads} free leads are used`,
         text: 'The capture card is no longer shown on your page. Everything else still works: your page, your FAQ pages and the chat.',
-        meter: Array.from({ length: FREE_LEADS }, () => true),
+        meter: Array.from({ length: freeLeads }, () => true),
         action: { href: BILLING, label: 'See your options' },
       });
       break;
@@ -203,7 +206,7 @@ export function alertsFor(input: {
       break;
   }
 
-  alerts.push(...shopAlerts(input.orders));
+  alerts.push(...shopAlerts(input.orders, input.freeOrders));
 
   const month = now.toISOString().slice(0, 7);
   const resets = shortDate(usageResets(now));

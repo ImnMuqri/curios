@@ -1,4 +1,5 @@
-import { PLAN_PRICES_CENTS } from '@curios/core/billing';
+import { monthsFree } from '@curios/core/billing';
+import type { PlanTerms } from '@curios/core/settings';
 
 /**
  * Every word on the landing page, in both languages, in one shape. From the
@@ -12,9 +13,11 @@ import { PLAN_PRICES_CENTS } from '@curios/core/billing';
  * paying through CHIP (or the owner's own QR with a receipt), and orders
  * landing in the dashboard are as the board draws them.
  *
- * Client-safe: the price comes from the @curios/core/billing subpath, which
- * imports nothing, so the client sections read their words from here by
- * locale (several are functions, which cannot cross from a server component).
+ * Client-safe: nothing here reads a database. The prices and free leads are
+ * the admin's (`PlanTerms`, from `getSettings()` in the page), so the pricing
+ * section is built from them by `landingCopy` and `pricingCopy`; the client
+ * sections read their words from here by locale (several are functions, which
+ * cannot cross from a server component).
  */
 
 export type Locale = 'en' | 'ms';
@@ -24,10 +27,26 @@ export interface Faq {
   a: string;
 }
 
-const MONTHLY = PLAN_PRICES_CENTS.MONTHLY / 100;
-const ANNUAL = PLAN_PRICES_CENTS.ANNUAL / 100;
-/** The annual price a month, to the sen: RM40.83 at RM490. */
-const ANNUAL_A_MONTH = (PLAN_PRICES_CENTS.ANNUAL / 12 / 100).toFixed(2);
+/** The plan's numbers as the pricing copy prints them, from the prices in force. */
+function figures(terms: PlanTerms) {
+  const months = monthsFree(terms.prices);
+  return {
+    // In ringgit: Controls sets the prices in whole ringgit, so these print as published (RM49).
+    monthly: terms.prices.MONTHLY / 100,
+    annual: terms.prices.ANNUAL / 100,
+    /** The annual price a month, to the sen: RM40.83 at RM490. */
+    annualAMonth: (terms.prices.ANNUAL / 12 / 100).toFixed(2),
+    /** Whole months a year saves, or null when the prices give none (DEVIATIONS 225). */
+    months,
+    leads: terms.freeLeads,
+  };
+}
+
+const EN_NUMBERS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const MS_NUMBERS = ['sifar', 'satu', 'dua', 'tiga', 'empat', 'lima', 'enam', 'tujuh', 'lapan', 'sembilan', 'sepuluh'];
+/** A count in words up to ten, as the board writes "three"; digits above. */
+const inWords = (n: number, words: string[]) => words[n] ?? String(n);
+const capital = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 export interface PersonaWords {
   q: string;
@@ -193,7 +212,7 @@ export interface LandingCopy {
     /** How Business is paid. Billing shows this line too. */
     payment: string;
     disclaimer: string;
-    /** Numbers the calculator needs, from PLAN_PRICES_CENTS. */
+    /** Numbers the calculator needs, from the prices in force. */
     monthlyRinggit: number;
     annualAMonth: string;
   };
@@ -205,7 +224,7 @@ export interface LandingCopy {
 
 export type PersonaKey = 'aisyah' | 'lina' | 'hana' | 'daniel' | 'aina' | 'farah';
 
-const EN: LandingCopy = {
+const EN: LandingBase = {
   locale: 'en',
   meta: {
     title: 'Curios: a link in bio people can ask',
@@ -381,58 +400,6 @@ const EN: LandingCopy = {
     newOrder: 'New order · RM235',
     now: 'now',
   },
-  pricing: {
-    eyebrow: 'Pricing',
-    title: `Free to be asked. RM${MONTHLY} when you’re selling.`,
-    billing: 'Business billing',
-    monthly: 'Monthly',
-    yearly: 'Yearly',
-    twoMonths: '−2 months',
-    personal: {
-      name: 'Personal',
-      tag: 'For you',
-      price: 'RM0',
-      per: 'forever',
-      body: 'A page people can ask about you. For freelancers, job seekers and creators.',
-      ticks: ['Answers in Malay, English or both', 'Only from facts you approve', 'Your cover, colours and fonts', 'Hidden from Google unless you switch it on'],
-      cta: 'Make your free page',
-    },
-    business: {
-      name: 'Business',
-      tag: 'One RM95 order pays for it',
-      monthly: `RM${MONTHLY}`,
-      yearly: `RM${ANNUAL}`,
-      perMonth: 'a month',
-      perYear: 'a year',
-      noteMonthly: `Or RM${ANNUAL} a year: two months free.`,
-      noteYearly: `RM${ANNUAL_A_MONTH} a month, paid once a year.`,
-      plus: 'Everything in Personal, plus',
-      points: [
-        'A shop paid by FPX, e-wallet, card or your own QR',
-        'Orders land in your dashboard',
-        'Every lead emailed with their number and chat',
-        'FAQ pages Google can find',
-        'Your first three leads are free',
-      ],
-      cta: 'Start with 3 free leads',
-    },
-    calc: {
-      eyebrow: 'Will it pay for itself?',
-      title: 'Drag to your usual month.',
-      orders: 'Orders a month',
-      typical: 'A typical order',
-      typicalLabel: 'Typical order value',
-      takeIn: 'You’d take in',
-      yours: 'Your orders',
-      cost: (amount) => `Curios Business · RM${amount}`,
-      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself ${times >= 2 ? `${times} times over.` : 'once.'}`,
-      under: 'That’s less than Business costs. Stay on Personal until orders pick up.',
-    },
-    payment: 'Pay by FPX, card or e-wallet. Nothing renews unless you turn on auto-renew by card.',
-    disclaimer: 'The calculator is an illustration, not a forecast.',
-    monthlyRinggit: MONTHLY,
-    annualAMonth: ANNUAL_A_MONTH,
-  },
   faq: {
     title: 'Asked before. Answered here.',
     items: [
@@ -461,7 +428,7 @@ const EN: LandingCopy = {
   },
 };
 
-const MS: LandingCopy = {
+const MS: LandingBase = {
   locale: 'ms',
   meta: {
     title: 'Curios: link bio yang orang boleh tanya',
@@ -637,58 +604,6 @@ const MS: LandingCopy = {
     newOrder: 'Tempahan baru · RM235',
     now: 'baru',
   },
-  pricing: {
-    eyebrow: 'Harga',
-    title: `Percuma untuk ditanya. RM${MONTHLY} bila anda menjual.`,
-    billing: 'Bayaran bisnes',
-    monthly: 'Bulanan',
-    yearly: 'Tahunan',
-    twoMonths: '−2 bulan',
-    personal: {
-      name: 'Peribadi',
-      tag: 'Untuk anda',
-      price: 'RM0',
-      per: 'selamanya',
-      body: 'Halaman yang orang boleh tanya tentang anda. Untuk freelancer, pencari kerja dan kreator.',
-      ticks: ['Jawab dalam BM, English atau campur', 'Hanya dari fakta yang anda luluskan', 'Kulit, warna dan fon anda sendiri', 'Tersembunyi dari Google kecuali anda hidupkan'],
-      cta: 'Buat halaman percuma',
-    },
-    business: {
-      name: 'Bisnes',
-      tag: 'Satu tempahan RM95 dah cukup bayar',
-      monthly: `RM${MONTHLY}`,
-      yearly: `RM${ANNUAL}`,
-      perMonth: 'sebulan',
-      perYear: 'setahun',
-      noteMonthly: `Atau RM${ANNUAL} setahun: percuma dua bulan.`,
-      noteYearly: `RM${ANNUAL_A_MONTH} sebulan, bayar sekali setahun.`,
-      plus: 'Semua dalam Peribadi, dan',
-      points: [
-        'Kedai yang dibayar melalui FPX, e-dompet, kad atau QR anda sendiri',
-        'Tempahan masuk dalam dashboard anda',
-        'Setiap lead diemel dengan nombor dan perbualan mereka',
-        'Halaman soalan lazim yang Google boleh jumpa',
-        'Tiga lead pertama percuma',
-      ],
-      cta: 'Mula dengan 3 lead percuma',
-    },
-    calc: {
-      eyebrow: 'Berbaloi tak?',
-      title: 'Seret ke bulan biasa anda.',
-      orders: 'Tempahan sebulan',
-      typical: 'Tempahan biasa',
-      typicalLabel: 'Nilai tempahan biasa',
-      takeIn: 'Anda akan terima',
-      yours: 'Tempahan anda',
-      cost: (amount) => `Curios Bisnes · RM${amount}`,
-      pays: (percent, times) => `Bisnes kosnya kira-kira ${percent}% daripada itu. Ia bayar balik ${times >= 2 ? `${times} kali ganda.` : 'sekali.'}`,
-      under: 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.',
-    },
-    payment: 'Bayar dengan FPX, kad atau e-dompet. Tiada pembaharuan automatik melainkan anda hidupkan auto-renew dengan kad.',
-    disclaimer: 'Kalkulator ini contoh, bukan ramalan.',
-    monthlyRinggit: MONTHLY,
-    annualAMonth: ANNUAL_A_MONTH,
-  },
   faq: {
     title: 'Pernah ditanya. Dijawab di sini.',
     items: [
@@ -717,4 +632,130 @@ const MS: LandingCopy = {
   },
 };
 
-export const COPY: Record<Locale, LandingCopy> = { en: EN, ms: MS };
+/** Every section but pricing, which depends on the prices in force: see `landingCopy`. */
+export type LandingBase = Omit<LandingCopy, 'pricing'>;
+
+function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
+  const f = figures(terms);
+  return {
+    eyebrow: 'Pricing',
+    title: `Free to be asked. RM${f.monthly} when you’re selling.`,
+    billing: 'Business billing',
+    monthly: 'Monthly',
+    yearly: 'Yearly',
+    twoMonths: f.months === null ? '' : `−${f.months} ${f.months === 1 ? 'month' : 'months'}`,
+    personal: {
+      name: 'Personal',
+      tag: 'For you',
+      price: 'RM0',
+      per: 'forever',
+      body: 'A page people can ask about you. For freelancers, job seekers and creators.',
+      ticks: ['Answers in Malay, English or both', 'Only from facts you approve', 'Your cover, colours and fonts', 'Hidden from Google unless you switch it on'],
+      cta: 'Make your free page',
+    },
+    business: {
+      name: 'Business',
+      tag: 'One RM95 order pays for it',
+      monthly: `RM${f.monthly}`,
+      yearly: `RM${f.annual}`,
+      perMonth: 'a month',
+      perYear: 'a year',
+      noteMonthly: f.months === null ? `Or RM${f.annual} a year.` : `Or RM${f.annual} a year: ${inWords(f.months, EN_NUMBERS)} ${f.months === 1 ? 'month' : 'months'} free.`,
+      noteYearly: `RM${f.annualAMonth} a month, paid once a year.`,
+      plus: 'Everything in Personal, plus',
+      points: [
+        'A shop paid by FPX, e-wallet, card or your own QR',
+        'Orders land in your dashboard',
+        'Every lead emailed with their number and chat',
+        'FAQ pages Google can find',
+        f.leads === 1 ? 'Your first lead is free' : `Your first ${inWords(f.leads, EN_NUMBERS)} leads are free`,
+      ],
+      cta: `Start with ${f.leads} free ${f.leads === 1 ? 'lead' : 'leads'}`,
+    },
+    calc: {
+      eyebrow: 'Will it pay for itself?',
+      title: 'Drag to your usual month.',
+      orders: 'Orders a month',
+      typical: 'A typical order',
+      typicalLabel: 'Typical order value',
+      takeIn: 'You’d take in',
+      yours: 'Your orders',
+      cost: (amount) => `Curios Business · RM${amount}`,
+      pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself ${times >= 2 ? `${times} times over.` : 'once.'}`,
+      under: 'That’s less than Business costs. Stay on Personal until orders pick up.',
+    },
+    payment: 'Pay by FPX, card or e-wallet. Nothing renews unless you turn on auto-renew by card.',
+    disclaimer: 'The calculator is an illustration, not a forecast.',
+    monthlyRinggit: f.monthly,
+    annualAMonth: f.annualAMonth,
+  };
+}
+
+function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
+  const f = figures(terms);
+  return {
+    eyebrow: 'Harga',
+    title: `Percuma untuk ditanya. RM${f.monthly} bila anda menjual.`,
+    billing: 'Bayaran bisnes',
+    monthly: 'Bulanan',
+    yearly: 'Tahunan',
+    twoMonths: f.months === null ? '' : `−${f.months} bulan`,
+    personal: {
+      name: 'Peribadi',
+      tag: 'Untuk anda',
+      price: 'RM0',
+      per: 'selamanya',
+      body: 'Halaman yang orang boleh tanya tentang anda. Untuk freelancer, pencari kerja dan kreator.',
+      ticks: ['Jawab dalam BM, English atau campur', 'Hanya dari fakta yang anda luluskan', 'Kulit, warna dan fon anda sendiri', 'Tersembunyi dari Google kecuali anda hidupkan'],
+      cta: 'Buat halaman percuma',
+    },
+    business: {
+      name: 'Bisnes',
+      tag: 'Satu tempahan RM95 dah cukup bayar',
+      monthly: `RM${f.monthly}`,
+      yearly: `RM${f.annual}`,
+      perMonth: 'sebulan',
+      perYear: 'setahun',
+      noteMonthly: f.months === null ? `Atau RM${f.annual} setahun.` : `Atau RM${f.annual} setahun: percuma ${inWords(f.months, MS_NUMBERS)} bulan.`,
+      noteYearly: `RM${f.annualAMonth} sebulan, bayar sekali setahun.`,
+      plus: 'Semua dalam Peribadi, dan',
+      points: [
+        'Kedai yang dibayar melalui FPX, e-dompet, kad atau QR anda sendiri',
+        'Tempahan masuk dalam dashboard anda',
+        'Setiap lead diemel dengan nombor dan perbualan mereka',
+        'Halaman soalan lazim yang Google boleh jumpa',
+        f.leads === 1 ? 'Lead pertama percuma' : `${capital(inWords(f.leads, MS_NUMBERS))} lead pertama percuma`,
+      ],
+      cta: `Mula dengan ${f.leads} lead percuma`,
+    },
+    calc: {
+      eyebrow: 'Berbaloi tak?',
+      title: 'Seret ke bulan biasa anda.',
+      orders: 'Tempahan sebulan',
+      typical: 'Tempahan biasa',
+      typicalLabel: 'Nilai tempahan biasa',
+      takeIn: 'Anda akan terima',
+      yours: 'Tempahan anda',
+      cost: (amount) => `Curios Bisnes · RM${amount}`,
+      pays: (percent, times) => `Bisnes kosnya kira-kira ${percent}% daripada itu. Ia bayar balik ${times >= 2 ? `${times} kali ganda.` : 'sekali.'}`,
+      under: 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.',
+    },
+    payment: 'Bayar dengan FPX, kad atau e-dompet. Tiada pembaharuan automatik melainkan anda hidupkan auto-renew dengan kad.',
+    disclaimer: 'Kalkulator ini contoh, bukan ramalan.',
+    monthlyRinggit: f.monthly,
+    annualAMonth: f.annualAMonth,
+  };
+}
+
+/** The words that do not depend on a price, for the client sections that read them by locale. */
+export const COPY: Record<Locale, LandingBase> = { en: EN, ms: MS };
+
+/** The pricing section at the prices and free leads in force (`getSettings()`, in the page). */
+export function pricingCopy(locale: Locale, terms: PlanTerms): LandingCopy['pricing'] {
+  return locale === 'ms' ? pricingMs(terms) : pricingEn(terms);
+}
+
+/** The whole landing page's words, pricing included, at the prices in force. */
+export function landingCopy(locale: Locale, terms: PlanTerms): LandingCopy {
+  return { ...COPY[locale], pricing: pricingCopy(locale, terms) };
+}

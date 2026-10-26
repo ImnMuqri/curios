@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import type { Gateway } from '@curios/gateway';
+import { defaultSettings, type Settings } from '@curios/core/settings';
 import { runLeadJob, type MailQueueLike } from './lead.worker.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -21,6 +22,10 @@ function gatewayReturning(slots: {
     },
   };
 }
+
+/** The workers' settings reader, answering the defaults, or the settings given. */
+const reader = (settings: Settings = defaultSettings()) => ({ get: async () => settings });
+const settings = reader();
 
 function aMailQueue() {
   return { add: vi.fn<MailQueueLike['add']>(async () => ({ id: 'mail-1' })) };
@@ -64,7 +69,7 @@ describe('runLeadJob', () => {
       location: 'Klang',
     });
 
-    await runLeadJob({ prisma, gateway, mailQueue }, { leadId });
+    await runLeadJob({ prisma, gateway, mailQueue, settings }, { leadId });
 
     const lead = await prisma.lead.findUniqueOrThrow({ where: { id: leadId } });
     expect(lead.slots).toMatchObject({ product: 'kek butter 2kg', location: 'Klang' });
@@ -87,7 +92,7 @@ describe('runLeadJob', () => {
       },
     };
 
-    await runLeadJob({ prisma, gateway: failing, mailQueue }, { leadId });
+    await runLeadJob({ prisma, gateway: failing, mailQueue, settings }, { leadId });
 
     expect(mailQueue.add).toHaveBeenCalledOnce();
     expect((await prisma.lead.findUniqueOrThrow({ where: { id: leadId } })).score).toBe(0);
@@ -97,7 +102,7 @@ describe('runLeadJob', () => {
     const mailQueue = aMailQueue();
     const gateway = gatewayReturning({ product: 'kek butter 2kg', date: null, location: 'Klang' });
 
-    await runLeadJob({ prisma, gateway, mailQueue }, { leadId });
+    await runLeadJob({ prisma, gateway, mailQueue, settings }, { leadId });
 
     const job = mailQueue.add.mock.calls[0]?.[1];
     // An owner's notification: the admin's "Emails to owners" switch stops it.
@@ -112,7 +117,7 @@ describe('runLeadJob', () => {
     const mailQueue = aMailQueue();
     const gateway = gatewayReturning({ product: null, date: null, location: null });
 
-    await expect(runLeadJob({ prisma, gateway, mailQueue }, { leadId: 'gone' })).resolves.toBeUndefined();
+    await expect(runLeadJob({ prisma, gateway, mailQueue, settings }, { leadId: 'gone' })).resolves.toBeUndefined();
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
 
@@ -120,7 +125,7 @@ describe('runLeadJob', () => {
     const mailQueue = aMailQueue();
     const gateway = gatewayReturning({ product: 'kek butter 2kg', date: null, location: 'Klang' });
 
-    await runLeadJob({ prisma, gateway, mailQueue, appUrl: 'https://curios.my' }, { leadId });
+    await runLeadJob({ prisma, gateway, mailQueue, appUrl: 'https://curios.my', settings }, { leadId });
 
     const html = mailQueue.add.mock.calls[0]?.[1].html ?? '';
     expect(html).toContain('+60 12-345 6789');
@@ -134,9 +139,18 @@ describe('runLeadJob', () => {
     await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 2 } });
     const mailQueue = aMailQueue();
 
-    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue }, { leadId });
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings }, { leadId });
 
     expect(mailQueue.add.mock.calls[0]?.[1].html).toContain('Lead 2 of your 3 free leads.');
+  });
+
+  it('counts free leads against the allowance in force', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 4 } });
+    const mailQueue = aMailQueue();
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings: reader({ ...defaultSettings(), freeLeads: 5 }) }, { leadId });
+
+    expect(mailQueue.add.mock.calls[0]?.[1].html).toContain('Lead 4 of your 5 free leads.');
   });
 
   it('keeps the lead but sends nothing when the owner switched the email off', async () => {
@@ -144,7 +158,7 @@ describe('runLeadJob', () => {
     const mailQueue = aMailQueue();
     const gateway = gatewayReturning({ product: 'kek butter 2kg', date: null, location: null });
 
-    await runLeadJob({ prisma, gateway, mailQueue }, { leadId });
+    await runLeadJob({ prisma, gateway, mailQueue, settings }, { leadId });
 
     expect(mailQueue.add).not.toHaveBeenCalled();
     // Still filled in and scored: it waits in Leads.
@@ -155,9 +169,20 @@ describe('runLeadJob', () => {
     await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 3, notifyLeads: false } });
     const mailQueue = aMailQueue();
 
-    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue }, { leadId, lastFreeLead: true });
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings }, { leadId, lastFreeLead: true });
 
     expect(mailQueue.add).toHaveBeenCalledOnce();
     expect(mailQueue.add.mock.calls[0]?.[1]).toMatchObject({ to: 'n@example.com', subject: 'Your page stopped taking numbers', audience: 'owner' });
+  });
+  it('says the allowance and the prices in force when the trial is used up', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 5, notifyLeads: false } });
+    const mailQueue = aMailQueue();
+    const live = reader({ ...defaultSettings(), freeLeads: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings: live }, { leadId, lastFreeLead: true });
+
+    const text = mailQueue.add.mock.calls[0]?.[1].text ?? '';
+    expect(text).toContain('Your 5 free leads are used');
+    expect(text).toContain('Business is RM59 a month');
   });
 });

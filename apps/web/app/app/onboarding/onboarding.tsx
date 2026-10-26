@@ -48,7 +48,10 @@ const WAYS: { id: SourceWay; label: string; icon: string }[] = [
   { id: 'file', label: 'A file', icon: ICON.file },
 ];
 
-const MODES: { id: Mode; title: string; price: (monthly: string) => string; text: (monthly: string) => string; points: string[]; icon: string }[] = [
+/** The plan in force, as the modes quote it: "RM49" and the free leads. */
+type Terms = { monthly: string; freeLeads: number };
+
+const MODES: { id: Mode; title: string; price: (terms: Terms) => string; text: (terms: Terms) => string; points: string[]; icon: string }[] = [
   {
     id: 'PERSONAL',
     title: 'Personal',
@@ -60,8 +63,8 @@ const MODES: { id: Mode; title: string; price: (monthly: string) => string; text
   {
     id: 'BUSINESS',
     title: 'Business',
-    price: () => '3 free leads',
-    text: (monthly) => `For selling. Then ${monthly} a month, paid when you want.`,
+    price: ({ freeLeads }) => `${freeLeads} free ${freeLeads === 1 ? 'lead' : 'leads'}`,
+    text: ({ monthly }) => `For selling. Then ${monthly} a month, paid when you want.`,
     points: ['Takes numbers when the chat can’t answer', 'A shop with orders paid to your QR', 'FAQ pages people find on Google'],
     icon: ICON.shop,
   },
@@ -109,6 +112,7 @@ export function OnboardingFlow({
   page,
   facts,
   monthlyPrice,
+  freeLeads,
   pastedTextMax,
   actions,
 }: {
@@ -116,6 +120,8 @@ export function OnboardingFlow({
   /** Facts waiting in Review, oldest first: the newest are what a read just found. */
   facts: FoundFact[];
   monthlyPrice: string;
+  /** The free leads in force (`Settings.freeLeads`). */
+  freeLeads: number;
   pastedTextMax: number;
   actions: OnboardingActions;
 }) {
@@ -388,9 +394,9 @@ export function OnboardingFlow({
                   <span style={{ minWidth: 0 }}>
                     <b>
                       {m.title}
-                      <em>{m.price(monthlyPrice)}</em>
+                      <em>{m.price({ monthly: monthlyPrice, freeLeads })}</em>
                     </b>
-                    <p>{m.text(monthlyPrice)}</p>
+                    <p>{m.text({ monthly: monthlyPrice, freeLeads })}</p>
                     <ul>
                       {m.points.map((point) => (
                         <li key={point}>{point}</li>
@@ -859,7 +865,7 @@ function OnboardingArt({
 }
 
 /** Supplies the real handlers. A Server Component may not pass functions. */
-export function Onboarding(props: { page: { id: string; handle: string; displayName: string; mode: Mode } | null; facts: FoundFact[]; monthlyPrice: string; pastedTextMax: number }) {
+export function Onboarding(props: { page: { id: string; handle: string; displayName: string; mode: Mode } | null; facts: FoundFact[]; monthlyPrice: string; freeLeads: number; pastedTextMax: number }) {
   const router = useRouter();
   const [actions] = useState<OnboardingActions>(() => ({
     checkHandle: async (handle) => (await apiFetch<{ status: HandleStatus }>(`/pages/handle-check?handle=${encodeURIComponent(handle)}`)).status,

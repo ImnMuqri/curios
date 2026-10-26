@@ -108,6 +108,11 @@ describe('ActionDialog', () => {
     expect(a.onDone).toHaveBeenCalledWith('One month added.');
   });
 
+  it('reset: says the cap in force, not the default', () => {
+    render(<ActionDialog kind="reset" page={{ ...page, cap: 10 }} onClose={vi.fn()} onDone={vi.fn()} />);
+    expect(screen.getByText('This month’s count goes back to 0, so the chat answers again until it reaches 10.')).toBeInTheDocument();
+  });
+
   it('reset: posts to reset-conversations', async () => {
     const { onDone } = open('reset');
     await userEvent.type(reasonBox(), 'Bot');

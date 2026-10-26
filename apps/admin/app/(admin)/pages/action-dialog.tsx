@@ -10,6 +10,8 @@ export interface DialogPage {
   id: string;
   handle: string;
   displayName: string;
+  /** The month's conversation cap in force, which the reset says the chat answers up to. */
+  cap?: number;
 }
 
 interface Copy {
@@ -63,7 +65,7 @@ export function copyFor(kind: ActionKind, p: DialogPage): Copy {
     case 'reset':
       return {
         title: `Reset ${p.displayName}’s conversations?`,
-        body: 'This month’s count goes back to 0, so the chat answers again until it reaches 200.',
+        body: `This month’s count goes back to 0, so the chat answers again until it reaches ${p.cap ?? 'its limit'}.`,
         confirm: 'Reset to 0',
         placeholder: 'E.g. Count was inflated by a bot',
         danger: false,

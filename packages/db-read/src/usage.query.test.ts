@@ -2,11 +2,24 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { FREE_CONVERSATIONS_PER_MONTH } from '@curios/core';
 import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage } from './usage.query.js';
+import { clearSettingsCache } from './settings.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 const NOW = new Date('2026-09-17T04:00:00.000Z');
 let pageId = '';
+
+/** A limit as the admin's route stores it, then the cache forgotten; `undo` takes it away again. */
+async function withSetting(key: string, value: number, run: () => Promise<void>) {
+  await write.systemSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  clearSettingsCache();
+  try {
+    await run();
+  } finally {
+    await write.systemSetting.deleteMany({ where: { key } });
+    clearSettingsCache();
+  }
+}
 
 beforeAll(async () => {
   await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
@@ -37,6 +50,12 @@ describe('getConversationUsage', () => {
       used: 12,
       cap: FREE_CONVERSATIONS_PER_MONTH,
       period: '2026-09',
+    });
+  });
+
+  it('reads the cap the admin set, not the default', async () => {
+    await withSetting('cap', 10, async () => {
+      expect((await getConversationUsage(pageId, NOW)).cap).toBe(10);
     });
   });
 

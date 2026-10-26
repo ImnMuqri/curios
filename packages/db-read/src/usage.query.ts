@@ -1,10 +1,10 @@
-import { conversationCap } from '@curios/core';
 import { prismaRead } from './client.js';
+import { getSettings } from './settings.query.js';
 
 export interface ConversationUsage {
   /** Conversations started this period. */
   used: number;
-  /** The cap in force, as the API computes it. */
+  /** The cap in force: the admin's (`Settings.cap`), the one the API enforces. */
   cap: number;
   /** The period key, `YYYY-MM`. */
   period: string;
@@ -18,20 +18,23 @@ export interface ConversationUsage {
  * Two different definitions of "this month" would show an owner a number that
  * nothing enforces, which is worse than showing no number at all.
  *
- * `conversationCap()` reads `CONVERSATION_CAP_PER_MONTH` at call time, so this
- * app and the API must be given the same value -- or both must leave it unset.
+ * The cap is the admin's, from the settings both this app and the API read
+ * (each cached 30 s), so the two can differ for at most that long.
  *
  * `now` is a parameter for the same reason it is everywhere else here: a
  * function that reads the clock cannot be tested at a month boundary.
  */
 export async function getConversationUsage(pageId: string, now: Date): Promise<ConversationUsage> {
   const period = now.toISOString().slice(0, 7);
-  const counter = await prismaRead.usageCounter.findUnique({
-    where: { pageId_period: { pageId, period } },
-    select: { count: true },
-  });
+  const [counter, { cap }] = await Promise.all([
+    prismaRead.usageCounter.findUnique({
+      where: { pageId_period: { pageId, period } },
+      select: { count: true },
+    }),
+    getSettings(),
+  ]);
 
-  return { used: counter?.count ?? 0, cap: conversationCap(), period };
+  return { used: counter?.count ?? 0, cap, period };
 }
 
 /**

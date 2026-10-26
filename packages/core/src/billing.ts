@@ -10,6 +10,16 @@ export const PLAN_PRICES_CENTS = { MONTHLY: 4900, ANNUAL: 49000 } as const;
 export type BillingPlan = keyof typeof PLAN_PRICES_CENTS;
 
 /**
+ * How many months a year's plan saves over twelve monthly ones: 2 at RM49 and RM490. Null when
+ * the prices in force give no whole number of months above zero, so nothing claims a saving
+ * the prices do not make.
+ */
+export function monthsFree(prices: { MONTHLY: number; ANNUAL: number }): number | null {
+  const months = 12 - prices.ANNUAL / prices.MONTHLY;
+  return Number.isInteger(months) && months > 0 ? months : null;
+}
+
+/**
  * The paidUntil a payment of `plan` produces.
  *
  * Counts from whichever is later, now or the current paidUntil, so renewing early

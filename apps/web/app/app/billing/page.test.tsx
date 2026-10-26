@@ -130,6 +130,46 @@ describe('BillingPage', () => {
     ]);
   });
 
+  describe('with the prices and allowances the admin set', () => {
+    /** The shared fixture: price.MONTHLY at 5900, five free leads and five free orders. */
+    const live = () => ({ ...defaultSettings(), freeLeads: 5, freeOrders: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+
+    it('offers the plans at the prices in force, and claims no months free the prices do not give', async () => {
+      getSettings.mockResolvedValue(live());
+      await renderWith(page);
+
+      const [monthly, annual] = PayButtons.mock.calls[0]?.[0].options ?? [];
+      expect(monthly).toMatchObject({ plan: 'MONTHLY', price: 'RM59' });
+      expect(annual).toMatchObject({ plan: 'ANNUAL', price: 'RM490' });
+      expect(annual?.save).toBeUndefined();
+    });
+
+    it('counts the trial and the shop against the allowances in force', async () => {
+      getSettings.mockResolvedValue(live());
+      await renderWith({ ...page, leadsCaptured: 1, ordersPlaced: 1 });
+
+      expect(screen.getByText('1 of 5 used')).toBeInTheDocument();
+      expect(screen.getByText(/Your first 5 numbers are free too/)).toBeInTheDocument();
+      expect(within(screen.getByText('Orders').closest('div')!).getByText('1 of 5 free orders used')).toBeInTheDocument();
+      expect(screen.getByText('4 of your 5 free leads left. After that, the capture card needs a plan.')).toBeInTheDocument();
+    });
+
+    it('tells a personal page the price and the free leads in force', async () => {
+      getSettings.mockResolvedValue(live());
+      await renderWith({ ...page, mode: 'PERSONAL' });
+
+      expect(screen.getByText(/5 free leads, then RM59 a month/)).toBeInTheDocument();
+    });
+
+    it('quotes a saved card the price in force, which the renewal will charge', async () => {
+      getSettings.mockResolvedValue(live());
+      getRenewalCard.mockResolvedValue({ plan: 'MONTHLY', cardLabel: 'Visa ending 1111', failedAttempts: 0 });
+      await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z') });
+
+      expect(AutoRenew.mock.calls[0]?.[0].card).toMatchObject({ price: 'RM59' });
+    });
+  });
+
   it('counts the days a paid plan has left, and draws the line to where paying takes it', async () => {
     vi.useFakeTimers({ now: new Date('2026-10-15T04:00:00.000Z'), toFake: ['Date'] });
     try {

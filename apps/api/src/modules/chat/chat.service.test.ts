@@ -2,7 +2,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteWording } from '../topics/topic.service.js';
 import { PrismaClient } from '@prisma/client';
 import { refreshTopic } from '@curios/db';
-import { FREE_CONVERSATIONS_PER_MONTH, GROUP_QUEUE, normalizeClaim, RETRIEVAL_MIN_FACTS } from '@curios/core';
+import { defaultSettings, FREE_CONVERSATIONS_PER_MONTH, GROUP_QUEUE, normalizeClaim, RETRIEVAL_MIN_FACTS, type Settings } from '@curios/core';
 import type { ChatInput, ChatMessage, Gateway } from '@curios/gateway';
 import {
   encodeVector,
@@ -15,13 +15,13 @@ import { REPLY_FALLBACK } from './reply-guard.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
-// ChatDeps.cap is resolved once at boot in production (see chat.routes.ts);
-// this file calls `answer()` directly, below that boundary, so every deps
-// object supplies it explicitly. The free allowance, not an arbitrary number:
-// the `the monthly cap` tests below rely on it being the same value
-// `conversationCap()` used to return with no env override set, which is what
-// every test in this file ran against before ChatDeps.cap existed.
+// The routes read the settings per request (`app.settings.get()`); this file
+// calls `answer()` directly, below that boundary, so every deps object
+// supplies them: the defaults, with the cap pinned to the free allowance the
+// `the monthly cap` tests below were written against, whatever the
+// environment says.
 const cap = FREE_CONVERSATIONS_PER_MONTH;
+const settings: Settings = { ...defaultSettings(), cap };
 
 function gatewaySaying(text: string): Gateway {
   return {
@@ -362,7 +362,7 @@ async function seedNadiaPrice() {
 describe('answer', () => {
   it('streams text and creates a conversation', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    const events = await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toContain('RM95');
     expect(await prisma.conversation.count()).toBe(1);
@@ -374,7 +374,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'Berapa harga?' }),
+      answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'Berapa harga?' }),
     );
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Bermula RM95.');
@@ -386,14 +386,14 @@ describe('answer', () => {
     await seedNadiaPrice();
     const gateway = gatewaySaying('unused');
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'berapa harga' }),
+      answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'berapa harga' }),
     );
     expect(events.filter((e) => e.type === 'text').map((e) => e.text).join('')).toBe('Bermula RM95.');
   });
 
   it('persists both messages after the stream closes', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     const messages = await prisma.message.findMany({ orderBy: { createdAt: 'asc' } });
     expect(messages.map((m) => m.role)).toEqual(['USER', 'ASSISTANT']);
@@ -401,7 +401,7 @@ describe('answer', () => {
 
   it('records a ModelCall with a non-zero cost', async () => {
     const gateway = gatewaySaying('Kek 1kg butter bermula RM95.');
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     const call = await prisma.modelCall.findFirstOrThrow();
     expect(call.model).toBe('claude-haiku-4-5');
@@ -410,8 +410,8 @@ describe('answer', () => {
 
   it('increments the usage counter once per conversation, not per message', async () => {
     const gateway = gatewaySaying('answer');
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek lagi' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek lagi' }));
 
     const counters = await prisma.usageCounter.findMany();
     expect(counters).toHaveLength(1);
@@ -422,7 +422,7 @@ describe('answer', () => {
     const gateway = gatewayThatFails();
 
     await expect(
-      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' })),
+      collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' })),
     ).rejects.toThrow('provider unavailable');
 
     const call = await prisma.modelCall.findFirstOrThrow();
@@ -435,20 +435,20 @@ describe('answer', () => {
   it('throws for an unknown handle', async () => {
     const gateway = gatewaySaying('unused');
     await expect(
-      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nobody', question: 'hi' })),
+      collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nobody', question: 'hi' })),
     ).rejects.toThrow(PageNotFoundError);
   });
 
   it('sends cachePrompt: true, since with no embedder it falls back and caches the prompt', async () => {
     const { gateway, cachePrompt } = gatewayCapturingCachePrompt();
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(cachePrompt()).toBe(true);
   });
 
   it('never sends an unverified fact\'s claim to the gateway', async () => {
     const { gateway, prompt } = gatewayCapturingPrompt();
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     // Assert on the prompt the gateway actually received, not a rebuilt string.
     expect(prompt()).not.toContain('Unverified secret price RM1');
@@ -460,7 +460,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     await expect(
-      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'draft', question: 'harga?' })),
+      collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'draft', question: 'harga?' })),
     ).rejects.toThrow(PageNotFoundError);
 
     expect(chatSpy).not.toHaveBeenCalled();
@@ -473,7 +473,7 @@ describe('answer', () => {
     const chatSpy = vi.spyOn(gateway, 'chat');
 
     await expect(
-      collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' })),
+      collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga?' })),
     ).rejects.toMatchObject({ code: 'PAGE_UNAVAILABLE', statusCode: 410 });
 
     expect(chatSpy).not.toHaveBeenCalled();
@@ -483,11 +483,11 @@ describe('answer', () => {
 
 describe('threading a conversation', () => {
   function depsSaying(text = 'an answer') {
-    return { prisma, gateway: gatewaySaying(text), cap, embedder: null };
+    return { prisma, gateway: gatewaySaying(text), settings, embedder: null };
   }
 
   async function ask(
-    deps: { prisma: typeof prisma; gateway: Gateway; cap: number; embedder: Embedder | null },
+    deps: { prisma: typeof prisma; gateway: Gateway; settings: Settings; embedder: Embedder | null },
     question: string,
     conversationId?: string,
   ) {
@@ -566,7 +566,7 @@ describe('threading a conversation', () => {
 
   it('sends the earlier turns to the model, so a follow-up has context', async () => {
     const captured = gatewayCapturingMessages();
-    const deps = { prisma, gateway: captured.gateway, cap, embedder: null };
+    const deps = { prisma, gateway: captured.gateway, settings, embedder: null };
 
     const conversationId = conversationIdOf(await ask(deps, 'harga kek?'));
     await ask(deps, 'ada delivery?', conversationId);
@@ -582,7 +582,7 @@ describe('threading a conversation', () => {
 
   it('bounds the history it sends, so a long thread cannot grow the prompt forever', async () => {
     const captured = gatewayCapturingMessages();
-    const deps = { prisma, gateway: captured.gateway, cap, embedder: null };
+    const deps = { prisma, gateway: captured.gateway, settings, embedder: null };
 
     const conversationId = conversationIdOf(await ask(deps, 'q0'));
     for (let i = 1; i <= 8; i += 1) await ask(deps, `q${i}`, conversationId);
@@ -811,7 +811,7 @@ describe('faq slug assignment', () => {
 
     await collect(
       answer(
-        { prisma, gateway: gatewaySaying('unused'), cap, embedder: null },
+        { prisma, gateway: gatewaySaying('unused'), settings, embedder: null },
         { handle: 'nadia', question: 'Berapa harga kek coklat?' },
       ),
     );
@@ -853,7 +853,7 @@ describe('an erased question, asked again', () => {
 
     const events = await collect(
       answer(
-        { prisma, gateway: gatewaySaying('A model answer.'), cap, embedder: null },
+        { prisma, gateway: gatewaySaying('A model answer.'), settings, embedder: null },
         { handle: 'nadia', question: text },
       ),
     );
@@ -908,7 +908,7 @@ describe('the monthly cap', () => {
     await usageAt(10);
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' }));
+    const events = await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga?' }));
 
     expect(spy).toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text' && e.text === 'a model answer')).toBe(true);
@@ -922,7 +922,7 @@ describe('the monthly cap', () => {
     await usageAt(500);
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' }));
+    const events = await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga?' }));
 
     expect(spy).not.toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text')).toBe(true);
@@ -937,7 +937,7 @@ describe('the monthly cap', () => {
     await seedTopic(pageId, { answer: 'RM95 sekilo.', wordings: [{ text: 'harga' }] });
     const { gateway, spy } = chatSpyGateway();
 
-    const events = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga' }));
+    const events = await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga' }));
 
     expect(spy).not.toHaveBeenCalled();
     expect(events.some((e) => e.type === 'text' && e.text === 'RM95 sekilo.')).toBe(true);
@@ -950,13 +950,13 @@ describe('the monthly cap', () => {
     await usageAt(500);
     const { gateway, spy } = chatSpyGateway();
 
-    const first = await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'one' }));
+    const first = await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'one' }));
     const done = first.find((e) => e.type === 'done');
     const conversationId = (done as { conversationId?: string } | undefined)?.conversationId;
     expect(conversationId).toBeTruthy();
 
     await collect(
-      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'two', conversationId }),
+      answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'two', conversationId }),
     );
 
     expect(spy).not.toHaveBeenCalled();
@@ -968,7 +968,7 @@ describe('the monthly cap', () => {
     const pageId = await usageAt(500);
     const { gateway } = chatSpyGateway();
 
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga?' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga?' }));
 
     // findUnique on the exact key usageAt() wrote, not findFirst: this is the
     // only assertion in the file that reads UsageCounter back by pageId
@@ -987,8 +987,8 @@ describe('the monthly cap', () => {
     const { gateway } = chatSpyGateway();
     const mailQueue = { add: vi.fn(async (_name: string, _data: { subject: string; html?: string; audience?: 'owner' }, _opts?: unknown) => ({})) };
 
-    await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'harga?' }));
-    await collect(answer({ prisma, gateway, cap, embedder: null, mailQueue }, { handle: 'nadia', question: 'ada delivery?' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null, mailQueue }, { handle: 'nadia', question: 'harga?' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null, mailQueue }, { handle: 'nadia', question: 'ada delivery?' }));
 
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
     const mail = mailQueue.add.mock.calls[0]?.[1];
@@ -1008,7 +1008,7 @@ describe('the monthly cap', () => {
     const { gateway, spy } = chatSpyGateway();
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'Berapa harga kek?' }),
+      answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'Berapa harga kek?' }),
     );
 
     expect(spy).not.toHaveBeenCalled();
@@ -1043,7 +1043,7 @@ describe('the shop in the chat path', () => {
   it('sends an available item and not an unavailable one while the shop is open', async () => {
     await seedShelf(true);
     const { gateway, prompt } = gatewayCapturingPrompt();
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(prompt()).toContain('<item name="Kek Batik">RM25</item>');
     expect(prompt()).not.toContain('Hidden Tart');
@@ -1052,7 +1052,7 @@ describe('the shop in the chat path', () => {
   it('sends no SHOP while the shop is closed', async () => {
     await seedShelf(false);
     const { gateway, prompt } = gatewayCapturingPrompt();
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(prompt()).not.toContain('SHOP');
     expect(prompt()).not.toContain('Kek Batik');
@@ -1061,7 +1061,7 @@ describe('the shop in the chat path', () => {
   it('sends no SHOP on a personal page, even with items and an open flag', async () => {
     await seedShelf(true, 'PERSONAL');
     const { gateway, prompt } = gatewayCapturingPrompt();
-    await collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
+    await collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'harga kek' }));
 
     expect(prompt()).not.toContain('SHOP');
   });
@@ -1073,7 +1073,7 @@ describe('retrieval in the chat path', () => {
 
     await collect(
       answer(
-        { prisma, gateway: captured.gateway, cap, embedder: embedderAnswering().embedder },
+        { prisma, gateway: captured.gateway, settings, embedder: embedderAnswering().embedder },
         { handle: 'nadia', question: 'harga kek' },
       ),
     );
@@ -1089,7 +1089,7 @@ describe('retrieval in the chat path', () => {
 
     await collect(
       answer(
-        { prisma, gateway: captured.gateway, cap, embedder: embedderAnswering().embedder },
+        { prisma, gateway: captured.gateway, settings, embedder: embedderAnswering().embedder },
         { handle: 'katalog', question: 'berapa harga' },
       ),
     );
@@ -1106,7 +1106,7 @@ describe('retrieval in the chat path', () => {
 
     await collect(
       answer(
-        { prisma, gateway: captured.gateway, cap, embedder: embedderAnswering().embedder },
+        { prisma, gateway: captured.gateway, settings, embedder: embedderAnswering().embedder },
         { handle: 'katalog', question: 'berapa harga' },
       ),
     );
@@ -1131,7 +1131,7 @@ describe('retrieval in the chat path', () => {
 
     const events = await collect(
       answer(
-        { prisma, gateway: captured.gateway, cap, embedder: failing },
+        { prisma, gateway: captured.gateway, settings, embedder: failing },
         { handle: 'katalog', question: 'berapa harga' },
       ),
     );
@@ -1153,7 +1153,7 @@ describe('retrieval in the chat path', () => {
 
     const first = await collect(
       answer(
-        { prisma, gateway: gatewaySaying('answer one'), cap, embedder },
+        { prisma, gateway: gatewaySaying('answer one'), settings, embedder },
         { handle: 'katalog', question: 'berapa harga kek' },
       ),
     );
@@ -1165,7 +1165,7 @@ describe('retrieval in the chat path', () => {
 
     await collect(
       answer(
-        { prisma, gateway: gatewaySaying('answer two'), cap, embedder },
+        { prisma, gateway: gatewaySaying('answer two'), settings, embedder },
         { handle: 'katalog', question: 'yang coklat pula?', conversationId },
       ),
     );
@@ -1190,7 +1190,7 @@ describe('retrieval in the chat path', () => {
         {
           prisma,
           gateway: gatewaySaying('ok'),
-          cap,
+          settings,
           embedder: embedderAnswering().embedder,
           log: { error: vi.fn(), info },
         },
@@ -1214,7 +1214,7 @@ describe('retrieval in the chat path', () => {
 
     const events = await collect(
       answer(
-        { prisma, gateway: gatewaySaying('unused'), cap, embedder },
+        { prisma, gateway: gatewaySaying('unused'), settings, embedder },
         { handle: 'katalog', question: 'berapa harga' },
       ),
     );
@@ -1238,7 +1238,7 @@ describe('topics in the chat', () => {
     };
 
     for await (const event of answer(
-      { prisma, gateway: gatewaySaying('Dia pemilik.'), cap, embedder: null, groupQueue },
+      { prisma, gateway: gatewaySaying('Dia pemilik.'), settings, embedder: null, groupQueue },
       { handle: 'nadia', question: 'Who is Iman' },
     )) {
       order.push(event.type);
@@ -1268,7 +1268,7 @@ describe('topics in the chat', () => {
 
   it('a repeat of a known wording, whatever its capitals or punctuation, queues nothing and counts on its topic', async () => {
     const groupQueue = queueSpy();
-    const deps = { prisma, gateway: gatewaySaying('Iman Muqri'), cap, embedder: null, groupQueue };
+    const deps = { prisma, gateway: gatewaySaying('Iman Muqri'), settings, embedder: null, groupQueue };
 
     await collect(answer(deps, { handle: 'nadia', question: 'What is his full name' }));
     await collect(answer(deps, { handle: 'nadia', question: 'WHAT is his full name??' }));
@@ -1290,7 +1290,7 @@ describe('topics in the chat', () => {
 
     const events = await collect(
       answer(
-        { prisma, gateway: gatewaySaying('unused'), cap, embedder: null, groupQueue },
+        { prisma, gateway: gatewaySaying('unused'), settings, embedder: null, groupQueue },
         { handle: 'nadia', question: 'WHAT is his full name??' },
       ),
     );
@@ -1308,7 +1308,7 @@ describe('topics in the chat', () => {
     });
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'what is his full name' }),
+      answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'what is his full name' }),
     );
 
     expect(events.filter((e) => e.type === 'text').map((e) => e.text)).toEqual(['Iman Muqri']);
@@ -1323,7 +1323,7 @@ describe('topics in the chat', () => {
     await seedTopic(await pageIdFor('nadia'), { wordings: [{ text: 'What is his full name' }] });
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question: 'what is his full name' }),
+      answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question: 'what is his full name' }),
     );
 
     expect(chatSpy).toHaveBeenCalledTimes(1);
@@ -1332,7 +1332,7 @@ describe('topics in the chat', () => {
 
   it('queues after the reply on the model path and the cap path too', async () => {
     const groupQueue = queueSpy();
-    const deps = { prisma, gateway: gatewaySaying('x'), cap, embedder: null, groupQueue };
+    const deps = { prisma, gateway: gatewaySaying('x'), settings, embedder: null, groupQueue };
     await collect(answer(deps, { handle: 'nadia', question: 'one' }));
     expect(groupQueue.add).toHaveBeenCalledTimes(1);
 
@@ -1355,7 +1355,7 @@ describe('topics in the chat', () => {
 
     const events = await collect(
       answer(
-        { prisma, gateway: gatewaySaying('Masih jawab.'), cap, embedder: null, groupQueue, log: { error: vi.fn(), warn } },
+        { prisma, gateway: gatewaySaying('Masih jawab.'), settings, embedder: null, groupQueue, log: { error: vi.fn(), warn } },
         { handle: 'nadia', question: 'Who is Iman' },
       ),
     );
@@ -1368,7 +1368,7 @@ describe('topics in the chat', () => {
   });
 
   it('without a groupQueue, a new wording still answers and keeps its own topic', async () => {
-    await collect(answer({ prisma, gateway: gatewaySaying('ok'), cap, embedder: null }, { handle: 'nadia', question: 'Who is Iman' }));
+    await collect(answer({ prisma, gateway: gatewaySaying('ok'), settings, embedder: null }, { handle: 'nadia', question: 'Who is Iman' }));
     expect(await prisma.topic.count()).toBe(1);
   });
 
@@ -1378,7 +1378,7 @@ describe('topics in the chat', () => {
     await expect(
       collect(
         answer(
-          { prisma, gateway: gatewayThatFails(), cap, embedder: null, groupQueue },
+          { prisma, gateway: gatewayThatFails(), settings, embedder: null, groupQueue },
           { handle: 'nadia', question: 'Who is Iman' },
         ),
       ),
@@ -1389,7 +1389,7 @@ describe('topics in the chat', () => {
 
   it('two first asks of one new wording make one wording and one topic', async () => {
     const groupQueue = queueSpy();
-    const deps = { prisma, gateway: gatewaySaying('ok'), cap, embedder: null, groupQueue };
+    const deps = { prisma, gateway: gatewaySaying('ok'), settings, embedder: null, groupQueue };
 
     await Promise.all([
       collect(answer(deps, { handle: 'nadia', question: 'Who is Iman' })),
@@ -1431,7 +1431,7 @@ describe('topics in the chat', () => {
 
       const ask = collect(
         answer(
-          { prisma, gateway: gatewaySaying('unused'), cap, embedder: null },
+          { prisma, gateway: gatewaySaying('unused'), settings, embedder: null },
           { handle: 'nadia', question: 'what is his full name' },
         ),
       );
@@ -1496,7 +1496,7 @@ describe('an answered question, asked in new words', () => {
     const groupQueue = queue();
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: "What's his age" }),
+      answer({ prisma, gateway, settings, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: "What's his age" }),
     );
 
     expect(textOf(events)).toBe('25 in 2026');
@@ -1518,7 +1518,7 @@ describe('an answered question, asked in new words', () => {
     const groupQueue = queue();
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: 'Is he married' }),
+      answer({ prisma, gateway, settings, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: 'Is he married' }),
     );
 
     expect(textOf(events)).toBe('Tak pasti.');
@@ -1532,7 +1532,7 @@ describe('an answered question, asked in new words', () => {
     const groupQueue = queue();
 
     const events = await collect(
-      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: "What's his age" }),
+      answer({ prisma, gateway, settings, embedder: embedderFor({}), groupQueue }, { handle: 'nadia', question: "What's his age" }),
     );
 
     expect(textOf(events)).toBe('Tak pasti.');
@@ -1546,7 +1546,7 @@ describe('an answered question, asked in new words', () => {
 
     await collect(
       answer(
-        { prisma, gateway, cap, embedder: embedderFor({ "What's is his age": 1, 'Ada delivery?': 2 }), groupQueue: queue() },
+        { prisma, gateway, settings, embedder: embedderFor({ "What's is his age": 1, 'Ada delivery?': 2 }), groupQueue: queue() },
         { handle: 'nadia', question: 'Ada delivery?' },
       ),
     );
@@ -1559,7 +1559,7 @@ describe('an answered question, asked in new words', () => {
     const { gateway, sameQuestion } = gatewayJudging('first', 'Tak pasti.');
 
     await collect(
-      answer({ prisma, gateway, cap, embedder: embedderFor({}), groupQueue: queue() }, { handle: 'nadia', question: "What's his age" }),
+      answer({ prisma, gateway, settings, embedder: embedderFor({}), groupQueue: queue() }, { handle: 'nadia', question: "What's his age" }),
     );
 
     expect(sameQuestion).not.toHaveBeenCalled();
@@ -1569,7 +1569,7 @@ describe('an answered question, asked in new words', () => {
     await seedTopic(await pageIdFor('nadia'), { answer: '25 in 2026', wordings: [{ text: "What's is his age" }] });
     const captured = gatewayCapturingPrompt();
 
-    await collect(answer({ prisma, gateway: captured.gateway, cap, embedder: null }, { handle: 'nadia', question: 'How old is he' }));
+    await collect(answer({ prisma, gateway: captured.gateway, settings, embedder: null }, { handle: 'nadia', question: 'How old is he' }));
 
     expect(captured.prompt()).toContain(`<answer question="What's is his age">25 in 2026</answer>`);
   });
@@ -1596,7 +1596,7 @@ describe('the owner\'s answers and profile in the prompt', () => {
     await collect(
       answer(
         // The question and 'Halal tak?' share axis 0; the other wordings sit elsewhere.
-        { prisma, gateway: captured.gateway, cap, embedder: embedderFor({ 'Ada delivery?': 1, 'Buka pukul berapa?': 2 }) },
+        { prisma, gateway: captured.gateway, settings, embedder: embedderFor({ 'Ada delivery?': 1, 'Buka pukul berapa?': 2 }) },
         { handle: 'nadia', question: 'Is it halal?' },
       ),
     );
@@ -1614,7 +1614,7 @@ describe('the owner\'s answers and profile in the prompt', () => {
     // Off axis 0, so the pre-reply check for an answered topic finds nothing close and the model answers.
     const embedder = embedderFor({ 'Ada delivery?': 1 });
 
-    await collect(answer({ prisma, gateway: captured.gateway, cap, embedder }, { handle: 'nadia', question: 'Is it halal?' }));
+    await collect(answer({ prisma, gateway: captured.gateway, settings, embedder }, { handle: 'nadia', question: 'Is it halal?' }));
 
     expect(captured.call().systemPrompt).toContain('Delivery is RM10.');
     // Facts in fallback (a small page) and answers sent whole: the prefix repeats, so it is cached.
@@ -1627,7 +1627,7 @@ describe('the owner\'s answers and profile in the prompt', () => {
     await prisma.link.create({ data: { pageId, label: 'Order di WhatsApp', url: 'https://wa.me/60123', position: 0 } });
     const captured = gatewayCapturingCall();
 
-    await collect(answer({ prisma, gateway: captured.gateway, cap, embedder: null }, { handle: 'nadia', question: 'How do I order?' }));
+    await collect(answer({ prisma, gateway: captured.gateway, settings, embedder: null }, { handle: 'nadia', question: 'How do I order?' }));
 
     expect(captured.call().systemPrompt).toContain('About: Kek butter, Shah Alam');
     expect(captured.call().systemPrompt).toContain('WhatsApp: Order di WhatsApp -- https://wa.me/60123');
@@ -1659,7 +1659,7 @@ describe('"where is my order", by its code', () => {
   }
 
   async function ask(gateway: Gateway, question: string, conversationId?: string): Promise<Event[]> {
-    return collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question, conversationId }));
+    return collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question, conversationId }));
   }
 
   const said = (events: Event[]) => events.filter((e) => e.type === 'text').map((e) => e.text).join('');
@@ -1823,7 +1823,7 @@ describe('product card', () => {
   }
 
   async function ask(gateway: Gateway, question: string, conversationId?: string): Promise<Event[]> {
-    return collect(answer({ prisma, gateway, cap, embedder: null }, { handle: 'nadia', question, conversationId }));
+    return collect(answer({ prisma, gateway, settings, embedder: null }, { handle: 'nadia', question, conversationId }));
   }
 
   it('sends one card, for the first item the answer names, and withholds the capture card on that turn', async () => {

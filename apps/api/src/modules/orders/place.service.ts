@@ -4,6 +4,7 @@ import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
 import { sealSecret } from '@curios/core/secret-box';
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
 import type { Prisma, PrismaClient } from '@curios/db';
+import type { Settings } from '@curios/core/settings';
 import { PageNotFoundError } from '../chat/chat.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { InvalidPhoneError } from '../leads/lead.service.js';
@@ -37,6 +38,8 @@ export interface PlaceDeps {
   appUrl: string;
   /** PAYMENT_SECRETS_KEY: seals the order token so later emails can carry the order link. Null leaves it unsealed. */
   secretsKey?: Buffer | null;
+  /** The admin's settings, read per request: the free trial is `settings.freeOrders` orders long. */
+  settings: Settings;
 }
 
 export interface PlaceInput {
@@ -154,7 +157,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     if (page.suspendedAt !== null) throw new PageUnavailableError();
     if (page.mode !== 'BUSINESS') throw new StoreBusinessOnlyError();
     if (!page.storeEnabled) throw new StoreClosedError();
-    if (!canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now })) {
+    if (!canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }, deps.settings.freeOrders)) {
       throw new OrdersPausedError();
     }
 

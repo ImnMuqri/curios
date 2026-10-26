@@ -145,6 +145,17 @@ const renewalsOf = (pageId: string) =>
 const cardOf = (pageId: string) => prisma.renewalCard.findUnique({ where: { pageId } });
 
 describe('runAutoRenewals', () => {
+  it('charges the price in force on the day: with price.MONTHLY at 5900, the renewal is 5900', async () => {
+    const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+    const raised = { ...defaultSettings(), prices: { ...defaultSettings().prices, MONTHLY: 5900 } };
+
+    expect(await run(client, aMailQueue(), { settings: { get: async () => raised } })).toMatchObject({ charged: 1 });
+
+    expect(client.createPurchase.mock.calls[0]?.[0]).toMatchObject({ amountCents: 5900 });
+    expect(await renewalsOf(page.pageId)).toMatchObject([{ status: 'PAID', amountCents: 5900 }]);
+  });
+
   it('charges a card on the day its plan ends and grants', async () => {
     const paidUntil = at(12 * HOUR_MS);
     const page = await aRenewingPage({ paidUntil });

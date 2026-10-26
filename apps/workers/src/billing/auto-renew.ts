@@ -1,4 +1,3 @@
-import { PLAN_PRICES_CENTS } from '@curios/core';
 import { malaysiaToday } from '@curios/core/orders';
 import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
@@ -278,8 +277,9 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: 
 
   // The row first, so its id can be the purchase's reference. If CHIP fails the create,
   // the row stays PENDING with no providerRef: nothing can be charged against it, and a
-  // later run marks it EXPIRED and tries again.
-  const amountCents = PLAN_PRICES_CENTS[card.plan];
+  // later run marks it EXPIRED and tries again. The price in force today, as the Terms say: the
+  // reminder three days ago quoted the price of its day, and Billing shows this one.
+  const amountCents = (await deps.settings.get()).prices[card.plan];
   const payment = await deps.prisma.payment.create({
     data: { pageId: card.pageId, plan: card.plan, amountCents, provider: 'CHIP', autoRenewal: true },
     select: { id: true },

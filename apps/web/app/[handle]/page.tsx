@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { canCapture, shouldIndex } from '@curios/core';
-import { getFaqIndex, getPublicPage } from '@curios/db-read';
+import { getFaqIndex, getPublicPage, getSettings } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../_system/unavailable.js';
 import { BentoPage, FAQ_SHOWN } from '../_bento/BentoPage.js';
 import { avatarUrl, coverUrl } from '../../lib/avatar-url.js';
@@ -66,6 +66,9 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
     if (suspended) return <UnavailableScreen language={suspended} />;
     notFound();
   }
+
+  // The trial is the admin's free leads, as the API's capture gate counts it.
+  const { freeLeads } = await getSettings();
 
   // Facts now reach a visitor only through the ask bar's cycling questions and
   // the FAQ pages, per slice 13 -- this page renders no fact list of its own.
@@ -143,7 +146,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
             paidUntil: page.paidUntil,
             leadsCaptured: page.leadsCaptured,
             now: new Date(),
-          })}
+          }, freeLeads)}
           faqTotal={faq?.total ?? 0}
           language={page.language}
         />

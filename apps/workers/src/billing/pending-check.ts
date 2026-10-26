@@ -129,7 +129,7 @@ export function createBillingWorker(deps: {
   /** The API's public origin, for the renewal purchases' callback. */
   callbackBaseUrl: string;
   log?: BillingLog;
-  /** The admin's settings, read at the start of each daily run. */
+  /** The admin's settings, read at the start of each daily run: the switches, prices and allowances. */
   settings: { get(): Promise<Settings> };
 }): Worker {
   return new Worker(
@@ -163,6 +163,7 @@ export function createBillingWorker(deps: {
           now: new Date(),
           appUrl: deps.appUrl,
           log: deps.log,
+          settings: deps.settings,
         });
         // The same daily run tells owners whose plan has just ended.
         await runPlanEndedMails({
@@ -171,6 +172,7 @@ export function createBillingWorker(deps: {
           now: new Date(),
           appUrl: deps.appUrl,
           log: deps.log,
+          settings: deps.settings,
         });
         if (renewalError) throw renewalError;
       }

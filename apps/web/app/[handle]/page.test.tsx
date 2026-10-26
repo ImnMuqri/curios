@@ -2,8 +2,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { PublicPage } from '@curios/db-read';
 import { FREE_LEADS } from '@curios/core';
+import { defaultSettings } from '@curios/core/settings';
 
-vi.mock('@curios/db-read', () => ({ getPublicPage: vi.fn(), getFaqIndex: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
+vi.mock('@curios/db-read', () => ({
+  getPublicPage: vi.fn(),
+  getFaqIndex: vi.fn(),
+  getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })),
+  getSettings: vi.fn(async () => defaultSettings()),
+}));
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
@@ -18,7 +24,7 @@ vi.mock('next/navigation', () => ({
 // internals for tests that were never about `Ask`.
 vi.mock('./ask.js', () => ({ Ask: vi.fn(() => null) }));
 
-const { getFaqIndex, getPageAvailability, getPublicPage } = await import('@curios/db-read');
+const { getFaqIndex, getPageAvailability, getPublicPage, getSettings } = await import('@curios/db-read');
 const { Ask } = await import('./ask.js');
 const { default: HandlePage, generateMetadata } = await import('./page.js');
 
@@ -254,6 +260,15 @@ describe('the capture card and the plan', () => {
       paidUntil: null,
       leadsCaptured: FREE_LEADS - 1,
     });
+
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+
+    expect(askProps()?.canCapture).toBe(true);
+  });
+
+  it('counts the trial against the free leads the admin set: with 5, a page with 3 still offers capture', async () => {
+    vi.mocked(getPublicPage).mockResolvedValueOnce({ ...page, paidUntil: null, leadsCaptured: 3 });
+    vi.mocked(getSettings).mockResolvedValueOnce({ ...defaultSettings(), freeLeads: 5 });
 
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
 

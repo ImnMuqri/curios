@@ -422,6 +422,20 @@ describe('POST /store/:handle/orders', () => {
     expect(await ordersPlaced(shop.pageId)).toBe(3);
   });
 
+  it('counts the free orders the admin set: with 5, a page with 3 placed takes a 4th', async () => {
+    await app.prisma.systemSetting.upsert({ where: { key: 'freeOrders' }, create: { key: 'freeOrders', value: 5 }, update: { value: 5 } });
+    app.settings.clear();
+    try {
+      const shop = await aShop({ ordersPlaced: 3 });
+      const res = await place(shop.handle, aBasket(shop));
+      expect(res.statusCode).toBe(201);
+      expect(await ordersPlaced(shop.pageId)).toBe(4);
+    } finally {
+      await app.prisma.systemSetting.deleteMany({ where: { key: 'freeOrders' } });
+      app.settings.clear();
+    }
+  });
+
   it('places one of two simultaneous last orders', async () => {
     const shop = await aShop({ ordersPlaced: 2 });
 

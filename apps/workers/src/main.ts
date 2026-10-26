@@ -63,8 +63,8 @@ const redis = () => {
 
 const connection = redis();
 const gateway = createAnthropicGateway(apiKey);
-// The admin's switches, one reader for every worker here: cached 30 s, so a change made in
-// admin reaches the mail and billing jobs within that window.
+// The admin's switches, prices and allowances, one reader for every worker here: cached 30 s, so
+// a change made in admin reaches the mail, lead and billing jobs within that window.
 const settings = createSettingsReader(prisma, { log });
 
 const openAiKey = process.env.OPENAI_API_KEY;
@@ -95,6 +95,7 @@ const leadWorker = createLeadWorker({
   gateway,
   mailQueue: mailProducer,
   log,
+  settings,
 });
 
 worker.on('completed', (job) => log.info({ jobId: job.id }, 'ingestion completed'));

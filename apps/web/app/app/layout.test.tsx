@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
+import { defaultSettings } from '@curios/core/settings';
 
 /**
  * The frame is mounted here, so this is where "which screens exist for me" is
@@ -23,7 +24,8 @@ import type { OwnerPage } from '@curios/db-read';
 const getOwnerPage = vi.fn();
 const countNavBadges = vi.fn();
 const getConversationUsage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges, getConversationUsage }));
+const getSettings = vi.fn(async () => defaultSettings());
+vi.mock('@curios/db-read', () => ({ getOwnerPage, countNavBadges, getConversationUsage, getSettings }));
 
 const resolveOwner = vi.fn();
 vi.mock('./session.js', () => ({ resolveOwner }));

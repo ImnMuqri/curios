@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { FREE_LEADS } from '@curios/core';
 import { planLabel } from './plan-label.js';
 
 const now = new Date('2026-10-16T00:00:00Z');
@@ -14,6 +15,6 @@ describe('planLabel', () => {
     ['a lapsed plan', { mode: 'BUSINESS', paidUntil: earlier, leadsCaptured: 3 }, 'Plan ended'],
     ['a lapsed plan with free leads left', { mode: 'BUSINESS', paidUntil: earlier, leadsCaptured: 0 }, 'Plan ended'],
   ] as const)('names %s', (_, input, label) => {
-    expect(planLabel({ ...input, now })).toBe(label);
+    expect(planLabel({ ...input, now }, FREE_LEADS)).toBe(label);
   });
 });

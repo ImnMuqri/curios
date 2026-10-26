@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { answer } from '@curios/api/chat';
 import { questionKey, retrievalText } from '@curios/api/chat/retrieval';
-import { conversationCap } from '@curios/core';
+import { conversationCap, defaultSettings, type Settings } from '@curios/core';
 import { syncFactEmbeddings } from '@curios/db';
 import {
   createOpenAiEmbedder,
@@ -36,7 +36,8 @@ const ACCOUNT_DOMAIN = '@goldens.invalid';
 interface Deps {
   prisma: PrismaClient;
   gateway: Gateway;
-  cap: number;
+  /** The defaults, with the cap from the environment: the harness has no admin to set one. */
+  settings: Settings;
   embedder: Embedder;
   /**
    * Structurally the same shape as chat.service.ts's `ChatDeps.log` (`Log`
@@ -292,7 +293,7 @@ async function main(): Promise<void> {
   // never happened.
   const embedder = createOpenAiEmbedder(openAiKey, { timeoutMs: EMBEDDING_BATCH_TIMEOUT_MS });
   const { log: retrievalLog, entries: retrievalEntries } = createRetrievalLog();
-  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), cap, embedder, log: retrievalLog };
+  const deps: Deps = { prisma, gateway: createAnthropicGateway(apiKey), settings: { ...defaultSettings(), cap }, embedder, log: retrievalLog };
   const asked: { loaded: LoadedFixture; question: GoldenQuestion; result: QuestionResult }[] = [];
   const pageIds: string[] = [];
   let costMilliCents = 0;

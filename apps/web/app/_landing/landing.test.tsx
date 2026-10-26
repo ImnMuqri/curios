@@ -3,16 +3,20 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { PLAN_PRICES_CENTS } from '@curios/core';
+import { defaultSettings } from '@curios/core/settings';
 import { LandingPage, landingMetadata } from './LandingPage.js';
-import { COPY } from './copy.js';
+import { COPY, landingCopy } from './copy.js';
+import { structuredData } from './structured-data.js';
 import { BRAND } from './brand-colors.js';
 import { STEP_MS, STEP_STARTS, advance, scene, stepProgress } from './order-scene.js';
 import { payback } from './Pricing.js';
 import { howAt } from './How.js';
 
 const LOCALES = ['en', 'ms'] as const;
-const { en, ms } = COPY;
+/** The prices and allowances in force: the defaults, as a database with no rows gives. */
+const TERMS = defaultSettings();
+const en = landingCopy('en', TERMS);
+const ms = landingCopy('ms', TERMS);
 
 /** Every visitor-facing string in a copy object, functions called with sample arguments. */
 function words(value: unknown): string {
@@ -37,7 +41,7 @@ afterEach(() => {
 
 describe('the landing page', () => {
   it.each(LOCALES)('%s: has one h1, the headline, and every section the nav links to', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
     const h1 = screen.getAllByRole('heading', { level: 1 });
     expect(h1).toHaveLength(1);
     expect(h1[0]).toHaveTextContent(COPY[locale].hero.line);
@@ -49,12 +53,12 @@ describe('the landing page', () => {
   });
 
   it('reads the rolling name once, as the first page in the deck', () => {
-    render(<LandingPage locale="en" />);
+    render(<LandingPage locale="en" terms={TERMS} />);
     expect(screen.getByRole('heading', { level: 1 })).toHaveAccessibleName(/Ask\s+Aisyah\./);
   });
 
   it('claims an address with a plain GET to sign-up, so it works without JavaScript', () => {
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     const forms = [...container.querySelectorAll('form')];
     expect(forms).toHaveLength(2);
     for (const form of forms) {
@@ -66,7 +70,7 @@ describe('the landing page', () => {
   });
 
   it('links the other language, sign in and sign up', () => {
-    render(<LandingPage locale="ms" />);
+    render(<LandingPage locale="ms" terms={TERMS} />);
     const nav = screen.getByRole('banner');
     expect(within(nav).getByRole('link', { name: 'English' })).toHaveAttribute('href', '/');
     expect(within(nav).getByRole('link', { name: 'Log masuk' })).toHaveAttribute('href', '/signin');
@@ -74,21 +78,21 @@ describe('the landing page', () => {
   });
 
   it('links the Terms, Privacy and Refund pages from the footer, in the page’s language', () => {
-    const { unmount } = render(<LandingPage locale="en" />);
+    const { unmount } = render(<LandingPage locale="en" terms={TERMS} />);
     let foot = screen.getByRole('contentinfo');
     expect(within(foot).getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
     expect(within(foot).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
     expect(within(foot).getByRole('link', { name: 'Refunds' })).toHaveAttribute('href', '/refunds');
     unmount();
 
-    render(<LandingPage locale="ms" />);
+    render(<LandingPage locale="ms" terms={TERMS} />);
     foot = screen.getByRole('contentinfo');
     expect(within(foot).getByRole('link', { name: 'Terma' })).toHaveAttribute('href', '/ms/terms');
     expect(within(foot).getByRole('link', { name: 'Bayaran balik' })).toHaveAttribute('href', '/ms/refunds');
   });
 
   it('the footer wordmark carries the full-body Peek on its o', () => {
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     const foot = screen.getByRole('contentinfo');
     const o = foot.querySelector('span[class*="mo"]') as HTMLElement;
     const peek = o.querySelector('span[class*="footPeek"]') as HTMLElement;
@@ -110,22 +114,22 @@ describe('the landing page', () => {
   });
 
   it('escapes "<" in structured data, so no copy can close the script tag', () => {
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     expect(container.querySelector('script[type="application/ld+json"]')!.innerHTML).not.toContain('<');
   });
 
-  it('prices the structured data from PLAN_PRICES_CENTS', () => {
-    const { container } = render(<LandingPage locale="en" />);
+  it('prices the structured data from the prices in force', () => {
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     const data = container.querySelector('script[type="application/ld+json"]')!.innerHTML;
-    expect(data).toContain(`"price":"${PLAN_PRICES_CENTS.MONTHLY / 100}"`);
-    expect(data).toContain(`"price":"${PLAN_PRICES_CENTS.ANNUAL / 100}"`);
+    expect(data).toContain(`"price":"${TERMS.prices.MONTHLY / 100}"`);
+    expect(data).toContain(`"price":"${TERMS.prices.ANNUAL / 100}"`);
   });
 });
 
 describe('motion', () => {
   it('holds every scene on its finished frame when the visitor asks for less motion', () => {
     reduceMotion();
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     // The hero's front page is answered, with no cursor and no caret.
     const hero = container.querySelector('section')!;
     expect(hero).toHaveTextContent(en.personas.aisyah.a);
@@ -137,7 +141,7 @@ describe('motion', () => {
 
   it('types the answer out on the front page of the deck', async () => {
     vi.useFakeTimers();
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     const hero = container.querySelector('section')!;
     await act(async () => {
       vi.advanceTimersByTime(2100);
@@ -151,7 +155,7 @@ describe('motion', () => {
   });
 
   it('moves the deck on when it is pressed', async () => {
-    render(<LandingPage locale="en" />);
+    render(<LandingPage locale="en" terms={TERMS} />);
     const deck = screen.getByRole('button', { name: en.hero.next });
     await userEvent.click(deck);
     // Kek Lina's page is at the front now; the hero is on her question.
@@ -162,7 +166,7 @@ describe('motion', () => {
 
 describe('who it is for', () => {
   it('shows the page of the kind of owner pointed at', () => {
-    render(<LandingPage locale="en" />);
+    render(<LandingPage locale="en" terms={TERMS} />);
     const row = screen.getByRole('button', { name: /Job seekers/ });
     fireEvent.mouseEnter(row);
     expect(row).toHaveAttribute('aria-pressed', 'true');
@@ -172,7 +176,7 @@ describe('who it is for', () => {
 
 describe('the floating chat', () => {
   it("the floating chat's reply is a white card with the label", () => {
-    render(<LandingPage locale="en" />);
+    render(<LandingPage locale="en" terms={TERMS} />);
     fireEvent.mouseEnter(screen.getByRole('button', { name: /Job seekers/ }));
     const figure = screen.getByRole('figure', { name: 'Daniel Tan’s Curios page' });
     const reply = within(figure).getByText(en.personas.daniel.a, { exact: false });
@@ -186,7 +190,7 @@ describe('the floating chat', () => {
 
 describe('pricing', () => {
   it('switches Business between monthly and yearly, and says which is on', async () => {
-    render(<LandingPage locale="en" />);
+    render(<LandingPage locale="en" terms={TERMS} />);
     const pricing = document.querySelector('#pricing') as HTMLElement;
     expect(within(pricing).getByText('RM49 a month')).toBeInTheDocument();
     await userEvent.click(within(pricing).getByRole('button', { name: /Yearly/ }));
@@ -196,11 +200,47 @@ describe('pricing', () => {
   });
 
   it('works out the calculator from the real monthly price', () => {
-    expect(en.pricing.monthlyRinggit).toBe(PLAN_PRICES_CENTS.MONTHLY / 100);
+    expect(en.pricing.monthlyRinggit).toBe(TERMS.prices.MONTHLY / 100);
     // Five orders of RM95: RM475, of which RM49 is about 10%, nine times over.
     expect(payback(5, 95, 49)).toMatchObject({ revenue: 475, pays: true, percent: 10, times: 9 });
     // One RM50 order does not cover it.
     expect(payback(1, 40, 49).pays).toBe(false);
+  });
+});
+
+describe('pricing, at the prices the admin set', () => {
+  /** The shared fixture: price.MONTHLY at 5900, five free leads. */
+  const RAISED = { ...defaultSettings(), freeLeads: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } };
+
+  it('shows the price in force, in both languages, and the calculator counts it', () => {
+    render(<LandingPage locale="en" terms={RAISED} />);
+    const pricing = document.querySelector('#pricing') as HTMLElement;
+    expect(within(pricing).getByText('RM59 a month')).toBeInTheDocument();
+    expect(within(pricing).getByRole('heading', { level: 2 })).toHaveTextContent('Free to be asked. RM59 when you’re selling.');
+    expect(landingCopy('ms', RAISED).pricing.title).toBe('Percuma untuk ditanya. RM59 bila anda menjual.');
+    expect(landingCopy('en', RAISED).pricing.monthlyRinggit).toBe(59);
+  });
+
+  it('counts the free leads in force', () => {
+    expect(landingCopy('en', RAISED).pricing.business.points).toContain('Your first five leads are free');
+    expect(landingCopy('en', RAISED).pricing.business.cta).toBe('Start with 5 free leads');
+    expect(landingCopy('ms', RAISED).pricing.business.points).toContain('Lima lead pertama percuma');
+    expect(landingCopy('ms', RAISED).pricing.business.cta).toBe('Mula dengan 5 lead percuma');
+    expect(landingCopy('en', { ...RAISED, freeLeads: 1 }).pricing.business.points).toContain('Your first lead is free');
+  });
+
+  it('claims months free only when the prices give them', () => {
+    const raised = landingCopy('en', RAISED).pricing;
+    expect(raised.business.noteMonthly).toBe('Or RM490 a year.');
+    expect(raised.twoMonths).toBe('');
+    const tenTimes = landingCopy('en', { ...RAISED, prices: { MONTHLY: 5900, ANNUAL: 59000 } }).pricing;
+    expect(tenTimes.business.noteMonthly).toBe('Or RM590 a year: two months free.');
+    expect(tenTimes.twoMonths).toBe('−2 months');
+  });
+
+  it('puts the prices in force in the structured data', () => {
+    const offers = structuredData(landingCopy('en', RAISED), 'https://curios.my', RAISED.prices)['@graph'].flatMap((node) => ('offers' in node ? node.offers : []));
+    expect(offers.map((o) => o?.price)).toEqual(['0', '59', '490']);
   });
 });
 
@@ -273,7 +313,7 @@ describe('the order, from the link in bio', () => {
 
   it('draws the link in bio as the board does, the Shop link first', async () => {
     reduceMotion();
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     const biz = container.querySelector('#business') as HTMLElement;
     await userEvent.click(within(biz).getByRole('button', { name: new RegExp(en.business.caps[0]!.title) }));
     const lib = biz.querySelector('[class*="csLib"]') as HTMLElement;
@@ -302,7 +342,7 @@ describe('For business, the steps', () => {
 
   it('a step can be clicked to jump to it', async () => {
     reduceMotion();
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     expect(business(container)).toHaveTextContent(en.business.done);
     await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[2]!.title) }));
     expect(business(container).querySelector('[data-state="now"]')).toHaveTextContent(en.business.caps[2]!.title);
@@ -316,7 +356,7 @@ describe('For business, the steps', () => {
 
   it('each step has its own duration and a progress line', async () => {
     reduceMotion();
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     await userEvent.click(within(business(container)).getByRole('button', { name: new RegExp(en.business.caps[1]!.title) }));
     const bar = business(container).querySelector('[data-state="now"] [data-bar] i') as HTMLElement;
     expect(parseFloat(bar.style.width)).toBeGreaterThanOrEqual(0);
@@ -342,7 +382,7 @@ describe('For business, the steps', () => {
         disconnect() {}
       },
     );
-    const { container } = render(<LandingPage locale="en" />);
+    const { container } = render(<LandingPage locale="en" terms={TERMS} />);
     act(() => watchers.forEach((w) => w([{ intersectionRatio: 0.5 } as IntersectionObserverEntry], {} as IntersectionObserver)));
     const bar = () => parseFloat((business(container).querySelector('[data-state="now"] [data-bar] i') as HTMLElement).style.width);
     const tick = (now: number) => act(() => frames.splice(0).forEach((f) => f(now)));
@@ -413,8 +453,8 @@ describe('copy', () => {
 
   it('has no em dashes anywhere a visitor reads', () => {
     expect(words([en, ms])).not.toMatch(/—/);
-    render(<LandingPage locale="en" />);
-    render(<LandingPage locale="ms" />);
+    render(<LandingPage locale="en" terms={TERMS} />);
+    render(<LandingPage locale="ms" terms={TERMS} />);
     expect(document.body.textContent).not.toMatch(/—/);
   });
 
@@ -460,13 +500,13 @@ describe('less template', () => {
   };
 
   it.each(LOCALES)('%s: no 01/02/03 watermark numbers in How it works', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
     expect(container.querySelector('[class*="roomN"]')).toBeNull();
     expect(css).not.toMatch(/roomN/);
   });
 
   it.each(LOCALES)('%s: no curved marquee between the sections', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
     expect(container.querySelector('[class*="loop"]')).toBeNull();
     expect(container.querySelector('textPath[href^="#loop"]')).toBeNull();
     expect(COPY[locale]).not.toHaveProperty('loop');
@@ -495,7 +535,7 @@ describe('less template', () => {
   });
 
   it.each(LOCALES)('%s: no label above the hero headline', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
     const hero = container.querySelector('section')!;
     expect(hero.querySelector('[class*="eyebrow"]')).toBeNull();
     expect(COPY[locale].hero).not.toHaveProperty('eyebrow');
@@ -503,7 +543,7 @@ describe('less template', () => {
   });
 
   it.each(LOCALES)('%s: no gradient blobs or grain in the hero and the closing section', (locale) => {
-    const { container } = render(<LandingPage locale={locale} />);
+    const { container } = render(<LandingPage locale={locale} terms={TERMS} />);
     expect(container.querySelector('[class*="blob"], [class*="grain"], feTurbulence')).toBeNull();
     expect(css).not.toMatch(/\.blobs?\b|\.grain\b|\.b[1-4]\b|@keyframes bl[1-4]/);
   });

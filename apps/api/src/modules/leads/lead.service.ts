@@ -1,6 +1,5 @@
 import {
   canCapture,
-  FREE_LEADS,
   LEAD_QUEUE,
   normalizeMalaysianPhone,
   planState,
@@ -8,6 +7,7 @@ import {
   type LeadJobData,
 } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
+import type { Settings } from '@curios/core/settings';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 
 export interface LeadQueueLike {
@@ -69,7 +69,8 @@ const DEDUPE_WINDOW_MS = 24 * 60 * 60 * 1000;
  * server's copy of the rule is the one that counts.
  */
 export async function captureLead(
-  deps: LeadDeps,
+  /** `settings`: the admin's, read per request; the trial is `settings.freeLeads` long. */
+  deps: LeadDeps & { settings: Settings },
   input: { conversationId: string; phone: string },
 ): Promise<{ leadId: string }> {
   const phone = normalizeMalaysianPhone(input.phone);
@@ -118,7 +119,7 @@ export async function captureLead(
     paidUntil: conversation.page.paidUntil,
     leadsCaptured: conversation.page.leadsCaptured,
     now: new Date(),
-  });
+  }, deps.settings.freeLeads);
   if (!allowed) throw new NotQualifiedError();
 
   // Per page, per 24 hours. A window cannot be a unique index, so this is a
@@ -153,8 +154,8 @@ export async function captureLead(
   // back from the same increment, so two captures at once cannot both claim
   // it. A paid page is not on the trial, so it never qualifies.
   const lastFreeLead =
-    counted.leadsCaptured === FREE_LEADS &&
-    planState({ mode: conversation.page.mode, paidUntil: conversation.page.paidUntil, leadsCaptured: counted.leadsCaptured, now: new Date() }).kind === 'trialSpent';
+    counted.leadsCaptured === deps.settings.freeLeads &&
+    planState({ mode: conversation.page.mode, paidUntil: conversation.page.paidUntil, leadsCaptured: counted.leadsCaptured, now: new Date() }, deps.settings.freeLeads).kind === 'trialSpent';
 
   // Slots and the notification are the job's business. Extraction is a model
   // call and nothing generative runs inside a request -- and doing it in that

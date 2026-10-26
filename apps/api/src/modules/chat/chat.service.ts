@@ -27,28 +27,9 @@ export interface ChatDeps {
   prisma: PrismaClient;
   gateway: Gateway;
   /**
-   * The conversation cap in force, resolved ONCE by chatRoutes at process
-   * boot and threaded through here rather than read per request.
-   *
-   * `conversationCap()` (from @curios/core) throws on a malformed
-   * CONVERSATION_CAP_PER_MONTH. Calling it from inside this generator -- as
-   * this file used to -- means that throw fires on some visitor's chat
-   * request, long after boot, and lands in chat.routes.ts's catch-all as
-   * "That answer failed. Try again." on every single turn: a silent,
-   * total outage that looks like success from the operator's side, which is
-   * the exact outcome cap.ts's own docstring says failing at boot avoids.
-   * Resolving it once, at the same place `ANTHROPIC_API_KEY` is already
-   * checked, makes a bad env var fail the deploy instead.
-   *
-   * Required, not optional: a test that forgets to supply it fails to
-   * compile rather than silently never capping anything (`used > undefined`
-   * is always `false`).
-   */
-  cap: number;
-  /**
    * The embedder retrieval uses, or null for none.
    *
-   * Required and explicitly nullable, for the reason `cap` above is required:
+   * Required and explicitly nullable, for the reason `settings` below is required:
    * a deps object that simply omitted it would silently never retrieve, and
    * "every page sends every fact" is invisible from the outside -- it is a
    * roughly-twice-the-cost bug that looks exactly like success. `null` is a
@@ -76,14 +57,20 @@ export interface ChatDeps {
   mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
   /**
    * The admin's settings in force for this turn (`app.settings.get()`, read per request by the
-   * routes). With the chat switch off, every turn gets the fixed reply and no model is asked.
-   * Left out, every switch counts as on, which only tests rely on: the routes always pass it.
+   * routes, so a change in Controls applies within the cache's 30 seconds). With the chat switch
+   * off, every turn gets the fixed reply and no model is asked. `cap` is the month's conversation
+   * limit and `freeLeads` the trial the capture card is offered within.
+   *
+   * Required, not optional: a test that forgets it fails to compile rather than silently never
+   * capping anything (`used > undefined` is always `false`). Read per request rather than resolved
+   * at boot: the cap is the admin's to change now, and the reader never throws (a malformed
+   * CONVERSATION_CAP_PER_MONTH still fails the deploy, checked in chatRoutes).
    */
-  settings?: Settings;
+  settings: Settings;
 }
 
 /** Whether the admin has switched the chat off for everyone. */
-export const chatSwitchedOff = (deps: Pick<ChatDeps, 'settings'>): boolean => deps.settings?.switches.chat === false;
+export const chatSwitchedOff = (deps: Pick<ChatDeps, 'settings'>): boolean => !deps.settings.switches.chat;
 
 /**
  * Tells the owner, once a month, that their page reached its limit. Claimed
@@ -104,7 +91,7 @@ async function mailCapReached(deps: ChatDeps, page: { id: string; displayName: s
     const now = new Date();
     const mail = capReachedMail({
       displayName: page.displayName,
-      cap: deps.cap,
+      cap: deps.settings.cap,
       resets: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
       appUrl: process.env.APP_URL ?? 'http://localhost:3000',
     });
@@ -323,7 +310,7 @@ export type AnswerPage = Prisma.PageGetPayload<{ select: typeof ANSWER_PAGE_SELE
  * stable whole, the one case where the prefix repeats between visitors.
  */
 export async function promptFor(
-  deps: Pick<ChatDeps, 'prisma' | 'embedder' | 'log'>,
+  deps: Pick<ChatDeps, 'prisma' | 'embedder' | 'log' | 'settings'>,
   page: AnswerPage,
   input: { question: string; previousUserTurn: string | null },
 ): Promise<{ systemPrompt: string; cachePrompt: boolean; factIds: string[] }> {
@@ -363,7 +350,7 @@ export async function promptFor(
     ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
     shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
     // The same rule the capture card is offered by, so the model never points to a box that is not there.
-    capture: canCapture({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }),
+    capture: canCapture({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }, deps.settings.freeLeads),
   });
 
   return {
@@ -381,7 +368,8 @@ export async function* answer(
   deps: ChatDeps,
   input: { handle: string; question: string; conversationId?: string },
 ): AsyncIterable<AnswerEvent> {
-  const { prisma, gateway, cap } = deps;
+  const { prisma, gateway } = deps;
+  const { cap } = deps.settings;
   // Switched off by the admin: the turn is kept as one over the cap is, and answered with the same
   // fixed reply, but nothing is asked of a model, not even the free answers' same-question check.
   const chatOff = chatSwitchedOff(deps);
@@ -728,7 +716,7 @@ export async function* answer(
     const previousUserTurn =
       history.filter((message) => message.role === 'USER').at(-2)?.content ?? null;
 
-    const prompt = await promptFor({ prisma, embedder: deps.embedder, log: deps.log }, page, {
+    const prompt = await promptFor({ prisma, embedder: deps.embedder, log: deps.log, settings: deps.settings }, page, {
       question: input.question,
       previousUserTurn,
     });

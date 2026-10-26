@@ -6,6 +6,7 @@ import type { DeliveryMode } from '@curios/core/store';
 import type { Prisma } from '@prisma/client';
 import { prismaRead } from './client.js';
 import { getPublicShop, type PublicItem, type PublicShop } from './shop.query.js';
+import { getSettings } from './settings.query.js';
 
 type OrderStatus = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
 type OrderMethod = 'PICKUP' | 'DELIVERY';
@@ -583,9 +584,10 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
   });
   if (!page) return null;
   const { paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, ...plan } = page;
+  const { freeOrders } = await getSettings();
   return {
     ...shop,
-    canTakeOrders: canTakeOrders({ ...plan, now }),
+    canTakeOrders: canTakeOrders({ ...plan, now }, freeOrders),
     // The same rule as storeGaps: a QR, or all three bank details.
     payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
     hasQr: Boolean(paymentQrKey),
