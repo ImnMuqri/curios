@@ -38,6 +38,8 @@ function figures(terms: PlanTerms) {
     annualAMonth: (terms.prices.ANNUAL / 12 / 100).toFixed(2),
     /** Whole months a year saves, or null when the prices give none (DEVIATIONS 225). */
     months,
+    /** Whether one RM95 order (the example the tag names) still covers a month. */
+    rm95Covers: terms.prices.MONTHLY <= 9500,
     leads: terms.freeLeads,
   };
 }
@@ -655,7 +657,8 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
     },
     business: {
       name: 'Business',
-      tag: 'One RM95 order pays for it',
+      // Left out once a month costs more than the RM95 order it names (DEVIATIONS 226).
+      tag: f.rm95Covers ? 'One RM95 order pays for it' : '',
       monthly: `RM${f.monthly}`,
       yearly: `RM${f.annual}`,
       perMonth: 'a month',
@@ -711,7 +714,7 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
     },
     business: {
       name: 'Bisnes',
-      tag: 'Satu tempahan RM95 dah cukup bayar',
+      tag: f.rm95Covers ? 'Satu tempahan RM95 dah cukup bayar' : '',
       monthly: `RM${f.monthly}`,
       yearly: `RM${f.annual}`,
       perMonth: 'sebulan',

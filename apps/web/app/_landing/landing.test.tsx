@@ -238,6 +238,19 @@ describe('pricing, at the prices the admin set', () => {
     expect(tenTimes.twoMonths).toBe('−2 months');
   });
 
+  it('says one RM95 order pays for Business only while it does: at RM95 a month, not at RM96', () => {
+    const at = (MONTHLY: number) => ({ ...RAISED, prices: { ...RAISED.prices, MONTHLY } });
+    expect(landingCopy('en', at(9500)).pricing.business.tag).toBe('One RM95 order pays for it');
+    expect(landingCopy('ms', at(9500)).pricing.business.tag).toBe('Satu tempahan RM95 dah cukup bayar');
+    expect(landingCopy('en', at(9600)).pricing.business.tag).toBe('');
+    expect(landingCopy('ms', at(9600)).pricing.business.tag).toBe('');
+
+    render(<LandingPage locale="en" terms={at(9600)} />);
+    const pricing = document.querySelector('#pricing') as HTMLElement;
+    expect(pricing).not.toHaveTextContent('One RM95 order pays for it');
+    expect(pricing.querySelectorAll('[class*="planTag"]')).toHaveLength(1);
+  });
+
   it('puts the prices in force in the structured data', () => {
     const offers = structuredData(landingCopy('en', RAISED), 'https://curios.my', RAISED.prices)['@graph'].flatMap((node) => ('offers' in node ? node.offers : []));
     expect(offers.map((o) => o?.price)).toEqual(['0', '59', '490']);

@@ -55,6 +55,14 @@ describe('LegalPage', () => {
     expect(all('ms')).not.toContain('dengan jumlah yang sama');
   });
 
+  it('promises no warning before a price change, only that paid time is kept, in both languages', () => {
+    const all = (locale: 'en' | 'ms') => DOCS[locale].terms.sections.flatMap((s) => s.body.flatMap(text)).join(' ');
+    expect(all('en')).toContain('We may change prices or limits, but a change never takes away time you have already paid for.');
+    expect(all('en')).not.toContain('we will tell you before a change applies to you');
+    expect(all('ms')).toContain('Kami boleh mengubah harga atau had, tetapi perubahan tidak sekali-kali mengambil masa yang telah anda bayar.');
+    expect(all('ms')).not.toContain('kami akan memberitahu anda sebelum perubahan itu terpakai kepada anda');
+  });
+
   it('leaves no placeholder token unrendered, in any page or language', () => {
     for (const locale of ['en', 'ms'] as const) {
       for (const doc of LEGAL_DOCS) {

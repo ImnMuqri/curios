@@ -120,7 +120,7 @@ export function Pricing({ locale, terms }: { locale: Locale; terms: PlanTerms })
             <article className={`${styles.spot} ${styles.business}`} onPointerMove={spotlight}>
               <p className={styles.planHead}>
                 <span className={styles.planName}>{business.name}</span>
-                <span className={styles.planTag}>{business.tag}</span>
+                {business.tag ? <span className={styles.planTag}>{business.tag}</span> : null}
               </p>
               <p className={styles.planPrice}>
                 <span className={styles.srOnly}>
