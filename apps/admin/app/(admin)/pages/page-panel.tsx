@@ -62,6 +62,12 @@ export function PagePanel({
             </dd>
           </>
         )}
+        {page.openReports > 0 && (
+          <>
+            <dt>Reports</dt>
+            <dd>{page.openReports} open</dd>
+          </>
+        )}
         {page.grantedMonths > 0 && (
           <>
             <dt>Months given</dt>

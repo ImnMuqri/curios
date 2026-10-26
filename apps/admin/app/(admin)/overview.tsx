@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { REPORT_REASONS } from '@curios/core/report';
 import type { Overview as OverviewData, Period } from '@curios/db-read/admin';
 import { PERIODS } from './period.js';
 import styles from './overview.module.css';
@@ -70,8 +71,22 @@ interface Need {
 }
 
 function needs(o: OverviewData, cap: number): Need[] {
-  const { failedReads, atCap, plansEnding } = o.needsYou;
+  const { failedReads, atCap, plansEnding, reported } = o.needsYou;
   const out: Need[] = [];
+  if (reported.pages > 0) {
+    const top = reported.top;
+    out.push({
+      key: 'reported',
+      count: reported.pages,
+      dot: 'warn',
+      title: `${reported.pages} ${reported.pages === 1 ? 'page' : 'pages'} reported`,
+      sub: top
+        ? `${top.displayName} has ${top.count} ${REPORT_REASONS[top.reason].en.toLowerCase()} ${top.today ? 'reports today' : 'open reports'}`
+        : '',
+      href: '/reports',
+      button: 'Look',
+    });
+  }
   if (failedReads > 0) {
     out.push({
       key: 'failed',

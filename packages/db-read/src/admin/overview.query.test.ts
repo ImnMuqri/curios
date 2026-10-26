@@ -51,6 +51,16 @@ beforeAll(async () => {
   // Newest page, made today.
   await aPage('Fresh', { mode: 'PERSONAL', published: true, createdAt: new Date(MIDNIGHT.getTime() + 60_000) });
 
+  // Reports: Chip has two today (Malaysia), Gifted one the day before.
+  await write.report.createMany({
+    data: [
+      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() + 60_000) },
+      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() + 120_000) },
+      { pageId: ids.Gifted!, reason: 'OTHER', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() - 3_600_000) },
+      { pageId: ids.Old!, reason: 'OTHER', reporterIpHash: 'h', status: 'DISMISSED' },
+    ],
+  });
+
   const convo = async (pageId: string, createdAt: Date) => (await write.conversation.create({ data: { pageId, createdAt }, select: { id: true } })).id;
   // Today (Malaysia): 16:00:00Z sharp is in, one second before is yesterday.
   const inToday = await convo(ids.Chip!, MIDNIGHT);
@@ -131,6 +141,16 @@ describe('getOverview', () => {
     expect(o.needsYou.atCap.count).toBe(1);
     expect(o.needsYou.atCap.names).toEqual(['Chip']);
     expect(o.needsYou.plansEnding).toBe(1); // Ending, not EndingGrant
+  });
+
+  it('counts reported pages and names the one with the most reports', async () => {
+    const o = await getOverview('7d', NOW);
+    expect(o.needsYou.reported).toEqual({ pages: 2, top: { displayName: 'Chip', count: 2, reason: 'SCAM', today: true } });
+  });
+
+  it('falls back to the open count when none came in today', async () => {
+    const o = await getOverview('7d', new Date(NOW.getTime() + 2 * DAY));
+    expect(o.needsYou.reported.top).toEqual({ displayName: 'Chip', count: 2, reason: 'SCAM', today: false });
   });
 
   it('counts live pages and kinds', async () => {

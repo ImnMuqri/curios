@@ -13,7 +13,7 @@ function fixture(over: Partial<OverviewData> = {}): OverviewData {
     answered: { answered: 91, recorded: 100 },
     aiCost: { milliCents: 57_100_000, perConversationMilliCents: 2_215 },
     perDay: [1, 2, 3, 4, 5, 6, 10].map((count, i) => ({ day: `2026-10-${17 + i}`, count })),
-    needsYou: { failedReads: 3, atCap: { count: 14, names: ['Studio Hana', 'Kak Mah'] }, plansEnding: 6 },
+    needsYou: { failedReads: 3, atCap: { count: 14, names: ['Studio Hana', 'Kak Mah'] }, plansEnding: 6, reported: { pages: 3, top: { displayName: 'Gadget Murah 88', count: 4, reason: 'SCAM', today: true } } },
     newPages: [
       {
         name: 'Coach Farah',
@@ -74,7 +74,7 @@ describe('Overview', () => {
   it('lists the open items, each with its button except failed reads', () => {
     render(<Overview overview={fixture()} period="7d" cap={200} />);
 
-    expect(screen.getByText('23 open')).toBeInTheDocument();
+    expect(screen.getByText('26 open')).toBeInTheDocument();
     expect(screen.getByText('3 sources couldn’t be read')).toBeInTheDocument();
     expect(screen.getByText('14 pages hit the 200 limit')).toBeInTheDocument();
     expect(screen.getByText('Studio Hana and Kak Mah among them')).toBeInTheDocument();
@@ -84,7 +84,7 @@ describe('Overview', () => {
   });
 
   it('hides an item at zero, and says so when none is left', () => {
-    const none = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0 };
+    const none = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, reported: { pages: 0, top: null } };
     const { rerender } = render(
       <Overview overview={fixture({ needsYou: { ...none, plansEnding: 2 } })} period="7d" cap={200} />,
     );
@@ -95,6 +95,24 @@ describe('Overview', () => {
     rerender(<Overview overview={fixture({ needsYou: none })} period="7d" cap={200} />);
     expect(screen.getByText('Nothing needs you.')).toBeInTheDocument();
     expect(screen.getByText('0 open')).toBeInTheDocument();
+  });
+
+  it('shows the reported row with a Look button, and the subline for today or not', () => {
+    const { rerender } = render(<Overview overview={fixture()} period="7d" cap={200} />);
+    expect(screen.getByText('3 pages reported')).toBeInTheDocument();
+    expect(screen.getByText('Gadget Murah 88 has 4 looks like a scam reports today')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Look' })).toHaveAttribute('href', '/reports');
+
+    const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0 };
+    rerender(
+      <Overview
+        overview={fixture({ needsYou: { ...quiet, reported: { pages: 1, top: { displayName: 'Coach Farah', count: 2, reason: 'IMPERSONATION', today: false } } } })}
+        period="7d"
+        cap={200}
+      />,
+    );
+    expect(screen.getByText('1 page reported')).toBeInTheDocument();
+    expect(screen.getByText('Coach Farah has 2 pretending to be someone open reports')).toBeInTheDocument();
   });
 
   it('marks the current period and links the others', () => {

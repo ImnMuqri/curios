@@ -22,6 +22,8 @@ describe('AuditLog', () => {
   it('labels each action and falls back to the raw string', () => {
     expect(actionLabel('GRANTED_MONTH')).toBe('Gave one month of Business');
     expect(actionLabel('VIEWED_AS_OWNER')).toBe('Saw the page as the owner');
+    expect(actionLabel('DISMISSED_REPORTS')).toBe('Dismissed reports');
+    expect(actionLabel('EMAILED_OWNER')).toBe('Emailed the owner about a report');
     expect(actionLabel('SOMETHING_NEW')).toBe('SOMETHING_NEW');
   });
 

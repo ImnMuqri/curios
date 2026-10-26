@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { getNavCounts } from '@curios/db-read/admin';
 import { requireAdmin } from './require-admin.js';
 import { Shell } from './shell.js';
 
@@ -12,5 +13,11 @@ export const dynamic = 'force-dynamic';
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await requireAdmin();
 
-  return <Shell adminName={session.name}>{children}</Shell>;
+  const counts = await getNavCounts(new Date());
+
+  return (
+    <Shell adminName={session.name} counts={counts}>
+      {children}
+    </Shell>
+  );
 }

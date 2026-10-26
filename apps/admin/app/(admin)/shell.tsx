@@ -3,15 +3,18 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import type { NavCounts } from '@curios/db-read/admin';
 import { SignOut } from './sign-out.js';
 import styles from './shell.module.css';
 
-export type NavKey = 'overview' | 'pages' | 'audit';
+export type NavKey = 'overview' | 'pages' | 'reports' | 'audit';
 
-// Part 1 builds three screens. The board's other items (AI & usage, Reading
-// sources, Payments, Reports, Controls) arrive with their screens; the `Run`
-// group is omitted until it has an item.
-const GROUPS: { label: string; items: { key: NavKey; label: string; href: string; icon: string }[] }[] = [
+// The board's groups. Its other items (AI & usage, Reading sources, Payments,
+// Controls) arrive with their screens, never as links to nothing.
+const GROUPS: {
+  label: string;
+  items: { key: NavKey; label: string; href: string; icon: string; count?: keyof NavCounts }[];
+}[] = [
   {
     label: 'Look',
     items: [
@@ -25,6 +28,18 @@ const GROUPS: { label: string; items: { key: NavKey; label: string; href: string
     ],
   },
   {
+    label: 'Run',
+    items: [
+      {
+        key: 'reports',
+        label: 'Reports',
+        href: '/reports',
+        icon: 'M5 21V4M5 4h11l-2 4 2 4H5',
+        count: 'openReports',
+      },
+    ],
+  },
+  {
     label: 'Change',
     items: [{ key: 'audit', label: 'Audit log', href: '/audit', icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4' }],
   },
@@ -33,12 +48,24 @@ const GROUPS: { label: string; items: { key: NavKey; label: string; href: string
 function keyOf(pathname: string | null): NavKey | null {
   if (!pathname || pathname === '/') return 'overview';
   if (pathname.startsWith('/pages')) return 'pages';
+  if (pathname.startsWith('/reports')) return 'reports';
   if (pathname.startsWith('/audit')) return 'audit';
   return null;
 }
 
 /** The admin frame: dark sidebar, the Production strip, then the screen. `current` defaults to the URL. */
-export function Shell({ adminName, current, children }: { adminName: string; current?: NavKey; children?: ReactNode }) {
+export function Shell({
+  adminName,
+  current,
+  counts,
+  children,
+}: {
+  adminName: string;
+  current?: NavKey;
+  /** The sidebar's counts, each hidden at 0. */
+  counts?: NavCounts;
+  children?: ReactNode;
+}) {
   const pathname = usePathname();
   const active = current ?? keyOf(pathname);
 
@@ -76,6 +103,7 @@ export function Shell({ adminName, current, children }: { adminName: string; cur
                     <path d={item.icon} />
                   </svg>
                   {item.label}
+                  {item.count && counts && counts[item.count] > 0 ? <em>{counts[item.count]}</em> : null}
                 </Link>
               ))}
             </div>

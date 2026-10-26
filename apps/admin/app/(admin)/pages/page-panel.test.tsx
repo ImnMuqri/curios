@@ -28,6 +28,7 @@ function detail(over: Partial<AdminPageDetail> = {}): AdminPageDetail {
     suspendedAt: null,
     suspendReason: null,
     grantedMonths: 0,
+    openReports: 0,
     leadsThisMonth: 9,
     ordersThisMonth: 14,
     ...over,
@@ -37,6 +38,16 @@ function detail(over: Partial<AdminPageDetail> = {}): AdminPageDetail {
 const props = { appUrl: 'http://localhost:3000', listHref: '/pages', onToast: () => {} };
 
 describe('PagePanel', () => {
+  it('shows a Reports row when the page has open reports, and none otherwise', () => {
+    const { rerender } = render(<PagePanel page={detail({ openReports: 6, status: 'Flagged' })} {...props} />);
+    expect(screen.getByText('Reports')).toBeInTheDocument();
+    expect(screen.getByText('6 open')).toBeInTheDocument();
+    expect(screen.getByText('Flagged')).toBeInTheDocument();
+
+    rerender(<PagePanel page={detail()} {...props} />);
+    expect(screen.queryByText('Reports')).not.toBeInTheDocument();
+  });
+
   it('shows the board fields', () => {
     render(<PagePanel page={detail()} {...props} />);
 

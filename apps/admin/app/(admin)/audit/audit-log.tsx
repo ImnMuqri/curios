@@ -13,8 +13,8 @@ const LABELS: Record<string, string> = {
   [ADMIN_ACTIONS.RESET_CONVERSATIONS]: "Reset this month's conversations",
   [ADMIN_ACTIONS.DELETED_ACCOUNT]: 'Deleted the account',
   [ADMIN_ACTIONS.VIEWED_AS_OWNER]: 'Saw the page as the owner',
-  [ADMIN_ACTIONS.DISMISSED_REPORTS]: 'Dismissed the reports',
-  [ADMIN_ACTIONS.EMAILED_OWNER]: 'Emailed the owner about the reports',
+  [ADMIN_ACTIONS.DISMISSED_REPORTS]: 'Dismissed reports',
+  [ADMIN_ACTIONS.EMAILED_OWNER]: 'Emailed the owner about a report',
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

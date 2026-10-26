@@ -1,6 +1,8 @@
 import { conversationCap, currentPeriod } from '@curios/core';
 import { prismaRead } from '../client.js';
+import type { ReportReasonKey } from '@curios/core/report';
 import { DAY_MS, malaysiaDay, malaysiaMidnight } from './days.js';
+import { listReportGroups } from './reports.query.js';
 
 export type Period = 'today' | '7d' | '30d';
 
@@ -27,6 +29,12 @@ export interface Overview {
     failedReads: number;
     atCap: { count: number; names: string[] };
     plansEnding: number;
+    /** Pages with an open report, and the page with the most. */
+    reported: {
+      pages: number;
+      /** `count` is today's reports when `today`, else all the page's open ones. */
+      top: { displayName: string; count: number; reason: ReportReasonKey; today: boolean } | null;
+    };
   };
   newPages: {
     name: string;
@@ -72,6 +80,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     newest,
     personal,
     business,
+    reportGroups,
   ] = await Promise.all([
     prismaRead.page.count({ where: { published: true, suspendedAt: null } }),
     prismaRead.page.count({ where: { published: true, suspendedAt: null, createdAt: inPeriod } }),
@@ -111,6 +120,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     }),
     prismaRead.page.count({ where: { mode: 'PERSONAL', published: true, suspendedAt: null } }),
     prismaRead.page.count({ where: { mode: 'BUSINESS', published: true, suspendedAt: null } }),
+    listReportGroups({ status: 'open', now }),
   ]);
 
   // When each paying page first paid for real, to see which began in the period.
@@ -151,6 +161,17 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
       failedReads,
       atCap: { count: capped.length, names: capped.slice(0, 2).map((row) => row.page.displayName) },
       plansEnding,
+      reported: {
+        pages: reportGroups.length,
+        top: reportGroups[0]
+          ? {
+              displayName: reportGroups[0].displayName,
+              count: reportGroups[0].countToday > 0 ? reportGroups[0].countToday : reportGroups[0].count,
+              reason: reportGroups[0].reason,
+              today: reportGroups[0].countToday > 0,
+            }
+          : null,
+      },
     },
     newPages: newest.map((page) => ({
       name: page.displayName,

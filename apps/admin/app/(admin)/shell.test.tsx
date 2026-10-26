@@ -6,17 +6,29 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ 
 import { Shell } from './shell.js';
 
 describe('Shell', () => {
-  it('shows the three built sections and none of the unbuilt ones', () => {
+  it('shows the built sections in the board’s groups and none of the unbuilt ones', () => {
     render(<Shell adminName="Iman" current="pages" />);
 
     const nav = screen.getByRole('navigation');
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent);
-    expect(labels).toEqual(['Overview', 'Pages', 'Audit log']);
-    for (const absent of ['AI & usage', 'Reading sources', 'Payments', 'Reports', 'Controls', 'Run']) {
+    expect(labels).toEqual(['Overview', 'Pages', 'Reports', 'Audit log']);
+    for (const absent of ['AI & usage', 'Reading sources', 'Payments', 'Controls']) {
       expect(screen.queryByText(absent)).not.toBeInTheDocument();
     }
-    expect(screen.getByText('Look')).toBeInTheDocument();
-    expect(screen.getByText('Change')).toBeInTheDocument();
+    const groups = Array.from(nav.querySelectorAll('p')).map((p) => p.textContent);
+    expect(groups).toEqual(['Look', 'Run', 'Change']);
+  });
+
+  it('shows the open reports count beside Reports, and hides it at 0', () => {
+    const { rerender } = render(
+      <Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 3 }} />,
+    );
+    expect(screen.getByRole('link', { name: 'Reports 3' })).toHaveAttribute('href', '/reports');
+
+    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0 }} />);
+    expect(screen.getByRole('link', { name: 'Reports' })).toBeInTheDocument();
+    rerender(<Shell adminName="Iman" current="pages" />);
+    expect(screen.getByRole('link', { name: 'Reports' })).toBeInTheDocument();
   });
 
   it('marks the current section', () => {
@@ -26,7 +38,7 @@ describe('Shell', () => {
     expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
   });
 
-  it('links to the three screens', () => {
+  it('links to the screens', () => {
     render(<Shell adminName="Iman" current="overview" />);
 
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/');
