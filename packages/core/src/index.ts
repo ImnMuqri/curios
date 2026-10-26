@@ -26,6 +26,7 @@ export { HANDLE_MIN, HANDLE_MAX, handleSkeleton, checkHandle } from './handle.js
 export type { HandleCheck } from './handle.js';
 export { PUBLIC_PAGE_WHERE, isPageLive } from './visibility.js';
 export { hashSessionValue } from './session-hash.js';
+export { FLAG_OVER, isFlagged, REPORT_DETAILS_MAX, REPORT_REASONS, type ReportReasonKey } from './report.js';
 export { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from './session.js';
 export { SESSION_COOKIE } from './cookie.js';
 export { isAddressLiteral, isBlockedAddress } from './address.js';

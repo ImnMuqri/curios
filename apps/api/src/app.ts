@@ -35,6 +35,7 @@ import {
   downloadPerIpLimit,
   receiptPerIpLimit,
   rateLimitPlugin,
+  reportPerIpLimit,
   shopChipPerAccountLimit,
   shopPayMethodsPerIpLimit,
   shopPayPerIpLimit,
@@ -44,6 +45,7 @@ import {
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
+import { reportRoutes } from './modules/reports/report.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
@@ -208,6 +210,13 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
     await scope.register(leadRoutes);
+  });
+
+  // A visitor reporting a page: anonymous, with its own per-IP budget (the chat
+  // limiters would share a visitor's chat budget with it).
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, reportPerIpLimit(app.rateLimitRedis));
+    await scope.register(reportRoutes);
   });
 
   // A visitor's checkout: anonymous, so its own scope and its own two budgets.

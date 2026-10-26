@@ -314,6 +314,7 @@ model Page {
   ingestions          Ingestion[]
   usageCounters       UsageCounter[]
   leads               Lead[]
+  reports             Report[]
   questions           Question[]
   payments            Payment[]
   renewalCard         RenewalCard?
@@ -1011,6 +1012,7 @@ model AdminUser {
   createdAt    DateTime       @default(now())
   sessions     AdminSession[]
   actions      AdminAction[]
+  reportsDecided Report[]
 }
 
 /// Like Session: id is the hashed cookie value. Absolute expiry only.
@@ -1042,4 +1044,37 @@ model AdminAction {
 
   @@index([createdAt])
   @@index([targetType, targetId])
+}
+
+enum ReportReason {
+  SCAM
+  IMPERSONATION
+  WRONG_PRICES
+  OFFENSIVE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTED
+}
+
+/// A visitor's report of a public page. Only a hash of the reporter's address
+/// is kept, and the readonly role cannot read even that.
+model Report {
+  id             String       @id @default(cuid())
+  pageId         String
+  page           Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  reason         ReportReason
+  details        String?
+  reporterIpHash String
+  status         ReportStatus @default(OPEN)
+  decidedById    String?
+  decidedBy      AdminUser?   @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([pageId, status])
+  @@index([status, createdAt])
 }

@@ -40,3 +40,13 @@ BEGIN
       ON "AdminUser" TO curios_readonly;
   END IF;
 END $$;
+
+-- Every column of a report but the reporter's hashed address.
+DO $$
+BEGIN
+  IF to_regclass('"Report"') IS NOT NULL THEN
+    REVOKE SELECT ON "Report" FROM curios_readonly;
+    GRANT SELECT ("id", "pageId", "reason", "details", "status", "decidedById", "decidedAt", "createdAt")
+      ON "Report" TO curios_readonly;
+  END IF;
+END $$;
