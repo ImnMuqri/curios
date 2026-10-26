@@ -167,6 +167,13 @@ describe('ready to take orders', () => {
   it('asks a shop of digital items alone for no pickup or delivery', () => {
     show({ ...ready, enabled: false, pickupEnabled: false, deliveryMode: 'NONE' }, items.map((i) => ({ ...i, kind: 'DIGITAL' as const, delivery: 'CODES' as const })));
     expect(steps().queryByRole('button', { name: /Turn on pickup or delivery/ })).toBeNull();
+    // And says how they do reach the customer, rather than nothing.
+    expect(steps().getByRole('button', { name: /Getting it to them Sent by email/ })).toHaveAttribute('data-ok', 'true');
+  });
+
+  it('names free delivery, which has no fee to show', () => {
+    show({ ...ready, pickupEnabled: false, deliveryMode: 'FLAT', deliveryFeeCents: 0 });
+    expect(steps().getByRole('button', { name: /Getting it to them Free delivery/ })).toBeInTheDocument();
   });
 });
 

@@ -75,12 +75,16 @@ function payWords(chip: boolean, qr: boolean, bank: boolean): string {
   return `${online}, ${others.join(' and ')}`;
 }
 
-/** "Pickup and delivery RM10", "Rider delivery", ...: what "Getting it to them" says once it is set. */
-function handOverWords(s: StoreSettings): string {
+/**
+ * "Pickup and delivery RM10", "Rider delivery", "Sent by email", ...: what "Getting it to them"
+ * says once it is set. A shop of digital items only has nothing to hand over: they go by email.
+ */
+function handOverWords(s: StoreSettings, physicalItems: boolean): string {
   const parts = [
     ...(s.pickupEnabled ? ['pickup'] : []),
-    ...(s.deliveryMode === 'FLAT' && s.deliveryFeeCents ? [`delivery ${formatRinggit(s.deliveryFeeCents)}`] : s.deliveryMode === 'RIDER' ? ['rider delivery'] : []),
+    ...(s.deliveryMode === 'FLAT' ? [s.deliveryFeeCents ? `delivery ${formatRinggit(s.deliveryFeeCents)}` : 'free delivery'] : s.deliveryMode === 'RIDER' ? ['rider delivery'] : []),
   ].join(' and ');
+  if (!parts) return physicalItems ? '' : 'Sent by email';
   return parts.charAt(0).toUpperCase() + parts.slice(1);
 }
 
@@ -297,7 +301,7 @@ export function StoreEditor({
             {[
               { ok: live.length > 0, title: 'Items', note: live.length > 0 ? `${live.length} in your shop` : items.length > 0 ? 'Switch an item on' : 'Add your first item', go: 'items' as const },
               { ok: payOk, title: 'A way to pay', note: !payOk ? 'Connect CHIP or add your QR' : payWords(chip.connected, qr.has, bankOk), go: 'payment' as const },
-              { ok: handOk, title: 'Getting it to them', note: handOk ? handOverWords(settings) : 'Turn on pickup or delivery', go: 'delivery' as const },
+              { ok: handOk, title: 'Getting it to them', note: handOk ? handOverWords(settings, readiness.physicalItems) : 'Turn on pickup or delivery', go: 'delivery' as const },
             ].map((step) => (
               <li key={step.title}>
                 <button
