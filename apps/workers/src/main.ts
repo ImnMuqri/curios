@@ -115,7 +115,7 @@ groupWorker.on('error', (err) => log.error({ err: err.message }, 'group worker e
 // The retention sweep, everywhere: unlike billing, deleting what PDPA says
 // must be deleted cannot wait on a payment provider being configured.
 // Built here, so a partial set of storage settings fails at boot, not on the night's sweep.
-const housekeepingWorker = createHousekeepingWorker({ connection: redis(), prisma, removeObjects: createObjectRemover(), reminders: { mailQueue: mailProducer, appUrl, apiUrl, secretsKey: paymentSecretsKey() }, log });
+const housekeepingWorker = createHousekeepingWorker({ connection: redis(), prisma, removeObjects: createObjectRemover(), embedder, reminders: { mailQueue: mailProducer, appUrl, apiUrl, secretsKey: paymentSecretsKey() }, log });
 housekeepingWorker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'housekeeping job failed'));
 housekeepingWorker.on('error', (err) => log.error({ err: err.message }, 'housekeeping worker error'));
 workers.push(worker, mailWorker, leadWorker, groupWorker, housekeepingWorker);

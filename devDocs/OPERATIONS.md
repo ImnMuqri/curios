@@ -175,9 +175,12 @@ not a figure worth budgeting around.
 **Safe to re-run.** It only ever selects facts that need a vector, so running it against
 an already-backfilled database scans everything and writes nothing.
 
-Run it twice in this slice's life: once after the migration that added `FactEmbedding`,
-and again every time `EMBEDDING_MODEL` changes — a fact whose stored vector came from an
-older model is re-embedded, not skipped.
+**The workers run it every night**, at 04:00 Kuala Lumpur (`embeddings-backfill` on the
+housekeeping queue), so a page left short a vector by an embeddings outage is mended by
+the next morning with nobody remembering to. Run it by hand when you cannot wait for that:
+after the migration that added `FactEmbedding`, after an outage you want cleared now, and
+every time `EMBEDDING_MODEL` changes — a fact whose stored vector came from an older model
+is re-embedded, not skipped.
 
 ---
 

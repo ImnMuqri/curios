@@ -342,7 +342,12 @@ that an `ACCESS EXCLUSIVE` lock would be felt.
 
 Opened 2026-09-26, from the whole-branch review of `slice-12/retrieval`.
 
-### There is no scheduled vector backfill
+### There is no scheduled vector backfill — fixed
+
+Fixed 2026-10-26: the workers run `syncFactEmbeddings(prisma, embedder, {})` nightly at
+04:00 Kuala Lumpur (`apps/workers/src/housekeeping/embeddings-backfill.ts`). The finding
+as it was:
+
 
 `scripts/backfill-fact-embeddings.ts` (`pnpm exec tsx scripts/backfill-fact-embeddings.ts`)
 only ever runs when someone remembers to run it by hand. Nothing calls
