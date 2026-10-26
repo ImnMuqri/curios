@@ -82,6 +82,8 @@ export const DOMAIN_ERROR_CODES = new Set([
   // A file for the profile picture that is too big, the wrong type, or whose
   // bytes disagree with the type it claimed. The old picture is kept either way.
   'INVALID_IMAGE',
+  // A payment QR upload with no DuitNow QR to read in it (payment-qr.ts). The old QR is kept.
+  'QR_UNREADABLE',
   // Topics: an answer or title that fails its rule, a split of a lone wording,
   // a resolve with nothing to resolve.
   'INVALID_ANSWER',

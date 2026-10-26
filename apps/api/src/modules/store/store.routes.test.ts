@@ -4,8 +4,16 @@ import type { FastifyInstance } from 'fastify';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 import type { AvatarStore } from '../pages/storage.js';
+import QRCode from 'qrcode';
+import { crc16 } from './payment-qr.js';
 
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString('base64');
+// A real DuitNow-shaped QR: the upload reads it and keeps a redrawn copy (payment-qr.ts).
+const QR_TEXT = (() => {
+  const body = '000201010211' + '26400014A000000615000101068900140208123456785204546253034585802MY5908KEK LINA6304';
+  return `${body}${crc16(body)}`;
+})();
+const PNG = (await QRCode.toBuffer(QR_TEXT, { type: 'png', width: 300 })).toString('base64');
+const NOT_A_QR = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString('base64');
 const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> } = {
   put: vi.fn(async () => undefined),
   remove: vi.fn(async () => undefined),
@@ -231,6 +239,20 @@ describe('the payment QR', () => {
     expect(store.remove).toHaveBeenCalledWith(first);
     expect((await call(app, 'DELETE', '/store/payment-qr', owner.cookie)).statusCode).toBe(200);
     expect(store.remove).toHaveBeenCalledWith(second);
+  });
+
+  it('keeps the QR redrawn as a PNG, and refuses a picture with no DuitNow QR in it', async () => {
+    const owner = await anOwner(app);
+    const key = (await call(app, 'POST', '/store/payment-qr', owner.cookie, { contentType: 'image/png', data: PNG })).json().paymentQrKey as string;
+    expect(key).toMatch(/.png$/);
+    expect(store.put).toHaveBeenCalledWith(key, expect.any(Buffer), 'image/png');
+
+    store.put.mockClear();
+    const res = await call(app, 'POST', '/store/payment-qr', owner.cookie, { contentType: 'image/png', data: NOT_A_QR });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('QR_UNREADABLE');
+    expect(store.put).not.toHaveBeenCalled();
+    expect((await call(app, 'GET', '/store', owner.cookie)).json().settings.paymentQrKey).toBe(key);
   });
 
   // Review Focus 2.
