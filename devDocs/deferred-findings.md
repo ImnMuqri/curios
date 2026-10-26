@@ -17,7 +17,21 @@ trip), `manual-verification-leads.md` (slice 5, the leads screen — **not run**
 
 ## Cross-cutting
 
-### No font is preloaded anywhere, because Next's font manifest builds empty
+### No font is preloaded anywhere, because Next's font manifest builds empty — resolved: Windows builds only
+
+Resolved 2026-10-26. The cause is Next itself, on Windows: its `NextFontManifestPlugin` finds font
+modules by `mod.request.includes('/next-font-loader/index.js?')`, and on Windows webpack's request
+is a backslash path, so nothing ever matches (a read-only probe in the build printed the requests).
+The same commit built in Linux (`node:22-bookworm`) writes the manifest with the root layout's five
+`*.p.woff2` faces and `appUsingSizeAdjust: true`, and the served landing carries five
+`<link rel="preload" as="font">`. **Build for production on Linux**, as any host or CI does; a
+Windows `next build` is fine for checking that it builds, not for measuring. Lighthouse 13.5.0 on
+that Linux build, mobile: the landing 84 (CLS 0, LCP 4.0 s, TBT 30 ms, FCP 1.5 s) and a business
+page 90 (CLS 0, LCP 3.5 s). The 0.035 CLS this entry blamed on the font swap is gone. The landing's
+LCP is its hero lede, held 2.5 s by render delay with an instant first byte and nothing
+render-blocking: main-thread work under Lighthouse's 4x CPU slowdown, the next thing to look at if
+the score matters. The finding as it was:
+
 
 Found 2026-10-03 while measuring the landing page. A production build writes
 `server/next-font-manifest.json` as `{"pages":{},"app":{},"appUsingSizeAdjust":false}`,
