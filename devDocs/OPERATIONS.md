@@ -574,20 +574,27 @@ with no time given until someone looks.
 
 ## Deploying on Railway
 
-Five Railway services in one project, all in the Singapore region, deployed from the
+Six Railway services in one project, all in the Singapore region, deployed from the
 `production` branch. Cloudflare only holds the domain: DNS, proxy and TLS in front of Railway.
 
-| Service | What | Config file (Settings → Config-as-code) |
-|---|---|---|
-| Postgres | Railway's Postgres | — |
-| Redis | Railway's Redis | — |
-| `api` | `apps/api`, at `api.curios.my` | `/railway/api.json` |
-| `workers` | `apps/workers`, no public address | `/railway/workers.json` |
-| `web` | `apps/web`, at `curios.my` | `/railway/web.json` |
+Railway's config files (Config as Code) take no new services since 2026-08-28, so each app
+service is set up in its dashboard, once. For every one: Source is this repository on branch
+`production`, Root Directory left empty (every Dockerfile builds from the repository root),
+region Singapore. `RAILWAY_DOCKERFILE_PATH` (a service variable) makes Railway build that
+Dockerfile instead of guessing with Railpack, which fails on this workspace with "No start
+command detected".
 
-Each app service: Source is this repository on branch `production`, root directory left blank
-(every Dockerfile builds from the repository root), region Singapore. The config file sets the
-Dockerfile, the start command and the health check; nothing else needs setting by hand.
+| Service | What | `RAILWAY_DOCKERFILE_PATH` | Custom Start Command | Pre-deploy Command | Healthcheck | Restart |
+|---|---|---|---|---|---|---|
+| Postgres | Railway's Postgres | | | | | |
+| Redis | Railway's Redis | | | | | |
+| `api` | `apps/api`, at `api.curios.my` | `Dockerfile.server` | `node --import tsx apps/api/src/server.ts` | `node --import tsx scripts/prepare-database.ts` | `/health` | On failure |
+| `workers` | `apps/workers`, no public address | `Dockerfile.server` | `node --import tsx apps/workers/src/main.ts` | — | — | Always |
+| `web` | `apps/web`, at `curios.my` | `Dockerfile.web` | — (the Dockerfile's) | — | `/` | On failure |
+| `admin` | `apps/admin`, at `admin.curios.my` | `Dockerfile.admin` | — (the Dockerfile's) | — | `/signin` | On failure |
+
+Service variables can copy another service's: `${{<service name>.<VARIABLE>}}`, with the name
+exactly as the project shows it (`${{Curios-Api.APP_URL}}`). Typing `${{` in a value lists them.
 
 **What each one does on deploy.**
 
@@ -598,8 +605,11 @@ Dockerfile, the start command and the health check; nothing else needs setting b
 - `web` is built by `Dockerfile.web`, on Linux, so the font preloads survive (a Windows build
   drops them). `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SENTRY_DSN` are written into the browser
   code at build time: changing either needs a redeploy, not a restart.
-- Both apps finish in-flight work on a deploy's SIGTERM; the config gives them 30 s (api) and
-  60 s (workers) before it is forced.
+- `admin` is built by `Dockerfile.admin` the same way, with `NEXT_PUBLIC_ADMIN_API_URL` written in
+  at build time. Its own service and address, never a path under `curios.my`: owners are never
+  served admin code.
+- `api` and `workers` finish in-flight work on a deploy's SIGTERM (node is the container's
+  process, not pnpm). Settings → Deploy → draining time: give them 30 s and 60 s.
 
 ### Variables
 
@@ -639,6 +649,11 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `TRUST_PROXY` (below) | ✓ | | |
 | `NEXT_PUBLIC_SENTRY_DSN` | | | ✓ |
 
+**`admin`** takes `DATABASE_URL_READONLY`, `APP_URL`, `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` and
+`SENTRY_ENVIRONMENT` as `web` does, plus `NEXT_PUBLIC_ADMIN_API_URL=https://api.curios.my` (built
+in, like `web`'s `NEXT_PUBLIC_*`). It needs the API to have `ADMIN_ORIGIN=https://admin.curios.my`:
+unset, the API registers no `/admin` routes and the admin app can sign nobody in.
+
 Production refuses to start without storage, the private bucket and the CHIP keys: there is no
 local fallback for any of them, by design. `CHIP_WEBHOOK_PUBLIC_KEY` goes on one line with each
 break written `\n` (see CHIP setup). Never set `INGEST_ALLOW_PRIVATE_ADDRESSES` here. Leave
@@ -667,15 +682,32 @@ replacing it, so `true` lets a caller write their own address and dodge every li
    Check `https://<its railway domain>/health` answers `{"ok":true}`.
 3. Create `workers`; its logs say "workers up".
 4. Create `web`. Its `NEXT_PUBLIC_*` must be set before this first build.
-5. Domains, below. Then create the first admin if needed (Admin section).
+5. Domains, below.
+6. Admin: set `ADMIN_ORIGIN` on `api` and redeploy it, create `admin`, add its domain, then
+   create the first admin account (below).
 
 ### Domains through Cloudflare
 
-In Railway, add `curios.my` to `web` and `api.curios.my` to `api` (Settings → Networking → Custom
-Domain); each shows a CNAME target. In Cloudflare DNS add those two CNAMEs, proxied (orange
-cloud), and set SSL/TLS to **Full (strict)**: Flexible sends Railway plain HTTP and loops on its
-redirect. If Railway's domain check stays pending, turn the record's proxy off until Railway shows
-it verified, then on again.
+In Railway, add `curios.my` to `web`, `api.curios.my` to `api` and `admin.curios.my` to `admin`
+(Settings → Networking → Custom Domain); each shows a CNAME target. In Cloudflare DNS add those
+CNAMEs, proxied (orange cloud), and set SSL/TLS to **Full (strict)**: Flexible sends Railway plain
+HTTP and loops on its redirect. If Railway's domain check stays pending, turn the record's proxy
+off until Railway shows it verified, then on again.
+
+### The first admin account, in production
+
+`admin:create` asks for the password at a prompt, so it needs a terminal on the production
+database. Either way, the email and name are arguments and the password is typed at the prompt.
+
+- **Inside the `api` service** (Railway CLI: `railway link`, then `railway ssh` and pick the api
+  service): `node --import tsx apps/api/scripts/admin-create.ts <email> "<name>"`. Not
+  `pnpm --filter @curios/api admin:create`, whose script wants a `.env` file the container has not.
+- **From your own machine**, against Postgres's public address (Postgres → Variables →
+  `DATABASE_PUBLIC_URL`; it needs the service's TCP proxy turned on):
+  `DATABASE_URL="<that url>" pnpm --filter @curios/api exec tsx scripts/admin-create.ts <email> "<name>"`.
+  Turn the proxy off again afterwards if nothing else uses it.
+
+Then sign in at `https://admin.curios.my`.
 
 Chat replies stream (server-sent events) and pass through Cloudflare's proxy as they are.
 

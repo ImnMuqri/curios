@@ -1,4 +1,4 @@
-# The API and the workers: one image, two Railway services (railway/api.json, railway/workers.json),
+# The API and the workers: one image, two Railway services (devDocs/OPERATIONS.md, Deploying on Railway),
 # told apart by their start commands. Neither has a build step: they run their TypeScript through
 # tsx, as `pnpm dev` does, without watching.
 FROM node:22-bookworm-slim
@@ -23,5 +23,5 @@ RUN pnpm install --frozen-lockfile --offline \
 ENV NODE_ENV=production
 # node itself, not pnpm, as the container's process: a deploy's SIGTERM must reach the app, which
 # closes its connections and finishes what is in flight (apps/api/src/server.ts, apps/workers/src/main.ts).
-# The API by default; railway/workers.json starts apps/workers/src/main.ts instead.
+# The API by default; the workers service sets its start command to apps/workers/src/main.ts.
 CMD ["node", "--import", "tsx", "apps/api/src/server.ts"]
