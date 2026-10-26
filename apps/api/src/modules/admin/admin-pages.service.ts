@@ -71,13 +71,13 @@ const PAGE_SELECT = {
 
 type AdminPage = Prisma.PageGetPayload<{ select: typeof PAGE_SELECT }>;
 
-async function loadPage(tx: Prisma.TransactionClient, id: string): Promise<AdminPage> {
+export async function loadPage(tx: Prisma.TransactionClient, id: string): Promise<AdminPage> {
   const page = await tx.page.findUnique({ where: { id }, select: PAGE_SELECT });
   if (!page) throw new PageNotFoundError();
   return page;
 }
 
-function audit(
+export function audit(
   tx: Prisma.TransactionClient,
   actor: AdminActor,
   page: { id: string; handle: string },
@@ -98,7 +98,7 @@ function audit(
 }
 
 /** After the change has committed; a mail that cannot be queued never undoes it. */
-async function mailOwner(
+export async function mailOwner(
   deps: AdminPagesDeps,
   page: AdminPage,
   build: typeof pageSuspendedMail,
@@ -133,6 +133,11 @@ export async function suspendPage(deps: AdminPagesDeps, actor: AdminActor, id: s
       data: { suspendedAt: new Date(), suspendReason: reason },
     });
     if (claimed.count === 0) throw new PageStateError('That page is already suspended.');
+    // Suspending is acting on the reports, so they close with it.
+    await tx.report.updateMany({
+      where: { pageId: id, status: 'OPEN' },
+      data: { status: 'ACTED', decidedById: actor.adminId, decidedAt: new Date() },
+    });
     await audit(tx, actor, found, ADMIN_ACTIONS.SUSPENDED_PAGE, reason);
     return found;
   });

@@ -84,3 +84,34 @@ export function pageRestoredMail(input: AdminMailInput): Mail {
     }),
   };
 }
+
+export function reportWarningMail(input: AdminMailInput): Mail {
+  const ms = input.language === 'ms';
+  const subject = ms ? 'Tentang halaman anda di Curios' : 'About your page on Curios';
+  const said = ms
+    ? `Pasukan Curios menerima laporan tentang ${input.displayName} dan meminta anda menyemaknya. Halaman anda masih kelihatan kepada pengunjung.`
+    : `The Curios team received reports about ${input.displayName} and is asking you to take a look. Your page stays live.`;
+  const why = ms ? `Daripada pasukan kami: ${input.reason}` : `From our team: ${input.reason}`;
+  const reply = ms
+    ? 'Ada soalan? Balas emel ini dan kami akan membantu.'
+    : 'Questions? Reply to this email and we will help.';
+  const url = dashboardUrl(input.appUrl);
+  return {
+    subject,
+    text: [said, '', why, '', reply, '', url].join('\n'),
+    html: renderMailHtml({
+      subject,
+      appUrl: input.appUrl,
+      topRight: input.displayName,
+      tag: { label: ms ? 'Perlu disemak' : 'Please review', tone: 'amber' },
+      heading: subject,
+      blocks: [
+        { kind: 'p', text: said },
+        { kind: 'p', text: why },
+        { kind: 'buttons', primary: { label: ms ? 'Buka papan pemuka' : 'Open your dashboard', href: url } },
+        { kind: 'small', text: reply },
+      ],
+      footer: ms ? ADMIN_MAIL_FOOTER_MS : ADMIN_MAIL_FOOTER,
+    }),
+  };
+}

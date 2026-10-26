@@ -50,6 +50,7 @@ export const DOMAIN_ERROR_CODES = new Set([
   'ADMIN_SIGNIN_FAILED',
   // Admin actions: the page is not there, is not in a state the action allows, or the typed handle is not its handle.
   'PAGE_STATE',
+  'NO_OPEN_REPORTS',
   'HANDLE_MISMATCH',
   'WEAK_PASSWORD',
   'INVALID_TOKEN',

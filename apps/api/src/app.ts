@@ -19,6 +19,7 @@ import {
   adminSessionRoutes,
 } from './modules/admin/admin-auth.routes.js';
 import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/admin-pages.routes.js';
+import { adminReportsRoutes } from './modules/admin/admin-reports.routes.js';
 import {
   adminSigninPerIpLimit,
   authPerEmailLimit,
@@ -341,6 +342,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await app.register(async (scope) => {
       scope.addHook('onRequest', requireAdmin);
       await scope.register(adminPagesRoutes, { ...(overrides.admin ?? {}), privateFiles: overrides.admin?.privateFiles ?? overrides.privateFiles });
+      await scope.register(adminReportsRoutes, { mailQueue: overrides.admin?.mailQueue });
     });
   }
 
