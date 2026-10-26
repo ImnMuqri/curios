@@ -18,6 +18,7 @@
     "@curios/embeddings": "workspace:*",
     "@curios/gateway": "workspace:*",
     "@prisma/client": "^6.1.0",
+    "@sentry/node": "10.76.2",
     "bullmq": "^5.34.0",
     "cheerio": "^1.0.0",
     "ioredis": "^5.4.2",

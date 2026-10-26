@@ -7,6 +7,8 @@ import { BILLING_QUEUE, HOUSEKEEPING_QUEUE, MAIL_QUEUE, type MailJobData } from 
 import { resolveApiUrl } from '@curios/core/digital';
 import { paymentSecretsKey } from '@curios/core/secret-box';
 import { onShutdown } from '@curios/core/shutdown';
+import { errorReportingHook } from '@curios/core/error-report';
+import { flushErrorTracking, reportError, startErrorTracking } from './lib/error-tracking.js';
 import { createRedis, type Redis } from './lib/redis.js';
 import { createObjectRemover } from './lib/storage.js';
 import { createIngestionWorker } from './ingestion/ingestion.worker.js';
@@ -17,7 +19,11 @@ import { billingDisabled, CHIP_DEFAULT_BASE_URL, createChipClient } from '@curio
 import { createBillingWorker, scheduleBillingJobs } from './billing/pending-check.js';
 import { createHousekeepingWorker, scheduleHousekeepingJobs } from './housekeeping/retention.js';
 
-const log = pino({ name: 'workers' });
+// Every error-level line -- a failed job, a renewal paid but not granted -- goes to error tracking
+// as well, when SENTRY_DSN turns it on.
+const tracking = startErrorTracking('workers');
+const log = pino({ name: 'workers', hooks: { logMethod: errorReportingHook(reportError) } });
+if (!tracking && process.env.NODE_ENV === 'production') log.warn('SENTRY_DSN is not set: errors are only logged, not reported.');
 
 const apiKey = process.env.ANTHROPIC_API_KEY;
 if (!apiKey) throw new Error('ANTHROPIC_API_KEY is not set');
@@ -158,4 +164,5 @@ onShutdown(async () => {
   await Promise.all(queues.map((q) => q.close()));
   await Promise.all(connections.map((c) => c.quit()));
   await prisma.$disconnect();
+  await flushErrorTracking();
 }, log);
