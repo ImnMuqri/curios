@@ -1,0 +1,17 @@
+# Installed and built inside the image, never copied from a developer's machine.
+**/node_modules
+**/.next
+**/.next-build
+**/.turbo
+**/tsconfig.tsbuildinfo
+**/coverage
+
+# Secrets stay out of every image: the services get their settings from Railway's variables.
+.env
+.env.*
+!.env.example
+
+.git
+design
+fixtures
+devDocs

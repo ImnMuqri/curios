@@ -572,6 +572,121 @@ with no time given until someone looks.
 
 ---
 
+## Deploying on Railway
+
+Five Railway services in one project, all in the Singapore region, deployed from the
+`production` branch. Cloudflare only holds the domain: DNS, proxy and TLS in front of Railway.
+
+| Service | What | Config file (Settings → Config-as-code) |
+|---|---|---|
+| Postgres | Railway's Postgres | — |
+| Redis | Railway's Redis | — |
+| `api` | `apps/api`, at `api.curios.my` | `/railway/api.json` |
+| `workers` | `apps/workers`, no public address | `/railway/workers.json` |
+| `web` | `apps/web`, at `curios.my` | `/railway/web.json` |
+
+Each app service: Source is this repository on branch `production`, root directory left blank
+(every Dockerfile builds from the repository root), region Singapore. The config file sets the
+Dockerfile, the start command and the health check; nothing else needs setting by hand.
+
+**What each one does on deploy.**
+
+- `api` and `workers` share `Dockerfile.server` and run their TypeScript through tsx, no build
+  step. `api` runs `scripts/prepare-database.ts` before it takes traffic: migrations, the
+  read-only role and its grants, and that role's password (from `DATABASE_URL_READONLY`). A
+  failure there stops the deploy and the running one stays up.
+- `web` is built by `Dockerfile.web`, on Linux, so the font preloads survive (a Windows build
+  drops them). `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_SENTRY_DSN` are written into the browser
+  code at build time: changing either needs a redeploy, not a restart.
+- Both apps finish in-flight work on a deploy's SIGTERM; the config gives them 30 s (api) and
+  60 s (workers) before it is forced.
+
+### Variables
+
+`.env.example` explains every variable; this is which service needs which. `${{Postgres.…}}` and
+`${{Redis.…}}` are Railway references, typed as shown.
+
+**Everywhere it appears, the same value.** `APP_URL=https://curios.my`,
+`NEXT_PUBLIC_API_URL=https://api.curios.my`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT=production`,
+`STORAGE_PUBLIC_URL`, `CONVERSATION_CAP_PER_MONTH` (only to override; web and api must agree).
+
+**The read-only URL** (`api` and `web`). Make a password: `openssl rand -hex 24` (hex needs no
+URL escaping). Then:
+
+```
+DATABASE_URL_READONLY=postgresql://curios_readonly:<that password>@${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+```
+
+The pre-deploy sets the role to this password and refuses the development one.
+
+| | api | workers | web |
+|---|---|---|---|
+| `DATABASE_URL=${{Postgres.DATABASE_URL}}` | ✓ | ✓ | |
+| `DATABASE_URL_READONLY` (above) | ✓ | | ✓ |
+| `REDIS_URL=${{Redis.REDIS_URL}}` | ✓ | ✓ | |
+| `APP_URL`, `NEXT_PUBLIC_API_URL`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | ✓ | ✓ | ✓ |
+| `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | ✓ | ✓ | |
+| `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | ✓ | ✓ | |
+| `STORAGE_PRIVATE_BUCKET` (digital products' files) | ✓ | | |
+| `STORAGE_PUBLIC_URL` | ✓ | ✓ | ✓ |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | ✓ | ✓ | |
+| `PAYMENT_SECRETS_KEY` | ✓ | ✓ | |
+| `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
+| `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |
+| `SESSION_SECRET` (`openssl rand -hex 32`) | ✓ | | |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI=https://api.curios.my/auth/google/callback` | ✓ | | |
+| `COOKIE_DOMAIN=.curios.my` | ✓ | | |
+| `TRUST_PROXY` (below) | ✓ | | |
+| `NEXT_PUBLIC_SENTRY_DSN` | | | ✓ |
+
+Production refuses to start without storage, the private bucket and the CHIP keys: there is no
+local fallback for any of them, by design. `CHIP_WEBHOOK_PUBLIC_KEY` goes on one line with each
+break written `\n` (see CHIP setup). Never set `INGEST_ALLOW_PRIVATE_ADDRESSES` here. Leave
+`RATE_LIMIT_*` unset: the defaults are the production values.
+
+**`TRUST_PROXY`.** A visitor reaches the API through Cloudflare and then Railway's edge, so the
+rate limits must take the address from `X-Forwarded-For`, trusting only those two. Fastify will
+not take a hop count (it fails closed), so it is a list: private ranges for Railway's edge, then
+Cloudflare's published ranges (https://www.cloudflare.com/ips/, current at 2026-10-27):
+
+```
+TRUST_PROXY=uniquelocal,100.64.0.0/10,173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22,141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20,197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13,104.24.0.0/14,172.64.0.0/13,131.0.72.0/22,2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32,2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32
+```
+
+Railway does not document its edge's addresses, so check it once deployed: sign in from your own
+connection, then find that request in the `api` logs. Its `remoteAddress` must be your own public
+address (search "what is my IP"). A Cloudflare or `100.x`/`10.x` address there means a proxy is
+missing from the list, and every visitor would share one rate-limit budget: add the address
+shown and redeploy. `true` is not the answer: Cloudflare appends to `X-Forwarded-For` rather than
+replacing it, so `true` lets a caller write their own address and dodge every limit.
+
+### Order, the first time
+
+1. Create Postgres and Redis.
+2. Create `api` with its variables, then deploy. Its pre-deploy builds the schema and the role.
+   Check `https://<its railway domain>/health` answers `{"ok":true}`.
+3. Create `workers`; its logs say "workers up".
+4. Create `web`. Its `NEXT_PUBLIC_*` must be set before this first build.
+5. Domains, below. Then create the first admin if needed (Admin section).
+
+### Domains through Cloudflare
+
+In Railway, add `curios.my` to `web` and `api.curios.my` to `api` (Settings → Networking → Custom
+Domain); each shows a CNAME target. In Cloudflare DNS add those two CNAMEs, proxied (orange
+cloud), and set SSL/TLS to **Full (strict)**: Flexible sends Railway plain HTTP and loops on its
+redirect. If Railway's domain check stays pending, turn the record's proxy off until Railway shows
+it verified, then on again.
+
+Chat replies stream (server-sent events) and pass through Cloudflare's proxy as they are.
+
+### After a deploy
+
+`api.curios.my/health`; sign in (cookies on `.curios.my`); ask a page a question (chat streams,
+API and Redis up); open `/app/store`. A release goes out by moving `production` to the commit:
+`git push origin main:production`.
+
+---
+
 ## Admin
 
 The admin app (`apps/admin`) and its `/admin` API routes. What it is and the rules it keeps are in
