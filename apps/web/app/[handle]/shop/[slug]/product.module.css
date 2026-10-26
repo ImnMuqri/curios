@@ -48,7 +48,8 @@
   align-items: center;
   gap: 10px;
   height: 60px;
-  padding: 0 12px;
+  /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
+  padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
   background: var(--page-bg);
 }
 

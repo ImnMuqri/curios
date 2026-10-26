@@ -1212,6 +1212,10 @@
  * `min-height: 100%` resolves to nothing and a short shop left the phone's foot bare.
  */
 .previewStage {
+  /* A phone's status bar and rounded corners: the shop's and item's top bar start inside them, as
+     the landing's phone draws it. Page pixels, so about 15 and 18 once the device is scaled. */
+  --phone-inset-top: 20px;
+  --phone-inset-x: 24px;
   display: flex;
   flex-direction: column;
   min-height: 100%;
