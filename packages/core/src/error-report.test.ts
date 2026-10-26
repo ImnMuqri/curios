@@ -71,7 +71,7 @@ describe('scrubEvent and scrubBreadcrumb', () => {
   });
 
   it('leaves an event with no request as it was', () => {
-    expect(scrubEvent({ message: 'x' } as { message: string; request?: undefined })).toEqual({ message: 'x' });
+    expect(scrubEvent({ message: 'x' })).toEqual({ message: 'x' });
   });
 
   it('masks a token anywhere in a console breadcrumb’s arguments', () => {
