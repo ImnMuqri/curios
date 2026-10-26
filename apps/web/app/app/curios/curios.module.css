@@ -81,6 +81,51 @@
   opacity: 1;
 }
 
+/* The owner's own photo, always the chosen tile, with its delete in the corner. */
+.ownTile {
+  position: relative;
+  display: flex;
+  flex: 5 1 0;
+  min-width: 0;
+}
+
+.deleteCover {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(25 31 44 / 62%);
+  color: var(--on-photo);
+  cursor: pointer;
+}
+
+.deleteCover:hover:not(:disabled) {
+  background: var(--merah);
+}
+
+.deleteCover:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+.deleteCover:disabled {
+  cursor: progress;
+}
+
+.deleteCover svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* No photo: the page's own background, accent and text, drawn small. */
 .solid {
   position: absolute;

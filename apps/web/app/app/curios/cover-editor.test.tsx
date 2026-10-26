@@ -61,6 +61,21 @@ describe('CoverEditor', () => {
     expect(screen.getByRole('button', { name: 'Your own photo' })).toHaveAttribute('aria-pressed', 'true');
   });
 
+  it('deletes an uploaded cover from its own tile, back to No photo', async () => {
+    const calls = api();
+    render(<CoverEditor coverKey="covers/p1/a.webp" coverUrl="https://cdn.example/covers/p1/a.webp" uploadsEnabled {...calls} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Delete your photo' }));
+    expect(calls.removeCover).toHaveBeenCalled();
+    expect(calls.onCover).toHaveBeenCalledWith({ coverKey: null, coverUrl: null });
+  });
+
+  it('offers no delete on a stock cover or with no photo: there is nothing of the owner to delete', () => {
+    const { rerender } = render(<CoverEditor coverKey="stock/kopi" coverUrl="/covers/kopi.webp" uploadsEnabled {...api()} />);
+    expect(screen.queryByRole('button', { name: 'Delete your photo' })).toBeNull();
+    rerender(<CoverEditor coverKey={null} coverUrl={null} uploadsEnabled {...api()} />);
+    expect(screen.queryByRole('button', { name: 'Delete your photo' })).toBeNull();
+  });
+
   it('keeps the cover and says why when a save fails', async () => {
     const calls = api();
     calls.chooseStock.mockRejectedValueOnce(new Error(''));
