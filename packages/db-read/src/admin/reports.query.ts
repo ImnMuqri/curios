@@ -16,6 +16,8 @@ export interface ReportGroup {
   countToday: number;
   /** When the newest report in the group was made. */
   latestAt: Date;
+  /** Closed groups only: when the latest report in the group was decided. */
+  decidedAt: Date | null;
   /** The newest note a visitor wrote, or null when none wrote one. */
   quote: string | null;
   /** Closed groups only: what was done, from the latest decision and the audit row behind it. */
@@ -77,7 +79,7 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
 
   const outcomes = open ? new Map<string, ReportOutcome>() : await outcomesOf(groups.map((g) => ({ pageId: g.group[0]!.pageId, decided: g.decided, status: latestOf(g.group).status })));
 
-  const out = groups.map(({ group }): ReportGroup => {
+  const out = groups.map(({ group, decided }): ReportGroup => {
     const newest = [...group].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     const tally = new Map<ReportReasonKey, { n: number; at: number }>();
     for (const r of newest) {
@@ -94,6 +96,7 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
       count: group.length,
       countToday: group.filter((r) => r.createdAt >= today && r.createdAt <= now).length,
       latestAt: newest[0]!.createdAt,
+      decidedAt: open ? null : new Date(decided),
       quote: newest.find((r) => r.details && r.details.trim())?.details ?? null,
       outcome: open ? null : (outcomes.get(first.pageId) ?? null),
     };

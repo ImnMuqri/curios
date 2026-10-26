@@ -100,7 +100,7 @@ describe('Overview', () => {
   it('shows the reported row with a Look button, and the subline for today or not', () => {
     const { rerender } = render(<Overview overview={fixture()} period="7d" cap={200} />);
     expect(screen.getByText('3 pages reported')).toBeInTheDocument();
-    expect(screen.getByText('Gadget Murah 88 has 4 looks like a scam reports today')).toBeInTheDocument();
+    expect(screen.getByText('Gadget Murah 88 has 4 scam reports today')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Look' })).toHaveAttribute('href', '/reports');
 
     const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0 };
@@ -112,7 +112,14 @@ describe('Overview', () => {
       />,
     );
     expect(screen.getByText('1 page reported')).toBeInTheDocument();
-    expect(screen.getByText('Coach Farah has 2 pretending to be someone open reports')).toBeInTheDocument();
+    expect(screen.getByText('Coach Farah has 2 open impersonation reports')).toBeInTheDocument();
+
+    const other = (today: boolean) =>
+      fixture({ needsYou: { ...quiet, reported: { pages: 1, top: { displayName: 'Kedai Sri', count: 4, reason: 'OTHER', today } } } });
+    rerender(<Overview overview={other(true)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 4 reports today')).toBeInTheDocument();
+    rerender(<Overview overview={other(false)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 4 open reports')).toBeInTheDocument();
   });
 
   it('marks the current period and links the others', () => {

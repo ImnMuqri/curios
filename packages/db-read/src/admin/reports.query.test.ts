@@ -120,6 +120,14 @@ describe('listReportGroups, closed', () => {
     expect(groups.find((g) => g.displayName === 'Mixed')!.count).toBe(1);
   });
 
+  it('carries when each was decided, and none for open groups', async () => {
+    const by = Object.fromEntries((await listReportGroups({ status: 'closed', now: NOW })).map((g) => [g.displayName, g]));
+    expect(by.Cleared!.decidedAt).toEqual(new Date(NOW.getTime() - 3 * DAY));
+    expect(by.Mixed!.decidedAt).toEqual(new Date(NOW.getTime() - 4 * DAY));
+    const open = await listReportGroups({ status: 'open', now: NOW });
+    expect(open.every((g) => g.decidedAt === null)).toBe(true);
+  });
+
   it('names the outcome from the decision and the audit row', async () => {
     const by = Object.fromEntries((await listReportGroups({ status: 'closed', now: NOW })).map((g) => [g.displayName, g]));
     expect(by.Cleared!.outcome).toBe('Dismissed');

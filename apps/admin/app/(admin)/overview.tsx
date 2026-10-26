@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { REPORT_REASONS } from '@curios/core/report';
+import type { ReportReasonKey } from '@curios/core/report';
 import type { Overview as OverviewData, Period } from '@curios/db-read/admin';
 import { PERIODS } from './period.js';
 import styles from './overview.module.css';
@@ -60,6 +60,23 @@ function stats(o: OverviewData, phrase: string, period: Period): Stat[] {
   ];
 }
 
+/** The short noun the Needs you subline puts before "reports": "4 scam reports". */
+const REASON_NOUN: Record<ReportReasonKey, string> = {
+  SCAM: 'scam',
+  IMPERSONATION: 'impersonation',
+  WRONG_PRICES: 'wrong-price',
+  OFFENSIVE: 'offensive',
+  OTHER: '',
+};
+
+function reportedSub(top: NonNullable<OverviewData['needsYou']['reported']['top']>): string {
+  const noun = REASON_NOUN[top.reason];
+  const reports = noun ? `${noun} reports` : 'reports';
+  return top.today
+    ? `${top.displayName} has ${top.count} ${reports} today`
+    : `${top.displayName} has ${top.count} open ${reports}`;
+}
+
 interface Need {
   key: string;
   count: number;
@@ -80,9 +97,7 @@ function needs(o: OverviewData, cap: number): Need[] {
       count: reported.pages,
       dot: 'warn',
       title: `${reported.pages} ${reported.pages === 1 ? 'page' : 'pages'} reported`,
-      sub: top
-        ? `${top.displayName} has ${top.count} ${REPORT_REASONS[top.reason].en.toLowerCase()} ${top.today ? 'reports today' : 'open reports'}`
-        : '',
+      sub: top ? reportedSub(top) : '',
       href: '/reports',
       button: 'Look',
     });

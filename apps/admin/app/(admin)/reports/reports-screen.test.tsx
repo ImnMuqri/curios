@@ -34,6 +34,7 @@ const group = (over: Partial<ReportGroup> = {}): ReportGroup => ({
   countToday: 4,
   latestAt: new Date('2026-10-27T01:00:00Z'),
   quote: 'iPhone 16 Pro Max RM899 only, transfer first then we post.',
+  decidedAt: null,
   outcome: null,
   ...over,
 });
@@ -42,7 +43,7 @@ const open = [
   group(),
   group({ pageId: 'p2', displayName: 'Coach Farah', handle: 'coachfarah', reason: 'IMPERSONATION', count: 1, countToday: 0, latestAt: new Date('2026-10-26T03:00:00Z'), quote: null }),
 ];
-const closed = [group({ pageId: 'p3', displayName: 'Kedai Bunga Sri', handle: 'kedaibungasri', reason: 'WRONG_PRICES', count: 1, outcome: 'Dismissed' })];
+const closed = [group({ pageId: 'p3', displayName: 'Kedai Bunga Sri', handle: 'kedaibungasri', reason: 'WRONG_PRICES', count: 1, latestAt: new Date('2026-10-20T03:00:00Z'), decidedAt: new Date('2026-10-26T03:00:00Z'), outcome: 'Dismissed' })];
 
 const base = { open, closed, status: 'open' as const, now: NOW };
 
@@ -97,6 +98,8 @@ describe('ReportsScreen', () => {
     expect(screen.queryByText('Gadget Murah 88')).not.toBeInTheDocument();
     const row = screen.getByText('Kedai Bunga Sri').closest('li')!;
     expect(within(row).getByText('Dismissed')).toBeInTheDocument();
+    // The when is the decision (yesterday), not the report (a week ago).
+    expect(within(row).getByText(/yesterday/)).toBeInTheDocument();
     expect(within(row).queryByRole('button')).toBeNull();
   });
 
@@ -162,6 +165,9 @@ describe('ReportsScreen', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Suspend page' }));
 
     expect(apiFetch).toHaveBeenCalledWith('/admin/pages/p1/suspend', { method: 'POST', body: JSON.stringify({ reason: 'Scam reports' }) });
+    // The row leaves Open because the page is read again.
+    expect(refresh).toHaveBeenCalled();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
   it('shows the API’s own words when someone else decided first', async () => {

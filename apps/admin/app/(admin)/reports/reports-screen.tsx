@@ -120,7 +120,7 @@ export function ReportsScreen({
                     <i style={{ background: REASON_COLOUR[g.reason] }} />
                     {REPORT_REASONS[g.reason].en}
                   </span>{' '}
-                  · {g.count} {g.count === 1 ? 'report' : 'reports'} · {whenOf(g.latestAt, now)}
+                  · {g.count} {g.count === 1 ? 'report' : 'reports'} · {whenOf(status === 'closed' && g.decidedAt ? g.decidedAt : g.latestAt, now)}
                 </p>
                 {g.quote && <q>{g.quote}</q>}
               </div>
