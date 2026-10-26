@@ -1,6 +1,6 @@
 # Manual verification — the free personal tier
 
-**Status: NOT RUN.** Written at the end of slice 10. Running it is recommended, not a gate:
+**Status: RUN 2026-10-26** (see the record at the bottom). Was: NOT RUN. Written at the end of slice 10. Running it is recommended, not a gate:
 nothing in this slice's correctness depends on a third party. It exists because one thing only a
 real request can tell us — what a social profile actually returns to our crawler.
 
@@ -79,3 +79,4 @@ Add a line per run, newest first. For check 2, record each URL tried and what ca
 
 | Date | Who | Checks passed | What social URLs returned | Checks failed, and what was seen |
 |---|---|---|---|---|
+| 2026-10-26 | Claude (agent) | 1, 2, 3, 4, 5 | None failed, one question raised. A new account signed up by email, confirmed from Mailpit and claimed a page: the tier is step 2 of onboarding, and **Business is preselected** (`aria-checked`), as the Onboarding board's initial state draws it, though README's settled decision says neither is; Continue with no choice goes on as Business. Personal chosen: the page is PERSONAL with `noindex, nofollow` (1); an Instagram link is refused at once with "Instagram does not let us read profiles. Paste your bio…" and the form switches to Paste text (2); pasted text became 6 facts waiting in Review (3); "Show my page in search results" dropped the robots tag (4); Billing's "Make this a business page" warned "you cannot switch it back to personal" before "Yes, switch. This can't be undone", and the page became BUSINESS (5). |

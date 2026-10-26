@@ -1,6 +1,6 @@
 # Manual verification — the conversation cap
 
-**Status: NOT RUN.** Written down at the end of slice 7 rather than run. It is the fourth
+**Status: RUN 2026-10-26** (see the record at the bottom). Was: NOT RUN. Written down at the end of slice 7 rather than run. It is the fourth
 document of its kind, after `manual-verification-google-link.md`,
 `manual-verification-leads.md`, and `manual-verification-faq.md`.
 
@@ -212,3 +212,9 @@ a 200 cap is the only argument anyone will ever have for what the paid tier shou
 
 Note which checks you ran and what you saw, in this file, with the date. Report any not
 run rather than leaving them ambiguous — that ambiguity is why this document exists.
+
+## Recording the result
+
+| Date | Who | Checks passed | Checks failed, and what was seen |
+|---|---|---|---|
+| 2026-10-26 | Claude (agent) | 2, 3, 4, 5 | None. With the October counter set to 200: the page's text was identical to before (3); a fresh question got the fixed Malay-then-English reply in an ordinary bubble, no error (2); "boleh hantar ke Klang?" got the owner's pinned answer word for word (4); a three-turn conversation with "2kg" offered the capture card (5). Counter put back afterwards. |
