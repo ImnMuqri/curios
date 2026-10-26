@@ -16,7 +16,7 @@ export const reportRoutes: FastifyPluginAsyncZod = async (app) => {
           reason: z.enum(['SCAM', 'IMPERSONATION', 'WRONG_PRICES', 'OFFENSIVE', 'OTHER']),
           details: z.string().max(REPORT_DETAILS_MAX).optional(),
         }),
-        response: { 400: errorSchema, 404: errorSchema },
+        response: { 204: z.undefined(), 400: errorSchema, 404: errorSchema },
       },
     },
     async (request, reply) => {

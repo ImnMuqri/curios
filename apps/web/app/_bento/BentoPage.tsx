@@ -285,7 +285,8 @@ export function BentoPage(props: BentoPageProps) {
                   <a href={faqHref}>{copy.questions}</a> ·{' '}
                 </>
               ) : null}
-              <a href="/">{copy.madeWith}</a>
+              <a href="/">{copy.madeWith}</a> ·{' '}
+              <a href={`${home}/report`}>{copy.report}</a>
             </p>
           ) : null}
         </div>

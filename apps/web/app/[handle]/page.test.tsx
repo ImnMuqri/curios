@@ -357,3 +357,16 @@ describe('the shop pill on the public page', () => {
     expect(document.querySelector('a[href="/nadia/shop"]')).toBeNull();
   });
 });
+
+describe('the report link', () => {
+  it('sits in the footer, in the page language', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ ...page, language: 'en' });
+    const { unmount } = render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    expect(screen.getByRole('link', { name: 'Report this page' })).toHaveAttribute('href', '/nadia/report');
+    unmount();
+
+    vi.mocked(getPublicPage).mockResolvedValue(page);
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    expect(screen.getByRole('link', { name: 'Laporkan halaman ini' })).toHaveAttribute('href', '/nadia/report');
+  });
+});
