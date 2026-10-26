@@ -191,10 +191,12 @@ export const DOMAIN_ERROR_CODES = new Set([
  * copy rules: say what happened and what to do next, never apologise.
  */
 export const errorsPlugin = fp(async (app: FastifyInstance) => {
-  app.setErrorHandler((error: DomainError, request, reply) => {
+  app.setErrorHandler((error: DomainError & { validation?: unknown }, request, reply) => {
     const statusCode = error.statusCode ?? 500;
+    // A request its route's schema refused is the caller's mistake, not a fault of ours: it says so
+    // in its own code rather than sharing INTERNAL_ERROR with an outage.
     const code =
-      error.code && DOMAIN_ERROR_CODES.has(error.code) ? error.code : 'INTERNAL_ERROR';
+      error.code && DOMAIN_ERROR_CODES.has(error.code) ? error.code : error.validation !== undefined && statusCode === 400 ? 'INVALID_REQUEST' : 'INTERNAL_ERROR';
 
     // The real code -- Prisma's included -- stays in the server-side log
     // regardless of what the client receives.
