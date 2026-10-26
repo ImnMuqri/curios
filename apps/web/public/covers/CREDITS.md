@@ -12,3 +12,6 @@ Picsum on 2026-10-04, cropped to 1440x900 and saved as WebP.
 | teh.webp | Vee O | https://unsplash.com/photos/hGO27G5tZJ8 |
 | bunga.webp | Cas Cornelissen | https://unsplash.com/photos/G2UTNecskWg |
 | manis.webp | Glen Carrie | https://unsplash.com/photos/FjjUVn_KHLU |
+
+`thumbs/` holds the same six at 480x300 (WebP, quality 72), for the cover
+picker's tiles in My Curios; the full size is only for the page itself.

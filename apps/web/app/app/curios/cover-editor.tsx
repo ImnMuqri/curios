@@ -114,7 +114,9 @@ export function CoverEditor({
             disabled={busy}
             onClick={() => (chosenStock === name ? undefined : void run(() => chooseStock(name), 'That did not save. Try again.'))}
           >
-            <img src={`/covers/${name}.webp`} alt="" loading="lazy" />
+            {/* A 480px thumbnail: the tile is at most about 200px wide, and the six full covers were
+                half of everything My Curios downloaded on opening. */}
+            <img src={`/covers/thumbs/${name}.webp`} alt="" loading="lazy" />
             <span className={styles.caption} aria-hidden="true">{STOCK_NAMES[name]}</span>
           </button>
         ))}
