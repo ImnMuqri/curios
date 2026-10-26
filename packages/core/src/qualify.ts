@@ -26,6 +26,12 @@ const WANTS_CONTACT = [
   /\b(call|contact|whats ?app|text|reach)\s+me\b/i,
   /\b(tinggal(kan)?|bagi|beri|kasi|hantar|letak|ambil)\b[^.?!]{0,24}\b(nombor|no\.?|nombor telefon|fon|telefon|whats ?app|wasap|wa)\b/i,
   /\b(hubungi|call|wasap|whats ?app|telefon)\s+(saya|aku)\b/i,
+  // Asking how to reach the owner is the same wish from the other side: "how can I contact Iman",
+  // "does he have a phone number", "contact info?", "macam mana nak hubungi", "ada nombor telefon?".
+  /\bhow\s+(can|could|do|should|to)\b[^.?!]{0,16}\b(contact|reach|call|message|whats ?app|text)\b/i,
+  /\b(phone|contact|whats ?app|wa)\s+(number|no\.?|details|info(rmation)?)\b/i,
+  /\b(macam ?mana|camne|cemana|bagaimana)\b[^.?!]{0,20}\b(hubungi|contact|call|telefon|wasap|whats ?app)\b/i,
+  /\b(nombor|no\.?)\s+(telefon|fon|whats ?app|wasap|wa|hp)\b/i,
 ];
 
 /** The visitor wants to be contacted: they asked to be, or typed their own phone number. */

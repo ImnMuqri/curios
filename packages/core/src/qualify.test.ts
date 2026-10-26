@@ -70,11 +70,19 @@ describe('wantsContact', () => {
     'saya nak bagi no wasap',
     'hubungi saya',
     'my number is 012-345 6789',
+    // Asking how to reach the owner: the card comes at once, not three turns later.
+    'How can I contact iman',
+    'Does he have a phone number I can contact',
+    'what is your phone number?',
+    'contact info?',
+    'how do I reach you',
+    'macam mana nak hubungi kedai ni',
+    'ada nombor telefon?',
   ])('hears %j', (message) => {
     expect(wantsContact(message)).toBe(true);
   });
 
-  it.each(['what is your phone number?', 'how can I contact iman', 'berapa harga kek 2kg?', 'do you take WhatsApp orders?', 'no thanks'])(
+  it.each(['berapa harga kek 2kg?', 'do you take WhatsApp orders?', 'how long does WhatsApp delivery take?', 'what time do you open?', 'no thanks'])(
     'does not hear %j',
     (message) => {
       expect(wantsContact(message)).toBe(false);
