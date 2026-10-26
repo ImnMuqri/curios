@@ -11,7 +11,7 @@ import {
   type Embedder,
 } from '@curios/embeddings';
 import { answer, CAP_REACHED_REPLY, MAX_HISTORY_MESSAGES, PageNotFoundError } from './chat.service.js';
-import { NEVER_SAY_FALLBACK } from './never-say-filter.js';
+import { REPLY_FALLBACK } from './reply-guard.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -510,12 +510,23 @@ describe('threading a conversation', () => {
     expect(stored.content).toBe('Kek butter 1kg RM95.');
   });
 
+  it('never states an amount the model was not given: a worked-out price and an unreviewed one both go', async () => {
+    const events = await ask(
+      depsSaying('Kek butter 1kg RM95. Untuk 2kg, harga akan jadi RM190. Ada juga yang RM1.'),
+      'kek butter 2kg berapa?',
+    );
+    const streamed = events.filter((e) => e.type === 'text').map((e) => (e as { text: string }).text).join('');
+    // RM95 is a verified fact; RM190 is the 1kg price doubled; RM1 is only in a fact the owner has not accepted.
+    expect(streamed).toBe('Kek butter 1kg RM95. ');
+    expect((await prisma.message.findFirstOrThrow({ where: { role: 'ASSISTANT' } })).content).toBe('Kek butter 1kg RM95. ');
+  });
+
   it('answers with the fallback, counted as not answered, when every sentence carried a never-say word', async () => {
     const pageId = await pageIdFor('nadia');
     await prisma.neverSay.create({ data: { pageId, phrase: 'halal' } });
     const events = await ask(depsSaying('Ya, kek kami halal.'), 'kek halal ke?');
     const streamed = events.filter((e) => e.type === 'text').map((e) => (e as { text: string }).text).join('');
-    expect(streamed).toBe(NEVER_SAY_FALLBACK);
+    expect(streamed).toBe(REPLY_FALLBACK);
     expect(streamed.toLowerCase()).not.toContain('halal');
     const asked = await prisma.questionAsk.findFirstOrThrow({ select: { answered: true } });
     expect(asked.answered).toBe(false);

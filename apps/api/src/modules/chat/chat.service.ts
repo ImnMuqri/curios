@@ -7,7 +7,7 @@ import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
 import { selectForQuestion, selectOwnerAnswers } from './retrieval.js';
 import { unsureFilter } from './unsure.js';
-import { neverSayFilter } from './never-say-filter.js';
+import { replyGuard } from './reply-guard.js';
 import { assignTopicSlug, type Log } from '../questions/faq-slug.js';
 
 export type AnswerEvent =
@@ -706,10 +706,15 @@ export async function* answer(
     });
 
     let text = '';
-    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts), and a sentence
-    // with a never-say word in it is dropped whatever the model meant by it (never-say-filter.ts).
+    // A "not sure" reply starts with a marker the visitor never sees (unsure.ts). A sentence with a
+    // never-say word, or an amount the model was not given, is dropped (reply-guard.ts): amounts of
+    // money in the prompt and its own earlier replies, and any number the visitor typed.
     const filter = unsureFilter();
-    const guard = neverSayFilter(page.neverSay.map((n) => n.phrase));
+    const guard = replyGuard({
+      neverSay: page.neverSay.map((n) => n.phrase),
+      given: [prompt.systemPrompt, ...messages.filter((m) => m.role === 'assistant').map((m) => m.content)].join(' '),
+      visitor: messages.filter((m) => m.role === 'user').map((m) => m.content).join(' '),
+    });
     try {
       for await (const event of gateway.chat({
         systemPrompt: prompt.systemPrompt,
@@ -760,10 +765,10 @@ export async function* answer(
       text += rest;
       yield { type: 'text', text: rest };
     }
-    if (guard.dropped > 0) {
-      deps.log?.info?.({ pageId: page.id, dropped: guard.dropped, replaced: guard.replaced }, 'never-say sentences dropped');
+    if (guard.dropped['never-say'] + guard.dropped.amount > 0) {
+      deps.log?.info?.({ pageId: page.id, neverSay: guard.dropped['never-say'], amount: guard.dropped.amount, replaced: guard.replaced }, 'reply sentences dropped');
     }
-    // A reply that was all never-say is the fallback now: nothing was answered.
+    // A reply that was all dropped is the fallback now: nothing was answered.
     const answered = !filter.unsure && !guard.replaced;
     await markAsk(answered);
 
