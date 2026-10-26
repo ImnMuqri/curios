@@ -261,6 +261,14 @@ describe('the preview', () => {
     expect(pay).toHaveAttribute('title', 'Add an item to see how paying looks');
   });
 
+  it('shows the shop, never an order of nothing, when it opens on Payment with no items', () => {
+    render(<StoreEditor initial={ready} items={[]} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="payment" {...apis()} />);
+    const tabs = within(screen.getByRole('tablist', { name: 'Preview screen' }));
+    expect(tabs.getByRole('tab', { name: 'Shop' })).toHaveAttribute('aria-selected', 'true');
+    expect(tabs.getByRole('tab', { name: 'Pay' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.queryByText('RM0')).toBeNull();
+  });
+
   it('says orders are paused on the phone when the shop is off, and open when it is on', () => {
     show({ ...ready, enabled: false });
     const phone = within(screen.getByRole('region', { name: 'Live preview of your shop' }));

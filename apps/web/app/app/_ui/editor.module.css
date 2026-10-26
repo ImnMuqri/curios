@@ -668,6 +668,12 @@
  * sheet, the ask bar) is held, and scaled, with it.
  */
 .device {
+  /* A phone's status bar and rounded corners: a page's top bar starts inside them, as the landing's
+     phone draws it. Page pixels, so about 15 and 18 once scaled. The live pages leave these unset. */
+  --phone-inset-top: 20px;
+  --phone-inset-x: 24px;
+  /* The home bar: what floats at a page's foot (a basket, an ask bar) stays above it. */
+  --phone-inset-bottom: 20px;
   position: absolute;
   top: 0;
   left: 0;

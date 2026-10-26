@@ -76,10 +76,10 @@
 .bar[data-preview] {
   position: sticky;
   right: auto;
-  bottom: 12px;
+  bottom: var(--phone-inset-bottom, 12px);
   left: auto;
   width: auto;
-  margin: 16px 12px 0;
+  margin: 16px var(--phone-inset-x, 12px) 0;
 }
 
 .empty {

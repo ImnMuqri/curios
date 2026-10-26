@@ -247,7 +247,10 @@ export function StoreEditor({
   const shown = items.map((item) => (draftItem && item.id === draftItem.id ? draftItem : item));
   if (draftItem && !shown.some((item) => item.id === draftItem.id)) shown.push(draftItem);
   const previewFocus = shown.find((item) => item.id === picked) ?? draftItem ?? editingItem ?? live[0] ?? null;
-  const previewItems = shown.filter((item) => item.available || (previewTab === 'item' && item.id === previewFocus?.id));
+  // What the phone shows: the chosen screen, or the shop when that one has nothing to show (no item
+  // to open, nothing to pay for) -- also when the choice was made before the last item went.
+  const shownTab: PreviewTab = (previewTab === 'pay' && live.length === 0) || (previewTab === 'item' && !previewFocus) ? 'shop' : previewTab;
+  const previewItems = shown.filter((item) => item.available || (shownTab === 'item' && item.id === previewFocus?.id));
 
   // The preview's pill tells the truth about the switch: a shop that is off, or paused by its plan,
   // reads "Orders paused" and promises no day, rather than "Open for orders".
@@ -415,10 +418,10 @@ export function StoreEditor({
             // An order of nothing (RM0) is not what a customer would ever see: Pay waits for an item too.
             { id: 'pay', label: 'Pay', ...(live.length > 0 ? {} : { hint: 'Add an item to see how paying looks' }) },
           ]}
-          selected={previewTab}
+          selected={shownTab}
           onSelect={setPreviewTab}
         >
-          {previewTab === 'pay' ? (
+          {shownTab === 'pay' ? (
             <PayPreview
               look={look}
               settings={settings}
@@ -433,7 +436,7 @@ export function StoreEditor({
             // The shop and the item are the customer pages themselves, on the owner's own colours.
             <PageTheme theme={look} className={styles.previewStage}>
               <div className={styles.previewShop}>
-                {previewTab === 'item' && previewFocus ? (
+                {shownTab === 'item' && previewFocus ? (
                   <ProductView
                     // A new key per item, so choosing another starts from its first size.
                     key={previewFocus.id}
@@ -453,7 +456,7 @@ export function StoreEditor({
                 ) : (
                   <>
                     <ShopPageView
-                      key={previewTab}
+                      key={shownTab}
                       handle={look.handle}
                       displayName={look.displayName}
                       language={look.language}

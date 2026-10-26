@@ -758,9 +758,9 @@
 
 .askBar {
   position: absolute;
-  right: 16px;
-  bottom: 16px;
-  left: 16px;
+  right: var(--phone-inset-x, 16px);
+  bottom: var(--phone-inset-bottom, 16px);
+  left: var(--phone-inset-x, 16px);
   display: flex;
   align-items: center;
   gap: 8px;

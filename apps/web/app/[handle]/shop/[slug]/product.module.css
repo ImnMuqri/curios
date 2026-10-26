@@ -327,10 +327,10 @@
 /* In the Store editor's phone, the bar stays inside the phone, and fits its narrower screen. */
 .view[data-inline] .bar {
   position: sticky;
-  bottom: 12px;
+  bottom: var(--phone-inset-bottom, 12px);
   /* The phone is the screen: the full width of its column, not a screen's width less a margin. */
   width: auto;
-  margin: 20px 8px 0;
+  margin: 20px var(--phone-inset-x, 8px) 0;
 }
 
 .view[data-inline] .qty button {
