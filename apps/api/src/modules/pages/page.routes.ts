@@ -60,9 +60,9 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
           // has a code and a message that say what the rule is.
           handle: z.string().min(1).max(200),
           displayName: z.string().min(1).max(80),
-          // Optional so existing callers keep working; absent means BUSINESS,
-          // the column's own default.
-          mode: z.enum(['PERSONAL', 'BUSINESS']).optional(),
+          // Required: the owner chooses, and nothing chooses for them (README,
+          // Tiers). Business is one-way, so a default would decide for anyone.
+          mode: z.enum(['PERSONAL', 'BUSINESS']),
         }),
       },
     },

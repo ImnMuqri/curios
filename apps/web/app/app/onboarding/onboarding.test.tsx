@@ -65,7 +65,10 @@ describe('OnboardingFlow', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
 
     expect(screen.getByRole('heading', { name: 'What is this page for?' })).toBeInTheDocument();
-    expect(screen.getByRole('radio', { name: /Business/ })).toHaveAttribute('aria-checked', 'true');
+    // Neither is chosen for the owner, and Continue waits until one is.
+    expect(screen.getByRole('radio', { name: /Business/ })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('radio', { name: /Personal/ })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByRole('button', { name: 'Continue' })).toBeDisabled();
     await userEvent.click(screen.getByRole('radio', { name: /Personal/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
 
@@ -83,6 +86,7 @@ describe('OnboardingFlow', () => {
     const { rerender } = flow({ actions: a });
     await claimStep();
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example/menu');
     await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
@@ -113,6 +117,7 @@ describe('OnboardingFlow', () => {
     flow({ actions: a });
     await claimStep();
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
     await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
@@ -132,6 +137,7 @@ describe('OnboardingFlow', () => {
     const { a } = flow();
     await claimStep();
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
     await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
     await userEvent.click(screen.getByRole('button', { name: 'Skip for now' }));
 
@@ -212,6 +218,8 @@ describe('OnboardingFlow panel', () => {
     const { container } = flow();
     await claimStep();
     await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    expect(pose(container)).toBe('claim');
+    await userEvent.click(screen.getByRole('radio', { name: /Business/ }));
     expect(pose(container)).toBe('business');
     expect(within(panel(container)).getByText('A page that sells')).toBeInTheDocument();
     expect(within(panel(container)).getByText('It answers customers, takes their numbers and runs your shop.')).toBeInTheDocument();

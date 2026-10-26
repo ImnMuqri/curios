@@ -34,7 +34,7 @@ const claim = (cookie: string, handle: string) =>
     url: '/pages',
     remoteAddress: from(),
     cookies: { [SESSION_COOKIE]: cookie },
-    payload: { handle, displayName: 'A Shop' },
+    payload: { handle, displayName: 'A Shop', mode: 'BUSINESS' },
   });
 
 const claimAs = (cookie: string, handle: string, mode: 'PERSONAL' | 'BUSINESS') =>
@@ -59,6 +59,15 @@ const modeOf = async (handle: string) =>
   (await app.prisma.page.findUniqueOrThrow({ where: { handle }, select: { mode: true } })).mode;
 
 describe('POST /pages', () => {
+  it('refuses a claim that names no tier, rather than choosing one', async () => {
+    const cookie = await anOwner();
+    const handle = `h${randomUUID().slice(0, 8)}`;
+    const res = await app.inject({ method: 'POST', url: '/pages', remoteAddress: from(), cookies: { [SESSION_COOKIE]: cookie }, payload: { handle, displayName: 'A Shop' } });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('INVALID_REQUEST');
+    expect(await app.prisma.page.count({ where: { handle } })).toBe(0);
+  });
+
   it('refuses an unauthenticated caller', async () => {
     const res = await app.inject({
       method: 'POST',
@@ -146,12 +155,10 @@ describe('POST /pages', () => {
     expect(await modeOf(handle)).toBe('PERSONAL');
   });
 
-  it('claims a business page when no tier is sent', async () => {
-    // The column's own default. Existing callers send no mode, and must keep
-    // getting what they got before this slice.
+  it('claims a business page when the owner asks for one', async () => {
     const handle = `h${randomUUID().slice(0, 8)}`;
 
-    const res = await claim(await anOwner(), handle);
+    const res = await claimAs(await anOwner(), handle, 'BUSINESS');
 
     expect(res.statusCode).toBe(201);
     expect(await modeOf(handle)).toBe('BUSINESS');

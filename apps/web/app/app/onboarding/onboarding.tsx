@@ -123,7 +123,9 @@ export function OnboardingFlow({
   const [pageId, setPageId] = useState<string | null>(page?.id ?? null);
   const [handle, setHandle] = useState(page?.handle ?? '');
   const [name, setName] = useState(page?.displayName ?? '');
-  const [mode, setMode] = useState<Mode>(page?.mode ?? 'BUSINESS');
+  // Nothing chosen until the owner chooses: business can never go back to personal, so a
+  // default would be a one-way door for anyone who just presses Continue (README, Tiers).
+  const [mode, setMode] = useState<Mode | null>(page?.mode ?? null);
   const [status, setStatus] = useState<HandleStatus | 'empty' | 'checking' | 'error'>(page ? 'available' : 'empty');
   const [way, setWay] = useState<SourceWay>('link');
   const [link, setLink] = useState('');
@@ -205,6 +207,10 @@ export function OnboardingFlow({
   /** Claims the page once, the first time something needs it. */
   async function ensurePage(): Promise<string | null> {
     if (pageId) return pageId;
+    if (!mode) {
+      setStep(1);
+      return null;
+    }
     try {
       const claimed = await actions.claim({ handle, displayName: name.trim(), mode });
       forgetWantedHandle();
@@ -403,7 +409,7 @@ export function OnboardingFlow({
               <button type="button" className={styles.back} onClick={() => setStep(0)}>
                 Back
               </button>
-              <button type="button" className={styles.go} onClick={() => setStep(2)}>
+              <button type="button" className={styles.go} disabled={mode === null} onClick={() => setStep(2)}>
                 Continue
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d={ICON.arrow} />
@@ -741,7 +747,8 @@ function OnboardingArt({
   step: number;
   handle: string;
   handleFree: boolean;
-  mode: Mode;
+  /** Null until the owner picks one; the panel stays on the address until then. */
+  mode: Mode | null;
   /** How a finished read ended: with facts, or with nothing (quiet or failed). Null while it reads. */
   outcome: 'found' | 'none' | null;
   foundCount: number;
@@ -750,7 +757,7 @@ function OnboardingArt({
 }) {
   const clipId = `ob-clip-${useId().replace(/:/g, '')}`;
   const pose: Pose =
-    step === 0 ? 'claim' : step === 1 ? (mode === 'BUSINESS' ? 'business' : 'personal') : step === 2 ? 'read' : outcome === 'found' ? 'found' : outcome === 'none' ? 'none' : 'scan';
+    step === 0 ? 'claim' : step === 1 ? (mode === 'BUSINESS' ? 'business' : mode === 'PERSONAL' ? 'personal' : 'claim') : step === 2 ? 'read' : outcome === 'found' ? 'found' : outcome === 'none' ? 'none' : 'scan';
   const [title, line] = panelCaption(pose, handleFree, foundCount);
 
   return (
