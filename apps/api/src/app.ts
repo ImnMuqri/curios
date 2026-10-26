@@ -12,6 +12,7 @@ import {
 import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
+import { settingsPlugin } from './plugins/settings.js';
 import { requireSession, sessionPlugin } from './plugins/session.js';
 import { adminSessionPlugin, requireAdmin } from './plugins/admin-session.js';
 import {
@@ -20,6 +21,7 @@ import {
 } from './modules/admin/admin-auth.routes.js';
 import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/admin-pages.routes.js';
 import { adminReportsRoutes } from './modules/admin/admin-reports.routes.js';
+import { adminSettingsRoutes } from './modules/admin/admin-settings.routes.js';
 import {
   adminSigninPerIpLimit,
   authPerEmailLimit,
@@ -156,6 +158,8 @@ export async function buildApp(overrides: AppOverrides = {}) {
   });
   await app.register(errorsPlugin);
   await app.register(prismaPlugin);
+  // The admin's settings, which the owner-facing modules read too: decorated whether or not an admin origin is set.
+  await app.register(settingsPlugin);
   // Paying shops online: built once, shared by checkout's routes, CHIP's callback and the
   // owner's cancel (which cancels CHIP's purchase first).
   const payOnline = createPayOnline(app.prisma, {
@@ -343,6 +347,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
       scope.addHook('onRequest', requireAdmin);
       await scope.register(adminPagesRoutes, { ...(overrides.admin ?? {}), privateFiles: overrides.admin?.privateFiles ?? overrides.privateFiles });
       await scope.register(adminReportsRoutes, { mailQueue: overrides.admin?.mailQueue });
+      await scope.register(adminSettingsRoutes);
     });
   }
 

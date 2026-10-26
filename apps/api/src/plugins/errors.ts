@@ -52,6 +52,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   'PAGE_STATE',
   'NO_OPEN_REPORTS',
   'HANDLE_MISMATCH',
+  // Controls: a switch already in that state, a big price change not yet confirmed, a save that changes nothing.
+  'SWITCH_STATE',
+  'BIG_CHANGE',
+  'NO_CHANGE',
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
   'OAUTH_STATE_MISMATCH',
@@ -205,9 +209,13 @@ export const errorsPlugin = fp(async (app: FastifyInstance) => {
     // regardless of what the client receives.
     if (statusCode >= 500) request.log.error({ err: error }, 'unhandled error');
 
+    // BIG_CHANGE says which prices tripped it.
+    const fields = code === 'BIG_CHANGE' && 'fields' in error ? { fields: error.fields } : {};
+
     return reply.status(statusCode).send({
       error: {
         code,
+        ...fields,
         message: statusCode >= 500 ? 'Something failed on our side. Try again.' : error.message,
       },
     });
