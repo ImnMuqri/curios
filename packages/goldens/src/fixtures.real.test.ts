@@ -34,9 +34,11 @@ describe('the fixtures this repo ships', () => {
   });
 
   it('ask twenty questions each, as BACKEND.md says', () => {
+    // Two exceptions: `shop`, six questions, all about prices; `business`, a twenty-first for a fact
+    // that answers by implication (vegan, asked as "without eggs"), added 2026-10-26.
+    const count: Record<string, number> = { shop: 6, business: 21 };
     for (const { name, fixture } of loadFixtures(DIR)) {
-      // `shop` is the one exception: six questions, all about prices.
-      expect(fixture.questions, name).toHaveLength(name === 'shop' ? 6 : 20);
+      expect(fixture.questions, name).toHaveLength(count[name] ?? 20);
     }
   });
 });
