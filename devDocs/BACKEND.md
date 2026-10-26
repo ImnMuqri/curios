@@ -451,7 +451,10 @@ thread. It is not a launch dependency.
 - Consent line rendered on the capture card, in the visitor's language.
 - Terms name the page owner as data controller and Curios as processor.
 - 12 month retention on Lead and Message rows, then hard delete by cron.
-- Owner-facing delete endpoint per lead and per page, cascading.
+- Owner-facing delete endpoint per lead and per page, cascading. Deleting a lead deletes its
+  conversation's messages too, since a number typed into the chat lives there; the questions
+  screen's counts do not depend on them. Chat keeps a question's wording and a topic's title
+  with any phone number or email blanked (`withoutContactDetails` in `@curios/core`).
 - Do not log full phone numbers in application logs.
 
 Get terms and the DPA reviewed by someone who knows current Malaysian rules before

@@ -171,39 +171,31 @@ export async function captureLead(
  * check in this codebase has that shape, and this is the one where getting it
  * wrong destroys another owner's data rather than merely showing it.
  *
- * The scope sits on the DELETE itself rather than on a findFirst before it,
- * which is where this differs from `answerQuestion`. One statement instead of
- * two, and the guard cannot be separated from the thing it guards by a later
- * edit. This is not fixing an observed race: a concurrent double delete was
- * measured against the two-step version and it returned a clean 404 both
- * times, because the pool serialises the pair. It is one irreversible
- * statement carrying its own scope.
+ * The scope sits on the DELETE itself, not only on the read before it, so the
+ * guard cannot be separated from the thing it guards by a later edit; the read
+ * is there to learn which conversation's transcript goes with it.
  *
- * The Conversation is left alone deliberately. The lead is the personal data;
- * the conversation is a visitor's chat with a public page, and it feeds the
- * questions screen -- cascading into it would silently rewrite an owner's own
- * ask counts as a side effect of clearing one phone number.
- *
- * What this actually erases: the Lead row, and nothing else -- no Message, no
- * Question, no Conversation. That matters because a visitor's chat is free
- * text, and a phone number typed into the chat itself ("wasap saya 012-345
- * 6789") lands in `Message.content`, which the leads screen's transcript
- * drawer renders back to the owner verbatim; `Question.text` keeps whatever a
- * visitor typed just as literally. Deleting the Lead does not touch either.
- * So an owner who deletes a lead to honour an erasure request has cleared the
- * one row this function is scoped to and no more -- a number can still
- * survive in Message or Question rows. This function is a targeted delete,
- * not a right-to-erasure primitive; treat it as the former.
+ * The transcript goes with it (PDPA, decided 2026-10-26): a visitor's chat is free text, and a
+ * phone number typed into it ("wasap saya 012-345 6789") sits in `Message.content`, which the
+ * transcript drawer renders back verbatim. So the conversation's messages are deleted in the same
+ * transaction, and only a lead this owner holds can reach them. The Conversation row stays, empty,
+ * and the retention sweep takes it at twelve months like any other emptied conversation. The
+ * questions screen is unchanged: its counts live on `Question`, which points at no message. `Question.text` and `Topic.title`
+ * never held the number: chat blanks contact details before it keeps a wording
+ * (`withoutContactDetails`).
  */
 export async function deleteLead(
   prisma: PrismaClient,
   accountId: string,
   leadId: string,
 ): Promise<void> {
-  const { count } = await prisma.lead.deleteMany({
-    where: { id: leadId, page: { accountId } },
+  await prisma.$transaction(async (tx) => {
+    const lead = await tx.lead.findFirst({ where: { id: leadId, page: { accountId } }, select: { conversationId: true } });
+    if (!lead) throw new LeadNotYoursError();
+    const { count } = await tx.lead.deleteMany({ where: { id: leadId, page: { accountId } } });
+    if (count === 0) throw new LeadNotYoursError();
+    await tx.message.deleteMany({ where: { conversationId: lead.conversationId } });
   });
-  if (count === 0) throw new LeadNotYoursError();
 }
 
 /**

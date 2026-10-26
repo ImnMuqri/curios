@@ -570,6 +570,17 @@ describe('threading a conversation', () => {
     expect(topic.answer).toBeNull();
   });
 
+  it('keeps the wording without a number or email typed into it, while the message keeps them', async () => {
+    await ask(depsSaying(), 'boleh hantar? wasap 012-345 6789 atau aina@gmail.com');
+
+    const question = await prisma.question.findFirstOrThrow({});
+    expect(question.text).toBe('boleh hantar? wasap [removed] atau [removed]');
+    const topic = await prisma.topic.findUniqueOrThrow({ where: { id: question.topicId } });
+    expect(topic.title).toBe('boleh hantar? wasap [removed] atau [removed]');
+    const message = await prisma.message.findFirstOrThrow({ where: { role: 'USER' } });
+    expect(message.content).toBe('boleh hantar? wasap 012-345 6789 atau aina@gmail.com');
+  });
+
   it('counts two phrasings of one question as one question', async () => {
     // The whole point of clustering. normalizeClaim strips punctuation and
     // case, so these are the same row -- and the count is what tells an owner

@@ -24,7 +24,7 @@ beforeEach(async () => {
   const pageId = account.pages[0]?.id ?? '';
 
   const conversation = await prisma.conversation.create({ data: { pageId } });
-  // Two messages, so the test below can prove they survive the delete rather
+  // Two messages, so the tests below can prove which delete takes them rather
   // than asserting zero and passing because none were ever created.
   for (const [role, content] of [
     ['USER', 'nak kek butter 2kg'],
@@ -47,14 +47,16 @@ describe('deleteLead', () => {
     expect(await prisma.lead.count()).toBe(0);
   });
 
-  it('leaves the conversation alone', async () => {
-    // The lead is the personal data. The conversation is a visitor's chat with
-    // a public page and it feeds the questions screen -- deleting it would
-    // quietly rewrite an owner's own ask counts as a side effect of clearing
-    // one phone number.
+  it('deletes the transcript with it, keeps the emptied conversation, and leaves the questions screen as it was', async () => {
+    // PDPA: a number typed into the chat lives in the messages, which the
+    // transcript drawer shows. The question's ask count does not depend on them.
+    const pageId = (await prisma.page.findFirstOrThrow({ where: { accountId } })).id;
+    const topic = await prisma.topic.create({ data: { pageId, title: 'kek butter 2kg?', askCount: 1 } });
+    await prisma.question.create({ data: { pageId, topicId: topic.id, text: 'kek butter 2kg?', normalizedQuestion: 'kek butter 2kg', askCount: 3 } });
     await deleteLead(prisma, accountId, leadId);
+    expect(await prisma.message.count()).toBe(0);
     expect(await prisma.conversation.count()).toBe(1);
-    expect(await prisma.message.count()).toBe(2);
+    expect((await prisma.question.findFirstOrThrow({ where: { pageId } })).askCount).toBe(3);
   });
 
   it('refuses a lead belonging to someone else', async () => {
@@ -64,6 +66,7 @@ describe('deleteLead', () => {
       code: 'NOT_FOUND',
     });
     expect(await prisma.lead.count()).toBe(1);
+    expect(await prisma.message.count()).toBe(2);
   });
 
   it('refuses a lead that does not exist', async () => {

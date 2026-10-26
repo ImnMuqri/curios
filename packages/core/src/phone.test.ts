@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMalaysianPhone, normalizeMalaysianPhone } from './phone.js';
+import { formatMalaysianPhone, normalizeMalaysianPhone, withoutContactDetails } from './phone.js';
 
 describe('normalizeMalaysianPhone', () => {
   it.each([
@@ -47,4 +47,24 @@ describe('formatMalaysianPhone', () => {
     expect(formatMalaysianPhone('+6512345678')).toBe('+6512345678');
     expect(formatMalaysianPhone('not a number')).toBe('not a number');
   });
+});
+
+describe('withoutContactDetails', () => {
+  it.each([
+    ['wasap saya 012-345 6789', 'wasap saya [removed]'],
+    ['call +60 12-781 4402 tq', 'call [removed] tq'],
+    ['nombor saya 0123456789.', 'nombor saya [removed].'],
+    ['office (03) 7956 1234', 'office [removed]'],
+    ['email aina.k@gmail.com ok?', 'email [removed] ok?'],
+    ['akaun 1234 5678 9012', 'akaun [removed]'],
+  ])('blanks %j', (text, expected) => {
+    expect(withoutContactDetails(text)).toBe(expected);
+  });
+
+  it.each(['berapa harga kek RM 1,500?', 'boleh ambil 2026-10-26?', 'order #1234 dah siap?', 'ada saiz 8 inch?'])(
+    'leaves %j as it was',
+    (text) => {
+      expect(withoutContactDetails(text)).toBe(text);
+    },
+  );
 });

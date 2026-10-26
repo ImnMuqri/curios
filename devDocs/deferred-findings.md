@@ -118,7 +118,12 @@ only what goes into the prompt, and persistence has no cap. A `take: 40` on
 the messages select, or fetching the transcript on expand, removes the
 assumption.
 
-### A lead delete is not a right-to-erasure primitive
+### A lead delete is not a right-to-erasure primitive — resolved
+
+Resolved 2026-10-26, the owner's decision: deleting a lead deletes its conversation's messages
+in the same transaction, and chat blanks phone numbers and emails out of the question wording
+and topic title it keeps (`withoutContactDetails`). The finding as it was:
+
 
 Recorded in the docstring on `deleteLead` as of `749165b`, and repeated here
 because it is a product question, not a code one: a phone number typed into

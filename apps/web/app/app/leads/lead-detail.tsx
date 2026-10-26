@@ -252,7 +252,7 @@ export function LeadDetail({
         <span className={styles.footEnd}>
           {confirming ? (
             <span className={styles.confirm} role="group" aria-label="Confirm deleting this lead">
-              Delete this number? It cannot be brought back.
+              Delete this number and the conversation with it? It cannot be brought back.
               <button type="button" disabled={busy} onClick={() => void remove()}>
                 Yes, delete
               </button>

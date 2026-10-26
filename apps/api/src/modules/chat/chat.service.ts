@@ -1,4 +1,4 @@
-import { capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, type GroupJobData, type MailJobData } from '@curios/core';
+import { capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL_QUEUE, normalizeClaim, qualifies, withoutContactDetails, type GroupJobData, type MailJobData } from '@curios/core';
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
@@ -492,7 +492,10 @@ export async function* answer(
   //
   // A wording is looked up by its normalised text, so a repeat in other
   // capitals or punctuation is the same wording: it counts, and queues nothing.
-  const normalizedQuestion = normalizeClaim(input.question);
+  // What is kept is the page's statistics, and a topic's title can reach an FAQ page: a number or an
+  // email the visitor typed into their question is not kept with it (the message itself has it).
+  const asked = withoutContactDetails(input.question);
+  const normalizedQuestion = normalizeClaim(asked);
   const existing = await prisma.question.findUnique({
     where: { pageId_normalizedQuestion: { pageId: page.id, normalizedQuestion } },
     select: { id: true, topicId: true },
@@ -523,7 +526,7 @@ export async function* answer(
     // A new wording of a question the owner already answered joins that
     // topic now, decided (groupedAt set, so the grouping job leaves it be),
     // and the pinned branch below answers it with the owner's words.
-    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, input.question);
+    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, asked);
 
     // Created together: a wording is never without its topic. A concurrent
     // first ask of the same wording loses the unique race and is retried as
@@ -537,7 +540,7 @@ export async function* answer(
               data: {
                 pageId: page.id,
                 topicId: answeredTopicId,
-                text: input.question,
+                text: asked,
                 normalizedQuestion,
                 groupedAt: new Date(),
               },
@@ -556,11 +559,11 @@ export async function* answer(
       } else {
         wording = await prisma.$transaction(async (tx) => {
           const topic = await tx.topic.create({
-            data: { pageId: page.id, title: input.question, askCount: 1 },
+            data: { pageId: page.id, title: asked, askCount: 1 },
             select: { id: true },
           });
           return tx.question.create({
-            data: { pageId: page.id, topicId: topic.id, text: input.question, normalizedQuestion },
+            data: { pageId: page.id, topicId: topic.id, text: asked, normalizedQuestion },
             select: { id: true, topicId: true },
           });
         });

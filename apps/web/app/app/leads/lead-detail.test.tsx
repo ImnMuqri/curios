@@ -100,7 +100,7 @@ describe('LeadDetail', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Delete lead' }));
     expect(actions.remove).not.toHaveBeenCalled();
     const confirm = screen.getByRole('group', { name: 'Confirm deleting this lead' });
-    expect(confirm).toHaveTextContent('Delete this number? It cannot be brought back.');
+    expect(confirm).toHaveTextContent('Delete this number and the conversation with it? It cannot be brought back.');
     await act(async () => { fireEvent.click(within(confirm).getByRole('button', { name: 'Yes, delete' })); });
     expect(actions.remove).toHaveBeenCalledWith('l1');
     expect(onDeleted).toHaveBeenCalled();
