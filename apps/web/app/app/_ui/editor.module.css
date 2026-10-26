@@ -629,7 +629,9 @@
   align-items: center;
   justify-content: center;
   gap: 16px;
-  height: calc(100dvh - 64px);
+  /* The full window, not the window less the header: once the header scrolls away this sticks
+     at the top, and a column 64px short left a bare strip under it. */
+  height: 100dvh;
   min-height: 720px;
   overflow: hidden;
   background: var(--field);
