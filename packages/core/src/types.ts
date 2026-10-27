@@ -92,6 +92,12 @@ export interface MailJobData {
   html?: string;
   /** A shop's name: the sender then reads "{name} via Curios", at Curios' own address. */
   fromName?: string;
+  /**
+   * `'owner'` on a notification to a page's owner (an order, a lead, a plan email), which the
+   * admin's "Emails to owners" switch stops. Left off sign-in, verification and password emails,
+   * customers' emails and the admin's own, which always go.
+   */
+  audience?: 'owner';
 }
 
 /**

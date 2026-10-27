@@ -1,4 +1,4 @@
-import { PLAN_PRICES_CENTS } from '@curios/core/billing';
+import type { PlanTerms } from '@curios/core/settings';
 import type { LandingCopy } from './copy.js';
 
 export const SITE_URL = 'https://curios.my';
@@ -11,8 +11,11 @@ export const SITE_URL = 'https://curios.my';
  * breadcrumb with one crumb tells a search engine nothing.
  * No AggregateRating or Review: there are none yet, and inventing them is
  * against both DESIGN.md and Google's rules.
+ *
+ * `prices` are the ones in force, the same the page's copy was built from, so
+ * the offers can never quote a price the page beside them does not.
  */
-export function structuredData(copy: LandingCopy, url: string) {
+export function structuredData(copy: LandingCopy, url: string, prices: PlanTerms['prices']) {
   const inLanguage = copy.locale === 'ms' ? 'ms-MY' : 'en-MY';
   return {
     '@context': 'https://schema.org',
@@ -53,11 +56,11 @@ export function structuredData(copy: LandingCopy, url: string) {
           {
             '@type': 'Offer',
             name: `${copy.pricing.business.name} (monthly)`,
-            price: String(PLAN_PRICES_CENTS.MONTHLY / 100),
+            price: String(prices.MONTHLY / 100),
             priceCurrency: 'MYR',
             priceSpecification: {
               '@type': 'UnitPriceSpecification',
-              price: String(PLAN_PRICES_CENTS.MONTHLY / 100),
+              price: String(prices.MONTHLY / 100),
               priceCurrency: 'MYR',
               billingDuration: 'P1M',
             },
@@ -65,11 +68,11 @@ export function structuredData(copy: LandingCopy, url: string) {
           {
             '@type': 'Offer',
             name: `${copy.pricing.business.name} (yearly)`,
-            price: String(PLAN_PRICES_CENTS.ANNUAL / 100),
+            price: String(prices.ANNUAL / 100),
             priceCurrency: 'MYR',
             priceSpecification: {
               '@type': 'UnitPriceSpecification',
-              price: String(PLAN_PRICES_CENTS.ANNUAL / 100),
+              price: String(prices.ANNUAL / 100),
               priceCurrency: 'MYR',
               billingDuration: 'P1Y',
             },

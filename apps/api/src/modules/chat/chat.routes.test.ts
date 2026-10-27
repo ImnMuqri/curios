@@ -133,6 +133,8 @@ afterAll(async () => {
   // content-hashed key does not benefit from -- so the cleanup belongs here,
   // once, after every test in this file has run.
   await app.prisma.$executeRawUnsafe('TRUNCATE "QuestionEmbedding"');
+  // ModelCall does not cascade from Account either, and every answer here writes one.
+  await app.prisma.$executeRawUnsafe('TRUNCATE "ModelCall"');
   await app.close();
 });
 
@@ -436,5 +438,21 @@ describe('POST /chat/:handle, over the monthly cap', () => {
     // ModelCall rows for this conversation, the table the worker prices from.
     const modelCalls = await app.prisma.modelCall.count({ where: { conversationId } });
     expect(modelCalls).toBe(0);
+  });
+  it('reads the cap the admin set, per request: with a cap of 10, the 10th conversation is answered and the 11th gets the fixed reply', async () => {
+    await app.prisma.systemSetting.upsert({ where: { key: 'cap' }, create: { key: 'cap', value: 10 }, update: { value: 10 } });
+    app.settings.clear();
+    try {
+      const tenth = await aPageOverCap(9);
+      const answered = await app.inject({ method: 'POST', url: `/chat/${tenth.handle}`, remoteAddress: from(), payload: { question: 'harga kek?' } });
+      expect(textOf(answered.payload)).not.toBe(CAP_REACHED_REPLY);
+
+      const eleventh = await aPageOverCap(10);
+      const refused = await app.inject({ method: 'POST', url: `/chat/${eleventh.handle}`, remoteAddress: from(), payload: { question: 'harga kek?' } });
+      expect(textOf(refused.payload)).toBe(CAP_REACHED_REPLY);
+    } finally {
+      await app.prisma.systemSetting.deleteMany({ where: { key: 'cap' } });
+      app.settings.clear();
+    }
   });
 });

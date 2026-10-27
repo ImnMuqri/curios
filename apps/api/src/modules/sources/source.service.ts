@@ -1,6 +1,8 @@
-import type { PrismaClient } from '@curios/db';
+import type { Prisma, PrismaClient } from '@curios/db';
 import { INGEST_QUEUE } from '@curios/core';
+import type { Settings } from '@curios/core/settings';
 import type { QueueLike } from '../ingest/ingest.service.js';
+import { ReadingPausedError } from '../../lib/switches.js';
 
 export class SourceNotFoundError extends Error {
   readonly statusCode = 404;
@@ -72,40 +74,42 @@ export async function removeSource(
 }
 
 /**
- * Check for new facts: the same ingestion, read again. New facts are credited
- * to it and go to Review; wording that already exists -- tombstones included
- * -- is skipped by the worker's skipDuplicates. It never removes a fact.
- *
- * The claim is one conditional update, so two clicks cannot both queue a run.
- * The job id is fresh because BullMQ keeps completed jobs and silently drops
- * an add whose id it already holds.
- *
- * No host guard here: the address passed it when the source was added, and
- * the worker's own fetch is guarded at connect time either way.
+ * Moves a settled source back to QUEUED, as one conditional update, so two
+ * claims cannot both queue a run. Returns false when it was not settled (or
+ * not matched by `where`). Takes the transaction client too: the admin's retry
+ * claims inside the transaction that writes its audit row.
  */
-export async function recheckSource(
-  deps: { prisma: PrismaClient; queue: QueueLike },
-  accountId: string,
-  sourceId: string,
-): Promise<{ ingestionId: string }> {
-  const source = await deps.prisma.ingestion.findFirst({
-    where: { id: sourceId, page: { accountId } },
-    select: { id: true, pageId: true, sourceUrl: true },
-  });
-  if (!source) throw new SourceNotFoundError();
-  if (source.sourceUrl === null) throw new NotRecheckableError();
-
-  const claimed = await deps.prisma.ingestion.updateMany({
-    where: { id: source.id, page: { accountId }, status: { in: [...SETTLED] } },
+export async function claimForReading(
+  db: Prisma.TransactionClient | PrismaClient,
+  where: Prisma.IngestionWhereInput,
+): Promise<boolean> {
+  const claimed = await db.ingestion.updateMany({
+    where: { AND: [where, { status: { in: [...SETTLED] } }] },
     data: { status: 'QUEUED', error: null, extractedCount: 0, progress: 0, tracked: true },
   });
-  if (claimed.count !== 1) throw new SourceBusyError();
+  return claimed.count === 1;
+}
 
+/**
+ * Puts a claimed source on the ingest queue under a fresh job id. Pasted and
+ * file sources have no sourceUrl: the job carries none, and the worker reads
+ * their text from the row. If the queue will not take it the row is marked
+ * FAILED again and the error is rethrown.
+ */
+export async function enqueueReading(
+  deps: { prisma: PrismaClient; queue: QueueLike },
+  source: { id: string; pageId: string; sourceUrl: string | null },
+): Promise<void> {
   const jobId = `${source.id}-recheck-${Date.now()}`;
   try {
     await deps.queue.add(
       INGEST_QUEUE,
-      { ingestionId: source.id, pageId: source.pageId, sourceUrl: source.sourceUrl, idempotencyKey: jobId },
+      {
+        ingestionId: source.id,
+        pageId: source.pageId,
+        ...(source.sourceUrl === null ? {} : { sourceUrl: source.sourceUrl }),
+        idempotencyKey: jobId,
+      },
       { jobId, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
     );
   } catch (error) {
@@ -116,5 +120,39 @@ export async function recheckSource(
     });
     throw error;
   }
+}
+
+/**
+ * Check for new facts: the same ingestion, read again. New facts are credited
+ * to it and go to Review; wording that already exists -- tombstones included
+ * -- is skipped by the worker's skipDuplicates. It never removes a fact.
+ *
+ * The claim is one conditional update, so two clicks cannot both queue a run.
+ * The job id is fresh because BullMQ keeps completed jobs and silently drops
+ * an add whose id it already holds.
+ *
+ * No host guard here: the address passed it when the source was added, and
+ * the worker's own fetch is guarded at connect time either way.
+ *
+ * Refused while the admin has reading paused: a new source still waits in the
+ * paused queue, but a re-read is the owner's to ask again for later.
+ */
+export async function recheckSource(
+  deps: { prisma: PrismaClient; queue: QueueLike; settings: Settings },
+  accountId: string,
+  sourceId: string,
+): Promise<{ ingestionId: string }> {
+  const source = await deps.prisma.ingestion.findFirst({
+    where: { id: sourceId, page: { accountId } },
+    select: { id: true, pageId: true, sourceUrl: true },
+  });
+  if (!source) throw new SourceNotFoundError();
+  if (source.sourceUrl === null) throw new NotRecheckableError();
+  if (!deps.settings.switches.reading) throw new ReadingPausedError();
+
+  const claimed = await claimForReading(deps.prisma, { id: source.id, page: { accountId } });
+  if (!claimed) throw new SourceBusyError();
+
+  await enqueueReading(deps, source);
   return { ingestionId: source.id };
 }

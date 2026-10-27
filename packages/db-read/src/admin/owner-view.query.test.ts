@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { getOwnerView } from './owner-view.query.js';
+import { clearSettingsCache } from '../settings.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -69,6 +70,17 @@ afterAll(async () => {
 });
 
 describe('getOwnerView', () => {
+  it('shows the cap the admin set', async () => {
+    await write.systemSetting.upsert({ where: { key: 'cap' }, create: { key: 'cap', value: 10 }, update: { value: 10 } });
+    clearSettingsCache();
+    try {
+      expect((await getOwnerView(pageId, NOW))?.plan.cap).toBe(10);
+    } finally {
+      await write.systemSetting.deleteMany({ where: { key: 'cap' } });
+      clearSettingsCache();
+    }
+  });
+
   it('shows the page, its plan and usage, facts, items, leads, orders and conversations', async () => {
     const view = await getOwnerView(pageId, NOW);
     expect(view?.profile).toMatchObject({ handle: 'ovw-fixture', displayName: 'Dapur Kak Nor', mode: 'BUSINESS', links: [{ label: 'Instagram', url: 'https://instagram.com/nor' }] });

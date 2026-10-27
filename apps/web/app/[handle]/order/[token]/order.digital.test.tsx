@@ -10,7 +10,8 @@ vi.mock('next/navigation', () => ({
   }),
   useRouter: () => ({ refresh: vi.fn() }),
 }));
-vi.mock('@curios/db-read', () => ({ getOrderByToken: vi.fn() }));
+// The settings in force: every switch on, unless a test turns one off.
+vi.mock('@curios/db-read', async () => ({ getOrderByToken: vi.fn(), getSettings: vi.fn(async () => (await import('@curios/core/settings')).defaultSettings()) }));
 
 const { getOrderByToken } = await import('@curios/db-read');
 const { OrderView } = await import('./order-view.js');

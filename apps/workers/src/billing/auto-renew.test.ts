@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { extendPaidUntil } from '@curios/core';
+import { defaultSettings, fallbackSettings, type Settings } from '@curios/core/settings';
 import { ChipUnavailableError, type ChargeResult, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { runAutoRenewals } from './auto-renew.js';
 import type { MailQueueLike } from './renewal-reminder.js';
@@ -117,6 +118,8 @@ function run(
     beforeCharge?: () => Promise<void>;
     afterLapsedRead?: () => Promise<void>;
     now?: Date;
+    settings?: { get(): Promise<Settings> };
+    log?: { info: (details: object, message: string) => void; error: (details: object, message: string) => void };
   } = {},
 ) {
   return runAutoRenewals({
@@ -126,6 +129,7 @@ function run(
     now: NOW,
     appUrl: APP_URL,
     callbackBaseUrl: CALLBACK_BASE_URL,
+    settings: { get: async () => defaultSettings() },
     ...extra,
   });
 }
@@ -141,6 +145,17 @@ const renewalsOf = (pageId: string) =>
 const cardOf = (pageId: string) => prisma.renewalCard.findUnique({ where: { pageId } });
 
 describe('runAutoRenewals', () => {
+  it('charges the price in force on the day: with price.MONTHLY at 5900, the renewal is 5900', async () => {
+    const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+    const raised = { ...defaultSettings(), prices: { ...defaultSettings().prices, MONTHLY: 5900 } };
+
+    expect(await run(client, aMailQueue(), { settings: { get: async () => raised } })).toMatchObject({ charged: 1 });
+
+    expect(client.createPurchase.mock.calls[0]?.[0]).toMatchObject({ amountCents: 5900 });
+    expect(await renewalsOf(page.pageId)).toMatchObject([{ status: 'PAID', amountCents: 5900 }]);
+  });
+
   it('charges a card on the day its plan ends and grants', async () => {
     const paidUntil = at(12 * HOUR_MS);
     const page = await aRenewingPage({ paidUntil });
@@ -167,6 +182,102 @@ describe('runAutoRenewals', () => {
     expect(client.chargePurchase).toHaveBeenCalledWith(payment?.providerRef, page.token);
     expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
     expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: NOW });
+  });
+
+  it('skips the whole run while CHIP payments are off, and charges on the next run once they are on', async () => {
+    const paidUntil = at(12 * HOUR_MS);
+    const page = await aRenewingPage({ paidUntil });
+    // A lapsed card too: the run that would drop it is skipped as well.
+    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+    const client = aChip();
+    const mailQueue = aMailQueue();
+    const log = { info: vi.fn(), error: vi.fn() };
+    const off = defaultSettings();
+    off.switches.chipPayments = false;
+
+    expect(await run(client, mailQueue, { settings: { get: async () => off }, log })).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 0 });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(client.chargePurchase).not.toHaveBeenCalled();
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: null });
+    expect(await cardOf(lapsed.pageId)).not.toBeNull();
+    expect(log.info).toHaveBeenCalledWith({}, 'auto-renew skipped: CHIP payments are off');
+
+    expect(await run(client, mailQueue)).toMatchObject({ charged: 1 });
+    expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
+  });
+
+  it('skips the run when the settings could not be read, and charges on the next run once they can', async () => {
+    const paidUntil = at(12 * HOUR_MS);
+    const page = await aRenewingPage({ paidUntil });
+    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+    const client = aChip();
+    const mailQueue = aMailQueue();
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    // The defaults may not be the admin's prices: nothing is charged at them.
+    expect(await run(client, mailQueue, { settings: { get: async () => fallbackSettings() }, log })).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 0 });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: null });
+    expect(await cardOf(lapsed.pageId)).not.toBeNull();
+    expect(log.info).toHaveBeenCalledWith({}, 'auto-renew skipped: the settings could not be read');
+
+    expect(await run(client, mailQueue)).toMatchObject({ charged: 1 });
+    expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
+  });
+
+  it('charges no further card once the settings stop being readable mid-run', async () => {
+    const first = await aRenewingPage({ paidUntil: at(6 * HOUR_MS) });
+    const second = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+    let readable = true;
+    const charge = client.chargePurchase.getMockImplementation()!;
+    client.chargePurchase.mockImplementation(async (id, token) => {
+      const result = await charge(id, token);
+      readable = false;
+      return result;
+    });
+    const settings = { get: async () => (readable ? defaultSettings() : fallbackSettings()) };
+
+    expect(await run(client, aMailQueue(), { settings })).toEqual({ charged: 1, pending: 0, failed: 0, stopped: 0 });
+    expect(await renewalsOf(first.pageId)).toHaveLength(1);
+    expect(await renewalsOf(second.pageId)).toEqual([]);
+    expect(await cardOf(second.pageId)).toMatchObject({ lastAttemptAt: null });
+  });
+
+  it('charges no further card once CHIP payments are turned off mid-run, and charges it on the next run', async () => {
+    const first = await aRenewingPage({ paidUntil: at(6 * HOUR_MS) });
+    const second = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+    // The switch goes off once the first card has been charged.
+    let on = true;
+    const charge = client.chargePurchase.getMockImplementation()!;
+    client.chargePurchase.mockImplementation(async (id, token) => {
+      const result = await charge(id, token);
+      on = false;
+      return result;
+    });
+    const settings = {
+      get: async () => {
+        const s = defaultSettings();
+        s.switches.chipPayments = on;
+        return s;
+      },
+    };
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    expect(await run(client, aMailQueue(), { settings, log })).toEqual({ charged: 1, pending: 0, failed: 0, stopped: 0 });
+    expect(client.chargePurchase).toHaveBeenCalledTimes(1);
+    expect(await renewalsOf(first.pageId)).toHaveLength(1);
+    // Not claimed, not even a purchase: the next run takes it as if this one never reached it.
+    expect(await renewalsOf(second.pageId)).toEqual([]);
+    expect(await cardOf(second.pageId)).toMatchObject({ lastAttemptAt: null });
+    expect(log.info).toHaveBeenCalledWith({}, 'auto-renew stopped: CHIP payments were turned off');
+
+    on = true;
+    expect(await run(client, aMailQueue(), { settings })).toMatchObject({ charged: 1 });
+    expect(await renewalsOf(second.pageId)).toHaveLength(1);
   });
 
   it('does not charge a suspended page, and charges it once it is back', async () => {

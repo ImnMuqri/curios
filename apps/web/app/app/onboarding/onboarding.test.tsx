@@ -23,7 +23,7 @@ const facts: FoundFact[] = [
 
 function flow(props: Partial<Parameters<typeof OnboardingFlow>[0]> = {}) {
   const a = props.actions ?? actions();
-  const view = render(<OnboardingFlow page={null} facts={[]} monthlyPrice="RM49" pastedTextMax={20000} actions={a} {...props} />);
+  const view = render(<OnboardingFlow page={null} facts={[]} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} {...props} />);
   return { a, ...view };
 }
 
@@ -57,6 +57,16 @@ describe('OnboardingFlow', () => {
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Taken'));
     expect(screen.getByText('Someone has that one. Try aisyahmy or aisyah2.')).toBeInTheDocument();
+  });
+
+  it('offers Business at the free leads and price in force', async () => {
+    flow({ monthlyPrice: 'RM59', freeLeads: 5 });
+    await claimStep();
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+
+    const business = screen.getByRole('radio', { name: /Business/ });
+    expect(business).toHaveTextContent('5 free leads');
+    expect(business).toHaveTextContent('For selling. Then RM59 a month, paid when you want.');
   });
 
   it('claims with the mode chosen only when it reads a source, then reads it', async () => {
@@ -95,7 +105,7 @@ describe('OnboardingFlow', () => {
     expect(a.refresh).toHaveBeenCalled();
 
     // The refresh brings the facts it found.
-    rerender(<OnboardingFlow page={null} facts={facts} monthlyPrice="RM49" pastedTextMax={20000} actions={a} />);
+    rerender(<OnboardingFlow page={null} facts={facts} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} />);
     // Once in the form's result, once under Peek.
     expect(screen.getAllByText('Found 2 facts')).toHaveLength(2);
     expect(screen.getAllByText('Kek coklat 2kg is RM170').length).toBeGreaterThan(0);
@@ -171,7 +181,7 @@ describe('OnboardingFlow', () => {
       // The first poll: one fact in, so the server is asked for it, and the bar is at 40.
       await waitFor(() => expect(screen.getByRole('progressbar', { name: 'How far it has read' })).toHaveAttribute('aria-valuenow', '40'));
       expect(a.refresh).toHaveBeenCalledTimes(1);
-      rerender(<OnboardingFlow page={page} facts={facts.slice(0, 1)} monthlyPrice="RM49" pastedTextMax={20000} actions={a} />);
+      rerender(<OnboardingFlow page={page} facts={facts.slice(0, 1)} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} />);
       expect(screen.getByRole('heading', { name: 'Reading it now…' })).toBeInTheDocument();
       expect(screen.queryByText('Kek coklat 2kg is RM170')).toBeNull();
 
@@ -256,7 +266,7 @@ describe('OnboardingFlow panel', () => {
     await userEvent.type(screen.getByLabelText('Your website address'), 'keklina.example');
     await userEvent.click(screen.getByRole('button', { name: 'Read my website' }));
     await screen.findByRole('heading', { name: /Done reading|That one was quiet|That didn’t work/ });
-    view.rerender(<OnboardingFlow page={owned} facts={withFacts} monthlyPrice="RM49" pastedTextMax={20000} actions={a} />);
+    view.rerender(<OnboardingFlow page={owned} facts={withFacts} monthlyPrice="RM49" freeLeads={3} pastedTextMax={20000} actions={a} />);
     return view;
   }
 

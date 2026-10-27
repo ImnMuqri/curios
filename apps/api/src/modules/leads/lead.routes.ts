@@ -28,7 +28,7 @@ export const leadRoutes: FastifyPluginAsyncZod = async (app) => {
     },
     async (request, reply) => {
       const result = await captureLead(
-        { prisma: app.prisma, queue: app.leadQueue },
+        { prisma: app.prisma, queue: app.leadQueue, settings: await app.settings.get() },
         { conversationId: request.body.conversationId, phone: request.body.phone },
       );
       // The id and nothing else. BACKEND.md asks that phone numbers stay out

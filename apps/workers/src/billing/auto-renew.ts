@@ -1,5 +1,5 @@
-import { PLAN_PRICES_CENTS } from '@curios/core';
 import { malaysiaToday } from '@curios/core/orders';
+import { isFallbackSettings, type Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import {
   billDescription,
@@ -65,6 +65,11 @@ type Deps = {
   callbackBaseUrl: string;
   log?: BillingLog;
   /**
+   * The admin's settings (the workers' reader, cached 30 s). Read at the start of the run and
+   * again before each page's charge, so CHIP payments switched off mid-run stop the rest.
+   */
+  settings: { get(): Promise<Settings> };
+  /**
    * Test-only. Runs after the cards are read and before any is claimed, so a test can
    * change a card or its page in that window and prove the claim -- not the read -- decides.
    */
@@ -111,8 +116,32 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
  * A suspended page is paused: never charged, and its card is never dropped for lapsing
  * while it is suspended. Brought back, it is charged on the next run if its plan is still
  * in the window, or its card goes the usual way if the plan ran out past the grace.
+ *
+ * While the admin has CHIP payments switched off the whole run is skipped: nothing is
+ * charged, settled or dropped, and nobody is mailed. The next day's run tries again, inside
+ * the same three days' grace. The switch is read again before each page, so turning it off
+ * mid-run charges no further card, and the lapsed cards are left for a later run too.
+ *
+ * The same goes for settings that could not be read: the defaults that stand in for them may not
+ * be the admin's prices, so the run is skipped (or stops before the next page) and the next run
+ * tries again.
+ *
+ * A skip that outlasts the grace lets a plan fall out of the charge window: once it ended
+ * more than three days ago the card is never charged for it, and the first run with
+ * payments back on drops that card as lapsed and tells the owner, as for a CHIP outage.
  */
 export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
+  /** Why no card may be charged now, or null when they may. */
+  const blocked = async (): Promise<'off' | 'unread' | null> => {
+    const s = await deps.settings.get();
+    if (isFallbackSettings(s)) return 'unread';
+    return s.switches.chipPayments ? null : 'off';
+  };
+  const atStart = await blocked();
+  if (atStart) {
+    deps.log?.info({}, atStart === 'off' ? 'auto-renew skipped: CHIP payments are off' : 'auto-renew skipped: the settings could not be read');
+    return { charged: 0, pending: 0, failed: 0, stopped: 0 };
+  }
   const cards = await deps.prisma.renewalCard.findMany({
     where: { page: { mode: 'BUSINESS', paidUntil: chargeWindow(deps.now), suspendedAt: null } },
     select: {
@@ -127,6 +156,12 @@ export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
 
   const result: AutoRenewResult = { charged: 0, pending: 0, failed: 0, stopped: 0 };
   for (const card of cards) {
+    // Before the page is claimed, so a page left here is charged on the next run.
+    const now = await blocked();
+    if (now) {
+      deps.log?.info({}, now === 'off' ? 'auto-renew stopped: CHIP payments were turned off' : 'auto-renew stopped: the settings could not be read');
+      return result;
+    }
     // A failure counted while settling an earlier renewal, told only if today brings no
     // fresh attempt that answers it (see renewPage).
     const page: PageRun = { untold: null };
@@ -253,8 +288,13 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: 
 
   // The row first, so its id can be the purchase's reference. If CHIP fails the create,
   // the row stays PENDING with no providerRef: nothing can be charged against it, and a
-  // later run marks it EXPIRED and tries again.
-  const amountCents = PLAN_PRICES_CENTS[card.plan];
+  // later run marks it EXPIRED and tries again. The price in force today, as the Terms say: the
+  // reminder three days ago quoted the price of its day, and Billing shows this one.
+  const inForce = await deps.settings.get();
+  // Read just before the page was claimed too, so this is all but impossible; but a charge is never
+  // made at prices that are only the defaults.
+  if (isFallbackSettings(inForce)) throw new Error('settings could not be read; not charging at the default price');
+  const amountCents = inForce.prices[card.plan];
   const payment = await deps.prisma.payment.create({
     data: { pageId: card.pageId, plan: card.plan, amountCents, provider: 'CHIP', autoRenewal: true },
     select: { id: true },

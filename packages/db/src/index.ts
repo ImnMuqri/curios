@@ -20,3 +20,5 @@ export { MergeWouldDropAnswerError, mergeTopics, moveWording, refreshTopic, reti
 export { questionVectors, shortlistTopics } from './question-match.js';
 
 export { releaseOrderStock } from './order-stock.js';
+
+export { createSettingsReader } from './settings.js';

@@ -7,9 +7,7 @@ import {
   createChipClient,
   evidenceFromPurchase,
   grantPayment,
-  notifyRenewalFailure,
   pemFromEnv,
-  recordRenewalFailure,
   verifyChipSignature,
   type ChipClient,
   type GrantOutcome,
@@ -18,6 +16,7 @@ import {
 import { rawJson } from '../../plugins/raw-json.js';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { createPurchaseForOwner, errName, resetTrial, turnOffAutoRenew } from './billing.service.js';
+import { logOutcome, recordAndHandle, type ChipMessages, type ChipSource } from './chip-message.js';
 
 export interface BillingRouteOptions {
   /**
@@ -83,6 +82,8 @@ export function chipSettings(options: BillingRouteOptions) {
   };
 }
 
+export type ChipSettings = NonNullable<ReturnType<typeof chipSettings>>;
+
 const errorSchema = z.object({ error: z.object({ code: z.string(), message: z.string() }) });
 
 /** Starting a payment. Registered behind a session and a per-account limit in app.ts. */
@@ -108,7 +109,7 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
       if (!chip) throw new BillingNotConfiguredError();
 
       const result = await createPurchaseForOwner(
-        { prisma: app.prisma, client: chip.client, callbackBaseUrl: chip.callbackBaseUrl, log: request.log },
+        { prisma: app.prisma, client: chip.client, callbackBaseUrl: chip.callbackBaseUrl, log: request.log, settings: await app.settings.get() },
         {
           accountId: request.account.id,
           plan: request.body.plan,
@@ -152,42 +153,22 @@ export const ownerBillingRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = as
   );
 };
 
-/**
- * The purchase id and the outcome, and nothing else. A purchase carries the payer's
- * email and name, and logging them on the way past is how they end up somewhere they
- * were never meant to be.
- */
-function logOutcome(
-  log: FastifyBaseLogger,
-  purchaseId: string | undefined,
-  source: 'return' | 'callback' | 'webhook',
-  outcome: GrantOutcome,
-): void {
-  const details = {
-    purchaseId,
-    source,
-    outcome: outcome.kind,
-    ...(outcome.kind === 'mismatch' ? { reason: outcome.reason } : {}),
-  };
-  if (outcome.kind === 'paid-after-failure') {
-    // Money taken with no time given: a person has to settle this one.
-    log.error(details, 'chip purchase paid after its payment was marked failed or expired');
-  } else if (outcome.kind === 'mismatch' || outcome.kind === 'unknown-payment' || outcome.kind === 'test-purchase') {
-    log.error(details, 'chip purchase refused');
-  } else {
-    log.info(details, 'chip purchase handled');
-  }
-}
-
 /** A purchase nobody will ever pay: the banner says so, rather than "pending". */
 const FAILED_PURCHASE_STATUSES = new Set(['expired', 'cancelled', 'error', 'blocked']);
 
+export interface ChipRouteOptions {
+  /** CHIP's settings, read once in app.ts; null when billing is switched off. */
+  chip: ChipSettings | null;
+  /** What a verified message is handed to, shared with the admin's replay; null with `chip`. */
+  messages: ChipMessages | null;
+}
+
 /** CHIP's return, callback and webhook. No session; see app.ts. */
-export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app, options) => {
-  const chip = chipSettings(options);
+export const chipRoutes: FastifyPluginAsyncZod<ChipRouteOptions> = async (app, options) => {
+  const { chip, messages } = options;
   // Switched off: no purchase can have been started, so CHIP has nothing to send anyone
   // back from, and a route that could only refuse is better not registered at all.
-  if (!chip) return;
+  if (!chip || !messages) return;
 
   app.get(
     '/billing/chip/return',
@@ -262,21 +243,14 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
   };
 
   const signatureOf = (header: string | string[] | undefined) => (typeof header === 'string' ? header : undefined);
-  const bodyId = (body: unknown): string | undefined => {
-    const parsed = z.object({ id: z.string().min(1) }).safeParse(body);
-    return parsed.success ? parsed.data.id : undefined;
-  };
 
   /**
-   * A signed message names a purchase, and nothing else in it is believed: the purchase is
-   * fetched from CHIP by that id, and the grant is made from what CHIP says.
+   * Past the signature, both messages go the same way: logged (one row per source, purchase
+   * and event, so the admin can see a failed one and replay it), then handed to
+   * handleChipMessage, which holds what each one does. See chip-message.ts.
    */
-  async function grantFromChip(log: FastifyBaseLogger, purchaseId: string, source: 'callback' | 'webhook') {
-    const purchase = await chipClient.getPurchase(purchaseId);
-    const outcome = await grantPayment(app.prisma, evidenceFromPurchase(purchase), { now: new Date() });
-    logOutcome(log, purchaseId, source, outcome);
-    return { status: outcome.kind };
-  }
+  const handle = (log: FastifyBaseLogger, source: ChipSource, body: unknown, rawBody: string) =>
+    recordAndHandle({ ...messages, log }, { source, body, rawBody });
 
   const badSignature = (reply: FastifyReply) =>
     reply.status(400).send({ error: { code: 'BAD_SIGNATURE', message: 'Signature does not verify.' } });
@@ -297,18 +271,8 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
       request.log.warn({ source: 'callback' }, 'chip message refused: bad signature');
       return badSignature(reply);
     }
-    const purchaseId = bodyId(request.body);
-    if (!purchaseId) return reply.send({ status: 'ignored' });
-    return reply.send(await grantFromChip(request.log, purchaseId, 'callback'));
+    return reply.send(await handle(request.log, 'callback', request.body, request.rawBody ?? ''));
   });
-
-  // The owner hears about a counted renewal failure. notifyRenewalFailure never throws, so
-  // a mail queue that is down cannot turn a recorded failure into a 500 and a resend.
-  const appUrl = process.env.APP_URL ?? 'http://localhost:3000';
-  const onRenewalFailure =
-    options.onRenewalFailure ??
-    ((pageId: string, result: RenewalFailureResult) =>
-      notifyRenewalFailure({ prisma: app.prisma, mailQueue: app.mailQueue, appUrl, log: app.log }, pageId, result));
 
   const webhookPublicKey = chip.webhookPublicKey;
   if (!webhookPublicKey) {
@@ -331,25 +295,8 @@ export const chipRoutes: FastifyPluginAsyncZod<BillingRouteOptions> = async (app
       request.log.warn({ source: 'webhook' }, 'chip message refused: bad signature');
       return badSignature(reply);
     }
-    const purchaseId = bodyId(request.body);
-    if (!purchaseId) return reply.send({ status: 'ignored' });
-    const event = (request.body as { event_type?: unknown }).event_type;
-
-    if (event === 'purchase.paid') return reply.send(await grantFromChip(request.log, purchaseId, 'webhook'));
-
-    if (event === 'purchase.payment_failure') {
-      const payment = await app.prisma.payment.findFirst({
-        where: { provider: 'CHIP', providerRef: purchaseId },
-        select: { id: true, pageId: true, autoRenewal: true },
-      });
-      // A failed first payment is the owner's to retry at checkout; only a renewal charge
-      // is ours to count.
-      if (!payment?.autoRenewal || !payment.pageId) return reply.send({ status: 'ignored' });
-      const result = await recordRenewalFailure(app.prisma, payment.id, new Date());
-      request.log.info({ purchaseId, source: 'webhook', outcome: `renewal-${result.kind}` }, 'chip purchase handled');
-      await onRenewalFailure(payment.pageId, result);
-      return reply.send({ status: `renewal-${result.kind}` });
-    }
-    return reply.send({ status: 'ignored' });
+    // purchase.paid grants; purchase.payment_failure counts a failed renewal charge and tells
+    // the owner; anything else is ignored.
+    return reply.send(await handle(request.log, 'webhook', request.body, request.rawBody ?? ''));
   });
 };

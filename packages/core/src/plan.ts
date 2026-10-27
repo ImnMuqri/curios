@@ -8,7 +8,8 @@
  * never feels cheated.
  *
  * Not an env var, unlike the conversation cap. That one is an operational dial
- * for spend; this is a promise printed on a pricing page.
+ * for spend; this is a promise printed on a pricing page. The admin can change
+ * it in Controls (`Settings.freeLeads`); this is the default when nobody has.
  */
 export const FREE_LEADS = 3;
 
@@ -49,7 +50,12 @@ export type PlanState =
   | { kind: 'trialSpent' }
   | { kind: 'lapsed'; paidUntil: Date };
 
-export function planState(input: PlanInput): PlanState {
+/**
+ * `freeLeads` is the allowance in force (`Settings.freeLeads`). Lowering it takes
+ * nothing back: a page already past the new number reads `trialSpent`, never a
+ * negative `remaining`.
+ */
+export function planState(input: PlanInput, freeLeads: number = FREE_LEADS): PlanState {
   if (input.mode !== 'BUSINESS') return { kind: 'personal' };
 
   // `>` and not `>=`: the instant a payment expires, it has expired.
@@ -59,11 +65,11 @@ export function planState(input: PlanInput): PlanState {
 
   // Checked after the payment and before the lapse, because a page that paid,
   // captured once, and lapsed still has trial left. The rule is an OR.
-  if (input.leadsCaptured < FREE_LEADS) {
+  if (input.leadsCaptured < freeLeads) {
     return {
       kind: 'trial',
       used: input.leadsCaptured,
-      remaining: FREE_LEADS - input.leadsCaptured,
+      remaining: freeLeads - input.leadsCaptured,
       // Spread, not `lapsedOn: input.paidUntil ?? undefined`: an explicit
       // `lapsedOn: undefined` is a property the object has, and `toEqual` in the
       // test above distinguishes that from a property it does not have.
@@ -93,8 +99,8 @@ export function planState(input: PlanInput): PlanState {
  * cannot be tested at the instant its answer changes -- and this one has a
  * boundary that matters, since a payment expires at a particular moment.
  */
-export function canCapture(input: PlanInput): boolean {
-  const state = planState(input);
+export function canCapture(input: PlanInput, freeLeads: number = FREE_LEADS): boolean {
+  const state = planState(input, freeLeads);
   return state.kind === 'paid' || state.kind === 'trial';
 }
 
@@ -133,7 +139,8 @@ export type OrderState =
   | { kind: 'trialSpent' }
   | { kind: 'lapsed'; paidUntil: Date };
 
-export function orderState(input: OrderInput): OrderState {
+/** `freeOrders` is the allowance in force (`Settings.freeOrders`), lowered or raised as `planState`'s is. */
+export function orderState(input: OrderInput, freeOrders: number = FREE_ORDERS): OrderState {
   if (input.mode !== 'BUSINESS') return { kind: 'personal' };
 
   // `>` and not `>=`: the instant a payment expires, it has expired.
@@ -142,10 +149,10 @@ export function orderState(input: OrderInput): OrderState {
   }
 
   // Clamped at zero so a baseline ahead of the count can never read as a
-  // negative `used` and hand out more than FREE_ORDERS.
+  // negative `used` and hand out more than the allowance.
   const used = Math.max(0, input.ordersPlaced - input.ordersAtTrialReset);
-  if (used < FREE_ORDERS) {
-    return { kind: 'trial', used, remaining: FREE_ORDERS - used };
+  if (used < freeOrders) {
+    return { kind: 'trial', used, remaining: freeOrders - used };
   }
 
   return input.paidUntil === null
@@ -159,7 +166,7 @@ export function orderState(input: OrderInput): OrderState {
  * Derived from `orderState` so the shop, the API, Alerts and Billing cannot
  * disagree about the same page: nothing else decides it.
  */
-export function canTakeOrders(input: OrderInput): boolean {
-  const state = orderState(input);
+export function canTakeOrders(input: OrderInput, freeOrders: number = FREE_ORDERS): boolean {
+  const state = orderState(input, freeOrders);
   return state.kind === 'paid' || state.kind === 'trial';
 }

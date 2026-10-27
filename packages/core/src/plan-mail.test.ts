@@ -12,7 +12,7 @@ const ended = (page: { ordersPlaced: number; storeEnabled?: boolean }) => ({
 
 describe('the plan emails', () => {
   it('trial used up: the board’s subject, what stopped, what still works, and the prices', () => {
-    const mail = trialSpentMail({ displayName: 'Kek Lina', appUrl });
+    const mail = trialSpentMail({ displayName: 'Kek Lina', appUrl, freeLeads: 3, prices: { MONTHLY: 4900, ANNUAL: 49000 } });
 
     expect(mail.subject).toBe('Your page stopped taking numbers');
     expect(mail.text).toContain('the capture card is no longer shown on Kek Lina');
@@ -20,6 +20,14 @@ describe('the plan emails', () => {
     expect(mail.text).toContain('RM49 a month, or RM490 a year');
     expect(mail.html).toContain('href="https://curios.my/app/billing"');
     expect(mail.html).toContain('>See your options</a>');
+  });
+
+  it('trial used up: the allowance and the prices in force, not the launch ones', () => {
+    const mail = trialSpentMail({ displayName: 'Kek Lina', appUrl, freeLeads: 5, prices: { MONTHLY: 5900, ANNUAL: 59000 } });
+
+    expect(mail.text).toContain('Your 5 free leads are used');
+    expect(mail.html).toContain('Your 5 free leads are used');
+    expect(mail.text).toContain('Business is RM59 a month, or RM590 a year.');
   });
 
   it('limit reached: the board’s subject, the cap in force, and when it resets', () => {
@@ -142,6 +150,6 @@ describe('the plan emails', () => {
   });
 
   it('says why each came, and that it is not a switchable one', () => {
-    expect(trialSpentMail({ displayName: 'Kek Lina', appUrl }).html).toContain('it’s about your Curios plan');
+    expect(trialSpentMail({ displayName: 'Kek Lina', appUrl, freeLeads: 3, prices: { MONTHLY: 4900, ANNUAL: 49000 } }).html).toContain('it’s about your Curios plan');
   });
 });

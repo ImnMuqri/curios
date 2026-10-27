@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { defaultSettings } from '@curios/core';
 import { captureLead, type LeadQueueLike } from './lead.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -23,6 +24,9 @@ async function aQualifyingConversation(page = pageId): Promise<string> {
   return conversation.id;
 }
 
+/** The settings in force: the defaults, as a database with no rows gives. */
+const settings = defaultSettings();
+
 function aQueue() {
   return vi.fn<LeadQueueLike['add']>(async () => ({ id: 'job-1' }));
 }
@@ -43,11 +47,23 @@ beforeEach(async () => {
 });
 
 describe('captureLead', () => {
+  it('counts the trial against the free leads the admin set: with 5, the 4th lead is captured and the 5th is the last free one', async () => {
+    const five = { ...settings, freeLeads: 5 };
+    await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 3 } });
+    const fourth = aQueue();
+    await captureLead({ prisma, queue: { add: fourth }, settings: five }, { conversationId, phone: '0123456789' });
+    expect(fourth.mock.calls[0]?.[1]).not.toHaveProperty('lastFreeLead');
+
+    const fifth = aQueue();
+    await captureLead({ prisma, queue: { add: fifth }, settings: five }, { conversationId: await aQualifyingConversation(), phone: '0129999999' });
+    expect(fifth.mock.calls[0]?.[1]).toMatchObject({ lastFreeLead: true });
+  });
+
   it('flags the lead that used the last free one, and only that one', async () => {
     await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 2 } });
     const add = aQueue();
 
-    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+    await captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0123456789' });
 
     expect(add.mock.calls[0]?.[1]).toMatchObject({ lastFreeLead: true });
   });
@@ -55,12 +71,12 @@ describe('captureLead', () => {
   it('does not flag a lead before the last free one, nor one on a paid page', async () => {
     await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 1 } });
     const add = aQueue();
-    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+    await captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0123456789' });
     expect(add.mock.calls[0]?.[1]).not.toHaveProperty('lastFreeLead');
 
     await prisma.page.update({ where: { id: pageId }, data: { leadsCaptured: 2, paidUntil: new Date('2099-01-01T00:00:00.000Z') } });
     const paid = aQueue();
-    await captureLead({ prisma, queue: { add: paid } }, { conversationId: await aQualifyingConversation(), phone: '0129999999' });
+    await captureLead({ prisma, queue: { add: paid }, settings }, { conversationId: await aQualifyingConversation(), phone: '0129999999' });
     expect(paid.mock.calls[0]?.[1]).not.toHaveProperty('lastFreeLead');
   });
 
@@ -68,7 +84,7 @@ describe('captureLead', () => {
     const add = aQueue();
 
     const { leadId } = await captureLead(
-      { prisma, queue: { add } },
+      { prisma, queue: { add }, settings },
       { conversationId, phone: '012-345 6789' },
     );
 
@@ -83,7 +99,7 @@ describe('captureLead', () => {
   it('refuses a number nobody can dial', async () => {
     const add = aQueue();
     await expect(
-      captureLead({ prisma, queue: { add } }, { conversationId, phone: '0323456789' }),
+      captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0323456789' }),
     ).rejects.toMatchObject({ code: 'INVALID_PHONE' });
 
     expect(await prisma.lead.count()).toBe(0);
@@ -100,16 +116,16 @@ describe('captureLead', () => {
     const add = aQueue();
 
     await expect(
-      captureLead({ prisma, queue: { add } }, { conversationId: browsing.id, phone: '0123456789' }),
+      captureLead({ prisma, queue: { add }, settings }, { conversationId: browsing.id, phone: '0123456789' }),
     ).rejects.toMatchObject({ code: 'NOT_QUALIFIED' });
   });
 
   it('allows one capture per conversation and no more', async () => {
     const add = aQueue();
-    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+    await captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0123456789' });
 
     await expect(
-      captureLead({ prisma, queue: { add } }, { conversationId, phone: '0129999999' }),
+      captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0129999999' }),
     ).rejects.toMatchObject({ code: 'ALREADY_CAPTURED' });
 
     expect(await prisma.lead.count()).toBe(1);
@@ -117,21 +133,21 @@ describe('captureLead', () => {
 
   it('refuses the same number on the same page within a day', async () => {
     const add = aQueue();
-    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+    await captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0123456789' });
 
     // A different conversation, so the per-conversation guard is not what
     // refuses this one -- and a different spelling, so the dedupe is proven to
     // compare stored forms rather than raw input.
     const second = await aQualifyingConversation();
     await expect(
-      captureLead({ prisma, queue: { add } }, { conversationId: second, phone: '012-345 6789' }),
+      captureLead({ prisma, queue: { add }, settings }, { conversationId: second, phone: '012-345 6789' }),
     ).rejects.toMatchObject({ code: 'ALREADY_CAPTURED' });
   });
 
   it('accepts the same number again after the window has passed', async () => {
     const add = aQueue();
     const { leadId } = await captureLead(
-      { prisma, queue: { add } },
+      { prisma, queue: { add }, settings },
       { conversationId, phone: '0123456789' },
     );
     // 25 hours ago. Someone who comes back the next day with a new order is a
@@ -144,13 +160,13 @@ describe('captureLead', () => {
 
     const second = await aQualifyingConversation();
     await expect(
-      captureLead({ prisma, queue: { add } }, { conversationId: second, phone: '0123456789' }),
+      captureLead({ prisma, queue: { add }, settings }, { conversationId: second, phone: '0123456789' }),
     ).resolves.toMatchObject({ leadId: expect.any(String) });
   });
 
   it('does not refuse the same number on a different page', async () => {
     const add = aQueue();
-    await captureLead({ prisma, queue: { add } }, { conversationId, phone: '0123456789' });
+    await captureLead({ prisma, queue: { add }, settings }, { conversationId, phone: '0123456789' });
 
     const other = await prisma.account.create({
       data: {
@@ -167,7 +183,7 @@ describe('captureLead', () => {
     // each owner is entitled to their own.
     await expect(
       captureLead(
-        { prisma, queue: { add } },
+        { prisma, queue: { add }, settings },
         { conversationId: theirConversation, phone: '0123456789' },
       ),
     ).resolves.toMatchObject({ leadId: expect.any(String) });

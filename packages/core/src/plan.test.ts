@@ -203,3 +203,31 @@ describe('orderState and canTakeOrders', () => {
     });
   }
 });
+
+describe('the allowances the admin sets', () => {
+  const trial = { mode: 'BUSINESS' as const, paidUntil: null, leadsCaptured: 3, now: NOW };
+  const orders = { mode: 'BUSINESS' as const, paidUntil: null, ordersPlaced: 3, ordersAtTrialReset: 0, now: NOW };
+
+  it('counts free leads against the allowance passed in, so a raised one lets the 4th lead through', () => {
+    expect(planState(trial, 5)).toEqual({ kind: 'trial', used: 3, remaining: 2 });
+    expect(canCapture(trial, 5)).toBe(true);
+  });
+
+  it('takes nothing back when the allowance is lowered: spent, with no negative remaining', () => {
+    expect(planState(trial, 2)).toEqual({ kind: 'trialSpent' });
+    expect(canCapture(trial, 2)).toBe(false);
+    expect(planState({ ...trial, paidUntil: PAST }, 2)).toEqual({ kind: 'lapsed', paidUntil: PAST });
+  });
+
+  it('counts free orders against the allowance passed in, raised or lowered', () => {
+    expect(orderState(orders, 5)).toEqual({ kind: 'trial', used: 3, remaining: 2 });
+    expect(canTakeOrders(orders, 5)).toBe(true);
+    expect(orderState(orders, 2)).toEqual({ kind: 'trialSpent' });
+    expect(canTakeOrders(orders, 2)).toBe(false);
+  });
+
+  it('defaults to the constants, so a caller with no settings behaves as before', () => {
+    expect(planState(trial)).toEqual(planState(trial, FREE_LEADS));
+    expect(orderState(orders)).toEqual(orderState(orders, FREE_ORDERS));
+  });
+});

@@ -10,9 +10,9 @@ database to see how it is doing, or to act on a page reported as a scam, a
 payment that failed, or a price that has to change, and because every one of
 those actions has to leave a record of who did it and why.
 
-Built in four parts. Part 1 is Overview, Pages and the Audit log. Reports,
-Controls, AI & usage, Reading sources and Payments follow, and a section that
-is not built yet is absent from the nav, not shown disabled.
+Built in four parts, all of them now: Overview, Pages and the Audit log, then
+Reports, Controls, AI & usage, Reading sources and Payments. A section that is
+not built is absent from the nav, not shown disabled.
 
 ---
 
@@ -114,10 +114,15 @@ command resets a password (see OPERATIONS.md).
 handle, kept so a deleted page's rows still read), `reason`, metadata, ip,
 createdAt. The actions are `SIGNED_IN`, `SUSPENDED_PAGE`, `UNSUSPENDED_PAGE`,
 `GRANTED_MONTH`, `RESET_CONVERSATIONS`, `DELETED_ACCOUNT` and `VIEWED_AS_OWNER`;
-later parts add theirs.
+later parts add `DISMISSED_REPORTS`, `EMAILED_OWNER`, `TURNED_OFF`, `TURNED_ON`,
+`CHANGED_LIMITS`, `SHOWED_BANNER`, `TOOK_BANNER_DOWN`, `REPLAYED_WEBHOOK`,
+`RETRIED_SOURCE` and `RETRIED_FAILED_SOURCES`.
 
 Every action that changes something takes a reason, 1 to 500 characters,
-required. Deleting an account also takes the page's handle, typed out.
+required, with two exceptions in Controls (below): the banner, whose audit row
+takes its text (or "Taken down") as the reason, and turning a switch back on,
+recorded as "Turned back on". Deleting an account also takes the page's handle,
+typed out.
 
 Append only. No update route, no delete route, no admin screen that offers
 either. **Written by the service layer in the same transaction as the change**,
@@ -139,11 +144,11 @@ data is not customer data and does not expire with it.
 ```
 Look     Overview        the figures, what needs you, new pages
          Pages           search and filter, a side panel, the actions
-         AI & usage      (part 4)
-Run      Reading sources (part 4)
-         Payments        (part 4)
-         Reports         (part 2)
-Change   Controls        (part 3)
+         AI & usage      cost, speed and what the chat could not answer
+Run      Reading sources what was read, what failed, retry, pause
+         Payments        plan payments, and the CHIP webhook log
+         Reports         pages visitors reported
+Change   Controls        the five switches, limits and prices, the banner
          Audit log       the record. read only.
 ```
 
@@ -154,11 +159,109 @@ question the margin screen asked, which pages cost more than they pay, comes
 back as cost in AI & usage, from `ModelCall`, which has to be written from the
 first model call or that screen has no history.
 
-**Reports** (part 2) replace the earlier takedown queue. A public "Report this
-page" link, rate limited by IP with the IP stored hashed. Nothing happens to a
-page automatically: more than 5 open reports flag it, and an admin suspends it
-by hand. Suspending does not delete; deletion destroys the evidence for the
-decision that was just made.
+The Overview's "Needs you" row for reported pages names the first page in
+Reports' order, with a short noun for its most common reason before
+"report(s)": "Gadget Murah 88 has 4 scam reports today", "Coach Farah has 2 open
+impersonation reports", "Kedai Sri has 1 report today". The nouns are scam,
+impersonation, wrong-price, offensive, and none for Something else; one report
+is singular. When the page has reports from today (since midnight Malaysia
+time) the count is today's and the line ends "today"; otherwise it counts all
+its open reports and says "open".
+
+**Reports** replace the earlier takedown queue. A public "Report this page" link
+in a page's footer opens a form (five reasons and an optional note, EN and MS),
+rate limited by IP with the IP stored hashed. One address keeps one open report
+per page: a repeat while the first is open adds nothing and is answered the same
+as a new one, so a single visitor cannot flag a page alone (a partial unique
+index holds it; once that report is dismissed the address can report the page
+again). The list is one row per page, not
+per report: its number of open reports, the most common reason, the newest
+note, and Dismiss, Email owner and Suspend page, each acting on all of that
+page's open reports at once. **Reports never act on a page by themselves.** More
+than 5 open reports (6 or more) flag a page, in Reports, Pages, "Needs you" and
+the nav count; it stays live and indexed until an admin suspends it by hand.
+Dismissing its reports clears the flag. Suspending does not delete; deletion
+destroys the evidence for the decision that was just made. The owner is never
+told who reported.
+
+**Controls** holds five switches, the limits and prices, and the banner. Every
+change writes an audit row, and asks for a reason except two: showing, updating
+or taking down the banner (the banner's text is the reason, or "Taken down"),
+and turning a switch back on ("Turned back on"). Turning a switch off is a
+decision to stop, not to hold: nothing is queued to send later.
+
+| Switch | Off stops | Off does not stop |
+|---|---|---|
+| Chat answers | Every page gives the short fixed reply (the one used past the cap), the owner's Ask your page tester included, and the order lookup in chat gives the same reply. No conversation is counted against the cap while it is off | Grouping questions: it is owner-side housekeeping, keeps running and retries on failure |
+| Sign-ups | New owner sign-ups: the sign-up screen says Curios is full for now | Existing owners signing in |
+| Reading new sources | New reads: the ingest queue is paused, owners can still add sources and those wait, and owner re-reads and admin retries are refused. Reading sources' Pause / Resume the queue is this same switch | Reads already running; adding sources |
+| CHIP payments | Every CHIP purchase Curios would raise: plan payments, shop online payments, the shop connection's RM1 "Curios test", and auto-renew, which is re-checked before each charge. Billing shows "Online payments are paused for a moment" | Shops' own QR and bank transfer |
+| Emails to owners | Notification emails to owners. They are dropped, not held | Admin's own mails (suspend, bring back, report warning), which go because the admin chose to send them, and sign-in, verification and password reset mail |
+
+The switches are read again where they apply, including inside a running job,
+so a switch changed mid-run takes effect without a restart. Reading new sources
+moves the ingest queue first (no worker reads the setting; the paused queue is
+what stops reading) and saves only once the queue has moved. If the queue can't
+be reached nothing is saved, and Controls says "Couldn't reach the reading
+queue. Nothing was changed. Try again." (502 `QUEUE_UNAVAILABLE`).
+
+**How soon a change takes effect.** Each process (the API, the workers, the web,
+the admin) caches the settings for 30 seconds, so a switch or a limit takes
+effect everywhere within about 30 seconds; the API instance that saved it sees
+it at once. The landing and legal pages are regenerated in the background at
+most every 30 seconds, and only after a request: the first visit after a quiet
+stretch may still show the previous price once, and the next shows the new
+one. A build with no database prerenders those pages at the default prices
+until their first regeneration. `Dockerfile.web` declares no
+`DATABASE_URL_READONLY` build argument, and Railway passes a service variable
+to a Docker build only as a declared argument, so the production web build is
+such a build: after each deploy, the landing and legal pages show the default
+prices to their first visitor, then the stored ones.
+
+Limits (the cap, free leads, free orders) and prices (monthly, yearly) are saved
+with a confirm and a reason. Only the values the admin changed are sent and
+written, so a save never puts back a value another admin changed after the page
+loaded. The cap and both prices are at least 1, and so are the free leads and
+free orders: a trial with none would stop at its first lead or order (a stored
+0 is read as the default). The constants in `packages/core` are only the defaults for a setting
+that has never been saved. The yearly saving ("two months free") and Business's
+"One RM95 order pays for it" tag are worked out from the prices in force and
+drop out when they would no longer be true. The Terms promise that a change
+never takes away time already paid for, and no warning email goes out.
+**The Controls page will not show a form if it cannot read the stored settings.**
+A form full of defaults would look saved, and saving it would overwrite the
+real prices; it shows an error instead.
+
+The banner is up to 160 characters, shown first on every owner's dashboard
+until taken down. It asks for no reason: its text is the audit row's reason
+(DEVIATIONS 237).
+
+**AI & usage** is read from `ModelCall`: calls, typical and slow answer time,
+cost per conversation, the "I'm not sure" rate, failed calls, cost by job
+(Answering visitors, Reading sources into facts, Grouping questions; embeddings
+and lead summaries write no rows, so they are not listed), recent "I'm not sure"
+questions with the page and the time but no reply and no visitor, and pages near
+the cap. Cost is in US dollars, as on the Overview.
+
+**Reading sources** is read from `Ingestion`: waiting, reading, failed and
+typical time, with the error text on each failed source. Retry, and Retry all
+failed (sources that are walled, such as Instagram, are skipped). The count in
+the nav is sources that failed today.
+
+**Payments** shows plan payments through Curios's own CHIP account, in RM, with
+how each was paid (`Payment.paidVia`, stored from now on, "—" before). No refund
+is recorded anywhere, so there is no refunded figure. Shop orders paid online
+are owners' money: a count for scale, never summed into revenue. The webhook log
+records CHIP's callback and webhook messages, one row per message and purchase
+with its attempts counted, and the nav count is failed messages in the last 24
+hours. **Replay** re-runs the stored message through the same handler, which is
+idempotent, without re-checking a signature that already passed when the row was
+stored. A replay's grant cannot share the audit row's transaction, because the
+handler asks CHIP about the purchase over the network before it grants: the
+grant commits first, then the attempt and the `REPLAYED_WEBHOOK` row together,
+and if that second write fails the API logs the event, purchase and payment ids
+at error level. The body of a message holds the payer's name and email, so the
+read-only role cannot read `ChipWebhookEvent.body`.
 
 The SSM verification and trademark-handle queues this document once described
 are not part of this design. If the badge or the trademark gate comes back it

@@ -2,6 +2,7 @@ import { canCapture, capReachedMail, currentPeriod, GROUP_QUEUE, isOverCap, MAIL
 import { recordModelCall, refreshTopic, shortlistTopics, type Prisma, type PrismaClient } from '@curios/db';
 import { CHAT_MODEL, type Gateway } from '@curios/gateway';
 import type { Embedder } from '@curios/embeddings';
+import type { Settings } from '@curios/core/settings';
 import { lookUpOrder, productCard, type OrderCard, type ProductCard } from './order-lookup.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { buildSystemPrompt } from './prompt.js';
@@ -26,28 +27,9 @@ export interface ChatDeps {
   prisma: PrismaClient;
   gateway: Gateway;
   /**
-   * The conversation cap in force, resolved ONCE by chatRoutes at process
-   * boot and threaded through here rather than read per request.
-   *
-   * `conversationCap()` (from @curios/core) throws on a malformed
-   * CONVERSATION_CAP_PER_MONTH. Calling it from inside this generator -- as
-   * this file used to -- means that throw fires on some visitor's chat
-   * request, long after boot, and lands in chat.routes.ts's catch-all as
-   * "That answer failed. Try again." on every single turn: a silent,
-   * total outage that looks like success from the operator's side, which is
-   * the exact outcome cap.ts's own docstring says failing at boot avoids.
-   * Resolving it once, at the same place `ANTHROPIC_API_KEY` is already
-   * checked, makes a bad env var fail the deploy instead.
-   *
-   * Required, not optional: a test that forgets to supply it fails to
-   * compile rather than silently never capping anything (`used > undefined`
-   * is always `false`).
-   */
-  cap: number;
-  /**
    * The embedder retrieval uses, or null for none.
    *
-   * Required and explicitly nullable, for the reason `cap` above is required:
+   * Required and explicitly nullable, for the reason `settings` below is required:
    * a deps object that simply omitted it would silently never retrieve, and
    * "every page sends every fact" is invisible from the outside -- it is a
    * roughly-twice-the-cost bug that looks exactly like success. `null` is a
@@ -73,7 +55,22 @@ export interface ChatDeps {
    * time a month's conversations run out. Optional, like groupQueue.
    */
   mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
+  /**
+   * The admin's settings in force for this turn (`app.settings.get()`, read per request by the
+   * routes, so a change in Controls applies within the cache's 30 seconds). With the chat switch
+   * off, every turn gets the fixed reply and no model is asked. `cap` is the month's conversation
+   * limit and `freeLeads` the trial the capture card is offered within.
+   *
+   * Required, not optional: a test that forgets it fails to compile rather than silently never
+   * capping anything (`used > undefined` is always `false`). Read per request rather than resolved
+   * at boot: the cap is the admin's to change now, and the reader never throws (a malformed
+   * CONVERSATION_CAP_PER_MONTH still fails the deploy, checked in chatRoutes).
+   */
+  settings: Settings;
 }
+
+/** Whether the admin has switched the chat off for everyone. */
+export const chatSwitchedOff = (deps: Pick<ChatDeps, 'settings'>): boolean => !deps.settings.switches.chat;
 
 /**
  * Tells the owner, once a month, that their page reached its limit. Claimed
@@ -94,11 +91,11 @@ async function mailCapReached(deps: ChatDeps, page: { id: string; displayName: s
     const now = new Date();
     const mail = capReachedMail({
       displayName: page.displayName,
-      cap: deps.cap,
+      cap: deps.settings.cap,
       resets: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1)),
       appUrl: process.env.APP_URL ?? 'http://localhost:3000',
     });
-    await deps.mailQueue.add(MAIL_QUEUE, { to: owner.account.email, ...mail }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true });
+    await deps.mailQueue.add(MAIL_QUEUE, { to: owner.account.email, ...mail, audience: 'owner' }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true });
   } catch (error) {
     deps.log?.warn?.({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'could not queue the monthly-limit email');
   }
@@ -313,7 +310,7 @@ export type AnswerPage = Prisma.PageGetPayload<{ select: typeof ANSWER_PAGE_SELE
  * stable whole, the one case where the prefix repeats between visitors.
  */
 export async function promptFor(
-  deps: Pick<ChatDeps, 'prisma' | 'embedder' | 'log'>,
+  deps: Pick<ChatDeps, 'prisma' | 'embedder' | 'log' | 'settings'>,
   page: AnswerPage,
   input: { question: string; previousUserTurn: string | null },
 ): Promise<{ systemPrompt: string; cachePrompt: boolean; factIds: string[] }> {
@@ -353,7 +350,7 @@ export async function promptFor(
     ownerAnswers: answers.answers.map(({ question, answer }) => ({ question, answer })),
     shop: page.mode === 'BUSINESS' && page.storeEnabled ? page.items : undefined,
     // The same rule the capture card is offered by, so the model never points to a box that is not there.
-    capture: canCapture({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }),
+    capture: canCapture({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }, deps.settings.freeLeads),
   });
 
   return {
@@ -371,7 +368,11 @@ export async function* answer(
   deps: ChatDeps,
   input: { handle: string; question: string; conversationId?: string },
 ): AsyncIterable<AnswerEvent> {
-  const { prisma, gateway, cap } = deps;
+  const { prisma, gateway } = deps;
+  const { cap } = deps.settings;
+  // Switched off by the admin: the turn is kept as one over the cap is, and answered with the same
+  // fixed reply, but nothing is asked of a model, not even the free answers' same-question check.
+  const chatOff = chatSwitchedOff(deps);
 
   const page = await prisma.page.findUnique({
     // An unpublished page is a draft: it has not been reviewed, so it must not
@@ -404,7 +405,7 @@ export async function* answer(
   // no conversation on the meter. The conversation row exists only to hold
   // which order it is waiting on; the meter counts it when its first real
   // question is written (below). Free, so it works over the cap too.
-  const lookup = await lookUpOrder(prisma, page, thread?.pendingOrderId ?? null, input.question);
+  const lookup = chatOff ? null : await lookUpOrder(prisma, page, thread?.pendingOrderId ?? null, input.question);
   if (lookup) {
     let lookupConversationId: string;
     if (thread) {
@@ -454,7 +455,10 @@ export async function* answer(
   // accident while every call created a conversation, and a rule now that
   // threads are real. Atomic upsert: two visitors opening the sheet at once
   // on a popular page would otherwise race a read-then-write.
-  if (firstQuestion) {
+  //
+  // Not while the chat is switched off: a conversation nobody answered must not spend the
+  // owner's month, or a page would come back from an outage over its cap.
+  if (firstQuestion && !chatOff) {
     await prisma.usageCounter.upsert({
       where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
       create: { pageId: page.id, period: currentPeriod(), count: 1 },
@@ -532,7 +536,7 @@ export async function* answer(
     // A new wording of a question the owner already answered joins that
     // topic now, decided (groupedAt set, so the grouping job leaves it be),
     // and the pinned branch below answers it with the owner's words.
-    const answeredTopicId = await answeredTopicFor(deps, page, conversationId, asked);
+    const answeredTopicId = chatOff ? null : await answeredTopicFor(deps, page, conversationId, asked);
 
     // Created together: a wording is never without its topic. A concurrent
     // first ask of the same wording loses the unique race and is retried as
@@ -645,7 +649,7 @@ export async function* answer(
       select: { answer: true },
     });
 
-    if (topic?.answer) {
+    if (topic?.answer && !chatOff) {
       await markAsk(true);
       yield { type: 'text', text: topic.answer };
       await prisma.message.create({
@@ -674,7 +678,7 @@ export async function* answer(
       select: { count: true },
     });
 
-    if (isOverCap({ used: used?.count ?? 0, cap })) {
+    if (chatOff || isOverCap({ used: used?.count ?? 0, cap })) {
       // The same two events the pinned branch yields, so the sheet renders this
       // through a path it already has. `intent` is untouched: a capped page
       // still offers the capture card, because the lead is what the owner is
@@ -686,11 +690,18 @@ export async function* answer(
       // manual-verification-caps.md's checks 6 and 7 -- a spend control whose
       // stated failure mode is being indistinguishable from success should not
       // also be invisible when it succeeds.
-      deps.log?.info?.(
-        { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
-        'conversation cap reached; chat degraded to the fixed reply',
-      );
-      await mailCapReached(deps, page);
+      //
+      // The chat switch takes the same path, but it is not the cap: no "reached its monthly
+      // limit" email, and the month's counter is left unclaimed for when the switch is back on.
+      if (chatOff) {
+        deps.log?.info?.({ pageId: page.id, handle: input.handle }, 'chat is switched off; the fixed reply');
+      } else {
+        deps.log?.info?.(
+          { pageId: page.id, handle: input.handle, used: used?.count ?? 0, cap },
+          'conversation cap reached; chat degraded to the fixed reply',
+        );
+        await mailCapReached(deps, page);
+      }
       yield { type: 'text', text: CAP_REACHED_REPLY };
       await prisma.message.create({
         data: { conversationId, role: 'ASSISTANT', content: CAP_REACHED_REPLY },
@@ -705,7 +716,7 @@ export async function* answer(
     const previousUserTurn =
       history.filter((message) => message.role === 'USER').at(-2)?.content ?? null;
 
-    const prompt = await promptFor({ prisma, embedder: deps.embedder, log: deps.log }, page, {
+    const prompt = await promptFor({ prisma, embedder: deps.embedder, log: deps.log, settings: deps.settings }, page, {
       question: input.question,
       previousUserTurn,
     });

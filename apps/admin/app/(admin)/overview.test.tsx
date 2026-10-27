@@ -13,7 +13,7 @@ function fixture(over: Partial<OverviewData> = {}): OverviewData {
     answered: { answered: 91, recorded: 100 },
     aiCost: { milliCents: 57_100_000, perConversationMilliCents: 2_215 },
     perDay: [1, 2, 3, 4, 5, 6, 10].map((count, i) => ({ day: `2026-10-${17 + i}`, count })),
-    needsYou: { failedReads: 3, atCap: { count: 14, names: ['Studio Hana', 'Kak Mah'] }, plansEnding: 6 },
+    needsYou: { failedReads: 3, atCap: { count: 14, names: ['Studio Hana', 'Kak Mah'] }, plansEnding: 6, webhooksFailed: { count: 0, latest: null }, reported: { pages: 3, top: { displayName: 'Gadget Murah 88', count: 4, reason: 'SCAM', today: true } } },
     newPages: [
       {
         name: 'Coach Farah',
@@ -71,20 +71,46 @@ describe('Overview', () => {
     expect(within(figure('AI cost, today')).getByText('US$0.003 a conversation')).toBeInTheDocument();
   });
 
-  it('lists the open items, each with its button except failed reads', () => {
+  it('lists the open items, each with its button', () => {
     render(<Overview overview={fixture()} period="7d" cap={200} />);
 
-    expect(screen.getByText('23 open')).toBeInTheDocument();
+    expect(screen.getByText('26 open')).toBeInTheDocument();
     expect(screen.getByText('3 sources couldn’t be read')).toBeInTheDocument();
     expect(screen.getByText('14 pages hit the 200 limit')).toBeInTheDocument();
     expect(screen.getByText('Studio Hana and Kak Mah among them')).toBeInTheDocument();
     expect(screen.getByText('6 Business plans end this week')).toBeInTheDocument();
-    const buttons = screen.getAllByRole('link', { name: 'See pages' });
-    expect(buttons.map((b) => b.getAttribute('href'))).toEqual(['/pages', '/pages?filter=business']);
+    expect(screen.getByRole('link', { name: 'Open queue' })).toHaveAttribute('href', '/sources?filter=failed');
+    expect(screen.getByRole('link', { name: 'See pages' })).toHaveAttribute('href', '/ai');
+    expect(screen.getByRole('link', { name: 'See payments' })).toHaveAttribute('href', '/payments');
+  });
+
+  it('shows a failed payment webhook row, with the attempts and the payer, and a See it button', () => {
+    const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, reported: { pages: 0, top: null } };
+    const { rerender } = render(
+      <Overview
+        overview={fixture({ needsYou: { ...quiet, webhooksFailed: { count: 2, latest: { attempts: 3, displayName: 'Studio Hana' } } } })}
+        period="7d"
+        cap={200}
+      />,
+    );
+    expect(screen.getByText('2 payment webhooks failed')).toBeInTheDocument();
+    expect(screen.getByText('CHIP sent it 3 times. Studio Hana’s payment may not show as paid.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'See it' })).toHaveAttribute('href', '/payments');
+    expect(screen.getByText('2 open')).toBeInTheDocument();
+
+    rerender(
+      <Overview
+        overview={fixture({ needsYou: { ...quiet, webhooksFailed: { count: 1, latest: { attempts: 1, displayName: null } } } })}
+        period="7d"
+        cap={200}
+      />,
+    );
+    expect(screen.getByText('1 payment webhook failed')).toBeInTheDocument();
+    expect(screen.getByText('CHIP sent it 1 time. A payment may not show as paid.')).toBeInTheDocument();
   });
 
   it('hides an item at zero, and says so when none is left', () => {
-    const none = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0 };
+    const none = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, webhooksFailed: { count: 0, latest: null }, reported: { pages: 0, top: null } };
     const { rerender } = render(
       <Overview overview={fixture({ needsYou: { ...none, plansEnding: 2 } })} period="7d" cap={200} />,
     );
@@ -95,6 +121,50 @@ describe('Overview', () => {
     rerender(<Overview overview={fixture({ needsYou: none })} period="7d" cap={200} />);
     expect(screen.getByText('Nothing needs you.')).toBeInTheDocument();
     expect(screen.getByText('0 open')).toBeInTheDocument();
+  });
+
+  it('shows the reported row with a Look button, and the subline for today or not', () => {
+    const { rerender } = render(<Overview overview={fixture()} period="7d" cap={200} />);
+    expect(screen.getByText('3 pages reported')).toBeInTheDocument();
+    expect(screen.getByText('Gadget Murah 88 has 4 scam reports today')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Look' })).toHaveAttribute('href', '/reports');
+
+    const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, webhooksFailed: { count: 0, latest: null } };
+    rerender(
+      <Overview
+        overview={fixture({ needsYou: { ...quiet, reported: { pages: 1, top: { displayName: 'Coach Farah', count: 2, reason: 'IMPERSONATION', today: false } } } })}
+        period="7d"
+        cap={200}
+      />,
+    );
+    expect(screen.getByText('1 page reported')).toBeInTheDocument();
+    expect(screen.getByText('Coach Farah has 2 open impersonation reports')).toBeInTheDocument();
+
+    const other = (today: boolean) =>
+      fixture({ needsYou: { ...quiet, reported: { pages: 1, top: { displayName: 'Kedai Sri', count: 4, reason: 'OTHER', today } } } });
+    rerender(<Overview overview={other(true)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 4 reports today')).toBeInTheDocument();
+    rerender(<Overview overview={other(false)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 4 open reports')).toBeInTheDocument();
+  });
+
+  it('says one report in the singular', () => {
+    const one = (reason: 'SCAM' | 'OTHER', today: boolean) =>
+      fixture({
+        needsYou: {
+          failedReads: 0,
+          atCap: { count: 0, names: [] },
+          plansEnding: 0,
+          webhooksFailed: { count: 0, latest: null },
+          reported: { pages: 1, top: { displayName: 'Kedai Sri', count: 1, reason, today } },
+        },
+      });
+    const { rerender } = render(<Overview overview={one('SCAM', true)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 1 scam report today')).toBeInTheDocument();
+    rerender(<Overview overview={one('SCAM', false)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 1 open scam report')).toBeInTheDocument();
+    rerender(<Overview overview={one('OTHER', true)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 1 report today')).toBeInTheDocument();
   });
 
   it('marks the current period and links the others', () => {

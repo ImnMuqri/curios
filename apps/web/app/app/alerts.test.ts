@@ -6,6 +6,8 @@ const NOW = new Date('2026-10-15T04:00:00.000Z');
 const plan = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; leadsCaptured?: number } = {}) =>
   planState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, leadsCaptured: page.leadsCaptured ?? 0, now: NOW });
 const quiet = { used: 10, cap: 200 };
+/** The allowances in force: the defaults, as a database with no rows gives. */
+const free = { freeLeads: FREE_LEADS, freeOrders: FREE_ORDERS };
 const shop = (page: { mode?: 'PERSONAL' | 'BUSINESS'; paidUntil?: Date | null; ordersPlaced?: number; storeEnabled?: boolean } = {}) => ({
   state: orderState({ mode: page.mode ?? 'BUSINESS', paidUntil: page.paidUntil ?? null, ordersPlaced: page.ordersPlaced ?? 0, ordersAtTrialReset: 0, now: NOW }),
   storeEnabled: page.storeEnabled ?? true,
@@ -18,6 +20,34 @@ const page = (
   usage: quiet,
   now: NOW,
   orders: shop(p),
+  ...free,
+});
+
+describe('the Curios team’s banner', () => {
+  it('is an info alert for every screen, with the banner text, first, and nothing to dismiss', () => {
+    const alerts = alertsFor({ ...page({ leadsCaptured: 3 }), banner: 'Payments are slow this morning. Orders still come through.' });
+
+    expect(alerts[0]).toEqual({
+      id: 'banner',
+      tone: 'info',
+      where: 'all',
+      icon: 'chat',
+      title: 'From the Curios team',
+      text: 'Payments are slow this morning. Orders still come through.',
+      fixed: true,
+    });
+    expect(alerts.length).toBeGreaterThan(1);
+  });
+
+  it('goes ahead of a suspension too, because it is first', () => {
+    const alerts = alertsFor({ ...page(), suspension: { reason: 'x' }, banner: 'Hello' });
+    expect(alerts.map((a) => a.id).slice(0, 2)).toEqual(['banner', 'suspended']);
+  });
+
+  it('adds nothing when there is no banner', () => {
+    expect(alertsFor({ ...page(), banner: null }).some((a) => a.id === 'banner')).toBe(false);
+    expect(alertsFor(page()).some((a) => a.id === 'banner')).toBe(false);
+  });
 });
 
 describe('a suspended page', () => {
@@ -50,7 +80,7 @@ describe('a suspended page', () => {
 
 describe('alertsFor', () => {
   it('counts a running trial on Leads, in blue, one segment per free lead', () => {
-    const [alert] = alertsFor({ plan: plan({ leadsCaptured: 1 }), usage: quiet, now: NOW });
+    const [alert] = alertsFor({ plan: plan({ leadsCaptured: 1 }), usage: quiet, now: NOW, ...free });
 
     expect(alert).toMatchObject({
       id: 'trial-1',
@@ -63,14 +93,35 @@ describe('alertsFor', () => {
     });
   });
 
+  it('counts against the free leads the admin set: with 5, the 3rd lead used reads "of your 5"', () => {
+    const [alert] = alertsFor({ plan: planState({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: 3, now: NOW }, 5), usage: quiet, now: NOW, ...free, freeLeads: 5 });
+
+    expect(alert).toMatchObject({ title: '3 of your 5 free leads used', text: 'After 5, the capture card stops appearing on your page until you subscribe.' });
+    expect(alert?.meter).toEqual([true, true, true, false, false]);
+  });
+
+  it('takes nothing back when the allowance is lowered: spent, with a meter as long as the new allowance', () => {
+    const spent = planState({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: 3, now: NOW }, 2);
+    const [alert] = alertsFor({ plan: spent, usage: quiet, now: NOW, ...free, freeLeads: 2 });
+
+    expect(alert).toMatchObject({ id: 'spent', title: 'Your 2 free leads are used', meter: [true, true] });
+  });
+
+  it('counts the shop against the free orders the admin set', () => {
+    const orders = { state: orderState({ mode: 'BUSINESS', paidUntil: null, ordersPlaced: 3, ordersAtTrialReset: 0, now: NOW }, 5), storeEnabled: true };
+    const alert = alertsFor({ plan: plan(), usage: quiet, now: NOW, orders, ...free, freeOrders: 5 }).find((a) => a.where === '/app/orders');
+
+    expect(alert).toMatchObject({ title: '3 of your 5 free orders used', meter: [true, true, true, false, false] });
+  });
+
   it('comes back after a dismissal once another lead is used: the id carries the count', () => {
-    const [one] = alertsFor({ plan: plan({ leadsCaptured: 1 }), usage: quiet, now: NOW });
-    const [two] = alertsFor({ plan: plan({ leadsCaptured: 2 }), usage: quiet, now: NOW });
+    const [one] = alertsFor({ plan: plan({ leadsCaptured: 1 }), usage: quiet, now: NOW, ...free });
+    const [two] = alertsFor({ plan: plan({ leadsCaptured: 2 }), usage: quiet, now: NOW, ...free });
     expect(one?.id).not.toBe(two?.id);
   });
 
   it('says a used-up trial has stopped the capture card, in amber, and nothing else has', () => {
-    const [alert] = alertsFor({ plan: plan({ leadsCaptured: FREE_LEADS }), usage: quiet, now: NOW });
+    const [alert] = alertsFor({ plan: plan({ leadsCaptured: FREE_LEADS }), usage: quiet, now: NOW, ...free });
 
     expect(alert).toMatchObject({
       tone: 'warn',
@@ -86,6 +137,7 @@ describe('alertsFor', () => {
       plan: plan({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2026-10-13T20:00:00.000Z') }),
       usage: quiet,
       now: NOW,
+      ...free,
     });
 
     expect(alert).toMatchObject({
@@ -97,7 +149,7 @@ describe('alertsFor', () => {
   });
 
   it('says both halves when a plan ended with free leads left: it ended, and capture has not stopped yet', () => {
-    const [alert] = alertsFor({ plan: plan({ leadsCaptured: 1, paidUntil: new Date('2026-10-01T00:00:00.000Z') }), usage: quiet, now: NOW });
+    const [alert] = alertsFor({ plan: plan({ leadsCaptured: 1, paidUntil: new Date('2026-10-01T00:00:00.000Z') }), usage: quiet, now: NOW, ...free });
 
     expect(alert?.tone).toBe('stop');
     expect(alert?.title).toBe('Your Business plan ended on 1 Oct 2026');
@@ -105,12 +157,12 @@ describe('alertsFor', () => {
   });
 
   it('says nothing about the plan for a paid page or a personal one', () => {
-    expect(alertsFor({ plan: plan({ paidUntil: new Date('2099-01-01T00:00:00.000Z') }), usage: quiet, now: NOW })).toEqual([]);
-    expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: quiet, now: NOW })).toEqual([]);
+    expect(alertsFor({ plan: plan({ paidUntil: new Date('2099-01-01T00:00:00.000Z') }), usage: quiet, now: NOW, ...free })).toEqual([]);
+    expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: quiet, now: NOW, ...free })).toEqual([]);
   });
 
   it('warns near the limit, at about 80%, on Questions, in blue', () => {
-    const alerts = alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 164, cap: 200 }, now: NOW });
+    const alerts = alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 164, cap: 200 }, now: NOW, ...free });
 
     expect(alerts).toEqual([
       expect.objectContaining({
@@ -122,11 +174,11 @@ describe('alertsFor', () => {
         meter: [true, true, true, true, false],
       }),
     ]);
-    expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 159, cap: 200 }, now: NOW })).toEqual([]);
+    expect(alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 159, cap: 200 }, now: NOW, ...free })).toEqual([]);
   });
 
   it('says the limit is reached in amber, from the cap in force rather than a written-in 200', () => {
-    const [alert] = alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 2000, cap: 2000 }, now: NOW });
+    const [alert] = alertsFor({ plan: plan({ mode: 'PERSONAL' }), usage: { used: 2000, cap: 2000 }, now: NOW, ...free });
 
     expect(alert).toMatchObject({
       tone: 'warn',
@@ -141,6 +193,7 @@ describe('alertsFor', () => {
       plan: plan({ leadsCaptured: FREE_LEADS, paidUntil: new Date('2026-10-01T00:00:00.000Z') }),
       usage: { used: 200, cap: 200 },
       now: NOW,
+      ...free,
     });
     expect(alerts.map((a) => a.where)).toEqual(['all', '/app/questions']);
   });

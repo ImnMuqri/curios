@@ -2,12 +2,15 @@
 export class ApiError extends Error {
   readonly code: string;
   readonly status: number;
+  /** Which fields the error is about, when the API says (BIG_CHANGE: 'monthly' and 'yearly'). */
+  readonly fields: string[];
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, fields: string[] = []) {
     super(message);
     this.name = 'ApiError';
     this.code = code;
     this.status = status;
+    this.fields = fields;
   }
 }
 
@@ -33,10 +36,11 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
 
   if (response.ok) return (await response.json().catch(() => null)) as T;
 
-  const body = (await response.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+  const body = (await response.json().catch(() => null)) as { error?: { code?: string; message?: string; fields?: string[] } } | null;
   throw new ApiError(
     response.status,
     body?.error?.code ?? 'INTERNAL_ERROR',
     body?.error?.message ?? 'Something failed. Try again.',
+    body?.error?.fields ?? [],
   );
 }

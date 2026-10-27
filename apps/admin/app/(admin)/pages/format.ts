@@ -3,6 +3,7 @@ import type { AdminPageStatus } from '@curios/db-read/admin';
 export const STATUS_COLOUR: Record<AdminPageStatus, string> = {
   Live: '#1d9a6c',
   Lapsed: '#f2a33c',
+  Flagged: '#f2a33c',
   Suspended: '#d8452f',
   Draft: '#9aa0ab',
 };

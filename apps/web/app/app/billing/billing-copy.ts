@@ -1,4 +1,4 @@
-import { FREE_LEADS, type PlanState } from '@curios/core';
+import type { PlanState } from '@curios/core';
 import type { OwnerPayment } from '@curios/db-read';
 
 const MALAYSIAN_DATE: Intl.DateTimeFormatOptions = {
@@ -51,7 +51,8 @@ export function ringgit(cents: number): string {
   return cents % 100 === 0 ? `RM${cents / 100}` : `RM${(cents / 100).toFixed(2)}`;
 }
 
-export function planSummary(state: PlanState): string {
+/** `freeLeads`: the allowance in force, the one `state` was counted against. */
+export function planSummary(state: PlanState, freeLeads: number): string {
   switch (state.kind) {
     case 'personal':
       return 'Personal pages are free. There is nothing to pay for.';
@@ -63,9 +64,9 @@ export function planSummary(state: PlanState): string {
       // and the plan-ended banner (alerts.ts), which says both halves, would disagree.
       return state.lapsedOn
         ? `Your plan ended on ${formatDate(state.lapsedOn)}. You have ${state.remaining} free leads left before the capture card stops.`
-        : `You are on the free trial: ${state.used} of ${FREE_LEADS} free leads used.`;
+        : `You are on the free trial: ${state.used} of ${freeLeads} free leads used.`;
     case 'trialSpent':
-      return `All ${FREE_LEADS} of your free leads are used. Pay to keep the capture card on your page.`;
+      return `All ${freeLeads} of your free leads are used. Pay to keep the capture card on your page.`;
     case 'lapsed':
       return `Your plan ended on ${formatDate(state.paidUntil)}. Pay to turn the capture card back on.`;
   }

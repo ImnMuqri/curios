@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { FREE_LEADS } from '@curios/core';
+import { defaultSettings, FREE_LEADS } from '@curios/core';
 import { captureLead, NotQualifiedError } from './lead.service.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -54,7 +54,7 @@ async function readyToCapture(page: { paidUntil?: Date | null; leadsCaptured?: n
 }
 
 const capture = (conversationId: string) =>
-  captureLead({ prisma, queue }, { conversationId, phone: '0123456789' });
+  captureLead({ prisma, queue, settings: defaultSettings() }, { conversationId, phone: '0123456789' });
 
 describe('the capture gate', () => {
   it('captures for a page inside its trial', async () => {

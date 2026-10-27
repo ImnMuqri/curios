@@ -3,7 +3,12 @@ import { render, screen } from '@testing-library/react';
 import { PHYSICAL_FACTS } from '@curios/core/digital';
 import type { Checkout } from '@curios/db-read';
 
-vi.mock('@curios/db-read', () => ({ getCheckout: vi.fn(), getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })) }));
+vi.mock('@curios/db-read', async () => ({
+  getCheckout: vi.fn(),
+  getPageAvailability: vi.fn(async () => ({ status: 'missing', language: 'en' })),
+  // The settings in force: every switch on, unless a test turns one off.
+  getSettings: vi.fn(async () => (await import('@curios/core/settings')).defaultSettings()),
+}));
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND');
@@ -14,7 +19,8 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./checkout.js', () => ({ Checkout: vi.fn(() => null) }));
 
-const { getCheckout, getPageAvailability } = await import('@curios/db-read');
+const { getCheckout, getPageAvailability, getSettings } = await import('@curios/db-read');
+const { defaultSettings } = await import('@curios/core/settings');
 const { Checkout: CheckoutView } = await import('./checkout.js');
 const { default: CheckoutPage, generateMetadata } = await import('./page.js');
 
@@ -88,6 +94,21 @@ describe('/[handle]/shop/checkout', () => {
     });
     expect((props.items as { photoUrl: string | null }[])[0]?.photoUrl).toBe('https://cdn.test/items/b.webp');
     expect(typeof props.now).toBe('string');
+  });
+
+  it('offers no CHIP while online payments are off, and offers it again once they are on', async () => {
+    const off = defaultSettings();
+    off.switches.chipPayments = false;
+    vi.mocked(getSettings).mockResolvedValueOnce(off);
+    vi.mocked(getCheckout).mockResolvedValueOnce(shop);
+    render(await CheckoutPage(params('keklina')));
+    const offProps = (vi.mocked(CheckoutView).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0];
+    expect(offProps).toMatchObject({ payByQr: true, chipMethods: null });
+
+    vi.mocked(getCheckout).mockResolvedValueOnce(shop);
+    render(await CheckoutPage(params('keklina')));
+    const onProps = (vi.mocked(CheckoutView).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0];
+    expect(onProps).toMatchObject({ chipMethods: ['fpx', 'visa'] });
   });
 
   it('titles the tab', async () => {

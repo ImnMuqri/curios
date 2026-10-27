@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import type { PlanTerms } from '@curios/core/settings';
 import { Wordmark } from '../_landing/Wordmark.js';
 import {
   CHROME,
@@ -36,8 +37,11 @@ export function legalMetadata(doc: LegalDoc, locale: Locale): Metadata {
  * The Terms, Privacy and Refund pages, in either language. No board draws
  * them (DEVIATIONS 137): the System board's paper and wordmark, with one
  * readable column of text instead of a centred card.
+ *
+ * `plan` is the prices and free counts in force, read by the page
+ * (`getSettings()`), which `{monthly}` and the like are rendered as.
  */
-export function LegalPage({ doc, locale }: { doc: LegalDoc; locale: Locale }) {
+export function LegalPage({ doc, locale, plan }: { doc: LegalDoc; locale: Locale; plan: PlanTerms }) {
   const chrome = CHROME[locale];
   const { title, lede, sections } = DOCS[locale][doc];
   const updated = UPDATED.toLocaleDateString(DATE_LOCALE[locale], {
@@ -71,7 +75,7 @@ export function LegalPage({ doc, locale }: { doc: LegalDoc; locale: Locale }) {
         <p className={styles.updated}>
           {chrome.updated} <time dateTime={UPDATED.toISOString().slice(0, 10)}>{updated}</time>
         </p>
-        <p className={styles.lede}>{rich(lede, locale)}</p>
+        <p className={styles.lede}>{rich(lede, locale, plan)}</p>
 
         {sections.map((section, i) => (
           <section key={section.heading} className={styles.section}>
@@ -82,12 +86,12 @@ export function LegalPage({ doc, locale }: { doc: LegalDoc; locale: Locale }) {
               {section.heading}
             </h2>
             {section.body.map((block, j) => (
-              <BlockView key={j} block={block} locale={locale} />
+              <BlockView key={j} block={block} locale={locale} plan={plan} />
             ))}
           </section>
         ))}
 
-        <p className={styles.foot}>{rich(chrome.questions, locale)}</p>
+        <p className={styles.foot}>{rich(chrome.questions, locale, plan)}</p>
         <a className={styles.back} href={HOME[locale]}>
           {chrome.back}
         </a>
@@ -96,23 +100,36 @@ export function LegalPage({ doc, locale }: { doc: LegalDoc; locale: Locale }) {
   );
 }
 
-function BlockView({ block, locale }: { block: Block; locale: Locale }) {
-  if (typeof block === 'string') return <p className={styles.p}>{rich(block, locale)}</p>;
+function BlockView({ block, locale, plan }: { block: Block; locale: Locale; plan: PlanTerms }) {
+  if (typeof block === 'string') return <p className={styles.p}>{rich(block, locale, plan)}</p>;
   return (
     <ul className={styles.list}>
       {block.list.map((item) => (
-        <li key={item}>{rich(item, locale)}</li>
+        <li key={item}>{rich(item, locale, plan)}</li>
       ))}
     </ul>
   );
 }
 
-const TOKEN = /\{(terms|privacy|refunds|email)\}/;
+const TOKEN = /\{(terms|privacy|refunds|email|monthly|annual|leads|orders)\}/;
 
-/** Turns `{privacy}` and the like into links, and `{email}` into a mail link. */
-function rich(text: string, locale: Locale): ReactNode[] {
+/** Whole ringgit without decimals, the way the prices are published: RM49, RM490. */
+const ringgit = (cents: number) => (cents % 100 === 0 ? `RM${cents / 100}` : `RM${(cents / 100).toFixed(2)}`);
+
+/**
+ * Turns `{privacy}` and the like into links, `{email}` into a mail link, and
+ * `{monthly}`, `{annual}`, `{leads}` and `{orders}` into the plan in force.
+ */
+function rich(text: string, locale: Locale, plan: PlanTerms): ReactNode[] {
+  const values: Record<string, string> = {
+    monthly: ringgit(plan.prices.MONTHLY),
+    annual: ringgit(plan.prices.ANNUAL),
+    leads: String(plan.freeLeads),
+    orders: String(plan.freeOrders),
+  };
   return text.split(TOKEN).map((part, i) => {
     if (i % 2 === 0) return part;
+    if (part in values) return values[part];
     if (part === 'email') {
       return (
         <a key={i} href={`mailto:${SUPPORT_EMAIL}`}>

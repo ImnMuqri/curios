@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { defaultSettings } from '@curios/core/settings';
 
 const getOwnerStore = vi.fn();
 const getMyCurios = vi.fn();
 const getOwnerPage = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage }));
+const getSettings = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage, getSettings }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -44,6 +46,7 @@ const owned = { mode: 'BUSINESS', paidUntil: new Date('2099-01-01T00:00:00Z'), o
 describe('StorePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    getSettings.mockResolvedValue(defaultSettings());
     redirect.mockImplementation((url: string) => {
       throw new Error(`NEXT_REDIRECT:${url}`);
     });
@@ -151,6 +154,18 @@ describe('StorePage', () => {
     getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
     render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[0]![0].orders).toEqual({ paused: 'Paused: your 3 free orders are used.', nextNumber: 4 });
+  });
+
+  it('counts the free orders the admin set: with 5, a shop with 3 placed is not paused, and a lowered 2 says so', async () => {
+    getOwnerPage.mockResolvedValue({ ...owned, paidUntil: null, ordersPlaced: 3 });
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
+    getSettings.mockResolvedValueOnce({ ...defaultSettings(), freeOrders: 5 });
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
+    expect(StoreScreen.mock.calls.at(-1)![0].orders).toEqual({ paused: null, nextNumber: 4 });
+
+    getSettings.mockResolvedValueOnce({ ...defaultSettings(), freeOrders: 2 });
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
+    expect(StoreScreen.mock.calls.at(-1)![0].orders).toEqual({ paused: 'Paused: your 2 free orders are used.', nextNumber: 4 });
   });
 
   it('says orders are paused since the plan ended', async () => {

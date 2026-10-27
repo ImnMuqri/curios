@@ -174,6 +174,25 @@ export function chatPerIpLimit(redis: IORedis): RateLimitPluginOptions {
   };
 }
 
+const REPORT_MESSAGE = (after: string) => `Too many reports just now. Try again in ${after}.`;
+
+/**
+ * Per visitor, across every page. A report writes a row an admin has to read,
+ * so one address must not be able to bury the queue or fake a page's count.
+ */
+export function reportPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('report-ip:'),
+    max: limit('RATE_LIMIT_REPORT_PER_IP', 5),
+    timeWindow: '1 hour',
+    keyGenerator: caller,
+    errorResponseBuilder: tooMany(REPORT_MESSAGE),
+  };
+}
+
 const ORDER_MESSAGE = (after: string) => `Too many orders just now. Try again in ${after}.`;
 
 /**

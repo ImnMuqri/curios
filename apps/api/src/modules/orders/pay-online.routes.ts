@@ -89,7 +89,7 @@ export const shopPayMethodsRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> 
         },
       },
     },
-    async (request) => payMethodsFor(deps(request.log), request.params.handle, request.query.amount, new Date()),
+    async (request) => payMethodsFor(deps(request.log), request.params.handle, request.query.amount, new Date(), await app.settings.get()),
   );
 };
 
@@ -114,7 +114,7 @@ export const shopPayStartRoutes: FastifyPluginAsyncZod<PayOnlineRouteOptions> = 
     },
     async (request) => {
       const { method, bank, email } = request.body;
-      return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), ...(email ? { email } : {}) }, new Date());
+      return startOnlinePayment(deps(request.log), request.params.token, { method, ...(bank ? { bank } : {}), ...(email ? { email } : {}) }, new Date(), await app.settings.get());
     },
   );
 };

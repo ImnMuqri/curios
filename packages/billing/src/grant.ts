@@ -1,6 +1,7 @@
 import { extendPaidUntil } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { PAID_PURCHASE_STATUSES, type ChipPurchase } from './client.js';
+import { paidVia } from './paid-via.js';
 
 /**
  * A purchase as a grant needs it. Always one we fetched from CHIP ourselves -- after a
@@ -18,6 +19,8 @@ export interface PaymentEvidence {
   card: { token: string; label: string | null } | null;
   /** Paid with a test key: no real money moved. */
   isTest: boolean;
+  /** How it was paid ("FPX", "Card · Visa"), stored on the payment when it is granted. */
+  paidVia?: string | null;
 }
 
 export type GrantOutcome =
@@ -69,6 +72,7 @@ export function evidenceFromPurchase(purchase: ChipPurchase): PaymentEvidence {
       ? { token: purchase.id, label: cardLabel(purchase.paymentMethod, purchase.maskedPan) }
       : null,
     isTest: purchase.isTest,
+    paidVia: paidVia(purchase.paymentMethod),
   };
 }
 
@@ -114,7 +118,7 @@ export async function grantPayment(
   return prisma.$transaction(async (tx): Promise<GrantOutcome> => {
     const claimed = await tx.payment.updateMany({
       where: { id: payment.id, status: 'PENDING' },
-      data: { status: 'PAID', paidAt: options.now },
+      data: { status: 'PAID', paidAt: options.now, ...(evidence.paidVia ? { paidVia: evidence.paidVia } : {}) },
     });
     if (claimed.count === 0) {
       // Something settled it since the read above: a grant, or a failure that is now wrong.

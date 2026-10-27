@@ -5,6 +5,7 @@ import {
   ANSWER_PAGE_SELECT,
   answeredTopicFor,
   CAP_REACHED_REPLY,
+  chatSwitchedOff,
   MAX_HISTORY_MESSAGES,
   PageNotFoundError,
   promptFor,
@@ -17,10 +18,13 @@ export interface TestTurn {
   content: string;
 }
 
-/** What the page would say, and where it came from: the owner's own answer, the facts, or the month's limit. */
+/**
+ * What the page would say, and where it came from: the owner's own answer, the facts, the month's
+ * limit, or chat switched off by the Curios team ('off', never called the owner's limit).
+ */
 export interface TestReply {
   reply: string;
-  from: 'answer' | 'facts' | 'limit';
+  from: 'answer' | 'facts' | 'limit' | 'off';
   /**
    * For an answer from the facts, the sources of the facts it used, as the
    * owner knows them: "keklina.example/menu", "A fact you added". Empty when
@@ -123,13 +127,15 @@ async function citedSources(
  *   reply, so does the tester (the Alerts board: "the tester shows the fixed
  *   reply too"), and no model is called.
  * - No `intent`, so the lead card is never offered.
+ * - The chat switched off by the admin: the fixed reply, as a visitor gets,
+ *   and no model is called.
  * - Works before the page is published: checking it is the point.
  *
  * The model calls it makes are recorded against the page like any other, so
  * their cost is visible; the per-account rate limit is what bounds them.
  */
 export async function testAnswer(
-  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'cap'>,
+  deps: Pick<ChatDeps, 'prisma' | 'gateway' | 'embedder' | 'log' | 'settings'>,
   input: { accountId: string; question: string; history: TestTurn[] },
 ): Promise<TestReply> {
   const { prisma, gateway } = deps;
@@ -139,6 +145,8 @@ export async function testAnswer(
     select: ANSWER_PAGE_SELECT,
   });
   if (!page) throw new PageNotFoundError();
+  // As on the live chat: switched off, even the owner's own answers give way to the fixed reply.
+  if (chatSwitchedOff(deps)) return { reply: CAP_REACHED_REPLY, from: 'off' };
 
   // The owner's own answer wins, as on the live chat: a wording already in
   // an answered topic, or (for a new wording) the same judge the chat uses.
@@ -163,7 +171,7 @@ export async function testAnswer(
     where: { pageId_period: { pageId: page.id, period: currentPeriod() } },
     select: { count: true },
   });
-  if (isOverCap({ used: (used?.count ?? 0) + 1, cap: deps.cap })) return { reply: CAP_REACHED_REPLY, from: 'limit' };
+  if (isOverCap({ used: (used?.count ?? 0) + 1, cap: deps.settings.cap })) return { reply: CAP_REACHED_REPLY, from: 'limit' };
 
   // The last turns, starting on the visitor's side as the model expects.
   const earlier = input.history.slice(-(MAX_HISTORY_MESSAGES - 1));

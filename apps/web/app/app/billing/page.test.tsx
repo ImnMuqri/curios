@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
+import { defaultSettings } from '@curios/core/settings';
 
 const getOwnerPage = vi.fn();
 const getConversationUsage = vi.fn();
@@ -9,7 +10,8 @@ const countLeadsThisMonth = vi.fn();
 const countOrdersThisMonth = vi.fn();
 const getSignInMethods = vi.fn();
 const getRenewalCard = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getRenewalCard, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods }));
+const getSettings = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getRenewalCard, getConversationUsage, getRecentPayments, countLeadsThisMonth, countOrdersThisMonth, getSignInMethods, getSettings }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -93,6 +95,25 @@ describe('BillingPage', () => {
     countOrdersThisMonth.mockResolvedValue(7);
     getSignInMethods.mockResolvedValue({ email: 'nadia@example.com' });
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
+    getSettings.mockReset();
+    getSettings.mockResolvedValue(defaultSettings());
+  });
+
+  it('says online payments are paused, in place of the pay buttons, while CHIP payments are off', async () => {
+    const off = defaultSettings();
+    off.switches.chipPayments = false;
+    getSettings.mockResolvedValue(off);
+    await renderWith(page);
+
+    expect(screen.getByText('Online payments are paused for a moment. Try again soon.')).toBeInTheDocument();
+    expect(PayButtons).not.toHaveBeenCalled();
+  });
+
+  it('offers the pay buttons again once CHIP payments are back on, with no paused line', async () => {
+    await renderWith(page);
+
+    expect(PayButtons).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText('Online payments are paused for a moment. Try again soon.')).toBeNull();
   });
 
   it('offers both plans at their published prices to a business page', async () => {
@@ -107,6 +128,46 @@ describe('BillingPage', () => {
       expect.objectContaining({ plan: 'MONTHLY', name: 'Monthly', price: 'RM49', note: 'One month at a time', period: 'a month' }),
       expect.objectContaining({ plan: 'ANNUAL', name: 'Yearly', price: 'RM490', note: 'Paid once a year', period: 'a year', save: '2 months free' }),
     ]);
+  });
+
+  describe('with the prices and allowances the admin set', () => {
+    /** The shared fixture: price.MONTHLY at 5900, five free leads and five free orders. */
+    const live = () => ({ ...defaultSettings(), freeLeads: 5, freeOrders: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+
+    it('offers the plans at the prices in force, and claims no months free the prices do not give', async () => {
+      getSettings.mockResolvedValue(live());
+      await renderWith(page);
+
+      const [monthly, annual] = PayButtons.mock.calls[0]?.[0].options ?? [];
+      expect(monthly).toMatchObject({ plan: 'MONTHLY', price: 'RM59' });
+      expect(annual).toMatchObject({ plan: 'ANNUAL', price: 'RM490' });
+      expect(annual?.save).toBeUndefined();
+    });
+
+    it('counts the trial and the shop against the allowances in force', async () => {
+      getSettings.mockResolvedValue(live());
+      await renderWith({ ...page, leadsCaptured: 1, ordersPlaced: 1 });
+
+      expect(screen.getByText('1 of 5 used')).toBeInTheDocument();
+      expect(screen.getByText(/Your first 5 numbers are free too/)).toBeInTheDocument();
+      expect(within(screen.getByText('Orders').closest('div')!).getByText('1 of 5 free orders used')).toBeInTheDocument();
+      expect(screen.getByText('4 of your 5 free leads left. After that, the capture card needs a plan.')).toBeInTheDocument();
+    });
+
+    it('tells a personal page the price and the free leads in force', async () => {
+      getSettings.mockResolvedValue(live());
+      await renderWith({ ...page, mode: 'PERSONAL' });
+
+      expect(screen.getByText(/5 free leads, then RM59 a month/)).toBeInTheDocument();
+    });
+
+    it('quotes a saved card the price in force, which the renewal will charge', async () => {
+      getSettings.mockResolvedValue(live());
+      getRenewalCard.mockResolvedValue({ plan: 'MONTHLY', cardLabel: 'Visa ending 1111', failedAttempts: 0 });
+      await renderWith({ ...page, paidUntil: new Date('2099-01-01T00:00:00.000Z') });
+
+      expect(AutoRenew.mock.calls[0]?.[0].card).toMatchObject({ price: 'RM59' });
+    });
   });
 
   it('counts the days a paid plan has left, and draws the line to where paying takes it', async () => {

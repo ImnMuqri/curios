@@ -4,6 +4,7 @@ import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
+import { getSettings } from './settings.query.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
 
 export interface PublicLink {
@@ -137,6 +138,8 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
   });
 
   if (!page) return null;
+  // The shop's free orders are the admin's allowance, as checkout counts them.
+  const { freeOrders } = await getSettings();
   const {
     storeEnabled: _open,
     shopTilePosition: _at,
@@ -161,7 +164,7 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
           deliveryMode,
           minNoticeDays,
           closedDays,
-          canTakeOrders: canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced, ordersAtTrialReset, now: new Date() }),
+          canTakeOrders: canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced, ordersAtTrialReset, now: new Date() }, freeOrders),
           items: items.map(({ id, name, priceCents, options }) => ({ id, name, priceCents, options })),
         }
       : null,

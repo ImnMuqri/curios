@@ -8,6 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./admin": "./src/admin.ts",
+    "./settings": "./src/settings.ts",
+    "./report": "./src/report.ts",
     "./cookie": "./src/cookie.ts",
     "./bento": "./src/bento.ts",
     "./billing": "./src/billing.ts",

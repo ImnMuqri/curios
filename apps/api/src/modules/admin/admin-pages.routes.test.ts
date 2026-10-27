@@ -106,6 +106,8 @@ describe('suspend and unsuspend', () => {
     expect(name).toBe(MAIL_QUEUE);
     expect(data.to).toBe(page.email);
     expect(data.subject).toBe('Your page has been suspended');
+    // The admin's own email: no audience, so "Emails to owners" off never stops it.
+    expect(data.audience).toBeUndefined();
     expect(data.text).toContain('Selling fakes');
 
     const again = await call('POST', `/admin/pages/${page.id}/suspend`, { reason: 'Again' });

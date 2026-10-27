@@ -93,3 +93,21 @@ export function requirePublicAddresses(
 export function allowsPrivateAddresses(raw: string | undefined): boolean {
   return raw === 'true';
 }
+
+/**
+ * Hosts whose pages cannot be read. The worker's Instagram adapter (apps/workers
+ * sources/instagram.adapter.ts) always fails with NOT_CONFIGURED, so a retry of
+ * one of these would only fail the same way. The same host test as `linkKind`.
+ */
+const WALLED_HOSTS = ['instagram.com'] as const;
+
+export function isWalledSource(sourceUrl: string | null): boolean {
+  if (sourceUrl === null) return false;
+  let host: string;
+  try {
+    host = new URL(sourceUrl).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return WALLED_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}

@@ -314,6 +314,7 @@ model Page {
   ingestions          Ingestion[]
   usageCounters       UsageCounter[]
   leads               Lead[]
+  reports             Report[]
   questions           Question[]
   payments            Payment[]
   renewalCard         RenewalCard?
@@ -832,6 +833,10 @@ model Payment {
   paidAt              DateTime?
   /// The paidUntil this payment produced -- an audit trail for every extension.
   grantedUntil        DateTime?
+  /// How the payer paid, as the admin's Payments reads it ("FPX", "Card · Visa", "TNG
+  /// eWallet"): set from CHIP's purchase when the payment is granted. Null for one granted
+  /// before it was recorded, or one CHIP named no method for.
+  paidVia             String?
   createdAt           DateTime        @default(now())
 
   // The hourly pending check scans by status and age.
@@ -1011,6 +1016,8 @@ model AdminUser {
   createdAt    DateTime       @default(now())
   sessions     AdminSession[]
   actions      AdminAction[]
+  reportsDecided Report[]
+  settingsChanged SystemSetting[]
 }
 
 /// Like Session: id is the hashed cookie value. Absolute expiry only.
@@ -1042,4 +1049,76 @@ model AdminAction {
 
   @@index([createdAt])
   @@index([targetType, targetId])
+}
+
+enum ReportReason {
+  SCAM
+  IMPERSONATION
+  WRONG_PRICES
+  OFFENSIVE
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  DISMISSED
+  ACTED
+}
+
+/// A visitor's report of a public page. Only a hash of the reporter's address
+/// is kept, and the readonly role cannot read even that.
+model Report {
+  id             String       @id @default(cuid())
+  pageId         String
+  page           Page         @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  reason         ReportReason
+  details        String?
+  reporterIpHash String
+  status         ReportStatus @default(OPEN)
+  decidedById    String?
+  decidedBy      AdminUser?   @relation(fields: [decidedById], references: [id], onDelete: SetNull)
+  decidedAt      DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([pageId, status])
+  @@index([status, createdAt])
+  // Also a partial unique index, ("pageId", "reporterIpHash") WHERE status = 'OPEN': one open report
+  // per address per page. Prisma cannot express a partial index, so it is in the migration
+  // 20261027040000_report_once_per_address only; leave it out of any `migrate diff` that drops it.
+}
+
+/// One row per setting the admin has changed; a key with no row is at its default (see
+/// `defaultSettings()` in @curios/core). The value's shape is checked on read, not here.
+model SystemSetting {
+  key         String     @id
+  value       Json
+  updatedAt   DateTime   @updatedAt
+  updatedById String?
+  updatedBy   AdminUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// Every signed message CHIP sent about a purchase -- the success callback and the webhook --
+/// one row per source, purchase and event, so a failed one can be seen and replayed. A resend
+/// counts another attempt on the same row. `body` is the verified body as CHIP signed it: it
+/// holds the payer's name and email, so the readonly role cannot read that column.
+model ChipWebhookEvent {
+  id            String   @id @default(cuid())
+  /// 'callback' | 'webhook'
+  source        String
+  /// CHIP's event_type, as the message gave it; 'unknown' when it gave none.
+  eventType     String
+  purchaseId    String
+  body          String
+  attempts      Int      @default(1)
+  /// 'ok' | 'failed'; null while the first attempt is still running.
+  outcome       String?
+  statusCode    Int?
+  /// The error's name only, never its message: a refused CHIP call carries CHIP's response.
+  error         String?
+  receivedAt    DateTime @default(now())
+  lastAttemptAt DateTime
+
+  @@unique([source, purchaseId, eventType])
+  // The Payments screen reads the failures of the last 24 hours.
+  @@index([lastAttemptAt])
 }

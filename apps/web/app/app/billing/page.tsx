@@ -3,17 +3,15 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   extendPaidUntil,
-  FREE_LEADS,
-  FREE_ORDERS,
+  monthsFree,
   orderState,
-  PLAN_PRICES_CENTS,
   planState,
   SESSION_COOKIE,
   type BillingPlan,
   type OrderState,
   type PlanState,
 } from '@curios/core';
-import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSignInMethods } from '@curios/db-read';
+import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSettings, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
 import { cardOffBanner, daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 import { AutoRenew } from './auto-renew.js';
@@ -29,15 +27,21 @@ import { NEAR_SHARE } from '../alerts.js';
 /** What Business includes, as the Billing board lists it. */
 const INCLUDED = ['Numbers from the chat', 'Your own shop', 'FAQ pages', 'Found in search'];
 
-const PLANS: { plan: BillingPlan; name: string; note: string; period: string; unit: string; save?: string }[] = [
+const PLANS: { plan: BillingPlan; name: string; note: string; period: string; unit: string }[] = [
   { plan: 'MONTHLY', name: 'Monthly', note: 'One month at a time', period: 'a month', unit: 'month' },
-  { plan: 'ANNUAL', name: 'Yearly', note: 'Paid once a year', period: 'a year', unit: 'year', save: '2 months free' },
+  { plan: 'ANNUAL', name: 'Yearly', note: 'Paid once a year', period: 'a year', unit: 'year' },
 ];
+
+/** The yearly plan's "2 months free", from the prices in force; nothing when they give no whole month. */
+function yearlySaving(prices: { MONTHLY: number; ANNUAL: number }): string | undefined {
+  const months = monthsFree(prices);
+  return months === null ? undefined : `${months} ${months === 1 ? 'month' : 'months'} free`;
+}
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
 /** The big number on the plan card, the words beside it, and the sentence under it. */
-function planHead(state: PlanState, now: Date, renews: boolean): { big: number; unit: string; sub: ReactNode } | null {
+function planHead(state: PlanState, now: Date, renews: boolean, freeLeads: number): { big: number; unit: string; sub: ReactNode } | null {
   switch (state.kind) {
     case 'personal':
       return null;
@@ -58,13 +62,13 @@ function planHead(state: PlanState, now: Date, renews: boolean): { big: number; 
         big: state.remaining,
         unit: plural(state.remaining, 'free lead left', 'free leads left'),
         sub: state.lapsedOn
-          ? planSummary(state)
-          : `Answering is free forever. Your first ${FREE_LEADS} numbers are free too. After that, the capture card on your page needs a plan.`,
+          ? planSummary(state, freeLeads)
+          : `Answering is free forever. Your first ${freeLeads} numbers are free too. After that, the capture card on your page needs a plan.`,
       };
     case 'trialSpent':
-      return { big: 0, unit: 'free leads left', sub: planSummary(state) };
+      return { big: 0, unit: 'free leads left', sub: planSummary(state, freeLeads) };
     case 'lapsed':
-      return { big: 0, unit: 'days left', sub: planSummary(state) };
+      return { big: 0, unit: 'days left', sub: planSummary(state, freeLeads) };
   }
 }
 
@@ -73,15 +77,15 @@ function planHead(state: PlanState, now: Date, renews: boolean): { big: number; 
  * trial counts the free orders the way the plan card counts the free leads, and
  * a spent one says the shop has stopped, as Store's "Open for orders" does.
  */
-function ordersNote(state: OrderState): { paid: boolean; note: string } {
+function ordersNote(state: OrderState, freeOrders: number): { paid: boolean; note: string } {
   const stopped = 'Your shop takes no orders until you pay.';
   switch (state.kind) {
     case 'paid':
       return { paid: true, note: 'Take as many as you get.' };
     case 'trial':
-      return { paid: false, note: `${state.used} of ${FREE_ORDERS} free orders used` };
+      return { paid: false, note: `${state.used} of ${freeOrders} free orders used` };
     case 'trialSpent':
-      return { paid: false, note: `${FREE_ORDERS} of ${FREE_ORDERS} free orders used. ${stopped}` };
+      return { paid: false, note: `${freeOrders} of ${freeOrders} free orders used. ${stopped}` };
     case 'lapsed':
       return { paid: false, note: `Your plan ended on ${shortDate(state.paidUntil, true)}. ${stopped}` };
     case 'personal':
@@ -132,7 +136,10 @@ export default async function BillingPage({
   if (!page) redirect('/app/onboarding');
 
   const now = new Date();
-  const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now });
+  // The prices and allowances in force, the ones the API charges and counts by.
+  const settings = await getSettings();
+  const { freeLeads, freeOrders, prices } = settings;
+  const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now }, freeLeads);
   // Back from CHIP: a confirmed payment is the board's toast; one CHIP
   // called paid before its callback reached us still reads as confirming.
   const paidNow = params.payment === 'paid' && state.kind === 'paid';
@@ -142,6 +149,8 @@ export default async function BillingPage({
 
   // A personal page pays nothing and has no billing story to tell, so it is
   // asked for none of these.
+  // While the admin has CHIP payments off, the pay buttons give way to a line that says so.
+  const paymentsOn = personal ? true : settings.switches.chipPayments;
   const [usage, leads, orders, payments, account, card] = personal
     ? [null, 0, 0, [], null, null]
     : await Promise.all([
@@ -153,7 +162,8 @@ export default async function BillingPage({
         getRenewalCard(page.id),
       ]);
   const orderMeter = ordersNote(
-    orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }),
+    orderState({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced: page.ordersPlaced, ordersAtTrialReset: page.ordersAtTrialReset, now }, freeOrders),
+    freeOrders,
   );
 
   // Exactly the conditions the API enforces (billing.service.ts, resetTrial).
@@ -164,20 +174,22 @@ export default async function BillingPage({
   // `card=off` rides only on a confirmed paid return that kept no card; typed by
   // hand on any other page it claims nothing.
   const cardBanner = paidNow && !card && params.card === 'off' ? cardOffBanner() : null;
-  const head = planHead(state, now, card !== null);
+  const head = planHead(state, now, card !== null, freeLeads);
   const paidUntil = state.kind === 'paid' ? state.paidUntil : null;
+  const save = yearlySaving(prices);
   const options: PayOption[] = PLANS.map((p) => {
     const after = extendPaidUntil({ paidUntil: page.paidUntil, now, plan: p.plan });
     const span = after.getTime() - now.getTime();
     return {
       ...p,
-      price: ringgit(PLAN_PRICES_CENTS[p.plan]),
+      ...(p.plan === 'ANNUAL' && save ? { save } : {}),
+      price: ringgit(prices[p.plan]),
       afterShort: shortDateFrom(after, now),
       afterLong: shortDate(after, true),
       paidPct: paidUntil && span > 0 ? ((paidUntil.getTime() - now.getTime()) / span) * 100 : 0,
     };
   });
-  const trialUsed = state.kind === 'trial' ? state.used : state.kind === 'trialSpent' ? FREE_LEADS : null;
+  const trialUsed = state.kind === 'trial' ? state.used : state.kind === 'trialSpent' ? freeLeads : null;
 
   return (
     <>
@@ -212,18 +224,18 @@ export default async function BillingPage({
                 <p className={styles.sub}>{head.sub}</p>
               </>
             ) : (
-              <p className={styles.sub}>{planSummary(state)}</p>
+              <p className={styles.sub}>{planSummary(state, freeLeads)}</p>
             )}
 
             {trialUsed !== null ? (
               <>
                 <div className={styles.segs} aria-hidden="true">
-                  {Array.from({ length: FREE_LEADS }, (_, i) => (
+                  {Array.from({ length: freeLeads }, (_, i) => (
                     <span key={i} data-used={i < trialUsed || undefined} />
                   ))}
                 </div>
                 <p className={styles.segNote}>
-                  {trialUsed} of {FREE_LEADS} used
+                  {trialUsed} of {freeLeads} used
                 </p>
               </>
             ) : null}
@@ -234,7 +246,7 @@ export default async function BillingPage({
               <AutoRenew
                 card={{
                   label: card.cardLabel,
-                  price: ringgit(PLAN_PRICES_CENTS[card.plan]),
+                  price: ringgit(prices[card.plan]),
                   paidUntil: page.paidUntil ? shortDate(page.paidUntil, true) : null,
                   failed: card.failedAttempts > 0,
                   ended: state.kind !== 'paid',
@@ -246,16 +258,20 @@ export default async function BillingPage({
               <div className={styles.upgrade}>
                 <h3>Selling something?</h3>
                 <p>
-                  A business page can take customers&apos; phone numbers: {FREE_LEADS} free leads, then {ringgit(PLAN_PRICES_CENTS.MONTHLY)} a month. Questions asked
+                  A business page can take customers&apos; phone numbers: {freeLeads} free leads, then {ringgit(prices.MONTHLY)} a month. Questions asked
                   three or more times get their own FAQ pages, and the page appears in search results.
                 </p>
                 <UpgradeToBusiness />
               </div>
-            ) : (
+            ) : paymentsOn ? (
               <PayButtons
                 options={options}
                 timeline={state.kind === 'paid' || state.kind === 'lapsed' ? { today: shortDate(now), paidUntil: paidUntil ? shortDate(paidUntil) : null } : undefined}
               />
+            ) : (
+              <p className={styles.banner} role="status">
+                Online payments are paused for a moment. Try again soon.
+              </p>
             )}
 
             {canReset ? (
@@ -298,7 +314,7 @@ export default async function BillingPage({
                 {state.kind === 'paid'
                   ? 'The capture card stays on your page.'
                   : state.kind === 'trial'
-                    ? `${state.remaining} of your ${FREE_LEADS} free leads left. After that, the capture card needs a plan.`
+                    ? `${state.remaining} of your ${freeLeads} free leads left. After that, the capture card needs a plan.`
                     : 'The capture card is off until you pay.'}
               </Meter>
               <div className={styles.inc}>

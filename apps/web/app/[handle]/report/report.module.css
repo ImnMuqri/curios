@@ -1,0 +1,88 @@
+/* The report form, in the System board's terms: paper, card fields, Biru. */
+
+.form {
+  margin-top: 24px;
+  text-align: left;
+}
+
+.reasons {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+/* The heading above already names the form; the legend is for screen readers. */
+.legend {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.reason {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  margin-top: 8px;
+  padding: 0 16px;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--edge);
+  cursor: pointer;
+  transition: box-shadow 160ms;
+}
+
+.reason:first-of-type {
+  margin-top: 0;
+}
+
+.reason:has(input:checked) {
+  box-shadow: inset 0 0 0 2px var(--biru);
+}
+
+.reason:has(input:focus-visible) {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+.reason input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--biru);
+}
+
+.note {
+  display: block;
+  margin-top: 20px;
+}
+
+.note > span {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.note textarea {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1.5px var(--edge);
+  font: inherit;
+  color: var(--ink);
+  resize: vertical;
+  outline: none;
+  transition: box-shadow 160ms;
+}
+
+.note textarea:focus {
+  box-shadow: inset 0 0 0 2px var(--biru);
+}

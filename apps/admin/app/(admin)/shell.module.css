@@ -111,6 +111,14 @@
   font-weight: 600;
 }
 
+.link em {
+  margin-left: auto;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--amber);
+}
+
 .link svg {
   width: 16px;
   height: 16px;
@@ -252,5 +260,20 @@
 
   .env {
     padding: 4px 16px;
+  }
+
+  .link em {
+    margin-left: 4px;
+  }
+}
+
+/* Eight items and Sign out do not fit 390px: the bar scrolls sideways, as the board's does. The Admin tag and some padding go to leave as much room as possible. */
+@media (max-width: 480px) {
+  .tag {
+    display: none;
+  }
+
+  .link {
+    padding: 0 6px;
   }
 }

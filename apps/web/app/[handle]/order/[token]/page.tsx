@@ -1,7 +1,7 @@
 import { cache } from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { getOrderByToken, type PublicOrder, type PublicOrderLine } from '@curios/db-read';
+import { getOrderByToken, getSettings, type PublicOrder, type PublicOrderLine } from '@curios/db-read';
 import { PageTheme } from '../../../_bento/BentoPage.js';
 import { avatarUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../../shop/basket.js';
@@ -63,6 +63,8 @@ export default async function OrderPage({ params }: Params) {
   const order = await load(handle, token);
   if (!order) notFound();
   const { page } = order;
+  // With CHIP payments off (the admin's switch) the order page offers no online way to pay again.
+  const { switches } = await getSettings();
 
   return (
     <PageTheme theme={page} className={styles.stage}>
@@ -103,7 +105,7 @@ export default async function OrderPage({ params }: Params) {
         receiptUrl={avatarUrl(order.receiptKey)}
         bank={{ name: page.bankName, accountName: page.bankAccountName, accountNumber: page.bankAccountNumber }}
         whatsapp={whatsappNumber(page.links)}
-        chipMethods={page.chipMethods}
+        chipMethods={switches.chipPayments ? page.chipMethods : null}
         suspended={page.suspended}
         // The server's clock, so Ready lights on the day the server says it is.
         now={new Date().toISOString()}

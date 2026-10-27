@@ -1,5 +1,6 @@
-import { conversationCap, currentPeriod, initials, maskPhone } from '@curios/core';
+import { currentPeriod, initials, maskPhone } from '@curios/core';
 import { prismaRead } from '../client.js';
+import { getSettings } from '../settings.query.js';
 import { planOf, type AdminPlan } from './pages.query.js';
 
 export interface OwnerView {
@@ -79,6 +80,7 @@ export async function getOwnerView(pageId: string, now = new Date()): Promise<Ow
     prismaRead.order.count({ where: { pageId, createdAt: { gte: monthStart, lte: now } } }),
   ]);
   const thisMonth = counter?.count ?? 0;
+  const settings = await getSettings();
 
   return {
     profile: {
@@ -91,10 +93,10 @@ export async function getOwnerView(pageId: string, now = new Date()): Promise<Ow
       links: page.links,
     },
     plan: {
-      plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now),
+      plan: planOf(page.mode, page.paidUntil, page.leadsCaptured, now, settings.freeLeads),
       paidUntil: page.paidUntil,
       conversationsThisMonth: thisMonth,
-      cap: conversationCap(),
+      cap: settings.cap,
       leadsThisMonth,
       ordersThisMonth,
     },

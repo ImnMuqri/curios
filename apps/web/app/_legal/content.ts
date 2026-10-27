@@ -16,7 +16,7 @@ export const OPERATOR = {
 export const SUPPORT_EMAIL = 'support@curios.my';
 
 /** Change with any edit to the words below. */
-export const UPDATED = new Date('2026-10-23T00:00:00+08:00');
+export const UPDATED = new Date('2026-10-27T00:00:00+08:00');
 
 export const LEGAL_DOCS: readonly LegalDoc[] = ['terms', 'privacy', 'refunds'];
 
@@ -28,7 +28,9 @@ export const LEGAL_PATH: Record<Locale, Record<LegalDoc, string>> = {
 /**
  * A paragraph, or a list. In either, `{terms}`, `{privacy}` and `{refunds}`
  * become a link to that page in the same language, and `{email}` a link to
- * SUPPORT_EMAIL.
+ * SUPPORT_EMAIL. `{monthly}` and `{annual}` become the prices in force ("RM49"),
+ * and `{leads}` and `{orders}` the free counts: the admin's (`PlanTerms`), so
+ * the Terms never state a price CHIP is not asked to charge.
  */
 export type Block = string | { list: string[] };
 
@@ -159,10 +161,11 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         {
           heading: 'Plans and payment',
           body: [
-            'Personal pages are free. A Business page starts with a free trial: its first 3 leads and its first 3 orders cost nothing. After that, the Business plan is RM49 a month or RM490 a year.',
-            'You pay through CHIP, by FPX online banking, card or e-wallet. Each payment adds a month or a year to your plan, counted from when your paid time would otherwise end. Nothing renews by itself unless you turn on auto-renew, which is for cards only: we then charge your card the same amount when each paid period ends, until you turn it off on your Billing screen. If a renewal charge fails, we try again for up to 3 days, then turn auto-renew off.',
+            'Personal pages are free. A Business page starts with a free trial: its first {leads} leads and its first {orders} orders cost nothing. After that, the Business plan is {monthly} a month or {annual} a year.',
+            'You pay through CHIP, by FPX online banking, card or e-wallet. Each payment adds a month or a year to your plan, counted from when your paid time would otherwise end. Nothing renews by itself unless you turn on auto-renew, which is for cards only: we then charge your card when each paid period ends, until you turn it off on your Billing screen. If a renewal charge fails, we try again for up to 3 days, then turn auto-renew off.',
+            'We may change our prices. A change applies from your next payment, including an auto-renew charge, which is made at the price in force on the day it is charged.',
             'When your paid time ends, your page and its chat keep working, but the chat stops taking numbers and your shop stops taking orders until you pay again.',
-            'A plan may have usage limits, such as a number of new chat conversations each month; your Billing screen shows yours. We may change prices or limits, but never for time you have already paid for, and we will tell you before a change applies to you.',
+            'A plan may have usage limits, such as a number of new chat conversations each month; your Billing screen shows yours. We may change prices or limits, but a change never takes away time you have already paid for.',
             'Refunds are covered by our {refunds}.',
           ],
         },
@@ -431,10 +434,11 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         {
           heading: 'Pelan dan bayaran',
           body: [
-            'Halaman Peribadi adalah percuma. Halaman Bisnes bermula dengan percubaan percuma: 3 lead pertama dan 3 tempahan pertamanya tidak dikenakan bayaran. Selepas itu, pelan Bisnes berharga RM49 sebulan atau RM490 setahun.',
-            'Anda membayar melalui CHIP, menggunakan perbankan dalam talian FPX, kad atau e-dompet. Setiap bayaran menambah sebulan atau setahun pada pelan anda, dikira dari tarikh masa berbayar anda sepatutnya tamat. Tiada apa-apa yang diperbaharui dengan sendirinya melainkan anda hidupkan auto-renew, yang hanya untuk kad: kami kemudian mengecaj kad anda dengan jumlah yang sama apabila setiap tempoh berbayar tamat, sehingga anda mematikannya di skrin Billing anda. Jika caj pembaharuan gagal, kami cuba lagi sehingga 3 hari, kemudian mematikan auto-renew.',
+            'Halaman Peribadi adalah percuma. Halaman Bisnes bermula dengan percubaan percuma: {leads} lead pertama dan {orders} tempahan pertamanya tidak dikenakan bayaran. Selepas itu, pelan Bisnes berharga {monthly} sebulan atau {annual} setahun.',
+            'Anda membayar melalui CHIP, menggunakan perbankan dalam talian FPX, kad atau e-dompet. Setiap bayaran menambah sebulan atau setahun pada pelan anda, dikira dari tarikh masa berbayar anda sepatutnya tamat. Tiada apa-apa yang diperbaharui dengan sendirinya melainkan anda hidupkan auto-renew, yang hanya untuk kad: kami kemudian mengecaj kad anda apabila setiap tempoh berbayar tamat, sehingga anda mematikannya di skrin Billing anda. Jika caj pembaharuan gagal, kami cuba lagi sehingga 3 hari, kemudian mematikan auto-renew.',
+            'Kami mungkin menukar harga kami. Perubahan terpakai mulai bayaran anda yang seterusnya, termasuk caj auto-renew, yang dibuat pada harga yang berkuat kuasa pada hari ia dicaj.',
             'Apabila masa berbayar anda tamat, halaman dan sembangnya terus berfungsi, tetapi sembang berhenti menerima nombor dan kedai anda berhenti menerima tempahan sehingga anda membayar semula.',
-            'Sesuatu pelan mungkin mempunyai had penggunaan, seperti bilangan perbualan sembang baharu setiap bulan; skrin Billing anda menunjukkan had anda. Kami boleh mengubah harga atau had, tetapi tidak sekali-kali bagi masa yang telah anda bayar, dan kami akan memberitahu anda sebelum perubahan itu terpakai kepada anda.',
+            'Sesuatu pelan mungkin mempunyai had penggunaan, seperti bilangan perbualan sembang baharu setiap bulan; skrin Billing anda menunjukkan had anda. Kami boleh mengubah harga atau had, tetapi perubahan tidak sekali-kali mengambil masa yang telah anda bayar.',
             'Bayaran balik diterangkan dalam {refunds} kami.',
           ],
         },

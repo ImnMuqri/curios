@@ -32,3 +32,4 @@ export { getOwnerOrders, getOwnerOrdersPage, getOrderStats, getOrderByToken, get
 export type { OwnerOrder, OrderStats, PublicOrder, PublicOrderLine, PublicGrant, Checkout } from './orders.query.js';
 export { getSitemapPages, SITEMAP_URL_LIMIT } from './sitemap.query.js';
 export type { SitemapPage } from './sitemap.query.js';
+export { clearSettingsCache, getSettings } from './settings.query.js';

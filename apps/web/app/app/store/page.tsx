@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { FREE_ORDERS, orderState, SESSION_COOKIE } from '@curios/core';
-import { getMyCurios, getOwnerPage, getOwnerStore, type OwnerPage } from '@curios/db-read';
+import { orderState, SESSION_COOKIE } from '@curios/core';
+import { getMyCurios, getOwnerPage, getOwnerStore, getSettings, type OwnerPage } from '@curios/db-read';
 import { shortDate } from '../billing/billing-copy.js';
 import { Callout } from '@curios/ui';
 import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
@@ -19,13 +19,13 @@ function todayInMalaysia(now = new Date()): string {
 /**
  * Why an open shop takes no orders now, in the Alerts board's words for the
  * same pause, or null while it may. orderState decides, as it does for the
- * shop, the API, Alerts and Billing.
+ * shop, the API, Alerts and Billing, against the free orders in force.
  */
-function pausedWhy(page: Pick<OwnerPage, 'mode' | 'paidUntil' | 'ordersPlaced' | 'ordersAtTrialReset'>, now: Date): string | null {
-  const state = orderState({ ...page, now });
+function pausedWhy(page: Pick<OwnerPage, 'mode' | 'paidUntil' | 'ordersPlaced' | 'ordersAtTrialReset'>, now: Date, freeOrders: number): string | null {
+  const state = orderState({ ...page, now }, freeOrders);
   switch (state.kind) {
     case 'trialSpent':
-      return `Paused: your ${FREE_ORDERS} free orders are used.`;
+      return `Paused: your ${freeOrders} free orders are used.`;
     case 'lapsed':
       return `Paused: your plan ended on ${shortDate(state.paidUntil, true)}.`;
     default:
@@ -41,7 +41,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
   if (!owner) redirect('/signin');
   const asked = (await searchParams).tab;
   const initialTab = TAB_NAMES.find((name) => name === asked) ?? 'items';
-  const [store, page, owned] = await Promise.all([getOwnerStore(owner.accountId), getMyCurios(owner.accountId), getOwnerPage(owner.accountId)]);
+  const [store, page, owned, { freeOrders }] = await Promise.all([getOwnerStore(owner.accountId), getMyCurios(owner.accountId), getOwnerPage(owner.accountId), getSettings()]);
   if (!store || !page || !owned) redirect('/app/onboarding');
 
   if (store.mode === 'PERSONAL') {
@@ -86,7 +86,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       now={new Date()}
       chip={store.chip}
       initialTab={initialTab}
-      orders={{ paused: pausedWhy(owned, new Date()), nextNumber: owned.ordersPlaced + 1 }}
+      orders={{ paused: pausedWhy(owned, new Date(), freeOrders), nextNumber: owned.ordersPlaced + 1 }}
     />
   );
 }

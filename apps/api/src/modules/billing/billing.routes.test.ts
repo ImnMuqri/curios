@@ -2,7 +2,8 @@ import { generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { MAIL_QUEUE } from '@curios/core';
-import { CHIP_ENV, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
+import { fallbackSettings } from '@curios/core/settings';
+import { CHIP_ENV, ChipRefusedError, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { buildApp } from '../../app.js';
 import type { BillingRouteOptions } from './billing.routes.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
@@ -29,8 +30,16 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // SystemSetting is reached by no truncate cascade: the payments switch's and the price's rows go here.
+  await app.prisma.systemSetting.deleteMany({ where: { key: { in: ['switch.chipPayments', 'price.MONTHLY'] } } });
   await app.close();
 });
+
+/** The switch as the admin's route stores it, then the cache cleared, as that route does. */
+async function paymentsSwitch(on: boolean) {
+  await app.prisma.systemSetting.upsert({ where: { key: 'switch.chipPayments' }, create: { key: 'switch.chipPayments', value: on }, update: { value: on } });
+  app.settings.clear();
+}
 
 beforeEach(() => {
   for (const fn of Object.values(client)) fn.mockReset();
@@ -156,6 +165,21 @@ describe('POST /billing/purchases', () => {
     expect(hour).toBeLessThanOrEqual(60 * 60_000);
   });
 
+  it('charges the price the admin set: with price.MONTHLY at 5900 the purchase is created at 5900', async () => {
+    await app.prisma.systemSetting.upsert({ where: { key: 'price.MONTHLY' }, create: { key: 'price.MONTHLY', value: 5900 }, update: { value: 5900 } });
+    app.settings.clear();
+    try {
+      const owner = await anOwner();
+      expect((await start(owner.cookie)).statusCode).toBe(201);
+      const payment = await app.prisma.payment.findFirstOrThrow({ where: { pageId: owner.pageId }, select: { amountCents: true } });
+      expect(payment.amountCents).toBe(5900);
+      expect(client.createPurchase.mock.calls[0]?.[0]).toMatchObject({ amountCents: 5900 });
+    } finally {
+      await app.prisma.systemSetting.deleteMany({ where: { key: 'price.MONTHLY' } });
+      app.settings.clear();
+    }
+  });
+
   it('asks CHIP for a card token only when autoRenew is ticked', async () => {
     const owner = await anOwner();
 
@@ -206,6 +230,37 @@ describe('POST /billing/purchases', () => {
       select: { providerRef: true, status: true },
     });
     expect(payment).toEqual({ providerRef: null, status: 'PENDING' });
+  });
+
+  it('is a 503 PAYMENTS_OFF while CHIP payments are off, with no payment and no purchase, and starts again once on', async () => {
+    const owner = await anOwner();
+    await paymentsSwitch(false);
+    try {
+      const res = await start(owner.cookie);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'PAYMENTS_OFF', message: 'Online payments are paused for a moment. Try again soon.' });
+      expect(await app.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
+      expect(client.createPurchase).not.toHaveBeenCalled();
+    } finally {
+      await paymentsSwitch(true);
+    }
+    expect((await start(owner.cookie)).statusCode).toBe(201);
+  });
+
+  it('is a 503 PAYMENTS_OFF, with no payment and no purchase, while the settings could not be read', async () => {
+    const owner = await anOwner();
+    // The defaults stand in for prices nobody could read; a purchase is never started at them.
+    const get = vi.spyOn(app.settings, 'get').mockResolvedValue(fallbackSettings());
+    try {
+      const res = await start(owner.cookie);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'PAYMENTS_OFF', message: 'Online payments are paused for a moment. Try again soon.' });
+      expect(await app.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
+      expect(client.createPurchase).not.toHaveBeenCalled();
+    } finally {
+      get.mockRestore();
+    }
+    expect((await start(owner.cookie)).statusCode).toBe(201);
   });
 
   it('fails rather than hand out a checkout URL when the purchase id cannot be recorded, leaving an orphaned purchase behind', async () => {
@@ -709,6 +764,100 @@ describe('CHIP callback and webhook', () => {
       expect(res.statusCode).toBe(404);
     });
   });
+
+  // Every signed message naming a purchase is kept, one row per source, purchase and event,
+  // so the admin can see a failed one and replay it.
+  describe('the webhook log', () => {
+    const events = (purchaseId: string) => app.prisma.chipWebhookEvent.findMany({ where: { purchaseId } });
+
+    it('a webhook that grants records one ok event, with the body as it was signed', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef, event_type: 'purchase.paid' });
+
+      expect((await webhook(body)).statusCode).toBe(200);
+
+      const rows = await events(providerRef);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        source: 'webhook',
+        eventType: 'purchase.paid',
+        body,
+        attempts: 1,
+        outcome: 'ok',
+        statusCode: 200,
+        error: null,
+      });
+    });
+
+    it("a handler throw records failed with the error's name, never its message, and still answers 500", async () => {
+      const owner = await anOwner();
+      const { providerRef } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockRejectedValue(
+        new ChipRefusedError('CHIP refused GET /purchases/x/ with 401: {"client":{"email":"payer@example.com"}}', 401),
+      );
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      expect(res.statusCode).toBe(500);
+      const rows = await events(providerRef);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ outcome: 'failed', statusCode: 500, error: 'ChipRefusedError', attempts: 1 });
+    });
+
+    it('a second delivery of the same message counts a second attempt on the same row', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef, event_type: 'purchase.paid' });
+
+      await webhook(body);
+      const first = (await events(providerRef))[0];
+      await webhook(body);
+
+      const rows = await events(providerRef);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ attempts: 2, outcome: 'ok' });
+      expect(rows[0]!.lastAttemptAt.getTime()).toBeGreaterThanOrEqual(first!.lastAttemptAt.getTime());
+    });
+
+    it('a callback is kept apart from the webhook for the same purchase', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+
+      await callback(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+      await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      const rows = await events(providerRef);
+      expect(rows.map((row) => row.source).sort()).toEqual(['callback', 'webhook']);
+    });
+
+    it('keeps no row for a signed message that names no purchase', async () => {
+      const before = await app.prisma.chipWebhookEvent.count();
+
+      expect((await callback(JSON.stringify({ nothing: 'here' }))).json()).toEqual({ status: 'ignored' });
+
+      expect(await app.prisma.chipWebhookEvent.count()).toBe(before);
+    });
+
+    it('a granted CHIP payment records how it was paid', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { paymentMethod: 'visa' }));
+
+      await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      const payment = await app.prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { paidVia: true } });
+      expect(payment.paidVia).toBe('Card · Visa');
+    });
+  });
+});
+
+// ChipWebhookEvent is reached by no truncate cascade: what these tests logged goes here.
+afterAll(async () => {
+  await app.prisma.chipWebhookEvent.deleteMany();
 });
 
 describe('POST /billing/auto-renew/off', () => {

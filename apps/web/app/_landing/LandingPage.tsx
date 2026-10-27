@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import './landing-tokens.css';
-import { COPY, type Locale } from './copy.js';
+import type { PlanTerms } from '@curios/core/settings';
+import { COPY, landingCopy, type Locale } from './copy.js';
 import { Nav } from './Nav.js';
 import { Hero } from './Hero.js';
 import { AskStrip } from './AskStrip.js';
@@ -53,9 +54,13 @@ export function landingMetadata(locale: Locale): Metadata {
  * The root layout fixes <html lang="en">, so the Malay page declares its
  * language on its own outermost element; screen readers and browsers honour
  * that, and search engines read the hreflang alternates above.
+ *
+ * `terms` are the prices and free leads in force, read by the page
+ * (`getSettings()`): the pricing section and the structured data quote them,
+ * so the landing never shows a price CHIP would not be asked to charge.
  */
-export function LandingPage({ locale }: { locale: Locale }) {
-  const copy = COPY[locale];
+export function LandingPage({ locale, terms }: { locale: Locale; terms: PlanTerms }) {
+  const copy = landingCopy(locale, terms);
   const url = `${SITE_URL}${HOME[locale] === '/' ? '' : HOME[locale]}`;
 
   return (
@@ -70,12 +75,12 @@ export function LandingPage({ locale }: { locale: Locale }) {
         <Who locale={locale} />
         <How locale={locale} />
         <Business locale={locale} />
-        <Pricing locale={locale} />
+        <Pricing locale={locale} terms={{ prices: terms.prices, freeLeads: terms.freeLeads, freeOrders: terms.freeOrders }} />
         <Faq copy={copy.faq} />
       </main>
       <Closing locale={locale} />
       <Footer copy={copy} locale={locale} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData(copy, url)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(structuredData(copy, url, terms.prices)) }} />
     </div>
   );
 }

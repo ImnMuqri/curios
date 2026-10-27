@@ -40,3 +40,23 @@ BEGIN
       ON "AdminUser" TO curios_readonly;
   END IF;
 END $$;
+
+-- Every column of a report but the reporter's hashed address.
+DO $$
+BEGIN
+  IF to_regclass('"Report"') IS NOT NULL THEN
+    REVOKE SELECT ON "Report" FROM curios_readonly;
+    GRANT SELECT ("id", "pageId", "reason", "details", "status", "decidedById", "decidedAt", "createdAt")
+      ON "Report" TO curios_readonly;
+  END IF;
+END $$;
+
+-- Every column of a CHIP message but its body, which holds the payer's name and email.
+DO $$
+BEGIN
+  IF to_regclass('"ChipWebhookEvent"') IS NOT NULL THEN
+    REVOKE SELECT ON "ChipWebhookEvent" FROM curios_readonly;
+    GRANT SELECT ("id", "source", "eventType", "purchaseId", "attempts", "outcome", "statusCode", "error", "receivedAt", "lastAttemptAt")
+      ON "ChipWebhookEvent" TO curios_readonly;
+  END IF;
+END $$;

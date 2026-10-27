@@ -12,6 +12,7 @@ import {
 import { errorsPlugin } from './plugins/errors.js';
 import { prismaPlugin } from './plugins/prisma.js';
 import { queuePlugin } from './plugins/queue.js';
+import { settingsPlugin } from './plugins/settings.js';
 import { requireSession, sessionPlugin } from './plugins/session.js';
 import { adminSessionPlugin, requireAdmin } from './plugins/admin-session.js';
 import {
@@ -19,6 +20,10 @@ import {
   adminSessionRoutes,
 } from './modules/admin/admin-auth.routes.js';
 import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/admin-pages.routes.js';
+import { adminReportsRoutes } from './modules/admin/admin-reports.routes.js';
+import { adminPaymentsRoutes } from './modules/admin/admin-payments.routes.js';
+import { adminSettingsRoutes } from './modules/admin/admin-settings.routes.js';
+import { adminSourcesRoutes } from './modules/admin/admin-sources.routes.js';
 import {
   adminSigninPerIpLimit,
   authPerEmailLimit,
@@ -35,6 +40,7 @@ import {
   downloadPerIpLimit,
   receiptPerIpLimit,
   rateLimitPlugin,
+  reportPerIpLimit,
   shopChipPerAccountLimit,
   shopPayMethodsPerIpLimit,
   shopPayPerIpLimit,
@@ -44,6 +50,7 @@ import {
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
+import { reportRoutes } from './modules/reports/report.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
@@ -64,9 +71,11 @@ import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
 import { topicRoutes } from './modules/topics/topic.routes.js';
 import {
   chipRoutes,
+  chipSettings,
   ownerBillingRoutes,
   type BillingRouteOptions,
 } from './modules/billing/billing.routes.js';
+import { chipMessagesFor } from './modules/billing/chip-message.js';
 import {
   authFlowRoutes,
   authRoutes,
@@ -153,6 +162,8 @@ export async function buildApp(overrides: AppOverrides = {}) {
   });
   await app.register(errorsPlugin);
   await app.register(prismaPlugin);
+  // The admin's settings, which the owner-facing modules read too: decorated whether or not an admin origin is set.
+  await app.register(settingsPlugin);
   // Paying shops online: built once, shared by checkout's routes, CHIP's callback and the
   // owner's cancel (which cancels CHIP's purchase first).
   const payOnline = createPayOnline(app.prisma, {
@@ -208,6 +219,13 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, chatPerIpLimit(app.rateLimitRedis));
     await scope.register(leadRoutes);
+  });
+
+  // A visitor reporting a page: anonymous, with its own per-IP budget (the chat
+  // limiters would share a visitor's chat budget with it).
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, reportPerIpLimit(app.rateLimitRedis));
+    await scope.register(reportRoutes);
   });
 
   // A visitor's checkout: anonymous, so its own scope and its own two budgets.
@@ -309,7 +327,14 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // owner's own browser coming back, and a forged one costs one signature check or one
   // lookup to refuse. The plugin keeps its own body parsers, and its encapsulation keeps
   // them off every other route.
-  await app.register(chipRoutes, overrides.billing ?? {});
+  //
+  // CHIP's settings, and what its verified messages are handed to, are read and built here
+  // once, as payOnline is above: the admin's replay (below) runs a logged message through
+  // the same handler and the same CHIP client -- a test's stub, when one is injected. Both
+  // are null when billing is switched off; a missing production setting throws here.
+  const chip = chipSettings(overrides.billing ?? {});
+  const chipMessages = chip ? chipMessagesFor(app, chip.client, overrides.billing?.onRenewalFailure) : null;
+  await app.register(chipRoutes, { chip, messages: chipMessages });
 
   // Starting a payment. The session hook goes before the limiter, as in the ingest
   // scope, so an unauthenticated request is refused before it can spend any budget.
@@ -332,6 +357,10 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await app.register(async (scope) => {
       scope.addHook('onRequest', requireAdmin);
       await scope.register(adminPagesRoutes, { ...(overrides.admin ?? {}), privateFiles: overrides.admin?.privateFiles ?? overrides.privateFiles });
+      await scope.register(adminReportsRoutes, { mailQueue: overrides.admin?.mailQueue });
+      await scope.register(adminSettingsRoutes);
+      await scope.register(adminPaymentsRoutes, { messages: chipMessages });
+      await scope.register(adminSourcesRoutes);
     });
   }
 

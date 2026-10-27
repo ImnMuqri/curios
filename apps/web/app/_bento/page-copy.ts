@@ -12,6 +12,7 @@ export interface PageCopy {
   seeAll: (n: number) => string;
   questions: string;
   madeWith: string;
+  report: string;
 }
 
 const EN: PageCopy = {
@@ -23,6 +24,7 @@ const EN: PageCopy = {
   seeAll: (n) => `See all ${n}`,
   questions: 'Questions',
   madeWith: 'Made with Curios',
+  report: 'Report this page',
 };
 
 const MS: PageCopy = {
@@ -34,6 +36,7 @@ const MS: PageCopy = {
   seeAll: (n) => `Lihat semua ${n}`,
   questions: 'Soalan',
   madeWith: 'Dibuat dengan Curios',
+  report: 'Laporkan halaman ini',
 };
 
 export function pageCopy(language: string | undefined): PageCopy {

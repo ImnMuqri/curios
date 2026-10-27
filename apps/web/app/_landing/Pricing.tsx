@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type PointerEvent } from 'react';
-import { COPY, type Locale } from './copy.js';
+import type { PlanTerms } from '@curios/core/settings';
+import { pricingCopy, type Locale } from './copy.js';
 import { PERSONAS } from './personas.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
@@ -27,12 +28,13 @@ function spotlight(event: PointerEvent<HTMLElement>) {
 }
 
 /**
- * Personal is free; Business is the price in PLAN_PRICES_CENTS, by the month
- * or the year. Under them, a calculator: orders a month times a typical order,
- * against what Business costs. An illustration, and it says so.
+ * Personal is free; Business is the price in force (`terms`, the admin's, read
+ * by the page), by the month or the year. Under them, a calculator: orders a
+ * month times a typical order, against what Business costs. An illustration,
+ * and it says so.
  */
-export function Pricing({ locale }: { locale: Locale }) {
-  const copy = COPY[locale].pricing;
+export function Pricing({ locale, terms }: { locale: Locale; terms: PlanTerms }) {
+  const copy = pricingCopy(locale, terms);
   const reduced = useReducedMotion();
   const [yearly, setYearly] = useState(false);
   const [orders, setOrders] = useState(5);
@@ -79,7 +81,7 @@ export function Pricing({ locale }: { locale: Locale }) {
               {copy.monthly}
             </button>
             <button type="button" aria-pressed={yearly} onClick={() => setYearly(true)}>
-              {copy.yearly} <em>{copy.twoMonths}</em>
+              {copy.yearly} {copy.twoMonths ? <em>{copy.twoMonths}</em> : null}
             </button>
           </div>
         </div>
@@ -118,7 +120,7 @@ export function Pricing({ locale }: { locale: Locale }) {
             <article className={`${styles.spot} ${styles.business}`} onPointerMove={spotlight}>
               <p className={styles.planHead}>
                 <span className={styles.planName}>{business.name}</span>
-                <span className={styles.planTag}>{business.tag}</span>
+                {business.tag ? <span className={styles.planTag}>{business.tag}</span> : null}
               </p>
               <p className={styles.planPrice}>
                 <span className={styles.srOnly}>

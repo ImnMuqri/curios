@@ -32,32 +32,32 @@ describe('ringgit', () => {
 
 describe('planSummary', () => {
   it('tells a personal page there is nothing to pay for', () => {
-    expect(planSummary(stateOf({ mode: 'PERSONAL' }))).toBe(
+    expect(planSummary(stateOf({ mode: 'PERSONAL' }), FREE_LEADS)).toBe(
       'Personal pages are free. There is nothing to pay for.',
     );
   });
 
   it('gives a paid page its paid-through date, in Malaysian time', () => {
-    expect(planSummary(stateOf({ paidUntil: new Date('2026-10-11T20:00:00.000Z') }))).toBe(
+    expect(planSummary(stateOf({ paidUntil: new Date('2026-10-11T20:00:00.000Z') }), FREE_LEADS)).toBe(
       'Your plan is paid through 12 October 2026.',
     );
   });
 
   it('counts the trial', () => {
-    expect(planSummary(stateOf({ leadsCaptured: 2 }))).toBe(
+    expect(planSummary(stateOf({ leadsCaptured: 2 }), FREE_LEADS)).toBe(
       `You are on the free trial: 2 of ${FREE_LEADS} free leads used.`,
     );
   });
 
   it('tells a spent trial what paying does', () => {
-    expect(planSummary(stateOf({ leadsCaptured: FREE_LEADS }))).toBe(
+    expect(planSummary(stateOf({ leadsCaptured: FREE_LEADS }), FREE_LEADS)).toBe(
       `All ${FREE_LEADS} of your free leads are used. Pay to keep the capture card on your page.`,
     );
   });
 
   it('tells a lapsed plan when it ended', () => {
     expect(
-      planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: FREE_LEADS })),
+      planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: FREE_LEADS }), FREE_LEADS),
     ).toBe('Your plan ended on 1 August 2026. Pay to turn the capture card back on.');
   });
 });
@@ -97,7 +97,7 @@ describe('planSummary, after a lapse', () => {
     // The plan-ended banner says both halves of this (alerts.ts). This
     // screen saying only "free trial" would tell the same owner otherwise.
     expect(
-      planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: 1 })),
+      planSummary(stateOf({ paidUntil: new Date('2026-08-01T00:00:00.000Z'), leadsCaptured: 1 }), FREE_LEADS),
     ).toBe(
       `Your plan ended on 1 August 2026. You have ${FREE_LEADS - 1} free leads left before the capture card stops.`,
     );

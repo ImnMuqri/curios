@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { getOverview } from './overview.query.js';
+import { clearSettingsCache } from '../settings.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -10,6 +11,18 @@ const NOW = new Date('2026-10-21T02:00:00.000Z');
 const MIDNIGHT = new Date('2026-10-20T16:00:00.000Z');
 const DAY = 86_400_000;
 const NEXT_MONTH = new Date(NOW.getTime() + 25 * DAY);
+
+/** A limit as the admin's route stores it, then the cache forgotten; `undo` takes it away again. */
+async function withSetting(key: string, value: number, run: () => Promise<void>) {
+  await write.systemSetting.upsert({ where: { key }, create: { key, value }, update: { value } });
+  clearSettingsCache();
+  try {
+    await run();
+  } finally {
+    await write.systemSetting.deleteMany({ where: { key } });
+    clearSettingsCache();
+  }
+}
 
 const ids: Record<string, string> = {};
 
@@ -29,6 +42,7 @@ const pay = (pageId: string, data: Record<string, unknown>) =>
 beforeAll(async () => {
   await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
   await write.$executeRawUnsafe('TRUNCATE "ModelCall"');
+  await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
 
   // Paid by CHIP, through next month; began paying today.
   await aPage('Chip', { published: true, paidUntil: NEXT_MONTH, createdAt: new Date(NOW.getTime() - 40 * DAY) });
@@ -50,6 +64,16 @@ beforeAll(async () => {
   await aPage('Held', { published: true, suspendedAt: NOW, createdAt: new Date(NOW.getTime() - 40 * DAY) });
   // Newest page, made today.
   await aPage('Fresh', { mode: 'PERSONAL', published: true, createdAt: new Date(MIDNIGHT.getTime() + 60_000) });
+
+  // Reports: Chip has two today (Malaysia), Gifted one the day before.
+  await write.report.createMany({
+    data: [
+      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h1', createdAt: new Date(MIDNIGHT.getTime() + 60_000) },
+      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h2', createdAt: new Date(MIDNIGHT.getTime() + 120_000) },
+      { pageId: ids.Gifted!, reason: 'OTHER', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() - 3_600_000) },
+      { pageId: ids.Old!, reason: 'OTHER', reporterIpHash: 'h', status: 'DISMISSED' },
+    ],
+  });
 
   const convo = async (pageId: string, createdAt: Date) => (await write.conversation.create({ data: { pageId, createdAt }, select: { id: true } })).id;
   // Today (Malaysia): 16:00:00Z sharp is in, one second before is yesterday.
@@ -78,6 +102,14 @@ beforeAll(async () => {
   await write.ingestion.create({ data: { pageId: ids.Chip!, status: 'SUCCEEDED', pastedText: 'p' } });
   await write.fact.createMany({ data: ['a', 'b', 'c'].map((c) => ({ pageId: ids.Fresh!, category: 'MISC' as const, claim: c, normalizedClaim: c, confidence: 1 })) });
   await write.fact.create({ data: { pageId: ids.Fresh!, category: 'MISC', claim: 'x', normalizedClaim: 'x', confidence: 1, rejectedAt: NOW } });
+  // Webhooks: two failed in the last 24h (the newer belongs to Chip's payment), one too old, one ok.
+  await write.payment.update({ where: { id: (await write.payment.findFirstOrThrow({ where: { pageId: ids.Chip! } })).id }, data: { providerRef: 'pur_chip' } });
+  const hook = (purchaseId: string, outcome: string, ago: number, attempts = 1) => ({
+    source: 'webhook', eventType: 'purchase.paid', purchaseId, body: '{}', outcome, attempts, lastAttemptAt: new Date(NOW.getTime() - ago),
+  });
+  await write.chipWebhookEvent.createMany({
+    data: [hook('pur_chip', 'failed', 3_600_000, 3), hook('pur_unknown', 'failed', 7_200_000), hook('pur_old', 'failed', 25 * 3_600_000), hook('pur_ok', 'ok', 60_000)],
+  });
   await write.usageCounter.createMany({
     data: [
       { pageId: ids.Chip!, period: '2026-10', count: 200 },
@@ -87,6 +119,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Neither table is reached by the Account cascade.
+  await write.$executeRawUnsafe('TRUNCATE "ModelCall"');
+  await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
   await write.$disconnect();
 });
 
@@ -131,6 +166,26 @@ describe('getOverview', () => {
     expect(o.needsYou.atCap.count).toBe(1);
     expect(o.needsYou.atCap.names).toEqual(['Chip']);
     expect(o.needsYou.plansEnding).toBe(1); // Ending, not EndingGrant
+  });
+
+  it('counts failed webhooks of the last 24 hours and names the newest one page', async () => {
+    expect((await getOverview('7d', NOW)).needsYou.webhooksFailed).toEqual({ count: 2, latest: { attempts: 3, displayName: 'Chip' } });
+  });
+
+  it('counts pages at the cap the admin set', async () => {
+    await withSetting('cap', 199, async () => {
+      expect((await getOverview('7d', NOW)).needsYou.atCap.names.sort()).toEqual(['Chip', 'Gifted']);
+    });
+  });
+
+  it('counts reported pages and names the one with the most reports', async () => {
+    const o = await getOverview('7d', NOW);
+    expect(o.needsYou.reported).toEqual({ pages: 2, top: { displayName: 'Chip', count: 2, reason: 'SCAM', today: true } });
+  });
+
+  it('falls back to the open count when none came in today', async () => {
+    const o = await getOverview('7d', new Date(NOW.getTime() + 2 * DAY));
+    expect(o.needsYou.reported.top).toEqual({ displayName: 'Chip', count: 2, reason: 'SCAM', today: false });
   });
 
   it('counts live pages and kinds', async () => {
