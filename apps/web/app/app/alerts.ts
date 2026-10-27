@@ -1,5 +1,5 @@
 import { planEndedSaid, type OrderState, type PlanState } from '@curios/core';
-import { SUSPENDED_ALERT_ID } from './alert-ids.js';
+import { BANNER_ALERT_ID, SUSPENDED_ALERT_ID } from './alert-ids.js';
 import { shortDate, usageResets } from './billing/billing-copy.js';
 
 /**
@@ -22,7 +22,10 @@ export interface Alert {
   title: string;
   text: string;
   meter?: boolean[];
-  action: { href: string; label: string };
+  /** Absent on an alert with nowhere to go (the Curios team's banner). */
+  action?: { href: string; label: string };
+  /** Cannot be dismissed, whatever its tone. */
+  fixed?: boolean;
 }
 
 const BILLING = '/app/billing';
@@ -131,9 +134,17 @@ export function alertsFor(input: {
   /** The allowances in force (`Settings`): what "of your 3 free leads" counts to, and its meter's length. */
   freeLeads: number;
   freeOrders: number;
+  /** The admin's banner for every owner's dashboard, when one is showing. */
+  banner?: string | null;
 }): Alert[] {
   const { plan, usage, now, freeLeads } = input;
   const alerts: Alert[] = [];
+
+  // The Curios team's own word comes before everything, and can't be dismissed. The board does not
+  // draw it as an alert (DEVIATIONS 228), so it takes the info style and no action.
+  if (input.banner) {
+    alerts.push({ id: BANNER_ALERT_ID, tone: 'info', where: 'all', icon: 'chat', title: 'From the Curios team', text: input.banner, fixed: true });
+  }
 
   // First, and on every screen: nothing else matters while visitors cannot reach the page.
   if (input.suspension) {

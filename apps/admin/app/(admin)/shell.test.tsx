@@ -11,8 +11,8 @@ describe('Shell', () => {
 
     const nav = screen.getByRole('navigation');
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent);
-    expect(labels).toEqual(['Overview', 'Pages', 'Reports', 'Audit log']);
-    for (const absent of ['AI & usage', 'Reading sources', 'Payments', 'Controls']) {
+    expect(labels).toEqual(['Overview', 'Pages', 'Reports', 'Controls', 'Audit log']);
+    for (const absent of ['AI & usage', 'Reading sources', 'Payments']) {
       expect(screen.queryByText(absent)).not.toBeInTheDocument();
     }
     const groups = Array.from(nav.querySelectorAll('p')).map((p) => p.textContent);
@@ -43,6 +43,7 @@ describe('Shell', () => {
 
     expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: 'Pages' })).toHaveAttribute('href', '/pages');
+    expect(screen.getByRole('link', { name: 'Controls' })).toHaveAttribute('href', '/controls');
     expect(screen.getByRole('link', { name: 'Audit log' })).toHaveAttribute('href', '/audit');
   });
 

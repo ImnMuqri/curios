@@ -23,6 +23,33 @@ const page = (
   ...free,
 });
 
+describe('the Curios team’s banner', () => {
+  it('is an info alert for every screen, with the banner text, first, and nothing to dismiss', () => {
+    const alerts = alertsFor({ ...page({ leadsCaptured: 3 }), banner: 'Payments are slow this morning. Orders still come through.' });
+
+    expect(alerts[0]).toEqual({
+      id: 'banner',
+      tone: 'info',
+      where: 'all',
+      icon: 'chat',
+      title: 'From the Curios team',
+      text: 'Payments are slow this morning. Orders still come through.',
+      fixed: true,
+    });
+    expect(alerts.length).toBeGreaterThan(1);
+  });
+
+  it('goes ahead of a suspension too, because it is first', () => {
+    const alerts = alertsFor({ ...page(), suspension: { reason: 'x' }, banner: 'Hello' });
+    expect(alerts.map((a) => a.id).slice(0, 2)).toEqual(['banner', 'suspended']);
+  });
+
+  it('adds nothing when there is no banner', () => {
+    expect(alertsFor({ ...page(), banner: null }).some((a) => a.id === 'banner')).toBe(false);
+    expect(alertsFor(page()).some((a) => a.id === 'banner')).toBe(false);
+  });
+});
+
 describe('a suspended page', () => {
   const suspension = { reason: 'Customers reported being asked to pay before an order.' };
 

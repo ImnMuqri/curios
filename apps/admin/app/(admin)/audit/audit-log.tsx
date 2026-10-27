@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { AuditRow } from '@curios/db-read/admin';
 import { ADMIN_ACTIONS } from '@curios/core/admin';
+import { switchTitle } from '../controls/switches.js';
 import styles from './audit.module.css';
 
 export const AUDIT_PAGE_SIZE = 100;
@@ -15,6 +16,9 @@ const LABELS: Record<string, string> = {
   [ADMIN_ACTIONS.VIEWED_AS_OWNER]: 'Saw the page as the owner',
   [ADMIN_ACTIONS.DISMISSED_REPORTS]: 'Dismissed reports',
   [ADMIN_ACTIONS.EMAILED_OWNER]: 'Emailed the owner about a report',
+  [ADMIN_ACTIONS.CHANGED_LIMITS]: 'Changed limits and prices',
+  [ADMIN_ACTIONS.SHOWED_BANNER]: 'Showed a banner to all owners',
+  [ADMIN_ACTIONS.TOOK_BANNER_DOWN]: 'Took the banner down',
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -33,11 +37,30 @@ export function when(d: Date): string {
   return `${p.day} ${MONTHS[Number(p.month) - 1]} ${p.hour}:${p.minute}`;
 }
 
-/** An action string as words; one we do not know yet is shown as it is. */
-export const actionLabel = (action: string) => LABELS[action] ?? action;
+/**
+ * An action string as words; one we do not know yet is shown as it is. A switch's is built from
+ * what it was done to ("Turned off chat answers"), because one action covers all five switches.
+ */
+export function actionLabel(action: string, targetId?: string): string {
+  if (action === ADMIN_ACTIONS.TURNED_OFF || action === ADMIN_ACTIONS.TURNED_ON) {
+    const verb = action === ADMIN_ACTIONS.TURNED_OFF ? 'Turned off' : 'Turned on';
+    const title = targetId ? switchTitle(targetId) : undefined;
+    return title ? `${verb} ${title}` : `${verb} a switch`;
+  }
+  return LABELS[action] ?? action;
+}
 
-// A sign-in is about nobody's page; its target is the admin's own email, which stays off the screen.
-const everyone = (action: string) => action === ADMIN_ACTIONS.SIGNED_IN;
+// These are about nobody's page. A sign-in's target is the admin's own email, which stays off the
+// screen; a setting's target is the switch or the banner, and the change reaches everyone.
+const EVERYONE = new Set<string>([
+  ADMIN_ACTIONS.SIGNED_IN,
+  ADMIN_ACTIONS.TURNED_OFF,
+  ADMIN_ACTIONS.TURNED_ON,
+  ADMIN_ACTIONS.CHANGED_LIMITS,
+  ADMIN_ACTIONS.SHOWED_BANNER,
+  ADMIN_ACTIONS.TOOK_BANNER_DOWN,
+]);
+const everyone = (action: string) => EVERYONE.has(action);
 
 export function AuditLog({ rows, paged }: { rows: AuditRow[]; paged: boolean }) {
   const last = rows[rows.length - 1];
@@ -66,7 +89,7 @@ export function AuditLog({ rows, paged }: { rows: AuditRow[]; paged: boolean }) 
                   {r.adminName}
                 </div>
                 <div className={styles.c} role="cell">
-                  <b>{actionLabel(r.action)}</b>
+                  <b>{actionLabel(r.action, r.targetId)}</b>
                 </div>
                 <div className={styles.c} role="cell">
                   <span className={styles.mono}>{everyone(r.action) ? 'everyone' : `curios.my/${r.targetLabel}`}</span>

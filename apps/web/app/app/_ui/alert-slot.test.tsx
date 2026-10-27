@@ -44,6 +44,25 @@ describe('a suspended page', () => {
   });
 });
 
+describe('the Curios team’s banner', () => {
+  const banner: Alert = { id: 'banner', tone: 'info', where: 'all', icon: 'chat', title: 'From the Curios team', text: 'Payments are slow this morning.', fixed: true };
+
+  it('wins on every screen, over a red alert and a suspension', () => {
+    const suspended: Alert = { ...ended, id: 'suspended' };
+    expect(pickAlert([banner, ended, trial], '/app/leads')).toBe(banner);
+    expect(pickAlert([banner, suspended], '/app/curios')).toBe(banner);
+  });
+
+  it('has no link and no way to dismiss, and stays even if an old dismissal is stored', () => {
+    window.localStorage.setItem('curios:alert-dismissed:banner', '1');
+    pathname = '/app/curios';
+    slot([banner]);
+    expect(screen.getByRole('status')).toHaveTextContent('From the Curios teamPayments are slow this morning.');
+    expect(screen.queryByRole('button', { name: 'Dismiss' })).toBeNull();
+    expect(screen.queryByRole('link')).toBeNull();
+  });
+});
+
 describe('pickAlert', () => {
   it('shows an every-screen alert first, then the one about this screen, and nothing elsewhere', () => {
     expect(pickAlert([trial, ended], '/app/leads')).toBe(ended);

@@ -8,6 +8,7 @@ const row = (n: number, over: Partial<AuditRow> = {}): AuditRow => ({
   createdAt: new Date(Date.UTC(2026, 9, 20, 14, 31) - n * 60_000),
   adminName: 'Iman',
   action: 'SUSPENDED_PAGE',
+  targetId: `p${n}`,
   targetLabel: `page${n}`,
   reason: `Reason ${n}`,
   ...over,
@@ -25,6 +26,28 @@ describe('AuditLog', () => {
     expect(actionLabel('DISMISSED_REPORTS')).toBe('Dismissed reports');
     expect(actionLabel('EMAILED_OWNER')).toBe('Emailed the owner about a report');
     expect(actionLabel('SOMETHING_NEW')).toBe('SOMETHING_NEW');
+  });
+
+  it('words a switch from its key, with the switch’s title in lower case', () => {
+    expect(actionLabel('TURNED_OFF', 'chat')).toBe('Turned off chat answers');
+    expect(actionLabel('TURNED_ON', 'signups')).toBe('Turned on new sign-ups');
+    expect(actionLabel('TURNED_OFF', 'reading')).toBe('Turned off reading new sources');
+    expect(actionLabel('TURNED_OFF', 'chipPayments')).toBe('Turned off online payments (CHIP)');
+    expect(actionLabel('TURNED_OFF', 'ownerEmails')).toBe('Turned off emails to owners');
+    expect(actionLabel('TURNED_OFF', 'mystery')).toBe('Turned off a switch');
+  });
+
+  it('labels the limits and the banner', () => {
+    expect(actionLabel('CHANGED_LIMITS', 'limits')).toBe('Changed limits and prices');
+    expect(actionLabel('SHOWED_BANNER', 'banner')).toBe('Showed a banner to all owners');
+    expect(actionLabel('TOOK_BANNER_DOWN', 'banner')).toBe('Took the banner down');
+  });
+
+  it('shows a setting change against everyone, not a page address', () => {
+    render(<AuditLog paged={false} rows={[row(1, { action: 'TURNED_OFF', targetId: 'chat', targetLabel: 'chat', reason: 'Outage' })]} />);
+    const r = screen.getAllByRole('row')[1]!;
+    expect(within(r).getByText('Turned off chat answers')).toBeTruthy();
+    expect(within(r).getByText('everyone')).toBeTruthy();
   });
 
   it('renders rows in the order given with readable labels, page and reason', () => {

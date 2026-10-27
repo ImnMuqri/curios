@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
-import { SUSPENDED_ALERT_ID } from '../alert-ids.js';
+import { BANNER_ALERT_ID, SUSPENDED_ALERT_ID } from '../alert-ids.js';
 import type { Alert } from '../alerts.js';
 import styles from './alert-slot.module.css';
 
@@ -37,6 +37,9 @@ function readDismissed(id: string): boolean {
  * does not), then one for every screen, then the one about this screen.
  */
 export function pickAlert(alerts: Alert[], pathname: string): Alert | null {
+  // The Curios team's banner is first on every screen.
+  const banner = alerts.find((a) => a.id === BANNER_ALERT_ID);
+  if (banner) return banner;
   // A suspended page says so on every screen, whatever else is red there.
   const suspended = alerts.find((a) => a.id === SUSPENDED_ALERT_ID);
   if (suspended) return suspended;
@@ -69,10 +72,12 @@ export function AlertBanner({ alert, onDismiss }: { alert: Alert; onDismiss?: ()
         ) : null}
       </span>
       <span className={styles.acts}>
-        <a className={styles.btn} href={alert.action.href}>
-          {alert.action.label}
-        </a>
-        {alert.tone === 'info' && onDismiss ? (
+        {alert.action ? (
+          <a className={styles.btn} href={alert.action.href}>
+            {alert.action.label}
+          </a>
+        ) : null}
+        {alert.tone === 'info' && !alert.fixed && onDismiss ? (
           <button type="button" className={styles.x} aria-label="Dismiss" onClick={onDismiss}>
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M6 6l12 12M18 6L6 18" />
@@ -103,7 +108,7 @@ function PlacedAlert({ alerts }: { alerts: Alert[] }) {
 
   // Read after mount: the server cannot see this browser's storage.
   useEffect(() => {
-    setDismissed(alert ? readDismissed(alert.id) : false);
+    setDismissed(alert && !alert.fixed ? readDismissed(alert.id) : false);
   }, [alert?.id]);
 
   if (!alert || dismissed) return null;

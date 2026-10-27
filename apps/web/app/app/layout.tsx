@@ -57,7 +57,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   }
 
   const now = new Date();
-  const [badges, usage, { freeLeads, freeOrders }] = await Promise.all([countNavBadges(owner.accountId), getConversationUsage(page.id, now), getSettings()]);
+  const [badges, usage, { freeLeads, freeOrders, banner }] = await Promise.all([countNavBadges(owner.accountId), getConversationUsage(page.id, now), getSettings()]);
   // The stop states (trial, limit, plan ended), decided once here for every
   // screen; each screen's header shows the one that is about it. Counted
   // against the allowances the admin set, as the API counts them.
@@ -76,7 +76,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       planLabel={planLabel({ ...page, now }, freeLeads)}
       badges={badges}
       mode={page.mode}
-      alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
+      alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, banner, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
       billingDot={billingNeedsYou(plan, orders)}
       theme={parseTheme(jar.get(THEME_COOKIE)?.value)}
     >

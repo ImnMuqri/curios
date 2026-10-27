@@ -138,6 +138,23 @@ describe('the dashboard layout', () => {
     expect(frame.props.alerts[0]).toMatchObject({ id: 'suspended', where: 'all', text: 'Scam reports' });
   });
 
+  it('puts the admin’s banner first on every screen, and none when there is none', async () => {
+    const arrive = () => {
+      resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+      getOwnerPage.mockResolvedValueOnce(page);
+      countNavBadges.mockResolvedValueOnce({ review: 0, questions: 0, leads: 0, orders: 0 });
+    };
+    arrive();
+    getSettings.mockResolvedValueOnce({ ...defaultSettings(), banner: 'Payments are slow this morning.' });
+
+    const shown = (await AppLayout({ children: null })) as { props: { alerts: { id: string; title: string; text: string }[] } };
+    expect(shown.props.alerts[0]).toMatchObject({ id: 'banner', title: 'From the Curios team', text: 'Payments are slow this morning.' });
+
+    arrive();
+    const none = (await AppLayout({ children: null })) as { props: { alerts: { id: string }[] } };
+    expect(none.props.alerts.map((a) => a.id)).not.toContain('banner');
+  });
+
   it('says nothing about suspension for a live page', async () => {
     resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
     getOwnerPage.mockResolvedValueOnce(page);

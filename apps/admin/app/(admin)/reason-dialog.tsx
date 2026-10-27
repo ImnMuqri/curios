@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import styles from './reason-dialog.module.css';
 
 /** The one dialog every audited admin change goes through: a reason, optionally a typed confirmation. */
@@ -11,6 +11,7 @@ export function ReasonDialog({
   placeholder,
   danger = false,
   ownerSees = false,
+  details,
   typeToConfirm,
   onConfirm,
   onClose,
@@ -22,6 +23,8 @@ export function ReasonDialog({
   danger?: boolean;
   /** Shows "The owner sees this." under the box, for actions that email the reason. */
   ownerSees?: boolean;
+  /** Shown under the text, before the reason: what exactly is about to change. */
+  details?: ReactNode;
   /** When set, confirm also waits for this exact text to be typed. */
   typeToConfirm?: string;
   /** Gets the trimmed reason. A throw shows its message in the dialog; the dialog stays open. */
@@ -67,6 +70,7 @@ export function ReasonDialog({
       >
         <h3>{title}</h3>
         <p>{text}</p>
+        {details}
 
         <label htmlFor={`${ids}-why`}>Reason, for the audit log</label>
         <input

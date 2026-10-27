@@ -30,7 +30,7 @@ describe('getAuditLog', () => {
   it('lists newest first with the admin name', async () => {
     const rows = await getAuditLog();
     expect(rows.map((r) => r.action)).toEqual(['SUSPENDED_PAGE', 'GRANTED_MONTH', 'SIGNED_IN']);
-    expect(rows[0]).toMatchObject({ adminName: 'Audit Admin', targetLabel: 'target 3', reason: 'reason 3' });
+    expect(rows[0]).toMatchObject({ adminName: 'Audit Admin', targetId: 'p1', targetLabel: 'target 3', reason: 'reason 3' });
   });
 
   it('honours limit', async () => {

@@ -7,10 +7,10 @@ import type { NavCounts } from '@curios/db-read/admin';
 import { SignOut } from './sign-out.js';
 import styles from './shell.module.css';
 
-export type NavKey = 'overview' | 'pages' | 'reports' | 'audit';
+export type NavKey = 'overview' | 'pages' | 'reports' | 'controls' | 'audit';
 
-// The board's groups. Its other items (AI & usage, Reading sources, Payments,
-// Controls) arrive with their screens, never as links to nothing.
+// The board's groups. Its other items (AI & usage, Reading sources, Payments)
+// arrive with their screens, never as links to nothing.
 const GROUPS: {
   label: string;
   items: { key: NavKey; label: string; href: string; icon: string; count?: keyof NavCounts }[];
@@ -41,7 +41,15 @@ const GROUPS: {
   },
   {
     label: 'Change',
-    items: [{ key: 'audit', label: 'Audit log', href: '/audit', icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4' }],
+    items: [
+      {
+        key: 'controls',
+        label: 'Controls',
+        href: '/controls',
+        icon: 'M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M16 4v4M10 10v4M18 16v4',
+      },
+      { key: 'audit', label: 'Audit log', href: '/audit', icon: 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4' },
+    ],
   },
 ];
 
@@ -49,6 +57,7 @@ function keyOf(pathname: string | null): NavKey | null {
   if (!pathname || pathname === '/') return 'overview';
   if (pathname.startsWith('/pages')) return 'pages';
   if (pathname.startsWith('/reports')) return 'reports';
+  if (pathname.startsWith('/controls')) return 'controls';
   if (pathname.startsWith('/audit')) return 'audit';
   return null;
 }
