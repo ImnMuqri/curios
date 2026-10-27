@@ -644,6 +644,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
 | `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |
 | `SESSION_SECRET` (`openssl rand -hex 32`) | ✓ | | |
+| `REPORT_IP_SECRET` (`openssl rand -hex 32`): keys the hash of a reporter's address. **Required in production: the API refuses to boot without it** | ✓ | | |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI=https://api.curios.my/auth/google/callback` | ✓ | | |
 | `COOKIE_DOMAIN=.curios.my` | ✓ | | |
 | `TRUST_PROXY` (below) | ✓ | | |
@@ -654,8 +655,11 @@ The pre-deploy sets the role to this password and refuses the development one.
 in, like `web`'s `NEXT_PUBLIC_*`). It needs the API to have `ADMIN_ORIGIN=https://admin.curios.my`:
 unset, the API registers no `/admin` routes and the admin app can sign nobody in.
 
-Production refuses to start without storage, the private bucket and the CHIP keys: there is no
-local fallback for any of them, by design. `CHIP_WEBHOOK_PUBLIC_KEY` goes on one line with each
+Production refuses to start without storage, the private bucket, the CHIP keys and
+`REPORT_IP_SECRET`: there is no local fallback for any of them, by design (outside production
+`REPORT_IP_SECRET` falls back to a fixed development key with a warning). Changing it later breaks
+nothing: reports already stored keep their old hashes, so a repeat report from the same address
+stops matching and can add a second open report on a page already reported. `CHIP_WEBHOOK_PUBLIC_KEY` goes on one line with each
 break written `\n` (see CHIP setup). Never set `INGEST_ALLOW_PRIVATE_ADDRESSES` here. Leave
 `RATE_LIMIT_*` unset: the defaults are the production values.
 
@@ -748,7 +752,8 @@ its FAQ pages within that window; every other surface changes on the next reques
 
 Controls has five switches. Each writes an audit row and asks for a reason when you turn it off
 (turning one back on is recorded as "Turned back on"); the banner asks for no reason, its text is
-recorded instead. Each switch is read again where it applies, and every process caches the settings
+recorded instead (showing the text already live, or taking down when there is none, is refused with 409
+`NO_CHANGE` and records nothing). Each switch is read again where it applies, and every process caches the settings
 for 30 seconds, so a switch takes effect within about 30 seconds and a running job notices it too.
 Reading new sources pauses the ingest queue before it saves: if Redis can't be reached, Controls
 says "Couldn't reach the reading queue. Nothing was changed. Try again." and nothing changed. Off means
@@ -759,7 +764,7 @@ over; the audit log says who turned it off and why.
 |---|---|---|---|
 | The model provider is down or slow | Chat answers | Every page gives the short fixed reply, including the owner's tester and the order lookup in chat. No conversation is counted against anyone's cap | Pages, Store, leads. Grouping questions keeps running and retries its failed model calls |
 | Sources are being read badly, or Redis is struggling | Reading new sources | The ingest queue pauses. Owners can add sources and those wait; owner re-reads and admin retries are refused | Everything else. Reading sources shows "Queue paused" |
-| CHIP is down | CHIP payments | Billing shows "Online payments are paused for a moment"; checkouts offer only the owner's own QR or bank transfer; connecting a shop's own CHIP account and its RM1 "Curios test" are refused; auto-renew is skipped, checked again before each charge, and a card whose plan ended meanwhile is still tried once the switch is back on, up to 7 days after its plan ended (past that, auto-renew is turned off and the owner told) | QR and bank transfer orders; pages already paid for |
+| CHIP is down | CHIP payments | Billing shows "Online payments are paused for a moment"; checkouts offer only the owner's own QR or bank transfer; connecting a shop's own CHIP account and its RM1 "Curios test" are refused; auto-renew is skipped, checked again before each charge, and a card whose plan ended meanwhile and that no run has tried is still tried once the switch is back on, up to 7 days after its plan ended (past that it is not charged: auto-renew is turned off and the owner told once; a first decline more than 3 days after the plan ended also stops auto-renew at once) | QR and bank transfer orders; pages already paid for |
 | Mail is failing or being abused | Emails to owners | Owner notification emails are dropped, not held | Sign-in, verification and password reset mail; admin's own mails (suspend, bring back, report warning) |
 | Something is wrong with sign-up | Sign-ups | The sign-up screen says Curios is full for now | Existing owners sign in as usual |
 
@@ -796,6 +801,17 @@ Production re-runs `packages/db/prisma/sql/readonly-role.sql` after `migrate dep
 hidden from the read-only role: the body holds the payer's name and email, so the role is granted the
 table's other columns only (and `Report.reporterIpHash` is withheld the same way). Admin's Payments
 log therefore never shows a body. If you ever grant the role the table by hand, run the script again.
+
+**The gap, and the rule that closes it.** The script gives the role default privileges, so a table a
+migration creates is readable by the role, every column, from the moment it exists until the script
+runs after `migrate deploy`. Postgres default privileges cannot be column-wise, so the script cannot
+close that gap. The rule: **a migration that creates a table with a column the role must not read, or
+adds such a column, revokes and grants inline**, guarded by
+`IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'curios_readonly')`, and the same narrowing is then
+added to `readonly-role.sql`. `20261027050000_admin_indexes_report_privileges` does this for
+`ChipWebhookEvent` and `Report`, so they stay narrow even if the script is skipped. After a migration:
+`migrate deploy`, then the script, on every database, as before.
+`packages/db-read/src/readonly-role.test.ts` checks the withheld columns.
 
 ### Environment
 
