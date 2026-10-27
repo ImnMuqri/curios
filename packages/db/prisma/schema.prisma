@@ -760,6 +760,11 @@ model QuestionAsk {
   /// facts, false when it said it was not sure. Null before this was
   /// recorded, and for the month's fixed reply, which is not an answer either way.
   answered   Boolean?
+  /// What the model replied, as the visitor saw it. Null when the model did not
+  /// write the reply (the owner's answer, the month's fixed reply), when it
+  /// failed, and for asks from before 2026-10-27. Only an ask with a reply says
+  /// whether the chat can answer its topic on its own.
+  reply      String?
 
   @@index([questionId, askedAt])
 }

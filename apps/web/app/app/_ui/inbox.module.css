@@ -331,3 +331,63 @@
   color: var(--ink);
   text-decoration: underline;
 }
+
+/* Numbered pages between Previous and Next (Questions): the current one filled, a gap as an ellipsis. */
+.pager[data-numbered] {
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+}
+
+.pager[data-numbered] > a,
+.pager[data-numbered] > span {
+  flex: none;
+}
+
+.pager[data-numbered] > span {
+  color: var(--faint);
+  font-weight: 600;
+}
+
+.pages {
+  display: flex;
+  flex: 1;
+  justify-content: center;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pages a,
+.pages [aria-current='page'],
+.pages [data-gap] {
+  display: inline-grid;
+  place-items: center;
+  min-width: 32px;
+  height: 32px;
+  padding: 0 6px;
+  border-radius: 9px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pager .pages a:last-child {
+  margin-left: 0;
+}
+
+.pager .pages a:hover {
+  background: var(--surface);
+  text-decoration: none;
+}
+
+.pages [aria-current='page'] {
+  background: var(--ink);
+  color: var(--card);
+  font-weight: 600;
+}
+
+.pages [data-gap] {
+  min-width: 20px;
+  padding: 0;
+  color: var(--faint);
+}

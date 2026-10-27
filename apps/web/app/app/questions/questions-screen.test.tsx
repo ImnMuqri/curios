@@ -5,19 +5,28 @@ import { QuestionsScreen } from './questions-screen.js';
 import type { TopicActions } from './topic-detail.js';
 
 const now = new Date('2026-10-17T06:00:00Z');
-const base = { conflictAnswer: null, faqSlug: null, faqSuppressed: false, lastAskedAt: new Date('2026-10-17T03:00:00Z'), week: [0, 0, 0, 0, 0, 0, 1] };
+const base = { conflictAnswer: null, faqSlug: null, faqSuppressed: false, lastAskedAt: new Date('2026-10-17T03:00:00Z'), week: [0, 0, 0, 0, 0, 0, 1], chat: null };
 const w = (id: string, text: string, askCount: number) => ({ id, text, askCount });
 const topics: OwnerTopic[] = [
   { ...base, id: 't1', title: 'Do you deliver to Klang?', askCount: 14, answer: null, wordings: [w('w1', 'Do you deliver to Klang?', 9), w('w2', 'delivery klang ada?', 5)] },
   { ...base, id: 't2', title: 'Is it halal?', askCount: 10, answer: 'Yes.', wordings: [w('w3', 'Is it halal?', 10)] },
   { ...base, id: 't3', title: 'Can you write on the cake?', askCount: 6, answer: 'Yes.', conflictAnswer: 'Up to 20 letters.', wordings: [w('w4', 'Can you write on the cake?', 6)] },
+  {
+    ...base,
+    id: 't4',
+    title: 'What time do you open?',
+    askCount: 2,
+    answer: null,
+    wordings: [w('w5', 'What time do you open?', 2)],
+    chat: { asked: 'What time do you open?', reply: '9am to 6pm, Monday to Saturday.', answered: true, at: new Date('2026-10-17T02:00:00Z') },
+  },
 ];
 
 const actions = (): TopicActions => ({
   answer: vi.fn(), withdraw: vi.fn(), suppress: vi.fn(), rename: vi.fn(), merge: vi.fn(), resolve: vi.fn(), deleteTopic: vi.fn(), split: vi.fn(), deleteWording: vi.fn(),
 });
 
-function show(list = topics, publishesFaq = true, answerRate = { answered: 0, recorded: 0 }, paging?: { page: number; hasNext: boolean }) {
+function show(list = topics, publishesFaq = true, answerRate = { answered: 0, recorded: 0 }, paging?: { page: number; pages: number }) {
   render(
     <QuestionsScreen
       topics={list}
@@ -49,8 +58,8 @@ describe('QuestionsScreen, the figures', () => {
     expect(stats().getByText('23').nextSibling).toHaveTextContent('Questions asked this week');
     // A topic with two answers is still waiting on you.
     expect(stats().getByText('2').nextSibling).toHaveTextContent('Topics waiting for your answer');
-    // Nothing recorded yet: 10 of 30 asks have an answer that stands.
-    expect(stats().getByText('33%').nextSibling).toHaveTextContent('Of asks with your own answer');
+    // Nothing recorded yet: 10 of 32 asks have an answer that stands.
+    expect(stats().getByText('31%').nextSibling).toHaveTextContent('Of asks with your own answer');
   });
 
   it('says what share of asks the chat could answer, once the chat has recorded it', () => {
@@ -77,6 +86,7 @@ describe('QuestionsScreen, the list', () => {
     expect(klang).toHaveTextContent('14 asks · 2 wordings · 3h ago');
     expect(klang).toHaveAttribute('aria-current', 'true');
     expect(list().getByRole('button', { name: /Can you write on the cake\?/ })).toHaveTextContent('Two answers');
+    expect(list().getByRole('button', { name: /What time do you open\?/ })).toHaveTextContent('Chat answered');
     expect(screen.getByRole('heading', { name: 'Do you deliver to Klang?', level: 2 })).toBeInTheDocument();
   });
 
@@ -86,11 +96,14 @@ describe('QuestionsScreen, the list', () => {
     expect(screen.getByRole('heading', { name: 'Is it halal?', level: 2 })).toBeInTheDocument();
   });
 
-  it('filters to what needs you, counting them, and to what is answered', () => {
+  it('filters to what needs you, counting them, to what the chat answered, and to what you answered', () => {
     show();
+    // The topic the chat answered from the facts does not wait on you.
     expect(filter(/Needs you/)).toHaveTextContent('2');
     fireEvent.click(filter(/Needs you/));
     expect(list().getAllByRole('button').map((b) => b.querySelector('span span')?.textContent)).toEqual(['Do you deliver to Klang?', 'Can you write on the cake?']);
+    fireEvent.click(filter(/By chat/));
+    expect(list().getAllByRole('button').map((b) => b.querySelector('span span')?.textContent)).toEqual(['What time do you open?']);
     fireEvent.click(filter(/^Answered/));
     expect(list().getAllByRole('button')).toHaveLength(1);
     expect(screen.getByRole('heading', { name: 'Is it halal?', level: 2 })).toBeInTheDocument();
@@ -99,7 +112,7 @@ describe('QuestionsScreen, the list', () => {
   it('says so when nothing needs you', () => {
     show([topics[1]!]);
     fireEvent.click(filter(/Needs you/));
-    expect(screen.getByText('All answered')).toBeInTheDocument();
+    expect(screen.getByText('Nothing needs you')).toBeInTheDocument();
   });
 });
 
@@ -130,11 +143,27 @@ describe('QuestionsScreen, without the template look', () => {
     expect(screen.queryByRole('navigation', { name: 'More topics' })).toBeNull();
   });
 
-  it('links to the next and previous fifty, the first page without ?page', () => {
-    show(topics, true, { answered: 0, recorded: 0 }, { page: 2, hasNext: true });
+  it('links to the next and previous pages, the first page without ?page', () => {
+    show(topics, true, { answered: 0, recorded: 0 }, { page: 2, pages: 3 });
     const nav = screen.getByRole('navigation', { name: 'More topics' });
     expect(within(nav).getByRole('link', { name: 'Previous' })).toHaveAttribute('href', '/app/questions');
     expect(within(nav).getByRole('link', { name: 'Next' })).toHaveAttribute('href', '/app/questions?page=3');
+  });
+
+  it('numbers every page, marking the one shown', () => {
+    show(topics, true, { answered: 0, recorded: 0 }, { page: 2, pages: 3 });
+    const nav = within(screen.getByRole('navigation', { name: 'More topics' }));
+    expect(nav.getByRole('link', { name: 'Page 1' })).toHaveAttribute('href', '/app/questions');
+    expect(nav.getByText('2')).toHaveAttribute('aria-current', 'page');
+    expect(nav.getByText('2')).toHaveAccessibleName('Page 2 of 3');
+    expect(nav.getByRole('link', { name: 'Page 3' })).toHaveAttribute('href', '/app/questions?page=3');
+  });
+
+  it('has no Next link on the last page', () => {
+    show(topics, true, { answered: 0, recorded: 0 }, { page: 3, pages: 3 });
+    const nav = within(screen.getByRole('navigation', { name: 'More topics' }));
+    expect(nav.getByRole('link', { name: 'Previous' })).toHaveAttribute('href', '/app/questions?page=2');
+    expect(nav.queryByRole('link', { name: 'Next' })).toBeNull();
   });
 });
 
@@ -143,9 +172,9 @@ describe('QuestionsScreen, a list longer than a page', () => {
     render(
       <QuestionsScreen
         topics={[topics[0]!]}
-        paging={{ page: 2, hasNext: true }}
+        paging={{ page: 2, pages: 3 }}
         show="needs"
-        totals={{ needs: 11, asks: 400, answeredAsks: 100 }}
+        totals={{ topics: { all: 30, needs: 11, chat: 4, answered: 15 }, asks: 400, answeredAsks: 100 }}
         choices={[
           { id: topics[0]!.id, title: topics[0]!.title, answer: null },
           { id: 'elsewhere', title: 'On another page', answer: 'Ya' },

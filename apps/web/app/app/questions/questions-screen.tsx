@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, type CSSProperties } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { OwnerTopic, TopicChoice, TopicTotals } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { PageHead } from '../_ui/page-head.js';
+import { Pager } from '../_ui/pager.js';
 import ui from '../_ui/editor.module.css';
 import panel from '../panel.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
@@ -14,13 +14,27 @@ import { CHIP_WORDS, plural, TopicDetail, topicState, type ChatLook, type TopicA
 import inbox from '../_ui/inbox.module.css';
 import styles from './questions.module.css';
 
-type Filter = 'all' | 'needs' | 'answered';
+type Filter = 'all' | 'needs' | 'chat' | 'answered';
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'needs', label: 'Needs you' },
+  { id: 'chat', label: 'By chat' },
   { id: 'answered', label: 'Answered' },
 ];
+
+/** What a filter that matches nothing says. */
+const EMPTY: Record<Exclude<Filter, 'all'>, [string, string]> = {
+  needs: ['Nothing needs you', 'Questions the chat is not sure about land here.'],
+  chat: ['Nothing yet', 'Questions the chat answers from your facts land here.'],
+  answered: ['Nothing answered yet', 'Answer a topic and it moves here.'],
+};
+
+/** Whether a topic belongs in a filter, as the server filters them. */
+const inFilter = (filter: Filter, topic: OwnerTopic) => {
+  const state = topicState(topic);
+  return filter === 'all' || (filter === 'needs' ? state === 'needs' || state === 'conflict' : state === filter);
+};
 
 /**
  * What visitors ask, grouped by topic, and the one screen that changes what
@@ -32,7 +46,7 @@ const FILTERS: { id: Filter; label: string }[] = [
  */
 export function QuestionsScreen({
   topics,
-  paging = { page: 1, hasNext: false },
+  paging = { page: 1, pages: 1 },
   show = 'all',
   onShow,
   totals,
@@ -52,8 +66,8 @@ export function QuestionsScreen({
   onChanged,
 }: {
   topics: OwnerTopic[];
-  /** Which seven, most asked first, and whether more follow. */
-  paging?: { page: number; hasNext: boolean };
+  /** Which seven, most asked first, and how many pages of them the filter has. */
+  paging?: { page: number; pages: number };
   /** The filter the server applied before paging (`?show=`). */
   show?: Filter;
   /** Asks the server for another filter's list; left out, a filter only narrows the topics in hand. */
@@ -84,8 +98,7 @@ export function QuestionsScreen({
   const [copied, setCopied] = useState(false);
   const { say, toast } = useToast(2600);
 
-  const needs = topics.filter((topic) => topicState(topic) !== 'answered');
-  const waiting = totals?.needs ?? needs.length;
+  const waiting = totals?.topics.needs ?? topics.filter((topic) => inFilter('needs', topic)).length;
   const totalAsks = totals?.asks ?? topics.reduce((sum, topic) => sum + topic.askCount, 0);
   const answeredAsks = totals?.answeredAsks ?? topics.filter((topic) => topicState(topic) === 'answered').reduce((sum, topic) => sum + topic.askCount, 0);
   // The board's figure, from what the chat recorded of each ask; until it has
@@ -97,7 +110,7 @@ export function QuestionsScreen({
     : totalAsks === 0
       ? 0
       : Math.round((answeredAsks / totalAsks) * 100);
-  const shown = filter === 'all' ? topics : filter === 'needs' ? needs : topics.filter((topic) => topicState(topic) === 'answered');
+  const shown = topics.filter((topic) => inFilter(filter, topic));
   const chosen = shown.find((topic) => topic.id === selected) ?? shown[0] ?? null;
   const most = Math.max(1, ...topics.map((topic) => topic.askCount));
 
@@ -186,10 +199,10 @@ export function QuestionsScreen({
                 </button>
               ))}
             </div>
-            {shown.length === 0 ? (
+            {shown.length === 0 && filter !== 'all' ? (
               <p className={inbox.listEmpty}>
-                <b>{filter === 'needs' ? 'All answered' : 'Nothing answered yet'}</b>
-                {filter === 'needs' ? 'New questions land here as visitors ask them.' : 'Answer a topic and it moves here.'}
+                <b>{EMPTY[filter][0]}</b>
+                {EMPTY[filter][1]}
               </p>
             ) : (
               <ul className={inbox.rows} aria-label="Topics">
@@ -215,7 +228,7 @@ export function QuestionsScreen({
                         </span>
                         <span
                           className={styles.bar}
-                          data-needs={state === 'answered' ? undefined : ''}
+                          data-needs={state === 'needs' || state === 'conflict' ? '' : undefined}
                           data-current={chosen?.id === topic.id ? '' : undefined}
                           aria-hidden="true"
                         >
@@ -227,12 +240,7 @@ export function QuestionsScreen({
                 })}
               </ul>
             )}
-            {paging.page > 1 || paging.hasNext ? (
-              <nav className={inbox.pager} aria-label="More topics">
-                {paging.page > 1 ? <Link href={listHref(show, paging.page - 1)}>Previous</Link> : null}
-                {paging.hasNext ? <Link href={listHref(show, paging.page + 1)}>Next</Link> : null}
-              </nav>
-            ) : null}
+            <Pager page={paging.page} pages={paging.pages} href={(page) => listHref(show, page)} label="More topics" />
           </div>
           <div className={inbox.detail}>
             {chosen ? (

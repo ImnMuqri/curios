@@ -7,7 +7,8 @@ const getOwnerPage = vi.fn();
 const getMyCurios = vi.fn();
 const countQuestionsThisWeek = vi.fn();
 const getAnswerRate = vi.fn(async () => ({ answered: 0, recorded: 0 }));
-const totals = { needs: 4, asks: 60, answeredAsks: 20 };
+// 30 topics in all: five pages of seven; nine need the owner: two pages.
+const totals = { topics: { all: 30, needs: 9, chat: 5, answered: 16 }, asks: 60, answeredAsks: 20 };
 const getTopicTotals = vi.fn(async () => totals);
 const getTopicChoices = vi.fn(async () => [{ id: 't1', title: 'Harga', answer: null }]);
 vi.mock('@curios/db-read', () => ({ getTopics, getOwnerPage, getMyCurios, countQuestionsThisWeek, getAnswerRate, getTopicTotals, getTopicChoices }));
@@ -85,27 +86,37 @@ describe('QuestionsPage', () => {
 
     render(await QuestionsPage({ searchParams: Promise.resolve({}) }));
 
-    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 8, offset: 0 });
-    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3, paging: { page: 1, hasNext: false }, show: 'all', totals, choices: [{ id: 't1', title: 'Harga', answer: null }] });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 7, offset: 0 });
+    expect(Topics.mock.calls[0]?.[0]).toMatchObject({ topics: [{ id: 't1' }], answerMax: 2000, titleMax: 200, faqMinAsks: 3, paging: { page: 1, pages: 5 }, show: 'all', totals, choices: [{ id: 't1', title: 'Harga', answer: null }] });
   });
 
-  it('shows seven topics a page, offers the next when an eighth came back, and reads ?page', async () => {
+  it('shows seven topics a page, counts the pages from the filter’s total, and reads ?page', async () => {
     getOwnerPage.mockResolvedValue(business);
-    getTopics.mockResolvedValue(Array.from({ length: 8 }, (_, i) => ({ id: `t${i}` })));
+    getTopics.mockResolvedValue(Array.from({ length: 7 }, (_, i) => ({ id: `t${i}` })));
 
     render(await QuestionsPage({ searchParams: Promise.resolve({ page: '3' }) }));
 
-    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 8, offset: 14 });
+    expect(getTopics).toHaveBeenCalledWith('acc1', { now: expect.any(Date), show: 'all', limit: 7, offset: 14 });
     const props = Topics.mock.calls[0]![0] as { topics: unknown[]; paging: unknown };
     expect(props.topics).toHaveLength(7);
-    expect(props.paging).toEqual({ page: 3, hasNext: true });
+    expect(props.paging).toEqual({ page: 3, pages: 5 });
+  });
+
+  it('pages a filter by its own total, and gives an empty filter one page', async () => {
+    getOwnerPage.mockResolvedValue(business);
+    render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'needs' }) }));
+    expect(Topics.mock.lastCall?.[0]).toMatchObject({ paging: { page: 1, pages: 2 } });
+
+    getTopicTotals.mockResolvedValueOnce({ ...totals, topics: { ...totals.topics, chat: 0 } });
+    render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'chat' }) }));
+    expect(Topics.mock.lastCall?.[0]).toMatchObject({ show: 'chat', paging: { page: 1, pages: 1 } });
   });
 
   it('filters with ?show before paging, ignoring a filter it does not know', async () => {
     getOwnerPage.mockResolvedValue(business);
     getTopics.mockResolvedValue([{ id: 't1' }]);
     render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'needs', page: '2' }) }));
-    expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), show: 'needs', limit: 8, offset: 7 });
+    expect(getTopics).toHaveBeenLastCalledWith('acc1', { now: expect.any(Date), show: 'needs', limit: 7, offset: 7 });
     expect(Topics.mock.lastCall?.[0]).toMatchObject({ show: 'needs' });
 
     render(await QuestionsPage({ searchParams: Promise.resolve({ show: 'everything' }) }));

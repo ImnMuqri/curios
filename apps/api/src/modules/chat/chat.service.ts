@@ -601,12 +601,13 @@ export async function* answer(
 
   /**
    * Whether the chat could answer this ask, for the Questions screen's "Of
-   * asks the chat can answer". Never the visitor's problem either.
+   * asks the chat can answer", and the model's reply when it wrote one, which
+   * that screen shows and sorts topics by. Never the visitor's problem either.
    */
-  const markAsk = async (answered: boolean) => {
+  const markAsk = async (answered: boolean, reply: string | null = null) => {
     if (!askId) return;
     try {
-      await prisma.questionAsk.update({ where: { id: askId }, data: { answered } });
+      await prisma.questionAsk.update({ where: { id: askId }, data: { answered, reply } });
     } catch (error) {
       deps.log?.warn?.({ askId, err: error instanceof Error ? error.message : String(error) }, 'could not mark the ask');
     }
@@ -775,7 +776,7 @@ export async function* answer(
     }
     // A reply that was all dropped is the fallback now: nothing was answered.
     const answered = !filter.unsure && !guard.replaced;
-    await markAsk(answered);
+    await markAsk(answered, text);
 
     await prisma.message.create({
       data: {

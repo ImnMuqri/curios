@@ -9,15 +9,14 @@ import { Questions } from './questions-screen.js';
  * What customers actually ask, and the one screen that changes what the
  * product says back.
  *
- * Ranked by ask count. BACKEND.md's original design ranked by whether the
- * model refused; that is not detected and is not detectable across Malay,
- * Manglish and English -- see its refusal rule. A question asked nine times is
- * a gap either way.
+ * Ranked by ask count. "Needs you" holds the topics the chat could not
+ * answer on its own the last time it was asked (its "not sure" marker, see
+ * unsure.ts), and the ones it has never replied to yet.
  */
-/** Topics a screen shows; `?page=2` is the next seven, most asked first. `?show=needs|answered` filters, before paging. */
+/** Topics a screen shows; `?page=2` is the next seven, most asked first. `?show=needs|chat|answered` filters, before paging. */
 const TOPICS_PER_PAGE = 7;
 
-const SHOWS: readonly TopicShow[] = ['all', 'needs', 'answered'];
+const SHOWS: readonly TopicShow[] = ['all', 'needs', 'chat', 'answered'];
 
 export default async function QuestionsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[]; show?: string | string[] }> }) {
   const query = await searchParams;
@@ -30,20 +29,20 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
   // week of asks read the same on the server and in the browser.
   const now = new Date();
   const [topics, askedThisWeek, answerRate, owned, page, totals, choices] = await Promise.all([
-    // One more than a screen, only to know whether to offer the next.
-    getTopics(owner.accountId, { now, show, limit: TOPICS_PER_PAGE + 1, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
+    getTopics(owner.accountId, { now, show, limit: TOPICS_PER_PAGE, offset: (pageNumber - 1) * TOPICS_PER_PAGE }),
     countQuestionsThisWeek(owner.accountId, now),
     getAnswerRate(owner.accountId, now),
     getOwnerPage(owner.accountId),
     // For the chat preview's colours.
     getMyCurios(owner.accountId),
-    // Over every topic, not this screenful: the filter's count, the answered share, what to merge into.
+    // Over every topic, not this screenful: each filter's count and pages, the answered share, what to merge into.
     getTopicTotals(owner.accountId),
     getTopicChoices(owner.accountId),
   ]);
   if (!owned || !page) redirect('/app/onboarding');
+  const pages = Math.max(1, Math.ceil(totals.topics[show] / TOPICS_PER_PAGE));
   // Past the last page (topics merged or deleted since the link was made): the first one.
-  if (pageNumber > 1 && topics.length === 0) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
+  if (pageNumber > pages) redirect(show === 'all' ? '/app/questions' : `/app/questions?show=${show}`);
 
   // Plain data across the boundary: strings, numbers, booleans and Dates all
   // cross fine. The handlers live inside `Questions`, a client component -- a
@@ -53,8 +52,8 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
     <Questions
       // Keyed by the page, as Leads is: each page of topics starts fresh after a client-side navigation.
       key={`${show}-${pageNumber}`}
-      topics={topics.slice(0, TOPICS_PER_PAGE)}
-      paging={{ page: pageNumber, hasNext: topics.length > TOPICS_PER_PAGE }}
+      topics={topics}
+      paging={{ page: pageNumber, pages }}
       show={show}
       totals={totals}
       choices={choices}

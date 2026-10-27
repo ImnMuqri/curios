@@ -33,13 +33,19 @@ export type ChatLook = Parameters<typeof themeAttrs>[0];
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
 const toMessage = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'Something failed. Try again.');
 
-/** Needs answer, Two answers, or Answered: what a topic is waiting on. */
-export function topicState(topic: OwnerTopic): 'conflict' | 'needs' | 'answered' {
+/**
+ * Two answers, Answered (the owner's), Chat answered (no answer of the
+ * owner's, but the model's latest reply answered it from the facts), or Needs
+ * answer (it said it was not sure, or has not replied yet). The server's
+ * filters split topics the same way (topics.query.ts).
+ */
+export function topicState(topic: Pick<OwnerTopic, 'answer' | 'conflictAnswer' | 'chat'>): 'conflict' | 'needs' | 'chat' | 'answered' {
   if (topic.conflictAnswer !== null) return 'conflict';
-  return topic.answer ? 'answered' : 'needs';
+  if (topic.answer) return 'answered';
+  return topic.chat?.answered ? 'chat' : 'needs';
 }
 
-export const CHIP_WORDS = { conflict: 'Two answers', needs: 'Needs answer', answered: 'Answered' } as const;
+export const CHIP_WORDS = { conflict: 'Two answers', needs: 'Needs answer', chat: 'Chat answered', answered: 'Answered' } as const;
 
 /**
  * The chosen topic, on its own: what it is waiting on, how people asked it,
@@ -265,7 +271,7 @@ export function TopicDetail({
                           setDraft(null);
                           setSaved({ answer: null });
                         },
-                        'Answer withdrawn. The chat will say it is not sure.',
+                        'Answer withdrawn. The chat replies from your facts, or says it is not sure.',
                       )
                     }
                   >
@@ -307,17 +313,31 @@ export function TopicDetail({
                 <i aria-hidden="true" />
                 On your page
               </span>
-              <VisitorQuestion>{topic.wordings[0]?.text ?? topic.title}</VisitorQuestion>
               {live ? (
-                <PageReply name={pageName}>
-                  {typing ? typing.text.slice(0, typing.shown) : answer}
-                  {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
-                </PageReply>
+                <>
+                  <VisitorQuestion>{topic.wordings[0]?.text ?? topic.title}</VisitorQuestion>
+                  <PageReply name={pageName}>
+                    {typing ? typing.text.slice(0, typing.shown) : answer}
+                    {typing ? <span className={styles.caret} aria-hidden="true" /> : null}
+                  </PageReply>
+                </>
+              ) : topic.chat ? (
+                // What the chat really said, the last time it was asked.
+                <>
+                  <VisitorQuestion>{topic.chat.asked}</VisitorQuestion>
+                  <PageReply name={pageName}>{topic.chat.reply}</PageReply>
+                  <span className={styles.replyNote}>
+                    {topic.chat.answered
+                      ? `Answered from your facts, ${relativeTime(topic.chat.at, now)}. Write your own answer and the chat uses it instead.`
+                      : `The chat wasn’t sure, ${relativeTime(topic.chat.at, now)}. Your answer replaces this reply.`}
+                  </span>
+                </>
               ) : (
                 <>
+                  <VisitorQuestion>{topic.wordings[0]?.text ?? topic.title}</VisitorQuestion>
                   <PageReply name={pageName}>I’m not sure about that one. Leave your number and {firstName(pageName)} will get back to you.</PageReply>
                   <LeadCard name={pageName} />
-                  <span className={styles.replyNote}>Without your answer, the chat replies from your facts, or says it isn&apos;t sure.</span>
+                  <span className={styles.replyNote}>No reply kept for this topic yet. Without your answer, the chat replies from your facts, or says it isn&apos;t sure.</span>
                 </>
               )}
             </div>

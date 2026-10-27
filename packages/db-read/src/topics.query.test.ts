@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { countQuestionsThisWeek, getAnswerRate, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
+import { countQuestionsThisWeek, countTopicsNeedingOwner, getAnswerRate, getTopicChoices, getTopics, getTopicTotals } from './topics.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -199,32 +199,63 @@ describe('getAnswerRate', () => {
 describe('a filtered list, and figures over every topic', () => {
   let owner = '';
   let other = '';
+  const at = (day: number) => new Date(Date.UTC(2026, 9, day));
   beforeAll(async () => {
     const page = await anOwnerWithAPage();
     owner = page.accountId;
-    await topic(page.pageId, 'harga', 9, '2026-10-20T00:00:00Z');
+    const asks = async (topicId: string, text: string, list: { day: number; answered: boolean | null; reply: string | null }[]) => {
+      const q = await wording(page.pageId, topicId, text, list.length, '2026-10-01T00:00:00Z');
+      await write.questionAsk.createMany({ data: list.map(({ day, ...ask }) => ({ questionId: q.id, askedAt: at(day), ...ask })) });
+    };
+    // Not sure once, then answered from the facts: the chat copes now.
+    const harga = await topic(page.pageId, 'harga', 9, '2026-10-20T00:00:00Z');
+    await asks(harga.id, 'harga?', [
+      { day: 10, answered: false, reply: 'Tak pasti.' },
+      { day: 12, answered: true, reply: 'RM95 sebiji.' },
+      // The month's fixed reply after it says nothing either way.
+      { day: 13, answered: null, reply: null },
+    ]);
     await topic(page.pageId, 'hantar', 7, '2026-10-20T00:00:00Z', { answer: 'Ya' });
     await topic(page.pageId, 'halal', 5, '2026-10-20T00:00:00Z', { answer: 'Ya', conflictAnswer: 'Tidak' });
     await topic(page.pageId, 'buka', 3, '2026-10-20T00:00:00Z', { answer: '9 pagi' });
-    await topic(page.pageId, 'tutup', 1, '2026-10-20T00:00:00Z');
+    // Answered once, then not sure: it needs the owner again. The ask with no reply after it is from before replies were kept.
+    const tutup = await topic(page.pageId, 'tutup', 2, '2026-10-20T00:00:00Z');
+    await asks(tutup.id, 'tutup bila?', [
+      { day: 10, answered: true, reply: 'Pukul 6.' },
+      { day: 12, answered: false, reply: 'Tak pasti, saya tanya Lina.' },
+    ]);
+    await asks(tutup.id, 'bila tutup', [{ day: 14, answered: true, reply: null }]);
+    // Never replied to by the model: it needs the owner, as before.
+    await topic(page.pageId, 'parking', 1, '2026-10-20T00:00:00Z');
     other = (await anOwnerWithAPage()).accountId;
   });
 
   it('filters before paging, so each filter pages through every topic it matches', async () => {
-    const titles = async (show: 'needs' | 'answered', offset: number) =>
+    const titles = async (show: 'needs' | 'chat' | 'answered', offset: number) =>
       (await getTopics(owner, { show, limit: 2, offset })).map((t) => t.title);
-    expect(await titles('needs', 0)).toEqual(['harga', 'halal']);
-    expect(await titles('needs', 2)).toEqual(['tutup']);
+    expect(await titles('needs', 0)).toEqual(['halal', 'tutup']);
+    expect(await titles('needs', 2)).toEqual(['parking']);
+    expect(await titles('chat', 0)).toEqual(['harga']);
     expect(await titles('answered', 0)).toEqual(['hantar', 'buka']);
   });
 
-  it('counts what needs the owner and the asks across all of them, and only this owner\'s', async () => {
-    expect(await getTopicTotals(owner)).toEqual({ needs: 3, asks: 25, answeredAsks: 10 });
-    expect(await getTopicTotals(other)).toEqual({ needs: 0, asks: 0, answeredAsks: 0 });
+  it("carries the model's latest reply and the wording it answered, or null when it never replied", async () => {
+    const topics = await getTopics(owner);
+    const chat = (title: string) => topics.find((t) => t.title === title)?.chat;
+    expect(chat('harga')).toEqual({ asked: 'harga?', reply: 'RM95 sebiji.', answered: true, at: at(12) });
+    expect(chat('tutup')).toEqual({ asked: 'tutup bila?', reply: 'Tak pasti, saya tanya Lina.', answered: false, at: at(12) });
+    expect(chat('parking')).toBeNull();
+    expect(chat('hantar')).toBeNull();
+  });
+
+  it("counts each filter's topics and the asks across all of them, and only this owner's", async () => {
+    expect(await getTopicTotals(owner)).toEqual({ topics: { all: 6, needs: 3, chat: 1, answered: 2 }, asks: 27, answeredAsks: 10 });
+    expect(await getTopicTotals(other)).toEqual({ topics: { all: 0, needs: 0, chat: 0, answered: 0 }, asks: 0, answeredAsks: 0 });
+    expect(await countTopicsNeedingOwner(owner)).toBe(3);
   });
 
   it('lists every topic to merge into, most asked first', async () => {
-    expect((await getTopicChoices(owner)).map((t) => t.title)).toEqual(['harga', 'hantar', 'halal', 'buka', 'tutup']);
+    expect((await getTopicChoices(owner)).map((t) => t.title)).toEqual(['harga', 'hantar', 'halal', 'buka', 'tutup', 'parking']);
     expect(await getTopicChoices(other)).toEqual([]);
   });
 });

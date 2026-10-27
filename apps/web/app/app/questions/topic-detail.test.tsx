@@ -20,6 +20,7 @@ const klang: OwnerTopic = {
     { id: 'w3', text: 'delivery klang ada?', askCount: 3 },
   ],
   week: [1, 2, 1, 3, 2, 2, 3],
+  chat: null,
 };
 
 const halal: OwnerTopic = { ...klang, id: 't2', title: 'Is it halal?', askCount: 11, answer: 'Yes, all halal.', faqSlug: 'is-it-halal', wordings: [{ id: 'w4', text: 'Is it halal?', askCount: 11 }] };
@@ -152,6 +153,23 @@ describe('TopicDetail, the answer', () => {
   it('says what the chat does without an answer, rather than inventing a reply', () => {
     show();
     expect(within(screen.getByLabelText('How the chat replies')).getByText(/replies from your facts, or says it isn.t sure/)).toBeInTheDocument();
+  });
+
+  it('shows what the chat really answered from the facts, to the wording it was asked in', () => {
+    show({ ...klang, chat: { asked: 'boleh hantar ke klang tak', reply: 'Boleh, RM10 ke Klang.', answered: true, at: new Date('2026-10-17T04:00:00Z') } });
+    const chat = within(screen.getByLabelText('How the chat replies'));
+    expect(chat.getByText('Boleh, RM10 ke Klang.')).toBeInTheDocument();
+    expect(chat.getByText(/Answered from your facts, 2h ago/)).toBeInTheDocument();
+    expect(chat.queryByText('Kek can answer this one')).toBeNull();
+    expect(screen.getByText('Chat answered')).toBeInTheDocument();
+  });
+
+  it('shows the chat’s real "not sure" reply, and the topic still needs an answer', () => {
+    show({ ...klang, chat: { asked: 'Do you deliver to Klang?', reply: 'Tak pasti, saya tanya Lina.', answered: false, at: new Date('2026-10-17T05:00:00Z') } });
+    const chat = within(screen.getByLabelText('How the chat replies'));
+    expect(chat.getByText('Tak pasti, saya tanya Lina.')).toBeInTheDocument();
+    expect(chat.getByText(/wasn’t sure, 1h ago. Your answer replaces this reply/)).toBeInTheDocument();
+    expect(screen.getByText('Needs answer')).toBeInTheDocument();
   });
 
   it('without an answer, shows the unsure reply and the lead card, as the page would', () => {

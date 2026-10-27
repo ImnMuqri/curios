@@ -653,6 +653,21 @@ describe('threading a conversation', () => {
     expect(await answered('Berapa harga?')).toBe(true);
   });
 
+  it("keeps the model's reply on the ask, as the visitor saw it, and none for the owner's answer", async () => {
+    await ask(depsSaying('Kek butter 1kg RM95.'), 'Berapa harga kek butter?');
+    await ask(depsSaying('[?] Tak pasti, saya akan tanya Nadia.'), 'Ada delivery ke Klang?');
+    await seedNadiaPrice();
+    await ask(depsSaying('unused'), 'Berapa harga?');
+
+    const reply = async (text: string) =>
+      (await prisma.questionAsk.findFirstOrThrow({ where: { question: { text } }, select: { reply: true } })).reply;
+    expect(await reply('Berapa harga kek butter?')).toBe('Kek butter 1kg RM95.');
+    // Without the marker the visitor never saw.
+    expect(await reply('Ada delivery ke Klang?')).toBe('Tak pasti, saya akan tanya Nadia.');
+    // The owner wrote that one; it says nothing about what the chat can answer on its own.
+    expect(await reply('Berapa harga?')).toBeNull();
+  });
+
   it('never lets a visitor see the not-sure marker, in the stream or the stored reply', async () => {
     const events = await ask(depsSaying('[?] Tak pasti, saya akan tanya Nadia.'), 'Ada delivery ke Klang?');
 
