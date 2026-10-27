@@ -8,9 +8,10 @@
  * Whole ringgit carry no decimals.
  */
 export function ringgit(cents: number): string {
-  const whole = Math.trunc(cents / 100)
+  const sign = cents < 0 ? '-' : '';
+  const whole = Math.trunc(Math.abs(cents) / 100)
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   const sen = Math.abs(cents % 100);
-  return sen === 0 ? `RM${whole}` : `RM${whole}.${sen.toString().padStart(2, '0')}`;
+  return sen === 0 ? `${sign}RM${whole}` : `${sign}RM${whole}.${sen.toString().padStart(2, '0')}`;
 }
