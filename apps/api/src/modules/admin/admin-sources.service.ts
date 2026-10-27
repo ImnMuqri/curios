@@ -1,4 +1,4 @@
-import { ADMIN_ACTIONS, isWalledSource } from '@curios/core';
+import { ADMIN_ACTIONS, isWalledSource, RETRY_WINDOW_MS } from '@curios/core';
 import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import type { QueueLike } from '../ingest/ingest.service.js';
@@ -15,7 +15,6 @@ export interface AdminSourcesDeps {
 }
 
 /** How far back "retry all failed" looks, by when the row last changed. */
-const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export class SourceStateError extends Error {
   readonly statusCode = 409;

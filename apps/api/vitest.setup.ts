@@ -79,4 +79,4 @@ process.env.PAYMENT_SECRETS_KEY = Buffer.alloc(32, 7).toString('base64');
 // The key for reporters' address hashes, required in production. A fixed dummy so the
 // production-boot tests reach the setting they mean to prove; report.routes.test.ts passes
 // its own through AppOverrides.reports.
-process.env.REPORT_IP_SECRET = 'test-report-ip-secret';
+process.env.REPORT_IP_SECRET = 'test-report-ip-secret-of-at-least-32-chars';

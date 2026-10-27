@@ -37,6 +37,7 @@ export {
   inspectSourceUrl,
   isWalledSource,
   requirePublicAddresses,
+  RETRY_WINDOW_MS,
 } from './source-url.js';
 export type { ResolvedAddress, SourceUrlVerdict } from './source-url.js';
 export { formatMalaysianPhone, normalizeMalaysianPhone, phoneNumbersIn, withoutContactDetails, withoutPhoneNumbers } from './phone.js';

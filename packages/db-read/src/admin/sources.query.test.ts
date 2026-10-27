@@ -54,6 +54,16 @@ describe('listSources', () => {
     expect(rows.find((r) => r.source === 'example.com/menu?lang=ms&page=2')).toMatchObject({ facts: 12 });
   });
 
+  it('keeps every query key but hides the value of one that may be a secret or an address', async () => {
+    const made = await read({ sourceUrl: 'https://example.com/p?id=7&access_token=abc&Email=a%40b.my&sessionId=9&api-key=k&lang=ms', status: 'SUCCEEDED' });
+    try {
+      const rows = await listSources({ filter: 'done', limit: 50 });
+      expect(rows.find((r) => r.source.startsWith('example.com/p?'))!.source).toBe('example.com/p?id=7&access_token=…&Email=…&sessionId=…&api-key=…&lang=ms');
+    } finally {
+      await write.ingestion.delete({ where: { id: made.id } });
+    }
+  });
+
   it('reads a failed Instagram link as Walled', async () => {
     const rows = await listSources({ filter: 'failed' });
     expect(rows.map((r) => [r.source, r.status])).toEqual([
@@ -79,6 +89,17 @@ describe('getSourceStats', () => {
     // Of the two failed reads, the Instagram one is walled: only the broken one can be retried.
     expect(s.retryable).toBe(1);
     expect(s.counts).toEqual({ all: 9, running: 2, failed: 2, done: 5 });
+  });
+
+  it('does not count a failure older than the retry window as retryable', async () => {
+    const old = await read({ sourceUrl: 'https://example.com/ancient', status: 'FAILED', error: 'timeout', createdAt: new Date(NOW.getTime() - 40 * DAY), updatedAt: new Date(NOW.getTime() - 30 * DAY) });
+    try {
+      const s = await getSourceStats(NOW);
+      expect(s.retryable).toBe(1);
+      expect(s.counts.failed).toBe(3);
+    } finally {
+      await write.ingestion.delete({ where: { id: old.id } });
+    }
   });
 
   it('takes the median of URL reads that succeeded in the last 7 days', async () => {

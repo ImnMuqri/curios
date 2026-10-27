@@ -246,10 +246,11 @@ export function SourcesScreen({
           onConfirm={(reason) =>
             send(
               () => post('/admin/sources/retry-failed', reason),
-              (result) =>
-                (result as { queued?: number } | null)?.queued === 0
-                  ? 'Nothing to retry. Walled sources are skipped.'
-                  : 'Failed reads queued again. Walled ones are skipped.',
+              (result) => {
+                const { queued, skipped } = (result ?? {}) as { queued?: number; skipped?: number };
+                if (queued === 0) return skipped ? 'Nothing to retry. Walled sources are skipped.' : 'Nothing to retry from the last 7 days.';
+                return 'Failed reads queued again. Walled ones are skipped.';
+              },
             )
           }
           onClose={() => setAsking(null)}

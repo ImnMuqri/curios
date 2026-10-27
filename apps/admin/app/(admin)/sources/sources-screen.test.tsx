@@ -202,6 +202,30 @@ describe('SourcesScreen', () => {
     expect(await screen.findByRole('status')).toHaveTextContent('Nothing to retry. Walled sources are skipped.');
   });
 
+  it('says nothing failed in the last 7 days when the API queued and skipped none', async () => {
+    apiFetch.mockResolvedValue({ queued: 0, skipped: 0 });
+    render(<SourcesScreen {...base} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Retry all failed' }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.type(within(dialog).getByRole('textbox'), 'Outage over');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Retry all failed' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Nothing to retry from the last 7 days.');
+  });
+
+  it('keeps the queued-again toast when some were queued', async () => {
+    apiFetch.mockResolvedValue({ queued: 2, skipped: 1 });
+    render(<SourcesScreen {...base} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Retry all failed' }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.type(within(dialog).getByRole('textbox'), 'Outage over');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Retry all failed' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Failed reads queued again. Walled ones are skipped.');
+  });
+
   it('clears a stale error once a later action succeeds', async () => {
     const { ApiError } = await import('../../../lib/api.js');
     apiFetch.mockRejectedValueOnce(new ApiError(502, 'QUEUE_UNAVAILABLE', 'x'));

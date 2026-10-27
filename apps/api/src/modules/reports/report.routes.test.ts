@@ -3,7 +3,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { REPORT_REASONS } from '@curios/core';
 import { buildApp } from '../../app.js';
-import { DEV_REPORT_IP_SECRET, resolveReportIpSecret } from './report.routes.js';
+import { DEV_REPORT_IP_SECRET, REPORT_IP_SECRET_PLACEHOLDER, resolveReportIpSecret } from './report.routes.js';
 
 const IP_SECRET = 'report-ip-secret-for-tests';
 
@@ -169,7 +169,13 @@ describe('POST /pages/:handle/report', () => {
 
 describe('resolveReportIpSecret', () => {
   it('takes the configured secret', () => {
-    expect(resolveReportIpSecret({ ipSecret: 'set' }, true, { warn: vi.fn() })).toBe('set');
+    expect(resolveReportIpSecret({ ipSecret: 'set' }, false, { warn: vi.fn() })).toBe('set');
+    expect(resolveReportIpSecret({ ipSecret: 'k'.repeat(32) }, true, { warn: vi.fn() })).toBe('k'.repeat(32));
+  });
+
+  it('refuses the .env.example placeholder, and anything under 32 characters, in production', () => {
+    expect(() => resolveReportIpSecret({ ipSecret: REPORT_IP_SECRET_PLACEHOLDER }, true, { warn: vi.fn() })).toThrow(/not the .env.example placeholder/);
+    expect(() => resolveReportIpSecret({ ipSecret: 'k'.repeat(31) }, true, { warn: vi.fn() })).toThrow(/at least 32 characters/);
   });
 
   it('refuses to start in production without one', () => {

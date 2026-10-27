@@ -1,4 +1,4 @@
-import { isWalledSource } from '@curios/core';
+import { isWalledSource, RETRY_WINDOW_MS } from '@curios/core';
 import type { Prisma } from '@prisma/client';
 import { prismaRead } from '../client.js';
 import { DAY_MS, malaysiaMidnight } from './days.js';
@@ -42,16 +42,42 @@ const FILTERS: Record<SourceFilter, Prisma.IngestionWhereInput> = {
 /** The row ellipsises long labels in CSS; this only keeps a pathological URL from filling the payload. */
 const LABEL_MAX = 200;
 
+/** A query value that may be a secret or a person's address: the key stays, the value goes. */
+const SENSITIVE_KEY = /token|key|sig|secret|auth|pass|code|email|session/i;
+
+function maskQuery(search: string): string {
+  if (!search.startsWith('?')) return search;
+  return (
+    '?' +
+    search
+      .slice(1)
+      .split('&')
+      .map((pair) => {
+        const eq = pair.indexOf('=');
+        if (eq < 0) return pair;
+        let key = pair.slice(0, eq);
+        try {
+          key = decodeURIComponent(key);
+        } catch {
+          // a key that does not decode is matched as written
+        }
+        return SENSITIVE_KEY.test(key) ? `${pair.slice(0, eq)}=…` : pair;
+      })
+      .join('&')
+  );
+}
+
 function sourceLabel(row: { sourceUrl: string | null; fileName: string | null }): string {
   if (row.fileName) return row.fileName;
   if (row.sourceUrl) {
     try {
       const url = new URL(row.sourceUrl);
       // Host, path and query: two reads of one page with different queries must not look alike.
-      const label = `${url.host}${url.pathname === '/' ? '' : url.pathname}${url.search}`;
+      const label = `${url.host}${url.pathname === '/' ? '' : url.pathname}${maskQuery(url.search)}`;
       return label.length > LABEL_MAX ? `${label.slice(0, LABEL_MAX - 1)}…` : label;
     } catch {
-      return row.sourceUrl;
+      const q = row.sourceUrl.indexOf('?');
+      return q < 0 ? row.sourceUrl : row.sourceUrl.slice(0, q) + maskQuery(row.sourceUrl.slice(q));
     }
   }
   return 'Pasted text';
@@ -103,7 +129,8 @@ export async function getSourceStats(now: Date): Promise<SourceStats> {
     prismaRead.ingestion.count({ where: FILTERS.running }),
     prismaRead.ingestion.count({ where: FILTERS.failed }),
     prismaRead.ingestion.count({ where: FILTERS.done }),
-    prismaRead.ingestion.findMany({ where: FILTERS.failed, select: { sourceUrl: true } }),
+    // Only what "Retry all failed" would look at: failed within its window, and just the address.
+    prismaRead.ingestion.findMany({ where: { status: 'FAILED', updatedAt: { gte: new Date(now.getTime() - RETRY_WINDOW_MS) } }, select: { sourceUrl: true } }),
   ]);
   const retryable = failedUrls.filter((r) => !isWalledSource(r.sourceUrl)).length;
   const median = typical[0]?.median ?? null;

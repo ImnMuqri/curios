@@ -12,6 +12,10 @@ export interface ReportRouteOptions {
   production?: boolean;
 }
 
+/** What .env.example ships; production refuses it. */
+export const REPORT_IP_SECRET_PLACEHOLDER = 'replace-this-generate-your-own-with-openssl-rand-hex-32';
+const REPORT_IP_SECRET_MIN = 32;
+
 /** Outside production only, where no REPORT_IP_SECRET is set. Public, so it keys nothing worth keeping. */
 export const DEV_REPORT_IP_SECRET = 'curios-dev-report-ip-secret';
 
@@ -25,8 +29,14 @@ export function resolveReportIpSecret(
   log: { warn: (msg: string) => void },
 ): string {
   const secret = options.ipSecret !== undefined ? options.ipSecret : process.env.REPORT_IP_SECRET;
+  if (production) {
+    if (!secret) throw new Error('REPORT_IP_SECRET is not set');
+    if (secret === REPORT_IP_SECRET_PLACEHOLDER || secret.length < REPORT_IP_SECRET_MIN) {
+      throw new Error(`REPORT_IP_SECRET must be your own secret of at least ${REPORT_IP_SECRET_MIN} characters, not the .env.example placeholder (openssl rand -hex 32)`);
+    }
+    return secret;
+  }
   if (secret) return secret;
-  if (production) throw new Error('REPORT_IP_SECRET is not set');
   log.warn('No REPORT_IP_SECRET: report addresses are hashed with a fixed development key. Production refuses to start without it.');
   return DEV_REPORT_IP_SECRET;
 }

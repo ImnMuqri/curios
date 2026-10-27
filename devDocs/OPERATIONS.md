@@ -644,7 +644,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
 | `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |
 | `SESSION_SECRET` (`openssl rand -hex 32`) | ✓ | | |
-| `REPORT_IP_SECRET` (`openssl rand -hex 32`): keys the hash of a reporter's address. **Required in production: the API refuses to boot without it** | ✓ | | |
+| `REPORT_IP_SECRET` (`openssl rand -hex 32`): keys the hash of a reporter's address. **Required in production: the API refuses to boot without it, or with the `.env.example` placeholder, or with fewer than 32 characters** | ✓ | | |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI=https://api.curios.my/auth/google/callback` | ✓ | | |
 | `COOKIE_DOMAIN=.curios.my` | ✓ | | |
 | `TRUST_PROXY` (below) | ✓ | | |

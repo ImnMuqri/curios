@@ -10,6 +10,9 @@ import { hostOf, onDomain } from './bento.js';
  * detail. The address that caused it travels on `blocked`, which only the log
  * reads.
  */
+/** How far back "Retry all failed" looks: a FAILED source updated within this window. The admin's button and the API share it. */
+export const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 export class BlockedAddressError extends Error {
   readonly code = 'BLOCKED_SOURCE_URL';
   readonly blocked: string;
