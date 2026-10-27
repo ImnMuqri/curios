@@ -80,6 +80,9 @@ export const DOMAIN_ERROR_CODES = new Set([
   // Admin Reading sources: a retry of a source that is not failed or cannot be read, or while reading is off.
   'SOURCE_STATE',
   'READING_OFF',
+  // Controls: the reading switch could not pause or resume the ingest queue, so nothing was saved.
+  // A 502 whose own sentence reaches the admin (OWN_MESSAGE_CODES below).
+  'QUEUE_UNAVAILABLE',
   // Never-say: a phrase that is not one short line, one already listed, or one too many.
   'INVALID_NEVER_SAY',
   'NEVER_SAY_DUPLICATE',
@@ -214,6 +217,12 @@ export const DOMAIN_ERROR_CODES = new Set([
 export const SWITCH_CODES = new Set(['SIGNUPS_CLOSED', 'READING_PAUSED', 'PAYMENTS_OFF']);
 
 /**
+ * 5xx codes whose own sentence is safe to show as written: it says what failed and that nothing was
+ * changed, which the generic sentence would not. Still a fault, so still logged as an error.
+ */
+export const OWN_MESSAGE_CODES = new Set(['QUEUE_UNAVAILABLE']);
+
+/**
  * Domain errors are mapped once, here. Messages are user-facing and follow the
  * copy rules: say what happened and what to do next, never apologise.
  */
@@ -237,7 +246,7 @@ export const errorsPlugin = fp(async (app: FastifyInstance) => {
       error: {
         code,
         ...fields,
-        message: statusCode >= 500 && !switchedOff ? 'Something failed on our side. Try again.' : error.message,
+        message: statusCode >= 500 && !switchedOff && !OWN_MESSAGE_CODES.has(code) ? 'Something failed on our side. Try again.' : error.message,
       },
     });
   });

@@ -185,7 +185,7 @@ describe('limits and prices', () => {
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
   });
 
-  it('lists each changed value as old → new in the confirm, then PUTs every value with the reason', async () => {
+  it('lists each changed value as old → new in the confirm, then PUTs only that value with the reason', async () => {
     render(<ControlsScreen settings={settings()} />);
 
     const monthly = screen.getByLabelText('Business, monthly');
@@ -202,7 +202,7 @@ describe('limits and prices', () => {
     await userEvent.click(within(dialog).getByRole('button', { name: 'Save for everyone' }));
 
     expect(apiFetch).toHaveBeenCalledWith('/admin/settings/limits', expect.objectContaining({ method: 'PUT' }));
-    expect(body()).toEqual({ cap: 200, freeLeads: 3, freeOrders: 3, monthlyRm: 79, yearlyRm: 490, reason: 'Costs went up' });
+    expect(body()).toEqual({ monthlyRm: 79, reason: 'Costs went up' });
     expect(refresh).toHaveBeenCalled();
     expect(screen.getByRole('status')).toHaveTextContent('Saved for every page.');
   });
@@ -225,7 +225,7 @@ describe('limits and prices', () => {
     await userEvent.click(within(second).getByRole('button', { name: 'Save anyway' }));
 
     expect(apiFetch).toHaveBeenCalledTimes(2);
-    expect(body(1)).toEqual({ cap: 200, freeLeads: 3, freeOrders: 3, monthlyRm: 149, yearlyRm: 490, reason: 'Repricing', confirmBig: true });
+    expect(body(1)).toEqual({ monthlyRm: 149, reason: 'Repricing', confirmBig: true });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('status')).toHaveTextContent('Saved for every page.');
   });
@@ -236,6 +236,53 @@ describe('limits and prices', () => {
     await userEvent.clear(screen.getByLabelText('Free leads on a trial'));
 
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+
+  it('does not save free leads or free orders of 0', async () => {
+    render(<ControlsScreen settings={settings()} />);
+
+    const leads = screen.getByLabelText('Free leads on a trial');
+    await userEvent.clear(leads);
+    await userEvent.type(leads, '0');
+    expect(leads).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+
+    await userEvent.clear(leads);
+    await userEvent.type(leads, '3');
+    const orders = screen.getByLabelText('Free orders on a trial');
+    await userEvent.clear(orders);
+    await userEvent.type(orders, '0');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+
+  it('sends two changed values and nothing else', async () => {
+    render(<ControlsScreen settings={settings()} />);
+
+    const cap = screen.getByLabelText('Conversations a month, per page');
+    await userEvent.clear(cap);
+    await userEvent.type(cap, '80');
+    const orders = screen.getByLabelText('Free orders on a trial');
+    await userEvent.clear(orders);
+    await userEvent.type(orders, '5');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.type(screen.getByLabelText('Reason, for the audit log'), 'Review');
+    await userEvent.click(screen.getByRole('button', { name: 'Save for everyone' }));
+
+    expect(body()).toEqual({ cap: 80, freeOrders: 5, reason: 'Review' });
+  });
+});
+
+describe('a reading queue that cannot be reached', () => {
+  it('says so in words, whatever sentence the API sent', async () => {
+    apiFetch.mockRejectedValueOnce(new ApiError(502, 'QUEUE_UNAVAILABLE', 'Something failed on our side. Try again.'));
+    render(<ControlsScreen settings={settings()} />);
+
+    await userEvent.click(screen.getByRole('switch', { name: 'Reading new sources' }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.type(within(dialog).getByLabelText('Reason, for the audit log'), 'Queue backed up');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Turn it off' }));
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent("Couldn't reach the reading queue. Nothing was changed. Try again.");
   });
 });
 

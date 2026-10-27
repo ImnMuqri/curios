@@ -15,8 +15,8 @@ type LimitField = 'cap' | 'freeLeads' | 'freeOrders' | 'monthlyRm' | 'yearlyRm';
 /** The board's five inputs: label, subline, unit, and the range the API accepts. */
 const LIMITS: { key: LimitField; title: string; subline: string; unit: string; min: number; max: number; rm?: true }[] = [
   { key: 'cap', title: 'Conversations a month, per page', subline: 'Then the fixed reply until the 1st', unit: 'conversations', min: 1, max: 100000 },
-  { key: 'freeLeads', title: 'Free leads on a trial', subline: 'Numbers before the capture card stops', unit: 'leads', min: 0, max: 1000 },
-  { key: 'freeOrders', title: 'Free orders on a trial', subline: 'Before checkout pauses', unit: 'orders', min: 0, max: 1000 },
+  { key: 'freeLeads', title: 'Free leads on a trial', subline: 'Numbers before the capture card stops', unit: 'leads', min: 1, max: 1000 },
+  { key: 'freeOrders', title: 'Free orders on a trial', subline: 'Before checkout pauses', unit: 'orders', min: 1, max: 1000 },
   { key: 'monthlyRm', title: 'Business, monthly', subline: 'Charged through CHIP', unit: 'RM', min: 1, max: PRICE_MAX_RM * 10, rm: true },
   { key: 'yearlyRm', title: 'Business, yearly', subline: 'Charged through CHIP', unit: 'RM', min: 1, max: PRICE_MAX_RM * 10, rm: true },
 ];
@@ -120,12 +120,9 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
     }
   }
 
+  // Only what the admin changed: a value another admin saved since this page loaded is left alone.
   const limitsBody = (reason: string, confirmBig: boolean) => ({
-    cap: Number(values.cap),
-    freeLeads: Number(values.freeLeads),
-    freeOrders: Number(values.freeOrders),
-    monthlyRm: Number(values.monthlyRm),
-    yearlyRm: Number(values.yearlyRm),
+    ...Object.fromEntries(changed.map((l) => [l.key, Number(values[l.key])])),
     reason,
     ...(confirmBig ? { confirmBig: true } : {}),
   });

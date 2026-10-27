@@ -39,14 +39,25 @@ export class NoChangeError extends Error {
   }
 }
 
+export class QueueUnavailableError extends Error {
+  readonly statusCode = 502;
+  readonly code = 'QUEUE_UNAVAILABLE';
+
+  constructor(cause: unknown) {
+    super("Couldn't reach the reading queue. Nothing was changed. Try again.", { cause });
+    this.name = 'QueueUnavailableError';
+  }
+}
+
+/** Only the limits the admin changed are sent; a field left out keeps whatever is stored now. */
 export interface LimitsInput {
-  cap: number;
-  freeLeads: number;
-  freeOrders: number;
-  monthlyRm: number;
-  yearlyRm: number;
+  cap?: number | undefined;
+  freeLeads?: number | undefined;
+  freeOrders?: number | undefined;
+  monthlyRm?: number | undefined;
+  yearlyRm?: number | undefined;
   reason: string;
-  confirmBig?: boolean;
+  confirmBig?: boolean | undefined;
 }
 
 /** The stored rows laid over the defaults, read inside the writer's transaction so the check and the write agree. */
@@ -107,14 +118,12 @@ export async function setLimits(prisma: PrismaClient, actor: AdminActor, input: 
       monthlyRm: now.prices.MONTHLY / 100,
       yearlyRm: now.prices.ANNUAL / 100,
     };
-    const next = {
-      cap: input.cap,
-      freeLeads: input.freeLeads,
-      freeOrders: input.freeOrders,
-      monthlyRm: input.monthlyRm,
-      yearlyRm: input.yearlyRm,
-    };
-    const changed = (Object.keys(was) as (keyof typeof was)[]).filter((k) => was[k] !== next[k]);
+    // A field not given is not compared and not written, so a save never puts back a value another
+    // admin changed after this one's page loaded.
+    const next = { ...was };
+    const given = (Object.keys(was) as (keyof typeof was)[]).filter((k) => input[k] !== undefined);
+    for (const k of given) next[k] = input[k]!;
+    const changed = given.filter((k) => was[k] !== next[k]);
     if (changed.length === 0) throw new NoChangeError();
 
     const big: ('monthly' | 'yearly')[] = [];
@@ -139,6 +148,49 @@ export async function setLimits(prisma: PrismaClient, actor: AdminActor, input: 
     }
     await audit(tx, actor, ADMIN_ACTIONS.CHANGED_LIMITS, 'limits', input.reason, { from, to });
   });
+}
+
+/** What the reading switch drives: BullMQ's ingest queue, paused while reading is off. */
+export interface PausableQueue {
+  pause(): Promise<void>;
+  resume(): Promise<void>;
+}
+
+/**
+ * The reading switch. The queue is what actually stops reading (no worker reads the setting), so it
+ * goes first: if it can't be reached nothing is saved and the admin is told (QUEUE_UNAVAILABLE).
+ * Only then are the setting and its audit row written, in one transaction. If that fails the queue
+ * call is undone, best-effort, so the queue and the setting don't disagree.
+ *
+ * A repeat (SWITCH_STATE) needs no undo: the queue was moved to the state the setting already holds.
+ */
+export async function setReadingSwitch(
+  prisma: PrismaClient,
+  queue: PausableQueue,
+  actor: AdminActor,
+  on: boolean,
+  reason: string,
+  log?: { error: (obj: object, msg: string) => void },
+): Promise<void> {
+  try {
+    if (on) await queue.resume();
+    else await queue.pause();
+  } catch (err) {
+    throw new QueueUnavailableError(err);
+  }
+  try {
+    await setSwitch(prisma, actor, 'reading', on, reason);
+  } catch (err) {
+    if (!(err instanceof SwitchStateError)) {
+      try {
+        if (on) await queue.pause();
+        else await queue.resume();
+      } catch (undoErr) {
+        log?.error({ err: undoErr }, 'could not undo the ingest queue after the reading switch failed to save');
+      }
+    }
+    throw err;
+  }
 }
 
 /** `text` null takes the banner down. */
