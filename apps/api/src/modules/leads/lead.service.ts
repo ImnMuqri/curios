@@ -150,17 +150,27 @@ export async function captureLead(
     }),
   ]);
 
-  // Whether this lead used the last free one: the count it produced, read
-  // back from the same increment, so two captures at once cannot both claim
-  // it. A paid page is not on the trial, so it never qualifies.
-  const lastFreeLead =
-    counted.leadsCaptured === deps.settings.freeLeads &&
-    planState({ mode: conversation.page.mode, paidUntil: conversation.page.paidUntil, leadsCaptured: counted.leadsCaptured, now: new Date() }, deps.settings.freeLeads).kind === 'trialSpent';
+  // Whether this lead used the last free one: its own increment took the page from
+  // trial to trialSpent under the allowance this request decided with. The count
+  // before and after are both this increment's, read back from it, so two captures
+  // at once never both claim it, whatever the allowance: under a lowered one too, the
+  // capture whose count first reaches it is the one. A paid page is not on the
+  // trial, and a lapsed one goes to lapsed rather than trialSpent: neither qualifies.
+  //
+  // An allowance lowered to or below a page's count already turns its card off, so
+  // no capture follows to tell the owner; Billing and the dashboard say it instead.
+  const stateAt = (leadsCaptured: number) =>
+    planState({ mode: conversation.page.mode, paidUntil: conversation.page.paidUntil, leadsCaptured, now: new Date() }, deps.settings.freeLeads).kind;
+  const lastFreeLead = stateAt(counted.leadsCaptured - 1) === 'trial' && stateAt(counted.leadsCaptured) === 'trialSpent';
 
   // Slots and the notification are the job's business. Extraction is a model
   // call and nothing generative runs inside a request -- and doing it in that
   // order means the owner never gets a second email correcting the first.
-  await deps.queue.add(LEAD_QUEUE, { leadId: lead.id, ...(lastFreeLead ? { lastFreeLead: true } : {}) }, { jobId: lead.id, attempts: 3 });
+  await deps.queue.add(
+    LEAD_QUEUE,
+    { leadId: lead.id, ...(lastFreeLead ? { lastFreeLead: true, freeLeads: deps.settings.freeLeads } : {}) },
+    { jobId: lead.id, attempts: 3 },
+  );
 
   return { leadId: lead.id };
 }

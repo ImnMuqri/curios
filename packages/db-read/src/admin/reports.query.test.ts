@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
-import { listReportGroups } from './reports.query.js';
+import { countClosedReportGroups, latestDecidedAt, listReportGroups } from './reports.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -67,6 +67,10 @@ beforeAll(async () => {
   await audit('Gone', 'SUSPENDED_PAGE', new Date(NOW.getTime() - 1 * DAY + 50));
   await aPage('Stale');
   await report('Stale', 'SCAM', new Date(NOW.getTime() - 50 * DAY), decided('DISMISSED', new Date(NOW.getTime() - 31 * DAY)));
+  // Acted ten days ago, but the only audit row for the page is from three days before that: not its own.
+  await aPage('Silent');
+  await report('Silent', 'SCAM', new Date(NOW.getTime() - 11 * DAY), decided('ACTED', new Date(NOW.getTime() - 10 * DAY)));
+  await audit('Silent', 'SUSPENDED_PAGE', new Date(NOW.getTime() - 13 * DAY));
   // An open report and an older closed one: closed shows only what was decided.
   await aPage('Mixed');
   await report('Mixed', 'OTHER', new Date(NOW.getTime() - 1 * HOUR));
@@ -117,7 +121,7 @@ describe('listReportGroups, open', () => {
 describe('listReportGroups, closed', () => {
   it('lists reports decided in the last 30 days, newest decision first', async () => {
     const groups = await listReportGroups({ status: 'closed', now: NOW });
-    expect(groups.map((g) => g.displayName)).toEqual(['Gone', 'Warned', 'Cleared', 'Mixed']);
+    expect(groups.map((g) => g.displayName)).toEqual(['Gone', 'Warned', 'Cleared', 'Mixed', 'Silent']);
     expect(groups.find((g) => g.displayName === 'Mixed')!.count).toBe(1);
   });
 
@@ -135,5 +139,30 @@ describe('listReportGroups, closed', () => {
     expect(by.Warned!.outcome).toBe('Owner emailed');
     expect(by.Gone!.outcome).toBe('Page suspended');
     expect(by.Cleared!.quote).toBe('it was fine');
+  });
+
+  it('gives no outcome when no audit row falls near the decision, rather than an older one', async () => {
+    const by = Object.fromEntries((await listReportGroups({ status: 'closed', now: NOW })).map((g) => [g.displayName, g]));
+    expect(by.Silent!.outcome).toBeNull();
+  });
+
+  it('counts the closed pages truly, whatever the list shows', async () => {
+    expect(await countClosedReportGroups(NOW)).toBe(5);
+    const made: string[] = [];
+    try {
+      for (let i = 0; i < 50; i++) made.push(await aPage(`Bulk ${i}`));
+      await write.report.createMany({
+        data: made.map((pageId, i) => ({ pageId, reason: 'OTHER', reporterIpHash: `bulk${i}`, createdAt: new Date(NOW.getTime() - 2 * DAY), ...decided('DISMISSED', new Date(NOW.getTime() - 2 * DAY)) })) as never,
+      });
+      expect(await listReportGroups({ status: 'closed', now: NOW })).toHaveLength(50);
+      expect(await countClosedReportGroups(NOW)).toBe(55);
+    } finally {
+      await write.account.deleteMany({ where: { pages: { some: { id: { in: made } } } } });
+    }
+  });
+
+  it('has no decision date for a group nobody decided, never the epoch', () => {
+    expect(latestDecidedAt([{ decidedAt: null }, { decidedAt: null }])).toBeNull();
+    expect(latestDecidedAt([{ decidedAt: null }, { decidedAt: new Date(5000) }, { decidedAt: new Date(2000) }])).toEqual(new Date(5000));
   });
 });

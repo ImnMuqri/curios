@@ -205,7 +205,22 @@
     align-items: center;
     gap: 6px;
     overflow-x: auto;
+    /* Keep a scrolled-to item clear of the right-edge fade. */
+    scroll-padding-inline-end: 44px;
     scrollbar-width: none;
+  }
+
+  /* A fade on the right edge, stuck to it while the bar scrolls: more items are that way. */
+  .side::after {
+    content: '';
+    position: sticky;
+    right: 0;
+    flex: none;
+    align-self: stretch;
+    width: 28px;
+    margin: -10px -12px -10px -28px;
+    background: linear-gradient(to right, transparent, var(--side));
+    pointer-events: none;
   }
 
   .brand {
@@ -244,7 +259,7 @@
   /* The name and the line under it hide; Sign out stays reachable. */
   .me {
     margin: 0 0 0 auto;
-    padding: 0;
+    padding: 0 28px 0 0;
     border-top: 0;
   }
 

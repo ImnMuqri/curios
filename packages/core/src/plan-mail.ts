@@ -1,4 +1,5 @@
 import { renderMailHtml } from './mail.js';
+import { ringgit } from './money.js';
 import type { OrderState } from './plan.js';
 
 /**
@@ -37,7 +38,6 @@ function longDay(date: Date): string {
   return date.toLocaleDateString('en-MY', { day: 'numeric', month: 'long', year: 'numeric', timeZone: MALAYSIA });
 }
 
-const ringgit = (cents: number) => `RM${cents / 100}`;
 const billingUrl = (appUrl: string) => `${appUrl.replace(/\/+$/, '')}/app/billing`;
 
 /**

@@ -1,6 +1,14 @@
 -- The web app connects as this role. It can read and nothing else, so a write
 -- from a Server Component fails in Postgres rather than in code review.
 --
+-- THE RULE FOR A TABLE WITH A PII COLUMN. The default privileges below give the role every table a
+-- migration creates, whole, the moment it exists; this script narrows it again only after
+-- `migrate deploy` finishes. Postgres default privileges cannot be column-wise, so the gap cannot
+-- be closed from here. A migration that creates a table with a column the role must not read (or
+-- adds such a column) therefore REVOKEs SELECT and GRANTs the other columns inline, guarded by
+-- `IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'curios_readonly')`, as
+-- 20261027050000_admin_indexes_report_privileges does. Then add the same narrowing to this file.
+--
 -- The GRANT CONNECT is issued via EXECUTE against current_database() rather
 -- than hardcoding a database name, so this single file applies unchanged to
 -- both curios and curios_test.

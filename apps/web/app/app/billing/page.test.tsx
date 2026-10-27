@@ -2,6 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { render, screen, within } from '@testing-library/react';
 import type { OwnerPage } from '@curios/db-read';
 import { defaultSettings } from '@curios/core/settings';
+import { raisedSettings } from '@curios/core/test-settings';
 
 const getOwnerPage = vi.fn();
 const getConversationUsage = vi.fn();
@@ -132,7 +133,7 @@ describe('BillingPage', () => {
 
   describe('with the prices and allowances the admin set', () => {
     /** The shared fixture: price.MONTHLY at 5900, five free leads and five free orders. */
-    const live = () => ({ ...defaultSettings(), freeLeads: 5, freeOrders: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+    const live = () => raisedSettings({ freeLeads: 5, freeOrders: 5 });
 
     it('offers the plans at the prices in force, and claims no months free the prices do not give', async () => {
       getSettings.mockResolvedValue(live());

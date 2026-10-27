@@ -159,18 +159,27 @@ question the margin screen asked, which pages cost more than they pay, comes
 back as cost in AI & usage, from `ModelCall`, which has to be written from the
 first model call or that screen has no history.
 
-The Overview's "Needs you" row for reported pages names the first page in
-Reports' order, with a short noun for its most common reason before
-"report(s)": "Gadget Murah 88 has 4 scam reports today", "Coach Farah has 2 open
-impersonation reports", "Kedai Sri has 1 report today". The nouns are scam,
-impersonation, wrong-price, offensive, and none for Something else; one report
-is singular. When the page has reports from today (since midnight Malaysia
-time) the count is today's and the line ends "today"; otherwise it counts all
-its open reports and says "open".
+The Overview's "Needs you" row for reported pages names one page, with a short
+noun for its most common reason before "report(s)": "Gadget Murah 88 has 4 scam
+reports today", "Coach Farah has 2 open impersonation reports", "Kedai Sri has 1
+report today". The nouns are scam, impersonation, wrong-price, offensive, and
+none for Something else; one report is singular. **The page is the one with the
+most open reports that came in today** (since midnight Malaysia time): the count
+is today's and the line ends "today". When none came in today it is the page
+with the most open reports: the count is all of them and the line says "open".
+A tie goes to the page with the newest report. This is not always the first row
+of Reports, which orders by open reports (DEVIATIONS 239). The row's number
+counts pages, and no report is loaded to find the page.
 
 **Reports** replace the earlier takedown queue. A public "Report this page" link
 in a page's footer opens a form (five reasons and an optional note, EN and MS),
-rate limited by IP with the IP stored hashed. One address keeps one open report
+rate limited by IP with the IP stored as a keyed hash: HMAC-SHA256 of the address
+under `REPORT_IP_SECRET`, so a leaked database does not let anyone try every
+address against the stored values. The secret is required in production (the
+API refuses to boot without it; see OPERATIONS.md). Reports stored before the
+key was introduced keep their bare hashes, so a repeat from the same address does
+not match them and adds a second open report: this only weakens the per-page
+dedupe for reports already open. One address keeps one open report
 per page: a repeat while the first is open adds nothing and is answered the same
 as a new one, so a single visitor cannot flag a page alone (a partial unique
 index holds it; once that report is dismissed the address can report the page
@@ -187,7 +196,8 @@ told who reported.
 **Controls** holds five switches, the limits and prices, and the banner. Every
 change writes an audit row, and asks for a reason except two: showing, updating
 or taking down the banner (the banner's text is the reason, or "Taken down"),
-and turning a switch back on ("Turned back on"). Turning a switch off is a
+and turning a switch back on ("Turned back on"; a reason of only spaces counts as
+none, so turning a switch off with one is refused with 400). Turning a switch off is a
 decision to stop, not to hold: nothing is queued to send later.
 
 | Switch | Off stops | Off does not stop |
@@ -195,7 +205,7 @@ decision to stop, not to hold: nothing is queued to send later.
 | Chat answers | Every page gives the short fixed reply (the one used past the cap), the owner's Ask your page tester included, and the order lookup in chat gives the same reply. No conversation is counted against the cap while it is off | Grouping questions: it is owner-side housekeeping, keeps running and retries on failure |
 | Sign-ups | New owner sign-ups: the sign-up screen says Curios is full for now | Existing owners signing in |
 | Reading new sources | New reads: the ingest queue is paused, owners can still add sources and those wait, and owner re-reads and admin retries are refused. Reading sources' Pause / Resume the queue is this same switch | Reads already running; adding sources |
-| CHIP payments | Every CHIP purchase Curios would raise: plan payments, shop online payments, the shop connection's RM1 "Curios test", and auto-renew, which is re-checked before each charge. Billing shows "Online payments are paused for a moment" | Shops' own QR and bank transfer |
+| CHIP payments | Every CHIP purchase Curios would raise: plan payments, shop online payments, connecting a shop's own CHIP account (503 `PAYMENTS_OFF`, answered before CHIP is asked or anything is stored) and its RM1 "Curios test", and auto-renew, which is re-checked before each charge. A card whose plan ended while it was off is still tried once it is back on, up to 7 days after the plan ended: no card is dropped for a grace the switch used up. Past 7 days it is not charged that late; auto-renew is turned off and the owner told. Billing shows "Online payments are paused for a moment" | Shops' own QR and bank transfer |
 | Emails to owners | Notification emails to owners. They are dropped, not held | Admin's own mails (suspend, bring back, report warning), which go because the admin chose to send them, and sign-in, verification and password reset mail |
 
 The switches are read again where they apply, including inside a running job,
@@ -223,8 +233,15 @@ with a confirm and a reason. Only the values the admin changed are sent and
 written, so a save never puts back a value another admin changed after the page
 loaded. The cap and both prices are at least 1, and so are the free leads and
 free orders: a trial with none would stop at its first lead or order (a stored
-0 is read as the default). The constants in `packages/core` are only the defaults for a setting
-that has never been saved. The yearly saving ("two months free") and Business's
+0 is read as the default). Lowering free leads to or below a page's count sends no "stopped taking numbers"
+email: captures are refused from that point, so nothing is left to send it. That
+page's dashboard alert and Billing show it at once. For a page that does reach
+its last free lead, the email states the allowance in force when that lead was
+captured (the job carries it), and goes once. Prices are whole ringgit: a price
+stored with sen (RM49.50) shows as 49.50 in Controls with "Stored as RM49.50;
+saving rounds to whole RM", is left alone while untouched, and rounds to whole RM
+only when edited (DEVIATIONS 240). The constants in `packages/core` are only the
+defaults for a setting that has never been saved. The yearly saving ("two months free") and Business's
 "One RM95 order pays for it" tag are worked out from the prices in force and
 drop out when they would no longer be true. The Terms promise that a change
 never takes away time already paid for, and no warning email goes out.
@@ -234,7 +251,12 @@ real prices; it shows an error instead.
 
 The banner is up to 160 characters, shown first on every owner's dashboard
 until taken down. It asks for no reason: its text is the audit row's reason
-(DEVIATIONS 237).
+(DEVIATIONS 237). A change that changes nothing is refused with 409 `NO_CHANGE`
+and writes no setting and no audit row: showing the text already live ("That
+banner is already showing.", compared after trimming) or taking down when there
+is no banner ("There is no banner to take down."). The screen already disables
+those buttons, so this only reaches a screen that is out of date, which
+refreshes (DEVIATIONS 238).
 
 **AI & usage** is read from `ModelCall`: calls, typical and slow answer time,
 cost per conversation, the "I'm not sure" rate, failed calls, cost by job
@@ -245,8 +267,12 @@ the cap. Cost is in US dollars, as on the Overview.
 
 **Reading sources** is read from `Ingestion`: waiting, reading, failed and
 typical time, with the error text on each failed source. Retry, and Retry all
-failed (sources that are walled, such as Instagram, are skipped). The count in
-the nav is sources that failed today.
+failed (sources that are walled, such as Instagram, are skipped). Retry all is
+disabled when the only failures are walled ones, and if the API finds nothing to
+queue it says "Nothing to retry. Walled sources are skipped." (DEVIATIONS 241).
+The audit row for Retry all has target id `all-failed`, a placeholder for the
+aggregate with the counts in its metadata (rows from before read `failed`). The
+count in the nav is sources that failed today.
 
 **Payments** shows plan payments through Curios's own CHIP account, in RM, with
 how each was paid (`Payment.paidVia`, stored from now on, "—" before). No refund
@@ -260,8 +286,17 @@ stored. A replay's grant cannot share the audit row's transaction, because the
 handler asks CHIP about the purchase over the network before it grants: the
 grant commits first, then the attempt and the `REPLAYED_WEBHOOK` row together,
 and if that second write fails the API logs the event, purchase and payment ids
-at error level. The body of a message holds the payer's name and email, so the
-read-only role cannot read `ChipWebhookEvent.body`.
+at error level. The status a row stores is the one the API answered: an error's own
+`statusCode` when it is an integer from 400 to 599, and 500 for anything else
+(`statusFor`, also used by the API's error handler, so a thrown `statusCode` of
+`'409'` or 200 is answered 500, not coerced). If a replay's handler and its
+record write both fail, the handler's error is answered and both are logged.
+The body of a message holds the payer's name and email, so the
+read-only role cannot read `ChipWebhookEvent.body`. **Any table with a column the
+read-only role must not read follows one rule:** its migration revokes and grants
+the other columns inline, guarded by whether the role exists, because the role's
+default privileges hand it every new table whole until `readonly-role.sql` runs
+after `migrate deploy` (see OPERATIONS.md, "The read-only role after a deploy").
 
 The SSM verification and trademark-handle queues this document once described
 are not part of this design. If the badge or the trademark gate comes back it

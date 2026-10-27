@@ -1,4 +1,4 @@
-import { listReportGroups } from '@curios/db-read/admin';
+import { countClosedReportGroups, listReportGroups } from '@curios/db-read/admin';
 import { requireAdmin } from '../require-admin.js';
 import { ReportsScreen } from './reports-screen.js';
 
@@ -9,7 +9,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const asked = (await searchParams).status;
   const status = (Array.isArray(asked) ? asked[0] : asked) === 'closed' ? 'closed' : 'open';
   const now = new Date();
-  const [open, closed] = await Promise.all([listReportGroups({ status: 'open', now }), listReportGroups({ status: 'closed', now })]);
+  const [open, closed, closedCount] = await Promise.all([
+    listReportGroups({ status: 'open', now }),
+    listReportGroups({ status: 'closed', now }),
+    countClosedReportGroups(now),
+  ]);
 
-  return <ReportsScreen open={open} closed={closed} status={status} now={now} />;
+  return <ReportsScreen open={open} closed={closed} closedCount={closedCount} status={status} now={now} />;
 }

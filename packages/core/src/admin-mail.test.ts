@@ -43,4 +43,26 @@ describe('the admin emails', () => {
     expect(mail.subject).toBe('Tentang halaman anda di Curios');
     expect(mail.text).toContain(base.reason);
   });
+
+  it('report warning in Malay says the whole body in Malay, and none of it in English', () => {
+    const mail = reportWarningMail({ ...base, language: 'ms' });
+    expect(mail.text).toBe(
+      [
+        'Pasukan Curios menerima laporan tentang Kek Lina dan meminta anda menyemaknya. Halaman anda masih kelihatan kepada pengunjung.',
+        '',
+        `Daripada pasukan kami: ${base.reason}`,
+        '',
+        'Ada soalan? Balas emel ini dan kami akan membantu.',
+        '',
+        'https://curios.my/app',
+      ].join('\n'),
+    );
+    expect(mail.html).toContain('Perlu disemak');
+    expect(mail.html).toContain('Buka papan pemuka');
+    expect(mail.html).toContain('Daripada pasukan kami: Sells &lt;b&gt;fake&lt;/b&gt; goods &amp; more');
+    for (const english of ['Please review', 'Open your dashboard', 'From our team', 'Questions?', 'Your page stays live']) {
+      expect(mail.html).not.toContain(english);
+      expect(mail.text).not.toContain(english);
+    }
+  });
 });

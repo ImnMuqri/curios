@@ -26,9 +26,16 @@ const NAMES: Record<string, string> = {
 /**
  * Null when CHIP names no method (it sends '' until one was used) or says `unknown`: the
  * screen shows "—" for those, as it does for payments made before this was recorded. A
- * method CHIP adds later is shown as it wrote it, capitalised, rather than not at all.
+ * method CHIP adds later is shown in words (`crypto_coin` is "Crypto Coin") rather than not at all.
  */
 export function paidVia(method: string | null): string | null {
   if (!method || method === 'unknown') return null;
-  return NAMES[method] ?? method.charAt(0).toUpperCase() + method.slice(1);
+  return (
+    NAMES[method] ??
+    method
+      .split('_')
+      .filter(Boolean)
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  );
 }

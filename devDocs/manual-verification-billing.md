@@ -159,7 +159,7 @@ docker exec -i curios-postgres psql -U curios -d curios -c \
   "UPDATE \"Page\" SET \"paidUntil\" = now() + interval '12 hours' WHERE handle = 'YOURHANDLE';"
 ```
 
-Once the workers' auto-renew job runs (it charges from a day before the plan ends), the log shows
+Once the workers' auto-renew job runs (it charges on the Kuala Lumpur day the plan ends, never the day before, and may charge until 3 days after; a card no run tried is still charged up to 7 days late, see BACKEND.md), the log shows
 `renewal granted`, a new `Payment` row with `autoRenewal = true` is `PAID`, and `paidUntil` moved a
 month. **If the log shows a charge failure instead, check that recurring card payments are enabled on
 the CHIP account**; without that CHIP refuses the token charge.

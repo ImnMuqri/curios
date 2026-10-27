@@ -1,4 +1,5 @@
 import { isBlockedAddress } from './address.js';
+import { hostOf, onDomain } from './bento.js';
 
 /**
  * Thrown when an address must not be dialled.
@@ -9,6 +10,9 @@ import { isBlockedAddress } from './address.js';
  * detail. The address that caused it travels on `blocked`, which only the log
  * reads.
  */
+/** How far back "Retry all failed" looks: a FAILED source updated within this window. The admin's button and the API share it. */
+export const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+
 export class BlockedAddressError extends Error {
   readonly code = 'BLOCKED_SOURCE_URL';
   readonly blocked: string;
@@ -97,17 +101,11 @@ export function allowsPrivateAddresses(raw: string | undefined): boolean {
 /**
  * Hosts whose pages cannot be read. The worker's Instagram adapter (apps/workers
  * sources/instagram.adapter.ts) always fails with NOT_CONFIGURED, so a retry of
- * one of these would only fail the same way. The same host test as `linkKind`.
+ * one of these would only fail the same way. The same host test as `linkKind` (`onDomain`).
  */
 const WALLED_HOSTS = ['instagram.com'] as const;
 
 export function isWalledSource(sourceUrl: string | null): boolean {
-  if (sourceUrl === null) return false;
-  let host: string;
-  try {
-    host = new URL(sourceUrl).hostname.toLowerCase();
-  } catch {
-    return false;
-  }
-  return WALLED_HOSTS.some((domain) => host === domain || host.endsWith(`.${domain}`));
+  const host = sourceUrl === null ? null : hostOf(sourceUrl);
+  return host !== null && WALLED_HOSTS.some((domain) => onDomain(host, domain));
 }

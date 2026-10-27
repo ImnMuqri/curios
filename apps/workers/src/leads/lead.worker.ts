@@ -120,9 +120,10 @@ export async function runLeadJob(deps: LeadJobDeps, data: LeadJobData): Promise<
 
   // This lead used the last free one (decided by the API from the count its
   // own increment produced): "Your page stopped taking numbers". A plan
-  // email, so it goes whether or not the lead email is on.
+  // email, so it goes whether or not the lead email is on. The allowance it
+  // states is the one the API decided with, carried in the job.
   if (data.lastFreeLead) {
-    const spent = trialSpentMail({ displayName: lead.page.displayName, appUrl: deps.appUrl ?? 'http://localhost:3000', freeLeads, prices });
+    const spent = trialSpentMail({ displayName: lead.page.displayName, appUrl: deps.appUrl ?? 'http://localhost:3000', freeLeads: data.freeLeads ?? freeLeads, prices });
     await deps.mailQueue.add(MAIL_QUEUE, { to: lead.page.account.email, ...spent, audience: 'owner' });
   }
 }

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ringgit } from '@curios/core/money';
 import { BANNER_MAX, PRICE_MAX_RM, type Settings, type SwitchKey } from '@curios/core/settings';
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import { ReasonDialog } from '../reason-dialog.js';
 import { said } from '../said.js';
-import reasonStyles from '../reason-dialog.module.css';
 import { lowerFirst, SWITCHES } from './switches.js';
 import styles from './controls.module.css';
 
@@ -23,18 +23,23 @@ const LIMITS: { key: LimitField; title: string; subline: string; unit: string; m
 
 type Values = Record<LimitField, string>;
 
-/** What the server holds now, as the inputs show it: prices in whole RM. */
+/** A price in RM as the input shows it: 49, or 49.50 for a stored price with sen (Controls saves whole RM only). */
+const rmField = (cents: number) => (cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2));
+
+/** What the server holds now, as the inputs show it: prices in RM, with sen only when stored with sen. */
 function savedValues(s: Settings): Values {
   return {
     cap: String(s.cap),
     freeLeads: String(s.freeLeads),
     freeOrders: String(s.freeOrders),
-    monthlyRm: String(s.prices.MONTHLY / 100),
-    yearlyRm: String(s.prices.ANNUAL / 100),
+    monthlyRm: rmField(s.prices.MONTHLY),
+    yearlyRm: rmField(s.prices.ANNUAL),
   };
 }
 
-const validField = (l: (typeof LIMITS)[number], v: string) => /^\d+$/.test(v) && Number(v) >= l.min && Number(v) <= l.max;
+/** Whole numbers in range. A stored price with sen is also fine while it is left as it is: it is never sent. */
+const validField = (l: (typeof LIMITS)[number], v: string, stored: string) =>
+  (v === stored && stored.includes('.')) || (/^\d+$/.test(v) && Number(v) >= l.min && Number(v) <= l.max);
 const show = (l: (typeof LIMITS)[number], v: string) => (l.rm ? `RM${v}` : v);
 
 /** Shown in place of the form when the stored settings can't be read: no switches, limits or banner. */
@@ -59,6 +64,8 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
   const saved = savedValues(settings);
   const [values, setValues] = useState<Values>(saved);
   const [banner, setBanner] = useState(settings.banner ?? '');
+  // A refresh that brings a different stored banner (another admin's, or ours) re-seeds the box.
+  useEffect(() => setBanner(settings.banner ?? ''), [settings.banner]);
   const [turningOff, setTurningOff] = useState<SwitchKey | null>(null);
   const [saving, setSaving] = useState(false);
   /** After a 409 BIG_CHANGE: the reason already given, and the prices the API named. */
@@ -74,7 +81,7 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
   }, [toast]);
 
   const changed = LIMITS.filter((l) => values[l.key] !== saved[l.key]);
-  const valid = LIMITS.every((l) => validField(l, values[l.key]));
+  const valid = LIMITS.every((l) => validField(l, values[l.key], saved[l.key]));
   const dirty = changed.length > 0;
   const live = settings.banner !== null;
 
@@ -227,7 +234,7 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
                 onChange={(e) => setBanner(e.target.value.slice(0, BANNER_MAX))}
               />
               <div className={styles.save}>
-                <button type="button" className={styles.prim} disabled={busy || !banner.trim()} onClick={() => void publish(banner.trim())}>
+                <button type="button" className={styles.prim} disabled={busy || !banner.trim() || banner.trim() === settings.banner} onClick={() => void publish(banner.trim())}>
                   {live ? 'Update banner' : 'Show banner'}
                 </button>
                 {live && (
@@ -255,14 +262,16 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
                   <span>
                     <b>{l.title}</b>
                     <small>{l.subline}</small>
+                    {l.rm && saved[l.key].includes('.') && <small>Stored as {ringgit(Math.round(Number(saved[l.key]) * 100))}; saving rounds to whole RM</small>}
                   </span>
                   <span className={styles.in}>
                     <input
                       inputMode="numeric"
                       aria-label={l.title}
-                      aria-invalid={!validField(l, values[l.key])}
+                      aria-invalid={!validField(l, values[l.key], saved[l.key])}
                       value={values[l.key]}
-                      onChange={(e) => setValues({ ...values, [l.key]: e.target.value.replace(/[^0-9]/g, '') })}
+                      // Editing a price shown with sen starts from its whole ringgit: "49.5" must not become 495.
+                      onChange={(e) => setValues({ ...values, [l.key]: (values[l.key].includes('.') ? e.target.value.split('.')[0]! : e.target.value).replace(/[^0-9]/g, '') })}
                     />
                     <span>{l.unit}</span>
                   </span>
@@ -320,32 +329,15 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
         />
       )}
       {big && (
-        <div className={reasonStyles.scrim} onClick={busy ? undefined : () => setBig(null)}>
-          <div
-            className={reasonStyles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-label="That's a big change. Save it anyway?"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' && !busy) setBig(null);
-            }}
-          >
-            <h3>That&apos;s a big change. Save it anyway?</h3>
-            <p>
-              A price moves by more than half, or goes above RM{PRICE_MAX_RM}. It applies from each owner’s next payment.
-            </p>
-            {list(big.fields)}
-            <div className={reasonStyles.mact}>
-              <button type="button" className={reasonStyles.ghost} onClick={() => setBig(null)} disabled={busy}>
-                Cancel
-              </button>
-              <button type="button" className={reasonStyles.prim} onClick={() => void saveAnyway()} disabled={busy} autoFocus>
-                Save anyway
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReasonDialog
+          title="That's a big change. Save it anyway?"
+          text={`A price moves by more than half, or goes above RM${PRICE_MAX_RM}. It applies from each owner’s next payment.`}
+          confirmLabel="Save anyway"
+          reasonless
+          details={list(big.fields)}
+          onConfirm={saveAnyway}
+          onClose={() => setBig(null)}
+        />
       )}
 
       {toast && (

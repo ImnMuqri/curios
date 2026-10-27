@@ -112,6 +112,16 @@ describe('a malformed cap override', () => {
     });
     expect((await cache.get()).cap).toBe(200);
   });
+
+  it('warns once per process, not on every read', async () => {
+    // A fresh copy of the module, so a warning an earlier test drew does not count here.
+    vi.resetModules();
+    const fresh = await import('./settings.js');
+    fresh.defaultSettings();
+    fresh.defaultSettings();
+    fresh.resolveSettings([]);
+    expect(console.warn).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('fallbackSettings', () => {
@@ -164,6 +174,38 @@ describe('createSettingsCache', () => {
     const kept = await cache.get();
     expect(kept.cap).toBe(80);
     expect(isFallbackSettings(kept)).toBe(false);
+  });
+
+  it('shares one load between gets that arrive while the expired value is being refreshed', async () => {
+    let release: (s: ReturnType<typeof defaultSettings>) => void = () => {};
+    const fresh = { ...defaultSettings(), cap: 33 };
+    const load = vi
+      .fn()
+      .mockResolvedValueOnce(defaultSettings())
+      .mockImplementationOnce(() => new Promise((resolve) => (release = resolve)));
+    const cache = createSettingsCache(load, { ttlMs: 1_000 });
+    await cache.get();
+    await vi.advanceTimersByTimeAsync(1_500);
+
+    const during = [cache.get(), cache.get(), cache.get()];
+    release(fresh);
+    expect((await Promise.all(during)).map((s) => s.cap)).toEqual([33, 33, 33]);
+    expect((await cache.get()).cap).toBe(33);
+    expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('still settles, and loads again next window, when onError itself throws', async () => {
+    const load = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValue({ ...defaultSettings(), cap: 44 });
+    const cache = createSettingsCache(load, {
+      ttlMs: 1_000,
+      onError: () => {
+        throw new Error('the logger broke');
+      },
+    });
+    expect(isFallbackSettings(await cache.get())).toBe(true);
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect((await cache.get()).cap).toBe(44);
+    expect(load).toHaveBeenCalledTimes(2);
   });
 
   it('does not let a load that was running at clear() write its old answer back', async () => {

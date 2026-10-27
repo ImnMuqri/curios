@@ -31,9 +31,3 @@ export function day(d: Date): string {
 export function dayTime(d: Date): string {
   return `${day(d)}, ${hm.format(d).replace(' ', '').toLowerCase()}`;
 }
-
-/** Cents as "RM12.50", or "RM12" when whole. */
-export function rm(cents: number): string {
-  const v = cents / 100;
-  return `RM${Number.isInteger(v) ? v : v.toFixed(2)}`;
-}

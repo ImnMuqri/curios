@@ -30,6 +30,12 @@ describe('the plan emails', () => {
     expect(mail.text).toContain('Business is RM59 a month, or RM590 a year.');
   });
 
+  it('writes a price with sen to two places', () => {
+    const mail = trialSpentMail({ displayName: 'Kek Lina', appUrl, freeLeads: 5, prices: { MONTHLY: 4950, ANNUAL: 49050 } });
+
+    expect(mail.text).toContain('Business is RM49.50 a month, or RM490.50 a year.');
+  });
+
   it('limit reached: the board’s subject, the cap in force, and when it resets', () => {
     const mail = capReachedMail({ displayName: 'Kek Lina', cap: 2000, resets: new Date('2026-11-01T00:00:00.000Z'), appUrl });
 

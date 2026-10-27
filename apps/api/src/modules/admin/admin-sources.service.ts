@@ -1,4 +1,4 @@
-import { ADMIN_ACTIONS, isWalledSource } from '@curios/core';
+import { ADMIN_ACTIONS, isWalledSource, RETRY_WINDOW_MS } from '@curios/core';
 import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
 import type { QueueLike } from '../ingest/ingest.service.js';
@@ -15,7 +15,6 @@ export interface AdminSourcesDeps {
 }
 
 /** How far back "retry all failed" looks, by when the row last changed. */
-const RETRY_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export class SourceStateError extends Error {
   readonly statusCode = 409;
@@ -107,7 +106,9 @@ export async function retryFailedSources(
       adminUserId: actor.adminId,
       action: ADMIN_ACTIONS.RETRIED_FAILED_SOURCES,
       targetType: 'Source',
-      targetId: 'failed',
+      // A placeholder, not a row id: the row is about every failed source at once, and its
+      // metadata says how many were queued and skipped.
+      targetId: 'all-failed',
       targetLabel: 'everyone',
       reason,
       metadata: { queued, skipped },

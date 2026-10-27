@@ -19,8 +19,9 @@ describe('paidVia', () => {
     expect(paidVia('mpgs_apple_pay')).toBe('Apple Pay');
   });
 
-  it('shows a method it does not know as CHIP wrote it, capitalised', () => {
-    expect(paidVia('crypto_coin')).toBe('Crypto_coin');
+  it('shows a method it does not know in words: underscores to spaces, each word capitalised', () => {
+    expect(paidVia('crypto_coin')).toBe('Crypto Coin');
+    expect(paidVia('buy_now_pay_later')).toBe('Buy Now Pay Later');
     expect(paidVia('newpay')).toBe('Newpay');
   });
 

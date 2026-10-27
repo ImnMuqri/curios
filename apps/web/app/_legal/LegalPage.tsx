@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
+import { ringgit } from '@curios/core/money';
 import type { PlanTerms } from '@curios/core/settings';
 import { Wordmark } from '../_landing/Wordmark.js';
 import {
@@ -112,9 +113,6 @@ function BlockView({ block, locale, plan }: { block: Block; locale: Locale; plan
 }
 
 const TOKEN = /\{(terms|privacy|refunds|email|monthly|annual|leads|orders)\}/;
-
-/** Whole ringgit without decimals, the way the prices are published: RM49, RM490. */
-const ringgit = (cents: number) => (cents % 100 === 0 ? `RM${cents / 100}` : `RM${(cents / 100).toFixed(2)}`);
 
 /**
  * Turns `{privacy}` and the like into links, `{email}` into a mail link, and

@@ -27,6 +27,10 @@ export interface ReportGroup {
 /** Closed reports stay on the Closed tab for this long after they were decided. */
 const CLOSED_DAYS = 30;
 const CLOSED_MAX = 50;
+/** How far from a decision its audit row may fall: they are written in one transaction. */
+const AUDIT_WINDOW_MS = 60_000;
+
+const closedWhere = (now: Date) => ({ status: { not: 'OPEN' as const }, decidedAt: { gte: new Date(now.getTime() - CLOSED_DAYS * DAY_MS), lte: now } });
 
 /** The audit actions that close reports as ACTED, and the words for each. */
 const ACTED_OUTCOME: Record<string, ReportOutcome> = {
@@ -53,7 +57,7 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
   const { now } = options;
   const open = options.status === 'open';
   const rows: Row[] = await prismaRead.report.findMany({
-    where: open ? { status: 'OPEN' } : { status: { not: 'OPEN' }, decidedAt: { gte: new Date(now.getTime() - CLOSED_DAYS * DAY_MS), lte: now } },
+    where: open ? { status: 'OPEN' } : closedWhere(now),
     select: {
       pageId: true,
       reason: true,
@@ -69,11 +73,10 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
   for (const row of rows) byPage.set(row.pageId, [...(byPage.get(row.pageId) ?? []), row]);
 
   const today = malaysiaMidnight(now);
-  const decidedAt = (group: Row[]) => Math.max(...group.map((r) => r.decidedAt?.getTime() ?? 0));
-  const groups = Array.from(byPage.values()).map((group) => ({ group, decided: decidedAt(group) }));
+  const groups = Array.from(byPage.values()).map((group) => ({ group, decided: latestDecidedAt(group) }));
 
   if (!open) {
-    groups.sort((a, b) => b.decided - a.decided);
+    groups.sort((a, b) => (b.decided?.getTime() ?? 0) - (a.decided?.getTime() ?? 0));
     groups.splice(CLOSED_MAX);
   }
 
@@ -81,12 +84,7 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
 
   const out = groups.map(({ group, decided }): ReportGroup => {
     const newest = [...group].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    const tally = new Map<ReportReasonKey, { n: number; at: number }>();
-    for (const r of newest) {
-      const seen = tally.get(r.reason);
-      tally.set(r.reason, { n: (seen?.n ?? 0) + 1, at: seen?.at ?? r.createdAt.getTime() });
-    }
-    const [reason] = Array.from(tally.entries()).sort((a, b) => b[1].n - a[1].n || b[1].at - a[1].at)[0]!;
+    const reason = commonReason(group);
     const first = group[0]!;
     return {
       pageId: first.pageId,
@@ -96,7 +94,7 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
       count: group.length,
       countToday: group.filter((r) => r.createdAt >= today && r.createdAt <= now).length,
       latestAt: newest[0]!.createdAt,
-      decidedAt: open ? null : new Date(decided),
+      decidedAt: open ? null : decided,
       quote: newest.find((r) => r.details && r.details.trim())?.details ?? null,
       outcome: open ? null : (outcomes.get(first.pageId) ?? null),
     };
@@ -104,6 +102,28 @@ export async function listReportGroups(options: { status: 'open' | 'closed'; now
 
   if (open) out.sort((a, b) => b.count - a.count || b.latestAt.getTime() - a.latestAt.getTime());
   return out;
+}
+
+/** The most common reason; a tie goes to the reason of the newest report. At least one report. */
+export function commonReason(reports: { reason: ReportReasonKey; createdAt: Date }[]): ReportReasonKey {
+  const tally = new Map<ReportReasonKey, { n: number; at: number }>();
+  for (const r of [...reports].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())) {
+    const seen = tally.get(r.reason);
+    tally.set(r.reason, { n: (seen?.n ?? 0) + 1, at: seen?.at ?? r.createdAt.getTime() });
+  }
+  return Array.from(tally.entries()).sort((a, b) => b[1].n - a[1].n || b[1].at - a[1].at)[0]![0];
+}
+
+/** When the newest decision in the group was made; null when none in it was decided. */
+export function latestDecidedAt(group: { decidedAt: Date | null }[]): Date | null {
+  let latest: Date | null = null;
+  for (const row of group) if (row.decidedAt && (!latest || row.decidedAt > latest)) latest = row.decidedAt;
+  return latest;
+}
+
+/** How many pages have reports decided in the last 30 days: the Closed tab's count, whatever the list shows. */
+export async function countClosedReportGroups(now: Date): Promise<number> {
+  return (await prismaRead.report.groupBy({ by: ['pageId'], where: closedWhere(now) })).length;
 }
 
 function latestOf(group: Row[]): Row {
@@ -114,20 +134,28 @@ function latestOf(group: Row[]): Row {
  * Dismissed is the report's own status. Acted is told apart by the audit row
  * written in the same transaction: the one nearest the decision.
  */
-async function outcomesOf(decisions: { pageId: string; decided: number; status: Row['status'] }[]): Promise<Map<string, ReportOutcome>> {
+async function outcomesOf(decisions: { pageId: string; decided: Date | null; status: Row['status'] }[]): Promise<Map<string, ReportOutcome>> {
   const out = new Map<string, ReportOutcome>();
-  const acted = decisions.filter((d) => d.status === 'ACTED');
+  const acted = decisions.filter((d): d is { pageId: string; decided: Date; status: Row['status'] } => d.status === 'ACTED' && d.decided !== null);
   for (const d of decisions) if (d.status === 'DISMISSED') out.set(d.pageId, 'Dismissed');
   if (acted.length === 0) return out;
 
   const audits = await prismaRead.adminAction.findMany({
-    where: { targetType: 'Page', targetId: { in: acted.map((d) => d.pageId) }, action: { in: Object.keys(ACTED_OUTCOME) } },
+    // Only an audit row within a minute of the decision is its own: an older warning or suspension is not.
+    where: {
+      targetType: 'Page',
+      action: { in: Object.keys(ACTED_OUTCOME) },
+      OR: acted.map((d) => ({
+        targetId: d.pageId,
+        createdAt: { gte: new Date(d.decided.getTime() - AUDIT_WINDOW_MS), lte: new Date(d.decided.getTime() + AUDIT_WINDOW_MS) },
+      })),
+    },
     select: { targetId: true, action: true, createdAt: true },
   });
   for (const d of acted) {
     const nearest = audits
       .filter((a) => a.targetId === d.pageId)
-      .sort((a, b) => Math.abs(a.createdAt.getTime() - d.decided) - Math.abs(b.createdAt.getTime() - d.decided))[0];
+      .sort((a, b) => Math.abs(a.createdAt.getTime() - d.decided.getTime()) - Math.abs(b.createdAt.getTime() - d.decided.getTime()))[0];
     if (nearest) out.set(d.pageId, ACTED_OUTCOME[nearest.action]!);
   }
   return out;

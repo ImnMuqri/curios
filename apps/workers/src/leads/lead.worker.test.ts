@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import type { Gateway } from '@curios/gateway';
 import { defaultSettings, type Settings } from '@curios/core/settings';
+import { raisedSettings } from '@curios/core/test-settings';
 import { runLeadJob, type MailQueueLike } from './lead.worker.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -177,12 +178,23 @@ describe('runLeadJob', () => {
   it('says the allowance and the prices in force when the trial is used up', async () => {
     await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 5, notifyLeads: false } });
     const mailQueue = aMailQueue();
-    const live = reader({ ...defaultSettings(), freeLeads: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+    const live = reader(raisedSettings({ freeLeads: 5 }));
 
     await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings: live }, { leadId, lastFreeLead: true });
 
     const text = mailQueue.add.mock.calls[0]?.[1].text ?? '';
     expect(text).toContain('Your 5 free leads are used');
     expect(text).toContain('Business is RM59 a month');
+  });
+
+  it('says the allowance the API decided with, not the one the worker reads later', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 3, notifyLeads: false } });
+    const mailQueue = aMailQueue();
+    // Raised to 5 between the capture and this job.
+    const raised = reader({ ...defaultSettings(), freeLeads: 5 });
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings: raised }, { leadId, lastFreeLead: true, freeLeads: 3 });
+
+    expect(mailQueue.add.mock.calls[0]?.[1].text).toContain('Your 3 free leads are used');
   });
 });

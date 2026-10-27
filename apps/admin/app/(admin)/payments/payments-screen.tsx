@@ -3,17 +3,16 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ringgit } from '@curios/core/money';
 import type { Payments, Period, PaymentRowStatus, WebhookRow } from '@curios/db-read/admin';
 import { apiFetch } from '../../../lib/api.js';
 import { PERIODS } from '../period.js';
 import { ReasonDialog } from '../reason-dialog.js';
 import { said } from '../said.js';
+import ui from '../ui.module.css';
 import styles from './payments.module.css';
 
 const int = (n: number) => n.toLocaleString('en-US');
-/** Cents as "RM98,340", or "RM12.50" when not whole. */
-const rm = (cents: number) =>
-  `RM${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
 
 /** The board's status colours. */
 const STATUS_COLOUR: Record<PaymentRowStatus, string> = {
@@ -90,7 +89,7 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
   }
 
   const figures = [
-    { value: rm(p.receivedCents), label: `Received, ${phrase}`, note: '', red: false },
+    { value: ringgit(p.receivedCents), label: `Received, ${phrase}`, note: '', red: false },
     {
       value: int(p.paying.total),
       label: 'Paying for Business',
@@ -103,10 +102,10 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
 
   return (
     <>
-      <div className={styles.head}>
+      <div className={ui.head}>
         <h1>Payments</h1>
         <p>Business plans, paid through CHIP</p>
-        <nav className={styles.per} aria-label="Period">
+        <nav className={ui.per} aria-label="Period">
           {PERIODS.map((x) => (
             <Link
               key={x.key}
@@ -119,71 +118,71 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
         </nav>
       </div>
 
-      <div className={styles.body}>
-        <div className={styles.stats}>
+      <div className={ui.body}>
+        <div className={ui.stats}>
           {figures.map((f) => (
-            <div key={f.label} className={styles.stat}>
+            <div key={f.label} className={ui.stat}>
               <b>{f.value}</b>
               <span>{f.label}</span>
-              <small className={f.red ? undefined : styles.soft} style={f.red ? { color: '#b4321f' } : undefined}>
+              <small className={f.red ? undefined : ui.soft} style={f.red ? { color: '#b4321f' } : undefined}>
                 {f.note}
               </small>
             </div>
           ))}
         </div>
 
-        <div className={styles.grid}>
-          <div className={styles.sec}>
-            <h2 className={styles.h2}>
+        <div className={ui.grid}>
+          <div className={ui.sec}>
+            <h2 className={ui.h2}>
               Business payments<span>Through Curios’s own CHIP account</span>
             </h2>
-            <div className={`${styles.box} ${styles.tw}`}>
+            <div className={`${ui.box} ${ui.tw}`}>
               <div
-                className={styles.t}
+                className={ui.t}
                 role="table"
                 aria-label="Business payments"
                 style={{ '--cols': '92px minmax(130px,1.4fr) 70px minmax(120px,1.3fr) 70px minmax(116px,1.1fr) 92px', '--minw': '800px' } as CSSProperties}
               >
-                <div className={styles.r} role="row">
+                <div className={ui.r} role="row">
                   {HEADS.map(([h, right]) => (
-                    <div key={h} className={right ? `${styles.h} ${styles.right}` : styles.h} role="columnheader">
+                    <div key={h} className={right ? `${ui.h} ${ui.right}` : ui.h} role="columnheader">
                       {h}
                     </div>
                   ))}
                 </div>
                 {p.rows.map((r) => (
-                  <div key={r.id} className={styles.r} role="row">
-                    <div className={styles.c} role="cell">
+                  <div key={r.id} className={ui.r} role="row">
+                    <div className={ui.c} role="cell">
                       {whenOf(r.createdAt, now)}
                     </div>
-                    <div className={styles.c} role="cell">
-                      <span className={styles.pg}>
+                    <div className={ui.c} role="cell">
+                      <span className={ui.pg}>
                         <b>{r.name}</b>
                       </span>
                     </div>
-                    <div className={styles.c} role="cell">
+                    <div className={ui.c} role="cell">
                       {r.plan === 'ANNUAL' ? 'Yearly' : 'Monthly'}
                     </div>
-                    <div className={styles.c} role="cell">
+                    <div className={ui.c} role="cell">
                       {r.paidVia ?? '—'}
                     </div>
-                    <div className={`${styles.c} ${styles.right}`} role="cell">
-                      <b>{rm(r.amountCents)}</b>
+                    <div className={`${ui.c} ${ui.right}`} role="cell">
+                      <b>{ringgit(r.amountCents)}</b>
                     </div>
-                    <div className={styles.c} role="cell">
-                      <span className={styles.st}>
+                    <div className={ui.c} role="cell">
+                      <span className={ui.st}>
                         <i style={{ background: STATUS_COLOUR[r.status] }} />
                         {r.status}
                       </span>
                     </div>
-                    <div className={styles.c} role="cell">
-                      <span className={styles.mono}>{r.providerRef ?? '—'}</span>
+                    <div className={ui.c} role="cell">
+                      <span className={ui.mono}>{r.providerRef ?? '—'}</span>
                     </div>
                   </div>
                 ))}
                 {p.rows.length === 0 && (
-                  <div className={styles.r} role="row">
-                    <div className={styles.empty} role="cell">
+                  <div className={ui.r} role="row">
+                    <div className={ui.empty} role="cell">
                       No payments yet.
                     </div>
                   </div>
@@ -192,11 +191,11 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
             </div>
           </div>
 
-          <div className={styles.sec}>
-            <h2 className={styles.h2}>
+          <div className={ui.sec}>
+            <h2 className={ui.h2}>
               Payment webhooks<span>Last 24 hours</span>
             </h2>
-            <div className={styles.box}>
+            <div className={ui.box}>
               {p.webhooks.map((h) => (
                 <div key={h.id} className={styles.need}>
                   <i style={{ background: hookColour(h) }} />
@@ -214,15 +213,15 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
                   )}
                 </div>
               ))}
-              {p.webhooks.length === 0 && <p className={styles.nothing}>No webhooks in the last 24 hours.</p>}
+              {p.webhooks.length === 0 && <p className={ui.nothing}>No webhooks in the last 24 hours.</p>}
             </div>
-            <p className={styles.note}>
+            <p className={ui.note}>
               Shop orders are paid into each owner’s own CHIP account. Curios only sees that an order was paid, never the money.
             </p>
-            <div className={`${styles.box} ${styles.shop}`}>
+            <div className={`${ui.box} ${styles.shop}`}>
               <p className={styles.shopHead}>Shop orders paid online, this month</p>
               <p className={styles.shopFig}>
-                {int(p.shop.orders)} {p.shop.orders === 1 ? 'order' : 'orders'} · {rm(p.shop.totalCents)}
+                {int(p.shop.orders)} {p.shop.orders === 1 ? 'order' : 'orders'} · {ringgit(p.shop.totalCents)}
               </p>
               <p className={styles.shopHead}>Across {int(p.shop.shops)} {p.shop.shops === 1 ? 'shop' : 'shops'}. Owners’ money, shown for scale only.</p>
             </div>
@@ -242,7 +241,7 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
       )}
 
       {toast && (
-        <div className={styles.toast} role="status">
+        <div className={ui.toast} role="status">
           {toast}
         </div>
       )}

@@ -2,8 +2,8 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { BillingNotConfiguredError } from '../billing/billing.routes.js';
 import type { ChipMessages } from '../billing/chip-message.js';
-import type { AdminActor } from './admin-pages.service.js';
 import { replayWebhook } from './admin-payments.service.js';
+import { adminActor } from './audit.js';
 
 export interface AdminPaymentsRouteOptions {
   /**
@@ -19,11 +19,6 @@ const withReason = z.object({ reason: z.string().trim().min(1).max(500) });
 
 /** Every route here sits behind requireAdmin, added by the scope that registers this plugin. */
 export const adminPaymentsRoutes: FastifyPluginAsyncZod<AdminPaymentsRouteOptions> = async (app, options) => {
-  const actor = (request: { admin: { id: string } | null; ip: string }): AdminActor => ({
-    adminId: request.admin!.id,
-    ip: request.ip,
-  });
-
   app.post(
     '/admin/webhooks/:id/replay',
     { schema: { params, body: withReason, response: { 200: z.object({ status: z.string() }) } } },
@@ -31,7 +26,7 @@ export const adminPaymentsRoutes: FastifyPluginAsyncZod<AdminPaymentsRouteOption
       if (!options.messages) throw new BillingNotConfiguredError();
       const result = await replayWebhook(
         { ...options.messages, log: request.log },
-        actor(request),
+        adminActor(request),
         request.params.id,
         request.body.reason,
       );

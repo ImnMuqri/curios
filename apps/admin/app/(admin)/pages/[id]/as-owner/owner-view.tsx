@@ -1,6 +1,7 @@
 import Link from 'next/link';
+import { ringgit } from '@curios/core/money';
 import type { OwnerView as OwnerViewData } from '@curios/db-read/admin';
-import { dayTime, day, rm } from '../../format.js';
+import { dayTime, day } from '../../format.js';
 import styles from './owner-view.module.css';
 
 /** Everything here is already masked by the read; this only lays it out. No controls that change anything. */
@@ -96,7 +97,7 @@ export function OwnerView({ view, pageId }: { view: OwnerViewData; pageId: strin
                   <li key={i}>
                     <b>{it.name}</b>
                     <span>
-                      {it.priceCents === null ? '-' : rm(it.priceCents)}
+                      {it.priceCents === null ? '-' : ringgit(it.priceCents)}
                       {it.available ? '' : ' · unavailable'}
                     </span>
                   </li>
@@ -140,7 +141,7 @@ export function OwnerView({ view, pageId }: { view: OwnerViewData; pageId: strin
                       #{o.number} · {o.maskedName}
                     </b>
                     <span>
-                      {rm(o.totalCents)} · {o.status} · {dayTime(o.createdAt)}
+                      {ringgit(o.totalCents)} · {o.status} · {dayTime(o.createdAt)}
                     </span>
                   </li>
                 ))}

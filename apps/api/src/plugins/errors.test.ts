@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { errorsPlugin } from './errors.js';
+import { errorsPlugin, statusFor } from './errors.js';
 
 let app: FastifyInstance;
 
@@ -25,6 +25,11 @@ beforeAll(async () => {
       { code: 'P2002' },
     );
     throw error;
+  });
+
+  // A status that is not a number: answered as the fault it is, not as the string it carries.
+  app.get('/string-status', async () => {
+    throw Object.assign(new Error('odd'), { statusCode: '409', code: 'NO_CHANGE' });
   });
 
   // Fastify's own schema check, as every route with a schema has.
@@ -59,11 +64,27 @@ describe('errorsPlugin', () => {
     expect(res.json().error.code).toBe('INVALID_REQUEST');
   });
 
+  it('answers 500 for a status that is not a number', async () => {
+    const res = await app.inject({ method: 'GET', url: '/string-status' });
+    expect(res.statusCode).toBe(500);
+  });
+
   it('never leaks a raw Prisma error code to the client on a 500', async () => {
     const res = await app.inject({ method: 'GET', url: '/prisma-error' });
     expect(res.statusCode).toBe(500);
     expect(res.json()).toEqual({
       error: { code: 'INTERNAL_ERROR', message: 'Something failed on our side. Try again.' },
     });
+  });
+});
+
+describe('statusFor', () => {
+  it("is the error's own status, and 500 for one with none or one that is not an error status", () => {
+    expect(statusFor(Object.assign(new Error('x'), { statusCode: 409 }))).toBe(409);
+    expect(statusFor(Object.assign(new Error('x'), { statusCode: 502 }))).toBe(502);
+    expect(statusFor(new Error('x'))).toBe(500);
+    expect(statusFor(Object.assign(new Error('x'), { statusCode: '409' }))).toBe(500);
+    expect(statusFor(Object.assign(new Error('x'), { statusCode: 200 }))).toBe(500);
+    expect(statusFor(null)).toBe(500);
   });
 });

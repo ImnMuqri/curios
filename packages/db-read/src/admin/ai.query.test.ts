@@ -146,6 +146,20 @@ describe('getAiUsage', () => {
     });
   });
 
+  it('lists at most ten near-limit pages, fullest first', async () => {
+    const extra: string[] = [];
+    for (let i = 0; i < 11; i++) extra.push(await aPage(`Near ${i}`));
+    await write.usageCounter.createMany({ data: extra.map((pageId, i) => ({ pageId, period: '2026-10', count: 170 + i })) });
+    try {
+      const u = await getAiUsage('7d', NOW);
+      expect(u.nearCap).toHaveLength(10);
+      // 13 pages are over the line (Alpha 160 and eleven 170..180); the fullest ten are 180 down to 171.
+      expect(u.nearCap.map((p) => p.used)).toEqual([180, 179, 178, 177, 176, 175, 174, 173, 172, 171]);
+    } finally {
+      await write.usageCounter.deleteMany({ where: { pageId: { in: extra } } });
+    }
+  });
+
   it('keeps today to Malaysia midnight', async () => {
     const u = await getAiUsage('today', NOW);
     expect(u.calls).toBe(10);

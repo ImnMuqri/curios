@@ -252,6 +252,28 @@ describe('POST /admin/webhooks/:id/replay', () => {
     }
   });
 
+  it("answers the handler's own error, not the record's, when a replay fails and its record cannot be written either", async () => {
+    const hook = await aFailedPaidWebhook();
+    client.getPurchase.mockRejectedValue(new ChipUnavailableError('timeout'));
+    const prisma = app.prisma as unknown as Record<string, unknown>;
+    const original = prisma.$transaction;
+    Object.defineProperty(prisma, '$transaction', {
+      value: () => Promise.reject(new Error('database went away')),
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+    try {
+      const res = await replay(hook.eventId);
+
+      expect(res.statusCode).toBe(502);
+      expect(res.json().error.code).toBe('CHIP_UNAVAILABLE');
+      expect((await eventRow(hook.eventId)).attempts).toBe(1);
+    } finally {
+      Object.defineProperty(prisma, '$transaction', { value: original, writable: true, configurable: true, enumerable: true });
+    }
+  });
+
   it('is a 404 WEBHOOK_NOT_FOUND for a message that is not there', async () => {
     const res = await replay('no-such-event');
 

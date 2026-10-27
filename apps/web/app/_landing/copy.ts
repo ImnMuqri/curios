@@ -1,4 +1,5 @@
 import { monthsFree } from '@curios/core/billing';
+import { ringgit } from '@curios/core/money';
 import type { PlanTerms } from '@curios/core/settings';
 
 /**
@@ -38,6 +39,10 @@ function figures(terms: PlanTerms) {
     annualAMonth: (terms.prices.ANNUAL / 12 / 100).toFixed(2),
     /** Whole months a year saves, or null when the prices give none (DEVIATIONS 225). */
     months,
+    /** The prices as text, from the one formatter: RM49, or RM49.50 when a price has sen. */
+    monthlyText: ringgit(terms.prices.MONTHLY),
+    annualText: ringgit(terms.prices.ANNUAL),
+    annualAMonthText: ringgit(Math.round(terms.prices.ANNUAL / 12)),
     /** Whether one RM95 order (the example the tag names) still covers a month. */
     rm95Covers: terms.prices.MONTHLY <= 9500,
     leads: terms.freeLeads,
@@ -206,6 +211,7 @@ export interface LandingCopy {
       typical: string;
       takeIn: string;
       yours: string;
+      /** `amount` is written already: RM49, RM40.83. */
       cost: (amount: string) => string;
       pays: (percent: number, times: number) => string;
       under: string;
@@ -217,6 +223,9 @@ export interface LandingCopy {
     /** Numbers the calculator needs, from the prices in force. */
     monthlyRinggit: number;
     annualAMonth: string;
+    /** The same two, written: RM49.50, RM40.88. */
+    monthlyText: string;
+    annualAMonthText: string;
   };
   faq: { title: string; items: Faq[] };
   closing: { title: string; onePageFor: string; words: string[]; button: string; note: string };
@@ -641,7 +650,7 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
   const f = figures(terms);
   return {
     eyebrow: 'Pricing',
-    title: `Free to be asked. RM${f.monthly} when you’re selling.`,
+    title: `Free to be asked. ${f.monthlyText} when you’re selling.`,
     billing: 'Business billing',
     monthly: 'Monthly',
     yearly: 'Yearly',
@@ -659,12 +668,12 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
       name: 'Business',
       // Left out once a month costs more than the RM95 order it names (DEVIATIONS 226).
       tag: f.rm95Covers ? 'One RM95 order pays for it' : '',
-      monthly: `RM${f.monthly}`,
-      yearly: `RM${f.annual}`,
+      monthly: f.monthlyText,
+      yearly: f.annualText,
       perMonth: 'a month',
       perYear: 'a year',
-      noteMonthly: f.months === null ? `Or RM${f.annual} a year.` : `Or RM${f.annual} a year: ${inWords(f.months, EN_NUMBERS)} ${f.months === 1 ? 'month' : 'months'} free.`,
-      noteYearly: `RM${f.annualAMonth} a month, paid once a year.`,
+      noteMonthly: f.months === null ? `Or ${f.annualText} a year.` : `Or ${f.annualText} a year: ${inWords(f.months, EN_NUMBERS)} ${f.months === 1 ? 'month' : 'months'} free.`,
+      noteYearly: `${f.annualAMonthText} a month, paid once a year.`,
       plus: 'Everything in Personal, plus',
       points: [
         'A shop paid by FPX, e-wallet, card or your own QR',
@@ -683,7 +692,7 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
       typicalLabel: 'Typical order value',
       takeIn: 'You’d take in',
       yours: 'Your orders',
-      cost: (amount) => `Curios Business · RM${amount}`,
+      cost: (amount) => `Curios Business · ${amount}`,
       pays: (percent, times) => `Business costs about ${percent}% of that. It pays for itself ${times >= 2 ? `${times} times over.` : 'once.'}`,
       under: 'That’s less than Business costs. Stay on Personal until orders pick up.',
     },
@@ -691,6 +700,8 @@ function pricingEn(terms: PlanTerms): LandingCopy['pricing'] {
     disclaimer: 'The calculator is an illustration, not a forecast.',
     monthlyRinggit: f.monthly,
     annualAMonth: f.annualAMonth,
+    monthlyText: f.monthlyText,
+    annualAMonthText: f.annualAMonthText,
   };
 }
 
@@ -698,7 +709,7 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
   const f = figures(terms);
   return {
     eyebrow: 'Harga',
-    title: `Percuma untuk ditanya. RM${f.monthly} bila anda menjual.`,
+    title: `Percuma untuk ditanya. ${f.monthlyText} bila anda menjual.`,
     billing: 'Bayaran bisnes',
     monthly: 'Bulanan',
     yearly: 'Tahunan',
@@ -715,12 +726,12 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
     business: {
       name: 'Bisnes',
       tag: f.rm95Covers ? 'Satu tempahan RM95 dah cukup bayar' : '',
-      monthly: `RM${f.monthly}`,
-      yearly: `RM${f.annual}`,
+      monthly: f.monthlyText,
+      yearly: f.annualText,
       perMonth: 'sebulan',
       perYear: 'setahun',
-      noteMonthly: f.months === null ? `Atau RM${f.annual} setahun.` : `Atau RM${f.annual} setahun: percuma ${inWords(f.months, MS_NUMBERS)} bulan.`,
-      noteYearly: `RM${f.annualAMonth} sebulan, bayar sekali setahun.`,
+      noteMonthly: f.months === null ? `Atau ${f.annualText} setahun.` : `Atau ${f.annualText} setahun: percuma ${inWords(f.months, MS_NUMBERS)} bulan.`,
+      noteYearly: `${f.annualAMonthText} sebulan, bayar sekali setahun.`,
       plus: 'Semua dalam Peribadi, dan',
       points: [
         'Kedai yang dibayar melalui FPX, e-dompet, kad atau QR anda sendiri',
@@ -739,7 +750,7 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
       typicalLabel: 'Nilai tempahan biasa',
       takeIn: 'Anda akan terima',
       yours: 'Tempahan anda',
-      cost: (amount) => `Curios Bisnes · RM${amount}`,
+      cost: (amount) => `Curios Bisnes · ${amount}`,
       pays: (percent, times) => `Bisnes kosnya kira-kira ${percent}% daripada itu. Ia bayar balik ${times >= 2 ? `${times} kali ganda.` : 'sekali.'}`,
       under: 'Itu kurang dari kos Bisnes. Kekal di Peribadi sampai tempahan naik.',
     },
@@ -747,6 +758,8 @@ function pricingMs(terms: PlanTerms): LandingCopy['pricing'] {
     disclaimer: 'Kalkulator ini contoh, bukan ramalan.',
     monthlyRinggit: f.monthly,
     annualAMonth: f.annualAMonth,
+    monthlyText: f.monthlyText,
+    annualAMonthText: f.annualAMonthText,
   };
 }
 

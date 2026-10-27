@@ -1,3 +1,4 @@
+import type { FastifyInstance } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import type { MailJobData } from '@curios/core';
@@ -10,9 +11,9 @@ import {
   suspendPage,
   unsuspendPage,
   viewAsOwner,
-  type AdminActor,
   type AdminPagesDeps,
 } from './admin-pages.service.js';
+import { adminActor } from './audit.js';
 
 export interface AdminPagesRouteOptions {
   mailQueue?: { add(name: string, data: MailJobData, opts?: unknown): Promise<unknown> };
@@ -27,20 +28,23 @@ const reason = z.string().trim().min(1).max(500);
 const withReason = z.object({ reason });
 const withHandle = z.object({ reason, handle: z.string().trim().min(1).max(100) });
 
+/**
+ * The services' deps for one request, from the parts fixed at registration. Shared with the reports
+ * routes, which act on pages too but never remove a file.
+ */
+export function adminPagesDeps(
+  app: FastifyInstance,
+  parts: { mailQueue?: AdminPagesRouteOptions['mailQueue']; store: AvatarStore | null; privateFiles?: PrivateFiles | null },
+): (log: AdminPagesDeps['log']) => AdminPagesDeps {
+  return (log) => ({ prisma: app.prisma, mailQueue: parts.mailQueue ?? app.mailQueue, store: parts.store, privateFiles: parts.privateFiles, log });
+}
+
 /** Every route here sits behind requireAdmin, added by the scope that registers this plugin. */
 export const adminPagesRoutes: FastifyPluginAsyncZod<AdminPagesRouteOptions> = async (app, options) => {
-  const store = resolveStore(options.store);
-  const privateFiles = resolvePrivateFiles(options.privateFiles);
-  const deps = (log: AdminPagesDeps['log']): AdminPagesDeps => ({
-    prisma: app.prisma,
-    mailQueue: options.mailQueue ?? app.mailQueue,
-    store,
-    privateFiles,
-    log,
-  });
-  const actor = (request: { admin: { id: string } | null; ip: string }): AdminActor => ({
-    adminId: request.admin!.id,
-    ip: request.ip,
+  const deps = adminPagesDeps(app, {
+    mailQueue: options.mailQueue,
+    store: resolveStore(options.store),
+    privateFiles: resolvePrivateFiles(options.privateFiles),
   });
 
   const simple = {
@@ -53,13 +57,13 @@ export const adminPagesRoutes: FastifyPluginAsyncZod<AdminPagesRouteOptions> = a
 
   for (const [name, run] of Object.entries(simple)) {
     app.post(`/admin/pages/:id/${name}`, { schema: { params, body: withReason } }, async (request, reply) => {
-      await run(deps(request.log), actor(request), request.params.id, request.body.reason);
+      await run(deps(request.log), adminActor(request), request.params.id, request.body.reason);
       return reply.status(204).send();
     });
   }
 
   app.delete('/admin/pages/:id', { schema: { params, body: withHandle } }, async (request, reply) => {
-    await deleteAccount(deps(request.log), actor(request), request.params.id, request.body.reason, request.body.handle);
+    await deleteAccount(deps(request.log), adminActor(request), request.params.id, request.body.reason, request.body.handle);
     return reply.status(204).send();
   });
 };

@@ -2,13 +2,15 @@
  * The rules of a page's shop, shared by the API, the public shop and the
  * owner's editor -- so the editor cannot accept what the API refuses.
  *
- * Imports nothing, like bento.ts: client components load it through
+ * Imports only money.ts, which imports nothing, like bento.ts: client components load it through
  * `@curios/core/store`, and the barrel reaches `node:crypto`.
  *
  * Money is integer sen throughout. A float ringgit would make RM0.10 + RM0.20
  * a different number from RM0.30, on a page whose whole promise is that it
  * never says a wrong price.
  */
+
+import { ringgit } from './money.js';
 
 export const MAX_ITEMS = 40;
 export const MAX_OPTIONS = 10;
@@ -74,10 +76,7 @@ export function pricingProblem(pricing: Pricing): string | null {
 
 /** RM95, RM95.50, RM1,234.56 -- the way a Malaysian price tag reads. */
 export function formatRinggit(cents: number): string {
-  const ringgit = Math.floor(cents / 100);
-  const sen = cents % 100;
-  const whole = ringgit.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return sen === 0 ? `RM${whole}` : `RM${whole}.${sen.toString().padStart(2, '0')}`;
+  return ringgit(cents);
 }
 
 /**

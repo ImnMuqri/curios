@@ -3,7 +3,8 @@ import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyBaseLogger } from 'fastify';
 import { PrismaClient } from '@prisma/client';
 import { ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
-import { handleChipMessage, recordAndHandle, type ChipMessageDeps } from './chip-message.js';
+import { statusFor } from '../../plugins/errors.js';
+import { attemptOutcome, handleChipMessage, recordAndHandle, type ChipMessageDeps } from './chip-message.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
@@ -75,6 +76,20 @@ describe('handleChipMessage', () => {
       status: 'ignored',
     });
     expect(getPurchase).not.toHaveBeenCalled();
+  });
+});
+
+describe('attemptOutcome', () => {
+  it('stores the status the error handler answers with', () => {
+    for (const error of [
+      Object.assign(new Error('x'), { statusCode: 502 }),
+      Object.assign(new Error('x'), { statusCode: '409' }),
+      Object.assign(new Error('x'), { statusCode: 200 }),
+      new Error('x'),
+      'a string thrown',
+    ]) {
+      expect(attemptOutcome({ error }).statusCode).toBe(statusFor(error));
+    }
   });
 });
 

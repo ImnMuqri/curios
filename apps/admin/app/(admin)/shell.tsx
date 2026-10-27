@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { NavCounts } from '@curios/db-read/admin';
@@ -94,6 +94,13 @@ export function Shell({
 }) {
   const pathname = usePathname();
   const active = current ?? keyOf(pathname);
+  const activeLink = useRef<HTMLAnchorElement>(null);
+
+  // On a phone the bar scrolls sideways: keep the current section in view.
+  useEffect(() => {
+    if (!window.matchMedia('(max-width: 860px)').matches) return;
+    activeLink.current?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
+  }, [active]);
 
   return (
     <div className={styles.root}>
@@ -121,6 +128,7 @@ export function Shell({
               {group.items.map((item) => (
                 <Link
                   key={item.key}
+                  ref={active === item.key ? activeLink : undefined}
                   href={item.href}
                   className={styles.link}
                   aria-current={active === item.key ? 'page' : undefined}

@@ -46,20 +46,31 @@ export const DOMAIN_ERROR_CODES = new Set([
   'RATE_LIMITED',
   'UNAUTHENTICATED',
   'INVALID_CREDENTIALS',
-  // Admin sign-in: one answer for an unknown email, a wrong password and a disabled admin.
+  // --- Admin: the codes only the Curios team's own app sees, kept together. ---
+  // Sign-in: one answer for an unknown email, a wrong password and a disabled admin.
   'ADMIN_SIGNIN_FAILED',
-  // Admin actions: the page is not there, is not in a state the action allows, or the typed handle is not its handle.
+  // Pages: the page is not in a state the action allows, or the typed handle is not its handle.
+  // (A page that is not there is PAGE_NOT_FOUND, above.)
   'PAGE_STATE',
-  'NO_OPEN_REPORTS',
   'HANDLE_MISMATCH',
-  // Controls: a switch already in that state, a big price change not yet confirmed, a save that changes nothing.
+  // Reports: dismissing or emailing about a page with no open reports.
+  'NO_OPEN_REPORTS',
+  // Controls: a switch already in that state, a big price change not yet confirmed, a save that
+  // changes nothing (a banner already showing or already down included).
   'SWITCH_STATE',
   'BIG_CHANGE',
   'NO_CHANGE',
+  // Controls: the reading switch could not pause or resume the ingest queue, so nothing was saved.
+  // A 502 whose own sentence reaches the admin (OWN_MESSAGE_CODES below).
+  'QUEUE_UNAVAILABLE',
   // Payments: a CHIP message the admin asked to replay that is not in the log, or one logged
   // from a source that cannot be replayed.
   'WEBHOOK_NOT_FOUND',
   'WEBHOOK_SOURCE',
+  // Reading sources: a retry of a source that is not failed or cannot be read, or while reading is off.
+  'SOURCE_STATE',
+  'READING_OFF',
+  // --- End of the admin codes. ---
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
   'OAUTH_STATE_MISMATCH',
@@ -77,12 +88,6 @@ export const DOMAIN_ERROR_CODES = new Set([
   // pasted text has nothing to re-read.
   'SOURCE_BUSY',
   'SOURCE_NOT_RECHECKABLE',
-  // Admin Reading sources: a retry of a source that is not failed or cannot be read, or while reading is off.
-  'SOURCE_STATE',
-  'READING_OFF',
-  // Controls: the reading switch could not pause or resume the ingest queue, so nothing was saved.
-  // A 502 whose own sentence reaches the admin (OWN_MESSAGE_CODES below).
-  'QUEUE_UNAVAILABLE',
   // Never-say: a phrase that is not one short line, one already listed, or one too many.
   'INVALID_NEVER_SAY',
   'NEVER_SAY_DUPLICATE',
@@ -223,12 +228,21 @@ export const SWITCH_CODES = new Set(['SIGNUPS_CLOSED', 'READING_PAUSED', 'PAYMEN
 export const OWN_MESSAGE_CODES = new Set(['QUEUE_UNAVAILABLE']);
 
 /**
+ * The status an error is answered with: its own, when that is an error status (400-599), else 500.
+ * Exported so the CHIP message log stores the status this handler answers CHIP with.
+ */
+export function statusFor(error: unknown): number {
+  const status = (error as { statusCode?: unknown } | null | undefined)?.statusCode;
+  return typeof status === 'number' && Number.isInteger(status) && status >= 400 && status <= 599 ? status : 500;
+}
+
+/**
  * Domain errors are mapped once, here. Messages are user-facing and follow the
  * copy rules: say what happened and what to do next, never apologise.
  */
 export const errorsPlugin = fp(async (app: FastifyInstance) => {
   app.setErrorHandler((error: DomainError & { validation?: unknown }, request, reply) => {
-    const statusCode = error.statusCode ?? 500;
+    const statusCode = statusFor(error);
     // A request its route's schema refused is the caller's mistake, not a fault of ours: it says so
     // in its own code rather than sharing INTERNAL_ERROR with an outage.
     const code =

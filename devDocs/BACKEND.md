@@ -883,10 +883,19 @@ outcome are ever logged.
 **Auto-renew.** A purchase that asks to keep the card is paid by card only; if
 CHIP keeps a token, `grantPayment` saves it with a label like "Visa ending
 1111". The workers' auto-renew job (`apps/workers/src/billing/auto-renew.ts`)
-charges that token from a day before the plan ends, once a day, and a failed
-charge is retried daily for up to 3 days, after which auto-renew turns off and
-the owner is emailed. The owner can turn it off any time on Billing, which
-drops the token. Renewals are granted through the same `grantPayment`.
+charges that token on the Kuala Lumpur calendar day the plan ends (never the day
+before), at that day's 10:00 run. Attempts are at least `ATTEMPT_GAP_MS` (20
+hours) apart, and charging is allowed until 3 days after the end. A failed charge
+is retried on the next day's run; a failure more than 3 days after the end turns
+auto-renew off and the owner is emailed, and a card that was tried and is still
+unpaid more than 3 days after the end is dropped the same way. A card no run has
+tried for that end (the switch was off, the settings unreadable, the page
+suspended) is still charged once a run may, up to 7 days after the end
+(`UNTRIED_CHARGE_LIMIT_MS`); past 7 days it is dropped as lapsed and the owner is
+told once, never charged that late. While the admin has CHIP payments switched
+off, or the settings cannot be read, the whole run is skipped and every card
+stays. The owner can turn auto-renew off any time on Billing, which drops the
+token. Renewals are granted through the same `grantPayment`.
 
 ### Telling an owner their plan is ending
 

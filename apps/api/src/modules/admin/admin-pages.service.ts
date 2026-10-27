@@ -11,7 +11,7 @@ import { stockCoverName } from '@curios/core/bento';
 import type { Prisma, PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
 import type { PrivateFiles } from '../store/private-files.js';
-import { writeAudit } from './audit.js';
+import { writeAudit, type AdminActor } from './audit.js';
 
 export interface AdminPagesDeps {
   prisma: PrismaClient;
@@ -23,11 +23,7 @@ export interface AdminPagesDeps {
   log?: { warn?: (o: object, m: string) => void };
 }
 
-/** Who is acting, and from where: the audit row's first columns. */
-export interface AdminActor {
-  adminId: string;
-  ip: string;
-}
+export type { AdminActor } from './audit.js';
 
 export class PageNotFoundError extends Error {
   readonly statusCode = 404;

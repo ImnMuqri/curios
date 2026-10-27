@@ -1,11 +1,14 @@
 import Link from 'next/link';
+import { ringgit } from '@curios/core/money';
 import type { ReportReasonKey } from '@curios/core/report';
 import type { Overview as OverviewData, Period } from '@curios/db-read/admin';
 import { PERIODS } from './period.js';
+import ui from './ui.module.css';
 import styles from './overview.module.css';
 
 const int = (n: number) => n.toLocaleString('en-US');
-const rm = (cents: number) => `RM${int(Math.round(cents / 100))}`;
+/** Revenue to the whole ringgit, as the board draws it. */
+const rm = (cents: number) => ringgit(Math.round(cents / 100) * 100);
 // The gateway counts AI cost in thousandths of a US cent: 100,000 to the dollar.
 const usd = (milliCents: number, decimals: number) => `US$${(milliCents / 100_000).toFixed(decimals)}`;
 
@@ -163,10 +166,10 @@ export function Overview({ overview: o, period, cap }: { overview: OverviewData;
 
   return (
     <>
-      <div className={styles.head}>
+      <div className={ui.head}>
         <h1>Overview</h1>
         <p>How Curios is doing</p>
-        <nav className={styles.per} aria-label="Period">
+        <nav className={ui.per} aria-label="Period">
           {PERIODS.map((p) => (
             <Link
               key={p.key}
@@ -179,23 +182,23 @@ export function Overview({ overview: o, period, cap }: { overview: OverviewData;
         </nav>
       </div>
 
-      <div className={styles.body}>
-        <div className={styles.stats}>
+      <div className={ui.body}>
+        <div className={ui.stats}>
           {stats(o, phrase, period).map((s) => (
-            <div key={s.label} className={styles.stat}>
+            <div key={s.label} className={ui.stat}>
               <b>{s.value}</b>
               <span>{s.label}</span>
-              <small className={s.tone === 'good' ? styles.good : styles.soft}>{s.note}</small>
+              <small className={s.tone === 'good' ? ui.good : ui.soft}>{s.note}</small>
             </div>
           ))}
         </div>
 
-        <div className={styles.grid}>
-          <div className={styles.sec}>
-            <h2 className={styles.h2}>
+        <div className={ui.grid}>
+          <div className={ui.sec}>
+            <h2 className={ui.h2}>
               Conversations a day<span>Last {o.perDay.length} days</span>
             </h2>
-            <div className={`${styles.box} ${styles.chart}`}>
+            <div className={`${ui.box} ${styles.chart}`}>
               <div className={styles.bars} role="img" aria-label="Conversations per day">
                 {o.perDay.map((d, i) => (
                   <span
@@ -222,43 +225,43 @@ export function Overview({ overview: o, period, cap }: { overview: OverviewData;
               </div>
             </div>
 
-            <h2 className={`${styles.h2} ${styles.again}`}>
+            <h2 className={`${ui.h2} ${ui.again}`}>
               New pages<span>Newest first</span>
             </h2>
-            <div className={`${styles.box} ${styles.tw}`}>
+            <div className={`${ui.box} ${ui.tw}`}>
               <div className={styles.t} role="table" aria-label="New pages">
                 <div className={`${styles.r} ${styles.hd}`} role="row">
                   {['Page', 'Kind', 'Signed up', 'Facts', 'First question'].map((h, i) => (
-                    <div key={h} className={i === 3 ? `${styles.h} ${styles.right}` : styles.h} role="columnheader">
+                    <div key={h} className={i === 3 ? `${ui.h} ${ui.right}` : ui.h} role="columnheader">
                       {h}
                     </div>
                   ))}
                 </div>
                 {o.newPages.length === 0 && (
                   <div className={styles.r} role="row">
-                    <div className={styles.empty} role="cell">
+                    <div className={ui.empty} role="cell">
                       No pages yet.
                     </div>
                   </div>
                 )}
                 {o.newPages.map((p) => (
                   <div key={p.handle} className={styles.r} role="row">
-                    <div className={styles.c} role="cell">
+                    <div className={ui.c} role="cell">
                       <Link className={styles.pg} href={`/pages?q=${encodeURIComponent(p.handle)}`}>
                         <b>{p.name}</b>
                         <code>curios.my/{p.handle}</code>
                       </Link>
                     </div>
-                    <div className={styles.c} role="cell">
+                    <div className={ui.c} role="cell">
                       {p.mode === 'BUSINESS' ? 'Business' : 'Personal'}
                     </div>
-                    <div className={styles.c} role="cell">
+                    <div className={ui.c} role="cell">
                       {day(p.createdAt)}
                     </div>
-                    <div className={`${styles.c} ${styles.right}`} role="cell">
+                    <div className={`${ui.c} ${ui.right}`} role="cell">
                       {int(p.factCount)}
                     </div>
-                    <div className={styles.c} role="cell">
+                    <div className={ui.c} role="cell">
                       {p.hasConversation ? 'Yes' : 'Not yet'}
                     </div>
                   </div>
@@ -267,12 +270,12 @@ export function Overview({ overview: o, period, cap }: { overview: OverviewData;
             </div>
           </div>
 
-          <div className={styles.sec}>
-            <h2 className={styles.h2}>
+          <div className={ui.sec}>
+            <h2 className={ui.h2}>
               Needs you<span>{int(openCount)} open</span>
             </h2>
-            <div className={styles.box}>
-              {open.length === 0 && <p className={styles.nothing}>Nothing needs you.</p>}
+            <div className={ui.box}>
+              {open.length === 0 && <p className={ui.nothing}>Nothing needs you.</p>}
               {open.map((n) => (
                 <div key={n.key} className={styles.need}>
                   <i className={styles[n.dot]} />
@@ -289,10 +292,10 @@ export function Overview({ overview: o, period, cap }: { overview: OverviewData;
               ))}
             </div>
 
-            <h2 className={`${styles.h2} ${styles.again}`}>
+            <h2 className={`${ui.h2} ${ui.again}`}>
               Pages by kind<span>{int(total)} live</span>
             </h2>
-            <div className={`${styles.box} ${styles.mix}`}>
+            <div className={`${ui.box} ${styles.mix}`}>
               <div className={styles.split}>
                 <i className={styles.personal} style={{ width: `${share(o.byKind.personal)}%` }} />
                 <i className={styles.business} style={{ width: `${share(o.byKind.business)}%` }} />

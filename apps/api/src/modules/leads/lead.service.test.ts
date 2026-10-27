@@ -56,7 +56,38 @@ describe('captureLead', () => {
 
     const fifth = aQueue();
     await captureLead({ prisma, queue: { add: fifth }, settings: five }, { conversationId: await aQualifyingConversation(), phone: '0129999999' });
-    expect(fifth.mock.calls[0]?.[1]).toMatchObject({ lastFreeLead: true });
+    expect(fifth.mock.calls[0]?.[1]).toMatchObject({ lastFreeLead: true, freeLeads: 5 });
+  });
+
+  it('flags the capture that takes the page past an allowance lowered under it, and refuses the next', async () => {
+    // One lead in, then the admin lowers the trial from 3 to 2: the next capture is the last free one.
+    const two = { ...settings, freeLeads: 2 };
+    await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 1 } });
+    const add = aQueue();
+    await captureLead({ prisma, queue: { add }, settings: two }, { conversationId, phone: '0123456789' });
+    expect(add.mock.calls[0]?.[1]).toMatchObject({ lastFreeLead: true, freeLeads: 2 });
+
+    await expect(
+      captureLead({ prisma, queue: { add: aQueue() }, settings: two }, { conversationId: await aQualifyingConversation(), phone: '0129999999' }),
+    ).rejects.toMatchObject({ code: 'NOT_QUALIFIED' });
+  });
+
+  it('flags exactly one of several captures that reach the last free lead at once', async () => {
+    await prisma.page.update({ where: { id: pageId }, data: { mode: 'BUSINESS', leadsCaptured: 2 } });
+    const add = aQueue();
+    const conversations = [conversationId, await aQualifyingConversation(), await aQualifyingConversation()];
+
+    // Each that reads the page at 2 of 3 is let in; one that reads it later is refused, which
+    // is fine. Of those captured, only the one whose count reached 3 is the last free one.
+    const settled = await Promise.allSettled(
+      conversations.map((id, i) => captureLead({ prisma, queue: { add }, settings }, { conversationId: id, phone: `012345678${i}` })),
+    );
+    const captured = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value.leadId] : []));
+
+    expect(captured.length).toBeGreaterThanOrEqual(1);
+    const flagged = add.mock.calls.filter((call) => call[1].lastFreeLead).map((call) => call[1].leadId);
+    expect(flagged).toHaveLength(1);
+    expect(captured).toContain(flagged[0]);
   });
 
   it('flags the lead that used the last free one, and only that one', async () => {

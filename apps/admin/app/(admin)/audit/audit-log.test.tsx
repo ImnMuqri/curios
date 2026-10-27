@@ -58,7 +58,7 @@ describe('AuditLog', () => {
     render(
       <AuditLog
         paged={false}
-        rows={[row(1, { action: 'RETRIED_FAILED_SOURCES', targetType: 'Source', targetId: 'failed', targetLabel: 'everyone' })]}
+        rows={[row(1, { action: 'RETRIED_FAILED_SOURCES', targetType: 'Source', targetId: 'all-failed', targetLabel: 'everyone' })]}
       />,
     );
     const r = screen.getAllByRole('row')[1]!;

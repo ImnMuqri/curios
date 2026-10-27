@@ -38,7 +38,9 @@ const isChipSource = (source: string): source is ChipSource => source === 'callb
  * and the audit row go in one transaction after the handler has run -- the handler commits
  * its own work (a grant locks the page in a transaction of its own) -- and both are written
  * whether it worked or not, so a replay that failed again is on the record too. Its error is
- * then thrown, and the admin sees it.
+ * then thrown, and the admin sees it -- also when the record could not be written: the
+ * handler's error says what happened to the payment, so it is the one answered, and both are
+ * logged.
  */
 export async function replayWebhook(
   deps: ChipMessageDeps,
@@ -101,10 +103,18 @@ export async function replayWebhook(
     });
   } catch (error) {
     deps.log.error(
-      { eventId: event.id, purchaseId: event.purchaseId, paymentId: payment?.id ?? null, handled: !failure, err: errName(error) },
+      {
+        eventId: event.id,
+        purchaseId: event.purchaseId,
+        paymentId: payment?.id ?? null,
+        handled: !failure,
+        err: errName(error),
+        ...(failure ? { handlerErr: errName(failure.error) } : {}),
+      },
       'webhook replayed, but the attempt and its audit row could not be written',
     );
-    throw error;
+    // A handler error must not be masked by the record's: it is what the admin needs to see.
+    throw failure ? failure.error : error;
   }
 
   if (failure) throw failure.error;

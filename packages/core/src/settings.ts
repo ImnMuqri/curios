@@ -2,8 +2,12 @@ import { conversationCap, FREE_CONVERSATIONS_PER_MONTH } from './cap.js';
 import { PLAN_PRICES_CENTS } from './billing.js';
 import { FREE_LEADS, FREE_ORDERS } from './plan.js';
 
-/** The admin's kill switches. A switch that is off stops that thing; every one is on by default. */
-export type SwitchKey = 'chat' | 'signups' | 'reading' | 'chipPayments' | 'ownerEmails';
+/**
+ * The admin's kill switches. A switch that is off stops that thing; every one is on by default. The
+ * one list: the API's route validates against it and the stored rows are read by it.
+ */
+export const SWITCH_KEYS = ['chat', 'signups', 'reading', 'chipPayments', 'ownerEmails'] as const;
+export type SwitchKey = (typeof SWITCH_KEYS)[number];
 /** The numbers the admin can change, named as the audit log names them. */
 export type LimitKey = 'cap' | 'freeLeads' | 'freeOrders' | 'monthlyCents' | 'annualCents';
 
@@ -23,7 +27,8 @@ export const BANNER_MAX = 160;
 /** Above this a price change is "big" and the admin must confirm it. */
 export const PRICE_MAX_RM = 999;
 
-const SWITCH_KEYS: readonly SwitchKey[] = ['chat', 'signups', 'reading', 'chipPayments', 'ownerEmails'];
+/** Set once the malformed-cap warning has been logged: it says the same thing on every read. */
+let warnedMalformedCap = false;
 
 /**
  * What every setting is when no row says otherwise. The constants stay where they are and are the
@@ -36,7 +41,8 @@ export function defaultSettings(): Settings {
   try {
     cap = conversationCap();
   } catch (err) {
-    console.warn('CONVERSATION_CAP_PER_MONTH is malformed; the default cap applies', err);
+    if (!warnedMalformedCap) console.warn('CONVERSATION_CAP_PER_MONTH is malformed; the default cap applies', err);
+    warnedMalformedCap = true;
   }
   return {
     switches: { chat: true, signups: true, reading: true, chipPayments: true, ownerEmails: true },
@@ -156,7 +162,13 @@ export function createSettingsCache(
         return result;
       };
       inflight = load().then(settle, (err: unknown) => {
-        opts.onError?.(err);
+        // A throwing onError must not skip the settle: inflight would stay this rejected promise,
+        // and every get after it would reject.
+        try {
+          opts.onError?.(err);
+        } catch {
+          // Nothing to tell it with; the fallback below is the answer either way.
+        }
         return settle(value ?? fallbackSettings());
       });
       return inflight;

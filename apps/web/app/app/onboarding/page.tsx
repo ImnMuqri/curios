@@ -4,7 +4,7 @@ import { PASTED_TEXT_MAX, SESSION_COOKIE } from '@curios/core';
 import { getOwnerPage, getReviewQueue, getSettings } from '@curios/db-read';
 
 import { resolveOwner } from '../session.js';
-import { ringgit } from '../billing/billing-copy.js';
+import { ringgit } from '@curios/core/money';
 import { Onboarding } from './onboarding.js';
 
 /**

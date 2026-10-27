@@ -24,7 +24,7 @@ beforeAll(async () => {
   pageId = account.pages[0]!.id;
 
   const at = (ago: number) => new Date(NOW.getTime() - ago);
-  await read({ sourceUrl: 'https://example.com/menu', status: 'SUCCEEDED', extractedCount: 12, createdAt: at(6 * DAY), updatedAt: new Date(at(6 * DAY).getTime() + 10_000) });
+  await read({ sourceUrl: 'https://example.com/menu?lang=ms&page=2', status: 'SUCCEEDED', extractedCount: 12, createdAt: at(6 * DAY), updatedAt: new Date(at(6 * DAY).getTime() + 10_000) });
   await read({ sourceUrl: 'https://example.com/', status: 'SUCCEEDED', extractedCount: 4, createdAt: at(5 * DAY), updatedAt: new Date(at(5 * DAY).getTime() + 30_000) });
   // A URL read that succeeded outside the 7 days, and a pasted one: neither is "typical".
   await read({ sourceUrl: 'https://example.com/old', status: 'SUCCEEDED', createdAt: at(9 * DAY), updatedAt: new Date(at(9 * DAY).getTime() + 900_000) });
@@ -37,6 +37,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Ingestion rows go with their account; a left-over failed one would inflate the API's retry-all counts.
+  await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
   await write.$disconnect();
 });
 
@@ -50,6 +52,18 @@ describe('listSources', () => {
     expect(rows.find((r) => r.source === 'Pasted text')).toMatchObject({ status: 'Done' });
     expect(rows.find((r) => r.source === 'cv.pdf')).toMatchObject({ status: 'Done' });
     expect(rows.find((r) => r.source === 'example.com')).toMatchObject({ facts: 4 });
+    // The query string stays: it is part of what was read.
+    expect(rows.find((r) => r.source === 'example.com/menu?lang=ms&page=2')).toMatchObject({ facts: 12 });
+  });
+
+  it('keeps every query key but hides the value of one that may be a secret or an address', async () => {
+    const made = await read({ sourceUrl: 'https://example.com/p?id=7&access_token=abc&Email=a%40b.my&sessionId=9&api-key=k&lang=ms', status: 'SUCCEEDED' });
+    try {
+      const rows = await listSources({ filter: 'done', limit: 50 });
+      expect(rows.find((r) => r.source.startsWith('example.com/p?'))!.source).toBe('example.com/p?id=7&access_token=…&Email=…&sessionId=…&api-key=…&lang=ms');
+    } finally {
+      await write.ingestion.delete({ where: { id: made.id } });
+    }
   });
 
   it('reads a failed Instagram link as Walled', async () => {
@@ -74,7 +88,20 @@ describe('getSourceStats', () => {
     expect(s.reading).toBe(1);
     // The walled read failed at 16:01Z (today in Malaysia); the broken one a second before midnight there.
     expect(s.failedToday).toBe(1);
+    // Of the two failed reads, the Instagram one is walled: only the broken one can be retried.
+    expect(s.retryable).toBe(1);
     expect(s.counts).toEqual({ all: 9, running: 2, failed: 2, done: 5 });
+  });
+
+  it('does not count a failure older than the retry window as retryable', async () => {
+    const old = await read({ sourceUrl: 'https://example.com/ancient', status: 'FAILED', error: 'timeout', createdAt: new Date(NOW.getTime() - 40 * DAY), updatedAt: new Date(NOW.getTime() - 30 * DAY) });
+    try {
+      const s = await getSourceStats(NOW);
+      expect(s.retryable).toBe(1);
+      expect(s.counts.failed).toBe(3);
+    } finally {
+      await write.ingestion.delete({ where: { id: old.id } });
+    }
   });
 
   it('takes the median of URL reads that succeeded in the last 7 days', async () => {

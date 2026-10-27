@@ -4,7 +4,7 @@ export { getOverview } from './overview.query.js';
 export type { Overview, Period } from './overview.query.js';
 export { getAdminPage, listAdminPages, planOf } from './pages.query.js';
 export type { AdminPageDetail, AdminPageRow, AdminPageStatus, AdminPlan, PageFilter } from './pages.query.js';
-export { listReportGroups } from './reports.query.js';
+export { listReportGroups, countClosedReportGroups } from './reports.query.js';
 export type { ReportGroup, ReportOutcome } from './reports.query.js';
 export { getNavCounts } from './nav.query.js';
 export type { NavCounts } from './nav.query.js';
