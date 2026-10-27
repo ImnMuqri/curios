@@ -25,6 +25,7 @@ describe('AuditLog', () => {
     expect(actionLabel('VIEWED_AS_OWNER')).toBe('Saw the page as the owner');
     expect(actionLabel('DISMISSED_REPORTS')).toBe('Dismissed reports');
     expect(actionLabel('EMAILED_OWNER')).toBe('Emailed the owner about a report');
+    expect(actionLabel('REPLAYED_WEBHOOK')).toBe('Replayed a payment webhook');
     expect(actionLabel('SOMETHING_NEW')).toBe('SOMETHING_NEW');
   });
 

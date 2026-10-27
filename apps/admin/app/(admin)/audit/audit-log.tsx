@@ -19,6 +19,7 @@ const LABELS: Record<string, string> = {
   [ADMIN_ACTIONS.CHANGED_LIMITS]: 'Changed limits and prices',
   [ADMIN_ACTIONS.SHOWED_BANNER]: 'Showed a banner to all owners',
   [ADMIN_ACTIONS.TOOK_BANNER_DOWN]: 'Took the banner down',
+  [ADMIN_ACTIONS.REPLAYED_WEBHOOK]: 'Replayed a payment webhook',
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

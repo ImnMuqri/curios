@@ -85,6 +85,16 @@ describe('grantPayment', () => {
     expect(await paymentRow(payment.id)).toEqual({ status: 'PAID', paidAt: NOW, grantedUntil: ONE_MONTH });
   });
 
+  it("records how the payment was paid, for the admin's Payments", async () => {
+    const pageId = await aPage();
+    const payment = await aPendingPayment(pageId, 'pur-1');
+
+    await grantPayment(prisma, paidFor(payment, 'pur-1', { paidVia: 'Card · Visa' }), { now: NOW });
+
+    const row = await prisma.payment.findUniqueOrThrow({ where: { id: payment.id }, select: { paidVia: true } });
+    expect(row.paidVia).toBe('Card · Visa');
+  });
+
   it('stacks an annual payment on a paidUntil still in the future', async () => {
     const future = new Date('2026-10-01T00:00:00.000Z');
     const pageId = await aPage(future);
@@ -420,6 +430,7 @@ describe('evidenceFromPurchase', () => {
       reference: 'pay-1',
       card: { token: 'pur-1', label: 'Visa ending 1111' },
       isTest: true,
+      paidVia: 'Card · Visa',
     });
   });
 
@@ -431,5 +442,10 @@ describe('evidenceFromPurchase', () => {
     // A card purchase CHIP has since cleared or settled is still paid.
     expect(evidenceFromPurchase({ ...purchase, status: 'cleared' }).paid).toBe(true);
     expect(evidenceFromPurchase({ ...purchase, status: 'settled' }).paid).toBe(true);
+  });
+
+  it('says how it was paid, or nothing when CHIP names no method', () => {
+    expect(evidenceFromPurchase({ ...purchase, paymentMethod: 'fpx' }).paidVia).toBe('FPX');
+    expect(evidenceFromPurchase({ ...purchase, paymentMethod: null }).paidVia).toBeNull();
   });
 });

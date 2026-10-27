@@ -833,6 +833,10 @@ model Payment {
   paidAt              DateTime?
   /// The paidUntil this payment produced -- an audit trail for every extension.
   grantedUntil        DateTime?
+  /// How the payer paid, as the admin's Payments reads it ("FPX", "Card · Visa", "TNG
+  /// eWallet"): set from CHIP's purchase when the payment is granted. Null for one granted
+  /// before it was recorded, or one CHIP named no method for.
+  paidVia             String?
   createdAt           DateTime        @default(now())
 
   // The hourly pending check scans by status and age.
@@ -1088,4 +1092,30 @@ model SystemSetting {
   updatedAt   DateTime   @updatedAt
   updatedById String?
   updatedBy   AdminUser? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+}
+
+/// Every signed message CHIP sent about a purchase -- the success callback and the webhook --
+/// one row per source, purchase and event, so a failed one can be seen and replayed. A resend
+/// counts another attempt on the same row. `body` is the verified body as CHIP signed it: it
+/// holds the payer's name and email, so the readonly role cannot read that column.
+model ChipWebhookEvent {
+  id            String   @id @default(cuid())
+  /// 'callback' | 'webhook'
+  source        String
+  /// CHIP's event_type, as the message gave it; 'unknown' when it gave none.
+  eventType     String
+  purchaseId    String
+  body          String
+  attempts      Int      @default(1)
+  /// 'ok' | 'failed'; null while the first attempt is still running.
+  outcome       String?
+  statusCode    Int?
+  /// The error's name only, never its message: a refused CHIP call carries CHIP's response.
+  error         String?
+  receivedAt    DateTime @default(now())
+  lastAttemptAt DateTime
+
+  @@unique([source, purchaseId, eventType])
+  // The Payments screen reads the failures of the last 24 hours.
+  @@index([lastAttemptAt])
 }

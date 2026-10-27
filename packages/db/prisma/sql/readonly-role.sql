@@ -50,3 +50,13 @@ BEGIN
       ON "Report" TO curios_readonly;
   END IF;
 END $$;
+
+-- Every column of a CHIP message but its body, which holds the payer's name and email.
+DO $$
+BEGIN
+  IF to_regclass('"ChipWebhookEvent"') IS NOT NULL THEN
+    REVOKE SELECT ON "ChipWebhookEvent" FROM curios_readonly;
+    GRANT SELECT ("id", "source", "eventType", "purchaseId", "attempts", "outcome", "statusCode", "error", "receivedAt", "lastAttemptAt")
+      ON "ChipWebhookEvent" TO curios_readonly;
+  END IF;
+END $$;

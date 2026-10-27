@@ -2,7 +2,7 @@ import { generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { MAIL_QUEUE } from '@curios/core';
-import { CHIP_ENV, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
+import { CHIP_ENV, ChipRefusedError, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { buildApp } from '../../app.js';
 import type { BillingRouteOptions } from './billing.routes.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
@@ -747,6 +747,100 @@ describe('CHIP callback and webhook', () => {
       expect(res.statusCode).toBe(404);
     });
   });
+
+  // Every signed message naming a purchase is kept, one row per source, purchase and event,
+  // so the admin can see a failed one and replay it.
+  describe('the webhook log', () => {
+    const events = (purchaseId: string) => app.prisma.chipWebhookEvent.findMany({ where: { purchaseId } });
+
+    it('a webhook that grants records one ok event, with the body as it was signed', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef, event_type: 'purchase.paid' });
+
+      expect((await webhook(body)).statusCode).toBe(200);
+
+      const rows = await events(providerRef);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        source: 'webhook',
+        eventType: 'purchase.paid',
+        body,
+        attempts: 1,
+        outcome: 'ok',
+        statusCode: 200,
+        error: null,
+      });
+    });
+
+    it("a handler throw records failed with the error's name, never its message, and still answers 500", async () => {
+      const owner = await anOwner();
+      const { providerRef } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockRejectedValue(
+        new ChipRefusedError('CHIP refused GET /purchases/x/ with 401: {"client":{"email":"payer@example.com"}}', 401),
+      );
+
+      const res = await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      expect(res.statusCode).toBe(500);
+      const rows = await events(providerRef);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ outcome: 'failed', statusCode: 500, error: 'ChipRefusedError', attempts: 1 });
+    });
+
+    it('a second delivery of the same message counts a second attempt on the same row', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+      const body = JSON.stringify({ id: providerRef, event_type: 'purchase.paid' });
+
+      await webhook(body);
+      const first = (await events(providerRef))[0];
+      await webhook(body);
+
+      const rows = await events(providerRef);
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({ attempts: 2, outcome: 'ok' });
+      expect(rows[0]!.lastAttemptAt.getTime()).toBeGreaterThanOrEqual(first!.lastAttemptAt.getTime());
+    });
+
+    it('a callback is kept apart from the webhook for the same purchase', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId));
+
+      await callback(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+      await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      const rows = await events(providerRef);
+      expect(rows.map((row) => row.source).sort()).toEqual(['callback', 'webhook']);
+    });
+
+    it('keeps no row for a signed message that names no purchase', async () => {
+      const before = await app.prisma.chipWebhookEvent.count();
+
+      expect((await callback(JSON.stringify({ nothing: 'here' }))).json()).toEqual({ status: 'ignored' });
+
+      expect(await app.prisma.chipWebhookEvent.count()).toBe(before);
+    });
+
+    it('a granted CHIP payment records how it was paid', async () => {
+      const owner = await anOwner();
+      const { providerRef, paymentId } = await aPendingPayment(owner.pageId);
+      client.getPurchase.mockResolvedValue(aPurchase(providerRef, paymentId, { paymentMethod: 'visa' }));
+
+      await webhook(JSON.stringify({ id: providerRef, event_type: 'purchase.paid' }));
+
+      const payment = await app.prisma.payment.findUniqueOrThrow({ where: { id: paymentId }, select: { paidVia: true } });
+      expect(payment.paidVia).toBe('Card · Visa');
+    });
+  });
+});
+
+// ChipWebhookEvent is reached by no truncate cascade: what these tests logged goes here.
+afterAll(async () => {
+  await app.prisma.chipWebhookEvent.deleteMany();
 });
 
 describe('POST /billing/auto-renew/off', () => {

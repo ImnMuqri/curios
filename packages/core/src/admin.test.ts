@@ -26,6 +26,6 @@ describe('constants', () => {
   it('are fixed', () => {
     expect(ADMIN_COOKIE).toBe('curios_admin');
     expect(ADMIN_SESSION_TTL_MS).toBe(28_800_000);
-    expect(Object.keys(ADMIN_ACTIONS)).toHaveLength(14);
+    expect(Object.keys(ADMIN_ACTIONS)).toHaveLength(15);
   });
 });

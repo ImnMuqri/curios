@@ -21,6 +21,7 @@ import {
 } from './modules/admin/admin-auth.routes.js';
 import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/admin-pages.routes.js';
 import { adminReportsRoutes } from './modules/admin/admin-reports.routes.js';
+import { adminPaymentsRoutes } from './modules/admin/admin-payments.routes.js';
 import { adminSettingsRoutes } from './modules/admin/admin-settings.routes.js';
 import {
   adminSigninPerIpLimit,
@@ -69,9 +70,11 @@ import { neverSayRoutes } from './modules/never-say/never-say.routes.js';
 import { topicRoutes } from './modules/topics/topic.routes.js';
 import {
   chipRoutes,
+  chipSettings,
   ownerBillingRoutes,
   type BillingRouteOptions,
 } from './modules/billing/billing.routes.js';
+import { chipMessagesFor } from './modules/billing/chip-message.js';
 import {
   authFlowRoutes,
   authRoutes,
@@ -323,7 +326,14 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // owner's own browser coming back, and a forged one costs one signature check or one
   // lookup to refuse. The plugin keeps its own body parsers, and its encapsulation keeps
   // them off every other route.
-  await app.register(chipRoutes, overrides.billing ?? {});
+  //
+  // CHIP's settings, and what its verified messages are handed to, are read and built here
+  // once, as payOnline is above: the admin's replay (below) runs a logged message through
+  // the same handler and the same CHIP client -- a test's stub, when one is injected. Both
+  // are null when billing is switched off; a missing production setting throws here.
+  const chip = chipSettings(overrides.billing ?? {});
+  const chipMessages = chip ? chipMessagesFor(app, chip.client, overrides.billing?.onRenewalFailure) : null;
+  await app.register(chipRoutes, { chip, messages: chipMessages });
 
   // Starting a payment. The session hook goes before the limiter, as in the ingest
   // scope, so an unauthenticated request is refused before it can spend any budget.
@@ -348,6 +358,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
       await scope.register(adminPagesRoutes, { ...(overrides.admin ?? {}), privateFiles: overrides.admin?.privateFiles ?? overrides.privateFiles });
       await scope.register(adminReportsRoutes, { mailQueue: overrides.admin?.mailQueue });
       await scope.register(adminSettingsRoutes);
+      await scope.register(adminPaymentsRoutes, { messages: chipMessages });
     });
   }
 
