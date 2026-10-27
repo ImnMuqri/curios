@@ -18,10 +18,13 @@ export interface TestTurn {
   content: string;
 }
 
-/** What the page would say, and where it came from: the owner's own answer, the facts, or the month's limit. */
+/**
+ * What the page would say, and where it came from: the owner's own answer, the facts, the month's
+ * limit, or chat switched off by the Curios team ('off', never called the owner's limit).
+ */
 export interface TestReply {
   reply: string;
-  from: 'answer' | 'facts' | 'limit';
+  from: 'answer' | 'facts' | 'limit' | 'off';
   /**
    * For an answer from the facts, the sources of the facts it used, as the
    * owner knows them: "keklina.example/menu", "A fact you added". Empty when
@@ -143,7 +146,7 @@ export async function testAnswer(
   });
   if (!page) throw new PageNotFoundError();
   // As on the live chat: switched off, even the owner's own answers give way to the fixed reply.
-  if (chatSwitchedOff(deps)) return { reply: CAP_REACHED_REPLY, from: 'limit' };
+  if (chatSwitchedOff(deps)) return { reply: CAP_REACHED_REPLY, from: 'off' };
 
   // The owner's own answer wins, as on the live chat: a wording already in
   // an answered topic, or (for a new wording) the same judge the chat uses.

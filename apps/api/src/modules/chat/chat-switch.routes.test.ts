@@ -159,7 +159,8 @@ describe('the chat switch', () => {
       payload: { question: 'Berapa harga kek butter?' },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ reply: CAP_REACHED_REPLY, from: 'limit' });
+    // Its own `from`, so the tester never calls a pause the owner's monthly limit.
+    expect(res.json()).toEqual({ reply: CAP_REACHED_REPLY, from: 'off' });
     expect(modelCalls).not.toHaveBeenCalled();
   });
 

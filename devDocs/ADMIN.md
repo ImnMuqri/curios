@@ -119,7 +119,10 @@ later parts add `DISMISSED_REPORTS`, `EMAILED_OWNER`, `TURNED_OFF`, `TURNED_ON`,
 `RETRIED_SOURCE` and `RETRIED_FAILED_SOURCES`.
 
 Every action that changes something takes a reason, 1 to 500 characters,
-required. Deleting an account also takes the page's handle, typed out.
+required, with two exceptions in Controls (below): the banner, whose audit row
+takes its text (or "Taken down") as the reason, and turning a switch back on,
+recorded as "Turned back on". Deleting an account also takes the page's handle,
+typed out.
 
 Append only. No update route, no delete route, no admin screen that offers
 either. **Written by the service layer in the same transaction as the change**,
@@ -156,9 +159,22 @@ question the margin screen asked, which pages cost more than they pay, comes
 back as cost in AI & usage, from `ModelCall`, which has to be written from the
 first model call or that screen has no history.
 
+The Overview's "Needs you" row for reported pages names the first page in
+Reports' order, with a short noun for its most common reason before
+"report(s)": "Gadget Murah 88 has 4 scam reports today", "Coach Farah has 2 open
+impersonation reports", "Kedai Sri has 1 report today". The nouns are scam,
+impersonation, wrong-price, offensive, and none for Something else; one report
+is singular. When the page has reports from today (since midnight Malaysia
+time) the count is today's and the line ends "today"; otherwise it counts all
+its open reports and says "open".
+
 **Reports** replace the earlier takedown queue. A public "Report this page" link
 in a page's footer opens a form (five reasons and an optional note, EN and MS),
-rate limited by IP with the IP stored hashed. The list is one row per page, not
+rate limited by IP with the IP stored hashed. One address keeps one open report
+per page: a repeat while the first is open adds nothing and is answered the same
+as a new one, so a single visitor cannot flag a page alone (a partial unique
+index holds it; once that report is dismissed the address can report the page
+again). The list is one row per page, not
 per report: its number of open reports, the most common reason, the newest
 note, and Dismiss, Email owner and Suspend page, each acting on all of that
 page's open reports at once. **Reports never act on a page by themselves.** More
@@ -169,7 +185,9 @@ destroys the evidence for the decision that was just made. The owner is never
 told who reported.
 
 **Controls** holds five switches, the limits and prices, and the banner. Every
-change asks for a reason and writes an audit row. Turning a switch off is a
+change writes an audit row, and asks for a reason except two: showing, updating
+or taking down the banner (the banner's text is the reason, or "Taken down"),
+and turning a switch back on ("Turned back on"). Turning a switch off is a
 decision to stop, not to hold: nothing is queued to send later.
 
 | Switch | Off stops | Off does not stop |
@@ -181,14 +199,31 @@ decision to stop, not to hold: nothing is queued to send later.
 | Emails to owners | Notification emails to owners. They are dropped, not held | Admin's own mails (suspend, bring back, report warning), which go because the admin chose to send them, and sign-in, verification and password reset mail |
 
 The switches are read again where they apply, including inside a running job,
-so a switch changed mid-run takes effect without a restart.
+so a switch changed mid-run takes effect without a restart. Reading new sources
+moves the ingest queue first (no worker reads the setting; the paused queue is
+what stops reading) and saves only once the queue has moved. If the queue can't
+be reached nothing is saved, and Controls says "Couldn't reach the reading
+queue. Nothing was changed. Try again." (502 `QUEUE_UNAVAILABLE`).
+
+**How soon a change takes effect.** Each process (the API, the workers, the web,
+the admin) caches the settings for 30 seconds, so a switch or a limit takes
+effect everywhere within about 30 seconds; the API instance that saved it sees
+it at once. The landing and legal pages are regenerated in the background at
+most every 30 seconds, and only after a request: the first visit after a quiet
+stretch may still show the previous price once, and the next shows the new
+one. A build with no database prerenders those pages at the default prices
+until their first regeneration. `Dockerfile.web` declares no
+`DATABASE_URL_READONLY` build argument, and Railway passes a service variable
+to a Docker build only as a declared argument, so the production web build is
+such a build: after each deploy, the landing and legal pages show the default
+prices to their first visitor, then the stored ones.
 
 Limits (the cap, free leads, free orders) and prices (monthly, yearly) are saved
-with a confirm and a reason. They are live within about 30 seconds: the API
-caches settings for 30 seconds and clears the cache on save, and the web reads
-them per request, with the landing and legal pages revalidating every 30
-seconds, so a changed price reaches every page within a minute at the
-outside. The constants in `packages/core` are only the defaults for a setting
+with a confirm and a reason. Only the values the admin changed are sent and
+written, so a save never puts back a value another admin changed after the page
+loaded. The cap and both prices are at least 1, and so are the free leads and
+free orders: a trial with none would stop at its first lead or order (a stored
+0 is read as the default). The constants in `packages/core` are only the defaults for a setting
 that has never been saved. The yearly saving ("two months free") and Business's
 "One RM95 order pays for it" tag are worked out from the prices in force and
 drop out when they would no longer be true. The Terms promise that a change
@@ -198,7 +233,8 @@ A form full of defaults would look saved, and saving it would overwrite the
 real prices; it shows an error instead.
 
 The banner is up to 160 characters, shown first on every owner's dashboard
-until taken down.
+until taken down. It asks for no reason: its text is the audit row's reason
+(DEVIATIONS 237).
 
 **AI & usage** is read from `ModelCall`: calls, typical and slow answer time,
 cost per conversation, the "I'm not sure" rate, failed calls, cost by job

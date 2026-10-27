@@ -746,8 +746,12 @@ its FAQ pages within that window; every other surface changes on the next reques
 
 ### What each switch does during an outage
 
-Controls has five switches. Each asks for a reason and writes an audit row, and each is read again
-where it applies, so it takes effect within seconds and a running job notices it too. Off means
+Controls has five switches. Each writes an audit row and asks for a reason when you turn it off
+(turning one back on is recorded as "Turned back on"); the banner asks for no reason, its text is
+recorded instead. Each switch is read again where it applies, and every process caches the settings
+for 30 seconds, so a switch takes effect within about 30 seconds and a running job notices it too.
+Reading new sources pauses the ingest queue before it saves: if Redis can't be reached, Controls
+says "Couldn't reach the reading queue. Nothing was changed. Try again." and nothing changed. Off means
 stop, not hold: nothing is queued to be sent when it comes back. Turn it back on when the outage is
 over; the audit log says who turned it off and why.
 
@@ -766,12 +770,24 @@ before it grants, so a replay of a payment that was never made grants nothing.
 ### Changing a price
 
 Monthly and yearly prices, the cap and the free limits are saved in Controls and are live within about
-30 seconds: the API caches settings for 30 seconds and clears the cache when you save, and the landing
-and legal pages revalidate every 30 seconds (the FAQ pages every 60). Allow a minute before telling
+30 seconds: each process (API, workers, web, admin) caches settings for 30 seconds, and the API that
+saved clears its cache at once. The landing and legal pages are regenerated in the background at most
+every 30 seconds after a request (the FAQ pages every 60), so the first visit after a quiet stretch
+may still show the previous price once; the next shows the new one. Allow a minute before telling
 anyone it is changed. The next CHIP purchase is raised at the new price; a plan someone has already
-paid for keeps its period. If the database cannot be reached the web falls back to the default prices
-rather than failing, so a page showing the old price during a database outage is that fallback, not a
-failed save.
+paid for keeps its period.
+
+A build with no database prerenders the landing and legal pages at the default prices, until their
+first regeneration. **The production web build is one:** `Dockerfile.web` declares no
+`DATABASE_URL_READONLY` build argument (Railway hands a service variable to a Docker build only as a
+declared `ARG`), so after every deploy the first visitor to the landing or legal pages sees the
+default prices, and the regeneration that visit starts shows the stored ones.
+
+If the database cannot be reached the web falls back to the default prices rather than failing, so a
+page showing the old price during a database outage is that fallback, not a failed save. **Nothing is
+charged at that fallback:** while the API cannot read the settings, a plan purchase answers "Online
+payments are paused for a moment. Try again soon." and the auto-renew run is skipped, to try again on
+its next run. A shop's own online checkout is unaffected, since its prices are the owner's.
 
 ### The read-only role after a deploy
 

@@ -97,4 +97,13 @@ describe('AskPanel', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Ada delivery?' }));
     expect(await within(log()).findByText(/this month’s limit is reached/)).toBeInTheDocument();
   });
+
+  it('says when chat is paused across Curios, and that it is not the monthly limit', async () => {
+    panel({ onAsk: vi.fn().mockResolvedValue({ reply: 'We’ve answered a lot of questions this month.', from: 'off' }) });
+    await userEvent.click(screen.getByRole('button', { name: 'Ada delivery?' }));
+    expect(
+      await within(log()).findByText('Chat is paused across Curios for a moment, so your page gives the short fixed reply. It’s not your monthly limit.'),
+    ).toBeInTheDocument();
+    expect(within(log()).queryByText(/this month’s limit is reached/)).toBeNull();
+  });
 });

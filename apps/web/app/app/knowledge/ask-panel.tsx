@@ -14,14 +14,14 @@ export type ChatLook = Parameters<typeof themeAttrs>[0];
 export interface Turn {
   role: 'user' | 'assistant';
   content: string;
-  /** Where an answer came from: the owner's own words, the facts, or the month's limit. */
-  from?: 'answer' | 'facts' | 'limit';
+  /** Where an answer came from: the owner's own words, the facts, the month's limit, or chat paused by the Curios team. */
+  from?: 'answer' | 'facts' | 'limit' | 'off';
   /** For an answer from the facts: where those facts came from ("keklina.example/menu"). */
   sources?: string[];
 }
 
 /** What the tester answers with. */
-export type TestAnswer = { reply: string; from: 'answer' | 'facts' | 'limit'; sources?: string[] };
+export type TestAnswer = { reply: string; from: 'answer' | 'facts' | 'limit' | 'off'; sources?: string[] };
 
 /** How many earlier turns go with a question: the API takes ten. */
 const HISTORY = 10;
@@ -106,7 +106,7 @@ export function AskPanel({
               <PageReply name={pageName} className={styles.a}>
                 {turn.content}
               </PageReply>
-              {turn.from === 'answer' || turn.from === 'limit' || (turn.from === 'facts' && turn.sources?.length) ? (
+              {turn.from === 'answer' || turn.from === 'limit' || turn.from === 'off' || (turn.from === 'facts' && turn.sources?.length) ? (
                 <span className={styles.from}>
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M5 12.5l4.5 4.5L19 7.5" />
@@ -115,7 +115,9 @@ export function AskPanel({
                     ? 'Your answer on Questions'
                     : turn.from === 'limit'
                       ? 'The fixed reply: this month’s limit is reached'
-                      : (turn.sources ?? []).join(' · ')}
+                      : turn.from === 'off'
+                        ? 'Chat is paused across Curios for a moment, so your page gives the short fixed reply. It’s not your monthly limit.'
+                        : (turn.sources ?? []).join(' · ')}
                 </span>
               ) : null}
             </span>
