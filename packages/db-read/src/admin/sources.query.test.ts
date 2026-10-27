@@ -37,6 +37,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Ingestion rows go with their account; a left-over failed one would inflate the API's retry-all counts.
+  await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
   await write.$disconnect();
 });
 
