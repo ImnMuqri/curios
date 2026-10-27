@@ -206,6 +206,24 @@ describe('SourcesScreen', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it('says so in words when the queue cannot be reached, paused or resumed', async () => {
+    const { ApiError } = await import('../../../lib/api.js');
+    const words = "Couldn't reach the reading queue. Nothing was changed. Try again.";
+    apiFetch.mockRejectedValue(new ApiError(502, 'QUEUE_UNAVAILABLE', 'Something failed on our side. Try again.'));
+    const { unmount } = render(<SourcesScreen {...base} />);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Pause the queue' }));
+    const dialog = screen.getByRole('dialog');
+    await userEvent.type(within(dialog).getByRole('textbox'), 'Provider outage');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Pause the queue' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(words);
+    unmount();
+
+    render(<SourcesScreen {...base} readingOn={false} />);
+    await userEvent.click(screen.getByRole('button', { name: 'Resume the queue' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(words);
+  });
+
   it('says Nothing here. when the tab is empty', () => {
     render(<SourcesScreen {...base} rows={[]} />);
 
