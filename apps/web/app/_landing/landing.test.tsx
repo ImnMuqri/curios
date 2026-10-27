@@ -10,6 +10,7 @@ import { BRAND } from './brand-colors.js';
 import { STEP_MS, STEP_STARTS, advance, scene, stepProgress } from './order-scene.js';
 import { payback } from './Pricing.js';
 import { howAt } from './How.js';
+import { play } from './WhatLands.js';
 
 const LOCALES = ['en', 'ms'] as const;
 const { en, ms } = COPY;
@@ -85,6 +86,14 @@ describe('the landing page', () => {
     foot = screen.getByRole('contentinfo');
     expect(within(foot).getByRole('link', { name: 'Terma' })).toHaveAttribute('href', '/ms/terms');
     expect(within(foot).getByRole('link', { name: 'Bayaran balik' })).toHaveAttribute('href', '/ms/refunds');
+  });
+
+  it.each(LOCALES)('%s: the footer says who runs Curios, its SSM number in both formats, and where to write', (locale) => {
+    render(<LandingPage locale={locale} />);
+    const foot = screen.getByRole('contentinfo');
+    expect(foot).toHaveTextContent('BSYX LABS');
+    expect(foot).toHaveTextContent('202603086039 (TR0339989-A)');
+    expect(within(foot).getByRole('link', { name: 'support@curios.my' })).toHaveAttribute('href', 'mailto:support@curios.my');
   });
 
   it('the footer wordmark carries the full-body Peek on its o', () => {
@@ -248,8 +257,8 @@ describe('the order, from the link in bio', () => {
   it('starts on Kek Lina’s link in bio, with nothing in the basket', () => {
     expect(scene(0)).toMatchObject({ lib: { x: 0, pressed: false }, basketCount: 0, step: 0 });
     // The cursor comes up from below to the Shop link, the first link.
-    expect(scene(0).cursor).toMatchObject({ x: 200, y: 470, o: 0 });
-    expect(scene(0.04).cursor).toMatchObject({ x: 128, y: 268, o: 1, pressed: false });
+    expect(scene(0).cursor).toMatchObject({ x: 200, y: 550, o: 0 });
+    expect(scene(0.04).cursor).toMatchObject({ x: 128, y: 348, o: 1, pressed: false });
   });
 
   it('taps the Shop link, the page slides away and the shop opens', () => {
@@ -263,9 +272,18 @@ describe('the order, from the link in bio', () => {
     expect(scene(1).lib.x).toBe(-100);
   });
 
+  it('the name she types is the name your Orders shows', () => {
+    expect(scene(0.315).name).toBe('');
+    expect(scene(0.34).name.length).toBeGreaterThan(0);
+    expect(scene(0.365).name).toBe(en.business.mira);
+    expect(ms.business.mira).toBe(en.business.mira);
+    // Typed before the field lets go, at about the phone number's pace.
+    expect(scene(0.3619).nameFocused).toBe(true);
+  });
+
   it('shows the shop untouched until the link has been tapped, then plays the old first step', () => {
     expect(scene(0.085)).toMatchObject({ basketCount: 0, sheet: 0, step: 0 });
-    expect(scene(0.085).cursor).toMatchObject({ x: 128, y: 268 });
+    expect(scene(0.085).cursor).toMatchObject({ x: 128, y: 348 });
     // The tap on the first cake lands once the shop is open: 0.09 of the old film.
     expect(scene(0.085 + 0.155 * (0.095 / 0.24)).rows[0]!.qty).toBe(1);
     expect(scene(0.24)).toMatchObject({ step: 1, basketCount: 3 });
@@ -294,6 +312,32 @@ describe('the order, from the link in bio', () => {
     // The stage says it starts there, for assistive tech.
     expect(biz.querySelector('[role="img"]')).toHaveAccessibleName(/link in bio/);
     expect(ms.business.lib.shop).not.toBe('');
+  });
+
+  it('draws them as the real pages do: the address under the name, ringed links, and the shop front on its blurred cover', () => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale="en" />);
+    const biz = container.querySelector('#business') as HTMLElement;
+    const lib = biz.querySelector('[class*="csLib"]') as HTMLElement;
+    // No address bar across the top of the link in bio; the address follows the name.
+    expect(lib.querySelector('[class*="csTop"]')).toBeNull();
+    // Kek Lina's cover across the top, in place of a round initial.
+    expect(lib.querySelector('[class*="lbCover"] img')?.getAttribute('src')).toBe('/landing/hero-baker.webp');
+    expect(lib.querySelector('[class*="lbAv"]')).toBeNull();
+    expect(lib.firstElementChild).toBe(lib.querySelector('[class*="lbCover"]'));
+    const name = [...lib.querySelectorAll('p')].find((p) => p.textContent === 'Kek Lina')!;
+    expect(name.nextElementSibling).toHaveTextContent(/^curios\.my\/keklina$/);
+    // With a shop open, the first link after it wears the accent, and only that one.
+    const links = lib.querySelectorAll('[class*="lbL"]');
+    expect(links[0]).toHaveAttribute('data-first');
+    expect([...links].slice(1).every((l) => !l.hasAttribute('data-first'))).toBe(true);
+    // The shop front behind it wears Kek Lina's cover, blurred, under a fade (TanyaJe .cs-cov).
+    const cover = biz.querySelector('[class*="csCover"]') as HTMLElement;
+    expect(cover).toHaveAttribute('aria-hidden', 'true');
+    expect(cover.querySelector('img')?.getAttribute('src')).toBe('/landing/hero-baker.webp');
+    const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
+    expect(css.match(/\n\.csCover img \{([^}]*)\}/)?.[1]).toMatch(/filter:\s*blur\(22px\)/);
+    expect(css.match(/\n\.lbL \{([^}]*)\}/)?.[1]).toMatch(/border:\s*4px solid/);
   });
 });
 
@@ -362,6 +406,162 @@ describe('For business, the steps', () => {
     tick(1300);
     expect(bar()).toBeGreaterThan(before);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('what lands in your hands', () => {
+  const section = (c: HTMLElement) => c.querySelector('#what-lands') as HTMLElement;
+  const tall = (c: HTMLElement) => section(c).querySelector('[data-stage]') as HTMLElement;
+  const rowsIn = (c: HTMLElement) => tall(c).querySelectorAll('[data-in]').length;
+
+  /** Motion allowed, and an observer the test moves in and out of view. */
+  function watchable() {
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) => ({ matches: false, media: query, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList,
+    );
+    const watchers: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        constructor(cb: IntersectionObserverCallback) {
+          watchers.push(cb);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    return (ratio: number) =>
+      act(() => watchers.forEach((w) => w([{ intersectionRatio: ratio, isIntersecting: ratio > 0 } as IntersectionObserverEntry], {} as IntersectionObserver)));
+  }
+  const advance = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms));
+
+  afterEach(() => vi.unstubAllGlobals());
+
+  it.each(LOCALES)('%s: opens For business, under its label, and the order follows in the same section', (locale) => {
+    const { container } = render(<LandingPage locale={locale} />);
+    const ids = [...container.querySelectorAll('main > section[id]')].map((s) => s.id);
+    expect(ids[ids.indexOf('how') + 1]).toBe('business');
+    const business = container.querySelector('#business')!;
+    expect(business.firstElementChild).toBe(section(container));
+    expect(section(container).querySelector('[class*="eyebrow"]')).toHaveTextContent(COPY[locale].business.eyebrow);
+    expect(business.querySelectorAll('[class*="eyebrow"]')).toHaveLength(1);
+    const headings = within(business as HTMLElement).getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(headings).toEqual([COPY[locale].whatLands.title, COPY[locale].business.title]);
+  });
+
+  it('For business sits on the page’s own ground, not pink', () => {
+    const css = readFileSync(join(import.meta.dirname, 'tanya.module.css'), 'utf8');
+    const biz = css.match(/\n\.biz \{([^}]*)\}/)?.[1] ?? '';
+    const wl = css.match(/\n\.wl \{([^}]*)\}/)?.[1] ?? '';
+    expect(biz).not.toMatch(/background/);
+    expect(wl).not.toMatch(/background/);
+  });
+
+  it.each(LOCALES)('%s: with reduced motion every tile is on its finished frame', (locale) => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale={locale} />);
+    const p = COPY[locale].whatLands.service;
+    const card = p.card as Extract<typeof p.card, { kind: 'lead' }>;
+    expect(tall(container)).toHaveAttribute('data-stage', 'landed');
+    expect(section(container)).toHaveTextContent(card.phone);
+    expect(section(container)).toHaveTextContent(card.button);
+    expect(section(container)).toHaveTextContent(p.tags.landed);
+    // Both alerts, the pick tapped, the bars full and the missing one tagged.
+    expect(section(container)).toHaveTextContent(p.alerts[0]!.text);
+    expect(section(container)).toHaveTextContent(p.alerts[1]!.text);
+    expect(section(container)).toHaveTextContent(p.chat.done);
+    expect(section(container).querySelector('[data-flagged]')).toHaveTextContent(p.missing);
+    expect([...section(container).querySelectorAll('em')].map((e) => e.textContent)).toEqual(expect.arrayContaining(p.asked.map((a) => String(a.n))));
+    // Screen readers get the landed caption, not the inbox one under it.
+    expect(screen.getByText(p.captions.landed.title).closest('[aria-hidden]')).toBeNull();
+    expect(screen.getByText(p.captions.replying.title).closest('[aria-hidden]')).not.toBeNull();
+  });
+
+  it('switches to products, and says which side is on', () => {
+    reduceMotion();
+    const { container } = render(<LandingPage locale="en" />);
+    const { service, products } = en.whatLands;
+    const group = within(section(container)).getByRole('group', { name: en.whatLands.switchLabel });
+    expect(within(group).getByRole('button', { name: service.label })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(within(group).getByRole('button', { name: products.label }));
+    expect(within(group).getByRole('button', { name: products.label })).toHaveAttribute('aria-pressed', 'true');
+    expect(within(group).getByRole('button', { name: service.label })).toHaveAttribute('aria-pressed', 'false');
+    expect(section(container)).toHaveTextContent('RM103');
+    expect(section(container)).toHaveTextContent(products.chat.done);
+    expect(section(container)).toHaveTextContent(products.missing);
+    expect(section(container)).not.toHaveTextContent(service.missing);
+  });
+
+  it('holds its first frame until in view, plays the big tile’s round, and starts over when it leaves', async () => {
+    vi.useFakeTimers();
+    const view = watchable();
+    const { container } = render(<LandingPage locale="en" />);
+    expect(tall(container)).toHaveAttribute('data-stage', 'inbox');
+    await advance(3000);
+    expect(rowsIn(container)).toBe(0);
+
+    view(0.5);
+    await advance(500 + 8 * 230);
+    expect(rowsIn(container)).toBe(8);
+    expect(section(container)).toHaveTextContent(en.whatLands.service.tags.inbox);
+    // The page answers at 5.14 s, Peek sorts at 7.23 s, the leads land at 10.83 s.
+    await advance(5140 - 2340 + 10);
+    expect(tall(container)).toHaveAttribute('data-stage', 'replying');
+    await advance(7230 - 5150 + 10);
+    expect(tall(container)).toHaveAttribute('data-stage', 'sorting');
+    await advance(10830 - 7240 + 10);
+    expect(tall(container)).toHaveAttribute('data-stage', 'landed');
+    expect(tall(container).querySelectorAll('[data-sort="keep"]')).toHaveLength(2);
+
+    view(0);
+    expect(tall(container)).toHaveAttribute('data-stage', 'inbox');
+    expect(rowsIn(container)).toBe(0);
+  });
+
+  it('switching side restarts every tile', async () => {
+    vi.useFakeTimers();
+    const view = watchable();
+    const { container } = render(<LandingPage locale="en" />);
+    view(0.5);
+    await advance(11000);
+    expect(tall(container)).toHaveAttribute('data-stage', 'landed');
+    fireEvent.click(within(section(container)).getByRole('button', { name: en.whatLands.products.label }));
+    expect(tall(container)).toHaveAttribute('data-stage', 'inbox');
+    expect(rowsIn(container)).toBe(0);
+    await advance(500 + 8 * 230);
+    expect(section(container)).toHaveTextContent(en.whatLands.products.tags.inbox);
+    expect(section(container)).toHaveTextContent(en.whatLands.products.chats[0]!.text);
+  });
+
+  it('a stopped scene runs nothing after its pending wait', async () => {
+    vi.useFakeTimers();
+    const seen: number[] = [];
+    const stop = play(async (wait) => {
+      seen.push(1);
+      await wait(100);
+      seen.push(2);
+    });
+    await vi.advanceTimersByTimeAsync(150);
+    expect(seen).toEqual([1, 2, 1]);
+    stop();
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(seen).toEqual([1, 2, 1]);
+  });
+
+  it('carries the handoff’s Malay word for word', () => {
+    const { whatLands } = ms;
+    expect(whatLands.title).toBe('Apa yang anda dapat.');
+    expect(whatLands.lede).toBe('Setiap chat di page anda berakhir dengan salah satu daripada ini.');
+    expect([whatLands.service.label, whatLands.products.label]).toEqual(['Saya beri servis', 'Saya jual produk']);
+    expect(whatLands.service.tags.inbox).toBe('Inbox anda · 47 belum dibaca');
+    expect(whatLands.service.tags.replying).toBe('Dengan Curios · page anda membalas');
+    expect(whatLands.service.captions.landed).toEqual({ title: 'Lead yang sudah ditapis', body: 'Page anda dah tanya bajet, kawasan dan masa. Telefon je.' });
+    expect(whatLands.products.captions.landed).toEqual({ title: 'Pesanan yang sudah dibayar', body: 'Terus dari chat. Tiada “transfer dulu ya”.' });
+    expect([whatLands.service.answered, whatLands.service.kept, whatLands.products.kept]).toEqual(['Dijawab ✓', 'Lead ✓', 'Dibayar ✓']);
+    expect(whatLands.service.told.title).toBe('Dimaklumkan bila penting');
+    // The visitors' own words are the same in both languages.
+    expect(ms.whatLands.service.chats).toEqual(en.whatLands.service.chats);
+    expect(ms.whatLands.products.asked).toEqual(en.whatLands.products.asked);
   });
 });
 

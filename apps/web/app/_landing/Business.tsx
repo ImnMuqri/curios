@@ -5,6 +5,7 @@ import { COPY, type Locale } from './copy.js';
 import { HOLD_MS, advance, scene, stepProgress, stepStart } from './order-scene.js';
 import { photo } from './photos.js';
 import { useReducedMotion } from './useReducedMotion.js';
+import { WhatLands } from './WhatLands.js';
 import styles from './tanya.module.css';
 
 const Cursor = ({ x, y, o, pressed }: { x: number; y: number; o: number; pressed: boolean }) => (
@@ -20,6 +21,9 @@ const BANK_COLOURS = ['var(--tj-bank-maybank)', 'var(--tj-bank-cimb)', 'var(--tj
 const AVATAR_TONES = ['var(--tj-blob-pink)', 'var(--tj-blob-blue)', 'var(--tj-blob-mint)'];
 
 /**
+ * For business: first what lands in an owner's hands (WhatLands.tsx, which
+ * carries the section's label), then the order on the page's own ground.
+ *
  * Have a business? The order, played out between the customer's phone and
  * yours: they open the shop from Kek Lina's link in bio, add two items, check out, pick online banking and Maybank2u,
  * approve in the bank and come straight back; it lands in your Orders already
@@ -117,10 +121,10 @@ export function Business({ locale }: { locale: Locale }) {
 
   return (
     <section id="business" className={styles.biz}>
+      <WhatLands locale={locale} />
       <div className={styles.bizPin}>
         <div className={`${styles.wrap} ${styles.bizGrid}`}>
           <div>
-            <p className={styles.eyebrow}>{copy.eyebrow}</p>
             <h2 className={styles.h2}>{copy.title}</h2>
             <ol className={styles.steps}>
               {copy.caps.map((cap, i) => (
@@ -142,174 +146,181 @@ export function Business({ locale }: { locale: Locale }) {
 
           <div ref={stage} className={styles.bizStage} role="img" aria-label={copy.stage}>
             <div className={styles.cust} data-phone onMouseEnter={pause} onMouseLeave={resume}>
-              <p className={`${styles.abs} ${styles.csTop}`}>
-                <span className={styles.csBack} aria-hidden="true">
-                  <svg viewBox="0 0 24 24" width="14" height="14">
-                    <path d="M15 6l-6 6 6 6" />
-                  </svg>
+              <div className={styles.custScreen}>
+                {/* The shop front wears the page's cover, blurred and darkened (handoff, "Shop cover", 27 Oct 2026). */}
+                <div className={styles.csCover} aria-hidden="true">
+                  <img {...photo('/landing/hero-baker.webp', 96)} alt={copy.lib.shopPhoto} loading="lazy" />
+                </div>
+                <p className={`${styles.abs} ${styles.csTop}`}>
+                  <span className={styles.csBack} aria-hidden="true">
+                    <svg viewBox="0 0 24 24" width="14" height="14">
+                      <path d="M15 6l-6 6 6 6" />
+                    </svg>
+                  </span>
+                  <span>{copy.shopPath}</span>
+                </p>
+                <span className={`${styles.abs} ${styles.csOpen}`}>
+                  <i />
+                  {copy.open}
                 </span>
-                <span>{copy.shopPath}</span>
-              </p>
-              <span className={`${styles.abs} ${styles.csOpen}`}>
-                <i />
-                {copy.open}
-              </span>
-              <p className={`${styles.abs} ${styles.csName}`}>Kek Lina</p>
-              <p className={`${styles.abs} ${styles.csFacts}`}>{copy.facts}</p>
-              <span className={`${styles.abs} ${styles.csCats}`}>
-                {copy.cats.map((cat, i) => (
-                  <span key={cat} data-on={i === 0 || undefined}>{cat}</span>
-                ))}
-              </span>
-              {items.map((item, i) => {
-                const row = s.rows[i]!;
-                return (
-                  <div key={item.name} className={`${styles.abs} ${styles.csCard}`} style={{ top: 196 + Math.floor(i / 2) * 176, left: 18 + (i % 2) * 138 }}>
-                    <span className={styles.csPh} style={{ background: row.tone }}>
-                      {i === 0 ? <span className={styles.csTag}>{copy.bestSeller}</span> : null}
-                      <span className={styles.csAdd} data-in={row.qty > 0 || undefined} style={{ transform: `scale(${row.pressed ? 1.18 : 1})` }}>
-                        {row.qty > 0 ? row.qty : '+'}
-                      </span>
-                    </span>
-                    <b>{item.name}</b>
-                    <span>{item.price}</span>
-                  </div>
-                );
-              })}
-              <div className={`${styles.abs} ${styles.cbar}`} data-full={s.basketCount > 0 || undefined}>
-                <span>{s.basketCount ? copy.basket(s.basketCount, s.basketTotal) : copy.basketEmpty}</span>
-                <span>{copy.checkout}</span>
-              </div>
-
-              <div className={styles.sheet} style={{ transform: `translateY(${100 - s.sheet}%)` }}>
-                {s.view === 'form' ? (
-                  <>
-                    <p className={`${styles.abs} ${styles.sheetTitle}`}>{copy.checkout}</p>
-                    <p className={`${styles.abs} ${styles.sheetSide}`}>{copy.itemsTotal}</p>
-                    <p className={`${styles.abs} ${styles.flabel}`} style={{ top: 50 }}>{copy.name}</p>
-                    <p className={`${styles.abs} ${styles.field}`} style={{ top: 66 }} data-on={s.nameFocused || undefined}>
-                      {s.name}
-                      {s.nameFocused ? <span className={styles.caret} /> : null}
-                    </p>
-                    <p className={`${styles.abs} ${styles.flabel}`} style={{ top: 118 }}>{copy.phone}</p>
-                    <p className={`${styles.abs} ${styles.field}`} style={{ top: 134 }} data-on={s.phoneFocused || undefined}>
-                      {s.phone}
-                      {s.phoneFocused ? <span className={styles.caret} /> : null}
-                    </p>
-                    <div className={`${styles.abs} ${styles.seg}`} style={{ top: 190 }}>
-                      <span data-on={s.pickup || undefined}>{copy.pickup}</span>
-                      <span>{copy.delivery}</span>
-                    </div>
-                    <span className={`${styles.abs} ${styles.cta}`}>{copy.continueToPay}</span>
-                  </>
-                ) : (
-                  <>
-                    <p className={`${styles.abs} ${styles.sheetTitle}`}>{copy.howPay}</p>
-                    <p className={`${styles.abs} ${styles.sheetSide}`}>RM235</p>
-                    <div className={`${styles.abs} ${styles.pway}`}>
-                      {copy.ways.map((way, i) => (
-                        <span key={way.label} className={styles.pwRow}>
-                          <i className={styles.pwRd} data-on={(i === 0 && s.wayPicked) || undefined} />
-                          <span className={styles.pwTx}>
-                            <b>{way.label}</b>
-                            <small>{way.sub}</small>
-                          </span>
-                          <em className={styles.pwMark} data-mark={way.mark}>{way.mark}</em>
+                <p className={`${styles.abs} ${styles.csName}`}>Kek Lina</p>
+                <p className={`${styles.abs} ${styles.csFacts}`}>{copy.facts}</p>
+                <span className={`${styles.abs} ${styles.csCats}`}>
+                  {copy.cats.map((cat, i) => (
+                    <span key={cat} data-on={i === 0 || undefined}>{cat}</span>
+                  ))}
+                </span>
+                {items.map((item, i) => {
+                  const row = s.rows[i]!;
+                  return (
+                    <div key={item.name} className={`${styles.abs} ${styles.csCard}`} style={{ top: 196 + Math.floor(i / 2) * 176, left: 18 + (i % 2) * 138 }}>
+                      <span className={styles.csPh} style={{ background: row.tone }}>
+                        {i === 0 ? <span className={styles.csTag}>{copy.bestSeller}</span> : null}
+                        <span className={styles.csAdd} data-in={row.qty > 0 || undefined} style={{ transform: `scale(${row.pressed ? 1.18 : 1})` }}>
+                          {row.qty > 0 ? row.qty : '+'}
                         </span>
-                      ))}
+                      </span>
+                      <b>{item.name}</b>
+                      <span>{item.price}</span>
                     </div>
-                    <div className={`${styles.abs} ${styles.pbanks}`} style={{ opacity: s.wayPicked ? 1 : 0 }}>
-                      <p>{copy.yourBank}</p>
-                      <span className={styles.pbGrid}>
-                        {copy.banks.map((bank, i) => (
-                          <span key={bank} className={styles.pb} data-on={(i === 0 && s.bankPicked) || undefined}>
-                            <i style={{ background: BANK_COLOURS[i] }}>{bank[0]}</i>
-                            {bank}
+                  );
+                })}
+                <div className={`${styles.abs} ${styles.cbar}`} data-full={s.basketCount > 0 || undefined}>
+                  <span>{s.basketCount ? copy.basket(s.basketCount, s.basketTotal) : copy.basketEmpty}</span>
+                  <span>{copy.checkout}</span>
+                </div>
+
+                <div className={styles.sheet} style={{ transform: `translateY(${100 - s.sheet}%)` }}>
+                  {s.view === 'form' ? (
+                    <>
+                      <p className={`${styles.abs} ${styles.sheetTitle}`}>{copy.checkout}</p>
+                      <p className={`${styles.abs} ${styles.sheetSide}`}>{copy.itemsTotal}</p>
+                      <p className={`${styles.abs} ${styles.flabel}`} style={{ top: 50 }}>{copy.name}</p>
+                      <p className={`${styles.abs} ${styles.field}`} style={{ top: 66 }} data-on={s.nameFocused || undefined}>
+                        {s.name}
+                        {s.nameFocused ? <span className={styles.caret} /> : null}
+                      </p>
+                      <p className={`${styles.abs} ${styles.flabel}`} style={{ top: 118 }}>{copy.phone}</p>
+                      <p className={`${styles.abs} ${styles.field}`} style={{ top: 134 }} data-on={s.phoneFocused || undefined}>
+                        {s.phone}
+                        {s.phoneFocused ? <span className={styles.caret} /> : null}
+                      </p>
+                      <div className={`${styles.abs} ${styles.seg}`} style={{ top: 190 }}>
+                        <span data-on={s.pickup || undefined}>{copy.pickup}</span>
+                        <span>{copy.delivery}</span>
+                      </div>
+                      <span className={`${styles.abs} ${styles.cta}`}>{copy.continueToPay}</span>
+                    </>
+                  ) : (
+                    <>
+                      <p className={`${styles.abs} ${styles.sheetTitle}`}>{copy.howPay}</p>
+                      <p className={`${styles.abs} ${styles.sheetSide}`}>RM235</p>
+                      <div className={`${styles.abs} ${styles.pway}`}>
+                        {copy.ways.map((way, i) => (
+                          <span key={way.label} className={styles.pwRow}>
+                            <i className={styles.pwRd} data-on={(i === 0 && s.wayPicked) || undefined} />
+                            <span className={styles.pwTx}>
+                              <b>{way.label}</b>
+                              <small>{way.sub}</small>
+                            </span>
+                            <em className={styles.pwMark} data-mark={way.mark}>{way.mark}</em>
                           </span>
                         ))}
-                      </span>
-                    </div>
-                    <span className={`${styles.abs} ${styles.cta}`} data-pay style={{ opacity: s.bankPicked ? 1 : 0.45 }}>
-                      {s.bankPicked ? copy.payWith : copy.pay}
-                    </span>
-                    {s.chip ? (
-                      <div className={styles.chipv}>
-                        <span className={styles.goBank}>M</span>
-                        {s.approved ? (
-                          <>
-                            <p className={styles.goT}>{copy.approved}</p>
-                            <p className={styles.goS}>{copy.approvedNote}</p>
-                            <span className={styles.goOk}>
-                              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-                                <path d="M5 12.5l4.5 4.5L19 7.5" />
-                              </svg>
-                              {copy.paidChip}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <p className={styles.goT}>{copy.opening}</p>
-                            <p className={styles.goS}>{copy.openingNote}</p>
-                            <span className={styles.goSpin} aria-hidden="true" />
-                          </>
-                        )}
-                        <p className={styles.goF}>{copy.processed}</p>
                       </div>
-                    ) : null}
-                  </>
-                )}
-              </div>
-
-              <div className={styles.succ} style={{ opacity: s.success }}>
-                <div style={{ position: 'relative', width: 120, height: 120 }}>
-                  {s.burst.map((b, i) => (
-                    <span key={i} className={styles.bit} style={{ transform: `translate(${b.x}px, ${b.y}px) rotate(${b.r}deg)`, opacity: b.o, background: b.c }} />
-                  ))}
-                  <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" style={{ position: 'relative' }}>
-                    <circle cx="60" cy="60" r="44" fill="var(--hijau)" style={{ transformOrigin: '60px 60px', transform: `scale(${s.successCircle})` }} />
-                    <path d="M40 61l13 13 27-29" fill="none" stroke="var(--paper)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="70" strokeDashoffset={s.successCheck} />
-                  </svg>
+                      <div className={`${styles.abs} ${styles.pbanks}`} style={{ opacity: s.wayPicked ? 1 : 0 }}>
+                        <p>{copy.yourBank}</p>
+                        <span className={styles.pbGrid}>
+                          {copy.banks.map((bank, i) => (
+                            <span key={bank} className={styles.pb} data-on={(i === 0 && s.bankPicked) || undefined}>
+                              <i style={{ background: BANK_COLOURS[i] }}>{bank[0]}</i>
+                              {bank}
+                            </span>
+                          ))}
+                        </span>
+                      </div>
+                      <span className={`${styles.abs} ${styles.cta}`} data-pay style={{ opacity: s.bankPicked ? 1 : 0.45 }}>
+                        {s.bankPicked ? copy.payWith : copy.pay}
+                      </span>
+                      {s.chip ? (
+                        <div className={styles.chipv}>
+                          <span className={styles.goBank}>M</span>
+                          {s.approved ? (
+                            <>
+                              <p className={styles.goT}>{copy.approved}</p>
+                              <p className={styles.goS}>{copy.approvedNote}</p>
+                              <span className={styles.goOk}>
+                                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+                                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                                </svg>
+                                {copy.paidChip}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <p className={styles.goT}>{copy.opening}</p>
+                              <p className={styles.goS}>{copy.openingNote}</p>
+                              <span className={styles.goSpin} aria-hidden="true" />
+                            </>
+                          )}
+                          <p className={styles.goF}>{copy.processed}</p>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
                 </div>
-                <p className={styles.succTitle}>{copy.received}</p>
-                <p className={styles.succNote}>{copy.receivedNote}</p>
-              </div>
 
-              <div className={styles.csLib} style={{ transform: `translateX(${s.lib.x}%)` }}>
-                <p className={`${styles.abs} ${styles.csTop}`} style={{ justifyContent: 'center' }}>
-                  <span>{copy.shopPath.replace(/\/shop$/, '')}</span>
-                </p>
-                <span className={`${styles.abs} ${styles.lbAv}`}>K</span>
-                <p className={`${styles.abs} ${styles.lbNm}`}>Kek Lina</p>
-                <p className={`${styles.abs} ${styles.lbHd}`}>{copy.lib.bio}</p>
-                <span className={`${styles.abs} ${styles.lbTabs}`}>
-                  <span data-on>{COPY[locale].hero.linksTab}</span>
-                  <span>{COPY[locale].hero.askTab}</span>
-                </span>
-                <span className={`${styles.abs} ${styles.lbShop}`} style={{ transform: `scale(${s.lib.pressed ? 0.97 : 1})` }}>
-                  <span className={styles.lbTh}>
-                    <i style={{ background: 'var(--tj-card-rose)' }} />
-                    <i>
-                      <img {...photo('/landing/hero-baker.webp', 30)} alt={copy.lib.shopPhoto} style={{ objectPosition: '72% 80%' }} loading="lazy" />
-                    </i>
-                    <i style={{ background: 'var(--tj-blob-pink)' }} />
-                  </span>
-                  <span className={styles.lbSt}>
-                    <b>{copy.lib.shop}</b>
-                    <small>{copy.lib.shopSub}</small>
-                  </span>
-                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M9 6l6 6-6 6" />
-                  </svg>
-                </span>
-                {copy.lib.links.map((link, i) => (
-                  <span key={link} className={`${styles.abs} ${styles.lbL}`} style={{ top: 318 + i * 54 }}>
-                    {link}
-                  </span>
-                ))}
-                <p className={`${styles.abs} ${styles.lbFt}`}>{copy.lib.foot}</p>
-              </div>
+                <div className={styles.succ} style={{ opacity: s.success }}>
+                  <div style={{ position: 'relative', width: 120, height: 120 }}>
+                    {s.burst.map((b, i) => (
+                      <span key={i} className={styles.bit} style={{ transform: `translate(${b.x}px, ${b.y}px) rotate(${b.r}deg)`, opacity: b.o, background: b.c }} />
+                    ))}
+                    <svg viewBox="0 0 120 120" width="120" height="120" aria-hidden="true" style={{ position: 'relative' }}>
+                      <circle cx="60" cy="60" r="44" fill="var(--hijau)" style={{ transformOrigin: '60px 60px', transform: `scale(${s.successCircle})` }} />
+                      <path d="M40 61l13 13 27-29" fill="none" stroke="var(--paper)" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="70" strokeDashoffset={s.successCheck} />
+                    </svg>
+                  </div>
+                  <p className={styles.succTitle}>{copy.received}</p>
+                  <p className={styles.succNote}>{copy.receivedNote}</p>
+                </div>
 
-              <Cursor {...s.cursor} />
+                <div className={styles.csLib} style={{ transform: `translateX(${s.lib.x}%)` }}>
+                  {/* As the real page draws it: the cover across the top, fading into the page, the name on it and the address under the name. */}
+                  <div className={styles.lbCover} aria-hidden="true">
+                    <img {...photo('/landing/hero-baker.webp', 300)} alt={copy.lib.shopPhoto} loading="lazy" />
+                  </div>
+                  <p className={`${styles.abs} ${styles.lbNm}`}>Kek Lina</p>
+                  <p className={`${styles.abs} ${styles.lbAddr}`}>{copy.shopPath.replace(/\/shop$/, '')}</p>
+                  <p className={`${styles.abs} ${styles.lbHd}`}>{copy.lib.bio}</p>
+                  <span className={`${styles.abs} ${styles.lbTabs}`}>
+                    <span data-on>{COPY[locale].hero.linksTab}</span>
+                    <span>{COPY[locale].hero.askTab}</span>
+                  </span>
+                  <span className={`${styles.abs} ${styles.lbShop}`} style={{ transform: `scale(${s.lib.pressed ? 0.97 : 1})` }}>
+                    <span className={styles.lbTh}>
+                      <i style={{ background: 'var(--tj-card-rose)' }} />
+                      <i>
+                        <img {...photo('/landing/hero-baker.webp', 30)} alt={copy.lib.shopPhoto} style={{ objectPosition: '72% 80%' }} loading="lazy" />
+                      </i>
+                      <i style={{ background: 'var(--tj-blob-pink)' }} />
+                    </span>
+                    <span className={styles.lbSt}>
+                      <b>{copy.lib.shop}</b>
+                      <small>{copy.lib.shopSub}</small>
+                    </span>
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M9 6l6 6-6 6" />
+                    </svg>
+                  </span>
+                  {copy.lib.links.map((link, i) => (
+                    <span key={link} className={`${styles.abs} ${styles.lbL}`} data-first={i === 0 || undefined} style={{ top: 398 + i * 54 }}>
+                      {link}
+                    </span>
+                  ))}
+                  <p className={`${styles.abs} ${styles.lbFt}`}>{copy.lib.foot}</p>
+                </div>
+
+                <Cursor {...s.cursor} />
+              </div>
             </div>
 
             <span className={styles.token} style={{ transform: `translate(${s.token.x}px, ${s.token.y}px) scale(${s.token.s})`, opacity: s.token.o }}>

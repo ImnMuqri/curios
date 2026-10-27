@@ -22,10 +22,10 @@ Rebuilt from the design handoff's TanyaJe board (`design/boards/TanyaJe.dc.html`
 | What people ask | `AskStrip.tsx` | "Ask about my rates, services…", one word in focus at a time. |
 | Who it's for | `Who.tsx` | Five kinds of owner; pointing at one slides its band in and shows its page. |
 | How it works | `How.tsx`, `HowParts.tsx` | Three rooms. Where the browser has scroll-driven animations they slide sideways as the page scrolls; elsewhere they are a row to swipe. |
-| For business | `Business.tsx`, `order-scene.ts` | The order played out between two phones, from the board's frame function, plays once the stage is fully in view. |
+| For business | `WhatLands.tsx`, `Business.tsx`, `order-scene.ts` | One section on the page's own ground (the board's pink was dropped, 27 Oct 2026), under one "For business" label. First, what lands in an owner's hands, for a service (Hafiz) or products (Kek Lina), from `design/prototypes/what-lands.html`: a bento of four tiles, the inbox today turning into chats the page answered and the leads or paid orders left (Peek at the laptop, `design/brand/peek-laptop.svg`, while they are sorted), suggestions, alerts, and what buyers keep asking; each tile plays its own round while it is in view, and the switch restarts them all. Then the order played out between two phones, from the board's frame function, once the stage is fully in view. Both phones wear the same ink frame. The customer's starts on Kek Lina's link in bio as a real page draws it (her cover, the address under her name, ringed links, Shop and the first link in the accent), and her shop front wears the blurred cover; she types "Mira Hassan", the name your Orders then shows. |
 | Pricing | `Pricing.tsx` | Personal free, Business from `PLAN_PRICES_CENTS`, monthly or yearly, and a "will it pay for itself" calculator. |
 | FAQ | `Faq.tsx` | The same items feed the FAQPage structured data. |
-| Close and footer | `Closing.tsx`, `Footer.tsx` | "Curious? Just ask" rising letter by letter, the claim field again, the wordmark at full width. |
+| Close and footer | `Closing.tsx`, `Footer.tsx` | "Curious? Just ask" rising letter by letter, the claim field again, the wordmark at full width. Under the note, who runs Curios: BSYX LABS, its SSM number in both formats and the support address, read from `_legal/content.ts`. |
 
 Every word is in `copy.ts`, both languages in one shape; the sample owners' looks
 are in `personas.ts`. Styles are one module, `tanya.module.css`, reading the
@@ -37,6 +37,13 @@ render, so the page is drawn with every scene on its finished frame, which is
 also what a visitor without JavaScript gets; motion starts only once the browser
 says it may. GSAP and Lenis are gone: what moves is CSS, `requestAnimationFrame`
 and native scroll-driven animations.
+
+**What lands in your hands, the scenes.** Each tile is a `Scene` in
+`WhatLands.tsx`: a finished frame, a first frame, and a `run` that sets the
+tile's state between `wait`s with the prototype's timings. `play` repeats a run
+until it is stopped, and a stopped run's waits never resolve, so leaving the
+view or switching side cannot leave a timer behind. The finished frame is what
+the server, reduced motion and a browser without IntersectionObserver show.
 
 **Photos.** Each persona's card shows `photo` (in `personas.ts`) across its top
 half, fading into the owner's colour, with the name dropped below the face; a
@@ -55,6 +62,15 @@ redrawn photo takes a new file name, and its copies are made again.
 pricing lines show checkout, paying by the owner's QR with proof, and Orders.
 Slice 18 (orders) built them as the board draws them, so the `SLICE 18`
 markers that once flagged them are gone; a test keeps them gone.
+
+**Claims to make true, or soften** (handoff, 27 Oct 2026; DEVIATIONS 225).
+What lands in your hands shows four things the product does not do yet: lead
+temperature tags (Hot / Warm / Ready to view) on Leads; a push or email alert
+for a hot lead or a new paid order; "Demand you're missing", questions about
+something the owner does not list or sell; and a "Follow up" lead for a buyer
+who chatted but did not buy. Before launch each is built or its tile changed.
+The figures in the section are samples. Its drafted Malay waits for the
+owner's read (DEVIATIONS 223).
 
 ## SEO
 
