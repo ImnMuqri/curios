@@ -23,7 +23,7 @@ vi.mock('../../../lib/api.js', () => ({
 }));
 
 import { ApiError } from '../../../lib/api.js';
-import { ControlsScreen } from './controls-screen.js';
+import { ControlsScreen, ControlsUnavailable } from './controls-screen.js';
 
 const settings = (over: Partial<Settings> = {}): Settings => ({ ...defaultSettings(), cap: 200, ...over });
 const off = (key: keyof Settings['switches']): Settings => {
@@ -103,6 +103,18 @@ describe('the switches', () => {
 
     expect(screen.getByRole('alert')).toHaveTextContent('That is already off.');
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('refreshes the screen on 409 SWITCH_STATE, and keeps the API’s message', async () => {
+    apiFetch.mockRejectedValueOnce(new ApiError(409, 'SWITCH_STATE', 'That is already off.'));
+    render(<ControlsScreen settings={settings()} />);
+
+    await userEvent.click(screen.getByRole('switch', { name: 'Reading new sources' }));
+    await userEvent.type(screen.getByLabelText('Reason, for the audit log'), 'Queue stuck');
+    await userEvent.click(screen.getByRole('button', { name: 'Turn it off' }));
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alert')).toHaveTextContent('That is already off.');
   });
 
   it('says so, in words, when turning one on fails', async () => {
@@ -224,5 +236,31 @@ describe('limits and prices', () => {
     await userEvent.clear(screen.getByLabelText('Free leads on a trial'));
 
     expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+  });
+});
+
+describe('limits that are already saved', () => {
+  it('refreshes the screen on 409 NO_CHANGE, and keeps the API’s message', async () => {
+    apiFetch.mockRejectedValueOnce(new ApiError(409, 'NO_CHANGE', 'Nothing is different from what is saved.'));
+    render(<ControlsScreen settings={settings()} />);
+
+    await userEvent.type(screen.getByLabelText('Business, monthly'), '9');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.type(screen.getByLabelText('Reason, for the audit log'), 'Same again');
+    await userEvent.click(screen.getByRole('button', { name: 'Save for everyone' }));
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('alert')).toHaveTextContent('Nothing is different from what is saved.');
+  });
+});
+
+describe('ControlsUnavailable', () => {
+  it('says the settings could not be loaded, with no switches, limits, banner or Save', () => {
+    render(<ControlsUnavailable />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load the current settings. Reload to try again.");
+    expect(screen.queryByRole('switch')).toBeNull();
+    expect(screen.queryByRole('textbox')).toBeNull();
+    expect(screen.queryByRole('button', { name: /save/i })).toBeNull();
   });
 });

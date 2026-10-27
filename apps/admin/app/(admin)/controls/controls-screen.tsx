@@ -39,6 +39,23 @@ const show = (l: (typeof LIMITS)[number], v: string) => (l.rm ? `RM${v}` : v);
 /** The API's words read fine as they are; anything else (a dropped connection) gets ours. */
 const said = (e: unknown) => (e instanceof ApiError ? e : new Error('Something failed. Try again.'));
 
+/** Shown in place of the form when the stored settings can't be read: no switches, limits or banner. */
+export function ControlsUnavailable() {
+  return (
+    <>
+      <div className={styles.head}>
+        <h1>Controls</h1>
+        <p>Switches and limits for the whole of Curios</p>
+      </div>
+      <div className={styles.body}>
+        <p className={styles.err} role="alert">
+          Couldn&apos;t load the current settings. Reload to try again.
+        </p>
+      </div>
+    </>
+  );
+}
+
 export function ControlsScreen({ settings }: { settings: Settings }) {
   const router = useRouter();
   const saved = savedValues(settings);
@@ -66,6 +83,9 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
   /** One change to a setting; refreshes the screen's data and says it in a toast. */
   async function put(path: string, payload: Record<string, unknown>, done: string) {
     await apiFetch(path, { method: 'PUT', body: JSON.stringify(payload) }).catch((e: unknown) => {
+      // The API says the screen is out of date (already off, nothing different): fetch what is
+      // really stored, and keep the API's message on show.
+      if (e instanceof ApiError && (e.code === 'SWITCH_STATE' || e.code === 'NO_CHANGE')) router.refresh();
       throw said(e);
     });
     router.refresh();
