@@ -744,6 +744,43 @@ There is no "forgot password" on the page. A reset is this command again with a 
 FAQ pages are cached for 60 seconds (`revalidate = 60`), so suspending or bringing back a page reaches
 its FAQ pages within that window; every other surface changes on the next request.
 
+### What each switch does during an outage
+
+Controls has five switches. Each asks for a reason and writes an audit row, and each is read again
+where it applies, so it takes effect within seconds and a running job notices it too. Off means
+stop, not hold: nothing is queued to be sent when it comes back. Turn it back on when the outage is
+over; the audit log says who turned it off and why.
+
+| Outage | Switch | What happens | What still works |
+|---|---|---|---|
+| The model provider is down or slow | Chat answers | Every page gives the short fixed reply, including the owner's tester and the order lookup in chat. No conversation is counted against anyone's cap | Pages, Store, leads. Grouping questions keeps running and retries its failed model calls |
+| Sources are being read badly, or Redis is struggling | Reading new sources | The ingest queue pauses. Owners can add sources and those wait; owner re-reads and admin retries are refused | Everything else. Reading sources shows "Queue paused" |
+| CHIP is down | CHIP payments | Billing shows "Online payments are paused for a moment"; checkouts offer only the owner's own QR or bank transfer; the shop's RM1 "Curios test" is refused; auto-renew is skipped, checked again before each charge | QR and bank transfer orders; pages already paid for |
+| Mail is failing or being abused | Emails to owners | Owner notification emails are dropped, not held | Sign-in, verification and password reset mail; admin's own mails (suspend, bring back, report warning) |
+| Something is wrong with sign-up | Sign-ups | The sign-up screen says Curios is full for now | Existing owners sign in as usual |
+
+A webhook CHIP could not deliver during the outage shows in Payments' webhook log as failed. Replay it
+once CHIP is back: the stored message goes through the same handler, which asks CHIP about the purchase
+before it grants, so a replay of a payment that was never made grants nothing.
+
+### Changing a price
+
+Monthly and yearly prices, the cap and the free limits are saved in Controls and are live within about
+30 seconds: the API caches settings for 30 seconds and clears the cache when you save, and the landing
+and legal pages revalidate every 30 seconds (the FAQ pages every 60). Allow a minute before telling
+anyone it is changed. The next CHIP purchase is raised at the new price; a plan someone has already
+paid for keeps its period. If the database cannot be reached the web falls back to the default prices
+rather than failing, so a page showing the old price during a database outage is that fallback, not a
+failed save.
+
+### The read-only role after a deploy
+
+Production re-runs `packages/db/prisma/sql/readonly-role.sql` after `migrate deploy`, as part of
+`scripts/prepare-database.ts` (see "Deploying on Railway"). That is what keeps `ChipWebhookEvent.body`
+hidden from the read-only role: the body holds the payer's name and email, so the role is granted the
+table's other columns only (and `Report.reporterIpHash` is withheld the same way). Admin's Payments
+log therefore never shows a body. If you ever grant the role the table by hand, run the script again.
+
 ### Environment
 
 | Variable | Where | What it does |

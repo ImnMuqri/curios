@@ -267,7 +267,7 @@
   }
 }
 
-/* Four items and Sign out: the Admin tag and some padding go so they all fit 390px. */
+/* Eight items and Sign out do not fit 390px: the bar scrolls sideways, as the board's does. The Admin tag and some padding go to leave as much room as possible. */
 @media (max-width: 480px) {
   .tag {
     display: none;

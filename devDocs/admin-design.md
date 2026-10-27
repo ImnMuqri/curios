@@ -1,6 +1,6 @@
 # Admin (Curios team only): design
 
-Status: design, 23 Oct 2026. Build source: `design/boards/Admin.dc.html` and HANDOFF "Admin
+Status: all four parts built (27 Oct 2026; parts 2 to 4 in `devDocs/plans/2026-10-27-admin-parts-2-4.md`). Design, 23 Oct 2026. Build source: `design/boards/Admin.dc.html` and HANDOFF "Admin
 (Curios team only), 23 Oct 2026" (on `origin/design-update-shopfront`, commit 0ae6f37). Where
 this document and the board disagree on behaviour, this document wins; on look and copy, the
 board wins. It supersedes `devDocs/ADMIN.md` where the two disagree (listed under "Changes to
