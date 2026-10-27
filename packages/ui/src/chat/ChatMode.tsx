@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { CaptureCard } from '../capture/CaptureCard.js';
+import { Thinking } from '../thinking/Thinking.js';
 import { AnswerBubble } from './AnswerBubble.js';
 import { isOrderCardData, OrderCard, ringgit, validProductCard, type OrderCardData, type ProductCardData } from './OrderCard.js';
 import styles from './ChatMode.module.css';
 
 /** Same copy for every failure path. The visitor never sees a raw error. */
 const FAILED = 'That answer failed. Try again.';
+
+/** The fixed composer and the gap above it: the newest exchange is kept above this. */
+const COMPOSER_ROOM = 112;
 
 /** Up to this many of the page's questions greet a visitor with nothing typed yet. */
 const MAX_CHIPS = 4;
@@ -96,6 +100,8 @@ export interface ChatModeProps {
   cardCopy?: ProductCardCopy;
   /** The label over each reply; "{displayName}’s page" when left out. */
   replyLabel?: string;
+  /** The word beside the o while a reply is on its way; "Inquiring" when left out. */
+  thinkingLabel?: string;
   /** Typed into the box when chat mode mounts, for the visitor to read and send. Never sent by itself. */
   initialDraft?: string;
 }
@@ -112,6 +118,7 @@ export function ChatMode({
   basketItemIds,
   cardCopy = CARD_COPY,
   replyLabel,
+  thinkingLabel,
   initialDraft,
 }: ChatModeProps) {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -128,6 +135,7 @@ export function ChatMode({
   const panel = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
+  const latest = useRef<HTMLDivElement>(null);
 
   /**
    * A ref, not state. The streaming loop below reads it after awaits, and a
@@ -272,16 +280,21 @@ export function ChatMode({
 
   /**
    * Nothing here is `position: fixed` anymore, so the page scrolls normally
-   * and a lock would just fight the visitor's own scrolling. What used to be
-   * a lock is now this: keep the newest line of the conversation in view as
-   * it streams in, the same way any chat surface does. Keyed on the whole
-   * `turns` array, not its length, so this also fires as an answer's text
-   * grows chunk by chunk, not just when a new turn is added.
+   * and a lock would just fight the visitor's own scrolling. Instead the page
+   * scrolls only as far as the newest exchange needs: enough to bring its
+   * end (the answer, and any card after it) above the composer -- or, on a
+   * phone, the keyboard -- and never so far that the question goes off the
+   * top. Lifting every question to the top hid what came before it. Keyed on
+   * `turns` itself, so it follows an answer as it grows chunk by chunk.
    */
   useEffect(() => {
-    if (turns.length === 0) return;
-    end.current?.scrollIntoView({ block: 'end' });
-  }, [turns]);
+    if (!latest.current || !end.current) return;
+    const viewport = window.visualViewport;
+    const bottom = (viewport ? viewport.offsetTop + viewport.height : window.innerHeight) - COMPOSER_ROOM;
+    const over = end.current.getBoundingClientRect().top - bottom;
+    const lift = Math.min(over, latest.current.getBoundingClientRect().top - 16);
+    if (lift > 0) window.scrollBy({ top: lift });
+  }, [turns, qualified]);
 
   /**
    * One question, from a chip or the composer. The streaming loop is the one
@@ -435,11 +448,18 @@ export function ChatMode({
         ) : null
       ) : (
         turns.map((turn, index) => (
-          <div key={`${index}-${turn.question}`} className={styles.turn}>
+          <div
+            key={`${index}-${turn.question}`}
+            ref={index === turns.length - 1 ? latest : undefined}
+            className={styles.turn}
+          >
             <p className={styles.question}>{turn.question}</p>
             <div className={styles.reply}>
               <span className={styles.who}>{replyLabel ?? `${displayName}’s page`}</span>
-              <AnswerBubble text={turn.answer} />
+              <AnswerBubble
+                text={turn.answer}
+                waiting={busy && index === turns.length - 1 ? <Thinking label={thinkingLabel} /> : null}
+              />
             </div>
             {turn.order ? <OrderCard card={turn.order} /> : null}
             {turn.productCard && shopPath ? (
@@ -511,7 +531,7 @@ export function ChatMode({
         />
       ) : null}
 
-      {/* Scrolled into view as the thread grows; carries no content of its own. */}
+      {/* The end of the thread, kept above the composer as it grows; carries no content of its own. */}
       <div ref={end} />
 
       <form

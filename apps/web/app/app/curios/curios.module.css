@@ -873,40 +873,6 @@
   outline-offset: 2px;
 }
 
-.pvDots {
-  display: inline-flex;
-  gap: 4px;
-}
-
-.pvDots i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.4;
-  animation: pvDot 1s ease-in-out infinite;
-}
-
-.pvDots i:nth-child(2) {
-  animation-delay: 0.15s;
-}
-
-.pvDots i:nth-child(3) {
-  animation-delay: 0.3s;
-}
-
-@keyframes pvDot {
-  50% {
-    opacity: 1;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pvDots i {
-    animation: none;
-  }
-}
-
 /* ---- Narrower ---- */
 
 @container (max-width: 520px) {

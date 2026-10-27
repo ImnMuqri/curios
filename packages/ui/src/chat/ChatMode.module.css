@@ -117,6 +117,8 @@
 .reply {
   align-self: stretch;
   font-family: var(--font-body);
+  /* Thinking's o, while the first word is on its way: the colour of the dot beside the label. */
+  --mo-ring: var(--accent-mark, var(--accent, var(--biru)));
 }
 
 /* The dot is the page's accent (its text colour where the accent would vanish: --accent-mark); the words are 75% of the page's text colour. */
@@ -129,29 +131,6 @@
   line-height: 22px;
   color: color-mix(in srgb, var(--page-fg, var(--ink)) 75%, transparent);
   background: radial-gradient(circle at 11px 11px, var(--accent-mark, var(--accent, var(--biru))) 10.5px, transparent 11px) no-repeat;
-}
-
-/*
- * Waiting for the first word: the answer's live region is already mounted
- * (so a screen reader hears the answer arrive), and while it is still empty
- * it shows three dots instead of an empty pill.
- */
-.turn [role='status']:empty::before {
-  content: '• • •';
-  letter-spacing: 1px;
-  color: var(--accent, var(--biru));
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .turn [role='status']:empty::before {
-    animation: waiting 1s ease-in-out infinite;
-  }
-
-  @keyframes waiting {
-    50% {
-      opacity: 0.35;
-    }
-  }
 }
 
 /* The product card: the Public board's .sp-pc. */

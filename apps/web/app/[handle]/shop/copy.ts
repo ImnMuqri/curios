@@ -61,6 +61,8 @@ export interface ShopCopy {
   /** The Ask tab: the page's opening line, the label over each reply, and the product card's two buttons. */
   askHello: (name: string) => string;
   askLabel: (name: string) => string;
+  /** Beside the o while a reply is on its way. */
+  askThinking: string;
   cardAdd: string;
   cardIn: string;
   cardOpen: (name: string) => string;
@@ -380,6 +382,7 @@ const EN: ShopCopy = {
   from: (price) => `from ${price}`,
   askHello: (name) => `Hi! I’m ${name}’s page. Ask me about what’s on offer, prices or how to order.`,
   askLabel: (name) => `${name}’s page`,
+  askThinking: 'Inquiring',
   cardAdd: 'Add to basket',
   cardIn: 'In your basket',
   cardOpen: (name) => `Open ${name}`,
@@ -655,6 +658,7 @@ const MS: ShopCopy = {
   from: (price) => `dari ${price}`,
   askHello: (name) => `Hai! Saya halaman ${name}. Tanya saya tentang apa yang ditawarkan, harga atau cara menempah.`,
   askLabel: (name) => `Halaman ${name}`,
+  askThinking: 'Sedang menyemak',
   cardAdd: 'Masuk bakul',
   cardIn: 'Dalam bakul anda',
   cardOpen: (name) => `Buka ${name}`,

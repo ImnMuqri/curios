@@ -122,6 +122,24 @@ export function Ask({
     };
   }, [onOpen]);
 
+  /*
+   * The document itself in the page's colour. A phone shows it wherever the
+   * page does not reach -- under the composer while the keyboard is up, and
+   * past either end of a scroll -- and left as the site's paper, that is a
+   * white band under a dark page. Only the root: the body keeps its paper, so
+   * a wide screen still sees the page as a column.
+   */
+  useEffect(() => {
+    const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
+    if (!page) return;
+    const root = document.documentElement;
+    const before = root.style.backgroundColor;
+    root.style.backgroundColor = getComputedStyle(page).backgroundColor;
+    return () => {
+      root.style.backgroundColor = before;
+    };
+  }, []);
+
   // The current tab follows chat mode, for the eye (the filled pill) and for a screen reader alike.
   useEffect(() => {
     const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
@@ -234,6 +252,7 @@ export function Ask({
           onAddToBasket={onAddToBasket}
           basketItemIds={basketItemIds}
           replyLabel={copy.askLabel(displayName)}
+          thinkingLabel={copy.askThinking}
           cardCopy={{ add: copy.cardAdd, inBasket: copy.cardIn, from: copy.from, open: copy.cardOpen, added: copy.addedNamed, pick: copy.pickATime, soldOut: copy.soldOut }}
           initialDraft={prefill}
         />

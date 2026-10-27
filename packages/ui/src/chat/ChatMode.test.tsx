@@ -147,29 +147,45 @@ describe('ChatMode, entering', () => {
     expect(pushSpy).toHaveBeenCalledTimes(1);
   });
 
-  it('scrolls the latest line of the thread into view as it grows, instead of locking page scroll', async () => {
+  describe('keeping the newest exchange in view, instead of locking page scroll', () => {
     // Nothing here is position: fixed anymore, so a body-scroll lock would
-    // just fight the visitor's own scrolling; this replaced it. Spied on
-    // HTMLElement's own prototype, not Element's -- that is where
-    // vitest.setup.ts's stub for jsdom's missing scrollIntoView lives, and it
-    // is closer than Element.prototype on a real element's chain, so a spy
-    // placed on Element.prototype would never be reached at all.
-    const scrollSpy = vi
-      .spyOn(window.HTMLElement.prototype, 'scrollIntoView')
-      .mockImplementation(() => {});
-    const onAsk = vi
-      .fn()
-      .mockResolvedValue(
-        streamOf('data: {"type":"text","text":"RM45 "}\n\n', 'data: {"type":"text","text":"sekilo."}\n\n'),
-      );
-    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+    // just fight the visitor's own scrolling; this replaced it. jsdom lays
+    // nothing out, so where the question and the end of the thread sit is
+    // stubbed: the end marker is the empty div after the turns.
+    function layOut(questionTop: number, endTop: number) {
+      vi.spyOn(window.HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const top = this.childElementCount === 0 && this.textContent === '' ? endTop : questionTop;
+        return { top, bottom: top, left: 0, right: 0, width: 0, height: 0, x: 0, y: top, toJSON: () => ({}) };
+      });
+      return vi.spyOn(window, 'scrollBy').mockImplementation(() => {});
+    }
 
-    expect(scrollSpy).not.toHaveBeenCalled();
+    async function ask() {
+      const onAsk = vi.fn().mockResolvedValue(streamOf('data: {"type":"text","text":"RM45 sekilo."}\n\n'));
+      render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} />);
+      await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+      await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+      await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('RM45 sekilo.'));
+    }
 
-    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
-    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+    it('scrolls only as far as brings the answer above the composer', async () => {
+      // jsdom's window is 768 tall; the composer keeps the bottom 112 clear.
+      const scrollBy = layOut(400, 700);
+      await ask();
+      expect(scrollBy).toHaveBeenLastCalledWith({ top: 700 - (768 - 112) });
+    });
 
-    await waitFor(() => expect(scrollSpy).toHaveBeenCalled());
+    it('never scrolls the question off the top, however long the answer', async () => {
+      const scrollBy = layOut(200, 2000);
+      await ask();
+      expect(scrollBy).toHaveBeenLastCalledWith({ top: 200 - 16 });
+    });
+
+    it('does not move a thread that already fits', async () => {
+      const scrollBy = layOut(100, 300);
+      await ask();
+      expect(scrollBy).not.toHaveBeenCalled();
+    });
   });
 
   // React mounts every component twice in development, on purpose. With no
@@ -287,6 +303,20 @@ describe('ChatMode, asking', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'Send' })).toBeDisabled());
+  });
+
+  it('says it is inquiring until the first word arrives, then shows the answer in its place', async () => {
+    let send!: (stream: ReadableStream<Uint8Array>) => void;
+    const onAsk = vi.fn().mockReturnValue(new Promise((resolve) => (send = resolve)));
+    render(<ChatMode open onClose={vi.fn()} onAsk={onAsk} displayName="Nadia Bakes" questions={[]} thinkingLabel="Sedang menyemak" />);
+
+    await userEvent.type(screen.getByLabelText('Ask a question'), 'harga?');
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    const live = await screen.findByRole('status');
+    expect(live).toHaveTextContent('Sedang menyemak…');
+    send(streamOf('data: {"type":"text","text":"RM45"}\n\n', 'data: {"type":"done"}\n\n'));
+    await waitFor(() => expect(live).toHaveTextContent(/^RM45$/));
   });
 
   it('starts a fresh thread when the conversation has expired', async () => {

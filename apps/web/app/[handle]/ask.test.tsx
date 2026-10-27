@@ -354,3 +354,17 @@ describe('Ask, the product card', () => {
     expect(screen.getByText('Halaman Nadia Bakes')).toBeInTheDocument();
   });
 });
+
+describe('Ask, and the document behind the page', () => {
+  it('paints the document in the page’s colour, so a phone shows no white band under it, and puts it back after', () => {
+    const { unmount } = render(
+      <div data-bento-page style={{ backgroundColor: 'rgb(26, 31, 44)' }}>
+        <Ask handle="nadia" questions={[]} displayName="Nadia Bakes" canCapture={false} />
+      </div>,
+    );
+    expect(document.documentElement.style.backgroundColor).toBe('rgb(26, 31, 44)');
+
+    unmount();
+    expect(document.documentElement.style.backgroundColor).toBe('');
+  });
+});
