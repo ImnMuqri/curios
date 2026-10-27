@@ -451,6 +451,14 @@ pages, scaled down, rather than separate mock-ups:
 seats, durationMin, where, meetingUrl or place) and a booking per order line; `Order.email`;
 a `DownloadGrant` per order line and file (token, uses left, expiresAt); `Order.sentAt`.
 
+## Shop cover, 27 Oct 2026
+
+The shop front (curios.my/handle/shop) now wears the owner's cover photo, **blurred** (about
+22px, scaled up 1.3 so the edges don't show) and darkened, fading into the page background over
+about 340px. The header, "Open for orders", name, facts and owner's note sit on top of it. The
+category bar starts after the fade. Item, checkout, pay and order pages stay plain. The Store
+"Shop" preview and the landing's For business phone show the same.
+
 ## Open decisions (all three settled; kept for the record)
 
 1. ~~**Price.** The code has RM39 a month (`PLAN_PRICES_CENTS` 3900 / 39000). The landing and Billing
@@ -461,3 +469,75 @@ a `DownloadGrant` per order line and file (token, uses left, expiresAt); `Order.
    - plan ending reminders: 3 days before, and on the day
 3. ~~**Lapsed plan wording.** The design says a lapse also stops orders. This matches
    `canTakeOrders()`, but confirm the banner copy.~~ Settled 2026-10-16: the lapsed wording is `planEndedSaid` in `packages/core/src/plan-mail.ts`.
+
+## Landing: "What lands in your hands", 27 Oct 2026
+
+A new landing section that shows owners **what they get**, not the features. It goes between
+How it works and For business (`How.tsx` → new `WhatLands.tsx` → `Business.tsx`).
+
+**Reference:** open `design/prototypes/what-lands.html` in a browser. It is the approved
+design, animation and timing, with both personas and the switch working. Stills:
+`design/screens/WhatLands-1-inbox`, `-2-replying`, `-3-leads`, `-4-orders` (desktop) and
+`WhatLands.phone.jpg`. Peek at the laptop is `design/brand/peek-laptop.svg`.
+
+**Layout.** Heading "What lands in your hands." and a lede on the left, a two-way switch on
+the right: "I offer a service" (Hafiz, property agent) / "I sell products" (Kek Lina). Under it
+a bento grid, 3 columns (1.15fr 1fr 1fr), rows 400px and 236px, 16px gap, 26px radius:
+1. **Big tile** (left, both rows): the before and after story, below.
+2. **Suggestions** (top middle): a chat on the owner's page. The visitor asks, the page types,
+   two suggestions slide in, one gets tapped ("✓ Asked" / "✓ Added").
+3. **Alerts** (top right): a Curios notification drops in, then a hotter one lands on top and
+   pushes the first back.
+4. **What buyers keep asking** (bottom, two columns wide): bars grow and counts tick up, then
+   the orange row gets a tag ("Demand you're missing" / "Not on your menu yet").
+Under 900px everything is one column; the big tile keeps a fixed 640px height.
+
+**Big tile, one loop (~12s).** The words are honest about where chats happen: the "before" is
+the owner's own inbox today, and the "after" is chats on their Curios page.
+1. *Your inbox today* (light grey tile, red dot tag "Your inbox · 47 unread"): 8 unanswered
+   chats pop in one by one, phone number, last message, time and unread count in green. The
+   counts keep ticking up. Caption: "Your inbox today / 47 unread, mostly "hi". A real buyer is
+   buried in there."
+2. *Now your page replies* (tile turns light blue #e9eef8, tag "With Curios · your page
+   replies"): each row flips (rotateX) into a chat on the page: the question in quotes,
+   "Visitor from Instagram/TikTok/Facebook", no phone number. Peek with the laptop pops up in
+   the centre, turned 45°, hands tapping, lines appearing on the screen, "…" and ✓ bubbles
+   floating up, with a soft glow behind him. Rows get "Answered ✓" and go grey; the serious
+   ones get an outline and "Lead ✓" (products: "Paid ✓"). Caption: "Now your page replies /
+   Every chat answered. Serious buyers qualified."
+3. *With Curios* (tile turns dark: #16324a for service, #542339 for Kek Lina; tag with a green
+   dot "With Curios · 3 worth calling" / "RM346 paid today"): Peek goes, the lead card (or the
+   paid order) rises in, then the next two rows. Caption: "Leads, already qualified" / "Orders,
+   already paid".
+
+**Motion rules.** Same as the rest of the landing: `useReducedMotion` draws everything on its
+finished frame (big tile on step 3, bars full, both alerts, suggestion tapped) on the server
+and for reduced motion. Start the loops only when the section is in view
+(IntersectionObserver) and pause them when it leaves. Switching persona restarts all loops.
+CSS transitions and timeouts only, no animation library.
+
+**Copy (Malay)** to add to `copy.ts` alongside English, in the same shape:
+- What lands in your hands. → *Apa yang anda dapat.*
+- Every chat on your page ends in one of these. → *Setiap chat di page anda berakhir dengan salah satu daripada ini.*
+- I offer a service / I sell products → *Saya beri servis / Saya jual produk*
+- Your inbox · 47 unread → *Inbox anda · 47 belum dibaca*
+- Your inbox today / 47 unread, mostly "hi". A real buyer is buried in there. → *Inbox anda hari ini / 47 belum dibaca, kebanyakannya "hi". Pembeli sebenar tenggelam di situ.*
+- With Curios · your page replies → *Dengan Curios · page anda membalas*
+- Now your page replies / Every chat answered. Serious buyers qualified. → *Kini page anda membalas / Setiap chat dijawab. Pembeli serius ditapis.*
+- Answered ✓ / Lead ✓ / Paid ✓ → *Dijawab ✓ / Lead ✓ / Dibayar ✓*
+- Leads, already qualified / Your page asked budget, area and timing. Just call. → *Lead yang sudah ditapis / Page anda dah tanya bajet, kawasan dan masa. Telefon je.*
+- Orders, already paid / Straight from the chat. No "transfer dulu ya". → *Pesanan yang sudah dibayar / Terus dari chat. Tiada "transfer dulu ya".*
+- Your listings, suggested / It shows them the units that fit. → *Listing anda dicadangkan / Ia tunjuk unit yang sesuai.*
+- Products, suggested / It picks from your shop, at your prices. → *Produk dicadangkan / Ia pilih dari kedai anda, ikut harga anda.*
+- Told the moment it matters / Serious buyers ping you. The rest don't. → *Dimaklumkan bila penting / Pembeli serius akan beritahu anda. Yang lain tidak.*
+- What buyers keep asking, answered / See it all in one place, and spot what you're missing. → *Soalan yang selalu ditanya, dijawab / Lihat semua di satu tempat, dan nampak apa yang anda terlepas.*
+The chat lines ("hi", "berapa sewa?", "kek coklat ada?"…) stay as written in both languages.
+
+**Claims to make true, or soften.** The section shows a few things the product does not do yet.
+Before launch either build them or change the tile:
+- Lead temperature tags (Hot / Warm / Ready to view) on Leads.
+- A push or email alert for a hot lead or a new paid order ("Told the moment it matters").
+- "Demand you're missing": questions asked about something the owner doesn't list or sell.
+- A "Follow up" lead for a buyer who chatted but didn't buy.
+Everything else (answering from approved facts, suggesting listings or items, leads with a
+number, paid orders, the Questions list) exists already. The numbers are sample figures.
