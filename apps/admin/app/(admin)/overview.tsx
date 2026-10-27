@@ -88,7 +88,7 @@ interface Need {
 }
 
 function needs(o: OverviewData, cap: number): Need[] {
-  const { failedReads, atCap, plansEnding, reported } = o.needsYou;
+  const { failedReads, atCap, plansEnding, reported, webhooksFailed } = o.needsYou;
   const out: Need[] = [];
   if (reported.pages > 0) {
     const top = reported.top;
@@ -109,6 +109,8 @@ function needs(o: OverviewData, cap: number): Need[] {
       dot: 'warn',
       title: `${failedReads} ${failedReads === 1 ? 'source' : 'sources'} couldn’t be read`,
       sub: 'In the last 7 days',
+      href: '/sources?filter=failed',
+      button: 'Open queue',
     });
   }
   if (atCap.count > 0) {
@@ -119,7 +121,7 @@ function needs(o: OverviewData, cap: number): Need[] {
       dot: 'warn',
       title: `${atCap.count} ${atCap.count === 1 ? 'page hit' : 'pages hit'} the ${cap} limit`,
       sub: names ? (atCap.count > atCap.names.length ? `${names} among them` : names) : 'This month',
-      href: atCap.count === 1 && atCap.names[0] ? `/pages?q=${encodeURIComponent(atCap.names[0])}` : '/pages',
+      href: '/ai',
       button: 'See pages',
     });
   }
@@ -130,8 +132,21 @@ function needs(o: OverviewData, cap: number): Need[] {
       dot: 'quiet',
       title: `${plansEnding} Business ${plansEnding === 1 ? 'plan ends' : 'plans end'} this week`,
       sub: 'Owners get a reminder 3 days before',
-      href: '/pages?filter=business',
-      button: 'See pages',
+      href: '/payments',
+      button: 'See payments',
+    });
+  }
+  if (webhooksFailed.count > 0) {
+    const { latest } = webhooksFailed;
+    const owner = latest?.displayName ? `${latest.displayName}’s payment` : 'A payment';
+    out.push({
+      key: 'webhooks',
+      count: webhooksFailed.count,
+      dot: 'warn',
+      title: `${webhooksFailed.count} payment ${webhooksFailed.count === 1 ? 'webhook' : 'webhooks'} failed`,
+      sub: latest ? `CHIP sent it ${latest.attempts} ${latest.attempts === 1 ? 'time' : 'times'}. ${owner} may not show as paid.` : '',
+      href: '/payments',
+      button: 'See it',
     });
   }
   return out;

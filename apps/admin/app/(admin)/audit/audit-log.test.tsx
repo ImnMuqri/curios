@@ -8,6 +8,7 @@ const row = (n: number, over: Partial<AuditRow> = {}): AuditRow => ({
   createdAt: new Date(Date.UTC(2026, 9, 20, 14, 31) - n * 60_000),
   adminName: 'Iman',
   action: 'SUSPENDED_PAGE',
+  targetType: 'Page',
   targetId: `p${n}`,
   targetLabel: `page${n}`,
   reason: `Reason ${n}`,
@@ -49,6 +50,39 @@ describe('AuditLog', () => {
     const r = screen.getAllByRole('row')[1]!;
     expect(within(r).getByText('Turned off chat answers')).toBeTruthy();
     expect(within(r).getByText('everyone')).toBeTruthy();
+  });
+
+  it('words a source retry, and shows retrying all against everyone', () => {
+    expect(actionLabel('RETRIED_SOURCE')).toBe('Retried a source');
+    expect(actionLabel('RETRIED_FAILED_SOURCES')).toBe('Retried all failed sources');
+    render(
+      <AuditLog
+        paged={false}
+        rows={[row(1, { action: 'RETRIED_FAILED_SOURCES', targetType: 'Source', targetId: 'failed', targetLabel: 'everyone' })]}
+      />,
+    );
+    const r = screen.getAllByRole('row')[1]!;
+    expect(within(r).getByText('everyone')).toBeTruthy();
+    expect(screen.queryByText('curios.my/everyone')).toBeNull();
+  });
+
+  it('shows a payment replay against the page when it has one, and as the plain label when it labels a purchase', () => {
+    render(
+      <AuditLog
+        paged={false}
+        rows={[
+          row(1, { action: 'REPLAYED_WEBHOOK', targetType: 'Payment', targetId: 'pay1', targetLabel: 'studiohana' }),
+          row(2, { action: 'REPLAYED_WEBHOOK', targetType: 'Payment', targetId: 'pay2', targetLabel: '0c9b6a5e-1d2f-4b8a-9a43-7f1e5d2c8b10' }),
+          row(3, { action: 'REPLAYED_WEBHOOK', targetType: 'Payment', targetId: 'CHIP-8QT9', targetLabel: 'CHIP-8QT9' }),
+        ]}
+      />,
+    );
+    const rows = screen.getAllByRole('row').slice(1);
+    expect(within(rows[0]!).getByText('curios.my/studiohana')).toBeTruthy();
+    expect(within(rows[1]!).getByText('0c9b6a5e-1d2f-4b8a-9a43-7f1e5d2c8b10')).toBeTruthy();
+    expect(within(rows[2]!).getByText('CHIP-8QT9')).toBeTruthy();
+    expect(screen.queryByText(/curios\.my\/0c9b/)).toBeNull();
+    expect(screen.queryByText('curios.my/CHIP-8QT9')).toBeNull();
   });
 
   it('renders rows in the order given with readable labels, page and reason', () => {

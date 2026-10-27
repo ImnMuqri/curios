@@ -6,17 +6,30 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ 
 import { Shell } from './shell.js';
 
 describe('Shell', () => {
-  it('shows the built sections in the board’s groups and none of the unbuilt ones', () => {
+  it('shows all eight sections in the board’s groups', () => {
     render(<Shell adminName="Iman" current="pages" />);
 
     const nav = screen.getByRole('navigation');
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent);
-    expect(labels).toEqual(['Overview', 'Pages', 'Reports', 'Controls', 'Audit log']);
-    for (const absent of ['AI & usage', 'Reading sources', 'Payments']) {
-      expect(screen.queryByText(absent)).not.toBeInTheDocument();
-    }
+    expect(labels).toEqual(['Overview', 'Pages', 'AI & usage', 'Reading sources', 'Payments', 'Reports', 'Controls', 'Audit log']);
     const groups = Array.from(nav.querySelectorAll('p')).map((p) => p.textContent);
     expect(groups).toEqual(['Look', 'Run', 'Change']);
+    expect(screen.getByRole('link', { name: 'AI & usage' })).toHaveAttribute('href', '/ai');
+    expect(screen.getByRole('link', { name: 'Reading sources' })).toHaveAttribute('href', '/sources');
+    expect(screen.getByRole('link', { name: 'Payments' })).toHaveAttribute('href', '/payments');
+  });
+
+  it('puts each count beside its section, and hides it at 0', () => {
+    const { rerender } = render(
+      <Shell adminName="Iman" current="pages" counts={{ failedSources: 4, failedWebhooks: 2, openReports: 0 }} />,
+    );
+    expect(screen.getByRole('link', { name: 'Reading sources 4' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Payments 2' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Reports' })).toBeInTheDocument();
+
+    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0 }} />);
+    expect(screen.getByRole('link', { name: 'Reading sources' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Payments' })).toBeInTheDocument();
   });
 
   it('shows the open reports count beside Reports, and hides it at 0', () => {

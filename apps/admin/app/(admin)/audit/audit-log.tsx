@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { AuditRow } from '@curios/db-read/admin';
 import { ADMIN_ACTIONS } from '@curios/core/admin';
+import { HANDLE_MAX } from '@curios/core';
 import { switchTitle } from '../controls/switches.js';
 import styles from './audit.module.css';
 
@@ -62,8 +63,19 @@ const EVERYONE = new Set<string>([
   ADMIN_ACTIONS.CHANGED_LIMITS,
   ADMIN_ACTIONS.SHOWED_BANNER,
   ADMIN_ACTIONS.TOOK_BANNER_DOWN,
+  ADMIN_ACTIONS.RETRIED_FAILED_SOURCES,
 ]);
 const everyone = (action: string) => EVERYONE.has(action);
+
+/**
+ * What the Page column shows. A payment replay is labelled with the page's handle; with no
+ * payment behind it, with the CHIP purchase id, which is no address: it shows as it is.
+ */
+function pageLabel(r: AuditRow): string {
+  if (everyone(r.action)) return 'everyone';
+  const notAHandle = r.targetType === 'Payment' && (r.targetLabel === r.targetId || r.targetLabel.length > HANDLE_MAX);
+  return notAHandle ? r.targetLabel : `curios.my/${r.targetLabel}`;
+}
 
 export function AuditLog({ rows, paged }: { rows: AuditRow[]; paged: boolean }) {
   const last = rows[rows.length - 1];
@@ -95,7 +107,7 @@ export function AuditLog({ rows, paged }: { rows: AuditRow[]; paged: boolean }) 
                   <b>{actionLabel(r.action, r.targetId)}</b>
                 </div>
                 <div className={styles.c} role="cell">
-                  <span className={styles.mono}>{everyone(r.action) ? 'everyone' : `curios.my/${r.targetLabel}`}</span>
+                  <span className={styles.mono}>{pageLabel(r)}</span>
                 </div>
                 <div className={`${styles.c} ${styles.why}`} role="cell">
                   {r.reason}

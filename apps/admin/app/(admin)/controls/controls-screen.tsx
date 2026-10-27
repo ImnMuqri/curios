@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { BANNER_MAX, PRICE_MAX_RM, type Settings, type SwitchKey } from '@curios/core/settings';
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import { ReasonDialog } from '../reason-dialog.js';
+import { said } from '../said.js';
 import reasonStyles from '../reason-dialog.module.css';
 import { lowerFirst, SWITCHES } from './switches.js';
 import styles from './controls.module.css';
@@ -35,9 +36,6 @@ function savedValues(s: Settings): Values {
 
 const validField = (l: (typeof LIMITS)[number], v: string) => /^\d+$/.test(v) && Number(v) >= l.min && Number(v) <= l.max;
 const show = (l: (typeof LIMITS)[number], v: string) => (l.rm ? `RM${v}` : v);
-
-/** The API's words read fine as they are; anything else (a dropped connection) gets ours. */
-const said = (e: unknown) => (e instanceof ApiError ? e : new Error('Something failed. Try again.'));
 
 /** Shown in place of the form when the stored settings can't be read: no switches, limits or banner. */
 export function ControlsUnavailable() {

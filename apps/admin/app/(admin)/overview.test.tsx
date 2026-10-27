@@ -71,7 +71,7 @@ describe('Overview', () => {
     expect(within(figure('AI cost, today')).getByText('US$0.003 a conversation')).toBeInTheDocument();
   });
 
-  it('lists the open items, each with its button except failed reads', () => {
+  it('lists the open items, each with its button', () => {
     render(<Overview overview={fixture()} period="7d" cap={200} />);
 
     expect(screen.getByText('26 open')).toBeInTheDocument();
@@ -79,8 +79,34 @@ describe('Overview', () => {
     expect(screen.getByText('14 pages hit the 200 limit')).toBeInTheDocument();
     expect(screen.getByText('Studio Hana and Kak Mah among them')).toBeInTheDocument();
     expect(screen.getByText('6 Business plans end this week')).toBeInTheDocument();
-    const buttons = screen.getAllByRole('link', { name: 'See pages' });
-    expect(buttons.map((b) => b.getAttribute('href'))).toEqual(['/pages', '/pages?filter=business']);
+    expect(screen.getByRole('link', { name: 'Open queue' })).toHaveAttribute('href', '/sources?filter=failed');
+    expect(screen.getByRole('link', { name: 'See pages' })).toHaveAttribute('href', '/ai');
+    expect(screen.getByRole('link', { name: 'See payments' })).toHaveAttribute('href', '/payments');
+  });
+
+  it('shows a failed payment webhook row, with the attempts and the payer, and a See it button', () => {
+    const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, reported: { pages: 0, top: null } };
+    const { rerender } = render(
+      <Overview
+        overview={fixture({ needsYou: { ...quiet, webhooksFailed: { count: 2, latest: { attempts: 3, displayName: 'Studio Hana' } } } })}
+        period="7d"
+        cap={200}
+      />,
+    );
+    expect(screen.getByText('2 payment webhooks failed')).toBeInTheDocument();
+    expect(screen.getByText('CHIP sent it 3 times. Studio Hana’s payment may not show as paid.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'See it' })).toHaveAttribute('href', '/payments');
+    expect(screen.getByText('2 open')).toBeInTheDocument();
+
+    rerender(
+      <Overview
+        overview={fixture({ needsYou: { ...quiet, webhooksFailed: { count: 1, latest: { attempts: 1, displayName: null } } } })}
+        period="7d"
+        cap={200}
+      />,
+    );
+    expect(screen.getByText('1 payment webhook failed')).toBeInTheDocument();
+    expect(screen.getByText('CHIP sent it 1 time. A payment may not show as paid.')).toBeInTheDocument();
   });
 
   it('hides an item at zero, and says so when none is left', () => {
