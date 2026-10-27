@@ -653,6 +653,7 @@ model ModelCall {
   createdAt        DateTime @default(now())
 
   @@index([pageId, createdAt])
+  @@index([createdAt])
 }
 
 /// The id is a SHA-256 of the cookie value, never the value itself. A database
@@ -763,6 +764,7 @@ model QuestionAsk {
   answered   Boolean?
 
   @@index([questionId, askedAt])
+  @@index([answered, askedAt])
 }
 
 model Topic {
@@ -1006,17 +1008,17 @@ model OrderLine {
 /// A member of the Curios team who signs in to the admin app. Separate from
 /// Account: owners and admins never share a login or a session.
 model AdminUser {
-  id           String         @id @default(cuid())
-  email        String         @unique
-  name         String
-  passwordHash String
-  role         AdminRole      @default(OWNER)
-  disabledAt   DateTime?
-  lastLoginAt  DateTime?
-  createdAt    DateTime       @default(now())
-  sessions     AdminSession[]
-  actions      AdminAction[]
-  reportsDecided Report[]
+  id              String          @id @default(cuid())
+  email           String          @unique
+  name            String
+  passwordHash    String
+  role            AdminRole       @default(OWNER)
+  disabledAt      DateTime?
+  lastLoginAt     DateTime?
+  createdAt       DateTime        @default(now())
+  sessions        AdminSession[]
+  actions         AdminAction[]
+  reportsDecided  Report[]
   settingsChanged SystemSetting[]
 }
 
