@@ -126,4 +126,51 @@ describe('recordAndHandle', () => {
 
     expect(await recordAndHandle(failing, { source: 'webhook', body, rawBody: JSON.stringify(body) })).toEqual({ status: 'granted' });
   });
+
+  /** deps whose ChipWebhookEvent delegate answers `upsert` with `upsert`, every other call as normal. */
+  const withUpsert = (upsert: () => Promise<never>): ChipMessageDeps => ({
+    ...deps,
+    prisma: new Proxy(prisma, {
+      get(target, prop) {
+        if (prop !== 'chipWebhookEvent') {
+          const value = Reflect.get(target, prop) as unknown;
+          return typeof value === 'function' ? (value as (...args: unknown[]) => unknown).bind(target) : value;
+        }
+        const delegate = target.chipWebhookEvent;
+        return { upsert, update: delegate.update.bind(delegate) };
+      },
+    }),
+  });
+
+  it('handles and grants the message when the log cannot be written at all', async () => {
+    const { pageId, providerRef, paymentId } = await aPendingPayment();
+    getPurchase.mockResolvedValue(purchase(providerRef, paymentId));
+    const body = { id: providerRef, event_type: 'purchase.paid' };
+    const broken = withUpsert(() => Promise.reject(new Error('relation "ChipWebhookEvent" does not exist')));
+
+    expect(await recordAndHandle(broken, { source: 'webhook', body, rawBody: JSON.stringify(body) })).toEqual({ status: 'granted' });
+
+    expect((await prisma.page.findUniqueOrThrow({ where: { id: pageId }, select: { paidUntil: true } })).paidUntil).not.toBeNull();
+    expect(await row(providerRef)).toEqual([]);
+    expect(log.warn).toHaveBeenCalledWith(
+      { purchaseId: providerRef, source: 'webhook', err: 'Error' },
+      'chip message not logged; handling it anyway',
+    );
+  });
+
+  it('counts a delivery that lost the race to create the row as a repeat on that row', async () => {
+    const { providerRef, paymentId } = await aPendingPayment();
+    getPurchase.mockResolvedValue(purchase(providerRef, paymentId));
+    const body = { id: providerRef, event_type: 'purchase.paid' };
+    const rawBody = JSON.stringify(body);
+    // The other delivery's row, created between this one's look and its insert.
+    await prisma.chipWebhookEvent.create({
+      data: { source: 'webhook', eventType: 'purchase.paid', purchaseId: providerRef, body: rawBody, lastAttemptAt: new Date() },
+    });
+    const raced = withUpsert(() => Promise.reject(Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })));
+
+    expect(await recordAndHandle(raced, { source: 'webhook', body, rawBody })).toEqual({ status: 'granted' });
+
+    expect(await row(providerRef)).toMatchObject([{ attempts: 2, outcome: 'ok', statusCode: 200 }]);
+  });
 });

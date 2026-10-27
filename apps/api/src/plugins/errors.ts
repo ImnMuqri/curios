@@ -56,8 +56,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   'SWITCH_STATE',
   'BIG_CHANGE',
   'NO_CHANGE',
-  // Payments: a CHIP message the admin asked to replay that is not in the log.
+  // Payments: a CHIP message the admin asked to replay that is not in the log, or one logged
+  // from a source that cannot be replayed.
   'WEBHOOK_NOT_FOUND',
+  'WEBHOOK_SOURCE',
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
   'OAUTH_STATE_MISMATCH',

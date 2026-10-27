@@ -161,8 +161,9 @@ export function attemptOutcome(failure: { error: unknown } | null) {
  * it anyone could replay.
  *
  * The handler's throw is re-raised once the row says so, so CHIP still sees a 500 and
- * sends again. Writing the outcome is not allowed to change the answer: a message handled
- * and then unrecorded still answers what it did, and is logged as such.
+ * sends again. The log never stands in front of the payment: a row that cannot be written
+ * -- before the handler or after it -- is logged as a warning, and the message is handled
+ * and answered as if the log were not there.
  */
 export async function recordAndHandle(
   deps: ChipMessageDeps,
@@ -173,16 +174,39 @@ export async function recordAndHandle(
 
   const now = new Date();
   const eventType = eventTypeOf(message.body);
-  const event = await deps.prisma.chipWebhookEvent.upsert({
-    where: { source_purchaseId_eventType: { source: message.source, purchaseId, eventType } },
-    create: { source: message.source, eventType, purchaseId, body: message.rawBody, lastAttemptAt: now },
-    update: { body: message.rawBody, attempts: { increment: 1 }, lastAttemptAt: now },
-    select: { id: true },
-  });
+  const key = { source: message.source, purchaseId, eventType };
+  const repeat = { body: message.rawBody, attempts: { increment: 1 }, lastAttemptAt: now };
+
+  let eventId: string | null = null;
+  try {
+    try {
+      const event = await deps.prisma.chipWebhookEvent.upsert({
+        where: { source_purchaseId_eventType: key },
+        create: { ...key, body: message.rawBody, lastAttemptAt: now },
+        update: repeat,
+        select: { id: true },
+      });
+      eventId = event.id;
+    } catch (error) {
+      // Two first deliveries at once: both missed the row, and the other one created it.
+      // This one is then a repeat, counted on that row.
+      if ((error as { code?: unknown } | null)?.code !== 'P2002') throw error;
+      const event = await deps.prisma.chipWebhookEvent.update({
+        where: { source_purchaseId_eventType: key },
+        data: repeat,
+        select: { id: true },
+      });
+      eventId = event.id;
+    }
+  } catch (error) {
+    deps.log.warn({ purchaseId, source: message.source, err: errName(error) }, 'chip message not logged; handling it anyway');
+  }
+  if (!eventId) return handleChipMessage(deps, message);
+  const id = eventId;
 
   const settle = async (failure: { error: unknown } | null) => {
     try {
-      await deps.prisma.chipWebhookEvent.update({ where: { id: event.id }, data: attemptOutcome(failure) });
+      await deps.prisma.chipWebhookEvent.update({ where: { id }, data: attemptOutcome(failure) });
     } catch (error) {
       deps.log.warn({ purchaseId, source: message.source, err: errName(error) }, 'chip message handled, but its outcome was not recorded');
     }

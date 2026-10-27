@@ -192,6 +192,66 @@ describe('POST /admin/webhooks/:id/replay', () => {
     expect(client.getPurchase).not.toHaveBeenCalled();
   });
 
+  it('replays a logged callback as a callback: it grants whatever its event type', async () => {
+    const hook = await aFailedPaidWebhook();
+    const callback = await app.prisma.chipWebhookEvent.create({
+      data: {
+        source: 'callback',
+        eventType: 'unknown',
+        purchaseId: hook.providerRef,
+        body: JSON.stringify({ id: hook.providerRef }),
+        outcome: 'failed',
+        lastAttemptAt: new Date(),
+      },
+    });
+    client.getPurchase.mockResolvedValue(paidPurchase(hook.providerRef, hook.paymentId));
+
+    const res = await replay(callback.id);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ status: 'granted' });
+    expect(client.getPurchase).toHaveBeenCalledWith(hook.providerRef);
+    expect(await paidUntilOf(hook.pageId)).not.toBeNull();
+    expect(await eventRow(callback.id)).toMatchObject({ attempts: 2, outcome: 'ok' });
+  });
+
+  it('is a 409 WEBHOOK_SOURCE for a row from a source it cannot run, and runs nothing', async () => {
+    const hook = await aFailedPaidWebhook();
+    await app.prisma.chipWebhookEvent.update({ where: { id: hook.eventId }, data: { source: 'redirect' } });
+
+    const res = await replay(hook.eventId);
+
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ error: { code: 'WEBHOOK_SOURCE' } });
+    expect(client.getPurchase).not.toHaveBeenCalled();
+    expect((await eventRow(hook.eventId)).attempts).toBe(1);
+  });
+
+  it('answers an error, keeping the grant, when the record of a replay that granted cannot be written', async () => {
+    const hook = await aFailedPaidWebhook();
+    client.getPurchase.mockResolvedValue(paidPurchase(hook.providerRef, hook.paymentId));
+    const prisma = app.prisma as unknown as Record<string, unknown>;
+    const original = prisma.$transaction as (...args: unknown[]) => Promise<unknown>;
+    // The grant's own transaction goes through; the one holding the attempt and the audit row fails.
+    let calls = 0;
+    Object.defineProperty(prisma, '$transaction', {
+      value: (...args: unknown[]) => (++calls === 2 ? Promise.reject(new Error('database went away')) : original.apply(app.prisma, args)),
+      writable: true,
+      configurable: true,
+      enumerable: true,
+    });
+    try {
+      const res = await replay(hook.eventId);
+
+      expect(res.statusCode).toBe(500);
+      expect(await paidUntilOf(hook.pageId)).not.toBeNull();
+      expect((await eventRow(hook.eventId)).attempts).toBe(1);
+      expect(await app.prisma.adminAction.count({ where: { targetId: hook.paymentId } })).toBe(0);
+    } finally {
+      Object.defineProperty(prisma, '$transaction', { value: original, writable: true, configurable: true, enumerable: true });
+    }
+  });
+
   it('is a 404 WEBHOOK_NOT_FOUND for a message that is not there', async () => {
     const res = await replay('no-such-event');
 
