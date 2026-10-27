@@ -8,6 +8,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { ago } from '../ago.js';
 import { ReasonDialog } from '../reason-dialog.js';
 import { said } from '../said.js';
+import ui from '../ui.module.css';
 import styles from './sources.module.css';
 
 const int = (n: number) => n.toLocaleString('en-US');
@@ -68,22 +69,23 @@ export function SourcesScreen({
   }, [toast]);
 
   /** One change through the API: the API's words on a refusal, then the screen's data and a toast. */
-  async function send(run: () => Promise<unknown>, done: string) {
+  async function send(run: () => Promise<unknown>, done: string | ((result: unknown) => string)) {
+    setError(null);
+    let result: unknown;
     try {
-      await run();
+      result = await run();
     } catch (e) {
       throw said(e);
     }
     router.refresh();
     setAsking(null);
-    setToast(done);
+    setToast(typeof done === 'function' ? done(result) : done);
   }
 
   const post = (path: string, reason: string) =>
     apiFetch(path, { method: 'POST', body: JSON.stringify({ reason }) });
 
   async function resume() {
-    setError(null);
     setBusy(true);
     try {
       await send(
@@ -116,18 +118,18 @@ export function SourcesScreen({
 
   return (
     <>
-      <div className={styles.head}>
+      <div className={ui.head}>
         <h1>Reading sources</h1>
         <p>Pages reading a website, a file or pasted text</p>
       </div>
 
-      <div className={styles.body}>
-        <div className={styles.stats}>
+      <div className={ui.body}>
+        <div className={ui.stats}>
           {figures.map((f) => (
-            <div key={f.label} className={styles.stat}>
+            <div key={f.label} className={ui.stat}>
               <b>{f.value}</b>
               <span>{f.label}</span>
-              <small className={f.red ? undefined : styles.soft} style={f.red ? { color: '#b4321f' } : undefined}>
+              <small className={f.red ? undefined : ui.soft} style={f.red ? { color: '#b4321f' } : undefined}>
                 {f.note}
               </small>
             </div>
@@ -146,7 +148,7 @@ export function SourcesScreen({
           <span className={styles.fill} />
           <button
             type="button"
-            className={styles.ghost}
+            className={ui.ghost}
             disabled={busy}
             onClick={() => (readingOn ? setAsking({ kind: 'pause' }) : void resume())}
           >
@@ -154,60 +156,60 @@ export function SourcesScreen({
           </button>
           <button
             type="button"
-            className={styles.prim}
-            disabled={stats.counts.failed === 0}
+            className={ui.prim}
+            disabled={stats.retryable === 0}
             onClick={() => setAsking({ kind: 'retryAll' })}
           >
             Retry all failed
           </button>
         </div>
         {error && (
-          <p className={styles.err} role="alert">
+          <p className={ui.err} role="alert">
             {error}
           </p>
         )}
 
-        <div className={`${styles.box} ${styles.tw}`}>
+        <div className={`${ui.box} ${ui.tw}`}>
           <div
-            className={styles.t}
+            className={ui.t}
             role="table"
             aria-label="Reading sources"
             style={{ '--cols': 'minmax(170px,1.4fr) minmax(190px,1.6fr) minmax(150px,1.3fr) 60px 100px 90px', '--minw': '800px' } as CSSProperties}
           >
-            <div className={styles.r} role="row">
+            <div className={ui.r} role="row">
               {HEADS.map(([h, right], i) => (
-                <div key={i} className={right ? `${styles.h} ${styles.right}` : styles.h} role="columnheader">
+                <div key={i} className={right ? `${ui.h} ${ui.right}` : ui.h} role="columnheader">
                   {h}
                 </div>
               ))}
             </div>
             {rows.map((r) => (
-              <div key={r.id} className={styles.r} role="row">
-                <div className={styles.c} role="cell">
-                  <span className={styles.pg}>
+              <div key={r.id} className={ui.r} role="row">
+                <div className={ui.c} role="cell">
+                  <span className={ui.pg}>
                     <b>{r.displayName}</b>
                     <code>curios.my/{r.handle}</code>
                   </span>
                 </div>
-                <div className={styles.c} role="cell">
-                  <span className={`${styles.mono} ${styles.src}`}>{r.source}</span>
+                <div className={ui.c} role="cell">
+                  <span className={`${ui.mono} ${styles.src}`}>{r.source}</span>
                 </div>
-                <div className={styles.c} role="cell">
-                  <span className={styles.st}>
+                <div className={ui.c} role="cell">
+                  <span className={ui.st}>
                     <i style={{ background: STATUS_COLOUR[r.status] }} />
                     {r.status}
                   </span>
                   {r.error && <small className={styles.errline}>{r.error}</small>}
                 </div>
-                <div className={`${styles.c} ${styles.right}`} role="cell">
+                <div className={`${ui.c} ${ui.right}`} role="cell">
                   {r.facts > 0 ? int(r.facts) : '-'}
                 </div>
-                <div className={styles.c} role="cell">
+                <div className={ui.c} role="cell">
                   {ago(r.startedAt, now)}
                 </div>
-                <div className={`${styles.c} ${styles.right}`} role="cell">
+                <div className={`${ui.c} ${ui.right}`} role="cell">
                   {r.status === 'Failed' && (
-                    <button type="button" className={`${styles.ghost} ${styles.small}`} onClick={() => setAsking({ kind: 'retry', row: r })}>
+                    <button type="button" className={`${ui.ghost} ${ui.small}`} onClick={() => setAsking({ kind: 'retry', row: r })}>
                       Retry
                     </button>
                   )}
@@ -215,8 +217,8 @@ export function SourcesScreen({
               </div>
             ))}
             {rows.length === 0 && (
-              <div className={styles.r} role="row">
-                <div className={styles.empty} role="cell">
+              <div className={ui.r} role="row">
+                <div className={ui.empty} role="cell">
                   Nothing here.
                 </div>
               </div>
@@ -242,7 +244,13 @@ export function SourcesScreen({
           confirmLabel="Retry all failed"
           placeholder="E.g. The outage is over"
           onConfirm={(reason) =>
-            send(() => post('/admin/sources/retry-failed', reason), 'Failed reads queued again. Walled ones are skipped.')
+            send(
+              () => post('/admin/sources/retry-failed', reason),
+              (result) =>
+                (result as { queued?: number } | null)?.queued === 0
+                  ? 'Nothing to retry. Walled sources are skipped.'
+                  : 'Failed reads queued again. Walled ones are skipped.',
+            )
           }
           onClose={() => setAsking(null)}
         />
@@ -264,7 +272,7 @@ export function SourcesScreen({
       )}
 
       {toast && (
-        <div className={styles.toast} role="status">
+        <div className={ui.toast} role="status">
           {toast}
         </div>
       )}

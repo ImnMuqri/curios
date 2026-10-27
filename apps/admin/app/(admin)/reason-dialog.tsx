@@ -11,6 +11,7 @@ export function ReasonDialog({
   placeholder,
   danger = false,
   ownerSees = false,
+  reasonless = false,
   details,
   typeToConfirm,
   onConfirm,
@@ -19,37 +20,44 @@ export function ReasonDialog({
   title: string;
   text: string;
   confirmLabel: string;
+  /** Ignored when `reasonless`. */
   placeholder: string;
   danger?: boolean;
   /** Shows "The owner sees this." under the box, for actions that email the reason. */
   ownerSees?: boolean;
+  /** A confirm-only dialog: no reason box, no typed confirmation, `onConfirm` gets an empty reason. */
+  reasonless?: boolean;
   /** Shown under the text, before the reason: what exactly is about to change. */
   details?: ReactNode;
   /** When set, confirm also waits for this exact text to be typed. */
   typeToConfirm?: string;
-  /** Gets the trimmed reason. A throw shows its message in the dialog; the dialog stays open. */
+  /**
+   * Gets the trimmed reason. A throw shows its message in the dialog; the dialog stays open.
+   * A successful call must close the dialog (unmount it): `busy` stays true after success.
+   */
   onConfirm: (reason: string) => Promise<void>;
   onClose: () => void;
 }) {
   const ids = useId();
   const reasonRef = useRef<HTMLInputElement>(null);
+  const confirmRef = useRef<HTMLButtonElement>(null);
   const [reason, setReason] = useState('');
   const [typed, setTyped] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    reasonRef.current?.focus();
-  }, []);
+    (reasonless ? confirmRef : reasonRef).current?.focus();
+  }, [reasonless]);
 
-  const blocked = busy || !reason.trim() || (typeToConfirm !== undefined && typed.trim() !== typeToConfirm);
+  const blocked = busy || (!reasonless && (!reason.trim() || (typeToConfirm !== undefined && typed.trim() !== typeToConfirm)));
 
   async function confirm() {
     if (blocked) return;
     setBusy(true);
     setError(null);
     try {
-      await onConfirm(reason.trim());
+      await onConfirm(reasonless ? '' : reason.trim());
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something failed. Try again.');
       setBusy(false);
@@ -72,29 +80,33 @@ export function ReasonDialog({
         <p>{text}</p>
         {details}
 
-        <label htmlFor={`${ids}-why`}>Reason, for the audit log</label>
-        <input
-          ref={reasonRef}
-          id={`${ids}-why`}
-          value={reason}
-          maxLength={500}
-          placeholder={placeholder}
-          onChange={(e) => setReason(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void confirm();
-          }}
-        />
-        {ownerSees && <small className={styles.hint}>The owner sees this.</small>}
-
-        {typeToConfirm !== undefined && (
+        {!reasonless && (
           <>
-            <label htmlFor={`${ids}-type`}>Type {typeToConfirm} to confirm</label>
+            <label htmlFor={`${ids}-why`}>Reason, for the audit log</label>
             <input
-              id={`${ids}-type`}
-              value={typed}
-              autoComplete="off"
-              onChange={(e) => setTyped(e.target.value)}
+              ref={reasonRef}
+              id={`${ids}-why`}
+              value={reason}
+              maxLength={500}
+              placeholder={placeholder}
+              onChange={(e) => setReason(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') void confirm();
+              }}
             />
+            {ownerSees && <small className={styles.hint}>The owner sees this.</small>}
+
+            {typeToConfirm !== undefined && (
+              <>
+                <label htmlFor={`${ids}-type`}>Type {typeToConfirm} to confirm</label>
+                <input
+                  id={`${ids}-type`}
+                  value={typed}
+                  autoComplete="off"
+                  onChange={(e) => setTyped(e.target.value)}
+                />
+              </>
+            )}
           </>
         )}
 
@@ -109,6 +121,7 @@ export function ReasonDialog({
             Cancel
           </button>
           <button
+            ref={confirmRef}
             type="button"
             className={danger ? styles.danger : styles.prim}
             disabled={blocked}

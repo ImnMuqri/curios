@@ -152,6 +152,26 @@ describe('the banner', () => {
     expect(body()).toEqual({ text: null });
   });
 
+  it('disables Update banner while the text equals the stored banner, enables it once edited', async () => {
+    render(<ControlsScreen settings={settings({ banner: 'Orders still come through.' })} />);
+
+    expect(screen.getByRole('button', { name: 'Update banner' })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('Banner text'), '!');
+    expect(screen.getByRole('button', { name: 'Update banner' })).toBeEnabled();
+    await userEvent.type(screen.getByLabelText('Banner text'), '{Backspace}  ');
+    expect(screen.getByRole('button', { name: 'Update banner' })).toBeDisabled();
+  });
+
+  it('re-seeds the box when the stored banner changes after a refresh', () => {
+    const { rerender } = render(<ControlsScreen settings={settings({ banner: 'Orders still come through.' })} />);
+
+    rerender(<ControlsScreen settings={settings({ banner: 'Payments are back.' })} />);
+    expect(screen.getByLabelText('Banner text')).toHaveValue('Payments are back.');
+
+    rerender(<ControlsScreen settings={settings({ banner: null })} />);
+    expect(screen.getByLabelText('Banner text')).toHaveValue('');
+  });
+
   it('stops at 160 characters', async () => {
     render(<ControlsScreen settings={settings()} />);
 
@@ -228,6 +248,37 @@ describe('limits and prices', () => {
     expect(body(1)).toEqual({ monthlyRm: 149, reason: 'Repricing', confirmBig: true });
     expect(screen.queryByRole('dialog')).toBeNull();
     expect(screen.getByRole('status')).toHaveTextContent('Saved for every page.');
+  });
+
+  it('strips non-digits typed into a limit field', async () => {
+    render(<ControlsScreen settings={settings()} />);
+
+    const cap = screen.getByLabelText('Conversations a month, per page');
+    await userEvent.clear(cap);
+    await userEvent.type(cap, '1a2.5-e3 ');
+
+    expect(cap).toHaveValue('1253');
+  });
+
+  it('cancelling the big-change dialog sends nothing more and keeps the typed values', async () => {
+    apiFetch.mockRejectedValueOnce(new ApiError(409, 'BIG_CHANGE', 'That is a big price change. Confirm it to go ahead.', ['monthly']));
+    render(<ControlsScreen settings={settings()} />);
+
+    const monthly = screen.getByLabelText('Business, monthly');
+    await userEvent.clear(monthly);
+    await userEvent.type(monthly, '149');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    await userEvent.type(screen.getByLabelText('Reason, for the audit log'), 'Repricing');
+    await userEvent.click(screen.getByRole('button', { name: 'Save for everyone' }));
+
+    const second = screen.getByRole('dialog', { name: "That's a big change. Save it anyway?" });
+    await userEvent.click(within(second).getByRole('button', { name: 'Cancel' }));
+
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(apiFetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByLabelText('Business, monthly')).toHaveValue('149');
+    expect(screen.getByText('Not saved yet')).toBeInTheDocument();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('does not save a value that is empty', async () => {

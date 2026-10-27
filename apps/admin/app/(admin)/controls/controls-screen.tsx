@@ -6,7 +6,6 @@ import { BANNER_MAX, PRICE_MAX_RM, type Settings, type SwitchKey } from '@curios
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import { ReasonDialog } from '../reason-dialog.js';
 import { said } from '../said.js';
-import reasonStyles from '../reason-dialog.module.css';
 import { lowerFirst, SWITCHES } from './switches.js';
 import styles from './controls.module.css';
 
@@ -59,6 +58,8 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
   const saved = savedValues(settings);
   const [values, setValues] = useState<Values>(saved);
   const [banner, setBanner] = useState(settings.banner ?? '');
+  // A refresh that brings a different stored banner (another admin's, or ours) re-seeds the box.
+  useEffect(() => setBanner(settings.banner ?? ''), [settings.banner]);
   const [turningOff, setTurningOff] = useState<SwitchKey | null>(null);
   const [saving, setSaving] = useState(false);
   /** After a 409 BIG_CHANGE: the reason already given, and the prices the API named. */
@@ -227,7 +228,7 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
                 onChange={(e) => setBanner(e.target.value.slice(0, BANNER_MAX))}
               />
               <div className={styles.save}>
-                <button type="button" className={styles.prim} disabled={busy || !banner.trim()} onClick={() => void publish(banner.trim())}>
+                <button type="button" className={styles.prim} disabled={busy || !banner.trim() || banner.trim() === settings.banner} onClick={() => void publish(banner.trim())}>
                   {live ? 'Update banner' : 'Show banner'}
                 </button>
                 {live && (
@@ -320,32 +321,16 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
         />
       )}
       {big && (
-        <div className={reasonStyles.scrim} onClick={busy ? undefined : () => setBig(null)}>
-          <div
-            className={reasonStyles.modal}
-            role="dialog"
-            aria-modal="true"
-            aria-label="That's a big change. Save it anyway?"
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === 'Escape' && !busy) setBig(null);
-            }}
-          >
-            <h3>That&apos;s a big change. Save it anyway?</h3>
-            <p>
-              A price moves by more than half, or goes above RM{PRICE_MAX_RM}. It applies from each owner’s next payment.
-            </p>
-            {list(big.fields)}
-            <div className={reasonStyles.mact}>
-              <button type="button" className={reasonStyles.ghost} onClick={() => setBig(null)} disabled={busy}>
-                Cancel
-              </button>
-              <button type="button" className={reasonStyles.prim} onClick={() => void saveAnyway()} disabled={busy} autoFocus>
-                Save anyway
-              </button>
-            </div>
-          </div>
-        </div>
+        <ReasonDialog
+          title="That's a big change. Save it anyway?"
+          text={`A price moves by more than half, or goes above RM${PRICE_MAX_RM}. It applies from each owner’s next payment.`}
+          confirmLabel="Save anyway"
+          placeholder=""
+          reasonless
+          details={list(big.fields)}
+          onConfirm={saveAnyway}
+          onClose={() => setBig(null)}
+        />
       )}
 
       {toast && (

@@ -74,6 +74,8 @@ describe('getSourceStats', () => {
     expect(s.reading).toBe(1);
     // The walled read failed at 16:01Z (today in Malaysia); the broken one a second before midnight there.
     expect(s.failedToday).toBe(1);
+    // Of the two failed reads, the Instagram one is walled: only the broken one can be retried.
+    expect(s.retryable).toBe(1);
     expect(s.counts).toEqual({ all: 9, running: 2, failed: 2, done: 5 });
   });
 

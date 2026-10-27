@@ -6,6 +6,16 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ 
 import { Shell } from './shell.js';
 
 describe('Shell', () => {
+  it('scrolls the current item into view sideways, for the phone bar', () => {
+    const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    render(<Shell adminName="Iman" current="controls" />);
+
+    expect(scrollIntoView).toHaveBeenCalledTimes(1);
+    expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ inline: 'nearest' }));
+    expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('link', { name: 'Controls' }));
+    scrollIntoView.mockRestore();
+  });
+
   it('shows all eight sections in the board’s groups', () => {
     render(<Shell adminName="Iman" current="pages" />);
 

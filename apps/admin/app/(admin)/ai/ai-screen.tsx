@@ -4,6 +4,7 @@ import type { AiJob, AiUsage, Period } from '@curios/db-read/admin';
 import { ago } from '../ago.js';
 import { meterColour } from '../pages/format.js';
 import { PERIODS } from '../period.js';
+import ui from '../ui.module.css';
 import styles from './ai.module.css';
 
 const int = (n: number) => n.toLocaleString('en-US');
@@ -56,10 +57,10 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
 
   return (
     <>
-      <div className={styles.head}>
+      <div className={ui.head}>
         <h1>AI &amp; usage</h1>
         <p>What the model does and what it costs</p>
-        <nav className={styles.per} aria-label="Period">
+        <nav className={ui.per} aria-label="Period">
           {PERIODS.map((p) => (
             <Link
               key={p.key}
@@ -72,30 +73,30 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
         </nav>
       </div>
 
-      <div className={styles.body}>
-        <div className={styles.stats}>
+      <div className={ui.body}>
+        <div className={ui.stats}>
           {stats(u).map((s) => (
-            <div key={s.label} className={styles.stat}>
+            <div key={s.label} className={ui.stat}>
               <b>{s.value}</b>
               <span>{s.label}</span>
-              <small className={styles.soft}>{s.note}</small>
+              <small className={ui.soft}>{s.note}</small>
             </div>
           ))}
         </div>
 
-        <div className={styles.grid}>
-          <div className={styles.sec}>
-            <h2 className={styles.h2}>
+        <div className={ui.grid}>
+          <div className={ui.sec}>
+            <h2 className={ui.h2}>
               What the AI costs<span>From model calls, {phrase}</span>
             </h2>
-            <div className={`${styles.box} ${styles.tw}`}>
+            <div className={`${ui.box} ${ui.tw}`}>
               <div
-                className={styles.t}
+                className={ui.t}
                 role="table"
                 aria-label="What the AI costs"
                 style={{ '--cols': 'minmax(180px,2fr) 80px 80px 70px 80px', '--minw': '520px' } as CSSProperties}
               >
-                <div className={styles.r} role="row">
+                <div className={ui.r} role="row">
                   {['Job', 'Calls', 'Avg time', 'Failed', 'Cost'].map((h, i) => (
                     <div key={h} className={i === 0 ? styles.h : `${styles.h} ${styles.right}`} role="columnheader">
                       {h}
@@ -103,9 +104,9 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
                   ))}
                 </div>
                 {u.jobs.map((j) => (
-                  <div key={j.job} className={styles.r} role="row">
+                  <div key={j.job} className={ui.r} role="row">
                     <div className={styles.c} role="cell">
-                      <span className={styles.pg}>
+                      <span className={ui.pg}>
                         <b>{JOB_LABEL[j.job]}</b>
                         <code>{j.model}</code>
                       </span>
@@ -116,7 +117,7 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
                     <div className={`${styles.c} ${styles.right}`} role="cell">
                       {j.calls > 0 ? seconds(j.avgMs) : '—'}
                     </div>
-                    <div className={`${styles.c} ${styles.right} ${j.failed > 0 ? styles.red : ''}`} role="cell">
+                    <div className={`${styles.c} ${styles.right} ${j.failed > 0 ? ui.red : ''}`} role="cell">
                       {int(j.failed)}
                     </div>
                     <div className={`${styles.c} ${styles.right}`} role="cell">
@@ -127,10 +128,10 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
               </div>
             </div>
 
-            <h2 className={`${styles.h2} ${styles.again}`}>
+            <h2 className={`${ui.h2} ${ui.again}`}>
               “I’m not sure” answers<span>Where pages are missing facts</span>
             </h2>
-            <div className={styles.box}>
+            <div className={ui.box}>
               {u.unsureLatest.map((q, i) => (
                 <div key={`${q.handle}-${q.askedAt.toISOString()}-${i}`} className={styles.tr}>
                   <p>{q.question}</p>
@@ -139,15 +140,15 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
                   </small>
                 </div>
               ))}
-              {u.unsureLatest.length === 0 && <p className={styles.nothing}>No “I’m not sure” answers yet.</p>}
+              {u.unsureLatest.length === 0 && <p className={ui.nothing}>No “I’m not sure” answers yet.</p>}
             </div>
           </div>
 
-          <div className={styles.sec}>
-            <h2 className={styles.h2}>
+          <div className={ui.sec}>
+            <h2 className={ui.h2}>
               Near the monthly limit<span>{int(cap)} conversations</span>
             </h2>
-            <div className={styles.box}>
+            <div className={ui.box}>
               {u.nearCap.length > 0 && (
                 <div className={styles.near}>
                   <div className={styles.h}>Page</div>
@@ -157,7 +158,7 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
               {u.nearCap.map((p) => (
                 <Link key={p.pageId} className={styles.near} href={`/pages?page=${encodeURIComponent(p.pageId)}`}>
                   <div className={styles.c}>
-                    <span className={styles.pg}>
+                    <span className={ui.pg}>
                       <b>{p.displayName}</b>
                       <code>curios.my/{p.handle}</code>
                     </span>
@@ -174,9 +175,9 @@ export function AiScreen({ usage: u, period, cap, now }: { usage: AiUsage; perio
                   </div>
                 </Link>
               ))}
-              {u.nearCap.length === 0 && <p className={styles.nothing}>Nothing near the limit.</p>}
+              {u.nearCap.length === 0 && <p className={ui.nothing}>Nothing near the limit.</p>}
             </div>
-            <p className={styles.note}>
+            <p className={ui.note}>
               A page at {int(cap)} gets the short fixed reply until the 1st. Nothing is charged.
             </p>
           </div>

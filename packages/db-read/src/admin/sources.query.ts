@@ -25,6 +25,8 @@ export interface SourceStats {
   reading: number;
   /** FAILED, last updated on today's Malaysian day. */
   failedToday: number;
+  /** FAILED reads Retry all would queue: failed and not walled. */
+  retryable: number;
   /** Median milliseconds for URL reads that succeeded in the last 7 days; null with none. */
   typicalMs: number | null;
   counts: Record<SourceFilter, number>;
@@ -84,7 +86,7 @@ export async function listSources({ filter, limit = 50 }: { filter: SourceFilter
 
 export async function getSourceStats(now: Date): Promise<SourceStats> {
   const weekAgo = new Date(now.getTime() - 7 * DAY_MS);
-  const [waiting, reading, failedToday, typical, all, running, failed, done] = await Promise.all([
+  const [waiting, reading, failedToday, typical, all, running, failed, done, failedUrls] = await Promise.all([
     prismaRead.ingestion.count({ where: { status: 'QUEUED' } }),
     prismaRead.ingestion.count({ where: { status: 'RUNNING' } }),
     prismaRead.ingestion.count({ where: { status: 'FAILED', updatedAt: { gte: malaysiaMidnight(now), lte: now } } }),
@@ -96,7 +98,9 @@ export async function getSourceStats(now: Date): Promise<SourceStats> {
     prismaRead.ingestion.count({ where: FILTERS.running }),
     prismaRead.ingestion.count({ where: FILTERS.failed }),
     prismaRead.ingestion.count({ where: FILTERS.done }),
+    prismaRead.ingestion.findMany({ where: FILTERS.failed, select: { sourceUrl: true } }),
   ]);
+  const retryable = failedUrls.filter((r) => !isWalledSource(r.sourceUrl)).length;
   const median = typical[0]?.median ?? null;
-  return { waiting, reading, failedToday, typicalMs: median === null ? null : Math.round(median), counts: { all, running, failed, done } };
+  return { waiting, reading, failedToday, retryable, typicalMs: median === null ? null : Math.round(median), counts: { all, running, failed, done } };
 }
