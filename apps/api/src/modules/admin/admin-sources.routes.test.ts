@@ -187,7 +187,7 @@ describe('POST /admin/sources/retry-failed', () => {
     const log = { warn: vi.fn() };
     const queue = { add: vi.fn(async () => Promise.reject(new RedisDown('connection refused'))) };
     const result = await retryFailedSources(
-      { prisma: app.prisma, queue: queue as never, settings: await app.settings.get(), log },
+      { prisma: app.prisma, queue, settings: await app.settings.get(), log },
       { adminId, ip: '127.0.0.1' },
       'Again',
     );

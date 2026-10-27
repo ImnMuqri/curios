@@ -59,7 +59,7 @@ beforeEach(async () => {
   });
   vi.spyOn(app.ingestQueue, 'pause').mockImplementation(pause as never);
   vi.spyOn(app.ingestQueue, 'resume').mockImplementation(resume as never);
-  vi.spyOn(app.ingestQueue, 'isPaused').mockImplementation((async () => paused) as never);
+  vi.spyOn(app.ingestQueue, 'isPaused').mockImplementation(async () => paused);
 });
 
 afterEach(() => {
