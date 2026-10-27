@@ -129,7 +129,11 @@ export function createBillingWorker(deps: {
   /** The API's public origin, for the renewal purchases' callback. */
   callbackBaseUrl: string;
   log?: BillingLog;
-  /** The admin's settings, read at the start of each daily run: the switches, prices and allowances. */
+  /**
+   * The admin's settings (the workers' reader, cached 30 s): the switches, prices and allowances.
+   * Not read once per run: auto-renew reads them at the start and again before each card it
+   * charges, so a switch or price changed mid-run reaches the cards after it.
+   */
   settings: { get(): Promise<Settings> };
 }): Worker {
   return new Worker(

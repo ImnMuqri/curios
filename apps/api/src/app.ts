@@ -50,7 +50,7 @@ import {
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
-import { reportRoutes } from './modules/reports/report.routes.js';
+import { reportRoutes, type ReportRouteOptions } from './modules/reports/report.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
@@ -107,6 +107,7 @@ export interface AppOverrides {
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
   admin?: AdminPagesRouteOptions;
+  reports?: ReportRouteOptions;
   /** Private storage for digital files; tests pass a disk one rooted in a temp dir. */
   privateFiles?: PrivateFiles | null;
 }
@@ -225,7 +226,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // limiters would share a visitor's chat budget with it).
   await app.register(async (scope) => {
     await scope.register(rateLimit, reportPerIpLimit(app.rateLimitRedis));
-    await scope.register(reportRoutes);
+    await scope.register(reportRoutes, overrides.reports ?? {});
   });
 
   // A visitor's checkout: anonymous, so its own scope and its own two budgets.

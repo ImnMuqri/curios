@@ -117,17 +117,31 @@ const KINDS: ReadonlyArray<readonly [host: string, name: string]> = [
   ['linktr.ee', 'Linktree'],
 ];
 
+/** An address's host, lowercased, or null when it does not parse. */
+export function hostOf(url: string): string | null {
+  try {
+    return new URL(url).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Whether a host is the domain or under it: instagram.com and www.instagram.com, never
+ * notinstagram.com. The one host test for a tile's label and for a source that cannot be read
+ * (`isWalledSource`), so the two never disagree about what is Instagram.
+ */
+export function onDomain(host: string, domain: string): boolean {
+  return host === domain || host.endsWith(`.${domain}`);
+}
+
 /** The small label on a tile. Never stored: derived from the address every render. */
 export function linkKind(url: string): string {
   if (url.startsWith('mailto:')) return 'Email';
   if (url.startsWith('tel:')) return 'Phone';
-  let host: string;
-  try {
-    host = new URL(url).hostname.toLowerCase();
-  } catch {
-    return 'Web';
-  }
-  const match = KINDS.find(([domain]) => host === domain || host.endsWith(`.${domain}`));
+  const host = hostOf(url);
+  if (host === null) return 'Web';
+  const match = KINDS.find(([domain]) => onDomain(host, domain));
   return match ? match[1] : 'Web';
 }
 

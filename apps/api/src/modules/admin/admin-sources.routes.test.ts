@@ -164,7 +164,7 @@ describe('POST /admin/sources/retry-failed', () => {
     expect((await app.prisma.ingestion.findUniqueOrThrow({ where: { id: old.id } })).status).toBe('FAILED');
     const rows = await actions();
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ action: 'RETRIED_FAILED_SOURCES', targetLabel: 'everyone', reason: 'Outage over', metadata: { queued: 2, skipped: 1 } });
+    expect(rows[0]).toMatchObject({ action: 'RETRIED_FAILED_SOURCES', targetType: 'Source', targetId: 'all-failed', targetLabel: 'everyone', reason: 'Outage over', metadata: { queued: 2, skipped: 1 } });
   });
 
   it('counts a source the queue refused as skipped and carries on', async () => {

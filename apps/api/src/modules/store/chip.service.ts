@@ -102,11 +102,15 @@ const cardOrWallet = (methods: string[]) => methods.filter((method) => TEST_METH
  * e-wallet only, no callback; an account with neither is refused), reads its `is_test` and brand name, and cancels it at once:
  * nothing is paid and no money moves. In production a test key is refused here, before
  * anything is stored -- a shop must never open on a key that takes no real money.
+ *
+ * That purchase is a CHIP purchase like any other, so connecting is refused (PAYMENTS_OFF)
+ * while the admin has CHIP payments switched off, before anything is read or CHIP is asked.
  */
 export async function connectChip(
   deps: ShopChipDeps,
-  input: { accountId: string; brandId: string; secretKey: string; now: Date },
+  input: { accountId: string; brandId: string; secretKey: string; now: Date; settings: Settings },
 ): Promise<ChipConnection> {
+  if (!input.settings.switches.chipPayments) throw new PaymentsOffError();
   const page = await storePageFor(deps.prisma, input.accountId);
   const brandId = input.brandId.trim();
   const secretKey = input.secretKey.trim();

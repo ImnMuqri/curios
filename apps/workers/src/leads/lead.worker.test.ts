@@ -185,4 +185,15 @@ describe('runLeadJob', () => {
     expect(text).toContain('Your 5 free leads are used');
     expect(text).toContain('Business is RM59 a month');
   });
+
+  it('says the allowance the API decided with, not the one the worker reads later', async () => {
+    await prisma.page.updateMany({ data: { mode: 'BUSINESS', leadsCaptured: 3, notifyLeads: false } });
+    const mailQueue = aMailQueue();
+    // Raised to 5 between the capture and this job.
+    const raised = reader({ ...defaultSettings(), freeLeads: 5 });
+
+    await runLeadJob({ prisma, gateway: gatewayReturning({ product: null, date: null, location: null }), mailQueue, settings: raised }, { leadId, lastFreeLead: true, freeLeads: 3 });
+
+    expect(mailQueue.add.mock.calls[0]?.[1].text).toContain('Your 3 free leads are used');
+  });
 });

@@ -107,7 +107,9 @@ export async function retryFailedSources(
       adminUserId: actor.adminId,
       action: ADMIN_ACTIONS.RETRIED_FAILED_SOURCES,
       targetType: 'Source',
-      targetId: 'failed',
+      // A placeholder, not a row id: the row is about every failed source at once, and its
+      // metadata says how many were queued and skipped.
+      targetId: 'all-failed',
       targetLabel: 'everyone',
       reason,
       metadata: { queued, skipped },

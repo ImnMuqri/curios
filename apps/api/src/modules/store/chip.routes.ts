@@ -53,7 +53,7 @@ export const shopChipRoutes: FastifyPluginAsyncZod<ShopChipRouteOptions> = async
 
   app.post('/store/chip', { schema: { body: credentials } }, async (request) => {
     if (!request.account) throw new UnauthenticatedError();
-    return connectChip(deps(request.log), { accountId: request.account.id, ...request.body, now: new Date() });
+    return connectChip(deps(request.log), { accountId: request.account.id, ...request.body, now: new Date(), settings: await app.settings.get() });
   });
 
   app.delete('/store/chip', async (request) => {

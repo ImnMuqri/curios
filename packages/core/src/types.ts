@@ -82,6 +82,12 @@ export interface LeadJobData {
   leadId: string;
   /** This lead used the last free one: the worker also sends "Your page stopped taking numbers". */
   lastFreeLead?: boolean;
+  /**
+   * With `lastFreeLead`: the allowance the API decided it under, which the mail states. Not
+   * read again in the worker, where the admin may have changed it since. A job queued before
+   * this field existed has none, and the worker falls back to the allowance it reads.
+   */
+  freeLeads?: number;
 }
 
 export interface MailJobData {

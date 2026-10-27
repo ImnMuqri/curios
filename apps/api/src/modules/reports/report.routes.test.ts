@@ -1,7 +1,11 @@
-import { randomUUID } from 'node:crypto';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createHash, createHmac, randomUUID } from 'node:crypto';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import { REPORT_REASONS } from '@curios/core';
 import { buildApp } from '../../app.js';
+import { DEV_REPORT_IP_SECRET, resolveReportIpSecret } from './report.routes.js';
+
+const IP_SECRET = 'report-ip-secret-for-tests';
 
 let app: FastifyInstance;
 const madeAccounts: string[] = [];
@@ -11,7 +15,7 @@ let nth = 0;
 const from = () => `203.0.115.${(nth++ % 200) + 1}`;
 
 beforeAll(async () => {
-  app = await buildApp();
+  app = await buildApp({ reports: { ipSecret: IP_SECRET } });
   await app.ready();
 });
 
@@ -50,19 +54,42 @@ describe('POST /pages/:handle/report', () => {
     expect(rows[0]!.reporterIpHash.length).toBeGreaterThan(10);
   });
 
+  it('keys the address hash with the server secret, so it is not the plain SHA-256', async () => {
+    const page = await aPage();
+    const ip = '198.51.100.78';
+    expect((await report(page.handle, { reason: 'SCAM' }, ip)).statusCode).toBe(204);
+    const row = await app.prisma.report.findFirstOrThrow({ where: { pageId: page.id } });
+    expect(row.reporterIpHash).toBe(createHmac('sha256', IP_SECRET).update(ip).digest('hex'));
+    expect(row.reporterIpHash).not.toBe(createHash('sha256').update(ip).digest('hex'));
+  });
+
+  it('takes every reason the form offers', async () => {
+    for (const reason of Object.keys(REPORT_REASONS)) {
+      const page = await aPage();
+      expect((await report(page.handle, { reason })).statusCode).toBe(204);
+      expect(await app.prisma.report.findFirstOrThrow({ where: { pageId: page.id } })).toMatchObject({ reason });
+    }
+  });
+
   it('works without details', async () => {
     const page = await aPage();
     expect((await report(page.handle, { reason: 'OTHER' })).statusCode).toBe(204);
   });
 
+  it('404s a missing page and stores nothing', async () => {
+    const handle = `nope-${randomUUID().slice(0, 8)}`;
+    const res = await report(handle, { reason: 'SCAM' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json().error.code).toBe('PAGE_NOT_FOUND');
+    expect(await app.prisma.report.count({ where: { page: { handle } } })).toBe(0);
+  });
+
   it.each([
-    ['missing', undefined],
     ['unpublished', { published: false }],
     ['suspended', { suspendedAt: new Date() }],
   ])('404s a %s page and stores nothing', async (_name, data) => {
     const page = await aPage(data);
-    const handle = _name === 'missing' ? `nope-${randomUUID().slice(0, 8)}` : page.handle;
-    const res = await report(handle, { reason: 'SCAM' });
+    const res = await report(page.handle, { reason: 'SCAM' });
     expect(res.statusCode).toBe(404);
     expect(res.json().error.code).toBe('PAGE_NOT_FOUND');
     expect(await app.prisma.report.count({ where: { pageId: page.id } })).toBe(0);
@@ -137,5 +164,21 @@ describe('POST /pages/:handle/report', () => {
     for (let i = 0; i < 6; i++) statuses.push((await report(page.handle, { reason: 'OTHER' }, ip)).statusCode);
     expect(statuses.slice(0, 5)).toEqual([204, 204, 204, 204, 204]);
     expect(statuses[5]).toBe(429);
+  });
+});
+
+describe('resolveReportIpSecret', () => {
+  it('takes the configured secret', () => {
+    expect(resolveReportIpSecret({ ipSecret: 'set' }, true, { warn: vi.fn() })).toBe('set');
+  });
+
+  it('refuses to start in production without one', () => {
+    expect(() => resolveReportIpSecret({ ipSecret: '' }, true, { warn: vi.fn() })).toThrow('REPORT_IP_SECRET is not set');
+  });
+
+  it('falls back to a fixed dev value with a warning outside production', () => {
+    const warn = vi.fn();
+    expect(resolveReportIpSecret({ ipSecret: '' }, false, { warn })).toBe(DEV_REPORT_IP_SECRET);
+    expect(warn).toHaveBeenCalledOnce();
   });
 });

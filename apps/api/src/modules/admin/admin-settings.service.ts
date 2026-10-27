@@ -33,8 +33,8 @@ export class NoChangeError extends Error {
   readonly statusCode = 409;
   readonly code = 'NO_CHANGE';
 
-  constructor() {
-    super('Nothing is different from what is saved.');
+  constructor(message = 'Nothing is different from what is saved.') {
+    super(message);
     this.name = 'NoChangeError';
   }
 }
@@ -193,7 +193,10 @@ export async function setReadingSwitch(
   }
 }
 
-/** `text` null takes the banner down. */
+/**
+ * `text` null takes the banner down. Showing the text that is already live, or taking down a banner
+ * that is not there, changes nothing: NO_CHANGE, and no audit row.
+ */
 export async function setBanner(
   prisma: PrismaClient,
   actor: AdminActor,
@@ -201,6 +204,8 @@ export async function setBanner(
   reason?: string,
 ): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const live = (await current(tx)).banner;
+    if (text === live) throw new NoChangeError(text === null ? 'There is no banner to take down.' : 'That banner is already showing.');
     await put(tx, actor.adminId, 'banner', text);
     if (text === null) await audit(tx, actor, ADMIN_ACTIONS.TOOK_BANNER_DOWN, 'banner', reason ?? 'Taken down');
     else await audit(tx, actor, ADMIN_ACTIONS.SHOWED_BANNER, 'banner', text);

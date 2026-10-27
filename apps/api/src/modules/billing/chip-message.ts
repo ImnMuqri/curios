@@ -11,6 +11,7 @@ import {
 } from '@curios/billing';
 import type { PrismaClient } from '@curios/db';
 import { errName } from './billing.service.js';
+import { statusFor } from '../../plugins/errors.js';
 
 /** Which of CHIP's two server-to-server messages it was. Each is signed with its own key. */
 export type ChipSource = 'callback' | 'webhook';
@@ -141,17 +142,12 @@ export async function handleChipMessage(
 
 /**
  * How one attempt ended, as the event row keeps it. The status is the one the error handler
- * will answer with (the error's own, else 500). The error's name only: a refused CHIP call
+ * answers with (`statusFor`, the same function). The error's name only: a refused CHIP call
  * carries CHIP's response body -- the payer's details among it -- in its message.
  */
 export function attemptOutcome(failure: { error: unknown } | null) {
   if (!failure) return { outcome: 'ok', statusCode: 200, error: null };
-  const status = (failure.error as { statusCode?: unknown } | null | undefined)?.statusCode;
-  return {
-    outcome: 'failed',
-    statusCode: typeof status === 'number' ? status : 500,
-    error: errName(failure.error),
-  };
+  return { outcome: 'failed', statusCode: statusFor(failure.error), error: errName(failure.error) };
 }
 
 /**

@@ -187,8 +187,8 @@ describe('runAutoRenewals', () => {
   it('skips the whole run while CHIP payments are off, and charges on the next run once they are on', async () => {
     const paidUntil = at(12 * HOUR_MS);
     const page = await aRenewingPage({ paidUntil });
-    // A lapsed card too: the run that would drop it is skipped as well.
-    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+    // A lapsed card too, tried on the day its plan ended: the run that would drop it is skipped as well.
+    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS), lastAttemptAt: at(-4 * DAY_MS) });
     const client = aChip();
     const mailQueue = aMailQueue();
     const log = { info: vi.fn(), error: vi.fn() };
@@ -210,7 +210,7 @@ describe('runAutoRenewals', () => {
   it('skips the run when the settings could not be read, and charges on the next run once they can', async () => {
     const paidUntil = at(12 * HOUR_MS);
     const page = await aRenewingPage({ paidUntil });
-    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS), lastAttemptAt: at(-4 * DAY_MS) });
     const client = aChip();
     const mailQueue = aMailQueue();
     const log = { info: vi.fn(), error: vi.fn() };
@@ -342,13 +342,59 @@ describe('runAutoRenewals', () => {
     expect(client.createPurchase).not.toHaveBeenCalled();
   });
 
-  it('leaves a card alone more than 3 days after paidUntil', async () => {
-    await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+  it('leaves a card alone more than 3 days after paidUntil, once it was tried for that plan end', async () => {
+    await aRenewingPage({ paidUntil: at(-4 * DAY_MS), lastAttemptAt: at(-4 * DAY_MS) });
     const client = aChip();
 
     await run(client);
 
     expect(client.createPurchase).not.toHaveBeenCalled();
+  });
+
+  describe('a card no run tried for its plan end (CHIP payments off all through the grace, say)', () => {
+    /** The switch off for every daily run from the plan's end to five days past it. */
+    async function switchedOffThrough(client: ReturnType<typeof aChip>, mailQueue: ReturnType<typeof aMailQueue>) {
+      const off = defaultSettings();
+      off.switches.chipPayments = false;
+      for (const day of [-5, -4, -3, -2, -1]) {
+        await run(client, mailQueue, { now: at(day * DAY_MS), settings: { get: async () => off } });
+      }
+    }
+
+    it('is tried once the switch is back on, five days past paidUntil, and not dropped', async () => {
+      const paidUntil = at(-5 * DAY_MS);
+      // Tried last month, for the plan end before this one.
+      const page = await aRenewingPage({ paidUntil, lastAttemptAt: at(-35 * DAY_MS) });
+      const client = aChip();
+      const mailQueue = aMailQueue();
+      await switchedOffThrough(client, mailQueue);
+      expect(client.createPurchase).not.toHaveBeenCalled();
+
+      expect(await run(client, mailQueue)).toEqual({ charged: 1, pending: 0, failed: 0, stopped: 0 });
+
+      expect(client.chargePurchase).toHaveBeenCalledWith(expect.any(String), page.token);
+      expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: NOW });
+      expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
+      expect(mailQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('keeps the card through the run that tries it while CHIP is still working on the charge, and drops it on the next', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-5 * DAY_MS) });
+      const client = aChip();
+      client.chargePurchase.mockImplementation(async (id) => ({ kind: 'pending', purchase: await purchaseFor(id, 'pending_charge') }));
+      client.getPurchase.mockImplementation(async (id) => purchaseFor(id, 'pending_charge'));
+      const mailQueue = aMailQueue();
+      await switchedOffThrough(client, mailQueue);
+
+      expect(await run(client, mailQueue)).toEqual({ charged: 0, pending: 1, failed: 0, stopped: 0 });
+      expect(await cardOf(page.pageId)).not.toBeNull();
+      expect(mailQueue.add).not.toHaveBeenCalled();
+
+      // Tried now, so the grace has run out as usual: the next day's run drops it and says so.
+      expect(await run(client, mailQueue, { now: at(DAY_MS) })).toMatchObject({ stopped: 1 });
+      expect(await cardOf(page.pageId)).toBeNull();
+      expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('on the Kuala Lumpur day the plan ends, the date Billing states', () => {
@@ -388,7 +434,7 @@ describe('runAutoRenewals', () => {
   });
 
   it('does not charge a card whose plan ended exactly 3 days ago', async () => {
-    await aRenewingPage({ paidUntil: at(-3 * DAY_MS) });
+    await aRenewingPage({ paidUntil: at(-3 * DAY_MS), lastAttemptAt: at(-3 * DAY_MS) });
     const client = aChip();
 
     await run(client);
@@ -729,7 +775,7 @@ describe('runAutoRenewals', () => {
     });
 
     it('is dropped from exactly 3 days after the plan ended', async () => {
-      const page = await aRenewingPage({ paidUntil: at(-3 * DAY_MS) });
+      const page = await aRenewingPage({ paidUntil: at(-3 * DAY_MS), lastAttemptAt: at(-3 * DAY_MS) });
       const mailQueue = aMailQueue();
 
       expect(await run(aChip(), mailQueue)).toMatchObject({ stopped: 1 });
@@ -739,7 +785,7 @@ describe('runAutoRenewals', () => {
     });
 
     it('keeps the card of a page a webhook renewed during the sweep', async () => {
-      const page = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+      const page = await aRenewingPage({ paidUntil: at(-4 * DAY_MS), lastAttemptAt: at(-4 * DAY_MS) });
       const mailQueue = aMailQueue();
 
       await run(aChip(), mailQueue, {

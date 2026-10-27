@@ -1,6 +1,20 @@
 import type { Prisma } from '@curios/db';
 import type { ADMIN_ACTIONS } from '@curios/core';
 
+/** Who is acting, and from where: the audit row's first columns. */
+export interface AdminActor {
+  adminId: string;
+  ip: string;
+}
+
+/**
+ * The actor of an admin request. Only behind requireAdmin, which has already refused a request with
+ * no admin, so `admin` is there.
+ */
+export function adminActor(request: { admin: { id: string } | null; ip: string }): AdminActor {
+  return { adminId: request.admin!.id, ip: request.ip };
+}
+
 export interface AuditEntry {
   adminUserId: string;
   action: (typeof ADMIN_ACTIONS)[keyof typeof ADMIN_ACTIONS];

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { linkKind } from './bento.js';
 import {
   allowsPrivateAddresses,
   BlockedAddressError,
@@ -123,5 +124,19 @@ describe('isWalledSource', () => {
     expect(isWalledSource('https://nadia.my/instagram.com')).toBe(false);
     expect(isWalledSource('not a url')).toBe(false);
     expect(isWalledSource(null)).toBe(false);
+  });
+
+  it('agrees with the tile label about what is Instagram', () => {
+    for (const url of [
+      'https://www.instagram.com/x',
+      'https://INSTAGRAM.com/x',
+      'https://m.instagram.com/x',
+      'https://notinstagram.com/x',
+      'https://nadia.my/instagram.com',
+      'https://instagram.com.evil.my/x',
+      'not a url',
+    ]) {
+      expect(isWalledSource(url), url).toBe(linkKind(url) === 'Instagram');
+    }
   });
 });

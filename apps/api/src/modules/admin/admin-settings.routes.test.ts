@@ -105,6 +105,19 @@ describe('switches', () => {
     expect((await put('/admin/settings/switches/signups', { on: true })).statusCode).toBe(409);
   });
 
+  it('takes a reason of only spaces on turning back on as no reason, storing the default', async () => {
+    await put('/admin/settings/switches/signups', { on: false, reason: 'Spam' });
+    const res = await put('/admin/settings/switches/signups', { on: true, reason: '   ' });
+    expect(res.statusCode).toBe(204);
+    expect((await actions())[1]).toMatchObject({ action: 'TURNED_ON', reason: 'Turned back on' });
+  });
+
+  it('takes a reason of only spaces on turning off as no reason, and refuses it', async () => {
+    const res = await put('/admin/settings/switches/chat', { on: false, reason: '   ' });
+    expect(res.statusCode).toBe(400);
+    expect(await actions()).toHaveLength(0);
+  });
+
   it('refuses an unknown switch', async () => {
     expect((await put('/admin/settings/switches/nope', { on: false, reason: 'x' })).statusCode).toBe(400);
   });
@@ -193,6 +206,31 @@ describe('limits', () => {
     expect((await app.settings.get()).prices.MONTHLY).toBe(7900);
   });
 
+  it('asks for confirmation on a big yearly change too', async () => {
+    const res = await put('/admin/settings/limits', { yearlyRm: 790, reason: 'Review' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toMatchObject({ code: 'BIG_CHANGE', fields: ['yearly'] });
+    expect(await actions()).toHaveLength(0);
+    expect((await put('/admin/settings/limits', { yearlyRm: 790, reason: 'Review', confirmBig: true })).statusCode).toBe(204);
+    expect((await app.settings.get()).prices.ANNUAL).toBe(79000);
+  });
+
+  it('asks for confirmation on a price over RM999, however small the step', async () => {
+    await app.prisma.systemSetting.create({ data: { key: 'price.ANNUAL', value: 99900 } });
+    app.settings.clear();
+    const res = await put('/admin/settings/limits', { yearlyRm: 1000, reason: 'Review' });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toMatchObject({ code: 'BIG_CHANGE', fields: ['yearly'] });
+  });
+
+  it('takes free leads and orders from 1 to 1000', async () => {
+    expect((await put('/admin/settings/limits', { freeLeads: 1001, reason: 'Review' })).statusCode).toBe(400);
+    expect((await put('/admin/settings/limits', { freeOrders: 1001, reason: 'Review' })).statusCode).toBe(400);
+    expect((await put('/admin/settings/limits', { freeLeads: 1, freeOrders: 1000, reason: 'Review' })).statusCode).toBe(204);
+    const s = await app.settings.get();
+    expect([s.freeLeads, s.freeOrders]).toEqual([1, 1000]);
+  });
+
   it('refuses a cap of 0, free leads or orders of 0, and non-whole prices', async () => {
     expect((await put('/admin/settings/limits', { ...limits, cap: 0 })).statusCode).toBe(400);
     expect((await put('/admin/settings/limits', { ...limits, freeLeads: 0 })).statusCode).toBe(400);
@@ -262,6 +300,22 @@ describe('banner', () => {
     expect(rows.map((r) => r.action)).toEqual(['SHOWED_BANNER', 'TOOK_BANNER_DOWN']);
     expect(rows[0]).toMatchObject({ reason: 'Maintenance tonight', targetId: 'banner' });
     expect(rows[1]!.reason).toBe('Taken down');
+  });
+
+  it('refuses to show the text that is already live, writing no audit row', async () => {
+    await put('/admin/settings/banner', { text: 'Maintenance tonight' });
+    const again = await put('/admin/settings/banner', { text: ' Maintenance tonight ' });
+    expect(again.statusCode).toBe(409);
+    expect(again.json().error).toEqual({ code: 'NO_CHANGE', message: 'That banner is already showing.' });
+    expect((await actions()).map((r) => r.action)).toEqual(['SHOWED_BANNER']);
+  });
+
+  it('refuses to take down a banner that is not there, writing no audit row', async () => {
+    const res = await put('/admin/settings/banner', { text: null });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error).toEqual({ code: 'NO_CHANGE', message: 'There is no banner to take down.' });
+    expect(await actions()).toHaveLength(0);
+    expect(await app.prisma.systemSetting.findUnique({ where: { key: 'banner' } })).toBeNull();
   });
 });
 

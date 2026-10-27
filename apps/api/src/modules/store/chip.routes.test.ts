@@ -82,6 +82,12 @@ async function anOwner(on: FastifyInstance, mode: 'BUSINESS' | 'PERSONAL' = 'BUS
 const call = (on: FastifyInstance, method: 'GET' | 'POST' | 'PATCH' | 'DELETE', url: string, cookie?: string, payload?: object) =>
   on.inject({ method, url, remoteAddress: from(), ...(cookie ? { cookies: { [SESSION_COOKIE]: cookie } } : {}), ...(payload ? { payload } : {}) });
 
+/** The switch as the admin's route stores it, then the cache cleared, as that route does. */
+const paymentsSwitch = async (on: boolean) => {
+  await app.prisma.systemSetting.upsert({ where: { key: 'switch.chipPayments' }, create: { key: 'switch.chipPayments', value: on }, update: { value: on } });
+  app.settings.clear();
+};
+
 const connect = (on: FastifyInstance, cookie: string, payload: object = { brandId: BRAND, secretKey: SECRET }) => call(on, 'POST', '/store/chip', cookie, payload);
 const account = (on: FastifyInstance, pageId: string) => on.prisma.shopPaymentAccount.findUnique({ where: { pageId } });
 
@@ -127,6 +133,22 @@ describe('POST /store/chip', () => {
     expect(row).toMatchObject({ provider: 'CHIP', brandId: BRAND, publicKeyPem: PEM, isTest: false, brandName: 'Kek Lina Bakes', lastErrorAt: null });
     expect(row?.secretKeyCiphertext).not.toContain(SECRET);
     expect(openSecret(row!.secretKeyCiphertext, SECRETS_KEY)).toBe(SECRET);
+  });
+
+  it('is a 503 PAYMENTS_OFF, asking CHIP nothing and storing nothing, while CHIP payments are off', async () => {
+    const owner = await anOwner(app);
+    await paymentsSwitch(false);
+    try {
+      const res = await connect(app, owner.cookie);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error.code).toBe('PAYMENTS_OFF');
+      expect(clientFor).not.toHaveBeenCalled();
+      expect(client.createPurchase).not.toHaveBeenCalled();
+      expect(await account(app, owner.pageId)).toBeNull();
+    } finally {
+      await paymentsSwitch(true);
+    }
+    expect((await connect(app, owner.cookie)).statusCode).toBe(200);
   });
 
   it('learns test mode at connect from an RM1 purchase it cancels at once, card and e-wallet only', async () => {
@@ -424,11 +446,6 @@ describe('POST /store/chip/test', () => {
   });
 
   it('is a 503 PAYMENTS_OFF, with no purchase, while CHIP payments are off, and starts again once on', async () => {
-    /** The switch as the admin's route stores it, then the cache cleared, as that route does. */
-    const paymentsSwitch = async (on: boolean) => {
-      await app.prisma.systemSetting.upsert({ where: { key: 'switch.chipPayments' }, create: { key: 'switch.chipPayments', value: on }, update: { value: on } });
-      app.settings.clear();
-    };
     const owner = await anOwner(app);
     await connect(app, owner.cookie);
     client.createPurchase.mockClear();
