@@ -32,8 +32,10 @@ describe('getNavCounts', () => {
 
   it('counts pages with open reports, not reports, and not closed ones', async () => {
     const [a, b, c] = [await aPage(), await aPage(), await aPage()] as [string, string, string];
+    // Each its own address: one address keeps one open report per page.
+    let n = 0;
     const make = (pageId: string, status: 'OPEN' | 'DISMISSED' = 'OPEN') =>
-      write.report.create({ data: { pageId, reason: 'SCAM', reporterIpHash: 'h', status } });
+      write.report.create({ data: { pageId, reason: 'SCAM', reporterIpHash: `h${n++}`, status } });
     await make(a);
     await make(a);
     await make(b);

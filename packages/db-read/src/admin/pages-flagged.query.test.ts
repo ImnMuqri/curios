@@ -15,7 +15,7 @@ async function aPage(key: string, open: number, page: Record<string, unknown> = 
     select: { pages: { select: { id: true } } },
   });
   const pageId = (ids[key] = account.pages[0]!.id);
-  await write.report.createMany({ data: Array.from({ length: open }, () => ({ pageId, reason: 'SCAM' as const, reporterIpHash: 'h' })) });
+  await write.report.createMany({ data: Array.from({ length: open }, (_, i) => ({ pageId, reason: 'SCAM' as const, reporterIpHash: `h${i}` })) });
 }
 
 beforeAll(async () => {

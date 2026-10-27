@@ -75,6 +75,61 @@ describe('POST /pages/:handle/report', () => {
     expect(await app.prisma.report.count({ where: { pageId: page.id } })).toBe(0);
   });
 
+  it('keeps one open report per address per page: a repeat is a quiet 204', async () => {
+    const page = await aPage();
+    const ip = '198.51.100.90';
+    expect((await report(page.handle, { reason: 'SCAM' }, ip)).statusCode).toBe(204);
+    expect((await report(page.handle, { reason: 'OFFENSIVE', details: 'again' }, ip)).statusCode).toBe(204);
+    expect(await app.prisma.report.count({ where: { pageId: page.id } })).toBe(1);
+    expect((await app.prisma.report.findFirstOrThrow({ where: { pageId: page.id } })).reason).toBe('SCAM');
+  });
+
+  it('keeps one when the same address reports a page twice at once', async () => {
+    const page = await aPage();
+    const ip = '198.51.100.91';
+    const statuses = await Promise.all([1, 2, 3].map(() => report(page.handle, { reason: 'SCAM' }, ip).then((r) => r.statusCode)));
+    expect(statuses).toEqual([204, 204, 204]);
+    expect(await app.prisma.report.count({ where: { pageId: page.id } })).toBe(1);
+  });
+
+  it('takes the index refusing a duplicate as the same quiet 204', async () => {
+    const page = await aPage();
+    const ip = '198.51.100.95';
+    await report(page.handle, { reason: 'SCAM' }, ip);
+    // The check before the insert misses the open report, as it would in a race: the index decides.
+    const delegate = app.prisma.report as unknown as Record<string, unknown>;
+    const original = delegate.findFirst;
+    Object.defineProperty(delegate, 'findFirst', { value: async () => null, writable: true, configurable: true, enumerable: true });
+    let res;
+    try {
+      res = await report(page.handle, { reason: 'SCAM' }, ip);
+    } finally {
+      Object.defineProperty(delegate, 'findFirst', { value: original, writable: true, configurable: true, enumerable: true });
+    }
+    expect(res.statusCode).toBe(204);
+    expect(await app.prisma.report.count({ where: { pageId: page.id } })).toBe(1);
+  });
+
+  it('counts one address on two pages, and two addresses on one page', async () => {
+    const a = await aPage();
+    const b = await aPage();
+    await report(a.handle, { reason: 'SCAM' }, '198.51.100.92');
+    await report(b.handle, { reason: 'SCAM' }, '198.51.100.92');
+    await report(a.handle, { reason: 'SCAM' }, '198.51.100.93');
+    expect(await app.prisma.report.count({ where: { pageId: a.id } })).toBe(2);
+    expect(await app.prisma.report.count({ where: { pageId: b.id } })).toBe(1);
+  });
+
+  it('takes a new report once the earlier one was dismissed', async () => {
+    const page = await aPage();
+    const ip = '198.51.100.94';
+    await report(page.handle, { reason: 'SCAM' }, ip);
+    await app.prisma.report.updateMany({ where: { pageId: page.id }, data: { status: 'DISMISSED', decidedAt: new Date() } });
+    expect((await report(page.handle, { reason: 'SCAM' }, ip)).statusCode).toBe(204);
+    expect(await app.prisma.report.count({ where: { pageId: page.id, status: 'OPEN' } })).toBe(1);
+    expect(await app.prisma.report.count({ where: { pageId: page.id } })).toBe(2);
+  });
+
   it('refuses the 6th report in an hour from one address', async () => {
     const page = await aPage();
     const ip = '198.51.100.201';

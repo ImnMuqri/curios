@@ -1082,6 +1082,9 @@ model Report {
 
   @@index([pageId, status])
   @@index([status, createdAt])
+  // Also a partial unique index, ("pageId", "reporterIpHash") WHERE status = 'OPEN': one open report
+  // per address per page. Prisma cannot express a partial index, so it is in the migration
+  // 20261027040000_report_once_per_address only; leave it out of any `migrate diff` that drops it.
 }
 
 /// One row per setting the admin has changed; a key with no row is at its default (see

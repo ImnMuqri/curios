@@ -68,8 +68,8 @@ beforeAll(async () => {
   // Reports: Chip has two today (Malaysia), Gifted one the day before.
   await write.report.createMany({
     data: [
-      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() + 60_000) },
-      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() + 120_000) },
+      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h1', createdAt: new Date(MIDNIGHT.getTime() + 60_000) },
+      { pageId: ids.Chip!, reason: 'SCAM', reporterIpHash: 'h2', createdAt: new Date(MIDNIGHT.getTime() + 120_000) },
       { pageId: ids.Gifted!, reason: 'OTHER', reporterIpHash: 'h', createdAt: new Date(MIDNIGHT.getTime() - 3_600_000) },
       { pageId: ids.Old!, reason: 'OTHER', reporterIpHash: 'h', status: 'DISMISSED' },
     ],

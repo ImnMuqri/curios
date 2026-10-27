@@ -25,8 +25,9 @@ async function aPage(key: string): Promise<string> {
 }
 
 type Reason = 'SCAM' | 'IMPERSONATION' | 'WRONG_PRICES' | 'OFFENSIVE' | 'OTHER';
+// Each report from its own address: one address keeps one open report per page.
 const report = (key: string, reason: Reason, createdAt: Date, extra: Record<string, unknown> = {}) =>
-  write.report.create({ data: { pageId: ids[key]!, reason, reporterIpHash: 'h', createdAt, ...extra } as never });
+  write.report.create({ data: { pageId: ids[key]!, reason, reporterIpHash: randomUUID(), createdAt, ...extra } as never });
 const decided = (status: 'DISMISSED' | 'ACTED', decidedAt: Date) => ({ status, decidedAt, decidedById: adminId });
 const audit = (key: string, action: string, createdAt: Date) =>
   write.adminAction.create({
