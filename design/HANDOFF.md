@@ -451,6 +451,14 @@ pages, scaled down, rather than separate mock-ups:
 seats, durationMin, where, meetingUrl or place) and a booking per order line; `Order.email`;
 a `DownloadGrant` per order line and file (token, uses left, expiresAt); `Order.sentAt`.
 
+## Shop cover, 27 Oct 2026
+
+The shop front (curios.my/handle/shop) now wears the owner's cover photo, **blurred** (about
+22px, scaled up 1.3 so the edges don't show) and darkened, fading into the page background over
+about 340px. The header, "Open for orders", name, facts and owner's note sit on top of it. The
+category bar starts after the fade. Item, checkout, pay and order pages stay plain. The Store
+"Shop" preview and the landing's For business phone show the same.
+
 ## Open decisions (all three settled; kept for the record)
 
 1. ~~**Price.** The code has RM39 a month (`PLAN_PRICES_CENTS` 3900 / 39000). The landing and Billing

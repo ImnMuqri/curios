@@ -573,6 +573,10 @@ details.q[open] summary::after{content:'–'}
 .pr-toggle em,button em{white-space:nowrap}
 }
 @media (max-width:380px){.deckstage{zoom:.66}}
+
+.cs-cov{position:absolute;left:0;right:0;top:0;height:300px;overflow:hidden;pointer-events:none}
+.cs-cov img{width:100%;height:100%;object-fit:cover;filter:blur(22px) saturate(1.1);transform:scale(1.3)}
+.cs-cov::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(84,35,57,.35),#3d0f1e)}
 </style>
 </helmet>
 
@@ -836,6 +840,7 @@ I’m an illustrator in Ipoh. <mark style="background: {{hl0}}; color: inherit; 
 
 <!-- THE CUSTOMER'S PHONE -->
 <div class="cust">
+<div class="cs-cov" aria-hidden="true"><img src="/_blob/8c12272a54670861ce6afc463dd85cd0" alt=""></div>
 <div class="abs cs-top"><span class="cs-back" aria-hidden="true"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"></path></svg></span><span>curios.my/keklina/shop</span></div>
 <span class="abs cs-open"><i></i>Open for orders</span>
 <p class="abs cs-name">Kek Lina</p>
