@@ -42,6 +42,7 @@ const pay = (pageId: string, data: Record<string, unknown>) =>
 beforeAll(async () => {
   await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
   await write.$executeRawUnsafe('TRUNCATE "ModelCall"');
+  await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
 
   // Paid by CHIP, through next month; began paying today.
   await aPage('Chip', { published: true, paidUntil: NEXT_MONTH, createdAt: new Date(NOW.getTime() - 40 * DAY) });
@@ -101,6 +102,14 @@ beforeAll(async () => {
   await write.ingestion.create({ data: { pageId: ids.Chip!, status: 'SUCCEEDED', pastedText: 'p' } });
   await write.fact.createMany({ data: ['a', 'b', 'c'].map((c) => ({ pageId: ids.Fresh!, category: 'MISC' as const, claim: c, normalizedClaim: c, confidence: 1 })) });
   await write.fact.create({ data: { pageId: ids.Fresh!, category: 'MISC', claim: 'x', normalizedClaim: 'x', confidence: 1, rejectedAt: NOW } });
+  // Webhooks: two failed in the last 24h (the newer belongs to Chip's payment), one too old, one ok.
+  await write.payment.update({ where: { id: (await write.payment.findFirstOrThrow({ where: { pageId: ids.Chip! } })).id }, data: { providerRef: 'pur_chip' } });
+  const hook = (purchaseId: string, outcome: string, ago: number, attempts = 1) => ({
+    source: 'webhook', eventType: 'purchase.paid', purchaseId, body: '{}', outcome, attempts, lastAttemptAt: new Date(NOW.getTime() - ago),
+  });
+  await write.chipWebhookEvent.createMany({
+    data: [hook('pur_chip', 'failed', 3_600_000, 3), hook('pur_unknown', 'failed', 7_200_000), hook('pur_old', 'failed', 25 * 3_600_000), hook('pur_ok', 'ok', 60_000)],
+  });
   await write.usageCounter.createMany({
     data: [
       { pageId: ids.Chip!, period: '2026-10', count: 200 },
@@ -110,6 +119,7 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
   await write.$disconnect();
 });
 
@@ -154,6 +164,10 @@ describe('getOverview', () => {
     expect(o.needsYou.atCap.count).toBe(1);
     expect(o.needsYou.atCap.names).toEqual(['Chip']);
     expect(o.needsYou.plansEnding).toBe(1); // Ending, not EndingGrant
+  });
+
+  it('counts failed webhooks of the last 24 hours and names the newest one page', async () => {
+    expect((await getOverview('7d', NOW)).needsYou.webhooksFailed).toEqual({ count: 2, latest: { attempts: 3, displayName: 'Chip' } });
   });
 
   it('counts pages at the cap the admin set', async () => {

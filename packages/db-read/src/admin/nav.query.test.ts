@@ -17,9 +17,11 @@ async function aPage(): Promise<string> {
 
 beforeAll(async () => {
   await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
+  await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
 });
 
 afterAll(async () => {
+  await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
   await write.$disconnect();
 });
 
@@ -37,5 +39,24 @@ describe('getNavCounts', () => {
     await make(b);
     await make(c, 'DISMISSED');
     expect((await getNavCounts(NOW)).openReports).toBe(2);
+  });
+
+  it('counts sources that failed today (Malaysia) and webhooks that failed in the last 24 hours', async () => {
+    const pageId = await aPage();
+    const midnight = new Date('2026-10-20T16:00:00.000Z');
+    const failed = (updatedAt: Date, status: 'FAILED' | 'SUCCEEDED' = 'FAILED') =>
+      write.ingestion.create({ data: { pageId, pastedText: 'p', status, updatedAt } });
+    await failed(new Date(midnight.getTime() + 1000));
+    await failed(new Date(midnight.getTime() - 1000));
+    await failed(new Date(midnight.getTime() + 1000), 'SUCCEEDED');
+    const hook = (purchaseId: string, outcome: string, ago: number) => ({
+      source: 'webhook', eventType: 'purchase.paid', purchaseId, body: '{}', outcome, lastAttemptAt: new Date(NOW.getTime() - ago),
+    });
+    await write.chipWebhookEvent.createMany({
+      data: [hook('a', 'failed', 60_000), hook('b', 'failed', 23 * 3_600_000), hook('c', 'failed', 25 * 3_600_000), hook('d', 'ok', 60_000)],
+    });
+    const counts = await getNavCounts(NOW);
+    expect(counts.failedSources).toBe(1);
+    expect(counts.failedWebhooks).toBe(2);
   });
 });

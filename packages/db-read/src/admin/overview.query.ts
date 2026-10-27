@@ -30,6 +30,8 @@ export interface Overview {
     failedReads: number;
     atCap: { count: number; names: string[] };
     plansEnding: number;
+    /** Failed CHIP webhook events whose last attempt was in the last 24 hours, and the newest. */
+    webhooksFailed: { count: number; latest: { attempts: number; displayName: string | null } | null };
     /** Pages with an open report, and the page with the most. */
     reported: {
       pages: number;
@@ -49,7 +51,57 @@ export interface Overview {
   byKind: { personal: number; business: number };
 }
 
-const PERIOD_DAYS: Record<Period, number> = { today: 1, '7d': 7, '30d': 30 };
+/**
+ * Pages with a PAID, non-grant payment still running, and the plan of the one that runs longest.
+ * Part 1's definition of "paying"; the Payments screen counts the same pages.
+ */
+export async function getPayingPages(now: Date): Promise<{ pageId: string; plan: 'MONTHLY' | 'ANNUAL' }[]> {
+  const rows = await prismaRead.payment.findMany({
+    where: { status: 'PAID', provider: { not: 'GRANT' }, grantedUntil: { gt: now }, pageId: { not: null } },
+    select: { pageId: true, plan: true },
+    orderBy: { grantedUntil: 'desc' },
+    distinct: ['pageId'],
+  });
+  return rows.map((row) => ({ pageId: row.pageId as string, plan: row.plan }));
+}
+
+/** Sen taken from `from` to `to`: PAID, provider not GRANT, by `paidAt`. */
+export async function getRevenueCents(from: Date, to: Date): Promise<number> {
+  const revenue = await prismaRead.payment.aggregate({
+    _sum: { amountCents: true },
+    where: { status: 'PAID', provider: { not: 'GRANT' }, paidAt: { gte: from, lte: to } },
+  });
+  return revenue._sum.amountCents ?? 0;
+}
+
+/**
+ * Plans that end within a week and were paid for. The covering payment is the one whose grant
+ * produced this paidUntil; a free month is not a plan ending that the owner might fail to renew.
+ */
+export async function countPlansEnding(now: Date): Promise<number> {
+  const ending = await prismaRead.page.findMany({
+    where: { paidUntil: { gt: now, lte: new Date(now.getTime() + 7 * DAY_MS) } },
+    select: { paidUntil: true, payments: { where: { status: 'PAID' }, select: { provider: true, grantedUntil: true } } },
+  });
+  return ending.filter((page) => {
+    const covering = page.payments.find((p) => p.grantedUntil?.getTime() === page.paidUntil?.getTime());
+    return covering?.provider !== 'GRANT';
+  }).length;
+}
+
+/** Failed webhook events of the last 24 hours (by last attempt), with the newest one's attempts and page. */
+export async function getWebhooksFailed(now: Date): Promise<Overview['needsYou']['webhooksFailed']> {
+  const where = { outcome: 'failed', lastAttemptAt: { gte: new Date(now.getTime() - DAY_MS), lte: now } };
+  const [count, newest] = await Promise.all([
+    prismaRead.chipWebhookEvent.count({ where }),
+    prismaRead.chipWebhookEvent.findFirst({ where, orderBy: { lastAttemptAt: 'desc' }, select: { attempts: true, purchaseId: true } }),
+  ]);
+  if (!newest) return { count, latest: null };
+  const payment = await prismaRead.payment.findUnique({ where: { providerRef: newest.purchaseId }, select: { page: { select: { displayName: true } } } });
+  return { count, latest: { attempts: newest.attempts, displayName: payment?.page?.displayName ?? null } };
+}
+
+export const PERIOD_DAYS: Record<Period, number> = { today: 1, '7d': 7, '30d': 30 };
 
 /**
  * The Overview board. A period is whole Malaysian days ending now, today
@@ -79,20 +131,17 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     weekConversations,
     failedReads,
     capped,
-    endingPages,
+    plansEnding,
     newest,
     personal,
     business,
     reportGroups,
+    webhooksFailed,
   ] = await Promise.all([
     prismaRead.page.count({ where: { published: true, suspendedAt: null } }),
     prismaRead.page.count({ where: { published: true, suspendedAt: null, createdAt: inPeriod } }),
-    prismaRead.payment.findMany({
-      where: { status: 'PAID', provider: { not: 'GRANT' }, grantedUntil: { gt: now }, pageId: { not: null } },
-      select: { pageId: true },
-      distinct: ['pageId'],
-    }),
-    prismaRead.payment.aggregate({ _sum: { amountCents: true }, where: { status: 'PAID', provider: { not: 'GRANT' }, paidAt: inPeriod } }),
+    getPayingPages(now),
+    getRevenueCents(start, now),
     prismaRead.conversation.count({ where: { createdAt: inPeriod } }),
     prismaRead.conversation.count({ where: { createdAt: { gte: previousStart, lt: start } } }),
     prismaRead.questionAsk.count({ where: { askedAt: inPeriod, answered: true } }),
@@ -105,10 +154,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
       orderBy: { count: 'desc' },
       select: { page: { select: { displayName: true } } },
     }),
-    prismaRead.page.findMany({
-      where: { paidUntil: { gt: now, lte: new Date(now.getTime() + 7 * DAY_MS) } },
-      select: { paidUntil: true, payments: { where: { status: 'PAID' }, select: { provider: true, grantedUntil: true } } },
-    }),
+    countPlansEnding(now),
     prismaRead.page.findMany({
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 5,
@@ -124,10 +170,11 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     prismaRead.page.count({ where: { mode: 'PERSONAL', published: true, suspendedAt: null } }),
     prismaRead.page.count({ where: { mode: 'BUSINESS', published: true, suspendedAt: null } }),
     listReportGroups({ status: 'open', now }),
+    getWebhooksFailed(now),
   ]);
 
   // When each paying page first paid for real, to see which began in the period.
-  const payingIds = payingPages.map((p) => p.pageId as string);
+  const payingIds = payingPages.map((p) => p.pageId);
   const firstPaid = payingIds.length
     ? await prismaRead.payment.groupBy({
         by: ['pageId'],
@@ -145,17 +192,10 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
   }
 
   const milliCents = cost._sum.costMilliCents ?? 0;
-  // The covering payment is the one whose grant produced this paidUntil; a free
-  // month is not a plan ending that the owner might fail to renew.
-  const plansEnding = endingPages.filter((page) => {
-    const covering = page.payments.find((p) => p.grantedUntil?.getTime() === page.paidUntil?.getTime());
-    return covering?.provider !== 'GRANT';
-  }).length;
-
   return {
     livePages: { count: liveCount, newInPeriod: liveNew },
     paying: { count: payingIds.length, newInPeriod: payingNew },
-    revenueCents: revenue._sum.amountCents ?? 0,
+    revenueCents: revenue,
     conversations: { count: conversations, previous },
     answered: { answered, recorded },
     aiCost: { milliCents, perConversationMilliCents: conversations > 0 ? Math.round(milliCents / conversations) : 0 },
@@ -164,6 +204,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
       failedReads,
       atCap: { count: capped.length, names: capped.slice(0, 2).map((row) => row.page.displayName) },
       plansEnding,
+      webhooksFailed,
       reported: {
         pages: reportGroups.length,
         top: reportGroups[0]

@@ -13,7 +13,7 @@ function fixture(over: Partial<OverviewData> = {}): OverviewData {
     answered: { answered: 91, recorded: 100 },
     aiCost: { milliCents: 57_100_000, perConversationMilliCents: 2_215 },
     perDay: [1, 2, 3, 4, 5, 6, 10].map((count, i) => ({ day: `2026-10-${17 + i}`, count })),
-    needsYou: { failedReads: 3, atCap: { count: 14, names: ['Studio Hana', 'Kak Mah'] }, plansEnding: 6, reported: { pages: 3, top: { displayName: 'Gadget Murah 88', count: 4, reason: 'SCAM', today: true } } },
+    needsYou: { failedReads: 3, atCap: { count: 14, names: ['Studio Hana', 'Kak Mah'] }, plansEnding: 6, webhooksFailed: { count: 0, latest: null }, reported: { pages: 3, top: { displayName: 'Gadget Murah 88', count: 4, reason: 'SCAM', today: true } } },
     newPages: [
       {
         name: 'Coach Farah',
@@ -84,7 +84,7 @@ describe('Overview', () => {
   });
 
   it('hides an item at zero, and says so when none is left', () => {
-    const none = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, reported: { pages: 0, top: null } };
+    const none = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, webhooksFailed: { count: 0, latest: null }, reported: { pages: 0, top: null } };
     const { rerender } = render(
       <Overview overview={fixture({ needsYou: { ...none, plansEnding: 2 } })} period="7d" cap={200} />,
     );
@@ -103,7 +103,7 @@ describe('Overview', () => {
     expect(screen.getByText('Gadget Murah 88 has 4 scam reports today')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Look' })).toHaveAttribute('href', '/reports');
 
-    const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0 };
+    const quiet = { failedReads: 0, atCap: { count: 0, names: [] }, plansEnding: 0, webhooksFailed: { count: 0, latest: null } };
     rerender(
       <Overview
         overview={fixture({ needsYou: { ...quiet, reported: { pages: 1, top: { displayName: 'Coach Farah', count: 2, reason: 'IMPERSONATION', today: false } } } })}
