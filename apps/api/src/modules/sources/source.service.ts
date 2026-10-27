@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@curios/db';
+import type { Prisma, PrismaClient } from '@curios/db';
 import { INGEST_QUEUE } from '@curios/core';
 import type { Settings } from '@curios/core/settings';
 import type { QueueLike } from '../ingest/ingest.service.js';
@@ -74,6 +74,55 @@ export async function removeSource(
 }
 
 /**
+ * Moves a settled source back to QUEUED, as one conditional update, so two
+ * claims cannot both queue a run. Returns false when it was not settled (or
+ * not matched by `where`). Takes the transaction client too: the admin's retry
+ * claims inside the transaction that writes its audit row.
+ */
+export async function claimForReading(
+  db: Prisma.TransactionClient | PrismaClient,
+  where: Prisma.IngestionWhereInput,
+): Promise<boolean> {
+  const claimed = await db.ingestion.updateMany({
+    where: { AND: [where, { status: { in: [...SETTLED] } }] },
+    data: { status: 'QUEUED', error: null, extractedCount: 0, progress: 0, tracked: true },
+  });
+  return claimed.count === 1;
+}
+
+/**
+ * Puts a claimed source on the ingest queue under a fresh job id. Pasted and
+ * file sources have no sourceUrl: the job carries none, and the worker reads
+ * their text from the row. If the queue will not take it the row is marked
+ * FAILED again and the error is rethrown.
+ */
+export async function enqueueReading(
+  deps: { prisma: PrismaClient; queue: QueueLike },
+  source: { id: string; pageId: string; sourceUrl: string | null },
+): Promise<void> {
+  const jobId = `${source.id}-recheck-${Date.now()}`;
+  try {
+    await deps.queue.add(
+      INGEST_QUEUE,
+      {
+        ingestionId: source.id,
+        pageId: source.pageId,
+        ...(source.sourceUrl === null ? {} : { sourceUrl: source.sourceUrl }),
+        idempotencyKey: jobId,
+      },
+      { jobId, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
+    );
+  } catch (error) {
+    // Left QUEUED, the row would read "Reading…" forever and refuse removal.
+    await deps.prisma.ingestion.update({
+      where: { id: source.id },
+      data: { status: 'FAILED', error: 'We could not start reading it. Try again.' },
+    });
+    throw error;
+  }
+}
+
+/**
  * Check for new facts: the same ingestion, read again. New facts are credited
  * to it and go to Review; wording that already exists -- tombstones included
  * -- is skipped by the worker's skipDuplicates. It never removes a fact.
@@ -101,26 +150,9 @@ export async function recheckSource(
   if (source.sourceUrl === null) throw new NotRecheckableError();
   if (!deps.settings.switches.reading) throw new ReadingPausedError();
 
-  const claimed = await deps.prisma.ingestion.updateMany({
-    where: { id: source.id, page: { accountId }, status: { in: [...SETTLED] } },
-    data: { status: 'QUEUED', error: null, extractedCount: 0, progress: 0, tracked: true },
-  });
-  if (claimed.count !== 1) throw new SourceBusyError();
+  const claimed = await claimForReading(deps.prisma, { id: source.id, page: { accountId } });
+  if (!claimed) throw new SourceBusyError();
 
-  const jobId = `${source.id}-recheck-${Date.now()}`;
-  try {
-    await deps.queue.add(
-      INGEST_QUEUE,
-      { ingestionId: source.id, pageId: source.pageId, sourceUrl: source.sourceUrl, idempotencyKey: jobId },
-      { jobId, attempts: 3, backoff: { type: 'exponential', delay: 2000 } },
-    );
-  } catch (error) {
-    // Left QUEUED, the row would read "Reading…" forever and refuse removal.
-    await deps.prisma.ingestion.update({
-      where: { id: source.id },
-      data: { status: 'FAILED', error: 'We could not start reading it. Try again.' },
-    });
-    throw error;
-  }
+  await enqueueReading(deps, source);
   return { ingestionId: source.id };
 }

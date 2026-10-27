@@ -34,6 +34,7 @@ export {
   allowsPrivateAddresses,
   BlockedAddressError,
   inspectSourceUrl,
+  isWalledSource,
   requirePublicAddresses,
 } from './source-url.js';
 export type { ResolvedAddress, SourceUrlVerdict } from './source-url.js';

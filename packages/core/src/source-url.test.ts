@@ -3,6 +3,7 @@ import {
   allowsPrivateAddresses,
   BlockedAddressError,
   inspectSourceUrl,
+  isWalledSource,
   requirePublicAddresses,
 } from './source-url.js';
 
@@ -108,4 +109,19 @@ describe('allowsPrivateAddresses', () => {
       expect(allowsPrivateAddresses(raw)).toBe(false);
     },
   );
+});
+
+describe('isWalledSource', () => {
+  it('is true for an Instagram address, www or not', () => {
+    expect(isWalledSource('https://www.instagram.com/x')).toBe(true);
+    expect(isWalledSource('https://instagram.com/x')).toBe(true);
+  });
+
+  it('is false for an ordinary site, a lookalike host, pasted text and nothing', () => {
+    expect(isWalledSource('https://nadiabakes.com/menu')).toBe(false);
+    expect(isWalledSource('https://notinstagram.com/x')).toBe(false);
+    expect(isWalledSource('https://nadia.my/instagram.com')).toBe(false);
+    expect(isWalledSource('not a url')).toBe(false);
+    expect(isWalledSource(null)).toBe(false);
+  });
 });

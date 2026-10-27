@@ -77,6 +77,9 @@ export const DOMAIN_ERROR_CODES = new Set([
   // pasted text has nothing to re-read.
   'SOURCE_BUSY',
   'SOURCE_NOT_RECHECKABLE',
+  // Admin Reading sources: a retry of a source that is not failed or cannot be read, or while reading is off.
+  'SOURCE_STATE',
+  'READING_OFF',
   // Never-say: a phrase that is not one short line, one already listed, or one too many.
   'INVALID_NEVER_SAY',
   'NEVER_SAY_DUPLICATE',

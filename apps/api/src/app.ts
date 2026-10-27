@@ -23,6 +23,7 @@ import { adminPagesRoutes, type AdminPagesRouteOptions } from './modules/admin/a
 import { adminReportsRoutes } from './modules/admin/admin-reports.routes.js';
 import { adminPaymentsRoutes } from './modules/admin/admin-payments.routes.js';
 import { adminSettingsRoutes } from './modules/admin/admin-settings.routes.js';
+import { adminSourcesRoutes } from './modules/admin/admin-sources.routes.js';
 import {
   adminSigninPerIpLimit,
   authPerEmailLimit,
@@ -359,6 +360,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
       await scope.register(adminReportsRoutes, { mailQueue: overrides.admin?.mailQueue });
       await scope.register(adminSettingsRoutes);
       await scope.register(adminPaymentsRoutes, { messages: chipMessages });
+      await scope.register(adminSourcesRoutes);
     });
   }
 
