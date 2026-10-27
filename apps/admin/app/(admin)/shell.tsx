@@ -98,6 +98,7 @@ export function Shell({
 
   // On a phone the bar scrolls sideways: keep the current section in view.
   useEffect(() => {
+    if (!window.matchMedia('(max-width: 860px)').matches) return;
     activeLink.current?.scrollIntoView?.({ inline: 'nearest', block: 'nearest' });
   }, [active]);
 

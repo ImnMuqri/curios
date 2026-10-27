@@ -205,6 +205,8 @@
     align-items: center;
     gap: 6px;
     overflow-x: auto;
+    /* Keep a scrolled-to item clear of the right-edge fade. */
+    scroll-padding-inline-end: 44px;
     scrollbar-width: none;
   }
 

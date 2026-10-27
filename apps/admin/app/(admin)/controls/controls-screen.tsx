@@ -325,7 +325,6 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
           title="That's a big change. Save it anyway?"
           text={`A price moves by more than half, or goes above RM${PRICE_MAX_RM}. It applies from each owner’s next payment.`}
           confirmLabel="Save anyway"
-          placeholder=""
           reasonless
           details={list(big.fields)}
           onConfirm={saveAnyway}

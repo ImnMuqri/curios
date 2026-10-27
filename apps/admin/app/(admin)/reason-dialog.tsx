@@ -20,8 +20,8 @@ export function ReasonDialog({
   title: string;
   text: string;
   confirmLabel: string;
-  /** Ignored when `reasonless`. */
-  placeholder: string;
+  /** The reason box's hint. Not needed when `reasonless`. */
+  placeholder?: string;
   danger?: boolean;
   /** Shows "The owner sees this." under the box, for actions that email the reason. */
   ownerSees?: boolean;

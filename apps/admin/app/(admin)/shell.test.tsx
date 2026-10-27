@@ -1,19 +1,27 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 
 vi.mock('next/navigation', () => ({ usePathname: () => '/', useRouter: () => ({ replace: vi.fn() }) }));
 
 import { Shell } from './shell.js';
 
 describe('Shell', () => {
-  it('scrolls the current item into view sideways, for the phone bar', () => {
+  it('scrolls the current item into view sideways on the phone bar, and not on desktop', () => {
     const scrollIntoView = vi.spyOn(HTMLElement.prototype, 'scrollIntoView');
+    render(<Shell adminName="Iman" current="controls" />);
+    expect(scrollIntoView).not.toHaveBeenCalled();
+    cleanup();
+
+    const phone = vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query) => ({ matches: query === '(max-width: 860px)', media: query }) as MediaQueryList,
+    );
     render(<Shell adminName="Iman" current="controls" />);
 
     expect(scrollIntoView).toHaveBeenCalledTimes(1);
     expect(scrollIntoView).toHaveBeenCalledWith(expect.objectContaining({ inline: 'nearest' }));
     expect(scrollIntoView.mock.contexts[0]).toBe(screen.getByRole('link', { name: 'Controls' }));
     scrollIntoView.mockRestore();
+    phone.mockRestore();
   });
 
   it('shows all eight sections in the board’s groups', () => {
