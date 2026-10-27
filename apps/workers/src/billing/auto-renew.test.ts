@@ -352,14 +352,35 @@ describe('runAutoRenewals', () => {
   });
 
   describe('a card no run tried for its plan end (CHIP payments off all through the grace, say)', () => {
-    /** The switch off for every daily run from the plan's end to five days past it. */
-    async function switchedOffThrough(client: ReturnType<typeof aChip>, mailQueue: ReturnType<typeof aMailQueue>) {
+    /** The switch off for every daily run from the plan's end (`days` ago) until yesterday. */
+    async function switchedOffThrough(client: ReturnType<typeof aChip>, mailQueue: ReturnType<typeof aMailQueue>, days = 5) {
       const off = defaultSettings();
       off.switches.chipPayments = false;
-      for (const day of [-5, -4, -3, -2, -1]) {
+      for (let day = -days; day < 0; day++) {
         await run(client, mailQueue, { now: at(day * DAY_MS), settings: { get: async () => off } });
       }
     }
+
+    it('is dropped, not charged, once it is more than 7 days past paidUntil: one mail, once', async () => {
+      const page = await aRenewingPage({ paidUntil: at(-10 * DAY_MS), lastAttemptAt: at(-40 * DAY_MS) });
+      const never = await aRenewingPage({ paidUntil: at(-10 * DAY_MS) });
+      const client = aChip();
+      const mailQueue = aMailQueue();
+      await switchedOffThrough(client, mailQueue, 10);
+
+      expect(await run(client, mailQueue)).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 2 });
+
+      expect(client.createPurchase).not.toHaveBeenCalled();
+      expect(client.chargePurchase).not.toHaveBeenCalled();
+      expect(await cardOf(page.pageId)).toBeNull();
+      expect(await cardOf(never.pageId)).toBeNull();
+      expect(mailQueue.add).toHaveBeenCalledTimes(2);
+      expect(mailQueue.add.mock.calls.map(([, mail]) => mail.to).sort()).toEqual([page.email, never.email].sort());
+      expect(mailQueue.add.mock.calls[0]?.[1].subject).toBe('Auto-renew is off for Nadia Bakes');
+
+      await run(client, mailQueue, { now: at(DAY_MS) });
+      expect(mailQueue.add).toHaveBeenCalledTimes(2);
+    });
 
     it('is tried once the switch is back on, five days past paidUntil, and not dropped', async () => {
       const paidUntil = at(-5 * DAY_MS);

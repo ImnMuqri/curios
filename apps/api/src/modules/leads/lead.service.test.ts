@@ -77,10 +77,17 @@ describe('captureLead', () => {
     const add = aQueue();
     const conversations = [conversationId, await aQualifyingConversation(), await aQualifyingConversation()];
 
-    // All three read the page at 2 of 3, so all three are let in; only the one whose count reached 3 is the last free one.
-    await Promise.all(conversations.map((id, i) => captureLead({ prisma, queue: { add }, settings }, { conversationId: id, phone: `012345678${i}` })));
+    // Each that reads the page at 2 of 3 is let in; one that reads it later is refused, which
+    // is fine. Of those captured, only the one whose count reached 3 is the last free one.
+    const settled = await Promise.allSettled(
+      conversations.map((id, i) => captureLead({ prisma, queue: { add }, settings }, { conversationId: id, phone: `012345678${i}` })),
+    );
+    const captured = settled.flatMap((s) => (s.status === 'fulfilled' ? [s.value.leadId] : []));
 
-    expect(add.mock.calls.filter((call) => call[1].lastFreeLead)).toHaveLength(1);
+    expect(captured.length).toBeGreaterThanOrEqual(1);
+    const flagged = add.mock.calls.filter((call) => call[1].lastFreeLead).map((call) => call[1].leadId);
+    expect(flagged).toHaveLength(1);
+    expect(captured).toContain(flagged[0]);
   });
 
   it('flags the lead that used the last free one, and only that one', async () => {

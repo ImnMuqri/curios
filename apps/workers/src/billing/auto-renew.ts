@@ -1,6 +1,6 @@
 import { malaysiaToday } from '@curios/core/orders';
 import { isFallbackSettings, type Settings } from '@curios/core/settings';
-import type { PrismaClient } from '@curios/db';
+import type { Prisma, PrismaClient } from '@curios/db';
 import {
   billDescription,
   evidenceFromPurchase,
@@ -30,6 +30,12 @@ const DAY_MS = 24 * HOUR_MS;
  * that plan end yet (see runAutoRenewals).
  */
 export const CHARGE_GRACE_MS = 3 * DAY_MS;
+/**
+ * How late a card no run tried for its plan end may still be charged. Past this -- a long
+ * switch-off, suspension or workers outage -- charging would take money weeks late with no
+ * notice, so the card is dropped as lapsed and the owner told instead.
+ */
+export const UNTRIED_CHARGE_LIMIT_MS = 7 * DAY_MS;
 /**
  * One attempt a day. Twenty hours rather than twenty-four, so a run that starts a little
  * earlier than yesterday's (a restart, a slow queue) is not a day late.
@@ -130,9 +136,11 @@ function logGrant(log: BillingLog | undefined, pageId: string, purchaseId: strin
  *
  * A card is never dropped for a grace nobody used. A card no run has claimed for its plan's
  * current end -- every run skipped by the switch, unreadable settings, or a suspension that
- * outlasted the grace -- stays chargeable past the three days, and the first run that may
- * charge tries it. The grace only drops a card that was tried for that end, and not in the
- * same run: one first tried today has until the next day's run for its charge to settle.
+ * outlasted the grace -- stays chargeable past the three days, up to seven days after its plan
+ * ended (UNTRIED_CHARGE_LIMIT_MS), and the first run that may charge tries it. Past seven days
+ * it is dropped as lapsed and the owner told, rather than charged that late. Otherwise the grace
+ * only drops a card that was tried for that end, and not in the same run: one first tried today
+ * has until the next day's run for its charge to settle.
  * That owner gets one try rather than three days of them, since a decline past the grace
  * stops auto-renew at once (recordRenewalFailure), as it always has.
  */
@@ -151,6 +159,7 @@ export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
   // Every plan ended by the end of today; past the grace, only those no run has tried for that
   // end. Few are left past the grace: the tried ones are dropped daily.
   const inWindow = chargeWindow(deps.now);
+  const untriedLimit = new Date(deps.now.getTime() - UNTRIED_CHARGE_LIMIT_MS);
   const read = await deps.prisma.renewalCard.findMany({
     where: { page: { mode: 'BUSINESS', paidUntil: { lt: inWindow.lt }, suspendedAt: null } },
     select: {
@@ -165,7 +174,9 @@ export async function runAutoRenewals(deps: Deps): Promise<AutoRenewResult> {
   const cards = read.flatMap<Card>(({ lastAttemptAt, page: { paidUntil, ...page }, ...card }) => {
     if (!paidUntil) return [];
     if (paidUntil > inWindow.gt) return [{ ...card, page, untriedEnd: null }];
-    return triedFor(paidUntil, lastAttemptAt) ? [] : [{ ...card, page, untriedEnd: paidUntil }];
+    // Tried already, or untried for longer than may still be charged: dropLapsedCards's.
+    if (triedFor(paidUntil, lastAttemptAt) || paidUntil <= untriedLimit) return [];
+    return [{ ...card, page, untriedEnd: paidUntil }];
   });
   if (deps.afterRead) await deps.afterRead();
 
@@ -408,22 +419,33 @@ async function renewPage(deps: Deps, card: Card, result: AutoRenewResult, page: 
  * a renewal still PENDING is left for its webhook, which can still grant it. The plan is
  * checked again in the delete, so a page that webhook renewed since the read keeps its card.
  *
- * Only a card tried for that plan end, and not within the attempt gap: one no run tried is
- * charged instead (see runAutoRenewals), and one first tried today, past the grace, keeps
- * its card until the next day's run while that charge settles.
+ * Only a card tried for that plan end, and not within the attempt gap, or one no run tried
+ * whose plan ended more than UNTRIED_CHARGE_LIMIT_MS ago. A younger untried one is charged
+ * instead (see runAutoRenewals), and one first tried today, past the grace, keeps its card
+ * until the next day's run while that charge settles.
  */
 async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<void> {
   const triedBefore = new Date(deps.now.getTime() - ATTEMPT_GAP_MS);
+  const untriedLimit = new Date(deps.now.getTime() - UNTRIED_CHARGE_LIMIT_MS);
   const read = await deps.prisma.renewalCard.findMany({
     where: {
       page: { mode: 'BUSINESS', paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) }, suspendedAt: null },
-      lastAttemptAt: { lt: triedBefore },
+      OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: triedBefore } }],
     },
     select: { pageId: true, token: true, lastAttemptAt: true, page: { select: { paidUntil: true } } },
   });
-  const lapsed = read.flatMap(({ page: { paidUntil }, ...card }) =>
-    paidUntil && triedFor(paidUntil, card.lastAttemptAt) ? [{ ...card, triedSince: chargeDayStart(paidUntil) }] : [],
-  );
+  const lapsed = read.flatMap<{ pageId: string; token: string; guard: Prisma.RenewalCardWhereInput }>(({ page: { paidUntil }, ...card }) => {
+    if (!paidUntil) return [];
+    const triedSince = chargeDayStart(paidUntil);
+    if (triedFor(paidUntil, card.lastAttemptAt)) {
+      return [{ ...card, guard: { lastAttemptAt: { gte: triedSince, lt: triedBefore }, page: { paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) }, suspendedAt: null } } }];
+    }
+    // Untried past the limit. Still untried at the delete, so a run that claimed it meanwhile wins.
+    if (paidUntil <= untriedLimit) {
+      return [{ ...card, guard: { OR: [{ lastAttemptAt: null }, { lastAttemptAt: { lt: triedSince } }], page: { paidUntil: { lte: untriedLimit }, suspendedAt: null } } }];
+    }
+    return [];
+  });
   if (deps.afterLapsedRead) await deps.afterLapsedRead();
   for (const card of lapsed) {
     try {
@@ -431,8 +453,7 @@ async function dropLapsedCards(deps: Deps, result: AutoRenewResult): Promise<voi
         where: {
           pageId: card.pageId,
           token: card.token,
-          lastAttemptAt: { gte: card.triedSince, lt: triedBefore },
-          page:{ paidUntil: { lte: new Date(deps.now.getTime() - CHARGE_GRACE_MS) }, suspendedAt: null },
+          ...card.guard,
         },
       });
       if (removed.count === 0) continue;
