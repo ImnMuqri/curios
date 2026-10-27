@@ -3,7 +3,7 @@ import { prismaRead } from '../client.js';
 import { getSettings } from '../settings.query.js';
 import type { ReportReasonKey } from '@curios/core/report';
 import { DAY_MS, malaysiaDay, malaysiaMidnight } from './days.js';
-import { listReportGroups } from './reports.query.js';
+import { commonReason } from './reports.query.js';
 
 export type Period = 'today' | '7d' | '30d';
 
@@ -101,6 +101,38 @@ export async function getWebhooksFailed(now: Date): Promise<Overview['needsYou']
   return { count, latest: { attempts: newest.attempts, displayName: payment?.page?.displayName ?? null } };
 }
 
+/**
+ * Pages with an open report, and the one to name. The page with the most open reports that came in
+ * today (Malaysia), its count being today's; when none came in today, the page with the most open
+ * reports, its count being all of them. A tie goes to the page with the newest report.
+ */
+export async function getReported(now: Date): Promise<Overview['needsYou']['reported']> {
+  const today = malaysiaMidnight(now);
+  const order = [{ _count: { pageId: 'desc' } }, { _max: { createdAt: 'desc' } }] as const;
+  const [reportedPages, openTop, todayTop] = await Promise.all([
+    // One row per reported page: the pages are counted without loading a report.
+    prismaRead.report.groupBy({ by: ['pageId'], where: { status: 'OPEN' } }),
+    prismaRead.report.groupBy({ by: ['pageId'], where: { status: 'OPEN' }, _count: { _all: true }, orderBy: [...order], take: 1 }),
+    prismaRead.report.groupBy({
+      by: ['pageId'],
+      where: { status: 'OPEN', createdAt: { gte: today, lte: now } },
+      _count: { _all: true },
+      orderBy: [...order],
+      take: 1,
+    }),
+  ]);
+  const pages = reportedPages.length;
+  const pick = todayTop[0] ?? openTop[0];
+  if (!pick) return { pages, top: null };
+  const isToday = todayTop[0] !== undefined;
+  const reports = await prismaRead.report.findMany({
+    where: { pageId: pick.pageId, status: 'OPEN', ...(isToday ? { createdAt: { gte: today, lte: now } } : {}) },
+    select: { reason: true, createdAt: true },
+  });
+  const page = await prismaRead.page.findUniqueOrThrow({ where: { id: pick.pageId }, select: { displayName: true } });
+  return { pages, top: { displayName: page.displayName, count: pick._count._all, reason: commonReason(reports), today: isToday } };
+}
+
 export const PERIOD_DAYS: Record<Period, number> = { today: 1, '7d': 7, '30d': 30 };
 
 /**
@@ -135,7 +167,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     newest,
     personal,
     business,
-    reportGroups,
+    reported,
     webhooksFailed,
   ] = await Promise.all([
     prismaRead.page.count({ where: { published: true, suspendedAt: null } }),
@@ -169,7 +201,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
     }),
     prismaRead.page.count({ where: { mode: 'PERSONAL', published: true, suspendedAt: null } }),
     prismaRead.page.count({ where: { mode: 'BUSINESS', published: true, suspendedAt: null } }),
-    listReportGroups({ status: 'open', now }),
+    getReported(now),
     getWebhooksFailed(now),
   ]);
 
@@ -205,17 +237,7 @@ export async function getOverview(period: Period, now: Date): Promise<Overview> 
       atCap: { count: capped.length, names: capped.slice(0, 2).map((row) => row.page.displayName) },
       plansEnding,
       webhooksFailed,
-      reported: {
-        pages: reportGroups.length,
-        top: reportGroups[0]
-          ? {
-              displayName: reportGroups[0].displayName,
-              count: reportGroups[0].countToday > 0 ? reportGroups[0].countToday : reportGroups[0].count,
-              reason: reportGroups[0].reason,
-              today: reportGroups[0].countToday > 0,
-            }
-          : null,
-      },
+      reported,
     },
     newPages: newest.map((page) => ({
       name: page.displayName,

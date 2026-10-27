@@ -211,7 +211,7 @@ export function Pricing({ locale, terms }: { locale: Locale; terms: PlanTerms })
               </span>
               <span className={styles.bar}>
                 <span className={styles.barCost} style={{ width: `${sums.costPercent}%` }} />
-                <em>{calc.cost(yearly ? copy.annualAMonth : String(copy.monthlyRinggit))}</em>
+                <em>{calc.cost(yearly ? copy.annualAMonthText : copy.monthlyText)}</em>
               </span>
             </div>
             <p className={styles.verdict}>{sums.pays ? calc.pays(sums.percent, sums.times) : calc.under}</p>

@@ -58,11 +58,14 @@ function copyFor(kind: 'dismiss' | 'email', handle: string) {
 export function ReportsScreen({
   open,
   closed,
+  closedCount = closed.length,
   status,
   now,
 }: {
   open: ReportGroup[];
   closed: ReportGroup[];
+  /** The Closed tab's true count: `closed` holds only the newest 50. */
+  closedCount?: number;
   status: 'open' | 'closed';
   now: Date;
 }) {
@@ -105,7 +108,7 @@ export function ReportsScreen({
           {(['open', 'closed'] as const).map((tab) => (
             <Link key={tab} href={hrefFor(tab)} className={styles.tab} aria-current={tab === status ? 'true' : undefined}>
               {tab === 'open' ? 'Open' : 'Closed'}
-              <small>{(tab === 'open' ? open : closed).length}</small>
+              <small>{tab === 'open' ? open.length : closedCount}</small>
             </Link>
           ))}
         </nav>

@@ -47,10 +47,9 @@ export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
   const { cap } = await getSettings();
   const threshold = Math.ceil(0.75 * cap);
 
-  const [calls, failedCount, latency, cost, previousCost, conversations, previousConversations, notSure, recorded, jobRows, latest, counters] =
+  const [callGroups, latency, cost, previousCost, conversations, previousConversations, notSure, recorded, jobRows, latest, counters] =
     await Promise.all([
-      prismaRead.modelCall.count({ where: { createdAt: { gte: start, lte: now } } }),
-      prismaRead.modelCall.count({ where: { createdAt: { gte: start, lte: now }, ok: false } }),
+      prismaRead.modelCall.groupBy({ by: ['ok'], where: { createdAt: { gte: start, lte: now } }, _count: { _all: true } }),
       prismaRead.$queryRaw<{ median: number | null; p95: number | null }[]>`
         SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY "latencyMs") AS median,
                percentile_cont(0.95) WITHIN GROUP (ORDER BY "latencyMs") AS p95
@@ -86,6 +85,8 @@ export async function getAiUsage(period: Period, now: Date): Promise<AiUsage> {
       }),
     ]);
 
+  const failedCount = callGroups.find((group) => !group.ok)?._count._all ?? 0;
+  const calls = callGroups.reduce((sum, group) => sum + group._count._all, 0);
   const milliCents = cost._sum.costMilliCents ?? 0;
   const previousMilliCents = previousCost._sum.costMilliCents ?? 0;
   const per = (total: number, count: number) => (count > 0 ? Math.round(total / count) : 0);

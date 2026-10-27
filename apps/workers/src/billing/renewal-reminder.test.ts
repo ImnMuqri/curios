@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { defaultSettings, type Settings } from '@curios/core/settings';
+import { raisedSettings } from '@curios/core/test-settings';
 import { buildRenewalReminder, runPlanEndedMails, runRenewalReminders, type MailQueueLike } from './renewal-reminder.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -97,7 +98,7 @@ describe('runRenewalReminders', () => {
   it('quotes the price in force, which is what the renewal will charge', async () => {
     await aPage({ paidUntil: inDays(2), card: { label: 'Visa ending 1111', plan: 'MONTHLY' } });
     const mailQueue = aMailQueue();
-    const raised = reader({ ...defaultSettings(), prices: { ...defaultSettings().prices, MONTHLY: 5900 } });
+    const raised = reader(raisedSettings());
 
     await runRenewalReminders({ prisma, mailQueue, now: NOW, appUrl: APP_URL, settings: raised });
 

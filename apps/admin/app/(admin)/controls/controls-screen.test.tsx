@@ -250,6 +250,39 @@ describe('limits and prices', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Saved for every page.');
   });
 
+  it('shows a stored price with sen as 49.50, with a note, and still saves other changes', async () => {
+    render(<ControlsScreen settings={settings({ prices: { MONTHLY: 4950, ANNUAL: 49000 } })} />);
+
+    expect(screen.getByLabelText('Business, monthly')).toHaveValue('49.50');
+    expect(screen.getByLabelText('Business, monthly')).toHaveAttribute('aria-invalid', 'false');
+    expect(screen.getByText('Stored as RM49.50; saving rounds to whole RM')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled();
+
+    const leads = screen.getByLabelText('Free leads on a trial');
+    await userEvent.clear(leads);
+    await userEvent.type(leads, '5');
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeEnabled();
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const dialog = screen.getByRole('dialog', { name: 'Save new limits and prices?' });
+    await userEvent.type(within(dialog).getByLabelText('Reason, for the audit log'), 'More leads');
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Save for everyone' }));
+
+    // The price with sen was left alone, so it is not sent.
+    expect(body()).toEqual({ freeLeads: 5, reason: 'More leads' });
+  });
+
+  it('rounds a stored price with sen to whole RM only when it is edited', async () => {
+    render(<ControlsScreen settings={settings({ prices: { MONTHLY: 4950, ANNUAL: 49000 } })} />);
+
+    const monthly = screen.getByLabelText('Business, monthly');
+    await userEvent.type(monthly, '{Backspace}');
+    expect(monthly).toHaveValue('49');
+    await userEvent.type(monthly, '1');
+    await userEvent.click(screen.getByRole('button', { name: 'Save changes' }));
+    const dialog = screen.getByRole('dialog', { name: 'Save new limits and prices?' });
+    expect(within(dialog).getByText('RM49.50 → RM491')).toBeInTheDocument();
+  });
+
   it('strips non-digits typed into a limit field', async () => {
     render(<ControlsScreen settings={settings()} />);
 

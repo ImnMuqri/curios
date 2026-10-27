@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FREE_LEADS, planState } from '@curios/core';
-import { daysLeft, formatDate, cardOffBanner, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { daysLeft, formatDate, cardOffBanner, paymentBanner, paymentParts, planBadge, planSummary, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 
 const NOW = new Date('2026-09-14T08:00:00.000Z');
 
@@ -16,17 +16,6 @@ describe('formatDate', () => {
   it('uses the calendar day in Malaysia, not in UTC', () => {
     // 20:00 UTC on 11 October is already 04:00 on the 12th in Kuala Lumpur.
     expect(formatDate(new Date('2026-10-11T20:00:00.000Z'))).toBe('12 October 2026');
-  });
-});
-
-describe('ringgit', () => {
-  it('writes whole ringgit the way the prices are published', () => {
-    expect(ringgit(3900)).toBe('RM39');
-    expect(ringgit(39000)).toBe('RM390');
-  });
-
-  it('keeps the cents when there are some', () => {
-    expect(ringgit(3950)).toBe('RM39.50');
   });
 });
 

@@ -74,9 +74,12 @@ export async function getPayments(period: Period, now: Date): Promise<Payments> 
       take: 100,
       select: { id: true, eventType: true, purchaseId: true, attempts: true, outcome: true, statusCode: true, lastAttemptAt: true },
     }),
-    prismaRead.order.findMany({
+    // One row per shop, summed in SQL: the month's orders are never loaded.
+    prismaRead.order.groupBy({
+      by: ['pageId'],
       where: { paidVia: 'CHIP', paidAt: { gte: monthStart, lte: now } },
-      select: { totalCents: true, pageId: true },
+      _sum: { totalCents: true },
+      _count: { _all: true },
     }),
   ]);
 
@@ -118,9 +121,9 @@ export async function getPayments(period: Period, now: Date): Promise<Payments> 
       displayName: nameOf.get(event.purchaseId) ?? null,
     })),
     shop: {
-      orders: shopOrders.length,
-      totalCents: shopOrders.reduce((sum, order) => sum + order.totalCents, 0),
-      shops: new Set(shopOrders.map((order) => order.pageId)).size,
+      orders: shopOrders.reduce((sum, shop) => sum + shop._count._all, 0),
+      totalCents: shopOrders.reduce((sum, shop) => sum + (shop._sum.totalCents ?? 0), 0),
+      shops: shopOrders.length,
     },
   };
 }

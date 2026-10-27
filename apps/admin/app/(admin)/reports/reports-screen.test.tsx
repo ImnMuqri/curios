@@ -92,6 +92,11 @@ describe('ReportsScreen', () => {
     expect(dot('Offensive').style.background).toBe('rgb(216, 69, 47)');
   });
 
+  it('shows the true closed count when the list is cut short', () => {
+    render(<ReportsScreen {...base} closedCount={73} />);
+    expect(within(screen.getByRole('navigation', { name: 'Filter reports' })).getByRole('link', { name: 'Closed 73' })).toBeInTheDocument();
+  });
+
   it('shows closed pages with their outcome and no actions', () => {
     render(<ReportsScreen {...base} status="closed" />);
 

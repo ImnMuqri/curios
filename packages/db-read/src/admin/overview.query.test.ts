@@ -188,6 +188,24 @@ describe('getOverview', () => {
     expect(o.needsYou.reported.top).toEqual({ displayName: 'Chip', count: 2, reason: 'SCAM', today: false });
   });
 
+  it('names the page with the most reports today, not the one with the most open ones', async () => {
+    // Gifted gets three older open reports: four open against Chip's two, but none of them today.
+    const older = await Promise.all(
+      [1, 2, 3].map((i) =>
+        write.report.create({ data: { pageId: ids.Gifted!, reason: 'OTHER', reporterIpHash: `old${i}`, createdAt: new Date(MIDNIGHT.getTime() - i * 3_600_000) }, select: { id: true } }),
+      ),
+    );
+    try {
+      const today = await getOverview('7d', NOW);
+      expect(today.needsYou.reported).toEqual({ pages: 2, top: { displayName: 'Chip', count: 2, reason: 'SCAM', today: true } });
+      // Two days on none is from today: the most open reports wins, with all of them counted.
+      const later = await getOverview('7d', new Date(NOW.getTime() + 2 * DAY));
+      expect(later.needsYou.reported).toEqual({ pages: 2, top: { displayName: 'Gifted', count: 4, reason: 'OTHER', today: false } });
+    } finally {
+      await write.report.deleteMany({ where: { id: { in: older.map((r) => r.id) } } });
+    }
+  });
+
   it('counts live pages and kinds', async () => {
     const o = await getOverview('today', NOW);
     // published and not suspended: Chip, Gifted, Old, Ending, EndingGrant, Fresh

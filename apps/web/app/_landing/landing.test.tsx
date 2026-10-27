@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { defaultSettings } from '@curios/core/settings';
+import { raisedSettings } from '@curios/core/test-settings';
 import { LandingPage, landingMetadata } from './LandingPage.js';
 import { COPY, landingCopy } from './copy.js';
 import { structuredData } from './structured-data.js';
@@ -209,8 +210,7 @@ describe('pricing', () => {
 });
 
 describe('pricing, at the prices the admin set', () => {
-  /** The shared fixture: price.MONTHLY at 5900, five free leads. */
-  const RAISED = { ...defaultSettings(), freeLeads: 5, prices: { ...defaultSettings().prices, MONTHLY: 5900 } };
+  const RAISED = raisedSettings({ freeLeads: 5 });
 
   it('shows the price in force, in both languages, and the calculator counts it', () => {
     render(<LandingPage locale="en" terms={RAISED} />);
@@ -219,6 +219,19 @@ describe('pricing, at the prices the admin set', () => {
     expect(within(pricing).getByRole('heading', { level: 2 })).toHaveTextContent('Free to be asked. RM59 when you’re selling.');
     expect(landingCopy('ms', RAISED).pricing.title).toBe('Percuma untuk ditanya. RM59 bila anda menjual.');
     expect(landingCopy('en', RAISED).pricing.monthlyRinggit).toBe(59);
+  });
+
+  it('prints a price with sen to two places, never RM49.5', () => {
+    const SEN = { ...defaultSettings(), prices: { MONTHLY: 4950, ANNUAL: 49050 } };
+    const en = landingCopy('en', SEN).pricing;
+    expect(en.title).toBe('Free to be asked. RM49.50 when you’re selling.');
+    expect(en.business.monthly).toBe('RM49.50');
+    expect(en.business.yearly).toBe('RM490.50');
+    expect(en.business.noteYearly).toBe('RM40.88 a month, paid once a year.');
+    expect(landingCopy('ms', SEN).pricing.title).toBe('Percuma untuk ditanya. RM49.50 bila anda menjual.');
+    // The calculator's bar says the same, not RM49.5.
+    render(<LandingPage locale="en" terms={SEN} />);
+    expect(within(document.querySelector('#pricing') as HTMLElement).getByText('Curios Business · RM49.50')).toBeInTheDocument();
   });
 
   it('counts the free leads in force', () => {

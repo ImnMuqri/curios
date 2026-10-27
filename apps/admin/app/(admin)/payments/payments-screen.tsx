@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { ringgit } from '@curios/core/money';
 import type { Payments, Period, PaymentRowStatus, WebhookRow } from '@curios/db-read/admin';
 import { apiFetch } from '../../../lib/api.js';
 import { PERIODS } from '../period.js';
@@ -12,9 +13,6 @@ import ui from '../ui.module.css';
 import styles from './payments.module.css';
 
 const int = (n: number) => n.toLocaleString('en-US');
-/** Cents as "RM98,340", or "RM12.50" when not whole. */
-const rm = (cents: number) =>
-  `RM${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: cents % 100 === 0 ? 0 : 2, maximumFractionDigits: 2 })}`;
 
 /** The board's status colours. */
 const STATUS_COLOUR: Record<PaymentRowStatus, string> = {
@@ -91,7 +89,7 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
   }
 
   const figures = [
-    { value: rm(p.receivedCents), label: `Received, ${phrase}`, note: '', red: false },
+    { value: ringgit(p.receivedCents), label: `Received, ${phrase}`, note: '', red: false },
     {
       value: int(p.paying.total),
       label: 'Paying for Business',
@@ -169,7 +167,7 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
                       {r.paidVia ?? '—'}
                     </div>
                     <div className={`${ui.c} ${ui.right}`} role="cell">
-                      <b>{rm(r.amountCents)}</b>
+                      <b>{ringgit(r.amountCents)}</b>
                     </div>
                     <div className={ui.c} role="cell">
                       <span className={ui.st}>
@@ -223,7 +221,7 @@ export function PaymentsScreen({ payments: p, period, now }: { payments: Payment
             <div className={`${ui.box} ${styles.shop}`}>
               <p className={styles.shopHead}>Shop orders paid online, this month</p>
               <p className={styles.shopFig}>
-                {int(p.shop.orders)} {p.shop.orders === 1 ? 'order' : 'orders'} · {rm(p.shop.totalCents)}
+                {int(p.shop.orders)} {p.shop.orders === 1 ? 'order' : 'orders'} · {ringgit(p.shop.totalCents)}
               </p>
               <p className={styles.shopHead}>Across {int(p.shop.shops)} {p.shop.shops === 1 ? 'shop' : 'shops'}. Owners’ money, shown for scale only.</p>
             </div>

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { extendPaidUntil } from '@curios/core';
 import { defaultSettings, fallbackSettings, type Settings } from '@curios/core/settings';
+import { raisedSettings } from '@curios/core/test-settings';
 import { ChipUnavailableError, type ChargeResult, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { runAutoRenewals } from './auto-renew.js';
 import type { MailQueueLike } from './renewal-reminder.js';
@@ -148,7 +149,7 @@ describe('runAutoRenewals', () => {
   it('charges the price in force on the day: with price.MONTHLY at 5900, the renewal is 5900', async () => {
     const page = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
     const client = aChip();
-    const raised = { ...defaultSettings(), prices: { ...defaultSettings().prices, MONTHLY: 5900 } };
+    const raised = raisedSettings();
 
     expect(await run(client, aMailQueue(), { settings: { get: async () => raised } })).toMatchObject({ charged: 1 });
 

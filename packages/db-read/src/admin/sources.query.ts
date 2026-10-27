@@ -39,12 +39,17 @@ const FILTERS: Record<SourceFilter, Prisma.IngestionWhereInput> = {
   done: { status: 'SUCCEEDED' },
 };
 
+/** The row ellipsises long labels in CSS; this only keeps a pathological URL from filling the payload. */
+const LABEL_MAX = 200;
+
 function sourceLabel(row: { sourceUrl: string | null; fileName: string | null }): string {
   if (row.fileName) return row.fileName;
   if (row.sourceUrl) {
     try {
       const url = new URL(row.sourceUrl);
-      return url.pathname === '/' ? url.host : `${url.host}${url.pathname}`;
+      // Host, path and query: two reads of one page with different queries must not look alike.
+      const label = `${url.host}${url.pathname === '/' ? '' : url.pathname}${url.search}`;
+      return label.length > LABEL_MAX ? `${label.slice(0, LABEL_MAX - 1)}…` : label;
     } catch {
       return row.sourceUrl;
     }

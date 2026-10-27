@@ -3,6 +3,7 @@ import { render, screen, within } from '@testing-library/react';
 import { DOCS, LEGAL_DOCS, LEGAL_PATH, OPERATOR, type Block } from './content.js';
 import { LegalPage, legalMetadata } from './LegalPage.js';
 import { defaultSettings } from '@curios/core/settings';
+import { raisedSettings } from '@curios/core/test-settings';
 
 /** The prices and allowances in force: the defaults, as a database with no rows gives. */
 const PLAN = defaultSettings();
@@ -36,8 +37,7 @@ describe('LegalPage', () => {
   });
 
   it('states the prices and free counts in force, in both languages', () => {
-    /** The shared fixture: price.MONTHLY at 5900, five free leads. */
-    const raised = { ...PLAN, freeLeads: 5, prices: { ...PLAN.prices, MONTHLY: 5900 } };
+    const raised = raisedSettings({ freeLeads: 5 });
     const { unmount } = render(<LegalPage doc="terms" locale="en" plan={raised} />);
     expect(document.body).toHaveTextContent('its first 5 leads and its first 3 orders cost nothing. After that, the Business plan is RM59 a month or RM490 a year.');
     unmount();

@@ -24,7 +24,7 @@ beforeAll(async () => {
   pageId = account.pages[0]!.id;
 
   const at = (ago: number) => new Date(NOW.getTime() - ago);
-  await read({ sourceUrl: 'https://example.com/menu', status: 'SUCCEEDED', extractedCount: 12, createdAt: at(6 * DAY), updatedAt: new Date(at(6 * DAY).getTime() + 10_000) });
+  await read({ sourceUrl: 'https://example.com/menu?lang=ms&page=2', status: 'SUCCEEDED', extractedCount: 12, createdAt: at(6 * DAY), updatedAt: new Date(at(6 * DAY).getTime() + 10_000) });
   await read({ sourceUrl: 'https://example.com/', status: 'SUCCEEDED', extractedCount: 4, createdAt: at(5 * DAY), updatedAt: new Date(at(5 * DAY).getTime() + 30_000) });
   // A URL read that succeeded outside the 7 days, and a pasted one: neither is "typical".
   await read({ sourceUrl: 'https://example.com/old', status: 'SUCCEEDED', createdAt: at(9 * DAY), updatedAt: new Date(at(9 * DAY).getTime() + 900_000) });
@@ -50,6 +50,8 @@ describe('listSources', () => {
     expect(rows.find((r) => r.source === 'Pasted text')).toMatchObject({ status: 'Done' });
     expect(rows.find((r) => r.source === 'cv.pdf')).toMatchObject({ status: 'Done' });
     expect(rows.find((r) => r.source === 'example.com')).toMatchObject({ facts: 4 });
+    // The query string stays: it is part of what was read.
+    expect(rows.find((r) => r.source === 'example.com/menu?lang=ms&page=2')).toMatchObject({ facts: 12 });
   });
 
   it('reads a failed Instagram link as Walled', async () => {

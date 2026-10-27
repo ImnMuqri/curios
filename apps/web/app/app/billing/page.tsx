@@ -11,9 +11,10 @@ import {
   type OrderState,
   type PlanState,
 } from '@curios/core';
+import { ringgit } from '@curios/core/money';
 import { countLeadsThisMonth, countOrdersThisMonth, getConversationUsage, getOwnerPage, getRecentPayments, getRenewalCard, getSettings, getSignInMethods } from '@curios/db-read';
 import { resolveOwner } from '../session.js';
-import { cardOffBanner, daysLeft, paymentBanner, paymentParts, planBadge, planSummary, ringgit, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
+import { cardOffBanner, daysLeft, paymentBanner, paymentParts, planBadge, planSummary, shortDate, shortDateFrom, usageResets } from './billing-copy.js';
 import { AutoRenew } from './auto-renew.js';
 import { PayButtons, type PayOption } from './pay-buttons.js';
 import { ResetTrial } from './reset-button.js';

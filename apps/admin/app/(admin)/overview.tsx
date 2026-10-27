@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ringgit } from '@curios/core/money';
 import type { ReportReasonKey } from '@curios/core/report';
 import type { Overview as OverviewData, Period } from '@curios/db-read/admin';
 import { PERIODS } from './period.js';
@@ -6,7 +7,8 @@ import ui from './ui.module.css';
 import styles from './overview.module.css';
 
 const int = (n: number) => n.toLocaleString('en-US');
-const rm = (cents: number) => `RM${int(Math.round(cents / 100))}`;
+/** Revenue to the whole ringgit, as the board draws it. */
+const rm = (cents: number) => ringgit(Math.round(cents / 100) * 100);
 // The gateway counts AI cost in thousandths of a US cent: 100,000 to the dollar.
 const usd = (milliCents: number, decimals: number) => `US$${(milliCents / 100_000).toFixed(decimals)}`;
 

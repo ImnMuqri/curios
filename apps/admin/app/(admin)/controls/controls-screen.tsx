@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { ringgit } from '@curios/core/money';
 import { BANNER_MAX, PRICE_MAX_RM, type Settings, type SwitchKey } from '@curios/core/settings';
 import { ApiError, apiFetch } from '../../../lib/api.js';
 import { ReasonDialog } from '../reason-dialog.js';
@@ -22,18 +23,23 @@ const LIMITS: { key: LimitField; title: string; subline: string; unit: string; m
 
 type Values = Record<LimitField, string>;
 
-/** What the server holds now, as the inputs show it: prices in whole RM. */
+/** A price in RM as the input shows it: 49, or 49.50 for a stored price with sen (Controls saves whole RM only). */
+const rmField = (cents: number) => (cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2));
+
+/** What the server holds now, as the inputs show it: prices in RM, with sen only when stored with sen. */
 function savedValues(s: Settings): Values {
   return {
     cap: String(s.cap),
     freeLeads: String(s.freeLeads),
     freeOrders: String(s.freeOrders),
-    monthlyRm: String(s.prices.MONTHLY / 100),
-    yearlyRm: String(s.prices.ANNUAL / 100),
+    monthlyRm: rmField(s.prices.MONTHLY),
+    yearlyRm: rmField(s.prices.ANNUAL),
   };
 }
 
-const validField = (l: (typeof LIMITS)[number], v: string) => /^\d+$/.test(v) && Number(v) >= l.min && Number(v) <= l.max;
+/** Whole numbers in range. A stored price with sen is also fine while it is left as it is: it is never sent. */
+const validField = (l: (typeof LIMITS)[number], v: string, stored: string) =>
+  (v === stored && stored.includes('.')) || (/^\d+$/.test(v) && Number(v) >= l.min && Number(v) <= l.max);
 const show = (l: (typeof LIMITS)[number], v: string) => (l.rm ? `RM${v}` : v);
 
 /** Shown in place of the form when the stored settings can't be read: no switches, limits or banner. */
@@ -75,7 +81,7 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
   }, [toast]);
 
   const changed = LIMITS.filter((l) => values[l.key] !== saved[l.key]);
-  const valid = LIMITS.every((l) => validField(l, values[l.key]));
+  const valid = LIMITS.every((l) => validField(l, values[l.key], saved[l.key]));
   const dirty = changed.length > 0;
   const live = settings.banner !== null;
 
@@ -256,14 +262,16 @@ export function ControlsScreen({ settings }: { settings: Settings }) {
                   <span>
                     <b>{l.title}</b>
                     <small>{l.subline}</small>
+                    {l.rm && saved[l.key].includes('.') && <small>Stored as {ringgit(Math.round(Number(saved[l.key]) * 100))}; saving rounds to whole RM</small>}
                   </span>
                   <span className={styles.in}>
                     <input
                       inputMode="numeric"
                       aria-label={l.title}
-                      aria-invalid={!validField(l, values[l.key])}
+                      aria-invalid={!validField(l, values[l.key], saved[l.key])}
                       value={values[l.key]}
-                      onChange={(e) => setValues({ ...values, [l.key]: e.target.value.replace(/[^0-9]/g, '') })}
+                      // Editing a price shown with sen starts from its whole ringgit: "49.5" must not become 495.
+                      onChange={(e) => setValues({ ...values, [l.key]: (values[l.key].includes('.') ? e.target.value.split('.')[0]! : e.target.value).replace(/[^0-9]/g, '') })}
                     />
                     <span>{l.unit}</span>
                   </span>

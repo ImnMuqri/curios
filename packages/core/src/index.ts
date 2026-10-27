@@ -28,6 +28,7 @@ export { PUBLIC_PAGE_WHERE, isPageLive } from './visibility.js';
 export { hashSessionValue } from './session-hash.js';
 export { FLAG_OVER, isFlagged, REPORT_DETAILS_MAX, REPORT_REASON_KEYS, REPORT_REASONS, type ReportReasonKey } from './report.js';
 export { SESSION_ABSOLUTE_TTL_MS, SESSION_IDLE_TTL_MS } from './session.js';
+export { ringgit } from './money.js';
 export { SESSION_COOKIE } from './cookie.js';
 export { isAddressLiteral, isBlockedAddress } from './address.js';
 export {

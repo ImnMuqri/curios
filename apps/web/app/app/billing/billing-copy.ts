@@ -1,4 +1,5 @@
 import type { PlanState } from '@curios/core';
+import { ringgit } from '@curios/core/money';
 import type { OwnerPayment } from '@curios/db-read';
 
 const MALAYSIAN_DATE: Intl.DateTimeFormatOptions = {
@@ -44,11 +45,6 @@ export function daysLeft(until: Date, now: Date): number {
 /** When this month's conversations start again: the first of next month, as the counter keys it (UTC). */
 export function usageResets(now: Date): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
-}
-
-/** Whole ringgit without decimals, the way the prices are published: RM49, RM490. */
-export function ringgit(cents: number): string {
-  return cents % 100 === 0 ? `RM${cents / 100}` : `RM${(cents / 100).toFixed(2)}`;
 }
 
 /** `freeLeads`: the allowance in force, the one `state` was counted against. */
