@@ -80,6 +80,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // ModelCall is not reached by the Account cascade.
+  await write.$executeRawUnsafe('TRUNCATE "ModelCall"');
   await write.$disconnect();
 });
 

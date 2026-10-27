@@ -133,6 +133,8 @@ afterAll(async () => {
   // content-hashed key does not benefit from -- so the cleanup belongs here,
   // once, after every test in this file has run.
   await app.prisma.$executeRawUnsafe('TRUNCATE "QuestionEmbedding"');
+  // ModelCall does not cascade from Account either, and every answer here writes one.
+  await app.prisma.$executeRawUnsafe('TRUNCATE "ModelCall"');
   await app.close();
 });
 

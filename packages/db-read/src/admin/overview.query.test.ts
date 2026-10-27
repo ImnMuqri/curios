@@ -119,6 +119,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // Neither table is reached by the Account cascade.
+  await write.$executeRawUnsafe('TRUNCATE "ModelCall"');
   await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
   await write.$disconnect();
 });

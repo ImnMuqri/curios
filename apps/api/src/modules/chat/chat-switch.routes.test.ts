@@ -75,6 +75,8 @@ beforeAll(async () => {
 afterAll(async () => {
   // SystemSetting is reached by no truncate cascade: this suite removes its own row.
   await app.prisma.systemSetting.deleteMany({ where: { key: 'switch.chat' } });
+  // Nor is ModelCall: the answers this suite lets through write one each.
+  await app.prisma.$executeRawUnsafe('TRUNCATE "ModelCall"');
   await app.close();
 });
 
