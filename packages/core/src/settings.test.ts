@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { BANNER_MAX, createSettingsCache, defaultSettings, isBigPriceChange, resolveSettings } from './settings.js';
+import { BANNER_MAX, createSettingsCache, defaultSettings, fallbackSettings, isBigPriceChange, isFallbackSettings, resolveSettings } from './settings.js';
 
 describe('resolveSettings', () => {
   it('is the defaults when nothing is stored', () => {
@@ -19,7 +19,7 @@ describe('resolveSettings', () => {
     const s = resolveSettings([
       { key: 'switch.chat', value: false },
       { key: 'cap', value: 50 },
-      { key: 'freeLeads', value: 0 },
+      { key: 'freeLeads', value: 1 },
       { key: 'freeOrders', value: 10 },
       { key: 'price.MONTHLY', value: 5900 },
       { key: 'price.ANNUAL', value: 59000 },
@@ -28,7 +28,7 @@ describe('resolveSettings', () => {
     expect(s.switches.chat).toBe(false);
     expect(s.switches.signups).toBe(true);
     expect(s.cap).toBe(50);
-    expect(s.freeLeads).toBe(0);
+    expect(s.freeLeads).toBe(1);
     expect(s.freeOrders).toBe(10);
     expect(s.prices).toEqual({ MONTHLY: 5900, ANNUAL: 59000 });
     expect(s.banner).toBe('Back at 3pm');
@@ -43,6 +43,8 @@ describe('resolveSettings', () => {
     ['cap', 0],
     ['cap', '200'],
     ['freeLeads', -1],
+    ['freeLeads', 0],
+    ['freeOrders', 0],
     ['freeOrders', 1.5],
     ['price.MONTHLY', 49.5],
     ['price.ANNUAL', 99],
@@ -112,6 +114,17 @@ describe('a malformed cap override', () => {
   });
 });
 
+describe('fallbackSettings', () => {
+  it('is the defaults, marked, without the mark showing in a copy or a comparison', () => {
+    const f = fallbackSettings();
+    expect(f).toEqual(defaultSettings());
+    expect(isFallbackSettings(f)).toBe(true);
+    expect(isFallbackSettings(defaultSettings())).toBe(false);
+    expect(Object.keys(f)).toEqual(Object.keys(defaultSettings()));
+    expect(JSON.parse(JSON.stringify(f))).toEqual(defaultSettings());
+  });
+});
+
 describe('createSettingsCache', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
@@ -128,6 +141,29 @@ describe('createSettingsCache', () => {
     await vi.advanceTimersByTimeAsync(1_500);
     await cache.get();
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('marks the defaults it falls back to on a cold failure, and only those', async () => {
+    const load = vi.fn().mockRejectedValueOnce(new Error('down')).mockResolvedValue(defaultSettings());
+    const cache = createSettingsCache(load, { ttlMs: 1_000 });
+    const cold = await cache.get();
+    expect(cold).toEqual(defaultSettings());
+    expect(isFallbackSettings(cold)).toBe(true);
+    // Cached as a fallback for the window, so every reader in it sees the mark.
+    expect(isFallbackSettings(await cache.get())).toBe(true);
+    await vi.advanceTimersByTimeAsync(1_500);
+    expect(isFallbackSettings(await cache.get())).toBe(false);
+  });
+
+  it('does not mark the last good value it keeps serving after a failure', async () => {
+    const good = { ...defaultSettings(), cap: 80 };
+    const load = vi.fn().mockResolvedValueOnce(good).mockRejectedValue(new Error('down'));
+    const cache = createSettingsCache(load, { ttlMs: 1_000 });
+    await cache.get();
+    await vi.advanceTimersByTimeAsync(1_500);
+    const kept = await cache.get();
+    expect(kept.cap).toBe(80);
+    expect(isFallbackSettings(kept)).toBe(false);
   });
 
   it('does not let a load that was running at clear() write its old answer back', async () => {

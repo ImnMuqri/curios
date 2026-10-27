@@ -1,7 +1,7 @@
 import type { BillingPlan } from '@curios/core';
 import type { PrismaClient } from '@curios/db';
 import { billDescription, type ChipClient } from '@curios/billing';
-import type { Settings } from '@curios/core/settings';
+import { isFallbackSettings, type Settings } from '@curios/core/settings';
 import { NoPageError } from '../pages/page.service.js';
 import { PaymentsOffError } from '../../lib/switches.js';
 
@@ -36,7 +36,9 @@ const PURCHASE_LIFETIME_MS = 60 * 60 * 1000;
  * that row stays PENDING with no providerRef, which is harmless: no purchase can ever
  * match it, and the hourly check skips rows without one.
  *
- * Refused, with nothing written, while the admin has CHIP payments switched off.
+ * Refused, with nothing written, while the admin has CHIP payments switched off, and while the
+ * settings are the defaults standing in for ones that could not be read: those may not be the
+ * prices the admin set, so nobody is billed at them (same 503, same sentence: try again soon).
  */
 export async function createPurchaseForOwner(
   deps: {
@@ -51,7 +53,7 @@ export async function createPurchaseForOwner(
   },
   input: { accountId: string; plan: BillingPlan; autoRenew: boolean; now: Date },
 ): Promise<{ url: string }> {
-  if (!deps.settings.switches.chipPayments) throw new PaymentsOffError();
+  if (!deps.settings.switches.chipPayments || isFallbackSettings(deps.settings)) throw new PaymentsOffError();
   const page = await deps.prisma.page.findUnique({
     where: { accountId: input.accountId },
     select: { id: true, mode: true, displayName: true, account: { select: { email: true } } },

@@ -94,5 +94,14 @@ export {
 export type { ItemKind } from './digital.js';
 export { clockText, digitalDeliveryMail, paidAndSentOwnerMail, sessionReminderMail, sessionTimeText } from './digital-mail.js';
 export type { DigitalDeliveryMailInput, DigitalMailItem, MailLang, PaidAndSentOwnerMailInput, SessionReminderMailInput } from './digital-mail.js';
-export { BANNER_MAX, createSettingsCache, defaultSettings, isBigPriceChange, PRICE_MAX_RM, resolveSettings } from './settings.js';
+export {
+  BANNER_MAX,
+  createSettingsCache,
+  defaultSettings,
+  fallbackSettings,
+  isBigPriceChange,
+  isFallbackSettings,
+  PRICE_MAX_RM,
+  resolveSettings,
+} from './settings.js';
 export type { LimitKey, PlanTerms, Settings, SettingsCache, SwitchKey } from './settings.js';

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { extendPaidUntil } from '@curios/core';
-import { defaultSettings, type Settings } from '@curios/core/settings';
+import { defaultSettings, fallbackSettings, type Settings } from '@curios/core/settings';
 import { ChipUnavailableError, type ChargeResult, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { runAutoRenewals } from './auto-renew.js';
 import type { MailQueueLike } from './renewal-reminder.js';
@@ -205,6 +205,45 @@ describe('runAutoRenewals', () => {
 
     expect(await run(client, mailQueue)).toMatchObject({ charged: 1 });
     expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
+  });
+
+  it('skips the run when the settings could not be read, and charges on the next run once they can', async () => {
+    const paidUntil = at(12 * HOUR_MS);
+    const page = await aRenewingPage({ paidUntil });
+    const lapsed = await aRenewingPage({ paidUntil: at(-4 * DAY_MS) });
+    const client = aChip();
+    const mailQueue = aMailQueue();
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    // The defaults may not be the admin's prices: nothing is charged at them.
+    expect(await run(client, mailQueue, { settings: { get: async () => fallbackSettings() }, log })).toEqual({ charged: 0, pending: 0, failed: 0, stopped: 0 });
+    expect(client.createPurchase).not.toHaveBeenCalled();
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    expect(await cardOf(page.pageId)).toMatchObject({ lastAttemptAt: null });
+    expect(await cardOf(lapsed.pageId)).not.toBeNull();
+    expect(log.info).toHaveBeenCalledWith({}, 'auto-renew skipped: the settings could not be read');
+
+    expect(await run(client, mailQueue)).toMatchObject({ charged: 1 });
+    expect(await paidUntilOf(page.pageId)).toEqual(extendPaidUntil({ paidUntil, now: NOW, plan: 'MONTHLY' }));
+  });
+
+  it('charges no further card once the settings stop being readable mid-run', async () => {
+    const first = await aRenewingPage({ paidUntil: at(6 * HOUR_MS) });
+    const second = await aRenewingPage({ paidUntil: at(12 * HOUR_MS) });
+    const client = aChip();
+    let readable = true;
+    const charge = client.chargePurchase.getMockImplementation()!;
+    client.chargePurchase.mockImplementation(async (id, token) => {
+      const result = await charge(id, token);
+      readable = false;
+      return result;
+    });
+    const settings = { get: async () => (readable ? defaultSettings() : fallbackSettings()) };
+
+    expect(await run(client, aMailQueue(), { settings })).toEqual({ charged: 1, pending: 0, failed: 0, stopped: 0 });
+    expect(await renewalsOf(first.pageId)).toHaveLength(1);
+    expect(await renewalsOf(second.pageId)).toEqual([]);
+    expect(await cardOf(second.pageId)).toMatchObject({ lastAttemptAt: null });
   });
 
   it('charges no further card once CHIP payments are turned off mid-run, and charges it on the next run', async () => {

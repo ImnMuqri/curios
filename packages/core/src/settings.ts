@@ -48,6 +48,29 @@ export function defaultSettings(): Settings {
   };
 }
 
+/**
+ * The mark on settings that are the defaults only because nothing could be read. Non-enumerable and
+ * keyed by a registered symbol, so the object compares, spreads into JSON and prints as plain
+ * defaults, and the mark survives being handed from module to module.
+ */
+const FALLBACK = Symbol.for('curios.settings.fallback');
+
+/** The defaults, marked as a fallback: what a reader gives when the stored settings can't be read. */
+export function fallbackSettings(): Settings {
+  const s = defaultSettings();
+  Object.defineProperty(s, FALLBACK, { value: true, enumerable: false });
+  return s;
+}
+
+/**
+ * True when these are the defaults standing in for settings that could not be read. Anything that
+ * charges money (a plan purchase, an auto-renewal) refuses these: the defaults may not be the prices
+ * the admin set. Reading paths (copy, limits, switches) use them as they are.
+ */
+export function isFallbackSettings(s: Settings): boolean {
+  return (s as unknown as Record<symbol, unknown>)[FALLBACK] === true;
+}
+
 const isInt = (v: unknown, min: number): v is number => typeof v === 'number' && Number.isInteger(v) && v >= min;
 
 /**
@@ -71,10 +94,11 @@ export function resolveSettings(
       if (isInt(value, 1)) s.cap = value;
       else ok = false;
     } else if (key === 'freeLeads') {
-      if (isInt(value, 0)) s.freeLeads = value;
+      // At least 1: a trial with no free lead or order would stop at its first one.
+      if (isInt(value, 1)) s.freeLeads = value;
       else ok = false;
     } else if (key === 'freeOrders') {
-      if (isInt(value, 0)) s.freeOrders = value;
+      if (isInt(value, 1)) s.freeOrders = value;
       else ok = false;
     } else if (key === 'price.MONTHLY' || key === 'price.ANNUAL') {
       if (isInt(value, 100)) s.prices[key === 'price.MONTHLY' ? 'MONTHLY' : 'ANNUAL'] = value;
@@ -103,7 +127,8 @@ export interface SettingsCache {
  * The 30-second cache both readers share (the API's in @curios/db, the web's in @curios/db-read).
  * Concurrent gets share one load. A failed load keeps serving the last good value, or the defaults
  * when there has been none, and tells `onError`; it is not retried until the TTL has passed, so a
- * database that is down is asked once per window, not once per request.
+ * database that is down is asked once per window, not once per request. Those defaults are marked
+ * (`isFallbackSettings`), so a charge can refuse them; a last good value is not marked.
  */
 export function createSettingsCache(
   load: () => Promise<Settings>,
@@ -132,7 +157,7 @@ export function createSettingsCache(
       };
       inflight = load().then(settle, (err: unknown) => {
         opts.onError?.(err);
-        return settle(value ?? defaultSettings());
+        return settle(value ?? fallbackSettings());
       });
       return inflight;
     },

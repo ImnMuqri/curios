@@ -2,6 +2,7 @@ import { generateKeyPairSync, randomUUID, sign as cryptoSign } from 'node:crypto
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { MAIL_QUEUE } from '@curios/core';
+import { fallbackSettings } from '@curios/core/settings';
 import { CHIP_ENV, ChipRefusedError, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { buildApp } from '../../app.js';
 import type { BillingRouteOptions } from './billing.routes.js';
@@ -242,6 +243,22 @@ describe('POST /billing/purchases', () => {
       expect(client.createPurchase).not.toHaveBeenCalled();
     } finally {
       await paymentsSwitch(true);
+    }
+    expect((await start(owner.cookie)).statusCode).toBe(201);
+  });
+
+  it('is a 503 PAYMENTS_OFF, with no payment and no purchase, while the settings could not be read', async () => {
+    const owner = await anOwner();
+    // The defaults stand in for prices nobody could read; a purchase is never started at them.
+    const get = vi.spyOn(app.settings, 'get').mockResolvedValue(fallbackSettings());
+    try {
+      const res = await start(owner.cookie);
+      expect(res.statusCode).toBe(503);
+      expect(res.json().error).toEqual({ code: 'PAYMENTS_OFF', message: 'Online payments are paused for a moment. Try again soon.' });
+      expect(await app.prisma.payment.count({ where: { pageId: owner.pageId } })).toBe(0);
+      expect(client.createPurchase).not.toHaveBeenCalled();
+    } finally {
+      get.mockRestore();
     }
     expect((await start(owner.cookie)).statusCode).toBe(201);
   });
