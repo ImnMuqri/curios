@@ -21,6 +21,13 @@ describe('the report page', () => {
     expect((await generateMetadata(params('nadia'))).robots).toEqual({ index: false, follow: false });
   });
 
+  it('titles the tab in the page’s language', async () => {
+    vi.mocked(getPublicPage).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', language: 'ms' } as never);
+    expect((await generateMetadata(params('nadia'))).title).toBe('Laporkan Nadia Bakes');
+    vi.mocked(getPublicPage).mockResolvedValue({ handle: 'nadia', displayName: 'Nadia Bakes', language: 'en' } as never);
+    expect((await generateMetadata(params('nadia'))).title).toBe('Report Nadia Bakes');
+  });
+
   it('shows what the page shows when it is suspended, and 404s when it is missing', async () => {
     vi.mocked(getPublicPage).mockResolvedValue(null);
     vi.mocked(getPageAvailability).mockResolvedValue({ status: 'suspended', language: 'en' });

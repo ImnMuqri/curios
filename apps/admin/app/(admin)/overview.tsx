@@ -60,7 +60,7 @@ function stats(o: OverviewData, phrase: string, period: Period): Stat[] {
   ];
 }
 
-/** The short noun the Needs you subline puts before "reports": "4 scam reports". */
+/** The short noun the Needs you subline puts before "report(s)": "4 scam reports", "1 scam report". */
 const REASON_NOUN: Record<ReportReasonKey, string> = {
   SCAM: 'scam',
   IMPERSONATION: 'impersonation',
@@ -71,7 +71,8 @@ const REASON_NOUN: Record<ReportReasonKey, string> = {
 
 function reportedSub(top: NonNullable<OverviewData['needsYou']['reported']['top']>): string {
   const noun = REASON_NOUN[top.reason];
-  const reports = noun ? `${noun} reports` : 'reports';
+  const word = top.count === 1 ? 'report' : 'reports';
+  const reports = noun ? `${noun} ${word}` : word;
   return top.today
     ? `${top.displayName} has ${top.count} ${reports} today`
     : `${top.displayName} has ${top.count} open ${reports}`;

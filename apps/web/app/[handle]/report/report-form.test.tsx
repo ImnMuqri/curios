@@ -51,6 +51,41 @@ describe('ReportForm', () => {
     expect(screen.getByRole('button', { name: 'Send report' })).toBeEnabled();
   });
 
+  it('says a failure in Malay on a Malay page, never the raw message', async () => {
+    render(
+      <ReportForm
+        displayName="Nadia Bakes"
+        language="ms"
+        onSubmit={vi.fn().mockRejectedValue(new ApiError(500, 'INTERNAL_ERROR', 'Something failed on our side. Try again.'))}
+      />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Lain-lain' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hantar laporan' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ada masalah. Cuba lagi.');
+  });
+
+  it('says a dropped connection in Malay too, and the 429 in Malay', async () => {
+    const onSubmit = vi.fn().mockRejectedValueOnce(new TypeError('Failed to fetch')).mockRejectedValueOnce(new ApiError(429, 'RATE_LIMITED', 'slow down'));
+    render(<ReportForm displayName="Nadia Bakes" language="ms" onSubmit={onSubmit} />);
+    await userEvent.click(screen.getByRole('radio', { name: 'Lain-lain' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Hantar laporan' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Ada masalah. Cuba lagi.');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hantar laporan' }));
+    expect(await screen.findByText('Terlalu banyak laporan dari sini. Cuba lagi nanti.')).toBeInTheDocument();
+  });
+
+  it('says a failure in English on an English page, never the raw message', async () => {
+    render(
+      <ReportForm displayName="Nadia Bakes" language="en" onSubmit={vi.fn().mockRejectedValue(new ApiError(404, 'PAGE_NOT_FOUND', 'No such page.'))} />,
+    );
+    await userEvent.click(screen.getByRole('radio', { name: 'Something else' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Send report' }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent('Something went wrong. Try again.');
+  });
+
   it('speaks Malay for a Malay page', async () => {
     const onSubmit = vi.fn().mockResolvedValue(null);
     render(<ReportForm displayName="Nadia Bakes" language="ms" onSubmit={onSubmit} />);

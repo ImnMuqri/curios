@@ -46,7 +46,7 @@ export function ReportForm({
       setSent(true);
     } catch (failure) {
       if (failure instanceof ApiError && failure.status === 429) setError(copy.tooMany);
-      else setError(failure instanceof Error ? failure.message : 'Something failed. Try again.');
+      else setError(copy.failed);
     } finally {
       setBusy(false);
     }

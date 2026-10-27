@@ -6,6 +6,8 @@ export interface ReportCopy {
   send: string;
   done: string;
   tooMany: string;
+  /** Any other failure: the API's own message is English, so the form never shows it. */
+  failed: string;
 }
 
 const EN: ReportCopy = {
@@ -15,6 +17,7 @@ const EN: ReportCopy = {
   send: 'Send report',
   done: 'Thanks. The Curios team will look at it.',
   tooMany: 'Too many reports from here. Try again later.',
+  failed: 'Something went wrong. Try again.',
 };
 
 const MS: ReportCopy = {
@@ -24,6 +27,7 @@ const MS: ReportCopy = {
   send: 'Hantar laporan',
   done: 'Terima kasih. Pasukan Curios akan menyemaknya.',
   tooMany: 'Terlalu banyak laporan dari sini. Cuba lagi nanti.',
+  failed: 'Ada masalah. Cuba lagi.',
 };
 
 export function reportCopy(language: string | undefined): ReportCopy {

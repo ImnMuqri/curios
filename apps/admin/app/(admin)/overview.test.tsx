@@ -148,6 +148,25 @@ describe('Overview', () => {
     expect(screen.getByText('Kedai Sri has 4 open reports')).toBeInTheDocument();
   });
 
+  it('says one report in the singular', () => {
+    const one = (reason: 'SCAM' | 'OTHER', today: boolean) =>
+      fixture({
+        needsYou: {
+          failedReads: 0,
+          atCap: { count: 0, names: [] },
+          plansEnding: 0,
+          webhooksFailed: { count: 0, latest: null },
+          reported: { pages: 1, top: { displayName: 'Kedai Sri', count: 1, reason, today } },
+        },
+      });
+    const { rerender } = render(<Overview overview={one('SCAM', true)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 1 scam report today')).toBeInTheDocument();
+    rerender(<Overview overview={one('SCAM', false)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 1 open scam report')).toBeInTheDocument();
+    rerender(<Overview overview={one('OTHER', true)} period="7d" cap={200} />);
+    expect(screen.getByText('Kedai Sri has 1 report today')).toBeInTheDocument();
+  });
+
   it('marks the current period and links the others', () => {
     render(<Overview overview={fixture()} period="30d" cap={200} />);
 

@@ -10,6 +10,8 @@ export interface AdminSourcesDeps {
   prisma: PrismaClient;
   queue: QueueLike;
   settings: Settings;
+  /** `request.log` fits it. Told about each source the queue would not take. */
+  log?: { warn: (obj: object, msg: string) => void };
 }
 
 /** How far back "retry all failed" looks, by when the row last changed. */
@@ -93,7 +95,9 @@ export async function retryFailedSources(
     try {
       await enqueueReading(deps, source);
       queued += 1;
-    } catch {
+    } catch (err) {
+      // Counted as skipped and the rest carry on, but not silently: the queue refusing is an outage.
+      deps.log?.warn({ ingestionId: source.id, err: err instanceof Error ? err.name : typeof err }, 'retry all failed: the queue would not take a source');
       skipped += 1;
     }
   }

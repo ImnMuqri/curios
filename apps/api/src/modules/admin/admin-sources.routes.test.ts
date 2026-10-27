@@ -5,6 +5,7 @@ import { ADMIN_COOKIE, INGEST_QUEUE } from '@curios/core';
 import { buildApp } from '../../app.js';
 import { hashPassword } from '../auth/password.service.js';
 import { createAdminSession } from './admin-session.service.js';
+import { retryFailedSources } from './admin-sources.service.js';
 
 let app: FastifyInstance;
 let previousOrigin: string | undefined;
@@ -176,6 +177,22 @@ describe('POST /admin/sources/retry-failed', () => {
     expect(res.json()).toEqual({ queued: 1, skipped: 1 });
     expect(add).toHaveBeenCalledTimes(2);
     expect(await app.prisma.ingestion.count({ where: { pageId, status: 'FAILED' } })).toBe(1);
+  });
+
+  it('logs a source the queue refused, by id and error name', async () => {
+    const s = await source({ status: 'FAILED', sourceUrl: 'https://a.example/' });
+    class RedisDown extends Error {
+      override name = 'RedisDown';
+    }
+    const log = { warn: vi.fn() };
+    const queue = { add: vi.fn(async () => Promise.reject(new RedisDown('connection refused'))) };
+    const result = await retryFailedSources(
+      { prisma: app.prisma, queue: queue as never, settings: await app.settings.get(), log },
+      { adminId, ip: '127.0.0.1' },
+      'Again',
+    );
+    expect(result).toEqual({ queued: 0, skipped: 1 });
+    expect(log.warn).toHaveBeenCalledWith({ ingestionId: s.id, err: 'RedisDown' }, 'retry all failed: the queue would not take a source');
   });
 
   it('is 409 READING_OFF while reading is off', async () => {
