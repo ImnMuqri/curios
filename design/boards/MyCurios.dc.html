@@ -559,6 +559,32 @@ a{color:#2340c8}a:hover{color:#122686}
 .tb-help:hover,.tb-ib:hover,.tb-acc:hover{background:rgba(255,255,255,.75);box-shadow:none}
 @media (max-width:1000px){.tb-help{display:none}.tb-who small{display:none}}
 @media (max-width:860px){.tb-who{display:none}.tb-acc{padding:0 4px}}
+
+/* account popover: plan at a glance (29 Oct) */
+.tb-accw{position:relative;flex:none}
+.tb-accw>summary{list-style:none}
+.tb-accw>summary::-webkit-details-marker{display:none}
+.tb-accw[open]>summary{background:rgba(255,255,255,.75)}
+.tb-accw[open]>summary svg{transform:rotate(180deg)}
+.tb-pop{position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:296px;padding:6px;border-radius:10px;background:#ffffff;box-shadow:0 0 0 1px #e3e6ec,0 12px 32px -8px rgba(25,31,44,.18);animation:tpIn 140ms ease both}
+@keyframes tpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.tp-hd{display:flex;align-items:center;gap:10px;padding:10px 10px 12px}
+.tp-hd i{display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:50%;background:#b5294e;color:#ffffff;font-style:normal;font-size:15px;font-weight:700}
+.tp-hd span{display:flex;flex-direction:column;min-width:0;line-height:1.3}
+.tp-hd b{font-size:14px;font-weight:600;color:#191f2c}
+.tp-hd small{font-size:12.5px;color:#5b6170;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tp-use{margin:0 4px 6px;padding:12px;border-radius:8px;background:#f5f6fa}
+.tp-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;font-size:12.5px;color:#5b6170}
+.tp-row b{font-weight:600;color:#191f2c}
+.tp-bar{display:block;height:6px;margin:8px 0 7px;border-radius:3px;background:#e3e6ec;overflow:hidden}
+.tp-bar i{display:block;height:100%;border-radius:3px;background:#2340c8}
+.tp-lnk{padding:0;border:0;background:none;font:inherit;font-size:12.5px;font-weight:600;color:#2340c8;cursor:pointer}
+.tp-it{display:flex;align-items:center;gap:11px;width:100%;height:38px;padding:0 10px;border:0;border-radius:7px;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#191f2c;text-align:left;cursor:pointer}
+.tp-it svg{width:17px;height:17px;flex:none;fill:none;stroke:#3f4554;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transform:none}
+.tp-it:hover{background:#f3f4f7}
+.tp-hr{display:block;height:1px;margin:6px 4px;background:#eceef2}
+.tp-out{color:#c4372d}.tp-out svg{stroke:#c4372d}
+.tp-out:hover{background:#fdf1f0}
 </style>
 </helmet>
 
@@ -584,7 +610,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </aside>
 
 <main class="main">
-<header class="v2topb"><p class="tb-crumb">Kek Lina<i aria-hidden="true">/</i><b>My Curios</b></p><button type="button" class="tb-help">Help</button><button type="button" class="tb-ib" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button><button type="button" class="tb-ib" aria-label="Notifications, 3 new"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4"></path></svg><u>3</u></button><span class="tb-vl" aria-hidden="true"></span><button type="button" class="tb-acc" aria-label="Account"><i>L</i><span class="tb-who"><b>Lina binti Kamal</b><small>Kek Lina · Business</small></span><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></button></header>
+<header class="v2topb"><p class="tb-crumb">Kek Lina<i aria-hidden="true">/</i><b>My Curios</b></p><button type="button" class="tb-help">Help</button><button type="button" class="tb-ib" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button><button type="button" class="tb-ib" aria-label="Notifications, 3 new"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4"></path></svg><u>3</u></button><span class="tb-vl" aria-hidden="true"></span><details class="tb-accw"><summary class="tb-acc" aria-label="Account"><i>L</i><span class="tb-who"><b>Lina binti Kamal</b><small>Kek Lina · Business</small></span><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></summary><div class="tb-pop" role="menu" aria-label="Account"><div class="tp-hd"><i>L</i><span><b>Lina binti Kamal</b><small>lina@keklina.example</small></span></div><div class="tp-use"><p class="tp-row"><span>Conversations this month</span><b>41 / 200</b></p><span class="tp-bar" aria-hidden="true"><i style="width: 20.5%"></i></span><p class="tp-row"><span>Business · paid until 14 Nov</span><button type="button" class="tp-lnk">Manage</button></p></div><button type="button" class="tp-it" role="menuitem"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"></path></svg>Settings</button><button type="button" class="tp-it" role="menuitem"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01"></path></svg>Help &amp; support</button><span class="tp-hr" aria-hidden="true"></span><button type="button" class="tp-it tp-out" role="menuitem"><svg viewBox="0 0 24 24"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11"></path></svg>Sign out</button></div></details></header>
 <div class="v2sheet">
 
 <div class="body">

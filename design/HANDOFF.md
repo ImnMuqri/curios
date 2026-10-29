@@ -629,3 +629,13 @@ Replaces the three white bordered boxes on the right of `.v2topb` in all ten das
 - Account button: round 32px avatar (initial on `#b5294e`), two lines: name (13.5px/600) and "{page name} · {plan}" (12px, `#5b6170`), then a grey chevron.
 - The count pill reads the unread alerts count; hide it at 0. The plan label comes from Billing.
 - Responsive: ≤1000px hides Help and the second line; ≤860px shows the avatar and chevron only; ≤760px the top bar is hidden as before.
+
+### Account popover: "plan at a glance" (29 Oct 2026)
+
+Opens from the account button in the top bar (boards use `<details class="tb-accw">`; build it as a real menu with focus handling, Esc and click-outside to close). Screen: `design/screens/Account-popover.desktop.jpg`. CSS is in the block marked `/* account popover: plan at a glance (29 Oct) */`.
+
+- 296px wide, white, 10px radius, 1px `#e3e6ec` ring plus a soft shadow, 8px below the button, right-aligned.
+- Top: 38px round avatar, name, sign-in email.
+- Plan card (`#f5f6fa`, 8px radius): "Conversations this month" with used / limit and a blue bar (same numbers as the Conversations meter in Billing; it resets on the 1st), then "{plan} · paid until {date}" and a **Manage** link to Billing. There is no auto-renew, so say "paid until", never "renews".
+- Rows: Settings, Help & support, divider, **Sign out** as a red row (`#c4372d`, hover `#fdf1f0`), not a boxed button.
+- Billing is no longer its own row, because the plan card's Manage link goes there.
