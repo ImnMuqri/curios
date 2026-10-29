@@ -152,8 +152,16 @@ describe('OrderDetail, who and where it is', () => {
     expect(steps().getAllByRole('listitem')[1]).toHaveAttribute('aria-current', 'step');
   });
 
+  it('draws the steps as four bars, one per step, without ticks', () => {
+    show(mira);
+    const bars = steps().getAllByRole('listitem').map((li) => li.querySelector('[data-state]')!);
+    expect(bars.map((bar) => bar.getAttribute('data-state'))).toEqual(['done', 'done', 'next', 'todo']);
+    for (const bar of bars) expect(bar.querySelector('svg')).toBeNull();
+  });
+
   it('says what was ordered, with each line, the delivery fee and the total', () => {
     show(awaiting);
+    expect(screen.getByRole('heading', { name: /^What Hakim bought/ })).toBeInTheDocument();
     expect(screen.getByText('1× Kek coklat moist')).toBeInTheDocument();
     expect(screen.getByText('2kg · RM170 each')).toBeInTheDocument();
     expect(screen.getByText('Delivery')).toBeInTheDocument();
@@ -181,7 +189,7 @@ describe('OrderDetail, the receipt', () => {
     expect(screen.getByText('Receipt to check')).toBeInTheDocument();
     expect(screen.getByText('receipt-mira.jpg')).toBeInTheDocument();
     expect(screen.getByText('Uploaded today, 10:09am')).toBeInTheDocument();
-    expect(screen.getByText('Check it landed in your account before you mark it paid.')).toBeInTheDocument();
+    expect(screen.getByText('Receipts can be edited. Check RM235 is in your bank before you mark it paid.')).toBeInTheDocument();
 
     const trigger = screen.getByRole('button', { name: 'Open the receipt' });
     trigger.focus();
@@ -206,11 +214,50 @@ describe('OrderDetail, the receipt', () => {
     expect(trigger).toHaveFocus();
   });
 
+  it('opens it large from View too, and gives focus back to View', () => {
+    show(mira);
+    const view = screen.getByRole('button', { name: 'View' });
+    view.focus();
+    fireEvent.click(view);
+    expect(screen.getByRole('dialog', { name: 'Receipt' })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(view).toHaveFocus();
+  });
+
+  // Nothing reads the receipt yet: the rows say what it should show and where that comes from, with no tick.
+  it('lists what the receipt should show: the order total, and the bank account to pay', () => {
+    render(
+      <OrderDetail
+        order={mira}
+        now={now}
+        pickupNote={null}
+        payTo={{ name: 'Maybank', accountName: 'Lina binti Kamal' }}
+        move={vi.fn()}
+        act={vi.fn()}
+        say={vi.fn()}
+        onChanged={vi.fn()}
+      />,
+    );
+    const amount = screen.getByText('Amount').parentElement!;
+    expect(amount).toHaveTextContent('AmountRM235.00Order total');
+    const payTo = screen.getByText('Paid to').parentElement!;
+    expect(payTo).toHaveTextContent('Paid toLina binti KamalMaybank');
+    expect(screen.queryByText('Matches')).toBeNull();
+    expect(screen.queryByText('Reference')).toBeNull();
+  });
+
+  it('leaves out Paid to when the shop has no bank account, only a QR', () => {
+    show(mira);
+    expect(screen.getByText('Amount')).toBeInTheDocument();
+    expect(screen.queryByText('Paid to')).toBeNull();
+  });
+
   it('opens a PDF receipt in its own tab instead of as a picture', () => {
     show({ ...mira, receiptUrl: 'https://cdn.example/receipts/p1/abc.pdf', receiptType: 'application/pdf' });
     expect(screen.getByRole('link', { name: 'Open the receipt' })).toHaveAttribute('href', 'https://cdn.example/receipts/p1/abc.pdf');
     expect(screen.getByText('receipt-mira.pdf')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open the receipt' })).toBeNull();
+    expect(screen.getByRole('link', { name: 'View' })).toHaveAttribute('href', 'https://cdn.example/receipts/p1/abc.pdf');
   });
 
   it('says no receipt is in yet, and where the customer pays', () => {

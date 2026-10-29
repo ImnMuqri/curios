@@ -109,11 +109,19 @@ const RAYS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
+/** "RM25.00": to the sen, as a bank receipt says it. */
+const exact = (cents: number) => `RM${(cents / 100).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 type Ask = { tone: 'biru' | 'grey' | 'hijau' | 'merah'; title: string; text: string; button: string; action: OrderAction; toast: string };
 
 /**
- * One order: who and when, its four steps, the one thing to do next, what
- * was ordered, the payment with its receipt, and how it gets to them.
+ * One order: who and when, its four steps, the one thing to do next, then
+ * two plain columns (Dashboard v2, no boxes): what was ordered, and the
+ * payment with its receipt and how it gets to them.
+ *
+ * The receipt's rows say what it should show: the order's total, and the
+ * bank account the order page told them to pay. Nothing reads the receipt
+ * itself yet, so there is no tick saying it matches (DEVIATIONS).
  *
  * The action box's words are the board's `ab`, word for word. Not received
  * (owner decision 3) sits beside Mark paid while a receipt is in; it removes
@@ -123,6 +131,7 @@ export function OrderDetail({
   order,
   now,
   pickupNote,
+  payTo = null,
   move,
   act,
   say,
@@ -132,6 +141,8 @@ export function OrderDetail({
   now: Date;
   /** Where pickup happens, as the Store settings say it. */
   pickupNote: string | null;
+  /** The bank account the order page shows to transfer to, as the Store settings say it; null with none (a QR only). */
+  payTo?: { name: string | null; accountName: string } | null;
   move: OrderMove;
   /** The owner's moves on what was sent by email: new links, a new code, another time, the email again. */
   act: DigitalAct;
@@ -147,7 +158,8 @@ export function OrderDetail({
   const [zoom, setZoom] = useState(false);
   const [sparks, setSparks] = useState(0);
   const inFlight = useRef(false);
-  const zoomTrigger = useRef<HTMLButtonElement>(null);
+  // Whichever opened the large receipt (the thumbnail or View), to hand focus back to.
+  const zoomTrigger = useRef<HTMLButtonElement | null>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
 
   const view = ownerView(order);
@@ -218,12 +230,10 @@ export function OrderDetail({
         ['Paid', order.paidAt ? when(order.paidAt) : hasReceipt ? 'Your check' : 'Not yet', order.paidAt !== null],
         end,
       ];
-  const doneCount = steps.filter((s) => s[2]).length;
   const lastDone = steps.reduce((at, s, i) => (s[2] ? i : at), 0);
   // The step after the last one done; a step skipped on the way (no receipt, paid another way) is not "next".
   // A cancelled order rings its first step not reached, as the board's findIndex(!done) does.
   const next = cancelled ? steps.findIndex((s) => !s[2]) : steps.findIndex((s, i) => !s[2] && i > lastDone);
-  const fill = doneCount <= 1 ? 0 : (lastDone / 3) * 75;
 
   const sendsMail = hasDigital && order.email !== null;
   const only = order.lines.length === 1 ? order.lines[0]!.itemName.toLowerCase() : 'items';
@@ -341,7 +351,7 @@ export function OrderDetail({
       <div className={styles.head}>
         <Initial order={order} big />
         <span className={styles.headText}>
-          <h2>
+          <h2 className={inbox.title}>
             #{order.number} · {order.customerName}
           </h2>
           <p>
@@ -356,9 +366,8 @@ export function OrderDetail({
         </a>
       </div>
 
+      {/* Four bars, each with its step and when under it: the bar is the step's state. */}
       <div className={styles.progress}>
-        <span className={styles.rail} aria-hidden="true" />
-        <span className={styles.fill} data-cancelled={cancelled || undefined} style={{ width: `${fill}%` }} aria-hidden="true" />
         <ol className={styles.steps} aria-label="Order progress">
           {steps.map(([label, at, done], i) => {
             const isEnd = i === 3;
@@ -366,13 +375,7 @@ export function OrderDetail({
             return (
               // The ring only, on a cancelled order: nothing there is the current step.
               <li key={label} className={styles.step} aria-current={i === next && !cancelled ? 'step' : undefined}>
-                <span className={styles.node} data-state={state} aria-hidden="true">
-                  {done ? (
-                    <svg viewBox="0 0 24 24">
-                      <path d={state === 'cancel' ? CROSS : TICK} />
-                    </svg>
-                  ) : null}
-                </span>
+                <span className={styles.node} data-state={state} aria-hidden="true" />
                 <b>{label}</b>
                 <span>{at}</span>
               </li>
@@ -430,7 +433,7 @@ export function OrderDetail({
       <div className={styles.grid}>
         <section className={styles.card} aria-labelledby="order-items">
           <h3 className={styles.cardTitle} id="order-items">
-            Items <span>{plural(count, 'item')}</span>
+            What {first} bought <span>{plural(count, 'item')}</span>
           </h3>
           {order.lines.map((line, i) => (
             <div key={i} className={styles.line}>
@@ -491,35 +494,70 @@ export function OrderDetail({
             ) : null}
             {hasReceipt && (!online || paidTwice) ? (
               <div className={styles.receipt}>
-                {order.receiptUrl && isPdf ? (
-                  <a className={styles.receiptThumb} data-pdf="" href={order.receiptUrl} target="_blank" rel="noopener noreferrer" aria-label="Open the receipt">
-                    <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
-                      <path d={FILE} />
-                    </svg>
-                    <small>PDF</small>
-                  </a>
-                ) : order.receiptUrl ? (
-                  <button ref={zoomTrigger} type="button" className={styles.receiptThumb} aria-label="Open the receipt" onClick={() => setZoom(true)}>
-                    <img src={order.receiptUrl} alt="" />
-                  </button>
-                ) : (
-                  <span className={styles.receiptThumb} data-pdf="" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="30" height="30">
-                      <path d={FILE} />
-                    </svg>
+                <div className={styles.receiptFile}>
+                  {order.receiptUrl && isPdf ? (
+                    <a className={styles.receiptThumb} data-pdf="" href={order.receiptUrl} target="_blank" rel="noopener noreferrer" aria-label="Open the receipt">
+                      <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+                        <path d={FILE} />
+                      </svg>
+                      <small>PDF</small>
+                    </a>
+                  ) : order.receiptUrl ? (
+                    <button
+                      type="button"
+                      className={styles.receiptThumb}
+                      aria-label="Open the receipt"
+                      onClick={(event) => {
+                        zoomTrigger.current = event.currentTarget;
+                        setZoom(true);
+                      }}
+                    >
+                      <img src={order.receiptUrl} alt="" />
+                    </button>
+                  ) : (
+                    <span className={styles.receiptThumb} data-pdf="" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path d={FILE} />
+                      </svg>
+                    </span>
+                  )}
+                  <span className={styles.receiptText}>
+                    <b>{file}</b>
+                    {order.receiptUploadedAt ? <span>Uploaded {when(order.receiptUploadedAt)}</span> : null}
                   </span>
-                )}
-                <span className={styles.receiptText}>
-                  <b>{file}</b>
-                  {order.receiptUploadedAt ? <span>Uploaded {when(order.receiptUploadedAt)}</span> : null}
-                  <span className={styles.match}>
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                      <path d={TICK} />
-                    </svg>
-                    Should show {total}
-                  </span>
-                  {online ? null : <span className={styles.hint}>Check it landed in your account before you mark it paid.</span>}
-                </span>
+                  {order.receiptUrl && isPdf ? (
+                    <a className={styles.view} href={order.receiptUrl} target="_blank" rel="noopener noreferrer">
+                      View
+                    </a>
+                  ) : order.receiptUrl ? (
+                    <button
+                      type="button"
+                      className={styles.view}
+                      onClick={(event) => {
+                        zoomTrigger.current = event.currentTarget;
+                        setZoom(true);
+                      }}
+                    >
+                      View
+                    </button>
+                  ) : null}
+                </div>
+                {/* What the receipt should show, and where each comes from; nothing here has read the receipt. */}
+                <dl className={styles.receiptRows}>
+                  <div>
+                    <dt>Amount</dt>
+                    <dd>{exact(order.totalCents)}</dd>
+                    <dd>Order total</dd>
+                  </div>
+                  {payTo ? (
+                    <div>
+                      <dt>Paid to</dt>
+                      <dd>{payTo.accountName}</dd>
+                      <dd>{payTo.name ?? 'Your bank account'}</dd>
+                    </div>
+                  ) : null}
+                </dl>
+                {online ? null : <p className={styles.hint}>Receipts can be edited. Check {total} is in your bank before you mark it paid.</p>}
               </div>
             ) : !online ? (
               <div className={styles.waitbox}>

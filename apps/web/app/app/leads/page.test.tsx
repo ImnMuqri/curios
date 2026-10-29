@@ -92,8 +92,9 @@ describe('LeadsPage', () => {
       displayName: 'Nadia',
       language: 'ms',
       now: now.toISOString(),
-      look: { accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null },
     });
+    // The conversation is the dashboard's neutral chat now: the page's colours are not handed over.
+    expect(props).not.toHaveProperty('look');
   });
 
   it('shows fifty, and offers older ones only when a fifty-first came back', async () => {

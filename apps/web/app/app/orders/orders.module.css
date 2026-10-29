@@ -1,8 +1,9 @@
 /*
- * Orders, from the design handoff's Orders board. The frame (figures, the
- * list column, the filters' sliding thumb, the detail column) is the inbox's
- * (../_ui/inbox.module.css); this is what only Orders has: the order rows
- * and badges, the four steps, the action box, the receipt and its zoom.
+ * Orders, from the design handoff's Orders board (Dashboard v2). The frame
+ * (the list column, its search and pill filters, the detail column) is the
+ * inbox's (../_ui/inbox.module.css); this is what only Orders has: the order
+ * rows and badges, the four bars, the action box, the two plain columns,
+ * the receipt and its zoom.
  */
 
 @keyframes fadeIn {
@@ -32,16 +33,6 @@
 
 /* ---- The list ---- */
 
-.filterCount[data-tone='merah'] {
-  background: var(--merah);
-  color: var(--card);
-}
-
-.filterCount[data-tone='biru'] {
-  background: var(--biru);
-  color: var(--card);
-}
-
 .row {
   display: flex;
   align-items: center;
@@ -63,9 +54,9 @@
 }
 
 .avatar[data-big] {
-  width: 48px;
-  height: 48px;
-  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  font-size: 15px;
 }
 
 .avatar[data-tone='blue'] {
@@ -228,18 +219,9 @@
   min-width: 0;
 }
 
-.headText h2 {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 800;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-}
-
 .headText p {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--muted);
 }
 
@@ -271,40 +253,16 @@
   stroke-linejoin: round;
 }
 
-/* ---- The four steps ---- */
+/* ---- The four steps: a bar each, its step and when under it ---- */
 
 .progress {
-  position: relative;
-  margin: 26px 0 0;
-}
-
-.rail,
-.fill {
-  position: absolute;
-  top: 13px;
-  left: 12.5%;
-  height: 2px;
-  border-radius: 2px;
-}
-
-.rail {
-  right: 12.5%;
-  background: var(--line);
-}
-
-.fill {
-  background: var(--biru);
-  transition: width 600ms cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-.fill[data-cancelled] {
-  background: var(--merah);
+  margin: 24px 0 0;
 }
 
 .steps {
-  position: relative;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -312,14 +270,12 @@
 
 .step {
   display: flex;
+  min-width: 0;
   flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  text-align: center;
+  gap: 2px;
 }
 
 .step > b {
-  margin-bottom: -6px;
   font-size: 12.5px;
   font-weight: 600;
   color: var(--hint);
@@ -338,24 +294,12 @@
 }
 
 .node {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  display: block;
+  height: 3px;
+  margin-bottom: 10px;
+  border-radius: 2px;
   background: var(--biru);
-  color: var(--card);
-  transition: background-color 300ms ease, box-shadow 300ms ease, transform 400ms cubic-bezier(0.34, 1.6, 0.64, 1);
-}
-
-.node svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  transition: background-color 300ms ease;
 }
 
 .node[data-state='complete'] {
@@ -367,14 +311,12 @@
 }
 
 .node[data-state='todo'] {
-  background: var(--card);
-  box-shadow: inset 0 0 0 2px var(--edge);
+  background: var(--line);
 }
 
+/* The step to do next: a tint of the done colour, so the eye lands on it. */
 .node[data-state='next'] {
-  background: var(--card);
-  box-shadow: 0 0 0 2px var(--biru), 0 0 0 6px var(--biru-ring);
-  transform: scale(1.08);
+  background: var(--biru-ring);
 }
 
 /* ---- What to do next ---- */
@@ -390,7 +332,7 @@
   gap: 10px;
   margin-top: 22px;
   padding: 14px 14px 14px 18px;
-  border-radius: 16px;
+  border-radius: 10px;
   background: var(--act-bg);
   box-shadow: inset 0 0 0 1px var(--act-ring);
 }
@@ -554,26 +496,23 @@
   margin-top: 12px;
 }
 
-/* ---- Items, payment, getting it to them ---- */
+/* ---- What they bought; payment and getting it to them: two plain columns, no boxes ---- */
 
 .grid {
   display: grid;
   grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
-  gap: 16px;
+  gap: 48px;
   margin-top: 26px;
 }
 
 .side {
   display: grid;
   align-content: start;
-  gap: 16px;
+  gap: 28px;
 }
 
 .card {
-  padding: 18px;
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  background: var(--card);
+  min-width: 0;
 }
 
 .cardTitle {
@@ -682,25 +621,28 @@
   color: var(--ink);
 }
 
-.receipt {
+/* The receipt: a file row (thumbnail, name, when, View), the rows it should show, and the warning. */
+.receiptFile {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
+  padding: 4px 0 14px;
+  border-bottom: 1px solid var(--line);
 }
 
 .receiptThumb {
   position: relative;
   display: grid;
   place-items: center;
-  width: 118px;
-  height: 156px;
+  width: 48px;
+  height: 60px;
   flex: none;
   padding: 0;
   overflow: hidden;
   border: 0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--card);
-  box-shadow: 0 0 0 1px var(--line), 0 14px 28px -18px rgb(25 31 44 / 45%);
+  box-shadow: 0 0 0 1px var(--line), 0 4px 10px -6px rgb(25 31 44 / 30%);
   color: var(--merah);
   text-decoration: none;
   cursor: zoom-in;
@@ -713,12 +655,12 @@
 
 .receiptThumb[data-pdf] {
   align-content: center;
-  gap: 4px;
+  gap: 2px;
   cursor: pointer;
 }
 
 .receiptThumb small {
-  font-size: 11px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.06em;
 }
@@ -741,12 +683,14 @@
 }
 
 .receiptText {
+  flex: 1;
   min-width: 0;
 }
 
 .receiptText > b {
   display: block;
-  font-size: 13px;
+  font-size: 14px;
+  font-weight: 600;
   overflow-wrap: anywhere;
 }
 
@@ -756,32 +700,65 @@
   color: var(--muted);
 }
 
-.receiptText > .match {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-top: 8px;
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
-  font-size: 12px;
+.view {
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--biru);
+  font: inherit;
+  font-size: 13.5px;
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
 }
 
-.match svg {
-  width: 13px;
-  height: 13px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.6;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+.view:hover {
+  color: var(--biru-deep);
+  text-decoration: underline;
 }
 
-.receiptText > .hint {
-  margin-top: 8px;
-  font-size: 12px;
+.receiptRows {
+  margin: 0;
+}
+
+.receiptRows > div {
+  display: grid;
+  grid-template-columns: 90px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+
+.receiptRows dt {
+  color: var(--muted);
+}
+
+.receiptRows dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.receiptRows dd:nth-of-type(1) {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Where the value comes from: plain words, not a tick (nothing has read the receipt). */
+.receiptRows dd:nth-of-type(2) {
+  font-size: 12.5px;
+  color: var(--faint);
+  text-align: right;
+}
+
+.hint {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
 }
 
 .waitbox {
@@ -790,10 +767,10 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  min-height: 156px;
+  min-height: 120px;
   padding: 16px;
   border: 1.5px dashed var(--edge);
-  border-radius: 14px;
+  border-radius: 10px;
   color: var(--muted);
   font-size: 13px;
   text-align: center;
@@ -813,7 +790,7 @@
 .paidTwice {
   margin: 10px 0 0;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--merah-muda);
   color: var(--merah-deep);
   font-size: 13px;
@@ -845,7 +822,7 @@
   gap: 12px;
   align-items: flex-start;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--hijau-wash);
 }
 
@@ -929,7 +906,7 @@
 .note {
   margin-top: 14px;
   padding: 12px 14px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--amber-muda);
   color: color-mix(in srgb, var(--amber-ink) 70%, var(--ink));
   font-size: 13px;
@@ -998,6 +975,7 @@
 @container (max-width: 760px) {
   .grid {
     grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
   }
 
   .head {
@@ -1006,11 +984,6 @@
 
   .whatsapp {
     margin-left: 0;
-  }
-
-  .receipt {
-    flex-direction: column;
-    align-items: flex-start;
   }
 }
 
@@ -1137,12 +1110,6 @@
   color: var(--merah-deep);
 }
 
-@container (max-width: 520px) {
-  .headText h2 {
-    font-size: 23px;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .zoom,
   .zoomImage,
@@ -1150,7 +1117,6 @@
     animation: none;
   }
 
-  .fill,
   .node,
   .receiptThumb {
     transition: none;

@@ -9,6 +9,7 @@ import { apiFetch } from '../../../lib/api.js';
 import { PageHead } from '../_ui/page-head.js';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
+import pills from '../_ui/pill-tabs.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
 import { useToast } from '../_ui/toast.js';
 import { LeadDetail, STATUSES, type LeadActions, type LeadStatus } from './lead-detail.js';
@@ -18,10 +19,22 @@ type Filter = 'all' | LeadStatus;
 
 const FILTERS: { id: Filter; label: string }[] = [{ id: 'all', label: 'All' }, ...STATUSES];
 
+/** Whether a lead answers the search box: the number's digits, or what they are after. */
+export function leadMatches(lead: OwnerLead, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const digits = q.replace(/\D/g, '');
+  const wants = [lead.slots?.product, lead.slots?.date, lead.slots?.location].filter(Boolean).join(' ').toLowerCase();
+  return (digits.length >= 2 && lead.phone.replace(/\D/g, '').includes(digits)) || wants.includes(q);
+}
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
 /**
- * Every number a page has captured, newest first: three figures, the
- * numbers down the left (filtered by where the owner is with them), and the
- * chosen one on the right with the conversation behind it.
+ * Every number a page has captured, newest first: one sentence of figures
+ * under the title, the numbers down the left (searched, and filtered by
+ * where the owner is with them), and the chosen one on the right with the
+ * conversation behind it. The search narrows the fifty on this page.
  *
  * Presentational: it takes the rows and the mutations, and `Leads` below
  * supplies the real ones. A status shows the moment it is chosen and goes
@@ -35,7 +48,6 @@ export function LeadsScreen({
   displayName,
   language,
   publicUrl,
-  look,
   now,
   keptMonths,
   actions,
@@ -50,7 +62,6 @@ export function LeadsScreen({
   language: string;
   /** The page's full address, for "Copy your link". */
   publicUrl: string;
-  look: Parameters<typeof LeadDetail>[0]['look'];
   now: Date;
   /** How long a lead is kept before the retention sweep deletes it. */
   keptMonths: number;
@@ -58,6 +69,7 @@ export function LeadsScreen({
   onChanged: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<string | null>(null);
   const [statuses, setStatuses] = useState<Record<string, LeadStatus>>({});
   const [copied, setCopied] = useState(false);
@@ -66,7 +78,7 @@ export function LeadsScreen({
   useEffect(() => setStatuses({}), [leads]);
 
   const statusOf = (lead: OwnerLead) => statuses[lead.id] ?? lead.status;
-  const shown = leads.filter((lead) => filter === 'all' || statusOf(lead) === filter);
+  const shown = leads.filter((lead) => (filter === 'all' || statusOf(lead) === filter) && leadMatches(lead, query));
   const chosen = shown.find((lead) => lead.id === selected) ?? shown[0] ?? null;
   const waiting = leads.filter((lead) => statusOf(lead) === 'NEW').length;
 
@@ -94,28 +106,15 @@ export function LeadsScreen({
 
   return (
     <>
-      <PageHead title="Leads" summary={`Numbers visitors left in the chat · kept for ${keptMonths} months`} />
-
-      <ul className={inbox.stats} aria-label="Your leads">
-        <li className={inbox.kpi}>
-          <span>
-            <b>{stats.waiting}</b>
-            <span>New, waiting for you</span>
-          </span>
-        </li>
-        <li className={inbox.kpi}>
-          <span>
-            <b>{stats.thisWeek}</b>
-            <span>Numbers left this week</span>
-          </span>
-        </li>
-        <li className={inbox.kpi}>
-          <span>
-            <b>{stats.sold}</b>
-            <span>Closed into a sale</span>
-          </span>
-        </li>
-      </ul>
+      <PageHead
+        title="Leads"
+        summary={
+          <>
+            <b>{plural(stats.waiting, 'new number')}</b> {stats.waiting === 1 ? 'is' : 'are'} waiting for you. {plural(stats.thisWeek, 'person', 'people')} left their number this
+            week, and {stats.sold} became {stats.sold === 1 ? 'a sale' : 'sales'}.
+          </>
+        }
+      />
 
       {leads.length === 0 ? (
         <div className={inbox.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
@@ -156,25 +155,27 @@ export function LeadsScreen({
       ) : (
         <div className={inbox.board}>
           <div className={inbox.list}>
-            <div
-              className={inbox.filters}
-              role="tablist"
-              aria-label="Show leads"
-              style={
-                {
-                  '--at': FILTERS.findIndex((f) => f.id === filter),
-                  '--n': FILTERS.length,
-                } as CSSProperties
-              }
-            >
+            <label className={inbox.search}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+              <input type="search" value={query} placeholder="Search number or what they want" aria-label="Search number or what they want" onChange={(event) => setQuery(event.target.value)} />
+            </label>
+            <div className={`${pills.track} ${inbox.filters}`} role="tablist" aria-label="Show leads" style={{ '--n': FILTERS.length } as CSSProperties}>
               {FILTERS.map((f) => (
-                <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
+                <button key={f.id} type="button" role="tab" className={`${pills.pill} ${inbox.filter}`} aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
                   {f.label}
-                  {f.id === 'NEW' && waiting > 0 ? <i data-tone="biru">{waiting}</i> : null}
+                  {f.id === 'NEW' && waiting > 0 ? <span className={`${pills.count} ${inbox.count}`}>{waiting}</span> : null}
                 </button>
               ))}
             </div>
-            {shown.length === 0 ? (
+            {shown.length === 0 && query.trim() ? (
+              <p className={inbox.listEmpty}>
+                <b>No match</b>
+                No number here matches “{query.trim()}”.
+              </p>
+            ) : shown.length === 0 ? (
               <p className={inbox.listEmpty}>
                 <b>All clear</b>
                 {filter === 'NEW' ? 'New numbers land here as people leave them.' : 'Nothing here yet.'}
@@ -222,6 +223,7 @@ export function LeadsScreen({
                 {paging.older ? <Link href={`/app/leads?before=${encodeURIComponent(paging.older)}`}>Older leads</Link> : null}
               </nav>
             ) : null}
+            <p className={inbox.listNote}>Numbers visitors left in the chat · kept for {keptMonths} months</p>
           </div>
           <div className={inbox.detail}>
             {chosen ? (
@@ -232,7 +234,6 @@ export function LeadsScreen({
                 handle={handle}
                 displayName={displayName}
                 language={language}
-                look={look}
                 now={now}
                 actions={actions}
                 onStatus={(next) => setStatus(chosen, next)}

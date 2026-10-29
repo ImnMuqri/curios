@@ -11,9 +11,9 @@ import type { OrderRow } from './order-detail.js';
 import { Orders } from './orders-screen.js';
 
 /**
- * What customers ordered from the shop, newest first: three figures, the
- * orders down the left, and the chosen one on the right with its receipt and
- * the one thing to do next.
+ * What customers ordered from the shop, newest first: one sentence of
+ * figures under the title, the orders down the left, and the chosen one on
+ * the right with its receipt and the one thing to do next.
  *
  * `getOwnerOrdersPage` scopes to this owner inside the query. Keys never leave the
  * server: the receipt and item photos go down as addresses, built here as
@@ -74,6 +74,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       shopUrl={shopUrl}
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}${shopUrl}`}
       pickupNote={store?.settings.pickupNote ?? null}
+      payTo={store?.settings.bankAccountName ? { name: store.settings.bankName, accountName: store.settings.bankAccountName } : null}
     />
   );
 }

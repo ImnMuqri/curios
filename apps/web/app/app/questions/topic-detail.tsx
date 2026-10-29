@@ -3,8 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
 import type { OwnerTopic, OwnerWording, TopicChoice } from '@curios/db-read';
-import { themeAttrs } from '../../_bento/BentoPage.js';
-import bento from '../../_bento/Bento.module.css';
+import type { themeAttrs } from '../../_bento/BentoPage.js';
 import { firstName, LeadCard } from '../_ui/lead-card.js';
 import { PageReply } from '../_ui/page-reply.js';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
@@ -27,7 +26,7 @@ export interface TopicActions {
   deleteWording: (questionId: string) => Promise<void>;
 }
 
-/** The page's colours, for the chat preview. */
+/** The page's look; the chat preview takes only its accent now, for the card's Send. */
 export type ChatLook = Parameters<typeof themeAttrs>[0];
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
@@ -184,7 +183,7 @@ export function TopicDetail({
       ) : (
         <div className={styles.head}>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <h2>{topic.title}</h2>
+            <h2 className={inbox.title}>{topic.title}</h2>
             <p>
               <span className={styles.chip} data-state={state}>
                 {CHIP_WORDS[state]}
@@ -308,7 +307,8 @@ export function TopicDetail({
                 </button>
               </div>
             </div>
-            <div className={`${bento.theme} ${styles.chat}`} {...themeAttrs(look)} data-island="" aria-label="How the chat replies">
+            {/* The dashboard's neutral chat (Dashboard v2), not the page's colours; only its accent stays, for the card's Send. */}
+            <div className={inbox.chat} style={{ '--accent': look.accentColor } as CSSProperties} aria-label="How the chat replies">
               <span className={styles.chatLabel}>
                 <i aria-hidden="true" />
                 On your page
