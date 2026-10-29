@@ -61,6 +61,17 @@
   --tj-bank-public: #d71920;
   --tj-bank-rhb: #005baa;
   --tj-act-bg: #f1f8f5;
+  /* What lands in your hands: the tiles' grounds, the phones' avatars and chips, the WhatsApp green, the hot pill's ink. */
+  --tj-wl-wash: #e9eef8;
+  --tj-wl-alerts: #eef0e9;
+  --tj-wl-asked: #f3eee6;
+  --tj-wl-chip: #eef2fb;
+  --tj-wl-slot: #f2f4f7;
+  --tj-wl-avatar: #e6e9ef;
+  --tj-wl-avatar-plain: #d6d9df;
+  --tj-wl-whatsapp: #25a36a;
+  --tj-wl-dot: #e2483d;
+  --tj-wl-hot-ink: #0f3b2c;
 
   /* ---- Colour: biru ramp (parent --biru #2340c8, oklch 0.450 0.212 267) ---- */
   --l-biru-800: #122686; /* oklch 0.331 0.160 267 -- primary button pressed; paper on it 12.3:1 */

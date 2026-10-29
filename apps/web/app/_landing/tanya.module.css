@@ -1592,8 +1592,8 @@
 }
 
 .wlPill[data-tone='hot'] {
-  background: #86e0b8;
-  color: #0f3b2c;
+  background: var(--toast-tick);
+  color: var(--tj-wl-hot-ink);
 }
 
 .wlPill[data-tone='soft'] {
@@ -1602,7 +1602,7 @@
 }
 
 .wlPill[data-tone='paid'] {
-  background: #e8f3ef;
+  background: var(--hijau-muda);
   color: var(--tj-hijau-900);
 }
 
@@ -1616,7 +1616,7 @@
 
 .wlTall[data-stage='replying'],
 .wlTall[data-stage='sorting'] {
-  background: #e9eef8;
+  background: var(--tj-wl-wash);
 }
 
 .wlTall[data-stage='landed'] {
@@ -1640,7 +1640,7 @@
   height: 30px;
   padding: 0 12px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.4);
   font-size: 13px;
@@ -1651,7 +1651,7 @@
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #e2483d;
+  background: var(--tj-wl-dot);
 }
 
 .wlTall[data-stage='replying'] .wlTag i,
@@ -1666,7 +1666,7 @@
 }
 
 .wlTall[data-stage='landed'] .wlTag i {
-  background: #86e0b8;
+  background: var(--toast-tick);
 }
 
 .wlLayer {
@@ -1694,7 +1694,7 @@
   gap: 11px;
   padding: 9px 12px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--card);
   font-size: 13.5px;
   opacity: 0;
   transform: translateY(10px);
@@ -1710,12 +1710,12 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: #e6e9ef url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='9' r='4' fill='%23a3a9b4'/%3E%3Cpath d='M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5' fill='%23a3a9b4'/%3E%3C/svg%3E") center / 22px no-repeat;
+  background: var(--tj-wl-avatar) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='9' r='4' fill='%23a3a9b4'/%3E%3Cpath d='M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5' fill='%23a3a9b4'/%3E%3C/svg%3E") center / 22px no-repeat;
 }
 
 /* Plain grey in the inbox: a number, nobody you know yet. */
 .wlRow[data-inbox] > i {
-  background: #d6d9df;
+  background: var(--tj-wl-avatar-plain);
 }
 
 .wlRowX {
@@ -1752,7 +1752,7 @@
 }
 
 .wlRow[data-inbox] .wlRowR small {
-  color: #25a36a;
+  color: var(--tj-wl-whatsapp);
 }
 
 .wlRowR em {
@@ -1762,8 +1762,8 @@
   height: 20px;
   padding: 0 6px;
   border-radius: 10px;
-  background: #25a36a;
-  color: #fff;
+  background: var(--tj-wl-whatsapp);
+  color: var(--on-photo);
   font-size: 10.5px;
   font-style: normal;
   font-weight: 700;
@@ -1775,7 +1775,7 @@
   right: 12px;
   padding: 4px 9px;
   border-radius: 999px;
-  background: #eef2fb;
+  background: var(--tj-wl-chip);
   color: var(--l-biru-800);
   font-size: 11.5px;
   font-weight: 600;
@@ -1813,7 +1813,7 @@
 
 .wlRow[data-sort='keep'] .wlOk {
   background: var(--wl-acc2);
-  color: #fff;
+  color: var(--on-photo);
 }
 
 .wlRow[data-flip] {
@@ -1851,7 +1851,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  color: #696e7b;
+  color: var(--muted);
   font-size: 12.5px;
 }
 
@@ -1871,7 +1871,7 @@
 .wlSlots span {
   padding: 8px 10px;
   border-radius: 11px;
-  background: #f2f4f7;
+  background: var(--tj-wl-slot);
   font-size: 14px;
   font-weight: 600;
 }
@@ -1890,8 +1890,8 @@
   height: 40px;
   margin-top: 12px;
   border-radius: 999px;
-  background: #1d6f5f;
-  color: #fff;
+  background: var(--hijau);
+  color: var(--on-photo);
   font-size: 14px;
   font-weight: 600;
 }
@@ -1986,7 +1986,7 @@
   inset: -14% -12% -18%;
   z-index: -1;
   border-radius: 50%;
-  background: radial-gradient(closest-side, #e9eef8 62%, rgba(233, 238, 248, 0));
+  background: radial-gradient(closest-side, var(--tj-wl-wash) 62%, transparent);
 }
 
 .wlPeek svg {
@@ -2122,7 +2122,7 @@
 
 .wlPick em[data-on] {
   background: var(--wl-acc);
-  color: #fff;
+  color: var(--on-photo);
 }
 
 .wlPick em[data-press] {
@@ -2132,7 +2132,7 @@
 /* The alerts tile: a Curios notification, then a hotter one on top. */
 
 .wlAlertsTile {
-  background: #eef0e9;
+  background: var(--tj-wl-alerts);
 }
 
 .wlStack {
@@ -2150,7 +2150,7 @@
   gap: 10px;
   padding: 12px;
   border-radius: 18px;
-  background: #fff;
+  background: var(--card);
   color: var(--ink);
   box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.35);
   font-size: 13px;
@@ -2205,7 +2205,7 @@
 
 .wlWide {
   grid-column: span 2;
-  background: #f3eee6;
+  background: var(--tj-wl-asked);
 }
 
 .wlBarsVis {
@@ -2241,7 +2241,7 @@
 }
 
 .wlBar[data-miss] .wlTrack i {
-  background: #f2a33c;
+  background: var(--kuning);
 }
 
 .wlBar em {
@@ -2256,8 +2256,8 @@
   top: 50%;
   padding: 3px 9px;
   border-radius: 999px;
-  background: #fdf0dc;
-  color: #7a4a0c;
+  background: var(--amber-muda);
+  color: var(--kuning-ink);
   font-size: 11.5px;
   font-weight: 600;
   white-space: nowrap;
