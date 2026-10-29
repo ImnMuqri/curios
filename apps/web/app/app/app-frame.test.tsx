@@ -98,7 +98,7 @@ describe('AppFrame', () => {
   // above green.
   it("shows the owner's name and initials on the account button, and the page and screen in the breadcrumb", () => {
     const { container } = frame();
-    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('IMIman MuqriIman Muqri · Business');
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('IMIman MuqriBusiness plan');
     expect(container.querySelector('header p')).toHaveTextContent('Iman Muqri/My Curios');
   });
 
@@ -118,6 +118,17 @@ describe('AppFrame', () => {
     );
     expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('LBLina binti KamalKek Lina · Business');
     expect(container.querySelector('header p')).toHaveTextContent('Kek Lina/');
+  });
+
+  it('does not repeat the name under it when the page is named after its owner', () => {
+    render(
+      <AppFrame displayName="Iman Muqri" ownerName="iman muqri" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
+        <p>content</p>
+      </AppFrame>,
+    );
+    const account = screen.getByRole('button', { name: 'Account' });
+    expect(account).toHaveTextContent('iman muqriBusiness plan');
+    expect(account).not.toHaveTextContent('Iman Muqri ·');
   });
 
   it("shows the owner's picture in place of initials when there is one", () => {

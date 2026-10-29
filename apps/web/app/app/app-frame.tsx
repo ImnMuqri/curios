@@ -170,8 +170,11 @@ export function AppFrame({
   if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
   const who = ownerName?.trim() || displayName;
   const initials = who.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
-  // Under the name on the account button, after the page: "Business", "Free trial", "Plan ended".
-  const planShort = plan.name.replace(/ (plan|page)$/, '');
+  // Under the name on the account button: "Kek Lina · Business". When the page is named after its
+  // owner (or the account has no name of its own) the page would only repeat the line above, so the
+  // plan stands alone in full: "Business plan".
+  const pageIsWho = displayName.trim().toLowerCase() === who.toLowerCase();
+  const accountLine = pageIsWho ? plan.name : `${displayName} · ${plan.name.replace(/ (plan|page)$/, '')}`;
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
   const needle = query.trim().toLowerCase();
   const groups = GROUPS.map((group) => ({
@@ -390,9 +393,7 @@ export function AppFrame({
                   {avatar}
                   <span className={styles.accountWho}>
                     <b>{who}</b>
-                    <small>
-                      {displayName} · {planShort}
-                    </small>
+                    <small>{accountLine}</small>
                   </span>
                   {svg(ICON.chevron, styles.chevron)}
                 </>
