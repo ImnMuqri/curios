@@ -101,6 +101,7 @@ export function PayPreview({
       <OrderView
         preview
         token="preview"
+        coverUrl={look.coverUrl}
         handle={look.handle}
         displayName={look.displayName}
         language={look.language}

@@ -37,7 +37,60 @@
 }
 
 .shop {
+  position: relative;
   display: block;
+  isolation: isolate;
+}
+
+/*
+ * The shop wears the page's cover (HANDOFF "Shop cover", 27 Oct 2026) behind all of it: blurred
+ * about 22px, scaled 1.3 so the blur's soft edges stay outside, under the page's own colour so the
+ * shelf reads on it. The handoff faded it out under the sign; the owner asked for it the whole way
+ * down (29 Oct 2026). The bars over it are frosted, so it shows through them too.
+ */
+/*
+ * A short shop still fills its column, and the cover runs on under the basket bar's 110px, so no
+ * band of plain colour shows under the shelf. Only a column holding a shop with a cover: the item
+ * page shares the column.
+ */
+.column:has(> .shop[data-cover]) {
+  display: flex;
+  flex-direction: column;
+}
+
+.column > .shop[data-cover] {
+  flex: 1 0 auto;
+}
+
+.cover {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* On under a column's 110px foot, where the basket bar sits. */
+.coverUnder {
+  bottom: -110px;
+}
+
+.cover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  filter: blur(22px) saturate(1.1);
+  transform: scale(1.3);
+}
+
+.cover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* Lightest under the sign, a little deeper by the shelf, never solid. */
+  background: linear-gradient(color-mix(in srgb, var(--page-bg) 35%, transparent), color-mix(in srgb, var(--page-bg) 62%, transparent) 420px);
 }
 
 .top {
@@ -51,6 +104,24 @@
   /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
   padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
   background: var(--page-bg);
+}
+
+/*
+ * Over a cover the bars are clear and only frosted: blurring the already-blurred cover changes nothing,
+ * so they show no band on it (a tint drew one), while the cards that scroll under them blur away.
+ */
+.shop[data-cover] .top,
+.shop[data-cover] .cats {
+  background: transparent;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  transition: background-color 200ms ease;
+}
+
+/* Something scrolls under it now: a tint of the page's colour, so its words read over the cards. */
+.shop[data-cover] .top[data-stuck],
+.shop[data-cover] .cats[data-stuck] {
+  background: color-mix(in srgb, var(--page-bg) 72%, transparent);
 }
 
 .top > span {
@@ -198,6 +269,7 @@
   font-family: var(--font-heading), var(--font-display);
   font-size: 15px;
   font-weight: 800;
+  object-fit: cover;
 }
 
 .bubble {

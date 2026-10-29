@@ -19,7 +19,7 @@ export function howAt(p: number): { at: number; step: number } {
   return { at, step: p < 0.3 ? 0 : p < 0.8 ? 1 : 2 };
 }
 
-/** A phone, where the rooms are a row to swipe rather than a pinned frame (tanya.module.css). */
+/** A phone, where the rooms stack and scroll with the page rather than pin (tanya.module.css). */
 const PHONE = '(max-width: 560px)';
 const onPhoneChange = (onChange: () => void) => {
   const list = window.matchMedia(PHONE);
@@ -31,8 +31,9 @@ const onPhoneChange = (onChange: () => void) => {
  * How it works, in three rooms. Where motion is welcome the section pins
  * (tanya.module.css) and the rooms slide sideways as the page scrolls: one
  * reading of the scroll moves the track, fills the rail and marks the dot, so
- * the three always agree. With reduced motion, and on a phone, they are a row
- * to swipe, and the swipe marks the dot and fills the rail.
+ * the three always agree. With reduced motion they are a row to swipe, and the
+ * swipe marks the dot and fills the rail; on a phone they stack, one under the
+ * next, and nothing reads the scroll.
  */
 export function How({ locale }: { locale: Locale }) {
   const copy = COPY[locale].how;
@@ -75,10 +76,10 @@ export function How({ locale }: { locale: Locale }) {
     };
   }, [swipe]);
 
-  // The row to swipe: the room most in view is the step.
+  // The row to swipe (reduced motion, not a phone, where the rooms stack): the room most in view is the step.
   useEffect(() => {
     const row = view.current;
-    if (!swipe || !row) return;
+    if (!reduced || phone || !row) return;
     const read = () => {
       const at = row.clientWidth > 0 ? Math.min(2, Math.max(0, row.scrollLeft / row.clientWidth)) : 0;
       if (fill.current) fill.current.style.transform = `scaleX(${at / 2})`;
@@ -90,7 +91,7 @@ export function How({ locale }: { locale: Locale }) {
       row.removeEventListener('scroll', read);
       if (fill.current) fill.current.style.transform = '';
     };
-  }, [swipe]);
+  }, [reduced, phone]);
 
   return (
     <section id="how" ref={section} className={styles.how}>

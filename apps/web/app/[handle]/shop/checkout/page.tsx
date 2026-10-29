@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { getCheckout, getSettings } from '@curios/db-read';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
-import { avatarUrl } from '../../../../lib/avatar-url.js';
+import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../basket.js';
 import { Checkout } from './checkout.js';
 import styles from './checkout.module.css';
@@ -37,6 +37,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
   return (
     <PageTheme theme={shop} className={styles.stage}>
       <Checkout
+        coverUrl={coverUrl(shop.coverKey)}
         handle={shop.handle}
         displayName={shop.displayName}
         language={shop.language}

@@ -6,6 +6,7 @@ import type { DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
 import { shopCopy } from '../copy.js';
+import { ShopCover } from '../shop-cover.js';
 import styles from './product.module.css';
 
 /** The digital facts are absent on the Store preview's physical items. */
@@ -52,6 +53,8 @@ export function ProductView(props: {
   /** sessionStorage key for the basket. Default `curios-basket:${handle}`. */
   storageKey?: string;
   inline?: boolean;
+  /** The page's cover photo, the item's backdrop as it is the shop's (ShopCover); null for none. */
+  coverUrl?: string | null;
   /** Called once an add is saved. Default: go back to the shop. */
   onDone?: () => void;
 }) {
@@ -115,7 +118,8 @@ export function ProductView(props: {
   }
 
   return (
-    <div className={styles.view} data-inline={props.inline || undefined}>
+    <div className={styles.view} data-inline={props.inline || undefined} data-cover={props.coverUrl ? '' : undefined}>
+      <ShopCover url={props.coverUrl} under />
       <div className={styles.top}>
         <a className={styles.ib} href={shopHref} aria-label={copy.backToShop} onClick={back}>
           <Icon d={ICON.back} />

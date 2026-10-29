@@ -1274,6 +1274,8 @@
 
 .payStage:is(div) > div {
   flex: 1 0 auto;
+  /* The full phone: a flex column's auto margins otherwise shrink the order page to its content. */
+  width: 100%;
   min-height: 0;
   animation: none;
 }

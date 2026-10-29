@@ -35,6 +35,12 @@
   animation: rise 320ms ease both;
 }
 
+/* With a cover, the column holds it behind the title, the white sheet over it as before. */
+.column[data-cover] {
+  position: relative;
+  isolation: isolate;
+}
+
 /* The board's .ck-sheet: white, rounded at the top, to the foot of the screen. */
 .sheet {
   box-sizing: border-box;

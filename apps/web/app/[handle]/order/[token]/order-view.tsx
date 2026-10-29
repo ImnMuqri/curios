@@ -13,10 +13,13 @@ import { DigitalSection, type DigitalLineView } from './digital-section.js';
 import { hasBank, PayBox, useCopied } from './pay-box.js';
 import { ReceiptUpload } from './receipt-upload.js';
 import { RetryPay } from './retry-pay.js';
+import { ShopCover } from '../../shop/shop-cover.js';
 import checkout from '../../shop/checkout/checkout.module.css';
 import styles from './order.module.css';
 
 export interface OrderViewProps {
+  /** The page's cover photo, behind the order as behind the shop (ShopCover); null for none. */
+  coverUrl?: string | null;
   token: string;
   handle: string;
   displayName: string;
@@ -290,7 +293,8 @@ export function OrderView(props: OrderViewProps) {
   }
 
   return (
-    <Root className={checkout.column}>
+    <Root className={checkout.column} data-cover={props.coverUrl ? '' : undefined}>
+      <ShopCover url={props.coverUrl} />
       <div className={checkout.top}>
         <span>{name}</span>
         <span className={styles.bookmark}>{copy.bookmark}</span>
