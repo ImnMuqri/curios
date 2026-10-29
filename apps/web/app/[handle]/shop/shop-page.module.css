@@ -115,6 +115,13 @@
   background: transparent;
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
+  transition: background-color 200ms ease;
+}
+
+/* Something scrolls under it now: a tint of the page's colour, so its words read over the cards. */
+.shop[data-cover] .top[data-stuck],
+.shop[data-cover] .cats[data-stuck] {
+  background: color-mix(in srgb, var(--page-bg) 72%, transparent);
 }
 
 .top > span {
