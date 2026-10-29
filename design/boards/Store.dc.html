@@ -812,6 +812,10 @@ a{color:#2340c8}a:hover{color:#122686}
 .shoprow{border-radius:10px}
 .tile{border-radius:10px}
 @media (max-width:760px){.gw.on .gw-t,.qrcard>span:last-child{grid-template-columns:minmax(0,1fr)}.gw.on .gw-t .btns,.qrcard>span:last-child .btns{grid-column:1;grid-row:auto;margin-top:8px}}
+
+/* v3 small screens: title, tabs and actions stack */
+@media (max-width:1000px){.head .v2ht{flex:1 1 100%}.head .v3t{flex-wrap:wrap;row-gap:12px}}
+@media (max-width:760px){.head .v3t .utabs{max-width:100%}.head .v3t .utabs button{flex:1 1 auto;padding:0 12px}.head .status{margin-right:auto}}
 </style>
 </helmet>
 
