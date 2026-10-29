@@ -140,7 +140,9 @@ export function OrdersScreen({
       {orders.length === 0 ? (
         <div className={inbox.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <div className={inbox.detail} style={{ display: 'grid', placeItems: 'center', minHeight: 520 }}>
-            <div className={`${ui.empty} ${styles.empty}`}>
+            {/* Inline, as on Questions and Leads: the shared .empty draws a dashed box, and two module rules of
+                one specificity are settled by whichever stylesheet loads last, which a client-side visit changes. */}
+            <div className={`${ui.empty} ${styles.empty}`} style={{ border: 0 }}>
               <div className={`${ui.emptyArt} ${styles.emptyArt}`} aria-hidden="true">
                 <span className={ui.ghostRows}>
                   <span data-tone="hijau">
