@@ -1081,6 +1081,23 @@ a{color:#2340c8}a:hover{color:#122686}
 .head h1{font-size:24px}
 .head .v2sum{font-size:14px}
 }
+
+/* top bar right: account forward (29 Oct) */
+.v2topb{gap:4px}
+.tb-crumb{margin-right:12px}
+.tb-help{height:36px;padding:0 10px;border:0;border-radius:10px;background:transparent;font:inherit;font-size:13.5px;font-weight:500;color:#3f4554;cursor:pointer}
+.tb-ib{width:36px;height:36px;background:transparent;box-shadow:none}
+.tb-ib u{top:2px;right:0;width:auto;height:17px;min-width:17px;padding:0 5px;border-radius:9px;background:#2340c8;color:#ffffff;font-size:10.5px;font-weight:700;line-height:17px;text-decoration:none;text-align:center;box-shadow:0 0 0 2px #edeff4}
+.tb-vl{flex:none;width:1px;height:24px;margin:0 8px;background:#d5d8df}
+.tb-acc{gap:10px;height:44px;padding:0 8px 0 4px;background:transparent;box-shadow:none;text-align:left}
+.tb-acc i{width:32px;height:32px;border-radius:50%}
+.tb-who{display:flex;flex-direction:column;line-height:1.25}
+.tb-who b{font-size:13.5px;font-weight:600;color:#191f2c;white-space:nowrap}
+.tb-who small{font-size:12px;font-weight:500;color:#5b6170;white-space:nowrap}
+.tb-acc svg{stroke:#8b909c}
+.tb-help:hover,.tb-ib:hover,.tb-acc:hover{background:rgba(255,255,255,.75);box-shadow:none}
+@media (max-width:1000px){.tb-help{display:none}.tb-who small{display:none}}
+@media (max-width:860px){.tb-who{display:none}.tb-acc{padding:0 4px}}
 </style>
 </helmet>
 
@@ -1106,7 +1123,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </aside>
 
 <main class="main">
-<header class="v2topb"><p class="tb-crumb">Kek Lina<i aria-hidden="true">/</i><b>{{screenTitle}}</b></p><button type="button" class="tb-ib" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button><button type="button" class="tb-ib" aria-label="Notifications, 3 new"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4"></path></svg><u></u></button><button type="button" class="tb-acc" aria-label="Account"><i>L</i>Lina binti Kamal<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></button></header>
+<header class="v2topb"><p class="tb-crumb">Kek Lina<i aria-hidden="true">/</i><b>{{screenTitle}}</b></p><button type="button" class="tb-help">Help</button><button type="button" class="tb-ib" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button><button type="button" class="tb-ib" aria-label="Notifications, 3 new"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4"></path></svg><u>3</u></button><span class="tb-vl" aria-hidden="true"></span><button type="button" class="tb-acc" aria-label="Account"><i>L</i><span class="tb-who"><b>Lina binti Kamal</b><small>Kek Lina · Business</small></span><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></button></header>
 <div class="v2sheet">
 <div class="head">
 <div class="v2ht"><h1>{{screenTitle}}</h1><p class="v2sum">{{screenSub}}</p></div>

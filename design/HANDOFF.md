@@ -619,3 +619,13 @@ the boards was removed; existing controls were regrouped and restyled:
   "+ Add a source" on the right; pinned answers sit on light grey; never-say topics are soft red
   chips.
 - **Billing:** no cards; Monthly and Yearly are rows (radio, name and note, price on the right).
+
+### Top bar, right side: "account forward" (29 Oct 2026)
+
+Replaces the three white bordered boxes on the right of `.v2topb` in all ten dashboard boards (MyCurios, Store, Orders, Questions, Leads, Review, Knowledge, Billing, Settings, Alerts). Look at the CSS block marked `/* top bar right: account forward (29 Oct) */` in each board.
+
+- Left to right: **Help** text link, **dark mode** icon, **bell with a count** (blue `#2340c8` pill with "3", not a red dot), a thin 1px divider, then the **account button**.
+- Icons have no box or border; they sit on the grey ground (`#edeff4`). Hover is a soft white fill, 10px radius.
+- Account button: round 32px avatar (initial on `#b5294e`), two lines: name (13.5px/600) and "{page name} · {plan}" (12px, `#5b6170`), then a grey chevron.
+- The count pill reads the unread alerts count; hide it at 0. The plan label comes from Billing.
+- Responsive: ≤1000px hides Help and the second line; ≤860px shows the avatar and chevron only; ≤760px the top bar is hidden as before.
