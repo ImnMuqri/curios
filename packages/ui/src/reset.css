@@ -4,6 +4,16 @@
   box-sizing: border-box;
 }
 
+/*
+ * Text at the size it was set. iPhone Safari otherwise enlarges text it thinks is too small to read,
+ * without enlarging the box it sits in: the landing's zoomed-down phones overflowed and overlapped.
+ * 100%, not none, so a visitor's own zoom still works.
+ */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--paper);

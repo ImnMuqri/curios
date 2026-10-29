@@ -388,6 +388,18 @@ describe("a phone's bottom menu", () => {
   });
 });
 
+describe("the document behind the frame", () => {
+  it("takes the frame's ground, for the browser's bars as well, and gives both back when the frame goes", () => {
+    const { unmount } = frame();
+    const meta = document.querySelector('meta[name="theme-color"]');
+    expect(meta).not.toBeNull();
+    expect(meta!.getAttribute('content')).toBe(getComputedStyle(document.querySelector('[data-theme]')!).backgroundColor);
+    unmount();
+    expect(document.querySelector('meta[name="theme-color"]')).toBeNull();
+    expect(document.documentElement.style.backgroundColor).toBe('');
+  });
+});
+
 describe('PageHead', () => {
   it('puts one summary sentence under the title', () => {
     render(

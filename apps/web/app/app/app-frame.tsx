@@ -191,6 +191,40 @@ export function AppFrame({
   }, [more]);
   useEffect(() => setMore(false), [pathname]);
 
+  // The document behind the frame, in the frame's own ground. A phone shows the document wherever the
+  // frame does not reach -- the status bar's strip on a home-screen app, past either end of a scroll --
+  // and the site's white there drew a band over a dark dashboard. The browser's own bars take the same
+  // colour (theme-color). Read from the frame, so Light, Dark and the device's setting all follow.
+  const frameRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const frame = frameRef.current;
+    if (!frame) return;
+    const root = document.documentElement;
+    const before = root.style.backgroundColor;
+    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+    const added = !meta;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.append(meta);
+    }
+    const metaBefore = meta.content;
+    const paint = () => {
+      const ground = getComputedStyle(frame).backgroundColor;
+      root.style.backgroundColor = ground;
+      meta.content = ground;
+    };
+    paint();
+    const device = window.matchMedia('(prefers-color-scheme: dark)');
+    device.addEventListener('change', paint);
+    return () => {
+      device.removeEventListener('change', paint);
+      root.style.backgroundColor = before;
+      if (added) meta.remove();
+      else meta.content = metaBefore;
+    };
+  }, [theme]);
+
   // Onboarding is its own full screen, as the design handoff's Onboarding
   // board draws it, before and after the page exists. Both of those return
   // the screen in the same place, so claiming the page mid-onboarding does
@@ -287,7 +321,7 @@ export function AppFrame({
 
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
-      <div className={styles.frame} data-theme={theme}>
+      <div ref={frameRef} className={styles.frame} data-theme={theme}>
         <aside className={styles.side}>
           <Link href="/app/curios" className={styles.brand}>
             <Wordmark />

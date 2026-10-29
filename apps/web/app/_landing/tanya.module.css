@@ -3928,6 +3928,11 @@
   .bizStage {
     zoom: 0.5;
   }
+
+  /* The zoomed stage is about 320px tall here: 860px of room around it centred into a blank gap. */
+  .bizPin {
+    min-height: 0;
+  }
 }
 
 @media (min-width: 721px) and (max-width: 999px) {
