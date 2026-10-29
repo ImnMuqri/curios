@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import type { NavBadges } from '@curios/db-read';
 import type { Alert } from './alerts.js';
 import { parseTheme, THEME_COOKIE, type Theme } from './theme.js';
@@ -24,7 +24,8 @@ const frame = ({
     </AppFrame>,
   );
 
-const links = () => within(screen.getByRole('navigation', { name: 'Dashboard' })).getAllByRole('link');
+const sideNav = () => within(screen.getByRole('navigation', { name: 'Dashboard' }));
+const links = () => sideNav().getAllByRole('link');
 
 describe('AppFrame', () => {
   it('groups the modules as Page, Inbox, Knowledge and Account', () => {
@@ -44,48 +45,48 @@ describe('AppFrame', () => {
 
   it('shows a business page a Store link, after My Curios', () => {
     frame({ mode: 'BUSINESS' });
-    expect(screen.getByRole('link', { name: 'Store' })).toHaveAttribute('href', '/app/store');
+    expect(sideNav().getByRole('link', { name: 'Store' })).toHaveAttribute('href', '/app/store');
     expect(links().map((a) => a.textContent).slice(0, 2)).toEqual(['My Curios', 'Store']);
   });
 
   it('shows a personal page no Store link', () => {
     frame({ mode: 'PERSONAL' });
-    expect(screen.queryByRole('link', { name: 'Store' })).toBeNull();
+    expect(sideNav().queryByRole('link', { name: 'Store' })).toBeNull();
   });
 
   it('puts Orders first in the Inbox for a business page, counting the receipts to check', () => {
     frame({ mode: 'BUSINESS', badges: { review: 0, questions: 0, leads: 0, orders: 2 } });
-    expect(screen.getByRole('link', { name: /^Orders/ })).toHaveAttribute('href', '/app/orders');
+    expect(sideNav().getByRole('link', { name: /^Orders/ })).toHaveAttribute('href', '/app/orders');
     expect(links().map((a) => a.textContent).slice(2, 5)).toEqual(['Orders2', 'Questions', 'Leads']);
   });
 
   it('shows a personal page no Orders link, whatever the count says', () => {
     frame({ mode: 'PERSONAL', badges: { review: 0, questions: 0, leads: 0, orders: 2 } });
-    expect(screen.queryByRole('link', { name: /Orders/ })).toBeNull();
+    expect(sideNav().queryByRole('link', { name: /Orders/ })).toBeNull();
   });
 
   it('sends Facts & sources to the Knowledge screen', () => {
     frame();
-    expect(screen.getByRole('link', { name: 'Facts & sources' })).toHaveAttribute('href', '/app/knowledge');
+    expect(sideNav().getByRole('link', { name: 'Facts & sources' })).toHaveAttribute('href', '/app/knowledge');
   });
 
   it('marks where the owner is', () => {
     frame();
-    expect(screen.getByRole('link', { name: 'My Curios' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByRole('link', { name: /review/i })).not.toHaveAttribute('aria-current');
+    expect(sideNav().getByRole('link', { name: 'My Curios' })).toHaveAttribute('aria-current', 'page');
+    expect(sideNav().getByRole('link', { name: /review/i })).not.toHaveAttribute('aria-current');
   });
 
   it('counts what is waiting beside Review, Questions and Leads', () => {
     frame({ badges: { review: 3, questions: 4, leads: 2, orders: 0 } });
-    expect(screen.getByRole('link', { name: /review/i }).textContent).toBe('Review3');
-    expect(screen.getByRole('link', { name: /questions/i }).textContent).toBe('Questions4');
-    expect(screen.getByRole('link', { name: /leads/i }).textContent).toBe('Leads2');
+    expect(sideNav().getByRole('link', { name: /review/i }).textContent).toBe('Review3');
+    expect(sideNav().getByRole('link', { name: /questions/i }).textContent).toBe('Questions4');
+    expect(sideNav().getByRole('link', { name: /leads/i }).textContent).toBe('Leads2');
   });
 
   it('shows no count when nothing is waiting', () => {
     frame({ badges: { review: 0, questions: 0, leads: 0, orders: 0 } });
-    expect(screen.getByRole('link', { name: 'Review' }).textContent).toBe('Review');
-    expect(screen.getByRole('link', { name: 'Questions' }).textContent).toBe('Questions');
+    expect(sideNav().getByRole('link', { name: 'Review' }).textContent).toBe('Review');
+    expect(sideNav().getByRole('link', { name: 'Questions' }).textContent).toBe('Questions');
   });
 
   it('renders the screen it wraps inside exactly one main landmark', () => {
@@ -326,12 +327,64 @@ describe('the top bar', () => {
     expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'mailto:support@curios.my');
   });
 
-  it('puts the theme in the account menu a phone reaches from its row of icons', () => {
+  it('carries the theme in the account menu too, for a phone, whose top bar has no room for it', () => {
     frame();
-    const account = screen.getByRole('button', { name: 'Account and theme' });
-    fireEvent.click(account);
-    const menu = document.getElementById(account.getAttribute('aria-controls')!)!;
-    expect(within(menu).getByRole('group', { name: 'Theme' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }));
+    expect(within(screen.getByRole('menu', { name: 'Account' })).getByRole('group', { name: 'Theme' })).toBeInTheDocument();
+  });
+});
+
+describe("a phone's bottom menu", () => {
+  const dock = () => within(screen.getByRole('navigation', { name: 'Main navigation' }));
+
+  it('has Page, Store, Inbox, Review and More for a business page, and no Store for a personal one', () => {
+    frame({ mode: 'BUSINESS' });
+    expect(dock().getAllByRole('link').map((a) => a.textContent)).toEqual(['Page', 'Store', 'Inbox', 'Review3']);
+    expect(dock().getByRole('button', { name: 'More' })).toBeInTheDocument();
+    cleanup();
+    frame({ mode: 'PERSONAL' });
+    expect(dock().getAllByRole('link').map((a) => a.textContent)).toEqual(['Page', 'Inbox', 'Review3']);
+  });
+
+  it('counts the three inboxes together on Inbox, and the facts to check on Review', () => {
+    frame({ mode: 'BUSINESS', badges: { review: 3, questions: 1, leads: 4, orders: 2 } });
+    expect(dock().getByRole('link', { name: /^Inbox/ })).toHaveTextContent('Inbox7');
+    expect(dock().getByRole('link', { name: /^Review/ })).toHaveTextContent('Review3');
+  });
+
+  it('sends Inbox to Orders on a business page, and to Questions on a personal one', () => {
+    frame({ mode: 'BUSINESS' });
+    expect(dock().getByRole('link', { name: /^Inbox/ })).toHaveAttribute('href', '/app/orders');
+    cleanup();
+    frame({ mode: 'PERSONAL' });
+    expect(dock().getByRole('link', { name: /^Inbox/ })).toHaveAttribute('href', '/app/questions');
+  });
+
+  it('marks the tab you are on', () => {
+    frame();
+    expect(dock().getByRole('link', { name: 'Page' })).toHaveAttribute('aria-current', 'page');
+    expect(dock().getByRole('link', { name: /^Review/ })).not.toHaveAttribute('aria-current');
+  });
+
+  it('opens More as a sheet of Facts & sources, Billing and Settings, and Escape closes it', () => {
+    frame({ billingDot: true });
+    const more = dock().getByRole('button', { name: 'More' });
+    const sheet = document.getElementById(more.getAttribute('aria-controls')!)!;
+    expect(sheet).not.toBeVisible();
+    fireEvent.click(more);
+    expect(more).toHaveAttribute('aria-expanded', 'true');
+    expect(within(sheet).getAllByRole('link').map((a) => a.textContent)).toEqual(['Facts & sources', 'Billing, needs you', 'Settings']);
+    expect(within(sheet).getByText('Knowledge')).toBeInTheDocument();
+    expect(within(sheet).getByText('Account')).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(more).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('closes the sheet when the page behind it is tapped', () => {
+    frame();
+    fireEvent.click(dock().getByRole('button', { name: 'More' }));
+    fireEvent.click(dock().getByRole('button', { name: 'Close' }));
+    expect(dock().getByRole('button', { name: 'More' })).toHaveAttribute('aria-expanded', 'false');
   });
 });
 

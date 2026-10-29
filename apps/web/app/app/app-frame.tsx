@@ -22,12 +22,19 @@ const svg = (d: string, className: string | undefined = styles.icon) => (
   </svg>
 );
 
+/** The nav's icons, shared with a phone's bottom menu. */
+const PATH = {
+  page: 'M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6',
+  store: 'M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z',
+  review: 'M5 12.5l4.5 4.5L19 7.5',
+} as const;
+
 const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: 'Page',
     items: [
-      { href: '/app/curios', label: 'My Curios', icon: svg('M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6') },
-      { href: '/app/store', label: 'Store', icon: svg('M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z'), business: true },
+      { href: '/app/curios', label: 'My Curios', icon: svg(PATH.page) },
+      { href: '/app/store', label: 'Store', icon: svg(PATH.store), business: true },
     ],
   },
   {
@@ -41,7 +48,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
   {
     title: 'Knowledge',
     items: [
-      { href: '/app/review', label: 'Review', count: 'review', icon: svg('M5 12.5l4.5 4.5L19 7.5') },
+      { href: '/app/review', label: 'Review', count: 'review', icon: svg(PATH.review) },
       { href: '/app/knowledge', label: 'Facts & sources', icon: svg('M4 5h16v11H8l-4 4zM8 9h8M8 12h5') },
     ],
   },
@@ -61,6 +68,9 @@ const ICON = {
   settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1',
   help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01',
   signOut: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
+  ...PATH,
+  inbox: 'M4 13l2.5-8h11L20 13M4 13v6h16v-6M4 13h4.5l1 2.5h5l1-2.5H20',
+  more: 'M5 12h.01M12 12h.01M19 12h.01',
 } as const;
 
 /** What the bell lists for each count in the nav: the module's waiting work, in a line. */
@@ -70,6 +80,12 @@ const WAITING: { key: keyof NavBadges; href: string; say: (n: number) => string;
   { key: 'leads', href: '/app/leads', say: (n) => `${n} new ${n === 1 ? 'lead' : 'leads'}` },
   { key: 'review', href: '/app/review', say: (n) => `${n} ${n === 1 ? 'fact' : 'facts'} to review` },
 ];
+
+/** The three inboxes: one tab on a phone's bottom menu, a row of their own at the top of each. */
+const INBOX = ['/app/orders', '/app/questions', '/app/leads'];
+
+/** What a phone's More sheet holds: the modules the bottom menu has no tab for. */
+const MORE = ['/app/knowledge', '/app/billing', '/app/settings'];
 
 /** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
 export type PlanBlock = { name: string; note: string; fill: number | null; glance: string };
@@ -138,6 +154,7 @@ export function AppFrame({
   const router = useRouter();
   const [theme, setTheme] = useState(savedTheme);
   const [query, setQuery] = useState('');
+  const [more, setMore] = useState(false);
   const search = useRef<HTMLInputElement>(null);
   const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
   const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
@@ -163,6 +180,17 @@ export function AppFrame({
     return () => document.removeEventListener('keydown', onKey);
   }, []);
 
+  // The More sheet closes on Escape and whenever the screen changes (a page picked in it).
+  useEffect(() => {
+    if (!more) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMore(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [more]);
+  useEffect(() => setMore(false), [pathname]);
+
   // Onboarding is its own full screen, as the design handoff's Onboarding
   // board draws it, before and after the page exists. Both of those return
   // the screen in the same place, so claiming the page mid-onboarding does
@@ -183,6 +211,13 @@ export function AppFrame({
   })).filter((group) => group.items.length > 0);
   const here = GROUPS.flatMap((group) => group.items).find((item) => pathname.startsWith(item.href));
   const waiting = WAITING.filter((w) => business(w) && badges[w.key] > 0);
+  const items = GROUPS.flatMap((group) => group.items).filter(business);
+  const inboxes = items.filter((item) => INBOX.includes(item.href));
+  const inInbox = inboxes.some((item) => pathname.startsWith(item.href));
+  const inboxCount = inboxes.reduce((sum, item) => sum + (item.count ? badges[item.count] : 0), 0);
+  const moreItems = items.filter((item) => MORE.includes(item.href));
+  const inMore = moreItems.some((item) => pathname.startsWith(item.href));
+  const tab = (href: string) => items.find((item) => item.href === href);
   const news = waiting.length + alerts.length;
   const avatar = avatarUrl ? (
     <img className={styles.avatar} src={avatarUrl} alt="" width={28} height={28} />
@@ -193,10 +228,10 @@ export function AppFrame({
   );
   // The account menu, "plan at a glance" (29 Oct 2026 boards): who you are, this month's
   // conversations and how the plan stands (Manage goes to Billing, so Billing is no row of its own),
-  // then Settings, Help & support and Sign out. `asMenu` gives its rows menu roles; the phone's
-  // panel, which also holds the theme switch, is a plain disclosure.
-  const account = (asMenu: boolean) => {
-    const item = asMenu ? ({ role: 'menuitem' } as const) : {};
+  // then Settings, Help & support and Sign out. On a phone, where the top bar has no room for it,
+  // the theme switch sits under who you are.
+  const account = () => {
+    const item = { role: 'menuitem' } as const;
     return (
       <>
         <div className={styles.menuHead}>
@@ -211,6 +246,9 @@ export function AppFrame({
             <b>{who}</b>
             {ownerEmail ? <small>{ownerEmail}</small> : null}
           </span>
+        </div>
+        <div className={styles.menuPhoneTheme}>
+          <ThemeSwitch />
         </div>
         <div className={styles.menuPlan}>
           {usage ? (
@@ -324,17 +362,15 @@ export function AppFrame({
               </span>
             ) : null}
           </Link>
-          {/* A phone has no top bar: the account, and the theme with it, end the row of icons. */}
-          <div className={styles.phoneAccount}>
-            <Popover label="Account and theme" buttonClassName={styles.phoneAccountButton} panelClassName={styles.accountPanel} button={avatar}>
-              <ThemeSwitch className={styles.menuTheme} />
-              {account(false)}
-            </Popover>
-          </div>
         </aside>
 
         <div className={styles.column}>
           <header className={styles.top}>
+            {/* A phone has no sidebar: the logo starts its top bar. */}
+            <Link href="/app/curios" className={styles.topBrand}>
+              <Wordmark />
+              <span className={styles.srOnly}>Curios dashboard</span>
+            </Link>
             <p className={styles.crumb}>
               {displayName}
               {here ? (
@@ -399,15 +435,88 @@ export function AppFrame({
                 </>
               }
             >
-              {account(true)}
+              {account()}
             </Popover>
           </header>
           <main className={styles.sheet}>
+            {/* On a phone the three inboxes share one tab below, so each starts with a row to switch between them. */}
+            {inInbox ? (
+              <nav aria-label="Inbox" className={styles.inboxTabs}>
+                {inboxes.map((item) => {
+                  const count = item.count ? badges[item.count] : 0;
+                  return (
+                    <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined}>
+                      {item.label}
+                      {count > 0 ? <em>{count}</em> : null}
+                    </Link>
+                  );
+                })}
+              </nav>
+            ) : null}
             <NavProgressProvider>
               <AlertsProvider alerts={alerts}>{children}</AlertsProvider>
             </NavProgressProvider>
           </main>
         </div>
+
+        {/* A phone's menu (29 Oct 2026 boards): a pill floating at the foot, five tabs, and More's sheet above it. */}
+        <nav aria-label="Main navigation" className={styles.dock} data-more={more || undefined}>
+          {more ? <button type="button" className={styles.scrim} aria-label="Close" tabIndex={-1} onClick={() => setMore(false)} /> : null}
+          <Link href="/app/curios" className={styles.dockTab} aria-current={pathname.startsWith('/app/curios') ? 'page' : undefined}>
+            {svg(ICON.page, styles.dockIcon)}
+            <span>Page</span>
+          </Link>
+          {tab('/app/store') ? (
+            <Link href="/app/store" className={styles.dockTab} aria-current={pathname.startsWith('/app/store') ? 'page' : undefined}>
+              {svg(ICON.store, styles.dockIcon)}
+              <span>Store</span>
+            </Link>
+          ) : null}
+          <Link href={inboxes[0]!.href} className={styles.dockTab} aria-current={inInbox ? 'page' : undefined}>
+            {svg(ICON.inbox, styles.dockIcon)}
+            <span>Inbox</span>
+            {inboxCount > 0 ? <u className={styles.dockCount}>{inboxCount}</u> : null}
+          </Link>
+          <Link href="/app/review" className={styles.dockTab} aria-current={pathname.startsWith('/app/review') ? 'page' : undefined}>
+            {svg(ICON.review, styles.dockIcon)}
+            <span>Review</span>
+            {badges.review > 0 ? <u className={styles.dockCount}>{badges.review}</u> : null}
+          </Link>
+          <button
+            type="button"
+            className={styles.dockTab}
+            aria-expanded={more}
+            aria-controls="dock-more"
+            data-on={inMore || more || undefined}
+            onClick={() => setMore((was) => !was)}
+          >
+            {svg(ICON.more, styles.dockIcon)}
+            <span>More</span>
+            {billingDot ? <i className={styles.dockDot} aria-hidden="true" /> : null}
+          </button>
+          <div id="dock-more" className={styles.moreSheet} hidden={!more}>
+            <span className={styles.grab} aria-hidden="true" />
+            {['Knowledge', 'Account'].map((title) => {
+              const rows = moreItems.filter((item) => GROUPS.find((group) => group.title === title)!.items.includes(item));
+              return rows.length > 0 ? (
+                <div key={title}>
+                  <p>{title}</p>
+                  {rows.map((item) => (
+                    <Link key={item.href} href={item.href} aria-current={pathname.startsWith(item.href) ? 'page' : undefined} onClick={() => setMore(false)}>
+                      {item.icon}
+                      {item.label}
+                      {billingDot && item.href === '/app/billing' ? (
+                        <span className={styles.dot}>
+                          <span className={styles.srOnly}>, needs you</span>
+                        </span>
+                      ) : null}
+                    </Link>
+                  ))}
+                </div>
+              ) : null;
+            })}
+          </div>
+        </nav>
       </div>
     </ThemeContext.Provider>
   );

@@ -70,6 +70,11 @@
     font-size: 14px;
   }
 
+  /* Under the title on a phone, the actions start at the left, as the boards draw "See your shop". */
+  .actions {
+    margin-left: 0;
+  }
+
   /* The actions' own line, so a "Saved" status can lead it and the button sit right. */
   .withBeside .actions {
     flex: 1 1 100%;
