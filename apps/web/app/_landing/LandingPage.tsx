@@ -48,8 +48,8 @@ export function landingMetadata(locale: Locale): Metadata {
 /**
  * The landing page, in either language, from the design handoff's TanyaJe
  * board: who can ask what (the hero and the strip under it), who it is for,
- * how it works, what a business gets, what it costs, the questions, then the
- * close.
+ * how it works, what a business gets (what lands in an owner's hands,
+ * then the order played out), what it costs, the questions, then the close.
  *
  * The root layout fixes <html lang="en">, so the Malay page declares its
  * language on its own outermost element; screen readers and browsers honour

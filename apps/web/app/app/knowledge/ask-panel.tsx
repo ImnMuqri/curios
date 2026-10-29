@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Thinking } from '@curios/ui';
 import { themeAttrs } from '../../_bento/BentoPage.js';
 import bento from '../../_bento/Bento.module.css';
 import { apiFetch } from '../../../lib/api.js';
@@ -124,12 +125,8 @@ export function AskPanel({
           ),
         )}
         {thinking ? (
-          <PageReply name={pageName} className={styles.a} label="Thinking">
-            <span className={styles.dots}>
-              <i />
-              <i />
-              <i />
-            </span>
+          <PageReply name={pageName} className={styles.a} label="Inquiring">
+            <Thinking />
           </PageReply>
         ) : null}
       </div>

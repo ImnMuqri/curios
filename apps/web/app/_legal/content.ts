@@ -11,6 +11,8 @@ export type LegalDoc = 'terms' | 'privacy' | 'refunds';
 export const OPERATOR = {
   name: 'BSYX LABS',
   registration: '202603086039',
+  /** The same registration in SSM's old format, shown beside it in the landing's footer. */
+  oldRegistration: 'TR0339989-A',
 };
 
 export const SUPPORT_EMAIL = 'support@curios.my';

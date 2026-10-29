@@ -1,5 +1,5 @@
 import type { LandingCopy, Locale } from './copy.js';
-import { CHROME, LEGAL_DOCS, LEGAL_PATH } from '../_legal/content.js';
+import { CHROME, LEGAL_DOCS, LEGAL_PATH, OPERATOR, SUPPORT_EMAIL } from '../_legal/content.js';
 import { FooterPeek } from './FooterPeek.js';
 import { Wordmark } from './Wordmark.js';
 import styles from './tanya.module.css';
@@ -7,7 +7,8 @@ import styles from './tanya.module.css';
 /**
  * The sections again, the Terms, Privacy and Refund pages (not on the board,
  * DEVIATIONS 138), sign in, the other language, the note that every sample is
- * made up, and the wordmark at full width.
+ * made up, who runs Curios (the business, its SSM number in both formats, and
+ * the support address), and the wordmark at full width.
  */
 export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) {
   const { nav } = copy;
@@ -35,6 +36,13 @@ export function Footer({ copy, locale }: { copy: LandingCopy; locale: Locale }) 
           </div>
         </div>
         <p className={styles.footNote}>{copy.footer.note}</p>
+        <p className={styles.footCo}>
+          <span>{OPERATOR.name}</span>
+          <span>
+            {OPERATOR.registration} ({OPERATOR.oldRegistration})
+          </span>
+          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+        </p>
       </div>
       <span className={styles.footMark} aria-hidden="true">
         <Wordmark className={styles.footWord} tone="ghost">

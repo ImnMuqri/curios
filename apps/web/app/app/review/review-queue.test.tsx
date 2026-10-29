@@ -182,6 +182,35 @@ describe('ReviewQueue', () => {
     expect(screen.getByRole('listitem')).toHaveTextContent('Accepted Kuih lapis is RM12 a box');
   });
 
+  it('shows this session eight decisions at a time, newest first', async () => {
+    const many = Array.from({ length: 10 }, (_, i) => ({ ...facts[0]!, id: `f-${i}`, claim: `Fact number ${i + 1}` }));
+    render(
+      <ReviewQueue facts={many} onAccept={vi.fn().mockResolvedValue(undefined)} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />,
+    );
+
+    for (let i = 1; i <= 9; i++) {
+      await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+      await waitFor(() => expect(topCard()).toHaveTextContent(`Fact number ${i + 1}`));
+    }
+
+    const session = () => screen.getByRole('list');
+    const pages = screen.getByRole('navigation', { name: /this session/i });
+    expect(pages).toHaveTextContent('1 of 2');
+    expect(within(session()).getAllByRole('listitem')).toHaveLength(8);
+    expect(within(session()).getAllByRole('listitem')[0]).toHaveTextContent('Fact number 9');
+
+    await userEvent.click(within(pages).getByRole('button', { name: 'Older' }));
+    expect(within(session()).getAllByRole('listitem')).toHaveLength(1);
+    expect(within(session()).getByRole('listitem')).toHaveTextContent('Fact number 1');
+    expect(within(pages).getByRole('button', { name: 'Older' })).toBeDisabled();
+
+    // A new decision brings the newest page back.
+    await userEvent.click(screen.getByRole('button', { name: /^accept$/i }));
+    await waitFor(() => expect(within(session()).getAllByRole('listitem')[0]).toHaveTextContent('Fact number 10'));
+    expect(pages).toHaveTextContent('1 of 2');
+    // Ten cards, each leaving over LEAVE_MS.
+  }, 15_000);
+
   it('draws the chat’s reply as plain text under "{Name}’s page"', () => {
     render(<ReviewQueue facts={facts} pageName="Nadia" onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
     const label = screen.getByText('Nadia’s page');

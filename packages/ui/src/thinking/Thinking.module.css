@@ -1,0 +1,61 @@
+.thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
+  font-style: normal;
+  color: color-mix(in srgb, currentColor 70%, transparent);
+}
+
+/* The wordmark's o (_landing/Wordmark.tsx), a little over the text's size. */
+.mo {
+  flex: none;
+  width: 1.25em;
+  height: 1.25em;
+  overflow: visible;
+  animation: moBob 1.2s ease-in-out infinite;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--mo-ring, var(--biru));
+  stroke-width: 7.6;
+}
+
+/* Looking one way, then the other: searching, where the wordmark's o only idles. */
+.eyes {
+  fill: var(--mo-eye, var(--mo-ring, var(--biru)));
+  transform-box: view-box;
+  transform-origin: 20px 16px;
+  animation: moSearch 1.6s ease-in-out infinite;
+}
+
+@keyframes moBob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes moSearch {
+  0%,
+  10% {
+    transform: translate(0, 0);
+  }
+  30%,
+  45% {
+    transform: translate(-2.8px, 0.8px);
+  }
+  65%,
+  80% {
+    transform: translate(2.8px, 0.8px);
+  }
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mo,
+  .eyes {
+    animation: none;
+  }
+}

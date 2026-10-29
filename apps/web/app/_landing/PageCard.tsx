@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import type { PersonaWords } from './copy.js';
 import type { Persona } from './personas.js';
+import { photo } from './photos.js';
 import styles from './tanya.module.css';
 
 /**
@@ -48,7 +49,7 @@ export function PageCard({
     >
       {persona.photo ? (
         <span className={styles.pcPhoto}>
-          <img src={persona.photo.src} alt="" style={{ objectPosition: persona.photo.focus }} loading="lazy" />
+          <img {...photo(persona.photo.src, 300)} alt={persona.name} style={{ objectPosition: persona.photo.focus }} loading="lazy" />
         </span>
       ) : null}
       {kind ? <span className={styles.pcKind}>{kind}</span> : null}

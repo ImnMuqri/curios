@@ -1,6 +1,10 @@
+import type { Metadata } from 'next';
+import { connectToApi } from '../../lib/api-hints.js';
 import { getAuthLink } from '@curios/db-read';
 import { BadLink } from '../_system/BadLink.js';
 import { Reset } from './reset-form.js';
+
+export const metadata: Metadata = { title: 'Choose a new password · Curios', robots: { index: false, follow: false } };
 
 /**
  * Choose a new password, from the System board. The link is looked at (not
@@ -9,6 +13,7 @@ import { Reset } from './reset-form.js';
  * names the address it is for.
  */
 export default async function ResetPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
+  connectToApi();
   const { token } = await searchParams;
   if (!token) return <BadLink />;
 

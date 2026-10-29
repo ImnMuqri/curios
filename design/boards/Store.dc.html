@@ -678,6 +678,11 @@ a{color:#2340c8}a:hover{color:#122686}
 .po2-ln b{font-weight:500}
 .po2-tot{margin-top:4px;padding-top:6px;border-top:1px solid #eef0f3;font-weight:600}
 .po2-tot b{font-weight:700}
+
+.sf2-cov{position:absolute;left:0;right:0;top:0;height:320px;overflow:hidden;pointer-events:none}
+.sf2-cov img{width:100%;height:100%;object-fit:cover;filter:blur(22px) saturate(1.1);transform:scale(1.3)}
+.sf2-cov::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(84,35,57,.35),#542339)}
+.sf2-top,.sf2{position:relative}
 </style>
 </helmet>
 
@@ -920,6 +925,7 @@ a{color:#2340c8}a:hover{color:#122686}
 
 <sc-if value="{{ pvBase }}" hint-placeholder-val="{{ true }}">
 <div class="sp" style="bottom: {{spBottom}}">
+<div class="sf2-cov" aria-hidden="true"><img src="/_blob/8c12272a54670861ce6afc463dd85cd0" alt=""></div>
 <div class="sf2-top"><span class="sf2-c" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"></path></svg></span><span>curios.my/keklina/shop</span></div>
 <div class="sf2">
 <span class="sf2-open"><i></i>Open for orders</span>

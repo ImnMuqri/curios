@@ -1,5 +1,5 @@
 import mammoth from 'mammoth';
-import { extractText, getDocumentProxy } from 'unpdf';
+import { getDocumentProxy } from 'unpdf';
 import { PASTED_TEXT_MAX } from '@curios/core';
 
 /**
@@ -52,11 +52,40 @@ function tidy(text: string): string {
     .trim();
 }
 
+export type PdfTextItem = { str: string; hasEOL: boolean; transform: number[]; width: number; height: number };
+
+/**
+ * One page's text, from where each run sits rather than only pdf.js's
+ * end-of-line flags. Those are sometimes missing -- a resume's "PERSONAL
+ * PROJECTS" heading came out as "PROJECTSInvokita is..." -- so a run that
+ * starts on another line starts a new one, and a gap on the same line is a
+ * space.
+ */
+export function pageText(items: PdfTextItem[]): string {
+  let text = '';
+  let last: { y: number; end: number; height: number } | null = null;
+  for (const item of items) {
+    const [, , , , x = 0, y = 0] = item.transform;
+    if (item.str !== '' && last && !/\s$/.test(text)) {
+      const size = Math.max(item.height, last.height, 1);
+      if (Math.abs(y - last.y) > size / 2) text += '\n';
+      else if (x - last.end > size * 0.15 && !/^\s/.test(item.str)) text += ' ';
+    }
+    text += item.str + (item.hasEOL ? '\n' : '');
+    if (item.str !== '') last = { y, end: x + item.width, height: item.height };
+  }
+  return text;
+}
+
 async function readRaw(kind: SourceFileKind, bytes: Uint8Array): Promise<string> {
   if (kind === 'pdf') {
     const pdf = await getDocumentProxy(new Uint8Array(bytes));
-    const { text } = await extractText(pdf, { mergePages: true });
-    return text;
+    const pages: string[] = [];
+    for (let number = 1; number <= pdf.numPages; number++) {
+      const { items } = await (await pdf.getPage(number)).getTextContent();
+      pages.push(pageText(items.flatMap((item) => ('str' in item ? [item] : []))));
+    }
+    return pages.join('\n');
   }
   if (kind === 'docx') {
     const { value } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });

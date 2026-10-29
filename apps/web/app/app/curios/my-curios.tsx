@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import type { MyCurios } from '@curios/db-read';
 import type { HeadingFont, PageBackground, PageStyle, StockCover } from '@curios/core/bento';
 import type { Socials } from '@curios/core/socials';
+import { Thinking } from '@curios/ui';
 import { shopCopy } from '../../[handle]/shop/copy.js';
 import { BentoPage, type BentoPageProps } from '../../_bento/BentoPage.js';
 import { PageHead } from '../_ui/page-head.js';
@@ -314,12 +315,8 @@ function PreviewAsk({ question, askPage, accent, name }: { question: string; ask
       {state.kind === 'answered' ? (
         <PageReply name={name}>{state.reply}</PageReply>
       ) : state.kind === 'asking' ? (
-        <PageReply name={name} label="Thinking">
-          <span className={styles.pvDots} aria-hidden="true">
-            <i />
-            <i />
-            <i />
-          </span>
+        <PageReply name={name} label="Inquiring">
+          <Thinking />
         </PageReply>
       ) : (
         <button type="button" className={styles.pvTap} onClick={() => void ask()}>

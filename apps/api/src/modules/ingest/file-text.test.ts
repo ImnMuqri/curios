@@ -1,12 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { PASTED_TEXT_MAX } from '@curios/core';
-import { readSourceFile, SOURCE_FILE_MAX_BYTES, sniffSourceFile, UnreadableFileError } from './file-text.js';
+import { pageText, readSourceFile, SOURCE_FILE_MAX_BYTES, sniffSourceFile, UnreadableFileError } from './file-text.js';
 
 const utf8 = (text: string) => new TextEncoder().encode(text);
 
-/** A real, one-page PDF with one line of text, offsets and all -- the smallest honest fixture. */
-function onePagePdf(line: string): Uint8Array {
-  const stream = `BT /F1 18 Tf 72 720 Td (${line}) Tj ET`;
+/**
+ * A real, one-page PDF, offsets and all -- the smallest honest fixture. Each
+ * run is its own text object at its own spot on the page, the way a resume's
+ * heading and the line under it usually are.
+ */
+function onePagePdf(...runs: (string | { text: string; x: number; y: number })[]): Uint8Array {
+  const stream = runs
+    .map((run) => (typeof run === 'string' ? { text: run, x: 72, y: 720 } : run))
+    .map(({ text, x, y }) => `BT /F1 12 Tf ${x} ${y} Td (${text}) Tj ET`)
+    .join('\n');
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
     '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
@@ -48,6 +55,18 @@ describe('readSourceFile', () => {
     expect(truncated).toBe(false);
   });
 
+  it('keeps the breaks and spaces between separate runs of PDF text', async () => {
+    const { text } = await readSourceFile(
+      onePagePdf(
+        { text: 'PERSONAL PROJECTS', x: 72, y: 720 },
+        { text: 'Invokita is an invoicing platform.', x: 72, y: 700 },
+        { text: 'Kek butter', x: 72, y: 680 },
+        { text: 'RM95', x: 300, y: 680 },
+      ),
+    );
+    expect(text).toBe('PERSONAL PROJECTS\nInvokita is an invoicing platform.\nKek butter RM95');
+  });
+
   it('reads a text file, tidying line endings, spacing and runs of blank lines', async () => {
     const { text } = await readSourceFile(utf8('  Kek butter   RM95  \r\n\r\n\r\n\r\nKek coklat\tRM90\r\n'));
     expect(text).toBe('Kek butter RM95\n\nKek coklat RM90');
@@ -73,5 +92,20 @@ describe('readSourceFile', () => {
     const failure = await readSourceFile(new Uint8Array()).catch((error: unknown) => error);
     expect(failure).toBeInstanceOf(UnreadableFileError);
     expect(failure).toMatchObject({ statusCode: 400, code: 'UNREADABLE_FILE' });
+  });
+});
+
+describe('pageText', () => {
+  const run = (str: string, x: number, y: number, width: number, hasEOL = false) => ({ str, hasEOL, transform: [1, 0, 0, 1, x, y], width, height: str ? 10 : 0 });
+
+  it('starts a new line where pdf.js left out the end-of-line, as a resume heading had it', () => {
+    // From a real resume: no end-of-line between the heading and the line under it.
+    const items = [run('PERSONAL PROJECTS', 38, 221, 146), run('Invokita is an invoicing platform', 49, 183, 491), run('', 49, 170, 0, true), run('payment collection.', 49, 170, 86)];
+    expect(pageText(items)).toBe('PERSONAL PROJECTS\nInvokita is an invoicing platform\npayment collection.');
+  });
+
+  it('puts a space at a gap on the same line, and none where runs touch or already have one', () => {
+    const items = [run('Developed', 66, 143, 48), run(' ', 114, 143, 3), run('Invokita.my', 117, 143, 55), run(', an AI platform', 172, 143, 100), run('RM95', 400, 143, 30)];
+    expect(pageText(items)).toBe('Developed Invokita.my, an AI platform RM95');
   });
 });

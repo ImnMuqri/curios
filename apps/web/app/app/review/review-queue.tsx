@@ -16,6 +16,9 @@ export type ChatLook = Parameters<typeof themeAttrs>[0];
 
 type Kind = 'accept' | 'reject';
 
+/** This session's decisions shown at once; the rest are a page away. */
+const LOG_PAGE = 8;
+
 interface Done {
   id: string;
   kind: Kind;
@@ -92,13 +95,14 @@ export function ReviewQueue({
   look?: ChatLook;
   /** The page's display name, for the "{Name}’s page" label above its reply. */
   pageName?: string;
-  /** Under the side panel: whether the page is live, and Publish while it is not. */
+  /** Atop the side panel: whether the page is live, and Publish while it is not. */
   footer?: ReactNode;
 }) {
   const [acted, setActed] = useState<Set<string>>(new Set());
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [log, setLog] = useState<Done[]>([]);
+  const [logPage, setLogPage] = useState(0);
   const [leaving, setLeaving] = useState<{ id: string; kind: Kind } | null>(null);
   const [draft, setDraft] = useState<string | null>(null);
   const [said, setSaid] = useState('');
@@ -112,11 +116,14 @@ export function ReviewQueue({
   const claimOf = (fact: ReviewFact) => edits[fact.id] ?? fact.claim;
   const total = Math.max(startTotal, log.length + visible.length);
   const remaining = total - log.length;
+  const logPages = Math.ceil(log.length / LOG_PAGE);
 
   function settle(fact: ReviewFact, kind: Kind) {
     const keepFocus = deck.current?.contains(document.activeElement) ?? false;
     setActed((prev) => new Set(prev).add(fact.id));
     setLog((prev) => [{ id: fact.id, kind, claim: claimOf(fact) }, ...prev]);
+    // Back to the first page, where the decision just made is.
+    setLogPage(0);
     setLeaving(null);
     setDraft(null);
     const left = remaining - 1;
@@ -295,6 +302,10 @@ export function ReviewQueue({
       </div>
 
       <aside className={styles.side} aria-label="What this changes">
+        {/* At the top, not under the log: the log grows with every fact, and
+            Publish under it slid out of sight (owner, 2026-10-27). */}
+        {footer ? <div className={styles.golive}>{footer}</div> : null}
+
         <section>
           <h3>
             Once accepted, the chat can say<span>Live as you edit</span>
@@ -316,7 +327,7 @@ export function ReviewQueue({
           </h3>
           {log.length ? (
             <ul className={styles.log}>
-              {log.map((entry) => (
+              {log.slice(logPage * LOG_PAGE, (logPage + 1) * LOG_PAGE).map((entry) => (
                 <li key={entry.id}>
                   <i data-kind={entry.kind} aria-hidden="true">
                     <svg viewBox="0 0 24 24">
@@ -332,9 +343,20 @@ export function ReviewQueue({
           ) : (
             <p className={styles.noLog}>What you accept or reject shows up here.</p>
           )}
+          {logPages > 1 ? (
+            <nav className={styles.pager} aria-label="This session’s pages">
+              <button type="button" disabled={logPage === 0} onClick={() => setLogPage((page) => page - 1)}>
+                Newer
+              </button>
+              <span>
+                {logPage + 1} of {logPages}
+              </span>
+              <button type="button" disabled={logPage >= logPages - 1} onClick={() => setLogPage((page) => page + 1)}>
+                Older
+              </button>
+            </nav>
+          ) : null}
         </section>
-
-        {footer ? <div className={styles.golive}>{footer}</div> : null}
       </aside>
     </div>
   );

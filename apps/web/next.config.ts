@@ -1,4 +1,7 @@
 import type { NextConfig } from 'next';
+// No .js here, unlike every other import in the workspace: Next loads this file with its own
+// require hook, which finds lib/security-headers.ts by its bare name and fails on the .js one.
+import { securityHeaders } from './lib/security-headers';
 
 // Next only ever loads .env* files from its own project directory (this one),
 // never the monorepo root -- so DATABASE_URL_READONLY and NEXT_PUBLIC_API_URL
@@ -18,6 +21,27 @@ const config: NextConfig = {
   // break a dev server. Builds from agents and scripts set NEXT_DIST_DIR (to
   // .next-build) to keep out of its way; everyone else gets the default.
   distDir: process.env.NEXT_DIST_DIR ?? '.next',
+  // Says nothing a visitor needs, and tells a scanner which exploits to try.
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: securityHeaders({
+          apiUrl: process.env.NEXT_PUBLIC_API_URL,
+          sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+          dev: process.env.NODE_ENV !== 'production',
+        }),
+      },
+      // The landing's photos. Next sends public/ files with max-age=0, which Cloudflare turned
+      // into four hours. A photo that is replaced takes a new file name, so a visitor never
+      // keeps the old one for these 30 days (app/_landing/README.md).
+      {
+        source: '/landing/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=2592000, stale-while-revalidate=86400' }],
+      },
+    ];
+  },
   // The public page reads Postgres directly through the SELECT-only role, which
   // the edge runtime cannot do. Node everywhere, deliberately.
   serverExternalPackages: ['@prisma/client'],
@@ -34,6 +58,11 @@ const config: NextConfig = {
     // paint. They are small (about 15 KB for the landing page); measured on
     // the landing page, it removed Lighthouse's render-blocking finding.
     inlineCss: true,
+    // Each page inlines only the stylesheets it imports. The default merges CSS modules
+    // across routes into shared chunks, so the landing page carried the dashboard's review
+    // screen, the shop and the FAQ (about 50 KB), inlined into the HTML and again into the
+    // page's RSC payload.
+    cssChunking: 'strict',
     extensionAlias: { '.js': ['.ts', '.tsx', '.js'] },
     // How long a screen the dashboard's sidebar prefetched on hover may be shown as it was. The
     // default is five minutes, too long for an inbox; 30 seconds is the least Next allows. Any

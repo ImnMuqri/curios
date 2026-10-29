@@ -7,6 +7,8 @@
   line-height: 1.5;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  /* Thinking's o, while the reply is on its way: the colour of the dot. */
+  --mo-ring: var(--accent-mark, var(--accent, var(--biru)));
 }
 
 .who {

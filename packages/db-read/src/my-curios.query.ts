@@ -2,6 +2,7 @@ import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
+import { countTopicsNeedingOwner } from './topics.query.js';
 
 export interface MyCurios {
   id: string;
@@ -89,13 +90,13 @@ export interface NavBadges {
 
 /**
  * The sidebar's counts, each the filter of the screen it sits beside: facts
- * waiting in Review, topics with no answer yet (Questions' "Needs you"), and
+ * waiting in Review, topics that need the owner (Questions' "Needs you"), and
  * leads nobody has contacted (Leads' "New"), and orders whose receipt waits to be checked.
  */
 export async function countNavBadges(accountId: string): Promise<NavBadges> {
   const [review, questions, leads, orders] = await Promise.all([
     countPendingFacts(accountId),
-    prismaRead.topic.count({ where: { page: { accountId }, answer: null } }),
+    countTopicsNeedingOwner(accountId),
     prismaRead.lead.count({ where: { page: { accountId }, status: 'NEW' } }),
     prismaRead.order.count({ where: { page: { accountId }, status: 'PLACED', receiptUploadedAt: { not: null } } }),
   ]);

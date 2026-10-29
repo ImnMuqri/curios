@@ -377,6 +377,17 @@ What survives is the ranking: a question asked nine times is a gap whether the m
 refused it or answered it badly. Refusal detection can be added later without changing the
 model -- it would set the flag at write time rather than leaving it false.
 
+*Amended 2026-10-27.* Refusal detection exists now: a "not sure" reply starts with a `[?]`
+marker that `unsure.ts` strips from the stream before the visitor sees it, which answers the
+mid-sentence objection above. Each `QuestionAsk` records `answered` and, when the model
+wrote the reply, the `reply` as the visitor saw it. Every question is still logged and
+ranked, but the Questions screen splits topics by them: **Needs you** is a topic with no
+owner answer whose latest model reply was "not sure" (or that the model has never replied
+to), or one with two answers to choose from; **By chat** is one with no owner answer whose
+latest model reply answered it from the facts; **Answered** is one the owner answered. Asks
+without a reply (the owner's answer, the month's fixed reply, asks from before replies were
+kept) are skipped, so a topic only moves on what the chat actually said.
+
 A confidently invented price is the worst thing this product can do. It is worse than
 being unhelpful, because it reaches a customer who then arrives expecting that price.
 Tune towards refusal and let the Questions tab close the gaps.

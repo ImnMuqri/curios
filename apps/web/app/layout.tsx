@@ -1,9 +1,17 @@
+import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import '@curios/ui/tokens.css';
 import '@curios/ui/reset.css';
 import './globals.css';
 import { Providers } from './providers.js';
 import { fontVariables } from '../lib/fonts.js';
+import { lookUpApi } from '../lib/api-hints.js';
+
+/**
+ * For any screen that names none of its own; without it such a screen had no <title> at all.
+ * No default description: an owner's page would inherit Curios's.
+ */
+export const metadata: Metadata = { title: 'Curios' };
 
 /*
  * Self-hosted at build time by next/font, deliberately. A shop's visitor is on
@@ -15,6 +23,7 @@ import { fontVariables } from '../lib/fonts.js';
  * Next and stays renderable in a plain vitest jsdom.
  */
 export default function RootLayout({ children }: { children: ReactNode }) {
+  lookUpApi();
   return (
     <html lang="en" className={fontVariables}>
       <body>

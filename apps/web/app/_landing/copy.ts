@@ -61,6 +61,42 @@ export interface PersonaWords {
   links: [string, string, string];
 }
 
+interface Caption {
+  title: string;
+  body: string;
+}
+
+/**
+ * One side of "What lands in your hands": the owner's inbox today, the same
+ * chats answered on their page, and what is left for them. The chat lines are
+ * the visitors' own words, the same in both languages.
+ */
+export interface WhatLandsPersona {
+  label: string;
+  tags: { inbox: string; replying: string; landed: string };
+  captions: { inbox: Caption; replying: Caption; landed: Caption };
+  /** `keep` is a serious buyer: outlined and marked `kept` once sorted. */
+  chats: { text: string; time: string; from: string; keep: boolean; phone: string; unread: number }[];
+  visitorFrom: (from: string) => string;
+  answered: string;
+  kept: string;
+  /** The big card the serious chat became: a lead with its slots, or a paid order. */
+  card:
+    | { kind: 'lead'; who: string; pill: string; phone: string; slots: [string, string][]; button: string }
+    | { kind: 'order'; who: string; pill: string; total: string; lines: [string, string][]; foot: [string, string] };
+  /** The two rows under it; `tone` picks the pill's colours. */
+  rows: { initial: string; name: string; sub: string; pill: string; tone: 'hot' | 'soft' | 'paid' }[];
+  /** The suggestions tile: the visitor's question, the page's reply and two picks, one tapped. */
+  chat: { q: string; page: string; a: string; picks: { name: string; price: string; button: string }[]; tapped: number; done: string };
+  suggested: Caption;
+  alerts: { time: string; text: string }[];
+  told: Caption;
+  /** What buyers keep asking; the last bar is the one they want and the owner does not have. */
+  asked: { q: string; n: number }[];
+  missing: string;
+  answeredAll: Caption;
+}
+
 export interface LandingCopy {
   locale: Locale;
   meta: { title: string; description: string; ogAlt: string; ogLocale: string };
@@ -123,6 +159,14 @@ export interface LandingCopy {
     ring: string;
     card: { name: string; role: string; bio: string };
   };
+  whatLands: {
+    title: string;
+    lede: string;
+    /** The switch's name, for screen readers. */
+    switchLabel: string;
+    service: WhatLandsPersona;
+    products: WhatLandsPersona;
+  };
   business: {
     eyebrow: string;
     title: string;
@@ -131,7 +175,7 @@ export interface LandingCopy {
     customer: string;
     yours: string;
     shopPath: string;
-    lib: { bio: string; shop: string; shopSub: string; links: string[]; foot: string };
+    lib: { bio: string; shop: string; shopSub: string; shopPhoto: string; links: string[]; foot: string };
     open: string;
     facts: string;
     cats: string[];
@@ -330,9 +374,140 @@ const EN: LandingBase = {
     ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? JUST ASK · ',
     card: { name: 'aisyahdraws', role: 'Illustrator · Ipoh', bio: 'Portraits, book covers, editorial. Commissions open for November.' },
   },
+  whatLands: {
+    title: 'What lands in your hands.',
+    lede: 'Every chat on your page ends in one of these.',
+    switchLabel: 'Show it for',
+    service: {
+      label: 'I offer a service',
+      tags: { inbox: 'Your inbox · 47 unread', replying: 'With Curios · your page replies', landed: 'With Curios · 3 worth calling' },
+      captions: {
+        inbox: { title: 'Your inbox today', body: '47 unread, mostly “hi”. A real buyer is buried in there.' },
+        replying: { title: 'Now your page replies', body: 'Every chat answered. Serious buyers qualified.' },
+        landed: { title: 'Leads, already qualified', body: 'Your page asked budget, area and timing. Just call.' },
+      },
+      chats: [
+        { text: 'hi', time: '11:48 pm', from: 'Instagram', keep: false, phone: '+60 11-2390 4412', unread: 1 },
+        { text: 'available?', time: '11:31 pm', from: 'TikTok', keep: false, phone: '+60 19-771 0283', unread: 2 },
+        { text: 'Nak beli condo Seksyen 13, loan dah lulus', time: '10:57 pm', from: 'Instagram', keep: true, phone: '+60 12-554 8190', unread: 1 },
+        { text: 'Deposit berapa bulan?', time: '10:12 pm', from: 'Instagram', keep: false, phone: '+60 13-880 1123', unread: 3 },
+        { text: 'Ada rumah sewa Shah Alam bawah RM1,800?', time: '9:40 pm', from: 'TikTok', keep: true, phone: '+60 17-552 9081', unread: 4 },
+        { text: 'masih ada?', time: '8:03 pm', from: 'Facebook', keep: false, phone: '+60 16-300 7745', unread: 2 },
+        { text: 'area mana', time: '7:44 pm', from: 'Instagram', keep: false, phone: '+60 11-6021 9937', unread: 1 },
+        { text: 'berapa sewa?', time: '7:02 pm', from: 'TikTok', keep: false, phone: '+60 14-772 0310', unread: 2 },
+      ],
+      visitorFrom: (from) => `Visitor from ${from}`,
+      answered: 'Answered ✓',
+      kept: 'Lead ✓',
+      card: {
+        kind: 'lead',
+        who: 'Aina · new lead · 2:14 am',
+        pill: 'Hot',
+        phone: '+60 12-554 8190',
+        slots: [
+          ['Wants', 'Buy a condo'],
+          ['Budget', 'RM450k'],
+          ['Area', 'Seksyen 13'],
+          ['Loan', 'Approved'],
+        ],
+        button: 'Open WhatsApp',
+      },
+      rows: [
+        { initial: 'N', name: 'Nurul · rent, 3 rooms', sub: 'Up to RM1,800 · December', pill: 'Ready to view', tone: 'paid' },
+        { initial: 'R', name: 'Rizal · rent, 2 rooms', sub: 'Up to RM1,300 · January', pill: 'Warm', tone: 'soft' },
+      ],
+      chat: {
+        q: '3 bilik bawah RM1,800?',
+        page: 'Hafiz’s page',
+        a: 'These two fit:',
+        picks: [
+          { name: 'Seksyen 7', price: 'RM1,650', button: 'Ask to view' },
+          { name: 'Seksyen 13', price: 'RM1,780', button: 'Ask to view' },
+        ],
+        tapped: 1,
+        done: '✓ Asked',
+      },
+      suggested: { title: 'Your listings, suggested', body: 'It shows them the units that fit.' },
+      alerts: [
+        { time: '11:02 pm', text: 'New lead ready: rent, 3 rooms, RM1,800' },
+        { time: '2:14 am', text: 'Hot lead: Aina, loan approved, wants to view this week' },
+      ],
+      told: { title: 'Told the moment it matters', body: 'Serious buyers ping you. The rest don’t.' },
+      asked: [
+        { q: '“Deposit berapa bulan?”', n: 18 },
+        { q: '“Boleh bawa kucing?”', n: 11 },
+        { q: '“Parking ada berapa?”', n: 9 },
+        { q: '“Ada unit Seksyen 7?”', n: 4 },
+      ],
+      missing: 'Demand you’re missing',
+      answeredAll: { title: 'What buyers keep asking, answered', body: 'See it all in one place, and spot what you’re missing.' },
+    },
+    products: {
+      label: 'I sell products',
+      tags: { inbox: 'Your inbox · 32 unread', replying: 'With Curios · your page replies', landed: 'With Curios · RM346 paid today' },
+      captions: {
+        inbox: { title: 'Your inbox today', body: '32 unread, all asking the same things. Few pay.' },
+        replying: { title: 'Now your page replies', body: 'Every chat answered. Ready buyers order and pay.' },
+        landed: { title: 'Orders, already paid', body: 'Straight from the chat. No “transfer dulu ya”.' },
+      },
+      chats: [
+        { text: 'kek coklat ada?', time: '11:48 pm', from: 'Instagram', keep: false, phone: '+60 11-2390 4412', unread: 1 },
+        { text: 'berapa harga 1kg', time: '11:31 pm', from: 'TikTok', keep: false, phone: '+60 19-771 0283', unread: 2 },
+        { text: 'Nak kek coklat 1kg + lilin, pickup Sabtu', time: '10:57 pm', from: 'Instagram', keep: true, phone: '+60 12-554 8190', unread: 1 },
+        { text: 'halal ke?', time: '10:12 pm', from: 'Instagram', keep: false, phone: '+60 13-880 1123', unread: 3 },
+        { text: 'Kek batik 2, boleh hantar Klang?', time: '9:40 pm', from: 'TikTok', keep: true, phone: '+60 17-552 9081', unread: 4 },
+        { text: 'boleh delivery?', time: '8:03 pm', from: 'Facebook', keep: false, phone: '+60 16-300 7745', unread: 2 },
+        { text: 'ada kek pandan?', time: '7:44 pm', from: 'Instagram', keep: false, phone: '+60 11-6021 9937', unread: 1 },
+        { text: 'tak manis sangat ke?', time: '7:02 pm', from: 'TikTok', keep: false, phone: '+60 14-772 0310', unread: 2 },
+      ],
+      visitorFrom: (from) => `Visitor from ${from}`,
+      answered: 'Answered ✓',
+      kept: 'Paid ✓',
+      card: {
+        kind: 'order',
+        who: 'Order #16 · Aida',
+        pill: 'Paid · FPX',
+        total: 'RM103',
+        lines: [
+          ['1× Kek coklat moist 1kg', 'RM95'],
+          ['1× Lilin & topper', 'RM8'],
+        ],
+        foot: ['Pickup', 'Sat 31 Oct, 11am'],
+      },
+      rows: [
+        { initial: 'M', name: '#15 Mira · Kek batik ×2', sub: 'Delivery · Klang', pill: 'Paid', tone: 'hot' },
+        { initial: 'F', name: '#14 Farah · Raya set', sub: 'Pickup · Sun', pill: 'Paid', tone: 'hot' },
+      ],
+      chat: {
+        q: 'Kek birthday budak bawah RM100?',
+        page: 'Kek Lina’s page',
+        a: 'Kids love these:',
+        picks: [
+          { name: 'Coklat moist', price: 'RM95', button: 'Add' },
+          { name: 'Kek batik', price: 'RM45', button: 'Add' },
+        ],
+        tapped: 0,
+        done: '✓ Added',
+      },
+      suggested: { title: 'Products, suggested', body: 'It picks from your shop, at your prices.' },
+      alerts: [
+        { time: '10:40 pm', text: 'Follow up: wants 3 Raya sets for the office, asked for a bulk price' },
+        { time: '11:58 pm', text: 'New order #16 · RM103 paid · pickup Sat' },
+      ],
+      told: { title: 'Told the moment it matters', body: 'New orders and buyers to follow up ping you.' },
+      asked: [
+        { q: '“Ada delivery ke Klang?”', n: 14 },
+        { q: '“Boleh tulis nama atas kek?”', n: 12 },
+        { q: '“Ada yang tak manis sangat?”', n: 8 },
+        { q: '“Ada kek pandan?”', n: 5 },
+      ],
+      missing: 'Not on your menu yet',
+      answeredAll: { title: 'What buyers keep asking, answered', body: 'And what they want that you don’t sell yet.' },
+    },
+  },
   business: {
     eyebrow: 'For business',
-    title: 'Have a business? Your page becomes a shop.',
+    title: 'Watch one order land, already paid.',
     caps: [
       { title: 'Tap to add', body: 'Your shop gets its own page, with pictures, prices and sizes. Link it from your page or straight from Instagram.' },
       { title: 'Check out', body: 'Name, WhatsApp number, pickup or delivery. No account needed.' },
@@ -348,6 +523,7 @@ const EN: LandingBase = {
       bio: 'Homemade cakes and desserts in Shah Alam.',
       shop: 'Shop',
       shopSub: '8 items · pickup Sat',
+      shopPhoto: 'Kek Lina baking',
       links: ['Order on WhatsApp', 'Cake photos on Instagram', 'Find us in Seksyen 7'],
       foot: 'Questions · Made with Curios',
     },
@@ -534,9 +710,140 @@ const MS: LandingBase = {
     ring: 'CURIOS.MY/AISYAHDRAWS · CURIOUS? TANYA JE · ',
     card: { name: 'aisyahdraws', role: 'Ilustrator · Ipoh', bio: 'Potret, kulit buku, editorial. Tempahan dibuka untuk November.' },
   },
+  whatLands: {
+    title: 'Apa yang anda dapat.',
+    lede: 'Setiap chat di page anda berakhir dengan salah satu daripada ini.',
+    switchLabel: 'Tunjuk untuk',
+    service: {
+      label: 'Saya beri servis',
+      tags: { inbox: 'Inbox anda · 47 belum dibaca', replying: 'Dengan Curios · page anda membalas', landed: 'Dengan Curios · 3 patut ditelefon' },
+      captions: {
+        inbox: { title: 'Inbox anda hari ini', body: '47 belum dibaca, kebanyakannya “hi”. Pembeli sebenar tenggelam di situ.' },
+        replying: { title: 'Kini page anda membalas', body: 'Setiap chat dijawab. Pembeli serius ditapis.' },
+        landed: { title: 'Lead yang sudah ditapis', body: 'Page anda dah tanya bajet, kawasan dan masa. Telefon je.' },
+      },
+      chats: [
+        { text: 'hi', time: '11:48 pm', from: 'Instagram', keep: false, phone: '+60 11-2390 4412', unread: 1 },
+        { text: 'available?', time: '11:31 pm', from: 'TikTok', keep: false, phone: '+60 19-771 0283', unread: 2 },
+        { text: 'Nak beli condo Seksyen 13, loan dah lulus', time: '10:57 pm', from: 'Instagram', keep: true, phone: '+60 12-554 8190', unread: 1 },
+        { text: 'Deposit berapa bulan?', time: '10:12 pm', from: 'Instagram', keep: false, phone: '+60 13-880 1123', unread: 3 },
+        { text: 'Ada rumah sewa Shah Alam bawah RM1,800?', time: '9:40 pm', from: 'TikTok', keep: true, phone: '+60 17-552 9081', unread: 4 },
+        { text: 'masih ada?', time: '8:03 pm', from: 'Facebook', keep: false, phone: '+60 16-300 7745', unread: 2 },
+        { text: 'area mana', time: '7:44 pm', from: 'Instagram', keep: false, phone: '+60 11-6021 9937', unread: 1 },
+        { text: 'berapa sewa?', time: '7:02 pm', from: 'TikTok', keep: false, phone: '+60 14-772 0310', unread: 2 },
+      ],
+      visitorFrom: (from) => `Pelawat dari ${from}`,
+      answered: 'Dijawab ✓',
+      kept: 'Lead ✓',
+      card: {
+        kind: 'lead',
+        who: 'Aina · lead baru · 2:14 am',
+        pill: 'Panas',
+        phone: '+60 12-554 8190',
+        slots: [
+          ['Mahu', 'Beli kondo'],
+          ['Bajet', 'RM450k'],
+          ['Kawasan', 'Seksyen 13'],
+          ['Pinjaman', 'Lulus'],
+        ],
+        button: 'Buka WhatsApp',
+      },
+      rows: [
+        { initial: 'N', name: 'Nurul · sewa, 3 bilik', sub: 'Sehingga RM1,800 · Disember', pill: 'Sedia tengok', tone: 'paid' },
+        { initial: 'R', name: 'Rizal · sewa, 2 bilik', sub: 'Sehingga RM1,300 · Januari', pill: 'Suam', tone: 'soft' },
+      ],
+      chat: {
+        q: '3 bilik bawah RM1,800?',
+        page: 'Page Hafiz',
+        a: 'Dua ni sesuai:',
+        picks: [
+          { name: 'Seksyen 7', price: 'RM1,650', button: 'Minta tengok' },
+          { name: 'Seksyen 13', price: 'RM1,780', button: 'Minta tengok' },
+        ],
+        tapped: 1,
+        done: '✓ Diminta',
+      },
+      suggested: { title: 'Listing anda dicadangkan', body: 'Ia tunjuk unit yang sesuai.' },
+      alerts: [
+        { time: '11:02 pm', text: 'Lead baru sedia: sewa, 3 bilik, RM1,800' },
+        { time: '2:14 am', text: 'Lead panas: Aina, pinjaman lulus, nak tengok minggu ini' },
+      ],
+      told: { title: 'Dimaklumkan bila penting', body: 'Pembeli serius akan beritahu anda. Yang lain tidak.' },
+      asked: [
+        { q: '“Deposit berapa bulan?”', n: 18 },
+        { q: '“Boleh bawa kucing?”', n: 11 },
+        { q: '“Parking ada berapa?”', n: 9 },
+        { q: '“Ada unit Seksyen 7?”', n: 4 },
+      ],
+      missing: 'Permintaan yang anda terlepas',
+      answeredAll: { title: 'Soalan yang selalu ditanya, dijawab', body: 'Lihat semua di satu tempat, dan nampak apa yang anda terlepas.' },
+    },
+    products: {
+      label: 'Saya jual produk',
+      tags: { inbox: 'Inbox anda · 32 belum dibaca', replying: 'Dengan Curios · page anda membalas', landed: 'Dengan Curios · RM346 dibayar hari ini' },
+      captions: {
+        inbox: { title: 'Inbox anda hari ini', body: '32 belum dibaca, semua tanya benda sama. Sikit je yang bayar.' },
+        replying: { title: 'Kini page anda membalas', body: 'Setiap chat dijawab. Pembeli yang sedia terus pesan dan bayar.' },
+        landed: { title: 'Pesanan yang sudah dibayar', body: 'Terus dari chat. Tiada “transfer dulu ya”.' },
+      },
+      chats: [
+        { text: 'kek coklat ada?', time: '11:48 pm', from: 'Instagram', keep: false, phone: '+60 11-2390 4412', unread: 1 },
+        { text: 'berapa harga 1kg', time: '11:31 pm', from: 'TikTok', keep: false, phone: '+60 19-771 0283', unread: 2 },
+        { text: 'Nak kek coklat 1kg + lilin, pickup Sabtu', time: '10:57 pm', from: 'Instagram', keep: true, phone: '+60 12-554 8190', unread: 1 },
+        { text: 'halal ke?', time: '10:12 pm', from: 'Instagram', keep: false, phone: '+60 13-880 1123', unread: 3 },
+        { text: 'Kek batik 2, boleh hantar Klang?', time: '9:40 pm', from: 'TikTok', keep: true, phone: '+60 17-552 9081', unread: 4 },
+        { text: 'boleh delivery?', time: '8:03 pm', from: 'Facebook', keep: false, phone: '+60 16-300 7745', unread: 2 },
+        { text: 'ada kek pandan?', time: '7:44 pm', from: 'Instagram', keep: false, phone: '+60 11-6021 9937', unread: 1 },
+        { text: 'tak manis sangat ke?', time: '7:02 pm', from: 'TikTok', keep: false, phone: '+60 14-772 0310', unread: 2 },
+      ],
+      visitorFrom: (from) => `Pelawat dari ${from}`,
+      answered: 'Dijawab ✓',
+      kept: 'Dibayar ✓',
+      card: {
+        kind: 'order',
+        who: 'Pesanan #16 · Aida',
+        pill: 'Dibayar · FPX',
+        total: 'RM103',
+        lines: [
+          ['1× Kek coklat moist 1kg', 'RM95'],
+          ['1× Lilin & topper', 'RM8'],
+        ],
+        foot: ['Pickup', 'Sabtu 31 Okt, 11 pagi'],
+      },
+      rows: [
+        { initial: 'M', name: '#15 Mira · Kek batik ×2', sub: 'Penghantaran · Klang', pill: 'Dibayar', tone: 'hot' },
+        { initial: 'F', name: '#14 Farah · Set Raya', sub: 'Pickup · Ahad', pill: 'Dibayar', tone: 'hot' },
+      ],
+      chat: {
+        q: 'Kek birthday budak bawah RM100?',
+        page: 'Page Kek Lina',
+        a: 'Budak-budak suka yang ni:',
+        picks: [
+          { name: 'Coklat moist', price: 'RM95', button: 'Tambah' },
+          { name: 'Kek batik', price: 'RM45', button: 'Tambah' },
+        ],
+        tapped: 0,
+        done: '✓ Ditambah',
+      },
+      suggested: { title: 'Produk dicadangkan', body: 'Ia pilih dari kedai anda, ikut harga anda.' },
+      alerts: [
+        { time: '10:40 pm', text: 'Susulan: nak 3 set Raya untuk pejabat, tanya harga borong' },
+        { time: '11:58 pm', text: 'Pesanan baru #16 · RM103 dibayar · pickup Sabtu' },
+      ],
+      told: { title: 'Dimaklumkan bila penting', body: 'Pesanan baru dan pembeli untuk disusuli akan beritahu anda.' },
+      asked: [
+        { q: '“Ada delivery ke Klang?”', n: 14 },
+        { q: '“Boleh tulis nama atas kek?”', n: 12 },
+        { q: '“Ada yang tak manis sangat?”', n: 8 },
+        { q: '“Ada kek pandan?”', n: 5 },
+      ],
+      missing: 'Belum ada dalam menu',
+      answeredAll: { title: 'Soalan yang selalu ditanya, dijawab', body: 'Dan apa yang mereka mahu tapi anda belum jual.' },
+    },
+  },
   business: {
     eyebrow: 'Untuk bisnes',
-    title: 'Ada bisnes? Halaman anda jadi kedai.',
+    title: 'Lihat satu tempahan sampai, sudah dibayar.',
     caps: [
       { title: 'Tekan untuk tambah', body: 'Kedai anda ada halamannya sendiri, dengan gambar, harga dan saiz. Pautkan dari halaman anda atau terus dari Instagram.' },
       { title: 'Isi butiran', body: 'Nama, nombor WhatsApp, ambil sendiri atau hantar. Tak perlu akaun.' },
@@ -552,6 +859,7 @@ const MS: LandingBase = {
       bio: 'Kek dan pencuci mulut buatan sendiri di Shah Alam.',
       shop: 'Kedai',
       shopSub: '8 barang · ambil Sabtu',
+      shopPhoto: 'Kek Lina sedang membakar kek',
       links: ['Tempah di WhatsApp', 'Gambar kek di Instagram', 'Jumpa kami di Seksyen 7'],
       foot: 'Soalan · Dibuat dengan Curios',
     },

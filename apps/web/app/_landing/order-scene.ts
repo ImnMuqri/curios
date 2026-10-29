@@ -71,7 +71,8 @@ export function stepStart(i: number): number {
 const LIB_END = 0.085;
 const LIB_CLICK = [0.045, 0.057];
 
-const NAME = 'Mira';
+/** The name she types is the name your Orders shows (copy.business.mira). */
+const NAME = 'Mira Hassan';
 const PHONE = '012-345 6789';
 const CLICKS = [0.09, 0.12, 0.19, 0.26, 0.465, 0.505, 0.53, 0.55, 0.572];
 const TONES = ['var(--tj-card-rose)', 'var(--tj-card-latte)', 'var(--tj-blob-pink)', 'var(--tj-card-cocoa)'];
@@ -124,8 +125,8 @@ export function scene(progress: number): OrderScene {
   const near = (ts: number[]) => ts.some((t) => p >= t && p < t + 0.012);
 
   const arrive = ease(bio(0, 0.04));
-  const [cx, cy] = progress < LIB_END ? [200 + (128 - 200) * arrive, 470 + (268 - 470) * arrive] : path(p, [
-    [0, 128, 268], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564],
+  const [cx, cy] = progress < LIB_END ? [200 + (128 - 200) * arrive, 550 + (348 - 550) * arrive] : path(p, [
+    [0, 128, 348], [0.05, 123, 301], [0.13, 123, 301], [0.17, 261, 301], [0.2, 261, 301], [0.24, 234, 564],
     [0.27, 234, 564], [0.31, 150, 257], [0.36, 150, 257], [0.37, 150, 325], [0.44, 150, 325], [0.46, 86, 381],
     [0.48, 86, 381], [0.5, 150, 552], [0.51, 150, 552], [0.522, 150, 245], [0.535, 150, 245], [0.543, 84, 452],
     [0.556, 84, 452], [0.566, 150, 552], [0.578, 150, 552], [0.6, 230, 480], [0.66, 230, 480],
@@ -149,7 +150,7 @@ export function scene(progress: number): OrderScene {
     basketTotal: cakes * 95 + batik * 45,
     sheet: 100 * ease(seg(0.26, 0.3)),
     view: p < 0.505 ? 'form' : 'pay',
-    name: NAME.slice(0, Math.round(seg(0.32, 0.355) * NAME.length)),
+    name: NAME.slice(0, Math.round(seg(0.315, 0.362) * NAME.length)),
     nameFocused: p >= 0.31 && p < 0.365,
     phone: PHONE.slice(0, Math.round(seg(0.375, 0.435) * PHONE.length)),
     phoneFocused: p >= 0.37 && p < 0.445,

@@ -7,3 +7,4 @@ export { Field } from './field/Field.js';
 export { Callout } from './callout/Callout.js';
 export { Shell } from './shell/Shell.js';
 export { CaptureCard } from './capture/CaptureCard.js';
+export { Thinking } from './thinking/Thinking.js';

@@ -1,7 +1,14 @@
+import type { Metadata } from 'next';
 import { Callout } from '@curios/ui';
 import { getSettings } from '@curios/db-read';
+import { connectToApi } from '../../lib/api-hints.js';
 import { AuthShell } from '../_auth/AuthShell.js';
 import { SignUp } from './signup-form.js';
+
+export const metadata: Metadata = {
+  title: 'Create your free page · Curios',
+  description: 'Claim your curios.my address and make a link in bio people can ask. Free for anyone.',
+};
 
 // Read per request: the admin closing sign-ups must show here within the settings' 30 seconds.
 export const dynamic = 'force-dynamic';
@@ -28,5 +35,6 @@ export default async function SignUpPage(_props: { searchParams: Promise<{ close
     );
   }
 
+  connectToApi();
   return <SignUp />;
 }

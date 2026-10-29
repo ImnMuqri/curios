@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { Found, Stack, Tilt } from './HowParts.js';
 import { PERSONAS } from './personas.js';
+import { photo } from './photos.js';
 import { useReducedMotion } from './useReducedMotion.js';
 import styles from './tanya.module.css';
 
@@ -122,11 +123,12 @@ export function How({ locale }: { locale: Locale }) {
                           <textPath href="#ring-path">{copy.ring}</textPath>
                         </text>
                       </svg>
-                      <img className={styles.ringFace} src={PERSONAS.aisyah.face} alt="" />
+                      <img className={styles.ringFace} {...photo(PERSONAS.aisyah.face!, 128)} alt={PERSONAS.aisyah.name} loading="lazy" />
                     </div>
                     <Tilt>
                       <p className={styles.bioWho}>
-                        <img className={styles.bioFace} src={PERSONAS.aisyah.face} alt="" />
+                        {/* Hidden from screen readers: her name is the very next thing they read. */}
+                        <img className={styles.bioFace} {...photo(PERSONAS.aisyah.face!, 44)} alt={PERSONAS.aisyah.name} aria-hidden="true" loading="lazy" />
                         <span>
                           <b>{copy.card.name}</b>
                           <span>{copy.card.role}</span>

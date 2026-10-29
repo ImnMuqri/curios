@@ -1468,11 +1468,1031 @@
   }
 }
 
+/* ---- What lands in your hands (design/prototypes/what-lands.html) ----
+ * The side's colours come in as --wl-* from WhatLands.tsx. Every state is a
+ * data attribute on a local class; the transitions and the loops are all in
+ * the no-preference block below, so a still page never moves.
+ */
+
+/* The first half of For business, so no ground of its own; the order follows under it. */
+.wl {
+  padding: 72px 0 0;
+}
+
+.wlHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+/* The prototype's heading: one line at 56 px, the lede close under it. */
+.wlHead .h2 {
+  max-width: none;
+  font-size: clamp(38px, 6vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.wlHead .lede {
+  margin-top: 14px;
+  font-size: 18px;
+}
+
+.wlSwitch {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 999px;
+  background: var(--tj-toggle);
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.wlSwitch button {
+  padding: 8px 16px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+
+.wlSwitch button[aria-pressed='true'] {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+.wlSwitch button:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+.wlBento {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr 1fr;
+  grid-template-rows: 400px 236px;
+  gap: 16px;
+  margin-top: 40px;
+  line-height: normal;
+}
+
+.wlTile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-radius: 26px;
+  overflow: hidden;
+}
+
+.wlVis {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 26px 24px 8px;
+}
+
+.wlCap {
+  position: relative;
+  display: grid;
+  padding: 6px 24px 22px;
+}
+
+.wlCap > div {
+  grid-area: 1 / 1;
+}
+
+.wlCap b {
+  display: block;
+  font-family: var(--d);
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.wlCap span {
+  display: block;
+  margin-top: 5px;
+  font-size: 14.5px;
+  opacity: 0.72;
+}
+
+.wlPill {
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.wlPill[data-tone='hot'] {
+  background: var(--toast-tick);
+  color: var(--tj-wl-hot-ink);
+}
+
+.wlPill[data-tone='soft'] {
+  background: rgba(250, 251, 252, 0.16);
+  color: var(--paper);
+}
+
+.wlPill[data-tone='paid'] {
+  background: var(--hijau-muda);
+  color: var(--tj-hijau-900);
+}
+
+/* The big tile: the inbox, the page replying, what lands. */
+
+.wlTall {
+  grid-row: span 2;
+  background: var(--tj-toggle);
+  color: var(--ink);
+}
+
+.wlTall[data-stage='replying'],
+.wlTall[data-stage='sorting'] {
+  background: var(--tj-wl-wash);
+}
+
+.wlTall[data-stage='landed'] {
+  background: var(--wl-dark);
+  color: var(--paper);
+}
+
+.wlTall .wlVis {
+  display: block;
+  padding: 22px 22px 0;
+}
+
+.wlTag {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 6px 16px -10px rgba(0, 0, 0, 0.4);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wlTag i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--tj-wl-dot);
+}
+
+.wlTall[data-stage='replying'] .wlTag i,
+.wlTall[data-stage='sorting'] .wlTag i {
+  background: var(--wl-acc2);
+}
+
+.wlTall[data-stage='landed'] .wlTag {
+  background: rgba(250, 251, 252, 0.14);
+  color: var(--paper);
+  box-shadow: none;
+}
+
+.wlTall[data-stage='landed'] .wlTag i {
+  background: var(--toast-tick);
+}
+
+.wlLayer {
+  position: absolute;
+  inset: 66px 22px 0;
+}
+
+.wlBefore {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  perspective: 600px;
+}
+
+.wlTall[data-stage='landed'] .wlBefore {
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+}
+
+.wlRow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: var(--card);
+  font-size: 13.5px;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.wlRow[data-in] {
+  opacity: 1;
+  transform: none;
+}
+
+.wlRow > i {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--tj-wl-avatar) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='9' r='4' fill='%23a3a9b4'/%3E%3Cpath d='M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5' fill='%23a3a9b4'/%3E%3C/svg%3E") center / 22px no-repeat;
+}
+
+/* Plain grey in the inbox: a number, nobody you know yet. */
+.wlRow[data-inbox] > i {
+  background: var(--tj-wl-avatar-plain);
+}
+
+.wlRowX {
+  flex: 1;
+  min-width: 0;
+}
+
+.wlRowX b,
+.wlRowX span {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.wlRowX b {
+  font-weight: 600;
+}
+
+.wlRowX span {
+  color: var(--tj-ink-500);
+}
+
+.wlRowR {
+  flex: none;
+  text-align: right;
+}
+
+.wlRowR small {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--tj-ink-500);
+  font-size: 11px;
+}
+
+.wlRow[data-inbox] .wlRowR small {
+  color: var(--tj-wl-whatsapp);
+}
+
+.wlRowR em {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--tj-wl-whatsapp);
+  color: var(--on-photo);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.wlOk {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: var(--tj-wl-chip);
+  color: var(--l-biru-800);
+  font-size: 11.5px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(-50%) scale(0.6);
+}
+
+.wlRow[data-sort='done'] {
+  filter: grayscale(1);
+  opacity: 0.45;
+  transform: translateX(-6px);
+}
+
+.wlRow[data-sort='keep'] {
+  box-shadow: 0 0 0 2px var(--wl-acc2), 0 12px 24px -14px rgba(0, 0, 0, 0.4);
+  transform: translateX(6px);
+}
+
+.wlRow[data-sort='done'] .wlRowX {
+  padding-right: 96px;
+}
+
+.wlRow[data-sort='keep'] .wlRowX {
+  padding-right: 64px;
+}
+
+.wlRow[data-sort] .wlRowR {
+  opacity: 0;
+}
+
+.wlRow[data-sort] .wlOk {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+}
+
+.wlRow[data-sort='keep'] .wlOk {
+  background: var(--wl-acc2);
+  color: var(--on-photo);
+}
+
+.wlRow[data-flip] {
+  opacity: 0.2;
+  transform: rotateX(90deg);
+}
+
+.wlAfter {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wlAfter > * {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.wlTall[data-stage='landed'] .wlAfter,
+.wlTall[data-stage='landed'] .wlAfter > * {
+  opacity: 1;
+  transform: none;
+}
+
+.wlBig {
+  margin-bottom: 10px;
+  padding: 18px;
+  border-radius: 20px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 24px 40px -22px rgba(0, 0, 0, 0.6);
+}
+
+.wlBigTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.wlBigN {
+  margin: 6px 0 12px;
+  font-size: 23px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.wlSlots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.wlSlots span {
+  padding: 8px 10px;
+  border-radius: 11px;
+  background: var(--tj-wl-slot);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wlSlots small {
+  display: block;
+  color: var(--tj-ink-500);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.wlWa {
+  display: grid;
+  place-items: center;
+  height: 40px;
+  margin-top: 12px;
+  border-radius: 999px;
+  background: var(--hijau);
+  color: var(--on-photo);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.wlLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  font-size: 14.5px;
+}
+
+.wlTotal {
+  margin-top: 6px;
+  padding-top: 9px;
+  border-top: 1px solid var(--tj-hair);
+  font-weight: 700;
+}
+
+.wlLi {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 9px;
+  padding: 11px 14px;
+  border-radius: 16px;
+  background: rgba(250, 251, 252, 0.08);
+  font-size: 14px;
+}
+
+.wlLi > i {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(250, 251, 252, 0.16);
+  font-size: 13px;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.wlLiX {
+  flex: 1;
+  min-width: 0;
+}
+
+.wlLiX small {
+  display: block;
+  margin-top: 1px;
+  font-size: 12.5px;
+  opacity: 0.65;
+}
+
+.wlCapFirst[data-hush] {
+  opacity: 0;
+}
+
+.wlTall[data-stage='landed'] .wlCapFirst {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+
+.wlCapLanded {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.wlTall[data-stage='landed'] .wlCapLanded {
+  opacity: 1;
+  transform: none;
+}
+
+/* Peek at the laptop, in the middle while the rows are sorted, on a soft glow. */
+
+.wlPeek {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 4;
+  width: 250px;
+  margin: -100px 0 0 -125px;
+  opacity: 0;
+  transform: scale(0.6) translateY(30px);
+  pointer-events: none;
+}
+
+.wlPeek::before {
+  content: '';
+  position: absolute;
+  inset: -14% -12% -18%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--tj-wl-wash) 62%, transparent);
+}
+
+.wlPeek svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.wlTall[data-stage='sorting'] .wlPeek {
+  opacity: 1;
+  transform: none;
+}
+
+.pklEyes,
+.pklBubble {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+}
+
+.pklBubble {
+  transform-origin: 50% 100%;
+  opacity: 0;
+}
+
+.pklLine {
+  opacity: 0;
+}
+
+/* The suggestions tile: a chat on the owner's page. */
+
+.wlSuggest {
+  background: var(--wl-tint);
+}
+
+.wlChat {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  min-height: 290px;
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--wl-dark);
+  color: var(--paper);
+}
+
+.wlChat > * {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.wlChat > [data-in] {
+  opacity: 1;
+  transform: none;
+}
+
+.wlQ {
+  align-self: flex-end;
+  max-width: 86%;
+  padding: 8px 12px;
+  border-radius: 15px;
+  background: rgba(250, 251, 252, 0.14);
+  font-size: 13px;
+}
+
+.wlA {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.wlPage {
+  display: block;
+  margin-bottom: 2px;
+  padding-left: 18px;
+  background: radial-gradient(circle at 6px 7px, var(--wl-acc) 5.5px, transparent 6px) no-repeat;
+  color: rgba(250, 251, 252, 0.7);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 14px;
+}
+
+.wlDots {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.wlDots i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: rgba(250, 251, 252, 0.6);
+}
+
+.wlPicks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.wlPick {
+  padding: 7px;
+  border-radius: 14px;
+  background: rgba(250, 251, 252, 0.08);
+  font-size: 12px;
+}
+
+.wlPick u {
+  display: block;
+  aspect-ratio: 16 / 10;
+  margin-bottom: 6px;
+  border-radius: 9px;
+}
+
+.wlPick b {
+  display: block;
+  font-size: 12.5px;
+}
+
+.wlPick em {
+  display: grid;
+  place-items: center;
+  height: 26px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.wlPick em[data-on] {
+  background: var(--wl-acc);
+  color: var(--on-photo);
+}
+
+.wlPick em[data-press] {
+  transform: scale(0.92);
+}
+
+/* The alerts tile: a Curios notification, then a hotter one on top. */
+
+.wlAlertsTile {
+  background: var(--tj-wl-alerts);
+}
+
+.wlStack {
+  position: relative;
+  width: 100%;
+  height: 250px;
+}
+
+.wlAlert {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  left: 0;
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 14px 30px -18px rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.wlAlert[data-at='enter'] {
+  opacity: 0;
+  transform: translateY(-70px) scale(0.98);
+}
+
+.wlAlert[data-at='back'] {
+  opacity: 0.55;
+  transform: translateY(96px) scale(0.94);
+}
+
+.wlAlert[data-at='gone'] {
+  opacity: 0;
+  transform: translateY(150px) scale(0.9);
+}
+
+.wlAlert > span:last-child {
+  flex: 1;
+}
+
+.wlAlert b {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.wlAlert b small {
+  color: var(--tj-ink-500);
+  font-weight: 400;
+}
+
+.wlIcon {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  overflow: hidden;
+}
+
+.wlIcon svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* What buyers keep asking: bars, and the one they want that you do not have. */
+
+.wlWide {
+  grid-column: span 2;
+  background: var(--tj-wl-asked);
+}
+
+.wlBarsVis {
+  padding-top: 22px;
+}
+
+.wlBars {
+  display: grid;
+  gap: 9px;
+  width: 100%;
+}
+
+.wlBar {
+  display: grid;
+  grid-template-columns: minmax(0, 230px) 1fr 36px;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.wlTrack {
+  position: relative;
+  height: 12px;
+}
+
+.wlTrack i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 6px;
+  background: var(--wl-bar);
+}
+
+.wlBar[data-miss] .wlTrack i {
+  background: var(--kuning);
+}
+
+.wlBar em {
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  text-align: right;
+}
+
+.wlFlag {
+  position: absolute;
+  top: 50%;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--amber-muda);
+  color: var(--kuning-ink);
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(8px, -50%) scale(0.8);
+}
+
+.wlBar[data-flagged] .wlFlag {
+  opacity: 1;
+  transform: translate(8px, -50%) scale(1);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .wlTile {
+    transition: background-color 0.8s ease, color 0.8s ease;
+  }
+
+  .wlSwitch button {
+    transition: background-color 0.25s, color 0.25s;
+  }
+
+  .wlCap > div {
+    transition: opacity 0.5s, transform 0.5s;
+  }
+
+  .wlTag {
+    transition: background-color 0.6s, color 0.6s;
+  }
+
+  .wlTag i {
+    transition: background-color 0.6s;
+  }
+
+  .wlLayer {
+    transition: opacity 0.5s, transform 0.6s;
+  }
+
+  .wlRow {
+    transition: opacity 0.35s, transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 0.3s, filter 0.3s;
+  }
+
+  .wlRow[data-flip] {
+    transition: transform 0.2s, opacity 0.2s;
+  }
+
+  .wlRowR em[data-pop] {
+    animation: wlPop 0.35s;
+  }
+
+  .wlOk {
+    transition: opacity 0.25s, transform 0.3s;
+  }
+
+  .wlAfter > * {
+    transition: opacity 0.45s, transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .wlTall[data-stage='landed'] .wlAfter > :nth-child(2) {
+    transition-delay: 0.35s;
+  }
+
+  .wlTall[data-stage='landed'] .wlAfter > :nth-child(3) {
+    transition-delay: 0.5s;
+  }
+
+  .wlTall[data-stage='landed'] .wlAfter > :nth-child(4) {
+    transition-delay: 0.65s;
+  }
+
+  .wlPeek {
+    transition: opacity 0.4s, transform 0.6s cubic-bezier(0.3, 1.4, 0.5, 1);
+  }
+
+  .pklBob {
+    animation: pklBob 2.6s ease-in-out infinite;
+  }
+
+  .pklEyes {
+    animation: pklBlink 4.5s infinite;
+  }
+
+  .pklHandL {
+    animation: pklType 0.32s ease-in-out infinite alternate;
+  }
+
+  .pklHandR {
+    animation: pklType 0.32s ease-in-out 0.16s infinite alternate;
+  }
+
+  .wlTall[data-stage='sorting'] .pklDone {
+    animation: pklBubble 1.2s ease-out infinite;
+  }
+
+  .wlTall[data-stage='sorting'] .pklTyping {
+    animation: pklBubble 1.2s ease-out 0.6s infinite;
+  }
+
+  .wlTall[data-stage='sorting'] .pklLine {
+    animation: pklLine 2.4s infinite;
+  }
+
+  .wlChat > * {
+    transition: opacity 0.35s, transform 0.4s;
+  }
+
+  .wlDots i {
+    animation: wlDot 1s infinite;
+  }
+
+  .wlDots i:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+
+  .wlDots i:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+
+  .wlPick em {
+    transition: background-color 0.25s, color 0.25s, transform 0.15s;
+  }
+
+  .wlAlert {
+    transition: transform 0.55s cubic-bezier(0.2, 0.9, 0.25, 1.15), opacity 0.4s;
+  }
+
+  .wlTrack i {
+    transition: width 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .wlFlag {
+    transition: opacity 0.3s, transform 0.35s cubic-bezier(0.3, 1.6, 0.5, 1);
+  }
+}
+
+@keyframes wlPop {
+  50% {
+    transform: scale(1.35);
+  }
+}
+
+@keyframes wlDot {
+  50% {
+    opacity: 0.25;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes pklBob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes pklBlink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes pklType {
+  to {
+    transform: translateY(-4px);
+  }
+}
+
+@keyframes pklLine {
+  0% {
+    opacity: 0;
+  }
+  10%,
+  85% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes pklBubble {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.6);
+  }
+  25% {
+    opacity: 1;
+    transform: none;
+  }
+  80% {
+    opacity: 1;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+}
+
+@media (max-width: 900px) {
+  .wlBento {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+
+  .wlTall {
+    grid-row: auto;
+    height: 640px;
+  }
+
+  .wlWide {
+    grid-column: auto;
+  }
+
+  .wlBento > .wlTile:not(.wlTall) {
+    min-height: 360px;
+  }
+
+  .wlBar {
+    grid-template-columns: minmax(0, 1fr) 36px;
+  }
+
+  .wlTrack {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
 /* ---- For business: the order, played out (TanyaJe board "Business v2") ---- */
 
 .biz {
   position: relative;
-  background: var(--tj-rose-100);
 }
 
 .bizPin {
@@ -1615,18 +2635,68 @@
   position: absolute;
 }
 
-/* The customer's phone: the new shop page */
+/*
+ * The customer's phone: the new shop page, in the same frame as your phone
+ * (.own), 8 px of ink all round. The board draws this screen bare, which held
+ * on the rose ground; on paper its white sheet ran into the page (DEVIATIONS
+ * 228). The frame grows outward, so the 300 × 600 screen keeps its place on
+ * the stage: the scene inside and the token flying across are laid out on it.
+ */
 .cust {
   position: absolute;
-  left: 0;
-  top: 0;
-  width: 300px;
-  height: 600px;
+  left: -8px;
+  top: -8px;
+  width: 316px;
+  height: 616px;
+  padding: 8px;
+  border-radius: 46px;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1.5px var(--tj-ink-600);
+}
+
+/*
+ * overflow and border-radius alone do not round off the pay sheet: it slides
+ * on a transform, so Chrome paints it on its own layer and its square bottom
+ * corners show past the frame. The clip-path rounds every layer inside.
+ */
+.custScreen {
+  position: relative;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  border-radius: 36px;
+  border-radius: 38px;
+  clip-path: inset(0 round 38px);
   background: var(--tj-rose-deep);
   color: var(--paper);
   font-family: var(--font-inter), system-ui, sans-serif;
+}
+
+/* The shop front's cover: the page's photo blurred, darkened into the page below (TanyaJe .cs-cov). */
+.csCover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 300px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.csCover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  filter: blur(22px) saturate(1.1);
+  transform: scale(1.3);
+}
+
+.csCover::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(84, 35, 57, 0.35), var(--tj-rose-deep));
 }
 
 .csLib {
@@ -1634,30 +2704,43 @@
   inset: 0;
   z-index: 6;
   background: var(--tj-rose-deep);
+  border-radius: 38px;
   will-change: transform;
 }
 
-.lbAv {
-  left: 50%;
-  top: 52px;
-  display: grid;
-  place-items: center;
-  width: 58px;
-  height: 58px;
-  margin-left: -29px;
-  border-radius: 50%;
-  background: var(--tj-rose);
-  font-family: var(--d);
-  font-size: 24px;
-  font-weight: 800;
+/*
+ * Kek Lina's cover, as the real page's .cover: full width at the top, fading
+ * into the page, with the name over its lower part, about where a real page
+ * puts it. 280px (a real page's is 102% of the width) leaves the last link
+ * and the footer on screen; the cursor's tap on Shop follows it (order-scene).
+ */
+.lbCover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 280px;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.lbCover img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  object-fit: cover;
+  object-position: 50% 12%;
+  mask-image: linear-gradient(black 25%, transparent);
 }
 
 .lbNm {
   left: 0;
   right: 0;
-  top: 120px;
+  top: 178px;
   margin: 0;
   text-align: center;
+  text-shadow: 0 1px 14px rgba(0, 0, 0, 0.35);
   font-family: var(--d);
   font-size: 28px;
   font-weight: 800;
@@ -1665,10 +2748,25 @@
   line-height: 1;
 }
 
+/* The page's address, under the name in mono, as the real page's .handle. */
+.lbAddr {
+  left: 0;
+  right: 0;
+  top: 212px;
+  margin: 0;
+  text-align: center;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
+  font-family: var(--m);
+  font-size: 10.5px;
+  opacity: 0.7;
+}
+
 .lbHd {
   left: 18px;
   right: 18px;
-  top: 158px;
+  top: 230px;
+  line-height: 1.45;
+  text-shadow: 0 1px 10px rgba(0, 0, 0, 0.5);
   margin: 0;
   text-align: center;
   font-size: 11.5px;
@@ -1677,7 +2775,7 @@
 
 .lbTabs {
   left: 50%;
-  top: 188px;
+  top: 268px;
   display: grid;
   grid-template-columns: 1fr 1fr;
   width: 150px;
@@ -1703,14 +2801,15 @@
 .lbShop {
   left: 16px;
   right: 16px;
-  top: 242px;
+  top: 322px;
   display: flex;
   align-items: center;
   gap: 12px;
   height: 60px;
-  padding: 0 18px 0 14px;
+  padding: 0 14px 0 9px;
+  border: 5px solid color-mix(in srgb, var(--paper) 10%, transparent);
   border-radius: 999px;
-  background: var(--tj-rose);
+  background: var(--tj-rose) padding-box;
   transition: transform 120ms ease;
 }
 
@@ -1774,16 +2873,26 @@
   display: grid;
   place-items: center;
   height: 44px;
+  border: 4px solid color-mix(in srgb, var(--paper) 8%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--paper) 14%, transparent);
+  background: color-mix(in srgb, var(--paper) 14%, transparent) padding-box;
   font-size: 12.5px;
   font-weight: 600;
+}
+
+/*
+ * As the real page (_bento/Bento.module.css): every link is a pill in a faint
+ * ring, and with a shop open the first link after it wears the accent too.
+ */
+.lbL[data-first] {
+  border-color: color-mix(in srgb, var(--paper) 10%, transparent);
+  background: var(--tj-rose) padding-box;
 }
 
 .lbFt {
   left: 0;
   right: 0;
-  top: 486px;
+  top: 566px;
   margin: 0;
   text-align: center;
   font-size: 10.5px;
@@ -1983,7 +3092,8 @@
   right: 0;
   top: 170px;
   bottom: 0;
-  border-radius: 26px 26px 0 0;
+  /* Rounded at the foot as the screen is, so no browser can show a square corner past the frame. */
+  border-radius: 26px 26px 38px 38px;
   background: var(--paper);
   color: var(--ink);
 }
@@ -2224,7 +3334,7 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  border-radius: 26px 26px 0 0;
+  border-radius: 26px 26px 38px 38px;
   background: var(--card);
   text-align: center;
 }
@@ -3596,11 +4706,15 @@
 .footLinks {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px 24px;
+  gap: 0 24px;
   font-size: 14px;
 }
 
+/* 32 px tall, so a thumb can hit one (the text alone is 22); the rows lost their 8 px gap to pay for it. */
 .footLinks a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
   color: var(--paper);
   text-decoration: none;
 }
@@ -3616,6 +4730,30 @@
 .footNote {
   margin: 16px 0 0;
   font-size: 13px;
+}
+
+/* Who runs Curios: the business, its SSM number, and where to write. */
+.footCo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 16px;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.footCo span:first-child {
+  font-weight: 600;
+}
+
+/* 32 px tall, as the footer's other links, so a thumb can hit it. */
+.footCo a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .footMark {
