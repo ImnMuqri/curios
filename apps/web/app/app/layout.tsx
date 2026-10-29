@@ -50,7 +50,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // not be remounted when the server side re-reads.
   if (!page) {
     return (
-      <AppFrame bare displayName="" avatarUrl={null} plan={{ name: '', note: '', fill: null }} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL">
+      <AppFrame bare displayName="" avatarUrl={null} plan={{ name: '', note: '', fill: null, glance: '' }} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL">
         {children}
       </AppFrame>
     );
@@ -73,6 +73,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppFrame
       displayName={page.displayName}
       ownerName={owner.name}
+      ownerEmail={owner.email}
+      usage={{ used: usage.used, cap: usage.cap }}
       avatarUrl={avatarUrl(page.avatarKey)}
       plan={planBlock({ ...page, now }, freeLeads)}
       badges={badges}

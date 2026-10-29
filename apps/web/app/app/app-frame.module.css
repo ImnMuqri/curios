@@ -546,27 +546,176 @@ a.menuAlert:hover {
   color: var(--merah-deep);
 }
 
-.menuEmpty,
-.menuWho {
+.menuEmpty {
   margin: 0;
   padding: 8px 10px;
   font-size: 13px;
   color: var(--muted);
 }
 
-.menuWho {
-  font-weight: 600;
-  color: var(--ink);
-}
-
 .menuTheme {
   margin: 2px 4px 4px;
 }
 
-.menuSignOut {
-  margin-top: 4px;
-  padding: 6px 4px 2px;
-  border-top: 1px solid var(--line);
+/* ---- The account menu: plan at a glance ---- */
+
+.accountPanel {
+  width: 296px;
+}
+
+.top .account[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+.menuHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+}
+
+.menuText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.menuHead b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.menuHead small {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menuAvatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--rose);
+  color: var(--on-photo);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.menuPlan {
+  margin: 0 4px 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--soft-page);
+}
+
+.menuPlan p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.menuPlan b {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.menuBar {
+  display: block;
+  height: 6px;
+  margin: 8px 0 7px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.menuBar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--biru);
+}
+
+.menuManage {
+  flex: none;
+  color: var(--biru);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menuRow:hover,
+.menuRow:focus-visible {
+  background: var(--surface);
+  outline: none;
+}
+
+.menuManage:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.menuIcon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.menuRow .menuIcon {
+  color: var(--soft);
+}
+
+.menuRule {
+  display: block;
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+
+/* Sign out, a red row and not a boxed button. */
+.menuOut,
+.menuOut .menuIcon {
+  color: var(--merah-deep);
+}
+
+.menuOut:hover,
+.menuOut:focus-visible {
+  background: var(--merah-muda);
 }
 
 /* ---- Icon rail ---- */

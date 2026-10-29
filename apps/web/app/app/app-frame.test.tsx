@@ -4,7 +4,7 @@ import type { NavBadges } from '@curios/db-read';
 import type { Alert } from './alerts.js';
 import { parseTheme, THEME_COOKIE, type Theme } from './theme.js';
 
-const PLAN = { name: 'Business plan', note: '18 days left, until 14 Nov', fill: 0.6 };
+const PLAN = { name: 'Business plan', note: '18 days left, until 14 Nov', fill: 0.6, glance: 'Business · paid until 14 Nov' };
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({ usePathname: () => '/app/curios', useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push }) }));
@@ -249,18 +249,65 @@ describe('the top bar', () => {
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
 
-  it('opens Settings, Billing and Sign out from the account button, and Escape closes it', () => {
-    frame();
+  const openAccount = () => {
+    render(
+      <AppFrame
+        displayName="Kek Lina"
+        ownerName="Lina binti Kamal"
+        ownerEmail="lina@keklina.example"
+        usage={{ used: 41, cap: 200 }}
+        avatarUrl={null}
+        plan={PLAN}
+        badges={{ review: 0, questions: 0, leads: 0, orders: 0 }}
+        mode="BUSINESS"
+      >
+        <p>content</p>
+      </AppFrame>,
+    );
     const account = screen.getByRole('button', { name: 'Account' });
     fireEvent.click(account);
-    expect(account).toHaveAttribute('aria-expanded', 'true');
-    const menu = document.getElementById(account.getAttribute('aria-controls')!)!;
-    expect(within(menu).getByRole('link', { name: 'Settings' })).toHaveAttribute('href', '/app/settings');
-    expect(within(menu).getByRole('link', { name: 'Billing' })).toHaveAttribute('href', '/app/billing');
-    expect(within(menu).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    return { account, menu: screen.getByRole('menu', { name: 'Account' }) };
+  };
+
+  it('opens the plan at a glance: who, this month’s conversations, the plan and Manage', () => {
+    const { account, menu } = openAccount();
+    expect(account).toHaveAttribute('aria-haspopup', 'menu');
+    expect(menu).toHaveTextContent('Lina binti Kamallina@keklina.example');
+    expect(menu).toHaveTextContent('Conversations this month41 / 200');
+    expect(menu.querySelector('i[style]')).toHaveStyle({ width: '20.5%' });
+    expect(menu).toHaveTextContent('Business · paid until 14 Nov');
+    expect(within(menu).getByRole('menuitem', { name: 'Manage' })).toHaveAttribute('href', '/app/billing');
+  });
+
+  it('lists Settings, Help & support and Sign out, and no Billing row (Manage goes there)', () => {
+    const { menu } = openAccount();
+    expect(within(menu).getAllByRole('menuitem').map((el) => el.textContent)).toEqual(['Manage', 'Settings', 'Help & support', 'Sign out']);
+    expect(within(menu).getByRole('menuitem', { name: 'Settings' })).toHaveAttribute('href', '/app/settings');
+    expect(within(menu).getByRole('menuitem', { name: 'Help & support' })).toHaveAttribute('href', 'mailto:support@curios.my');
+    expect(within(menu).queryByRole('menuitem', { name: 'Billing' })).toBeNull();
+  });
+
+  it('moves focus into the menu, through it with the arrows, and back to the button on Escape', () => {
+    const { account, menu } = openAccount();
+    const items = within(menu).getAllByRole('menuitem');
+    expect(items[0]).toHaveFocus();
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(items[1]).toHaveFocus();
+    fireEvent.keyDown(menu, { key: 'End' });
+    expect(items[3]).toHaveFocus();
+    fireEvent.keyDown(menu, { key: 'ArrowDown' });
+    expect(items[0]).toHaveFocus();
+    fireEvent.keyDown(menu, { key: 'ArrowUp' });
+    expect(items[3]).toHaveFocus();
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(account).toHaveAttribute('aria-expanded', 'false');
     expect(account).toHaveFocus();
+  });
+
+  it('closes when the owner clicks outside it', () => {
+    const { account } = openAccount();
+    fireEvent.pointerDown(document.body);
+    expect(account).toHaveAttribute('aria-expanded', 'false');
   });
 
   it('sends Help to the support address', () => {

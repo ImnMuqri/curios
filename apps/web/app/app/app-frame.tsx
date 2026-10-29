@@ -58,6 +58,9 @@ const ICON = {
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4',
   chevron: 'M7 10l5 5 5-5',
+  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1',
+  help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5v.7M12 17h.01',
+  signOut: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 17l-5-5 5-5M5 12h11',
 } as const;
 
 /** What the bell lists for each count in the nav: the module's waiting work, in a line. */
@@ -68,8 +71,11 @@ const WAITING: { key: keyof NavBadges; href: string; say: (n: number) => string;
   { key: 'review', href: '/app/review', say: (n) => `${n} ${n === 1 ? 'fact' : 'facts'} to review` },
 ];
 
-/** The sidebar's plan block (plan-label.ts planBlock). */
-export type PlanBlock = { name: string; note: string; fill: number | null };
+/** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
+export type PlanBlock = { name: string; note: string; fill: number | null; glance: string };
+
+/** Help goes to the support address the alerts and legal pages give: there is no help centre yet. */
+const SUPPORT = 'mailto:support@curios.my';
 
 /**
  * The dashboard's frame (Dashboard v2, 29 Oct 2026): a sidebar on a grey ground -- search, the
@@ -92,6 +98,8 @@ export type PlanBlock = { name: string; note: string; fill: number | null };
 export function AppFrame({
   displayName,
   ownerName = null,
+  ownerEmail = '',
+  usage = null,
   avatarUrl,
   plan,
   badges,
@@ -106,6 +114,10 @@ export function AppFrame({
   displayName: string;
   /** The owner's own name, on the account button (the boards' "Lina binti Kamal"); the page's name when the account has none. */
   ownerName?: string | null;
+  /** The sign-in email, under the name in the account menu. */
+  ownerEmail?: string;
+  /** This month's conversations against the cap, as Billing's meter counts them, for the account menu. */
+  usage?: { used: number; cap: number } | null;
   avatarUrl: string | null;
   /** The foot of the sidebar: "Business plan", "18 days left, until 14 Nov", and its bar. */
   plan: PlanBlock;
@@ -176,19 +188,61 @@ export function AppFrame({
       {initials}
     </span>
   );
-  const accountLinks = (
-    <>
-      <Link href="/app/settings" className={styles.menuItem}>
-        Settings
-      </Link>
-      <Link href="/app/billing" className={styles.menuItem}>
-        Billing
-      </Link>
-      <div className={styles.menuSignOut}>
-        <SignOutButton />
-      </div>
-    </>
-  );
+  // The account menu, "plan at a glance" (29 Oct 2026 boards): who you are, this month's
+  // conversations and how the plan stands (Manage goes to Billing, so Billing is no row of its own),
+  // then Settings, Help & support and Sign out. `asMenu` gives its rows menu roles; the phone's
+  // panel, which also holds the theme switch, is a plain disclosure.
+  const account = (asMenu: boolean) => {
+    const item = asMenu ? ({ role: 'menuitem' } as const) : {};
+    return (
+      <>
+        <div className={styles.menuHead}>
+          {avatarUrl ? (
+            <img className={styles.menuAvatar} src={avatarUrl} alt="" width={38} height={38} />
+          ) : (
+            <span className={styles.menuAvatar} aria-hidden="true">
+              {initials}
+            </span>
+          )}
+          <span className={styles.menuText}>
+            <b>{who}</b>
+            {ownerEmail ? <small>{ownerEmail}</small> : null}
+          </span>
+        </div>
+        <div className={styles.menuPlan}>
+          {usage ? (
+            <>
+              <p>
+                <span>Conversations this month</span>
+                <b>
+                  {usage.used.toLocaleString('en-MY')} / {usage.cap.toLocaleString('en-MY')}
+                </b>
+              </p>
+              <span className={styles.menuBar} aria-hidden="true">
+                <i style={{ width: `${usage.cap > 0 ? Math.min(100, (usage.used / usage.cap) * 100) : 0}%` }} />
+              </span>
+            </>
+          ) : null}
+          <p>
+            <span>{plan.glance}</span>
+            <Link href="/app/billing" className={styles.menuManage} {...item}>
+              Manage
+            </Link>
+          </p>
+        </div>
+        <Link href="/app/settings" className={styles.menuRow} {...item}>
+          {svg(ICON.settings, styles.menuIcon)}
+          Settings
+        </Link>
+        <a href={SUPPORT} className={styles.menuRow} {...item}>
+          {svg(ICON.help, styles.menuIcon)}
+          Help &amp; support
+        </a>
+        <span className={styles.menuRule} aria-hidden="true" />
+        <SignOutButton className={`${styles.menuRow} ${styles.menuOut}`} icon={svg(ICON.signOut, styles.menuIcon)} {...item} />
+      </>
+    );
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, choose }}>
@@ -269,10 +323,9 @@ export function AppFrame({
           </Link>
           {/* A phone has no top bar: the account, and the theme with it, end the row of icons. */}
           <div className={styles.phoneAccount}>
-            <Popover label="Account and theme" buttonClassName={styles.phoneAccountButton} button={avatar}>
-              <p className={styles.menuWho}>{who}</p>
+            <Popover label="Account and theme" buttonClassName={styles.phoneAccountButton} panelClassName={styles.accountPanel} button={avatar}>
               <ThemeSwitch className={styles.menuTheme} />
-              {accountLinks}
+              {account(false)}
             </Popover>
           </div>
         </aside>
@@ -288,8 +341,7 @@ export function AppFrame({
                 </>
               ) : null}
             </p>
-            {/* There is no help centre yet: Help writes to the support address the alerts and legal pages give. */}
-            <a className={styles.help} href="mailto:support@curios.my">
+            <a className={styles.help} href={SUPPORT}>
               Help
             </a>
             <ThemeSwitch className={styles.topTheme} />
@@ -330,7 +382,9 @@ export function AppFrame({
             <span className={styles.divider} aria-hidden="true" />
             <Popover
               label="Account"
+              menu
               buttonClassName={styles.account}
+              panelClassName={styles.accountPanel}
               button={
                 <>
                   {avatar}
@@ -344,7 +398,7 @@ export function AppFrame({
                 </>
               }
             >
-              {accountLinks}
+              {account(true)}
             </Popover>
           </header>
           <main className={styles.sheet}>
