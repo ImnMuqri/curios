@@ -1,25 +1,61 @@
-/* The board's .a / .ba / .pv-a: 13px/1.5 plain text, the label 10.5px at 65%. */
+/* The boards' v2 .ba / .a: plain text, no bubble; the label 11.5px beside Peek's eyes. */
 .reply {
   display: block;
   align-self: flex-start;
   max-width: 96%;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: 13.5px;
+  line-height: 1.55;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  /* Thinking's o, while the reply is on its way: the colour of the dot. */
+  /* Thinking's o, while the reply is on its way: the colour of the dot, or biru beside Peek. */
   --mo-ring: var(--accent-mark, var(--accent, var(--biru)));
+}
+
+.reply:not([data-on-page]) {
+  --mo-ring: var(--biru);
 }
 
 .who {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 3px;
-  font-size: 10.5px;
+  margin-bottom: 4px;
+  font-size: 11.5px;
   font-weight: 600;
   line-height: 1.3;
   white-space: normal;
+}
+
+.reply[data-on-page] .who {
+  margin-bottom: 3px;
+  font-size: 10.5px;
+}
+
+/* In the dashboard the label is muted text; on the owner's page it is the panel's own text, dimmed. */
+.reply:not([data-on-page]) .whoName {
+  color: var(--muted);
+}
+
+.reply[data-on-page] .whoName {
+  opacity: 0.65;
+}
+
+.peek {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.peekFace {
+  fill: var(--biru);
+}
+
+.peekWhite {
+  fill: var(--on-photo);
+}
+
+.peekPupil {
+  fill: var(--light-ink);
 }
 
 /* The page's accent, as on the public chat's label (its text colour where the accent would vanish into
@@ -32,10 +68,11 @@
   background: var(--accent-mark, var(--accent, var(--biru)));
 }
 
-.whoName {
-  opacity: 0.65;
-}
-
 .words {
   display: block;
+}
+
+.reply[data-on-page] {
+  font-size: 13px;
+  line-height: 1.5;
 }

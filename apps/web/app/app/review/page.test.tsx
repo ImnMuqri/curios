@@ -22,8 +22,7 @@ import type { OwnerPage, ReviewFact } from '@curios/db-read';
 const getOwnerPage = vi.fn();
 const getReviewQueue = vi.fn();
 const countPendingFacts = vi.fn();
-const getMyCurios = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerPage, getReviewQueue, countPendingFacts, getMyCurios }));
+vi.mock('@curios/db-read', () => ({ getOwnerPage, getReviewQueue, countPendingFacts }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -86,7 +85,6 @@ describe('the review screen, assembled', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     countPendingFacts.mockResolvedValue(0);
-    getMyCurios.mockResolvedValue(null);
   });
 
   it('offers Publish while facts are still waiting to be reviewed', async () => {
@@ -130,6 +128,22 @@ describe('the review screen, assembled', () => {
       'href',
       '/app/knowledge?tab=sources&add=1',
     );
+  });
+
+  // Dashboard v2: the side panel runs the full height of the sheet, so the
+  // header sits at the top of the left column, beside the panel, not over it.
+  it('puts the header over the left column only', async () => {
+    resolveOwner.mockResolvedValueOnce({ accountId: 'acc-1' });
+    getOwnerPage.mockResolvedValueOnce(page);
+    getReviewQueue.mockResolvedValueOnce(unreviewed);
+
+    render(await ReviewPage());
+
+    const title = screen.getByRole('heading', { level: 1, name: 'Review' });
+    const side = screen.getByRole('complementary', { name: 'What this changes' });
+    expect(side.contains(title)).toBe(false);
+    expect(side.previousElementSibling?.contains(title)).toBe(true);
+    expect(side.previousElementSibling?.contains(screen.getByRole('article', { name: 'Fact to check' }))).toBe(true);
   });
 
   it('shows the live URL instead of the button once published', async () => {

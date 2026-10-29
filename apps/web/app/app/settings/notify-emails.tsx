@@ -12,7 +12,8 @@ export type NotifySwitches = Record<Kind, boolean>;
  * The Settings board's "Email me when", in its order. Off, the thing still
  * lands in the app; only the email stops, and the line says where it waits.
  * The board's fourth switch, a question asked three times, is left out: no
- * such email exists to switch.
+ * such email exists to switch. Its fifth, the plan ending, is `PlanEndingRow`
+ * below.
  */
 const ROWS: { kind: Kind; title: string; label: string; on: string; off: string }[] = [
   {
@@ -89,13 +90,37 @@ function NotifyRow({ row, on: initial, onChange }: { row: (typeof ROWS)[number];
   );
 }
 
-/** The three switches; each change sends only its own. */
+/**
+ * "Your plan is ending", the board's last row. The reminder three days before
+ * and the mail on the day (plan-mail.ts, sent by the renewal-reminder worker)
+ * go to every business page and nothing stores a choice about them: plan-mail
+ * says why, each one says something is about to stop and the owner would
+ * otherwise hear it from a customer. So the switch is drawn on and cannot be
+ * moved, and the line under it says so, rather than a switch that would save
+ * nothing.
+ */
+function PlanEndingRow() {
+  return (
+    <SettingRow
+      title="Your plan is ending"
+      note="3 days before, and on the day. Always sent, so a plan never ends without warning."
+      action={
+        <button type="button" role="switch" aria-checked="true" aria-label="Email me when my plan is ending" className={styles.switch} disabled>
+          <i />
+        </button>
+      }
+    />
+  );
+}
+
+/** The three switches, each change sending only its own, then the plan row that has none. */
 export function NotifyForm({ on, onChange }: { on: NotifySwitches; onChange: (patch: Partial<NotifySwitches>) => Promise<unknown> }) {
   return (
     <>
       {ROWS.map((row) => (
         <NotifyRow key={row.kind} row={row} on={on[row.kind]} onChange={(next) => onChange({ [row.kind]: next })} />
       ))}
+      <PlanEndingRow />
     </>
   );
 }

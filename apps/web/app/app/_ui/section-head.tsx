@@ -1,8 +1,8 @@
 import styles from './editor.module.css';
 
 /**
- * A section's heading: the title on the left, text only, and a short note on
- * the right (under the title on a phone).
+ * A section's heading: the title, text only, with a short note under it
+ * (Dashboard v3: no longer across from it).
  */
 export function SectionHead({
   id,

@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactElement } from 'react';
 import { render, screen } from '@testing-library/react';
 
 const getKnowledge = vi.fn();
 const getOwnerPage = vi.fn();
-const getMyCurios = vi.fn();
 const getTopics = vi.fn();
-vi.mock('@curios/db-read', () => ({ getKnowledge, getOwnerPage, getMyCurios, getTopics }));
+vi.mock('@curios/db-read', () => ({ getKnowledge, getOwnerPage, getTopics }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -25,7 +25,7 @@ vi.mock('./sources-tab.js', () => ({ Sources }));
 vi.mock('./facts-tab.js', () => ({ Facts }));
 vi.mock('./pinned-tab.js', () => ({ Pinned }));
 vi.mock('./never-say-tab.js', () => ({ NeverSay }));
-const Ask = vi.fn((_p: object) => null);
+const Ask = vi.fn((_p: object): ReactElement | null => null);
 vi.mock('./ask-panel.js', () => ({ Ask }));
 
 const KnowledgePage = (await import('./page.js')).default;
@@ -40,7 +40,6 @@ describe('KnowledgePage', () => {
     resolveOwner.mockResolvedValue({ accountId: 'acc1' });
     getOwnerPage.mockResolvedValue(page);
     getKnowledge.mockResolvedValue(knowledge);
-    getMyCurios.mockResolvedValue(null);
     getTopics.mockResolvedValue([]);
   });
 
@@ -144,10 +143,24 @@ describe('KnowledgePage', () => {
     expect(Ask.mock.calls[0]?.[0]).toMatchObject({ suggestions: ['What do you do?', 'How can I reach you?', 'Where are you based?', 'What have you worked on?'] });
   });
 
-  it('gives Ask your page the page colours', async () => {
-    getMyCurios.mockResolvedValue({ accentColor: '#b5294e', headingFont: 'SERIF', background: 'CUSTOM', backgroundColor: '#542339' });
+  // Dashboard v2: Ask your page is a normal AI chat on the dashboard's neutral panel, so it takes
+  // the page's name for its replies but not the page's colours.
+  it('gives Ask your page the page name, not its colours', async () => {
     render(await open());
-    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ look: { accentColor: '#b5294e', background: 'CUSTOM', backgroundColor: '#542339' } });
+    expect(Ask.mock.calls[0]?.[0]).toMatchObject({ pageName: 'Nadia' });
+    expect(Ask.mock.calls[0]?.[0]).not.toHaveProperty('look');
+  });
+
+  // Dashboard v2: "Ask your page" runs the full height of the sheet, so the
+  // header sits over the left column only, with the tabs under it.
+  it('puts the header over the left column, with the tabs', async () => {
+    Ask.mockImplementationOnce(() => <aside aria-label="Try your page" />);
+    render(await open());
+    const title = screen.getByRole('heading', { level: 1, name: 'Facts & sources' });
+    const side = screen.getByRole('complementary', { name: 'Try your page' });
+    expect(side.contains(title)).toBe(false);
+    expect(side.previousElementSibling).toContainElement(title);
+    expect(side.previousElementSibling).toContainElement(screen.getByRole('navigation', { name: 'Knowledge' }));
   });
 
   // AppFrame renders its own main around every screen it wraps, this one

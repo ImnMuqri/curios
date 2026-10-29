@@ -9,15 +9,17 @@ import { ConnectGoogle } from './connect-google.js';
 import { CopyAddress } from './copy-address.js';
 import { Notify } from './notify-emails.js';
 import { SearchIndexing } from './search-indexing.js';
-import { Done, SettingRow } from './setting-row.js';
+import { Done, GoogleIcon, KeyIcon, SettingRow } from './setting-row.js';
 import { SignOutButton } from '../sign-out-button.js';
 import { sourcePlace } from '../_ui/source-place.js';
 import { PageHead } from '../_ui/page-head.js';
+import { avatarUrl } from '../../../lib/avatar-url.js';
 import styles from './settings.module.css';
 
 /**
  * The account and the page, from the design handoff's Settings board: the
- * page's address and kind, the ways to sign in, and signing out. Also the
+ * page's address and kind, the ways to sign in, signing out, and which emails
+ * a business page gets. Also the
  * redirect target a successful and a failed Google link both land on (C2,
  * C3).
  *
@@ -45,11 +47,20 @@ export default async function SettingsPage({
   const banner = decideSettingsBanner(params);
   const publicUrl = page ? `${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}` : null;
 
+  const business = page?.mode === 'BUSINESS';
+  // Only a business page gets the emails, so only it gets the second column.
+  const emails = business && notifications;
+  const initial = (page?.displayName.trim()[0] ?? view.email[0] ?? '').toUpperCase();
+  const picture = page ? avatarUrl(page.avatarKey ?? null) : null;
+
   // Plain data across the boundary. The client parts build their own
   // handlers; a Server Component may not pass a function here.
   return (
     <>
-      <PageHead title="Settings" note={<>Signed in as {view.email}</>} />
+      <PageHead
+        title="Settings"
+        summary={emails ? 'Your address, how you sign in, and what we email you about.' : 'Your address, and how you sign in.'}
+      />
       <div className={styles.wrap}>
         {banner ? (
           <p className={styles.banner} data-tone={banner.kind === 'error' ? 'error' : undefined} role={banner.kind === 'error' ? 'alert' : 'status'}>
@@ -57,69 +68,117 @@ export default async function SettingsPage({
           </p>
         ) : null}
 
-        {/* An account with no page yet has no address and nothing to index. */}
-        {page && publicUrl ? (
-          <section className={styles.group} aria-labelledby="page-title">
-            <h2 id="page-title">Your page</h2>
-            <p>The address people visit, and what kind of page it is.</p>
-            <div className={styles.card}>
-              <SettingRow title="Address" note={sourcePlace(publicUrl)} action={<CopyAddress url={publicUrl} />} />
-              {page.mode === 'BUSINESS' ? (
+        {/* Dashboard v2: two plain columns, the page and signing in on the
+            left, the emails on the right; one column under ~940px. */}
+        <div className={styles.cols} data-single={emails ? undefined : ''}>
+          <div className={styles.col}>
+            {/* An account with no page yet has no address and nothing to index. */}
+            {page && publicUrl ? (
+              <section aria-labelledby="page-title">
+                {/* The board's page card: the address, what kind of page it is
+                    and whether search engines show it. The board's "Change"
+                    beside Copy is not drawn: nothing can change an address yet. */}
+                <div className={styles.pageCard}>
+                  {picture ? (
+                    <img className={styles.pageAvatar} src={picture} alt="" width={52} height={52} />
+                  ) : (
+                    <span className={styles.pageAvatar} aria-hidden="true">
+                      {initial}
+                    </span>
+                  )}
+                  <div className={styles.pageText}>
+                    <h2 id="page-title">Your page</h2>
+                    <b>{sourcePlace(publicUrl)}</b>
+                    <span>
+                      <em data-tone={business ? undefined : 'personal'}>{business ? 'Business page' : 'Personal page'}</em>
+                      {business ? 'Always shows up in search' : page.allowSearchIndexing ? 'Shows up in search' : 'Kept out of search'}
+                    </span>
+                  </div>
+                  <span className={styles.pageActions}>
+                    <CopyAddress url={publicUrl} />
+                    {business ? null : (
+                      <a className={styles.btn2} href="/app/billing">
+                        See Business
+                      </a>
+                    )}
+                  </span>
+                </div>
+                <p className={styles.note}>
+                  {business
+                    ? "A business page takes numbers, runs a shop and gets FAQ pages. It can't go back to personal."
+                    : 'Answers questions about you. Selling something? A business page takes numbers and runs a shop.'}
+                </p>
+                {/* A business page is always in search, which the card says; a
+                    personal one chooses, and its switch sits right under. */}
+                {business ? null : (
+                  <div className={styles.list}>
+                    <SearchIndexing mode={page.mode} allowed={page.allowSearchIndexing} />
+                  </div>
+                )}
+              </section>
+            ) : null}
+
+            <section aria-labelledby="sign-in-title">
+              <h2 id="sign-in-title" className={styles.h}>
+                Signing in
+              </h2>
+              <p className={styles.note} data-lead="">
+                {view.signNote}
+              </p>
+              <div className={styles.list}>
                 <SettingRow
-                  title="Business page"
-                  note="Takes numbers, runs a shop and has FAQ pages. It can't be switched back to personal."
-                  action={<Done>Business</Done>}
+                  title="Google"
+                  icon={<GoogleIcon />}
+                  note={view.googleEmail ?? 'Not connected.'}
+                  action={view.showConnectGoogle ? <ConnectGoogle /> : <Done>Connected</Done>}
                 />
-              ) : (
+                {view.showAddPassword ? (
+                  <AddPassword />
+                ) : (
+                  <SettingRow
+                    title="Password"
+                    icon={<KeyIcon />}
+                    note="Set. To change it, use “Forgot your password?” when you sign in."
+                    action={<Done>Added</Done>}
+                  />
+                )}
+              </div>
+            </section>
+
+            <section aria-labelledby="session-title">
+              <h2 id="session-title" className={styles.h}>
+                This device
+              </h2>
+              <div className={styles.list}>
+                {/* The address signed in with: the old header line, kept here
+                    since the board's summary no longer names it. */}
                 <SettingRow
-                  title="Personal page"
-                  note="Answers questions about you. Selling something? A business page takes numbers and runs a shop."
-                  action={
-                    <a className={styles.btn2} href="/app/billing">
-                      See Business
-                    </a>
-                  }
+                  title="Sign out"
+                  note={`Signed in as ${view.email}. Your page stays live while you're signed out.`}
+                  action={<SignOutButton />}
                 />
-              )}
-              <SearchIndexing mode={page.mode} allowed={page.allowSearchIndexing} />
-            </div>
-          </section>
-        ) : null}
-
-        <section className={styles.group} aria-labelledby="sign-in-title">
-          <h2 id="sign-in-title">Signing in</h2>
-          <p>{view.signNote}</p>
-          <div className={styles.card}>
-            <SettingRow
-              title="Google"
-              note={view.googleEmail ?? 'Not connected.'}
-              action={view.showConnectGoogle ? <ConnectGoogle /> : <Done>Connected</Done>}
-            />
-            {view.showAddPassword ? (
-              <AddPassword />
-            ) : (
-              <SettingRow title="Password" note="Set. To change it, use “Forgot your password?” when you sign in." action={<Done>Added</Done>} />
-            )}
+              </div>
+            </section>
           </div>
-        </section>
 
-        {/* The owner emails: orders, receipts and leads, each a business page's. */}
-        {page?.mode === 'BUSINESS' && notifications ? (
-          <section className={styles.group} aria-labelledby="email-title">
-            <h2 id="email-title">Email me when</h2>
-            <p>Sent to {view.email}. Everything also shows in the app.</p>
-            <div className={styles.card}>
-              <Notify on={notifications} />
+          {/* The owner emails: orders, receipts and leads, each a business
+              page's, and the plan ending, which has no switch. */}
+          {emails ? (
+            <div className={styles.col}>
+              <section aria-labelledby="email-title">
+                <h2 id="email-title" className={styles.h} data-first="">
+                  Email me when
+                </h2>
+                <p className={styles.note} data-lead="">
+                  Sent to {view.email}. Everything also shows in the app and under the bell.
+                </p>
+                <div className={styles.list}>
+                  <Notify on={notifications} />
+                </div>
+              </section>
             </div>
-          </section>
-        ) : null}
-
-        <section className={styles.group} aria-labelledby="session-title">
-          <h2 id="session-title">Session</h2>
-          <div className={styles.card}>
-            <SettingRow title="Sign out" note="On this device. Your page stays live." action={<SignOutButton />} />
-          </div>
-        </section>
+          ) : null}
+        </div>
       </div>
     </>
   );

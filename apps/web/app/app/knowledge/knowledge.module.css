@@ -1,8 +1,9 @@
 /*
- * Facts & sources, from the design handoff's Knowledge board: four tabs
- * (Facts, Sources, Pinned answers, Never say) over a column of rows, and
- * beside them "Ask your page", a chat in the page's own colours that answers
- * only from what is here.
+ * Facts & sources, from the design handoff's Knowledge board: the screen's
+ * header and four tabs (Facts, Sources, Pinned answers, Never say) over a
+ * column of plain rows, and beside them, running the full height of the
+ * sheet, "Ask your page": a normal AI chat on the dashboard's neutral panel
+ * that answers only from what is here (Dashboard v2).
  */
 
 @keyframes fadeUp {
@@ -56,6 +57,29 @@
   }
 }
 
+/* Peek whistling while nothing has been asked: a gentle bob, and notes that float up and fade. */
+@keyframes pwBob {
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes pwNote {
+  0% {
+    opacity: 0;
+    transform: translate(-6px, 8px);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(6px, -12px);
+  }
+}
+
 .sr {
   position: absolute;
   width: 1px;
@@ -78,14 +102,28 @@
 
 .kmain {
   min-width: 0;
-  padding: 0 36px 56px;
+  padding: 0 40px 56px;
+}
+
+/* The screen's header (PageHead) at the top of the left column: the column already gives the
+   40px sides, so the header keeps only its top and bottom. Its alert, if any, follows it. */
+.head > header {
+  padding: 28px 0 20px;
+}
+
+.head > div {
+  padding: 0 0 20px;
 }
 
 /* ---- Tabs ---- */
 
+/* The one pill style (pill-tabs.module.css) on links. One row that scrolls sideways on a narrow
+   column, as the board's phone does, rather than wrapping to a second. */
 .tabs {
-  display: flex;
-  border-bottom: 1px solid var(--line);
+  /* The containing block for each count's screen-reader comma (.sr, absolute): without it, the
+     ones scrolled out of view escape this row's clip and widen the page on a phone. */
+  position: relative;
+  flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
 }
@@ -95,57 +133,18 @@
 }
 
 .tab {
-  position: relative;
-  display: inline-flex;
   flex: none;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  width: 160px;
-  height: 52px;
-  color: var(--muted);
-  font-weight: 500;
-  text-decoration: none;
-  white-space: nowrap;
-  transition: color 200ms;
 }
 
-.tab:hover {
-  color: var(--ink);
-}
-
-.tab em {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--surface);
+/* A quiet number on the grey track; the chosen tab's number in the brand's pale. */
+.tabCount {
+  background: transparent;
   color: var(--ink-soft);
-  font-size: 11.5px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 20px;
-  text-align: center;
 }
 
-.tab[aria-current='page'] {
-  color: var(--biru);
-}
-
-.tab[aria-current='page'] em {
+.tab[aria-current='page'] .tabCount {
   background: var(--biru-muda);
   color: var(--biru);
-}
-
-.tab[aria-current='page']::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--biru);
 }
 
 .wrap {
@@ -173,6 +172,23 @@
   margin: 0;
 }
 
+/* "+ Add a source" on the right of the Sources intro: a link-weight button, not a filled one. */
+.addLink {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--biru);
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.addLink:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ---- Shared controls ---- */
 
 .prim {
@@ -182,7 +198,7 @@
   height: 38px;
   padding: 0 16px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--biru);
   color: var(--card);
   font: inherit;
@@ -232,7 +248,7 @@
   height: 40px;
   padding: 0 12px;
   border: 1px solid var(--edge);
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--card);
   font: inherit;
   color: var(--ink);
@@ -439,7 +455,7 @@
   margin-top: 16px;
   padding: 10px;
   border: 1.5px dashed color-mix(in srgb, var(--edge) 70%, var(--ink-soft));
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--paper);
   animation: fadeUp 280ms ease both;
 }
@@ -467,32 +483,32 @@
   color: var(--muted);
 }
 
-/* The kinds' colours, on the group dots and the chosen add chip. */
-:is(.group, .chip)[data-kind='PRICE'] {
+/* The kinds' colours, on the chosen add chip. */
+.chip[data-kind='PRICE'] {
   --dot: var(--kuning);
 }
 
-:is(.group, .chip)[data-kind='HOURS'] {
+.chip[data-kind='HOURS'] {
   --dot: var(--biru);
 }
 
-:is(.group, .chip)[data-kind='LOCATION'] {
+.chip[data-kind='LOCATION'] {
   --dot: var(--hijau);
 }
 
-:is(.group, .chip)[data-kind='POLICY'] {
+.chip[data-kind='POLICY'] {
   --dot: var(--ungu);
 }
 
-:is(.group, .chip)[data-kind='PRODUCT'] {
+.chip[data-kind='PRODUCT'] {
   --dot: var(--rose);
 }
 
-:is(.group, .chip)[data-kind='PERSON'] {
+.chip[data-kind='PERSON'] {
   --dot: var(--jingga);
 }
 
-:is(.group, .chip)[data-kind='MISC'] {
+.chip[data-kind='MISC'] {
   --dot: var(--muted);
 }
 
@@ -500,36 +516,23 @@
   margin-top: 22px;
 }
 
+/* The kind's name in plain case over its rows (boards' v3), no colour dot. */
 .group > h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin: 0 0 6px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--muted);
+  color: var(--ink-soft);
 }
 
-.group > h2 i {
-  width: 8px;
-  height: 8px;
-  border-radius: 2px;
-  background: var(--dot);
-}
-
+/* Plain rows, each with a hairline under it, no box around them. */
 .rows {
   margin: 0;
   padding: 0;
   list-style: none;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
 }
 
-.rows > li + li {
-  border-top: 1px solid var(--line);
+.rows > li {
+  border-bottom: 1px solid var(--line);
 }
 
 .row {
@@ -537,13 +540,13 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 8px 12px;
-  min-height: 58px;
-  padding: 10px 10px 10px 16px;
+  min-height: 46px;
+  padding: 8px 0;
   animation: fadeUp 300ms ease both;
   /* A page can know hundreds of facts: the rows off screen are laid out (and animated) only as
      they scroll near, which took a fifth off opening this screen, measured with 300 facts. */
   content-visibility: auto;
-  contain-intrinsic-size: auto 58px;
+  contain-intrinsic-size: auto 46px;
 }
 
 .row:hover .acts,
@@ -560,7 +563,7 @@
   overflow-wrap: anywhere;
 }
 
-/* Where a fact came from: a quiet pill. */
+/* Where a fact came from: quiet text with its icon. */
 .origin {
   display: inline-flex;
   flex: none;
@@ -568,10 +571,7 @@
   gap: 6px;
   max-width: 210px;
   height: 26px;
-  padding: 0 10px;
-  border-radius: 999px;
-  background: var(--surface);
-  color: var(--ink-soft);
+  color: var(--faint);
   font-size: 12px;
   white-space: nowrap;
 }
@@ -787,7 +787,7 @@
   margin-bottom: 12px;
   padding: 16px;
   border: 1.5px solid var(--biru);
-  border-radius: 16px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
   animation: fadeUp 300ms ease both;
 }
@@ -805,7 +805,7 @@
   height: 32px;
   padding: 0 8px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: var(--muted);
   font: inherit;
@@ -896,12 +896,14 @@
   margin-top: 12px;
 }
 
+/* The sources as one list: one box, a hairline between rows (boards' v3). */
 .srcs {
-  display: grid;
-  gap: 10px;
   margin: 0;
   padding: 0;
+  overflow: hidden;
   list-style: none;
+  border: 1px solid var(--line);
+  border-radius: 10px;
 }
 
 .src {
@@ -912,10 +914,12 @@
   gap: 8px 14px;
   padding: 16px;
   overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: 16px;
   background: var(--card);
   animation: fadeUp 320ms ease both;
+}
+
+.src + .src {
+  border-top: 1px solid var(--line);
 }
 
 .src:hover .acts,
@@ -935,7 +939,7 @@
   width: 42px;
   height: 42px;
   flex: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--biru-muda);
   color: var(--biru);
 }
@@ -1064,11 +1068,11 @@
   list-style: none;
 }
 
+/* Each pinned answer on light grey, no border (boards' v3). */
 .pin {
-  padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  background: var(--card);
+  padding: 16px 18px;
+  border-radius: 10px;
+  background: var(--soft-page);
   animation: fadeUp 300ms ease both;
 }
 
@@ -1077,24 +1081,19 @@
   opacity: 1;
 }
 
+/* The question leads, as the answer's title. */
 .pinQ {
   display: flex;
   align-items: center;
   gap: 6px;
   min-height: 32px;
-  font-size: 12.5px;
-  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .pinQ > svg {
-  width: 13px;
-  height: 13px;
-  flex: none;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  display: none;
 }
 
 .pinQ > span {
@@ -1110,6 +1109,7 @@
   margin: 4px 0 0;
   font-size: 14px;
   line-height: 1.5;
+  color: var(--ink-soft);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
@@ -1158,32 +1158,22 @@
 
 .pinLink a {
   color: var(--biru);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 /* ---- Never say ---- */
 
+/* The caveat as a plain muted sentence, not a warning box (boards' v3). */
 .nsNote {
   display: flex;
   gap: 10px;
-  padding: 12px 14px;
-  border-radius: 12px;
-  background: var(--amber-muda);
-  color: color-mix(in srgb, var(--amber-ink) 75%, var(--ink));
   font-size: 13px;
   line-height: 1.5;
+  color: var(--muted);
 }
 
 .nsNote svg {
-  width: 18px;
-  height: 18px;
-  flex: none;
-  margin-top: 1px;
-  fill: none;
-  stroke: var(--amber-ink);
-  stroke-width: 1.9;
-  stroke-linecap: round;
-  stroke-linejoin: round;
+  display: none;
 }
 
 .nsAdd {
@@ -1210,7 +1200,7 @@
   margin: 18px 0 0;
   padding: 18px;
   border: 1.5px dashed var(--edge);
-  border-radius: 14px;
+  border-radius: 10px;
   font-size: 13.5px;
   color: var(--muted);
   text-align: center;
@@ -1237,17 +1227,17 @@
   min-height: 34px;
   padding: 4px 6px 4px 12px;
   border-radius: 999px;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--merah-muda);
+  color: var(--merah-ink);
   font-size: 13px;
   font-weight: 500;
   animation: popin 300ms cubic-bezier(0.34, 1.5, 0.64, 1) both;
 }
 
+/* A soft red chip says "off-limits" on its own; the words are not struck through (boards' v3). */
 .nsp s {
   overflow-wrap: anywhere;
-  text-decoration-thickness: 1.5px;
-  text-decoration-color: var(--merah);
+  text-decoration: none;
 }
 
 .nsp button {
@@ -1258,13 +1248,14 @@
   flex: none;
   border: 0;
   border-radius: 50%;
-  background: rgb(250 251 252 / 14%);
-  color: var(--paper);
+  background: color-mix(in srgb, var(--merah-ink) 10%, transparent);
+  color: var(--merah-ink);
   cursor: pointer;
 }
 
 .nsp button:hover:not(:disabled) {
-  background: var(--merah);
+  background: var(--merah-ink);
+  color: var(--merah-muda);
 }
 
 .nsp button svg {
@@ -1282,23 +1273,15 @@
 
 /* ---- Ask your page ---- */
 
+/* On white beside the left column, split from it by one thin line, the full height of the sheet. */
 .tester {
   display: flex;
   flex-direction: column;
   gap: 14px;
   min-width: 0;
-  padding: 24px;
+  padding: 28px 32px;
   border-left: 1px solid var(--line);
-  background: var(--paper);
-}
-
-/* The send button is the page's accent, with whichever text reads on it. */
-.tester[data-on-accent='dark'] {
-  --on-accent: var(--ink);
-}
-
-.tester[data-on-accent='light'] {
-  --on-accent: var(--paper);
+  background: var(--card);
 }
 
 .tester h2 {
@@ -1313,6 +1296,8 @@
   color: var(--muted);
 }
 
+/* A normal AI chat on the dashboard's neutral panel; the question's bubble and the reply's label
+   are VisitorQuestion's and PageReply's own. */
 .tchat {
   display: flex;
   flex-direction: column;
@@ -1321,23 +1306,61 @@
   max-height: 440px;
   padding: 16px;
   overflow: auto;
-  border-radius: 20px;
-  background: var(--page-bg, var(--ink));
-  color: var(--page-fg, var(--paper));
-  font-family: var(--font-inter), sans-serif;
+  border-radius: 10px;
+  background: var(--chat);
+  color: var(--ink);
 }
 
-/* Bottom-aligned while short, scrollable once it is long. */
-.tchat > :first-child {
-  margin-top: auto;
-}
-
-.tchatEmpty {
+/* Nothing asked yet: Peek whistling, a line, and what to do. */
+.tempty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
   margin: auto;
-  font-family: var(--font-plex-sans), sans-serif;
-  font-size: 13px;
   text-align: center;
-  opacity: 0.7;
+}
+
+.tempty b {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tempty > span {
+  max-width: 280px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.pw {
+  display: block;
+  width: 190px;
+  height: auto;
+  margin-bottom: 6px;
+  overflow: visible;
+}
+
+.pwGround {
+  fill: var(--soft-shadow);
+}
+
+/* The notes are drawn in the text colour, so they read on the chat panel in light and dark. */
+.pwInk {
+  fill: var(--ink);
+  stroke: var(--ink);
+}
+
+.pwBob {
+  animation: pwBob 2.4s ease-in-out infinite;
+}
+
+.pwNote1 {
+  animation: pwNote 2.4s ease-out infinite;
+}
+
+.pwNote2 {
+  animation: pwNote 2.4s ease-out 1.2s infinite;
 }
 
 .u {
@@ -1357,7 +1380,7 @@
   margin: -2px 0 4px 4px;
   font-family: var(--font-plex-sans), sans-serif;
   font-size: 11.5px;
-  opacity: 0.7;
+  color: var(--muted);
   animation: fadeUp 260ms ease both;
 }
 
@@ -1432,8 +1455,8 @@
   flex: none;
   border: 0;
   border-radius: 50%;
-  background: var(--accent, var(--biru));
-  color: var(--on-accent, var(--card));
+  background: var(--biru);
+  color: var(--on-photo);
   cursor: pointer;
 }
 
@@ -1481,9 +1504,30 @@
   }
 }
 
+/* Beside the column, Ask your page stays in view as the facts scroll, under the frame's top bar. */
+@media (min-width: 1201px) {
+  .tester {
+    position: sticky;
+    top: 0;
+    align-self: start;
+    height: calc(100vh - 64px);
+    min-height: 600px;
+  }
+
+  .tchat {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
+}
+
 @media (max-width: 760px) {
   .kmain {
     padding: 0 16px 40px;
+  }
+
+  .head > header {
+    padding: 20px 0 14px;
   }
 
   .tester {
@@ -1543,7 +1587,10 @@
   .nsp,
   .u,
   .a,
-  .from {
+  .from,
+  .pwBob,
+  .pwNote1,
+  .pwNote2 {
     animation: none;
   }
 

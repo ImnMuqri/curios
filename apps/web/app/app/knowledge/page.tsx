@@ -8,7 +8,7 @@ import {
   PASTED_TEXT_MAX,
   SESSION_COOKIE,
 } from '@curios/core';
-import { getKnowledge, getMyCurios, getOwnerPage, getTopics } from '@curios/db-read';
+import { getKnowledge, getOwnerPage, getTopics } from '@curios/db-read';
 
 import { resolveOwner } from '../session.js';
 import { KnowledgeTabs, parseTab } from './tabs.js';
@@ -21,13 +21,16 @@ import { PageHead } from '../_ui/page-head.js';
 import { STARTERS } from '../_ui/starters.js';
 import styles from './knowledge.module.css';
 
-
 /**
  * Everything the chat answers from, in one place, and the way to remove any
  * of it; beside it, "Ask your page" to hear what the chat says with it. The
  * tab is in the address (`?add=1` opens a tab's add form). Constants the
  * client tabs need cross as props: a client component may not import the
  * core barrel.
+ *
+ * The header sits at the top of the left column only: "Ask your page" runs
+ * the full height of the sheet beside it, split off by one thin line
+ * (Dashboard v2).
  */
 export default async function KnowledgePage({
   searchParams,
@@ -37,11 +40,9 @@ export default async function KnowledgePage({
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
 
-  const [page, knowledge, look, asked] = await Promise.all([
+  const [page, knowledge, asked] = await Promise.all([
     getOwnerPage(owner.accountId),
     getKnowledge(owner.accountId),
-    // For the chat's colours.
-    getMyCurios(owner.accountId),
     // What customers ask most, to try asking.
     getTopics(owner.accountId, { limit: 4 }),
   ]);
@@ -53,35 +54,31 @@ export default async function KnowledgePage({
   const suggestions = asked.length > 0 ? asked.map((topic) => topic.title) : [...STARTERS[page.mode]];
 
   return (
-    <>
-      <PageHead title="Facts & sources" note="Everything your page knows, and where it learned it" />
-      <div className={styles.kb}>
-        <div className={styles.kmain}>
-          <KnowledgeTabs
-            current={tab}
-            counts={{
-              facts: knowledge.facts.length,
-              sources: knowledge.sources.length,
-              pinned: knowledge.pinned.length,
-              'never-say': knowledge.neverSay.length,
-            }}
-          />
-          {tab === 'facts' ? (
-            <Facts facts={knowledge.facts} categories={[...FACT_CATEGORIES]} ownerFactMax={OWNER_FACT_MAX} startAdding={startAdding} />
-          ) : tab === 'sources' ? (
-            <Sources sources={knowledge.sources} pageId={page.id} pastedTextMax={PASTED_TEXT_MAX} startAdding={startAdding} />
-          ) : tab === 'pinned' ? (
-            <Pinned pinned={knowledge.pinned} />
-          ) : (
-            <NeverSay entries={knowledge.neverSay} max={NEVER_SAY_MAX} maxChars={NEVER_SAY_MAX_CHARS} />
-          )}
+    <div className={styles.kb}>
+      <div className={styles.kmain}>
+        <div className={styles.head}>
+          <PageHead title="Facts & sources" summary="Everything your page knows, and where it learned it." />
         </div>
-        <Ask
-          pageName={page.displayName}
-          look={look ? { accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor } : undefined}
-          suggestions={suggestions}
+        <KnowledgeTabs
+          current={tab}
+          counts={{
+            facts: knowledge.facts.length,
+            sources: knowledge.sources.length,
+            pinned: knowledge.pinned.length,
+            'never-say': knowledge.neverSay.length,
+          }}
         />
+        {tab === 'facts' ? (
+          <Facts facts={knowledge.facts} categories={[...FACT_CATEGORIES]} ownerFactMax={OWNER_FACT_MAX} startAdding={startAdding} />
+        ) : tab === 'sources' ? (
+          <Sources sources={knowledge.sources} pageId={page.id} pastedTextMax={PASTED_TEXT_MAX} startAdding={startAdding} />
+        ) : tab === 'pinned' ? (
+          <Pinned pinned={knowledge.pinned} />
+        ) : (
+          <NeverSay entries={knowledge.neverSay} max={NEVER_SAY_MAX} maxChars={NEVER_SAY_MAX_CHARS} />
+        )}
       </div>
-    </>
+      <Ask pageName={page.displayName} suggestions={suggestions} />
+    </div>
   );
 }

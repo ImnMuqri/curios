@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { COPY, type Locale } from './copy.js';
 import { Found, Stack, Tilt } from './HowParts.js';
 import { PERSONAS } from './personas.js';
@@ -19,24 +19,37 @@ export function howAt(p: number): { at: number; step: number } {
   return { at, step: p < 0.3 ? 0 : p < 0.8 ? 1 : 2 };
 }
 
+/** A phone, where the rooms are a row to swipe rather than a pinned frame (tanya.module.css). */
+const PHONE = '(max-width: 560px)';
+const onPhoneChange = (onChange: () => void) => {
+  const list = window.matchMedia(PHONE);
+  list.addEventListener('change', onChange);
+  return () => list.removeEventListener('change', onChange);
+};
+
 /**
  * How it works, in three rooms. Where motion is welcome the section pins
  * (tanya.module.css) and the rooms slide sideways as the page scrolls: one
  * reading of the scroll moves the track, fills the rail and marks the dot, so
- * the three always agree. With reduced motion they are a row to swipe.
+ * the three always agree. With reduced motion, and on a phone, they are a row
+ * to swipe, and the swipe marks the dot and fills the rail.
  */
 export function How({ locale }: { locale: Locale }) {
   const copy = COPY[locale].how;
   const [one, two, three] = copy.steps;
   const reduced = useReducedMotion();
+  // Drawn as a phone until the browser says otherwise, as `reduced` is drawn still: no scroll is read before then.
+  const phone = useSyncExternalStore(onPhoneChange, () => window.matchMedia(PHONE).matches, () => true);
+  const swipe = reduced || phone;
   const section = useRef<HTMLElement>(null);
+  const view = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLOListElement>(null);
   const fill = useRef<HTMLSpanElement>(null);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
     const el = section.current;
-    if (reduced || !el) return;
+    if (swipe || !el) return;
     let frame = 0;
     const read = () => {
       frame = 0;
@@ -60,7 +73,24 @@ export function How({ locale }: { locale: Locale }) {
       window.removeEventListener('resize', onScroll);
       if (track.current) track.current.style.transform = '';
     };
-  }, [reduced]);
+  }, [swipe]);
+
+  // The row to swipe: the room most in view is the step.
+  useEffect(() => {
+    const row = view.current;
+    if (!swipe || !row) return;
+    const read = () => {
+      const at = row.clientWidth > 0 ? Math.min(2, Math.max(0, row.scrollLeft / row.clientWidth)) : 0;
+      if (fill.current) fill.current.style.transform = `scaleX(${at / 2})`;
+      setStep(Math.round(at));
+    };
+    read();
+    row.addEventListener('scroll', read, { passive: true });
+    return () => {
+      row.removeEventListener('scroll', read);
+      if (fill.current) fill.current.style.transform = '';
+    };
+  }, [swipe]);
 
   return (
     <section id="how" ref={section} className={styles.how}>
@@ -83,7 +113,7 @@ export function How({ locale }: { locale: Locale }) {
             </div>
           </div>
 
-          <div className={styles.howView}>
+          <div ref={view} className={styles.howView}>
             <ol ref={track} className={styles.howTrack}>
               <li className={styles.howSlide}>
                 <div className={`${styles.room} ${styles.room1}`}>

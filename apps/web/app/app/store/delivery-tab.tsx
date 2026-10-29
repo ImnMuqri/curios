@@ -121,7 +121,7 @@ export function DeliveryTab({
   return (
     <>
       <section className={ui.section} aria-labelledby="pickup-title">
-        <SectionHead id="pickup-title" title="Pickup" note="Customers collect from you" />
+        <SectionHead id="pickup-title" title="Pickup" note="Customers collect from you." />
         <div className={styles.row}>
           <span className={styles.rowText}>
             <b>Allow pickup</b>
@@ -146,7 +146,7 @@ export function DeliveryTab({
       </section>
 
       <section className={ui.section} aria-labelledby="delivery-title">
-        <SectionHead id="delivery-title" title="Delivery" note="How orders reach customers who can't come" />
+        <SectionHead id="delivery-title" title="Delivery" note="How orders reach customers who can't come." />
         <div className={styles.deliveryTiles} role="group" aria-labelledby="delivery-title">
           {MODES.map((option) => (
             <button
@@ -200,7 +200,7 @@ export function DeliveryTab({
       </section>
 
       <section className={ui.section} aria-labelledby="notice-title">
-        <SectionHead id="notice-title" title="Notice" note="How far ahead customers must order" />
+        <SectionHead id="notice-title" title="Notice" note="How far ahead customers must order." />
         <span className={styles.stepper}>
           <button type="button" aria-label="One day less" disabled={notice <= 0} onClick={() => step(-1)}>
             −

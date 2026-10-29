@@ -359,10 +359,7 @@ export function FactList({
       ) : (
         groups.map((group) => (
           <section key={group.category} className={styles.group} data-kind={group.category}>
-            <h2>
-              <i aria-hidden="true" />
-              {KIND_LABELS[group.category]}
-            </h2>
+            <h2>{KIND_LABELS[group.category]}</h2>
             <ul className={styles.rows}>
               {group.facts.map((fact) => (
                 <FactRow key={fact.id} fact={fact} ownerFactMax={ownerFactMax} onEdit={edit} onRemove={remove} />

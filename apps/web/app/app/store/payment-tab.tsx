@@ -93,7 +93,7 @@ function OnlinePayments({
 
   return (
     <section className={ui.section} aria-labelledby="online-title">
-      <SectionHead id="online-title" title="Online payments" note="FPX online banking and e-wallets" />
+      <SectionHead id="online-title" title="Online payments" note="FPX, e-wallets and cards through your own CHIP account. Orders mark themselves paid." />
       {chip.connected ? (
         <div className={`${styles.gw} ${styles.gwOn}`}>
           <span className={styles.gwOk} aria-hidden="true">
@@ -101,13 +101,16 @@ function OnlinePayments({
               <path d="M5 12.5l4.5 4.5L19 7.5" />
             </svg>
           </span>
+          {/* One row (v3): what is connected on the left, its buttons on the right (under it on a phone). */}
           <span className={styles.gwText}>
-            <b>Connected to CHIP</b>
-            <p>
-              Brand “{chip.brandName ?? displayName}” · checked {checked}. Customers can pay by FPX, e-wallet or card, and those orders land in Orders as Paid. Your
-              DuitNow QR below stays on too, with receipts to check as before.
-            </p>
-            {chip.isTest ? <p>Test mode: payments here move no real money.</p> : null}
+            <span className={styles.rowCopy}>
+              <b>Connected to CHIP</b>
+              <p>
+                Brand “{chip.brandName ?? displayName}” · checked {checked}. Customers can pay by FPX, e-wallet or card, and those orders land in Orders as Paid. Your
+                DuitNow QR below stays on too, with receipts to check as before.
+              </p>
+              {chip.isTest ? <p>Test mode: payments here move no real money.</p> : null}
+            </span>
             {confirming ? (
               <span className={ui.confirm}>
                 Disconnect CHIP? Customers can’t pay online until you connect again.
@@ -264,16 +267,19 @@ export function PaymentTab({
       <OnlinePayments chip={chip} chipApi={chipApi} onChip={onChip} displayName={displayName} now={now} navigate={navigate} />
 
       <section className={ui.section} aria-labelledby="qr-title">
-        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it on their order page" />
+        <SectionHead id="qr-title" title="DuitNow QR" note="Customers scan it on their order page, with the exact total shown. No CHIP fee." />
         {qr.has ? (
           <div className={styles.qrCard}>
             <span className={styles.qrBox}>
               {qr.url && !qrFailed ? <img src={qr.url} alt="Your DuitNow QR" onError={() => setQrFailed(true)} /> : null}
               <span className={styles.scan} aria-hidden="true" />
             </span>
-            <span>
-              <b>Your QR is ready</b>
-              <p>{displayName} · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.</p>
+            {/* One row (v3): a small QR, what it is, and its buttons on the right. */}
+            <span className={styles.qrText}>
+              <span className={styles.rowCopy}>
+                <b>Your QR is ready</b>
+                <p>{displayName} · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.</p>
+              </span>
               <span className={styles.buttons}>
                 <button type="button" className={styles.outline} disabled={!uploadsEnabled} onClick={() => file.current?.click()}>
                   Change QR

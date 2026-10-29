@@ -7,10 +7,11 @@ import { getOwnerSession } from './session.query.js';
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
 
 let accountId = '';
+const email = `sess-${randomUUID()}@example.com`;
 
 beforeAll(async () => {
   const account = await write.account.create({
-    data: { email: `sess-${randomUUID()}@example.com` },
+    data: { email, name: 'Lina binti Kamal' },
     select: { id: true },
   });
   accountId = account.id;
@@ -25,10 +26,10 @@ async function aSession(expiresAt: Date): Promise<string> {
 }
 
 describe('getOwnerSession', () => {
-  it('resolves a live session to its account', async () => {
+  it("resolves a live session to its account, with the account's own name and email", async () => {
     const value = await aSession(new Date(Date.now() + 60_000));
 
-    expect(await getOwnerSession(value)).toEqual({ accountId });
+    expect(await getOwnerSession(value)).toEqual({ accountId, name: 'Lina binti Kamal', email });
   });
 
   it('refuses a session past its absolute expiry', async () => {

@@ -541,3 +541,113 @@ Before launch either build them or change the tile:
 - A "Follow up" lead for a buyer who chatted but didn't buy.
 Everything else (answering from approved facts, suggesting listings or items, leads with a
 number, paid orders, the Questions list) exists already. The numbers are sample figures.
+
+## Dashboard v2: new frame, calmer pages, 10px corners (29 Oct 2026)
+
+All owner screens (My Curios, Store, Orders, Questions, Leads, Review, Facts & sources, Billing,
+Settings, and the Alerts states board) were reworked. The boards in `design/boards/` are the
+source of truth; stills are `design/screens/<Board>.desktop.jpg` and `.phone.jpg`, plus
+`Knowledge-ask-empty.desktop.jpg`. Each board's changes sit at the end of its `<style>` under
+`/* v2 ... */` comments, so they are easy to find.
+
+**The frame (one shared layout component):**
+- The page background is soft grey `#edeff4`. The sidebar sits on it with no panel or border:
+  248px wide, a search box with a `/` shortcut under the logo, plain-case group names (Page,
+  Inbox, Knowledge, Account), 36px rows, 18px icons, light blue `#e2e7fb` for the current page.
+  The account block at the bottom is replaced by the plan: "Business plan, 18 days left" and a bar.
+- A 64px **top bar** on the grey: breadcrumb (page name / screen), dark mode, notifications bell
+  with an unread dot, and the account button (avatar, name, menu).
+- The content is one white **sheet** under the top bar, with only its top-left corner rounded
+  (16px). It runs to the right and bottom edges.
+- Tablet (≤1100px) keeps the 72px icon sidebar; phone (≤760px) keeps the sidebar as the top row
+  and hides the top bar.
+
+**Page header:** the title (Bricolage, 30px) with a one-line summary under it, actions on the
+right. The three stat cards are gone; their numbers live in the summary sentence, for example
+Orders: "2 receipts to check and 5 orders to make. RM612 came in this week." No line under the
+header.
+
+**Side panels run full height.** On My Curios, Store, Review and Facts & sources the header
+covers only the left column; the phone preview, the review side panel and "Ask your page" start
+at the top of the sheet, on white, split by one thin line. Nothing crosses them.
+
+**Rules everywhere:**
+- **Corners are 10px** on every box, card, list, field, search bar, chat panel and button.
+  Things nested inside a 10px box use 7–8px (selected tab pill 7px, sidebar rows 8px). Pills,
+  switches, avatars and the phone mock stay round.
+- **Tabs** are one pill style: grey track, the selected tab a white pill. No underlines.
+- **List selection** (Orders, Questions, Leads) is a flat `#eef1fd` highlight, no raised card or ring.
+- **Chats inside the dashboard** (Questions preview, Leads conversation, Review, Ask your page)
+  no longer use the owner's page colour. They look like a normal AI chat: a `#f6f7f9` panel,
+  the customer's message in a white bubble with a hairline, the page's reply as plain text
+  under a small Peek-eyes icon and "Kek Lina's page". The phone previews still show the owner's
+  real colours.
+
+**Per page:**
+- **My Curios:** Profile and Appearance are one tab, "Profile" (cover, you, style, background,
+  accent, font), plus "Links".
+- **Orders:** the order detail is two plain columns, no boxes. "Her receipt" is a file row
+  (thumbnail, file name, uploaded time, View) and three rows: Amount ✓ Matches, Paid to ✓ Your
+  name, Reference, then "Receipts can be edited. Check RM25 is in your bank before you mark it
+  paid." The amount/name/reference come from reading the receipt image, which doesn't exist yet:
+  until it does, show what the customer entered and drop the ✓ checks.
+- **Facts & sources:** when nothing has been asked, "Ask your page" shows Peek standing and
+  whistling (eyes up, "o" mouth, two notes floating up, gentle bob) with "Nothing asked yet".
+  The art is inline in the board (`.pw` SVG); respect reduced motion.
+- **Settings:** two columns. Left: your page as one card (avatar, address, "Business page,
+  always shows up in search", Copy and Change), then Signing in (Google, Password) and This
+  device (Sign out). Right: "Email me when" as a list of switches, with a new row, "Your plan is
+  ending" (3 days before and on the day), which the plan emails in `plan-mail.ts` already send.
+- **Billing:** same content, full width, 10px corners.
+
+Fonts stay as they are (IBM Plex Sans for text, Bricolage for titles).
+
+**Contents brought in line with the approved mockups (29 Oct, second pass).** Nothing that was on
+the boards was removed; existing controls were regrouped and restyled:
+- **My Curios:** the Profile / Links tabs sit beside the title, with Saved, your link and View page
+  on the right. Profile reads You, Cover photo (84px square tiles), **Colours** (page backgrounds and
+  button colours as two rows of dots, hex field kept), then **Button style and font** (the two
+  button styles as cards and the six heading fonts as a 3×2 grid of tiles). Links: social profiles
+  two across, and the Shop link is the first row of the links list, with its switch.
+- **Store:** tabs beside the title; the ready checklist, About your shop and the item list follow.
+  Payment: the connected CHIP account and the DuitNow QR are single rows with their buttons on the
+  right. Pickup & delivery keeps its switch, delivery modes, fee and notice stepper.
+- **Orders, Questions, Leads:** a search box above the filters; the detail title is 22px text, not
+  a display heading. Orders shows progress as four bars and "What Farah bought". Leads puts the
+  New / Contacted / Closed pills next to the number.
+- **Facts & sources:** facts are plain rows under plain-case group names; sources are one list with
+  "+ Add a source" on the right; pinned answers sit on light grey; never-say topics are soft red
+  chips.
+- **Billing:** no cards; Monthly and Yearly are rows (radio, name and note, price on the right).
+
+### Top bar, right side: "account forward" (29 Oct 2026)
+
+Replaces the three white bordered boxes on the right of `.v2topb` in all ten dashboard boards (MyCurios, Store, Orders, Questions, Leads, Review, Knowledge, Billing, Settings, Alerts). Look at the CSS block marked `/* top bar right: account forward (29 Oct) */` in each board.
+
+- Left to right: **Help** text link, **dark mode** icon, **bell with a count** (blue `#2340c8` pill with "3", not a red dot), a thin 1px divider, then the **account button**.
+- Icons have no box or border; they sit on the grey ground (`#edeff4`). Hover is a soft white fill, 10px radius.
+- Account button: round 32px avatar (initial on `#b5294e`), two lines: name (13.5px/600) and "{page name} · {plan}" (12px, `#5b6170`), then a grey chevron.
+- The count pill reads the unread alerts count; hide it at 0. The plan label comes from Billing.
+- Responsive: ≤1000px hides Help and the second line; ≤860px shows the avatar and chevron only; ≤760px the top bar is hidden as before.
+
+### Account popover: "plan at a glance" (29 Oct 2026)
+
+Opens from the account button in the top bar (boards use `<details class="tb-accw">`; build it as a real menu with focus handling, Esc and click-outside to close). Screen: `design/screens/Account-popover.desktop.jpg`. CSS is in the block marked `/* account popover: plan at a glance (29 Oct) */`.
+
+- 296px wide, white, 10px radius, 1px `#e3e6ec` ring plus a soft shadow, 8px below the button, right-aligned.
+- Top: 38px round avatar, name, sign-in email.
+- Plan card (`#f5f6fa`, 8px radius): "Conversations this month" with used / limit and a blue bar (same numbers as the Conversations meter in Billing; it resets on the 1st), then "{plan} · paid until {date}" and a **Manage** link to Billing. There is no auto-renew, so say "paid until", never "renews".
+- Rows: Settings, Help & support, divider, **Sign out** as a red row (`#c4372d`, hover `#fdf1f0`), not a boxed button.
+- Billing is no longer its own row, because the plan card's Manage link goes there.
+
+### Phone: floating pill menu at the bottom (29 Oct 2026)
+
+At ≤760px the old row of icons at the top is gone. CSS is in the block marked `/* phone: floating pill menu at the bottom (29 Oct) */` in all ten dashboard boards. Screens: `design/screens/*.phone.jpg`, plus `Phone-more-sheet.phone.jpg`.
+
+- **Top bar (56px, `#edeff4`):** logo on the left; bell with count and the round avatar on the right. The avatar opens the same account popover as desktop.
+- **Bottom pill:** fixed, 12px from the sides and 14px from the bottom (plus safe area), 64px tall, fully rounded, white, 1px `#e3e6ec` ring and a soft shadow. Five tabs, each with an icon and an 11px label: **Page** (My Curios), **Store**, **Inbox**, **Review**, **More**.
+- **Selected tab:** just a blue (`#2340c8`) icon and label. No background highlight.
+- **Counts:** blue pill badges. Inbox shows Orders + Questions + Leads combined; Review shows facts to check.
+- **More:** opens a sheet above the pill with Facts & sources (Knowledge), plus Billing and Settings (Account). The page behind is dimmed (`rgba(25,31,44,.35)`). Close it on tap outside, Esc or picking a page. The current page shows blue in the sheet, and More is blue while you're on one of those pages.
+- **Inbox:** on phone, Orders, Questions and Leads show a tab row (`.v2itab`) at the top with their own counts, so the owner switches between them there.
+- Content gets 96px of bottom padding so the pill never covers the last row.

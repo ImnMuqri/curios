@@ -6,6 +6,7 @@ import type { OwnerTopic, TopicChoice, TopicTotals } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
 import { PageHead } from '../_ui/page-head.js';
 import { Pager } from '../_ui/pager.js';
+import pills from '../_ui/pill-tabs.module.css';
 import ui from '../_ui/editor.module.css';
 import panel from '../panel.module.css';
 import { relativeTime } from '../_ui/relative-time.js';
@@ -36,10 +37,19 @@ const inFilter = (filter: Filter, topic: OwnerTopic) => {
   return filter === 'all' || (filter === 'needs' ? state === 'needs' || state === 'conflict' : state === filter);
 };
 
+/** Whether a topic answers the search box: its title, or any way people asked it. */
+export function topicMatches(topic: OwnerTopic, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  return topic.title.toLowerCase().includes(q) || topic.wordings.some((wording) => wording.text.toLowerCase().includes(q));
+}
+
 /**
  * What visitors ask, grouped by topic, and the one screen that changes what
- * the page says back. Three figures, the topics down the left (most asked
- * first, filtered), the chosen one on the right.
+ * the page says back. One sentence of figures under the title, the topics
+ * down the left (searched, filtered, most asked first), the chosen one on
+ * the right. The search narrows the topics on this page of them; the filters
+ * and the pager go to the server.
  *
  * Presentational: it takes the rows and the mutations, and `Questions` below
  * supplies the real ones.
@@ -95,6 +105,7 @@ export function QuestionsScreen({
 }) {
   const [filter, setFilter] = useState<Filter>(show);
   const [selected, setSelected] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
   const [copied, setCopied] = useState(false);
   const { say, toast } = useToast(2600);
 
@@ -110,7 +121,7 @@ export function QuestionsScreen({
     : totalAsks === 0
       ? 0
       : Math.round((answeredAsks / totalAsks) * 100);
-  const shown = topics.filter((topic) => inFilter(filter, topic));
+  const shown = topics.filter((topic) => inFilter(filter, topic) && topicMatches(topic, query));
   const chosen = shown.find((topic) => topic.id === selected) ?? shown[0] ?? null;
   const most = Math.max(1, ...topics.map((topic) => topic.askCount));
 
@@ -126,34 +137,23 @@ export function QuestionsScreen({
 
   return (
     <>
-      <PageHead title="Questions" note="What visitors ask your page, grouped by topic">
+      <PageHead
+        title="Questions"
+        summary={
+          <>
+            <b>{plural(waiting, 'topic')}</b> {waiting === 1 ? 'needs' : 'need'} your answer.{' '}
+            {/* The rate is over the last thirty days' recorded asks, so it says "lately", not "this week" (DEVIATIONS). */}
+            {recorded ? `Your page answered ${pct}% of what it was asked lately` : `Your own answers cover ${pct}% of asks`}, and {plural(askedThisWeek, 'question')}{' '}
+            {askedThisWeek === 1 ? 'was' : 'were'} asked this week.
+          </>
+        }
+      >
         {publishesFaq ? (
           <a className={panel.secondaryLink} href={`/${handle}/faq`} target="_blank" rel="noreferrer">
             See your FAQ
           </a>
         ) : null}
       </PageHead>
-
-      <ul className={inbox.stats} aria-label="This week">
-        <li className={inbox.kpi}>
-          <span>
-            <b>{askedThisWeek}</b>
-            <span>Questions asked this week</span>
-          </span>
-        </li>
-        <li className={inbox.kpi}>
-          <span>
-            <b>{waiting}</b>
-            <span>Topics waiting for your answer</span>
-          </span>
-        </li>
-        <li className={inbox.kpi}>
-          <span>
-            <b>{pct}%</b>
-            <span>{recorded ? 'Of asks the chat can answer' : 'Of asks with your own answer'}</span>
-          </span>
-        </li>
-      </ul>
 
       {/* No topics at all: a filter that matches none is the list's own empty line, below. */}
       {(choices ? choices.length : topics.length) === 0 ? (
@@ -188,18 +188,41 @@ export function QuestionsScreen({
       ) : (
         <div className={inbox.board}>
           <div className={inbox.list}>
-            <div className={inbox.filters} role="tablist" aria-label="Show topics" style={{ '--at': FILTERS.findIndex((f) => f.id === filter), '--n': FILTERS.length } as CSSProperties}>
+            <label className={inbox.search}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+              <input type="search" value={query} placeholder="Search questions" aria-label="Search questions" onChange={(event) => setQuery(event.target.value)} />
+            </label>
+            <div className={`${pills.track} ${inbox.filters}`} role="tablist" aria-label="Show topics" style={{ '--n': FILTERS.length } as CSSProperties}>
               {FILTERS.map((f) => (
-                <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => {
-                  setFilter(f.id);
-                  onShow?.(f.id);
-                }}>
+                <button
+                  key={f.id}
+                  type="button"
+                  role="tab"
+                  className={`${pills.pill} ${inbox.filter}`}
+                  aria-selected={filter === f.id}
+                  onClick={() => {
+                    setFilter(f.id);
+                    onShow?.(f.id);
+                  }}
+                >
                   {f.label}
-                  {f.id === 'needs' && waiting > 0 ? <i aria-label={`${waiting} waiting`}>{waiting}</i> : null}
+                  {f.id === 'needs' && waiting > 0 ? (
+                    <span className={`${pills.count} ${inbox.count}`} data-tone="kuning" aria-label={`${waiting} waiting`}>
+                      {waiting}
+                    </span>
+                  ) : null}
                 </button>
               ))}
             </div>
-            {shown.length === 0 && filter !== 'all' ? (
+            {shown.length === 0 && query.trim() ? (
+              <p className={inbox.listEmpty}>
+                <b>No match</b>
+                No topic on this page matches “{query.trim()}”.
+              </p>
+            ) : shown.length === 0 && filter !== 'all' ? (
               <p className={inbox.listEmpty}>
                 <b>{EMPTY[filter][0]}</b>
                 {EMPTY[filter][1]}

@@ -20,16 +20,19 @@ import { prismaRead } from './client.js';
  * this would still call it live, so the layout would render a dashboard whose
  * every request then 401s. Two components disagreeing about who is signed in is
  * worse than either answer.
+ *
+ * The account's own name and email come with it (one join, no second query): the dashboard's account
+ * button and its menu show them. The name is optional on an account, so it can be null.
  */
-export async function getOwnerSession(value: string): Promise<{ accountId: string } | null> {
+export async function getOwnerSession(value: string): Promise<{ accountId: string; name: string | null; email: string } | null> {
   const session = await prismaRead.session.findFirst({
     where: {
       id: hashSessionValue(value),
       expiresAt: { gt: new Date() },
       lastSeenAt: { gt: new Date(Date.now() - SESSION_IDLE_TTL_MS) },
     },
-    select: { accountId: true },
+    select: { accountId: true, account: { select: { name: true, email: true } } },
   });
 
-  return session ? { accountId: session.accountId } : null;
+  return session ? { accountId: session.accountId, name: session.account.name, email: session.account.email } : null;
 }

@@ -48,23 +48,24 @@ function show(list = topics, publishesFaq = true, answerRate = { answered: 0, re
   );
 }
 
-const stats = () => within(screen.getByRole('list', { name: 'This week' }));
+// The header's one sentence, which carries the figures the stat cards used to (Dashboard v2).
+const summary = () => screen.getByRole('heading', { name: 'Questions', level: 1 }).closest('header')!.querySelector('p')!;
 const list = () => within(screen.getByRole('list', { name: 'Topics' }));
 const filter = (name: RegExp) => within(screen.getByRole('tablist', { name: 'Show topics' })).getByRole('tab', { name });
 
 describe('QuestionsScreen, the figures', () => {
   it('counts this week’s questions, the topics waiting, and the share of asks with your own answer', () => {
     show();
-    expect(stats().getByText('23').nextSibling).toHaveTextContent('Questions asked this week');
-    // A topic with two answers is still waiting on you.
-    expect(stats().getByText('2').nextSibling).toHaveTextContent('Topics waiting for your answer');
-    // Nothing recorded yet: 10 of 32 asks have an answer that stands.
-    expect(stats().getByText('31%').nextSibling).toHaveTextContent('Of asks with your own answer');
+    // A topic with two answers is still waiting on you. Nothing recorded yet: 10 of 32 asks have an answer that stands.
+    expect(summary()).toHaveTextContent('2 topics need your answer. Your own answers cover 31% of asks, and 23 questions were asked this week.');
+    expect(summary().querySelector('b')).toHaveTextContent('2 topics');
+    expect(screen.queryByRole('list', { name: 'This week' })).toBeNull();
   });
 
   it('says what share of asks the chat could answer, once the chat has recorded it', () => {
     show(topics, true, { answered: 18, recorded: 24 });
-    expect(stats().getByText('75%').nextSibling).toHaveTextContent('Of asks the chat can answer');
+    // Over the last thirty days' recorded asks, so "lately", not "this week".
+    expect(summary()).toHaveTextContent('Your page answered 75% of what it was asked lately, and 23 questions were asked this week.');
   });
 
   it('links the FAQ on a business page only', () => {
@@ -129,13 +130,32 @@ describe('QuestionsScreen, before anyone asks', () => {
   });
 });
 
-describe('QuestionsScreen, without the template look', () => {
-  it('shows its three numbers as plain figures: no icon tiles, no ring', () => {
+describe('QuestionsScreen, the search', () => {
+  const search = () => screen.getByRole('searchbox', { name: 'Search questions' });
+  const titles = () => list().getAllByRole('button').map((b) => b.querySelector('span span')?.textContent);
+
+  it('narrows the topics by title or by any way people asked, inside the filter chosen', () => {
     show();
-    const figures = screen.getByRole('list', { name: 'This week' });
-    expect(within(figures).getAllByRole('listitem')).toHaveLength(3);
-    expect(figures.querySelector('svg')).toBeNull();
-    expect(figures.querySelector('[data-tone]')).toBeNull();
+    fireEvent.change(search(), { target: { value: 'klang ada' } });
+    expect(titles()).toEqual(['Do you deliver to Klang?']);
+    fireEvent.change(search(), { target: { value: 'you' } });
+    fireEvent.click(filter(/Needs you/));
+    expect(titles()).toEqual(['Do you deliver to Klang?', 'Can you write on the cake?']);
+  });
+
+  it('says so when nothing on the page matches', () => {
+    show();
+    fireEvent.change(search(), { target: { value: 'parking' } });
+    expect(screen.getByText('No topic on this page matches “parking”.')).toBeInTheDocument();
+  });
+});
+
+describe('QuestionsScreen, without the template look', () => {
+  it('says its numbers in words: no icon tiles, no ring in the header', () => {
+    show();
+    const header = screen.getByRole('heading', { name: 'Questions', level: 1 }).closest('header')!;
+    expect(header.querySelector('svg')).toBeNull();
+    expect(header.querySelector('[data-tone]')).toBeNull();
   });
 
   it('offers no paging when every topic fits on one screen', () => {
@@ -198,8 +218,7 @@ describe('QuestionsScreen, a list longer than a page', () => {
 
   it('counts what waits and the answered share over every topic, not the page in hand', () => {
     across();
-    expect(stats().getByText('11').nextSibling).toHaveTextContent('Topics waiting for your answer');
-    expect(stats().getByText('25%')).toBeInTheDocument();
+    expect(summary()).toHaveTextContent('11 topics need your answer. Your own answers cover 25% of asks');
     expect(filter(/Needs you/)).toHaveTextContent('11');
   });
 

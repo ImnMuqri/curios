@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { OrderStats } from '@curios/db-read';
 import type { OrderRow } from './order-detail.js';
@@ -80,16 +80,8 @@ function show(list = orders, extra: { selected?: string | null; stats?: OrderSta
   return { move, onChanged };
 }
 
-// These check the figures, not how they count up (count-up.test.tsx does): motion off.
-const motion = window.matchMedia.bind(window);
-beforeAll(() => {
-  window.matchMedia = (query: string) => ({ ...motion(query), matches: query.includes('reduce') });
-});
-afterAll(() => {
-  window.matchMedia = motion;
-});
-
-const figures = () => within(screen.getByRole('list', { name: 'Your orders' }));
+// The header's one sentence, which carries the figures the stat cards used to (Dashboard v2).
+const summary = () => screen.getByRole('heading', { name: 'Orders', level: 1 }).closest('header')!.querySelector('p')!;
 const rows = () => within(screen.getByRole('list', { name: 'Orders' }));
 const filter = (name: RegExp) => within(screen.getByRole('tablist', { name: 'Show orders' })).getByRole('tab', { name });
 
@@ -101,16 +93,47 @@ describe('OrdersScreen, the header and the figures', () => {
     expect(screen.getByRole('link', { name: 'See your shop' })).toHaveAttribute('href', '/keklina/shop');
   });
 
-  it('counts the receipts to check, what is paid and to make, and what was paid this week', () => {
+  it('counts the receipts to check, what is paid and to make, and what was paid this week, in one sentence', () => {
     show();
-    expect(figures().getByText('Receipts to check').previousSibling).toHaveTextContent('1');
-    expect(figures().getByText('Paid, to make').previousSibling).toHaveTextContent('2');
-    expect(figures().getByText('Paid this week').previousSibling).toHaveTextContent('RM170');
+    expect(summary()).toHaveTextContent('1 receipt to check and 2 orders to make. RM170 came in this week.');
+    expect([...summary().querySelectorAll('b')].map((b) => b.textContent)).toEqual(['1 receipt', '2 orders']);
   });
 
   it('says a week with sen in it exactly', () => {
     show(orders, { stats: { ...stats, paidThisWeekCents: 17050 } });
-    expect(figures().getByText('Paid this week').previousSibling).toHaveTextContent('RM170.50');
+    expect(summary()).toHaveTextContent('RM170.50 came in this week.');
+  });
+
+  it('shows no stat cards', () => {
+    show();
+    expect(screen.queryByRole('list', { name: 'Your orders' })).toBeNull();
+  });
+});
+
+describe('OrdersScreen, the search', () => {
+  const search = () => screen.getByRole('searchbox', { name: 'Search name or order' });
+  const names = () => rows().getAllByRole('button').map((b) => b.querySelector('b')?.textContent);
+
+  it('narrows the list by name, by order number, and by an item, inside the filter chosen', () => {
+    show();
+    fireEvent.change(search(), { target: { value: 'wei' } });
+    expect(names()).toEqual(['Wei Ling']);
+    expect(screen.getByRole('heading', { name: '#11 · Wei Ling' })).toBeInTheDocument();
+
+    fireEvent.change(search(), { target: { value: '#10' } });
+    expect(names()).toEqual(['Aina Sofea']);
+
+    fireEvent.change(search(), { target: { value: 'cheesecake' } });
+    expect(names()).toEqual(['Farid Azman']);
+    fireEvent.click(filter(/^Paid/));
+    expect(screen.getByText('No match')).toBeInTheDocument();
+  });
+
+  it('keeps the filters counting every order, whatever is typed', () => {
+    show();
+    fireEvent.change(search(), { target: { value: 'nobody' } });
+    expect(filter(/^Paid/)).toHaveTextContent('2');
+    expect(screen.getByText('No order here matches “nobody”.')).toBeInTheDocument();
   });
 });
 
@@ -183,7 +206,7 @@ describe('OrdersScreen, before the first order', () => {
     expect(screen.getByText('When someone checks out in your shop, the order shows up here with their receipt. You check it, mark it paid, and make it.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy your link' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Set up your shop' })).toHaveAttribute('href', '/app/store');
-    expect(figures().getByText('Paid this week').previousSibling).toHaveTextContent('RM0');
+    expect(summary()).toHaveTextContent('0 receipts to check and 0 orders to make. RM0 came in this week.');
   });
 });
 
@@ -227,13 +250,11 @@ describe('OrdersScreen, an order paid twice', () => {
 });
 
 describe('OrdersScreen, without the template look', () => {
-  it('shows its three numbers as plain figures: no icon tiles, no bars', () => {
+  it('says its numbers in words: no icon tiles, no bars in the header', () => {
     show();
-    const stats = screen.getByRole('list', { name: 'Your orders' });
-    expect(within(stats).getAllByRole('listitem')).toHaveLength(3);
-    expect(stats.querySelector('svg')).toBeNull();
-    expect(stats.querySelector('[data-tone]')).toBeNull();
-    expect(stats.querySelector('i')).toBeNull();
+    const header = screen.getByRole('heading', { name: 'Orders', level: 1 }).closest('header')!;
+    expect(header.querySelector('svg')).toBeNull();
+    expect(header.querySelector('[data-tone]')).toBeNull();
   });
 });
 

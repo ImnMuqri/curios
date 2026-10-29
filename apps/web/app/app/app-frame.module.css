@@ -1,11 +1,13 @@
 /*
- * The dashboard's frame: a pale sidebar of grouped modules on a white
- * workspace, hairline dividers, IBM Plex Sans for everything read, and biru
- * spent only where you act or where you are. The public page keeps its own fonts.
+ * The dashboard's frame (Dashboard v2, 29 Oct 2026): a soft grey ground with the sidebar and the
+ * 64px top bar sitting on it, no panel and no border, and the screen on one white sheet whose
+ * top-left corner alone is rounded (16px). IBM Plex Sans for everything read, and biru spent only
+ * where you act or where you are. The public page keeps its own fonts.
  *
- * Under 1100px the sidebar is an icon rail; on a phone it is a row of icons
- * across the top. The screens inside follow the width of their own column
- * (container queries), not the window, because the sidebar takes space.
+ * Corners are 10px on every box, field and button; 7-8px for what sits inside a 10px box. Under
+ * 1100px the sidebar is an icon rail; on a phone it is a row of icons across the top and the top
+ * bar goes. The screens inside follow the width of their own column (container queries), not the
+ * window, because the sidebar takes space.
  */
 .frame {
   --font-display: var(--font-bricolage), system-ui, sans-serif;
@@ -13,11 +15,13 @@
   /* Biru, a step deeper: text on biru-muda, 11:1. */
   --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--ink));
   --soft: var(--ink-soft);
+  --radius: 10px;
+  --radius-inner: 7px;
 
   /* The shared components, in the dashboard's voice (see the hooks in @curios/ui). */
   --button-height: 38px;
   --button-padding: 0 16px;
-  --button-radius: 999px;
+  --button-radius: var(--radius);
   --button-size: var(--text-base);
   --button-weight: 500;
   --button-secondary-bg: var(--card);
@@ -30,13 +34,14 @@
   --field-label-color: var(--ink);
   --field-label-gap: 8px;
   --field-size: var(--text-base);
-  --callout-radius: 12px;
+  --field-radius: var(--radius);
+  --callout-radius: var(--radius);
   --callout-size: var(--text-base);
   --callout-info-bg: var(--card);
   --callout-info-edge: inset 0 0 0 1px var(--line);
   display: flex;
   min-height: 100vh;
-  background: var(--card);
+  background: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -61,11 +66,9 @@
   display: flex;
   flex-direction: column;
   flex: none;
-  width: 232px;
+  width: 248px;
   height: 100vh;
-  padding: 18px 12px 14px;
-  background: var(--paper);
-  border-right: 1px solid var(--line);
+  padding: 18px 14px 16px 16px;
   overflow-y: auto;
 }
 
@@ -73,9 +76,68 @@
   --l-wordmark: 30px;
   display: inline-flex;
   align-self: flex-start;
-  padding: 6px 10px 20px;
+  padding: 4px 8px 16px;
   color: var(--ink);
   text-decoration: none;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 38px;
+  margin: 0 0 6px;
+  padding: 0 8px 0 12px;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--faint);
+  cursor: text;
+}
+
+.search:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.searchIcon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.search input::placeholder {
+  color: var(--faint);
+}
+
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search kbd {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font: 600 11px var(--font-body);
 }
 
 .nav {
@@ -84,20 +146,24 @@
 }
 
 .groupTitle {
-  margin: 14px 10px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 14px 10px 4px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--faint);
+}
+
+.noMatch {
+  margin: 14px 10px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 34px;
+  gap: 12px;
+  height: 36px;
   padding: 0 10px;
   border-radius: 8px;
   color: var(--soft);
@@ -107,23 +173,23 @@
 }
 
 .item:hover {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
   color: var(--ink);
 }
 
 .item[aria-current='page'] {
-  background: var(--biru-muda);
-  color: var(--biru-deep);
+  background: var(--nav-on);
+  color: var(--biru);
   font-weight: 600;
 }
 
 .icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: none;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -144,20 +210,55 @@
   background: var(--merah);
 }
 
-.who {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* The plan, where the account block was: its name, how it stands, and a bar. */
+.plan {
+  display: block;
   margin-top: auto;
-  padding: 10px;
-  border-top: 1px solid var(--line);
+  padding: 12px 10px 4px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.plan b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.plan span {
+  display: block;
+}
+
+.planBar {
+  height: 5px;
+  margin-top: 9px;
+  border-radius: 3px;
+  background: var(--edge);
+  overflow: hidden;
+}
+
+.planBar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--biru);
+}
+
+.plan:focus-visible,
+.item:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: -2px;
 }
 
 .avatar {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   flex: none;
   border-radius: 50%;
   object-fit: cover;
@@ -167,32 +268,453 @@
   font-weight: 700;
 }
 
-.whoText {
-  min-width: 0;
-}
+/* ---- The top bar and the sheet ---- */
 
-.whoText b {
-  display: block;
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-
-.whoText span {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* ---- The screen ---- */
-
-.main {
+.column {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+}
+
+/* The right side is "account forward" (29 Oct 2026 boards): Help, borderless icons on the grey,
+   the bell's count, a divider, then the account with its name and plan. */
+.top {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  height: 64px;
+  padding: 0 24px 0 32px;
+}
+
+.crumb {
+  flex: 1;
+  min-width: 0;
+  margin: 0 12px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.crumb i {
+  margin: 0 8px;
+  font-style: normal;
+  color: var(--faint);
+}
+
+.crumb b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.help,
+.iconButton,
+.account {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.help {
+  padding: 0 10px;
+  color: var(--soft);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.iconButton {
+  width: 36px;
+}
+
+.help:hover,
+.iconButton:hover,
+.account:hover,
+.iconButton[aria-expanded='true'],
+.account[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--card) 75%, transparent);
+}
+
+.help:focus-visible,
+.iconButton:focus-visible,
+.account:focus-visible,
+.dockTab:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+/* Match device, Light and Dark, side by side in the bar (owner, 29 Oct 2026), borderless like the icons beside them. */
+.top .topTheme {
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.top .topTheme button {
+  width: 32px;
+  height: 36px;
+  border-radius: var(--radius);
+}
+
+.top .topTheme button:hover {
+  background: color-mix(in srgb, var(--card) 75%, transparent);
+}
+
+.top .topTheme button[aria-pressed='true'] {
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.topIcon {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: var(--soft);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* How many things need the owner, on the bell; the frame's alerts and the nav's counts. */
+.unread {
+  position: absolute;
+  top: 2px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--biru);
+  box-shadow: 0 0 0 2px var(--ground);
+  color: var(--paper);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: 24px;
+  margin: 0 8px;
+  background: var(--edge);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 8px 0 4px;
+  text-align: left;
+}
+
+.account .avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--rose);
+  color: var(--on-photo);
+  font-size: 12px;
+}
+
+.accountWho {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.accountWho b,
+.accountWho small {
+  max-width: 200px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.accountWho b {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.accountWho small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--faint);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+@media (max-width: 1000px) {
+  .help,
+  .accountWho small {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .accountWho {
+    display: none;
+  }
+
+  .account {
+    padding: 0 4px;
+  }
+}
+
+.sheet {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--card);
+  border-radius: 16px 0 0 0;
+}
+
+/* The sheet's hairline edge, drawn over what the screen paints: an inset shadow on the sheet itself
+   sits under its children's backgrounds, so a full-height side panel (Review, Facts & sources, the
+   phone previews) hid the top line over its own width and the two columns looked unevenly high. */
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: inherit;
+  box-shadow: inset 1px 1px 0 var(--line);
+  pointer-events: none;
+}
+
+/* ---- The top bar's menus (Popover) ---- */
+
+.menuItem,
+.menuAlert {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+a.menuItem:hover,
+a.menuAlert:hover {
+  background: var(--surface);
+}
+
+.menuAlert {
+  margin: 0;
+}
+
+.menuAlert b {
+  display: block;
+  font-weight: 600;
+}
+
+.menuAlert span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.menuAlert[data-tone='stop'] b {
+  color: var(--merah-deep);
+}
+
+.menuEmpty {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+/* The theme, in the account menu on a phone only: the desktop's top bar has it. */
+.menuPhoneTheme {
+  display: none;
+  margin: 0 4px 8px;
+}
+
+/* ---- The account menu: plan at a glance ---- */
+
+.accountPanel {
+  width: 296px;
+}
+
+.top .account[aria-expanded='true'] .chevron {
+  transform: rotate(180deg);
+}
+
+.menuHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 10px 12px;
+}
+
+.menuText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.menuHead b {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.menuHead small {
+  overflow: hidden;
+  font-size: 12.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.menuAvatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--rose);
+  color: var(--on-photo);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.menuPlan {
+  margin: 0 4px 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--soft-page);
+}
+
+.menuPlan p {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.menuPlan b {
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.menuBar {
+  display: block;
+  height: 6px;
+  margin: 8px 0 7px;
+  border-radius: 3px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.menuBar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--biru);
+}
+
+.menuManage {
+  flex: none;
+  color: var(--biru);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.menuRow {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: 100%;
+  height: 38px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.menuRow:hover,
+.menuRow:focus-visible {
+  background: var(--surface);
+  outline: none;
+}
+
+.menuManage:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.menuIcon {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.menuRow .menuIcon {
+  color: var(--soft);
+}
+
+.menuRule {
+  display: block;
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--line);
+}
+
+/* Sign out, a red row and not a boxed button. */
+.menuOut,
+.menuOut .menuIcon {
+  color: var(--merah-deep);
+}
+
+.menuOut:hover,
+.menuOut:focus-visible {
+  background: var(--merah-muda);
 }
 
 /* ---- Icon rail ---- */
@@ -207,6 +729,11 @@
     --l-wordmark: 16px;
     align-self: center;
     padding: 4px 0 18px;
+  }
+
+  .search,
+  .plan {
+    display: none;
   }
 
   .groupTitle {
@@ -225,11 +752,6 @@
     justify-content: center;
     gap: 0;
     padding: 0;
-  }
-
-  .item .icon {
-    width: 18px;
-    height: 18px;
   }
 
   .label {
@@ -264,77 +786,285 @@
     margin: 0;
   }
 
-  .who {
-    justify-content: center;
-    padding: 10px 0;
-  }
-
-  .whoText {
-    display: none;
+  .top {
+    padding: 0 16px 0 24px;
   }
 }
 
-/* ---- A phone: a row of icons across the top ---- */
+/* ---- A phone, and the bits of it that are drawn on every screen and shown only there ---- */
 
+/* Shown at 760px and under. */
+.topBrand,
+.inboxTabs,
+.dock {
+  display: none;
+}
+
+/*
+ * A phone (29 Oct 2026 boards): no sidebar. A 56px top bar on the grey -- the logo, the bell and the
+ * avatar -- and a white pill floating at the foot with Page, Store, Inbox, Review and More, More
+ * opening a sheet of the rest above it. The three inboxes share the Inbox tab, so each starts with a
+ * row of tabs to switch between them. The sheet keeps 96px clear at its foot for the pill.
+ */
 @media (max-width: 760px) {
   .frame {
     flex-direction: column;
   }
 
   .side {
-    z-index: 15;
-    flex-direction: row;
-    align-items: center;
-    gap: 4px;
-    width: 100%;
-    height: auto;
-    padding: 8px 10px;
+    display: none;
+  }
+
+  .column {
+    min-height: 100vh;
+  }
+
+  .top {
+    height: 56px;
+    gap: 14px;
+    padding: 0 16px;
+  }
+
+  .topBrand {
+    --l-wordmark: 18px;
+    display: inline-flex;
+    margin-right: auto;
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .crumb,
+  .help,
+  .top .topTheme,
+  .divider,
+  .accountWho,
+  .chevron {
+    display: none;
+  }
+
+  .unread {
+    top: 1px;
+    right: -1px;
+  }
+
+  .account {
+    padding: 0;
+  }
+
+  .menuPhoneTheme {
+    display: block;
+  }
+
+  .sheet {
+    padding-bottom: 96px;
+    border-radius: 0;
+  }
+
+  .sheet::before {
+    content: none;
+  }
+
+  /* The inboxes' own row, underlined as the boards draw it. */
+  .inboxTabs {
+    display: flex;
+    gap: 20px;
+    margin: 0 16px;
+    padding-top: 14px;
     overflow-x: auto;
-    overflow-y: hidden;
-    border-right: 0;
     border-bottom: 1px solid var(--line);
     scrollbar-width: none;
   }
 
-  .side::-webkit-scrollbar {
-    display: none;
-  }
-
-  .brand {
-    --l-wordmark: 18px;
+  .inboxTabs a {
     flex: none;
-    padding: 0 10px 0 4px;
+    padding: 0 0 10px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
   }
 
-  .nav,
-  .group {
+  .inboxTabs a[aria-current='page'] {
+    color: var(--ink);
+    font-weight: 600;
+    box-shadow: inset 0 -2px 0 var(--biru);
+  }
+
+  .inboxTabs em {
+    margin-left: 4px;
+    color: var(--biru);
+    font-size: 11px;
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  .dock {
+    position: fixed;
+    right: 12px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    left: 12px;
+    z-index: 40;
     display: flex;
-    flex: none;
-    flex-direction: row;
+    height: 64px;
+    padding: 6px;
+    border-radius: 32px;
+    background: var(--card);
+    box-shadow: 0 0 0 1px var(--line), 0 10px 30px -8px rgb(25 31 44 / 25%);
+  }
+
+  .dockTab {
+    position: relative;
+    z-index: 1;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 2px;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 26px;
+    background: transparent;
+    color: var(--muted);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
   }
 
-  .groupTitle,
-  .group:first-child .groupTitle {
+  /* The tab you are on is blue, and nothing more. */
+  .dockTab[aria-current='page'],
+  .dockTab[data-on] {
+    color: var(--biru);
+    font-weight: 600;
+  }
+
+  .dockIcon {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .dockCount {
+    position: absolute;
+    top: 5px;
+    left: calc(50% + 4px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: var(--biru);
+    box-shadow: 0 0 0 2px var(--card);
+    color: var(--paper);
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .dockDot {
+    position: absolute;
+    top: 8px;
+    left: calc(50% + 8px);
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--merah);
+    box-shadow: 0 0 0 2px var(--card);
+  }
+
+  /* Everything behind the open sheet, dimmed; a tap on it closes the sheet. */
+  .scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    padding: 0;
+    border: 0;
+    background: rgb(25 31 44 / 35%);
+    cursor: default;
+  }
+
+  .moreSheet {
+    position: absolute;
+    right: -4px;
+    bottom: calc(100% + 14px);
+    left: -4px;
+    z-index: 1;
+    padding: 8px 8px 10px;
+    border-radius: 20px;
+    background: var(--card);
+    box-shadow: 0 12px 30px -8px rgb(25 31 44 / 30%);
+    animation: sheetIn 160ms ease both;
+  }
+
+  .moreSheet[hidden] {
+    display: none;
+  }
+
+  .grab {
     display: block;
-    width: 1px;
-    height: 22px;
-    margin: 0 4px;
+    width: 36px;
+    height: 4px;
+    margin: 2px auto 6px;
+    border-radius: 2px;
+    background: var(--edge);
   }
 
-  .group:first-child .groupTitle {
-    display: none;
+  .moreSheet p {
+    margin: 0;
+    padding: 8px 10px 4px;
+    color: var(--faint);
+    font-size: 11.5px;
+    font-weight: 600;
   }
 
-  .item {
-    flex: none;
-    width: 42px;
-    height: 40px;
+  .moreSheet a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 44px;
+    padding: 0 10px;
+    border-radius: 10px;
+    color: var(--ink);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
   }
 
-  .who {
-    display: none;
+  .moreSheet a .icon {
+    width: 20px;
+    height: 20px;
+    color: var(--soft);
+  }
+
+  .moreSheet a[aria-current='page'],
+  .moreSheet a[aria-current='page'] .icon {
+    color: var(--biru);
+    font-weight: 600;
+  }
+}
+
+@keyframes sheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 760px) and (prefers-reduced-motion: reduce) {
+  .moreSheet {
+    animation: none;
   }
 }
 
@@ -401,6 +1131,10 @@
     --ghost-ink: var(--dark-ghost-ink);
     --soft-shadow: var(--dark-soft-shadow);
     --scrim: var(--dark-scrim);
+    --ground: var(--dark-ground);
+    --nav-on: var(--dark-nav-on);
+    --pick: var(--dark-pick);
+    --chat: var(--dark-chat);
   }
 }
 
@@ -455,6 +1189,10 @@
   --ghost-ink: var(--dark-ghost-ink);
   --soft-shadow: var(--dark-soft-shadow);
   --scrim: var(--dark-scrim);
+  --ground: var(--dark-ground);
+  --nav-on: var(--dark-nav-on);
+  --pick: var(--dark-pick);
+  --chat: var(--dark-chat);
 }
 
 /* Unconditional: in a light frame these are the values a preview has anyway. */
@@ -508,4 +1246,8 @@
   --ghost-ink: var(--light-ghost-ink);
   --soft-shadow: var(--light-soft-shadow);
   --scrim: var(--light-scrim);
+  --ground: var(--light-ground);
+  --nav-on: var(--light-nav-on);
+  --pick: var(--light-pick);
+  --chat: var(--light-chat);
 }

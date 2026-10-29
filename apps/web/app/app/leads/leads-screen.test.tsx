@@ -27,7 +27,6 @@ function show(list = leads, calls?: Partial<LeadActions>, paging?: { older: stri
       displayName="Kek Lina"
       language="en"
       publicUrl="https://curios.my/keklina"
-      look={{ accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null }}
       now={now}
       keptMonths={12}
       actions={actions}
@@ -37,7 +36,8 @@ function show(list = leads, calls?: Partial<LeadActions>, paging?: { older: stri
   return { actions, onChanged };
 }
 
-const figures = () => within(screen.getByRole('list', { name: 'Your leads' }));
+// The header's one sentence, which carries the figures the stat cards used to (Dashboard v2).
+const summary = () => screen.getByRole('heading', { name: 'Leads', level: 1 }).closest('header')!.querySelector('p')!;
 const list = () => within(screen.getByRole('list', { name: 'Leads' }));
 const filter = (name: RegExp) => within(screen.getByRole('tablist', { name: 'Show leads' })).getByRole('tab', { name });
 const statusSwitch = () => within(screen.getByRole('radiogroup', { name: 'Lead status' }));
@@ -50,9 +50,9 @@ describe('LeadsScreen, the figures', () => {
 
   it('counts what waits, this week’s numbers, and what became a sale', () => {
     show();
-    expect(figures().getByText('New, waiting for you').previousSibling).toHaveTextContent('1');
-    expect(figures().getByText('Numbers left this week').previousSibling).toHaveTextContent('3');
-    expect(figures().getByText('Closed into a sale').previousSibling).toHaveTextContent('1');
+    expect(summary()).toHaveTextContent('1 new number is waiting for you. 3 people left their number this week, and 1 became a sale.');
+    expect(summary().querySelector('b')).toHaveTextContent('1 new number');
+    expect(screen.queryByRole('list', { name: 'Your leads' })).toBeNull();
   });
 });
 
@@ -83,7 +83,30 @@ describe('LeadsScreen, the list', () => {
   });
 });
 
+describe('LeadsScreen, the search', () => {
+  const search = () => screen.getByRole('searchbox', { name: 'Search number or what they want' });
+
+  it('narrows the list by the number’s digits, however they are typed, or by what they want', () => {
+    show();
+    fireEvent.change(search(), { target: { value: '12-781' } });
+    expect(list().getAllByRole('button')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: '+60 12-781 4402' })).toBeInTheDocument();
+    fireEvent.change(search(), { target: { value: 'wedding' } });
+    expect(list().getAllByRole('button')).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: '+60 11-2045 7788' })).toBeInTheDocument();
+    fireEvent.change(search(), { target: { value: 'pavlova' } });
+    expect(screen.getByText('No number here matches “pavlova”.')).toBeInTheDocument();
+  });
+});
+
 describe('LeadsScreen, the status', () => {
+  it('sits beside the number, in the same row as Open WhatsApp', () => {
+    show();
+    const head = screen.getByRole('heading', { name: '+60 12-781 4402' }).closest('div')!;
+    expect(within(head).getByRole('radiogroup', { name: 'Lead status' })).toBeInTheDocument();
+    expect(within(head).getByRole('link', { name: 'Open WhatsApp' })).toBeInTheDocument();
+  });
+
   it('moves a lead at once, saves it, and re-reads the screen', async () => {
     const { actions, onChanged } = show();
     await act(async () => { fireEvent.click(statusSwitch().getByRole('radio', { name: 'Closed' })); });
@@ -148,13 +171,11 @@ describe('LeadsScreen, before any numbers', () => {
 });
 
 describe('LeadsScreen, without the template look', () => {
-  it('shows its three numbers as plain figures: no icon tiles, no bars', () => {
+  it('says its numbers in words: no icon tiles, no bars in the header', () => {
     show();
-    const stats = screen.getByRole('list', { name: 'Your leads' });
-    expect(within(stats).getAllByRole('listitem')).toHaveLength(3);
-    expect(stats.querySelector('svg')).toBeNull();
-    expect(stats.querySelector('[data-tone]')).toBeNull();
-    expect(stats.querySelector('i')).toBeNull();
+    const header = screen.getByRole('heading', { name: 'Leads', level: 1 }).closest('header')!;
+    expect(header.querySelector('svg')).toBeNull();
+    expect(header.querySelector('[data-tone]')).toBeNull();
   });
 
   it('lists each lead as text, with no avatar tile', () => {

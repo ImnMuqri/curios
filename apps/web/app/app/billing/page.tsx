@@ -41,7 +41,7 @@ function yearlySaving(prices: { MONTHLY: number; ANNUAL: number }): string | und
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
-/** The big number on the plan card, the words beside it, and the sentence under it. */
+/** The big number under "Your plan", the words beside it, and the sentence under it. */
 function planHead(state: PlanState, now: Date, renews: boolean, freeLeads: number): { big: number; unit: string; sub: ReactNode } | null {
   switch (state.kind) {
     case 'personal':
@@ -194,7 +194,7 @@ export default async function BillingPage({
 
   return (
     <>
-      <PageHead title="Billing" note="Your plan, what this month has used, and what you have paid" />
+      <PageHead title="Billing" summary="Your plan, what this month has used, and what you have paid." />
       {paidNow ? <PaidToast until={shortDate(state.paidUntil, true)} /> : null}
       <div className={styles.bl}>
         {[banner, cardBanner].map((shown) =>

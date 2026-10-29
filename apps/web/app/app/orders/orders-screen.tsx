@@ -6,10 +6,10 @@ import { useRouter } from 'next/navigation';
 import { formatRinggit } from '@curios/core/store';
 import type { OrderStats } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
-import { CountUp } from '../_ui/count-up.js';
 import ui from '../_ui/editor.module.css';
 import inbox from '../_ui/inbox.module.css';
 import { PageHead } from '../_ui/page-head.js';
+import pills from '../_ui/pill-tabs.module.css';
 import { useToast } from '../_ui/toast.js';
 import panel from '../panel.module.css';
 import { BADGES, dayLabel, Initial, itemCount, OrderDetail, ownerView, plural, type OrderMove, type OrderRow } from './order-detail.js';
@@ -28,23 +28,42 @@ function matches(order: OrderRow, filter: Filter): boolean {
   return true;
 }
 
-const FILTERS: { id: Filter; label: string; tone?: 'biru' | 'merah'; empty: string }[] = [
+const FILTERS: { id: Filter; label: string; tone?: 'kuning' | 'merah'; empty: string }[] = [
   { id: 'all', label: 'All', empty: '' },
-  { id: 'check', label: 'To check', empty: 'No receipts waiting. New ones show here first.' },
-  { id: 'paid', label: 'Paid', tone: 'biru', empty: 'Nothing paid and waiting to be made.' },
+  { id: 'check', label: 'To check', tone: 'kuning', empty: 'No receipts waiting. New ones show here first.' },
+  { id: 'paid', label: 'Paid', empty: 'Nothing paid and waiting to be made.' },
   { id: 'refund', label: 'Refunds', tone: 'merah', empty: 'Nobody is waiting on a refund.' },
 ];
 
 const RECEIPT = 'M6 3h12v18l-3-2-3 2-3-2-3 2zM9 8h6M9 12h4';
 
 /**
- * Every order the shop has taken, newest first: three figures, the orders
- * down the left (all, receipts to check, paid, refunds owed), and the chosen
- * one on the right with the one thing to do next.
+ * Whether an order answers the search box: the customer's name, the order's
+ * number (with or without its #), the phone's digits, or an item's name. It
+ * searches the orders on this screen; older finished ones are a page further.
+ */
+export function orderMatches(order: OrderRow, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const digits = q.replace(/\D/g, '');
+  const number = q.replace(/^#/, '');
+  return (
+    order.customerName.toLowerCase().includes(q) ||
+    String(order.number) === number ||
+    (digits.length >= 3 && order.phone.replace(/\D/g, '').includes(digits)) ||
+    order.lines.some((line) => line.itemName.toLowerCase().includes(q))
+  );
+}
+
+/**
+ * Every order the shop has taken, newest first: one sentence of figures
+ * under the title, the orders down the left (searched, then filtered to all,
+ * receipts to check, paid, refunds owed), and the chosen one on the right
+ * with the one thing to do next.
  *
  * Presentational: `Orders` below supplies the real moves. After a move the
  * toast says it in the board's words and the server is read again, so the
- * list, the figures and the nav badge all follow.
+ * list, the sentence and the nav badge all follow.
  */
 export function OrdersScreen({
   orders,
@@ -78,11 +97,12 @@ export function OrdersScreen({
   onChanged: () => void;
 }) {
   const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
   const [chosenId, setChosenId] = useState<string | null>(selected);
   const [copied, setCopied] = useState(false);
   const { say, toast } = useToast();
 
-  const shown = orders.filter((o) => matches(o, filter));
+  const shown = orders.filter((o) => matches(o, filter) && orderMatches(o, query));
   const chosen = shown.find((o) => o.id === chosenId) ?? shown[0] ?? null;
   const counts: Record<Filter, number> = {
     all: 0,
@@ -104,42 +124,25 @@ export function OrdersScreen({
 
   return (
     <>
-      <PageHead title="Orders" note={`Newest first · kept for ${keptMonths} months`}>
+      <PageHead
+        title="Orders"
+        summary={
+          <>
+            <b>{plural(stats.toCheck, 'receipt')}</b> to check and <b>{plural(stats.toMake, 'order')}</b> to make. {formatRinggit(week)} came in this week.
+          </>
+        }
+      >
         <a className={panel.secondaryLink} href={shopUrl} target="_blank" rel="noreferrer">
           See your shop
         </a>
       </PageHead>
 
-      <ul className={inbox.stats} aria-label="Your orders">
-        <li className={inbox.kpi}>
-          <span>
-            <b>
-              <CountUp value={stats.toCheck} />
-            </b>
-            <span>Receipts to check</span>
-          </span>
-        </li>
-        <li className={inbox.kpi}>
-          <span>
-            <b>
-              <CountUp value={stats.toMake} />
-            </b>
-            <span>Paid, to make</span>
-          </span>
-        </li>
-        <li className={inbox.kpi}>
-          <span>
-            {/* Counted up in whole ringgit; a week with sen in it is said exactly instead. */}
-            <b>{week % 100 === 0 ? <>RM<CountUp value={week / 100} /></> : formatRinggit(week)}</b>
-            <span>Paid this week</span>
-          </span>
-        </li>
-      </ul>
-
       {orders.length === 0 ? (
         <div className={inbox.board} style={{ gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <div className={inbox.detail} style={{ display: 'grid', placeItems: 'center', minHeight: 520 }}>
-            <div className={`${ui.empty} ${styles.empty}`}>
+            {/* Inline, as on Questions and Leads: the shared .empty draws a dashed box, and two module rules of
+                one specificity are settled by whichever stylesheet loads last, which a client-side visit changes. */}
+            <div className={`${ui.empty} ${styles.empty}`} style={{ border: 0 }}>
               <div className={`${ui.emptyArt} ${styles.emptyArt}`} aria-hidden="true">
                 <span className={ui.ghostRows}>
                   <span data-tone="hijau">
@@ -180,28 +183,37 @@ export function OrdersScreen({
       ) : (
         <div className={inbox.board}>
           <div className={inbox.list}>
-            <div
-              className={inbox.filters}
-              role="tablist"
-              aria-label="Show orders"
-              style={{ '--at': FILTERS.findIndex((f) => f.id === filter), '--n': FILTERS.length } as CSSProperties}
-            >
+            <label className={inbox.search}>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="11" cy="11" r="7" />
+                <path d="M20 20l-3.5-3.5" />
+              </svg>
+              <input type="search" value={query} placeholder="Search name or order" aria-label="Search name or order" onChange={(event) => setQuery(event.target.value)} />
+            </label>
+            <div className={`${pills.track} ${inbox.filters}`} role="tablist" aria-label="Show orders" style={{ '--n': FILTERS.length } as CSSProperties}>
               {FILTERS.map((f) => (
-                <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
+                <button key={f.id} type="button" role="tab" className={`${pills.pill} ${inbox.filter}`} aria-selected={filter === f.id} onClick={() => setFilter(f.id)}>
                   {f.label}
                   {counts[f.id] > 0 ? (
-                    <i className={styles.filterCount} data-tone={f.tone}>
+                    <span className={`${pills.count} ${inbox.count}`} data-tone={f.tone}>
                       {counts[f.id]}
-                    </i>
+                    </span>
                   ) : null}
                 </button>
               ))}
             </div>
             {shown.length === 0 ? (
-              <p className={inbox.listEmpty}>
-                <b>All clear</b>
-                {FILTERS.find((f) => f.id === filter)?.empty}
-              </p>
+              query.trim() ? (
+                <p className={inbox.listEmpty}>
+                  <b>No match</b>
+                  No order here matches “{query.trim()}”.
+                </p>
+              ) : (
+                <p className={inbox.listEmpty}>
+                  <b>All clear</b>
+                  {FILTERS.find((f) => f.id === filter)?.empty}
+                </p>
+              )
             ) : (
               <ul className={inbox.rows} aria-label="Orders">
                 {shown.map((order, i) => {
@@ -245,6 +257,7 @@ export function OrdersScreen({
                 {paging.older ? <Link href={`/app/orders?before=${encodeURIComponent(paging.older)}`}>Older orders</Link> : null}
               </nav>
             ) : null}
+            <p className={inbox.listNote}>Newest first · kept for {keptMonths} months</p>
           </div>
           <div className={inbox.detail}>
             {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} move={move} act={act} say={say} onChanged={onChanged} /> : null}

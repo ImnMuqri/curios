@@ -41,7 +41,7 @@ const redirect = vi.fn((url: string) => {
   throw new Error(`NEXT_REDIRECT:${url}`);
 });
 let pathname = '/app/curios';
-vi.mock('next/navigation', () => ({ redirect, usePathname: () => pathname, useSearchParams: () => new URLSearchParams() }));
+vi.mock('next/navigation', () => ({ redirect, usePathname: () => pathname, useSearchParams: () => new URLSearchParams(), useRouter: () => ({ push: () => {} }) }));
 
 const AppLayout = (await import('./layout.js')).default;
 
@@ -102,7 +102,7 @@ describe('the dashboard layout', () => {
     render(await AppLayout({ children: <p>Add more sources</p> }));
 
     // A business page that has never paid and has captured nothing is on its trial.
-    expect(screen.getByText('Free trial')).toBeInTheDocument();
+    expect(screen.getAllByText('Free trial').length).toBeGreaterThan(0);
   });
 
   it('refuses a session the database does not recognise, before asking for a page', async () => {

@@ -1,0 +1,26 @@
+.root {
+  position: relative;
+  flex: none;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 40;
+  min-width: 220px;
+  max-width: min(340px, calc(100vw - 32px));
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 32px -12px var(--soft-shadow, rgb(25 31 44 / 25%));
+}
+
+.panel[data-align='start'] {
+  right: auto;
+  left: 0;
+}
+
+.panel[hidden] {
+  display: none;
+}

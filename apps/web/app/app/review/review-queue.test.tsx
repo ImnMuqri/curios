@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -133,6 +135,9 @@ describe('ReviewQueue', () => {
     expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Add a source' })).toHaveAttribute('href', '/app/knowledge?tab=sources&add=1');
     expect(screen.getByRole('link', { name: 'Write a fact yourself' })).toHaveAttribute('href', '/app/knowledge?tab=facts&add=1');
+    // The heading says it once: no "Nothing to check yet" progress line over it.
+    expect(screen.queryByText(/nothing to check yet/i)).toBeNull();
+    expect(screen.queryByText(/of 0 done/)).toBeNull();
   });
 
   it('says so when the last fact has been checked', async () => {
@@ -215,6 +220,27 @@ describe('ReviewQueue', () => {
     render(<ReviewQueue facts={facts} pageName="Nadia" onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
     const label = screen.getByText('Nadia’s page');
     expect(label.parentElement!.nextElementSibling).toHaveTextContent('Kuih lapis is RM12 a box');
+  });
+
+  // Dashboard v2: the preview is the owner's tool, a normal AI chat on the dashboard's neutral
+  // panel. It is not an island of the page's own colours, so it follows dark mode.
+  it('draws the chat preview as a dashboard chat, not in the page’s colours', () => {
+    render(<ReviewQueue facts={facts} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+    const chat = screen.getByText('On your page').parentElement!;
+    expect(chat).not.toHaveAttribute('data-island');
+    expect(chat).not.toHaveAttribute('data-on-accent');
+    expect(chat.querySelector('[data-on-page]')).toBeNull();
+    const css = readFileSync(join(import.meta.dirname, 'review.module.css'), 'utf8');
+    const body = /\n\.chat \{([^}]*)\}/.exec(css.replace(/\r/g, ''))?.[1] ?? '';
+    expect(body).toMatch(/background: var\(--chat\);/);
+    expect(body).toMatch(/border-radius: 10px;/);
+  });
+
+  it('draws the header at the top of the left column', () => {
+    render(<ReviewQueue facts={facts} head={<h1>Review</h1>} onAccept={vi.fn()} onEdit={vi.fn()} onReject={vi.fn()} onChanged={vi.fn()} />);
+    const side = screen.getByRole('complementary', { name: 'What this changes' });
+    expect(side.contains(screen.getByRole('heading', { level: 1 }))).toBe(false);
+    expect(side.previousElementSibling?.firstElementChild).toContainElement(screen.getByRole('heading', { level: 1 }));
   });
 
   it('shows what the chat would say, live as the claim is edited', async () => {

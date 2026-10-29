@@ -12,7 +12,7 @@ const setup = (overrides: Partial<{ save: (patch: object) => Promise<unknown> }>
 };
 
 // "Biru" is both a background and an accent; each group's name tells them apart.
-const accents = () => screen.getByRole('group', { name: 'Accent colour' });
+const accents = () => screen.getByRole('group', { name: 'Button colour' });
 
 /** AppearanceEditor is controlled; a real caller (MyCuriosEditor) keeps the
  * choice in state and feeds it back through `onChange`, which is what lets

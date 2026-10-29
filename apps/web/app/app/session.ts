@@ -11,7 +11,7 @@ import { getOwnerSession } from '@curios/db-read';
  */
 export async function resolveOwner(
   value: string | undefined,
-): Promise<{ accountId: string } | null> {
+): Promise<{ accountId: string; name: string | null; email: string } | null> {
   if (!value) return null;
   return getOwnerSession(value);
 }

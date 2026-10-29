@@ -122,6 +122,14 @@
   --hijau-wash: #eef7f3;
   --hijau-edge: #d3e8e1;
   /*
+   * The dashboard's v2 frame (29 Oct 2026): the grey ground the sidebar and top bar sit on, the
+   * current page in the sidebar, a chosen row in an inbox list, and the panel a dashboard chat sits in.
+   */
+  --ground: #edeff4;
+  --nav-on: #e2e7fb;
+  --pick: #eef1fd;
+  --chat: #f6f7f9;
+  /*
    * Checkout's "How you'll pay" (Public board): the Visa and QR marks beside each
    * choice, and the letter chips of the banks and e-wallets under it.
    */
@@ -210,6 +218,10 @@
   --dark-ghost-ink: #c9cfdc;
   --dark-soft-shadow: rgb(0 0 0 / 35%);
   --dark-scrim: rgb(0 0 0 / 60%);
+  --dark-ground: #0a0d13;
+  --dark-nav-on: #1c2650;
+  --dark-pick: #18203a;
+  --dark-chat: #1a202c;
 
   --light-paper: var(--paper);
   --light-card: var(--card);
@@ -259,6 +271,10 @@
   --light-ghost-ink: var(--ghost-ink);
   --light-soft-shadow: var(--soft-shadow);
   --light-scrim: var(--scrim);
+  --light-ground: var(--ground);
+  --light-nav-on: var(--nav-on);
+  --light-pick: var(--pick);
+  --light-chat: var(--chat);
   /* Text drawn on a photo under a dark tint: white whatever the theme. */
   --on-photo: #ffffff;
 }

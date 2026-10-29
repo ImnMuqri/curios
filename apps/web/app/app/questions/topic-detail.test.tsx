@@ -109,6 +109,15 @@ describe('TopicDetail, the answer', () => {
     expect(screen.getByRole('button', { name: 'Update answer' })).toBeDisabled();
   });
 
+  // Dashboard v2: a neutral AI chat that follows dark mode, keeping only the page's accent for the card's Send.
+  it('draws the chat preview as the dashboard’s own chat, not the page', () => {
+    show();
+    const chat = screen.getByLabelText('How the chat replies');
+    expect(chat).not.toHaveAttribute('data-island');
+    expect(chat).not.toHaveAttribute('data-bg');
+    expect(chat.style.getPropertyValue('--accent')).toBe('#b5294e');
+  });
+
   it('clears a withdrawn answer at once', async () => {
     show(halal);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Withdraw' })); });

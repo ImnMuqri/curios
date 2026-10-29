@@ -1,13 +1,14 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { SESSION_COOKIE } from '@curios/core';
-import { countPendingFacts, getMyCurios, getOwnerPage, getReviewQueue } from '@curios/db-read';
+import { countPendingFacts, getOwnerPage, getReviewQueue } from '@curios/db-read';
 
 import { resolveOwner } from '../session.js';
 import { Review } from './review-queue.js';
 import { Publish } from './publish-button.js';
 import { PageHead } from '../_ui/page-head.js';
 import panel from '../panel.module.css';
+import styles from './review.module.css';
 
 /**
  * The highest-leverage screen in the product, per FRONTEND.md: the one place
@@ -31,12 +32,7 @@ export default async function ReviewPage() {
   const page = await getOwnerPage(owner.accountId);
   if (!page) redirect('/app/onboarding');
 
-  const [facts, pending, look] = await Promise.all([
-    getReviewQueue(owner.accountId, { limit: 50 }),
-    countPendingFacts(owner.accountId),
-    // For the chat preview's colours.
-    getMyCurios(owner.accountId),
-  ]);
+  const [facts, pending] = await Promise.all([getReviewQueue(owner.accountId, { limit: 50 }), countPendingFacts(owner.accountId)]);
 
   // Built here, on the server: the owner needs an address they can paste
   // into a bio, so a relative `/handle` is not enough, and `APP_URL` is
@@ -53,23 +49,26 @@ export default async function ReviewPage() {
   // having reviewed anything. THIS LINE is where F5 is actually decided,
   // which is why page.test.tsx renders this component and asserts the
   // button is offered with facts present and absent alike.
+  //
+  // The header goes in as an element too, so Review can draw it over the
+  // left column only: the side panel beside it runs the full height of the
+  // sheet (Dashboard v2).
   return (
-    <>
-      <PageHead title="Review" note="Facts found in your sources. Accept, edit or reject each one.">
-        {/* A shop, a LinkedIn bio, a second site: sources can arrive at any
-            time, and each one's facts join this same queue. */}
-        <a className={panel.secondaryLink} href="/app/knowledge?tab=sources&add=1">
-          Add another source
-        </a>
-      </PageHead>
-      <Review
-        facts={facts}
-        pending={pending}
-        published={page.published}
-        pageName={page.displayName}
-        look={look ? { accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor } : undefined}
-        footer={<Publish publicUrl={publicUrl} published={page.published} />}
-      />
-    </>
+    <Review
+      facts={facts}
+      pending={pending}
+      published={page.published}
+      pageName={page.displayName}
+      head={
+        <PageHead title="Review" summary="Facts found in your sources. Nothing reaches your customers until you accept it.">
+          {/* A shop, a LinkedIn bio, a second site: sources can arrive at any
+              time, and each one's facts join this same queue. */}
+          <a className={`${panel.secondaryLink} ${styles.headLink}`} href="/app/knowledge?tab=sources&add=1">
+            Add another source
+          </a>
+        </PageHead>
+      }
+      footer={<Publish publicUrl={publicUrl} published={page.published} />}
+    />
   );
 }

@@ -1,8 +1,9 @@
 /*
- * Leads, from the design handoff's Leads board. The frame (figures, the
- * filtered list, the detail column) is ../_ui/inbox.module.css; this is
- * what is only Leads': the number rows, the number on its own, its status,
- * what they are after, the conversation and the first message.
+ * Leads, from the design handoff's Leads board (Dashboard v2). The frame
+ * (the searched, filtered list, the detail column, the neutral chat panel)
+ * is ../_ui/inbox.module.css; this is what is only Leads': the number rows,
+ * the number on its own with its status pills, what they are after, the
+ * conversation and the first message.
  */
 
 @keyframes fadeUp {
@@ -101,21 +102,21 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 12px 16px;
+}
+
+.headText {
+  min-width: 0;
 }
 
 .head h2 {
-  margin: 0;
-  font-size: 28px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .head p {
   margin: 2px 0 0;
-  font-size: 13px;
+  font-size: 13.5px;
   color: var(--muted);
 }
 
@@ -124,7 +125,6 @@
   align-items: center;
   gap: 8px;
   height: 42px;
-  margin-left: auto;
   padding: 0 18px;
   border: 0;
   border-radius: 999px;
@@ -161,65 +161,31 @@
   font-size: 13px;
 }
 
-/* New, Contacted, Sold, Closed: a sliding thumb in the status's colour. */
-.status {
-  position: relative;
-  display: inline-grid;
-  grid-template-columns: repeat(4, 104px);
-  margin-top: 22px;
-  padding: 4px;
-  border-radius: 999px;
-  background: var(--surface);
+/*
+ * New, Contacted, Sold, Closed: the one pill style (pill-tabs.module.css's track and pill), right
+ * after the number. The chosen one is aria-checked, which the shared pill does not read, so it is
+ * drawn here the same way: a white pill on the grey track.
+ */
+/* The status and WhatsApp keep together, to the right; when the row is too narrow they wrap under the number as one. */
+.headEnd {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-left: auto;
 }
 
-.status::before {
-  content: '';
-  position: absolute;
-  top: 4px;
-  bottom: 4px;
-  left: 4px;
-  width: 104px;
-  border-radius: 999px;
-  background: var(--biru);
-  transform: translateX(calc(var(--at, 0) * 100%));
-  transition: transform 420ms cubic-bezier(0.34, 1.3, 0.64, 1), background-color 300ms ease;
+.head .statusPill {
+  height: 32px;
+  padding: 0 14px;
+  font-size: 13.5px;
 }
 
-.status[data-status='CONTACTED']::before {
-  background: var(--amber-ink);
-}
-
-.status[data-status='SOLD']::before {
-  background: var(--hijau);
-}
-
-.status[data-status='CLOSED']::before {
-  background: var(--muted);
-}
-
-.status button {
-  position: relative;
-  z-index: 1;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--ink-soft);
-  font: inherit;
-  font-size: 13px;
+.statusPill[aria-checked='true'] {
+  background: var(--card);
+  color: var(--ink);
   font-weight: 600;
-  cursor: pointer;
-  transition: color 250ms ease;
-}
-
-.status button[aria-checked='true'] {
-  color: var(--card);
-}
-
-.status button:focus-visible {
-  outline: 2px solid var(--biru);
-  outline-offset: 2px;
-  border-radius: 999px;
+  box-shadow: 0 1px 2px var(--soft-shadow, rgb(25 31 44 / 8%)), 0 0 0 1px var(--line);
 }
 
 /* What they're after: three slots and how ready the lead is. */
@@ -234,7 +200,7 @@
   flex-direction: column;
   gap: 8px;
   padding: 14px;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--paper);
   animation: fadeUp 360ms ease both;
 }
@@ -263,14 +229,14 @@
   font-weight: 400;
 }
 
+/* Beside the slots, in a row: the ring, then how many of three and what that means. */
 .meter {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 10px;
-  border-radius: 14px;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 10px;
   background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
   text-align: center;
 }
@@ -290,13 +256,24 @@
   transition: stroke-dashoffset 700ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+.meter svg {
+  width: 36px;
+  height: 36px;
+  flex: none;
+}
+
+.meter > span {
+  display: flex;
+  flex-direction: column;
+}
+
 .meter b {
   color: color-mix(in oklch, var(--biru) 70%, var(--ink));
   font-size: 13px;
   font-weight: 600;
 }
 
-.meter span {
+.meter span span {
   color: var(--ink-soft);
   font-size: 11.5px;
 }
@@ -309,16 +286,8 @@
 }
 
 .convo {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
   max-height: 300px;
-  padding: 16px;
   overflow: auto;
-  border-radius: 18px;
-  background: var(--page-bg, var(--ink));
-  color: var(--page-fg, var(--paper));
-  font-family: var(--font-inter), sans-serif;
 }
 
 
@@ -330,8 +299,8 @@
   margin: 4px 0;
   padding: 5px 12px;
   border-radius: 999px;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-  font-family: var(--font-plex-sans), sans-serif;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
   font-size: 11.5px;
   font-weight: 500;
 }
@@ -349,7 +318,7 @@
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--edge);
-  border-radius: 18px;
+  border-radius: 10px;
   background: var(--card);
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
@@ -527,9 +496,6 @@
   }
 
   .meter {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    gap: 12px;
     padding: 12px;
   }
 
@@ -539,11 +505,12 @@
 }
 
 @container (max-width: 520px) {
-  .head h2 {
-    font-size: 23px;
+  .whatsapp {
+    margin-left: 0;
   }
 
-  .whatsapp {
+  .headEnd {
+    width: 100%;
     margin-left: 0;
   }
 
@@ -552,10 +519,6 @@
     width: 100%;
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
-
-  .status::before {
-    width: calc((100% - 8px) / 4);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -563,7 +526,6 @@
     animation: none;
   }
 
-  .status::before,
   .meter circle:last-child {
     transition: none;
   }

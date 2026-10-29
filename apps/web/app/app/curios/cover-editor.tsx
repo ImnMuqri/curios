@@ -22,8 +22,9 @@ const STOCK_NAMES: Record<StockCover, string> = {
 /**
  * The cover photo at the top of the page, as one strip of tiles: no photo
  * (drawn in the page's own colours), the owner's upload if there is one, the
- * covers that ship with Curios, then a tile to upload. The chosen tile widens
- * and names itself. Every choice saves at once. A stock cover needs no
+ * covers that ship with Curios, then a tile to upload: 84px squares in a row
+ * (v3 board), the chosen one ringed, each named for a screen reader. Every
+ * choice saves at once. A stock cover needs no
  * storage, so it works even where uploads are switched off.
  */
 export function CoverEditor({
@@ -72,7 +73,7 @@ export function CoverEditor({
 
   return (
     <section className={ui.section} aria-labelledby="cover-title">
-      <SectionHead id="cover-title" title="Cover photo" note="Optional. Pick one, upload your own, or go with a solid colour" />
+      <SectionHead id="cover-title" title="Cover photo" note="Shown behind your name. Pick one, upload your own, or go with a solid colour." />
 
       <div className={styles.gallery} role="group" aria-labelledby="cover-title" aria-busy={busy}>
         <button

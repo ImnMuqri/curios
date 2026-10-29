@@ -1,26 +1,26 @@
 'use client';
 
-import { useRef, type CSSProperties, type KeyboardEvent } from 'react';
-import styles from './editor.module.css';
+import { useRef, type KeyboardEvent, type ReactNode } from 'react';
+import styles from './pill-tabs.module.css';
 
 /**
- * The editing screens' tabs: a row of equal-width tabs with a biru underline
- * that slides to the chosen one. Left and right move between them and choose,
- * Home and End jump, as a tab list does. Each tab controls `panel-{id}`.
+ * The dashboard's one tab style (Dashboard v2): a grey track with the chosen tab as a white pill,
+ * no underline. Left and right move between them and choose, Home and End jump, as a tab list
+ * does. Each tab controls `panel-{id}`. A tab's `count` is a small badge after its label.
+ *
+ * Tab rows that are links or filters rather than a tab list (Facts & sources, the inbox filters)
+ * use the same stylesheet: `pill-tabs.module.css`, its `track`, `pill` and `count`.
  */
-export function UnderlineTabs<Id extends string>({
+export function PillTabs<Id extends string>({
   label,
   tabs,
   selected,
   onSelect,
-  width = 116,
 }: {
   label: string;
-  tabs: readonly { id: Id; label: string }[];
+  tabs: readonly { id: Id; label: string; count?: ReactNode }[];
   selected: Id;
   onSelect: (id: Id) => void;
-  /** Each tab's width in px: 116 on My Curios, 150 on Store. */
-  width?: number;
 }) {
   const refs = useRef<Partial<Record<Id, HTMLButtonElement | null>>>({});
   const at = tabs.findIndex((t) => t.id === selected);
@@ -44,7 +44,7 @@ export function UnderlineTabs<Id extends string>({
   }
 
   return (
-    <div className={styles.tabs} role="tablist" aria-label={label} style={{ '--at': at, '--w': `${width}px` } as CSSProperties}>
+    <div className={styles.track} role="tablist" aria-label={label}>
       {tabs.map((t) => (
         <button
           key={t.id}
@@ -57,14 +57,14 @@ export function UnderlineTabs<Id extends string>({
           aria-selected={selected === t.id}
           aria-controls={`panel-${t.id}`}
           tabIndex={selected === t.id ? 0 : -1}
-          className={styles.tab}
+          className={styles.pill}
           onClick={() => onSelect(t.id)}
           onKeyDown={onKey}
         >
           {t.label}
+          {t.count !== undefined ? <span className={styles.count}>{t.count}</span> : null}
         </button>
       ))}
-      <span className={styles.underline} aria-hidden="true" />
     </div>
   );
 }

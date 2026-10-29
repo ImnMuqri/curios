@@ -47,7 +47,7 @@ export function payError(failure: unknown): string {
 }
 
 /**
- * Choosing how much time to add, and paying for it: the two plans as cards,
+ * Choosing how much time to add, and paying for it: the two plans as rows,
  * one Pay button, and a dialog that says what is about to happen before the
  * browser leaves for CHIP. With a paid-until date, a line above shows
  * today, paid-until and where paid-until lands after this payment.

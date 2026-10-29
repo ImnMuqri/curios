@@ -1,0 +1,66 @@
+/*
+ * The one tab style (boards' v2 .utabs/.ktabs): a grey track, the chosen tab a white pill (7px
+ * inside the 10px track). The chosen one is whichever is aria-selected, aria-current or
+ * aria-pressed, so a tab list, a row of links and a row of filters all read the same.
+ */
+.track {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 100%;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color 150ms ease, background-color 150ms ease;
+}
+
+.pill:hover {
+  color: var(--ink);
+}
+
+.pill[aria-selected='true'],
+.pill[aria-current='page'],
+.pill[aria-current='true'],
+.pill[aria-pressed='true'] {
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 1px 2px var(--soft-shadow, rgb(25 31 44 / 8%)), 0 0 0 1px var(--line);
+}
+
+.pill:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 1px;
+}
+
+.count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--biru);
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 600;
+}

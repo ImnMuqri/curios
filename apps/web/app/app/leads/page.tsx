@@ -31,7 +31,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   // One moment for the whole screen, so "25 min ago" and the week read the
   // same on the server and in the browser.
   const now = new Date();
-  // The page as well as the leads: its mode, handle and look. What the free
+  // The page as well as the leads: its mode and handle, and the language for the first message. What the free
   // trial means for capture is the frame's banner (alerts.ts), shown under
   // this screen's header.
   const [leads, stats, page, look] = await Promise.all([
@@ -51,7 +51,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     // a list here. Say why, and where that changes.
     return (
       <>
-        <PageHead title="Leads" note={`Numbers visitors left in the chat · kept for ${LEAD_RETENTION_MONTHS} months`} />
+        <PageHead title="Leads" summary={`Numbers visitors left in the chat · kept for ${LEAD_RETENTION_MONTHS} months`} />
         <div className={panel.body}>
           <Callout tone="info">
             Personal pages don&apos;t collect phone numbers. Visitors can still chat with your page. If you start selling, you can make this a business page from{' '}
@@ -75,7 +75,6 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
       displayName={page.displayName}
       language={look.language}
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}/${page.handle}`}
-      look={{ accentColor: look.accentColor, headingFont: look.headingFont, background: look.background, backgroundColor: look.backgroundColor }}
       now={now.toISOString()}
       keptMonths={LEAD_RETENTION_MONTHS}
     />

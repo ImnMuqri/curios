@@ -1,8 +1,10 @@
 /*
- * Review, from the design handoff's Review board: the facts as a stack of
- * cards on a soft colour field, one at a time, with how far through you are
- * above them; beside it what the chat can say once a fact is accepted, this
- * session's decisions, and whether the page is live.
+ * Review, from the design handoff's Review board: the screen's header, then
+ * the facts as a stack of cards, one at a time, with how far through you are
+ * above them; beside it, running the full height of the sheet, whether the
+ * page is live, what the chat can say once a fact is accepted, and this
+ * session's decisions (Dashboard v2: the header covers the left column only,
+ * and the two columns are split by one thin line, on white).
  */
 
 @keyframes fadeUp {
@@ -73,10 +75,30 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 30px 40px 48px;
+  padding: 0 40px 48px;
   overflow: hidden;
-  background: var(--field);
+  background: var(--card);
   container-type: inline-size;
+}
+
+/* The screen's header (PageHead) at the top of the left column: the column already gives the
+   40px sides, so the header keeps only its top and bottom. Its alert, if any, follows it. */
+.head {
+  align-self: stretch;
+}
+
+.head > header {
+  padding: 28px 0 20px;
+}
+
+.head > div {
+  padding: 0 0 20px;
+}
+
+/* "Add another source": the boards' v3 header button, 38px. */
+.headLink {
+  height: 38px;
+  font-weight: 600;
 }
 
 .stage > * {
@@ -319,7 +341,7 @@
   height: 110px;
   padding: 12px 14px;
   border: 1.5px solid var(--biru);
-  border-radius: 14px;
+  border-radius: 10px;
   box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);
   resize: none;
   font: inherit;
@@ -589,13 +611,11 @@
 
 /* ---- Nothing yet: a new account ---- */
 
+/* No card around it, as the empty states on Questions and Leads sit (owner, 29 Oct 2026). */
 .esCard {
   width: 100%;
   max-width: 640px;
-  margin-top: 40px;
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--card) 70%, transparent);
-  box-shadow: 0 0 0 1px rgb(25 31 44 / 6%);
+  margin-top: 24px;
 }
 
 .es {
@@ -730,7 +750,7 @@
   align-items: center;
   height: 38px;
   padding: 0 16px;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--biru);
   color: var(--card);
   font-weight: 500;
@@ -768,8 +788,9 @@
   flex-direction: column;
   gap: 16px;
   min-width: 0;
-  padding: 26px 24px 40px;
+  padding: 28px 24px 40px;
   border-left: 1px solid var(--line);
+  background: var(--card);
 }
 
 .side h3 {
@@ -789,17 +810,18 @@
   color: var(--muted);
 }
 
-/* The chat on the page, in the page's own colours (themeAttrs). */
+/* What the chat would say, as a normal AI chat on the dashboard's neutral panel (Dashboard v2):
+   not the page's own colours, so it follows the dashboard into dark mode. The question's bubble
+   and the reply's label are PageReply's and VisitorQuestion's own. */
 .chat {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 16px;
   overflow: hidden;
-  border-radius: 18px;
-  background: var(--page-bg, var(--ink));
-  color: var(--page-fg, var(--paper));
-  font-family: var(--font-inter), sans-serif;
+  border-radius: 10px;
+  background: var(--chat);
+  color: var(--ink);
 }
 
 .chatLabel {
@@ -807,17 +829,16 @@
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  font-family: var(--font-plex-sans), sans-serif;
   font-size: 11.5px;
   font-weight: 500;
-  opacity: 0.7;
+  color: var(--muted);
 }
 
 .chatLabel i {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--blob-mint);
+  background: var(--hijau);
 }
 
 
@@ -835,7 +856,7 @@
   align-items: flex-start;
   gap: 10px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--paper);
   font-size: 13px;
   line-height: 1.4;
@@ -877,7 +898,7 @@
   margin: 0;
   padding: 12px;
   border: 1.5px dashed var(--edge);
-  border-radius: 12px;
+  border-radius: 10px;
   font-size: 13px;
   color: var(--muted);
   text-align: center;
@@ -1009,7 +1030,11 @@
 
 @media (max-width: 760px) {
   .stage {
-    padding: 20px 16px 32px;
+    padding: 0 16px 32px;
+  }
+
+  .head > header {
+    padding: 20px 0 14px;
   }
 
   .side {

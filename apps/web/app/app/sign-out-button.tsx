@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { apiFetch } from '../../lib/api.js';
 import styles from './sign-out-button.module.css';
 
@@ -21,9 +21,16 @@ export function SignOutButton({
     await apiFetch('/auth/logout', { method: 'POST' });
   },
   navigate = (url: string) => window.location.assign(url),
+  className,
+  icon,
+  role,
 }: {
   signOut?: () => Promise<void>;
   navigate?: (url: string) => void;
+  /** In place of the boxed button's own look: the account menu draws it as a red row. */
+  className?: string | undefined;
+  icon?: ReactNode;
+  role?: 'menuitem';
 }) {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -42,7 +49,8 @@ export function SignOutButton({
 
   return (
     <>
-      <button type="button" className={styles.signOut} onClick={() => void onClick()} disabled={busy}>
+      <button type="button" className={className ?? styles.signOut} role={role} onClick={() => void onClick()} disabled={busy}>
+        {icon}
         {busy ? 'Signing out…' : 'Sign out'}
       </button>
       {failed ? (

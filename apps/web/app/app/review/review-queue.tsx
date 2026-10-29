@@ -4,15 +4,10 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { useRouter } from 'next/navigation';
 import type { ReviewFact } from '@curios/db-read';
 import { apiFetch } from '../../../lib/api.js';
-import { themeAttrs } from '../../_bento/BentoPage.js';
-import bento from '../../_bento/Bento.module.css';
 import { FactCard } from './fact-card.js';
 import { PageReply } from '../_ui/page-reply.js';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
 import styles from './review.module.css';
-
-/** The page's colours, for the chat preview. */
-export type ChatLook = Parameters<typeof themeAttrs>[0];
 
 type Kind = 'accept' | 'reject';
 
@@ -81,8 +76,8 @@ export function ReviewQueue({
   onChanged,
   pending = facts.length,
   published = true,
-  look,
   pageName,
+  head,
   footer,
 }: {
   facts: ReviewFact[];
@@ -92,9 +87,13 @@ export function ReviewQueue({
   onChanged: () => void;
   pending?: number;
   published?: boolean;
-  look?: ChatLook;
   /** The page's display name, for the "{Name}’s page" label above its reply. */
   pageName?: string;
+  /**
+   * The screen's header (PageHead), drawn at the top of the left column: the side panel runs the
+   * full height of the sheet beside it, so the header must not span both (Dashboard v2).
+   */
+  head?: ReactNode;
   /** Atop the side panel: whether the page is live, and Publish while it is not. */
   footer?: ReactNode;
 }) {
@@ -180,37 +179,37 @@ export function ReviewQueue({
   const accepted = log.filter((entry) => entry.kind === 'accept').length;
   const doneIndex = log.length;
 
-  const progText = fresh ? 'Nothing to check yet' : remaining > 0 ? `${plural(remaining, 'fact')} to check` : 'All checked';
+  const progText = remaining > 0 ? `${plural(remaining, 'fact')} to check` : 'All checked';
 
   return (
     <div className={styles.rv}>
       <div className={styles.stage}>
-        <div className={styles.prog}>
-          <b>{progText}</b>
-          {fresh ? null : (
-            <>
-              {total <= MAX_SEGMENTS ? (
-                <span className={styles.pbar} aria-hidden="true">
-                  {Array.from({ length: total }, (_, i) => {
-                    // Oldest decision on the left, the card on top next, the rest waiting.
-                    const entry = i < doneIndex ? log[doneIndex - 1 - i] : undefined;
-                    return <i key={i} data-state={entry ? entry.kind : i === doneIndex ? 'now' : undefined} />;
-                  })}
-                </span>
-              ) : (
-                <span className={styles.pbar} aria-hidden="true">
-                  <span className={styles.track}>
-                    <i data-state="accept" style={{ width: `${(accepted / total) * 100}%` }} />
-                    <i data-state="reject" style={{ width: `${((log.length - accepted) / total) * 100}%` }} />
-                  </span>
-                </span>
-              )}
-              <span className={styles.doneText}>
-                {log.length} of {total} done
+        {head ? <div className={styles.head}>{head}</div> : null}
+        {/* Nothing to count before any fact arrives: the empty state's own heading says so. */}
+        {fresh ? null : (
+          <div className={styles.prog}>
+            <b>{progText}</b>
+            {total <= MAX_SEGMENTS ? (
+              <span className={styles.pbar} aria-hidden="true">
+                {Array.from({ length: total }, (_, i) => {
+                  // Oldest decision on the left, the card on top next, the rest waiting.
+                  const entry = i < doneIndex ? log[doneIndex - 1 - i] : undefined;
+                  return <i key={i} data-state={entry ? entry.kind : i === doneIndex ? 'now' : undefined} />;
+                })}
               </span>
-            </>
-          )}
-        </div>
+            ) : (
+              <span className={styles.pbar} aria-hidden="true">
+                <span className={styles.track}>
+                  <i data-state="accept" style={{ width: `${(accepted / total) * 100}%` }} />
+                  <i data-state="reject" style={{ width: `${((log.length - accepted) / total) * 100}%` }} />
+                </span>
+              </span>
+            )}
+            <span className={styles.doneText}>
+              {log.length} of {total} done
+            </span>
+          </div>
+        )}
 
         {visible.length > 0 ? (
           <>
@@ -310,7 +309,9 @@ export function ReviewQueue({
           <h3>
             Once accepted, the chat can say<span>Live as you edit</span>
           </h3>
-          <div className={`${bento.theme} ${styles.chat}`} {...(look ? themeAttrs(look) : {})} data-island="">
+          {/* A normal AI chat on the dashboard's neutral panel, not the page's own colours: this is
+              the owner's tool, so it follows the dashboard's light or dark (Dashboard v2). */}
+          <div className={styles.chat}>
             <span className={styles.chatLabel}>
               <i aria-hidden="true" />
               On your page
@@ -373,15 +374,15 @@ export function Review({
   facts,
   pending,
   published,
-  look,
   pageName,
+  head,
   footer,
 }: {
   facts: ReviewFact[];
   pending: number;
   published: boolean;
-  look?: ChatLook;
   pageName?: string;
+  head?: ReactNode;
   footer?: ReactNode;
 }) {
   const router = useRouter();
@@ -391,8 +392,8 @@ export function Review({
       facts={facts}
       pending={pending}
       published={published}
-      look={look}
       pageName={pageName}
+      head={head}
       footer={footer}
       onAccept={async (id) => {
         await apiFetch(`/facts/${id}/verify`, { method: 'POST' });

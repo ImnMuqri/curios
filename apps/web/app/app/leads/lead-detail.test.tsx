@@ -31,7 +31,6 @@ function show(calls: Partial<LeadActions> = {}, shown: OwnerLead = lead) {
       handle="keklina"
       displayName="Kek Lina"
       language="en"
-      look={{ accentColor: '#b5294e', headingFont: 'FRAUNCES', background: 'INK', backgroundColor: null }}
       now={new Date('2026-10-17T06:00:00Z')}
       actions={actions}
       onStatus={vi.fn(async () => undefined)}
@@ -54,6 +53,14 @@ describe('LeadDetail', () => {
     const convo = within(screen.getByLabelText('The conversation'));
     expect(convo.getAllByText('Kek Lina’s page')).toHaveLength(1);
     expect(convo.getByText('Kek coklat moist 2kg is RM170.').previousElementSibling).toHaveTextContent('Kek Lina’s page');
+  });
+
+  // Dashboard v2: a neutral AI chat that follows dark mode, not an island in the page's colours.
+  it('draws the conversation as the dashboard’s own chat, not the page', () => {
+    show();
+    const convo = screen.getByLabelText('The conversation');
+    expect(convo).not.toHaveAttribute('data-island');
+    expect(convo).not.toHaveAttribute('data-bg');
   });
 
   it('says who left the number, when, and where', () => {

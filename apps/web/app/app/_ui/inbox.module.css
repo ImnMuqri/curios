@@ -1,15 +1,10 @@
 /*
- * The inbox screens' shared frame (Questions, Leads; Orders later), from the
- * design handoff: three figures across the top, a filtered list down the
- * left, the chosen item on the right. Each screen's own stylesheet holds
- * what is only its own. --n on .filters is how many filters there are.
- */
-/*
- * Questions, from the design handoff's Questions board: three figures across
- * the top, the topics down the left (filtered, most asked first), and the
- * chosen topic on the right: how people asked it, your answer, what the chat
- * says with it, its FAQ page, and what else can be done with it. Shared
- * parts (buttons, the empty state, switches) are in ../_ui/editor.module.css.
+ * The inbox screens' shared frame (Orders, Questions, Leads), from the design
+ * handoff's Dashboard v2 boards: under the header, a list column on light
+ * ground (search, pill filters, the rows, the pager) and the chosen item on
+ * the right. The figures that used to sit above are the header's summary
+ * sentence now. Each screen's own stylesheet holds what is only its own.
+ * --n on .filters is how many filters there are.
  */
 
 @keyframes fadeUp {
@@ -24,51 +19,14 @@
   }
 }
 
-/* ---- The figures ---- */
-
-.stats {
-  display: flex;
-  margin: 0;
-  padding: 18px 32px 0;
-  list-style: none;
-}
-
-.kpi {
-  flex: 1;
-  min-width: 0;
-  padding: 2px 24px 2px 0;
-}
-
-.kpi + .kpi {
-  padding-left: 24px;
-  border-left: 1px solid var(--line);
-}
-
-.kpi b {
-  display: block;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.01em;
-  font-variant-numeric: tabular-nums;
-}
-
-.kpi b + span {
-  display: block;
-  margin-top: 4px;
-  font-size: 12.5px;
-  color: var(--muted);
-}
-
 /* ---- The two columns ---- */
 
+/* Straight under the header (Dashboard v2): no line between them, the list column on its own light ground. */
 .board {
   flex: 1;
   display: grid;
   grid-template-columns: 430px minmax(0, 1fr);
   min-height: 0;
-  margin-top: 20px;
-  border-top: 1px solid var(--line);
 }
 
 .list {
@@ -76,84 +34,85 @@
   background: var(--paper);
 }
 
-/* All, Needs you, Answered: a light switch with a sliding thumb. */
-.filters {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(var(--n, 3), 1fr);
-  margin: 16px 16px 0;
-  padding: 3px;
-  border-radius: 12px;
-  background: var(--surface);
-}
-
-.filters::before {
-  content: '';
-  position: absolute;
-  top: 3px;
-  bottom: 3px;
-  left: 3px;
-  width: calc((100% - 6px) / var(--n, 3));
-  border-radius: 9px;
-  background: var(--card);
-  box-shadow: 0 1px 2px rgb(25 31 44 / 12%);
-  transform: translateX(calc(var(--at, 0) * 100%));
-  transition: transform 380ms cubic-bezier(0.34, 1.3, 0.64, 1);
-}
-
-.filters button {
-  position: relative;
-  z-index: 1;
+/* Above the filters: narrows what is on the screen as you type. */
+.search {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-  height: 32px;
+  gap: 8px;
+  height: 38px;
+  margin: 16px 16px 0;
+  padding: 0 12px;
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--faint);
+}
+
+.search:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.search svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--muted);
-  font: inherit;
-  font-size: 12.5px;
-  font-weight: 500;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color 200ms ease;
-}
-
-.filters button[aria-selected='true'] {
   color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
 }
 
-.filters button:focus-visible {
-  outline: 2px solid var(--biru);
-  outline-offset: -2px;
-  border-radius: 9px;
+.search input::placeholder {
+  color: var(--faint);
 }
 
-.filters i {
-  display: inline-grid;
-  place-items: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
+/*
+ * All, To check, Paid...: the one pill style (pill-tabs.module.css's track, pill and count on the
+ * same elements), stretched across the column in equal parts. Two classes deep, so it wins over
+ * the track's own display and the pill's size whichever stylesheet loads first.
+ */
+.list .filters {
+  display: grid;
+  grid-template-columns: repeat(var(--n, 3), minmax(0, 1fr));
+  gap: 2px;
+  margin: 10px 16px 0;
+  padding: 3px;
+}
+
+.filters .filter {
+  gap: 6px;
+  height: 32px;
+  padding: 0 6px;
+  font-size: 12.5px;
+}
+
+.filters .count[data-tone='kuning'] {
   background: var(--kuning);
   color: var(--ink);
-  font-size: 11px;
-  font-style: normal;
-  font-weight: 700;
 }
 
-.filters i[data-tone='biru'] {
-  background: var(--biru);
+.filters .count[data-tone='merah'] {
+  background: var(--merah);
   color: var(--card);
 }
 
 .rows {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   margin: 0;
   padding: 12px 12px 24px;
   list-style: none;
@@ -164,30 +123,29 @@
   width: 100%;
   padding: 12px 14px 14px;
   border: 0;
-  border-radius: 14px;
+  border-radius: 10px;
   background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: background-color 160ms ease, box-shadow 160ms ease;
+  transition: background-color 160ms ease;
   animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .row:hover {
-  background: var(--card);
+  background: color-mix(in srgb, var(--pick) 55%, transparent);
 }
 
+/* The chosen one: a flat tint, no raised card, ring or border. */
 .row[aria-current='true'] {
-  background: var(--card);
-  box-shadow: 0 0 0 1.5px var(--biru), 0 8px 18px -12px rgb(35 64 200 / 50%);
+  background: var(--pick);
 }
 
 .row:focus-visible {
   outline: 2px solid var(--biru);
   outline-offset: 2px;
 }
-
 
 .listEmpty {
   margin: 48px 24px;
@@ -204,17 +162,36 @@
   color: var(--ink);
 }
 
-/* ---- The chosen topic ---- */
+/* How long the list keeps things, quiet at its foot: it was the header's note before the summary took that line. */
+.listNote {
+  margin: 0;
+  padding: 4px 16px 20px;
+  color: var(--faint);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ---- The chosen item ---- */
 
 .detail {
   min-width: 0;
-  padding: 26px 40px 48px;
+  padding: 20px 40px 48px;
   container-type: inline-size;
 }
 
 .detailInner {
-  max-width: 760px;
+  max-width: 1240px;
   animation: fadeUp 360ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* The chosen item's title: 22px text, not a display heading (the boards' v3 .dh / .qh / .lh). */
+.title {
+  margin: 0;
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
 }
 
 .section {
@@ -237,6 +214,18 @@
   font-size: 12.5px;
   font-weight: 400;
   color: var(--muted);
+}
+
+/* Dashboard chats (the Questions preview, a lead's conversation): a neutral AI-chat panel, not the owner's page colours. */
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  overflow: hidden;
+  border-radius: 10px;
+  background: var(--chat);
+  color: var(--ink);
 }
 
 @media (min-width: 1101px) and (max-width: 1400px) {
@@ -262,35 +251,15 @@
 }
 
 @media (max-width: 760px) {
-  .stats {
-    padding: 14px 16px 0;
-  }
-
-  .kpi {
-    padding-right: 12px;
-  }
-
-  .kpi + .kpi {
-    padding-left: 12px;
-  }
-
-  .kpi b {
-    font-size: 18px;
-  }
-
-  .kpi b + span {
-    font-size: 11.5px;
-  }
-
-  .board {
-    margin-top: 14px;
+  .search {
+    margin: 14px 16px 0;
   }
 
   .detail {
     padding: 20px 16px 40px;
   }
 
-  .filters button {
+  .filters .filter {
     gap: 4px;
     font-size: 12px;
   }
@@ -300,10 +269,6 @@
   .row,
   .detailInner {
     animation: none;
-  }
-
-  .filters::before {
-    transition: none;
   }
 }
 
@@ -367,7 +332,7 @@
   min-width: 32px;
   height: 32px;
   padding: 0 6px;
-  border-radius: 9px;
+  border-radius: 7px;
   font-variant-numeric: tabular-nums;
 }
 

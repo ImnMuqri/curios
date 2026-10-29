@@ -4,9 +4,10 @@ import type { CSSProperties, ReactNode } from 'react';
 import styles from './editor.module.css';
 
 /**
- * The live preview: a phone on a soft colour field, the page scrolling inside
- * it, and a row of tabs under it choosing what the phone shows. `overlay`
- * sits over the screen and stays put while the page scrolls (My Curios' ask
+ * The live preview: a phone on the sheet's white (Dashboard v2), from the top
+ * of the sheet beside the controls, the page scrolling inside it, and a row
+ * of tabs under it choosing what the phone shows. `overlay` sits over the
+ * screen and stays put while the page scrolls (My Curios' ask
  * bar). Everything in the phone is the real renderer visitors see.
  */
 export function PreviewFrame<Id extends string>({

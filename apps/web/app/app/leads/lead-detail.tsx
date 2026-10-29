@@ -1,13 +1,12 @@
 'use client';
 
-import { useRef, useState, type CSSProperties } from 'react';
+import { useRef, useState } from 'react';
 import { formatMalaysianPhone } from '@curios/core/phone';
 import type { OwnerLead } from '@curios/db-read';
 import { Callout } from '@curios/ui';
-import { themeAttrs } from '../../_bento/BentoPage.js';
-import bento from '../../_bento/Bento.module.css';
 import inbox from '../_ui/inbox.module.css';
 import { PageReply } from '../_ui/page-reply.js';
+import pills from '../_ui/pill-tabs.module.css';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { relativeTime } from '../_ui/relative-time.js';
 import { firstMessage, waNumber } from './first-message.js';
@@ -60,7 +59,6 @@ export function LeadDetail({
   handle,
   displayName,
   language,
-  look,
   now,
   actions,
   onStatus,
@@ -73,7 +71,6 @@ export function LeadDetail({
   handle: string;
   displayName: string;
   language: string;
-  look: Parameters<typeof themeAttrs>[0];
   now: Date;
   actions: LeadActions;
   /** Shows a new status at once; the screen puts it back if the save fails. */
@@ -92,7 +89,6 @@ export function LeadDetail({
   const phone = formatMalaysianPhone(lead.phone);
   const number = waNumber(lead.phone);
   const score = Math.max(0, Math.min(3, lead.score));
-  const at = STATUSES.findIndex((s) => s.id === status);
 
   async function choose(next: LeadStatus, words: string) {
     if (next === status) return;
@@ -139,27 +135,36 @@ export function LeadDetail({
 
   return (
     <div className={inbox.detailInner}>
+      {/* The number, then where the owner is with it (the one pill style), then WhatsApp: one row that wraps. */}
       <div className={styles.head}>
-        <span>
-          <h2>{phone}</h2>
+        <span className={styles.headText}>
+          <h2 className={inbox.title}>{phone}</h2>
           <p>
             Left their number {relativeTime(lead.createdAt, now)} · in the chat on curios.my/{handle}
           </p>
         </span>
-        <a className={styles.whatsapp} href={`https://wa.me/${number}`} target="_blank" rel="noopener noreferrer" onClick={reachedOut}>
-          <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
-            <path d={CHAT} />
-          </svg>
-          Open WhatsApp
-        </a>
-      </div>
-
-      <div className={styles.status} role="radiogroup" aria-label="Lead status" data-status={status} style={{ '--at': at } as CSSProperties}>
-        {STATUSES.map((s) => (
-          <button key={s.id} type="button" role="radio" aria-checked={status === s.id} onClick={() => void choose(s.id, `Marked ${s.label.toLowerCase()}.`)}>
-            {s.label}
-          </button>
-        ))}
+        <div className={styles.headEnd}>
+          <div className={`${pills.track} ${styles.status}`} role="radiogroup" aria-label="Lead status" data-status={status}>
+            {STATUSES.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                role="radio"
+                className={`${pills.pill} ${styles.statusPill}`}
+                aria-checked={status === s.id}
+                onClick={() => void choose(s.id, `Marked ${s.label.toLowerCase()}.`)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+          <a className={styles.whatsapp} href={`https://wa.me/${number}`} target="_blank" rel="noopener noreferrer" onClick={reachedOut}>
+            <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true">
+              <path d={CHAT} />
+            </svg>
+            Open WhatsApp
+          </a>
+        </div>
       </div>
 
       <section className={inbox.section} aria-labelledby="after-title">
@@ -181,8 +186,10 @@ export function LeadDetail({
               <circle cx="22" cy="22" r="18" />
               <circle cx="22" cy="22" r="18" strokeDasharray={RING} strokeDashoffset={RING * (1 - score / 3)} transform="rotate(-90 22 22)" />
             </svg>
-            <b>{score} of 3</b>
-            <span>{READY[score]}</span>
+            <span>
+              <b>{score} of 3</b>
+              <span>{READY[score]}</span>
+            </span>
           </div>
         </div>
       </section>
@@ -193,7 +200,8 @@ export function LeadDetail({
             <h3 className={styles.pairTitle}>
               The conversation<span>{lead.messageCount} messages</span>
             </h3>
-            <div className={`${bento.theme} ${styles.convo}`} {...themeAttrs(look)} data-island="" aria-label="The conversation">
+            {/* The dashboard's neutral chat (Dashboard v2), not the page's colours, so it follows dark mode. */}
+            <div className={`${inbox.chat} ${styles.convo}`} aria-label="The conversation">
               {lead.transcript.slice(0, lead.capturedAfter).map((line, i) => (
                 <Line key={i} line={line} name={displayName} />
               ))}
