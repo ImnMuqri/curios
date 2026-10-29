@@ -158,6 +158,8 @@ export function AppFrame({
   if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
   const who = ownerName?.trim() || displayName;
   const initials = who.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
+  // Under the name on the account button, after the page: "Business", "Free trial", "Plan ended".
+  const planShort = plan.name.replace(/ (plan|page)$/, '');
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
   const needle = query.trim().toLowerCase();
   const groups = GROUPS.map((group) => ({
@@ -286,6 +288,10 @@ export function AppFrame({
                 </>
               ) : null}
             </p>
+            {/* There is no help centre yet: Help writes to the support address the alerts and legal pages give. */}
+            <a className={styles.help} href="mailto:support@curios.my">
+              Help
+            </a>
             <ThemeSwitch className={styles.topTheme} />
             <Popover
               label={news > 0 ? `Notifications, ${news} new` : 'Notifications'}
@@ -293,7 +299,11 @@ export function AppFrame({
               button={
                 <>
                   {svg(ICON.bell, styles.topIcon)}
-                  {news > 0 ? <u className={styles.unread} /> : null}
+                  {news > 0 ? (
+                    <u className={styles.unread} aria-hidden="true">
+                      {news}
+                    </u>
+                  ) : null}
                 </>
               }
             >
@@ -317,13 +327,19 @@ export function AppFrame({
                 ),
               )}
             </Popover>
+            <span className={styles.divider} aria-hidden="true" />
             <Popover
               label="Account"
               buttonClassName={styles.account}
               button={
                 <>
                   {avatar}
-                  <span className={styles.accountName}>{who}</span>
+                  <span className={styles.accountWho}>
+                    <b>{who}</b>
+                    <small>
+                      {displayName} · {planShort}
+                    </small>
+                  </span>
                   {svg(ICON.chevron, styles.chevron)}
                 </>
               }

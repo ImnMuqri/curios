@@ -98,7 +98,7 @@ describe('AppFrame', () => {
   // above green.
   it("shows the owner's name and initials on the account button, and the page and screen in the breadcrumb", () => {
     const { container } = frame();
-    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('IMIman Muqri');
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('IMIman MuqriIman Muqri · Business');
     expect(container.querySelector('header p')).toHaveTextContent('Iman Muqri/My Curios');
   });
 
@@ -116,7 +116,7 @@ describe('AppFrame', () => {
         <p>content</p>
       </AppFrame>,
     );
-    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('LBLina binti Kamal');
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('LBLina binti KamalKek Lina · Business');
     expect(container.querySelector('header p')).toHaveTextContent('Kek Lina/');
   });
 
@@ -233,6 +233,7 @@ describe('the top bar', () => {
   it('lists what is waiting and the alerts under the bell, with the count in its name', () => {
     frame({ mode: 'BUSINESS', badges: { review: 1, questions: 0, leads: 2, orders: 3 }, alerts: [alert] });
     expect(bell()).toHaveAccessibleName('Notifications, 4 new');
+    expect(bell()).toHaveTextContent('4');
     fireEvent.click(bell());
     expect(screen.getByRole('link', { name: '3 receipts to check' })).toHaveAttribute('href', '/app/orders');
     expect(screen.getByRole('link', { name: '2 new leads' })).toHaveAttribute('href', '/app/leads');
@@ -240,9 +241,10 @@ describe('the top bar', () => {
     expect(screen.getByRole('link', { name: /Your free leads are used up/ })).toHaveAttribute('href', '/app/billing');
   });
 
-  it('says nothing needs the owner when nothing does', () => {
+  it('says nothing needs the owner when nothing does, with no count on the bell', () => {
     frame({ badges: { review: 0, questions: 0, leads: 0, orders: 0 } });
     expect(bell()).toHaveAccessibleName('Notifications');
+    expect(bell()).toHaveTextContent('');
     fireEvent.click(bell());
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
   });
@@ -259,6 +261,11 @@ describe('the top bar', () => {
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(account).toHaveAttribute('aria-expanded', 'false');
     expect(account).toHaveFocus();
+  });
+
+  it('sends Help to the support address', () => {
+    frame();
+    expect(screen.getByRole('link', { name: 'Help' })).toHaveAttribute('href', 'mailto:support@curios.my');
   });
 
   it('puts the theme in the account menu a phone reaches from its row of icons', () => {

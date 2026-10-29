@@ -283,10 +283,12 @@
   min-height: 100vh;
 }
 
+/* The right side is "account forward" (29 Oct 2026 boards): Help, borderless icons on the grey,
+   the bell's count, a divider, then the account with its name and plan. */
 .top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   flex: none;
   height: 64px;
   padding: 0 24px 0 32px;
@@ -295,7 +297,7 @@
 .crumb {
   flex: 1;
   min-width: 0;
-  margin: 0;
+  margin: 0 12px 0 0;
   overflow: hidden;
   font-size: 14px;
   color: var(--muted);
@@ -314,34 +316,43 @@
   color: var(--ink);
 }
 
+.help,
 .iconButton,
-.account,
-.phoneAccountButton {
+.account {
   position: relative;
   display: grid;
   place-items: center;
-  height: 38px;
+  height: 36px;
   padding: 0;
   border: 0;
   border-radius: var(--radius);
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: transparent;
   color: var(--ink);
   font: inherit;
   cursor: pointer;
 }
 
-.iconButton {
-  width: 38px;
+.help {
+  padding: 0 10px;
+  color: var(--soft);
+  font-size: 13.5px;
+  font-weight: 500;
+  text-decoration: none;
 }
 
+.iconButton {
+  width: 36px;
+}
+
+.help:hover,
 .iconButton:hover,
 .account:hover,
 .iconButton[aria-expanded='true'],
 .account[aria-expanded='true'] {
-  box-shadow: inset 0 0 0 1px var(--ghost-line);
+  background: color-mix(in srgb, var(--card) 75%, transparent);
 }
 
+.help:focus-visible,
 .iconButton:focus-visible,
 .account:focus-visible,
 .phoneAccountButton:focus-visible {
@@ -349,24 +360,27 @@
   outline-offset: 2px;
 }
 
-/* Match device, Light and Dark, side by side in the bar (owner, 29 Oct 2026), drawn as its buttons are. */
+/* Match device, Light and Dark, side by side in the bar (owner, 29 Oct 2026), borderless like the icons beside them. */
 .top .topTheme {
-  height: 38px;
-  padding: 4px;
+  height: 36px;
+  padding: 0;
   border: 0;
-  border-radius: var(--radius);
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: transparent;
 }
 
 .top .topTheme button {
   width: 32px;
-  height: 30px;
+  height: 36px;
+  border-radius: var(--radius);
+}
+
+.top .topTheme button:hover {
+  background: color-mix(in srgb, var(--card) 75%, transparent);
 }
 
 .top .topTheme button[aria-pressed='true'] {
-  background: var(--surface);
-  box-shadow: none;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
 }
 
 .topIcon {
@@ -379,44 +393,110 @@
   stroke-linejoin: round;
 }
 
+/* How many things need the owner, on the bell; the frame's alerts and the nav's counts. */
 .unread {
   position: absolute;
-  top: 8px;
-  right: 9px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--merah);
-  box-shadow: 0 0 0 2px var(--card);
+  top: 2px;
+  right: 0;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--biru);
+  box-shadow: 0 0 0 2px var(--ground);
+  color: var(--paper);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 17px;
+  text-align: center;
+  text-decoration: none;
+}
+
+.divider {
+  flex: none;
+  width: 1px;
+  height: 24px;
+  margin: 0 8px;
+  background: var(--edge);
 }
 
 .account {
   display: flex;
   align-items: center;
-  gap: 9px;
-  padding: 0 10px 0 5px;
+  gap: 10px;
+  height: 44px;
+  padding: 0 8px 0 4px;
+  text-align: left;
+}
+
+.account .avatar {
+  width: 32px;
+  height: 32px;
+  background: var(--rose);
+  color: var(--on-photo);
+  font-size: 12px;
+}
+
+.accountWho {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.accountWho b,
+.accountWho small {
+  max-width: 200px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.accountWho b {
   font-size: 13.5px;
   font-weight: 600;
 }
 
-.account .avatar {
-  border-radius: 8px;
-}
-
-.accountName {
-  max-width: 180px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.accountWho small {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
 }
 
 .chevron {
   width: 14px;
   height: 14px;
   fill: none;
-  stroke: var(--muted);
+  stroke: var(--faint);
   stroke-width: 2;
   stroke-linecap: round;
+}
+
+.phoneAccountButton {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 1000px) {
+  .help,
+  .accountWho small {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .accountWho {
+    display: none;
+  }
+
+  .account {
+    padding: 0 4px;
+  }
 }
 
 .sheet {
