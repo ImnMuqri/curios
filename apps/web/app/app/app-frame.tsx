@@ -193,14 +193,17 @@ export function AppFrame({
 
   // The document behind the frame, in the frame's own ground. A phone shows the document wherever the
   // frame does not reach -- the status bar's strip on a home-screen app, past either end of a scroll --
-  // and the site's white there drew a band over a dark dashboard. The browser's own bars take the same
-  // colour (theme-color). Read from the frame, so Light, Dark and the device's setting all follow.
+  // and the site's white there drew a band over a dark dashboard. The body as well as the root: iOS 26
+  // Safari colours the strip behind the status bar from the body, and the base stylesheet gives the
+  // body the site's paper. Older browsers' bars read theme-color. Read from the frame, so Light, Dark
+  // and the device's setting all follow.
   const frameRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
     const root = document.documentElement;
     const before = root.style.backgroundColor;
+    const bodyBefore = document.body.style.backgroundColor;
     let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
     const added = !meta;
     if (!meta) {
@@ -212,6 +215,7 @@ export function AppFrame({
     const paint = () => {
       const ground = getComputedStyle(frame).backgroundColor;
       root.style.backgroundColor = ground;
+      document.body.style.backgroundColor = ground;
       meta.content = ground;
     };
     paint();
@@ -220,6 +224,7 @@ export function AppFrame({
     return () => {
       device.removeEventListener('change', paint);
       root.style.backgroundColor = before;
+      document.body.style.backgroundColor = bodyBefore;
       if (added) meta.remove();
       else meta.content = metaBefore;
     };

@@ -393,10 +393,14 @@ describe("the document behind the frame", () => {
     const { unmount } = frame();
     const meta = document.querySelector('meta[name="theme-color"]');
     expect(meta).not.toBeNull();
-    expect(meta!.getAttribute('content')).toBe(getComputedStyle(document.querySelector('[data-theme]')!).backgroundColor);
+    const ground = getComputedStyle(document.querySelector('[data-theme]')!).backgroundColor;
+    expect(meta!.getAttribute('content')).toBe(ground);
+    // iOS 26 Safari colours the status bar's strip from the body.
+    expect(document.body.style.backgroundColor).toBe(document.documentElement.style.backgroundColor);
     unmount();
     expect(document.querySelector('meta[name="theme-color"]')).toBeNull();
     expect(document.documentElement.style.backgroundColor).toBe('');
+    expect(document.body.style.backgroundColor).toBe('');
   });
 });
 
