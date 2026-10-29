@@ -64,10 +64,15 @@
 
 .cover {
   position: absolute;
-  inset: 0 0 -110px;
+  inset: 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
+}
+
+/* On under a column's 110px foot, where the basket bar sits. */
+.coverUnder {
+  bottom: -110px;
 }
 
 .cover img {
@@ -101,10 +106,13 @@
   background: var(--page-bg);
 }
 
-/* Over a cover the bars are frosted, so the photo shows through them and the shelf stays legible under them. */
+/*
+ * Over a cover the bars are clear and only frosted: blurring the already-blurred cover changes nothing,
+ * so they show no band on it (a tint drew one), while the cards that scroll under them blur away.
+ */
 .shop[data-cover] .top,
 .shop[data-cover] .cats {
-  background: color-mix(in srgb, var(--page-bg) 55%, transparent);
+  background: transparent;
   -webkit-backdrop-filter: blur(14px);
   backdrop-filter: blur(14px);
 }

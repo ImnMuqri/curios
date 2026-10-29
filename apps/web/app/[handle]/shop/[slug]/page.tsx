@@ -5,7 +5,7 @@ import { getShopItem } from '@curios/db-read';
 import { formatRinggit, fromPrice } from '@curios/core/store';
 import { UNAVAILABLE_METADATA, UnavailableScreen, suspendedLanguage } from '../../../_system/unavailable.js';
 import { PageTheme } from '../../../_bento/BentoPage.js';
-import { avatarUrl } from '../../../../lib/avatar-url.js';
+import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
 import { nextOrderDay } from '../pill.js';
 import { ProductView } from './product-view.js';
 import styles from './product.module.css';
@@ -50,6 +50,7 @@ export default async function ProductPage({ params }: { params: Params }) {
       <PageTheme theme={shop} className={styles.stage}>
         <div className={styles.column}>
           <ProductView
+            coverUrl={coverUrl(shop.coverKey)}
             handle={shop.handle}
             displayName={shop.displayName}
             language={shop.language}

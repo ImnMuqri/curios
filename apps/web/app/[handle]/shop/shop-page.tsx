@@ -5,6 +5,7 @@ import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store'
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
 import { shopCopy } from './copy.js';
 import type { ViewItem } from './shop-view.js';
+import { ShopCover } from './shop-cover.js';
 import styles from './shop-page.module.css';
 
 const ICON = {
@@ -132,12 +133,7 @@ export function ShopPageView(props: {
 
   return (
     <div className={styles.shop} data-cover={props.coverUrl ? '' : undefined}>
-      {/* The cover, blurred so it reads as colour and not a picture, fading into the page under the sign. */}
-      {props.coverUrl ? (
-        <div className={styles.cover} aria-hidden="true">
-          <img src={props.coverUrl} alt="" />
-        </div>
-      ) : null}
+      <ShopCover url={props.coverUrl} under />
       <div className={styles.top}>
         <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)} onClick={stay()}>
           <Icon d={ICON.back} />

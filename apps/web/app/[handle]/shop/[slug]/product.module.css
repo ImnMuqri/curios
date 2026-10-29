@@ -32,12 +32,24 @@
   box-shadow: 0 0 80px rgb(0 0 0 / 35%);
 }
 
+/* An item with a cover fills its column, so the blurred backdrop reaches the foot (shop-page.module.css). */
+.column:has(> .view[data-cover]) {
+  display: flex;
+  flex-direction: column;
+}
+
+.column > .view[data-cover] {
+  flex: 1 0 auto;
+}
+
 .view {
   --veil-1: color-mix(in srgb, var(--page-fg) 7%, transparent);
   --veil-2: color-mix(in srgb, var(--page-fg) 12%, transparent);
   --veil-3: color-mix(in srgb, var(--page-fg) 16%, transparent);
   --warm: color-mix(in srgb, var(--accent) 20%, var(--card));
+  position: relative;
   display: block;
+  isolation: isolate;
 }
 
 .top {
@@ -51,6 +63,13 @@
   /* On a phone the page starts below its status bar; the Store preview sets this inset to draw one. */
   padding: var(--phone-inset-top, 0px) var(--phone-inset-x, 12px) 0;
   background: var(--page-bg);
+}
+
+/* Over a cover the bar is clear and only frosted, as on the shop: no band on the backdrop. */
+.view[data-cover] .top {
+  background: transparent;
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
 }
 
 .top > span {

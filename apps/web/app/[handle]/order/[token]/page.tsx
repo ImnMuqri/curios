@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { getOrderByToken, getSettings, type PublicOrder, type PublicOrderLine } from '@curios/db-read';
 import { PageTheme } from '../../../_bento/BentoPage.js';
-import { avatarUrl } from '../../../../lib/avatar-url.js';
+import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../../shop/basket.js';
 import type { DigitalLineView } from './digital-section.js';
 import { OrderView } from './order-view.js';
@@ -69,6 +69,7 @@ export default async function OrderPage({ params }: Params) {
   return (
     <PageTheme theme={page} className={styles.stage}>
       <OrderView
+        coverUrl={coverUrl(page.coverKey)}
         token={token}
         handle={page.handle}
         displayName={page.displayName}
