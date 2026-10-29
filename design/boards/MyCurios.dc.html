@@ -76,7 +76,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .sec-h span{font-size:13px;color:var(--soft)}
 /* expanding cover gallery */
 .gal{display:flex;gap:6px;height:132px}
-.gi{position:relative;flex:1 1 0;min-width:0;padding:0;border:0;border-radius:12px;overflow:hidden;background:#f0f1f4;cursor:pointer;transition:flex-grow 520ms cubic-bezier(.22,1,.36,1)}
+.gi{position:relative;flex:1 1 0;min-width:0;padding:0;border:0;border-radius:10px;overflow:hidden;background:#f0f1f4;cursor:pointer;transition:flex-grow 520ms cubic-bezier(.22,1,.36,1)}
 .gi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gi:hover img{filter:brightness(1.05)}
 .gi .cap{position:absolute;left:10px;bottom:9px;padding:3px 9px;border-radius:999px;background:rgba(25,31,44,.62);color:#ffffff;font-size:12px;font-weight:500;white-space:nowrap;transition:opacity 300ms}
@@ -99,7 +99,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .fl em{position:absolute;left:13px;top:7px;font-style:normal;font-size:11.5px;font-weight:500;color:var(--soft);pointer-events:none}
 .fl small{position:absolute;right:12px;bottom:8px;font-size:11.5px;color:#9aa0ab}
 /* animated reorder list */
-.rlist{position:relative;border:1px solid var(--line);border-radius:12px;background:#ffffff;transition:height 300ms ease}
+.rlist{position:relative;border:1px solid var(--line);border-radius:10px;background:#ffffff;transition:height 300ms ease}
 .ri{position:absolute;left:0;right:0;display:flex;align-items:center;gap:12px;height:60px;padding:0 8px 0 12px;transition:transform 420ms cubic-bezier(.34,1.25,.64,1),background 160ms}
 .ri:hover{background:#fafbfc}
 .ri+.ri::before{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line)}
@@ -117,12 +117,12 @@ a{color:#2340c8}a:hover{color:#122686}
 .inp{display:block;width:100%;height:38px;padding:0 12px;border:1px solid #dfe1e6;border-radius:8px;background:#ffffff;font:inherit;color:#191f2c;outline:none}
 .inp:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
 .prim{height:38px;padding:0 16px;border:0;border-radius:8px;background:#2340c8;color:#ffffff;font:inherit;font-weight:500;cursor:pointer}
-.shoprow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.shoprow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:10px}
 .switch{position:relative;width:38px;height:22px;flex:none;border:0;border-radius:999px;cursor:pointer;transition:background 200ms}
 .switch i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform 260ms cubic-bezier(.34,1.5,.64,1)}
 /* visual pickers */
 .tiles{display:grid;gap:12px}
-.tile{position:relative;padding:10px;border:1px solid #dfe1e6;border-radius:14px;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:border-color 160ms,box-shadow 160ms,transform 260ms cubic-bezier(.34,1.4,.64,1)}
+.tile{position:relative;padding:10px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:border-color 160ms,box-shadow 160ms,transform 260ms cubic-bezier(.34,1.4,.64,1)}
 .tile:hover{border-color:#c9ccd3}
 .tile.on{border-color:#2340c8;box-shadow:0 0 0 1px #2340c8;background:#f6f8ff}
 .tile .tick{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#2340c8;transform:scale(0);transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
@@ -137,7 +137,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .sw svg{transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
 .hex{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border:1px solid #dfe1e6;border-radius:999px;font-family:var(--m);font-size:12.5px;color:var(--soft)}
 .hex input{width:62px;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
-.flist{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.flist{border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .fr{display:flex;align-items:center;gap:14px;width:100%;height:58px;padding:0 16px;border:0;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:background 160ms}
 .fr+.fr{border-top:1px solid var(--line)}
 .fr:hover{background:#fafbfc}
@@ -208,7 +208,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .es{display:flex;flex-direction:column;align-items:center;gap:6px;padding:44px 24px 40px;text-align:center;animation:fadeUp 420ms cubic-bezier(.22,1,.36,1) both}
 .es-art{position:relative;width:236px;height:124px;margin-bottom:16px}
 .es-rows{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;-webkit-mask-image:linear-gradient(to bottom,#000 30%,transparent 100%);mask-image:linear-gradient(to bottom,#000 30%,transparent 100%)}
-.gr{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:12px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef,0 8px 16px -12px rgba(25,31,44,.3);animation:ghost 3.4s ease-in-out infinite}
+.gr{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef,0 8px 16px -12px rgba(25,31,44,.3);animation:ghost 3.4s ease-in-out infinite}
 .gr i{width:20px;height:20px;flex:none;border-radius:6px}
 .gr b{width:46%;height:7px;border-radius:4px;background:#e4e7eb}
 .gr em{width:16%;height:7px;margin-left:auto;border-radius:4px;background:#eef0f4}
@@ -385,7 +385,7 @@ a{color:#2340c8}a:hover{color:#122686}
 /* previews match the real page */
 .pv-q,.bq,.convo .u,.tchat .u,.vchat .q{background:rgba(250,251,252,.14)!important;color:#fafbfc!important;border-radius:16px!important}
 .pv-a::before,.ba::before,.convo .a::before,.tchat .a::before,.vchat .a::before{padding-left:20px;line-height:16px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 7px 8px,#b5294e 6.5px,transparent 7px) no-repeat}
-.leadc2{align-self:stretch;display:block;padding:12px;border-radius:14px;background:#fafbfc;color:#191f2c}
+.leadc2{align-self:stretch;display:block;padding:12px;border-radius:10px;background:#fafbfc;color:#191f2c}
 .leadc2 b{display:block;font-size:13px;font-weight:600}
 .leadc2 small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:#4b5060}
 .leadc2 .lrow{display:flex;gap:6px;margin-top:8px}
@@ -398,12 +398,100 @@ a{color:#2340c8}a:hover{color:#122686}
 .pv-faq>span{display:flex;justify-content:space-between;padding:7px 0 0;font-size:11px;font-weight:500}
 .pv-faq>span+span{margin-top:6px;border-top:1px solid rgba(250,251,252,.1)}
 .pv-faq i{font-style:normal;opacity:.7}
+
+/* ===================== v2 shell, 29 Oct 2026 ===================== */
+.app{background:#edeff4}
+@media (min-width:1101px){
+.side{width:248px;padding:18px 14px 16px 16px;background:transparent;border-right:0}
+.brand{padding:4px 8px 16px}
+.v2sbs{display:flex;align-items:center;gap:8px;height:38px;margin:0 0 6px;padding:0 8px 0 12px;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;color:#8b909c;cursor:text}
+.v2sbs svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.v2sbs input{flex:1;min-width:0;height:36px;border:0;background:transparent;font:inherit;font-size:13.5px;color:#191f2c;outline:none}
+.v2sbs input::placeholder{color:#8b909c}
+.v2sbs:focus-within{box-shadow:inset 0 0 0 1.5px #2340c8}
+.v2sbs kbd{flex:none;padding:1px 7px;border-radius:6px;background:#f5f6fa;box-shadow:inset 0 0 0 1px #e3e6ec;font:600 11px 'IBM Plex Sans',sans-serif;color:#5b6170}
+.grp{margin:14px 10px 4px;font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:#8b909c}
+.nav a{height:36px;gap:12px;padding:0 10px;border-radius:8px;font-size:14px;color:#3f4554}
+.nav a:hover{background:rgba(255,255,255,.7);color:#191f2c}
+.nav a.on{background:#e2e7fb;color:#2340c8;font-weight:600}
+.nav svg{width:18px;height:18px;stroke-width:1.75}
+.nav .ct{color:#2340c8}
+}
+.acct{display:none}
+.v2plan{margin-top:auto;padding:12px 10px 4px;font-size:12.5px;color:#5b6170;line-height:1.4}
+.v2plan b{display:block;font-size:13px;font-weight:600;color:#191f2c}
+.v2pbar{display:block;height:5px;margin-top:9px;border-radius:3px;background:#dde0e7;overflow:hidden}
+.v2pbar i{display:block;height:100%;border-radius:3px;background:#2340c8}
+.main{background:transparent}
+.v2topb{display:flex;align-items:center;gap:10px;flex:none;height:64px;padding:0 24px 0 32px}
+.tb-crumb{flex:1;min-width:0;margin:0;font-size:14px;color:#5b6170;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-crumb i{margin:0 8px;font-style:normal;color:#b8bcc6}
+.tb-crumb b{font-weight:600;color:#191f2c}
+.tb-ib{position:relative;display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;cursor:pointer}
+.tb-ib svg{width:17px;height:17px;fill:none;stroke:#3f4554;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tb-ib u{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:#e2483d;box-shadow:0 0 0 2px #ffffff}
+.tb-acc{display:flex;align-items:center;gap:9px;height:38px;padding:0 10px 0 5px;border:0;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;font:inherit;font-size:13.5px;font-weight:600;color:#191f2c;cursor:pointer}
+.tb-acc i{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#b5294e;color:#ffffff;font-style:normal;font-size:13px}
+.tb-acc svg{width:14px;height:14px;fill:none;stroke:#5b6170;stroke-width:2;stroke-linecap:round}
+.tb-ib:hover,.tb-acc:hover{box-shadow:inset 0 0 0 1px #c9ccd3}
+.v2sheet{position:relative;flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:#ffffff;border-radius:16px 0 0 0;box-shadow:inset 1px 1px 0 #e3e6ec}
+.head{align-items:flex-end;flex-wrap:wrap;height:auto;min-height:0;padding:28px 40px 20px;border-bottom:0;gap:12px}
+.head .v2ht{flex:1 1 360px;min-width:0}
+.head h1{font-family:var(--d);font-size:30px;font-weight:700;line-height:1.05;letter-spacing:-.03em}
+.head .v2sum{margin:8px 0 0;font-size:15px;color:#5b6170}
+.head .v2sum b{font-weight:600;color:#191f2c}
+.stats{display:none}
+.bl{max-width:1440px;padding:8px 40px 56px}
+.swrap,.kwrap,.dwrap{max-width:1240px}
+.ob{margin-top:0;border-top:0}
+.ocol{background:#fbfbfd}
+.olist>button{background:transparent!important;box-shadow:none!important}
+.olist>button[aria-current]:not([aria-current="false"]){background:#eef1fd!important}
+/* tabs: one pill style everywhere */
+.utabs,.ktabs{display:inline-flex;gap:4px;padding:4px;border:0;border-radius:10px;background:#f2f3f7}
+.utabs button,.ktabs button{width:auto;height:34px;padding:0 16px;border-radius:7px;color:#5b6170!important}
+.utabs button[aria-selected]:not([aria-selected="false"]),.ktabs button[aria-selected]:not([aria-selected="false"]){background:#ffffff;color:#191f2c!important;font-weight:600;box-shadow:0 1px 2px rgba(25,31,44,.08),0 0 0 1px #e3e6ec}
+.uline,.ktabs .kl{display:none}
+/* dashboard chats look like a normal AI chat, not the owner's page */
+.chatc,.convo,.tchat{background:#f6f7f9;color:#191f2c;border-radius:10px;font-family:'IBM Plex Sans',sans-serif}
+.chatc .lbl{opacity:1;color:#5b6170}
+.chatc .lbl i{background:#1d9a6c}
+.bq,.convo .u,.tchat .u{border-radius:10px!important;background:#ffffff!important;color:#191f2c!important;box-shadow:0 0 0 1px #e3e6ec}
+.ba,.ba.unsure,.convo .a,.tchat .a,.tchat .a.no{color:#191f2c}
+.ba::before,.convo .a::before,.tchat .a::before{padding-left:22px;line-height:16px;margin-bottom:4px;font-size:11.5px;opacity:1;color:#5b6170;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='5' fill='%232340c8'/%3E%3Cellipse cx='5.4' cy='8' rx='2.2' ry='2.6' fill='%23fff'/%3E%3Cellipse cx='10.6' cy='8' rx='2.2' ry='2.6' fill='%23fff'/%3E%3Ccircle cx='5.9' cy='8.6' r='1.1' fill='%23191f2c'/%3E%3Ccircle cx='11.1' cy='8.6' r='1.1' fill='%23191f2c'/%3E%3C/svg%3E") left center/16px 16px no-repeat}
+.convo .left{background:#e6f3ef;color:#123b33}
+.tchat .from{color:#5b6170}
+.tin button{background:#2340c8}
+@media (max-width:1100px){
+.side{background:transparent;border-right:0}
+.v2sbs,.v2plan{display:none}
+}
+@media (max-width:760px){
+.side{background:#ffffff}
+.v2topb{display:none}
+.v2sheet{border-radius:0;box-shadow:none}
+.head{padding:20px 16px 14px}
+.head h1{font-size:24px}
+.head .v2sum{font-size:14px}
+}
+
+/* v2: the side panel runs the full height; the title sits over the left column only */
+.edit,.kmain{padding:0 40px 56px}
+.edit>.head,.kmain>.head{padding:28px 0 20px}
+@media (min-width:1201px){.body{grid-template-columns:minmax(0,1fr) minmax(440px,40%)}.edit .wrapc{max-width:880px}}
+.pv{height:calc(100vh - 64px);background:#ffffff;border-left:1px solid #e8eaef}
+.pv .blobs,.pv .grain{display:none}
+.tester{background:#ffffff;border-left:1px solid #e8eaef;padding:28px 32px}
+.stage{background:#ffffff;padding:0 40px 48px}
+.stage>.head{align-self:stretch;padding:28px 0 20px}
+.side2{padding-top:28px}
+@media (max-width:760px){.edit,.kmain{padding:0 16px 40px}.edit>.head,.kmain>.head{padding:20px 0 14px}.stage{padding:0 16px 32px}}
 </style>
 </helmet>
 
 <div class="app {{appCls}}">
 <aside class="side" aria-label="Main navigation">
-<div class="brand"><span class="mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span><span class="sr">Curios</span></div>
+<div class="brand"><span class="mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span><span class="sr">Curios</span></div><label class="v2sbs"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" placeholder="Search" aria-label="Search orders, questions and leads"><kbd>/</kbd></label>
 <nav class="nav">
 <p class="grp">Page</p>
 <a href="#" class="on" aria-current="page"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6"></path></svg> My Curios</a>
@@ -419,19 +507,22 @@ a{color:#2340c8}a:hover{color:#122686}
 <a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v13H3zM3 10h18"></path></svg> Billing</a>
 <a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg> Settings</a>
 </nav>
-<div class="acct"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span style="min-width: 0"><b>Kek Lina</b><span>Business plan</span></span></div>
+<div class="v2plan"><b>Business plan</b><span>18 days left, until 14 Nov</span><span class="v2pbar" aria-hidden="true"><i style="width: 60%"></i></span></div>
 </aside>
 
 <main class="main">
+<header class="v2topb"><p class="tb-crumb">Kek Lina<i aria-hidden="true">/</i><b>My Curios</b></p><button type="button" class="tb-ib" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button><button type="button" class="tb-ib" aria-label="Notifications, 3 new"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4"></path></svg><u></u></button><button type="button" class="tb-acc" aria-label="Account"><i>L</i>Lina binti Kamal<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></button></header>
+<div class="v2sheet">
+
+<div class="body">
+<div class="edit">
 <div class="head">
-<h1>My Curios</h1>
+<div class="v2ht"><h1>My Curios</h1><p class="v2sum">What people see on your page, and the links under your name.</p></div>
 <span class="status" aria-live="polite" style="background: {{stBg}}; color: {{stFg}}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"></animateTransform></path></svg></sc-if><sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>{{saveText}}</span>
 <span class="url">curios.my/keklina<button type="button" class="icb" aria-label="Copy link" title="{{copyText}}" onClick="{{ copy }}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"></path></svg></button></span>
 <a class="sec-btn" href="#view">View page</a>
 </div>
 
-<div class="body">
-<div class="edit">
 <div class="utabs" role="tablist" aria-label="Edit">
 <sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}">{{t.label}}</button></sc-for>
 <span class="uline" style="transform: translateX({{ulineX}}px)"></span>
@@ -454,6 +545,32 @@ a{color:#2340c8}a:hover{color:#122686}
 </div>
 <label class="fl" style="margin-top: 12px"><em>Bio</em><textarea maxlength="160" onChange="{{ setBio }}" value="{{ bio }}"></textarea><small>{{bioCount}}/160</small></label>
 </section>
+
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"></path></svg></span>Style</b><span>How your buttons look</span></p>
+<div class="tiles" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
+<sc-for list="{{ styles }}" as="s" hint-placeholder-count="2"><button type="button" class="tile {{s.cls}}" aria-pressed="{{s.on}}" onClick="{{ s.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: #f3f4f7; height: 84px"><i style="background: {{s.p1}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i></span><span class="nm">{{s.label}} <span style="color: #696e7b; font-weight: 400">· {{s.note}}</span></span></button></sc-for>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 15l5-5 4 4 3-3 4 4"></path></svg></span>Background</b><span>Behind your whole page</span></p>
+<div class="tiles" style="grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
+<sc-for list="{{ bgs }}" as="b" hint-placeholder-count="6"><button type="button" class="tile {{b.cls}}" aria-pressed="{{b.on}}" onClick="{{ b.pick }}" style="padding: 6px"><span class="tick" style="top: 4px; right: 4px; width: 18px; height: 18px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: {{b.swatch}}; height: 76px"><b style="background: {{b.ink}}"></b><i style="background: {{accent}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i></span><span class="nm" style="text-align: center; margin-top: 6px">{{b.label}}</span></button></sc-for>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.7 0 2-1.3 1.4-2.3-.6-1-.2-2.7 1.6-2.7H17a4 4 0 0 0 4-4 9 9 0 0 0-9-9zM7.5 11h.01M10 7h.01M15 7.5h.01"></path></svg></span>Accent colour</b><span>Your first link and the send button</span></p>
+<div class="swatches">
+<sc-for list="{{ accents }}" as="a" hint-placeholder-count="9"><button type="button" class="sw" aria-label="{{a.label}}" aria-pressed="{{a.on}}" onClick="{{ a.pick }}" style="background: {{a.hex}}; box-shadow: 0 0 0 {{a.gap}} #ffffff, 0 0 0 {{a.ring}} {{a.hex}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="{{a.tickC}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transform: scale({{a.tickS}})"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-for>
+<span class="hex">#<input aria-label="Accent colour as hex" value="{{ hexText }}" onChange="{{ setHex }}" maxlength="6"></span>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M5 19L10.5 5h3L19 19M7.5 13.5h9"></path></svg></span>Heading font</b><span>Used for your name</span></p>
+<div class="flist">
+<sc-for list="{{ fonts }}" as="f" hint-placeholder-count="6"><button type="button" class="fr" aria-pressed="{{f.on}}" onClick="{{ f.pick }}"><b style="font-family: {{f.css}}">{{name}}</b><span>{{f.label}}</span><span class="rd" style="background: {{f.rdBg}}; box-shadow: inset 0 0 0 {{f.rdRing}} {{f.rdC}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{f.tickO}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button></sc-for>
+</div>
+</section>
 </div>
 </sc-if>
 
@@ -473,7 +590,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </section>
 <section class="sec">
 <p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span>Links</b><span>Top to bottom, as they appear</span></p>
-<sc-if value="{{ noLinks }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 14px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #eaf0ff"></i><b></b><em></em></span><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #2340c8"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span></div><h3>Add your first link</h3><p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ startAdd }}">+ Add a link</button></div></div></div></sc-if>
+<sc-if value="{{ noLinks }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 10px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #eaf0ff"></i><b></b><em></em></span><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #2340c8"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span></div><h3>Add your first link</h3><p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ startAdd }}">+ Add a link</button></div></div></div></sc-if>
 <sc-if value="{{ hasLinks }}" hint-placeholder-val="{{ true }}"><div class="rlist" style="height: {{listH}}px">
 <sc-for list="{{ links }}" as="l" hint-placeholder-count="3">
 <div class="ri" style="transform: translateY({{l.y}}px)">
@@ -507,35 +624,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </div>
 </sc-if>
 
-<sc-if value="{{ isLook }}" hint-placeholder-val="{{ false }}">
-<div class="wrapc" role="tabpanel" aria-label="Appearance">
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"></path></svg></span>Style</b><span>How your buttons look</span></p>
-<div class="tiles" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
-<sc-for list="{{ styles }}" as="s" hint-placeholder-count="2"><button type="button" class="tile {{s.cls}}" aria-pressed="{{s.on}}" onClick="{{ s.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: #f3f4f7; height: 84px"><i style="background: {{s.p1}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i></span><span class="nm">{{s.label}} <span style="color: #696e7b; font-weight: 400">· {{s.note}}</span></span></button></sc-for>
-</div>
-</section>
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 15l5-5 4 4 3-3 4 4"></path></svg></span>Background</b><span>Behind your whole page</span></p>
-<div class="tiles" style="grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
-<sc-for list="{{ bgs }}" as="b" hint-placeholder-count="6"><button type="button" class="tile {{b.cls}}" aria-pressed="{{b.on}}" onClick="{{ b.pick }}" style="padding: 6px"><span class="tick" style="top: 4px; right: 4px; width: 18px; height: 18px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: {{b.swatch}}; height: 76px"><b style="background: {{b.ink}}"></b><i style="background: {{accent}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i></span><span class="nm" style="text-align: center; margin-top: 6px">{{b.label}}</span></button></sc-for>
-</div>
-</section>
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.7 0 2-1.3 1.4-2.3-.6-1-.2-2.7 1.6-2.7H17a4 4 0 0 0 4-4 9 9 0 0 0-9-9zM7.5 11h.01M10 7h.01M15 7.5h.01"></path></svg></span>Accent colour</b><span>Your first link and the send button</span></p>
-<div class="swatches">
-<sc-for list="{{ accents }}" as="a" hint-placeholder-count="9"><button type="button" class="sw" aria-label="{{a.label}}" aria-pressed="{{a.on}}" onClick="{{ a.pick }}" style="background: {{a.hex}}; box-shadow: 0 0 0 {{a.gap}} #ffffff, 0 0 0 {{a.ring}} {{a.hex}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="{{a.tickC}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transform: scale({{a.tickS}})"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-for>
-<span class="hex">#<input aria-label="Accent colour as hex" value="{{ hexText }}" onChange="{{ setHex }}" maxlength="6"></span>
-</div>
-</section>
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M5 19L10.5 5h3L19 19M7.5 13.5h9"></path></svg></span>Heading font</b><span>Used for your name</span></p>
-<div class="flist">
-<sc-for list="{{ fonts }}" as="f" hint-placeholder-count="6"><button type="button" class="fr" aria-pressed="{{f.on}}" onClick="{{ f.pick }}"><b style="font-family: {{f.css}}">{{name}}</b><span>{{f.label}}</span><span class="rd" style="background: {{f.rdBg}}; box-shadow: inset 0 0 0 {{f.rdRing}} {{f.rdC}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{f.tickO}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button></sc-for>
-</div>
-</section>
-</div>
-</sc-if>
+
 </div>
 
 <div class="pv" aria-label="Live preview">
@@ -565,6 +654,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="seg" role="tablist" aria-label="Preview tab">
 <span class="seg-th" style="transform: translateX({{segX}}px)"></span>
 <sc-for list="{{ segs }}" as="g" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{g.on}}" onClick="{{ g.go }}" style="color: {{g.fg}}">{{g.label}}</button></sc-for>
+</div>
 </div>
 </div>
 </div>
@@ -669,7 +759,7 @@ class Component extends DCLogic {
       copyText: st.copied ? 'Copied ✓' : 'Copy',
       copy: () => { self.setState({ copied: true }); clearTimeout(self.ct); self.ct = setTimeout(() => self.setState({ copied: false }), 1600); },
       tabX: (st.tab * 100) + '%',
-      tabs: ['Profile', 'Links', 'Appearance'].map((label, i) => ({ label: label, on: st.tab === i, go: () => self.setState({ tab: i }) })),
+      tabs: ['Profile', 'Links'].map((label, i) => ({ label: label, on: st.tab === i, go: () => self.setState({ tab: i }) })),
       isProfile: st.tab === 0, isLinks: st.tab === 1, isLook: st.tab === 2,
       covers: this.coverList.map((c) => ({ isNone: c.id === 'none', hasImg: c.id !== 'none', swatch: pageBg, dot: st.accent, ink: fg, src: c.src, focus: c.focus, label: c.label, on: st.cover === c.id, cls: st.cover === c.id ? 'on' : '', grow: st.cover === c.id ? 5 : 1, capO: st.cover === c.id ? '1' : '0', pick: () => self.change({ cover: c.id }) })),
       name: st.name, bio: st.bio, bioCount: st.bio.length,
