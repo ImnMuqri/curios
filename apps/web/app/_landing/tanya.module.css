@@ -1086,6 +1086,35 @@
   scroll-snap-align: start;
 }
 
+/*
+ * A phone: the three rooms one under another, read as the page scrolls, with nothing moving sideways
+ * (owner, 29 Oct 2026: the pinned slide, and then the swipe, felt laggy and odd there). With every
+ * room in view the step dots and "Keep scrolling" have nothing to say, so they go.
+ */
+@media (max-width: 560px) {
+  .howView {
+    overflow: visible;
+    scroll-snap-type: none;
+  }
+
+  .howTrack {
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+    will-change: auto;
+  }
+
+  .howSlide {
+    width: 100%;
+    padding-right: 0;
+  }
+
+  .howDots,
+  .keep {
+    display: none;
+  }
+}
+
 .room {
   position: relative;
   display: grid;
@@ -1461,8 +1490,7 @@
  *
  * Not on a phone. A room there is taller than the screen (about 1,020px of
  * frame at 375 wide), so a pinned frame cut off its heading or its foot
- * whichever way it was centred; a phone gets the row to swipe as well, each
- * room whole (How.tsx moves the dots with the swipe).
+ * whichever way it was centred; a phone stacks the rooms instead (below).
  */
 @media (prefers-reduced-motion: no-preference) and (min-width: 561px) {
   .how {
