@@ -486,6 +486,58 @@ a{color:#2340c8}a:hover{color:#122686}
 .stage>.head{align-self:stretch;padding:28px 0 20px}
 .side2{padding-top:28px}
 @media (max-width:760px){.edit,.kmain{padding:0 16px 40px}.edit>.head,.kmain>.head{padding:20px 0 14px}.stage{padding:0 16px 32px}}
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+/* v3 My Curios: contents as designed */
+.idrow{display:flex;align-items:flex-start;gap:16px}
+.v3id{flex:1;display:grid;gap:10px}
+.gal{display:flex;gap:8px;height:84px}
+.gal .gi{flex:0 0 84px!important;height:84px;border-radius:10px}
+.gal .gi[aria-pressed]:not([aria-pressed="false"]){outline:2.5px solid #2340c8;outline-offset:2px}
+.gal .gi .cap{display:none}
+.gal .gi.up{flex:0 0 84px!important}
+.v3cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px}
+.v3shapefont{display:grid;gap:22px}
+.v3lab{margin:0 0 10px;font-size:13px;color:#5b6170}
+.v3dots{display:flex!important;flex-wrap:wrap;gap:10px!important}
+.v3dots .tile{width:36px;height:36px;padding:0!important;border:0;border-radius:50%;overflow:hidden;box-shadow:inset 0 0 0 1px rgba(25,31,44,.12)}
+.v3dots .tile .mini{height:36px!important;padding:0;border-radius:50%}
+.v3dots .tile .mini>*,.v3dots .tile .nm,.v3dots .tile .tick{display:none}
+.v3dots .tile.on{box-shadow:0 0 0 2.5px #ffffff,0 0 0 4.5px #191f2c;background:none;border:0}
+.v3cols .swatches{gap:10px}
+.v3cols .sw{width:36px;height:36px}
+.v3shape{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px}
+.v3shape .tile{display:flex;flex-direction:column;align-items:center;padding:14px}
+.v3shape .tile .mini{width:100%;height:58px!important;padding:10px 12px;background:#f5f6fa!important}
+.v3shape .tile .mini i:nth-child(3){display:none}
+.v3shape .tile .nm{text-align:center}
+.v3shapefont .flist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;border:0;border-radius:0;overflow:visible}
+.v3shapefont .fr{flex-direction:column;justify-content:center;gap:6px;height:84px;padding:10px;border:1px solid #dfe1e6;border-radius:10px;text-align:center}
+.v3shapefont .fr+.fr{border-top:1px solid #dfe1e6}
+.v3shapefont .fr b{flex:none;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.v3shapefont .fr .rd{display:none}
+.v3shapefont .fr[aria-pressed]:not([aria-pressed="false"]){border-color:#2340c8;box-shadow:0 0 0 1px #2340c8;background:#f6f8ff}
+.socials{grid-template-columns:repeat(2,minmax(0,1fr))}
+.soc{height:48px}
+.shoprow{border-radius:10px 10px 0 0;border-bottom:0;padding:12px 14px}
+.shoprow+.rlist{border-radius:0 0 10px 10px}
+.rlist{border:1px solid var(--line);border-radius:10px}
+.ri b{font-weight:600}
+.ri .ki,.shoprow .ki{display:grid!important}
+.v3cols{grid-template-columns:max-content minmax(0,1fr);gap:40px}
+@media (max-width:760px){.gal{flex-wrap:wrap;height:auto}.gal .gi,.gal .gi.up{flex:0 0 64px!important;height:64px}.v3cols,.v3shapefont .flist{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.v3cols{grid-template-columns:minmax(0,1fr)}.head .v3t{flex-wrap:wrap}.socials{grid-template-columns:minmax(0,1fr)}}
 </style>
 </helmet>
 
@@ -517,67 +569,64 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="body">
 <div class="edit">
 <div class="head">
-<div class="v2ht"><h1>My Curios</h1><p class="v2sum">What people see on your page, and the links under your name.</p></div>
+<div class="v2ht v3t"><h1>My Curios</h1><div class="utabs" role="tablist" aria-label="Edit">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}">{{t.label}}</button></sc-for>
+<span class="uline" style="transform: translateX({{ulineX}}px)"></span>
+</div></div>
 <span class="status" aria-live="polite" style="background: {{stBg}}; color: {{stFg}}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"></animateTransform></path></svg></sc-if><sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>{{saveText}}</span>
 <span class="url">curios.my/keklina<button type="button" class="icb" aria-label="Copy link" title="{{copyText}}" onClick="{{ copy }}"><svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"></path></svg></button></span>
 <a class="sec-btn" href="#view">View page</a>
 </div>
 
-<div class="utabs" role="tablist" aria-label="Edit">
-<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}">{{t.label}}</button></sc-for>
-<span class="uline" style="transform: translateX({{ulineX}}px)"></span>
-</div>
 
 <sc-if value="{{ isProfile }}" hint-placeholder-val="{{ true }}">
 <div class="wrapc" role="tabpanel" aria-label="Profile">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01"></path></svg></span>Cover photo</b><span>Optional. Pick one, upload your own, or go with a solid colour</span></p>
+<p class="sec-h"><b>You</b><span>Your picture, name and a line people read first.</span></p>
+<div class="idrow">
+<button type="button" class="avw" aria-label="Change profile picture" style="padding: 0; border: 0; background: none"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span>Change</span></button>
+<span class="v3id"><label class="fl"><em>Name</em><input value="{{ name }}" onChange="{{ setName }}" maxlength="40"></label>
+<label class="fl"><em>Bio</em><textarea maxlength="160" onChange="{{ setBio }}" value="{{ bio }}"></textarea><small>{{bioCount}}/160</small></label></span>
+</div>
+</section>
+<section class="sec">
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4zM4 15l4-4 4 4 3-3 5 5M15 9h.01"></path></svg></span>Cover photo</b><span>Shown behind your name. Pick one, upload your own, or go with a solid colour.</span></p>
 <div class="gal">
 <sc-for list="{{ covers }}" as="c" hint-placeholder-count="8"><button type="button" class="gi" aria-pressed="{{c.on}}" aria-label="{{c.label}}" onClick="{{ c.pick }}" style="flex-grow: {{c.grow}}"><sc-if value="{{ c.isNone }}" hint-placeholder-val="{{ false }}"><span class="solid" aria-hidden="true" style="background: {{c.swatch}}"><i style="background: {{c.dot}}"></i><em style="background: {{c.ink}}"></em><em style="background: {{c.ink}}"></em></span></sc-if><sc-if value="{{ c.hasImg }}" hint-placeholder-val="{{ true }}"><img src="{{c.src}}" alt="" style="object-position: {{c.focus}}"></sc-if><span class="cap" style="opacity: {{c.capO}}">{{c.label}}</span></button></sc-for>
 <button type="button" class="gi up" aria-label="Upload your own"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M5 20h14"></path></svg></button>
 </div>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM5 20a7 7 0 0 1 14 0"></path></svg></span>You</b><span>Picture, name and a line about you</span></p>
-<div class="idrow">
-<button type="button" class="avw" aria-label="Change profile picture" style="padding: 0; border: 0; background: none"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span>Change</span></button>
-<label class="fl" style="flex: 1"><em>Display name</em><input value="{{ name }}" onChange="{{ setName }}" maxlength="40"></label>
-</div>
-<label class="fl" style="margin-top: 12px"><em>Bio</em><textarea maxlength="160" onChange="{{ setBio }}" value="{{ bio }}"></textarea><small>{{bioCount}}/160</small></label>
-</section>
-
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h10M4 17h7"></path></svg></span>Style</b><span>How your buttons look</span></p>
-<div class="tiles" style="grid-template-columns: repeat(2, minmax(0, 1fr))">
-<sc-for list="{{ styles }}" as="s" hint-placeholder-count="2"><button type="button" class="tile {{s.cls}}" aria-pressed="{{s.on}}" onClick="{{ s.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: #f3f4f7; height: 84px"><i style="background: {{s.p1}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i></span><span class="nm">{{s.label}} <span style="color: #696e7b; font-weight: 400">· {{s.note}}</span></span></button></sc-for>
-</div>
-</section>
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M4 4h16v16H4zM4 15l5-5 4 4 3-3 4 4"></path></svg></span>Background</b><span>Behind your whole page</span></p>
-<div class="tiles" style="grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px">
-<sc-for list="{{ bgs }}" as="b" hint-placeholder-count="6"><button type="button" class="tile {{b.cls}}" aria-pressed="{{b.on}}" onClick="{{ b.pick }}" style="padding: 6px"><span class="tick" style="top: 4px; right: 4px; width: 18px; height: 18px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: {{b.swatch}}; height: 76px"><b style="background: {{b.ink}}"></b><i style="background: {{accent}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i></span><span class="nm" style="text-align: center; margin-top: 6px">{{b.label}}</span></button></sc-for>
-</div>
-</section>
-<section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 0 0 0 18c1.7 0 2-1.3 1.4-2.3-.6-1-.2-2.7 1.6-2.7H17a4 4 0 0 0 4-4 9 9 0 0 0-9-9zM7.5 11h.01M10 7h.01M15 7.5h.01"></path></svg></span>Accent colour</b><span>Your first link and the send button</span></p>
-<div class="swatches">
+<p class="sec-h"><b>Colours</b><span>The page behind everything, and your first link and the send button.</span></p>
+<div class="v3cols"><div><p class="v3lab">Page</p><div class="tiles v3dots">
+<sc-for list="{{ bgs }}" as="b" hint-placeholder-count="6"><button type="button" class="tile {{b.cls}}" aria-pressed="{{b.on}}" aria-label="{{b.label}}" title="{{b.label}}" onClick="{{ b.pick }}" style="padding: 6px"><span class="tick" style="top: 4px; right: 4px; width: 18px; height: 18px"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: {{b.swatch}}; height: 76px"><b style="background: {{b.ink}}"></b><i style="background: {{accent}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i><i style="background: {{b.pill}}; height: 9px"></i></span><span class="nm" style="text-align: center; margin-top: 6px">{{b.label}}</span></button></sc-for>
+</div></div><div><p class="v3lab">Buttons</p><div class="swatches">
 <sc-for list="{{ accents }}" as="a" hint-placeholder-count="9"><button type="button" class="sw" aria-label="{{a.label}}" aria-pressed="{{a.on}}" onClick="{{ a.pick }}" style="background: {{a.hex}}; box-shadow: 0 0 0 {{a.gap}} #ffffff, 0 0 0 {{a.ring}} {{a.hex}}"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="{{a.tickC}}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transform: scale({{a.tickS}})"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button></sc-for>
 <span class="hex">#<input aria-label="Accent colour as hex" value="{{ hexText }}" onChange="{{ setHex }}" maxlength="6"></span>
-</div>
+</div></div></div>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M5 19L10.5 5h3L19 19M7.5 13.5h9"></path></svg></span>Heading font</b><span>Used for your name</span></p>
-<div class="flist">
+<p class="sec-h"><b>Button style and font</b><span>How your links look, and the font for your name.</span></p>
+<div class="v3shapefont"><div><p class="v3lab">Buttons</p><div class="tiles v3shape">
+<sc-for list="{{ styles }}" as="s" hint-placeholder-count="2"><button type="button" class="tile {{s.cls}}" aria-pressed="{{s.on}}" onClick="{{ s.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="mini" style="background: #f3f4f7; height: 84px"><i style="background: {{s.p1}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i><i style="background: {{s.p2}}; box-shadow: {{s.ring}}"></i></span><span class="nm">{{s.label}} <span style="color: #696e7b; font-weight: 400">· {{s.note}}</span></span></button></sc-for>
+</div></div><div><p class="v3lab">Heading font</p><div class="flist">
 <sc-for list="{{ fonts }}" as="f" hint-placeholder-count="6"><button type="button" class="fr" aria-pressed="{{f.on}}" onClick="{{ f.pick }}"><b style="font-family: {{f.css}}">{{name}}</b><span>{{f.label}}</span><span class="rd" style="background: {{f.rdBg}}; box-shadow: inset 0 0 0 {{f.rdRing}} {{f.rdC}}"><svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" style="opacity: {{f.tickO}}"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></button></sc-for>
-</div>
+</div></div></div>
 </section>
+
+
+
+
+
+
+
 </div>
 </sc-if>
 
 <sc-if value="{{ isLinks }}" hint-placeholder-val="{{ false }}">
 <div class="wrapc" role="tabpanel" aria-label="Links">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"></path></svg></span>Social profiles</b><span>Shown as icons under your name</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M8 12a4 4 0 1 0 8 0 4 4 0 0 0-8 0zM16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.5 7.1"></path></svg></span>Social profiles</b><span>Shown as icons under your name.</span></p>
 <div class="socials">
 <sc-for list="{{ socials }}" as="so" hint-placeholder-count="6">
 <label class="soc" style="border-color: {{so.border}}">
@@ -589,9 +638,13 @@ a{color:#2340c8}a:hover{color:#122686}
 </div>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span>Links</b><span>Top to bottom, as they appear</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span>Links</b><span>Top to bottom, as they appear. Your page can point people to them too.</span></p>
 <sc-if value="{{ noLinks }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 10px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #eaf0ff"></i><b></b><em></em></span><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #2340c8"><svg viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span></div><h3>Add your first link</h3><p>Your shop, your WhatsApp, a portfolio. They sit under your name, and the chat can point people to them too.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ startAdd }}">+ Add a link</button></div></div></div></sc-if>
-<sc-if value="{{ hasLinks }}" hint-placeholder-val="{{ true }}"><div class="rlist" style="height: {{listH}}px">
+<sc-if value="{{ hasLinks }}" hint-placeholder-val="{{ true }}"><div class="shoprow">
+<span class="ki" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path></svg></span>
+<span style="flex: 1"><b style="display: block; font-weight: 600">Shop link</b><span style="font-size: 13px; color: #696e7b">Always first in your links, 4 items</span></span>
+<button type="button" class="switch" role="switch" aria-checked="{{ shopOn }}" aria-label="Show the Shop link" onClick="{{ toggleShop }}" style="background: {{shopBg}}"><i style="transform: translateX({{shopX}})"></i></button>
+</div><div class="rlist" style="height: {{listH}}px">
 <sc-for list="{{ links }}" as="l" hint-placeholder-count="3">
 <div class="ri" style="transform: translateY({{l.y}}px)">
 <span class="ki" style="background: {{l.tint}}; color: {{l.ink}}"><svg viewBox="0 0 24 24"><path d="{{l.icon}}"></path></svg></span>
@@ -614,13 +667,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </sc-if>
 <sc-if value="{{ showAddRow }}" hint-placeholder-val="{{ true }}"><button type="button" class="addrow" onClick="{{ startAdd }}">+ Add link</button></sc-if>
 </section>
-<section class="sec">
-<div class="shoprow">
-<span class="ki" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z"></path></svg></span>
-<span style="flex: 1"><b style="display: block; font-weight: 600">Shop link</b><span style="font-size: 13px; color: #696e7b">Shown first in your links · 4 items</span></span>
-<button type="button" class="switch" role="switch" aria-checked="{{ shopOn }}" aria-label="Show the Shop link" onClick="{{ toggleShop }}" style="background: {{shopBg}}"><i style="transform: translateX({{shopX}})"></i></button>
-</div>
-</section>
+
 </div>
 </sc-if>
 

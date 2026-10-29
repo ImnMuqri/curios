@@ -787,6 +787,31 @@ a{color:#2340c8}a:hover{color:#122686}
 }
 
 .dcol{padding-top:8px}
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+/* v3 inbox pages: list with search, calmer detail */
+.v3srch{display:flex;align-items:center;gap:8px;height:38px;margin:16px 16px 0;padding:0 12px;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;color:#8b909c}
+.v3srch svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.v3srch input{flex:1;min-width:0;height:36px;border:0;background:transparent;font:inherit;font-size:13.5px;color:#191f2c;outline:none}
+.ftabs{margin-top:10px}
+.dwrap{max-width:1240px}
+.dh h2,.qh h2,.lh .big-ph{font-family:'IBM Plex Sans',sans-serif;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-.01em}
+.dh .av{width:40px;height:40px;font-size:15px}
+.dh p,.qh p,.lh p{font-size:13.5px}
+.actbar{border-radius:10px}
+.qsec h3,.dcol .card h3{font-size:13px;font-weight:600;color:#5b6170}
 </style>
 </helmet>
 
@@ -827,6 +852,7 @@ a{color:#2340c8}a:hover{color:#122686}
 
 <div class="ob" style="{{obStyle}}">
 <div class="ocol" style="display: {{ocolDisp}}">
+<label class="v3srch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" placeholder="Search questions" aria-label="Search questions"></label>
 <div class="ftabs" role="tablist" aria-label="Show topics" style="grid-template-columns: repeat(3, 1fr)">
 <span class="th" style="width: calc((100% - 6px) / 3); transform: translateX({{fX}}%)"></span>
 <sc-for list="{{ filters }}" as="f" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{f.on}}" onClick="{{ f.go }}" style="color: {{f.fg}}">{{f.label}}<sc-if value="{{ f.hasN }}" hint-placeholder-val="{{ false }}"><i style="background: {{f.nBg}}; color: {{f.nFg}}">{{f.n}}</i></sc-if></button></sc-for>

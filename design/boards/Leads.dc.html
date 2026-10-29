@@ -835,6 +835,40 @@ a{color:#2340c8}a:hover{color:#122686}
 }
 
 .dcol{padding-top:8px}
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+/* v3 inbox pages: list with search, calmer detail */
+.v3srch{display:flex;align-items:center;gap:8px;height:38px;margin:16px 16px 0;padding:0 12px;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;color:#8b909c}
+.v3srch svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.v3srch input{flex:1;min-width:0;height:36px;border:0;background:transparent;font:inherit;font-size:13.5px;color:#191f2c;outline:none}
+.ftabs{margin-top:10px}
+.dwrap{max-width:1240px}
+.dh h2,.qh h2,.lh .big-ph{font-family:'IBM Plex Sans',sans-serif;font-size:22px;font-weight:600;line-height:1.25;letter-spacing:-.01em}
+.dh .av{width:40px;height:40px;font-size:15px}
+.dh p,.qh p,.lh p{font-size:13.5px}
+.actbar{border-radius:10px}
+.qsec h3,.dcol .card h3{font-size:13px;font-weight:600;color:#5b6170}
+
+.lh{flex-wrap:wrap;align-items:center}
+.lh .sseg{display:inline-grid;width:auto;margin:0 0 0 auto;padding:4px;border-radius:10px;background:#f2f3f7}
+.lh .sseg .thm{display:none}
+.lh .sseg button{height:32px;padding:0 14px;border-radius:7px;color:#5b6170!important}
+.lh .sseg button[aria-checked]:not([aria-checked="false"]){background:#ffffff;color:#191f2c!important;font-weight:600;box-shadow:0 1px 2px rgba(25,31,44,.08),0 0 0 1px #e3e6ec}
+.lh .wa-btn{margin-left:0}
+.slots .meter{grid-column:auto;flex-direction:row;align-items:center;gap:10px;padding:12px 16px;border-radius:10px}
+.slots .meter svg{width:36px;height:36px}
 </style>
 </helmet>
 
@@ -874,6 +908,7 @@ a{color:#2340c8}a:hover{color:#122686}
 
 <div class="ob" style="{{obStyle}}">
 <div class="ocol" style="display: {{ocolDisp}}">
+<label class="v3srch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" placeholder="Search number or what they want" aria-label="Search number or what they want"></label>
 <div class="ftabs" role="tablist" aria-label="Show leads">
 <span class="th" style="width: calc((100% - 6px) / 4); transform: translateX({{fX}}%)"></span>
 <sc-for list="{{ filters }}" as="f" hint-placeholder-count="4"><button type="button" role="tab" aria-selected="{{f.on}}" onClick="{{ f.go }}" style="color: {{f.fg}}">{{f.label}}<sc-if value="{{ f.hasN }}" hint-placeholder-val="{{ false }}"><i style="background: #2340c8; color: #ffffff">{{f.n}}</i></sc-if></button></sc-for>
@@ -891,13 +926,13 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="lh">
 <span class="lav" style="width: 52px; height: 52px; border-radius: 10px; background: {{d.avBg}}; color: {{d.avFg}}"><svg viewBox="0 0 24 24" style="width: 22px; height: 22px"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"></path></svg></span>
 <span><p class="big-ph">{{d.phone}}</p><p>Left their number {{d.when}} · in the chat on curios.my/keklina</p></span>
-<button type="button" class="wa-btn" onClick="{{ d.openWa }}"><svg viewBox="0 0 24 24"><path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z"></path></svg>Open WhatsApp</button>
-</div>
-
 <div class="sseg" role="radiogroup" aria-label="Lead status">
 <span class="thm" style="transform: translateX({{d.segX}}%); background: {{d.segC}}"></span>
 <sc-for list="{{ d.statuses }}" as="s" hint-placeholder-count="3"><button type="button" role="radio" aria-checked="{{s.on}}" onClick="{{ s.go }}" style="color: {{s.fg}}">{{s.label}}</button></sc-for>
 </div>
+<button type="button" class="wa-btn" onClick="{{ d.openWa }}"><svg viewBox="0 0 24 24"><path d="M4 20l1.4-4.2A8 8 0 1 1 8.6 19z"></path></svg>Open WhatsApp</button>
+</div>
+
 
 <div class="qsec">
 <h3>What they're after<span>Picked out of the conversation</span></h3>

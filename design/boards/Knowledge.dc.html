@@ -1013,6 +1013,44 @@ a{color:#2340c8}a:hover{color:#122686}
 @keyframes pwBob{50%{transform:translateY(-2px)}}
 @keyframes pwNote{0%{opacity:0;transform:translate(-6px,8px)}30%{opacity:1}100%{opacity:0;transform:translate(6px,-12px)}}
 @media (prefers-reduced-motion:reduce){.pw-bob,.pw-n1,.pw-n2{animation:none}}
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+@media (max-width:760px){.ktabs{display:flex;max-width:100%;overflow-x:auto}}
+/* v3 Facts & sources tabs */
+.kgroup>h4{font-size:13px;letter-spacing:0;text-transform:none;color:#5b6170}
+.kgroup>h4 i{display:none}
+.krows{border:0;border-radius:0;background:none}
+.kr{min-height:46px;padding:8px 0;border-bottom:1px solid var(--line)}
+.kr+.kr{border-top:0}
+.kr .ko{background:none;padding:0;color:#8b909c}
+.kwrap[aria-label="Sources"]>.sec-h{flex-direction:row;justify-content:space-between;align-items:center}
+.kwrap[aria-label="Sources"]>.sec-h .prim{height:auto;padding:0;border:0;background:none;color:#2340c8;font-weight:600;box-shadow:none}
+.srcs{display:block;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.srcs .sc2{margin:0;border:0;border-radius:0;box-shadow:none}
+.srcs .sc2+.sc2{border-top:1px solid var(--line)}
+.pin{padding:16px 18px;border:0;border-radius:10px;background:#f5f6fa}
+.pin small{font-size:14px;font-weight:600;color:#191f2c}
+.pin small svg{display:none}
+.pin small a{font-size:13px;font-weight:600}
+.pin p{color:#3f4554}
+.ns-note{padding:0;background:none;color:#696e7b}
+.ns-note svg{display:none}
+.nsp{background:#fdecea;color:#8f2a24;font-weight:500}
+.nsp s{text-decoration:none}
+.nsp button{background:rgba(143,42,36,.1);color:#8f2a24}
+.nsp button:hover{background:#8f2a24;color:#ffffff}
 </style>
 </helmet>
 

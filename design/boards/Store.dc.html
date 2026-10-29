@@ -773,6 +773,45 @@ a{color:#2340c8}a:hover{color:#122686}
 @media (max-width:760px){.edit,.kmain{padding:0 16px 40px}.edit>.head,.kmain>.head{padding:20px 0 14px}.stage{padding:0 16px 32px}}
 
 .edit>.head .url{display:none}
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+/* v3 Store: contents as designed */
+.head .v2ht{flex:1 1 0;min-width:0}
+.head .v2ht .v3t{flex:none}
+.edit .wrapc{max-width:840px}
+.ready{margin:0 0 20px;padding:4px;border-radius:10px}
+.ilist{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.it{padding:0 14px}
+.it .thumb{width:44px;height:44px;border-radius:10px}
+.it .nm2 b{font-weight:600}
+.it .avl{margin-left:auto}
+.gw{border-radius:10px}
+.gw.on{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);background:#ffffff}
+.gw.on .gw-t{flex:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 16px}
+.gw.on .gw-t b{grid-column:1}
+.gw.on .gw-t p{grid-column:1;margin:0;font-size:13px;color:#5b6170}
+.gw.on .gw-t .btns{grid-column:2;grid-row:1 / span 2;margin:0}
+.qrcard{display:flex;align-items:center;gap:16px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#ffffff}
+.qrcard .qrbox{width:64px;height:64px;padding:4px;border-radius:8px}
+.qrcard .qrbox svg{width:56px;height:56px}
+.qrcard>span:last-child{flex:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 16px}
+.qrcard>span:last-child p{grid-column:1;margin:0;font-size:13px;color:#5b6170}
+.qrcard>span:last-child .btns{grid-column:2;grid-row:1 / span 2;margin:0}
+.shoprow{border-radius:10px}
+.tile{border-radius:10px}
+@media (max-width:760px){.gw.on .gw-t,.qrcard>span:last-child{grid-template-columns:minmax(0,1fr)}.gw.on .gw-t .btns,.qrcard>span:last-child .btns{grid-column:1;grid-row:auto;margin-top:8px}}
 </style>
 </helmet>
 
@@ -804,7 +843,10 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="body">
 <div class="edit">
 <div class="head">
-<div class="v2ht"><h1>Store</h1><p class="v2sum">What you sell, how people pay, and how it reaches them.</p></div>
+<div class="v2ht"><div class="v3t"><h1>Store</h1><div class="utabs" role="tablist" aria-label="Store">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}">{{t.label}}</button></sc-for>
+<span class="uline" style="width: 150px; transform: translateX({{ulineX}}px)"></span>
+</div></div><p class="v2sum">{{itemsNote}}. What you sell, how people pay, and how it reaches them.</p></div>
 <span class="status" aria-live="polite" style="background: {{stBg}}; color: {{stFg}}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"></animateTransform></path></svg></sc-if><sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>{{saveText}}</span>
 <span class="url">curios.my/keklina/shop</span>
 <span class="open"><span class="pulse {{openPulse}}" style="background: {{openDot}}"></span><span style="color: {{openFg}}">{{openText}}</span><button type="button" class="switch" role="switch" aria-checked="{{ isOpen }}" aria-label="Shop open" disabled="{{ cantOpen }}" onClick="{{ toggleOpen }}" style="background: {{openBg}}; cursor: {{openCursor}}"><i style="transform: translateX({{openX}})"></i></button></span>
@@ -815,15 +857,11 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-for list="{{ steps }}" as="r" hint-placeholder-count="3"><button type="button" role="listitem" class="rstep" onClick="{{ r.go }}"><span class="rdot" style="background: {{r.bg}}; color: {{r.fg}}"><sc-if value="{{ r.ok }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if><sc-if value="{{ r.bad }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"></path></svg></sc-if></span><span style="min-width: 0"><b>{{r.title}}</b><span>{{r.note}}</span></span></button></sc-for>
 </div>
 
-<div class="utabs" role="tablist" aria-label="Store" style="margin-top: 14px">
-<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}" style="width: 150px">{{t.label}}</button></sc-for>
-<span class="uline" style="width: 150px; transform: translateX({{ulineX}}px)"></span>
-</div>
 
 <sc-if value="{{ isItemsList }}" hint-placeholder-val="{{ true }}">
 <div class="wrapc" role="tabpanel" aria-label="Items">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg></span>About your shop</b><span>Shown above your items, before the notice</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg></span>About your shop</b><span>Shown above your items. Tell people what to know before they order.</span></p>
 <label class="fl"><em>Shop description</em><textarea maxlength="160" onChange="{{ setShopDesc }}" value="{{ shopDesc }}" placeholder="What you sell, and anything customers should know first" style="height: 76px"></textarea><small>{{shopDescCount}}/160</small></label>
 </section>
 <section class="sec">
@@ -938,7 +976,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
 <div class="wrapc" role="tabpanel" aria-label="Payment">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 6h18v13H3zM3 10h18M7 15h4"></path></svg></span>Online payments</b><span>FPX online banking and e-wallets</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 6h18v13H3zM3 10h18M7 15h4"></path></svg></span>Online payments</b><span>FPX, e-wallets and cards through your own CHIP account. Orders mark themselves paid.</span></p>
 <sc-if value="{{ gwOff }}" hint-placeholder-val="{{ true }}"><div class="gw">
 <div class="gw-marks" aria-hidden="true"><i style="background: #eaf0ff; color: #122686">FPX</i><i style="background: #e6f0ff; color: #0b4dbd">TNG</i><i style="background: #e3f6ea; color: #0d7a3e">Grab</i><i style="background: #eef0ff; color: #3b2fb5">Boost</i><i style="background: #fff1e8; color: #c2410c">Card</i></div>
 <b>Let customers pay online</b>
@@ -961,7 +999,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </div></sc-if>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"></path></svg></span>DuitNow QR</b><span>Customers scan it on their order page</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"></path></svg></span>DuitNow QR</b><span>Customers scan it on their order page, with the exact total shown. No CHIP fee.</span></p>
 <sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}">
 <div class="qrcard">
 <span class="qrbox"><svg viewBox="-1 -1 27 27" width="124" height="124" role="img" aria-label="Your DuitNow QR, sample"><path d="{{qrPath}}" fill="#191f2c"></path></svg><span class="scan" aria-hidden="true"></span></span>
@@ -988,7 +1026,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ isDel }}" hint-placeholder-val="{{ false }}">
 <div class="wrapc" role="tabpanel" aria-label="Pickup and delivery">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg></span>Pickup</b><span>Customers collect from you</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg></span>Pickup</b><span>Customers collect from you.</span></p>
 <div class="shoprow">
 <span style="flex: 1"><b style="display: block; font-weight: 600">Allow pickup</b><span style="font-size: 13px; color: #696e7b">{{pickupText}}</span></span>
 <button type="button" class="switch" role="switch" aria-checked="{{ pickup }}" aria-label="Allow pickup" onClick="{{ togglePickup }}" style="background: {{pickBg}}"><i style="transform: translateX({{pickX}})"></i></button>
@@ -996,14 +1034,14 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ pickup }}" hint-placeholder-val="{{ true }}"><label class="fl" style="margin-top: 10px; animation: fadeUp 300ms ease both"><em>Where and when</em><input value="{{ pickupNote }}" onChange="{{ setPickupNote }}" maxlength="120"><small>{{pickupCount}}/120</small></label></sc-if>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg></span>Delivery</b><span>How orders reach customers who can't come</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg></span>Delivery</b><span>How orders reach customers who can't come.</span></p>
 <div class="tiles" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
 <sc-for list="{{ dmodes }}" as="d" hint-placeholder-count="3"><button type="button" class="tile dtile {{d.cls}}" aria-pressed="{{d.on}}" onClick="{{ d.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="dic" style="background: {{d.bg}}; color: {{d.fg}}"><svg viewBox="0 0 24 24"><path d="{{d.icon}}"></path></svg></span><span><b>{{d.label}}</b><span>{{d.note}}</span></span></button></sc-for>
 </div>
 <sc-if value="{{ isFlat }}" hint-placeholder-val="{{ true }}"><div style="display: flex; align-items: center; gap: 12px; margin-top: 12px; animation: fadeUp 300ms ease both"><label class="money" style="width: 180px"><span>RM</span><input value="{{ fee }}" onChange="{{ setFee }}" inputmode="decimal" aria-label="Delivery fee in ringgit"></label><span style="font-size: 13px; color: #696e7b">{{feeNote}}</span></div></sc-if>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg></span>Notice</b><span>How far ahead customers must order</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg></span>Notice</b><span>How far ahead customers must order.</span></p>
 <span class="stepper"><button type="button" aria-label="One day less" disabled="{{ noLess }}" onClick="{{ less }}">−</button><output aria-live="polite">{{noticeText}}</output><button type="button" aria-label="One day more" disabled="{{ noMore }}" onClick="{{ more }}">+</button></span>
 <div class="days" aria-hidden="true"><sc-for list="{{ days }}" as="dy" hint-placeholder-count="10"><span class="day" style="background: {{dy.bg}}; color: {{dy.fg}}; transform: scale({{dy.s}}); text-decoration: {{dy.strike}}"><span>{{dy.wd}}</span><b>{{dy.d}}</b></span></sc-for></div>
 <p class="noteline"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#2340c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>{{earliestText}}</p>

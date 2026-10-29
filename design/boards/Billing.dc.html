@@ -1050,6 +1050,33 @@ a{color:#2340c8}a:hover{color:#122686}
 .head h1{font-size:24px}
 .head .v2sum{font-size:14px}
 }
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+/* v3 Billing: plain sections, plan rows */
+.bl-top{gap:56px}
+.bl-card{padding:0;border:0;border-radius:0;background:none}
+.bl-pick{grid-template-columns:minmax(0,1fr);gap:10px}
+.opt2{display:grid;grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"dot name price" "dot note price" "dot save price";align-items:center;column-gap:14px;padding:16px 18px}
+.opt2 .on1{position:static;grid-area:dot}
+.opt2 small{grid-area:name;font-size:14px;color:#191f2c}
+.opt2>span:not(.on1){grid-area:note}
+.opt2 em{grid-area:save;justify-self:start;margin-top:4px;background:#e8f3ef;color:#123b33}
+.opt2 b{grid-area:price;font-size:22px}
+.bl-pay .go{height:44px;border-radius:10px}
+.bl-m{padding-bottom:16px;border-bottom:1px solid var(--line)}
+.bl-tab{border-radius:10px}
 </style>
 </helmet>
 

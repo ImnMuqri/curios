@@ -601,3 +601,21 @@ at the top of the sheet, on white, split by one thin line. Nothing crosses them.
 - **Billing:** same content, full width, 10px corners.
 
 Fonts stay as they are (IBM Plex Sans for text, Bricolage for titles).
+
+**Contents brought in line with the approved mockups (29 Oct, second pass).** Nothing that was on
+the boards was removed; existing controls were regrouped and restyled:
+- **My Curios:** the Profile / Links tabs sit beside the title, with Saved, your link and View page
+  on the right. Profile reads You, Cover photo (84px square tiles), **Colours** (page backgrounds and
+  button colours as two rows of dots, hex field kept), then **Button style and font** (the two
+  button styles as cards and the six heading fonts as a 3×2 grid of tiles). Links: social profiles
+  two across, and the Shop link is the first row of the links list, with its switch.
+- **Store:** tabs beside the title; the ready checklist, About your shop and the item list follow.
+  Payment: the connected CHIP account and the DuitNow QR are single rows with their buttons on the
+  right. Pickup & delivery keeps its switch, delivery modes, fee and notice stepper.
+- **Orders, Questions, Leads:** a search box above the filters; the detail title is 22px text, not
+  a display heading. Orders shows progress as four bars and "What Farah bought". Leads puts the
+  New / Contacted / Closed pills next to the number.
+- **Facts & sources:** facts are plain rows under plain-case group names; sources are one list with
+  "+ Add a source" on the right; pinned answers sit on light grey; never-say topics are soft red
+  chips.
+- **Billing:** no cards; Monthly and Yearly are rows (radio, name and note, price on the right).
