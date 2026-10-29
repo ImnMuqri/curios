@@ -832,7 +832,7 @@ a.menuAlert:hover {
   }
 
   .topBrand {
-    --l-wordmark: 18px;
+    --l-wordmark: 22px;
     display: inline-flex;
     margin-right: auto;
     color: var(--ink);

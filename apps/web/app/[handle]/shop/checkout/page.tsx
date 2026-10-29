@@ -35,7 +35,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
   const { switches } = await getSettings();
 
   return (
-    <PageTheme theme={shop} className={styles.stage}>
+    <PageTheme theme={shop} className={styles.stage} paintDocument>
       <Checkout
         coverUrl={coverUrl(shop.coverKey)}
         handle={shop.handle}

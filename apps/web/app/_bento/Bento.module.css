@@ -249,6 +249,16 @@
   font-weight: 600;
 }
 
+/* DocumentColor's probe: wears the page's colour for it to read, and takes no room. */
+.documentProbe {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+  background: var(--page-bg);
+  pointer-events: none;
+}
+
 .tab {
   display: grid;
   place-items: center;

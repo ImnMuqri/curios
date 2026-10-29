@@ -102,7 +102,7 @@ export default async function FaqEntryPage({
   });
 
   return (
-    <PageTheme theme={entry.theme} className={styles.stage}>
+    <PageTheme theme={entry.theme} className={styles.stage} paintDocument>
       <main className={styles.page}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd }} />
         <div className={styles.top}>

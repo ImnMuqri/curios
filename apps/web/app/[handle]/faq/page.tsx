@@ -71,7 +71,7 @@ export default async function FaqIndexPage({
   // markup. The entry pages, where the answer is actually visible, carry
   // FAQPage -- and a specific question is what should rank there anyway.
   return (
-    <PageTheme theme={index.theme} className={styles.stage}>
+    <PageTheme theme={index.theme} className={styles.stage} paintDocument>
       <main className={styles.page}>
         <div className={styles.top}>
           <a className={styles.back} href={`/${index.handle}`} aria-label={`Back to ${index.displayName}`}>

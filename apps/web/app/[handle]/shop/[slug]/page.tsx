@@ -47,7 +47,7 @@ export default async function ProductPage({ params }: { params: Params }) {
 
   return (
     <main>
-      <PageTheme theme={shop} className={styles.stage}>
+      <PageTheme theme={shop} className={styles.stage} paintDocument>
         <div className={styles.column}>
           <ProductView
             coverUrl={coverUrl(shop.coverKey)}

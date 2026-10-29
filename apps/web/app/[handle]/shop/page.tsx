@@ -49,7 +49,7 @@ export default async function ShopPage({
   // The shop has its own top bar, so it does not wear the page's header and tabs: only its look.
   return (
     <main>
-      <PageTheme theme={shop} className={styles.stage}>
+      <PageTheme theme={shop} className={styles.stage} paintDocument>
         <div className={styles.column}>
           <ShopPageView
             handle={shop.handle}
