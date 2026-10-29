@@ -5,6 +5,7 @@ import dynamic from 'next/dynamic';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, writeBasket } from './shop/basket.js';
 import { shopCopy } from './shop/copy.js';
 import styles from './page.module.css';
+import { paintDocument } from '../_bento/document-color.js';
 
 /*
  * The budget lives here. FRONTEND.md: under 40KB before chat opens, and the
@@ -126,17 +127,24 @@ export function Ask({
    * The document itself in the page's colour. A phone shows it wherever the
    * page does not reach -- under the composer while the keyboard is up, and
    * past either end of a scroll -- and left as the site's paper, that is a
-   * white band under a dark page. Only the root: the body keeps its paper, so
-   * a wide screen still sees the page as a column.
+   * white band under a dark page. The body too where the page fills the
+   * screen, for iOS 26 Safari, which colours its status bar's strip from the
+   * body; a wide screen's body keeps its paper, so it still sees the page as a
+   * column.
    */
   useEffect(() => {
     const page = promptRef.current?.closest<HTMLElement>('[data-bento-page]');
     if (!page) return;
-    const root = document.documentElement;
-    const before = root.style.backgroundColor;
-    root.style.backgroundColor = getComputedStyle(page).backgroundColor;
+    const narrow = window.matchMedia('(max-width: 600px)');
+    let undo = paintDocument(getComputedStyle(page).backgroundColor, { body: narrow.matches });
+    const repaint = () => {
+      undo();
+      undo = paintDocument(getComputedStyle(page).backgroundColor, { body: narrow.matches });
+    };
+    narrow.addEventListener('change', repaint);
     return () => {
-      root.style.backgroundColor = before;
+      narrow.removeEventListener('change', repaint);
+      undo();
     };
   }, []);
 

@@ -13,6 +13,7 @@ import { HEADING_FONT_VAR } from '../../lib/heading-fonts.js';
 import { Avatar } from './Avatar.js';
 import { Cover } from './Cover.js';
 import { pageCopy } from './page-copy.js';
+import { DocumentColor } from './document-color.js';
 import styles from './Bento.module.css';
 
 export interface BentoPageProps {
@@ -114,9 +115,21 @@ export function themeAttrs(theme: {
 }
 
 /** A page's colours and heading font as custom properties, with no page layout: for its FAQ pages. */
-export function PageTheme({ theme, className, children }: { theme: Parameters<typeof themeAttrs>[0]; className?: string; children: ReactNode }) {
+export function PageTheme({
+  theme,
+  className,
+  paintDocument = false,
+  children,
+}: {
+  theme: Parameters<typeof themeAttrs>[0];
+  className?: string;
+  /** A public page that is the whole screen: the document behind it takes its colour (DocumentColor). Never a preview inside the dashboard. */
+  paintDocument?: boolean;
+  children: ReactNode;
+}) {
   return (
     <div className={`${styles.theme} ${className ?? ''}`} {...themeAttrs(theme)}>
+      {paintDocument ? <DocumentColor /> : null}
       {children}
     </div>
   );

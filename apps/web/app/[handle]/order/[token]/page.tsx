@@ -67,7 +67,7 @@ export default async function OrderPage({ params }: Params) {
   const { switches } = await getSettings();
 
   return (
-    <PageTheme theme={page} className={styles.stage}>
+    <PageTheme theme={page} className={styles.stage} paintDocument>
       <OrderView
         coverUrl={coverUrl(page.coverKey)}
         token={token}

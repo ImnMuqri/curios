@@ -10,6 +10,7 @@ import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
 import { Popover } from './_ui/popover.js';
 import { ThemeContext, ThemeSwitch } from './_ui/theme-switch.js';
+import { paintDocument } from '../_bento/document-color.js';
 import { SignOutButton } from './sign-out-button.js';
 import { THEME_COOKIE, type Theme } from './theme.js';
 import styles from './app-frame.module.css';
@@ -201,32 +202,16 @@ export function AppFrame({
   useEffect(() => {
     const frame = frameRef.current;
     if (!frame) return;
-    const root = document.documentElement;
-    const before = root.style.backgroundColor;
-    const bodyBefore = document.body.style.backgroundColor;
-    let meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const added = !meta;
-    if (!meta) {
-      meta = document.createElement('meta');
-      meta.name = 'theme-color';
-      document.head.append(meta);
-    }
-    const metaBefore = meta.content;
-    const paint = () => {
-      const ground = getComputedStyle(frame).backgroundColor;
-      root.style.backgroundColor = ground;
-      document.body.style.backgroundColor = ground;
-      meta.content = ground;
+    let undo = paintDocument(getComputedStyle(frame).backgroundColor);
+    const repaint = () => {
+      undo();
+      undo = paintDocument(getComputedStyle(frame).backgroundColor);
     };
-    paint();
     const device = window.matchMedia('(prefers-color-scheme: dark)');
-    device.addEventListener('change', paint);
+    device.addEventListener('change', repaint);
     return () => {
-      device.removeEventListener('change', paint);
-      root.style.backgroundColor = before;
-      document.body.style.backgroundColor = bodyBefore;
-      if (added) meta.remove();
-      else meta.content = metaBefore;
+      device.removeEventListener('change', repaint);
+      undo();
     };
   }, [theme]);
 
