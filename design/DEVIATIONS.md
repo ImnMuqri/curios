@@ -287,3 +287,5 @@ a row **Resolved** rather than deleting it.
 | 278 | Settings, Billing: button corners | The stills draw pill buttons (Copy, Sign out, Add password) | 10px | The handoff's 10px rule | Accepted |
 | 279 | Billing: payments "Receipt" column; line above "Included in Business" | Receipt links; two hairlines | No receipt column (as before); one hairline | No receipt URL is stored, CHIP emails it; the doubled line read as a mistake | Accepted |
 | 280 | Facts & sources: empty Ask your page | "Your page answers only from the facts on the left." | "…only from the facts here." | Under 1200px the panel sits under the facts, not beside them; owner, 29 Oct 2026 | Accepted |
+| 281 | Dashboard v2 top bar: Help | A Help text button | Help opens an email to support@curios.my | There is no help centre; that is the support address the alerts and legal pages already give | When a help page exists |
+| 282 | Dashboard v2 top bar: dark mode (account forward) | One borderless moon icon | Match device, Light and Dark as three borderless buttons, the chosen one on white | Owner, 29 Oct 2026: all three in the bar (row 259) | Accepted |
