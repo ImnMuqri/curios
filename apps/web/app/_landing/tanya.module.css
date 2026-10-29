@@ -963,6 +963,43 @@
   }
 }
 
+/*
+ * A phone. The rows' fixed 117px and 30px floor only fit one line beside the address, so "Creators &
+ * coaches" wrapped over the next row and pushed its address off the edge: here each row grows with
+ * its name, a step smaller, the address under it. The page and its two bubbles reach 174px either
+ * side of the middle, wider than a phone, so the stage keeps a 400px room and is zoomed to fit, as
+ * the hero's deck is.
+ */
+@media (max-width: 560px) {
+  .fmLabel {
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 2px;
+    height: auto;
+    min-height: 92px;
+    padding: 18px 8px;
+    font-size: 1.625rem;
+    line-height: 1.15;
+  }
+
+  .fmLabel small {
+    font-size: 12px;
+  }
+
+  .whoStage {
+    width: 400px;
+    margin: 0 auto;
+    zoom: 0.84;
+  }
+}
+
+@media (max-width: 380px) {
+  .whoStage {
+    zoom: 0.68;
+  }
+}
+
 /* ---- How it works: three rooms that slide sideways as the page scrolls ---- */
 
 .how {
@@ -1421,8 +1458,13 @@
  * the scroll into the track's position, the rail's fill and the current dot.
  * Laid out by the media query, not by script, so the page does not jump when
  * JavaScript arrives; with reduced motion the rooms are a row to swipe.
+ *
+ * Not on a phone. A room there is taller than the screen (about 1,020px of
+ * frame at 375 wide), so a pinned frame cut off its heading or its foot
+ * whichever way it was centred; a phone gets the row to swipe as well, each
+ * room whole (How.tsx moves the dots with the swipe).
  */
-@media (prefers-reduced-motion: no-preference) {
+@media (prefers-reduced-motion: no-preference) and (min-width: 561px) {
   .how {
     height: 2600px;
   }
