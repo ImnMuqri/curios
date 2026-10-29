@@ -639,3 +639,15 @@ Opens from the account button in the top bar (boards use `<details class="tb-acc
 - Plan card (`#f5f6fa`, 8px radius): "Conversations this month" with used / limit and a blue bar (same numbers as the Conversations meter in Billing; it resets on the 1st), then "{plan} · paid until {date}" and a **Manage** link to Billing. There is no auto-renew, so say "paid until", never "renews".
 - Rows: Settings, Help & support, divider, **Sign out** as a red row (`#c4372d`, hover `#fdf1f0`), not a boxed button.
 - Billing is no longer its own row, because the plan card's Manage link goes there.
+
+### Phone: floating pill menu at the bottom (29 Oct 2026)
+
+At ≤760px the old row of icons at the top is gone. CSS is in the block marked `/* phone: floating pill menu at the bottom (29 Oct) */` in all ten dashboard boards. Screens: `design/screens/*.phone.jpg`, plus `Phone-more-sheet.phone.jpg`.
+
+- **Top bar (56px, `#edeff4`):** logo on the left; bell with count and the round avatar on the right. The avatar opens the same account popover as desktop.
+- **Bottom pill:** fixed, 12px from the sides and 14px from the bottom (plus safe area), 64px tall, fully rounded, white, 1px `#e3e6ec` ring and a soft shadow. Five tabs, each with an icon and an 11px label: **Page** (My Curios), **Store**, **Inbox**, **Review**, **More**.
+- **Selected tab:** just a blue (`#2340c8`) icon and label. No background highlight.
+- **Counts:** blue pill badges. Inbox shows Orders + Questions + Leads combined; Review shows facts to check.
+- **More:** opens a sheet above the pill with Facts & sources (Knowledge), plus Billing and Settings (Account). The page behind is dimmed (`rgba(25,31,44,.35)`). Close it on tap outside, Esc or picking a page. The current page shows blue in the sheet, and More is blue while you're on one of those pages.
+- **Inbox:** on phone, Orders, Questions and Leads show a tab row (`.v2itab`) at the top with their own counts, so the owner switches between them there.
+- Content gets 96px of bottom padding so the pill never covers the last row.
