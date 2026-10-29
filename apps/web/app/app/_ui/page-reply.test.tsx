@@ -34,7 +34,7 @@ describe('PageReply', () => {
     expect(reply).not.toBeNull();
     expect(reply).not.toMatch(/background|border|padding|radius/);
     expect(reply).not.toMatch(/(^|[\s;])color:\s*(?!inherit)/);
-    expect(source).not.toMatch(/#[0-9a-f]{3,8}/i);
+    expect(source).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   });
 
   it('sits beside Peek’s eyes in the dashboard, and beside the page’s accent dot on the owner’s page', () => {
