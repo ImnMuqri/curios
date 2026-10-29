@@ -54,7 +54,7 @@ export default async function KnowledgePage({
 
   return (
     <>
-      <PageHead title="Facts & sources" note="Everything your page knows, and where it learned it" />
+      <PageHead title="Facts & sources" summary="Everything your page knows, and where it learned it" />
       <div className={styles.kb}>
         <div className={styles.kmain}>
           <KnowledgeTabs

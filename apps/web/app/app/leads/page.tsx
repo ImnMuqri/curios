@@ -51,7 +51,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
     // a list here. Say why, and where that changes.
     return (
       <>
-        <PageHead title="Leads" note={`Numbers visitors left in the chat · kept for ${LEAD_RETENTION_MONTHS} months`} />
+        <PageHead title="Leads" summary={`Numbers visitors left in the chat · kept for ${LEAD_RETENTION_MONTHS} months`} />
         <div className={panel.body}>
           <Callout tone="info">
             Personal pages don&apos;t collect phone numbers. Visitors can still chat with your page. If you start selling, you can make this a business page from{' '}

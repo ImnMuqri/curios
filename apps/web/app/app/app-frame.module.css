@@ -1,11 +1,13 @@
 /*
- * The dashboard's frame: a pale sidebar of grouped modules on a white
- * workspace, hairline dividers, IBM Plex Sans for everything read, and biru
- * spent only where you act or where you are. The public page keeps its own fonts.
+ * The dashboard's frame (Dashboard v2, 29 Oct 2026): a soft grey ground with the sidebar and the
+ * 64px top bar sitting on it, no panel and no border, and the screen on one white sheet whose
+ * top-left corner alone is rounded (16px). IBM Plex Sans for everything read, and biru spent only
+ * where you act or where you are. The public page keeps its own fonts.
  *
- * Under 1100px the sidebar is an icon rail; on a phone it is a row of icons
- * across the top. The screens inside follow the width of their own column
- * (container queries), not the window, because the sidebar takes space.
+ * Corners are 10px on every box, field and button; 7-8px for what sits inside a 10px box. Under
+ * 1100px the sidebar is an icon rail; on a phone it is a row of icons across the top and the top
+ * bar goes. The screens inside follow the width of their own column (container queries), not the
+ * window, because the sidebar takes space.
  */
 .frame {
   --font-display: var(--font-bricolage), system-ui, sans-serif;
@@ -13,11 +15,13 @@
   /* Biru, a step deeper: text on biru-muda, 11:1. */
   --biru-deep: color-mix(in oklch, var(--biru) 72%, var(--ink));
   --soft: var(--ink-soft);
+  --radius: 10px;
+  --radius-inner: 7px;
 
   /* The shared components, in the dashboard's voice (see the hooks in @curios/ui). */
   --button-height: 38px;
   --button-padding: 0 16px;
-  --button-radius: 999px;
+  --button-radius: var(--radius);
   --button-size: var(--text-base);
   --button-weight: 500;
   --button-secondary-bg: var(--card);
@@ -30,13 +34,14 @@
   --field-label-color: var(--ink);
   --field-label-gap: 8px;
   --field-size: var(--text-base);
-  --callout-radius: 12px;
+  --field-radius: var(--radius);
+  --callout-radius: var(--radius);
   --callout-size: var(--text-base);
   --callout-info-bg: var(--card);
   --callout-info-edge: inset 0 0 0 1px var(--line);
   display: flex;
   min-height: 100vh;
-  background: var(--card);
+  background: var(--ground);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: var(--text-base);
@@ -61,11 +66,9 @@
   display: flex;
   flex-direction: column;
   flex: none;
-  width: 232px;
+  width: 248px;
   height: 100vh;
-  padding: 18px 12px 14px;
-  background: var(--paper);
-  border-right: 1px solid var(--line);
+  padding: 18px 14px 16px 16px;
   overflow-y: auto;
 }
 
@@ -73,9 +76,68 @@
   --l-wordmark: 30px;
   display: inline-flex;
   align-self: flex-start;
-  padding: 6px 10px 20px;
+  padding: 4px 8px 16px;
   color: var(--ink);
   text-decoration: none;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  height: 38px;
+  margin: 0 0 6px;
+  padding: 0 8px 0 12px;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--faint);
+  cursor: text;
+}
+
+.search:focus-within {
+  box-shadow: inset 0 0 0 1.5px var(--biru);
+}
+
+.searchIcon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+}
+
+.search input::placeholder {
+  color: var(--faint);
+}
+
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search kbd {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 6px;
+  background: var(--surface);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--muted);
+  font: 600 11px var(--font-body);
 }
 
 .nav {
@@ -84,20 +146,24 @@
 }
 
 .groupTitle {
-  margin: 14px 10px 6px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  margin: 14px 10px 4px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--faint);
+}
+
+.noMatch {
+  margin: 14px 10px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
 .item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 10px;
-  height: 34px;
+  gap: 12px;
+  height: 36px;
   padding: 0 10px;
   border-radius: 8px;
   color: var(--soft);
@@ -107,23 +173,23 @@
 }
 
 .item:hover {
-  background: var(--surface);
+  background: color-mix(in srgb, var(--card) 70%, transparent);
   color: var(--ink);
 }
 
 .item[aria-current='page'] {
-  background: var(--biru-muda);
-  color: var(--biru-deep);
+  background: var(--nav-on);
+  color: var(--biru);
   font-weight: 600;
 }
 
 .icon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   flex: none;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.7;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -144,20 +210,55 @@
   background: var(--merah);
 }
 
-.who {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* The plan, where the account block was: its name, how it stands, and a bar. */
+.plan {
+  display: block;
   margin-top: auto;
-  padding: 10px;
-  border-top: 1px solid var(--line);
+  padding: 12px 10px 4px;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.plan b {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.plan span {
+  display: block;
+}
+
+.planBar {
+  height: 5px;
+  margin-top: 9px;
+  border-radius: 3px;
+  background: var(--edge);
+  overflow: hidden;
+}
+
+.planBar i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--biru);
+}
+
+.plan:focus-visible,
+.item:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: -2px;
 }
 
 .avatar {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 28px;
+  height: 28px;
   flex: none;
   border-radius: 50%;
   object-fit: cover;
@@ -167,32 +268,205 @@
   font-weight: 700;
 }
 
-.whoText {
-  min-width: 0;
+/* Only on a phone, at the end of the row of icons. */
+.phoneAccount {
+  display: none;
 }
 
-.whoText b {
-  display: block;
-  overflow: hidden;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
+/* ---- The top bar and the sheet ---- */
 
-.whoText span {
-  display: block;
-  font-size: 12px;
-  color: var(--muted);
-}
-
-/* ---- The screen ---- */
-
-.main {
+.column {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+  height: 64px;
+  padding: 0 24px 0 32px;
+}
+
+.crumb {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 14px;
+  color: var(--muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.crumb i {
+  margin: 0 8px;
+  font-style: normal;
+  color: var(--faint);
+}
+
+.crumb b {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.iconButton,
+.account,
+.phoneAccountButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 38px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+
+.iconButton {
+  width: 38px;
+}
+
+.iconButton:hover,
+.account:hover,
+.iconButton[aria-expanded='true'],
+.account[aria-expanded='true'] {
+  box-shadow: inset 0 0 0 1px var(--ghost-line);
+}
+
+.iconButton:focus-visible,
+.account:focus-visible,
+.phoneAccountButton:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 2px;
+}
+
+.topIcon {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: var(--soft);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.unread {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--merah);
+  box-shadow: 0 0 0 2px var(--card);
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px 0 5px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.account .avatar {
+  border-radius: 8px;
+}
+
+.accountName {
+  max-width: 180px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.sheet {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--card);
+  border-radius: 16px 0 0 0;
+  box-shadow: inset 1px 1px 0 var(--line);
+}
+
+/* ---- The top bar's menus (Popover) ---- */
+
+.menuItem,
+.menuAlert {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--ink);
+  font-size: 13.5px;
+  text-decoration: none;
+}
+
+a.menuItem:hover,
+a.menuAlert:hover {
+  background: var(--surface);
+}
+
+.menuAlert {
+  margin: 0;
+}
+
+.menuAlert b {
+  display: block;
+  font-weight: 600;
+}
+
+.menuAlert span {
+  display: block;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.menuAlert[data-tone='stop'] b {
+  color: var(--merah-deep);
+}
+
+.menuEmpty,
+.menuWho {
+  margin: 0;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.menuWho {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.menuTheme {
+  margin: 2px 4px 4px;
+}
+
+.menuSignOut {
+  margin-top: 4px;
+  padding: 6px 4px 2px;
+  border-top: 1px solid var(--line);
 }
 
 /* ---- Icon rail ---- */
@@ -207,6 +481,11 @@
     --l-wordmark: 16px;
     align-self: center;
     padding: 4px 0 18px;
+  }
+
+  .search,
+  .plan {
+    display: none;
   }
 
   .groupTitle {
@@ -225,11 +504,6 @@
     justify-content: center;
     gap: 0;
     padding: 0;
-  }
-
-  .item .icon {
-    width: 18px;
-    height: 18px;
   }
 
   .label {
@@ -264,17 +538,12 @@
     margin: 0;
   }
 
-  .who {
-    justify-content: center;
-    padding: 10px 0;
-  }
-
-  .whoText {
-    display: none;
+  .top {
+    padding: 0 16px 0 24px;
   }
 }
 
-/* ---- A phone: a row of icons across the top ---- */
+/* ---- A phone: a row of icons across the top, no top bar ---- */
 
 @media (max-width: 760px) {
   .frame {
@@ -291,7 +560,7 @@
     padding: 8px 10px;
     overflow-x: auto;
     overflow-y: hidden;
-    border-right: 0;
+    background: var(--card);
     border-bottom: 1px solid var(--line);
     scrollbar-width: none;
   }
@@ -333,8 +602,31 @@
     height: 40px;
   }
 
-  .who {
+  .phoneAccount {
+    display: block;
+    flex: none;
+    margin-left: auto;
+    padding-left: 6px;
+  }
+
+  .phoneAccountButton {
+    width: 40px;
+    height: 40px;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .top {
     display: none;
+  }
+
+  .column {
+    min-height: 0;
+  }
+
+  .sheet {
+    border-radius: 0;
+    box-shadow: none;
   }
 }
 
@@ -401,6 +693,10 @@
     --ghost-ink: var(--dark-ghost-ink);
     --soft-shadow: var(--dark-soft-shadow);
     --scrim: var(--dark-scrim);
+    --ground: var(--dark-ground);
+    --nav-on: var(--dark-nav-on);
+    --pick: var(--dark-pick);
+    --chat: var(--dark-chat);
   }
 }
 
@@ -455,6 +751,10 @@
   --ghost-ink: var(--dark-ghost-ink);
   --soft-shadow: var(--dark-soft-shadow);
   --scrim: var(--dark-scrim);
+  --ground: var(--dark-ground);
+  --nav-on: var(--dark-nav-on);
+  --pick: var(--dark-pick);
+  --chat: var(--dark-chat);
 }
 
 /* Unconditional: in a light frame these are the values a preview has anyway. */
@@ -508,4 +808,8 @@
   --ghost-ink: var(--light-ghost-ink);
   --soft-shadow: var(--light-soft-shadow);
   --scrim: var(--light-scrim);
+  --ground: var(--light-ground);
+  --nav-on: var(--light-nav-on);
+  --pick: var(--light-pick);
+  --chat: var(--light-chat);
 }

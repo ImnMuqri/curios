@@ -12,7 +12,7 @@ import { PreviewFrame } from '../_ui/preview-frame.js';
 import { SaveState } from '../_ui/save-state.js';
 import { SaveStatus, useSaveStatus, type SaveTrack } from '../_ui/save-status.js';
 import { SectionHead } from '../_ui/section-head.js';
-import { UnderlineTabs } from '../_ui/underline-tabs.js';
+import { PillTabs } from '../_ui/pill-tabs.js';
 import ui from '../_ui/editor.module.css';
 import panel from '../panel.module.css';
 import { DeliveryTab } from './delivery-tab.js';
@@ -324,11 +324,10 @@ export function StoreEditor({
             ))}
           </ul>
 
-          <UnderlineTabs
+          <PillTabs
             label="Store"
             tabs={TABS}
             selected={tab}
-            width={150}
             onSelect={showTab}
           />
 

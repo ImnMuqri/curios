@@ -194,7 +194,7 @@ export default async function BillingPage({
 
   return (
     <>
-      <PageHead title="Billing" note="Your plan, what this month has used, and what you have paid" />
+      <PageHead title="Billing" summary="Your plan, what this month has used, and what you have paid" />
       {paidNow ? <PaidToast until={shortDate(state.paidUntil, true)} /> : null}
       <div className={styles.bl}>
         {[banner, cardBanner].map((shown) =>

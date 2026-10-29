@@ -9,7 +9,7 @@ import { countNavBadges, getConversationUsage, getOwnerPage, getSettings } from 
 import { avatarUrl } from '../../lib/avatar-url.js';
 import { AppFrame } from './app-frame.js';
 import { alertsFor, billingNeedsYou } from './alerts.js';
-import { planLabel } from './plan-label.js';
+import { planBlock } from './plan-label.js';
 import { resolveOwner } from './session.js';
 import { parseTheme, THEME_COOKIE } from './theme.js';
 
@@ -50,7 +50,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // not be remounted when the server side re-reads.
   if (!page) {
     return (
-      <AppFrame bare displayName="" avatarUrl={null} planLabel="" badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL">
+      <AppFrame bare displayName="" avatarUrl={null} plan={{ name: '', note: '', fill: null }} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="PERSONAL">
         {children}
       </AppFrame>
     );
@@ -73,7 +73,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     <AppFrame
       displayName={page.displayName}
       avatarUrl={avatarUrl(page.avatarKey)}
-      planLabel={planLabel({ ...page, now }, freeLeads)}
+      plan={planBlock({ ...page, now }, freeLeads)}
       badges={badges}
       mode={page.mode}
       alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, banner, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}

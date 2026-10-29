@@ -1,13 +1,25 @@
-/* The board's .pv-q / .bq / .u: the panel's own text at 14%, 16px corners. */
+/* The boards' v2 .bq / .u: a card bubble on a hairline, 10px corners. */
 .question {
   display: block;
   align-self: flex-end;
   max-width: 88%;
   padding: 8px 12px;
-  border-radius: 16px;
-  background: color-mix(in srgb, currentColor 14%, transparent);
-  font-size: 13px;
-  line-height: 1.4;
+  border-radius: 10px;
+  background: var(--card);
+  box-shadow: 0 0 0 1px var(--line);
+  color: var(--ink);
+  font-size: 13.5px;
+  line-height: 1.45;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+/* The public chat's bubble (the phone in My Curios): the panel's own text at 14%, 16px corners. */
+.question[data-on-page] {
+  border-radius: 16px;
+  background: color-mix(in srgb, currentColor 14%, transparent);
+  box-shadow: none;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.4;
 }

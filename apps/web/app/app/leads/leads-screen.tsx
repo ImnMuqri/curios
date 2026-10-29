@@ -94,7 +94,7 @@ export function LeadsScreen({
 
   return (
     <>
-      <PageHead title="Leads" note={`Numbers visitors left in the chat · kept for ${keptMonths} months`} />
+      <PageHead title="Leads" summary={`Numbers visitors left in the chat · kept for ${keptMonths} months`} />
 
       <ul className={inbox.stats} aria-label="Your leads">
         <li className={inbox.kpi}>

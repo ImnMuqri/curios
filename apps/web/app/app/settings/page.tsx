@@ -49,7 +49,7 @@ export default async function SettingsPage({
   // handlers; a Server Component may not pass a function here.
   return (
     <>
-      <PageHead title="Settings" note={<>Signed in as {view.email}</>} />
+      <PageHead title="Settings" summary={<>Signed in as {view.email}</>} />
       <div className={styles.wrap}>
         {banner ? (
           <p className={styles.banner} data-tone={banner.kind === 'error' ? 'error' : undefined} role={banner.kind === 'error' ? 'alert' : 'status'}>

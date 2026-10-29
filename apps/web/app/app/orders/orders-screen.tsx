@@ -104,7 +104,7 @@ export function OrdersScreen({
 
   return (
     <>
-      <PageHead title="Orders" note={`Newest first · kept for ${keptMonths} months`}>
+      <PageHead title="Orders" summary={`Newest first · kept for ${keptMonths} months`}>
         <a className={panel.secondaryLink} href={shopUrl} target="_blank" rel="noreferrer">
           See your shop
         </a>

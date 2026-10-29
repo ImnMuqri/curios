@@ -1,68 +1,62 @@
+/* The boards' v2 .head: title in Bricolage 30px, a summary sentence under it, actions to the right. */
 .head {
   position: relative;
   display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 28px 40px 20px;
+}
+
+.text {
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.titleRow {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
-  min-height: 64px;
-  padding: 0 32px;
-  border-bottom: 1px solid var(--line);
+  gap: 12px 20px;
 }
 
 .title {
   margin: 0;
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-family: var(--font-display);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
-.note {
-  margin: 0 0 0 auto;
-  font-size: 13px;
+.summary {
+  margin: 8px 0 0;
+  font-size: 15px;
   color: var(--muted);
-  text-align: right;
+}
+
+.summary b {
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
-}
-
-.note + .actions {
-  margin-left: 0;
-}
-
-/* Last, at the far end: pushed there itself only when no note or actions did it already. */
-.theme {
-  margin-left: auto;
-}
-
-.note ~ .theme,
-.actions ~ .theme {
-  margin-left: 0;
 }
 
 @media (max-width: 760px) {
   .head {
-    flex-wrap: wrap;
-    gap: 8px 10px;
-    min-height: 56px;
-    padding: 10px 16px;
+    padding: 20px 16px 14px;
   }
 
-  .note {
-    display: none;
+  .title {
+    font-size: 24px;
   }
 
-  /* The actions flow after the title one by one, wrapping as they need to. */
-  .actions {
-    display: contents;
-  }
-
-  /* With no note to push it and the actions flowing, the switch keeps to the right of its line. */
-  .note ~ .theme,
-  .actions ~ .theme {
-    margin-left: auto;
+  .summary {
+    font-size: 14px;
   }
 }

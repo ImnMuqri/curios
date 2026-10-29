@@ -126,7 +126,7 @@ export function QuestionsScreen({
 
   return (
     <>
-      <PageHead title="Questions" note="What visitors ask your page, grouped by topic">
+      <PageHead title="Questions" summary="What visitors ask your page, grouped by topic">
         {publishesFaq ? (
           <a className={panel.secondaryLink} href={`/${handle}/faq`} target="_blank" rel="noreferrer">
             See your FAQ

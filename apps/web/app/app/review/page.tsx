@@ -55,7 +55,7 @@ export default async function ReviewPage() {
   // button is offered with facts present and absent alike.
   return (
     <>
-      <PageHead title="Review" note="Facts found in your sources. Accept, edit or reject each one.">
+      <PageHead title="Review" summary="Facts found in your sources. Accept, edit or reject each one.">
         {/* A shop, a LinkedIn bio, a second site: sources can arrive at any
             time, and each one's facts join this same queue. */}
         <a className={panel.secondaryLink} href="/app/knowledge?tab=sources&add=1">

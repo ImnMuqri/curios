@@ -12,7 +12,7 @@ import { PageReply } from '../_ui/page-reply.js';
 import { VisitorQuestion } from '../_ui/visitor-question.js';
 import { PreviewFrame } from '../_ui/preview-frame.js';
 import { SaveStatus, useSaveStatus } from '../_ui/save-status.js';
-import { UnderlineTabs } from '../_ui/underline-tabs.js';
+import { PillTabs } from '../_ui/pill-tabs.js';
 import panel from '../panel.module.css';
 import { AppearanceEditor } from './appearance-editor.js';
 import { CoverEditor } from './cover-editor.js';
@@ -175,7 +175,7 @@ export function MyCuriosEditor({
 
       <div className={ui.body}>
         <div className={ui.edit}>
-          <UnderlineTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} />
+          <PillTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} />
 
           <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden={tab !== 'profile'} className={ui.panel}>
             <CoverEditor
@@ -311,11 +311,11 @@ function PreviewAsk({ question, askPage, accent, name }: { question: string; ask
 
   return (
     <span className={styles.pvChat} style={{ '--accent': accent } as CSSProperties}>
-      <VisitorQuestion>{question}</VisitorQuestion>
+      <VisitorQuestion onPage>{question}</VisitorQuestion>
       {state.kind === 'answered' ? (
-        <PageReply name={name}>{state.reply}</PageReply>
+        <PageReply name={name} onPage>{state.reply}</PageReply>
       ) : state.kind === 'asking' ? (
-        <PageReply name={name} label="Inquiring">
+        <PageReply name={name} label="Inquiring" onPage>
           <Thinking />
         </PageReply>
       ) : (
