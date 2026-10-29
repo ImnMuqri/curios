@@ -10,7 +10,7 @@ let accountId = '';
 
 beforeAll(async () => {
   const account = await write.account.create({
-    data: { email: `sess-${randomUUID()}@example.com` },
+    data: { email: `sess-${randomUUID()}@example.com`, name: 'Lina binti Kamal' },
     select: { id: true },
   });
   accountId = account.id;
@@ -25,10 +25,10 @@ async function aSession(expiresAt: Date): Promise<string> {
 }
 
 describe('getOwnerSession', () => {
-  it('resolves a live session to its account', async () => {
+  it("resolves a live session to its account, with the account's own name", async () => {
     const value = await aSession(new Date(Date.now() + 60_000));
 
-    expect(await getOwnerSession(value)).toEqual({ accountId });
+    expect(await getOwnerSession(value)).toEqual({ accountId, name: 'Lina binti Kamal' });
   });
 
   it('refuses a session past its absolute expiry', async () => {

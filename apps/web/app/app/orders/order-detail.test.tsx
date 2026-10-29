@@ -224,32 +224,13 @@ describe('OrderDetail, the receipt', () => {
     expect(view).toHaveFocus();
   });
 
-  // Nothing reads the receipt yet: the rows say what it should show and where that comes from, with no tick.
-  it('lists what the receipt should show: the order total, and the bank account to pay', () => {
-    render(
-      <OrderDetail
-        order={mira}
-        now={now}
-        pickupNote={null}
-        payTo={{ name: 'Maybank', accountName: 'Lina binti Kamal' }}
-        move={vi.fn()}
-        act={vi.fn()}
-        say={vi.fn()}
-        onChanged={vi.fn()}
-      />,
-    );
-    const amount = screen.getByText('Amount').parentElement!;
-    expect(amount).toHaveTextContent('AmountRM235.00Order total');
-    const payTo = screen.getByText('Paid to').parentElement!;
-    expect(payTo).toHaveTextContent('Paid toLina binti KamalMaybank');
-    expect(screen.queryByText('Matches')).toBeNull();
-    expect(screen.queryByText('Reference')).toBeNull();
-  });
-
-  it('leaves out Paid to when the shop has no bank account, only a QR', () => {
+  // Nothing reads the receipt yet, so nothing here claims to have checked it: the file and the note only.
+  it('shows the receipt file and the reminder to check the bank, with no amount, payee or reference rows', () => {
     show(mira);
-    expect(screen.getByText('Amount')).toBeInTheDocument();
+    expect(screen.queryByText('Amount')).toBeNull();
     expect(screen.queryByText('Paid to')).toBeNull();
+    expect(screen.queryByText('Reference')).toBeNull();
+    expect(screen.queryByText('Matches')).toBeNull();
   });
 
   it('opens a PDF receipt in its own tab instead of as a picture', () => {

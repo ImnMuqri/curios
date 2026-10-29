@@ -75,7 +75,6 @@ export function OrdersScreen({
   shopUrl,
   publicUrl,
   pickupNote,
-  payTo = null,
   move,
   act,
   onChanged,
@@ -93,8 +92,6 @@ export function OrdersScreen({
   /** The shop's full address, for "Copy your link". */
   publicUrl: string;
   pickupNote: string | null;
-  /** The bank account the order page tells customers to pay, for the receipt's Paid to. */
-  payTo?: { name: string | null; accountName: string } | null;
   move: OrderMove;
   act: DigitalAct;
   onChanged: () => void;
@@ -261,7 +258,7 @@ export function OrdersScreen({
             <p className={inbox.listNote}>Newest first · kept for {keptMonths} months</p>
           </div>
           <div className={inbox.detail}>
-            {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} payTo={payTo} move={move} act={act} say={say} onChanged={onChanged} /> : null}
+            {chosen ? <OrderDetail key={chosen.id} order={chosen} now={now} pickupNote={pickupNote} move={move} act={act} say={say} onChanged={onChanged} /> : null}
           </div>
         </div>
       )}

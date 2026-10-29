@@ -138,7 +138,7 @@ export function AskPanel({
           <div className={styles.tempty}>
             <PeekWhistling />
             <b>Nothing asked yet</b>
-            <span>Ask the way a customer would. Your page answers only from the facts on the left.</span>
+            <span>Ask the way a customer would. Your page answers only from the facts here.</span>
           </div>
         ) : null}
         {turns.map((turn, i) =>

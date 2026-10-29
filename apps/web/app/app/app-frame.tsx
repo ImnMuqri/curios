@@ -56,9 +56,6 @@ const GROUPS: { title: string; items: Item[] }[] = [
 
 const ICON = {
   search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM20 20l-3.5-3.5',
-  system: 'M4 5h16v11H4zM9 20h6M12 16v4',
-  light: 'M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4',
-  dark: 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z',
   bell: 'M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4',
   chevron: 'M7 10l5 5 5-5',
 } as const;
@@ -77,7 +74,7 @@ export type PlanBlock = { name: string; note: string; fill: number | null };
 /**
  * The dashboard's frame (Dashboard v2, 29 Oct 2026): a sidebar on a grey ground -- search, the
  * grouped modules with what is waiting in each, and the plan -- a 64px top bar on the same grey
- * (where you are, the theme, what needs you, the account), and the screen on one white sheet
+ * (where you are, the theme's three choices, what needs you, the account), and the screen on one white sheet
  * whose top-left corner alone is rounded. Each screen draws its own header (PageHead).
  *
  * The sidebar narrows to an icon rail under 1100px and becomes a scrolling row of icons across
@@ -94,6 +91,7 @@ export type PlanBlock = { name: string; note: string; fill: number | null };
  */
 export function AppFrame({
   displayName,
+  ownerName = null,
   avatarUrl,
   plan,
   badges,
@@ -104,7 +102,10 @@ export function AppFrame({
   theme: savedTheme = 'system',
   children,
 }: {
+  /** The page's name: the breadcrumb starts with it. */
   displayName: string;
+  /** The owner's own name, on the account button (the boards' "Lina binti Kamal"); the page's name when the account has none. */
+  ownerName?: string | null;
   avatarUrl: string | null;
   /** The foot of the sidebar: "Business plan", "18 days left, until 14 Nov", and its bar. */
   plan: PlanBlock;
@@ -155,7 +156,8 @@ export function AppFrame({
   // the screen in the same place, so claiming the page mid-onboarding does
   // not remount it and lose where the owner is.
   if (bare || pathname.startsWith('/app/onboarding')) return <>{children}</>;
-  const initials = displayName.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
+  const who = ownerName?.trim() || displayName;
+  const initials = who.split(/\s+/).map((part) => part[0] ?? '').join('').slice(0, 2).toUpperCase();
   const business = (item: { business?: true }) => !item.business || mode === 'BUSINESS';
   const needle = query.trim().toLowerCase();
   const groups = GROUPS.map((group) => ({
@@ -266,7 +268,7 @@ export function AppFrame({
           {/* A phone has no top bar: the account, and the theme with it, end the row of icons. */}
           <div className={styles.phoneAccount}>
             <Popover label="Account and theme" buttonClassName={styles.phoneAccountButton} button={avatar}>
-              <p className={styles.menuWho}>{displayName}</p>
+              <p className={styles.menuWho}>{who}</p>
               <ThemeSwitch className={styles.menuTheme} />
               {accountLinks}
             </Popover>
@@ -284,9 +286,7 @@ export function AppFrame({
                 </>
               ) : null}
             </p>
-            <Popover label="Theme" buttonClassName={styles.iconButton} button={svg(ICON[theme], styles.topIcon)}>
-              <ThemeSwitch className={styles.menuTheme} />
-            </Popover>
+            <ThemeSwitch className={styles.topTheme} />
             <Popover
               label={news > 0 ? `Notifications, ${news} new` : 'Notifications'}
               buttonClassName={styles.iconButton}
@@ -323,7 +323,7 @@ export function AppFrame({
               button={
                 <>
                   {avatar}
-                  <span className={styles.accountName}>{displayName}</span>
+                  <span className={styles.accountName}>{who}</span>
                   {svg(ICON.chevron, styles.chevron)}
                 </>
               }

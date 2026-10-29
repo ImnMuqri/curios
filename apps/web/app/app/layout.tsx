@@ -72,6 +72,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AppFrame
       displayName={page.displayName}
+      ownerName={owner.name}
       avatarUrl={avatarUrl(page.avatarKey)}
       plan={planBlock({ ...page, now }, freeLeads)}
       badges={badges}

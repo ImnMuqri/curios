@@ -110,6 +110,16 @@ describe('AppFrame', () => {
     expect(container.querySelector('aside a[href="/app/billing"] i')).toHaveStyle({ width: '60%' });
   });
 
+  it("puts the owner's own name on the account button when the account has one, the page's name in the breadcrumb", () => {
+    const { container } = render(
+      <AppFrame displayName="Kek Lina" ownerName="Lina binti Kamal" avatarUrl={null} plan={PLAN} badges={{ review: 0, questions: 0, leads: 0, orders: 0 }} mode="BUSINESS">
+        <p>content</p>
+      </AppFrame>,
+    );
+    expect(screen.getByRole('button', { name: 'Account' })).toHaveTextContent('LBLina binti Kamal');
+    expect(container.querySelector('header p')).toHaveTextContent('Kek Lina/');
+  });
+
   it("shows the owner's picture in place of initials when there is one", () => {
     const { container } = frame({ avatarUrl: 'https://cdn.example/a.webp' });
     expect(container.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/a.webp');
@@ -135,11 +145,7 @@ describe('the theme switch', () => {
       </AppFrame>,
     );
   const frameOf = (container: HTMLElement) => container.firstElementChild as HTMLElement;
-  const option = (name: string) => {
-    const opener = screen.getByRole('button', { name: 'Theme' });
-    if (opener.getAttribute('aria-expanded') !== 'true') fireEvent.click(opener);
-    return within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name });
-  };
+  const option = (name: string) => within(screen.getByRole('group', { name: 'Theme' })).getByRole('button', { name });
 
   afterEach(() => {
     document.cookie = `${THEME_COOKIE}=; Path=/app; Max-Age=0`;
@@ -170,11 +176,12 @@ describe('the theme switch', () => {
     cookie.mockRestore();
   });
 
-  it('sits in the top bar behind a button, not in the header', () => {
-    themed();
-    expect(screen.queryByRole('group', { name: 'Theme' })).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Theme' }));
-    expect(screen.getByRole('group', { name: 'Theme' })).toBeInTheDocument();
+  it('shows its three choices in the top bar, not behind a button or in the header', () => {
+    const { container } = themed();
+    expect(screen.queryByRole('button', { name: 'Theme' })).toBeNull();
+    const group = screen.getByRole('group', { name: 'Theme' });
+    expect(container.querySelector('header:not(main header)')).toContainElement(group);
+    expect(within(group).getAllByRole('button')).toHaveLength(3);
   });
 
   it('is not drawn outside the frame', () => {
@@ -256,8 +263,10 @@ describe('the top bar', () => {
 
   it('puts the theme in the account menu a phone reaches from its row of icons', () => {
     frame();
-    fireEvent.click(screen.getByRole('button', { name: 'Account and theme' }));
-    expect(screen.getByRole('group', { name: 'Theme' })).toBeInTheDocument();
+    const account = screen.getByRole('button', { name: 'Account and theme' });
+    fireEvent.click(account);
+    const menu = document.getElementById(account.getAttribute('aria-controls')!)!;
+    expect(within(menu).getByRole('group', { name: 'Theme' })).toBeInTheDocument();
   });
 });
 

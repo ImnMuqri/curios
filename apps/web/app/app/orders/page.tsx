@@ -74,7 +74,6 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       shopUrl={shopUrl}
       publicUrl={`${process.env.APP_URL ?? 'http://localhost:3000'}${shopUrl}`}
       pickupNote={store?.settings.pickupNote ?? null}
-      payTo={store?.settings.bankAccountName ? { name: store.settings.bankName, accountName: store.settings.bankAccountName } : null}
     />
   );
 }

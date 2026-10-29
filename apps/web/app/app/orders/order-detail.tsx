@@ -109,9 +109,6 @@ const RAYS = [0, 45, 90, 135, 180, 225, 270, 315];
 
 const EXT: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'application/pdf': 'pdf' };
 
-/** "RM25.00": to the sen, as a bank receipt says it. */
-const exact = (cents: number) => `RM${(cents / 100).toLocaleString('en-MY', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
 type Ask = { tone: 'biru' | 'grey' | 'hijau' | 'merah'; title: string; text: string; button: string; action: OrderAction; toast: string };
 
 /**
@@ -131,7 +128,6 @@ export function OrderDetail({
   order,
   now,
   pickupNote,
-  payTo = null,
   move,
   act,
   say,
@@ -141,8 +137,6 @@ export function OrderDetail({
   now: Date;
   /** Where pickup happens, as the Store settings say it. */
   pickupNote: string | null;
-  /** The bank account the order page shows to transfer to, as the Store settings say it; null with none (a QR only). */
-  payTo?: { name: string | null; accountName: string } | null;
   move: OrderMove;
   /** The owner's moves on what was sent by email: new links, a new code, another time, the email again. */
   act: DigitalAct;
@@ -542,21 +536,6 @@ export function OrderDetail({
                     </button>
                   ) : null}
                 </div>
-                {/* What the receipt should show, and where each comes from; nothing here has read the receipt. */}
-                <dl className={styles.receiptRows}>
-                  <div>
-                    <dt>Amount</dt>
-                    <dd>{exact(order.totalCents)}</dd>
-                    <dd>Order total</dd>
-                  </div>
-                  {payTo ? (
-                    <div>
-                      <dt>Paid to</dt>
-                      <dd>{payTo.accountName}</dd>
-                      <dd>{payTo.name ?? 'Your bank account'}</dd>
-                    </div>
-                  ) : null}
-                </dl>
                 {online ? null : <p className={styles.hint}>Receipts can be edited. Check {total} is in your bank before you mark it paid.</p>}
               </div>
             ) : !online ? (
