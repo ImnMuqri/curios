@@ -61,8 +61,10 @@ function Tick() {
 }
 
 /**
- * Style, background, accent and heading font, each drawn as what it does: a
- * small page in each background, the owner's name in each font. Each choice
+ * The look, in the Profile tab's last two sections (v3 board): Colours (the
+ * page background and the button colour as two rows of dots, the hex field
+ * kept), then Button style and font (the two styles as cards, the six heading
+ * fonts as a grid of tiles, each the owner's name in that font). Each choice
  * is a single click, so it saves at once rather than on a debounce. A typed
  * colour saves only once it is a valid hex; text on it is made readable by
  * the page, not by the owner.
@@ -144,147 +146,155 @@ export function AppearanceEditor({
 
   return (
     <>
-      <section className={ui.section} aria-labelledby="style-title">
-        <SectionHead id="style-title" title="Style" note="How your buttons look" />
-        <div className={styles.styleTiles} role="group" aria-labelledby="style-title">
-          {STYLES.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              className={ui.tile}
-              aria-pressed={style === option.value}
-              onClick={() => (style === option.value ? undefined : choose({ style: option.value }))}
-            >
-              <Tick />
-              <span className={styles.styleMini} data-style={option.value} style={{ '--accent': accentColor } as CSSProperties} aria-hidden="true">
-                <i />
-                <i />
-                <i />
-              </span>
-              <span className={ui.tileName}>
-                {option.name} <span>· {option.note}</span>
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className={ui.section} aria-labelledby="background-title">
-        <SectionHead id="background-title" title="Background" note="Behind your whole page" />
-        <div className={styles.backgroundTiles} role="group" aria-labelledby="background-title">
-          {PAGE_BACKGROUNDS.map((value) => {
-            const drawn = value === 'CUSTOM' && !look.backgroundColor ? 'PAPER' : value;
-            return (
-              <button
-                key={value}
-                type="button"
-                className={`${ui.tile} ${styles.backgroundTile}`}
-                aria-pressed={background === value}
-                onClick={() =>
-                  value === 'CUSTOM'
-                    ? chooseBackgroundColor(isHexColor(customBg) ? customBg : tintOf(accentColor, 0.18))
-                    : background === value
-                      ? undefined
-                      : choose({ background: value })
-                }
-              >
-                <Tick />
-                <span className={`${bento.theme} ${styles.backgroundMini}`} {...themeAttrs({ ...look, background: drawn })} data-island="" aria-hidden="true">
-                  <b />
-                  <i data-accent />
-                  <i />
-                  <i />
+      <section className={ui.section} aria-labelledby="colours-title">
+        <SectionHead id="colours-title" title="Colours" note="The page behind everything, and your first link and the send button." />
+        <div className={styles.colourCols}>
+          <div>
+            <p className={styles.groupLabel} id="background-label">
+              Page
+            </p>
+            {/* Each background as a dot of its own colour, worked out by the page's theme as visitors get it. */}
+            <div className={styles.dots} role="group" aria-labelledby="background-label">
+              {PAGE_BACKGROUNDS.map((value) => {
+                const drawn = value === 'CUSTOM' && !look.backgroundColor ? 'PAPER' : value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className={styles.dot}
+                    aria-pressed={background === value}
+                    aria-label={BACKGROUND_NAMES[value]}
+                    title={BACKGROUND_NAMES[value]}
+                    onClick={() =>
+                      value === 'CUSTOM'
+                        ? chooseBackgroundColor(isHexColor(customBg) ? customBg : tintOf(accentColor, 0.18))
+                        : background === value
+                          ? undefined
+                          : choose({ background: value })
+                    }
+                  >
+                    <span className={`${bento.theme} ${styles.dotFill}`} {...themeAttrs({ ...look, background: drawn })} data-island="" aria-hidden="true" />
+                  </button>
+                );
+              })}
+            </div>
+            {background === 'CUSTOM' ? (
+              <div className={styles.customBg}>
+                <input
+                  type="color"
+                  aria-label="Pick a background colour"
+                  className={styles.colorWell}
+                  value={isHexColor(customBg) ? customBg : '#ffffff'}
+                  onChange={(event) => chooseBackgroundColor(event.target.value)}
+                />
+                <span className={styles.hex}>
+                  <input aria-label="Background colour as hex" value={customBg} onChange={(event) => chooseBackgroundColor(event.target.value.trim())} />
                 </span>
-                <span className={ui.tileName}>{BACKGROUND_NAMES[value]}</span>
-              </button>
-            );
-          })}
-        </div>
-        {background === 'CUSTOM' ? (
-          <div className={styles.customBg}>
-            <input
-              type="color"
-              aria-label="Pick a background colour"
-              className={styles.colorWell}
-              value={isHexColor(customBg) ? customBg : '#ffffff'}
-              onChange={(event) => chooseBackgroundColor(event.target.value)}
-            />
-            <span className={styles.hex}>
-              <input aria-label="Background colour as hex" value={customBg} onChange={(event) => chooseBackgroundColor(event.target.value.trim())} />
-            </span>
+              </div>
+            ) : null}
           </div>
-        ) : null}
-      </section>
-
-      <section className={ui.section} aria-labelledby="accent-title">
-        <SectionHead id="accent-title" title="Accent colour" note="Your first link and the send button" />
-        <div className={styles.swatches} role="group" aria-labelledby="accent-title">
-          {/* The owner's own colour joins the row, chosen, so the row always shows what the page wears. */}
-          {[...ACCENT_PRESETS, ...((ACCENT_PRESETS as readonly string[]).includes(accentColor) ? [] : [accentColor])].map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              className={styles.swatch}
-              style={{ '--swatch': preset } as CSSProperties}
-              data-on={readableOn(preset)}
-              aria-label={ACCENT_NAMES[preset] ?? 'Your colour'}
-              title={preset}
-              aria-pressed={accentColor === preset}
-              onClick={() => {
-                setHex(preset.slice(1));
-                if (accentColor !== preset) choose({ accentColor: preset });
-              }}
-            >
-              <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-            </button>
-          ))}
-          <span className={styles.hex}>
-            #
-            <input
-              aria-label="Accent colour as hex"
-              value={hex}
-              maxLength={6}
-              onChange={(event) => {
-                const value = event.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 6);
-                setHex(value);
-                if (isHexColor(`#${value}`)) choose({ accentColor: `#${value.toLowerCase()}` });
-                else {
-                  // Not a failed save -- nothing was sent -- so there is
-                  // nothing for a Retry button here to resend.
-                  setError('Type a colour as six-digit hex, like 2340c8.');
-                  setFailedPatch(null);
-                }
-              }}
-            />
-          </span>
+          <div>
+            <p className={styles.groupLabel} aria-hidden="true">
+              Buttons
+            </p>
+            {/* The accent colours the first link and the send button, so the board calls this row "Buttons". */}
+            <div className={styles.swatches} role="group" aria-label="Button colour">
+              {/* The owner's own colour joins the row, chosen, so the row always shows what the page wears. */}
+              {[...ACCENT_PRESETS, ...((ACCENT_PRESETS as readonly string[]).includes(accentColor) ? [] : [accentColor])].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className={styles.swatch}
+                  style={{ '--swatch': preset } as CSSProperties}
+                  data-on={readableOn(preset)}
+                  aria-label={ACCENT_NAMES[preset] ?? 'Your colour'}
+                  title={preset}
+                  aria-pressed={accentColor === preset}
+                  onClick={() => {
+                    setHex(preset.slice(1));
+                    if (accentColor !== preset) choose({ accentColor: preset });
+                  }}
+                >
+                  <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true">
+                    <path d="M5 12.5l4.5 4.5L19 7.5" />
+                  </svg>
+                </button>
+              ))}
+              <span className={styles.hex}>
+                #
+                <input
+                  aria-label="Accent colour as hex"
+                  value={hex}
+                  maxLength={6}
+                  onChange={(event) => {
+                    const value = event.target.value.replace(/[^0-9a-f]/gi, '').slice(0, 6);
+                    setHex(value);
+                    if (isHexColor(`#${value}`)) choose({ accentColor: `#${value.toLowerCase()}` });
+                    else {
+                      // Not a failed save -- nothing was sent -- so there is
+                      // nothing for a Retry button here to resend.
+                      setError('Type a colour as six-digit hex, like 2340c8.');
+                      setFailedPatch(null);
+                    }
+                  }}
+                />
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section className={ui.section} aria-labelledby="font-title">
-        <SectionHead id="font-title" title="Heading font" note="Used for your name" />
-        <div className={styles.fonts} role="group" aria-labelledby="font-title">
-          {HEADING_FONTS.map((font) => (
-            <button
-              key={font}
-              type="button"
-              className={styles.fontRow}
-              aria-pressed={headingFont === font}
-              aria-label={FONT_NAMES[font]}
-              onClick={() => (headingFont === font ? undefined : choose({ headingFont: font }))}
-            >
-              <b style={{ fontFamily: HEADING_FONT_VAR[font] }} aria-hidden="true">
-                {displayName || 'Your name'}
-              </b>
-              <span aria-hidden="true">{FONT_NAMES[font]}</span>
-              <span className={styles.radio} aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="11" height="11">
-                  <path d="M5 12.5l4.5 4.5L19 7.5" />
-                </svg>
-              </span>
-            </button>
-          ))}
+      <section className={ui.section} aria-labelledby="shape-title">
+        <SectionHead id="shape-title" title="Button style and font" note="How your links look, and the font for your name." />
+        <div className={styles.shapeFont}>
+          <div>
+            <p className={styles.groupLabel} aria-hidden="true">
+              Buttons
+            </p>
+            <div className={styles.styleTiles} role="group" aria-label="Button style">
+              {STYLES.map((option) => (
+                <button
+                  key={option.value}
+                  type="button"
+                  className={`${ui.tile} ${styles.styleTile}`}
+                  aria-pressed={style === option.value}
+                  onClick={() => (style === option.value ? undefined : choose({ style: option.value }))}
+                >
+                  <Tick />
+                  <span className={styles.styleMini} data-style={option.value} style={{ '--accent': accentColor } as CSSProperties} aria-hidden="true">
+                    <i />
+                    <i />
+                  </span>
+                  <span className={ui.tileName}>
+                    {option.name} <span>· {option.note}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className={styles.groupLabel} id="font-label">
+              Heading font
+            </p>
+            {/* Six tiles, three across: the owner's name in each font, the font's name under it. */}
+            <div className={styles.fonts} role="group" aria-labelledby="font-label">
+              {HEADING_FONTS.map((font) => (
+                <button
+                  key={font}
+                  type="button"
+                  className={styles.fontTile}
+                  aria-pressed={headingFont === font}
+                  aria-label={FONT_NAMES[font]}
+                  onClick={() => (headingFont === font ? undefined : choose({ headingFont: font }))}
+                >
+                  <b style={{ fontFamily: HEADING_FONT_VAR[font] }} aria-hidden="true">
+                    {displayName || 'Your name'}
+                  </b>
+                  <span aria-hidden="true">{FONT_NAMES[font]}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 

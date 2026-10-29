@@ -57,8 +57,10 @@ describe('MyCuriosEditor', () => {
     show();
     await userEvent.click(editTab('Links'));
     await userEvent.click(screen.getByRole('button', { name: '+ Add link' }));
-    await userEvent.type(screen.getByLabelText('Name'), 'Shop');
-    await userEvent.type(screen.getByLabelText('Address'), 'shopee.com.my/iman');
+    // The Profile panel's name field reads "Name" on screen too; the link's is the one in Links.
+    const links = within(screen.getByRole('tabpanel', { name: 'Links' }));
+    await userEvent.type(links.getByLabelText('Name'), 'Shop');
+    await userEvent.type(links.getByLabelText('Address'), 'shopee.com.my/iman');
     await userEvent.click(screen.getByRole('button', { name: 'Add' }));
 
     expect(within(preview()).getByText('Shop')).toBeInTheDocument();
@@ -94,7 +96,6 @@ describe('MyCuriosEditor', () => {
 
   it('restyles the preview the moment a style is chosen', async () => {
     show();
-    await userEvent.click(editTab('Appearance'));
     await userEvent.click(screen.getByRole('button', { name: /^High contrast/ }));
     expect(preview().querySelector('[data-style]')).toHaveAttribute('data-style', 'CONTRAST');
   });
@@ -144,16 +145,24 @@ describe('the header', () => {
 });
 
 describe('the tabs', () => {
-  it('shows one part at a time, Profile first', async () => {
+  it('shows one part at a time, Profile first, with the look in it', async () => {
     show();
     expect(editTab('Profile')).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByLabelText('Display name')).toBeVisible();
+    // Profile and Appearance are one tab now (Dashboard v2): the look sits under You and the cover.
+    expect(screen.getByRole('button', { name: /^High contrast/ })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Fraunces' })).toBeVisible();
     // The Links panel is hidden, so its controls are out of the accessibility tree.
     expect(screen.queryByRole('button', { name: '+ Add link' })).toBeNull();
 
-    await userEvent.click(editTab('Appearance'));
-    expect(screen.getByRole('button', { name: /^High contrast/ })).toBeVisible();
+    await userEvent.click(editTab('Links'));
+    expect(screen.getByRole('button', { name: '+ Add link' })).toBeVisible();
     expect(screen.getByLabelText('Display name')).not.toBeVisible();
+  });
+
+  it('has just the two tabs, Profile and Links', () => {
+    show();
+    expect(within(screen.getByRole('tablist', { name: 'Edit' })).getAllByRole('tab').map((tab) => tab.textContent)).toEqual(['Profile', 'Links']);
   });
 
   it('moves between parts with the arrow keys, Home and End, as a tab list does', async () => {
@@ -163,11 +172,11 @@ describe('the tabs', () => {
     expect(editTab('Links')).toHaveFocus();
     expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{ArrowLeft}{ArrowLeft}');
-    expect(editTab('Appearance')).toHaveAttribute('aria-selected', 'true');
+    expect(editTab('Links')).toHaveAttribute('aria-selected', 'true');
     await userEvent.keyboard('{Home}');
     expect(editTab('Profile')).toHaveFocus();
     await userEvent.keyboard('{End}');
-    expect(editTab('Appearance')).toHaveFocus();
+    expect(editTab('Links')).toHaveFocus();
   });
 
   // A hidden part keeps its state, so a name typed a moment ago still saves after switching away.
@@ -279,7 +288,7 @@ describe('the Shop link switch', () => {
   it('opens the shop, and the preview gains the shop pill, not a tab', async () => {
     const { calls } = show(business);
     await userEvent.click(editTab('Links'));
-    expect(screen.getByText(/Shown first in your links · 2 items/)).toBeInTheDocument();
+    expect(screen.getByText(/Always first in your links, 2 items/)).toBeInTheDocument();
 
     const toggle = screen.getByRole('switch', { name: 'Show the Shop link' });
     expect(toggle).toHaveAttribute('aria-checked', 'false');
@@ -387,16 +396,20 @@ describe('without the template look', () => {
     expect(document.querySelector('[class*="blob"]')).toBeNull();
   });
 
-  it('titles its sections with text only, and a link row has no icon tile', async () => {
+  it('titles its sections with text only', async () => {
     show();
     await userEvent.click(editTab('Links'));
     expect(screen.getByRole('heading', { name: 'Links' }).querySelector('svg')).toBeNull();
-    expect(document.querySelector('[class*="kind"]')).toBeNull();
   });
 
-  it('has no icon tile on the shop switch', async () => {
-    show(business);
+  // The v3 board brings the kind tile back on link rows and the Shop link row (.ri .ki, .shoprow .ki).
+  it('marks each link row with its kind, read off the address, and the Shop link as the first row', async () => {
+    show({ ...business, links: [...initial.links, { id: 'w', label: 'WhatsApp', url: 'https://wa.me/60123456789', size: null }] });
     await userEvent.click(editTab('Links'));
-    expect(document.querySelector('[class*="kind"]')).toBeNull();
+    const kinds = [...document.querySelectorAll('[data-kind]')].filter((el) => el.tagName === 'SPAN' && el.closest('[role="tabpanel"]'));
+    expect(kinds.map((el) => el.getAttribute('data-kind'))).toEqual(['shop', 'link', 'whatsapp']);
+    // The shop row sits above the list, in the same box.
+    const shop = screen.getByRole('group', { name: 'Shop link' });
+    expect(shop.nextElementSibling?.tagName).toBe('UL');
   });
 });

@@ -45,6 +45,15 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+  /* Still on the right when they wrap under the title. */
+  margin-left: auto;
+}
+
+/* Tabs beside the title (Store, My Curios): title and tabs take their own line in a narrow column. */
+@media (max-width: 1000px) {
+  .withBeside .text {
+    flex-basis: 100%;
+  }
 }
 
 @media (max-width: 760px) {
@@ -58,5 +67,10 @@
 
   .summary {
     font-size: 14px;
+  }
+
+  /* The actions' own line, so a "Saved" status can lead it and the button sit right. */
+  .withBeside .actions {
+    flex: 1 1 100%;
   }
 }

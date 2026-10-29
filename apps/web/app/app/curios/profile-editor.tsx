@@ -11,7 +11,7 @@ import styles from './curios.module.css';
 
 /**
  * The picture, name and bio, saved as the owner chooses or types. The picture
- * is the circle itself: click it to upload or change. The header's pill says
+ * is the circle itself: click it to upload or change. The header's status says
  * when a save is under way; a failed one is said here, under its field.
  */
 export function ProfileEditor({
@@ -80,7 +80,7 @@ export function ProfileEditor({
 
   return (
     <section className={ui.section} aria-labelledby="profile-title">
-      <SectionHead id="profile-title" title="You" note="Picture, name and a line about you" />
+      <SectionHead id="profile-title" title="You" note="Your picture, name and a line people read first." />
       <div className={styles.idRow}>
         <div className={styles.avatarCell}>
           <button
@@ -117,10 +117,13 @@ export function ProfileEditor({
             />
           ) : null}
         </div>
+        {/* The name and the bio stacked beside the picture (v3). */}
         <div className={styles.idField}>
           <label className={ui.float}>
-            <em>Display name</em>
+            <em>Name</em>
             <input
+              // "Name" on screen, as the board has it; "Display name" to a screen reader, apart from a link's Name.
+              aria-label="Display name"
               value={displayName}
               autoComplete="off"
               onChange={(event) => {
@@ -130,26 +133,26 @@ export function ProfileEditor({
             />
           </label>
           <SaveState status={name.status} error={name.error} retry={name.retry} />
+          {/* The count sits beside the label, not in it, so the field is named "Bio" and nothing more. */}
+          <div className={`${ui.float} ${styles.bio}`}>
+            <label>
+              <em>Bio</em>
+              <textarea
+                value={bio ?? ''}
+                onChange={(event) => {
+                  onChange({ bio: event.target.value });
+                  about.schedule(event.target.value);
+                }}
+              />
+            </label>
+            <small aria-hidden="true" data-over={bioLength > BIO_MAX || undefined}>
+              {bioLength}/{BIO_MAX}
+            </small>
+          </div>
+          <SaveState status={about.status} error={about.error} retry={about.retry} />
         </div>
       </div>
       {avatarError ? <Callout tone="error">{avatarError}</Callout> : null}
-      {/* The count sits beside the label, not in it, so the field is named "Bio" and nothing more. */}
-      <div className={`${ui.float} ${styles.bio}`}>
-        <label>
-          <em>Bio</em>
-          <textarea
-            value={bio ?? ''}
-            onChange={(event) => {
-              onChange({ bio: event.target.value });
-              about.schedule(event.target.value);
-            }}
-          />
-        </label>
-        <small aria-hidden="true" data-over={bioLength > BIO_MAX || undefined}>
-          {bioLength}/{BIO_MAX}
-        </small>
-      </div>
-      <SaveState status={about.status} error={about.error} retry={about.retry} />
     </section>
   );
 }

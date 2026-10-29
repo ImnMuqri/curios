@@ -11,7 +11,7 @@ import styles from './editor.module.css';
  * same rejected value again cannot succeed. Anything else (a dropped
  * connection, a 5xx) keeps the generic message and the Retry, since trying
  * again might actually work. While saving or saved it shows nothing: the
- * header's pill says that for the whole screen.
+ * header's status says that for the whole screen.
  */
 export function SaveState({ status, error, retry }: { status: 'idle' | 'saving' | 'saved' | 'error'; error?: unknown; retry: () => void }) {
   if (status !== 'error') return null;

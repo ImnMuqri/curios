@@ -52,7 +52,8 @@ describe('PageReply', () => {
   });
 });
 
-// The page's replies in the previews were bubbles (a tint, a rounded corner, ink text).
+// The page's replies in the previews were bubbles (a tint, a rounded corner). Their text colour
+// is the dashboard's own now that the chats are neutral (Dashboard v2), so only the bubble is ruled out.
 describe('the previews draw no reply bubble', () => {
   const classes: [string, string][] = [
     ['../leads/leads.module.css', '.fromPage'],
@@ -64,6 +65,6 @@ describe('the previews draw no reply bubble', () => {
   ];
   it.each(classes)('%s %s', (file, selector) => {
     const body = block(css(file), selector);
-    if (body !== null) expect(body).not.toMatch(/background|border|padding|radius|(^|[\s;])color:/);
+    if (body !== null) expect(body).not.toMatch(/background|border|padding|radius/);
   });
 });

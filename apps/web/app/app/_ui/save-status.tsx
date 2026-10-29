@@ -36,7 +36,7 @@ export function useSaveStatus() {
 
 const WORDS = { saving: 'Saving…', failed: 'Not saved', saved: 'Saved' } as const;
 
-/** The header's pill: a spinner while saving, a tick once saved. */
+/** The header's status: a spinner while saving, a tick once saved, as plain text (v3), not a pill. */
 export function SaveStatus({ state }: { state: keyof typeof WORDS }) {
   return (
     <span className={styles.status} data-state={state} aria-live="polite">

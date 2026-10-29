@@ -7,7 +7,8 @@ import styles from './page-head.module.css';
  * A screen's header at the top of the sheet (Dashboard v2): the title, with one summary sentence
  * under it that carries the numbers the stat cards used to ("2 receipts to check and 5 orders to
  * make."), and the actions on the right. `beside` sits right after the title on its line (the
- * Profile / Links tabs, a "Saved" status). No line under it.
+ * Profile / Links tabs, a "Saved" status); such a header gives the title its own line under
+ * 1000px, as the Store and My Curios boards stack it. No line under it.
  *
  * Under it, the frame's alert for this screen if there is one (AlertSlot), so every screen shows
  * its banner in the same place, after its title. Along its bottom edge, the bar that runs while
@@ -27,7 +28,7 @@ export function PageHead({
 }) {
   return (
     <>
-      <header className={styles.head}>
+      <header className={beside ? `${styles.head} ${styles.withBeside}` : styles.head}>
         <div className={styles.text}>
           <div className={styles.titleRow}>
             <h1 className={styles.title}>{title}</h1>

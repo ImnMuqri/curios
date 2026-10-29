@@ -68,10 +68,10 @@ export type EditorPage = MyCurios & {
   faq?: BentoPageProps['faq'];
 };
 
+// Profile holds the look too (Dashboard v2): you, the cover, the colours, the buttons and the font.
 const TABS = [
   { id: 'profile', label: 'Profile' },
   { id: 'links', label: 'Links' },
-  { id: 'appearance', label: 'Appearance' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 type PreviewTab = 'links' | 'ask';
@@ -96,10 +96,11 @@ function trackedApi(api: CuriosApi, track: ReturnType<typeof useSaveStatus>['tra
 }
 
 /**
- * My Curios: the owner's page, arranged. The header says whether everything
- * has saved; under it, three tabs of controls on the left and the live
- * preview on the right (below, under 1200px), rendered by the same BentoPage
- * visitors see. State is local and optimistic; each control saves its own
+ * My Curios: the owner's page, arranged. The header, over the left column
+ * only, carries the Profile / Links tabs beside the title, and says whether
+ * everything has saved; under it, the tab's controls, and on the right the
+ * live preview from the top of the sheet (below, under 1200px), rendered by
+ * the same BentoPage visitors see. No summary sentence: the board has none. State is local and optimistic; each control saves its own
  * change at once, or as the owner pauses typing.
  *
  * Every panel stays mounted and is only hidden: the name, bio and social
@@ -150,44 +151,40 @@ export function MyCuriosEditor({
   }
 
   return (
-    <>
-      <PageHead title="My Curios" beside={<SaveStatus state={state} />}>
-        <span className={ui.url}>
-          curios.my/{page.handle}
-          <button type="button" className={ui.iconButton} aria-label="Copy link" title={copied ? 'Copied' : 'Copy'} onClick={() => void copyLink()}>
-            {copied ? (
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
-                <path d="M5 12.5l4.5 4.5L19 7.5" />
-              </svg>
-            ) : (
-              <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
-                <rect x="8" y="8" width="12" height="12" rx="2" />
-                <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
-              </svg>
-            )}
-          </button>
-          <span className={ui.srOnly} aria-live="polite">{copied ? 'Link copied' : ''}</span>
-        </span>
-        <a className={panel.primaryLink} href={`/${page.handle}`} target="_blank" rel="noreferrer">
-          View page
-        </a>
-      </PageHead>
+    <div className={ui.body}>
+      <div className={ui.edit}>
+        <PageHead
+          title="My Curios"
+          beside={
+            <div className={ui.headTabs}>
+              <PillTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} />
+            </div>
+          }
+        >
+          <SaveStatus state={state} />
+          <span className={ui.url}>
+            curios.my/{page.handle}
+            <button type="button" className={ui.iconButton} aria-label="Copy link" title={copied ? 'Copied' : 'Copy'} onClick={() => void copyLink()}>
+              {copied ? (
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
+                  <path d="M5 12.5l4.5 4.5L19 7.5" />
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" className={ui.toolIcon}>
+                  <rect x="8" y="8" width="12" height="12" rx="2" />
+                  <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+                </svg>
+              )}
+            </button>
+            <span className={ui.srOnly} aria-live="polite">{copied ? 'Link copied' : ''}</span>
+          </span>
+          <a className={`${panel.primaryLink} ${ui.headLink}`} href={`/${page.handle}`} target="_blank" rel="noreferrer">
+            View page
+          </a>
+        </PageHead>
 
-      <div className={ui.body}>
-        <div className={ui.edit}>
-          <PillTabs label="Edit" tabs={TABS} selected={tab} onSelect={setTab} />
-
+        <div className={ui.editBody}>
           <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" hidden={tab !== 'profile'} className={ui.panel}>
-            <CoverEditor
-              coverKey={page.coverKey}
-              coverUrl={page.coverUrl}
-              uploadsEnabled={uploadsEnabled}
-              look={page}
-              onCover={update}
-              chooseStock={api.chooseStockCover}
-              uploadCover={api.uploadCover}
-              removeCover={api.removeCover}
-            />
             <ProfileEditor
               displayName={page.displayName}
               bio={page.bio}
@@ -202,6 +199,26 @@ export function MyCuriosEditor({
                 update({ avatarUrl: null });
               }}
             />
+            <CoverEditor
+              coverKey={page.coverKey}
+              coverUrl={page.coverUrl}
+              uploadsEnabled={uploadsEnabled}
+              look={page}
+              onCover={update}
+              chooseStock={api.chooseStockCover}
+              uploadCover={api.uploadCover}
+              removeCover={api.removeCover}
+            />
+            <AppearanceEditor
+              displayName={page.displayName}
+              background={page.background}
+              backgroundColor={page.backgroundColor}
+              style={page.style}
+              accentColor={page.accentColor}
+              headingFont={page.headingFont}
+              onChange={update}
+              save={api.saveAppearance}
+            />
           </div>
 
           <div role="tabpanel" id="panel-links" aria-labelledby="tab-links" hidden={tab !== 'links'} className={ui.panel}>
@@ -214,78 +231,68 @@ export function MyCuriosEditor({
               removeLink={api.removeLink}
               reorder={api.reorder}
               shop={page.shop}
-            />
-            {page.shopTab ? (
-              <ShopSwitch
-                open={page.shopTab.open}
-                itemCount={page.shopTab.itemCount}
-                setOpen={api.setShopOpen}
-                onOpen={(open) =>
-                  setPage((current) => ({
-                    ...current,
-                    shopTab: current.shopTab ? { ...current.shopTab, open } : null,
-                    // The tile sits after the links when the shop opens, which is where the API puts it.
-                    shop: open ? { position: current.links.length, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
-                  }))
-                }
-              />
-            ) : null}
-          </div>
-
-          <div role="tabpanel" id="panel-appearance" aria-labelledby="tab-appearance" hidden={tab !== 'appearance'} className={ui.panel}>
-            <AppearanceEditor
-              displayName={page.displayName}
-              background={page.background}
-              backgroundColor={page.backgroundColor}
-              style={page.style}
-              accentColor={page.accentColor}
-              headingFont={page.headingFont}
-              onChange={update}
-              save={api.saveAppearance}
+              // The Shop link is the first row of the list (v3), with its switch.
+              lead={
+                page.shopTab ? (
+                  <ShopSwitch
+                    open={page.shopTab.open}
+                    itemCount={page.shopTab.itemCount}
+                    setOpen={api.setShopOpen}
+                    onOpen={(open) =>
+                      setPage((current) => ({
+                        ...current,
+                        shopTab: current.shopTab ? { ...current.shopTab, open } : null,
+                        // The tile sits after the links when the shop opens, which is where the API puts it.
+                        shop: open ? { position: current.links.length, size: null, itemCount: current.shopTab?.itemCount ?? 0, photoKey: null, photos: [] } : null,
+                      }))
+                    }
+                  />
+                ) : null
+              }
             />
           </div>
         </div>
-
-        <PreviewFrame
-          label="Live preview"
-          tabsLabel="Preview tab"
-          tabs={previewTabs.map((id) => ({ id, label: id === 'links' ? 'Links' : 'Ask' }))}
-          selected={shownPreview}
-          onSelect={setPreviewTab}
-          overlay={
-            // The ask bar belongs to the Ask tab; the Links tab ends with the FAQ, as the page does.
-            shownPreview === 'ask' ? (
-            <span className={styles.askBar} style={{ '--accent': page.accentColor } as CSSProperties} aria-hidden="true">
-              Ask {page.displayName} anything
-              <i>
-                <svg viewBox="0 0 24 24" width="13" height="13">
-                  <path d="M12 19V5M5 12l7-7 7 7" />
-                </svg>
-              </i>
-            </span>
-            ) : null
-          }
-        >
-          <BentoPage
-            {...page}
-            shop={previewPill}
-            faq={page.faq}
-            mode={shownPreview === 'ask' ? 'chat' : undefined}
-            interactive={false}
-            nameAs="p"
-          >
-            <PreviewTabBody
-              tab={shownPreview}
-              hasLinks={page.links.length > 0}
-              question={page.previewQuestion}
-              askPage={api.askPage}
-              accent={page.accentColor}
-              name={page.displayName}
-            />
-          </BentoPage>
-        </PreviewFrame>
       </div>
-    </>
+
+      <PreviewFrame
+        label="Live preview"
+        tabsLabel="Preview tab"
+        tabs={previewTabs.map((id) => ({ id, label: id === 'links' ? 'Links' : 'Ask' }))}
+        selected={shownPreview}
+        onSelect={setPreviewTab}
+        overlay={
+          // The ask bar belongs to the Ask tab; the Links tab ends with the FAQ, as the page does.
+          shownPreview === 'ask' ? (
+          <span className={styles.askBar} style={{ '--accent': page.accentColor } as CSSProperties} aria-hidden="true">
+            Ask {page.displayName} anything
+            <i>
+              <svg viewBox="0 0 24 24" width="13" height="13">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
+            </i>
+          </span>
+          ) : null
+        }
+      >
+        <BentoPage
+          {...page}
+          shop={previewPill}
+          faq={page.faq}
+          mode={shownPreview === 'ask' ? 'chat' : undefined}
+          interactive={false}
+          nameAs="p"
+        >
+          <PreviewTabBody
+            tab={shownPreview}
+            hasLinks={page.links.length > 0}
+            question={page.previewQuestion}
+            askPage={api.askPage}
+            accent={page.accentColor}
+            name={page.displayName}
+          />
+        </BentoPage>
+      </PreviewFrame>
+    </div>
   );
 }
 

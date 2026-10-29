@@ -16,29 +16,34 @@
   }
 }
 
-/* ---- Cover photo: an expanding gallery ---- */
+/* ---- Cover photo: a row of 84px squares (v3), the chosen one ringed ---- */
 
+/* Wraps: the stock covers, the owner's own and the upload tile are more than one row holds in a narrow column. */
 .gallery {
   display: flex;
-  gap: 6px;
-  height: 132px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.gallery > * {
+  height: 84px;
 }
 
 .galleryTile {
   position: relative;
-  flex: 1 1 0;
+  flex: 0 0 84px;
   min-width: 0;
   padding: 0;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--surface);
   cursor: pointer;
-  transition: flex-grow 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .galleryTile[aria-pressed='true'] {
-  flex-grow: 5;
+  outline: 2.5px solid var(--biru);
+  outline-offset: 2px;
 }
 
 .galleryTile img {
@@ -62,41 +67,27 @@
   cursor: progress;
 }
 
+/* The tiles are too small to caption; each is named for a screen reader instead. */
 .caption {
-  position: absolute;
-  left: 10px;
-  bottom: 9px;
-  padding: 3px 9px;
-  border-radius: 999px;
-  background: rgb(25 31 44 / 62%);
-  color: var(--on-photo);
-  font-size: 12px;
-  font-weight: 500;
-  white-space: nowrap;
-  opacity: 0;
-  transition: opacity 300ms ease;
-}
-
-.galleryTile[aria-pressed='true'] .caption {
-  opacity: 1;
+  display: none;
 }
 
 /* The owner's own photo, always the chosen tile, with its delete in the corner. */
 .ownTile {
   position: relative;
   display: flex;
-  flex: 5 1 0;
+  flex: 0 0 84px;
   min-width: 0;
 }
 
 .deleteCover {
   position: absolute;
-  top: 8px;
-  right: 8px;
+  top: 5px;
+  right: 5px;
   display: grid;
   place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -162,7 +153,7 @@
 .galleryUpload {
   display: grid;
   place-items: center;
-  flex: 0 0 72px;
+  flex: 0 0 84px;
   border: 1px dashed var(--faint);
   background: var(--card);
   color: var(--muted);
@@ -183,10 +174,11 @@
 
 /* ---- You ---- */
 
+/* The picture on the left, the name and bio stacked beside it (v3). */
 .idRow {
   display: flex;
-  align-items: center;
-  gap: 18px;
+  align-items: flex-start;
+  gap: 16px;
 }
 
 .avatarCell {
@@ -273,7 +265,7 @@
 }
 
 .bio {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 /* ---- Social profiles ---- */
@@ -292,8 +284,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  height: 44px;
-  padding: 0 10px 0 6px;
+  height: 48px;
+  padding: 0 10px 0 8px;
   border: 1px solid var(--edge);
   border-radius: 10px;
   background: var(--card);
@@ -363,13 +355,50 @@
 
 /* ---- Links ---- */
 
+/* The Shop link's row and the list read as one box (v3): the shop row on top, the links under it. */
+.linkStack {
+  display: flex;
+  flex-direction: column;
+}
+
 .linkList {
   margin: 0;
   padding: 0;
   list-style: none;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: var(--card);
+}
+
+.shopRow + .linkList {
+  border-radius: 0 0 10px 10px;
+}
+
+.shopRow + .linkList > .linkRow:first-child {
+  border-radius: 0;
+}
+
+/* A row's kind, from its address: WhatsApp and Instagram in their colours, any other a link, the shop in rose. */
+.linkKind {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  background: var(--biru-muda);
+  color: var(--biru);
+}
+
+.linkKind[data-kind='whatsapp'] {
+  background: var(--hijau-muda);
+  color: var(--hijau);
+}
+
+.linkKind[data-kind='instagram'],
+.linkKind[data-kind='shop'] {
+  background: var(--rose-muda);
+  color: var(--rose);
 }
 
 .linkRow {
@@ -383,15 +412,15 @@
 }
 
 .linkRow:first-child {
-  border-radius: 12px 12px 0 0;
+  border-radius: 10px 10px 0 0;
 }
 
 .linkRow:last-child {
-  border-radius: 0 0 12px 12px;
+  border-radius: 0 0 10px 10px;
 }
 
 .linkRow:only-child {
-  border-radius: 12px;
+  border-radius: 10px;
 }
 
 .linkRow:hover {
@@ -427,7 +456,7 @@
 
 .linkText b {
   display: block;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .linkText > span {
@@ -492,15 +521,26 @@
   height: 38px;
 }
 
-/* ---- Shop link ---- */
+/* ---- Shop link: the list's first row ---- */
 
 .shopRow {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 14px;
+  gap: 12px;
+  padding: 12px 14px 12px 12px;
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
+  background: var(--card);
+}
+
+.shopRow:has(+ .linkList) {
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+}
+
+/* With no links yet, the empty state follows the shop row. */
+.linkStack + div {
+  margin-top: 12px;
 }
 
 .shopText {
@@ -518,105 +558,60 @@
   color: var(--muted);
 }
 
-/* ---- Appearance ---- */
+/* ---- The look: Colours, then Button style and font (v3) ---- */
 
-.styleTiles {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+/* A small grey label over each row of choices: "Page", "Buttons", "Heading font". */
+.groupLabel {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
 }
 
-/* Three pills: the accent first, then two plain, in the style's own look. */
-.styleMini {
+/* Page backgrounds on the left at their own width, the button colours taking the rest. */
+.colourCols {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 24px 40px;
+}
+
+.dots {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 5px;
-  height: 84px;
-  padding: 12px 10px;
-  border-radius: 10px;
-  background: var(--surface);
-}
-
-.styleMini i {
-  display: block;
-  height: 12px;
-  border-radius: 999px;
-  background: var(--card);
-  box-shadow: 0 0 0 3px rgb(25 31 44 / 6%);
-}
-
-.styleMini i:first-child {
-  background: var(--accent);
-}
-
-.styleMini[data-style='CONTRAST'] i {
-  background: var(--ink);
-  box-shadow: 0 0 0 2px var(--ink);
-}
-
-.styleMini[data-style='CONTRAST'] i:first-child {
-  background: var(--accent);
-}
-
-.backgroundTiles {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  flex-wrap: wrap;
   gap: 10px;
 }
 
-.backgroundTile {
-  padding: 6px;
-}
-
-.backgroundTile > span:first-child {
-  top: 4px;
-  right: 4px;
-  width: 18px;
-  height: 18px;
-}
-
-.backgroundTile > span:last-child {
-  margin-top: 6px;
-  text-align: center;
-}
-
-/* A page in that background, drawn small: the name, the accent pill, two plain pills. */
-.backgroundMini {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;
-  height: 76px;
-  padding: 12px 10px;
-  border-radius: 10px;
-  background: var(--page-bg);
-}
-
-.backgroundMini b {
+/* A background as a dot of itself; the chosen one ringed in ink with a white gap. */
+.dot {
   display: block;
-  width: 44%;
-  height: 7px;
-  margin-bottom: 3px;
-  border-radius: 4px;
-  background: var(--page-fg);
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--line);
+  cursor: pointer;
+  transition: box-shadow 200ms ease;
 }
 
-.backgroundMini i {
+.dot[aria-pressed='true'] {
+  box-shadow: 0 0 0 2.5px var(--card), 0 0 0 4.5px var(--ink);
+}
+
+.dot:focus-visible {
+  outline: 2px solid var(--biru);
+  outline-offset: 6px;
+}
+
+/* The page's theme works the colour out (--page-bg), so a dot is the background visitors get. */
+.dotFill {
   display: block;
   width: 100%;
-  height: 9px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--page-fg) 22%, transparent);
-}
-
-.backgroundMini:is([data-bg='PAPER'], [data-bg='MUDA'], [data-bg='KUNING']) i,
-.backgroundMini[data-bg='CUSTOM']:not([data-bg-text='light']) i {
-  background: var(--card);
-}
-
-.backgroundMini i[data-accent] {
-  background: var(--accent);
+  height: 100%;
+  border-radius: 50%;
+  background: var(--page-bg);
+  box-shadow: inset 0 0 0 1px var(--edge);
 }
 
 .customBg {
@@ -640,14 +635,14 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .swatch {
   display: grid;
   place-items: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   padding: 0;
   border: 0;
   border-radius: 50%;
@@ -691,8 +686,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  height: 34px;
-  padding: 0 10px;
+  height: 36px;
+  padding: 0 12px;
   border: 1px solid var(--edge);
   border-radius: 999px;
   color: var(--muted);
@@ -718,85 +713,117 @@
   border-color: var(--biru);
 }
 
-.fonts {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  overflow: hidden;
+.shapeFont {
+  display: grid;
+  gap: 22px;
 }
 
-.fontRow {
+.styleTiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+/* A style as a card: two pills on grey in the style's own look, its name centred under them. */
+.styleTile {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 14px;
+  padding: 14px;
+}
+
+.styleTile > span:last-child {
+  text-align: center;
+}
+
+/* Two pills: the accent first, then a plain one. */
+.styleMini {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
   height: 58px;
-  padding: 0 16px;
-  border: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.styleMini i {
+  display: block;
+  height: 12px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 0 0 3px rgb(25 31 44 / 6%);
+}
+
+.styleMini i:first-child {
+  background: var(--accent);
+}
+
+.styleMini[data-style='CONTRAST'] i {
+  background: var(--ink);
+  box-shadow: 0 0 0 2px var(--ink);
+}
+
+.styleMini[data-style='CONTRAST'] i:first-child {
+  background: var(--accent);
+}
+
+/* The six heading fonts, three across: the owner's name in the font, the font's name under it. */
+.fonts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.fontTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  height: 84px;
+  padding: 10px;
+  border: 1px solid var(--edge);
+  border-radius: 10px;
   background: var(--card);
   color: var(--ink);
   font: inherit;
-  text-align: left;
+  text-align: center;
   cursor: pointer;
-  transition: background-color 160ms ease;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
 }
 
-.fontRow + .fontRow {
-  border-top: 1px solid var(--line);
+.fontTile:hover {
+  border-color: var(--faint);
 }
 
-.fontRow:hover {
-  background: var(--paper);
+.fontTile[aria-pressed='true'] {
+  border-color: var(--biru);
+  box-shadow: 0 0 0 1px var(--biru);
+  background: color-mix(in srgb, var(--biru-muda) 45%, var(--card));
 }
 
-.fontRow:focus-visible {
+.fontTile:focus-visible {
   outline: 2px solid var(--biru);
-  outline-offset: -2px;
+  outline-offset: 2px;
 }
 
-.fontRow b {
-  flex: 1;
-  min-width: 0;
+.fontTile b {
+  max-width: 100%;
   overflow: hidden;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 800;
   line-height: 1.1;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
-.fontRow > span:not(.radio) {
+.fontTile span {
   font-size: 12.5px;
   color: var(--muted);
-}
-
-.radio {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--card);
-  box-shadow: inset 0 0 0 1.5px var(--faint);
-  transition: background-color 200ms ease, box-shadow 200ms ease;
-}
-
-.radio svg {
-  fill: none;
-  stroke: var(--card);
-  stroke-width: 3.2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  opacity: 0;
-}
-
-.fontRow[aria-pressed='true'] .radio {
-  background: var(--biru);
-  box-shadow: none;
-}
-
-.fontRow[aria-pressed='true'] .radio svg {
-  opacity: 1;
 }
 
 /* ---- What the preview adds to the page ---- */
@@ -879,15 +906,22 @@
   .socials {
     grid-template-columns: minmax(0, 1fr);
   }
-
-  .backgroundTiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
 }
 
+/* The board's phone: the covers wrap as 64px squares, the colours stack, the fonts go two across. */
 @media (max-width: 760px) {
-  .gallery {
-    height: 110px;
+  .gallery > *,
+  .gallery .galleryTile {
+    flex: 0 0 64px;
+    height: 64px;
+  }
+
+  .colourCols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .fonts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .addForm,
@@ -901,7 +935,6 @@
     animation: none;
   }
 
-  .galleryTile,
   .swatch,
   .swatch svg {
     transition: none;

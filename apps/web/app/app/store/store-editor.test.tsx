@@ -77,7 +77,14 @@ describe('the header', () => {
     expect(within(header()).getByText('Open for orders')).toBeInTheDocument();
     expect(within(header()).getByRole('switch', { name: 'Shop open' })).toHaveAttribute('aria-checked', 'true');
     expect(within(header()).getByRole('link', { name: 'See your shop' })).toHaveAttribute('href', '/keklina/shop');
-    expect(within(header()).getByText('curios.my/keklina/shop')).toBeInTheDocument();
+    // The address is gone from the header (v3 board hides it): See your shop opens it.
+    expect(within(header()).queryByText('curios.my/keklina/shop')).toBeNull();
+  });
+
+  it('carries the tabs beside the title, and counts the items in its sentence', () => {
+    show();
+    expect(within(header()).getByRole('tablist', { name: 'Store' })).toBeInTheDocument();
+    expect(within(header()).getByText(/What you sell, how people pay, and how it reaches them\./).textContent).toMatch(/^\d+ items? · \d+ in your shop\./);
   });
 
   it('keeps a shop that cannot open shut, saying what it needs, and offers no link to it', () => {

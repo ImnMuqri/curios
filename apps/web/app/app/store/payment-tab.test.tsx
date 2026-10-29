@@ -107,7 +107,7 @@ describe('PaymentTab, the QR', () => {
 
   it('says where customers see the QR, in the board’s words', () => {
     show({}, { qr: { has: true, url: null } });
-    expect(screen.getByText('Customers scan it on their order page')).toBeInTheDocument();
+    expect(screen.getByText('Customers scan it on their order page, with the exact total shown. No CHIP fee.')).toBeInTheDocument();
     expect(screen.getByText('Your QR is ready')).toBeInTheDocument();
     expect(screen.getByText('Kek Lina · DuitNow. Each order page shows it with the exact total, so customers pay the right amount.')).toBeInTheDocument();
   });
@@ -125,7 +125,7 @@ describe('PaymentTab, online payments', () => {
     show();
     const headings = screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent);
     expect(headings.slice(0, 2)).toEqual(['Online payments', 'DuitNow QR']);
-    expect(screen.getByText('FPX online banking and e-wallets')).toBeInTheDocument();
+    expect(screen.getByText('FPX, e-wallets and cards through your own CHIP account. Orders mark themselves paid.')).toBeInTheDocument();
     expect(screen.getByText('Let customers pay online')).toBeInTheDocument();
     expect(screen.getByText('Connect your own CHIP account. Customers pick their bank or e-wallet at checkout, and the order marks itself paid. No receipts to check.')).toBeInTheDocument();
     expect(screen.getByText('Your DuitNow QR below stays on, with no CHIP fee')).toBeInTheDocument();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Callout } from '@curios/ui';
 import { LABEL_MAX, MAX_LINKS, normalizeLinkUrl, withShopTile, type ShopTilePlacement, type TileSize } from '@curios/core/bento';
 import { useAutosave } from '../_ui/use-autosave.js';
@@ -21,6 +21,22 @@ function Icon({ d }: { d: string }) {
     </svg>
   );
 }
+
+/**
+ * The tile at a row's start (v3 board): WhatsApp and Instagram in their own colours, any other
+ * address a plain link, read off the address so the owner never has to say what a link is.
+ */
+const KINDS = {
+  whatsapp: 'M4 20l1.4-4.2A8 8 0 1 1 8.6 19z',
+  instagram: 'M7 3h10a4 4 0 0 1 4 4v10a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V7a4 4 0 0 1 4-4zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM17.5 6.5h.01',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+} as const;
+const kindOf = (url: string): keyof typeof KINDS =>
+  /^(https?:\/\/)?([\w-]+\.)*(wa\.me|whatsapp\.com)(\/|$)/i.test(url)
+    ? 'whatsapp'
+    : /^(https?:\/\/)?([\w-]+\.)*instagram\.com(\/|$)/i.test(url)
+      ? 'instagram'
+      : 'link';
 
 const UP = 'M6 15l6-6 6 6';
 const DOWN = 'M6 9l6 6 6-6';
@@ -44,8 +60,9 @@ function pick<T extends object, K extends keyof T>(source: T, keys: K[]): Pick<T
  * sent at once -- there is no Save button in My Curios.
  *
  * The shop tile still has a stored place among the links (the API wants it
- * in every new order while the shop is open), but it is a tab now, not a
- * row, so it travels along unseen.
+ * in every new order while the shop is open), but on the page it is a pill,
+ * so it travels along unseen here. What the owner sees of it is `lead`: the
+ * Shop link's switch, drawn as the list's first row (v3 board).
  */
 export function LinksEditor({
   links,
@@ -55,6 +72,7 @@ export function LinksEditor({
   removeLink,
   reorder,
   shop = null,
+  lead = null,
 }: {
   links: LinkItem[];
   onChange: (links: LinkItem[]) => void;
@@ -64,6 +82,8 @@ export function LinksEditor({
   reorder: (ids: string[]) => Promise<void>;
   /** Where the shop tile is stored among the links, or null when the shop is closed. */
   shop?: ShopTilePlacement | null;
+  /** A row joined to the top of the list, never moved or removed with it (the Shop link). */
+  lead?: ReactNode;
 }) {
   const [adding, setAdding] = useState(false);
   const [label, setLabel] = useState('');
@@ -165,7 +185,29 @@ export function LinksEditor({
 
   return (
     <section className={ui.section} aria-labelledby="links-title">
-      <SectionHead id="links-title" title="Links" note="Top to bottom, as they appear" />
+      <SectionHead id="links-title" title="Links" note="Top to bottom, as they appear. Your page can point people to them too." />
+
+      {lead || links.length > 0 ? (
+        <div className={styles.linkStack}>
+          {lead}
+          {links.length > 0 ? (
+            <ul className={styles.linkList}>
+              {links.map((link, index) => (
+                <LinkRow
+                  key={link.id}
+                  link={link}
+                  first={index === 0}
+                  last={index === links.length - 1}
+                  onMove={(delta) => void move(index, index + delta)}
+                  onLiveChange={(change) => applyLocal(link.id, change)}
+                  onPersist={(change) => persist(link.id, change)}
+                  onRemove={() => void remove(link.id)}
+                />
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
 
       {links.length === 0 && !adding ? (
         <div className={ui.empty}>
@@ -187,23 +229,6 @@ export function LinksEditor({
             + Add a link
           </button>
         </div>
-      ) : null}
-
-      {links.length > 0 ? (
-        <ul className={styles.linkList}>
-          {links.map((link, index) => (
-            <LinkRow
-              key={link.id}
-              link={link}
-              first={index === 0}
-              last={index === links.length - 1}
-              onMove={(delta) => void move(index, index + delta)}
-              onLiveChange={(change) => applyLocal(link.id, change)}
-              onPersist={(change) => persist(link.id, change)}
-              onRemove={() => void remove(link.id)}
-            />
-          ))}
-        </ul>
       ) : null}
 
       {error ? <Callout tone="error">{error}</Callout> : null}
@@ -338,6 +363,9 @@ function LinkRow({
 
   return (
     <li aria-label={link.label} className={styles.linkRow}>
+      <span className={styles.linkKind} data-kind={kindOf(link.url)} aria-hidden="true">
+        <Icon d={KINDS[kindOf(link.url)]} />
+      </span>
       <button type="button" ref={editButtonRef} className={styles.linkText} aria-label={`Edit ${link.label}`} onClick={openEditor}>
         <b>{link.label}</b>
         <span>{shown(link.url)}</span>

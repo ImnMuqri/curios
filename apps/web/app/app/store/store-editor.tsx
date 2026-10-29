@@ -89,11 +89,13 @@ function handOverWords(s: StoreSettings, physicalItems: boolean): string {
 }
 
 /**
- * Store: the shop on the owner's page, arranged. The header says whether
- * everything has saved and whether the shop is open; a strip under it says
- * what the shop still needs; three tabs hold the items, how customers pay,
- * and how they get their order. Every change saves as it is made. The phone
- * beside it is the real shop, as a customer would see it.
+ * Store: the shop on the owner's page, arranged. The header, over the left
+ * column only, carries the three tabs beside the title (the items, how
+ * customers pay, how they get their order), a sentence counting the items,
+ * whether everything has saved and whether the shop is open. Under it, the
+ * ready checklist says what the shop still needs. Every change saves as it is
+ * made. The phone, from the top of the sheet, is the real shop, as a customer
+ * would see it.
  */
 export function StoreEditor({
   initial,
@@ -264,39 +266,51 @@ export function StoreEditor({
   const todayDate = new Date(year ?? 2026, (month ?? 1) - 1, day ?? 1);
 
   return (
-    <>
-      <PageHead title="Store" beside={<SaveStatus state={state} />}>
-        <span className={ui.url}>curios.my/{look.handle}/shop</span>
-        <span className={styles.open} data-state={openState}>
-          <span className={styles.pulse} aria-hidden="true" />
-          <span>{openWords}</span>
-          <button
-            type="button"
-            className={ui.switch}
-            role="switch"
-            aria-checked={settings.enabled}
-            aria-label="Shop open"
-            title={blocked ? storeGapMessage(gaps) : undefined}
-            disabled={blocked}
-            onClick={() => void setOpen(!settings.enabled)}
-          >
-            <i />
-          </button>
-        </span>
-        {settings.enabled ? (
-          <a className={panel.primaryLink} href={`/${look.handle}/shop`} target="_blank" rel="noreferrer">
-            See your shop
-          </a>
+    <div className={ui.body}>
+      <div className={ui.edit}>
+        <PageHead
+          title="Store"
+          beside={
+            <div className={ui.headTabs}>
+              <PillTabs label="Store" tabs={TABS} selected={tab} onSelect={showTab} />
+            </div>
+          }
+          summary={
+            <>
+              <b>{items.length}</b> {items.length === 1 ? 'item' : 'items'} · <b>{live.length}</b> in your shop. What you sell, how people pay, and how it reaches them.
+            </>
+          }
+        >
+          <SaveStatus state={state} />
+          <span className={styles.open} data-state={openState}>
+            <span className={styles.pulse} aria-hidden="true" />
+            <span>{openWords}</span>
+            <button
+              type="button"
+              className={ui.switch}
+              role="switch"
+              aria-checked={settings.enabled}
+              aria-label="Shop open"
+              title={blocked ? storeGapMessage(gaps) : undefined}
+              disabled={blocked}
+              onClick={() => void setOpen(!settings.enabled)}
+            >
+              <i />
+            </button>
+          </span>
+          {settings.enabled ? (
+            <a className={`${panel.primaryLink} ${ui.headLink}`} href={`/${look.handle}/shop`} target="_blank" rel="noreferrer">
+              See your shop
+            </a>
+          ) : null}
+        </PageHead>
+        {openError ? (
+          <p className={styles.openError} role="alert">
+            {openError}
+          </p>
         ) : null}
-      </PageHead>
-      {openError ? (
-        <p className={styles.openError} role="alert">
-          {openError}
-        </p>
-      ) : null}
 
-      <div className={ui.body}>
-        <div className={ui.edit}>
+        <div className={ui.editBody}>
           <ul className={styles.ready} aria-label="Ready to take orders">
             {[
               { ok: live.length > 0, title: 'Items', note: live.length > 0 ? `${live.length} in your shop` : items.length > 0 ? 'Switch an item on' : 'Add your first item', go: 'items' as const },
@@ -324,14 +338,7 @@ export function StoreEditor({
             ))}
           </ul>
 
-          <PillTabs
-            label="Store"
-            tabs={TABS}
-            selected={tab}
-            onSelect={showTab}
-          />
-
-          <div role="tabpanel" id="panel-items" aria-labelledby="tab-items" hidden={tab !== 'items'} className={ui.panel}>
+          <div role="tabpanel" id="panel-items" aria-labelledby="tab-items" hidden={tab !== 'items'} className={`${ui.panel} ${styles.panel}`}>
             {editing ? (
               <ItemEditor
                 key={editing === 'new' ? 'new' : editingItem?.id}
@@ -351,7 +358,7 @@ export function StoreEditor({
             ) : (
               <>
                 <section className={ui.section} aria-labelledby="about-title">
-                  <SectionHead id="about-title" title="About your shop" note="Shown above your items, before the notice" />
+                  <SectionHead id="about-title" title="About your shop" note="Shown above your items. Tell people what to know before they order." />
                   <div className={ui.float}>
                     <label>
                       <em>Shop description</em>
@@ -389,7 +396,7 @@ export function StoreEditor({
             )}
           </div>
 
-          <div role="tabpanel" id="panel-payment" aria-labelledby="tab-payment" hidden={tab !== 'payment'} className={ui.panel}>
+          <div role="tabpanel" id="panel-payment" aria-labelledby="tab-payment" hidden={tab !== 'payment'} className={`${ui.panel} ${styles.panel}`}>
             <PaymentTab
               displayName={look.displayName}
               settings={settings}
@@ -406,98 +413,98 @@ export function StoreEditor({
             />
           </div>
 
-          <div role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden={tab !== 'delivery'} className={ui.panel}>
+          <div role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden={tab !== 'delivery'} className={`${ui.panel} ${styles.panel}`}>
             <DeliveryTab settings={settings} save={save} today={todayDate} />
           </div>
         </div>
+      </div>
 
-        <PreviewFrame
-          label="Live preview of your shop"
-          tabsLabel="Preview screen"
-          tabs={[
-            { id: 'shop', label: 'Shop' },
-            // Nothing to open with no items: say so, rather than show the shop again under "Item".
-            { id: 'item', label: 'Item', ...(previewFocus ? {} : { hint: 'Add an item to see its page here' }) },
-            // An order of nothing (RM0) is not what a customer would ever see: Pay waits for an item too.
-            { id: 'pay', label: 'Pay', ...(live.length > 0 ? {} : { hint: 'Add an item to see how paying looks' }) },
-          ]}
-          selected={shownTab}
-          onSelect={setPreviewTab}
-        >
-          {shownTab === 'pay' ? (
-            <PayPreview
-              look={look}
-              settings={settings}
-              items={live}
-              qrUrl={qr.url}
-              hasQr={qr.has}
-              today={today}
-              nextNumber={orders.nextNumber}
-              paysOnline={chip.connected && chip.methods.length > 0}
-            />
-          ) : (
-            // The shop and the item are the customer pages themselves, on the owner's own colours.
-            <PageTheme theme={look} className={styles.previewStage}>
-              <div className={styles.previewShop}>
-                {shownTab === 'item' && previewFocus ? (
-                  <ProductView
-                    // A new key per item, so choosing another starts from its first size.
-                    key={previewFocus.id}
+      <PreviewFrame
+        label="Live preview of your shop"
+        tabsLabel="Preview screen"
+        tabs={[
+          { id: 'shop', label: 'Shop' },
+          // Nothing to open with no items: say so, rather than show the shop again under "Item".
+          { id: 'item', label: 'Item', ...(previewFocus ? {} : { hint: 'Add an item to see its page here' }) },
+          // An order of nothing (RM0) is not what a customer would ever see: Pay waits for an item too.
+          { id: 'pay', label: 'Pay', ...(live.length > 0 ? {} : { hint: 'Add an item to see how paying looks' }) },
+        ]}
+        selected={shownTab}
+        onSelect={setPreviewTab}
+      >
+        {shownTab === 'pay' ? (
+          <PayPreview
+            look={look}
+            settings={settings}
+            items={live}
+            qrUrl={qr.url}
+            hasQr={qr.has}
+            today={today}
+            nextNumber={orders.nextNumber}
+            paysOnline={chip.connected && chip.methods.length > 0}
+          />
+        ) : (
+          // The shop and the item are the customer pages themselves, on the owner's own colours.
+          <PageTheme theme={look} className={styles.previewStage}>
+            <div className={styles.previewShop}>
+              {shownTab === 'item' && previewFocus ? (
+                <ProductView
+                  // A new key per item, so choosing another starts from its first size.
+                  key={previewFocus.id}
+                  handle={look.handle}
+                  displayName={look.displayName}
+                  language={look.language}
+                  item={previewItem(previewFocus)}
+                  items={previewItems.map((i) => previewItem(i))}
+                  halal={settings.shopHalal}
+                  noticeDays={settings.minNoticeDays}
+                  nextDay={previewNextDay}
+                  pickup={settings.pickupEnabled}
+                  storageKey="curios-store-preview"
+                  inline
+                  onDone={() => setPreviewTab('shop')}
+                />
+              ) : (
+                <>
+                  <ShopPageView
+                    key={shownTab}
                     handle={look.handle}
                     displayName={look.displayName}
                     language={look.language}
-                    item={previewItem(previewFocus)}
-                    items={previewItems.map((i) => previewItem(i))}
-                    halal={settings.shopHalal}
-                    noticeDays={settings.minNoticeDays}
+                    items={previewItems.map((i) => ({ ...previewItem(i), photoUrl: i.photoUrl }))}
+                    pickupEnabled={settings.pickupEnabled}
+                    pickupNote={settings.pickupNote}
+                    deliveryMode={settings.deliveryMode}
+                    canTakeOrders={previewTakesOrders}
                     nextDay={previewNextDay}
-                    pickup={settings.pickupEnabled}
-                    storageKey="curios-store-preview"
-                    inline
-                    onDone={() => setPreviewTab('shop')}
+                    description={orNull(description.text)}
+                    halal={settings.shopHalal}
+                    preview={{
+                      storageKey: 'curios-store-preview',
+                      onOpenItem: (id) => {
+                        setPicked(id);
+                        setPreviewTab('item');
+                      },
+                    }}
                   />
-                ) : (
-                  <>
-                    <ShopPageView
-                      key={shownTab}
-                      handle={look.handle}
-                      displayName={look.displayName}
-                      language={look.language}
-                      items={previewItems.map((i) => ({ ...previewItem(i), photoUrl: i.photoUrl }))}
-                      pickupEnabled={settings.pickupEnabled}
-                      pickupNote={settings.pickupNote}
-                      deliveryMode={settings.deliveryMode}
-                      canTakeOrders={previewTakesOrders}
-                      nextDay={previewNextDay}
-                      description={orNull(description.text)}
-                      halal={settings.shopHalal}
-                      preview={{
-                        storageKey: 'curios-store-preview',
-                        onOpenItem: (id) => {
-                          setPicked(id);
-                          setPreviewTab('item');
-                        },
-                      }}
-                    />
-                    <BasketBar
-                      handle={look.handle}
-                      displayName={look.displayName}
-                      language={look.language}
-                      items={previewItems.map((i) => previewItem(i))}
-                      canTakeOrders
-                      whatsapp={null}
-                      note={false}
-                      // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
-                      preview={{ storageKey: 'curios-store-preview', onCheckout: () => setPreviewTab('pay') }}
-                    />
-                  </>
-                )}
-              </div>
-            </PageTheme>
-          )}
-        </PreviewFrame>
-      </div>
-    </>
+                  <BasketBar
+                    handle={look.handle}
+                    displayName={look.displayName}
+                    language={look.language}
+                    items={previewItems.map((i) => previewItem(i))}
+                    canTakeOrders
+                    whatsapp={null}
+                    note={false}
+                    // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
+                    preview={{ storageKey: 'curios-store-preview', onCheckout: () => setPreviewTab('pay') }}
+                  />
+                </>
+              )}
+            </div>
+          </PageTheme>
+        )}
+      </PreviewFrame>
+    </div>
   );
 }
 
