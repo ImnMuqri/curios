@@ -819,10 +819,16 @@ a.menuAlert:hover {
     min-height: 100vh;
   }
 
+  /* Stuck to the top, on the ground: in reach while scrolling, and the colour iOS 26 Safari tints its
+     status bar's strip from (it reads what sits at the top edge). */
   .top {
+    position: sticky;
+    top: 0;
+    z-index: 30;
     height: 56px;
     gap: 14px;
     padding: 0 16px;
+    background: var(--ground);
   }
 
   .topBrand {
