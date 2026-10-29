@@ -76,7 +76,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .sec-h span{font-size:13px;color:var(--soft)}
 /* expanding cover gallery */
 .gal{display:flex;gap:6px;height:132px}
-.gi{position:relative;flex:1 1 0;min-width:0;padding:0;border:0;border-radius:12px;overflow:hidden;background:#f0f1f4;cursor:pointer;transition:flex-grow 520ms cubic-bezier(.22,1,.36,1)}
+.gi{position:relative;flex:1 1 0;min-width:0;padding:0;border:0;border-radius:10px;overflow:hidden;background:#f0f1f4;cursor:pointer;transition:flex-grow 520ms cubic-bezier(.22,1,.36,1)}
 .gi img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .gi:hover img{filter:brightness(1.05)}
 .gi .cap{position:absolute;left:10px;bottom:9px;padding:3px 9px;border-radius:999px;background:rgba(25,31,44,.62);color:#ffffff;font-size:12px;font-weight:500;white-space:nowrap;transition:opacity 300ms}
@@ -99,7 +99,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .fl em{position:absolute;left:13px;top:7px;font-style:normal;font-size:11.5px;font-weight:500;color:var(--soft);pointer-events:none}
 .fl small{position:absolute;right:12px;bottom:8px;font-size:11.5px;color:#9aa0ab}
 /* animated reorder list */
-.rlist{position:relative;border:1px solid var(--line);border-radius:12px;background:#ffffff;transition:height 300ms ease}
+.rlist{position:relative;border:1px solid var(--line);border-radius:10px;background:#ffffff;transition:height 300ms ease}
 .ri{position:absolute;left:0;right:0;display:flex;align-items:center;gap:12px;height:60px;padding:0 8px 0 12px;transition:transform 420ms cubic-bezier(.34,1.25,.64,1),background 160ms}
 .ri:hover{background:#fafbfc}
 .ri+.ri::before{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line)}
@@ -117,12 +117,12 @@ a{color:#2340c8}a:hover{color:#122686}
 .inp{display:block;width:100%;height:38px;padding:0 12px;border:1px solid #dfe1e6;border-radius:8px;background:#ffffff;font:inherit;color:#191f2c;outline:none}
 .inp:focus{border-color:#2340c8;box-shadow:0 0 0 3px rgba(35,64,200,.12)}
 .prim{height:38px;padding:0 16px;border:0;border-radius:8px;background:#2340c8;color:#ffffff;font:inherit;font-weight:500;cursor:pointer}
-.shoprow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:12px}
+.shoprow{display:flex;align-items:center;gap:14px;padding:14px;border:1px solid var(--line);border-radius:10px}
 .switch{position:relative;width:38px;height:22px;flex:none;border:0;border-radius:999px;cursor:pointer;transition:background 200ms}
 .switch i{position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#ffffff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:transform 260ms cubic-bezier(.34,1.5,.64,1)}
 /* visual pickers */
 .tiles{display:grid;gap:12px}
-.tile{position:relative;padding:10px;border:1px solid #dfe1e6;border-radius:14px;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:border-color 160ms,box-shadow 160ms,transform 260ms cubic-bezier(.34,1.4,.64,1)}
+.tile{position:relative;padding:10px;border:1px solid #dfe1e6;border-radius:10px;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:border-color 160ms,box-shadow 160ms,transform 260ms cubic-bezier(.34,1.4,.64,1)}
 .tile:hover{border-color:#c9ccd3}
 .tile.on{border-color:#2340c8;box-shadow:0 0 0 1px #2340c8;background:#f6f8ff}
 .tile .tick{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#2340c8;transform:scale(0);transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
@@ -137,7 +137,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .sw svg{transition:transform 300ms cubic-bezier(.34,1.6,.64,1)}
 .hex{display:flex;align-items:center;gap:6px;height:34px;padding:0 10px;border:1px solid #dfe1e6;border-radius:999px;font-family:var(--m);font-size:12.5px;color:var(--soft)}
 .hex input{width:62px;border:0;background:transparent;font:inherit;color:#191f2c;outline:none}
-.flist{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.flist{border:1px solid var(--line);border-radius:10px;overflow:hidden}
 .fr{display:flex;align-items:center;gap:14px;width:100%;height:58px;padding:0 16px;border:0;background:#ffffff;font:inherit;text-align:left;cursor:pointer;transition:background 160ms}
 .fr+.fr{border-top:1px solid var(--line)}
 .fr:hover{background:#fafbfc}
@@ -201,8 +201,8 @@ a{color:#2340c8}a:hover{color:#122686}
 .pulse{position:relative;width:8px;height:8px;border-radius:50%}
 .pulse.live::after{content:'';position:absolute;inset:0;border-radius:50%;background:inherit;animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite}
 @keyframes ping{75%,100%{transform:scale(2.6);opacity:0}}
-.ready{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:24px 0 6px;padding:6px;border:1px solid var(--line);border-radius:16px;background:#fafbfc}
-.rstep{position:relative;display:flex;align-items:center;gap:11px;padding:10px 12px;border:0;border-radius:11px;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background 160ms}
+.ready{position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));margin:24px 0 6px;padding:6px;border:1px solid var(--line);border-radius:10px;background:#fafbfc}
+.rstep{position:relative;display:flex;align-items:center;gap:11px;padding:10px 12px;border:0;border-radius:10px;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer;transition:background 160ms}
 .rstep:hover{background:#ffffff}
 .rdot{display:grid;place-items:center;width:28px;height:28px;flex:none;border-radius:50%;transition:background 300ms,color 300ms}
 .rdot svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;animation:popin 420ms cubic-bezier(.34,1.6,.64,1) both}
@@ -210,11 +210,11 @@ a{color:#2340c8}a:hover{color:#122686}
 .rstep b{display:block;font-size:13px;font-weight:600}
 .rstep span span{display:block;font-size:12px;color:var(--soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* items */
-.ilist{position:relative;border:1px solid var(--line);border-radius:14px;background:#ffffff;transition:height 300ms ease}
+.ilist{position:relative;border:1px solid var(--line);border-radius:10px;background:#ffffff;transition:height 300ms ease}
 .it{position:absolute;left:0;right:0;display:flex;align-items:center;gap:14px;height:76px;padding:0 10px 0 12px;transition:transform 420ms cubic-bezier(.34,1.25,.64,1),background 160ms}
 .it:hover{background:#fafbfc}
 .it+.it::before{content:'';position:absolute;left:12px;right:12px;top:0;height:1px;background:var(--line)}
-.thumb{position:relative;display:grid;place-items:center;width:52px;height:52px;flex:none;overflow:hidden;border-radius:14px;font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;transition:opacity 250ms,filter 250ms}
+.thumb{position:relative;display:grid;place-items:center;width:52px;height:52px;flex:none;overflow:hidden;border-radius:10px;font-family:'Outfit',sans-serif;font-size:22px;font-weight:800;transition:opacity 250ms,filter 250ms}
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .it .nm2{flex:1;min-width:0;padding:0;border:0;background:transparent;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .it .nm2 b{display:block;font-weight:600}
@@ -222,12 +222,12 @@ a{color:#2340c8}a:hover{color:#122686}
 .it .nm2 small{display:inline-block;margin-top:3px;padding:1px 8px;border-radius:999px;background:#f3f4f7;color:#4b5060;font-size:11.5px;font-weight:500}
 .avl{display:flex;align-items:center;gap:8px;width:118px;flex:none;font-size:12.5px;color:var(--soft)}
 /* item editor */
-.ed{padding:22px;border:1px solid var(--line);border-radius:18px;background:#ffffff;animation:fadeUp 360ms cubic-bezier(.22,1,.36,1) both}
+.ed{padding:22px;border:1px solid var(--line);border-radius:10px;background:#ffffff;animation:fadeUp 360ms cubic-bezier(.22,1,.36,1) both}
 .back{display:inline-flex;align-items:center;gap:6px;height:30px;margin:-4px 0 16px -8px;padding:0 10px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#4b5060;cursor:pointer}
 .back:hover{background:#f0f1f4;color:#191f2c}
 .back svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ed-top{display:grid;grid-template-columns:148px minmax(0,1fr);gap:18px}
-.ph{position:relative;display:grid;place-items:center;width:148px;height:148px;padding:0;border:0;overflow:hidden;border-radius:16px;font-family:'Outfit',sans-serif;font-size:52px;font-weight:800;cursor:pointer}
+.ph{position:relative;display:grid;place-items:center;width:148px;height:148px;padding:0;border:0;overflow:hidden;border-radius:10px;font-family:'Outfit',sans-serif;font-size:52px;font-weight:800;cursor:pointer}
 .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .ph .ov{position:absolute;inset:auto 8px 8px 8px;display:flex;align-items:center;justify-content:center;gap:6px;height:30px;border-radius:999px;background:rgba(25,31,44,.62);color:#ffffff;font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:600;opacity:0;transform:translateY(6px);transition:opacity 180ms,transform 220ms}
 .ph:hover .ov,.ph:focus-visible .ov{opacity:1;transform:none}
@@ -252,7 +252,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .ghost{height:38px;padding:0 12px;border:0;border-radius:8px;background:transparent;font:inherit;font-weight:500;color:#b3261e;cursor:pointer}
 .ghost:hover{background:#fdecea}
 /* payment */
-.gw{padding:18px;border:1px solid var(--line);border-radius:16px;background:#ffffff}
+.gw{padding:18px;border:1px solid var(--line);border-radius:10px;background:#ffffff}
 .gw>b{display:block;font-size:15px;font-weight:600}
 .gw>p{margin:4px 0 0;font-size:13px;color:var(--soft);max-width:44em}
 .gw-marks{display:flex;gap:5px;margin-bottom:12px}
@@ -276,7 +276,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .btns{display:flex;gap:8px}
 .btn2{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border:1px solid #dfe1e6;border-radius:999px;background:#ffffff;font:inherit;font-size:13px;font-weight:500;color:#191f2c;cursor:pointer}
 .btn2:hover{border-color:#c9ccd3;background:#fafbfc}
-.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;height:150px;border:1.5px dashed #c9ccd3;border-radius:16px;background:#fafbfc;font:inherit;color:#4b5060;cursor:pointer;transition:border-color 160ms,background 160ms}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;height:150px;border:1.5px dashed #c9ccd3;border-radius:10px;background:#fafbfc;font:inherit;color:#4b5060;cursor:pointer;transition:border-color 160ms,background 160ms}
 .drop:hover{border-color:#2340c8;background:#f6f8ff;color:#2340c8}
 .drop svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .drop small{font-size:12px;color:#9aa0ab}
@@ -296,7 +296,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .stepper button[disabled]{opacity:.35;cursor:default;background:#f3f4f7;color:#191f2c}
 .stepper output{min-width:74px;text-align:center;font-weight:600}
 .days{display:grid;grid-template-columns:repeat(10,minmax(0,1fr));gap:6px;margin-top:16px}
-.day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:62px;border-radius:12px;font-size:11px;transition:background 300ms,color 300ms,transform 300ms cubic-bezier(.34,1.5,.64,1)}
+.day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;height:62px;border-radius:10px;font-size:11px;transition:background 300ms,color 300ms,transform 300ms cubic-bezier(.34,1.5,.64,1)}
 .day b{font-size:17px;font-weight:600;line-height:1.1}
 .noteline{display:flex;align-items:center;gap:8px;margin:14px 0 0;font-size:13px;color:#4b5060}
 /* phone: shop page, same as the landing card */
@@ -323,7 +323,7 @@ a{color:#2340c8}a:hover{color:#122686}
 @keyframes sheetUp{from{transform:translateY(100%)}}
 .isheet .grab{align-self:center;width:36px;height:4px;border-radius:2px;background:#dfe1e6}
 .isheet .ihead{display:flex;align-items:center;gap:12px}
-.isheet .iph{position:relative;display:grid;place-items:center;width:64px;height:64px;flex:none;overflow:hidden;border-radius:16px;font-family:'Outfit',sans-serif;font-size:26px;font-weight:800}
+.isheet .iph{position:relative;display:grid;place-items:center;width:64px;height:64px;flex:none;overflow:hidden;border-radius:10px;font-family:'Outfit',sans-serif;font-size:26px;font-weight:800}
 .isheet .iph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .isheet h4{margin:0;font-family:'Outfit',sans-serif;font-size:21px;font-weight:800;line-height:1.1;letter-spacing:-.02em}
 .isheet .pr{display:block;margin-top:2px;font-size:12.5px;color:#4b5060}
@@ -357,7 +357,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .sp-sub{margin:6px 16px 0;font-size:11.5px;opacity:.7}
 .sgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px 10px;padding:16px 16px 0}
 .sc{display:flex;flex-direction:column;gap:6px;animation:fadeUp 320ms ease both}
-.sc-ph{position:relative;display:grid;place-items:center;aspect-ratio:1;overflow:hidden;border-radius:16px;font-family:'Outfit',sans-serif;font-size:30px;font-weight:800}
+.sc-ph{position:relative;display:grid;place-items:center;aspect-ratio:1;overflow:hidden;border-radius:10px;font-family:'Outfit',sans-serif;font-size:30px;font-weight:800}
 .sc-ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .sc b{font-size:12.5px;font-weight:600;line-height:1.25}
 .sc span{margin-top:-4px;font-size:11.5px;opacity:.72}
@@ -374,12 +374,12 @@ a{color:#2340c8}a:hover{color:#122686}
 .pills>span{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;line-height:1.4;transition:background 200ms,color 200ms}
 .hidden-chip{align-self:flex-start;padding:4px 10px;border-radius:999px;background:#ffebd6;color:#7a4a0c;font-size:11px;font-weight:600}
 .pay{display:flex;flex-direction:column;gap:10px;padding:14px 16px 70px}
-.pay-card{padding:12px 14px;border-radius:16px}
+.pay-card{padding:12px 14px;border-radius:10px}
 .ln{display:flex;justify-content:space-between;gap:8px;font-size:12px;line-height:1.7}
 .ln span{opacity:.75}
 .tot{display:flex;justify-content:space-between;align-items:baseline;margin-top:6px;padding-top:8px;font-size:12px}
 .tot b{font-size:20px;font-weight:700}
-.payto{display:flex;gap:12px;align-items:center;padding:12px;border-radius:16px;background:#ffffff;color:#191f2c}
+.payto{display:flex;gap:12px;align-items:center;padding:12px;border-radius:10px;background:#ffffff;color:#191f2c}
 .payto .bkl{display:flex;flex-direction:column;gap:3px;min-width:0;font-size:11.5px}
 .payto .bkl b{font-size:12.5px}
 .payto .bkl span{color:#696e7b}
@@ -392,7 +392,7 @@ a{color:#2340c8}a:hover{color:#122686}
 .es{display:flex;flex-direction:column;align-items:center;gap:6px;padding:44px 24px 40px;text-align:center;animation:fadeUp 420ms cubic-bezier(.22,1,.36,1) both}
 .es-art{position:relative;width:236px;height:124px;margin-bottom:16px}
 .es-rows{position:absolute;inset:0;display:flex;flex-direction:column;gap:8px;-webkit-mask-image:linear-gradient(to bottom,#000 30%,transparent 100%);mask-image:linear-gradient(to bottom,#000 30%,transparent 100%)}
-.gr{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:12px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef,0 8px 16px -12px rgba(25,31,44,.3);animation:ghost 3.4s ease-in-out infinite}
+.gr{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;background:#ffffff;box-shadow:0 0 0 1px #e9ebef,0 8px 16px -12px rgba(25,31,44,.3);animation:ghost 3.4s ease-in-out infinite}
 .gr i{width:20px;height:20px;flex:none;border-radius:6px}
 .gr b{width:46%;height:7px;border-radius:4px;background:#e4e7eb}
 .gr em{width:16%;height:7px;margin-left:auto;border-radius:4px;background:#eef0f4}
@@ -597,7 +597,7 @@ a{color:#2340c8}a:hover{color:#122686}
 /* previews match the real page */
 .pv-q,.bq,.convo .u,.tchat .u,.vchat .q{background:rgba(250,251,252,.14)!important;color:#fafbfc!important;border-radius:16px!important}
 .pv-a::before,.ba::before,.convo .a::before,.tchat .a::before,.vchat .a::before{padding-left:20px;line-height:16px;color:rgba(250,251,252,.75);background:radial-gradient(circle at 7px 8px,#b5294e 6.5px,transparent 7px) no-repeat}
-.leadc2{align-self:stretch;display:block;padding:12px;border-radius:14px;background:#fafbfc;color:#191f2c}
+.leadc2{align-self:stretch;display:block;padding:12px;border-radius:10px;background:#fafbfc;color:#191f2c}
 .leadc2 b{display:block;font-size:13px;font-weight:600}
 .leadc2 small{display:block;margin-top:2px;font-size:11.5px;line-height:1.4;color:#4b5060}
 .leadc2 .lrow{display:flex;gap:6px;margin-top:8px}
@@ -683,12 +683,145 @@ a{color:#2340c8}a:hover{color:#122686}
 .sf2-cov img{width:100%;height:100%;object-fit:cover;filter:blur(22px) saturate(1.1);transform:scale(1.3)}
 .sf2-cov::after{content:"";position:absolute;inset:0;background:linear-gradient(rgba(84,35,57,.35),#542339)}
 .sf2-top,.sf2{position:relative}
+
+/* ===================== v2 shell, 29 Oct 2026 ===================== */
+.app{background:#edeff4}
+@media (min-width:1101px){
+.side{width:248px;padding:18px 14px 16px 16px;background:transparent;border-right:0}
+.brand{padding:4px 8px 16px}
+.v2sbs{display:flex;align-items:center;gap:8px;height:38px;margin:0 0 6px;padding:0 8px 0 12px;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;color:#8b909c;cursor:text}
+.v2sbs svg{width:15px;height:15px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.v2sbs input{flex:1;min-width:0;height:36px;border:0;background:transparent;font:inherit;font-size:13.5px;color:#191f2c;outline:none}
+.v2sbs input::placeholder{color:#8b909c}
+.v2sbs:focus-within{box-shadow:inset 0 0 0 1.5px #2340c8}
+.v2sbs kbd{flex:none;padding:1px 7px;border-radius:6px;background:#f5f6fa;box-shadow:inset 0 0 0 1px #e3e6ec;font:600 11px 'IBM Plex Sans',sans-serif;color:#5b6170}
+.grp{margin:14px 10px 4px;font-size:12px;font-weight:500;letter-spacing:0;text-transform:none;color:#8b909c}
+.nav a{height:36px;gap:12px;padding:0 10px;border-radius:8px;font-size:14px;color:#3f4554}
+.nav a:hover{background:rgba(255,255,255,.7);color:#191f2c}
+.nav a.on{background:#e2e7fb;color:#2340c8;font-weight:600}
+.nav svg{width:18px;height:18px;stroke-width:1.75}
+.nav .ct{color:#2340c8}
+}
+.acct{display:none}
+.v2plan{margin-top:auto;padding:12px 10px 4px;font-size:12.5px;color:#5b6170;line-height:1.4}
+.v2plan b{display:block;font-size:13px;font-weight:600;color:#191f2c}
+.v2pbar{display:block;height:5px;margin-top:9px;border-radius:3px;background:#dde0e7;overflow:hidden}
+.v2pbar i{display:block;height:100%;border-radius:3px;background:#2340c8}
+.main{background:transparent}
+.v2topb{display:flex;align-items:center;gap:10px;flex:none;height:64px;padding:0 24px 0 32px}
+.tb-crumb{flex:1;min-width:0;margin:0;font-size:14px;color:#5b6170;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb-crumb i{margin:0 8px;font-style:normal;color:#b8bcc6}
+.tb-crumb b{font-weight:600;color:#191f2c}
+.tb-ib{position:relative;display:grid;place-items:center;width:38px;height:38px;padding:0;border:0;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;cursor:pointer}
+.tb-ib svg{width:17px;height:17px;fill:none;stroke:#3f4554;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tb-ib u{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:#e2483d;box-shadow:0 0 0 2px #ffffff}
+.tb-acc{display:flex;align-items:center;gap:9px;height:38px;padding:0 10px 0 5px;border:0;border-radius:10px;background:#ffffff;box-shadow:inset 0 0 0 1px #e3e6ec;font:inherit;font-size:13.5px;font-weight:600;color:#191f2c;cursor:pointer}
+.tb-acc i{display:grid;place-items:center;width:28px;height:28px;border-radius:8px;background:#b5294e;color:#ffffff;font-style:normal;font-size:13px}
+.tb-acc svg{width:14px;height:14px;fill:none;stroke:#5b6170;stroke-width:2;stroke-linecap:round}
+.tb-ib:hover,.tb-acc:hover{box-shadow:inset 0 0 0 1px #c9ccd3}
+.v2sheet{position:relative;flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;background:#ffffff;border-radius:16px 0 0 0;box-shadow:inset 1px 1px 0 #e3e6ec}
+.head{align-items:flex-end;flex-wrap:wrap;height:auto;min-height:0;padding:28px 40px 20px;border-bottom:0;gap:12px}
+.head .v2ht{flex:1 1 360px;min-width:0}
+.head h1{font-family:var(--d);font-size:30px;font-weight:700;line-height:1.05;letter-spacing:-.03em}
+.head .v2sum{margin:8px 0 0;font-size:15px;color:#5b6170}
+.head .v2sum b{font-weight:600;color:#191f2c}
+.stats{display:none}
+.bl{max-width:1440px;padding:8px 40px 56px}
+.swrap,.kwrap,.dwrap{max-width:1240px}
+.ob{margin-top:0;border-top:0}
+.ocol{background:#fbfbfd}
+.olist>button{background:transparent!important;box-shadow:none!important}
+.olist>button[aria-current]:not([aria-current="false"]){background:#eef1fd!important}
+/* tabs: one pill style everywhere */
+.utabs,.ktabs{display:inline-flex;gap:4px;padding:4px;border:0;border-radius:10px;background:#f2f3f7}
+.utabs button,.ktabs button{width:auto;height:34px;padding:0 16px;border-radius:7px;color:#5b6170!important}
+.utabs button[aria-selected]:not([aria-selected="false"]),.ktabs button[aria-selected]:not([aria-selected="false"]){background:#ffffff;color:#191f2c!important;font-weight:600;box-shadow:0 1px 2px rgba(25,31,44,.08),0 0 0 1px #e3e6ec}
+.uline,.ktabs .kl{display:none}
+/* dashboard chats look like a normal AI chat, not the owner's page */
+.chatc,.convo,.tchat{background:#f6f7f9;color:#191f2c;border-radius:10px;font-family:'IBM Plex Sans',sans-serif}
+.chatc .lbl{opacity:1;color:#5b6170}
+.chatc .lbl i{background:#1d9a6c}
+.bq,.convo .u,.tchat .u{border-radius:10px!important;background:#ffffff!important;color:#191f2c!important;box-shadow:0 0 0 1px #e3e6ec}
+.ba,.ba.unsure,.convo .a,.tchat .a,.tchat .a.no{color:#191f2c}
+.ba::before,.convo .a::before,.tchat .a::before{padding-left:22px;line-height:16px;margin-bottom:4px;font-size:11.5px;opacity:1;color:#5b6170;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='5' fill='%232340c8'/%3E%3Cellipse cx='5.4' cy='8' rx='2.2' ry='2.6' fill='%23fff'/%3E%3Cellipse cx='10.6' cy='8' rx='2.2' ry='2.6' fill='%23fff'/%3E%3Ccircle cx='5.9' cy='8.6' r='1.1' fill='%23191f2c'/%3E%3Ccircle cx='11.1' cy='8.6' r='1.1' fill='%23191f2c'/%3E%3C/svg%3E") left center/16px 16px no-repeat}
+.convo .left{background:#e6f3ef;color:#123b33}
+.tchat .from{color:#5b6170}
+.tin button{background:#2340c8}
+@media (max-width:1100px){
+.side{background:transparent;border-right:0}
+.v2sbs,.v2plan{display:none}
+}
+@media (max-width:760px){
+.side{background:#ffffff}
+.v2topb{display:none}
+.v2sheet{border-radius:0;box-shadow:none}
+.head{padding:20px 16px 14px}
+.head h1{font-size:24px}
+.head .v2sum{font-size:14px}
+}
+
+/* v2: the side panel runs the full height; the title sits over the left column only */
+.edit,.kmain{padding:0 40px 56px}
+.edit>.head,.kmain>.head{padding:28px 0 20px}
+@media (min-width:1201px){.body{grid-template-columns:minmax(0,1fr) minmax(440px,40%)}.edit .wrapc{max-width:880px}}
+.pv{height:calc(100vh - 64px);background:#ffffff;border-left:1px solid #e8eaef}
+.pv .blobs,.pv .grain{display:none}
+.tester{background:#ffffff;border-left:1px solid #e8eaef;padding:28px 32px}
+.stage{background:#ffffff;padding:0 40px 48px}
+.stage>.head{align-self:stretch;padding:28px 0 20px}
+.side2{padding-top:28px}
+@media (max-width:760px){.edit,.kmain{padding:0 16px 40px}.edit>.head,.kmain>.head{padding:20px 0 14px}.stage{padding:0 16px 32px}}
+
+.edit>.head .url{display:none}
+
+/* v3 shared: headers with tabs, section headings */
+.head .v3t{display:flex;align-items:center;gap:20px;flex:1 1 auto}
+.head .v3t .utabs{margin:0}
+.head{align-items:center}
+.head .status{background:none!important;color:#5b6170!important;padding:0}
+.head .url{margin-left:0;height:38px;padding:0 4px 0 14px;border-radius:10px;box-shadow:inset 0 0 0 1px #e3e6ec;font-weight:600;color:#191f2c}
+.head .sec-btn{height:38px;border-radius:10px;font-weight:600}
+.sec{padding:24px 0}
+.sec-h{flex-direction:column;align-items:flex-start;gap:3px;margin:0 0 16px}
+.sec-h b{font-size:15px}
+.sec-h span{font-size:13.5px;color:#5b6170}
+.edit .wrapc{max-width:680px;padding-top:0}
+
+/* v3 Store: contents as designed */
+.head .v2ht{flex:1 1 0;min-width:0}
+.head .v2ht .v3t{flex:none}
+.edit .wrapc{max-width:840px}
+.ready{margin:0 0 20px;padding:4px;border-radius:10px}
+.ilist{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.it{padding:0 14px}
+.it .thumb{width:44px;height:44px;border-radius:10px}
+.it .nm2 b{font-weight:600}
+.it .avl{margin-left:auto}
+.gw{border-radius:10px}
+.gw.on{display:flex;align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);background:#ffffff}
+.gw.on .gw-t{flex:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 16px}
+.gw.on .gw-t b{grid-column:1}
+.gw.on .gw-t p{grid-column:1;margin:0;font-size:13px;color:#5b6170}
+.gw.on .gw-t .btns{grid-column:2;grid-row:1 / span 2;margin:0}
+.qrcard{display:flex;align-items:center;gap:16px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:#ffffff}
+.qrcard .qrbox{width:64px;height:64px;padding:4px;border-radius:8px}
+.qrcard .qrbox svg{width:56px;height:56px}
+.qrcard>span:last-child{flex:1;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:2px 16px}
+.qrcard>span:last-child p{grid-column:1;margin:0;font-size:13px;color:#5b6170}
+.qrcard>span:last-child .btns{grid-column:2;grid-row:1 / span 2;margin:0}
+.shoprow{border-radius:10px}
+.tile{border-radius:10px}
+@media (max-width:760px){.gw.on .gw-t,.qrcard>span:last-child{grid-template-columns:minmax(0,1fr)}.gw.on .gw-t .btns,.qrcard>span:last-child .btns{grid-column:1;grid-row:auto;margin-top:8px}}
+
+/* v3 small screens: title, tabs and actions stack */
+@media (max-width:1000px){.head .v2ht{flex:1 1 100%}.head .v3t{flex-wrap:wrap;row-gap:12px}}
+@media (max-width:760px){.head .v3t .utabs{max-width:100%}.head .v3t .utabs button{flex:1 1 auto;padding:0 12px}.head .status{margin-right:auto}}
 </style>
 </helmet>
 
 <div class="app {{appCls}}">
 <aside class="side" aria-label="Main navigation">
-<div class="brand"><span class="mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span><span class="sr">Curios</span></div>
+<div class="brand"><span class="mark" aria-hidden="true">curi<span class="mo" aria-hidden="true"><svg viewBox="0 0 40 40"><circle class="mo-r" cx="20" cy="20" r="15.6"></circle><g class="mo-e"><circle cx="14.8" cy="16" r="4.1"></circle><circle cx="25.2" cy="16" r="4.1"></circle></g><g class="mo-h"><path d="M11 18.5q3.8-5.4 7.6 0M21.4 18.5q3.8-5.4 7.6 0"></path></g></svg></span>s</span><span class="sr">Curios</span></div><label class="v2sbs"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg><input type="search" placeholder="Search" aria-label="Search orders, questions and leads"><kbd>/</kbd></label>
 <nav class="nav">
 <p class="grp">Page</p>
 <a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM9 8h6M9 12h6"></path></svg> My Curios</a>
@@ -704,38 +837,40 @@ a{color:#2340c8}a:hover{color:#122686}
 <a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v13H3zM3 10h18"></path></svg> Billing</a>
 <a href="#"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"></path></svg> Settings</a>
 </nav>
-<div class="acct"><svg viewBox="0 0 120 120" aria-hidden="true" class="lg"><circle cx="60" cy="60" r="60" fill="#b5294e"></circle><g fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M30 84h60"></path><path d="M36 84V66a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v18"></path><path d="M44 62V50a4 4 0 0 1 4-4h24a4 4 0 0 1 4 4v12"></path><path d="M36 72c4 4 8 4 12 0s8-4 12 0 8 4 12 0 8-4 12 0"></path></g><circle cx="60" cy="38" r="6" fill="#ffffff"></circle></svg><span style="min-width: 0"><b>Kek Lina</b><span>Business plan</span></span></div>
+<div class="v2plan"><b>Business plan</b><span>18 days left, until 14 Nov</span><span class="v2pbar" aria-hidden="true"><i style="width: 60%"></i></span></div>
 </aside>
 
 <main class="main">
+<header class="v2topb"><p class="tb-crumb">Kek Lina<i aria-hidden="true">/</i><b>Store</b></p><button type="button" class="tb-ib" aria-label="Dark mode"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg></button><button type="button" class="tb-ib" aria-label="Notifications, 3 new"><svg viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 20.5h4"></path></svg><u></u></button><button type="button" class="tb-acc" aria-label="Account"><i>L</i>Lina binti Kamal<svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"></path></svg></button></header>
+<div class="v2sheet">
+
+<div class="body">
+<div class="edit">
 <div class="head">
-<h1>Store</h1>
+<div class="v2ht"><div class="v3t"><h1>Store</h1><div class="utabs" role="tablist" aria-label="Store">
+<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}">{{t.label}}</button></sc-for>
+<span class="uline" style="width: 150px; transform: translateX({{ulineX}}px)"></span>
+</div></div><p class="v2sum">{{itemsNote}}. What you sell, how people pay, and how it reaches them.</p></div>
 <span class="status" aria-live="polite" style="background: {{stBg}}; color: {{stFg}}"><sc-if value="{{ saving }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 3a9 9 0 1 0 9 9"><animateTransform attributeName="transform" type="rotate" from="0 12 12" to="360 12 12" dur="0.8s" repeatCount="indefinite"></animateTransform></path></svg></sc-if><sc-if value="{{ saved }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if>{{saveText}}</span>
 <span class="url">curios.my/keklina/shop</span>
 <span class="open"><span class="pulse {{openPulse}}" style="background: {{openDot}}"></span><span style="color: {{openFg}}">{{openText}}</span><button type="button" class="switch" role="switch" aria-checked="{{ isOpen }}" aria-label="Shop open" disabled="{{ cantOpen }}" onClick="{{ toggleOpen }}" style="background: {{openBg}}; cursor: {{openCursor}}"><i style="transform: translateX({{openX}})"></i></button></span>
 <a class="sec-btn" href="#shop">See your shop</a>
 </div>
 
-<div class="body">
-<div class="edit">
 <div class="ready" role="list" aria-label="Ready to take orders">
 <sc-for list="{{ steps }}" as="r" hint-placeholder-count="3"><button type="button" role="listitem" class="rstep" onClick="{{ r.go }}"><span class="rdot" style="background: {{r.bg}}; color: {{r.fg}}"><sc-if value="{{ r.ok }}" hint-placeholder-val="{{ true }}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></sc-if><sc-if value="{{ r.bad }}" hint-placeholder-val="{{ false }}"><svg viewBox="0 0 24 24"><path d="M12 7v6M12 17h.01"></path></svg></sc-if></span><span style="min-width: 0"><b>{{r.title}}</b><span>{{r.note}}</span></span></button></sc-for>
 </div>
 
-<div class="utabs" role="tablist" aria-label="Store" style="margin-top: 14px">
-<sc-for list="{{ tabs }}" as="t" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{t.on}}" onClick="{{ t.go }}" style="width: 150px">{{t.label}}</button></sc-for>
-<span class="uline" style="width: 150px; transform: translateX({{ulineX}}px)"></span>
-</div>
 
 <sc-if value="{{ isItemsList }}" hint-placeholder-val="{{ true }}">
 <div class="wrapc" role="tabpanel" aria-label="Items">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg></span>About your shop</b><span>Shown above your items, before the notice</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4zM8 9h8M8 12h5"></path></svg></span>About your shop</b><span>Shown above your items. Tell people what to know before they order.</span></p>
 <label class="fl"><em>Shop description</em><textarea maxlength="160" onChange="{{ setShopDesc }}" value="{{ shopDesc }}" placeholder="What you sell, and anything customers should know first" style="height: 76px"></textarea><small>{{shopDescCount}}/160</small></label>
 </section>
 <section class="sec">
 <p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9l1.5-5h13L20 9M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM9 13h6"></path></svg></span>Items</b><span>{{itemsNote}}</span></p>
-<sc-if value="{{ noItems }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 14px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #ffebd6"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5M9 13h6"></path></svg></span></div><h3>Your shelf is empty</h3><p>Add what you sell, with a photo and a price or sizes. It shows in your Shop tab, and the chat can quote it exactly.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ addItem }}">+ Add your first item</button></div></div></div></sc-if>
+<sc-if value="{{ noItems }}" hint-placeholder-val="{{ false }}"><div style="border: 1.5px dashed #dfe1e6; border-radius: 10px"><div class="es sm"><div class="es-art" aria-hidden="true"><div class="es-rows"><span class="gr"><i style="background: #fbeef1"></i><b></b><em></em></span><span class="gr"><i style="background: #ffebd6"></i><b></b><em></em></span><span class="gr"><i style="background: #e8f3ef"></i><b></b><em></em></span></div><span class="es-badge" style="background: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 9l2-5h12l2 5M9 13h6"></path></svg></span></div><h3>Your shelf is empty</h3><p>Add what you sell, with a photo and a price or sizes. It shows in your Shop tab, and the chat can quote it exactly.</p><div class="es-acts"><button type="button" class="prim" onClick="{{ addItem }}">+ Add your first item</button></div></div></div></sc-if>
 <sc-if value="{{ hasItems }}" hint-placeholder-val="{{ true }}"><div class="ilist" style="height: {{ilistH}}px">
 <sc-for list="{{ items }}" as="i" hint-placeholder-count="4">
 <div class="it" style="transform: translateY({{i.y}}px)">
@@ -845,7 +980,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ isPay }}" hint-placeholder-val="{{ false }}">
 <div class="wrapc" role="tabpanel" aria-label="Payment">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 6h18v13H3zM3 10h18M7 15h4"></path></svg></span>Online payments</b><span>FPX online banking and e-wallets</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 6h18v13H3zM3 10h18M7 15h4"></path></svg></span>Online payments</b><span>FPX, e-wallets and cards through your own CHIP account. Orders mark themselves paid.</span></p>
 <sc-if value="{{ gwOff }}" hint-placeholder-val="{{ true }}"><div class="gw">
 <div class="gw-marks" aria-hidden="true"><i style="background: #eaf0ff; color: #122686">FPX</i><i style="background: #e6f0ff; color: #0b4dbd">TNG</i><i style="background: #e3f6ea; color: #0d7a3e">Grab</i><i style="background: #eef0ff; color: #3b2fb5">Boost</i><i style="background: #fff1e8; color: #c2410c">Card</i></div>
 <b>Let customers pay online</b>
@@ -868,7 +1003,7 @@ a{color:#2340c8}a:hover{color:#122686}
 </div></sc-if>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"></path></svg></span>DuitNow QR</b><span>Customers scan it on their order page</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #eaf0ff; color: #2340c8"><svg viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"></path></svg></span>DuitNow QR</b><span>Customers scan it on their order page, with the exact total shown. No CHIP fee.</span></p>
 <sc-if value="{{ hasQr }}" hint-placeholder-val="{{ true }}">
 <div class="qrcard">
 <span class="qrbox"><svg viewBox="-1 -1 27 27" width="124" height="124" role="img" aria-label="Your DuitNow QR, sample"><path d="{{qrPath}}" fill="#191f2c"></path></svg><span class="scan" aria-hidden="true"></span></span>
@@ -895,7 +1030,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ isDel }}" hint-placeholder-val="{{ false }}">
 <div class="wrapc" role="tabpanel" aria-label="Pickup and delivery">
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg></span>Pickup</b><span>Customers collect from you</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fdf0dc; color: #8f5c15"><svg viewBox="0 0 24 24"><path d="M12 21s-7-5.6-7-11a7 7 0 0 1 14 0c0 5.4-7 11-7 11zM12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"></path></svg></span>Pickup</b><span>Customers collect from you.</span></p>
 <div class="shoprow">
 <span style="flex: 1"><b style="display: block; font-weight: 600">Allow pickup</b><span style="font-size: 13px; color: #696e7b">{{pickupText}}</span></span>
 <button type="button" class="switch" role="switch" aria-checked="{{ pickup }}" aria-label="Allow pickup" onClick="{{ togglePickup }}" style="background: {{pickBg}}"><i style="transform: translateX({{pickX}})"></i></button>
@@ -903,14 +1038,14 @@ a{color:#2340c8}a:hover{color:#122686}
 <sc-if value="{{ pickup }}" hint-placeholder-val="{{ true }}"><label class="fl" style="margin-top: 10px; animation: fadeUp 300ms ease both"><em>Where and when</em><input value="{{ pickupNote }}" onChange="{{ setPickupNote }}" maxlength="120"><small>{{pickupCount}}/120</small></label></sc-if>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg></span>Delivery</b><span>How orders reach customers who can't come</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #e8f3ef; color: #1d6f5f"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM17.5 19a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z"></path></svg></span>Delivery</b><span>How orders reach customers who can't come.</span></p>
 <div class="tiles" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
 <sc-for list="{{ dmodes }}" as="d" hint-placeholder-count="3"><button type="button" class="tile dtile {{d.cls}}" aria-pressed="{{d.on}}" onClick="{{ d.pick }}"><span class="tick"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span><span class="dic" style="background: {{d.bg}}; color: {{d.fg}}"><svg viewBox="0 0 24 24"><path d="{{d.icon}}"></path></svg></span><span><b>{{d.label}}</b><span>{{d.note}}</span></span></button></sc-for>
 </div>
 <sc-if value="{{ isFlat }}" hint-placeholder-val="{{ true }}"><div style="display: flex; align-items: center; gap: 12px; margin-top: 12px; animation: fadeUp 300ms ease both"><label class="money" style="width: 180px"><span>RM</span><input value="{{ fee }}" onChange="{{ setFee }}" inputmode="decimal" aria-label="Delivery fee in ringgit"></label><span style="font-size: 13px; color: #696e7b">{{feeNote}}</span></div></sc-if>
 </section>
 <section class="sec">
-<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg></span>Notice</b><span>How far ahead customers must order</span></p>
+<p class="sec-h"><b><span class="chipi" aria-hidden="true" style="background: #fbeef1; color: #b5294e"><svg viewBox="0 0 24 24"><path d="M4 6h16v14H4zM4 10h16M8 3v4M16 3v4"></path></svg></span>Notice</b><span>How far ahead customers must order.</span></p>
 <span class="stepper"><button type="button" aria-label="One day less" disabled="{{ noLess }}" onClick="{{ less }}">−</button><output aria-live="polite">{{noticeText}}</output><button type="button" aria-label="One day more" disabled="{{ noMore }}" onClick="{{ more }}">+</button></span>
 <div class="days" aria-hidden="true"><sc-for list="{{ days }}" as="dy" hint-placeholder-count="10"><span class="day" style="background: {{dy.bg}}; color: {{dy.fg}}; transform: scale({{dy.s}}); text-decoration: {{dy.strike}}"><span>{{dy.wd}}</span><b>{{dy.d}}</b></span></sc-for></div>
 <p class="noteline"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#2340c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2"></path></svg>{{earliestText}}</p>
@@ -989,6 +1124,7 @@ a{color:#2340c8}a:hover{color:#122686}
 <div class="seg" role="tablist" aria-label="Preview screen">
 <span class="seg-th" style="transform: translateX({{segX}}px)"></span>
 <sc-for list="{{ segs }}" as="g" hint-placeholder-count="3"><button type="button" role="tab" aria-selected="{{g.on}}" onClick="{{ g.go }}" style="color: {{g.fg}}">{{g.label}}</button></sc-for>
+</div>
 </div>
 </div>
 </div>
