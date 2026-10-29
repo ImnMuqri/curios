@@ -179,38 +179,37 @@ export function ReviewQueue({
   const accepted = log.filter((entry) => entry.kind === 'accept').length;
   const doneIndex = log.length;
 
-  const progText = fresh ? 'Nothing to check yet' : remaining > 0 ? `${plural(remaining, 'fact')} to check` : 'All checked';
+  const progText = remaining > 0 ? `${plural(remaining, 'fact')} to check` : 'All checked';
 
   return (
     <div className={styles.rv}>
       <div className={styles.stage}>
         {head ? <div className={styles.head}>{head}</div> : null}
-        <div className={styles.prog}>
-          <b>{progText}</b>
-          {fresh ? null : (
-            <>
-              {total <= MAX_SEGMENTS ? (
-                <span className={styles.pbar} aria-hidden="true">
-                  {Array.from({ length: total }, (_, i) => {
-                    // Oldest decision on the left, the card on top next, the rest waiting.
-                    const entry = i < doneIndex ? log[doneIndex - 1 - i] : undefined;
-                    return <i key={i} data-state={entry ? entry.kind : i === doneIndex ? 'now' : undefined} />;
-                  })}
-                </span>
-              ) : (
-                <span className={styles.pbar} aria-hidden="true">
-                  <span className={styles.track}>
-                    <i data-state="accept" style={{ width: `${(accepted / total) * 100}%` }} />
-                    <i data-state="reject" style={{ width: `${((log.length - accepted) / total) * 100}%` }} />
-                  </span>
-                </span>
-              )}
-              <span className={styles.doneText}>
-                {log.length} of {total} done
+        {/* Nothing to count before any fact arrives: the empty state's own heading says so. */}
+        {fresh ? null : (
+          <div className={styles.prog}>
+            <b>{progText}</b>
+            {total <= MAX_SEGMENTS ? (
+              <span className={styles.pbar} aria-hidden="true">
+                {Array.from({ length: total }, (_, i) => {
+                  // Oldest decision on the left, the card on top next, the rest waiting.
+                  const entry = i < doneIndex ? log[doneIndex - 1 - i] : undefined;
+                  return <i key={i} data-state={entry ? entry.kind : i === doneIndex ? 'now' : undefined} />;
+                })}
               </span>
-            </>
-          )}
-        </div>
+            ) : (
+              <span className={styles.pbar} aria-hidden="true">
+                <span className={styles.track}>
+                  <i data-state="accept" style={{ width: `${(accepted / total) * 100}%` }} />
+                  <i data-state="reject" style={{ width: `${((log.length - accepted) / total) * 100}%` }} />
+                </span>
+              </span>
+            )}
+            <span className={styles.doneText}>
+              {log.length} of {total} done
+            </span>
+          </div>
+        )}
 
         {visible.length > 0 ? (
           <>

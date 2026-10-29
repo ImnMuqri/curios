@@ -135,6 +135,9 @@ describe('ReviewQueue', () => {
     expect(screen.getByText(/nothing to review yet/i)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Add a source' })).toHaveAttribute('href', '/app/knowledge?tab=sources&add=1');
     expect(screen.getByRole('link', { name: 'Write a fact yourself' })).toHaveAttribute('href', '/app/knowledge?tab=facts&add=1');
+    // The heading says it once: no "Nothing to check yet" progress line over it.
+    expect(screen.queryByText(/nothing to check yet/i)).toBeNull();
+    expect(screen.queryByText(/of 0 done/)).toBeNull();
   });
 
   it('says so when the last fact has been checked', async () => {

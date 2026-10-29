@@ -611,13 +611,11 @@
 
 /* ---- Nothing yet: a new account ---- */
 
+/* No card around it, as the empty states on Questions and Leads sit (owner, 29 Oct 2026). */
 .esCard {
   width: 100%;
   max-width: 640px;
-  margin-top: 40px;
-  border-radius: 24px;
-  background: color-mix(in srgb, var(--card) 70%, transparent);
-  box-shadow: 0 0 0 1px rgb(25 31 44 / 6%);
+  margin-top: 24px;
 }
 
 .es {
