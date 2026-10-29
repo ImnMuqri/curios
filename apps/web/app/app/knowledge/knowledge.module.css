@@ -1311,11 +1311,6 @@
   color: var(--ink);
 }
 
-/* Bottom-aligned while short, scrollable once it is long. */
-.tchat > :first-child {
-  margin-top: auto;
-}
-
 /* Nothing asked yet: Peek whistling, a line, and what to do. */
 .tempty {
   display: flex;
