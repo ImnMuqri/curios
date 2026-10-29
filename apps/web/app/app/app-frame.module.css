@@ -507,7 +507,19 @@
   min-width: 0;
   background: var(--card);
   border-radius: 16px 0 0 0;
+}
+
+/* The sheet's hairline edge, drawn over what the screen paints: an inset shadow on the sheet itself
+   sits under its children's backgrounds, so a full-height side panel (Review, Facts & sources, the
+   phone previews) hid the top line over its own width and the two columns looked unevenly high. */
+.sheet::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  border-radius: inherit;
   box-shadow: inset 1px 1px 0 var(--line);
+  pointer-events: none;
 }
 
 /* ---- The top bar's menus (Popover) ---- */
@@ -875,7 +887,10 @@ a.menuAlert:hover {
 
   .sheet {
     border-radius: 0;
-    box-shadow: none;
+  }
+
+  .sheet::before {
+    content: none;
   }
 }
 
