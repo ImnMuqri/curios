@@ -479,6 +479,8 @@ export function StoreEditor({
                     nextDay={previewNextDay}
                     description={orNull(description.text)}
                     halal={settings.shopHalal}
+                    coverUrl={look.coverUrl}
+                    avatarUrl={look.avatarUrl}
                     preview={{
                       storageKey: 'curios-store-preview',
                       onOpenItem: (id) => {

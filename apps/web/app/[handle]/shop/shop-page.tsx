@@ -46,6 +46,13 @@ export function ShopPageView(props: {
   description: string | null;
   halal: boolean;
   /**
+   * The page's cover photo (stock or uploaded), worn blurred behind the shop's sign (HANDOFF "Shop
+   * cover", 27 Oct 2026); null for none, and the sign sits on the page's own colour.
+   */
+  coverUrl?: string | null;
+  /** The owner's picture beside their note; null for none, and the note keeps the initial. */
+  avatarUrl?: string | null;
+  /**
    * The Store editor's picture of this page: the same page, but no link leaves
    * the editor (a tapped item opens the editor's item screen), nothing is
    * shared, and the basket it fills is the preview's own.
@@ -124,7 +131,13 @@ export function ShopPageView(props: {
   const initial = props.displayName.trim().charAt(0).toUpperCase();
 
   return (
-    <div className={styles.shop}>
+    <div className={styles.shop} data-cover={props.coverUrl ? '' : undefined}>
+      {/* The cover, blurred so it reads as colour and not a picture, fading into the page under the sign. */}
+      {props.coverUrl ? (
+        <div className={styles.cover} aria-hidden="true">
+          <img src={props.coverUrl} alt="" />
+        </div>
+      ) : null}
       <div className={styles.top}>
         <a className={styles.ib} href={`/${props.handle}`} aria-label={copy.backTo(props.displayName)} onClick={stay()}>
           <Icon d={ICON.back} />
@@ -179,9 +192,13 @@ export function ShopPageView(props: {
 
       {props.description ? (
         <div className={styles.own} role="note">
-          <span className={styles.av} aria-hidden="true">
-            {initial}
-          </span>
+          {props.avatarUrl ? (
+            <img className={styles.av} src={props.avatarUrl} alt="" width={34} height={34} />
+          ) : (
+            <span className={styles.av} aria-hidden="true">
+              {initial}
+            </span>
+          )}
           <div className={styles.bubble}>
             <p>{props.description}</p>
             <small>{props.displayName}</small>

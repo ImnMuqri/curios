@@ -30,6 +30,24 @@ beforeEach(() => window.sessionStorage.clear());
 afterEach(() => vi.restoreAllMocks());
 
 describe('ShopPageView', () => {
+  it('wears the page cover blurred behind its sign, and nothing when the page has none', () => {
+    const { container, rerender } = render(<ShopPageView {...base} coverUrl="https://cdn.example/cover.webp" />);
+    expect(container.firstElementChild).toHaveAttribute('data-cover');
+    expect(container.querySelector('[aria-hidden="true"] > img')).toHaveAttribute('src', 'https://cdn.example/cover.webp');
+    rerender(<ShopPageView {...base} coverUrl={null} />);
+    expect(container.firstElementChild).not.toHaveAttribute('data-cover');
+    expect(container.querySelector('img[src="https://cdn.example/cover.webp"]')).toBeNull();
+  });
+
+  it("puts the owner's picture beside their note, and their initial when there is none", () => {
+    const { container, rerender } = render(<ShopPageView {...base} avatarUrl="https://cdn.example/me.webp" />);
+    const note = screen.getByRole('note');
+    expect(note.querySelector('img')).toHaveAttribute('src', 'https://cdn.example/me.webp');
+    rerender(<ShopPageView {...base} avatarUrl={null} />);
+    expect(note.querySelector('img')).toBeNull();
+    expect(container.textContent).toContain(base.displayName.charAt(0).toUpperCase());
+  });
+
   it('has the top bar: back to the page, the shop address, share', () => {
     render(<ShopPageView {...base} />);
     expect(screen.getByRole('link', { name: 'Back to Kek Lina' })).toHaveAttribute('href', '/keklina');
