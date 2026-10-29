@@ -113,7 +113,7 @@ describe('Ask, opening chat mode', () => {
     );
   });
 
-  it('returns focus to the Ask tab once chat mode closes', async () => {
+  it('returns focus to the Ask tab when chat mode is closed from the keyboard', async () => {
     stubQualifyingFetch();
     vi.spyOn(history, 'back').mockImplementation(() => {});
     render(
@@ -124,12 +124,31 @@ describe('Ask, opening chat mode', () => {
 
     const askTab = screen.getByRole('link', { name: 'Ask' });
     await userEvent.click(askTab);
-    await screen.findByRole('button', { name: 'Back to links' });
+    const back = await screen.findByRole('button', { name: 'Back to links' });
 
-    await userEvent.click(screen.getByRole('button', { name: 'Back to links' }));
+    back.focus();
+    await userEvent.keyboard('{Enter}');
 
     expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
     expect(askTab).toHaveFocus();
+  });
+
+  // A tap moving focus to Ask left iPhone Safari's ring round it while Links was showing.
+  it('leaves focus alone when chat mode is closed with a tap', async () => {
+    stubQualifyingFetch();
+    vi.spyOn(history, 'back').mockImplementation(() => {});
+    render(
+      <TabbedPage>
+        <Ask handle="nadia" questions={['Berapa harga?']} displayName="Nadia Bakes" canCapture={true} />
+      </TabbedPage>,
+    );
+
+    const askTab = screen.getByRole('link', { name: 'Ask' });
+    await userEvent.click(askTab);
+    await userEvent.click(await screen.findByRole('button', { name: 'Back to links' }));
+
+    expect(screen.queryByRole('button', { name: 'Back to links' })).not.toBeInTheDocument();
+    expect(askTab).not.toHaveFocus();
   });
 });
 

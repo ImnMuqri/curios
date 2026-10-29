@@ -161,10 +161,30 @@ export function Ask({
    *
    * There is no ask bar on the Links tab: the Public board has the Ask tab
    * as the one way into the chat, and its composer only there.
+   *
+   * Only when the chat was closed from the keyboard. After a tap, the move
+   * would land while the composer (a field, so always "focus-visible") was
+   * the last thing focused, and iPhone Safari drew its focus ring round Ask
+   * while Links was the tab showing; a tap has no Tab key to lose its place.
    */
   const wasOpen = useRef(false);
+  const lastInput = useRef<'pointer' | 'keyboard'>('pointer');
   useEffect(() => {
-    if (wasOpen.current && !open) {
+    const pointer = () => {
+      lastInput.current = 'pointer';
+    };
+    const keyboard = () => {
+      lastInput.current = 'keyboard';
+    };
+    document.addEventListener('pointerdown', pointer, true);
+    document.addEventListener('keydown', keyboard, true);
+    return () => {
+      document.removeEventListener('pointerdown', pointer, true);
+      document.removeEventListener('keydown', keyboard, true);
+    };
+  }, []);
+  useEffect(() => {
+    if (wasOpen.current && !open && lastInput.current === 'keyboard') {
       promptRef.current?.closest<HTMLElement>('[data-bento-page]')?.querySelector<HTMLElement>('[data-tab="ask"]')?.focus();
     }
     wasOpen.current = open;
