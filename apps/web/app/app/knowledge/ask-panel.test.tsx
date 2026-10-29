@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -19,6 +21,35 @@ describe('AskPanel', () => {
   it('says what it is for before anything is asked', () => {
     panel();
     expect(within(log()).getByText(/the way a customer would/i)).toBeInTheDocument();
+  });
+
+  // The Knowledge board's empty chat: Peek whistling, "Nothing asked yet", gone once asked.
+  it('shows Peek whistling until something is asked', async () => {
+    panel();
+    expect(within(log()).getByText('Nothing asked yet')).toBeInTheDocument();
+    expect(log().querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Ada delivery?' }));
+    expect(await within(log()).findByText('Kek coklat 2kg RM170.')).toBeInTheDocument();
+    expect(within(log()).queryByText('Nothing asked yet')).toBeNull();
+  });
+
+  // Peek holds still for anyone who asked their device for less motion.
+  it('stops Peek’s bob and notes under reduced motion', () => {
+    const css = readFileSync(join(import.meta.dirname, 'knowledge.module.css'), 'utf8').replace(/\r/g, '');
+    const reduced = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce)'));
+    for (const name of ['.pwBob', '.pwNote1', '.pwNote2']) expect(reduced).toContain(name);
+    expect(reduced).toMatch(/animation: none/);
+  });
+
+  // Dashboard v2: a normal AI chat on the dashboard's panel, not an island of the page's colours.
+  it('draws the chat as a dashboard chat, not in the page’s colours', () => {
+    panel();
+    expect(log()).not.toHaveAttribute('data-island');
+    expect(screen.getByRole('complementary', { name: 'Try your page' })).not.toHaveAttribute('data-on-accent');
+    const css = readFileSync(join(import.meta.dirname, 'knowledge.module.css'), 'utf8').replace(/\r/g, '');
+    const body = /\n\.tchat \{([^}]*)\}/.exec(css)?.[1] ?? '';
+    expect(body).toMatch(/background: var\(--chat\);/);
+    expect(body).toMatch(/border-radius: 10px;/);
   });
 
   it('asks what is typed and shows the answer', async () => {
@@ -67,7 +98,8 @@ describe('AskPanel', () => {
     panel();
     await userEvent.click(screen.getByRole('button', { name: 'Berapa kek coklat 2kg?' }));
     await within(log()).findByText('Kek coklat 2kg RM170.');
-    expect(log().querySelector('svg')).toBeNull();
+    // No "from" line: its tick is the only one in the log (Peek's eyes beside the reply are not it).
+    expect(log().querySelector('path[d="M5 12.5l4.5 4.5L19 7.5"]')).toBeNull();
   });
 
   it("names the owner's own answer when that is what it gave", async () => {

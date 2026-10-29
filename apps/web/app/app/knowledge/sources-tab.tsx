@@ -313,7 +313,7 @@ export function SourceList({
       <div className={styles.introRow}>
         <p className={styles.intro}>Links and text Curios read to learn about you. New facts go to Review first.</p>
         {adding || sources.length === 0 ? null : (
-          <button type="button" className={styles.prim} onClick={() => setAdding(true)}>
+          <button type="button" className={styles.addLink} onClick={() => setAdding(true)}>
             + Add a source
           </button>
         )}
