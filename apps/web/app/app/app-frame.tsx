@@ -212,7 +212,7 @@ export function AppFrame({
     const paint = () => {
       const ground = getComputedStyle(frame).backgroundColor;
       root.style.backgroundColor = ground;
-      meta!.content = ground;
+      meta.content = ground;
     };
     paint();
     const device = window.matchMedia('(prefers-color-scheme: dark)');
@@ -220,8 +220,8 @@ export function AppFrame({
     return () => {
       device.removeEventListener('change', paint);
       root.style.backgroundColor = before;
-      if (added) meta!.remove();
-      else meta!.content = metaBefore;
+      if (added) meta.remove();
+      else meta.content = metaBefore;
     };
   }, [theme]);
 
