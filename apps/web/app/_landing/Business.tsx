@@ -28,8 +28,8 @@ const AVATAR_TONES = ['var(--tj-blob-pink)', 'var(--tj-blob-blue)', 'var(--tj-bl
  * yours: they open the shop from Kek Lina's link in bio, add two items, check out, pick online banking and Maybank2u,
  * approve in the bank and come straight back; it lands in your Orders already
  * paid. It plays while the stage is in view (each step at its own pace, with a
- * progress line), pauses while a phone is hovered, and a step can be clicked
- * to jump to it. With reduced motion (and before JavaScript) it shows the last
+ * progress line), and a step can be clicked to jump to it. It does not pause
+ * while a phone is hovered (owner, 30 Oct 2026). With reduced motion (and before JavaScript) it shows the last
  * frame, completed in your Orders; the steps can still be clicked to look at.
  */
 export function Business({ locale }: { locale: Locale }) {
@@ -39,19 +39,12 @@ export function Business({ locale }: { locale: Locale }) {
   const stage = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
   const hold = useRef(0);
-  const paused = useRef(false);
 
   const goTo = useCallback((i: number) => {
     progress.current = stepStart(i);
     hold.current = 0;
     setP(progress.current);
   }, []);
-  const pause = () => {
-    paused.current = true;
-  };
-  const resume = () => {
-    paused.current = false;
-  };
 
   useEffect(() => {
     if (reduced) {
@@ -75,7 +68,7 @@ export function Business({ locale }: { locale: Locale }) {
           progress.current = 0;
           setP(0);
         }
-      } else if (!paused.current) {
+      } else {
         const next = advance(progress.current, dt);
         if (next >= 1) {
           progress.current = 1;
@@ -145,7 +138,7 @@ export function Business({ locale }: { locale: Locale }) {
           </div>
 
           <div ref={stage} className={styles.bizStage} role="img" aria-label={copy.stage}>
-            <div className={styles.cust} data-phone onMouseEnter={pause} onMouseLeave={resume}>
+            <div className={styles.cust} data-phone>
               <div className={styles.custScreen}>
                 {/* The shop front wears the page's cover, blurred and darkened (handoff, "Shop cover", 27 Oct 2026). */}
                 <div className={styles.csCover} aria-hidden="true">
@@ -327,7 +320,7 @@ export function Business({ locale }: { locale: Locale }) {
               <b>#14</b> RM235
             </span>
 
-            <div className={styles.own} data-phone onMouseEnter={pause} onMouseLeave={resume}>
+            <div className={styles.own} data-phone>
               <div className={styles.ownScreen}>
                 <p className={styles.osStatus}>
                   <span>11:42</span>

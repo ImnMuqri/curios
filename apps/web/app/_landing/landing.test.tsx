@@ -434,7 +434,7 @@ describe('For business, the steps', () => {
     expect(business(container).querySelectorAll('[data-bar]')).toHaveLength(5);
   });
 
-  it('hovering the phones pauses', () => {
+  it('keeps playing while a phone is hovered', () => {
     const frames: FrameRequestCallback[] = [];
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => frames.push(cb));
     vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
@@ -466,10 +466,6 @@ describe('For business, the steps', () => {
     fireEvent.mouseEnter(phones[0]!);
     tick(1150);
     tick(1200);
-    expect(bar()).toBe(before);
-    fireEvent.mouseLeave(phones[0]!);
-    tick(1250);
-    tick(1300);
     expect(bar()).toBeGreaterThan(before);
     vi.unstubAllGlobals();
   });
