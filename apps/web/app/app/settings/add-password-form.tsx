@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { apiFetch } from '../../../lib/api.js';
 import { strength } from '../../../lib/password-strength.js';
-import { Done, SettingRow } from './setting-row.js';
+import { Done, KeyIcon, SettingRow } from './setting-row.js';
 import styles from './settings.module.css';
 
 // The reset screen draws the same meter; the rule lives in lib/.
@@ -57,6 +57,7 @@ export function AddPasswordForm({ onAdd }: { onAdd: (input: { password: string }
   return (
     <SettingRow
       title="Password"
+      icon={<KeyIcon />}
       note={done ? 'Password added. You can now sign in with your email and this password.' : 'Not set. You sign in with Google only.'}
       action={
         done ? (

@@ -2,6 +2,10 @@
  * Billing, from the design handoff's Billing board: your plan (what is left,
  * a line from today to where this payment takes you, the two plans and one
  * Pay button) beside what this month has used, then the payments as a table.
+ *
+ * Dashboard v2 (v3 on the board): full width on the sheet, no cards -- the plan
+ * and the month are two plain columns -- the plans are rows, and every box,
+ * field and button has 10px corners.
  */
 
 @keyframes fadeUp {
@@ -59,8 +63,8 @@
 }
 
 .bl {
-  max-width: 1100px;
-  padding: 28px 36px 56px;
+  max-width: 1440px;
+  padding: 8px 40px 56px;
   container-type: inline-size;
 }
 
@@ -68,7 +72,7 @@
 .banner {
   margin: 0 0 16px;
   padding: 12px 16px;
-  border-radius: 14px;
+  border-radius: 10px;
   background: var(--biru-muda);
   color: color-mix(in srgb, var(--biru) 70%, var(--ink));
   font-size: 13.5px;
@@ -83,20 +87,17 @@
 .top {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
-  gap: 16px;
-  align-items: stretch;
+  gap: 56px;
+  align-items: start;
 }
 
 .top[data-personal] {
   grid-template-columns: minmax(0, 640px);
 }
 
+/* A column, not a box: v2 dropped the cards, so this only keeps the grid cell from overflowing. */
 .card {
   min-width: 0;
-  padding: 24px;
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background: var(--card);
 }
 
 .lab {
@@ -250,21 +251,31 @@
   color: var(--biru);
 }
 
+/*
+ * The plans, one row each: the radio on the left, the name, its note and any
+ * saving in the middle, the price on the right. The markup keeps its order
+ * (dot, name, price, note, saving) for screen readers; the grid places it.
+ */
 .pick {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
   margin-top: 20px;
 }
 
 .opt {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 14px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    'dot name price'
+    'dot note price'
+    'dot save price';
+  align-items: center;
+  column-gap: 14px;
+  padding: 16px 18px;
   border: 1.5px solid var(--edge);
-  border-radius: 16px;
+  border-radius: 10px;
   background: var(--card);
   color: var(--ink);
   font: inherit;
@@ -284,9 +295,7 @@
 }
 
 .on {
-  position: absolute;
-  top: 14px;
-  right: 14px;
+  grid-area: dot;
   display: grid;
   place-items: center;
   width: 20px;
@@ -317,29 +326,33 @@
 }
 
 .opt small {
-  font-size: 12px;
+  grid-area: name;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--muted);
+  color: var(--ink);
 }
 
 .opt b {
+  grid-area: price;
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .opt > span:not(.on) {
+  grid-area: note;
   font-size: 12.5px;
   color: var(--muted);
 }
 
 .opt em {
-  align-self: flex-start;
+  grid-area: save;
+  justify-self: start;
   margin-top: 6px;
   padding: 2px 8px;
   border-radius: 999px;
-  background: var(--amber-muda);
-  color: var(--amber-ink);
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
   font-size: 11.5px;
   font-style: normal;
   font-weight: 600;
@@ -408,10 +421,10 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 46px;
+  height: 44px;
   padding: 0 22px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--biru);
   color: var(--card);
   font: inherit;
@@ -487,7 +500,7 @@
   height: 40px;
   padding: 0 16px;
   border: 0;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--biru);
   color: var(--card);
   font: inherit;
@@ -505,7 +518,7 @@
   height: 40px;
   padding: 0 14px;
   border: 1px solid var(--edge);
-  border-radius: 999px;
+  border-radius: 10px;
   background: var(--card);
   color: var(--ink);
   font: inherit;
@@ -540,6 +553,12 @@
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+/* Each meter ends on a hairline, as the board's plain column separates them. */
+.meter {
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--line);
 }
 
 .meter small {
@@ -605,9 +624,7 @@
 }
 
 .inc {
-  margin-top: auto;
-  padding-top: 16px;
-  border-top: 1px solid var(--line);
+  padding-top: 4px;
 }
 
 .inc .lab {
@@ -672,7 +689,7 @@
 .tab {
   width: 100%;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 10px;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
@@ -753,7 +770,7 @@
   gap: 6px;
   padding: 28px 16px;
   border: 1.5px dashed var(--edge);
-  border-radius: 16px;
+  border-radius: 10px;
   text-align: center;
 }
 
@@ -779,7 +796,7 @@
   gap: 10px;
   height: 30px;
   padding: 0 10px;
-  border-radius: 12px;
+  border-radius: 8px;
   background: var(--card);
   box-shadow: 0 0 0 1px var(--line), 0 8px 16px -12px rgb(25 31 44 / 30%);
   animation: ghost 3.4s ease-in-out infinite;
@@ -834,7 +851,7 @@
   place-items: center;
   width: 46px;
   height: 46px;
-  border-radius: 15px;
+  border-radius: 10px;
   background: var(--biru);
   color: var(--card);
   box-shadow: 0 12px 24px -12px rgb(25 31 44 / 60%);
@@ -883,7 +900,7 @@
   width: 100%;
   max-width: 420px;
   padding: 26px;
-  border-radius: 22px;
+  border-radius: 10px;
   background: var(--card);
   box-shadow: 0 30px 60px -20px rgb(0 0 0 / 40%);
   animation: popin 380ms cubic-bezier(0.34, 1.4, 0.64, 1) both;
@@ -909,7 +926,7 @@
   gap: 12px;
   margin-top: 16px;
   padding: 14px 16px;
-  border-radius: 14px;
+  border-radius: 8px;
   background: color-mix(in srgb, var(--biru-muda) 50%, var(--card));
   font-size: 14px;
 }
@@ -959,7 +976,7 @@
 
 @media (max-width: 760px) {
   .bl {
-    padding: 20px 16px 40px;
+    padding: 4px 16px 40px;
   }
 }
 
@@ -972,10 +989,6 @@
 @container (max-width: 520px) {
   .big b {
     font-size: 36px;
-  }
-
-  .pick {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .pay {

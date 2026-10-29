@@ -137,7 +137,10 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText(/\/nadia$/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Copy' })).toBeInTheDocument();
-    expect(screen.getByText(/can't be switched back to personal/)).toBeInTheDocument();
+    expect(screen.getByText(/can't go back to personal/)).toBeInTheDocument();
+    // The board's card line: a business page is always in search, with no switch.
+    expect(screen.getByText('Always shows up in search')).toBeInTheDocument();
+    expect(SearchIndexing).not.toHaveBeenCalled();
   });
 
   it('points a personal page at Business, where the switch is', async () => {
@@ -180,10 +183,11 @@ describe('SettingsPage', () => {
     await renderWith({}, methods({}));
 
     expect(screen.getByRole('heading', { name: 'Email me when' })).toBeInTheDocument();
-    expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app.')).toBeInTheDocument();
+    expect(screen.getByText('Sent to nadia@example.com. Everything also shows in the app and under the bell.')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Email me when someone leaves their number' })).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('switch', { name: 'Email me when a new order comes in' })).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByRole('switch', { name: 'Email me when a receipt is uploaded' })).toHaveAttribute('aria-checked', 'false');
+    expect(screen.getByText('Your address, how you sign in, and what we email you about.')).toBeInTheDocument();
   });
 
   it('offers a personal page no email switches, since it takes no leads', async () => {
@@ -195,5 +199,14 @@ describe('SettingsPage', () => {
     await renderWith({}, methods({}));
 
     expect(screen.queryByRole('heading', { name: 'Email me when' })).toBeNull();
+    expect(screen.getByText('Your address, and how you sign in.')).toBeInTheDocument();
+  });
+
+  it('still says which address is signed in, now on the sign-out row', async () => {
+    // The header used to say "Signed in as ..."; the board's summary does not,
+    // and an account without Google or the emails would otherwise show it nowhere.
+    await renderWith({}, methods({}));
+
+    expect(screen.getByText(/^Signed in as nadia@example\.com\./)).toBeInTheDocument();
   });
 });

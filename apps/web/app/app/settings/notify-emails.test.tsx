@@ -7,13 +7,15 @@ const LEADS = { name: 'Email me when someone leaves their number' };
 const ORDERS = { name: 'Email me when a new order comes in' };
 const RECEIPTS = { name: 'Email me when a receipt is uploaded' };
 
+const PLAN = { name: 'Email me when my plan is ending' };
+
 const all = { leads: true, orders: true, receipts: true };
 
 describe('NotifyForm', () => {
-  it('lists the board’s three emails, order and receipt first', () => {
+  it('lists the board’s emails, order and receipt first, the plan ending last', () => {
     render(<NotifyForm on={all} onChange={vi.fn()} />);
 
-    expect(screen.getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([ORDERS.name, RECEIPTS.name, LEADS.name]);
+    expect(screen.getAllByRole('switch').map((s) => s.getAttribute('aria-label'))).toEqual([ORDERS.name, RECEIPTS.name, LEADS.name, PLAN.name]);
     expect(screen.getByText('A new order')).toBeInTheDocument();
     expect(screen.getByText('With the total, so you can check the receipt.')).toBeInTheDocument();
     expect(screen.getByText('A receipt is uploaded')).toBeInTheDocument();
@@ -63,5 +65,22 @@ describe('NotifyForm', () => {
     expect(alert).toHaveTextContent('Something failed');
     expect(within(alert.parentElement!).getByRole('switch', ORDERS)).toBeInTheDocument();
     expect(screen.getByRole('switch', ORDERS)).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('shows the plan-ending email as on and not changeable, and says why', async () => {
+    // Nothing stores a choice about it: the worker sends it to every business
+    // page with a plan. A switch that moved would save nothing.
+    const onChange = vi.fn(async () => undefined);
+    render(<NotifyForm on={all} onChange={onChange} />);
+
+    const plan = screen.getByRole('switch', PLAN);
+    expect(plan).toHaveAttribute('aria-checked', 'true');
+    expect(plan).toBeDisabled();
+    expect(screen.getByText('Your plan is ending')).toBeInTheDocument();
+    expect(screen.getByText(/^3 days before, and on the day\. Always sent/)).toBeInTheDocument();
+
+    await userEvent.click(plan);
+    expect(onChange).not.toHaveBeenCalled();
+    expect(plan).toHaveAttribute('aria-checked', 'true');
   });
 });
