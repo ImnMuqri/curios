@@ -535,6 +535,7 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
             ...base,
             ref: order.paidRef,
             customerEmail: order.email,
+            deliveryCents: order.deliveryCents,
             discountCents: order.discountCents,
             voucherLabel: order.voucherLabel,
             lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),

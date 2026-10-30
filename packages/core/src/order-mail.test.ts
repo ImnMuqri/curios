@@ -330,3 +330,43 @@ describe('a voucher on the order emails', () => {
     expect(mail.text).toContain('Paid: RM205.50');
   });
 });
+
+/** Every amount row above the total in a plain-text mail, signed, in sen: what the reader adds up. */
+function rowsAboveTotal(text: string, totalLabel: string): { sum: number; total: number } {
+  const lines = text.split('\n');
+  const at = lines.findIndex((l) => l.startsWith(`${totalLabel}: RM`));
+  const sen = (m: string) => Math.round(Number(m.replace(/,/g, '')) * 100);
+  let sum = 0;
+  for (const line of lines.slice(0, at)) {
+    const m = /: (−?)RM([\d,.]+)$/.exec(line);
+    if (m) sum += (m[1] ? -1 : 1) * sen(m[2] ?? '0');
+  }
+  return { sum, total: sen(lines[at]?.split('RM')[1] ?? '0') };
+}
+
+describe('a delivery fee on the order emails', () => {
+  // Items RM190, delivery RM8, RAYA10 takes RM9.50 off the items: RM188.50.
+  const delivered = { ...order, method: 'DELIVERY' as const, deliveryCents: 800, totalCents: 18_850, discountCents: 950, voucherLabel: 'RAYA10' };
+
+  it('newOrderMail shows the delivery fee, so the lines less the voucher add up to the total', () => {
+    const mail = newOrderMail(delivered);
+    expect(mail.text).toContain('Delivery: RM8');
+    expect(rowsAboveTotal(mail.text, 'Total')).toEqual({ sum: 18_850, total: 18_850 });
+    expect(mail.html).toContain('>RM8<');
+    expect(mail.html.indexOf('>RM8<')).toBeLessThan(mail.html.indexOf('>Total<'));
+  });
+
+  it('paidOrderMail shows it too', () => {
+    const mail = paidOrderMail({ ...delivered, via: 'FPX · Maybank2u', ref: null });
+    expect(mail.text).toContain('Delivery: RM8');
+    expect(rowsAboveTotal(mail.text, 'Paid')).toEqual({ sum: 18_850, total: 18_850 });
+    expect(mail.html).toContain('>RM8<');
+  });
+
+  it('a rider delivery (no fee on the order) and a pickup have no delivery row', () => {
+    const rider = newOrderMail({ ...delivered, deliveryCents: 0, totalCents: 18_050 });
+    expect(rider.text).not.toMatch(/^Delivery: /m);
+    expect(rowsAboveTotal(rider.text, 'Total')).toEqual({ sum: 18_050, total: 18_050 });
+    expect(newOrderMail(order).text).not.toMatch(/^Delivery: /m);
+  });
+});

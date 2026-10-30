@@ -46,8 +46,17 @@ export function voucherRow(o: { discountCents?: number; voucherLabel?: string | 
   return { name: o.voucherLabel || 'Voucher', detail: 'Voucher', amount: `−${formatRinggit(o.discountCents)}` };
 }
 
-/** The voucher row in a plain-text email, under the lines: "RAYA10: −RM9.50". */
-export const voucherText = (row: ReturnType<typeof voucherRow>): string[] => (row ? [`${row.name}: ${row.amount}`] : []);
+/**
+ * The delivery fee, as one row under the lines ("Delivery RM8"), so the rows add up to the total; null with
+ * none (a pickup, a digital order, or a rider delivery, which the customer pays the rider for).
+ */
+export function deliveryRow(o: { deliveryCents?: number }): { name: string; detail: string; amount: string } | null {
+  if (!o.deliveryCents) return null;
+  return { name: 'Delivery', detail: '', amount: formatRinggit(o.deliveryCents) };
+}
+
+/** The amount rows in a plain-text email, under the lines: "Delivery: RM8", "RAYA10: −RM9.50". */
+export const rowsText = (...rows: ReturnType<typeof voucherRow>[]): string[] => rows.flatMap((row) => (row ? [`${row.name}: ${row.amount}`] : []));
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -71,6 +80,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
     ? `A voucher covered the whole order, so there’s nothing to pay and no receipt to check. ${o.method === null || o.day === null ? 'Their digital items were sent to them straight away.' : 'Just get it ready.'}`
     : 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
   const voucher = voucherRow(o);
+  const delivery = deliveryRow(o);
   const totalLabel = free ? 'Paid' : 'Total';
   const gettingIt =
     o.method === null || o.day === null
@@ -92,7 +102,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
       said,
       '',
       ...o.lines.map((l) => `${[l.itemName, l.optionLabel].filter(Boolean).join(', ')}, ${l.quantity}×: ${formatRinggit(l.lineCents)}`),
-      ...voucherText(voucher),
+      ...rowsText(delivery, voucher),
       `${totalLabel}: ${total}`,
       '',
       ...facts.map(([label, value]) => `${label}: ${value}`),
@@ -114,6 +124,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
               detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
               amount: formatRinggit(l.lineCents),
             })),
+            ...(delivery ? [delivery] : []),
             ...(voucher ? [voucher] : []),
           ],
           total: { label: totalLabel, amount: total },
@@ -156,6 +167,7 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
   ];
   const button = `Open order #${o.number}`;
   const voucher = voucherRow(o);
+  const delivery = deliveryRow(o);
 
   return {
     subject,
@@ -165,7 +177,7 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
       said,
       '',
       ...o.lines.map((l) => `${[l.itemName, l.optionLabel].filter(Boolean).join(', ')}, ${l.quantity}×: ${formatRinggit(l.lineCents)}`),
-      ...voucherText(voucher),
+      ...rowsText(delivery, voucher),
       `Paid: ${total}`,
       '',
       ...facts.map(([label, value]) => `${label}: ${value}`),
@@ -189,6 +201,7 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
               detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
               amount: formatRinggit(l.lineCents),
             })),
+            ...(delivery ? [delivery] : []),
             ...(voucher ? [voucher] : []),
           ],
           total: { label: 'Paid', amount: total },
