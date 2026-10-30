@@ -5,6 +5,7 @@ import {
   normalizeVoucherCode,
   pickVoucher,
   voucherEndsAt,
+  voucherEndsOn,
   voucherSaving,
   voucherState,
   type VoucherInput,
@@ -176,6 +177,14 @@ describe('checkVoucherInput', () => {
 describe('voucherEndsAt', () => {
   it('is midnight Malaysia at the end of the named day', () => {
     expect(voucherEndsAt('2026-11-30')).toEqual(new Date('2026-12-01T00:00:00+08:00'));
+  });
+});
+
+describe('voucherEndsOn', () => {
+  it('is the Malaysian day voucherEndsAt was given, from a Date or its ISO string', () => {
+    expect(voucherEndsOn(voucherEndsAt('2026-11-30'))).toBe('2026-11-30');
+    expect(voucherEndsOn('2026-12-31T16:00:00.000Z')).toBe('2026-12-31');
+    expect(voucherEndsOn(voucherEndsAt('2027-01-01').toISOString())).toBe('2027-01-01');
   });
 });
 

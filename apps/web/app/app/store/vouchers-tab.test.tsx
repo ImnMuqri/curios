@@ -170,3 +170,93 @@ describe('VouchersTab', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(4);
   });
 });
+
+describe('VouchersTab, editing a voucher', () => {
+  const insta = voucher({ id: 'v2', mode: 'CODE', kind: 'AMOUNT', percent: null, amountCents: 500, itemId: 'a', itemName: 'Kek Batik', code: 'INSTA15', name: null, label: 'INSTA15', minSpendCents: 3050, maxUses: 50, uses: 12, endsAt: '2026-11-30T16:00:00.000Z', state: 'on' });
+
+  it('opens the form with its terms, RM back from sen and its last day, and saves them through update', async () => {
+    const calls = show([insta], api({ update: vi.fn(async (id) => ({ ...insta, id, amountCents: 750 })) }));
+    await userEvent.click(within(row(/INSTA15/)).getByRole('button', { name: 'Edit INSTA15' }));
+    const form = screen.getByRole('form', { name: 'Edit voucher' });
+    expect(within(form).getByLabelText('Code')).toHaveValue('INSTA15');
+    expect(within(form).getByLabelText('Amount off in ringgit')).toHaveValue('5');
+    expect(within(form).getByLabelText('Applies to')).toHaveValue('a');
+    expect(within(form).getByLabelText('Minimum spend in ringgit')).toHaveValue('30.50');
+    expect(within(form).getByLabelText('Last day')).toHaveValue('2026-11-30');
+    expect(within(form).getByLabelText('Uses')).toHaveValue('50');
+    await userEvent.clear(within(form).getByLabelText('Amount off in ringgit'));
+    await userEvent.type(within(form).getByLabelText('Amount off in ringgit'), '7.50');
+    await userEvent.click(within(form).getByRole('button', { name: 'Save voucher' }));
+    expect(calls.update).toHaveBeenCalledWith('v2', { mode: 'CODE', code: 'INSTA15', name: null, kind: 'AMOUNT', percent: null, amountCents: 750, itemId: 'a', minSpendCents: 3050, endsOn: '2026-11-30', maxUses: 50 });
+    expect(await screen.findByText('RM7.50 off Kek Batik')).toBeInTheDocument();
+    expect(screen.queryByRole('form', { name: 'Edit voucher' })).toBeNull();
+  });
+
+  it('refuses what the rule refuses, before calling the API', async () => {
+    const calls = show([insta]);
+    await userEvent.click(within(row(/INSTA15/)).getByRole('button', { name: 'Edit INSTA15' }));
+    await userEvent.clear(screen.getByLabelText('Uses'));
+    await userEvent.type(screen.getByLabelText('Uses'), '0');
+    await userEvent.click(screen.getByRole('button', { name: 'Save voucher' }));
+    expect(screen.getByRole('alert')).toHaveTextContent(/^Uses can be 1 to/);
+    expect(calls.update).not.toHaveBeenCalled();
+  });
+
+  it('says a taken code on the code field, and keeps the form open', async () => {
+    const calls = show([insta], api({ update: vi.fn(async () => { throw new ApiError(409, 'VOUCHER_CODE_TAKEN', 'taken'); }) }));
+    await userEvent.click(within(row(/INSTA15/)).getByRole('button', { name: 'Edit INSTA15' }));
+    await userEvent.clear(screen.getByLabelText('Code'));
+    await userEvent.type(screen.getByLabelText('Code'), 'raya10');
+    await userEvent.click(screen.getByRole('button', { name: 'Save voucher' }));
+    expect(await screen.findByText('You already have a code like that.')).toBeInTheDocument();
+    expect(calls.update).toHaveBeenCalledWith('v2', expect.objectContaining({ code: 'RAYA10' }));
+    expect(screen.getByRole('form', { name: 'Edit voucher' })).toBeInTheDocument();
+  });
+
+  it('brings an ended voucher back by moving its last day', async () => {
+    const ended = voucher({ id: 'v3', mode: 'CODE', code: 'OLD10', name: null, label: 'OLD10', endsAt: '2026-11-30T16:00:00.000Z', state: 'ended' });
+    const calls = show([ended], api({ update: vi.fn(async (id, patch) => voucher({ ...ended, id, endsAt: '2026-12-31T16:00:00.000Z', state: patch.endsOn === '2026-12-31' ? 'on' : 'ended' })) }));
+    await userEvent.click(within(row(/OLD10/)).getByRole('button', { name: 'Edit OLD10' }));
+    await userEvent.clear(screen.getByLabelText('Last day'));
+    await userEvent.type(screen.getByLabelText('Last day'), '2026-12-31');
+    await userEvent.click(screen.getByRole('button', { name: 'Save voucher' }));
+    expect(calls.update).toHaveBeenCalledWith('v3', expect.objectContaining({ endsOn: '2026-12-31' }));
+    expect(await within(row(/OLD10/)).findByText('Until 31 Dec')).toBeInTheDocument();
+    const toggle = within(row(/OLD10/)).getByRole('switch');
+    expect(toggle).toHaveAttribute('aria-checked', 'true');
+    expect(toggle).toBeEnabled();
+  });
+
+  it('cancel closes the form and sends nothing', async () => {
+    const calls = show([insta]);
+    await userEvent.click(within(row(/INSTA15/)).getByRole('button', { name: 'Edit INSTA15' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('form', { name: 'Edit voucher' })).toBeNull();
+    expect(calls.update).not.toHaveBeenCalled();
+    expect(row(/INSTA15/)).toBeInTheDocument();
+  });
+});
+
+describe('VouchersTab, a voucher that has stopped by itself', () => {
+  it('shows an ended or used-up voucher’s switch off and disabled, described by why', () => {
+    show([
+      voucher({ id: 'e', mode: 'CODE', code: 'OLD10', name: null, label: 'OLD10', endsAt: '2026-11-30T16:00:00.000Z', state: 'ended' }),
+      voucher({ id: 'u', mode: 'CODE', code: 'GONE', name: null, label: 'GONE', maxUses: 5, uses: 5, state: 'usedUp' }),
+    ]);
+    const ended = within(row(/OLD10/)).getByRole('switch');
+    expect(ended).toHaveAttribute('aria-checked', 'false');
+    expect(ended).toBeDisabled();
+    expect(ended).toHaveAccessibleDescription('Ended 30 Nov');
+    const spent = within(row(/GONE/)).getByRole('switch');
+    expect(spent).toHaveAttribute('aria-checked', 'false');
+    expect(spent).toBeDisabled();
+    expect(spent).toHaveAccessibleDescription('Used up');
+  });
+
+  it('keeps the switch working for an on and an off voucher', () => {
+    show();
+    expect(within(row(/Raya sale/)).getByRole('switch')).toBeEnabled();
+    expect(within(row(/PAUSED/)).getByRole('switch')).toBeEnabled();
+    expect(within(row(/PAUSED/)).getByRole('switch')).toHaveAttribute('aria-checked', 'false');
+  });
+});

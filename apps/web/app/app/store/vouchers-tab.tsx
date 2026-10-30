@@ -2,7 +2,7 @@
 
 import { useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { formatRinggit, parseRinggit } from '@curios/core/store';
-import { VOUCHER_NAME_MAX, checkVoucherInput, normalizeVoucherCode, type OwnerVoucher, type VoucherInput, type VoucherKind, type VoucherMode } from '@curios/core/vouchers';
+import { VOUCHER_NAME_MAX, checkVoucherInput, normalizeVoucherCode, voucherEndsOn, type OwnerVoucher, type VoucherInput, type VoucherKind, type VoucherMode } from '@curios/core/vouchers';
 import { Callout } from '@curios/ui';
 import { ApiError } from '../../../lib/api.js';
 import ui from '../_ui/editor.module.css';
@@ -50,6 +50,25 @@ const optionalCents = (text: string) => (text.trim() === '' ? null : (parseRingg
 type Draft = { mode: VoucherMode; code: string; name: string; kind: VoucherKind; percent: string; amount: string; itemId: string; minSpend: string; endsOn: string; maxUses: string };
 const BLANK: Draft = { mode: 'AUTO', code: '', name: '', kind: 'PERCENT', percent: '', amount: '', itemId: '', minSpend: '', endsOn: '', maxUses: '' };
 
+/** "5" or "30.50": sen back as the ringgit the owner typed. */
+const ringgitText = (cents: number | null) => (cents === null ? '' : cents % 100 === 0 ? String(cents / 100) : (cents / 100).toFixed(2));
+
+/** A voucher as the form holds it, to edit: money back from sen, and the end back to the Malaysian day it was set to. */
+function draftOf(v: OwnerVoucher): Draft {
+  return {
+    mode: v.mode,
+    code: v.code ?? '',
+    name: v.name ?? '',
+    kind: v.kind,
+    percent: v.percent === null ? '' : String(v.percent),
+    amount: ringgitText(v.amountCents),
+    itemId: v.itemId ?? '',
+    minSpend: ringgitText(v.minSpendCents),
+    endsOn: v.endsAt === null ? '' : voucherEndsOn(v.endsAt),
+    maxUses: v.maxUses === null ? '' : String(v.maxUses),
+  };
+}
+
 function toInput(d: Draft): VoucherInput {
   return {
     mode: d.mode,
@@ -81,9 +100,25 @@ function Tile({ name, note, pressed, onClick }: { name: string; note: string; pr
   );
 }
 
-/** The new-voucher form: the owner's choices, checked by the same rule the API applies before anything is sent. */
-function VoucherForm({ items, api, onAdded, onCancel }: { items: { id: string; name: string }[]; api: VouchersApi; onAdded: (v: OwnerVoucher) => void; onCancel: () => void }) {
-  const [draft, setDraft] = useState<Draft>(BLANK);
+/**
+ * The voucher form, to add one or, given `editing`, to change one: the owner's choices, checked by the
+ * same rule the API applies before anything is sent. An edit sends the whole voucher as the patch, so an
+ * ended one comes back by moving its last day.
+ */
+function VoucherForm({
+  items,
+  api,
+  editing,
+  onSaved,
+  onCancel,
+}: {
+  items: { id: string; name: string }[];
+  api: VouchersApi;
+  editing?: OwnerVoucher;
+  onSaved: (v: OwnerVoucher) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState<Draft>(() => (editing ? draftOf(editing) : BLANK));
   const [problem, setProblem] = useState('');
   const [codeProblem, setCodeProblem] = useState('');
   const [busy, setBusy] = useState(false);
@@ -100,7 +135,7 @@ function VoucherForm({ items, api, onAdded, onCancel }: { items: { id: string; n
     if (refused) return setProblem(refused);
     setBusy(true);
     try {
-      onAdded(await api.add(input));
+      onSaved(await (editing ? api.update(editing.id, input) : api.add(input)));
     } catch (failure) {
       if (failure instanceof ApiError && failure.code === 'VOUCHER_CODE_TAKEN') setCodeProblem(CODE_TAKEN);
       else setProblem(message(failure));
@@ -110,7 +145,7 @@ function VoucherForm({ items, api, onAdded, onCancel }: { items: { id: string; n
   }
 
   return (
-    <form className={styles.voucherForm} onSubmit={(event) => void submit(event)} aria-label="New voucher" noValidate>
+    <form className={styles.voucherForm} onSubmit={(event) => void submit(event)} aria-label={editing ? 'Edit voucher' : 'New voucher'} noValidate>
       <div className={styles.vGroup} role="group" aria-label="How customers get it">
         <Tile name="Automatic" note="Applies by itself when it fits" pressed={draft.mode === 'AUTO'} onClick={() => set('mode', 'AUTO')} />
         <Tile name="Code" note="Customers type it at checkout" pressed={draft.mode === 'CODE'} onClick={() => set('mode', 'CODE')} />
@@ -212,7 +247,7 @@ function VoucherForm({ items, api, onAdded, onCancel }: { items: { id: string; n
 
       <div className={styles.vActions}>
         <button type="submit" className={ui.primaryButton} disabled={busy}>
-          Add voucher
+          {editing ? 'Save voucher' : 'Add voucher'}
         </button>
         <button type="button" className={styles.vCancel} onClick={onCancel}>
           Cancel
@@ -226,10 +261,13 @@ function VoucherForm({ items, api, onAdded, onCancel }: { items: { id: string; n
  * Vouchers: what the owner offers off an order. The list says, for each, what
  * it saves, how customers get it, where it stands and how often it was used;
  * a switch turns one off or on, and deleting asks inside the page first.
- * Adding opens a form that refuses what the API would refuse, in its words.
+ * Adding, and editing one, open a form that refuses what the API would refuse,
+ * in its words. A voucher that has stopped by itself (ended, or used up) has
+ * its switch shown off and held: editing its last day or uses brings it back.
  */
 export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: OwnerVoucher[]; items: { id: string; name: string }[]; api: VouchersApi; onChange: Dispatch<SetStateAction<OwnerVoucher[]>> }) {
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState('');
   // Rows with a request in flight: the ref guards a second click before the next render, the state disables the buttons.
@@ -282,7 +320,7 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
           items={items}
           api={api}
           onCancel={() => setAdding(false)}
-          onAdded={(v) => {
+          onSaved={(v) => {
             onChange((now) => [v, ...now]);
             setAdding(false);
           }}
@@ -309,7 +347,26 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
       ) : (
         <ul className={styles.itemList}>
           {vouchers.map((v) => {
+            if (editing === v.id) {
+              return (
+                <li key={v.id} className={`${styles.voucher} ${styles.vEditRow}`} aria-label={v.label}>
+                  <VoucherForm
+                    items={items}
+                    api={api}
+                    editing={v}
+                    onCancel={() => setEditing(null)}
+                    onSaved={(next) => {
+                      onChange((now) => now.map((other) => (other.id === v.id ? next : other)));
+                      setEditing(null);
+                    }}
+                  />
+                </li>
+              );
+            }
             const itemName = v.itemId === null ? null : (items.find((item) => item.id === v.itemId)?.name ?? v.itemName);
+            // Ended or used up: the switch cannot bring it back, so it shows off and held, and says why.
+            const stopped = v.state === 'ended' || v.state === 'usedUp';
+            const stateId = `voucher-state-${v.id}`;
             return (
               <li key={v.id} className={styles.voucher} aria-label={v.label} data-state={v.state}>
                 <span className={styles.voucherText}>
@@ -318,7 +375,9 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
                     <span>{v.mode === 'CODE' ? `Code ${v.code ?? v.label}` : 'Automatic'}</span>
                     {v.mode === 'AUTO' ? <span>{v.name ?? v.label}</span> : null}
                     {v.minSpendCents !== null ? <span>{`Over ${formatRinggit(v.minSpendCents)}`}</span> : null}
-                    <span data-state={v.state}>{stateWords(v)}</span>
+                    <span id={stateId} data-state={v.state}>
+                      {stateWords(v)}
+                    </span>
                     <span>{usesWords(v)}</span>
                   </span>
                 </span>
@@ -334,8 +393,20 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
                   </span>
                 ) : (
                   <>
-                    <button type="button" className={ui.switch} role="switch" aria-checked={v.active} aria-label={`Voucher on: ${v.label}`} disabled={pending.has(v.id)} onClick={() => void setActive(v)}>
+                    <button
+                      type="button"
+                      className={ui.switch}
+                      role="switch"
+                      aria-checked={stopped ? false : v.active}
+                      aria-label={`Voucher on: ${v.label}`}
+                      aria-describedby={stopped ? stateId : undefined}
+                      disabled={stopped || pending.has(v.id)}
+                      onClick={() => void setActive(v)}
+                    >
                       <i />
+                    </button>
+                    <button type="button" className={styles.vCancel} aria-label={`Edit ${v.label}`} disabled={pending.has(v.id)} onClick={() => { setAdding(false); setEditing(v.id); }}>
+                      Edit
                     </button>
                     <button type="button" className={styles.ghost} aria-label={`Delete ${v.label}`} onClick={() => setConfirming(v.id)}>
                       Delete
@@ -351,7 +422,7 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
       {error ? <Callout tone="error">{error}</Callout> : null}
 
       {vouchers.length > 0 && !adding ? (
-        <button type="button" className={ui.addRow} onClick={() => setAdding(true)}>
+        <button type="button" className={ui.addRow} onClick={() => { setEditing(null); setAdding(true); }}>
           + Add voucher
         </button>
       ) : null}

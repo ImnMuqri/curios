@@ -4,6 +4,7 @@ import {
   COUNTED_ORDER_WHERE,
   normalizeVoucherCode,
   voucherEndsAt,
+  voucherEndsOn,
   voucherState,
   type OwnerVoucher,
   type VoucherInput,
@@ -75,9 +76,9 @@ function toOwnerVoucher(row: Row, uses: number, now: Date): OwnerVoucher {
   };
 }
 
-/** The last day a stored `endsAt` works: the Malaysian day before that midnight, which is what `voucherEndsAt` was given. */
+/** The last day a stored `endsAt` works, or none. */
 function endsOnOf(endsAt: Date | null): string | null {
-  return endsAt === null ? null : new Date(endsAt.getTime() + 8 * 3_600_000 - 86_400_000).toISOString().slice(0, 10);
+  return endsAt === null ? null : voucherEndsOn(endsAt);
 }
 
 function judge(input: VoucherInput): void {

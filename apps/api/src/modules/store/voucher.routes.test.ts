@@ -79,6 +79,15 @@ describe('owner vouchers', () => {
     expect((await call('DELETE', `/store/vouchers/${voucher.id}`, owner.cookie)).statusCode).toBe(404);
   });
 
+  it('brings an ended voucher back when the edit form sends it whole with a later last day, its own code and all', async () => {
+    const owner = await anOwner();
+    const voucher = await make(owner, { ...raya, endsOn: '2026-01-01' });
+    expect((await call('GET', '/store/vouchers', owner.cookie)).json().vouchers[0]).toMatchObject({ id: voucher.id, state: 'ended' });
+    const back = await call('PATCH', `/store/vouchers/${voucher.id}`, owner.cookie, { ...raya, endsOn: '2099-12-31' });
+    expect(back.statusCode).toBe(200);
+    expect(back.json().voucher).toMatchObject({ code: 'RAYA10', state: 'on', endsAt: '2099-12-31T16:00:00.000Z' });
+  });
+
   it('keeps an automatic voucher by its name, with no code', async () => {
     const owner = await anOwner();
     const voucher = await make(owner, { ...blank, mode: 'AUTO', name: ' Raya sale ', code: null });

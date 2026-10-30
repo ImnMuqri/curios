@@ -145,6 +145,11 @@ export function voucherEndsAt(endsOn: string): Date {
   return new Date(`${next}T00:00:00+08:00`);
 }
 
+/** The last day a stored `endsAt` works: the Malaysian day before that midnight, which is what `voucherEndsAt` was given. */
+export function voucherEndsOn(endsAt: Date | string): string {
+  return new Date(new Date(endsAt).getTime() + 8 * 3_600_000 - 86_400_000).toISOString().slice(0, 10);
+}
+
 /** `off` beats `ended` beats `usedUp`, whatever else is true. */
 export function voucherState(
   v: { active: boolean; endsAt: Date | string | null; maxUses: number | null },

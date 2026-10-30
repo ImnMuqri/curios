@@ -1713,6 +1713,12 @@
   animation: fadeUp 300ms ease both;
 }
 
+/* A row opened for editing holds the form across its whole width. */
+.vEditRow .voucherForm {
+  flex: 1 1 100%;
+  margin-bottom: 0;
+}
+
 .vGroup {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
