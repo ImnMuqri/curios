@@ -208,7 +208,12 @@ describe('ProductView promotions', () => {
 
   it('says the minimum spend, and percentages', () => {
     render(<ProductView {...base} item={cookie} vouchers={[v({ kind: 'PERCENT', percent: 10, amountCents: null, minSpendCents: 5000 })]} />);
-    expect(screen.getByText('10% off this item over RM50')).toBeInTheDocument();
+    expect(screen.getByText('10% off this item · on orders over RM50')).toBeInTheDocument();
+  });
+
+  it('speaks Malay, and the minimum is on the order', () => {
+    render(<ProductView {...base} language="ms" item={cookie} vouchers={[v({ minSpendCents: 5000 })]} />);
+    expect(screen.getByText('Potongan RM5 untuk barang ini · bagi pesanan RM50 ke atas')).toBeInTheDocument();
   });
 
   it('shows nothing for another item, a whole-order voucher or a code', () => {
