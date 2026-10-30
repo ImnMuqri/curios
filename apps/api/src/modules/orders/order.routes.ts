@@ -43,8 +43,23 @@ const shelfItem = z.object({
   place: z.enum(['ONLINE', 'IN_PERSON']).nullable(),
 });
 
+/** A live automatic voucher, as VoucherTerms: what PRICES_CHANGED hands back for the basket to price again. */
+const voucherTerms = z.object({
+  id: z.string(),
+  mode: z.enum(['AUTO', 'CODE']),
+  kind: z.enum(['PERCENT', 'AMOUNT']),
+  percent: z.number().nullable(),
+  amountCents: z.number().nullable(),
+  itemId: z.string().nullable(),
+  minSpendCents: z.number().nullable(),
+  label: z.string(),
+});
+
 /** The visitor's checkout. Anonymous and rate-limited (app.ts), like POST /leads. */
 export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app, options) => {
+  // Resolved once at registration (throws in production when unset), as ownerOrderRoutes does: a free order's delivery email links here.
+  const apiUrl = options.payOnline?.apiUrl ?? resolveApiUrl(process.env);
+
   app.post(
     '/store/:handle/orders',
     {
@@ -79,6 +94,8 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           // the visitor did, not a default assumed for them.
           consent: z.literal(true),
           seenTotalCents: z.number().int().min(0),
+          // A code the visitor typed; placeOrder decides whether it applies.
+          voucherCode: z.string().trim().max(64).nullable().optional(),
         }),
         response: {
           201: z.object({ number: z.number(), code: z.string(), token: z.string(), totalCents: z.number() }),
@@ -88,6 +105,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           409: errorSchema.extend({
             items: z.array(shelfItem).optional(),
             delivery: z.object({ mode: z.enum(['NONE', 'FLAT', 'RIDER']), feeCents: z.number().nullable() }).optional(),
+            vouchers: z.array(voucherTerms).optional(),
           }),
           410: errorSchema,
         },
@@ -102,6 +120,7 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
             mailQueue: options.mailQueue ?? app.mailQueue,
             log: request.log,
             appUrl: process.env.APP_URL ?? 'http://localhost:3000',
+            apiUrl,
             secretsKey: options.secretsKey ?? null,
             settings: await app.settings.get(),
           },
@@ -114,11 +133,11 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
         return reply.status(201).send(placed);
       } catch (error) {
         // Sent here rather than by the errors plugin, which only ever sends
-        // { code, message }: checkout reloads from `items` and `delivery`.
+        // { code, message }: checkout reloads from `items`, `delivery` and `vouchers`.
         if (error instanceof PricesChangedError) {
           return reply
             .status(409)
-            .send({ error: { code: error.code, message: error.message }, items: error.items, delivery: error.delivery });
+            .send({ error: { code: error.code, message: error.message }, items: error.items, delivery: error.delivery, vouchers: error.vouchers });
         }
         throw error;
       }

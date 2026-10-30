@@ -197,3 +197,27 @@ describe('ProductView', () => {
     expect(onDone).toHaveBeenCalled();
   });
 });
+
+describe('ProductView promotions', () => {
+  const v = (over: object) => ({ id: 'v1', mode: 'AUTO' as const, kind: 'AMOUNT' as const, percent: null, amountCents: 500, itemId: 'cookie', minSpendCents: null, label: 'Raya promo', ...over });
+
+  it('says what a one-item voucher takes off this item', () => {
+    render(<ProductView {...base} item={cookie} vouchers={[v({})]} />);
+    expect(screen.getByText('RM5 off this item')).toBeInTheDocument();
+  });
+
+  it('says the minimum spend, and percentages', () => {
+    render(<ProductView {...base} item={cookie} vouchers={[v({ kind: 'PERCENT', percent: 10, amountCents: null, minSpendCents: 5000 })]} />);
+    expect(screen.getByText('10% off this item · on orders over RM50')).toBeInTheDocument();
+  });
+
+  it('speaks Malay, and the minimum is on the order', () => {
+    render(<ProductView {...base} language="ms" item={cookie} vouchers={[v({ minSpendCents: 5000 })]} />);
+    expect(screen.getByText('Potongan RM5 untuk barang ini · bagi pesanan RM50 ke atas')).toBeInTheDocument();
+  });
+
+  it('shows nothing for another item, a whole-order voucher or a code', () => {
+    render(<ProductView {...base} item={cookie} vouchers={[v({ itemId: 'cake' }), v({ itemId: null }), v({ mode: 'CODE' })]} />);
+    expect(screen.queryByText(/this item/)).toBeNull();
+  });
+});

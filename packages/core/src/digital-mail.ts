@@ -1,4 +1,5 @@
 import { OWNER_MAIL_FOOTER, renderMailHtml, type MailBlock, type MailCardPart } from './mail.js';
+import { deliveryRow, rowsText, voucherRow } from './order-mail.js';
 import { formatRinggit } from './store.js';
 
 /**
@@ -337,6 +338,11 @@ export interface PaidAndSentOwnerMailInput {
   /** The owner's order screen, opened on this order. */
   url: string;
   appUrl?: string;
+  /** What the order's voucher took off, in sen, and its code or name (as newOrderMail). */
+  discountCents?: number;
+  voucherLabel?: string | null;
+  /** The order's delivery fee in sen, shown as its own row when there is one. */
+  deliveryCents?: number;
 }
 
 /** Sent to the owner when an order of digital items only is paid online: it is already delivered, nothing to do. */
@@ -349,6 +355,8 @@ export function paidAndSentOwnerMail(o: PaidAndSentOwnerMailInput): Mail {
   const customer = o.customerEmail ? `${o.customerName} · ${o.customerEmail}` : o.customerName;
   const button = `Open order #${o.number}`;
   const paidWith = o.ref ? `${o.via} · Ref ${o.ref}` : o.via;
+  const voucher = voucherRow(o);
+  const delivery = deliveryRow(o);
   return {
     subject,
     text: [
@@ -357,6 +365,7 @@ export function paidAndSentOwnerMail(o: PaidAndSentOwnerMailInput): Mail {
       said,
       '',
       ...o.lines.map((l) => `${[l.itemName, l.optionLabel].filter(Boolean).join(', ')}, ${l.quantity}×: ${formatRinggit(l.lineCents)}`),
+      ...rowsText(delivery, voucher),
       `Paid: ${total}`,
       `Customer: ${customer}`,
       `Paid with: ${paidWith}`,
@@ -374,11 +383,15 @@ export function paidAndSentOwnerMail(o: PaidAndSentOwnerMailInput): Mail {
         { kind: 'p', text: said },
         {
           kind: 'lines',
-          rows: o.lines.map((l) => ({
-            name: l.itemName,
-            detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
-            amount: formatRinggit(l.lineCents),
-          })),
+          rows: [
+            ...o.lines.map((l) => ({
+              name: l.itemName,
+              detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
+              amount: formatRinggit(l.lineCents),
+            })),
+            ...(delivery ? [delivery] : []),
+            ...(voucher ? [voucher] : []),
+          ],
           total: { label: 'Paid', amount: total },
         },
         { kind: 'facts', rows: [['Customer', customer], ['Paid with', paidWith]] },

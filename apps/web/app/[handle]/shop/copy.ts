@@ -61,6 +61,10 @@ export interface ShopCopy {
   askName: (name: string) => string;
   back: string;
   from: (price: string) => string;
+  /** A live automatic voucher: the shop sign's line, an item's page line and a card's tag. `off` is "10%" or "RM5". */
+  promoOff: (percent: boolean, off: string, minSpend: string | null, name: string) => string;
+  promoThisItem: (percent: boolean, off: string, minSpend: string | null) => string;
+  promoTag: (percent: boolean, off: string) => string;
   /** The Ask tab: the page's opening line, the label over each reply, and the product card's two buttons. */
   askHello: (name: string) => string;
   askLabel: (name: string) => string;
@@ -182,6 +186,18 @@ export interface ShopCopy {
   tooLarge: (name: string) => string;
   deliveryOff: string;
   placeOrder: (total: string) => string;
+  /** A voucher's line in the summary and the basket sheet: its code or name, and what it takes off ("RM9.50"). */
+  voucherApplied: (label: string, saving: string) => string;
+  haveACode: string;
+  applyCode: string;
+  codeUnknown: string;
+  betterVoucherApplied: string;
+  codeDoesNotFit: string;
+  removeCode: string;
+  /** The placed screen of an order that came to RM0: nothing to pay, so it is paid. */
+  freeOrderPaid: string;
+  /** On the order page of an order a voucher paid in full. */
+  paidWithVoucher: string;
   emptyBasket: string;
   emptyBasketBody: string;
   pricesChanged: string;
@@ -385,6 +401,9 @@ const EN: ShopCopy = {
   askName: (name) => `Ask ${name}`,
   back: 'Back',
   from: (price) => `from ${price}`,
+  promoOff: (_percent, off, minSpend, name) => `${off} off${minSpend ? ` over ${minSpend}` : ''} · ${name}`,
+  promoThisItem: (_percent, off, minSpend) => `${off} off this item${minSpend ? ` · on orders over ${minSpend}` : ''}`,
+  promoTag: (_percent, off) => `${off} off`,
   askHello: (name) => `Hi! I’m ${name}’s page. Ask me about what’s on offer, prices or how to order.`,
   askLabel: (name) => `${name}’s page`,
   askThinking: 'Inquiring',
@@ -485,6 +504,15 @@ const EN: ShopCopy = {
   tooLarge: (name) => `This order is too big to place here. Send your basket to ${name} on WhatsApp instead.`,
   deliveryOff: 'Delivery isn’t offered any more, so this order is for pickup.',
   placeOrder: (total) => `Place order · ${total}`,
+  voucherApplied: (label, saving) => `${label} −${saving}`,
+  haveACode: 'Have a code?',
+  applyCode: 'Apply',
+  codeUnknown: 'That code doesn’t work here.',
+  betterVoucherApplied: 'A better voucher is already applied',
+  codeDoesNotFit: 'This code doesn’t apply to your basket.',
+  removeCode: 'Remove code',
+  freeOrderPaid: 'Nothing to pay. Your order is paid and placed.',
+  paidWithVoucher: 'Paid with a voucher',
   emptyBasket: 'Your basket is empty',
   emptyBasketBody: 'Add something from the shop and it shows up here.',
   pricesChanged: 'Prices changed since you opened the shop. Check your basket and try again.',
@@ -663,6 +691,9 @@ const MS: ShopCopy = {
   askName: (name) => `Tanya ${name}`,
   back: 'Kembali',
   from: (price) => `dari ${price}`,
+  promoOff: (percent, off, minSpend, name) => `${percent ? 'Diskaun' : 'Potongan'} ${off}${minSpend ? ` bagi belanja ${minSpend} ke atas` : ''} · ${name}`,
+  promoThisItem: (percent, off, minSpend) => `${percent ? 'Diskaun' : 'Potongan'} ${off} untuk barang ini${minSpend ? ` · bagi pesanan ${minSpend} ke atas` : ''}`,
+  promoTag: (percent, off) => `${percent ? 'Diskaun' : 'Potongan'} ${off}`,
   askHello: (name) => `Hai! Saya halaman ${name}. Tanya saya tentang apa yang ditawarkan, harga atau cara menempah.`,
   askLabel: (name) => `Halaman ${name}`,
   askThinking: 'Sedang menyemak',
@@ -763,6 +794,15 @@ const MS: ShopCopy = {
   tooLarge: (name) => `Tempahan ini terlalu besar untuk dibuat di sini. Hantar bakul anda kepada ${name} di WhatsApp.`,
   deliveryOff: 'Penghantaran tidak lagi ditawarkan, jadi tempahan ini untuk ambil sendiri.',
   placeOrder: (total) => `Buat tempahan · ${total}`,
+  voucherApplied: (label, saving) => `${label} −${saving}`,
+  haveACode: 'Ada kod?',
+  applyCode: 'Guna',
+  codeUnknown: 'Kod itu tidak sah di sini.',
+  betterVoucherApplied: 'Baucar yang lebih baik sudah digunakan',
+  codeDoesNotFit: 'Kod ini tidak sesuai untuk bakul anda.',
+  removeCode: 'Buang kod',
+  freeOrderPaid: 'Tiada apa-apa untuk dibayar. Tempahan anda sudah dibayar dan dibuat.',
+  paidWithVoucher: 'Dibayar dengan baucar',
   emptyBasket: 'Bakul anda kosong',
   emptyBasketBody: 'Tambah sesuatu dari kedai dan ia akan muncul di sini.',
   pricesChanged: 'Harga berubah sejak anda buka kedai. Semak bakul anda dan cuba lagi.',

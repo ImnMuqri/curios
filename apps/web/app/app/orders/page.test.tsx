@@ -59,6 +59,8 @@ const order: OwnerOrder = {
   itemsCents: 9500,
   deliveryCents: 0,
   totalCents: 9500,
+  discountCents: 0,
+  voucherLabel: null,
   status: 'PLACED',
   receiptKey: 'receipts/p1/abc.jpg',
   receiptType: 'image/jpeg',

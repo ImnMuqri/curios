@@ -129,6 +129,7 @@ export default async function HandlePage({ params }: { params: Promise<{ handle:
               items={ordering.items}
               canTakeOrders={ordering.canTakeOrders}
               whatsapp={whatsappNumber(page.links)}
+              vouchers={ordering.vouchers}
             />
           ) : null
         }

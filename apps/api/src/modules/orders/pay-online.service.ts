@@ -1,6 +1,7 @@
 import { ChipRefusedError, DEAD_PURCHASE_STATUSES, wasPaid, type ChipClient, type ChipPurchase, type PurchaseProduct } from '@curios/billing';
 import { hashSessionValue, MAIL_QUEUE, paidAfterCancelMail, paidAndSentOwnerMail, paidOrderMail, paidTwiceMail } from '@curios/core';
 import { openSecret } from '@curios/core/secret-box';
+import { formatRinggit } from '@curios/core/store';
 import { chipWhitelist, choiceLabel, onlineOffer, paidMethodLabel, payUrl, type OnlineChoice, type OnlineOffer } from '@curios/core/shop-pay';
 import type { Settings } from '@curios/core/settings';
 import type { PrismaClient } from '@curios/db';
@@ -180,6 +181,20 @@ export async function payMethodsFor(deps: PayOnlineDeps, handle: string, amountC
 /** CHIP's phone form, `+60 123456789`, from the order's E.164. */
 const chipPhone = (phone: string) => phone.replace(/^\+60/, '+60 ');
 
+/**
+ * A discounted order's items as CHIP's one product line: "Order #12 (RAYA10 −RM21)" at
+ * the items less the discount. CHIP takes no negative line, and spreading the discount
+ * over the lines would leave odd sen on each, so the items go as one; the order page and
+ * emails show them line by line. None when the voucher took the items to RM0 (the
+ * delivery fee alone is paid).
+ */
+function discountedItems(order: { number: number; discountCents: number; voucherLabel: string | null; lines: { unitPriceCents: number; quantity: number }[] }): PurchaseProduct[] {
+  const items = order.lines.reduce((sum, line) => sum + line.unitPriceCents * line.quantity, 0) - order.discountCents;
+  if (items <= 0) return [];
+  const less = `${order.voucherLabel ?? 'Voucher'} −${formatRinggit(order.discountCents)}`;
+  return [{ name: `Order #${order.number} (${less})`.slice(0, 256), priceCents: items, quantity: 1 }];
+}
+
 const refuseFor = (status: string): void => {
   if (status === 'PAID' || status === 'COMPLETED') throw new OrderAlreadyPaidError();
   if (status === 'CANCELLED') throw new OrderCancelledError();
@@ -211,6 +226,8 @@ export async function startOnlinePayment(
       status: true,
       totalCents: true,
       deliveryCents: true,
+      discountCents: true,
+      voucherLabel: true,
       customerName: true,
       phone: true,
       email: true,
@@ -279,7 +296,7 @@ export async function startOnlinePayment(
   if (!methods) return unavailable('methods unknown');
   if (payUrl('', input, methods) === null) return unavailable('method not offered');
 
-  const products: PurchaseProduct[] = order.lines.map((line) => ({
+  const products: PurchaseProduct[] = order.discountCents > 0 ? discountedItems(order) : order.lines.map((line) => ({
     name: (line.optionLabel ? `${line.itemName} (${line.optionLabel})` : line.itemName).slice(0, 256),
     priceCents: line.unitPriceCents,
     quantity: line.quantity,
@@ -457,10 +474,12 @@ export async function settleChipPurchase(
   }
   // Paid at CHIP after the owner cancelled: recorded on the cancelled order, which then
   // reads as a refund owed (orderView). The money is in the owner's CHIP account, so the
-  // owner is told, once, to refund it there.
+  // owner is told, once, to refund it there. Cancelled unpaid, the order gave its voucher's
+  // use back; paid now, it would count again, so it lets go of the voucher (its label and
+  // what it took off stay, as the record).
   const late = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'CANCELLED', paidAt: null, chipPurchaseId: purchase.id },
-    data: paid,
+    data: { ...paid, voucherId: null },
   });
   if (late.count === 1) {
     deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online after it was cancelled');
@@ -495,6 +514,8 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
         method: true,
         day: true,
         deliveryCents: true,
+        discountCents: true,
+        voucherLabel: true,
         paidMethodLabel: true,
         paidRef: true,
         paidVia: true,
@@ -516,6 +537,9 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
             ...base,
             ref: order.paidRef,
             customerEmail: order.email,
+            deliveryCents: order.deliveryCents,
+            discountCents: order.discountCents,
+            voucherLabel: order.voucherLabel,
             lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
             url,
             appUrl: deps.appUrl,
@@ -528,6 +552,8 @@ async function mailOwner(deps: PayOnlineDeps, orderId: string, kind: 'paid' | 'p
             deliveryCents: order.deliveryCents,
             day: (day as Date).toISOString().slice(0, 10),
             ref: order.paidRef,
+            discountCents: order.discountCents,
+            voucherLabel: order.voucherLabel,
             lines: order.lines.map((l) => ({ itemName: l.itemName, optionLabel: l.optionLabel, quantity: l.quantity, lineCents: l.unitPriceCents * l.quantity })),
             url,
             appUrl: deps.appUrl,

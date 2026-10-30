@@ -277,4 +277,6 @@
   --light-chat: var(--chat);
   /* Text drawn on a photo under a dark tint: white whatever the theme. */
   --on-photo: #ffffff;
+  /* The tile a bank's logo sits on: white whatever the theme, so a dark mark still reads in the dark theme. */
+  --logo-tile: #ffffff;
 }

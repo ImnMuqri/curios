@@ -134,3 +134,46 @@ describe('the shop colour', () => {
     }
   });
 });
+
+describe('paidAndSentOwnerMail with a voucher', () => {
+  it('shows the voucher above what was paid', () => {
+    const mail = paidAndSentOwnerMail({
+      number: 7,
+      totalCents: 9_450,
+      customerName: 'Mira',
+      via: 'FPX · Maybank2u',
+      ref: null,
+      lines: [{ itemName: 'Recipe e-book', optionLabel: null, quantity: 1, lineCents: 10_400 }],
+      url: 'https://curios.my/app/orders?order=o1',
+      discountCents: 950,
+      voucherLabel: 'RAYA10',
+    });
+    expect(mail.html).toContain('−RM9.50');
+    expect(mail.text).toContain('RAYA10: −RM9.50');
+    expect(mail.text).toContain('Paid: RM94.50');
+  });
+});
+
+describe('paidAndSentOwnerMail with a delivery fee', () => {
+  it('shows the fee as a row, so the rows add up to what was paid', () => {
+    const mail = paidAndSentOwnerMail({
+      number: 7,
+      totalCents: 10_200,
+      customerName: 'Mira',
+      via: 'FPX · Maybank2u',
+      ref: null,
+      lines: [{ itemName: 'Recipe e-book', optionLabel: null, quantity: 1, lineCents: 10_400 }],
+      url: 'https://curios.my/app/orders?order=o1',
+      deliveryCents: 300,
+      discountCents: 500,
+      voucherLabel: 'RAYA5',
+    });
+    expect(mail.text).toContain('Delivery: RM3');
+    expect(mail.html).toContain('>RM3<');
+  });
+
+  it('has no delivery row without a fee', () => {
+    const mail = paidAndSentOwnerMail({ number: 7, totalCents: 10_400, customerName: 'Mira', via: 'FPX', ref: null, lines: [{ itemName: 'Recipe e-book', optionLabel: null, quantity: 1, lineCents: 10_400 }], url: 'https://curios.my/app/orders?order=o1' });
+    expect(mail.text).not.toMatch(/^Delivery: /m);
+  });
+});

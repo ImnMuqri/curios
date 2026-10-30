@@ -1,5 +1,6 @@
 import { digitalFacts, type DigitalFacts } from '@curios/core/digital';
 import type { Pricing } from '@curios/core/store';
+import type { OwnerVoucher, VoucherInput } from '@curios/core/vouchers';
 import type { MyCurios, OwnerStore } from '@curios/db-read';
 
 /** An item as the Store screen holds it: the stored row plus its picture's URL. */
@@ -109,6 +110,12 @@ export type SettingsApi = {
   /** Resolves to the public URL of the stored QR. */
   uploadQr: (file: File) => Promise<string>;
   removeQr: () => Promise<void>;
+};
+
+export type VouchersApi = {
+  add: (input: VoucherInput) => Promise<OwnerVoucher>;
+  update: (id: string, patch: Partial<VoucherInput> & { active?: boolean }) => Promise<OwnerVoucher>;
+  remove: (id: string) => Promise<void>;
 };
 
 /** The owner's own CHIP account, as the Store screen may know it. Never the key. */

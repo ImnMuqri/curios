@@ -191,6 +191,19 @@
   font-weight: 600;
 }
 
+.deal {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px 0 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .desc {
   margin: 10px 0 0;
   font-size: 14.5px;

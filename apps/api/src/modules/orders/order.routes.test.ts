@@ -812,6 +812,14 @@ describe("the owner's transitions", () => {
     expect((await row(owed.id)).refundedAt).toEqual(first.refundedAt);
   });
 
+  it('refuses to mark a cancelled RM0 (voucher-paid) order refunded: nothing was taken', async () => {
+    const shop = await aShop();
+    const cookie = await ownerOf(shop);
+    const free = await another(shop, { status: 'CANCELLED', paidAt: new Date(), cancelledAt: new Date(), totalCents: 0, paidVia: 'VOUCHER' });
+    expect((await move(cookie, free.id, 'refunded')).statusCode).toBe(409);
+    expect((await row(free.id)).refundedAt).toBeNull();
+  });
+
   it('marks the second payment of a paid-twice order refunded, once, and leaves the order paid', async () => {
     const shop = await aShop();
     const cookie = await ownerOf(shop);

@@ -117,6 +117,7 @@ describe('orderCard', () => {
       pill: 'Cancelled · refund due',
       tone: 'stop',
     });
+    expect(orderCard({ ...base, status: 'CANCELLED', paidAt: now, totalCents: 0 }, 'Kek Lina', now)).toMatchObject({ pill: 'Cancelled', tone: 'stop' });
     expect(orderCard({ ...base, status: 'CANCELLED', paidAt: now, refundedAt: now }, 'Kek Lina', now)).toMatchObject({
       pill: 'Refunded',
       tone: 'quiet',

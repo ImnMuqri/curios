@@ -1,11 +1,13 @@
 import { canTakeOrders, PUBLIC_PAGE_WHERE } from '@curios/core';
 import type { DeliveryMode } from '@curios/core/store';
+import type { VoucherTerms } from '@curios/core/vouchers';
 import { tidySocials, type SocialKind } from '@curios/core/socials';
 import type { FactCategory } from '@curios/core';
 import type { HeadingFont, PageBackground, PageStyle, TileSize } from '@curios/core/bento';
 import { prismaRead } from './client.js';
 import { getSettings } from './settings.query.js';
 import { SHOP_TILE_SELECT, shopTileOf, type ShopTile } from './shop.query.js';
+import { getLiveAutoVouchers } from './vouchers.query.js';
 
 export interface PublicLink {
   id: string;
@@ -56,7 +58,9 @@ export interface PublicPage {
   /**
    * What the shop pill and the basket bar need that the tile does not: the
    * next pickup day's inputs, whether orders can be taken, and the shelf's
-   * prices to price a saved basket. Null while the shop is closed.
+   * prices to price a saved basket, and the live automatic vouchers the
+   * basket takes off (none while orders are paused: a paused shop honours
+   * no voucher). Null while the shop is closed.
    */
   shopOrdering: {
     pickupEnabled: boolean;
@@ -65,6 +69,7 @@ export interface PublicPage {
     closedDays: number[];
     canTakeOrders: boolean;
     items: { id: string; name: string; priceCents: number | null; options: { id: string; label: string; priceCents: number }[] }[];
+    vouchers: VoucherTerms[];
   } | null;
 }
 
@@ -154,6 +159,8 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
     ...rest
   } = page;
   const shop = shopTileOf(page);
+  const now = new Date();
+  const takesOrders = canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced, ordersAtTrialReset, now }, freeOrders);
   return {
     ...rest,
     socials: tidySocials(rest.socials),
@@ -164,8 +171,9 @@ export async function getPublicPage(handle: string): Promise<PublicPage | null> 
           deliveryMode,
           minNoticeDays,
           closedDays,
-          canTakeOrders: canTakeOrders({ mode: page.mode, paidUntil: page.paidUntil, ordersPlaced, ordersAtTrialReset, now: new Date() }, freeOrders),
+          canTakeOrders: takesOrders,
           items: items.map(({ id, name, priceCents, options }) => ({ id, name, priceCents, options })),
+          vouchers: takesOrders ? await getLiveAutoVouchers(page.id, now) : [],
         }
       : null,
   };

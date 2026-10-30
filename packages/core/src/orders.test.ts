@@ -102,12 +102,18 @@ describe('orderTotals', () => {
   it('sums options times quantities, adding a flat fee only on delivery', () => {
     expect(orderTotals(lines, { method: 'DELIVERY', mode: 'FLAT', feeCents: 1000 })).toEqual({
       itemsCents: 3800,
+      discountCents: 0,
       deliveryCents: 1000,
       totalCents: 4800,
     });
     expect(
       orderTotals(lines, { method: 'PICKUP', mode: 'FLAT', feeCents: 1000 }).deliveryCents,
     ).toBe(0);
+  });
+  it('takes a discount off the items, not the delivery', () => {
+    const totals = orderTotals(lines, { method: 'DELIVERY', mode: 'FLAT', feeCents: 1000 }, 950);
+    expect(totals.discountCents).toBe(950);
+    expect(totals.totalCents).toBe(3800 - 950 + 1000);
   });
   it('adds nothing for a rider', () => {
     expect(
@@ -125,7 +131,7 @@ describe('ORDER_TOTAL_MAX_CENTS', () => {
 
 describe('orderView', () => {
   const at = new Date('2026-10-18T00:00:00Z');
-  const o = { receiptUploadedAt: null, paidAt: null, refundedAt: null };
+  const o = { receiptUploadedAt: null, paidAt: null, refundedAt: null, totalCents: 22_000 };
   it('names each badge', () => {
     expect(orderView({ ...o, status: 'PLACED' })).toBe('awaitingPayment');
     expect(orderView({ ...o, status: 'PLACED', receiptUploadedAt: at })).toBe('toCheck');
@@ -142,6 +148,11 @@ describe('orderView', () => {
     // Done is done, and a refund owed is a refund owed, however it was paid.
     expect(orderView({ ...o, status: 'COMPLETED', paidAt: at, paidVia: 'CHIP' })).toBe('completed');
     expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, paidVia: 'CHIP' })).toBe('refundOwed');
+  });
+
+  it('a cancelled order of RM0 took no money, so it owes no refund', () => {
+    expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, paidVia: 'VOUCHER', totalCents: 0 })).toBe('cancelled');
+    expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, totalCents: 100 })).toBe('refundOwed');
   });
 });
 
