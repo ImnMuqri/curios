@@ -1259,6 +1259,22 @@
   line-height: 1.5;
 }
 
+/*
+ * A short shop -- none of its items available, or only a few -- still fills the phone, so its cover
+ * runs the whole way down, as the public shop's column does (shop-page.module.css, `.column:has`).
+ * The cover hangs 110px past the shop for the public page's foot; clipped here, or an empty shop
+ * would scroll by it. `clip`, not `hidden`, so the shop's sticky bar still sticks to the phone.
+ */
+.previewShop:has(> [data-cover]) {
+  display: flex;
+  flex-direction: column;
+  overflow: clip;
+}
+
+.previewShop > [data-cover] {
+  flex: 1 0 auto;
+}
+
 /* The preview's Pay screen: the order page's column, filling the phone instead of the window. */
 /*
  * The order page's stage, held to the phone: checkout's own stage is `min-height: 100vh`, and in
