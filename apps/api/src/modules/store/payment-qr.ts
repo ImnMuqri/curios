@@ -57,10 +57,14 @@ function emvTags(payload: string): Map<string, string> | null {
  * the format tag first, a checksum that matches, and Malaysia as the country.
  * A link, a WhatsApp QR or a damaged read fails here rather than reaching a
  * customer.
+ *
+ * The format tag's version is any two digits: EMVCo writes "01", but Maybank's
+ * own "receive money" QR says "02" (`000202...`), and refusing it refused every
+ * Maybank owner's QR.
  */
 export function isDuitNowPayload(payload: string): boolean {
   const tags = emvTags(payload);
-  if (!tags || !payload.startsWith('000201') || tags.get('58') !== 'MY') return false;
+  if (!tags || !/^0002\d{2}/.test(payload) || tags.get('58') !== 'MY') return false;
   const crc = tags.get('63');
   return crc !== undefined && payload.endsWith(`6304${crc}`) && crc16(payload.slice(0, -4)) === crc.toUpperCase();
 }

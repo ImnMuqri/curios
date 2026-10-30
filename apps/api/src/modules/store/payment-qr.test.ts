@@ -6,9 +6,9 @@ import { crc16, DUITNOW_PINK, isDuitNowPayload, redrawDuitNowQr } from './paymen
 
 const tlv = (id: string, value: string) => `${id}${String(value.length).padStart(2, '0')}${value}`;
 /** A static DuitNow-shaped payload, checksum and all. */
-function duitNow(fields: { country?: string } = {}): string {
+function duitNow(fields: { country?: string; version?: string } = {}): string {
   const body = [
-    tlv('00', '01'),
+    tlv('00', fields.version ?? '01'),
     tlv('01', '11'),
     tlv('26', tlv('00', 'A0000006150001') + tlv('01', '890014') + tlv('02', '0000000012345678')),
     tlv('52', '5462'),
@@ -46,6 +46,21 @@ describe('the payment QR', () => {
     expect(isDuitNowPayload('https://wa.me/60123456789')).toBe(false);
     expect(isDuitNowPayload(duitNow({ country: 'SG' }))).toBe(false);
     expect(isDuitNowPayload(duitNow().replace('KEK LINA', 'KEK LINE'))).toBe(false);
+  });
+
+  it('takes the format version Maybank writes, "02", as well as EMVCo’s "01"', () => {
+    expect(isDuitNowPayload(duitNow({ version: '02' }))).toBe(true);
+    expect(isDuitNowPayload(`9902${duitNow().slice(6)}`)).toBe(false);
+  });
+
+  it('redraws a Maybank receive-money QR: version 02, pink, in a small JPEG screenshot', async () => {
+    const text = duitNow({ version: '02' });
+    const qr = await QRCode.toBuffer(text, { type: 'png', width: 270, margin: 1, color: { dark: '#e8336aff', light: '#ffffffff' } });
+    const shot = await sharp({ create: { width: 484, height: 678, channels: 3, background: '#eef0f3' } })
+      .composite([{ input: qr, left: 107, top: 190 }])
+      .jpeg({ quality: 80 })
+      .toBuffer();
+    expect((await read(await redrawDuitNowQr(shot))).text).toBe(text);
   });
 
   it('redraws the QR in a screenshot as a pink QR that pays to exactly the same place', async () => {
