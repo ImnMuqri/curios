@@ -317,3 +317,42 @@ export class SessionNotFoundError extends Error {
     this.name = 'SessionNotFoundError';
   }
 }
+
+/** A voucher the owner may not make: its input fails `checkVoucherInput`, or it names an item that is not theirs. */
+export class VoucherInvalidError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'VOUCHER_INVALID';
+  constructor(message: string) {
+    super(message);
+    this.name = 'VoucherInvalidError';
+  }
+}
+
+/** The shop already has a voucher with this code. */
+export class VoucherCodeTakenError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'VOUCHER_CODE_TAKEN';
+  constructor() {
+    super('You already have a voucher with that code. Pick another.');
+    this.name = 'VoucherCodeTakenError';
+  }
+}
+
+export class VoucherNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+  constructor() {
+    super('No such voucher.');
+    this.name = 'VoucherNotFoundError';
+  }
+}
+
+/** A customer's code that does not work: unknown, off, ended, used up, or a shop that takes no orders. One answer for all, so it tells a guesser nothing. */
+export class VoucherUnknownError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'VOUCHER_UNKNOWN';
+  constructor() {
+    super("That code doesn't work here.");
+    this.name = 'VoucherUnknownError';
+  }
+}

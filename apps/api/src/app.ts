@@ -46,6 +46,7 @@ import {
   shopPayPerIpLimit,
   shopPayPerOrderLimit,
   shopPayStatusPerOrderLimit,
+  voucherCheckPerIpLimit,
 } from './plugins/rate-limit.js';
 import { ingestRoutes, type IngestRouteOptions } from './modules/ingest/ingest.routes.js';
 import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/chat/chat.routes.js';
@@ -54,6 +55,7 @@ import { reportRoutes, type ReportRouteOptions } from './modules/reports/report.
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
 import { storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
+import { voucherCheckRoutes } from './modules/store/voucher.routes.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { downloadRoutes } from './modules/orders/download.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
@@ -236,6 +238,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(rateLimit, orderPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, orderPerPageLimit(app.rateLimitRedis));
     await scope.register(orderRoutes, { ...(overrides.orders ?? {}), secretsKey: payOnline.secretsKey });
+  });
+
+  // A customer's voucher code at checkout: anonymous, its own per-visitor and shop budget.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, voucherCheckPerIpLimit(app.rateLimitRedis));
+    await scope.register(voucherCheckRoutes);
   });
 
   // The receipt on an order's link: anonymous too, with its own per-IP budget

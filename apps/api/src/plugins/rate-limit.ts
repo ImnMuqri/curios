@@ -498,6 +498,24 @@ export function shopPayMethodsPerIpLimit(redis: IORedis): RateLimitPluginOptions
   };
 }
 
+/**
+ * A customer typing a voucher code, per visitor and shop. A code is a guessable word, so a
+ * loop from one address must not walk a shop's codes; a real customer tries a handful.
+ * Keyed on the `handle`, lowercased as the page is looked up.
+ */
+export function voucherCheckPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('voucher-check-ip:'),
+    max: limit('RATE_LIMIT_VOUCHER_CHECK_PER_IP', 30),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => `${caller(request)}:${((request.params as { handle?: string }).handle ?? '-').toLowerCase()}`,
+    errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
+  };
+}
+
 /** The order link's token, hashed: a limiter key must never hold an order's whole credential. */
 const orderKey = (request: FastifyRequest) => {
   const token = (request.params as { token?: unknown } | undefined)?.token;

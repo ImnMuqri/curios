@@ -32,6 +32,7 @@ import {
 import { FileTooBigError, InvalidFileError, ItemNotFoundError } from './store.errors.js';
 import { resolvePrivateFiles, type PrivateFiles } from './private-files.js';
 import { storePageFor } from './store-page.js';
+import { addVoucher, listVouchers, removeVoucher, updateVoucher } from './voucher.service.js';
 
 export interface StoreRouteOptions {
   /** As PageRouteOptions.store: undefined builds from the environment, null is uploads off, tests pass a stub. */
@@ -70,7 +71,21 @@ const pricing = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('options'), options: z.array(z.object({ label: z.string().max(400), priceCents: z.number() })).max(100) }),
 ]);
 
-export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app, options) => {
+// Payload bounds only; checkVoucherInput owns every rule with a sentence.
+const voucherFields = {
+  mode: z.enum(['AUTO', 'CODE']),
+  code: z.string().max(100).nullable(),
+  name: z.string().max(200).nullable(),
+  kind: z.enum(['PERCENT', 'AMOUNT']),
+  percent: z.number().nullable(),
+  amountCents: z.number().nullable(),
+  itemId: z.string().min(1).max(64).nullable(),
+  minSpendCents: z.number().nullable(),
+  endsOn: z.string().max(10).nullable(),
+  maxUses: z.number().nullable(),
+};
+
+export const storeRoutes:FastifyPluginAsyncZod<StoreRouteOptions> = async (app, options) => {
   const store = resolveStore(options.store);
   // Resolved at registration, like `store`: production with a missing setting fails the deploy, not an owner's upload.
   const privateFiles = resolvePrivateFiles(options.privateFiles);
@@ -202,6 +217,31 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
       );
     }
     return { photoKey: null };
+  });
+
+  app.get('/store/vouchers', async (request) => {
+    if (!request.account) throw new UnauthenticatedError();
+    return { vouchers: await listVouchers(app.prisma, request.account.id) };
+  });
+
+  app.post('/store/vouchers', { schema: { body: z.object(voucherFields) } }, async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+    return reply.status(201).send({ voucher: await addVoucher(app.prisma, request.account.id, request.body) });
+  });
+
+  app.patch(
+    '/store/vouchers/:id',
+    { schema: { params, body: z.object(voucherFields).partial().extend({ active: z.boolean().optional() }) } },
+    async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      return { voucher: await updateVoucher(app.prisma, request.account.id, request.params.id, request.body) };
+    },
+  );
+
+  app.delete('/store/vouchers/:id', { schema: { params } }, async (request, reply) => {
+    if (!request.account) throw new UnauthenticatedError();
+    await removeVoucher(app.prisma, request.account.id, request.params.id);
+    return reply.status(204).send();
   });
 
   // Digital items. The upload gets its own plugin scope so its parser, which passes the
