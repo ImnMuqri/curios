@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { Readable } from 'node:stream';
+import type { FastifyBaseLogger, FastifyRequest } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { TILE_SIZES } from '@curios/core/bento';
 import { MAX_DIGITAL_FILE_BYTES } from '@curios/core/digital';
+import { ITEM_PHOTO_ORIGINAL_MAX_BYTES, type Frame } from '@curios/core/item-photos';
 import { DELIVERY_MODES } from '@curios/core/store';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { AVATAR_MAX_BYTES, decodeImage } from '../pages/avatar.js';
@@ -11,7 +13,8 @@ import { StorageNotConfiguredError } from '../pages/page.routes.js';
 import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import { clearPaymentQr, getStoreSettings, setPaymentQr, updateStoreSettings } from './settings.service.js';
 import { redrawDuitNowQr, REDRAWN_PREFIX } from './payment-qr.js';
-import { addItem, clearItemPhoto, listItems, removeItem, reorderItems, setItemPhoto, updateItem } from './item.service.js';
+import { addItem, listItems, removeItem, reorderItems, updateItem } from './item.service.js';
+import { addItemPhoto, photoOriginal, recropItemPhoto, replaceItemPhoto, type PhotoDeps } from './item-photo.service.js';
 import {
   addCodes,
   addSession,
@@ -29,7 +32,7 @@ import {
   removeStored,
   updateSession,
 } from './digital-item.service.js';
-import { FileTooBigError, InvalidFileError, ItemNotFoundError } from './store.errors.js';
+import { FileTooBigError, InvalidFileError, InvalidItemPhotoError, PhotoNotFoundError } from './store.errors.js';
 import { resolvePrivateFiles, type PrivateFiles } from './private-files.js';
 import { storePageFor } from './store-page.js';
 
@@ -47,6 +50,7 @@ const params = z.object({ id: z.string().min(1).max(64) });
 const fileParams = z.object({ id: z.string().min(1).max(64), fileId: z.string().min(1).max(64) });
 const codeParams = z.object({ id: z.string().min(1).max(64), codeId: z.string().min(1).max(64) });
 const sessionParams = z.object({ id: z.string().min(1).max(64), sessionId: z.string().min(1).max(64) });
+const photoParams = z.object({ id: z.string().min(1).max(64), photoId: z.string().min(1).max(64) });
 // Payload bounds only; digital-item.service owns the rules with a sentence.
 const digital = {
   kind: z.enum(['PHYSICAL', 'DIGITAL']).optional(),
@@ -70,10 +74,44 @@ const pricing = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('options'), options: z.array(z.object({ label: z.string().max(400), priceCents: z.number() })).max(100) }),
 ]);
 
+/** `x-photo-frame: <x>,<y>,<size>`. Anything else is a frame of NaNs, which frameProblem refuses with its sentence. */
+function frameHeader(raw: string | string[] | undefined): Frame {
+  const parts = typeof raw === 'string' ? raw.split(',').map((part) => (part.trim() === '' ? Number.NaN : Number(part))) : [];
+  if (parts.length !== 3) return { x: Number.NaN, y: Number.NaN, size: Number.NaN };
+  const [x = Number.NaN, y = Number.NaN, size = Number.NaN] = parts;
+  return { x, y, size };
+}
+
+/** The raw body of a photo upload, whole, refused past the original's size limit however long the sender said it was. */
+async function photoBody(request: FastifyRequest): Promise<{ body: Buffer; contentType: string }> {
+  const stream = request.body as AsyncIterable<Buffer> | undefined;
+  // A JSON or form body was parsed by its own parser: not a picture.
+  if (!stream || typeof (stream as { [Symbol.asyncIterator]?: unknown })[Symbol.asyncIterator] !== 'function' || Buffer.isBuffer(stream)) throw new InvalidItemPhotoError();
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of stream) {
+    total += chunk.length;
+    if (total > ITEM_PHOTO_ORIGINAL_MAX_BYTES) throw new InvalidItemPhotoError();
+    chunks.push(chunk);
+  }
+  const contentType = (request.headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase() ?? '';
+  return { body: Buffer.concat(chunks, total), contentType };
+}
+
+/** Refuses an oversize declared length before any byte is read. */
+async function photoLengthFits(request: FastifyRequest): Promise<void> {
+  const length = Number(request.headers['content-length']);
+  if (Number.isFinite(length) && length > ITEM_PHOTO_ORIGINAL_MAX_BYTES) throw new InvalidItemPhotoError();
+}
+
 export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app, options) => {
   const store = resolveStore(options.store);
   // Resolved at registration, like `store`: production with a missing setting fails the deploy, not an owner's upload.
   const privateFiles = resolvePrivateFiles(options.privateFiles);
+  const photoDeps = (log: FastifyBaseLogger): PhotoDeps => {
+    if (!store || !privateFiles) throw new StorageNotConfiguredError();
+    return { prisma: app.prisma, store, privateFiles, log };
+  };
 
   app.get('/store', async (request) => {
     if (!request.account) throw new UnauthenticatedError();
@@ -175,33 +213,9 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
     return { status: 'reordered' };
   });
 
-  app.post('/store/items/:id/photo', { bodyLimit: 2 * 1024 * 1024, schema: { params, body: image } }, async (request) => {
+  app.put('/store/items/:id/photos/:photoId/frame', { schema: { params: photoParams, body: z.object({ x: z.number(), y: z.number(), size: z.number() }) } }, async (request) => {
     if (!request.account) throw new UnauthenticatedError();
-    const page = await storePageFor(app.prisma, request.account.id);
-    if (!store) throw new StorageNotConfiguredError();
-    const exists = await app.prisma.item.findFirst({ where: { id: request.params.id, pageId: page.id }, select: { id: true } });
-    if (!exists) throw new ItemNotFoundError();
-    const { body, ext } = decodeImage(request.body, AVATAR_MAX_BYTES);
-    const key = `items/${page.id}/${randomUUID()}.${ext}`;
-    await store.put(key, body, request.body.contentType);
-    const old = await setItemPhoto(app.prisma, request.account.id, request.params.id, key);
-    if (old) {
-      await store.remove(old).catch((error: unknown) =>
-        request.log.warn({ pageId: page.id, err: error instanceof Error ? error.message : String(error) }, 'old item photo could not be removed'),
-      );
-    }
-    return { photoKey: key };
-  });
-
-  app.delete('/store/items/:id/photo', { schema: { params } }, async (request) => {
-    if (!request.account) throw new UnauthenticatedError();
-    const old = await clearItemPhoto(app.prisma, request.account.id, request.params.id);
-    if (old && store) {
-      await store.remove(old).catch((error: unknown) =>
-        request.log.warn({ err: error instanceof Error ? error.message : String(error) }, 'removed item photo could not be deleted'),
-      );
-    }
-    return { photoKey: null };
+    return recropItemPhoto(photoDeps(request.log), request.account.id, request.params.id, request.params.photoId, request.body);
   });
 
   // Digital items. The upload gets its own plugin scope so its parser, which passes the
@@ -249,6 +263,22 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
         }
       },
     );
+
+    // An item's photos: the original as a raw body (over the JSON limits), its frame in a header.
+    const photoUpload = { bodyLimit: ITEM_PHOTO_ORIGINAL_MAX_BYTES, onRequest: photoLengthFits };
+    upload.post('/store/items/:id/photos', { ...photoUpload, schema: { params } }, async (request, reply) => {
+      if (!request.account) throw new UnauthenticatedError();
+      const deps = photoDeps(request.log);
+      const picture = await photoBody(request);
+      return reply.status(201).send(await addItemPhoto(deps, request.account.id, request.params.id, picture, frameHeader(request.headers['x-photo-frame'])));
+    });
+
+    upload.post('/store/items/:id/photos/:photoId/picture', { ...photoUpload, schema: { params: photoParams } }, async (request) => {
+      if (!request.account) throw new UnauthenticatedError();
+      const deps = photoDeps(request.log);
+      const picture = await photoBody(request);
+      return replaceItemPhoto(deps, request.account.id, request.params.id, request.params.photoId, picture, frameHeader(request.headers['x-photo-frame']));
+    });
   };
   await app.register(uploadRoutes);
 
@@ -287,5 +317,28 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
     if (!request.account) throw new UnauthenticatedError();
     await removeSession(app.prisma, request.account.id, request.params.id, request.params.sessionId);
     return { status: 'removed' };
+  });
+};
+
+/**
+ * The owner's editor loads a photo's uncropped original from here, to re-crop it. Registered
+ * outside the signed-in scope (app.ts) only so that nobody signed in gets the same 404 as
+ * another owner: whether a photo exists is not given away. The handler checks the owner itself.
+ */
+export const photoOriginalRoutes: FastifyPluginAsyncZod<Pick<StoreRouteOptions, 'privateFiles'>> = async (app, options) => {
+  const privateFiles = resolvePrivateFiles(options.privateFiles);
+
+  app.get('/store/items/:id/photos/:photoId/original', { exposeHeadRoute: false, schema: { params: photoParams } }, async (request, reply) => {
+    if (!request.account) throw new PhotoNotFoundError();
+    const { key, fileName } = await photoOriginal(app.prisma, request.account.id, request.params.id, request.params.photoId);
+    if (!privateFiles) throw new StorageNotConfiguredError();
+    const delivery = await privateFiles.deliver(key, fileName);
+    reply.header('Cache-Control', 'private, no-store');
+    if ('redirect' in delivery) return reply.redirect(delivery.redirect, 302);
+    return reply
+      .header('Content-Type', delivery.contentType)
+      .header('Content-Disposition', delivery.disposition)
+      .header('X-Content-Type-Options', 'nosniff')
+      .send(delivery.stream);
   });
 };

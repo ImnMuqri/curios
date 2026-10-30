@@ -4,6 +4,7 @@ import { itemSlug } from '@curios/core/slug';
 import { InvalidItemError, ItemHasBookingsError, ItemHasSalesError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError, StoreNotReadyError } from './store.errors.js';
 import { DIGITAL_COLUMNS, DIGITAL_RELATIONS, NO_DIGITAL, digitalDetail, hasBookings, resolveDigital, type DigitalDetail, type DigitalFields, type DigitalInput } from './digital-item.service.js';
 import { storePageFor } from './store-page.js';
+import { OWNER_PHOTO_SELECT, toOwnerPhoto, type OwnerPhoto } from './item-photo.service.js';
 
 export interface ItemRow extends DigitalFields, DigitalDetail {
   id: string;
@@ -13,7 +14,10 @@ export interface ItemRow extends DigitalFields, DigitalDetail {
   category: string | null;
   tag: string | null;
   sku: string | null;
+  /** The cover: the 512 copy of the first photo's square. */
   photoKey: string | null;
+  /** In position order. Never the originals' keys. */
+  photos: OwnerPhoto[];
   available: boolean;
   priceCents: number | null;
   options: { id: string; label: string; priceCents: number }[];
@@ -33,6 +37,7 @@ const SELECT = {
   available: true,
   priceCents: true,
   options: { orderBy: { position: 'asc' }, select: { id: true, label: true, priceCents: true } },
+  photos: { orderBy: { position: 'asc' }, select: OWNER_PHOTO_SELECT },
   ...DIGITAL_COLUMNS,
   ...DIGITAL_RELATIONS,
 } as const;
@@ -40,8 +45,8 @@ const SELECT = {
 type SelectedItem = Prisma.ItemGetPayload<{ select: typeof SELECT }>;
 
 function toRow(row: SelectedItem): ItemRow {
-  const { files: _files, sessions: _sessions, _count, ...rest } = row;
-  return { ...rest, ...digitalDetail(row) };
+  const { files: _files, sessions: _sessions, _count, photos, ...rest } = row;
+  return { ...rest, photos: photos.map(toOwnerPhoto), ...digitalDetail(row) };
 }
 
 function checkName(raw: string): string {
@@ -224,17 +229,4 @@ export async function reorderItems(prisma: PrismaClient, accountId: string, ids:
     if (sent.size !== ids.length || sent.size !== known.size || ids.some((id) => !known.has(id))) throw new ItemOrderStaleError();
     for (const [position, id] of ids.entries()) await tx.item.update({ where: { id }, data: { position } });
   });
-}
-
-/** Records the item's photo (null clears it); returns the key it replaced, for the caller to delete from storage. */
-export async function setItemPhoto(prisma: PrismaClient, accountId: string, id: string, key: string | null): Promise<string | null> {
-  const page = await storePageFor(prisma, accountId);
-  const item = await prisma.item.findFirst({ where: { id, pageId: page.id }, select: { photoKey: true } });
-  if (!item) throw new ItemNotFoundError();
-  await prisma.item.update({ where: { id }, data: { photoKey: key } });
-  return item.photoKey;
-}
-
-export async function clearItemPhoto(prisma: PrismaClient, accountId: string, id: string): Promise<string | null> {
-  return setItemPhoto(prisma, accountId, id, null);
 }

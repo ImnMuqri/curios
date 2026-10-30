@@ -43,6 +43,34 @@ export class InvalidItemPhotoError extends Error {
   }
 }
 
+export class InvalidFrameError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_FRAME';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidFrameError';
+  }
+}
+
+export class PhotoLimitError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'PHOTO_LIMIT';
+  constructor() {
+    super('An item holds up to 8 photos.');
+    this.name = 'PhotoLimitError';
+  }
+}
+
+/** Also what anyone but the item's owner gets: a 404, so an original's existence is not given away. */
+export class PhotoNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'PHOTO_NOT_FOUND';
+  constructor() {
+    super('That photo is not there any more. Reload to see the latest.');
+    this.name = 'PhotoNotFoundError';
+  }
+}
+
 export class ItemLimitError extends Error {
   readonly statusCode = 400;
   readonly code = 'ITEM_LIMIT';

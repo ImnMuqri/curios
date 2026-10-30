@@ -5,7 +5,6 @@ import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 import type { AvatarStore } from '../pages/storage.js';
 
-const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]).toString('base64');
 const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> } = {
   put: vi.fn(async () => undefined),
   remove: vi.fn(async () => undefined),
@@ -183,13 +182,13 @@ describe('item link, category and tag', () => {
   });
 });
 
-describe('DELETE, order, photo', () => {
+describe('DELETE and order', () => {
   it('removes an item, closes the gap, and removes its photo object', async () => {
     const owner = await anOwner(app);
     const first = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item.id as string;
     await call(app, 'POST', '/store/items', owner.cookie, cake);
-    const key = (await call(app, 'POST', `/store/items/${first}/photo`, owner.cookie, { contentType: 'image/png', data: PNG })).json().photoKey as string;
-    expect(key).toMatch(new RegExp(`^items/${owner.pageId}/`));
+    const key = `items/${owner.pageId}/cover-${randomUUID()}.webp`;
+    await app.prisma.item.update({ where: { id: first }, data: { photoKey: key } });
 
     expect((await call(app, 'DELETE', `/store/items/${first}`, owner.cookie)).statusCode).toBe(200);
     expect(store.remove).toHaveBeenCalledWith(key);
@@ -204,25 +203,6 @@ describe('DELETE, order, photo', () => {
     expect((await call(app, 'PUT', '/store/items/order', owner.cookie, { ids: [b, a] })).statusCode).toBe(200);
     expect(await names(owner.cookie)).toEqual(['Kek Batik', 'Cookies balang']);
     expect((await call(app, 'PUT', '/store/items/order', owner.cookie, { ids: [b] })).json().error.code).toBe('ITEM_ORDER_STALE');
-  });
-
-  it("will not store a photo for another owner's item", async () => {
-    const a = await anOwner(app);
-    const b = await anOwner(app);
-    const id = (await call(app, 'POST', '/store/items', a.cookie, cookies)).json().item.id as string;
-    const res = await call(app, 'POST', `/store/items/${id}/photo`, b.cookie, { contentType: 'image/png', data: PNG });
-    expect(res.statusCode).toBe(404);
-    expect(store.put).not.toHaveBeenCalled();
-  });
-
-  it('replaces a photo, removing the old object, and clears it', async () => {
-    const owner = await anOwner(app);
-    const id = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item.id as string;
-    const first = (await call(app, 'POST', `/store/items/${id}/photo`, owner.cookie, { contentType: 'image/png', data: PNG })).json().photoKey as string;
-    const second = (await call(app, 'POST', `/store/items/${id}/photo`, owner.cookie, { contentType: 'image/png', data: PNG })).json().photoKey as string;
-    expect(store.remove).toHaveBeenCalledWith(first);
-    expect((await call(app, 'DELETE', `/store/items/${id}/photo`, owner.cookie)).json()).toEqual({ photoKey: null });
-    expect(store.remove).toHaveBeenCalledWith(second);
   });
 });
 
@@ -245,13 +225,5 @@ describe('item bookkeeping', () => {
     const a = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item.id as string;
     await call(app, 'POST', '/store/items', owner.cookie, cake);
     expect((await call(app, 'PUT', '/store/items/order', owner.cookie, { ids: [a, 'nope'] })).json().error.code).toBe('ITEM_ORDER_STALE');
-  });
-
-  it('really clears the photo column', async () => {
-    const owner = await anOwner(app);
-    const id = (await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item.id as string;
-    await call(app, 'POST', `/store/items/${id}/photo`, owner.cookie, { contentType: 'image/png', data: PNG });
-    await call(app, 'DELETE', `/store/items/${id}/photo`, owner.cookie);
-    expect((await app.prisma.item.findUnique({ where: { id }, select: { photoKey: true } }))?.photoKey).toBeNull();
   });
 });

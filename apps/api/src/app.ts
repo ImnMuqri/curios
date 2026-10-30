@@ -52,7 +52,7 @@ import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/cha
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { reportRoutes, type ReportRouteOptions } from './modules/reports/report.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
-import { storeRoutes } from './modules/store/store.routes.js';
+import { photoOriginalRoutes, storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { downloadRoutes } from './modules/orders/download.routes.js';
@@ -313,6 +313,9 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(storeRoutes, { ...(overrides.pages ?? {}), privateFiles: overrides.privateFiles });
     await scope.register(ownerOrderRoutes, { ...(overrides.orders ?? {}), payOnline });
   });
+  // An item photo's original: the owner's, checked in the handler. Outside the scope above only so
+  // that no session gets the same 404 as another owner rather than a 401 (store.routes.ts).
+  await app.register(photoOriginalRoutes, { privateFiles: overrides.privateFiles });
 
   // The owner's own CHIP account. Signed in, and under its own per-account budget:
   // connecting tries a key against CHIP and starts a purchase, and the test starts one,

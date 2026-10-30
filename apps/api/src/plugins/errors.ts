@@ -142,6 +142,12 @@ export const DOMAIN_ERROR_CODES = new Set([
   'INVALID_ITEM',
   'ITEM_LIMIT',
   'ITEM_ORDER_STALE',
+  // An item's photos: a picture that is not one, a crop that is not a square inside it, a ninth photo,
+  // or a photo that is gone (also what anyone but the owner gets for an original).
+  'INVALID_PHOTO',
+  'INVALID_FRAME',
+  'PHOTO_LIMIT',
+  'PHOTO_NOT_FOUND',
   // Digital items: files, codes and session times (each says what to change).
   'TOO_MANY_FILES',
   'FILE_TOO_BIG',
