@@ -30,48 +30,50 @@
   padding: 0;
 }
 
+/*
+ * The status, as the shop's sign wears "Open for orders": a frosted veil of the page's own text
+ * colour, so it sits on the cover or the plain page alike, and only the dot (with its soft halo)
+ * carries the tone. Waiting is amber, checking biru, done hijau, stopped merah.
+ */
 .pill {
+  --dot: var(--faint);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   height: 28px;
-  padding: 0 11px;
+  padding: 0 12px;
   border-radius: 999px;
+  background: color-mix(in srgb, var(--page-fg) 12%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  color: var(--page-fg);
   font-size: 12.5px;
   font-weight: 600;
   white-space: nowrap;
 }
 
 .pill i {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: currentColor;
+  background: var(--dot);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--dot) 24%, transparent);
 }
 
 .pill[data-tone='wait'] {
-  background: var(--kuning-muda);
-  color: var(--kuning-ink);
+  --dot: var(--kuning);
 }
 
 .pill[data-tone='check'] {
-  background: var(--biru-muda);
-  color: var(--biru-ink);
+  --dot: var(--biru);
 }
 
 .pill[data-tone='ok'] {
-  background: var(--hijau-muda);
-  color: var(--hijau-ink);
+  --dot: var(--hijau);
 }
 
 .pill[data-tone='stop'] {
-  background: var(--merah-muda);
-  color: var(--merah-deep);
-}
-
-.pill[data-tone='quiet'] {
-  background: var(--ghost-a);
-  color: var(--ink-soft);
+  --dot: var(--merah);
 }
 
 .code {
@@ -103,9 +105,11 @@
 
 /* ---- Progress ---- */
 
+/* One even column per step, however many: three for a digital order, four for one to collect. */
 .steps {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-auto-columns: 1fr;
+  grid-auto-flow: column;
   margin: 22px 0 4px;
   padding: 0;
   list-style: none;
@@ -136,8 +140,10 @@
   display: none;
 }
 
+/* Over the lines: the next step's line starts at this circle's centre and would cut through it. */
 .step i {
   position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
   width: 22px;
@@ -162,8 +168,13 @@
   font-weight: 500;
 }
 
-.step:is([data-state='done'], [data-state='now'])::before {
+/* The line runs green up to the last step done; the one into the step now is only on its way. */
+.step[data-state='done']::before {
   background: var(--hijau);
+}
+
+.step[data-state='now']::before {
+  background: linear-gradient(90deg, var(--hijau), var(--ghost-b));
 }
 
 .step[data-state='done'] i {
@@ -171,8 +182,17 @@
   box-shadow: none;
 }
 
+/* The step now: a hijau ring with a dot in it and a soft halo, the same family as the ticks. */
 .step[data-state='now'] i {
-  box-shadow: inset 0 0 0 6px var(--accent);
+  box-shadow: inset 0 0 0 2px var(--hijau), 0 0 0 4px color-mix(in srgb, var(--hijau) 16%, transparent);
+}
+
+.step[data-state='now'] i::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hijau);
 }
 
 /* ---- Pay ---- */
