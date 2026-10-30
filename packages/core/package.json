@@ -16,6 +16,7 @@
     "./phone": "./src/phone.ts",
     "./socials": "./src/socials.ts",
     "./store": "./src/store.ts",
+    "./item-photos": "./src/item-photos.ts",
     "./money": "./src/money.ts",
     "./test-settings": "./src/test-settings.ts",
     "./slug": "./src/slug.ts",
