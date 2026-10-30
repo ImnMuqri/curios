@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { ChipRefusedError, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { hashSessionValue, type MailJobData } from '@curios/core';
 import { sealSecret } from '@curios/core/secret-box';
+import { COUNTED_ORDER_WHERE } from '@curios/core/vouchers';
 import { buildApp } from '../../app.js';
 import type { AvatarStore } from '../pages/storage.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
@@ -738,6 +739,24 @@ describe('fix round 1: the owner cancels an order being paid online', () => {
     expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidVia: 'CHIP', paidAt: expect.any(Date), paidMethodLabel: 'Visa card ending 4242', refundedAt: null });
   });
 
+  it('a payment that lands after the cancel does not take the voucher’s use back: the order lets go of it, keeping its record', async () => {
+    const shop = await aShopWithOrder(app);
+    const voucher = await app.prisma.shopVoucher.create({ data: { pageId: shop.pageId, mode: 'CODE', code: 'RAYA10', kind: 'AMOUNT', amountCents: 1_000, maxUses: 1 } });
+    const purchase = await startPayment(app, shop);
+    // The order took the voucher when it was placed (set here, after paying started, so CHIP's purchase keeps the fixture's total).
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { voucherId: voucher.id, voucherLabel: 'RAYA10', discountCents: 1_000 } });
+    client.cancelPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    expect((await cancel(app, shop)).statusCode).toBe(204);
+
+    client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'paid', paymentMethod: 'visa', maskedPan: '4242' });
+    expect((await callback(app, shop.orderId, purchase.id, ownerKey.privateKey)).json()).toEqual({ status: 'paid-after-cancel' });
+
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidAt: expect.any(Date), voucherId: null, voucherLabel: 'RAYA10', discountCents: 1_000 });
+    // Cancelled before it was paid gave the use back; the late payment does not count it again.
+    expect(await app.prisma.order.count({ where: { voucherId: voucher.id, ...COUNTED_ORDER_WHERE } })).toBe(0);
+  });
+
   it('the owner is emailed once that the order is paid, not told to wait for a receipt', async () => {
     const shop = await aShopWithOrder(app);
     const purchase = await startPayment(app, shop);
@@ -1025,5 +1044,48 @@ describe('the CHIP payments switch', () => {
     const methods = await app.inject({ method: 'GET', url: `/store/${shop.handle}/pay-methods?amount=22000`, remoteAddress: from() });
     expect(methods.json()).toEqual({ fpx: true, wallets: ['tng', 'grab', 'spay'], card: true });
     expect((await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' })).statusCode).toBe(200);
+  });
+});
+
+describe('an order with a voucher, paid online', () => {
+  /** The RM220 order with RAYA10 taking RM21 off its items: RM199 to pay. */
+  async function aDiscountedOrder() {
+    const shop = await aShopWithOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { discountCents: 2_100, voucherLabel: 'RAYA10', totalCents: 19_900 } });
+    return shop;
+  }
+
+  it("CHIP's purchase is the discounted total, and its products add up to it", async () => {
+    const shop = await aDiscountedOrder();
+    client.createPurchase.mockResolvedValueOnce(aPurchase({ totalCents: 19_900 }));
+
+    const res = await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().url).not.toBeNull();
+    expect(client.listPaymentMethods).toHaveBeenCalledWith(19_900);
+    const input = client.createPurchase.mock.calls[0]![0];
+    expect(input.amountCents).toBe(19_900);
+    expect((input.products ?? []).reduce((sum, p) => sum + p.priceCents * p.quantity, 0)).toBe(19_900);
+    // Delivery is never discounted, so it stays its own line.
+    expect(input.products).toContainEqual({ name: 'Delivery', priceCents: 1_000, quantity: 1 });
+    expect((input.products ?? []).some((p) => p.name.includes('RAYA10'))).toBe(true);
+  });
+
+  it('settling that purchase marks the order paid, and the owner sees the voucher', async () => {
+    const shop = await aDiscountedOrder();
+    const purchase = aPurchase({ totalCents: 19_900 });
+    client.createPurchase.mockResolvedValueOnce(purchase);
+    expect((await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' })).statusCode).toBe(200);
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u' });
+
+    const res = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+
+    expect(res.json()).toEqual({ status: 'paid' });
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP', totalCents: 19_900 });
+    await vi.waitFor(() => expect(mailQueue.add).toHaveBeenCalledTimes(1));
+    const mail = mailQueue.add.mock.calls[0]![1];
+    expect(mail.text).toContain('RAYA10: −RM21');
+    expect(mail.text).toContain('Paid: RM199');
   });
 });

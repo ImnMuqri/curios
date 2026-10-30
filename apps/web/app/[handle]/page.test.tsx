@@ -23,9 +23,12 @@ vi.mock('next/navigation', () => ({
 // `canCapture` from real field values, without also depending on `Ask`'s
 // internals for tests that were never about `Ask`.
 vi.mock('./ask.js', () => ({ Ask: vi.fn(() => null) }));
+// Mocked so the test can read what the Links tab hands its basket bar; basket-bar.test.tsx draws it.
+vi.mock('./shop/basket-bar.js', () => ({ BasketBar: vi.fn(() => null) }));
 
 const { getFaqIndex, getPageAvailability, getPublicPage, getSettings } = await import('@curios/db-read');
 const { Ask } = await import('./ask.js');
+const { BasketBar } = await import('./shop/basket-bar.js');
 const { default: HandlePage, generateMetadata } = await import('./page.js');
 
 const page: PublicPage = {
@@ -341,6 +344,7 @@ const ordering = {
   closedDays: [],
   canTakeOrders: true,
   items: [{ id: 'i1', name: 'Kek', priceCents: 9500, options: [] }],
+  vouchers: [],
 };
 const tile = { position: 0, size: null, itemCount: 3, photoKey: null, photos: [{ name: 'Kek', photoKey: null }] };
 
@@ -383,5 +387,19 @@ describe('the report link', () => {
     vi.mocked(getPublicPage).mockResolvedValue(page);
     render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
     expect(screen.getByRole('link', { name: 'Laporkan halaman ini' })).toHaveAttribute('href', '/nadia/report');
+  });
+});
+
+describe('the Links tab basket bar', () => {
+  it('takes the shop’s live automatic vouchers off, as the shop’s own bar does', async () => {
+    const raya = { id: 'v1', mode: 'AUTO' as const, kind: 'PERCENT' as const, percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya promo' };
+    vi.mocked(getPublicPage).mockResolvedValue({
+      ...page,
+      shop: { position: 0, size: null, itemCount: 1, photoKey: null, photos: [] },
+      shopOrdering: { pickupEnabled: true, deliveryMode: 'NONE', minNoticeDays: 1, closedDays: [], canTakeOrders: true, items: [{ id: 'cake', name: 'Kek', priceCents: 9500, options: [] }], vouchers: [raya] },
+    });
+    render(await HandlePage({ params: Promise.resolve({ handle: 'nadia' }) }));
+    const props = (vi.mocked(BasketBar).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0];
+    expect(props).toMatchObject({ canTakeOrders: true, vouchers: [raya] });
   });
 });

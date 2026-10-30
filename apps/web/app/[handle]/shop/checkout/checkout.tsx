@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX, openDays, orderTotals } from '@curios/core/orders';
 import { formatRinggit, type DeliveryMode } from '@curios/core/store';
+import { normalizeVoucherCode, pickVoucher, voucherSaving, type VoucherTerms } from '@curios/core/vouchers';
 import { isDigitalOnly, type DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
@@ -63,6 +64,8 @@ export interface CheckoutProps {
    * this basket's total.
    */
   chipMethods?: string[] | null;
+  /** The live automatic vouchers: the best one that fits comes off the order by itself. */
+  vouchers?: VoucherTerms[];
   /** Where paying online sends the browser. Tests pass a spy. */
   navigate?: (url: string) => void;
 }
@@ -79,6 +82,8 @@ interface PlacedOrder {
   digitalNote: string | null;
   /** The order holds a code or a class seat until it is paid. */
   holds: boolean;
+  /** The order came to RM0: it is paid already, with nothing to pay. */
+  free: boolean;
 }
 
 const goTo = (url: string) => window.location.assign(url);
@@ -99,6 +104,7 @@ const FIELD_OF: Record<string, Problem['field']> = {
 interface Reload {
   items?: ShopItem[];
   delivery?: { mode: DeliveryMode; feeCents: number | null };
+  vouchers?: VoucherTerms[];
 }
 
 /**
@@ -118,6 +124,13 @@ export function Checkout(props: CheckoutProps) {
   // State, not props: a PRICES_CHANGED reply can bring a new fee or turn delivery off.
   const [delivery, setDelivery] = useState({ mode: props.deliveryMode, feeCents: props.deliveryFeeCents });
   const [deliveryOff, setDeliveryOff] = useState(false);
+  const [vouchers, setVouchers] = useState(props.vouchers ?? []);
+  // A typed code the API accepted; it competes with the automatic ones, and the bigger saving wins.
+  const [typed, setTyped] = useState<VoucherTerms | null>(null);
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [code, setCode] = useState('');
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
   const [lines, setLines] = useState<BasketLine[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [method, setMethod] = useState<Method | null>(
@@ -203,11 +216,20 @@ export function Checkout(props: CheckoutProps) {
   const digitalKinds = [...new Set(priced.lines.flatMap((l) => (l.digital ? [items.find((i) => i.id === l.itemId)?.delivery ?? null] : [])))];
   const onlyKind = digitalKinds.length === 1 ? digitalKinds[0] : null;
   const emailWhat = onlyKind ? ({ FILES: 'files', LINK: 'link', CODES: 'codes', SESSION: 'session' } as const)[onlyKind] : 'mixed';
-  const totals = orderTotals(priced.lines, {
-    method: digitalOnly ? 'PICKUP' : (method ?? 'PICKUP'),
-    mode: delivery.mode,
-    feeCents: delivery.feeCents,
-  });
+  const deal = useMemo(() => pickVoucher(typed ? [...vouchers, typed] : vouchers, priced.lines, typed?.id), [vouchers, typed, priced.lines]);
+  const totals = orderTotals(
+    priced.lines,
+    {
+      method: digitalOnly ? 'PICKUP' : (method ?? 'PICKUP'),
+      mode: delivery.mode,
+      feeCents: delivery.feeCents,
+    },
+    deal?.savingCents ?? 0,
+  );
+  // A typed code that saves nothing on this basket (minimum spend unmet, its item absent) is not sent.
+  const typedFits = typed !== null && voucherSaving(typed, priced.lines) > 0;
+  // Nothing to pay: the order is placed paid, so no way to pay is asked for.
+  const free = priced.lines.length > 0 && totals.totalCents === 0;
   // What CHIP takes at this total, asked through the API once the basket settles.
   const hasChip = chip !== null;
   const offer = useOnlineOffer(props.handle, chip, totals.totalCents);
@@ -226,8 +248,48 @@ export function Checkout(props: CheckoutProps) {
     (digitalOnly || (day !== null && method !== null && (method !== 'DELIVERY' || address.trim() !== ''))) &&
     (!anyDigital || EMAIL.test(email.trim())) &&
     !soldOutLine &&
-    pick.ready &&
+    (free || pick.ready) &&
     !sending;
+
+  async function applyCode() {
+    const typedCode = normalizeVoucherCode(code);
+    if (typedCode === '' || checking) return;
+    setChecking(true);
+    setCodeError(null);
+    try {
+      const found = await apiFetch<{ voucher: VoucherTerms }>(`/store/${props.handle}/vouchers/check`, {
+        method: 'POST',
+        body: JSON.stringify({ code: typedCode }),
+      });
+      setTyped(found.voucher);
+      setCode('');
+    } catch (error) {
+      setCodeError(error instanceof ApiError && error.code === 'VOUCHER_UNKNOWN' ? copy.codeUnknown : copy.failed);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  /** After a reload: is the typed code still good? Refused clears it and says so; accepted takes its fresh terms. */
+  async function recheckTyped(current: VoucherTerms) {
+    try {
+      const found = await apiFetch<{ voucher: VoucherTerms }>(`/store/${props.handle}/vouchers/check`, {
+        method: 'POST',
+        body: JSON.stringify({ code: current.label }),
+      });
+      setTyped(found.voucher);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'VOUCHER_UNKNOWN') {
+        setTyped(null);
+        setCodeError(copy.codeUnknown);
+      }
+    }
+  }
+
+  function removeCode() {
+    setTyped(null);
+    setCodeError(null);
+  }
 
   async function place() {
     if (!canPlace || (!digitalOnly && (!method || !day))) return;
@@ -253,6 +315,7 @@ export function Checkout(props: CheckoutProps) {
             note: note.trim() === '' ? null : note.trim(),
             // Placing the order under the line that says where the number goes is the consent, as on the lead card.
             consent: true,
+            ...(typed && typedFits ? { voucherCode: typed.label } : {}),
             seenTotalCents: totals.totalCents,
           }),
         },
@@ -261,7 +324,7 @@ export function Checkout(props: CheckoutProps) {
       // Placed first, exactly as for the QR; paying online only follows. If it cannot
       // start, the order waits for the QR (or the shop's WhatsApp) like any other.
       let onlineUnavailable: PlacedOrder['onlineUnavailable'] = null;
-      if (online && pick.choice) {
+      if (result.totalCents > 0 && !free && online && pick.choice) {
         const choice = pick.choice;
         try {
           const paying = await apiFetch<{ url: string | null }>(`/store/orders/${encodeURIComponent(result.token)}/pay`, {
@@ -304,7 +367,8 @@ export function Checkout(props: CheckoutProps) {
         totalCents: result.totalCents,
         phone: sentPhone,
         onlineUnavailable,
-        digitalNote: anyDigital ? copy.digitalPlacedNote(false, email.trim()) : null,
+        digitalNote: anyDigital ? copy.digitalPlacedNote(result.totalCents === 0, email.trim()) : null,
+        free: result.totalCents === 0,
         holds: priced.lines.some((l) => l.digital && ['CODES', 'SESSION'].includes(items.find((i) => i.id === l.itemId)?.delivery ?? '')),
       });
       top.current?.scrollIntoView?.();
@@ -314,6 +378,8 @@ export function Checkout(props: CheckoutProps) {
       } else if (error.code === 'PRICES_CHANGED') {
         const reload = (error.body ?? {}) as Reload;
         const shelf = reload.items;
+        if (Array.isArray(reload.vouchers)) setVouchers(reload.vouchers);
+        if (typed) await recheckTyped(typed);
         if (reload.delivery) {
           setDelivery(reload.delivery);
           if (reload.delivery.mode === 'NONE' && method === 'DELIVERY') {
@@ -360,6 +426,7 @@ export function Checkout(props: CheckoutProps) {
           onlineUnavailable={placed.onlineUnavailable}
           digitalNote={placed.digitalNote}
           holds={placed.holds}
+          free={placed.free}
           payByQr={payByQr}
           whatsapp={props.whatsapp}
         />
@@ -369,8 +436,10 @@ export function Checkout(props: CheckoutProps) {
 
   const shopHref = `/${props.handle}/shop`;
   const total = formatRinggit(totals.totalCents);
-  const goText = payButtonText(copy, total, pick) ?? copy.placeOrder(total);
-  const payNote = online
+  const goText = (free ? null : payButtonText(copy, total, pick)) ?? copy.placeOrder(total);
+  const payNote = free
+    ? copy.consent(props.displayName)
+    : online
     ? `${how === 'card' ? copy.noteCard : how === 'wallet' ? copy.noteWallet : copy.noteBank} ${copy.chipNote(props.displayName)}`
     : `${copy.payNote(props.displayName)} ${copy.consent(props.displayName)}`;
 
@@ -462,6 +531,53 @@ export function Checkout(props: CheckoutProps) {
                 );
               })}
             </ul>
+            {typed ? (
+              <>
+                <p className={styles.codeNote}>{typed.label}</p>
+                {!typedFits ? (
+                  <p className={styles.codeNote}>{copy.codeDoesNotFit}</p>
+                ) : deal && deal.voucher.id !== typed.id ? (
+                  <p className={styles.codeNote}>{copy.betterVoucherApplied}</p>
+                ) : null}
+                <button type="button" className={styles.codeLink} onClick={removeCode}>
+                  {copy.removeCode}
+                </button>
+              </>
+            ) : codeOpen ? (
+              <div className={styles.field}>
+                <label htmlFor="ck-code">{copy.haveACode}</label>
+                <div className={styles.codeRow}>
+                  <input
+                    id="ck-code"
+                    value={code}
+                    maxLength={20}
+                    autoCapitalize="characters"
+                    autoComplete="off"
+                    aria-invalid={codeError ? true : undefined}
+                    aria-describedby={codeError ? 'ck-code-error' : undefined}
+                    onChange={(event) => {
+                      setCode(event.target.value);
+                      setCodeError(null);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') void applyCode();
+                    }}
+                  />
+                  <button type="button" disabled={code.trim() === '' || checking} onClick={() => void applyCode()}>
+                    {copy.applyCode}
+                  </button>
+                </div>
+                {codeError ? (
+                  <p id="ck-code-error" className={styles.error}>
+                    {codeError}
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <button type="button" className={styles.codeLink} onClick={() => setCodeOpen(true)}>
+                {copy.haveACode}
+              </button>
+            )}
           </section>
 
           {digitalOnly ? (
@@ -656,6 +772,7 @@ export function Checkout(props: CheckoutProps) {
             </div>
           </section>
 
+          {free ? null : (
           <section className={styles.section} aria-labelledby="ck-pay">
             <div className={styles.head}>
               <h2 id="ck-pay">{copy.howYoullPay}</h2>
@@ -679,12 +796,18 @@ export function Checkout(props: CheckoutProps) {
               />
             )}
           </section>
+          )}
 
           <section className={`${styles.section} ${styles.summary}`}>
             <div>
               <span>{copy.items}</span>
               <span>{formatRinggit(totals.itemsCents)}</span>
             </div>
+            {deal ? (
+              <div className={styles.discount}>
+                <span>{copy.voucherApplied(deal.voucher.label, formatRinggit(deal.savingCents))}</span>
+              </div>
+            ) : null}
             {!digitalOnly && method ? (
               <div>
                 <span>{method === 'PICKUP' ? copy.pickupLabel : copy.deliveryLabel}</span>

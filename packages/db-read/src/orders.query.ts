@@ -1,12 +1,14 @@
 import { canTakeOrders, hashSessionValue } from '@curios/core';
 import { DOWNLOAD_USES, seatsLeft } from '@curios/core/digital';
 import { malaysiaToday } from '@curios/core/orders';
+import type { VoucherTerms } from '@curios/core/vouchers';
 import type { HeadingFont, PageBackground, PageStyle } from '@curios/core/bento';
 import type { DeliveryMode } from '@curios/core/store';
 import type { Prisma } from '@prisma/client';
 import { prismaRead } from './client.js';
 import { getPublicShop, type PublicItem, type PublicShop } from './shop.query.js';
 import { getSettings } from './settings.query.js';
+import { getLiveAutoVouchers } from './vouchers.query.js';
 
 type OrderStatus = 'PLACED' | 'PAID' | 'COMPLETED' | 'CANCELLED';
 type OrderMethod = 'PICKUP' | 'DELIVERY';
@@ -26,6 +28,10 @@ export interface OwnerOrder {
   itemsCents: number;
   deliveryCents: number;
   totalCents: number;
+  /** What a voucher took off, in sen: itemsCents is the full price, totalCents what is owed. */
+  discountCents: number;
+  /** The voucher's code or name as it was; null with none. */
+  voucherLabel: string | null;
   status: OrderStatus;
   /** The storage key; the web layer joins it onto STORAGE_PUBLIC_URL, as avatars are. */
   receiptKey: string | null;
@@ -37,7 +43,7 @@ export interface OwnerOrder {
   cancelledAt: Date | null;
   refundedAt: Date | null;
   /** How it was paid, and for CHIP how and by what reference ("FPX · Maybank2u"): Orders says so. */
-  paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+  paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | 'VOUCHER' | null;
   paidMethodLabel: string | null;
   paidRef: string | null;
   /** When CHIP took a payment on top of one made another way (QR, by hand): one is owed back. */
@@ -84,7 +90,7 @@ const DIGITAL_SENT = { sentAt: { not: null }, lines: { none: { kind: 'PHYSICAL' 
  * badge, so nothing they count can fall off the list.
  */
 const NEEDS_OWNER = {
-  OR: [{ status: 'PLACED' as const }, { status: 'PAID' as const, NOT: DIGITAL_SENT }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }, { chipPaidTwiceAt: { not: null }, secondRefundedAt: null }],
+  OR: [{ status: 'PLACED' as const }, { status: 'PAID' as const, NOT: DIGITAL_SENT }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null, totalCents: { gt: 0 } }, { chipPaidTwiceAt: { not: null }, secondRefundedAt: null }],
 };
 
 const newestFirst = (a: { createdAt: Date; number: number }, b: { createdAt: Date; number: number }) =>
@@ -155,6 +161,8 @@ async function readOwnerOrders(where: Prisma.OrderWhereInput, take?: number, now
       itemsCents: true,
       deliveryCents: true,
       totalCents: true,
+      discountCents: true,
+      voucherLabel: true,
       status: true,
       receiptKey: true,
       receiptType: true,
@@ -340,6 +348,10 @@ export interface PublicOrder {
   itemsCents: number;
   deliveryCents: number;
   totalCents: number;
+  /** What a voucher took off, in sen: itemsCents is the full price, totalCents what is owed. */
+  discountCents: number;
+  /** The voucher's code or name as it was; null with none. */
+  voucherLabel: string | null;
   status: OrderStatus;
   receiptKey: string | null;
   receiptType: string | null;
@@ -350,7 +362,7 @@ export interface PublicOrder {
   cancelledAt: Date | null;
   refundedAt: Date | null;
   /** How it was paid; null until it is. */
-  paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+  paidVia: 'RECEIPT' | 'MANUAL' | 'CHIP' | 'VOUCHER' | null;
   /** How CHIP says it was paid ("FPX · Maybank2u") and CHIP's reference, for the Paid row. */
   paidMethodLabel: string | null;
   paidRef: string | null;
@@ -414,6 +426,8 @@ export async function getOrderByToken(token: string): Promise<PublicOrder | null
       itemsCents: true,
       deliveryCents: true,
       totalCents: true,
+      discountCents: true,
+      voucherLabel: true,
       status: true,
       receiptKey: true,
       receiptType: true,
@@ -566,6 +580,8 @@ export interface Checkout extends PublicShop {
    * account, or CHIP refused its key, or (in production) it is a test key.
    */
   chipMethods: string[] | null;
+  /** The live automatic vouchers under their cap, for the basket to price; a code voucher is looked up by the API when typed. */
+  vouchers: VoucherTerms[];
 }
 
 /** The shop plus what checkout draws; null for a personal page or a closed Store. */
@@ -575,6 +591,7 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
   const page = await prismaRead.page.findUnique({
     where: { handle: handle.toLowerCase() },
     select: {
+      id: true,
       mode: true,
       paidUntil: true,
       ordersPlaced: true,
@@ -588,7 +605,7 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
     },
   });
   if (!page) return null;
-  const { paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, ...plan } = page;
+  const { id: pageId, paymentQrKey, bankName, bankAccountName, bankAccountNumber, paymentAccount: chip, ...plan } = page;
   const { freeOrders } = await getSettings();
   return {
     ...shop,
@@ -597,6 +614,7 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
     payByQr: Boolean(paymentQrKey || (bankName && bankAccountName && bankAccountNumber)),
     hasQr: Boolean(paymentQrKey),
     chipMethods: usableChipMethods(chip),
+    vouchers: await getLiveAutoVouchers(pageId, now),
   };
 }
 

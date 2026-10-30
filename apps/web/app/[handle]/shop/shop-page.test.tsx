@@ -222,3 +222,47 @@ describe('ShopPageView', () => {
     expect(screen.getByText('Buka untuk tempahan')).toBeInTheDocument();
   });
 });
+
+describe('ShopPageView promotions', () => {
+  const v = (over: object) => ({ id: 'v1', mode: 'AUTO' as const, kind: 'PERCENT' as const, percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya promo', ...over });
+
+  it('shows a whole-order automatic voucher as one line in the sign', () => {
+    render(<ShopPageView {...base} vouchers={[v({})]} />);
+    expect(screen.getByText('10% off · Raya promo')).toBeInTheDocument();
+  });
+
+  it('says the minimum spend of a fixed amount', () => {
+    render(<ShopPageView {...base} vouchers={[v({ kind: 'AMOUNT', percent: null, amountCents: 500, minSpendCents: 5000 })]} />);
+    expect(screen.getByText('RM5 off over RM50 · Raya promo')).toBeInTheDocument();
+  });
+
+  it('shows only the biggest when several are live', () => {
+    render(<ShopPageView {...base} vouchers={[v({ id: 'a', percent: 5, label: 'Small' }), v({ id: 'b', percent: 15, label: 'Big' })]} />);
+    expect(screen.getByText('15% off · Big')).toBeInTheDocument();
+    expect(screen.queryByText(/Small/)).toBeNull();
+  });
+
+  it('shows nothing without a whole-order voucher, and never a code voucher', () => {
+    render(<ShopPageView {...base} vouchers={[v({ mode: 'CODE', label: 'RAYA10' }), v({ id: 'i', itemId: 'tart', label: 'Item' })]} />);
+    expect(screen.queryByText(/off ·/)).toBeNull();
+    expect(screen.queryByText(/RAYA10/)).toBeNull();
+  });
+
+  it('tags the card of the item a one-item voucher is for', () => {
+    render(<ShopPageView {...base} vouchers={[v({ itemId: 'tart', kind: 'AMOUNT', percent: null, amountCents: 500 })]} />);
+    const card = screen.getByText('Tart nenas').closest('li')!;
+    expect(within(card).getByText('RM5 off')).toBeInTheDocument();
+    expect(within(screen.getByText('Cookies balang').closest('li')!).queryByText(/off/)).toBeNull();
+  });
+
+  it('shows no promotion on a paused shop: no sign line, no card tag', () => {
+    render(<ShopPageView {...base} canTakeOrders={false} nextDay={null} vouchers={[v({}), v({ id: 'i', itemId: 'tart', kind: 'AMOUNT', percent: null, amountCents: 500 })]} />);
+    expect(screen.queryByText(/Raya promo/)).toBeNull();
+    expect(within(screen.getByText('Tart nenas').closest('li')!).queryByText(/off/)).toBeNull();
+  });
+
+  it('speaks Malay', () => {
+    render(<ShopPageView {...base} language="ms" vouchers={[v({})]} />);
+    expect(screen.getByText('Diskaun 10% · Raya promo')).toBeInTheDocument();
+  });
+});

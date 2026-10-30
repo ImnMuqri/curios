@@ -137,6 +137,7 @@ enum OrderPaidVia {
   RECEIPT
   MANUAL
   CHIP
+  VOUCHER
 }
 
 /// Whether the customer collects or is sent the order.
@@ -311,6 +312,7 @@ model Page {
   createdAt           DateTime       @default(now())
   links               Link[]
   items               Item[]
+  vouchers            ShopVoucher[]
   facts               Fact[]
   topics              Topic[]
   faqRedirects        FaqRedirect[]
@@ -374,6 +376,7 @@ model Item {
   createdAt   DateTime     @default(now())
   options     ItemOption[]
   orderLines  OrderLine[]
+  vouchers    ShopVoucher[]
   /// PHYSICAL items are posted or collected; DIGITAL ones are delivered by `delivery`.
   kind        ItemKind     @default(PHYSICAL)
   delivery    DigitalDelivery?
@@ -1003,6 +1006,13 @@ model Order {
   paidMethodLabel   String?
   /// CHIP's reference for the payment, shown beside it.
   paidRef           String?
+  /// What the voucher took off, in sen; 0 with none. itemsCents is the full price, totalCents is after this.
+  discountCents     Int            @default(0)
+  /// SetNull: deleting a voucher must not delete the orders it was used on.
+  voucherId         String?
+  voucher           ShopVoucher?   @relation(fields: [voucherId], references: [id], onDelete: SetNull)
+  /// The code or name at the time of the order, copied for the same reason.
+  voucherLabel      String?
   createdAt         DateTime       @default(now())
   lines             OrderLine[]
   conversations     Conversation[]
@@ -1010,6 +1020,7 @@ model Order {
   @@unique([pageId, number])
   @@unique([pageId, code])
   @@index([pageId, createdAt])
+  @@index([voucherId])
 }
 
 model OrderLine {
@@ -1163,4 +1174,45 @@ model ChipWebhookEvent {
   @@unique([source, purchaseId, eventType])
   // The Payments screen reads the failures of the last 24 hours.
   @@index([lastAttemptAt])
+}
+
+/// AUTO applies by itself to a basket that fits; CODE is typed in by the customer.
+enum VoucherMode {
+  AUTO
+  CODE
+}
+
+enum VoucherKind {
+  PERCENT
+  AMOUNT
+}
+
+/// A discount the owner offers on their shop. Which of percent and amountCents is
+/// set follows kind; which of code and name is set follows mode.
+model ShopVoucher {
+  id            String      @id @default(cuid())
+  pageId        String
+  page          Page        @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  mode          VoucherMode
+  /// CODE only, upper case; unique per page.
+  code          String?
+  /// AUTO only: what the owner calls it, and what the customer sees.
+  name          String?
+  kind          VoucherKind
+  percent       Int?
+  amountCents   Int?
+  /// Null covers the whole basket; otherwise only this item. Deleting the item deletes the voucher.
+  itemId        String?
+  item          Item?       @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  minSpendCents Int?
+  /// The moment it stops working; null never ends.
+  endsAt        DateTime?
+  maxUses       Int?
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  orders        Order[]
+
+  @@unique([pageId, code])
+  @@index([pageId])
+  @@index([itemId])
 }

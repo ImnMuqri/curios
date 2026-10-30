@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { formatRinggit } from '@curios/core/store';
+import { pickVoucher, type VoucherTerms } from '@curios/core/vouchers';
 import {
   BASKET_EVENT,
   basketMessage,
@@ -46,6 +47,8 @@ export function BasketBar(props: {
    * would cover the dashboard, not the phone.
    */
   preview?: { storageKey: string; onCheckout: () => void };
+  /** The shop's live automatic vouchers: the best one that fits comes off the total, as checkout will take it (none while paused). */
+  vouchers?: VoucherTerms[];
 }) {
   const copy = shopCopy(props.language);
   const key = props.preview?.storageKey ?? defaultStorageKey(props.handle);
@@ -67,6 +70,10 @@ export function BasketBar(props: {
 
   const priced = useMemo(() => priceBasket(basket, props.items), [basket, props.items]);
   const empty = priced.lines.length === 0;
+  const paused = !props.canTakeOrders;
+  // A paused shop's basket goes to WhatsApp, where no voucher is honoured: it shows none.
+  const deal = useMemo(() => (paused ? null : pickVoucher(props.vouchers ?? [], priced.lines)), [paused, props.vouchers, priced.lines]);
+  const totalCents = priced.totalCents - (deal?.savingCents ?? 0);
 
   // The last line taken out closes the sheet: there is nothing left in it to show.
   useEffect(() => {
@@ -76,7 +83,6 @@ export function BasketBar(props: {
   if (empty && !props.preview) return null;
 
   const count = priced.lines.reduce((sum, line) => sum + line.quantity, 0);
-  const paused = !props.canTakeOrders;
   const close = () => {
     setOpen(false);
     opener.current?.focus();
@@ -105,7 +111,7 @@ export function BasketBar(props: {
 
   const summary = (
     <>
-      {empty ? <span className={styles.empty}>{copy.basketEmpty}</span> : copy.barText(count, formatRinggit(priced.totalCents))}
+      {empty ? <span className={styles.empty}>{copy.basketEmpty}</span> : copy.barText(count, formatRinggit(totalCents))}
       {!empty && props.note !== false ? <small className={styles.note}>{typeof props.note === 'string' ? props.note : copy.stillInBasket}</small> : null}
     </>
   );
@@ -148,10 +154,11 @@ export function BasketBar(props: {
               </li>
             ))}
           </ul>
+          {deal ? <p className={styles.voucher}>{copy.voucherApplied(deal.voucher.label, formatRinggit(deal.savingCents))}</p> : null}
           <div className={styles.sheetFoot}>
             <span className={styles.total}>
               <small>{copy.total}</small>
-              {formatRinggit(priced.totalCents)}
+              {formatRinggit(totalCents)}
             </span>
             {go}
           </div>

@@ -133,6 +133,30 @@ describe('getOwnerOrders', () => {
     expect(order?.lines[0]?.photoKey).toBe('items/kek.jpg');
   });
 
+  it('does not keep a cancelled RM0 order as one that owes a refund', async () => {
+    const owner = await anOwner();
+    const free = await anOrder(owner.pageId, { customerName: 'Free', status: 'CANCELLED', paidAt: new Date('2026-01-01T00:00:00Z'), paidVia: 'VOUCHER', cancelledAt: new Date('2026-01-01T00:00:00Z'), totalCents: 0, createdAt: new Date('2026-01-01T00:00:00Z') });
+    await write.order.createMany({
+      data: Array.from({ length: 101 }, (_, i) => ({
+        pageId: owner.pageId,
+        number: 20_000 + i,
+        code: `F${i}`,
+        tokenHash: hashSessionValue(randomUUID()),
+        customerName: 'Done',
+        phone: '+60123456789',
+        method: 'PICKUP' as const,
+        day: new Date('2026-10-20T00:00:00Z'),
+        itemsCents: 1,
+        deliveryCents: 0,
+        totalCents: 1,
+        status: 'COMPLETED' as const,
+        createdAt: new Date(Date.UTC(2026, 5, 1) + i * 60_000),
+      })),
+    });
+    const ids = (await getOwnerOrders(owner.accountId, { limit: 100 })).map((o) => o.id);
+    expect(ids).not.toContain(free);
+  });
+
   it('keeps every order that still needs the owner, however old, beside the newest 100 of the rest', async () => {
     const owner = await anOwner();
     const old = (day: number) => new Date(`2026-01-0${day}T00:00:00Z`);
@@ -331,6 +355,19 @@ describe('getOrderByToken', () => {
       page: { handle: owner.handle, suspended: true, paymentQrKey: null, bankName: null, bankAccountNumber: null, chipMethods: null },
     });
     expect(await getCheckout(owner.handle, NOW)).toBeNull();
+  });
+
+  it('returns what a voucher took off and its label, and 0 and null on an order with none', async () => {
+    const owner = await anOwner();
+    const voucher = await write.shopVoucher.create({ data: { pageId: owner.pageId, mode: 'CODE', code: 'RAYA', kind: 'AMOUNT', amountCents: 500 } });
+    const token = randomUUID();
+    await anOrder(owner.pageId, { totalCents: 4500, discountCents: 500, voucherId: voucher.id, voucherLabel: 'RAYA', status: 'PAID', paidAt: NOW, paidVia: 'VOUCHER' }, token);
+    expect(await getOrderByToken(token)).toMatchObject({ itemsCents: 5000, totalCents: 4500, discountCents: 500, voucherLabel: 'RAYA', paidVia: 'VOUCHER' });
+    const plainToken = randomUUID();
+    await anOrder(owner.pageId, {}, plainToken);
+    expect(await getOrderByToken(plainToken)).toMatchObject({ discountCents: 0, voucherLabel: null });
+    const orders = await getOwnerOrders(owner.accountId);
+    expect(orders.map((o) => [o.discountCents, o.voucherLabel]).sort()).toEqual([[0, null], [500, 'RAYA']]);
   });
 
   it('returns the order with its page, payment details and links', async () => {

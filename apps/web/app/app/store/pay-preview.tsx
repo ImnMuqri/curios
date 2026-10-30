@@ -84,6 +84,8 @@ export function PayPreview({
     itemsCents: totals.itemsCents,
     deliveryCents: totals.deliveryCents,
     totalCents: totals.totalCents,
+    discountCents: 0,
+    voucherLabel: null,
     status: 'PLACED',
     receiptType: null,
     receiptUploadedAt: null,

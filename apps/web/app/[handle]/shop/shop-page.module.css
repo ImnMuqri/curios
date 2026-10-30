@@ -216,6 +216,20 @@
   box-shadow: 0 0 0 3px var(--veil-1);
 }
 
+.promo {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px 0 0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--veil-2);
+  color: var(--page-fg);
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.35;
+}
+
 .name {
   margin: 12px 0 0;
   font-family: var(--font-heading), var(--font-display);
@@ -396,6 +410,23 @@
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 700;
+}
+
+.deal {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  max-width: calc(100% - 56px);
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--hijau-muda);
+  color: var(--hijau-ink);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .add {

@@ -21,6 +21,7 @@
     "./test-settings": "./src/test-settings.ts",
     "./slug": "./src/slug.ts",
     "./orders": "./src/orders.ts",
+    "./vouchers": "./src/vouchers.ts",
     "./digital": "./src/digital.ts",
     "./secret-box": "./src/secret-box.ts",
     "./shop-pay": "./src/shop-pay.ts",

@@ -161,6 +161,10 @@ export const DOMAIN_ERROR_CODES = new Set([
   'SESSION_BOOKED',
   'ITEM_HAS_BOOKINGS',
   'ITEM_HAS_SALES',
+  // Shop vouchers: what an owner may make, and the one answer a customer gets for a code that does not work.
+  'VOUCHER_INVALID',
+  'VOUCHER_CODE_TAKEN',
+  'VOUCHER_UNKNOWN',
   // Placing an order (slice 18): each tells the visitor what to do next --
   // order on WhatsApp, reload the basket, or fix one field.
   'STORE_CLOSED',

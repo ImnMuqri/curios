@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { orderState, SESSION_COOKIE } from '@curios/core';
-import { getMyCurios, getOwnerPage, getOwnerStore, getSettings, type OwnerPage } from '@curios/db-read';
+import { getMyCurios, getOwnerPage, getOwnerStore, getOwnerVouchers, getSettings, type OwnerPage } from '@curios/db-read';
 import { shortDate } from '../billing/billing-copy.js';
 import { Callout } from '@curios/ui';
 import { avatarUrl, coverUrl } from '../../../lib/avatar-url.js';
@@ -33,15 +33,21 @@ function pausedWhy(page: Pick<OwnerPage, 'mode' | 'paidUntil' | 'ordersPlaced' |
   }
 }
 
-/** `?tab=payment` (the CHIP alert's link) opens that tab; anything else opens Items. */
-const TAB_NAMES = ['items', 'payment', 'delivery'] as const;
+/** `?tab=payment` (the CHIP alert's link) or `?tab=vouchers` opens that tab; anything else opens Items. */
+const TAB_NAMES = ['items', 'payment', 'delivery', 'vouchers'] as const;
 
 export default async function StorePage({ searchParams }: { searchParams: Promise<{ tab?: string | string[] }> }) {
   const owner = await resolveOwner((await cookies()).get(SESSION_COOKIE)?.value);
   if (!owner) redirect('/signin');
   const asked = (await searchParams).tab;
   const initialTab = TAB_NAMES.find((name) => name === asked) ?? 'items';
-  const [store, page, owned, { freeOrders }] = await Promise.all([getOwnerStore(owner.accountId), getMyCurios(owner.accountId), getOwnerPage(owner.accountId), getSettings()]);
+  const [store, page, owned, vouchers, { freeOrders }] = await Promise.all([
+    getOwnerStore(owner.accountId),
+    getMyCurios(owner.accountId),
+    getOwnerPage(owner.accountId),
+    getOwnerVouchers(owner.accountId),
+    getSettings(),
+  ]);
   if (!store || !page || !owned) redirect('/app/onboarding');
 
   if (store.mode === 'PERSONAL') {
@@ -85,6 +91,7 @@ export default async function StorePage({ searchParams }: { searchParams: Promis
       today={todayInMalaysia()}
       now={new Date()}
       chip={store.chip}
+      vouchers={vouchers}
       initialTab={initialTab}
       orders={{ paused: pausedWhy(owned, new Date(), freeOrders), nextNumber: owned.ordersPlaced + 1 }}
     />

@@ -66,6 +66,7 @@ export default async function ShopPage({
             halal={shop.shopHalal}
             coverUrl={coverUrl(shop.coverKey)}
             avatarUrl={avatarUrl(shop.avatarKey)}
+            vouchers={shop.canTakeOrders ? shop.vouchers : []}
           />
           <BasketBar
             handle={shop.handle}
@@ -75,6 +76,7 @@ export default async function ShopPage({
             canTakeOrders={shop.canTakeOrders}
             whatsapp={whatsappNumber(shop.links)}
             note={barNote}
+            vouchers={shop.canTakeOrders ? shop.vouchers : []}
           />
         </div>
       </PageTheme>

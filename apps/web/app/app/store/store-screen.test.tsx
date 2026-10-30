@@ -128,6 +128,28 @@ describe('StoreScreen, against the API', () => {
     expect(apiFetch).toHaveBeenCalledWith('/store/items/order', { method: 'PUT', body: JSON.stringify({ ids: ['b', 'a'] }) });
   });
 
+  it('adds, switches and removes vouchers over /store/vouchers', async () => {
+    const sent = { mode: 'CODE', code: 'INSTA15', name: null, kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, endsOn: null, maxUses: null };
+    const made = { id: 'v1', mode: 'CODE', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'INSTA15', code: 'INSTA15', name: null, endsAt: null, maxUses: null, active: true, uses: 0, state: 'on', itemName: null };
+    apiFetch.mockResolvedValue({ voucher: made });
+    screenWith();
+    await userEvent.click(tab('Vouchers'));
+    await userEvent.click(screen.getByRole('button', { name: /Add your first voucher/ }));
+    await userEvent.click(screen.getByRole('button', { name: /^Code/ }));
+    await userEvent.type(screen.getByLabelText('Code'), 'insta15');
+    await userEvent.type(screen.getByLabelText('Percent off'), '10');
+    await userEvent.click(screen.getByRole('button', { name: 'Add voucher' }));
+    expect(apiFetch).toHaveBeenCalledWith('/store/vouchers', { method: 'POST', body: JSON.stringify(sent) });
+    const item = await screen.findByRole('listitem', { name: /INSTA15/ });
+    apiFetch.mockResolvedValue({ voucher: { ...made, active: false, state: 'off' } });
+    await userEvent.click(within(item).getByRole('switch'));
+    expect(apiFetch).toHaveBeenCalledWith('/store/vouchers/v1', { method: 'PATCH', body: JSON.stringify({ active: false }) });
+    apiFetch.mockResolvedValue(undefined);
+    await userEvent.click(within(item).getByRole('button', { name: /^Delete/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    expect(apiFetch).toHaveBeenCalledWith('/store/vouchers/v1', { method: 'DELETE' });
+  });
+
   it('connects CHIP with POST /store/chip, sending the key once and reading back only the connection', async () => {
     apiFetch.mockResolvedValue({ connected: true, brandName: null, methods: ['fpx'], checkedAt: '2026-10-16T02:00:00.000Z', isTest: false });
     screenWith();

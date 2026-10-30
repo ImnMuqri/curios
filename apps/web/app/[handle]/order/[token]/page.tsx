@@ -83,6 +83,8 @@ export default async function OrderPage({ params }: Params) {
           itemsCents: order.itemsCents,
           deliveryCents: order.deliveryCents,
           totalCents: order.totalCents,
+          discountCents: order.discountCents,
+          voucherLabel: order.voucherLabel,
           status: order.status,
           receiptType: order.receiptType,
           receiptUploadedAt: iso(order.receiptUploadedAt),
