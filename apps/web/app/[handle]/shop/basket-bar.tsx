@@ -47,7 +47,7 @@ export function BasketBar(props: {
    * would cover the dashboard, not the phone.
    */
   preview?: { storageKey: string; onCheckout: () => void };
-  /** The shop's live automatic vouchers: the best one that fits comes off the total, as checkout will take it. */
+  /** The shop's live automatic vouchers: the best one that fits comes off the total, as checkout will take it (none while paused). */
   vouchers?: VoucherTerms[];
 }) {
   const copy = shopCopy(props.language);
@@ -70,7 +70,9 @@ export function BasketBar(props: {
 
   const priced = useMemo(() => priceBasket(basket, props.items), [basket, props.items]);
   const empty = priced.lines.length === 0;
-  const deal = useMemo(() => pickVoucher(props.vouchers ?? [], priced.lines), [props.vouchers, priced.lines]);
+  const paused = !props.canTakeOrders;
+  // A paused shop's basket goes to WhatsApp, where no voucher is honoured: it shows none.
+  const deal = useMemo(() => (paused ? null : pickVoucher(props.vouchers ?? [], priced.lines)), [paused, props.vouchers, priced.lines]);
   const totalCents = priced.totalCents - (deal?.savingCents ?? 0);
 
   // The last line taken out closes the sheet: there is nothing left in it to show.
@@ -81,7 +83,6 @@ export function BasketBar(props: {
   if (empty && !props.preview) return null;
 
   const count = priced.lines.reduce((sum, line) => sum + line.quantity, 0);
-  const paused = !props.canTakeOrders;
   const close = () => {
     setOpen(false);
     opener.current?.focus();

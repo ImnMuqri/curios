@@ -255,6 +255,12 @@ describe('ShopPageView promotions', () => {
     expect(within(screen.getByText('Cookies balang').closest('li')!).queryByText(/off/)).toBeNull();
   });
 
+  it('shows no promotion on a paused shop: no sign line, no card tag', () => {
+    render(<ShopPageView {...base} canTakeOrders={false} nextDay={null} vouchers={[v({}), v({ id: 'i', itemId: 'tart', kind: 'AMOUNT', percent: null, amountCents: 500 })]} />);
+    expect(screen.queryByText(/Raya promo/)).toBeNull();
+    expect(within(screen.getByText('Tart nenas').closest('li')!).queryByText(/off/)).toBeNull();
+  });
+
   it('speaks Malay', () => {
     render(<ShopPageView {...base} language="ms" vouchers={[v({})]} />);
     expect(screen.getByText('Diskaun 10% · Raya promo')).toBeInTheDocument();

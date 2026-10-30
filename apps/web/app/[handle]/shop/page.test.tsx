@@ -106,6 +106,16 @@ describe('/[handle]/shop', () => {
     expect(call({}).canTakeOrders).toBe(false);
   });
 
+  it('gives the view no vouchers when the shop is paused: a paused shop takes none', async () => {
+    const raya = { id: 'v1', mode: 'AUTO' as const, kind: 'PERCENT' as const, percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya promo' };
+    vi.mocked(getCheckout).mockResolvedValueOnce({ ...shop, vouchers: [raya] });
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
+    expect(call({}).vouchers).toEqual([raya]);
+    vi.mocked(getCheckout).mockResolvedValueOnce({ ...shop, canTakeOrders: false, vouchers: [raya] });
+    render(await ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({}) }));
+    expect(call({}).vouchers).toEqual([]);
+  });
+
   it('sends a shared ?item=<id> link on to that product’s page', async () => {
     vi.mocked(getCheckout).mockResolvedValueOnce(shop);
     await expect(ShopPage({ params: Promise.resolve({ handle: 'nadia' }), searchParams: Promise.resolve({ item: 'cake' }) })).rejects.toThrow(

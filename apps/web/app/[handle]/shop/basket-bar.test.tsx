@@ -151,4 +151,14 @@ describe('BasketBar with an automatic voucher', () => {
     fireEvent.click(screen.getByRole('button', { name: /1 item/ }));
     expect(screen.queryByText(/Raya promo/)).toBeNull();
   });
+
+  it('takes nothing off on a paused shop: its WhatsApp basket gets no voucher', () => {
+    writeBasket(defaultStorageKey('nadia'), [{ itemId: 'cake', optionId: 'k1', quantity: 1 }]);
+    render(<BasketBar {...base} canTakeOrders={false} vouchers={[raya]} />);
+    expect(screen.getByText('1 item · RM95')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /1 item/ }));
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).queryByText(/Raya promo/)).toBeNull();
+    expect(within(sheet).getByText('Total').parentElement).toHaveTextContent('TotalRM95');
+  });
 });

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { writeBasket } from '../../[handle]/shop/basket.js';
 import { StoreEditor } from './store-editor.js';
 import type { OwnerVoucher } from '@curios/core/vouchers';
 import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
@@ -442,8 +443,8 @@ describe('vouchers in the phone', () => {
     id: 'v1', mode: 'AUTO', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya sale',
     code: null, name: 'Raya sale', endsAt: null, maxUses: null, active: true, uses: 0, state: 'on', itemName: null,
   };
-  const withVouchers = (vouchers: OwnerVoucher[]) =>
-    render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} vouchers={vouchers} {...apis()} />);
+  const withVouchers = (vouchers: OwnerVoucher[], paused: string | null = null) =>
+    render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused, nextNumber: 13 }} vouchers={vouchers} {...apis()} />);
 
   it('shows a live automatic voucher on the shop as customers see it', () => {
     withVouchers([live]);
@@ -453,5 +454,18 @@ describe('vouchers in the phone', () => {
   it('shows no voucher that is off, ended or a code', () => {
     withVouchers([{ ...live, id: 'o', active: false, state: 'off' }, { ...live, id: 'c', mode: 'CODE', code: 'RAYA', label: 'RAYA' }]);
     expect(within(preview()).queryByText(/10% off/)).toBeNull();
+  });
+
+  it('takes a live automatic voucher off the basket bar total, as the shop’s bar does', () => {
+    writeBasket('curios-store-preview', [{ itemId: 'a', optionId: null, quantity: 2 }]);
+    withVouchers([live]);
+    expect(within(preview()).getByText('2 items · RM81')).toBeInTheDocument();
+  });
+
+  it('shows no voucher, on the sign or the bar, while orders are paused', () => {
+    writeBasket('curios-store-preview', [{ itemId: 'a', optionId: null, quantity: 2 }]);
+    withVouchers([live], 'Paused: your 3 free orders are used.');
+    expect(within(preview()).queryByText(/10% off/)).toBeNull();
+    expect(within(preview()).getByText('2 items · RM90')).toBeInTheDocument();
   });
 });

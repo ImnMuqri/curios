@@ -55,7 +55,7 @@ export function ShopPageView(props: {
   coverUrl?: string | null;
   /** The owner's picture beside their note; null for none, and the note keeps the initial. */
   avatarUrl?: string | null;
-  /** The shop's live automatic vouchers; none when absent (the Store preview). */
+  /** The shop's live automatic vouchers; none when absent, and none shown while the shop cannot take orders. */
   vouchers?: VoucherTerms[];
   /**
    * The Store editor's picture of this page: the same page, but no link leaves
@@ -166,7 +166,9 @@ export function ShopPageView(props: {
   const delivers = props.deliveryMode !== 'NONE';
   const how = props.pickupEnabled ? (delivers ? copy.pickupOrDelivery : copy.pickupOnly) : delivers ? copy.deliveryOnly : null;
   const day = props.nextDay ? copy.dayLong(props.nextDay) : null;
-  const promo = shopPromo(props.vouchers);
+  // A paused shop honours no voucher, so it advertises none.
+  const vouchers = props.canTakeOrders ? props.vouchers : undefined;
+  const promo = shopPromo(vouchers);
   const initial = props.displayName.trim().charAt(0).toUpperCase();
 
   return (
@@ -266,7 +268,7 @@ export function ShopPageView(props: {
               const soldOut = item.soldOut === true;
               const buyable = !soldOut && (item.options.length > 0 || item.priceCents !== null);
               const href = `/${props.handle}/shop/${item.slug}`;
-              const deal = itemPromo(props.vouchers, item.id);
+              const deal = itemPromo(vouchers, item.id);
               const tag = item.kind === 'DIGITAL' ? copy.digital : item.tag;
               return (
                 <li key={item.id} className={styles.card}>

@@ -3,6 +3,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { hashSessionValue } from '@curios/core';
 import { getCheckout } from './orders.query.js';
+import { getPublicPage } from './page.query.js';
 import { getOwnerVouchers } from './vouchers.query.js';
 
 const write = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -109,5 +110,24 @@ describe('getCheckout vouchers', () => {
     const v = await aVoucher(owner.pageId, { maxUses: 1 });
     await anOrderWith(owner.pageId, v.id, { status: 'CANCELLED', cancelledAt: NOW });
     expect((await getCheckout(owner.handle, NOW))?.vouchers.map((x) => x.id)).toEqual([v.id]);
+  });
+});
+
+describe('getPublicPage shopOrdering vouchers', () => {
+  it('carries the live automatic vouchers the Links tab basket takes off, and none while the shop is paused', async () => {
+    const owner = await anOwner();
+    const live = await aVoucher(owner.pageId, { endsAt: new Date('2099-01-01T00:00:00Z') });
+    await aVoucher(owner.pageId, { mode: 'CODE', code: 'SECRET', name: null });
+    await aVoucher(owner.pageId, { active: false });
+    const spent = await aVoucher(owner.pageId, { maxUses: 1 });
+    await anOrderWith(owner.pageId, spent.id);
+    const page = await getPublicPage(owner.handle);
+    expect(page?.shopOrdering?.vouchers).toEqual([
+      { id: live.id, mode: 'AUTO', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: live.name },
+    ]);
+    // A spent trial and no plan: orders are paused, and a paused shop honours no voucher.
+    await write.page.update({ where: { id: owner.pageId }, data: { ordersPlaced: 100000 } });
+    const paused = await getPublicPage(owner.handle);
+    expect(paused?.shopOrdering).toMatchObject({ canTakeOrders: false, vouchers: [] });
   });
 });

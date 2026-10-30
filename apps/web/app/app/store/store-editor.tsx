@@ -283,6 +283,8 @@ export function StoreEditor({
   // reads "Orders paused" and promises no day, rather than "Open for orders".
   const previewTakesOrders = settings.enabled && paused === null;
   const previewNextDay = nextOrderDay({ ...settings, canTakeOrders: previewTakesOrders }, new Date());
+  // A paused shop honours no voucher, so the phone shows none either.
+  const previewVouchers = previewTakesOrders ? liveVouchers : [];
   const [year, month, day] = today.split('-').map(Number);
   const todayDate = new Date(year ?? 2026, (month ?? 1) - 1, day ?? 1);
 
@@ -485,7 +487,7 @@ export function StoreEditor({
                   halal={settings.shopHalal}
                   noticeDays={settings.minNoticeDays}
                   nextDay={previewNextDay}
-                  vouchers={liveVouchers}
+                  vouchers={previewVouchers}
                   pickup={settings.pickupEnabled}
                   storageKey="curios-store-preview"
                   inline
@@ -504,7 +506,7 @@ export function StoreEditor({
                     deliveryMode={settings.deliveryMode}
                     canTakeOrders={previewTakesOrders}
                     nextDay={previewNextDay}
-                    vouchers={liveVouchers}
+                    vouchers={previewVouchers}
                     description={orNull(description.text)}
                     halal={settings.shopHalal}
                     coverUrl={look.coverUrl}
@@ -525,6 +527,7 @@ export function StoreEditor({
                     canTakeOrders
                     whatsapp={null}
                     note={false}
+                    vouchers={previewVouchers}
                     // The board's bar: always there, and its Checkout turns the phone to the Pay screen.
                     preview={{ storageKey: 'curios-store-preview', onCheckout: () => setPreviewTab('pay') }}
                   />

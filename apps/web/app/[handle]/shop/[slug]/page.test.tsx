@@ -94,6 +94,17 @@ describe('/[handle]/shop/[slug]', () => {
     expect(props.items).toHaveLength(1);
   });
 
+  it('gives the view the shop’s live vouchers, and none when the shop is paused', async () => {
+    const tag = { id: 'v1', mode: 'AUTO' as const, kind: 'AMOUNT' as const, percent: null, amountCents: 500, itemId: 'cake', minSpendCents: null, label: 'Raya promo' };
+    const last = () => (vi.mocked(ProductView).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0];
+    vi.mocked(getShopItem).mockResolvedValueOnce({ shop: { ...shop, vouchers: [tag] }, item });
+    render(await ProductPage({ params: params() }));
+    expect(last().vouchers).toEqual([tag]);
+    vi.mocked(getShopItem).mockResolvedValueOnce({ shop: { ...shop, canTakeOrders: false, vouchers: [tag] }, item });
+    render(await ProductPage({ params: params() }));
+    expect(last().vouchers).toEqual([]);
+  });
+
   it('titles the tab "{item} · {page name}" and uses the item photo as the share image', async () => {
     vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item });
     const meta = await generateMetadata({ params: params() });
