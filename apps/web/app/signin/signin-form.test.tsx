@@ -1,5 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ApiError } from '../../lib/api.js';
 import { SignInForm } from './signin-form.js';
@@ -69,5 +69,61 @@ describe('SignInForm', () => {
     // that counts both.
     expect(screen.getByRole('button', { name: /signing in/i })).toBeDisabled();
     release();
+  });
+});
+
+describe('SignInForm: "Last used"', () => {
+  // Before, not after: the tests above sign in and leave email behind.
+  beforeEach(() => window.localStorage.clear());
+
+  const google = () => screen.getByRole('link', { name: /continue with google/i });
+  const or = () => screen.getByText(/or with email/i);
+
+  it('marks nothing on a first visit', () => {
+    render(<SignInForm onSubmit={vi.fn()} />);
+    expect(screen.queryByText('Last used')).not.toBeInTheDocument();
+  });
+
+  it('marks email after a sign-in by email succeeds, and not after one fails', async () => {
+    const submit = vi.fn().mockRejectedValueOnce(new Error('Check your email and password.')).mockResolvedValueOnce(undefined);
+    const { unmount } = render(<SignInForm onSubmit={submit} />);
+    await userEvent.type(screen.getByLabelText(/email/i), 'nadia@example.com');
+    await userEvent.type(screen.getByLabelText(/password/i), 'passphrase');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    await screen.findByText(/check your email and password/i);
+    expect(window.localStorage.getItem('curios.signin.last')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    unmount();
+
+    render(<SignInForm onSubmit={vi.fn()} />);
+    expect(await within(or()).findByText('Last used')).toBeInTheDocument();
+    expect(within(google()).queryByText('Last used')).not.toBeInTheDocument();
+  });
+
+  it('marks Google once a Google sign-in is followed by a visit Google did not send back cancelled', async () => {
+    const { unmount } = render(<SignInForm onSubmit={vi.fn()} />);
+    google().addEventListener('click', (event) => event.preventDefault());
+    await userEvent.click(google());
+    unmount();
+
+    render(<SignInForm onSubmit={vi.fn()} />);
+    expect(await within(google()).findByText('Last used')).toBeInTheDocument();
+    expect(within(or()).queryByText('Last used')).not.toBeInTheDocument();
+  });
+
+  it('keeps the earlier method when Google sends the person back cancelled or failed', async () => {
+    window.localStorage.setItem('curios.signin.last', 'email');
+    for (const props of [{ cancelled: true }, { oauthError: 'oauth_state_mismatch' }]) {
+      const { unmount } = render(<SignInForm onSubmit={vi.fn()} />);
+      google().addEventListener('click', (event) => event.preventDefault());
+      await userEvent.click(google());
+      unmount();
+
+      const back = render(<SignInForm onSubmit={vi.fn()} {...props} />);
+      expect(await within(or()).findByText('Last used')).toBeInTheDocument();
+      expect(within(google()).queryByText('Last used')).not.toBeInTheDocument();
+      back.unmount();
+    }
   });
 });

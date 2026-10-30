@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button, Callout, Field } from '@curios/ui';
 import { AuthShell, GoogleButton, OrWithEmail } from '../_auth/AuthShell.js';
@@ -8,6 +8,7 @@ import { apiFetch } from '../../lib/api.js';
 import { Peek } from '../_peek/Peek.js';
 import styles from '../auth.module.css';
 import { oauthErrorMessage } from '../../lib/oauth-errors.js';
+import { lastUsedSignIn, noteGoogleSignIn, rememberEmailSignIn, type SignInMethod } from './last-used.js';
 
 export function SignInForm({
   onSubmit,
@@ -30,6 +31,12 @@ export function SignInForm({
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Read after mount: the server has no browser storage, and a guess there would mismatch.
+  const [lastUsed, setLastUsed] = useState<SignInMethod | null>(null);
+
+  useEffect(() => {
+    setLastUsed(lastUsedSignIn(cancelled || Boolean(oauthError)));
+  }, [cancelled, oauthError]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -37,6 +44,7 @@ export function SignInForm({
     setBusy(true);
     try {
       await onSubmit({ email, password });
+      rememberEmailSignIn();
     } catch (failure) {
       // Rendered verbatim. The API returns one message for every cause on
       // purpose -- wrong password, unknown address, unverified -- and
@@ -58,8 +66,8 @@ export function SignInForm({
       ) : null}
       {oauthError ? <Callout tone="error">{oauthErrorMessage(oauthError)}</Callout> : null}
 
-      <GoogleButton />
-      <OrWithEmail />
+      <GoogleButton lastUsed={lastUsed === 'google'} onClick={noteGoogleSignIn} />
+      <OrWithEmail lastUsed={lastUsed === 'email'} />
 
       <form onSubmit={(event) => void submit(event)}>
         <Field

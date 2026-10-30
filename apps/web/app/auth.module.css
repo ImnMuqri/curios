@@ -100,6 +100,7 @@
 }
 
 .google {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -118,6 +119,24 @@
 .google:hover {
   box-shadow: inset 0 0 0 1.5px var(--ink);
   color: var(--ink);
+}
+
+/* "Last used": a biru pill, on the Google button's top edge or after "or with email". */
+.lastUsed {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--biru);
+  color: var(--paper);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
+.google .lastUsed {
+  position: absolute;
+  top: -10px;
+  right: 18px;
 }
 
 .or {
