@@ -44,7 +44,7 @@ export default async function ProductPage({ params }: { params: Params }) {
     if (suspended) return <UnavailableScreen language={suspended} />;
     notFound();
   }
-  const { shop, item } = found;
+  const { shop, item, photoKeys } = found;
 
   return (
     <main>
@@ -55,7 +55,7 @@ export default async function ProductPage({ params }: { params: Params }) {
             handle={shop.handle}
             displayName={shop.displayName}
             language={shop.language}
-            item={{ ...item, photoUrl: avatarUrl(item.photoKey) }}
+            item={{ ...item, photoUrl: avatarUrl(item.photoKey), photoUrls: photoKeys.flatMap((key) => avatarUrl(key) ?? []) }}
             items={shop.items}
             halal={shop.shopHalal}
             noticeDays={shop.minNoticeDays}

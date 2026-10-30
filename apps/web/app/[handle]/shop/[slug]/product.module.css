@@ -142,7 +142,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1;
   /* Apart from the top bar: its round buttons sat right on the photo's edge. */
   margin: 16px 20px 0;
   overflow: hidden;
@@ -155,7 +155,7 @@
 }
 
 /* Behind a photo the fill blended into its rounded corners as a pale fringe. */
-.hero:has(> img) {
+.hero:has(img) {
   background: none;
 }
 
@@ -164,6 +164,159 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  object-fit: cover;
+}
+
+.gallery {
+  display: block;
+}
+
+.track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+
+.track::-webkit-scrollbar {
+  display: none;
+}
+
+.slide {
+  position: relative;
+  flex: 0 0 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  scroll-snap-align: center;
+}
+
+.slide img,
+.thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, black 55%, transparent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.thumbs {
+  display: flex;
+  gap: 8px;
+  margin: 10px 20px 0;
+  overflow-x: auto;
+  padding: 3px;
+  scrollbar-width: none;
+}
+
+.thumb {
+  position: relative;
+  flex: 0 0 40px;
+  height: 40px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  opacity: 0.6;
+  cursor: pointer;
+}
+
+.thumb[aria-current='true'] {
+  opacity: 1;
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background: black;
+}
+
+.viewerCount {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  z-index: 1;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.viewerClose {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: white;
+  cursor: pointer;
+}
+
+.viewerClose svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.viewerTrack {
+  display: flex;
+  width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  touch-action: pan-x;
+}
+
+.viewerTrack::-webkit-scrollbar {
+  display: none;
+}
+
+.viewerTrack[data-zoomed] {
+  overflow-x: hidden;
+  touch-action: none;
+}
+
+.viewerSlide {
+  display: grid;
+  flex: 0 0 100%;
+  place-items: center;
+  scroll-snap-align: center;
+}
+
+.viewerSlide img {
+  width: min(100vw, 100dvh);
+  aspect-ratio: 1;
   object-fit: cover;
 }
 

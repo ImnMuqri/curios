@@ -90,6 +90,10 @@ export interface ShopCopy {
   paused: (name: string) => string;
   // Checkout.
   backToShop: string;
+  /** An item's photos: a small photo's name, the full-screen close button's name, and the gallery's heading. */
+  photoOf: (i: number, n: number) => string;
+  closePhoto: string;
+  photos: string;
   yourOrder: string;
   addMore: string;
   each: (price: string) => string;
@@ -407,6 +411,9 @@ const EN: ShopCopy = {
   paysOnlinePreview: 'Customers pay here online through CHIP, by FPX, card or e-wallet.',
   paused: (name) => `Checkout is paused. Send your basket to ${name} on WhatsApp instead.`,
   backToShop: 'Back to the shop',
+  photoOf: (i, n) => `Photo ${i} of ${n}`,
+  closePhoto: 'Close',
+  photos: 'Photos',
   yourOrder: 'Your order',
   addMore: 'Add more',
   each: (price) => `${price} each`,
@@ -685,6 +692,9 @@ const MS: ShopCopy = {
   paysOnlinePreview: 'Pelanggan bayar di sini dalam talian melalui CHIP, dengan FPX, kad atau e-dompet.',
   paused: (name) => `Tempahan di sini ditangguhkan. Hantar bakul anda kepada ${name} di WhatsApp.`,
   backToShop: 'Kembali ke kedai',
+  photoOf: (i, n) => `Gambar ${i} daripada ${n}`,
+  closePhoto: 'Tutup',
+  photos: 'Gambar',
   yourOrder: 'Tempahan anda',
   addMore: 'Tambah lagi',
   each: (price) => `${price} seunit`,

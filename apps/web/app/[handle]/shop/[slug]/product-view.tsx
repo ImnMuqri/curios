@@ -7,10 +7,11 @@ import type { ShopItem } from '@curios/db-read';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
 import { shopCopy } from '../copy.js';
 import { ShopCover } from '../shop-cover.js';
+import { ProductGallery } from './product-gallery.js';
 import styles from './product.module.css';
 
 /** The digital facts are absent on the Store preview's physical items. */
-export type ProductItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null };
+export type ProductItem = ShopItem & Partial<DigitalFacts> & { photoUrl: string | null; /** The 1080 square photos in order; absent, the gallery shows photoUrl. */ photoUrls?: string[] };
 
 const ICON = {
   back: 'M15 6l-6 6 6 6',
@@ -31,7 +32,7 @@ function Icon({ d }: { d: string }) {
 }
 
 /**
- * One product, as the Public board draws it: the photo at 4:3, the tag, name,
+ * One product, as the Public board draws it: the photos as a square gallery, the tag, name,
  * price and description, a card per size, what the shop needs of an order, a
  * way to ask about it, and a bar to choose how many and add. It reads and
  * writes the same sessionStorage basket the shop does; adding goes back to
@@ -134,10 +135,7 @@ export function ProductView(props: {
         {announce}
       </p>
 
-      <div className={styles.hero}>
-        <span aria-hidden="true">{item.name.trim().charAt(0).toUpperCase()}</span>
-        {item.photoUrl ? <img src={item.photoUrl} alt="" /> : null}
-      </div>
+      <ProductGallery name={item.name} urls={item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])} copy={copy} />
 
       <div className={styles.pd}>
         {digital || item.tag ? <span className={styles.ptag}>{digital ? copy.digital : item.tag}</span> : null}

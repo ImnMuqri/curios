@@ -460,7 +460,7 @@ export function StoreEditor({
                   handle={look.handle}
                   displayName={look.displayName}
                   language={look.language}
-                  item={previewItem(previewFocus)}
+                  item={{ ...previewItem(previewFocus), photoUrls: previewFocus.photos.map((photo) => itemsApi.photoUrl(photo.squareKey)) }}
                   items={previewItems.map((i) => previewItem(i))}
                   halal={settings.shopHalal}
                   noticeDays={settings.minNoticeDays}
