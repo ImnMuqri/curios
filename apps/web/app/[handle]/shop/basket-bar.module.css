@@ -86,3 +86,205 @@
   color: var(--muted);
   font-weight: 500;
 }
+
+/* The count opens the basket: a plain button that reads as the bar's text, with a hint that it opens. */
+.open {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* ---- The basket sheet: over a dimmed page, held to the column's width, rising from the foot ---- */
+
+@keyframes rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@keyframes dim {
+  from {
+    opacity: 0;
+  }
+}
+
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgb(0 0 0 / 42%);
+  animation: dim 180ms ease both;
+}
+
+.sheet {
+  box-sizing: border-box;
+  width: min(460px, 100%);
+  max-height: 80vh;
+  padding: 8px 20px calc(16px + env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  border-radius: 24px 24px 0 0;
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+  animation: rise 220ms ease both;
+}
+
+.sheetHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0 6px;
+}
+
+.sheetHead h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin-right: -8px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+.close:hover {
+  background: var(--ghost-a);
+}
+
+.close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.lines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+}
+
+.line + .line {
+  box-shadow: 0 -1px 0 var(--line);
+}
+
+.what {
+  flex: 1;
+  min-width: 0;
+}
+
+.what b {
+  display: block;
+  font-size: 14.5px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.what span {
+  display: block;
+  color: var(--hint);
+  font-size: 12.5px;
+  font-weight: 400;
+}
+
+.stepper {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 2px;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+.stepper button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.stepper button:hover:not(:disabled) {
+  background: var(--ghost-a);
+}
+
+.stepper button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.stepper b {
+  min-width: 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.amount {
+  min-width: 58px;
+  flex: none;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: right;
+}
+
+.sheetFoot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 14px;
+  box-shadow: 0 -1px 0 var(--line);
+}
+
+.total {
+  flex: 1;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.total small {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrim,
+  .sheet {
+    animation: none;
+  }
+}

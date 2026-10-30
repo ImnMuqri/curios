@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { BasketBar } from './basket-bar.js';
 import { defaultStorageKey, writeBasket } from './basket.js';
 
@@ -64,5 +64,69 @@ describe('BasketBar', () => {
     render(<BasketBar {...base} note="Pickup Sat 17 Oct" />);
     expect(screen.getByText('Pickup Sat 17 Oct')).toBeInTheDocument();
     expect(screen.queryByText('Still in your basket')).toBeNull();
+  });
+});
+
+describe('BasketBar: the basket sheet', () => {
+  const fill = () =>
+    writeBasket(defaultStorageKey('nadia'), [
+      { itemId: 'cake', optionId: 'k1', quantity: 1 },
+      { itemId: 'cookie', optionId: null, quantity: 2 },
+    ]);
+  const openSheet = () => fireEvent.click(screen.getByRole('button', { name: /3 items · RM145/ }));
+
+  it('opens from the count, with each line, the total and checkout', () => {
+    fill();
+    render(<BasketBar {...base} />);
+    openSheet();
+    const sheet = within(screen.getByRole('dialog', { name: 'Your basket' }));
+    expect(sheet.getByText('Kek Batik')).toBeInTheDocument();
+    expect(sheet.getByText('1kg · RM95 each')).toBeInTheDocument();
+    expect(sheet.getByText('RM145')).toBeInTheDocument();
+    expect(sheet.getByRole('link', { name: 'Checkout' })).toHaveAttribute('href', '/nadia/shop/checkout');
+  });
+
+  it('changes the basket from the sheet, and the bar follows', () => {
+    fill();
+    render(<BasketBar {...base} />);
+    openSheet();
+    fireEvent.click(screen.getByRole('button', { name: 'One more: Cookies' }));
+    expect(screen.getByRole('button', { name: /4 items · RM170/ })).toHaveAttribute('aria-expanded', 'true');
+    fireEvent.click(screen.getByRole('button', { name: 'One less: Kek Batik' }));
+    expect(screen.queryByText('Kek Batik')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /3 items · RM75/ })).toBeInTheDocument();
+  });
+
+  it('closes on a tap outside it, on Escape, and on its close button, but not on a tap inside it', () => {
+    fill();
+    render(<BasketBar {...base} />);
+    openSheet();
+    fireEvent.click(screen.getByRole('heading', { name: 'Your basket' }));
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('dialog').parentElement!);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    openSheet();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    openSheet();
+    fireEvent.click(screen.getByRole('button', { name: 'Close basket' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('closes by itself when the last line is taken out, and the bar goes with it', () => {
+    writeBasket(defaultStorageKey('nadia'), [{ itemId: 'cookie', optionId: null, quantity: 1 }]);
+    const { container } = render(<BasketBar {...base} />);
+    fireEvent.click(screen.getByRole('button', { name: /1 item · RM25/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'One less: Cookies' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('has no sheet in the Store preview, whose bar is a picture inside the phone', () => {
+    fill();
+    window.sessionStorage.setItem('preview-key', window.sessionStorage.getItem(defaultStorageKey('nadia'))!);
+    render(<BasketBar {...base} preview={{ storageKey: 'preview-key', onCheckout: () => {} }} />);
+    expect(screen.queryByRole('button', { name: /3 items/ })).not.toBeInTheDocument();
+    expect(screen.getByText('3 items · RM145')).toBeInTheDocument();
   });
 });

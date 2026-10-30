@@ -21,6 +21,9 @@ export interface ShopCopy {
   /** The basket bar's count and total, and its small line on the Links tab. */
   barText: (items: number, total: string) => string;
   stillInBasket: string;
+  /** The basket sheet the bar opens: its heading, and its close button's name. */
+  yourBasket: string;
+  closeBasket: string;
   /** The shop page: the basket bar's small line, and the facts under the name. */
   barPickup: (day: string) => string;
   barDelivery: (day: string) => string;
@@ -343,6 +346,8 @@ const EN: ShopCopy = {
   nextDelivery: (day) => `next delivery ${day}`,
   barText: (items, total) => `${items} ${items === 1 ? 'item' : 'items'} · ${total}`,
   stillInBasket: 'Still in your basket',
+  yourBasket: 'Your basket',
+  closeBasket: 'Close basket',
   barPickup: (day) => `Pickup ${day}`,
   barDelivery: (day) => `Delivery ${day}`,
   factNextPickup: (day) => `Next pickup ${day}`,
@@ -619,6 +624,8 @@ const MS: ShopCopy = {
   nextDelivery: (day) => `hantar seterusnya ${day}`,
   barText: (items, total) => `${items} barang · ${total}`,
   stillInBasket: 'Masih dalam bakul anda',
+  yourBasket: 'Bakul anda',
+  closeBasket: 'Tutup bakul',
   barPickup: (day) => `Ambil ${day}`,
   barDelivery: (day) => `Hantar ${day}`,
   factNextPickup: (day) => `Ambil seterusnya ${day}`,
