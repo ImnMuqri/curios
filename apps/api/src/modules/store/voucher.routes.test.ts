@@ -113,6 +113,17 @@ describe('owner vouchers', () => {
     expect((await call('PATCH', `/store/vouchers/${voucher.id}`, owner.cookie, { kind: 'AMOUNT', amountCents: 500 })).json().error.code).toBe('VOUCHER_INVALID');
   });
 
+  it('refuses an amount or minimum spend too big for the database with 400, not 500', async () => {
+    const owner = await anOwner();
+    const amount = { ...blank, kind: 'AMOUNT', percent: null, amountCents: 3_000_000_000 };
+    const res = await call('POST', '/store/vouchers', owner.cookie, amount);
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VOUCHER_INVALID');
+    expect((await call('POST', '/store/vouchers', owner.cookie, { ...raya, minSpendCents: 3_000_000_000 })).statusCode).toBe(400);
+    const voucher = await make(owner, raya);
+    expect((await call('PATCH', `/store/vouchers/${voucher.id}`, owner.cookie, { minSpendCents: 3_000_000_000 })).statusCode).toBe(400);
+  });
+
   it("refuses an item from another shop, and covers one of the shop's own", async () => {
     const owner = await anOwner();
     const other = await anOwner();

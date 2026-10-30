@@ -2,9 +2,11 @@
  * The voucher rules a browser and the API must agree on: what a voucher saves
  * on a basket, which one wins, and what an owner may make.
  *
- * Imports nothing, like `orders.ts`, so a client component can load it by its
+ * Imports only `orders.ts`, which imports nothing, so a client component can load it by its
  * subpath.
  */
+
+import { ORDER_TOTAL_MAX_CENTS } from './orders.js';
 
 export type VoucherMode = 'AUTO' | 'CODE';
 export type VoucherKind = 'PERCENT' | 'AMOUNT';
@@ -113,8 +115,8 @@ export function checkVoucherInput(input: VoucherInput): string | null {
     }
   } else {
     const a = input.amountCents;
-    if (a === null || !Number.isInteger(a) || a <= 0 || input.percent !== null) {
-      return 'An amount voucher takes more than RM0 off.';
+    if (a === null || !Number.isInteger(a) || a <= 0 || a > ORDER_TOTAL_MAX_CENTS || input.percent !== null) {
+      return 'An amount voucher takes more than RM0, and at most RM1,000,000, off.';
     }
   }
 
@@ -123,7 +125,9 @@ export function checkVoucherInput(input: VoucherInput): string | null {
     return `Uses can be 1 to ${VOUCHER_MAX_USES}.`;
   }
   const min = input.minSpendCents;
-  if (min !== null && (!Number.isInteger(min) || min <= 0)) return 'The minimum spend must be more than RM0.';
+  if (min !== null && (!Number.isInteger(min) || min <= 0 || min > ORDER_TOTAL_MAX_CENTS)) {
+    return 'The minimum spend must be more than RM0, and at most RM1,000,000.';
+  }
   if (input.endsOn !== null && !isDay(input.endsOn)) return 'The last day is not a date.';
   return null;
 }

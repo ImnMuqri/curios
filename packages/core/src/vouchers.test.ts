@@ -158,6 +158,14 @@ describe('checkVoucherInput', () => {
     expect(bad({ minSpendCents: 5000 })).toBeNull();
     expect(bad({ minSpendCents: 0 })).not.toBeNull();
   });
+  it('caps an amount and a minimum spend at the most an order can total', () => {
+    const amount = { kind: 'AMOUNT' as const, percent: null };
+    expect(bad({ ...amount, amountCents: 100_000_000 })).toBeNull();
+    expect(bad({ ...amount, amountCents: 100_000_001 })).toContain('RM1,000,000');
+    expect(bad({ minSpendCents: 100_000_000 })).toBeNull();
+    expect(bad({ minSpendCents: 100_000_001 })).toContain('RM1,000,000');
+    expect(bad({ ...amount, amountCents: 3_000_000_000 })).not.toBeNull();
+  });
   it('needs a real YYYY-MM-DD end day when given', () => {
     expect(bad({ endsOn: '2026-11-30' })).toBeNull();
     expect(bad({ endsOn: '30/11/2026' })).not.toBeNull();
