@@ -5,7 +5,10 @@ import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ShopLook, type Store
 
 const apiFetch = vi.fn();
 vi.mock('../../../lib/api.js', () => ({ apiFetch, ApiError: class extends Error {} }));
+const sendFile = vi.fn();
+vi.mock('../../../lib/send-file.js', () => ({ sendFile }));
 vi.mock('../curios/resize-image.js', () => ({
+  prepareOriginal: vi.fn(async () => ({ blob: new Blob(['x'], { type: 'image/webp' }), width: 1000, height: 750 })),
   resizeImage: vi.fn(async () => ({ contentType: 'image/webp', data: 'AAAA' })),
   // The QR goes through the uncropped, lossless path, so its bytes differ from an item photo's.
   resizeContained: vi.fn(async () => ({ contentType: 'image/png', data: 'QQQQ' })),
@@ -104,12 +107,12 @@ describe('StoreScreen, against the API', () => {
     expect(screen.getByRole('listitem', { name: 'Tart' })).toBeInTheDocument();
   });
 
-  it('uploads an item picture to /store/items/:id/photo and shows it from the public base', async () => {
-    apiFetch.mockResolvedValue({ photoKey: 'items/a.webp' });
+  it('uploads an item picture to /store/items/:id/photos with its frame and shows the cover from the public base', async () => {
+    sendFile.mockResolvedValue({ photos: [{ id: 'p1', squareKey: 'items/a/p1.webp', width: 1000, height: 800, frame: { x: 0.125, y: 0, size: 1 } }], photoKey: 'items/a.webp' });
     const { container } = screenWith();
     await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
     await userEvent.upload(screen.getByLabelText('Picture file'), new File(['x'], 'k.png', { type: 'image/png' }));
-    expect(apiFetch).toHaveBeenCalledWith('/store/items/a/photo', { method: 'POST', body: JSON.stringify({ contentType: 'image/webp', data: 'AAAA' }) });
+    expect(sendFile).toHaveBeenCalledWith('/store/items/a/photos', expect.any(Blob), expect.any(Function), { 'x-photo-frame': '0.125,0,1' });
     await screen.findByRole('button', { name: 'Change picture' });
     expect(container.querySelector('img[src="https://files.example/items/a.webp"]')).not.toBeNull();
   });

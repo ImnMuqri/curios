@@ -19,8 +19,13 @@ function api(over: Partial<ItemsApi> = {}): ItemsApi {
     update: vi.fn(async (_id, patch) => row(patch.kind === 'DIGITAL' ? { kind: 'DIGITAL', delivery: patch.delivery ?? null } : {})),
     remove: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
-    uploadPhoto: vi.fn(),
+    addPhoto: vi.fn(),
+    recropPhoto: vi.fn(),
+    replacePhoto: vi.fn(),
     removePhoto: vi.fn(),
+    reorderPhotos: vi.fn(),
+    photoUrl: vi.fn((key: string) => `https://files.example/${key}`),
+    originalUrl: vi.fn(),
     uploadFile: vi.fn(async (_id, file, onProgress) => {
       onProgress(0.5);
       return { id: 'new', name: file.name, sizeBytes: file.size };

@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS, priceLine } from '@curios/core/store';
+import { fullFrame } from '@curios/core/item-photos';
+import { prepareOriginal } from '../curios/resize-image.js';
 import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
@@ -43,8 +45,7 @@ export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
     files: row.files,
     codesLeft: row.codesLeft,
     sessions: row.sessions.map((t) => ({ ...t, startsAt: new Date(t.startsAt) })),
-    // Task 8 reads the photos off the row; until then the editor holds none.
-    photos: [],
+    photos: row.photos,
     photoUrl,
   };
 }
@@ -253,9 +254,14 @@ export function ItemEditor({
     if (!saved) return;
     setError('');
     try {
-      const url = await api.uploadPhoto(saved.id, picked);
+      // The owner has no crop step yet (the photo editor replaces this): the picture goes in whole, centred.
+      const { blob, width, height } = await prepareOriginal(picked);
+      const first = saved.photos[0];
+      const result = first
+        ? await api.replacePhoto(saved.id, first.id, blob, fullFrame(width, height))
+        : await api.addPhoto(saved.id, blob, fullFrame(width, height));
       setPictureFailed(false);
-      const next = { ...saved, photoUrl: url };
+      const next = { ...saved, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
       setSaved(next);
       onSaved(next);
     } catch (failure) {
@@ -267,8 +273,9 @@ export function ItemEditor({
     if (!saved) return;
     setError('');
     try {
-      await api.removePhoto(saved.id);
-      const next = { ...saved, photoUrl: null, photoKey: null };
+      const first = saved.photos[0];
+      const result = first ? await api.removePhoto(saved.id, first.id) : { photos: [], photoKey: null };
+      const next = { ...saved, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
       setSaved(next);
       onSaved(next);
     } catch (failure) {

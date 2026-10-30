@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { containedSize, resizeContained, resizeImage } from './resize-image.js';
+import { containedSize, prepareOriginal, resizeContained, resizeImage } from './resize-image.js';
 
 /**
  * jsdom's own Blob has no `arrayBuffer()`, so a real `new Blob(...)` cannot
@@ -137,5 +137,57 @@ describe('resizeContained', () => {
     });
 
     await expect(resizeContained(new File(['x'], 'qr.png', { type: 'image/png' }))).rejects.toThrow(/too large/i);
+  });
+});
+
+describe('prepareOriginal', () => {
+  const picture = () => new File(['x'], 'cake.jpg', { type: 'image/jpeg' });
+
+  function drawn(width: number, height: number) {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width, height }) as unknown as ImageBitmap));
+    const drawImage = vi.fn();
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(fakeBlob(1, 'image/webp'));
+    });
+    return drawImage;
+  }
+
+  it('scales a 4000x3000 picture so its longest side is 2400', async () => {
+    const drawImage = drawn(4000, 3000);
+    const result = await prepareOriginal(picture());
+    expect(result).toMatchObject({ width: 2400, height: 1800 });
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 2400, 1800);
+  });
+
+  it('never scales a smaller picture up', async () => {
+    const drawImage = drawn(1000, 800);
+    const result = await prepareOriginal(picture());
+    expect(result).toMatchObject({ width: 1000, height: 800 });
+    expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1000, 800);
+  });
+
+  it('keeps whatever format the browser made, and steps the quality down to fit under 8 MB', async () => {
+    drawn(1000, 800);
+    const sizes = [9_000_000, 7_000_000];
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(fakeBlob(sizes.shift() ?? 1, 'image/png'));
+    });
+    const result = await prepareOriginal(picture());
+    expect(result.blob.type).toBe('image/png');
+    expect(result.blob.size).toBe(7_000_000);
+  });
+
+  it('says so when the picture cannot be decoded', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => { throw new Error('nope'); }));
+    await expect(prepareOriginal(picture())).rejects.toThrow('This picture could not be opened. Try a JPEG or PNG.');
+  });
+
+  it('refuses a picture still over 8 MB after every step', async () => {
+    drawn(1000, 800);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
+      callback(fakeBlob(9_000_000, 'image/webp'));
+    });
+    await expect(prepareOriginal(picture())).rejects.toThrow(/too large/i);
   });
 });

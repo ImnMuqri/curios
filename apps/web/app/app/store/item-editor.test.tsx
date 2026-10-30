@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ItemEditor } from './item-editor.js';
+vi.mock('../curios/resize-image.js', () => ({
+  prepareOriginal: vi.fn(async () => ({ blob: new Blob(['x'], { type: 'image/webp' }), width: 1000, height: 750 })),
+}));
+
+const { ItemEditor, fromRow } = await import('./item-editor.js');
 import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 
 const batik: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, sku: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
@@ -11,14 +15,21 @@ const coklat: EditorItem = {
 
 const row = (over: Partial<ItemRow> = {}): ItemRow => ({ ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, sku: null, description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
 
+const onePhoto = { id: 'p1', squareKey: 'items/a/p1.webp', width: 1000, height: 750, frame: { x: 0.125, y: 0, size: 1 } };
+
 function api(over: Partial<ItemsApi> = {}): ItemsApi {
   return {
     add: vi.fn(async (input) => row({ name: input.name })),
     update: vi.fn(async (id, patch) => row({ id, ...(patch.name ? { name: patch.name } : {}), ...(patch.available !== undefined ? { available: patch.available } : {}) })),
     remove: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
-    uploadPhoto: vi.fn(async () => 'https://files.example/items/a.webp'),
-    removePhoto: vi.fn(async () => undefined),
+    addPhoto: vi.fn(async () => ({ photos: [onePhoto], photoKey: 'items/a.webp' })),
+    recropPhoto: vi.fn(),
+    replacePhoto: vi.fn(async () => ({ photos: [onePhoto], photoKey: 'items/a2.webp' })),
+    removePhoto: vi.fn(async () => ({ photos: [], photoKey: null })),
+    reorderPhotos: vi.fn(),
+    photoUrl: vi.fn((key: string) => `https://files.example/${key}`),
+    originalUrl: vi.fn(),
     uploadFile: vi.fn(async (_id, file) => ({ id: 'f1', name: file.name, sizeBytes: file.size })),
     removeFile: vi.fn(async () => undefined),
     addCodes: vi.fn(async () => ({ added: 0, left: 0 })),
@@ -267,12 +278,12 @@ describe('ItemEditor, an existing item', () => {
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Picture file'), { target: { files: [new File(['x'], 'k.png', { type: 'image/png' })] } });
     });
-    expect(calls.uploadPhoto).toHaveBeenCalledWith('a', expect.any(File));
-    expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ photoUrl: 'https://files.example/items/a.webp' }));
+    expect(calls.addPhoto).toHaveBeenCalledWith('a', expect.any(Blob), { x: 0.125, y: 0, size: 1 });
+    expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ photos: [onePhoto], photoUrl: 'https://files.example/items/a.webp' }));
 
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Remove picture' })); });
-    expect(calls.removePhoto).toHaveBeenCalledWith('a');
-    expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ photoUrl: null }));
+    expect(calls.removePhoto).toHaveBeenCalledWith('a', 'p1');
+    expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ photos: [], photoUrl: null }));
   });
 
   it('says pictures are off, and offers no upload, when storage is off', () => {
@@ -291,5 +302,12 @@ describe('ItemEditor, an existing item', () => {
     // Unreadable: the preview keeps the item as last saved.
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: 'x' } });
     expect(onPreview).toHaveBeenLastCalledWith(batik);
+  });
+});
+
+describe('fromRow', () => {
+  it('keeps the photos the row carries, so an autosave does not make the editor forget them', () => {
+    const photo = { id: 'p1', squareKey: 'items/a/p1.webp', width: 1000, height: 750, frame: { x: 0.125, y: 0, size: 1 } };
+    expect(fromRow(row({ photos: [photo] }), null).photos).toEqual([photo]);
   });
 });

@@ -4,16 +4,22 @@ import { API_BASE, ApiError } from './api.js';
 /**
  * Sends one file as the raw body of a POST, the way the store's file route takes it, and
  * says how far along it is. fetch cannot report upload progress, so this is XMLHttpRequest.
- * Failures come back as the same ApiError apiFetch throws, with the API's own words.
+ * `headers` go out as given. Failures come back as the same ApiError apiFetch throws, with the API's own words.
  */
-export function sendFile<T>(path: string, file: File, onProgress: (done: number) => void): Promise<T> {
+export function sendFile<T>(path: string, file: File | Blob, onProgress: (done: number) => void, headers: Record<string, string> = {}): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const request = new XMLHttpRequest();
     request.open('POST', `${API_BASE}${path}`);
     request.withCredentials = true;
     // Windows says a ZIP is application/x-zip-compressed, and some files have no type: send what the API stores.
-    request.setRequestHeader('content-type', digitalFileType(file.name, file.type) ?? file.type);
-    request.setRequestHeader('x-file-name', encodeURIComponent(file.name));
+    // A picture's Blob has no name: its own type is what the API reads, and the headers say the rest.
+    if (file instanceof File) {
+      request.setRequestHeader('content-type', digitalFileType(file.name, file.type) ?? file.type);
+      request.setRequestHeader('x-file-name', encodeURIComponent(file.name));
+    } else {
+      request.setRequestHeader('content-type', file.type);
+    }
+    for (const [name, value] of Object.entries(headers)) request.setRequestHeader(name, value);
     request.upload.onprogress = (event) => {
       if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
     };

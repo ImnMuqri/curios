@@ -1,11 +1,14 @@
 'use client';
 
-import { apiFetch } from '../../../lib/api.js';
+import { API_BASE, apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { sendFile } from '../../../lib/send-file.js';
-import { resizeContained, resizeImage } from '../curios/resize-image.js';
+import { resizeContained } from '../curios/resize-image.js';
 import { StoreEditor } from './store-editor.js';
-import type { ChipApi, ChipState, EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, Frame, ItemRow, ItemsApi, PhotosResult, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings } from './store-types.js';
+
+/** The crop as the API reads it off a photo upload: x,y,size, each a share of the picture. */
+const frameHeader = (frame: Frame) => ({ 'x-photo-frame': `${frame.x},${frame.y},${frame.size}` });
 
 /**
  * Supplies the real API calls. Thin on purpose: a Server Component cannot hand
@@ -60,14 +63,13 @@ export function StoreScreen({
     reorder: async (ids) => {
       await apiFetch('/store/items/order', { method: 'PUT', body: JSON.stringify({ ids }) });
     },
-    uploadPhoto: async (id, file) => {
-      const image = await resizeImage(file);
-      const { photoKey } = await apiFetch<{ photoKey: string }>(`/store/items/${id}/photo`, { method: 'POST', body: JSON.stringify(image) });
-      return joinAvatarUrl(publicBase, photoKey);
-    },
-    removePhoto: async (id) => {
-      await apiFetch(`/store/items/${id}/photo`, { method: 'DELETE' });
-    },
+    addPhoto: (id, blob, frame) => sendFile<PhotosResult>(`/store/items/${id}/photos`, blob, () => undefined, frameHeader(frame)),
+    recropPhoto: (id, photoId, frame) => apiFetch<PhotosResult>(`/store/items/${id}/photos/${photoId}/frame`, { method: 'PUT', body: JSON.stringify(frame) }),
+    replacePhoto: (id, photoId, blob, frame) => sendFile<PhotosResult>(`/store/items/${id}/photos/${photoId}/picture`, blob, () => undefined, frameHeader(frame)),
+    removePhoto: (id, photoId) => apiFetch<PhotosResult>(`/store/items/${id}/photos/${photoId}`, { method: 'DELETE' }),
+    reorderPhotos: (id, ids) => apiFetch<PhotosResult>(`/store/items/${id}/photos/order`, { method: 'PUT', body: JSON.stringify({ ids }) }),
+    photoUrl: (key) => joinAvatarUrl(publicBase, key),
+    originalUrl: (id, photoId) => `${API_BASE}/store/items/${id}/photos/${photoId}/original`,
     uploadFile: (id, file, onProgress) => sendFile<StoredFile>(`/store/items/${id}/files`, file, onProgress),
     removeFile: async (id, fileId) => {
       await apiFetch(`/store/items/${id}/files/${fileId}`, { method: 'DELETE' });

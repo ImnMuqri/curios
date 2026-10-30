@@ -1,3 +1,5 @@
+import { ITEM_PHOTO_ORIGINAL_MAX_BYTES, ORIGINAL_MAX_EDGE } from '@curios/core/item-photos';
+
 export const AVATAR_EDGE = 512;
 
 // Mirrors AVATAR_MAX_BYTES in apps/api/src/modules/pages/avatar.ts. The web
@@ -77,6 +79,42 @@ async function prepare(file: File, width: number, height: number, maxBytes: numb
     throw new Error('That picture is too large even resized. Try a smaller or simpler photo.');
   }
   return payload(blob);
+}
+
+/**
+ * An item photo's original: the whole picture, its longest side at most ORIGINAL_MAX_EDGE (never
+ * scaled up), as WebP or whatever the browser makes of it, under the API's size limit. The owner
+ * crops it afterwards; the frame travels beside it. Throws a sentence the owner can read.
+ */
+export async function prepareOriginal(file: File): Promise<{ blob: Blob; width: number; height: number }> {
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    throw new Error('This picture could not be opened. Try a JPEG or PNG.');
+  }
+  const scale = Math.min(1, ORIGINAL_MAX_EDGE / Math.max(bitmap.width, bitmap.height));
+  const width = Math.max(1, Math.round(bitmap.width * scale));
+  const height = Math.max(1, Math.round(bitmap.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('This browser cannot prepare the picture.');
+  context.drawImage(bitmap, 0, 0, width, height);
+
+  let blob = await encode(canvas, 0.85);
+  for (const quality of [0.7, 0.5, 0.35]) {
+    if (blob.size <= ITEM_PHOTO_ORIGINAL_MAX_BYTES) break;
+    blob = await encode(canvas, quality);
+  }
+  if (blob.size > ITEM_PHOTO_ORIGINAL_MAX_BYTES) {
+    throw new Error('That picture is too large even resized. Try a smaller or simpler photo.');
+  }
+  if (!ACCEPTED_TYPES.has(blob.type)) {
+    throw new Error('This browser produced a picture in a format that cannot be uploaded.');
+  }
+  return { blob, width, height };
 }
 
 /** The longest edge a contained picture is sent at. */

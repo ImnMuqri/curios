@@ -1,6 +1,15 @@
 import { digitalFacts, type DigitalFacts } from '@curios/core/digital';
+import type { Frame } from '@curios/core/item-photos';
 import type { Pricing } from '@curios/core/store';
 import type { MyCurios, OwnerStore } from '@curios/db-read';
+
+export type { Frame };
+
+/** One photo as the owner holds it: its square's key, the original's size, and the owner's crop. */
+export type OwnerPhoto = { id: string; squareKey: string; width: number; height: number; frame: Frame };
+
+/** What every photo call answers: the item's photos in order, and the key of the cover (the first one's 512). */
+export type PhotosResult = { photos: OwnerPhoto[]; photoKey: string | null };
 
 /** An item as the Store screen holds it: the stored row plus its picture's URL. */
 export type EditorItem = OwnerStore['items'][number] & { photoUrl: string | null };
@@ -61,6 +70,7 @@ export type ItemRow = {
   sessionMinutes: number | null;
   sessionPlace: 'ONLINE' | 'IN_PERSON' | null;
   sessionWhere: string | null;
+  photos: OwnerPhoto[];
   files: { id: string; name: string; sizeBytes: number }[];
   codesLeft: number;
   /** `startsAt` is an ISO string on the wire. */
@@ -68,7 +78,7 @@ export type ItemRow = {
 };
 
 /** What the API says for an item that is not digital. */
-export const PHYSICAL_ROW: Pick<ItemRow, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'> = { kind: 'PHYSICAL', delivery: null, accessUrl: null, accessNote: null, sessionMinutes: null, sessionPlace: null, sessionWhere: null, files: [], codesLeft: 0, sessions: [] };
+export const PHYSICAL_ROW: Pick<ItemRow, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'photos' | 'files' | 'codesLeft' | 'sessions'> = { kind: 'PHYSICAL', delivery: null, accessUrl: null, accessNote: null, sessionMinutes: null, sessionPlace: null, sessionWhere: null, photos: [], files: [], codesLeft: 0, sessions: [] };
 
 export type Delivery = 'FILES' | 'LINK' | 'CODES' | 'SESSION';
 
@@ -89,9 +99,17 @@ export type ItemsApi = {
   update: (id: string, patch: ItemPatch) => Promise<ItemRow>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;
-  /** Resolves to the public URL of the stored picture. */
-  uploadPhoto: (id: string, file: File) => Promise<string>;
-  removePhoto: (id: string) => Promise<void>;
+  /** Adds a photo: the prepared original and the owner's crop of it. */
+  addPhoto: (id: string, blob: Blob, frame: Frame) => Promise<PhotosResult>;
+  recropPhoto: (id: string, photoId: string, frame: Frame) => Promise<PhotosResult>;
+  /** Puts a new picture in a photo's place, with a new crop. */
+  replacePhoto: (id: string, photoId: string, blob: Blob, frame: Frame) => Promise<PhotosResult>;
+  removePhoto: (id: string, photoId: string) => Promise<PhotosResult>;
+  reorderPhotos: (id: string, ids: string[]) => Promise<PhotosResult>;
+  /** The public URL of a stored picture, from its key. */
+  photoUrl: (key: string) => string;
+  /** Where the owner's original can be shown from: the API sends it on to storage. */
+  originalUrl: (id: string, photoId: string) => string;
   /** Sends one file's bytes, telling `onProgress` how far along it is (0 to 1). */
   uploadFile: (id: string, file: File, onProgress: (done: number) => void) => Promise<StoredFile>;
   removeFile: (id: string, fileId: string) => Promise<void>;
