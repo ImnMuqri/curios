@@ -42,8 +42,8 @@ export function ProductGallery(props: { name: string; urls: string[]; copy: Shop
       <div className={styles.hero}>
         <div ref={track} className={styles.track} role="group" aria-roledescription="carousel" aria-label={copy.photos} onScroll={onScroll}>
           {urls.map((url, i) => (
-            <button key={url + i} type="button" className={styles.slide} aria-label={name} onClick={() => setViewing(i)}>
-              <img src={url} alt="" draggable={false} loading={i === 0 ? 'eager' : 'lazy'} />
+            <button key={url + i} type="button" className={styles.slide} aria-label={n > 1 ? `${name}, ${copy.photoOf(i + 1, n)}` : name} tabIndex={i === index ? 0 : -1} onClick={() => setViewing(i)}>
+              <img src={url} alt="" draggable={false} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />
             </button>
           ))}
         </div>
@@ -53,7 +53,7 @@ export function ProductGallery(props: { name: string; urls: string[]; copy: Shop
         <div className={styles.thumbs}>
           {urls.map((url, i) => (
             <button key={url + i} type="button" className={styles.thumb} aria-label={copy.photoOf(i + 1, n)} aria-current={i === index ? 'true' : undefined} onClick={() => jump(i)}>
-              <img src={url} alt="" draggable={false} />
+              <img src={url} alt="" draggable={false} loading="lazy" decoding="async" />
             </button>
           ))}
         </div>

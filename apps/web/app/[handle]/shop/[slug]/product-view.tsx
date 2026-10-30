@@ -135,7 +135,7 @@ export function ProductView(props: {
         {announce}
       </p>
 
-      <ProductGallery name={item.name} urls={item.photoUrls ?? (item.photoUrl ? [item.photoUrl] : [])} copy={copy} />
+      <ProductGallery name={item.name} urls={item.photoUrls?.length ? item.photoUrls : item.photoUrl ? [item.photoUrl] : []} copy={copy} />
 
       <div className={styles.pd}>
         {digital || item.tag ? <span className={styles.ptag}>{digital ? copy.digital : item.tag}</span> : null}
