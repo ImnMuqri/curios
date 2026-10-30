@@ -1668,3 +1668,140 @@
     transition: none;
   }
 }
+
+/* The crop window: a dark panel, a square stage, the picture dimmed outside the frame. */
+.cropModal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--ink) 55%, transparent);
+}
+
+.cropBox {
+  width: min(100%, 440px);
+  max-height: 100%;
+  overflow: auto;
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--ink);
+  color: var(--card);
+}
+
+.cropStage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ink) 80%, var(--card));
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.cropStage:active {
+  cursor: grabbing;
+}
+
+.cropImg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: none;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+
+/* The frame: its shadow dims the picture everywhere outside it; the lines are the thirds. */
+.cropGrid {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--card);
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--ink) 60%, transparent);
+  background:
+    linear-gradient(to right, transparent 33.2%, color-mix(in srgb, var(--card) 50%, transparent) 33.2% 33.6%, transparent 33.6% 66.4%, color-mix(in srgb, var(--card) 50%, transparent) 66.4% 66.8%, transparent 66.8%),
+    linear-gradient(to bottom, transparent 33.2%, color-mix(in srgb, var(--card) 50%, transparent) 33.2% 33.6%, transparent 33.6% 66.4%, color-mix(in srgb, var(--card) 50%, transparent) 66.4% 66.8%, transparent 66.8%);
+}
+
+.cropZoom {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cropRange {
+  flex: 1;
+  min-width: 0;
+}
+
+.cropStep,
+.cropCancel,
+.cropSave,
+.cropRemove,
+.cropReplace {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid color-mix(in srgb, var(--card) 30%, transparent);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.cropStep {
+  width: 40px;
+  padding: 0;
+  font-size: 17px;
+}
+
+.cropSave {
+  background: var(--card);
+  color: var(--ink);
+  border-color: var(--card);
+  font-weight: 600;
+}
+
+.cropRemove {
+  border-color: transparent;
+  color: color-mix(in srgb, red 55%, var(--card));
+}
+
+.cropReplace {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.cropFile {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+
+.cropFoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.cropSpacer {
+  flex: 1;
+}
+
+.cropStep:disabled,
+.cropCancel:disabled,
+.cropSave:disabled,
+.cropRemove:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
