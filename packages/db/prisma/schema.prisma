@@ -410,10 +410,11 @@ model ItemPhoto {
   /// The original's size in pixels, after EXIF rotation.
   width       Int
   height      Int
-  /// The crop frame on the original, in its pixels: the top-left corner...
+  /// The crop frame's left edge as a fraction of the original's width, in (0, 1].
   frameX      Float
+  /// The crop frame's top edge as a fraction of the original's height, in (0, 1].
   frameY      Float
-  /// ...and the side of the square.
+  /// The crop frame's side as a fraction of the original's shorter side, min(width, height), in (0, 1].
   frameSize   Float
   createdAt   DateTime @default(now())
 
