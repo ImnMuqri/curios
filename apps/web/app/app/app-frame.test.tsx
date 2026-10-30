@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import type { NavBadges } from '@curios/db-read';
 import type { Alert } from './alerts.js';
 import { parseTheme, THEME_COOKIE, type Theme } from './theme.js';
+import type { BellSeen } from './bell-seen.js';
 
 const PLAN = { name: 'Business plan', note: '18 days left, until 14 Nov', fill: 0.6, glance: 'Business · paid until 14 Nov' };
 
@@ -259,6 +260,44 @@ describe('the top bar', () => {
     expect(bell()).toHaveTextContent('');
     fireEvent.click(bell());
     expect(screen.getByText('Nothing needs you right now.')).toBeInTheDocument();
+  });
+
+  const business = (badges: NavBadges, bellSeen?: BellSeen, alerts: Alert[] = [alert]) =>
+    render(
+      <AppFrame displayName="Kek Lina" avatarUrl={null} plan={PLAN} badges={badges} mode="BUSINESS" alerts={alerts} bellSeen={bellSeen}>
+        <p>content</p>
+      </AppFrame>,
+    );
+
+  it('marks everything read: the count goes, the work stays listed, and the cookie remembers it', () => {
+    const cookie = vi.spyOn(document, 'cookie', 'set');
+    business({ review: 1, questions: 0, leads: 2, orders: 0 });
+    fireEvent.click(bell());
+    fireEvent.click(screen.getByRole('button', { name: 'Mark all as read' }));
+    expect(bell()).toHaveAccessibleName('Notifications');
+    expect(screen.getByRole('link', { name: '2 new leads' })).not.toHaveAttribute('data-new');
+    expect(screen.getByRole('link', { name: /Your free leads are used up/ })).not.toHaveAttribute('data-new');
+    expect(screen.queryByRole('button', { name: 'Mark all as read' })).not.toBeInTheDocument();
+    expect(cookie).toHaveBeenLastCalledWith('curios_bell=leads:2.review:1|trial; Path=/app; Max-Age=31536000; SameSite=Lax');
+    cookie.mockRestore();
+  });
+
+  it('counts as new only what came after the read: a higher count, an alert not read', () => {
+    const fresh: Alert = { ...alert, id: 'paused', title: 'Orders are paused', action: undefined };
+    business({ review: 1, questions: 0, leads: 3, orders: 0 }, { counts: { leads: 2, review: 1 }, alerts: ['trial'] }, [alert, fresh]);
+    expect(bell()).toHaveAccessibleName('Notifications, 2 new');
+    fireEvent.click(bell());
+    expect(screen.getByRole('link', { name: '3 new leads' })).toHaveAttribute('data-new');
+    expect(screen.getByRole('link', { name: '1 fact to review' })).not.toHaveAttribute('data-new');
+    expect(screen.getByText('Orders are paused').closest('[data-new]')).not.toBeNull();
+  });
+
+  it('forgets a read count that went down, so the next one up is news', () => {
+    const cookie = vi.spyOn(document, 'cookie', 'set');
+    business({ review: 0, questions: 0, leads: 1, orders: 0 }, { counts: { leads: 2 }, alerts: [] }, []);
+    expect(bell()).toHaveAccessibleName('Notifications');
+    expect(cookie).toHaveBeenLastCalledWith('curios_bell=leads:1|; Path=/app; Max-Age=31536000; SameSite=Lax');
+    cookie.mockRestore();
   });
 
   const openAccount = () => {

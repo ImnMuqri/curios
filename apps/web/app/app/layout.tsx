@@ -12,6 +12,7 @@ import { alertsFor, billingNeedsYou } from './alerts.js';
 import { planBlock } from './plan-label.js';
 import { resolveOwner } from './session.js';
 import { parseTheme, THEME_COOKIE } from './theme.js';
+import { BELL_COOKIE, parseBellSeen } from './bell-seen.js';
 
 /**
  * The second of the three session layers, and the first that proves anything.
@@ -82,6 +83,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       alerts={alertsFor({ plan, usage, now, orders, freeLeads, freeOrders, banner, ...(page.suspendedAt ? { suspension: { reason: page.suspendReason } } : {}) })}
       billingDot={billingNeedsYou(plan, orders)}
       theme={parseTheme(jar.get(THEME_COOKIE)?.value)}
+      bellSeen={parseBellSeen(jar.get(BELL_COOKIE)?.value)}
     >
       {children}
     </AppFrame>

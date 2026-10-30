@@ -6,6 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import type { NavBadges } from '@curios/db-read';
 import { Wordmark } from '../_landing/Wordmark.js';
 import type { Alert } from './alerts.js';
+import { BANNER_ALERT_ID } from './alert-ids.js';
+import { BELL_COOKIE, bellAlertKey, formatBellSeen, heldTo, type BellSeen } from './bell-seen.js';
 import { AlertsProvider } from './_ui/alert-slot.js';
 import { NavProgressProvider } from './_ui/nav-progress.js';
 import { Popover } from './_ui/popover.js';
@@ -91,6 +93,11 @@ const MORE = ['/app/knowledge', '/app/billing', '/app/settings'];
 /** The sidebar's plan block (plan-label.ts planBlock); `glance` is the account menu's one line. */
 export type PlanBlock = { name: string; note: string; fill: number | null; glance: string };
 
+/** A year, and only for the dashboard, as the theme's cookie. */
+function writeBellSeen(value: string) {
+  document.cookie = `${BELL_COOKIE}=${value}; Path=/app; Max-Age=31536000; SameSite=Lax`;
+}
+
 /** Help goes to the support address the alerts and legal pages give: there is no help centre yet. */
 const SUPPORT = 'mailto:support@curios.my';
 
@@ -125,6 +132,7 @@ export function AppFrame({
   billingDot = false,
   bare = false,
   theme: savedTheme = 'system',
+  bellSeen: savedBellSeen = { counts: {}, alerts: [] },
   children,
 }: {
   /** The page's name: the breadcrumb starts with it. */
@@ -149,6 +157,8 @@ export function AppFrame({
   bare?: boolean;
   /** The owner's choice from the top bar's theme menu (theme.ts); the layout reads it from the cookie. */
   theme?: Theme;
+  /** What the bell held when it was last marked read (bell-seen.ts); the layout reads it from the cookie. */
+  bellSeen?: BellSeen;
   children: ReactNode;
 }) {
   const pathname = usePathname() ?? '';
@@ -157,6 +167,7 @@ export function AppFrame({
   const [query, setQuery] = useState('');
   const [more, setMore] = useState(false);
   const search = useRef<HTMLInputElement>(null);
+  const [bellSeen, setBellSeen] = useState(savedBellSeen);
   const [pointedAt, setPointedAt] = useState<ReadonlySet<string>>(new Set());
   const point = (href: string) => setPointedAt((seen) => (seen.has(href) ? seen : new Set(seen).add(href)));
   const choose = (next: Theme) => {
@@ -242,7 +253,26 @@ export function AppFrame({
   const moreItems = items.filter((item) => MORE.includes(item.href));
   const inMore = moreItems.some((item) => pathname.startsWith(item.href));
   const tab = (href: string) => items.find((item) => item.href === href);
-  const news = waiting.length + alerts.length;
+  // What the bell holds now, and what of it is new: a count above what was read, an alert not read.
+  const bellNow: BellSeen = {
+    counts: Object.fromEntries(waiting.map((w) => [w.key, badges[w.key]])),
+    alerts: alerts.map((alert) => bellAlertKey(alert, BANNER_ALERT_ID)),
+  };
+  const read = heldTo(bellSeen, bellNow);
+  const isNew = {
+    waiting: (w: (typeof WAITING)[number]) => badges[w.key] > (read.counts[w.key] ?? 0),
+    alert: (alert: Alert) => !read.alerts.includes(bellAlertKey(alert, BANNER_ALERT_ID)),
+  };
+  const news = waiting.filter(isNew.waiting).length + alerts.filter(isNew.alert).length;
+  const readCookie = formatBellSeen(read);
+  // Keep the cookie held to what is there, so a count that went down and comes back up is news.
+  useEffect(() => {
+    if (readCookie !== formatBellSeen(bellSeen)) writeBellSeen(readCookie);
+  }, [readCookie, bellSeen]);
+  const markRead = () => {
+    setBellSeen(bellNow);
+    writeBellSeen(formatBellSeen(bellNow));
+  };
   const avatar = avatarUrl ? (
     <img className={styles.avatar} src={avatarUrl} alt="" width={28} height={28} />
   ) : (
@@ -422,20 +452,26 @@ export function AppFrame({
                 </>
               }
             >
-              {news === 0 ? <p className={styles.menuEmpty}>Nothing needs you right now.</p> : null}
+              {waiting.length + alerts.length === 0 ? <p className={styles.menuEmpty}>Nothing needs you right now.</p> : null}
+              {/* Read is only the badge: what still needs the owner stays listed until it is done. */}
+              {news > 0 ? (
+                <button type="button" className={styles.menuRead} onClick={markRead}>
+                  Mark all as read
+                </button>
+              ) : null}
               {waiting.map((w) => (
-                <Link key={w.key} href={w.href} className={styles.menuItem}>
+                <Link key={w.key} href={w.href} className={styles.menuItem} data-new={isNew.waiting(w) ? '' : undefined}>
                   {w.say(badges[w.key])}
                 </Link>
               ))}
               {alerts.map((alert) =>
                 alert.action ? (
-                  <Link key={alert.id} href={alert.action.href} className={styles.menuAlert} data-tone={alert.tone}>
+                  <Link key={alert.id} href={alert.action.href} className={styles.menuAlert} data-tone={alert.tone} data-new={isNew.alert(alert) ? '' : undefined}>
                     <b>{alert.title}</b>
                     <span>{alert.text}</span>
                   </Link>
                 ) : (
-                  <p key={alert.id} className={styles.menuAlert} data-tone={alert.tone}>
+                  <p key={alert.id} className={styles.menuAlert} data-tone={alert.tone} data-new={isNew.alert(alert) ? '' : undefined}>
                     <b>{alert.title}</b>
                     <span>{alert.text}</span>
                   </p>

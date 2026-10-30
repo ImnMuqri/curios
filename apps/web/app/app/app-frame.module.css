@@ -543,6 +543,38 @@ a.menuAlert:hover {
   color: var(--merah-deep);
 }
 
+/* "Mark all as read": a quiet text button at the panel's top, on the right. */
+.menuRead {
+  display: block;
+  margin: 0 0 4px auto;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: none;
+  color: var(--biru);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.menuRead:hover {
+  background: var(--surface);
+}
+
+/* A new item: a biru dot before it. Read ones stay listed, without it, until the work is done. */
+.menuItem[data-new]::before,
+.menuAlert[data-new] b::before {
+  content: '';
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--biru);
+  vertical-align: 1px;
+}
+
 .menuEmpty {
   margin: 0;
   padding: 8px 10px;
