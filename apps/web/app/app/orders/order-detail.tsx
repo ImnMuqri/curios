@@ -168,6 +168,8 @@ export function OrderDetail({
   // Confirmed by CHIP: no receipt, nothing for the owner to check.
   const online = order.paidVia === 'CHIP' && order.paidAt !== null;
   const via = order.paidMethodLabel ?? 'CHIP';
+  // A voucher took it to RM0: paid at once, with no receipt to wait for or check.
+  const byVoucher = order.paidVia === 'VOUCHER' && order.paidAt !== null;
   // CHIP also took the money for an order paid another way: one of the two is owed back.
   const paidTwice = order.chipPaidTwiceAt !== null;
   const secondOwed = paidTwice && order.secondRefundedAt === null;
@@ -200,7 +202,7 @@ export function OrderDetail({
 
   // The last step: Completed, or Sent for a digital-only order (when it was delivered, or what delivers it).
   const end: [string, string, boolean] = digitalOnly
-    ? ['Sent', order.sentAt ? when(order.sentAt) : online ? 'Not yet' : 'When you mark it paid', order.sentAt !== null]
+    ? ['Sent', order.sentAt ? when(order.sentAt) : online || byVoucher ? 'Not yet' : 'When you mark it paid', order.sentAt !== null]
     : ['Completed', order.completedAt ? when(order.completedAt) : dayLabel(order.day), order.completedAt !== null];
   // The board's stepsRaw: [label, when, done].
   const steps: [string, string, boolean][] = cancelled
@@ -210,6 +212,12 @@ export function OrderDetail({
         ['Paid', order.paidAt ? when(order.paidAt) : 'No', order.paidAt !== null],
         [order.refundedAt ? 'Refunded' : 'Cancelled', when(order.refundedAt ?? order.cancelledAt ?? order.createdAt), true],
       ]
+    : byVoucher
+      ? [
+          ['Placed', when(order.createdAt), true],
+          ['Paid with a voucher', when(order.paidAt!), true],
+          end,
+        ]
     : online
       ? [
           ['Placed', when(order.createdAt), true],
@@ -457,6 +465,13 @@ export function OrderDetail({
               <span className={styles.amount}>{formatRinggit(order.deliveryCents)}</span>
             </div>
           ) : null}
+          {order.discountCents > 0 ? (
+            <div className={styles.line}>
+              <span className={styles.lineName}>
+                <b>{`${order.voucherLabel ?? 'Voucher'} −${formatRinggit(order.discountCents)}`}</b>
+              </span>
+            </div>
+          ) : null}
           <div className={styles.total}>
             <span>Total</span>
             <b>{total}</b>
@@ -483,6 +498,19 @@ export function OrderDetail({
                     {total} paid by {via}
                   </b>
                   <span>{`Confirmed by the bank through CHIP${paidTwice && hasReceipt ? '. A receipt was also sent — check it before you refund one.' : ', so there is no receipt to check.'}${order.paidRef ? ` Ref ${order.paidRef}.` : ''}`}</span>
+                </span>
+              </div>
+            ) : null}
+            {byVoucher ? (
+              <div className={styles.paidOnline}>
+                <span className={styles.paidTick} aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d={TICK} />
+                  </svg>
+                </span>
+                <span>
+                  <b>Paid with a voucher</b>
+                  <span>The voucher took the whole order off, so there is no receipt to check.</span>
                 </span>
               </div>
             ) : null}
@@ -538,7 +566,7 @@ export function OrderDetail({
                 </div>
                 {online ? null : <p className={styles.hint}>Receipts can be edited. Check {total} is in your bank before you mark it paid.</p>}
               </div>
-            ) : !online ? (
+            ) : !online && !byVoucher ? (
               <div className={styles.waitbox}>
                 <svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d={CLOCK} />

@@ -34,6 +34,9 @@ export interface OrderViewProps {
     itemsCents: number;
     deliveryCents: number;
     totalCents: number;
+    /** What the voucher took off (already out of totalCents), and its code or name; absent or 0 for none. */
+    discountCents?: number;
+    voucherLabel?: string | null;
     status: OrderStatus;
     receiptType: string | null;
     /** ISO times, or null. */
@@ -187,6 +190,8 @@ export function OrderView(props: OrderViewProps) {
     ? { ...props.order, status: 'PAID', paidVia: 'CHIP', paidAt: confirmed.paidAt, paidMethodLabel: confirmed.paidMethodLabel, paidRef: confirmed.paidRef, chipPending: false }
     : props.order;
   const paidOnline = order.paidVia === 'CHIP' && (order.status === 'PAID' || order.status === 'COMPLETED');
+  // An order a voucher took to RM0 is paid at once: nothing to pay, check or send a receipt for.
+  const paidByVoucher = order.paidVia === 'VOUCHER' && (order.status === 'PAID' || order.status === 'COMPLETED');
 
   // Back from paying online (checkout marked it): the board's "Paid. Order placed", once.
   const [celebrate, setCelebrate] = useState(false);
@@ -371,6 +376,20 @@ export function OrderView(props: OrderViewProps) {
         </section>
       ) : null}
 
+      {paidByVoucher ? (
+        <section className={checkout.section}>
+          <div className={`${styles.upload} ${styles.sent}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M5 12.5l4.5 4.5L19 7.5" />
+            </svg>
+            <span>
+              <b>{copy.paidWithVoucher}</b>
+              {order.paidAt ? <span>{copy.paidTime(order.paidAt)}</span> : null}
+            </span>
+          </div>
+        </section>
+      ) : null}
+
       {suspended ? (
         <section className={checkout.section} aria-labelledby="order-unavailable">
           <p className={styles.askPay}>
@@ -515,6 +534,13 @@ export function OrderView(props: OrderViewProps) {
                 <b>{copy.deliveryLabel}</b>
               </span>
               <span>{formatRinggit(order.deliveryCents)}</span>
+            </li>
+          ) : null}
+          {(order.discountCents ?? 0) > 0 ? (
+            <li className={styles.line}>
+              <span>
+                <b>{copy.voucherApplied(order.voucherLabel ?? 'Voucher', formatRinggit(order.discountCents ?? 0))}</b>
+              </span>
             </li>
           ) : null}
         </ul>

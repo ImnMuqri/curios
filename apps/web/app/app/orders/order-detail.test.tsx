@@ -556,3 +556,45 @@ describe('OrderDetail, an order paid twice', () => {
     expect(screen.queryByRole('note', { name: 'Paid twice' })).toBeNull();
   });
 });
+
+describe('OrderDetail, a voucher', () => {
+  it('shows the voucher and what it took off between the lines and the total', () => {
+    show({ ...mira, itemsCents: 23500, totalCents: 22550, discountCents: 950, voucherLabel: 'RAYA10' });
+    expect(screen.getByText('RAYA10 −RM9.50')).toBeInTheDocument();
+    expect(screen.getByText('RM225.50')).toBeInTheDocument();
+  });
+
+  it('shows no voucher line with no discount', () => {
+    show(mira);
+    expect(screen.queryByText(/−RM/)).toBeNull();
+  });
+
+  const free: OrderRow = {
+    ...paid,
+    itemsCents: 7000,
+    totalCents: 0,
+    discountCents: 7000,
+    voucherLabel: 'FREE100',
+    paidVia: 'VOUCHER',
+    receiptUploadedAt: null,
+    receiptUrl: null,
+    receiptType: null,
+  };
+
+  it('a voucher-paid order says "Paid with a voucher", with no receipt to check or wait for', () => {
+    show(free);
+    expect(within(screen.getByRole('region', { name: /^Payment/ })).getByText('Paid with a voucher')).toBeInTheDocument();
+    expect(screen.queryByText('No receipt was uploaded.')).toBeNull();
+    expect(screen.queryByRole('button', { name: /Mark paid/ })).toBeNull();
+    expect(screen.queryByText(/Check the receipt/)).toBeNull();
+    // Paid like any paid order: it is made and completed, and may be cancelled.
+    expect(actionBox().getByRole('button', { name: 'Mark completed' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Cancel/ })).toBeInTheDocument();
+  });
+
+  it('its steps say it was paid with a voucher', () => {
+    show(free);
+    expect(steps().getByText('Paid with a voucher')).toBeInTheDocument();
+    expect(steps().queryByText('Receipt')).toBeNull();
+  });
+});

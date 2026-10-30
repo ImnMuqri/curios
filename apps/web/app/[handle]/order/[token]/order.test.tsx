@@ -787,3 +787,60 @@ describe('/[handle]/order/[token]', () => {
     expect(await generateMetadata(params('keklina', 'nope'))).toEqual({ robots: { index: false, follow: false }, referrer: 'no-referrer' });
   });
 });
+
+describe('OrderView: a voucher', () => {
+  const discounted = withOrder({ itemsCents: 21500, totalCents: 20550, discountCents: 950, voucherLabel: 'RAYA10' });
+
+  it('names the voucher and what it took off, between the lines and the total, and asks for the discounted total', () => {
+    render(<OrderView {...discounted} />);
+    expect(screen.getByText('RAYA10 −RM9.50')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Pay RM205.50' })).toBeInTheDocument();
+    expect(within(screen.getByTestId('sheet')).getAllByText('RM205.50').length).toBeGreaterThan(0);
+  });
+
+  it('shows no voucher line for an order with no discount', () => {
+    render(<OrderView {...withOrder({ discountCents: 0, voucherLabel: null })} />);
+    expect(screen.queryByText(/−RM/)).toBeNull();
+  });
+
+  const free = withOrder({
+    itemsCents: 21500,
+    totalCents: 0,
+    discountCents: 21500,
+    voucherLabel: 'FREE100',
+    status: 'PAID',
+    paidVia: 'VOUCHER',
+    paidAt: '2026-10-15T02:00:00.000Z',
+  });
+
+  it('a voucher-paid RM0 order is paid: no QR, bank, receipt box or retry, and it says so', () => {
+    render(<OrderView {...free} chipMethods={['fpx']} />);
+    expect(screen.getByText(copy.paidWithVoucher)).toBeInTheDocument();
+    expect(screen.getByText('FREE100 −RM215')).toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: /^Pay / })).toBeNull();
+    expect(screen.queryByAltText(/QR/i)).toBeNull();
+    expect(screen.queryByText(/Maybank/)).toBeNull();
+    expect(screen.queryByLabelText(/receipt/i)).toBeNull();
+    expect(screen.queryByText(/pay again/i)).toBeNull();
+    expect(screen.getByText('Paid · Kek Lina is getting it ready')).toBeInTheDocument();
+    expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Ready ←', 'Done']);
+  });
+
+  it('a voucher-paid digital order reads Sent once it is sent', () => {
+    render(<OrderView {...withOrder({ ...free.order, method: null, day: null, sentAt: '2026-10-15T02:01:00.000Z', email: 'a@b.my' })} />);
+    expect(screen.getByText('Paid · Sent to your email')).toBeInTheDocument();
+    expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Sent, done']);
+  });
+
+  it('speaks Malay on a Malay page', () => {
+    render(<OrderView {...free} language="ms" />);
+    expect(screen.getByText(shopCopy('ms').paidWithVoucher)).toBeInTheDocument();
+    expect(shopCopy('ms').paidWithVoucher).not.toBe(copy.paidWithVoucher);
+  });
+
+  it('the page hands the voucher to the view', async () => {
+    vi.mocked(getOrderByToken).mockResolvedValueOnce({ ...order, totalCents: 20550, discountCents: 950, voucherLabel: 'RAYA10' });
+    render(await OrderPage(params('keklina', 'tok')));
+    expect(screen.getByText('RAYA10 −RM9.50')).toBeInTheDocument();
+  });
+});

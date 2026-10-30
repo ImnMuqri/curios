@@ -192,6 +192,8 @@ export interface ShopCopy {
   removeCode: string;
   /** The placed screen of an order that came to RM0: nothing to pay, so it is paid. */
   freeOrderPaid: string;
+  /** On the order page of an order a voucher paid in full. */
+  paidWithVoucher: string;
   emptyBasket: string;
   emptyBasketBody: string;
   pricesChanged: string;
@@ -503,6 +505,7 @@ const EN: ShopCopy = {
   codeDoesNotFit: 'This code doesn’t apply to your basket.',
   removeCode: 'Remove code',
   freeOrderPaid: 'Nothing to pay. Your order is paid and placed.',
+  paidWithVoucher: 'Paid with a voucher',
   emptyBasket: 'Your basket is empty',
   emptyBasketBody: 'Add something from the shop and it shows up here.',
   pricesChanged: 'Prices changed since you opened the shop. Check your basket and try again.',
@@ -789,6 +792,7 @@ const MS: ShopCopy = {
   codeDoesNotFit: 'Kod ini tidak sesuai untuk bakul anda.',
   removeCode: 'Buang kod',
   freeOrderPaid: 'Tiada apa-apa untuk dibayar. Tempahan anda sudah dibayar dan dibuat.',
+  paidWithVoucher: 'Dibayar dengan baucar',
   emptyBasket: 'Bakul anda kosong',
   emptyBasketBody: 'Tambah sesuatu dari kedai dan ia akan muncul di sini.',
   pricesChanged: 'Harga berubah sejak anda buka kedai. Semak bakul anda dan cuba lagi.',
