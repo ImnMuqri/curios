@@ -322,7 +322,7 @@ export function OrderDetail({
 
   const question =
     confirming === 'cancel'
-      ? order.status === 'PAID'
+      ? order.status === 'PAID' && order.totalCents > 0
         ? `Cancel #${order.number}? You will owe ${first} ${total}.`
         : view === 'toCheck'
           ? // Not marked paid, so cancelling tracks no refund: say how to make it.
@@ -395,7 +395,7 @@ export function OrderDetail({
           {confirming ? (
             <span className={styles.confirm} role="group" aria-label={confirming === 'cancel' ? 'Confirm cancelling this order' : 'Confirm the receipt was not received'}>
               {question}
-              <button type="button" data-tone="merah" disabled={busy} onClick={() => void (confirming === 'cancel' ? run('cancel', `#${order.number} cancelled.${order.paidAt ? ' A refund is owed.' : ''}`) : run('not-received', `#${order.number}: receipt marked not received. ${first} will be asked to pay again.`))}>
+              <button type="button" data-tone="merah" disabled={busy} onClick={() => void (confirming === 'cancel' ? run('cancel', `#${order.number} cancelled.${order.paidAt && order.totalCents > 0 ? ' A refund is owed.' : ''}`) : run('not-received', `#${order.number}: receipt marked not received. ${first} will be asked to pay again.`))}>
                 {confirming === 'cancel' ? 'Yes, cancel' : 'Yes, not received'}
               </button>
               <button type="button" disabled={busy} onClick={() => setConfirming(null)}>

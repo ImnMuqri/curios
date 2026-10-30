@@ -157,6 +157,8 @@ export function orderView(o: {
   paidAt: Date | null;
   refundedAt: Date | null;
   paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | 'VOUCHER' | null;
+  /** An order of RM0 (a voucher took it all) took no money, so cancelling it owes none back. */
+  totalCents?: number;
 }): OrderView {
   switch (o.status) {
     case 'PLACED':
@@ -166,7 +168,7 @@ export function orderView(o: {
     case 'COMPLETED':
       return 'completed';
     case 'CANCELLED':
-      if (o.paidAt === null) return 'cancelled';
+      if (o.paidAt === null || o.totalCents === 0) return 'cancelled';
       return o.refundedAt === null ? 'refundOwed' : 'refunded';
   }
 }

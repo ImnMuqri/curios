@@ -90,7 +90,7 @@ const DIGITAL_SENT = { sentAt: { not: null }, lines: { none: { kind: 'PHYSICAL' 
  * badge, so nothing they count can fall off the list.
  */
 const NEEDS_OWNER = {
-  OR: [{ status: 'PLACED' as const }, { status: 'PAID' as const, NOT: DIGITAL_SENT }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null }, { chipPaidTwiceAt: { not: null }, secondRefundedAt: null }],
+  OR: [{ status: 'PLACED' as const }, { status: 'PAID' as const, NOT: DIGITAL_SENT }, { status: 'CANCELLED' as const, paidAt: { not: null }, refundedAt: null, totalCents: { gt: 0 } }, { chipPaidTwiceAt: { not: null }, secondRefundedAt: null }],
 };
 
 const newestFirst = (a: { createdAt: Date; number: number }, b: { createdAt: Date; number: number }) =>

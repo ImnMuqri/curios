@@ -597,4 +597,11 @@ describe('OrderDetail, a voucher', () => {
     expect(steps().getByText('Paid with a voucher')).toBeInTheDocument();
     expect(steps().queryByText('Receipt')).toBeNull();
   });
+
+  it('a cancelled voucher-paid order owes no refund: no "You owe", no Refund owed badge', () => {
+    show({ ...free, status: 'CANCELLED', cancelledAt: new Date('2026-10-16T01:00:00Z') });
+    expect(screen.queryByText(/You owe/)).toBeNull();
+    expect(screen.queryByText('Refund owed')).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Mark refunded' })).toBeNull();
+  });
 });

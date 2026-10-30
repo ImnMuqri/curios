@@ -149,6 +149,11 @@ describe('orderView', () => {
     expect(orderView({ ...o, status: 'COMPLETED', paidAt: at, paidVia: 'CHIP' })).toBe('completed');
     expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, paidVia: 'CHIP' })).toBe('refundOwed');
   });
+
+  it('a cancelled order of RM0 took no money, so it owes no refund', () => {
+    expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, paidVia: 'VOUCHER', totalCents: 0 })).toBe('cancelled');
+    expect(orderView({ ...o, status: 'CANCELLED', paidAt: at, totalCents: 100 })).toBe('refundOwed');
+  });
 });
 
 describe('customerSteps', () => {

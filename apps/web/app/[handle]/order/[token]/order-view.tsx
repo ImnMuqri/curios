@@ -236,6 +236,7 @@ export function OrderView(props: OrderViewProps) {
     receiptUploadedAt: date(order.receiptUploadedAt),
     paidAt: date(order.paidAt),
     refundedAt: date(order.refundedAt),
+    totalCents: order.totalCents,
   };
   const view = orderView(facts);
   const steps = customerSteps({ status: order.status, paidAt: facts.paidAt, day: order.day }, new Date(props.now));

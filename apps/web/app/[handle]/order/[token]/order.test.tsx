@@ -826,6 +826,12 @@ describe('OrderView: a voucher', () => {
     expect(steps()).toEqual(['Placed, done', 'Paid, done', 'Ready ←', 'Done']);
   });
 
+  it('a cancelled voucher-paid order reads plainly Cancelled, with no refund due', () => {
+    render(<OrderView {...withOrder({ ...free.order, status: 'CANCELLED' })} />);
+    expect(screen.getByText(copy.statusCancelled)).toBeInTheDocument();
+    expect(screen.queryByText(copy.statusRefundDue)).toBeNull();
+  });
+
   it('a voucher-paid digital order reads Sent once it is sent', () => {
     render(<OrderView {...withOrder({ ...free.order, method: null, day: null, sentAt: '2026-10-15T02:01:00.000Z', email: 'a@b.my' })} />);
     expect(screen.getByText('Paid · Sent to your email')).toBeInTheDocument();

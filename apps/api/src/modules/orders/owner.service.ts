@@ -81,7 +81,7 @@ export async function markRefunded(deps: OwnerOrderDeps, accountId: string, id: 
     await move(deps.prisma, accountId, id, { ...from('PAID', 'COMPLETED'), chipPaidTwiceAt: { not: null }, secondRefundedAt: null }, { secondRefundedAt: now });
     return;
   }
-  await move(deps.prisma, accountId, id, { ...from('CANCELLED'), paidAt: { not: null }, refundedAt: null }, { refundedAt: now });
+  await move(deps.prisma, accountId, id, { ...from('CANCELLED'), paidAt: { not: null }, refundedAt: null, totalCents: { gt: 0 } }, { refundedAt: now });
   await deps.prisma.order.updateMany({
     where: { id, page: { accountId }, status: 'CANCELLED', chipPaidTwiceAt: { not: null }, secondRefundedAt: null },
     data: { secondRefundedAt: now },
