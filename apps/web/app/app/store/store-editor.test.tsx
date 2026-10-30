@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { StoreEditor } from './store-editor.js';
-import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
+import type { OwnerVoucher } from '@curios/core/vouchers';
+import { PHYSICAL_ITEM, PHYSICAL_ROW, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 
 const ready: StoreSettings = {
   enabled: true, shopDescription: 'Homemade cakes.', shopHalal: false, pickupEnabled: true, pickupNote: 'Seksyen 7', deliveryMode: 'FLAT',
@@ -41,7 +42,8 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
     removeSession: vi.fn(),
   };
   const chipApi: ChipApi = { connect: vi.fn(), disconnect: vi.fn(async () => undefined), test: vi.fn() };
-  return { settingsApi, itemsApi, chipApi };
+  const vouchersApi: VouchersApi = { add: vi.fn(), update: vi.fn(), remove: vi.fn(async () => undefined) };
+  return { settingsApi, itemsApi, chipApi, vouchersApi };
 }
 
 const noChip: ChipState = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
@@ -61,6 +63,13 @@ beforeEach(() => window.sessionStorage.clear());
 afterEach(() => vi.useRealTimers());
 
 describe('opening on a tab', () => {
+  it('opens on Vouchers when the link says so, with the shop in the phone', () => {
+    render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="vouchers" {...apis()} />);
+    expect(editTab('Vouchers')).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: 'Vouchers' })).toBeVisible();
+    expect(within(screen.getByRole('tablist', { name: 'Preview screen' })).getByRole('tab', { name: 'Shop' })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('opens on Payment when the link says so, and on Items otherwise', () => {
     const calls = apis();
     const { unmount } = render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} initialTab="payment" {...calls} />);
@@ -425,5 +434,24 @@ describe('without the template look', () => {
     }
     expect(document.querySelector('[class*="deliveryIcon"]')).toBeNull();
     expect(document.querySelector('[class*="chip"][data-tone]')).toBeNull();
+  });
+});
+
+describe('vouchers in the phone', () => {
+  const live: OwnerVoucher = {
+    id: 'v1', mode: 'AUTO', kind: 'PERCENT', percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya sale',
+    code: null, name: 'Raya sale', endsAt: null, maxUses: null, active: true, uses: 0, state: 'on', itemName: null,
+  };
+  const withVouchers = (vouchers: OwnerVoucher[]) =>
+    render(<StoreEditor initial={ready} items={items} look={look} qrUrl={null} uploadsEnabled today="2026-10-16" now={NOW} chip={noChip} orders={{ paused: null, nextNumber: 13 }} vouchers={vouchers} {...apis()} />);
+
+  it('shows a live automatic voucher on the shop as customers see it', () => {
+    withVouchers([live]);
+    expect(within(preview()).getAllByText(/10% off/).length).toBeGreaterThan(0);
+  });
+
+  it('shows no voucher that is off, ended or a code', () => {
+    withVouchers([{ ...live, id: 'o', active: false, state: 'off' }, { ...live, id: 'c', mode: 'CODE', code: 'RAYA', label: 'RAYA' }]);
+    expect(within(preview()).queryByText(/10% off/)).toBeNull();
   });
 });

@@ -1,11 +1,12 @@
 'use client';
 
+import type { OwnerVoucher } from '@curios/core/vouchers';
 import { apiFetch } from '../../../lib/api.js';
 import { joinAvatarUrl } from '../../../lib/avatar-url.js';
 import { sendFile } from '../../../lib/send-file.js';
 import { resizeContained, resizeImage } from '../curios/resize-image.js';
 import { StoreEditor } from './store-editor.js';
-import type { ChipApi, ChipState, EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings } from './store-types.js';
+import type { ChipApi, ChipState, EditorItem, ItemRow, ItemsApi, SettingsApi, ShopLook, StoredFile, StoredSession, StoreSettings, VouchersApi } from './store-types.js';
 
 /**
  * Supplies the real API calls. Thin on purpose: a Server Component cannot hand
@@ -24,6 +25,7 @@ export function StoreScreen({
   now,
   chip,
   orders,
+  vouchers,
   initialTab,
 }: {
   initial: StoreSettings;
@@ -36,8 +38,10 @@ export function StoreScreen({
   now: Date;
   chip: ChipState;
   orders: { paused: string | null; nextNumber: number };
+  /** The owner's vouchers, as db-read gives them. */
+  vouchers?: OwnerVoucher[];
   /** The tab to open on (`?tab=payment`); Items when there is none. */
-  initialTab?: 'items' | 'payment' | 'delivery';
+  initialTab?: 'items' | 'payment' | 'delivery' | 'vouchers';
 }) {
   const settingsApi: SettingsApi = {
     save: async (patch) => (await apiFetch<{ settings: StoreSettings }>('/store/settings', { method: 'PATCH', body: JSON.stringify(patch) })).settings,
@@ -93,6 +97,14 @@ export function StoreScreen({
     test: async () => (await apiFetch<{ url: string }>('/store/chip/test', { method: 'POST' })).url,
   };
 
+  const vouchersApi: VouchersApi = {
+    add: async (input) => (await apiFetch<{ voucher: OwnerVoucher }>('/store/vouchers', { method: 'POST', body: JSON.stringify(input) })).voucher,
+    update: async (id, patch) => (await apiFetch<{ voucher: OwnerVoucher }>(`/store/vouchers/${id}`, { method: 'PATCH', body: JSON.stringify(patch) })).voucher,
+    remove: async (id) => {
+      await apiFetch(`/store/vouchers/${id}`, { method: 'DELETE' });
+    },
+  };
+
   return (
     <StoreEditor
       initial={initial}
@@ -104,10 +116,12 @@ export function StoreScreen({
       now={now}
       chip={chip}
       orders={orders}
+      vouchers={vouchers}
       initialTab={initialTab}
       settingsApi={settingsApi}
       itemsApi={itemsApi}
       chipApi={chipApi}
+      vouchersApi={vouchersApi}
     />
   );
 }

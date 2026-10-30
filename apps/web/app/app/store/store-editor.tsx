@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from 'react';
 import { SHOP_DESCRIPTION_MAX, formatRinggit, storeGapMessage, storeGaps } from '@curios/core/store';
+import type { OwnerVoucher } from '@curios/core/vouchers';
 import { PageTheme } from '../../_bento/BentoPage.js';
 import { nextOrderDay } from '../../[handle]/shop/pill.js';
 import { ProductView } from '../../[handle]/shop/[slug]/product-view.js';
@@ -21,19 +22,21 @@ import { ItemsList } from './items-list.js';
 import { PayPreview } from './pay-preview.js';
 import { PaymentTab } from './payment-tab.js';
 import { orNull, useSettingText } from './setting-field.js';
-import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings } from './store-types.js';
+import { previewItem, type ChipApi, type ChipState, type EditorItem, type ItemsApi, type SettingsApi, type SettingsPatch, type ShopLook, type StoreSettings, type VouchersApi } from './store-types.js';
 import styles from './store.module.css';
+import { VouchersTab } from './vouchers-tab.js';
 
 const TABS = [
   { id: 'items', label: 'Items' },
   { id: 'payment', label: 'Payment' },
   { id: 'delivery', label: 'Pickup & delivery' },
+  { id: 'vouchers', label: 'Vouchers' },
 ] as const;
 type Tab = (typeof TABS)[number]['id'];
 type PreviewTab = 'shop' | 'item' | 'pay';
 
-/** What the phone shows for an editing tab, as the board turns it: the shop for Items, the order page for the rest. */
-const previewFor = (tab: Tab): PreviewTab => (tab === 'items' ? 'shop' : 'pay');
+/** What the phone shows for an editing tab, as the board turns it: the shop for Items and Vouchers, the order page for the rest. */
+const previewFor = (tab: Tab): PreviewTab => (tab === 'items' || tab === 'vouchers' ? 'shop' : 'pay');
 
 const message = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
 
@@ -51,6 +54,14 @@ function trackedItems(api: ItemsApi, track: SaveTrack): ItemsApi {
     addSession: (id, input) => track(api.addSession(id, input)),
     updateSession: (id, sessionId, patch) => track(api.updateSession(id, sessionId, patch)),
     removeSession: (id, sessionId) => track(api.removeSession(id, sessionId)),
+  };
+}
+
+function trackedVouchers(api: VouchersApi, track: SaveTrack): VouchersApi {
+  return {
+    add: (input) => track(api.add(input)),
+    update: (id, patch) => track(api.update(id, patch)),
+    remove: (id) => track(api.remove(id)),
   };
 }
 
@@ -107,10 +118,12 @@ export function StoreEditor({
   now,
   chip: initialChip,
   orders,
+  vouchers: initialVouchers = [],
   initialTab = 'items',
   settingsApi: rawSettings,
   itemsApi: rawItems,
   chipApi,
+  vouchersApi: rawVouchers,
 }: {
   initial: StoreSettings;
   items: EditorItem[];
@@ -128,15 +141,20 @@ export function StoreEditor({
    * while it may), and the number the next order will get, for the preview.
    */
   orders: { paused: string | null; nextNumber: number };
+  /** The owner's vouchers, as the read gives them. */
+  vouchers?: OwnerVoucher[];
   /** The tab to open on; Items when there is none. */
   initialTab?: Tab;
   settingsApi: SettingsApi;
   itemsApi: ItemsApi;
   chipApi: ChipApi;
+  vouchersApi: VouchersApi;
 }) {
   const { state, track } = useSaveStatus();
   const settingsApi = useMemo(() => trackedSettings(rawSettings, track), [rawSettings, track]);
   const itemsApi = useMemo(() => trackedItems(rawItems, track), [rawItems, track]);
+
+  const vouchersApi = useMemo(() => trackedVouchers(rawVouchers, track), [rawVouchers, track]);
 
   const [settings, setSettings] = useState(initial);
   const [qr, setQr] = useState({ has: Boolean(initial.paymentQrKey), url: qrUrl });
@@ -148,11 +166,12 @@ export function StoreEditor({
     itemsRef.current = next;
     setItems(next);
   };
+  const [vouchers, setVouchers] = useState(initialVouchers);
   const [tab, setTab] = useState<Tab>(initialTab);
   /** The item open on its own: an id, 'new', or null for the list. */
   const [editing, setEditing] = useState<string | null>(null);
   const [draftItem, setDraftItem] = useState<EditorItem | null>(null);
-  const [previewTab, setPreviewTab] = useState<PreviewTab>(initialTab === 'items' ? 'shop' : 'pay');
+  const [previewTab, setPreviewTab] = useState<PreviewTab>(previewFor(initialTab));
   /** A row tapped in the preview's shop: the Item screen shows it, until the owner opens another item. */
   const [picked, setPicked] = useState<string | null>(null);
   const [listError, setListError] = useState('');
@@ -256,6 +275,8 @@ export function StoreEditor({
   // What the phone shows: the chosen screen, or the shop when that one has nothing to show (no item
   // to open, nothing to pay for) -- also when the choice was made before the last item went.
   const shownTab: PreviewTab = (previewTab === 'pay' && live.length === 0) || (previewTab === 'item' && !previewFocus) ? 'shop' : previewTab;
+  // Customers see the automatic vouchers that are on; the preview follows what the owner adds and switches.
+  const liveVouchers = vouchers.filter((v) => v.mode === 'AUTO' && v.state === 'on');
   const previewItems = shown.filter((item) => item.available || (shownTab === 'item' && item.id === previewFocus?.id));
 
   // The preview's pill tells the truth about the switch: a shop that is off, or paused by its plan,
@@ -416,6 +437,10 @@ export function StoreEditor({
           <div role="tabpanel" id="panel-delivery" aria-labelledby="tab-delivery" hidden={tab !== 'delivery'} className={`${ui.panel} ${styles.panel}`}>
             <DeliveryTab settings={settings} save={save} today={todayDate} />
           </div>
+
+          <div role="tabpanel" id="panel-vouchers" aria-labelledby="tab-vouchers" hidden={tab !== 'vouchers'} className={`${ui.panel} ${styles.panel}`}>
+            <VouchersTab vouchers={vouchers} items={items} api={vouchersApi} onChange={setVouchers} />
+          </div>
         </div>
       </div>
 
@@ -460,6 +485,7 @@ export function StoreEditor({
                   halal={settings.shopHalal}
                   noticeDays={settings.minNoticeDays}
                   nextDay={previewNextDay}
+                  vouchers={liveVouchers}
                   pickup={settings.pickupEnabled}
                   storageKey="curios-store-preview"
                   inline
@@ -478,6 +504,7 @@ export function StoreEditor({
                     deliveryMode={settings.deliveryMode}
                     canTakeOrders={previewTakesOrders}
                     nextDay={previewNextDay}
+                    vouchers={liveVouchers}
                     description={orNull(description.text)}
                     halal={settings.shopHalal}
                     coverUrl={look.coverUrl}

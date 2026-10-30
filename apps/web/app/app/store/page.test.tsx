@@ -6,7 +6,8 @@ const getOwnerStore = vi.fn();
 const getMyCurios = vi.fn();
 const getOwnerPage = vi.fn();
 const getSettings = vi.fn();
-vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage, getSettings }));
+const getOwnerVouchers = vi.fn();
+vi.mock('@curios/db-read', () => ({ getOwnerStore, getMyCurios, getOwnerPage, getSettings, getOwnerVouchers }));
 
 const resolveOwner = vi.fn();
 vi.mock('../session.js', () => ({ resolveOwner }));
@@ -47,6 +48,7 @@ describe('StorePage', () => {
   beforeEach(() => {
     vi.resetAllMocks();
     getSettings.mockResolvedValue(defaultSettings());
+    getOwnerVouchers.mockResolvedValue([]);
     redirect.mockImplementation((url: string) => {
       throw new Error(`NEXT_REDIRECT:${url}`);
     });
@@ -113,6 +115,16 @@ describe('StorePage', () => {
     expect(StoreScreen.mock.calls[1]![0].initialTab).toBe('items');
     render(await StorePage({ searchParams: Promise.resolve({}) }));
     expect(StoreScreen.mock.calls[2]![0].initialTab).toBe('items');
+    render(await StorePage({ searchParams: Promise.resolve({ tab: 'vouchers' }) }));
+    expect(StoreScreen.mock.calls[3]![0].initialTab).toBe('vouchers');
+  });
+
+  it('hands over the owner’s vouchers', async () => {
+    getOwnerStore.mockResolvedValue({ mode: 'BUSINESS', settings, items: [], chip: noChip });
+    getOwnerVouchers.mockResolvedValue([{ id: 'v1' }]);
+    render(await StorePage({ searchParams: Promise.resolve({}) }));
+    expect(getOwnerVouchers).toHaveBeenCalledWith('acc1');
+    expect(StoreScreen.mock.calls[0]![0].vouchers).toEqual([{ id: 'v1' }]);
   });
 
   it('hands the items over with their picture URLs worked out here', async () => {
