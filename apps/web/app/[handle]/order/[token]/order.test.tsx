@@ -361,6 +361,8 @@ const order: PublicOrder = {
   itemsCents: 21500,
   deliveryCents: 0,
   totalCents: 21500,
+  discountCents: 0,
+  voucherLabel: null,
   status: 'PLACED',
   receiptKey: 'receipts/p1/abc.jpg',
   receiptType: 'image/jpeg',

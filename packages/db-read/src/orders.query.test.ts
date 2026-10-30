@@ -333,6 +333,19 @@ describe('getOrderByToken', () => {
     expect(await getCheckout(owner.handle, NOW)).toBeNull();
   });
 
+  it('returns what a voucher took off and its label, and 0 and null on an order with none', async () => {
+    const owner = await anOwner();
+    const voucher = await write.shopVoucher.create({ data: { pageId: owner.pageId, mode: 'CODE', code: 'RAYA', kind: 'AMOUNT', amountCents: 500 } });
+    const token = randomUUID();
+    await anOrder(owner.pageId, { totalCents: 4500, discountCents: 500, voucherId: voucher.id, voucherLabel: 'RAYA', status: 'PAID', paidAt: NOW, paidVia: 'VOUCHER' }, token);
+    expect(await getOrderByToken(token)).toMatchObject({ itemsCents: 5000, totalCents: 4500, discountCents: 500, voucherLabel: 'RAYA', paidVia: 'VOUCHER' });
+    const plainToken = randomUUID();
+    await anOrder(owner.pageId, {}, plainToken);
+    expect(await getOrderByToken(plainToken)).toMatchObject({ discountCents: 0, voucherLabel: null });
+    const orders = await getOwnerOrders(owner.accountId);
+    expect(orders.map((o) => [o.discountCents, o.voucherLabel]).sort()).toEqual([[0, null], [500, 'RAYA']]);
+  });
+
   it('returns the order with its page, payment details and links', async () => {
     const owner = await anOwner({ bankName: 'Maybank', bankAccountName: 'Nor', bankAccountNumber: '1122334455', paymentQrKey: 'qr/a.png' });
     await write.link.create({ data: { pageId: owner.pageId, label: 'WhatsApp', url: 'https://wa.me/60123456789', position: 0 } });

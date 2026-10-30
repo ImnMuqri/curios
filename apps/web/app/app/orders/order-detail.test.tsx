@@ -20,6 +20,8 @@ const mira: OrderRow = {
   itemsCents: 23500,
   deliveryCents: 0,
   totalCents: 23500,
+  discountCents: 0,
+  voucherLabel: null,
   status: 'PLACED',
   receiptUrl: 'https://cdn.example/receipts/p1/abc.jpg',
   receiptType: 'image/jpeg',

@@ -51,6 +51,7 @@ const shop: Checkout = {
   payByQr: true,
   hasQr: true,
   chipMethods: ['fpx', 'visa'],
+  vouchers: [],
 };
 
 const params = (handle: string) => ({ params: Promise.resolve({ handle }) });

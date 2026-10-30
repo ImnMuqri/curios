@@ -42,7 +42,7 @@ export interface OrderViewProps {
     paidAt: string | null;
     refundedAt: string | null;
     /** How it was paid, and for CHIP, how CHIP says and its reference. */
-    paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+    paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | 'VOUCHER' | null;
     paidMethodLabel?: string | null;
     paidRef?: string | null;
     /** Placed, with a CHIP purchase started for it: the page asks the API how it went. */

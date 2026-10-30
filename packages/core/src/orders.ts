@@ -156,7 +156,7 @@ export function orderView(o: {
   receiptUploadedAt: Date | null;
   paidAt: Date | null;
   refundedAt: Date | null;
-  paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | null;
+  paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | 'VOUCHER' | null;
 }): OrderView {
   switch (o.status) {
     case 'PLACED':

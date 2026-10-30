@@ -54,6 +54,7 @@ const shop = {
   payByQr: true,
   hasQr: true,
   chipMethods: null,
+  vouchers: [],
 } as Checkout;
 
 beforeEach(() => vi.stubEnv('STORAGE_PUBLIC_URL', 'https://cdn.test'));

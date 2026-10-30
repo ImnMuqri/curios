@@ -52,6 +52,7 @@ const shop: Checkout = {
   payByQr: true,
   hasQr: true,
   chipMethods: null,
+  vouchers: [],
 };
 
 beforeEach(() => {

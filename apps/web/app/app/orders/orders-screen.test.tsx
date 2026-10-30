@@ -22,6 +22,8 @@ const base: OrderRow = {
   itemsCents: 23500,
   deliveryCents: 0,
   totalCents: 23500,
+  discountCents: 0,
+  voucherLabel: null,
   status: 'PLACED',
   receiptUrl: 'https://cdn.example/r.jpg',
   receiptType: 'image/jpeg',
