@@ -59,6 +59,16 @@ describe('disk private files', () => {
     expect((await readdir(path.join(root, 'item1'))).sort()).toEqual(['keep.pdf', 'keep.pdf.type']);
   });
 
+  it('reads a stored file back into memory, and refuses an unsafe key', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'curios-files-'));
+    roots.push(root);
+    const files = createDiskPrivateFiles(root);
+    const bytes = Buffer.from([9, 8, 7, 0, 255]);
+    await files.put('item1/o.jpg', bytes, 'image/jpeg', bytes.length);
+    expect((await files.read('item1/o.jpg')).equals(bytes)).toBe(true);
+    await expect(files.read('../x')).rejects.toThrow('Invalid file key');
+  });
+
   it('delivers an attachment disposition for a non-ASCII name', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'curios-files-'));
     roots.push(root);

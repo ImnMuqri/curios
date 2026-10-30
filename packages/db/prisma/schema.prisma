@@ -389,9 +389,35 @@ model Item {
   files       ItemFile[]
   codes       ItemCode[]
   sessions    ItemSession[]
+  /// Up to ITEM_PHOTOS_MAX square photos, in `position` order.
+  photos      ItemPhoto[]
 
   @@unique([pageId, slug])
   @@index([pageId, position])
+}
+
+/// One of an item's photos: the owner's original kept private, and the square
+/// the shop shows, cropped from it.
+model ItemPhoto {
+  id          String   @id @default(cuid())
+  itemId      String
+  item        Item     @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  position    Int
+  /// An object key in the private bucket: the uploaded file, kept so the crop can be redone.
+  originalKey String
+  /// An object key in the public bucket: the cropped square the shop shows.
+  squareKey   String
+  /// The original's size in pixels, after EXIF rotation.
+  width       Int
+  height      Int
+  /// The crop frame on the original, in its pixels: the top-left corner...
+  frameX      Float
+  frameY      Float
+  /// ...and the side of the square.
+  frameSize   Float
+  createdAt   DateTime @default(now())
+
+  @@index([itemId, position])
 }
 
 model ItemFile {

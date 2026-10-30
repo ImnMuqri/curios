@@ -17,6 +17,8 @@ export const PRIVATE_LINK_SECONDS = 300;
 export interface PrivateFiles {
   put: (key: string, body: NodeJS.ReadableStream | Buffer, contentType: string, sizeBytes: number) => Promise<void>;
   remove: (key: string) => Promise<void>;
+  /** The whole file in memory, for work on its bytes (cropping a photo's square). */
+  read: (key: string) => Promise<Buffer>;
   /**
    * A redirect is a presigned link that already forces a download. A stream
    * carries `disposition`: the caller MUST send it as Content-Disposition,
@@ -78,6 +80,9 @@ export function createDiskPrivateFiles(root: string = DEFAULT_ROOT): PrivateFile
         throw err;
       }
     },
+    async read(key) {
+      return readFile(locate(key));
+    },
     async remove(key) {
       const file = locate(key);
       await rm(file, { force: true });
@@ -124,6 +129,12 @@ export function createS3PrivateFiles(env: NodeJS.ProcessEnv = process.env, clien
         client: s3,
         params: { Bucket: bucket, Key: key, Body: body as Readable | Buffer, ContentType: contentType },
       }).done();
+    },
+    async read(key) {
+      assertSafeKey(key);
+      const response = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
+      if (!response.Body) throw new Error('File has no body');
+      return Buffer.from(await response.Body.transformToByteArray());
     },
     async remove(key) {
       assertSafeKey(key);
