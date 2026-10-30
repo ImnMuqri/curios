@@ -20,7 +20,7 @@ const settings: StoreSettings = {
 };
 
 const items: EditorItem[] = [
-  { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
+  { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null },
 ];
 
 const look: ShopLook = {
@@ -90,7 +90,7 @@ describe('StoreScreen, against the API', () => {
 
   it('adds with POST /store/items once the new item has a name and a price', async () => {
     vi.useFakeTimers();
-    apiFetch.mockResolvedValue({ item: { ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
+    apiFetch.mockResolvedValue({ item: { ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, sku: null, description: null, photoKey: null, available: true, priceCents: 900, options: [] } });
     screenWith();
     fireEvent.click(screen.getByRole('button', { name: '+ Add item' }));
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
@@ -98,7 +98,7 @@ describe('StoreScreen, against the API', () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(600); });
     expect(apiFetch).toHaveBeenCalledWith('/store/items', {
       method: 'POST',
-      body: JSON.stringify({ name: 'Tart', description: null, category: null, tag: null, pricing: { kind: 'single', priceCents: 900 } }),
+      body: JSON.stringify({ name: 'Tart', description: null, category: null, tag: null, sku: null, pricing: { kind: 'single', priceCents: 900 } }),
     });
     fireEvent.click(screen.getByRole('button', { name: 'All items' }));
     expect(screen.getByRole('listitem', { name: 'Tart' })).toBeInTheDocument();

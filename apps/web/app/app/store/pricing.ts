@@ -1,4 +1,4 @@
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_TAG_MAX, parseRinggit, pricingProblem, type Pricing } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, parseRinggit, pricingProblem, type Pricing } from '@curios/core/store';
 
 /**
  * An item's fields as the owner types them, and the checks that turn them
@@ -11,6 +11,7 @@ export const NAME_SENTENCE = `Give the item a name, up to ${ITEM_NAME_MAX} chara
 export const DESCRIPTION_SENTENCE = `A description is up to ${ITEM_DESCRIPTION_MAX} characters.`;
 export const CATEGORY_SENTENCE = `A category is up to ${ITEM_CATEGORY_MAX} characters.`;
 export const TAG_SENTENCE = `A tag is up to ${ITEM_TAG_MAX} characters. Try a shorter word, like New.`;
+export const SKU_SENTENCE = `An item code is up to ${ITEM_SKU_MAX} characters.`;
 
 /** 9500 -> "95", 9550 -> "95.50": a price as the owner would type it. */
 export function centsText(cents: number): string {
@@ -54,16 +55,16 @@ export function pricingOf(draft: PricingDraft): { pricing: Pricing } | { error: 
   return problem ? { error: problem } : { pricing };
 }
 
-export type CheckedItem = { name: string; description: string | null; category: string | null; tag: string | null; pricing: Pricing };
+export type CheckedItem = { name: string; description: string | null; category: string | null; tag: string | null; sku: string | null; pricing: Pricing };
 
 const tidy = (text: string) => text.replace(/\s+/g, ' ').trim();
 
-/** Name, description, category, tag and pricing, checked in the order the owner reads them. */
+/** Name, description, category, tag, item code and pricing, checked in the order the owner reads them. */
 export function checkFields(
   name: string,
   description: string,
   draft: PricingDraft,
-  extras: { category: string; tag: string } = { category: '', tag: '' },
+  extras: { category: string; tag: string; sku?: string } = { category: '', tag: '' },
 ): CheckedItem | { error: string } {
   const trimmed = name.trim();
   if (trimmed === '' || [...trimmed].length > ITEM_NAME_MAX) return { error: NAME_SENTENCE };
@@ -73,9 +74,11 @@ export function checkFields(
   if ([...category].length > ITEM_CATEGORY_MAX) return { error: CATEGORY_SENTENCE };
   const tag = tidy(extras.tag);
   if ([...tag].length > ITEM_TAG_MAX) return { error: TAG_SENTENCE };
+  const sku = (extras.sku ?? '').trim();
+  if ([...sku].length > ITEM_SKU_MAX) return { error: SKU_SENTENCE };
   const priced = pricingOf(draft);
   if ('error' in priced) return priced;
-  return { name: trimmed, description: description.trim() || null, category: category || null, tag: tag || null, pricing: priced.pricing };
+  return { name: trimmed, description: description.trim() || null, category: category || null, tag: tag || null, sku: sku || null, pricing: priced.pricing };
 }
 
 /** The price fields of an item as the API and the shop hold them. */

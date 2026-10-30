@@ -9,7 +9,7 @@ const ready: StoreSettings = {
   bankAccountName: 'Lina', bankAccountNumber: '1234567890', tileSize: null,
 };
 
-const base = { ...PHYSICAL_ITEM, slug: 'x', category: null, tag: null, description: null, photoKey: null, photoUrl: null, options: [] };
+const base = { ...PHYSICAL_ITEM, slug: 'x', category: null, tag: null, sku: null, description: null, photoKey: null, photoUrl: null, options: [] };
 const items: EditorItem[] = [
   { ...base, id: 'a', name: 'Kek batik', priceCents: 4500, available: true },
   { ...base, id: 'b', name: 'Burnt cheesecake', priceCents: 8500, available: false },
@@ -28,7 +28,7 @@ function apis(save?: (patch: SettingsPatch) => Promise<StoreSettings>) {
   };
   const itemsApi: ItemsApi = {
     add: vi.fn(),
-    update: vi.fn(async (id, patch) => ({ ...PHYSICAL_ROW, id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
+    update: vi.fn(async (id, patch) => ({ ...PHYSICAL_ROW, id, name: 'Kek batik', slug: 'kek-batik', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: 4500, options: [], available: patch.available ?? true })),
     remove: vi.fn(async () => undefined),
     reorder: vi.fn(async () => undefined),
     uploadPhoto: vi.fn(),

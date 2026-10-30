@@ -215,7 +215,8 @@ a.headLink {
 }
 
 .float input,
-.float textarea {
+.float textarea,
+.float select {
   display: block;
   width: 100%;
   padding: 20px 12px 7px;
@@ -233,8 +234,29 @@ a.headLink {
   resize: none;
 }
 
+/* The browser's own arrow sits in the label's way; this one is drawn right, in the muted ink. */
+.float select {
+  padding-right: 34px;
+  appearance: none;
+  cursor: pointer;
+}
+
+.float:has(> select)::after {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  width: 16px;
+  height: 16px;
+  margin-top: -8px;
+  background: var(--muted);
+  content: '';
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") center / contain no-repeat;
+  pointer-events: none;
+}
+
 .float input:focus,
 .float textarea:focus,
+.float select:focus,
 .input:focus {
   border-color: var(--biru);
   box-shadow: 0 0 0 3px rgb(35 64 200 / 12%);

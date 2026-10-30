@@ -22,6 +22,8 @@ export const ITEM_CATEGORY_MAX = 30;
 export const ITEM_TAG_MAX = 20;
 /** The tags the editor offers; the owner may type their own instead. */
 export const ITEM_TAG_PRESETS = ['Best seller', 'Pre-order', 'New'] as const;
+/** The owner's own reference for an item (a SKU); only the owner sees it. */
+export const ITEM_SKU_MAX = 40;
 /** RM10,000. A cake shop's whole catalogue sits far below it; a typo of three extra zeros does not. */
 export const PRICE_MAX_CENTS = 1_000_000;
 export const PICKUP_NOTE_MAX = 120;

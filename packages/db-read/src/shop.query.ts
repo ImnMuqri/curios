@@ -194,6 +194,8 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
  * and times appear only while the item is digital and set to deliver them.
  */
 export interface OwnerItem extends ShopItem {
+  /** The owner's own reference; read for the editor only, never for the shop. */
+  sku: string | null;
   available: boolean;
   kind: 'PHYSICAL' | 'DIGITAL';
   delivery: 'FILES' | 'LINK' | 'CODES' | 'SESSION' | null;
@@ -259,6 +261,7 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
         orderBy: { position: 'asc' },
         select: {
           ...ITEM_SELECT,
+          sku: true,
           available: true,
           kind: true,
           delivery: true,

@@ -362,6 +362,9 @@ model Item {
   /// One short word on the card (Best seller, Pre-order, New, or the owner's
   /// own), at most ITEM_TAG_MAX characters; null when blank.
   tag         String?
+  /// The owner's own reference (a SKU), at most ITEM_SKU_MAX characters; null when
+  /// blank. Never shown in the shop. Not ItemCode, which is a digital item's codes.
+  sku         String?
   /// An object key in storage, like Page.avatarKey.
   photoKey    String?
   priceCents  Int?

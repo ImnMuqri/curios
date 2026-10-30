@@ -162,6 +162,25 @@ describe('item link, category and tag', () => {
     expect((await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { tag: 'y'.repeat(21) })).json().error.code).toBe('INVALID_ITEM');
     expect((await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, tag: 'x'.repeat(20) })).statusCode).toBe(201);
   });
+
+  it('an item code is optional, saved trimmed, and blank clears it', async () => {
+    const owner = await anOwner(app);
+    expect((await call(app, 'POST', '/store/items', owner.cookie, cookies)).json().item).toMatchObject({ sku: null });
+    const made = await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, name: 'Kek batik', sku: '  KB-500G ' });
+    expect(made.json().item).toMatchObject({ sku: 'KB-500G' });
+    const id = made.json().item.id as string;
+    expect((await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { sku: 'KB-1KG' })).json().item).toMatchObject({ sku: 'KB-1KG' });
+    expect((await call(app, 'PATCH', `/store/items/${id}`, owner.cookie, { sku: '  ' })).json().item).toMatchObject({ sku: null });
+  });
+
+  it('an item code over 40 characters is refused with a clear error', async () => {
+    const owner = await anOwner(app);
+    const res = await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, sku: 'x'.repeat(41) });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error).toMatchObject({ code: 'INVALID_ITEM' });
+    expect(res.json().error.message).toMatch(/item code to 40 characters/);
+    expect((await call(app, 'POST', '/store/items', owner.cookie, { ...cookies, sku: 'x'.repeat(40) })).statusCode).toBe(201);
+  });
 });
 
 describe('DELETE, order, photo', () => {

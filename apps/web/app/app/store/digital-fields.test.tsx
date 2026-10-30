@@ -7,11 +7,11 @@ import { sizeLabel } from './digital-fields.js';
 import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 
 const MB = 1_048_576;
-const base: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Recipe e-book', slug: 'a', category: null, tag: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null };
+const base: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Recipe e-book', slug: 'a', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: 2500, options: [], available: true, photoUrl: null };
 const files = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `f${i}`, name: `guide-${i}.pdf`, sizeBytes: 4 * MB }));
 const digital = (over: Partial<EditorItem>): EditorItem => ({ ...base, kind: 'DIGITAL', ...over });
 
-const row = (over: Partial<ItemRow> = {}): ItemRow => ({ ...PHYSICAL_ROW, id: 'a', name: 'Recipe e-book', slug: 'a', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 2500, options: [], ...over });
+const row = (over: Partial<ItemRow> = {}): ItemRow => ({ ...PHYSICAL_ROW, id: 'a', name: 'Recipe e-book', slug: 'a', category: null, tag: null, sku: null, description: null, photoKey: null, available: true, priceCents: 2500, options: [], ...over });
 
 function api(over: Partial<ItemsApi> = {}): ItemsApi {
   return {

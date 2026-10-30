@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CATEGORY_SENTENCE, checkFields, type PricingDraft, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
+import { CATEGORY_SENTENCE, checkFields, type PricingDraft, SKU_SENTENCE, TAG_SENTENCE, draftOf, NAME_SENTENCE, PRICE_PARSE_SENTENCE, pricedFields, pricingOf } from './pricing.js';
 
 describe('draftOf', () => {
   it('reads a priced item as one price, and an item with options as its options', () => {
@@ -44,6 +44,7 @@ describe('checkFields', () => {
       description: null,
       category: null,
       tag: null,
+      sku: null,
       pricing: { kind: 'single', priceCents: 900 },
     });
   });
@@ -66,6 +67,13 @@ describe('checkFields, category and tag', () => {
     expect(checkFields('Tart', '', single, { category: '', tag: 'x'.repeat(21) })).toEqual({ error: TAG_SENTENCE });
     expect('error' in checkFields('Tart', '', single, { category: '', tag: 'x'.repeat(20) })).toBe(false);
     expect(checkFields('Tart', '', single, { category: 'x'.repeat(31), tag: '' })).toEqual({ error: CATEGORY_SENTENCE });
+  });
+
+  it('trims an item code, sends null for blank, and refuses one over 40 characters', () => {
+    expect(checkFields('Tart', '', single, { category: '', tag: '', sku: ' TRT-01 ' })).toMatchObject({ sku: 'TRT-01' });
+    expect(checkFields('Tart', '', single, { category: '', tag: '', sku: '  ' })).toMatchObject({ sku: null });
+    expect(checkFields('Tart', '', single, { category: '', tag: '', sku: 'x'.repeat(41) })).toEqual({ error: SKU_SENTENCE });
+    expect('error' in checkFields('Tart', '', single, { category: '', tag: '', sku: 'x'.repeat(40) })).toBe(false);
   });
 });
 

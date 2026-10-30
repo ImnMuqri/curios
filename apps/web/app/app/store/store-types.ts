@@ -48,6 +48,7 @@ export type ItemRow = {
   description: string | null;
   category: string | null;
   tag: string | null;
+  sku: string | null;
   photoKey: string | null;
   available: boolean;
   priceCents: number | null;
@@ -75,7 +76,7 @@ export type DigitalFields =
   | { kind: 'PHYSICAL' }
   | { kind: 'DIGITAL'; delivery: Delivery; accessUrl?: string; accessNote?: string | null; sessionMinutes?: number; sessionPlace?: 'ONLINE' | 'IN_PERSON'; sessionWhere?: string };
 
-export type ItemPatch = { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; pricing?: Pricing } & Partial<DigitalFields>;
+export type ItemPatch = { name?: string; description?: string | null; category?: string | null; tag?: string | null; sku?: string | null; available?: boolean; pricing?: Pricing } & Partial<DigitalFields>;
 
 export type StoredFile = { id: string; name: string; sizeBytes: number };
 export type StoredSession = { id: string; startsAt: string; seats: number; booked: number; seatsLeft: number };
@@ -83,7 +84,7 @@ export type StoredSession = { id: string; startsAt: string; seats: number; booke
 // Function-typed properties, not method shorthand: they are handed around as
 // bare values, and method syntax's implicit `this` trips unbound-method.
 export type ItemsApi = {
-  add: (input: { name: string; description: string | null; category: string | null; tag: string | null; pricing: Pricing; digital?: DigitalFields }) => Promise<ItemRow>;
+  add: (input: { name: string; description: string | null; category: string | null; tag: string | null; sku: string | null; pricing: Pricing; digital?: DigitalFields }) => Promise<ItemRow>;
   update: (id: string, patch: ItemPatch) => Promise<ItemRow>;
   remove: (id: string) => Promise<void>;
   reorder: (ids: string[]) => Promise<void>;

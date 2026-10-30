@@ -1,5 +1,5 @@
 import type { Prisma, PrismaClient } from '@curios/db';
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_TAG_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_NAME_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, MAX_ITEMS, pricingProblem, type Pricing } from '@curios/core/store';
 import { itemSlug } from '@curios/core/slug';
 import { InvalidItemError, ItemHasBookingsError, ItemHasSalesError, ItemLimitError, ItemNotFoundError, ItemOrderStaleError, StoreNotReadyError } from './store.errors.js';
 import { DIGITAL_COLUMNS, DIGITAL_RELATIONS, NO_DIGITAL, digitalDetail, hasBookings, resolveDigital, type DigitalDetail, type DigitalFields, type DigitalInput } from './digital-item.service.js';
@@ -12,6 +12,7 @@ export interface ItemRow extends DigitalFields, DigitalDetail {
   description: string | null;
   category: string | null;
   tag: string | null;
+  sku: string | null;
   photoKey: string | null;
   available: boolean;
   priceCents: number | null;
@@ -27,6 +28,7 @@ const SELECT = {
   description: true,
   category: true,
   tag: true,
+  sku: true,
   photoKey: true,
   available: true,
   priceCents: true,
@@ -72,6 +74,14 @@ function checkTag(raw: string | null): string | null {
   return text;
 }
 
+function checkSku(raw: string | null): string | null {
+  if (raw === null) return null;
+  const text = raw.trim();
+  if (text === '') return null;
+  if ([...text].length > ITEM_SKU_MAX) throw new InvalidItemError(`Keep the item code to ${ITEM_SKU_MAX} characters.`);
+  return text;
+}
+
 /** A unique-constraint failure on the slug: another item took it between the read and the write. */
 function slugRaced(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === 'P2002';
@@ -113,12 +123,13 @@ async function checkCanHandOver(tx: Pick<PrismaClient, 'page'>, pageId: string):
 export async function addItem(
   prisma: PrismaClient,
   accountId: string,
-  input: { name: string; description?: string | null; category?: string | null; tag?: string | null; pricing: Pricing } & DigitalInput,
+  input: { name: string; description?: string | null; category?: string | null; tag?: string | null; sku?: string | null; pricing: Pricing } & DigitalInput,
 ): Promise<ItemRow> {
   const name = checkName(input.name);
   const description = checkDescription(input.description ?? null);
   const category = checkCategory(input.category ?? null);
   const tag = checkTag(input.tag ?? null);
+  const sku = checkSku(input.sku ?? null);
   const { priceCents, options } = pricingData(checkPricing(input.pricing));
   const digital = resolveDigital(NO_DIGITAL, input);
   const page = await storePageFor(prisma, accountId);
@@ -135,7 +146,7 @@ export async function addItem(
     try {
       return toRow(
         await prisma.item.create({
-          data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, priceCents, position: count, options: { create: options }, ...digital },
+          data: { pageId: page.id, name, slug: itemSlug(name, taken), description, category, tag, sku, priceCents, position: count, options: { create: options }, ...digital },
           select: SELECT,
         }),
       );
@@ -149,7 +160,7 @@ export async function updateItem(
   prisma: PrismaClient,
   accountId: string,
   id: string,
-  input: { name?: string; description?: string | null; category?: string | null; tag?: string | null; available?: boolean; pricing?: Pricing } & DigitalInput,
+  input: { name?: string; description?: string | null; category?: string | null; tag?: string | null; sku?: string | null; available?: boolean; pricing?: Pricing } & DigitalInput,
 ): Promise<ItemRow> {
   // No slug here, on purpose: it is frozen at creation.
   const data: Prisma.ItemUpdateManyMutationInput = {};
@@ -157,6 +168,7 @@ export async function updateItem(
   if (input.description !== undefined) data.description = checkDescription(input.description);
   if (input.category !== undefined) data.category = checkCategory(input.category);
   if (input.tag !== undefined) data.tag = checkTag(input.tag);
+  if (input.sku !== undefined) data.sku = checkSku(input.sku);
   if (input.available !== undefined) data.available = input.available;
   const pricing = input.pricing ? pricingData(checkPricing(input.pricing)) : null;
   if (pricing) data.priceCents = pricing.priceCents;

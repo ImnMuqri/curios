@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
-import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS, priceLine } from '@curios/core/store';
+import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS, priceLine } from '@curios/core/store';
 import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
@@ -16,6 +16,9 @@ const message = (failure: unknown) => (failure instanceof Error && failure.messa
 
 const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 
+/** The category select's last choice, which swaps it for a box to type a new one in. No category can be this. */
+const NEW_CATEGORY = '\u0000new';
+
 /** An API row as the screen holds it, keeping the picture URL the row does not carry. */
 export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
   return {
@@ -25,6 +28,7 @@ export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
     description: row.description,
     category: row.category,
     tag: row.tag,
+    sku: row.sku,
     photoKey: row.photoKey,
     available: row.available,
     priceCents: row.priceCents,
@@ -90,7 +94,7 @@ export function ItemEditor({
   /** Which of the four soft tints the no-photo square wears. */
   tint: number;
   uploadsEnabled: boolean;
-  /** The categories the owner's other items already use, offered as the owner types. */
+  /** The categories the owner's other items already use, offered in the select. */
   categories: string[];
   api: ItemsApi;
   /** Called with the item as the API saved it (created, updated, or its picture changed). */
@@ -105,6 +109,9 @@ export function ItemEditor({
   const [description, setDescription] = useState(item?.description ?? '');
   const [category, setCategory] = useState(item?.category ?? '');
   const [tag, setTag] = useState(item?.tag ?? '');
+  const [sku, setSku] = useState(item?.sku ?? '');
+  // Typing a category no other item uses yet; leaving the box puts the select back, showing it.
+  const [typingCategory, setTypingCategory] = useState(false);
   const [draft, setDraft] = useState<PricingDraft>(() => draftOf(item));
   const [digital, setDigital] = useState<DigitalDraft>(() => digitalDraftOf(item));
   const listId = useId();
@@ -119,7 +126,7 @@ export function ItemEditor({
   const savedRef = useRef(saved);
   savedRef.current = saved;
 
-  const checked = checkFields(name, description, draft, { category, tag });
+  const checked = checkFields(name, description, draft, { category, tag, sku });
   const checkedDigital = checkDigital(digital);
   const problem = 'error' in checked ? checked.error : 'error' in checkedDigital ? checkedDigital.error : null;
 
@@ -162,6 +169,7 @@ export function ItemEditor({
       description: checked.description,
       category: checked.category,
       tag: checked.tag,
+      sku: checked.sku,
       photoKey: saved?.photoKey ?? null,
       photoUrl: saved?.photoUrl ?? null,
       available: saved?.available ?? true,
@@ -170,23 +178,25 @@ export function ItemEditor({
       options: pricedFields(checked.pricing).options.map((option, i) => ({ id: `draft-${i}`, ...option })),
     });
     // `checked` is derived from the first three; listing it would re-run on every render.
-  }, [name, description, category, tag, draft, digital, saved]);
+  }, [name, description, category, tag, sku, draft, digital, saved]);
 
-  function edit(next: { name?: string; description?: string; category?: string; tag?: string; draft?: PricingDraft; digital?: DigitalDraft }) {
+  function edit(next: { name?: string; description?: string; category?: string; tag?: string; sku?: string; draft?: PricingDraft; digital?: DigitalDraft }) {
     const nextName = next.name ?? name;
     const nextDescription = next.description ?? description;
     const nextCategory = next.category ?? category;
     const nextTag = next.tag ?? tag;
+    const nextSku = next.sku ?? sku;
     const nextDraft = next.draft ?? draft;
     const nextDigital = next.digital ?? digital;
     if (next.name !== undefined) setName(next.name);
     if (next.description !== undefined) setDescription(next.description);
     if (next.category !== undefined) setCategory(next.category);
     if (next.tag !== undefined) setTag(next.tag);
+    if (next.sku !== undefined) setSku(next.sku);
     if (next.draft) setDraft(next.draft);
     if (next.digital) setDigital(next.digital);
     setError('');
-    const fields = checkFields(nextName, nextDescription, nextDraft, { category: nextCategory, tag: nextTag });
+    const fields = checkFields(nextName, nextDescription, nextDraft, { category: nextCategory, tag: nextTag, sku: nextSku });
     const kinds = checkDigital(nextDigital);
     // A digital item that is not yet complete (no link, no length) is not sent: it would be saved as the wrong thing.
     if ('error' in fields || 'error' in kinds) return;
@@ -288,6 +298,9 @@ export function ItemEditor({
 
   const hasPicture = Boolean(saved?.photoUrl && !pictureFailed);
   const initial = (name.trim()[0] ?? '?').toUpperCase();
+  const shownCategory = category.replace(/\s+/g, ' ').trim();
+  // This item's own category stays a choice, even when it is the only item with it.
+  const categoryChoices = shownCategory && !categories.includes(shownCategory) ? [...categories, shownCategory] : categories;
 
   return (
     <div className={styles.editor} role="group" aria-label={item ? `Edit ${item.name}` : 'New item'}>
@@ -351,15 +364,42 @@ export function ItemEditor({
       </div>
 
       <div className={styles.labels}>
-        <label className={ui.float}>
-          <em>Category</em>
-          <input value={category} list={`${listId}-categories`} maxLength={ITEM_CATEGORY_MAX * 2} autoComplete="off" onChange={(event) => edit({ category: event.target.value })} />
-          <datalist id={`${listId}-categories`}>
-            {categories.map((name) => (
-              <option key={name} value={name} />
-            ))}
-          </datalist>
-        </label>
+        {typingCategory ? (
+          <label className={ui.float}>
+            <em>New category</em>
+            <input
+              value={category}
+              maxLength={ITEM_CATEGORY_MAX * 2}
+              autoComplete="off"
+              autoFocus
+              onChange={(event) => edit({ category: event.target.value })}
+              onBlur={() => setTypingCategory(false)}
+            />
+          </label>
+        ) : (
+          <label className={ui.float}>
+            <em>Category</em>
+            <select
+              value={shownCategory}
+              onChange={(event) => {
+                if (event.target.value !== NEW_CATEGORY) {
+                  edit({ category: event.target.value });
+                  return;
+                }
+                edit({ category: '' });
+                setTypingCategory(true);
+              }}
+            >
+              <option value="">No category</option>
+              {categoryChoices.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+              <option value={NEW_CATEGORY}>New category…</option>
+            </select>
+          </label>
+        )}
         <label className={ui.float}>
           <em>Tag</em>
           <input value={tag} list={`${listId}-tags`} maxLength={ITEM_TAG_MAX * 2} autoComplete="off" onChange={(event) => edit({ tag: event.target.value })} />
@@ -368,6 +408,10 @@ export function ItemEditor({
               <option key={preset} value={preset} />
             ))}
           </datalist>
+        </label>
+        <label className={ui.float}>
+          <em>Item code (optional)</em>
+          <input value={sku} maxLength={ITEM_SKU_MAX * 2} autoComplete="off" spellCheck={false} onChange={(event) => edit({ sku: event.target.value })} />
         </label>
       </div>
 

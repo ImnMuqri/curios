@@ -3,13 +3,13 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ItemEditor } from './item-editor.js';
 import { PHYSICAL_ITEM, PHYSICAL_ROW, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
 
-const batik: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
+const batik: EditorItem = { ...PHYSICAL_ITEM, id: 'a', name: 'Kek Batik', slug: 'a', category: null, tag: null, sku: null, description: 'Ten slices.', photoKey: null, priceCents: 4500, options: [], available: true, photoUrl: null };
 const coklat: EditorItem = {
-  ...PHYSICAL_ITEM, id: 'c', name: 'Kek coklat', slug: 'c', category: null, tag: null, description: null, photoKey: null, priceCents: null, available: true, photoUrl: null,
+  ...PHYSICAL_ITEM, id: 'c', name: 'Kek coklat', slug: 'c', category: null, tag: null, sku: null, description: null, photoKey: null, priceCents: null, available: true, photoUrl: null,
   options: [{ id: 'o1', label: '1kg', priceCents: 9500 }, { id: 'o2', label: '2kg', priceCents: 17000 }],
 };
 
-const row = (over: Partial<ItemRow> = {}): ItemRow => ({ ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
+const row = (over: Partial<ItemRow> = {}): ItemRow => ({ ...PHYSICAL_ROW, id: 'n', name: 'Tart', slug: 'n', category: null, tag: null, sku: null, description: null, photoKey: null, available: true, priceCents: 900, options: [], ...over });
 
 function api(over: Partial<ItemsApi> = {}): ItemsApi {
   return {
@@ -54,14 +54,14 @@ describe('ItemEditor, a new item', () => {
     expect(screen.getByText('Customers see RM9')).toBeInTheDocument();
     await pause();
     expect(calls.add).toHaveBeenCalledTimes(1);
-    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, category: null, tag: null, pricing: { kind: 'single', priceCents: 900 } });
+    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, category: null, tag: null, sku: null, pricing: { kind: 'single', priceCents: 900 } });
     expect(onSaved).toHaveBeenCalledWith(expect.objectContaining({ id: 'n', name: 'Tart' }));
 
     // Later changes update the item it became, not another new one.
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '10' } });
     await pause();
     expect(calls.add).toHaveBeenCalledTimes(1);
-    expect(calls.update).toHaveBeenCalledWith('n', { name: 'Tart', description: null, category: null, tag: null, pricing: { kind: 'single', priceCents: 1000 } });
+    expect(calls.update).toHaveBeenCalledWith('n', { name: 'Tart', description: null, category: null, tag: null, sku: null, pricing: { kind: 'single', priceCents: 1000 } });
   });
 
   // The second save is sent while the first is still creating the item.
@@ -100,26 +100,52 @@ describe('ItemEditor, a new item', () => {
   });
 });
 
-describe('ItemEditor, category and tag', () => {
-  it('saves a trimmed category and tag with the item', async () => {
+describe('ItemEditor, category, tag and item code', () => {
+  it('saves a category picked from the list and a trimmed tag and item code with the item', async () => {
     vi.useFakeTimers();
-    const { calls } = show(null);
+    const { calls } = show(null, api(), true, ['Cakes', 'Kuih']);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Tart' } });
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: '9' } });
-    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '  Kuih  ' } });
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: 'Kuih' } });
     fireEvent.change(screen.getByLabelText('Tag'), { target: { value: ' Best seller ' } });
+    fireEvent.change(screen.getByLabelText('Item code (optional)'), { target: { value: ' TRT-01 ' } });
     await pause();
     expect(calls.add).toHaveBeenCalledTimes(1);
-    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, category: 'Kuih', tag: 'Best seller', pricing: { kind: 'single', priceCents: 900 } });
+    expect(calls.add).toHaveBeenCalledWith({ name: 'Tart', description: null, category: 'Kuih', tag: 'Best seller', sku: 'TRT-01', pricing: { kind: 'single', priceCents: 900 } });
+  });
+
+  it('New category swaps the list for a box; the trimmed name is saved, and leaving the box shows it picked in the list', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(batik, api(), true, ['Cakes']);
+    fireEvent.change(screen.getByLabelText('Category'), { target: { value: '\u0000new' } });
+    const box = screen.getByLabelText('New category');
+    expect(box).toHaveFocus();
+    fireEvent.change(box, { target: { value: '  Kuih  raya ' } });
+    await pause();
+    expect(calls.update).toHaveBeenLastCalledWith('a', expect.objectContaining({ category: 'Kuih raya' }));
+    fireEvent.blur(box);
+    const select = screen.getByLabelText<HTMLSelectElement>('Category');
+    expect(select.value).toBe('Kuih raya');
+    expect([...select.options].map((o) => o.textContent)).toEqual(['No category', 'Cakes', 'Kuih raya', 'New category…']);
   });
 
   it('clearing them sends null', async () => {
     vi.useFakeTimers();
-    const { calls } = show({ ...batik, category: 'Kuih', tag: 'New' });
+    const { calls } = show({ ...batik, category: 'Kuih', tag: 'New', sku: 'KB-1' });
     fireEvent.change(screen.getByLabelText('Category'), { target: { value: '' } });
     fireEvent.change(screen.getByLabelText('Tag'), { target: { value: '  ' } });
+    fireEvent.change(screen.getByLabelText('Item code (optional)'), { target: { value: ' ' } });
     await pause();
-    expect(calls.update).toHaveBeenCalledWith('a', expect.objectContaining({ category: null, tag: null }));
+    expect(calls.update).toHaveBeenCalledWith('a', expect.objectContaining({ category: null, tag: null, sku: null }));
+  });
+
+  it('refuses an item code over 40 characters, saying so, and sends nothing', async () => {
+    vi.useFakeTimers();
+    const { calls } = show(batik);
+    fireEvent.change(screen.getByLabelText('Item code (optional)'), { target: { value: 'x'.repeat(41) } });
+    await pause();
+    expect(calls.update).not.toHaveBeenCalled();
+    expect(screen.getByText(/item code is up to 40 characters/i)).toBeInTheDocument();
   });
 
   it('refuses a tag over 20 characters, saying so, and sends nothing', async () => {
@@ -134,11 +160,11 @@ describe('ItemEditor, category and tag', () => {
     expect(calls.update).toHaveBeenCalledTimes(1);
   });
 
-  it('the category field suggests the other categories of the owner, and the tag its three usual words', () => {
-    show(null, api(), true, ['Cakes', 'Kuih']);
-    const category = screen.getByLabelText('Category');
-    const list = document.getElementById(category.getAttribute('list') ?? 'none');
-    expect([...(list?.querySelectorAll('option') ?? [])].map((o) => o.getAttribute('value'))).toEqual(['Cakes', 'Kuih']);
+  it("the category select offers the other categories of the owner and this item's own, and the tag its three usual words", () => {
+    show({ ...batik, category: 'Raya' }, api(), true, ['Cakes', 'Kuih']);
+    const category = screen.getByLabelText<HTMLSelectElement>('Category');
+    expect(category.value).toBe('Raya');
+    expect([...category.options].map((o) => o.textContent)).toEqual(['No category', 'Cakes', 'Kuih', 'Raya', 'New category…']);
     const tag = screen.getByLabelText('Tag');
     const tags = document.getElementById(tag.getAttribute('list') ?? 'none');
     expect([...(tags?.querySelectorAll('option') ?? [])].map((o) => o.getAttribute('value'))).toEqual(['Best seller', 'Pre-order', 'New']);
@@ -152,7 +178,7 @@ describe('ItemEditor, an existing item', () => {
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek Batik Raya' } });
     expect(calls.update).not.toHaveBeenCalled();
     await pause();
-    expect(calls.update).toHaveBeenCalledWith('a', { name: 'Kek Batik Raya', description: 'Ten slices.', category: null, tag: null, pricing: { kind: 'single', priceCents: 4500 } });
+    expect(calls.update).toHaveBeenCalledWith('a', { name: 'Kek Batik Raya', description: 'Ten slices.', category: null, tag: null, sku: null, pricing: { kind: 'single', priceCents: 4500 } });
   });
 
   it('Done sends a change still waiting, at once, then closes', async () => {
@@ -207,7 +233,7 @@ describe('ItemEditor, an existing item', () => {
     fireEvent.change(screen.getByLabelText('Option 1 price in ringgit'), { target: { value: '99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Remove option 2' }));
     await pause();
-    expect(calls.update).toHaveBeenLastCalledWith('c', { name: 'Kek coklat', description: null, category: null, tag: null, pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9900 }] } });
+    expect(calls.update).toHaveBeenLastCalledWith('c', { name: 'Kek coklat', description: null, category: null, tag: null, sku: null, pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9900 }] } });
   });
 
   it('hides it from the shop at once with its switch', async () => {
@@ -260,7 +286,7 @@ describe('ItemEditor, an existing item', () => {
   it('hands the preview the item as it reads now', () => {
     const { onPreview } = show(batik);
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek Batik Raya' } });
-    expect(onPreview).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'a', name: 'Kek Batik Raya', slug: 'a', category: null, tag: null, priceCents: 4500 }));
+    expect(onPreview).toHaveBeenLastCalledWith(expect.objectContaining({ id: 'a', name: 'Kek Batik Raya', slug: 'a', category: null, tag: null, sku: null, priceCents: 4500 }));
 
     // Unreadable: the preview keeps the item as last saved.
     fireEvent.change(screen.getByLabelText('Price in ringgit'), { target: { value: 'x' } });

@@ -13,7 +13,7 @@ let digitalAccountId = '';
 const CHECKED = new Date('2026-10-23T02:00:00Z');
 
 const shelf = [
-  { name: 'A', slug: 'a', category: 'Cakes', tag: 'New', priceCents: 1000, position: 0, available: true },
+  { name: 'A', slug: 'a', category: 'Cakes', tag: 'New', sku: 'A-01', priceCents: 1000, position: 0, available: true },
   { name: 'B', slug: 'b', priceCents: 2000, position: 1, available: false, photoKey: 'items/p/b.webp' },
   {
     name: 'C',
@@ -96,6 +96,12 @@ describe('getPublicShop', () => {
     expect(shop?.items.map((item) => item.name)).toEqual(['A', 'C']);
     expect(shop?.items[1]?.options.map((option) => option.label)).toEqual(['1kg', '2kg']);
     expect(shop).not.toHaveProperty('paymentQrKey');
+  });
+
+  it("never carries the owner's item code", async () => {
+    const shop = await getPublicShop('sq-open');
+    expect(shop?.items[0]).not.toHaveProperty('sku');
+    expect(JSON.stringify(shop)).not.toContain('A-01');
   });
 
   it('carries each item slug, category and tag, and the shop halal switch', async () => {
@@ -184,9 +190,10 @@ describe('getOwnerStore', () => {
     expect(store?.settings).toMatchObject({ enabled: true, shopDescription: 'Homemade cakes, baked fresh.', pickupEnabled: true, paymentQrKey: 'qr/p/x.png', tileSize: null });
   });
 
-  it('carries slug, category, tag and the halal switch for the editor', async () => {
+  it('carries slug, category, tag, item code and the halal switch for the editor', async () => {
     const store = await getOwnerStore(openAccountId);
-    expect(store?.items[0]).toMatchObject({ slug: 'a', category: 'Cakes', tag: 'New' });
+    expect(store?.items[0]).toMatchObject({ slug: 'a', category: 'Cakes', tag: 'New', sku: 'A-01' });
+    expect(store?.items[1]).toMatchObject({ sku: null });
     expect(store?.settings.shopHalal).toBe(false);
   });
 
