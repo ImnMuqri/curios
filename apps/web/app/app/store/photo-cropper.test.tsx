@@ -70,6 +70,19 @@ describe('PhotoCropper', () => {
     expect(screen.getByText('Replace picture')).toBeTruthy();
   });
 
+  it('offers the same picture types for Replace as for Add', () => {
+    show({ onReplace: () => {} });
+    expect(screen.getByLabelText('Replace picture')).toHaveAttribute('accept', 'image/jpeg,image/png,image/webp');
+  });
+
+  it('shows an error inside the dialog, as an alert', () => {
+    show({ error: 'That did not save. Try again.' });
+    expect(screen.getByRole('dialog').querySelector('[role="alert"]')).toHaveTextContent('That did not save. Try again.');
+    cleanup();
+    show();
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('passes a chosen replacement file on', () => {
     const onReplace = vi.fn();
     show({ onReplace });

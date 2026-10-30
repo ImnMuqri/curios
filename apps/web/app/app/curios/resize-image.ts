@@ -17,7 +17,11 @@ const COVER_MAX_BYTES = 2_097_152;
 // matter how well-formed the bytes are.
 const ACCEPTED_TYPES = new Set(['image/webp', 'image/png', 'image/jpeg']);
 
-function encode(canvas: HTMLCanvasElement, quality?: number, type: 'image/webp' | 'image/png' = 'image/webp'): Promise<Blob> {
+function encode(
+  canvas: HTMLCanvasElement,
+  quality?: number,
+  type: 'image/webp' | 'image/png' | 'image/jpeg' = 'image/webp',
+): Promise<Blob> {
   return new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('The picture could not be prepared.'))), type, quality),
   );
@@ -83,7 +87,7 @@ async function prepare(file: File, width: number, height: number, maxBytes: numb
 
 /**
  * An item photo's original: the whole picture, its longest side at most ORIGINAL_MAX_EDGE (never
- * scaled up), as WebP or whatever the browser makes of it, under the API's size limit. The owner
+ * scaled up), as WebP -- or JPEG where the browser cannot make WebP -- under the API's size limit. The owner
  * crops it afterwards; the frame travels beside it. Throws a sentence the owner can read.
  */
 export async function prepareOriginal(file: File): Promise<{ blob: Blob; width: number; height: number }> {
@@ -103,10 +107,22 @@ export async function prepareOriginal(file: File): Promise<{ blob: Blob; width: 
   if (!context) throw new Error('This browser cannot prepare the picture.');
   context.drawImage(bitmap, 0, 0, width, height);
 
-  let blob = await encode(canvas, 0.85);
+  let type: 'image/webp' | 'image/jpeg' = 'image/webp';
+  let blob = await encode(canvas, 0.85, type);
+  if (blob.type !== 'image/webp') {
+    // Safari answers a WebP request with PNG, which is lossless and ignores the
+    // quality ladder below -- a 2400x1800 camera photo as PNG runs well past the
+    // 8 MB limit. JPEG takes quality, so the picture is made again as JPEG, on
+    // white first: JPEG has no transparency and would otherwise turn it black.
+    type = 'image/jpeg';
+    context.fillStyle = 'white';
+    context.fillRect(0, 0, width, height);
+    context.drawImage(bitmap, 0, 0, width, height);
+    blob = await encode(canvas, 0.85, type);
+  }
   for (const quality of [0.7, 0.5, 0.35]) {
     if (blob.size <= ITEM_PHOTO_ORIGINAL_MAX_BYTES) break;
-    blob = await encode(canvas, quality);
+    blob = await encode(canvas, quality, type);
   }
   if (blob.size > ITEM_PHOTO_ORIGINAL_MAX_BYTES) {
     throw new Error('That picture is too large even resized. Try a smaller or simpler photo.');

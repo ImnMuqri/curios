@@ -20,8 +20,12 @@ const BIN = 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6';
 /** The category select's last choice, which swaps it for a box to type a new one in. No category can be this. */
 const NEW_CATEGORY = '\u0000new';
 
-/** An API row as the screen holds it, keeping the picture URL the row does not carry. */
-export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
+/**
+ * An API row as the screen holds it. The cover's URL is made from the row's own photoKey, never
+ * carried over from before the save: a photo change that landed while the save was in flight
+ * has already moved photoKey, and an old URL would show a cover that is gone.
+ */
+export function fromRow(row: ItemRow, photoUrl: (key: string) => string): EditorItem {
   return {
     id: row.id,
     name: row.name,
@@ -45,7 +49,7 @@ export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
     codesLeft: row.codesLeft,
     sessions: row.sessions.map((t) => ({ ...t, startsAt: new Date(t.startsAt) })),
     photos: row.photos,
-    photoUrl,
+    photoUrl: row.photoKey ? photoUrl(row.photoKey) : null,
   };
 }
 
@@ -135,12 +139,12 @@ export function ItemEditor({
     const { digital: kinds, ...rest } = fields;
     if (current) {
       const row = await api.update(current.id, { ...rest, ...kinds });
-      const next = fromRow(row, current.photoUrl);
+      const next = fromRow(row, api.photoUrl);
       setSaved(next);
       onSaved(next);
       return;
     }
-    creating.current = api.add(kinds ? { ...rest, digital: kinds } : rest).then((row) => fromRow(row, null));
+    creating.current = api.add(kinds ? { ...rest, digital: kinds } : rest).then((row) => fromRow(row, api.photoUrl));
     try {
       const next = await creating.current;
       setSaved(next);
@@ -239,7 +243,7 @@ export function ItemEditor({
     if (!saved) return;
     setError('');
     try {
-      const next = fromRow(await api.update(saved.id, { available }), saved.photoUrl);
+      const next = fromRow(await api.update(saved.id, { available }), api.photoUrl);
       setSaved(next);
       onSaved(next);
     } catch (failure) {

@@ -29,6 +29,7 @@ export function PhotoCropper({
   onCancel,
   onRemove,
   onReplace,
+  error,
 }: {
   src: string;
   width: number;
@@ -39,6 +40,8 @@ export function PhotoCropper({
   onCancel: () => void;
   onRemove?: () => void;
   onReplace?: (file: File) => void;
+  /** Why the last save or picture failed, shown inside the window: the editor's own error is under the overlay. */
+  error?: string;
 }) {
   const [frame, setFrame] = useState<Frame>(initial);
   const [stage, setStage] = useState(0);
@@ -225,6 +228,12 @@ export function PhotoCropper({
           </button>
         </div>
 
+        {error ? (
+          <p className={styles.cropError} role="alert">
+            {error}
+          </p>
+        ) : null}
+
         <div className={styles.cropFoot}>
           {onRemove ? (
             <button type="button" className={styles.cropRemove} disabled={busy} onClick={onRemove}>
@@ -236,7 +245,7 @@ export function PhotoCropper({
               Replace picture
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp"
                 className={styles.cropFile}
                 disabled={busy}
                 onChange={(event) => {

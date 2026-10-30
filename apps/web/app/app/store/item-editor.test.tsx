@@ -249,6 +249,18 @@ describe('ItemEditor, an existing item', () => {
     expect(calls.update).toHaveBeenLastCalledWith('c', { name: 'Kek coklat', description: null, category: null, tag: null, sku: null, pricing: { kind: 'options', options: [{ label: '1kg', priceCents: 9900 }] } });
   });
 
+  it("an autosave's reply sets the cover from the row's photoKey, not the one the editor held", async () => {
+    vi.useFakeTimers();
+    const held = { ...batik, photoKey: 'items/a/cover-1.webp', photoUrl: 'https://files.example/items/a/cover-1.webp' };
+    const calls = api({ update: vi.fn(async (id) => row({ id, name: 'Kek Batik Raya', photoKey: 'items/a/cover-2.webp' })) });
+    const { onSaved } = show(held, calls);
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Kek Batik Raya' } });
+    await pause();
+    expect(onSaved).toHaveBeenLastCalledWith(
+      expect.objectContaining({ photoKey: 'items/a/cover-2.webp', photoUrl: 'https://files.example/items/a/cover-2.webp' }),
+    );
+  });
+
   it('hides it from the shop at once with its switch', async () => {
     const { calls, onSaved } = show(batik);
     await act(async () => { fireEvent.click(screen.getByRole('switch', { name: 'In your shop' })); });
@@ -312,6 +324,13 @@ describe('ItemEditor, an existing item', () => {
 describe('fromRow', () => {
   it('keeps the photos the row carries, so an autosave does not make the editor forget them', () => {
     const photo = { id: 'p1', squareKey: 'items/a/p1.webp', width: 1000, height: 750, frame: { x: 0.125, y: 0, size: 1 } };
-    expect(fromRow(row({ photos: [photo] }), null).photos).toEqual([photo]);
+    expect(fromRow(row({ photos: [photo] }), (key) => key).photos).toEqual([photo]);
+  });
+
+  // Review: an autosave that overlapped a photo change kept the cover URL from before the save.
+  it("makes the cover's URL from the row's photoKey, not from what the screen held before", () => {
+    const url = (key: string) => `https://files.example/${key}`;
+    expect(fromRow(row({ photoKey: 'items/n/cover-2.webp' }), url).photoUrl).toBe('https://files.example/items/n/cover-2.webp');
+    expect(fromRow(row({ photoKey: null }), url).photoUrl).toBeNull();
   });
 });

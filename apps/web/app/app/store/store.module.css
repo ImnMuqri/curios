@@ -1883,6 +1883,17 @@
   overflow: hidden;
 }
 
+/* A failed save or picture inside the crop window: the editor's own error sits under the overlay. */
+.cropError {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1.5px solid var(--merah);
+  border-radius: 10px;
+  background: var(--paper);
+  color: var(--merah);
+  font-size: 12.5px;
+}
+
 .cropFoot {
   display: flex;
   flex-wrap: wrap;

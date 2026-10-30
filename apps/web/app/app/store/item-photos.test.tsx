@@ -5,6 +5,8 @@ vi.mock('../curios/resize-image.js', () => ({
 }));
 
 const { ItemPhotos } = await import('./item-photos.js');
+const { prepareOriginal } = await import('../curios/resize-image.js');
+import { within } from '@testing-library/react';
 import { PHYSICAL_ITEM, type EditorItem, type ItemsApi, type OwnerPhoto } from './store-types.js';
 
 afterEach(cleanup);
@@ -130,11 +132,51 @@ describe('ItemPhotos', () => {
     expect(api.reorderPhotos).toHaveBeenCalledWith('a', ['p2', 'p1']);
   });
 
-  it('passes a rejected call to onError', async () => {
+  // Review: the editor's own error sits under the crop window's overlay, where nobody sees it.
+  it('says why a Save failed inside the crop window, and a reopened window starts clean', async () => {
     const { onError } = show(item([photo('p1')]), { addPhoto: vi.fn(async () => { throw new Error('Too many photos.'); }) });
     await pick();
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save' })); });
-    expect(onError).toHaveBeenLastCalledWith('Too many photos.');
+    const dialog = screen.getByRole('dialog', { name: 'Adjust photo' });
+    expect(within(dialog).getByRole('alert')).toHaveTextContent('Too many photos.');
+    expect(onError).not.toHaveBeenCalledWith('Too many photos.');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await pick();
+    expect(within(screen.getByRole('dialog', { name: 'Adjust photo' })).queryByRole('alert')).toBeNull();
+  });
+
+  it('says why a replacement picture could not be prepared inside the crop window', async () => {
+    vi.mocked(prepareOriginal).mockRejectedValueOnce(new Error('This picture could not be opened. Try a JPEG or PNG.'));
+    const { onError } = show(item([photo('p1'), photo('p2')]));
+    fireEvent.click(screen.getByRole('button', { name: 'Crop photo 2' }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Replace picture'), { target: { files: [new File(['x'], 'n.png', { type: 'image/png' })] } });
+    });
+    expect(within(screen.getByRole('dialog')).getByRole('alert')).toHaveTextContent('This picture could not be opened.');
+    expect(onError).not.toHaveBeenCalledWith(expect.stringContaining('could not be opened'));
+  });
+
+  it('passes a failed reorder, made with no crop window open, to onError', async () => {
+    const { onError } = show(item([photo('p1'), photo('p2')]), { reorderPhotos: vi.fn(async () => { throw new Error('Those photos changed.'); }) });
+    await act(async () => { fireEvent.keyDown(screen.getByRole('button', { name: 'Crop photo 2' }), { key: 'ArrowLeft', altKey: true }); });
+    expect(onError).toHaveBeenLastCalledWith('Those photos changed.');
+  });
+
+  // Review: a replacement still being prepared reopened the window the owner had cancelled.
+  it('stays closed when the owner cancels while a replacement is being prepared', async () => {
+    let finish: (value: { blob: Blob; width: number; height: number }) => void = () => {};
+    vi.mocked(prepareOriginal).mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }));
+    const { api } = show(item([photo('p1'), photo('p2')]));
+    fireEvent.click(screen.getByRole('button', { name: 'Crop photo 2' }));
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText('Replace picture'), { target: { files: [new File(['x'], 'n.png', { type: 'image/png' })] } });
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(screen.queryByRole('dialog')).toBeNull();
+    await act(async () => { finish({ blob: new Blob(['y'], { type: 'image/webp' }), width: 1000, height: 750 }); });
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(api.replacePhoto).not.toHaveBeenCalled();
   });
 
   it('shows a legacy picture as the cover, with Change picture', async () => {

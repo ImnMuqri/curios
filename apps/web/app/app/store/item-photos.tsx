@@ -44,6 +44,8 @@ export function ItemPhotos({
   onError: (message: string) => void;
 }) {
   const [session, setSession] = useState<(Session & { n: number }) | null>(null);
+  /** A failure while the crop window is open is said inside it: the editor's error is under the overlay. */
+  const [cropError, setCropError] = useState('');
   const [busy, setBusy] = useState(false);
   const [announce, setAnnounce] = useState('');
   const [coverFailed, setCoverFailed] = useState(false);
@@ -54,8 +56,8 @@ export function ItemPhotos({
   const dragged = useRef(false);
   const refocus = useRef<string | null>(null);
   // Window listeners and awaited calls read this, not the render they were made in.
-  const live = useRef({ item, busy, api, onChange, onError });
-  live.current = { item, busy, api, onChange, onError };
+  const live = useRef({ item, busy, api, onChange, onError, session });
+  live.current = { item, busy, api, onChange, onError, session };
 
   const photos = item?.photos ?? [];
   const legacy = photos.length === 0 && Boolean(item?.photoUrl) && !coverFailed;
@@ -77,16 +79,34 @@ export function ItemPhotos({
     root.current?.querySelector<HTMLElement>(`[data-photo-id="${id}"]`)?.focus();
   }, [item?.photos]);
 
+  /** Opens (or reopens) the crop window, clean of any error from before. */
+  function open(next: Session) {
+    setCropError('');
+    setSession({ ...next, n: ++opened.current });
+  }
+
+  function close() {
+    setCropError('');
+    setSession(null);
+  }
+
+  /** Into the crop window while it is open, otherwise to the editor. */
+  function report(failure: string) {
+    if (live.current.session) setCropError(failure);
+    else live.current.onError(failure);
+  }
+
   async function run(job: () => Promise<PhotosResult>) {
     setBusy(true);
     onError('');
+    setCropError('');
     try {
       const result = await job();
       setCoverFailed(false);
-      setSession(null);
+      close();
       onChange(result);
     } catch (failure) {
-      onError(message(failure));
+      report(message(failure));
     } finally {
       setBusy(false);
     }
@@ -94,25 +114,32 @@ export function ItemPhotos({
 
   async function prepare(picked: File): Promise<{ url: string; blob: Blob; width: number; height: number } | null> {
     onError('');
+    setCropError('');
     try {
       const { blob, width, height } = await prepareOriginal(picked);
       return { url: URL.createObjectURL(blob), blob, width, height };
     } catch (failure) {
-      onError(message(failure));
+      report(message(failure));
       return null;
     }
   }
 
   async function picked(chosen: File) {
     const ready = await prepare(chosen);
-    if (ready) setSession({ kind: 'add', ...ready, n: ++opened.current });
+    if (ready) open({ kind: 'add', ...ready });
   }
 
   async function replaceWith(chosen: File) {
     const current = session;
     if (!current || current.kind === 'add') return;
     const ready = await prepare(chosen);
-    if (ready) setSession({ kind: 'replace', photo: current.photo, ...ready, n: ++opened.current });
+    if (!ready) return;
+    // Cancelled (or closed for another photo) while the picture was being prepared: stay closed.
+    if (live.current.session?.n !== current.n) {
+      URL.revokeObjectURL(ready.url);
+      return;
+    }
+    open({ kind: 'replace', photo: current.photo, ...ready });
   }
 
   function save(frame: Frame) {
@@ -192,7 +219,7 @@ export function ItemPhotos({
       },
       onClick: () => {
         if (dragged.current) return;
-        setSession({ kind: 'edit', photo, n: ++opened.current });
+        open({ kind: 'edit', photo });
       },
     };
   }
@@ -280,8 +307,9 @@ export function ItemPhotos({
           key={session.n}
           {...cropper}
           busy={busy}
+          error={cropError}
           onSave={save}
-          onCancel={() => setSession(null)}
+          onCancel={close}
           onRemove={session.kind === 'add' || !item ? undefined : () => void run(() => api.removePhoto(item.id, session.photo.id))}
           onReplace={session.kind === 'add' ? undefined : (chosen) => void replaceWith(chosen)}
         />

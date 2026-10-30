@@ -167,14 +167,42 @@ describe('prepareOriginal', () => {
     expect(drawImage).toHaveBeenCalledWith(expect.anything(), 0, 0, 1000, 800);
   });
 
-  it('keeps whatever format the browser made, and steps the quality down to fit under 8 MB', async () => {
+  // Safari answers a WebP request with PNG, which ignores quality: a camera photo as PNG is
+  // over the 8 MB limit at every step. The original is made again as JPEG, on white.
+  it('makes a JPEG on white when the browser answers webp with png, and steps its quality down to fit under 8 MB', async () => {
+    vi.stubGlobal('createImageBitmap', vi.fn(async () => ({ width: 2400, height: 1800 }) as unknown as ImageBitmap));
+    const context = { drawImage: vi.fn(), fillRect: vi.fn(), fillStyle: '' };
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D);
+    const jpegSizes = [9_000_000, 7_000_000];
+    const toBlob = vi
+      .spyOn(HTMLCanvasElement.prototype, 'toBlob')
+      .mockImplementation((callback: BlobCallback, type?: string) => {
+        callback(type === 'image/jpeg' ? fakeBlob(jpegSizes.shift() ?? 1, 'image/jpeg') : fakeBlob(9_500_000, 'image/png'));
+      });
+
+    const result = await prepareOriginal(picture());
+
+    expect(result.blob.type).toBe('image/jpeg');
+    expect(result.blob.size).toBe(7_000_000);
+    expect(toBlob.mock.calls.map((call) => [call[1], call[2]])).toEqual([
+      ['image/webp', 0.85],
+      ['image/jpeg', 0.85],
+      ['image/jpeg', 0.7],
+    ]);
+    expect(context.fillStyle).toBe('white');
+    expect(context.fillRect).toHaveBeenCalledWith(0, 0, 2400, 1800);
+    // Painted white before the picture is drawn again on top.
+    expect(context.fillRect.mock.invocationCallOrder[0]).toBeLessThan(context.drawImage.mock.invocationCallOrder[1]!);
+  });
+
+  it('keeps webp and steps its quality down when the browser makes webp', async () => {
     drawn(1000, 800);
     const sizes = [9_000_000, 7_000_000];
     vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((callback: BlobCallback) => {
-      callback(fakeBlob(sizes.shift() ?? 1, 'image/png'));
+      callback(fakeBlob(sizes.shift() ?? 1, 'image/webp'));
     });
     const result = await prepareOriginal(picture());
-    expect(result.blob.type).toBe('image/png');
+    expect(result.blob.type).toBe('image/webp');
     expect(result.blob.size).toBe(7_000_000);
   });
 
