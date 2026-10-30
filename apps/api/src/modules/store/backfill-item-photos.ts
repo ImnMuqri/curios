@@ -58,22 +58,32 @@ export async function backfillItemPhotos(deps: BackfillDeps): Promise<{ candidat
     const name = randomUUID();
     const originalKey = `item-photos/${item.pageId}/${item.id}/${name}.${ext}`;
     const squareKey = `items/${item.pageId}/${name}.${ext}`;
-    await privateFiles.put(originalKey, bytes, contentType, bytes.length);
-    try {
-      await store.put(squareKey, bytes, contentType);
-    } catch (error) {
-      await privateFiles.remove(originalKey).catch(() => undefined);
-      throw error;
-    }
-    try {
-      const frame = fullFrame(width, height);
-      await prisma.itemPhoto.create({
-        data: { itemId: item.id, position: 0, originalKey, squareKey, width, height, frameX: frame.x, frameY: frame.y, frameSize: frame.size },
-      });
-    } catch (error) {
-      log(`${label}: could not create its row (${String(error)}); its new files are removed`);
+    const removeBoth = async () => {
       await privateFiles.remove(originalKey).catch(() => undefined);
       await store.remove(squareKey).catch(() => undefined);
+    };
+    try {
+      await privateFiles.put(originalKey, bytes, contentType, bytes.length);
+      await store.put(squareKey, bytes, contentType);
+      const frame = fullFrame(width, height);
+      const created = await prisma.$transaction(async (tx) => {
+        // The item's row lock, as the photo API takes it: an owner's own first photo waits or has won.
+        const rows = await tx.$queryRaw<{ photoKey: string | null }[]>`SELECT "photoKey" FROM "Item" WHERE "id" = ${item.id} FOR UPDATE`;
+        if (rows[0]?.photoKey !== item.photoKey || (await tx.itemPhoto.count({ where: { itemId: item.id } })) > 0) return false;
+        await tx.itemPhoto.create({
+          data: { itemId: item.id, position: 0, originalKey, squareKey, width, height, frameX: frame.x, frameY: frame.y, frameSize: frame.size },
+        });
+        return true;
+      });
+      if (!created) {
+        log(`${label}: changed while copying; left alone, its new files are removed`);
+        await removeBoth();
+        continue;
+      }
+    } catch (error) {
+      log(`${label}: not copied (${String(error)}); its new files are removed`);
+      await removeBoth();
+      unreadable.push(`${label}: not copied (${String(error)})`);
       continue;
     }
     copied += 1;

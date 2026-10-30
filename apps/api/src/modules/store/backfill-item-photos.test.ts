@@ -142,20 +142,50 @@ describe('backfillItemPhotos', () => {
     expect(store.put).not.toHaveBeenCalled();
   });
 
-  it('removes its two new files when the row cannot be created', async () => {
-    const { pageId } = await aShop([known('a')]);
-    const failing = {
-      ...app.prisma,
-      item: app.prisma.item,
-      itemPhoto: { create: async () => { throw new Error('boom'); } },
-    } as unknown as typeof app.prisma;
+  it('removes its new files and goes on when the row cannot be created', async () => {
+    const { pageId, items } = await aShop([known('a'), known('b')]);
+    const failing = { ...app.prisma, $transaction: async () => { throw new Error('boom'); } } as unknown as typeof app.prisma;
     const removed: string[] = [];
     const privateFiles: PrivateFiles = { ...files, remove: async (key) => { removed.push(key); await files.remove(key); } };
-    await expect(
-      backfillItemPhotos({ prisma: failing, fetchPublic, store, privateFiles, write: true, log: () => undefined, onlyPageIds: [pageId] }),
-    ).resolves.toMatchObject({ copied: 0 });
+    const result = await backfillItemPhotos({ prisma: failing, fetchPublic, store, privateFiles, write: true, log: () => undefined, onlyPageIds: [pageId] });
+    expect(result).toMatchObject({ candidates: 2, copied: 0 });
+    expect(result.unreadable).toHaveLength(2);
+    expect(removed).toHaveLength(2);
+    expect(store.remove.mock.calls.map((c) => c[0]).sort()).toEqual(store.put.mock.calls.map((c) => c[0]).sort());
+    expect(await app.prisma.itemPhoto.count({ where: { itemId: { in: items.map((i) => i.id) } } })).toBe(0);
+  });
+
+  it('a public put that fails costs only that item: no row, both keys removed, the next is copied', async () => {
+    const { pageId, items } = await aShop([known('a'), known('b')]);
+    store.put.mockRejectedValueOnce(new Error('bucket down'));
+    const removed: string[] = [];
+    const privateFiles: PrivateFiles = { ...files, remove: async (key) => { removed.push(key); await files.remove(key); } };
+    const result = await backfillItemPhotos({ prisma: app.prisma, fetchPublic, store, privateFiles, write: true, log: () => undefined, onlyPageIds: [pageId] });
+    expect(result).toMatchObject({ candidates: 2, copied: 1 });
+    expect(result.unreadable).toHaveLength(1);
     expect(removed).toHaveLength(1);
-    expect(store.remove).toHaveBeenCalledTimes(1);
-    expect(store.remove.mock.calls[0]?.[0]).toBe(store.put.mock.calls[0]?.[0]);
+    expect(store.remove).toHaveBeenCalledWith(store.put.mock.calls[0]?.[0]);
+    const counts = await Promise.all(items.map((i) => app.prisma.itemPhoto.count({ where: { itemId: i.id } })));
+    expect(counts.sort()).toEqual([0, 1]);
+  });
+
+  it('does not make a second first photo when the owner adds one while it copies', async () => {
+    const { pageId, items } = await aShop([known('a')]);
+    const target = items[0]!;
+    const racing = async (key: string) => {
+      await app.prisma.itemPhoto.create({
+        data: { itemId: target.id, position: 0, originalKey: 'item-photos/x/y/z.png', squareKey: 'items/x/z.webp', width: 10, height: 10, frameX: 0, frameY: 0, frameSize: 1 },
+      });
+      return fetchPublic(key);
+    };
+    const removed: string[] = [];
+    const privateFiles: PrivateFiles = { ...files, remove: async (key) => { removed.push(key); await files.remove(key); } };
+    const lines: string[] = [];
+    const result = await backfillItemPhotos({ prisma: app.prisma, fetchPublic: racing, store, privateFiles, write: true, log: (l) => lines.push(l), onlyPageIds: [pageId] });
+    expect(result).toMatchObject({ candidates: 1, copied: 0, unreadable: [] });
+    expect(await app.prisma.itemPhoto.count({ where: { itemId: target.id } })).toBe(1);
+    expect(removed).toHaveLength(1);
+    expect(store.remove).toHaveBeenCalledWith(store.put.mock.calls[0]?.[0]);
+    expect(lines.join(' ')).toContain('changed while copying');
   });
 });
