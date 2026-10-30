@@ -19,13 +19,32 @@ config({ path: join(import.meta.dirname, '..', '.env') });
  *   pnpm exec tsx scripts/backfill-item-photos.ts           # says what it would do
  *   pnpm exec tsx scripts/backfill-item-photos.ts --write   # does it
  *
- * Against whatever DATABASE_URL and STORAGE_* point at -- check both first.
+ * Against whatever DATABASE_URL and STORAGE_* point at -- check both first; the first line it
+ * prints names the private store and public base it will use. --write refuses to run unless
+ * STORAGE_PRIVATE_BUCKET is set (or NODE_ENV=production), so originals never land on local disk.
  * Safe to re-run: only items with no photo rows are picked. A cover that cannot
  * be fetched or read is left exactly as it is and listed at the end.
  */
 const write = process.argv.includes('--write');
 const publicBase = process.env.STORAGE_PUBLIC_URL?.replace(/\/+$/, '');
 if (!publicBase) throw new Error('STORAGE_PUBLIC_URL is not set');
+
+// resolvePrivateFiles falls back to apps/api/.files on this machine unless the private bucket is
+// set or NODE_ENV is production. Against a production database that would put every original on
+// the disk of whoever ran the script, with rows pointing at keys the deployed API cannot read.
+const privateBucket = process.env.STORAGE_PRIVATE_BUCKET;
+const privateIsS3 = Boolean(privateBucket) || process.env.NODE_ENV === 'production';
+console.log(
+  `Targets -- private originals: ${privateIsS3 ? `S3 bucket ${privateBucket ?? '(STORAGE_PRIVATE_BUCKET not set)'}` : 'local disk (apps/api/.files)'}; ` +
+    `public squares and covers: bucket ${process.env.STORAGE_BUCKET ?? '(STORAGE_BUCKET not set)'}, served at ${publicBase}`,
+);
+if (write && !privateIsS3) {
+  console.error(
+    'Refusing to --write: the originals would go to local disk. Set STORAGE_PRIVATE_BUCKET (or NODE_ENV=production) to the bucket the deployed API reads.',
+  );
+  process.exit(1);
+}
+
 const store = resolveStore(undefined);
 if (!store) throw new Error('Public storage is not configured (STORAGE_*)');
 const privateFiles = resolvePrivateFiles(undefined);
