@@ -8,12 +8,10 @@ import { relativeTime } from '../_ui/relative-time.js';
 import ui from '../_ui/editor.module.css';
 import { SaveState } from '../_ui/save-state.js';
 import { SectionHead } from '../_ui/section-head.js';
+import { BankPicker } from './bank-picker.js';
 import { orNull, useSettingText } from './setting-field.js';
 import type { ChipApi, ChipState, SettingsPatch, StoreSettings } from './store-types.js';
 import styles from './store.module.css';
-
-/** The banks most owners here use, one tap each; anything else is typed. */
-const BANKS = ['Maybank', 'CIMB', 'Public Bank', 'RHB', 'Bank Islam', 'Hong Leong'];
 
 const NOT_CONNECTED: ChipState = { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
 
@@ -324,19 +322,9 @@ export function PaymentTab({
 
       <section className={ui.section} aria-labelledby="bank-title">
         <SectionHead id="bank-title" title="Bank account" note={bankOk ? 'All three filled in' : 'Fill in all three to use it'} />
-        <div className={styles.banks} role="group" aria-label="Pick your bank">
-          {BANKS.map((bank) => (
-            <button key={bank} type="button" className={styles.bank} aria-pressed={bankName.text === bank} onClick={() => bankName.change(bank)}>
-              {bank}
-            </button>
-          ))}
-        </div>
         <div className={styles.grid2}>
           <div className={styles.wide}>
-            <label className={ui.float}>
-              <em>Bank name</em>
-              <input value={bankName.text} maxLength={BANK_NAME_MAX} autoComplete="off" onChange={(event) => bankName.change(event.target.value)} />
-            </label>
+            <BankPicker value={bankName.text} maxLength={BANK_NAME_MAX} onChange={bankName.change} />
             <SaveState status={bankName.autosave.status} error={bankName.autosave.error} retry={bankName.autosave.retry} />
           </div>
           <div>

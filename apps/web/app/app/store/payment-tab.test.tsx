@@ -42,14 +42,40 @@ const pause = () => act(async () => { await vi.advanceTimersByTimeAsync(600); })
 afterEach(() => vi.useRealTimers());
 
 describe('PaymentTab, the bank account', () => {
-  it('fills in the bank name from a chip, and saves it once the owner pauses', async () => {
+  it('picks the bank from the list, narrowed as the owner types, and saves its name once they pause', async () => {
     vi.useFakeTimers();
-    const props = show();
-    fireEvent.click(screen.getByRole('button', { name: 'CIMB' }));
-    expect(screen.getByLabelText('Bank name')).toHaveValue('CIMB');
-    expect(screen.getByRole('button', { name: 'CIMB' })).toHaveAttribute('aria-pressed', 'true');
+    const props = show({ bankName: null });
+    const field = screen.getByRole('combobox', { name: 'Bank name' });
+    fireEvent.focus(field);
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(20);
+    fireEvent.change(field, { target: { value: 'isl' } });
+    expect(screen.getAllByRole('option').map((o) => o.textContent)).toEqual(['Bank Islam']);
+    fireEvent.click(screen.getByRole('option', { name: 'Bank Islam' }));
+    expect(field).toHaveValue('Bank Islam');
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
     await pause();
-    expect(props.save).toHaveBeenCalledWith({ bankName: 'CIMB' });
+    expect(props.save).toHaveBeenLastCalledWith({ bankName: 'Bank Islam' });
+  });
+
+  it('moves through the list with the arrow keys and picks with Enter', () => {
+    show({ bankName: null });
+    const field = screen.getByRole('combobox', { name: 'Bank name' });
+    fireEvent.focus(field);
+    fireEvent.keyDown(field, { key: 'ArrowDown' });
+    const active = field.getAttribute('aria-activedescendant');
+    expect(document.getElementById(active ?? '')).toHaveTextContent('CIMB Bank');
+    fireEvent.keyDown(field, { key: 'Enter' });
+    expect(field).toHaveValue('CIMB Bank');
+  });
+
+  it('keeps a bank the list does not have, and shows a listed one by its name and logo', () => {
+    const { view } = show({ bankName: 'Bank Kerjasama Rakyat Sabah' });
+    expect(screen.getByRole('combobox', { name: 'Bank name' })).toHaveValue('Bank Kerjasama Rakyat Sabah');
+    expect(view.container.querySelector('label img')).toBeNull();
+    view.unmount();
+    // An older shop's "Hong Leong", typed before the list, still knows its bank.
+    const again = show({ bankName: 'Hong Leong' });
+    expect(again.view.container.querySelector('label img')).toHaveAttribute('src', '/banks/hlb.svg');
   });
 
   it('saves each field on its own, and a cleared field as no value', async () => {
