@@ -499,6 +499,12 @@ shop takes has `RATE_LIMIT_SHOP_PAY_METHODS_PER_IP` (per visitor and shop); star
 order page's checks have their own per-order budget (`RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER`), and
 CHIP is asked about one order at most every 5 seconds.
 
+A customer typing a voucher code at checkout (`POST /store/:handle/vouchers/check`) has
+`RATE_LIMIT_VOUCHER_CHECK_PER_IP`: 30 tries an hour per visitor and shop by default. A code is a
+guessable word, so one address must not walk a shop's codes; a real customer tries a handful. Like the
+other shop limits it fails closed: with Redis down the check is refused, and placing the order still
+judges the code itself.
+
 ---
 
 ## Digital products

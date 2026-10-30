@@ -131,7 +131,7 @@ describe('ORDER_TOTAL_MAX_CENTS', () => {
 
 describe('orderView', () => {
   const at = new Date('2026-10-18T00:00:00Z');
-  const o = { receiptUploadedAt: null, paidAt: null, refundedAt: null };
+  const o = { receiptUploadedAt: null, paidAt: null, refundedAt: null, totalCents: 22_000 };
   it('names each badge', () => {
     expect(orderView({ ...o, status: 'PLACED' })).toBe('awaitingPayment');
     expect(orderView({ ...o, status: 'PLACED', receiptUploadedAt: at })).toBe('toCheck');

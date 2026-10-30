@@ -85,7 +85,7 @@ const voucherFields = {
   maxUses: z.number().nullable(),
 };
 
-export const storeRoutes:FastifyPluginAsyncZod<StoreRouteOptions> = async (app, options) => {
+export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app, options) => {
   const store = resolveStore(options.store);
   // Resolved at registration, like `store`: production with a missing setting fails the deploy, not an owner's upload.
   const privateFiles = resolvePrivateFiles(options.privateFiles);

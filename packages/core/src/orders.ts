@@ -158,7 +158,7 @@ export function orderView(o: {
   refundedAt: Date | null;
   paidVia?: 'RECEIPT' | 'MANUAL' | 'CHIP' | 'VOUCHER' | null;
   /** An order of RM0 (a voucher took it all) took no money, so cancelling it owes none back. */
-  totalCents?: number;
+  totalCents: number;
 }): OrderView {
   switch (o.status) {
     case 'PLACED':
