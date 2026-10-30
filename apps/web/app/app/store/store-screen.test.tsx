@@ -14,6 +14,9 @@ vi.mock('../curios/resize-image.js', () => ({
   resizeContained: vi.fn(async () => ({ contentType: 'image/png', data: 'QQQQ' })),
 }));
 
+URL.createObjectURL = vi.fn(() => 'blob:x');
+URL.revokeObjectURL = vi.fn();
+
 const { StoreScreen } = await import('./store-screen.js');
 
 const settings: StoreSettings = {
@@ -112,8 +115,9 @@ describe('StoreScreen, against the API', () => {
     const { container } = screenWith();
     await userEvent.click(screen.getByRole('button', { name: 'Edit Kek Batik' }));
     await userEvent.upload(screen.getByLabelText('Picture file'), new File(['x'], 'k.png', { type: 'image/png' }));
+    await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
     expect(sendFile).toHaveBeenCalledWith('/store/items/a/photos', expect.any(Blob), expect.any(Function), { 'x-photo-frame': '0.125,0,1' });
-    await screen.findByRole('button', { name: 'Change picture' });
+    await screen.findByRole('button', { name: 'Crop cover photo' });
     expect(container.querySelector('img[src="https://files.example/items/a.webp"]')).not.toBeNull();
   });
 

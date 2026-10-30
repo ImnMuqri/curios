@@ -48,6 +48,8 @@ function show(item: EditorItem | null, calls = api(), uploadsEnabled = true, cat
 
 const pause = () => act(async () => { await vi.advanceTimersByTimeAsync(600); });
 
+URL.createObjectURL = vi.fn(() => 'blob:x');
+URL.revokeObjectURL = vi.fn();
 afterEach(() => vi.useRealTimers());
 
 describe('ItemEditor, a new item', () => {
@@ -273,15 +275,17 @@ describe('ItemEditor, an existing item', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Could not reach the server.');
   });
 
-  it('uploads and removes a picture', async () => {
+  it('adds a photo through the crop window and tells the screen, then removes it', async () => {
     const { calls, onSaved } = show(batik);
     await act(async () => {
       fireEvent.change(screen.getByLabelText('Picture file'), { target: { files: [new File(['x'], 'k.png', { type: 'image/png' })] } });
     });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save' })); });
     expect(calls.addPhoto).toHaveBeenCalledWith('a', expect.any(Blob), { x: 0.125, y: 0, size: 1 });
     expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ photos: [onePhoto], photoUrl: 'https://files.example/items/a.webp' }));
 
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Remove picture' })); });
+    fireEvent.click(screen.getByRole('button', { name: 'Crop cover photo' }));
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Remove photo' })); });
     expect(calls.removePhoto).toHaveBeenCalledWith('a', 'p1');
     expect(onSaved).toHaveBeenLastCalledWith(expect.objectContaining({ photos: [], photoUrl: null }));
   });

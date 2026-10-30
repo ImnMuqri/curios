@@ -3,15 +3,14 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { Callout } from '@curios/ui';
 import { ITEM_CATEGORY_MAX, ITEM_DESCRIPTION_MAX, ITEM_SKU_MAX, ITEM_TAG_MAX, ITEM_TAG_PRESETS, MAX_OPTIONS, priceLine } from '@curios/core/store';
-import { fullFrame } from '@curios/core/item-photos';
-import { prepareOriginal } from '../curios/resize-image.js';
 import { SaveState } from '../_ui/save-state.js';
 import { useAutosave } from '../_ui/use-autosave.js';
 import ui from '../_ui/editor.module.css';
 import { blankOption, checkFields, draftOf, pricedFields, type CheckedItem, type PricingDraft } from './pricing.js';
 import { DigitalPanels, KindSwitch } from './digital-fields.js';
+import { ItemPhotos } from './item-photos.js';
 import { checkDigital, digitalDraftOf, type DigitalDraft } from './digital-draft.js';
-import { PHYSICAL_ITEM, type Delivery, type DigitalFields, type EditorItem, type ItemRow, type ItemsApi } from './store-types.js';
+import { PHYSICAL_ITEM, type Delivery, type DigitalFields, type EditorItem, type ItemRow, type ItemsApi, type PhotosResult } from './store-types.js';
 import styles from './store.module.css';
 
 const message = (failure: unknown) => (failure instanceof Error && failure.message ? failure.message : 'That did not save. Try again.');
@@ -120,8 +119,6 @@ export function ItemEditor({
   const listId = useId();
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
-  const [pictureFailed, setPictureFailed] = useState(false);
-  const file = useRef<HTMLInputElement>(null);
   const nameRef = useRef<HTMLInputElement>(null);
   // Held so a second save made while the first creation is still in flight
   // updates that item rather than creating another.
@@ -250,37 +247,12 @@ export function ItemEditor({
     }
   }
 
-  async function upload(picked: File) {
+  /** The photos changed on the API: the item the screen holds follows, so its thumbnail and the preview do. */
+  function photosChanged(result: PhotosResult) {
     if (!saved) return;
-    setError('');
-    try {
-      // The owner has no crop step yet (the photo editor replaces this): the picture goes in whole, centred.
-      const { blob, width, height } = await prepareOriginal(picked);
-      const first = saved.photos[0];
-      const result = first
-        ? await api.replacePhoto(saved.id, first.id, blob, fullFrame(width, height))
-        : await api.addPhoto(saved.id, blob, fullFrame(width, height));
-      setPictureFailed(false);
-      const next = { ...saved, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
-      setSaved(next);
-      onSaved(next);
-    } catch (failure) {
-      setError(message(failure));
-    }
-  }
-
-  async function removePicture() {
-    if (!saved) return;
-    setError('');
-    try {
-      const first = saved.photos[0];
-      const result = first ? await api.removePhoto(saved.id, first.id) : { photos: [], photoKey: null };
-      const next = { ...saved, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
-      setSaved(next);
-      onSaved(next);
-    } catch (failure) {
-      setError(message(failure));
-    }
+    const next = { ...saved, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
+    setSaved(next);
+    onSaved(next);
   }
 
   async function remove() {
@@ -305,7 +277,6 @@ export function ItemEditor({
     if (sent === true || (sent === null && autosave.status !== 'error')) onClose();
   }
 
-  const hasPicture = Boolean(saved?.photoUrl && !pictureFailed);
   const initial = (name.trim()[0] ?? '?').toUpperCase();
   const shownCategory = category.replace(/\s+/g, ' ').trim();
   // This item's own category stays a choice, even when it is the only item with it.
@@ -321,40 +292,7 @@ export function ItemEditor({
       </button>
 
       <div className={styles.editorTop}>
-        <div className={styles.photoCell}>
-          <button
-            type="button"
-            className={styles.photo}
-            data-tint={tint % 4}
-            aria-label={hasPicture ? 'Change picture' : 'Add a picture'}
-            title={!uploadsEnabled ? 'Pictures are switched off here' : saved ? undefined : 'Give it a name and a price first'}
-            disabled={!uploadsEnabled || !saved}
-            onClick={() => file.current?.click()}
-          >
-            {hasPicture ? <img src={saved?.photoUrl ?? ''} alt="" onError={() => setPictureFailed(true)} /> : null}
-            {hasPicture ? null : initial}
-            <span aria-hidden="true">{hasPicture ? 'Change picture' : 'Add a picture'}</span>
-          </button>
-          {hasPicture && uploadsEnabled ? (
-            <button type="button" className={styles.ghost} aria-label="Remove picture" onClick={() => void removePicture()}>
-              Remove
-            </button>
-          ) : null}
-          {uploadsEnabled ? (
-            <input
-              ref={file}
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              hidden
-              aria-label="Picture file"
-              onChange={(event) => {
-                const picked = event.target.files?.[0];
-                event.target.value = '';
-                if (picked) void upload(picked);
-              }}
-            />
-          ) : null}
-        </div>
+        <ItemPhotos item={saved} tint={tint} initial={initial} uploadsEnabled={uploadsEnabled} api={api} onChange={photosChanged} onError={setError} />
         <div className={styles.fields}>
           <label className={ui.float}>
             <em>Name</em>
