@@ -4,6 +4,7 @@ import type { FastifyInstance } from 'fastify';
 import { ChipRefusedError, ChipUnavailableError, type ChipClient, type ChipPurchase } from '@curios/billing';
 import { hashSessionValue, type MailJobData } from '@curios/core';
 import { sealSecret } from '@curios/core/secret-box';
+import { COUNTED_ORDER_WHERE } from '@curios/core/vouchers';
 import { buildApp } from '../../app.js';
 import type { AvatarStore } from '../pages/storage.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
@@ -736,6 +737,24 @@ describe('fix round 1: the owner cancels an order being paid online', () => {
 
     expect(res.json()).toEqual({ status: 'paid-after-cancel' });
     expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidVia: 'CHIP', paidAt: expect.any(Date), paidMethodLabel: 'Visa card ending 4242', refundedAt: null });
+  });
+
+  it('a payment that lands after the cancel does not take the voucher’s use back: the order lets go of it, keeping its record', async () => {
+    const shop = await aShopWithOrder(app);
+    const voucher = await app.prisma.shopVoucher.create({ data: { pageId: shop.pageId, mode: 'CODE', code: 'RAYA10', kind: 'AMOUNT', amountCents: 1_000, maxUses: 1 } });
+    const purchase = await startPayment(app, shop);
+    // The order took the voucher when it was placed (set here, after paying started, so CHIP's purchase keeps the fixture's total).
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { voucherId: voucher.id, voucherLabel: 'RAYA10', discountCents: 1_000 } });
+    client.cancelPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    client.getPurchase.mockRejectedValueOnce(new ChipUnavailableError('down'));
+    expect((await cancel(app, shop)).statusCode).toBe(204);
+
+    client.getPurchase.mockResolvedValueOnce({ ...purchase, status: 'paid', paymentMethod: 'visa', maskedPan: '4242' });
+    expect((await callback(app, shop.orderId, purchase.id, ownerKey.privateKey)).json()).toEqual({ status: 'paid-after-cancel' });
+
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'CANCELLED', paidAt: expect.any(Date), voucherId: null, voucherLabel: 'RAYA10', discountCents: 1_000 });
+    // Cancelled before it was paid gave the use back; the late payment does not count it again.
+    expect(await app.prisma.order.count({ where: { voucherId: voucher.id, ...COUNTED_ORDER_WHERE } })).toBe(0);
   });
 
   it('the owner is emailed once that the order is paid, not told to wait for a receipt', async () => {

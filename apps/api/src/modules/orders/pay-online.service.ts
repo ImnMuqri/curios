@@ -474,10 +474,12 @@ export async function settleChipPurchase(
   }
   // Paid at CHIP after the owner cancelled: recorded on the cancelled order, which then
   // reads as a refund owed (orderView). The money is in the owner's CHIP account, so the
-  // owner is told, once, to refund it there.
+  // owner is told, once, to refund it there. Cancelled unpaid, the order gave its voucher's
+  // use back; paid now, it would count again, so it lets go of the voucher (its label and
+  // what it took off stay, as the record).
   const late = await deps.prisma.order.updateMany({
     where: { id: order.id, status: 'CANCELLED', paidAt: null, chipPurchaseId: purchase.id },
-    data: paid,
+    data: { ...paid, voucherId: null },
   });
   if (late.count === 1) {
     deps.log.warn({ orderId: order.id, purchaseId: purchase.id }, 'order paid online after it was cancelled');
