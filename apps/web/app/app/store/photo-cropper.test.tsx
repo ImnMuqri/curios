@@ -46,6 +46,14 @@ describe('PhotoCropper', () => {
     expect(framePixels(onSave.mock.calls[0]![0], W, H).side).toBe(MIN_FRAME_PX);
   });
 
+  it('reaches the smallest square at the slider maximum on an odd-sized picture', () => {
+    const { onSave } = show({ width: 500, height: 333, frame: fullFrame(500, 333) });
+    const zoom = screen.getByLabelText<HTMLInputElement>('Zoom');
+    fireEvent.change(zoom, { target: { value: zoom.max } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    expect(framePixels(onSave.mock.calls[0][0], 500, 333).side).toBe(MIN_FRAME_PX);
+  });
+
   it('cancels on Escape', () => {
     const { onCancel } = show();
     fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });

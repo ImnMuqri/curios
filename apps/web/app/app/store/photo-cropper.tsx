@@ -212,9 +212,13 @@ export function PhotoCropper({
             aria-valuetext={`${Math.round(level * 100)}%`}
             min={1}
             max={maxLevel}
-            step={0.01}
+            step="any"
             value={level}
-            onChange={(event) => zoomTo(shorter / Number(event.target.value))}
+            onChange={(event) => {
+              const next = Number(event.target.value);
+              // The top of the slider is exactly the smallest square, whatever rounding the browser did.
+              zoomTo(next >= maxLevel - 1e-6 ? minSide : shorter / next);
+            }}
           />
           <button type="button" className={styles.cropStep} aria-label="Zoom in" onClick={() => zoomTo(side / 1.1)}>
             +
