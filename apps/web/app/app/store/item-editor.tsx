@@ -43,6 +43,8 @@ export function fromRow(row: ItemRow, photoUrl: string | null): EditorItem {
     files: row.files,
     codesLeft: row.codesLeft,
     sessions: row.sessions.map((t) => ({ ...t, startsAt: new Date(t.startsAt) })),
+    // Task 8 reads the photos off the row; until then the editor holds none.
+    photos: [],
     photoUrl,
   };
 }

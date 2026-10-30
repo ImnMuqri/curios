@@ -79,7 +79,7 @@ describe('/[handle]/shop/[slug]', () => {
   });
 
   it('gives the view the item with its photo URL, and what the notice line needs', async () => {
-    vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item });
+    vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item, photoKeys: [] });
     render(await ProductPage({ params: params() }));
     const props = (vi.mocked(ProductView).mock.calls.at(-1) as unknown as [Record<string, unknown>])[0];
     expect(props).toMatchObject({
@@ -94,7 +94,7 @@ describe('/[handle]/shop/[slug]', () => {
   });
 
   it('titles the tab "{item} · {page name}" and uses the item photo as the share image', async () => {
-    vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item });
+    vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item, photoKeys: [] });
     const meta = await generateMetadata({ params: params() });
     expect(meta.title).toBe('Kek Coklat Moist · Kek Lina');
     expect(meta.description).toBe('Rich and moist, with a ganache top.');
@@ -102,7 +102,7 @@ describe('/[handle]/shop/[slug]', () => {
   });
 
   it('has no image when the item has no photo, and says its price when it has no description', async () => {
-    vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item: { ...item, photoKey: null, description: null } });
+    vi.mocked(getShopItem).mockResolvedValueOnce({ shop, item: { ...item, photoKey: null, description: null }, photoKeys: [] });
     const meta = await generateMetadata({ params: params() });
     expect(meta.openGraph?.images).toBeUndefined();
     expect(meta.description).toBe('Kek Coklat Moist from RM95 · Kek Lina');

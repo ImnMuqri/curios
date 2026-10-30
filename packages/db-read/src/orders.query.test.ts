@@ -502,6 +502,22 @@ describe('getShopItem', () => {
     expect(found?.shop.items.map((i) => i.slug)).toEqual(['kek-batik']);
   });
 
+  it('gives the item page its squares in order, or the cover alone, or nothing', async () => {
+    const owner = await anOwner();
+    await anItem(owner.pageId, 'Cake', 'cake', {
+      photoKey: 'items/p/cover.webp',
+      photos: { create: [
+        { position: 1, originalKey: 'private/o2', squareKey: 'items/p/sq2.webp', width: 1000, height: 1000, frameX: 0, frameY: 0, frameSize: 1000 },
+        { position: 0, originalKey: 'private/o1', squareKey: 'items/p/sq1.webp', width: 1000, height: 1000, frameX: 0, frameY: 0, frameSize: 1000 },
+      ] },
+    });
+    await anItem(owner.pageId, 'Old', 'old', { photoKey: 'items/p/old.webp' });
+    await anItem(owner.pageId, 'Bare', 'bare');
+    expect((await getShopItem(owner.handle, 'cake', NOW))?.photoKeys).toEqual(['items/p/sq1.webp', 'items/p/sq2.webp']);
+    expect((await getShopItem(owner.handle, 'old', NOW))?.photoKeys).toEqual(['items/p/old.webp']);
+    expect((await getShopItem(owner.handle, 'bare', NOW))?.photoKeys).toEqual([]);
+  });
+
   it('is null for an unknown slug, another shop’s slug, an unavailable item, a personal page and a closed shop', async () => {
     const owner = await anOwner();
     const other = await anOwner();

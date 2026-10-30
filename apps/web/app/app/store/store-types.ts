@@ -14,10 +14,11 @@ export const PHYSICAL_ITEM = {
   sessionMinutes: null,
   sessionPlace: null,
   sessionWhere: null,
+  photos: [],
   files: [],
   codesLeft: 0,
   sessions: [],
-} as const satisfies Pick<EditorItem, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'files' | 'codesLeft' | 'sessions'>;
+} as const satisfies Pick<EditorItem, 'kind' | 'delivery' | 'accessUrl' | 'accessNote' | 'sessionMinutes' | 'sessionPlace' | 'sessionWhere' | 'photos' | 'files' | 'codesLeft' | 'sessions'>;
 
 /** An editor item as the shop draws it: the owner's counts turned into what a visitor is shown. */
 export function previewItem(item: EditorItem, now = new Date()): Omit<EditorItem, keyof DigitalFacts | 'files' | 'codesLeft' | 'accessUrl' | 'accessNote' | 'sessionWhere' | 'sessionMinutes' | 'sessionPlace'> & DigitalFacts {

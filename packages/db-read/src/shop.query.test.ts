@@ -10,6 +10,7 @@ let openAccountId = '';
 let orderAccountId = '';
 let chipAccountId = '';
 let digitalAccountId = '';
+let photosAccountId = '';
 const CHECKED = new Date('2026-10-23T02:00:00Z');
 
 const shelf = [
@@ -64,6 +65,16 @@ beforeAll(async () => {
         { startsAt: new Date('2026-12-01T12:00:00Z'), seats: 12 },
       ] } },
       { name: 'Cake', slug: 'cake', position: 3, available: true, priceCents: 4500, files: { create: [{ key: 'digital/p/i/old', name: 'old.pdf', sizeBytes: 5, contentType: 'application/pdf', position: 0 }] }, codes: { create: [{ code: 'OLD' }] } },
+    ] },
+  });
+  // Created in reverse of their positions, so insertion order cannot pass for position order.
+  photosAccountId = await seed('sq-photos', {
+    items: { create: [
+      { name: 'Cake', slug: 'cake', position: 0, available: true, priceCents: 1000, photoKey: 'items/p/cover.webp', photos: { create: [
+        { position: 1, originalKey: 'private/orig-two', squareKey: 'items/p/sq-two.webp', width: 3000, height: 2000, frameX: 100, frameY: 50, frameSize: 1800 },
+        { position: 0, originalKey: 'private/orig-one', squareKey: 'items/p/sq-one.webp', width: 2000, height: 2000, frameX: 0, frameY: 0, frameSize: 2000 },
+      ] } },
+      { name: 'Bare', slug: 'bare', position: 1, available: true, priceCents: 500 },
     ] },
   });
   // Created in the reverse of their positions, so insertion order cannot pass for position order.
@@ -268,6 +279,24 @@ describe('getOwnerStore', () => {
     expect(JSON.stringify(store)).not.toContain('sealed-box');
 
     expect((await getOwnerStore(openAccountId))?.chip).toEqual({ connected: false, brandName: null, methods: [], checkedAt: null, isTest: false });
+  });
+
+  it('gives an item its photos in position order, with their frames and never an original key', async () => {
+    const store = await getOwnerStore(photosAccountId);
+    const [cake, bare] = store?.items ?? [];
+    expect(cake?.photos.map((p) => ({ squareKey: p.squareKey, width: p.width, height: p.height, frame: p.frame }))).toEqual([
+      { squareKey: 'items/p/sq-one.webp', width: 2000, height: 2000, frame: { x: 0, y: 0, size: 2000 } },
+      { squareKey: 'items/p/sq-two.webp', width: 3000, height: 2000, frame: { x: 100, y: 50, size: 1800 } },
+    ]);
+    expect(cake?.photos[0]?.id).toEqual(expect.any(String));
+    expect(bare?.photos).toEqual([]);
+    expect(JSON.stringify(store)).not.toContain('private/orig');
+  });
+
+  it('shows the public shop no square or original key of a second photo', async () => {
+    const shop = JSON.stringify(await getPublicShop('sq-photos'));
+    expect(shop).not.toContain('sq-two');
+    expect(shop).not.toContain('private/orig');
   });
 
   it('cannot read the sealed key at all, as the read-only role', async () => {

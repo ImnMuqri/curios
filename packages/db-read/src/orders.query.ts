@@ -606,8 +606,12 @@ export async function getCheckout(handle: string, now = new Date()): Promise<Che
  * for an unknown or unavailable slug, a personal page or a closed Store. The
  * slug is unique per page, so the handle is part of the question.
  */
-export async function getShopItem(handle: string, slug: string, now = new Date()): Promise<{ shop: Checkout; item: PublicItem } | null> {
+export async function getShopItem(handle: string, slug: string, now = new Date()): Promise<{ shop: Checkout; item: PublicItem; photoKeys: string[] } | null> {
   const shop = await getCheckout(handle, now);
   const item = shop?.items.find((candidate) => candidate.slug === slug);
-  return shop && item ? { shop, item } : null;
+  if (!shop || !item) return null;
+  const rows = await prismaRead.itemPhoto.findMany({ where: { itemId: item.id }, orderBy: { position: 'asc' }, select: { squareKey: true } });
+  // An item from before photos has its cover and no rows: the cover is its one picture.
+  const photoKeys = rows.length > 0 ? rows.map((r) => r.squareKey) : item.photoKey ? [item.photoKey] : [];
+  return { shop, item, photoKeys };
 }

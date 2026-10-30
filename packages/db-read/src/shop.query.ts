@@ -193,6 +193,14 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
  * shows "N left", and a code is only ever shown to the buyer it was given to. Files, codes
  * and times appear only while the item is digital and set to deliver them.
  */
+export interface OwnerPhoto {
+  id: string;
+  squareKey: string;
+  width: number;
+  height: number;
+  frame: { x: number; y: number; size: number };
+}
+
 export interface OwnerItem extends ShopItem {
   /** The owner's own reference; read for the editor only, never for the shop. */
   sku: string | null;
@@ -204,6 +212,8 @@ export interface OwnerItem extends ShopItem {
   sessionMinutes: number | null;
   sessionPlace: 'ONLINE' | 'IN_PERSON' | null;
   sessionWhere: string | null;
+  /** The item's photos in order. The original's key is not selected: it is private. */
+  photos: OwnerPhoto[];
   files: { id: string; name: string; sizeBytes: number }[];
   codesLeft: number;
   sessions: { id: string; startsAt: Date; seats: number; booked: number; seatsLeft: number }[];
@@ -270,6 +280,7 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
           sessionMinutes: true,
           sessionPlace: true,
           sessionWhere: true,
+          photos: { orderBy: { position: 'asc' }, select: { id: true, squareKey: true, width: true, height: true, frameX: true, frameY: true, frameSize: true } },
           files: { orderBy: { position: 'asc' }, select: { id: true, name: true, sizeBytes: true } },
           sessions: { orderBy: { startsAt: 'asc' }, select: { id: true, startsAt: true, seats: true, bookings: { select: { seats: true } } } },
           _count: { select: { codes: { where: { orderLineId: null } } } },
@@ -283,10 +294,11 @@ export async function getOwnerStore(accountId: string): Promise<OwnerStore | nul
   const chip = paymentAccount
     ? { connected: true, ...paymentAccount }
     : { connected: false, brandName: null, methods: [], checkedAt: null, isTest: false };
-  const ownerItems: OwnerItem[] = items.map(({ files, sessions, _count, ...item }) => {
+  const ownerItems: OwnerItem[] = items.map(({ photos, files, sessions, _count, ...item }) => {
     const on = (delivery: OwnerItem['delivery']) => item.kind === 'DIGITAL' && item.delivery === delivery;
     return {
       ...item,
+      photos: photos.map((p) => ({ id: p.id, squareKey: p.squareKey, width: p.width, height: p.height, frame: { x: p.frameX, y: p.frameY, size: p.frameSize } })),
       files: on('FILES') ? files : [],
       codesLeft: on('CODES') ? _count.codes : 0,
       sessions: on('SESSION')
