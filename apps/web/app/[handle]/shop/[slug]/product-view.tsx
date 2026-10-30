@@ -5,7 +5,9 @@ import { formatRinggit } from '@curios/core/store';
 import type { DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, priceBasket, QUANTITY_MAX, readBasket, writeAddedNote, writeBasket, type BasketLine } from '../basket.js';
+import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from '../copy.js';
+import { itemPromo, minText, offText } from '../promo.js';
 import { ShopCover } from '../shop-cover.js';
 import styles from './product.module.css';
 
@@ -55,6 +57,8 @@ export function ProductView(props: {
   inline?: boolean;
   /** The page's cover photo, the item's backdrop as it is the shop's (ShopCover); null for none. */
   coverUrl?: string | null;
+  /** The shop's live automatic vouchers; none when absent (the Store preview). */
+  vouchers?: VoucherTerms[];
   /** Called once an add is saved. Default: go back to the shop. */
   onDone?: () => void;
 }) {
@@ -92,6 +96,7 @@ export function ProductView(props: {
   const maxQuantity = Math.min(QUANTITY_MAX, seats);
   const look = { delivery: item.delivery ?? null, format: item.format ?? null, minutes: item.minutes ?? null, place: item.place ?? null };
 
+  const deal = itemPromo(props.vouchers, item.id);
   const day = props.nextDay ? copy.dayLong(props.nextDay) : null;
   const notice = copy.productNotice(props.noticeDays, day, props.pickup);
 
@@ -147,6 +152,7 @@ export function ProductView(props: {
             {formatRinggit(unitCents)}
           </p>
         ) : null}
+        {deal ? <p className={styles.deal}>{copy.promoThisItem(deal.kind === 'PERCENT', offText(deal), minText(deal))}</p> : null}
         {soldOut ? <p className={styles.soldOut}>{copy.soldOut}</p> : null}
         {item.description ? <p className={styles.desc}>{item.description}</p> : null}
 

@@ -61,6 +61,10 @@ export interface ShopCopy {
   askName: (name: string) => string;
   back: string;
   from: (price: string) => string;
+  /** A live automatic voucher: the shop sign's line, an item's page line and a card's tag. `off` is "10%" or "RM5". */
+  promoOff: (percent: boolean, off: string, minSpend: string | null, name: string) => string;
+  promoThisItem: (percent: boolean, off: string, minSpend: string | null) => string;
+  promoTag: (percent: boolean, off: string) => string;
   /** The Ask tab: the page's opening line, the label over each reply, and the product card's two buttons. */
   askHello: (name: string) => string;
   askLabel: (name: string) => string;
@@ -397,6 +401,9 @@ const EN: ShopCopy = {
   askName: (name) => `Ask ${name}`,
   back: 'Back',
   from: (price) => `from ${price}`,
+  promoOff: (_percent, off, minSpend, name) => `${off} off${minSpend ? ` over ${minSpend}` : ''} · ${name}`,
+  promoThisItem: (_percent, off, minSpend) => `${off} off this item${minSpend ? ` over ${minSpend}` : ''}`,
+  promoTag: (_percent, off) => `${off} off`,
   askHello: (name) => `Hi! I’m ${name}’s page. Ask me about what’s on offer, prices or how to order.`,
   askLabel: (name) => `${name}’s page`,
   askThinking: 'Inquiring',
@@ -684,6 +691,9 @@ const MS: ShopCopy = {
   askName: (name) => `Tanya ${name}`,
   back: 'Kembali',
   from: (price) => `dari ${price}`,
+  promoOff: (percent, off, minSpend, name) => `${percent ? 'Diskaun' : 'Potongan'} ${off}${minSpend ? ` bagi belanja ${minSpend} ke atas` : ''} · ${name}`,
+  promoThisItem: (percent, off, minSpend) => `${percent ? 'Diskaun' : 'Potongan'} ${off} untuk barang ini${minSpend ? `, belanja ${minSpend} ke atas` : ''}`,
+  promoTag: (percent, off) => `${percent ? 'Diskaun' : 'Potongan'} ${off}`,
   askHello: (name) => `Hai! Saya halaman ${name}. Tanya saya tentang apa yang ditawarkan, harga atau cara menempah.`,
   askLabel: (name) => `Halaman ${name}`,
   askThinking: 'Sedang menyemak',

@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { formatRinggit, fromPrice, type DeliveryMode } from '@curios/core/store';
 import { addToBasket, BASKET_EVENT, defaultStorageKey, readBasket, takeAddedNote, writeBasket, type BasketLine } from './basket.js';
+import type { VoucherTerms } from '@curios/core/vouchers';
 import { shopCopy } from './copy.js';
+import { itemPromo, minText, offText, shopPromo } from './promo.js';
 import type { ViewItem } from './shop-view.js';
 import { ShopCover } from './shop-cover.js';
 import styles from './shop-page.module.css';
@@ -53,6 +55,8 @@ export function ShopPageView(props: {
   coverUrl?: string | null;
   /** The owner's picture beside their note; null for none, and the note keeps the initial. */
   avatarUrl?: string | null;
+  /** The shop's live automatic vouchers; none when absent (the Store preview). */
+  vouchers?: VoucherTerms[];
   /**
    * The Store editor's picture of this page: the same page, but no link leaves
    * the editor (a tapped item opens the editor's item screen), nothing is
@@ -162,6 +166,7 @@ export function ShopPageView(props: {
   const delivers = props.deliveryMode !== 'NONE';
   const how = props.pickupEnabled ? (delivers ? copy.pickupOrDelivery : copy.pickupOnly) : delivers ? copy.deliveryOnly : null;
   const day = props.nextDay ? copy.dayLong(props.nextDay) : null;
+  const promo = shopPromo(props.vouchers);
   const initial = props.displayName.trim().charAt(0).toUpperCase();
 
   return (
@@ -190,6 +195,9 @@ export function ShopPageView(props: {
           <i aria-hidden="true" />
           {props.canTakeOrders ? copy.openForOrders : copy.ordersPaused}
         </span>
+        {promo ? (
+          <p className={styles.promo}>{copy.promoOff(promo.kind === 'PERCENT', offText(promo), minText(promo), promo.label)}</p>
+        ) : null}
         <h1 className={styles.name}>{props.displayName}</h1>
         <ul className={styles.facts}>
           {props.pickupNote ? (
@@ -258,6 +266,7 @@ export function ShopPageView(props: {
               const soldOut = item.soldOut === true;
               const buyable = !soldOut && (item.options.length > 0 || item.priceCents !== null);
               const href = `/${props.handle}/shop/${item.slug}`;
+              const deal = itemPromo(props.vouchers, item.id);
               const tag = item.kind === 'DIGITAL' ? copy.digital : item.tag;
               return (
                 <li key={item.id} className={styles.card}>
@@ -266,6 +275,7 @@ export function ShopPageView(props: {
                       {item.photoUrl ? <img src={item.photoUrl} alt="" /> : item.name.trim().charAt(0).toUpperCase()}
                     </a>
                     {tag ? <span className={styles.tag}>{tag}</span> : null}
+                    {deal ? <span className={styles.deal}>{copy.promoTag(deal.kind === 'PERCENT', offText(deal))}</span> : null}
                     {buyable && item.delivery === 'SESSION' ? (
                       // A class needs its time first: the product page has the picker.
                       <button type="button" className={styles.add} aria-label={`${copy.pickATime}: ${item.name}`} onClick={preview ? () => preview.onOpenItem(item.id) : () => window.location.assign(href)}>

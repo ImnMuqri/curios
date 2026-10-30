@@ -66,6 +66,7 @@ export default async function ShopPage({
             halal={shop.shopHalal}
             coverUrl={coverUrl(shop.coverKey)}
             avatarUrl={avatarUrl(shop.avatarKey)}
+            vouchers={shop.vouchers}
           />
           <BasketBar
             handle={shop.handle}
