@@ -58,7 +58,7 @@ describe('checkHandle', () => {
   });
 
   it('rejects a reserved route name', () => {
-    for (const bad of ['admin', 'api', 'app', 'auth', 'www', 'settings', 'privacy', 'terms', 'refunds']) {
+    for (const bad of ['admin', 'api', 'app', 'auth', 'www', 'settings', 'privacy', 'terms', 'refunds', 'returns']) {
       expect(checkHandle(bad)).toEqual({ ok: false, reason: 'RESERVED' });
     }
   });

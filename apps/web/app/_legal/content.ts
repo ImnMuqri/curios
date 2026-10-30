@@ -1,7 +1,7 @@
 import type { Locale } from '../_landing/copy.js';
 
 export type { Locale };
-export type LegalDoc = 'terms' | 'privacy' | 'refunds';
+export type LegalDoc = 'terms' | 'privacy' | 'refunds' | 'returns';
 
 /**
  * Who runs Curios: the registered business and its SSM registration number.
@@ -18,17 +18,17 @@ export const OPERATOR = {
 export const SUPPORT_EMAIL = 'support@curios.my';
 
 /** Change with any edit to the words below. */
-export const UPDATED = new Date('2026-10-27T00:00:00+08:00');
+export const UPDATED = new Date('2026-10-30T00:00:00+08:00');
 
-export const LEGAL_DOCS: readonly LegalDoc[] = ['terms', 'privacy', 'refunds'];
+export const LEGAL_DOCS: readonly LegalDoc[] = ['terms', 'privacy', 'refunds', 'returns'];
 
 export const LEGAL_PATH: Record<Locale, Record<LegalDoc, string>> = {
-  en: { terms: '/terms', privacy: '/privacy', refunds: '/refunds' },
-  ms: { terms: '/ms/terms', privacy: '/ms/privacy', refunds: '/ms/refunds' },
+  en: { terms: '/terms', privacy: '/privacy', refunds: '/refunds', returns: '/returns' },
+  ms: { terms: '/ms/terms', privacy: '/ms/privacy', refunds: '/ms/refunds', returns: '/ms/returns' },
 };
 
 /**
- * A paragraph, or a list. In either, `{terms}`, `{privacy}` and `{refunds}`
+ * A paragraph, or a list. In either, `{terms}`, `{privacy}`, `{refunds}` and `{returns}`
  * become a link to that page in the same language, and `{email}` a link to
  * SUPPORT_EMAIL. `{monthly}` and `{annual}` become the prices in force ("RM49"),
  * and `{leads}` and `{orders}` the free counts: the admin's (`PlanTerms`), so
@@ -50,7 +50,7 @@ export interface Doc {
 }
 
 export interface Chrome {
-  /** The short name in the tabs between the three pages. */
+  /** The short name in the tabs between the pages. */
   tab: Record<LegalDoc, string>;
   /** The full name, which `{terms}` and the like are rendered as. */
   name: Record<LegalDoc, string>;
@@ -66,8 +66,8 @@ const who = `${OPERATOR.name} (${OPERATOR.registration})`;
 
 export const CHROME: Record<Locale, Chrome> = {
   en: {
-    tab: { terms: 'Terms', privacy: 'Privacy', refunds: 'Refunds' },
-    name: { terms: 'Terms of Service', privacy: 'Privacy Policy', refunds: 'Refund Policy' },
+    tab: { terms: 'Terms', privacy: 'Privacy', refunds: 'Refunds', returns: 'Returns' },
+    name: { terms: 'Terms of Service', privacy: 'Privacy Policy', refunds: 'Refund Policy', returns: 'Return Policy' },
     tabsLabel: 'Policies',
     updated: 'Last updated',
     other: { name: 'Bahasa Melayu', lang: 'ms' },
@@ -76,8 +76,8 @@ export const CHROME: Record<Locale, Chrome> = {
     back: 'Back to Curios',
   },
   ms: {
-    tab: { terms: 'Terma', privacy: 'Privasi', refunds: 'Bayaran balik' },
-    name: { terms: 'Terma Perkhidmatan', privacy: 'Dasar Privasi', refunds: 'Dasar Bayaran Balik' },
+    tab: { terms: 'Terma', privacy: 'Privasi', refunds: 'Bayaran balik', returns: 'Pemulangan' },
+    name: { terms: 'Terma Perkhidmatan', privacy: 'Dasar Privasi', refunds: 'Dasar Bayaran Balik', returns: 'Dasar Pemulangan' },
     tabsLabel: 'Dasar',
     updated: 'Kemas kini terakhir',
     other: { name: 'English', lang: 'en' },
@@ -138,7 +138,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
             'A Business page can take orders. The sale is between the customer and the owner: we are not the seller and not a party to it.',
             'Customers pay the owner directly: by the owner’s DuitNow QR or bank transfer, or online through the owner’s own CHIP account, by FPX online banking, e-wallet or card. Curios never receives, holds or passes on that money: an online payment goes to the owner’s CHIP account, never to us.',
             'To take payments online, an owner gives us the Brand ID and secret key of their own CHIP account. We store the key encrypted and use it only to take payments for their shop. The owner is responsible for their CHIP account, including CHIP’s own terms, fees and payouts.',
-            'The owner is responsible for what they sell: that it is legal, as described and as priced, ready or delivered on the day, and for any refund. A customer with a problem should raise it with the owner first, using the WhatsApp link on their order page. Our {refunds} says more.',
+            'The owner is responsible for what they sell: that it is legal, as described and as priced, ready or delivered on the day, and for any refund or return. A customer with a problem should raise it with the owner first, using the WhatsApp link on their order page. Our {refunds} and {returns} say more.',
             'If you think an owner is using Curios to cheat customers, tell us at {email} and we will look into it.',
           ],
         },
@@ -360,6 +360,29 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
         },
       ],
     },
+    returns: {
+      title: 'Return Policy',
+      description: 'How returns work for the Curios Business plan, and for orders from shops on Curios.',
+      lede: 'How returns work for the Curios Business plan, and for orders from the shops on Curios.',
+      sections: [
+        {
+          heading: 'The Business plan',
+          body: [
+            'The Business plan is a digital service. Nothing is shipped to you, so there is nothing to return: it starts working as soon as your payment goes through.',
+            'If you change your mind, our {refunds} says when we give your money back.',
+          ],
+        },
+        {
+          heading: 'Orders from a shop',
+          body: [
+            'Each shop sells and delivers its own items, and sets its own return rules: whether it takes an item back, how long you have, what condition the item must be in, and who pays to send it back.',
+            'Return an item to the shop, not to Curios. We never hold a shop’s items, so we can’t accept a return. Ask the owner through the WhatsApp link on your order page.',
+            'Whether a code or other digital item can be returned once you have it is up to the shop.',
+            'If you think a shop is cheating its customers, tell us at {email} and we will look into it.',
+          ],
+        },
+      ],
+    },
   },
   ms: {
     terms: {
@@ -411,7 +434,7 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
             'Halaman Bisnes boleh menerima tempahan. Jualan itu antara pelanggan dan pemilik: kami bukan penjual dan bukan pihak dalam jualan itu.',
             'Pelanggan membayar terus kepada pemilik: melalui DuitNow QR atau pindahan bank pemilik, atau dalam talian melalui akaun CHIP pemilik sendiri, menggunakan perbankan dalam talian FPX, e-dompet atau kad. Curios tidak sekali-kali menerima, memegang atau memindahkan wang itu: bayaran dalam talian masuk ke akaun CHIP pemilik, tidak sekali-kali kepada kami.',
             'Untuk menerima bayaran dalam talian, pemilik memberi kami Brand ID dan kunci rahsia (secret key) akaun CHIP mereka sendiri. Kami menyimpan kunci itu dalam bentuk tersulit dan menggunakannya hanya untuk menerima bayaran bagi kedai mereka. Pemilik bertanggungjawab atas akaun CHIP mereka, termasuk terma, caj dan pembayaran keluar CHIP sendiri.',
-            'Pemilik bertanggungjawab atas apa yang dijualnya: bahawa ia sah di sisi undang-undang, sama seperti yang diterangkan dan pada harga yang dinyatakan, siap atau dihantar pada hari yang dijanjikan, dan atas sebarang bayaran balik. Pelanggan yang menghadapi masalah hendaklah membangkitkannya dengan pemilik dahulu, melalui pautan WhatsApp di halaman tempahan mereka. {refunds} kami menerangkan lebih lanjut.',
+            'Pemilik bertanggungjawab atas apa yang dijualnya: bahawa ia sah di sisi undang-undang, sama seperti yang diterangkan dan pada harga yang dinyatakan, siap atau dihantar pada hari yang dijanjikan, dan atas sebarang bayaran balik atau pemulangan. Pelanggan yang menghadapi masalah hendaklah membangkitkannya dengan pemilik dahulu, melalui pautan WhatsApp di halaman tempahan mereka. {refunds} dan {returns} kami menerangkan lebih lanjut.',
             'Jika anda rasa seseorang pemilik menggunakan Curios untuk menipu pelanggan, beritahu kami di {email} dan kami akan menyiasatnya.',
           ],
         },
@@ -628,6 +651,29 @@ export const DOCS: Record<Locale, Record<LegalDoc, Doc>> = {
           body: [
             'Apabila anda membuat tempahan daripada kedai di Curios, anda membayar terus kepada pemilik kedai itu. Curios tidak sekali-kali menerima wang itu, jadi kami tidak dapat membayarnya balik.',
             'Setiap kedai menetapkan peraturan bayaran baliknya sendiri. Tanya pemilik melalui pautan WhatsApp di halaman tempahan anda. Jika pemilik membatalkan tempahan yang telah anda bayar, halaman tempahan anda menunjukkan “Dibatalkan · wang akan dipulangkan” sehingga mereka menandakannya “Wang dipulangkan”.',
+            'Jika anda rasa sesebuah kedai menipu pelanggannya, beritahu kami di {email} dan kami akan menyiasatnya.',
+          ],
+        },
+      ],
+    },
+    returns: {
+      title: 'Dasar Pemulangan',
+      description: 'Cara pemulangan berfungsi bagi pelan Bisnes Curios, dan bagi tempahan daripada kedai di Curios.',
+      lede: 'Cara pemulangan berfungsi bagi pelan Bisnes Curios, dan bagi tempahan daripada kedai di Curios.',
+      sections: [
+        {
+          heading: 'Pelan Bisnes',
+          body: [
+            'Pelan Bisnes ialah perkhidmatan digital. Tiada apa-apa yang dihantar kepada anda, jadi tiada apa-apa untuk dipulangkan: ia mula berfungsi sebaik sahaja bayaran anda berjaya.',
+            'Jika anda berubah fikiran, {refunds} kami menerangkan bila kami memulangkan wang anda.',
+          ],
+        },
+        {
+          heading: 'Tempahan daripada kedai',
+          body: [
+            'Setiap kedai menjual dan menghantar barangnya sendiri, dan menetapkan peraturan pemulangannya sendiri: sama ada ia menerima barang yang dipulangkan, berapa lama masa yang anda ada, keadaan barang itu, dan siapa yang menanggung kos menghantarnya balik.',
+            'Pulangkan barang kepada kedai, bukan kepada Curios. Kami tidak pernah memegang barang sesebuah kedai, jadi kami tidak dapat menerima pemulangan. Tanya pemilik melalui pautan WhatsApp di halaman tempahan anda.',
+            'Sama ada kod atau barang digital lain boleh dipulangkan selepas anda menerimanya bergantung pada kedai itu.',
             'Jika anda rasa sesebuah kedai menipu pelanggannya, beritahu kami di {email} dan kami akan menyiasatnya.',
           ],
         },

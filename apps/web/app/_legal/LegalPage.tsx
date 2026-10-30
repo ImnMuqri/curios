@@ -35,7 +35,7 @@ export function legalMetadata(doc: LegalDoc, locale: Locale): Metadata {
 }
 
 /**
- * The Terms, Privacy and Refund pages, in either language. No board draws
+ * The Terms, Privacy, Refund and Return pages, in either language. No board draws
  * them (DEVIATIONS 137): the System board's paper and wordmark, with one
  * readable column of text instead of a centred card.
  *
@@ -112,7 +112,7 @@ function BlockView({ block, locale, plan }: { block: Block; locale: Locale; plan
   );
 }
 
-const TOKEN = /\{(terms|privacy|refunds|email|monthly|annual|leads|orders)\}/;
+const TOKEN = /\{(terms|privacy|refunds|returns|email|monthly|annual|leads|orders)\}/;
 
 /**
  * Turns `{privacy}` and the like into links, `{email}` into a mail link, and

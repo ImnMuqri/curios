@@ -5,7 +5,7 @@ import { Wordmark } from './Wordmark.js';
 import styles from './tanya.module.css';
 
 /**
- * The sections again, the Terms, Privacy and Refund pages (not on the board,
+ * The sections again, the Terms, Privacy, Refund and Return pages (not on the board,
  * DEVIATIONS 138), sign in, the other language, the note that every sample is
  * made up, who runs Curios (the business, its SSM number in both formats, and
  * the support address), and the wordmark at full width.

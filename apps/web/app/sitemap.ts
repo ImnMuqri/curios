@@ -8,7 +8,7 @@ import { LEGAL_DOCS, LEGAL_PATH } from './_legal/content.js';
 export const dynamic = 'force-dynamic';
 
 /**
- * The landing page and the Terms, Privacy and Refund pages, each in both languages; then every
+ * The landing page and the Terms, Privacy, Refund and Return pages, each in both languages; then every
  * page search may index, with its FAQ list and entries and its shop (`getSitemapPages` carries
  * the rules). One file holds 50,000 URLs, so the list stops there.
  */

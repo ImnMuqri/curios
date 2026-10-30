@@ -108,6 +108,15 @@ describe('LegalPage', () => {
     }
   });
 
+  it('says on its own page that the plan has nothing to return, and that shops take returns, linking the Refund Policy', () => {
+    render(<LegalPage doc="returns" locale="en" plan={PLAN} />);
+    expect(screen.getByRole('heading', { level: 1, name: 'Return Policy' })).toBeInTheDocument();
+    expect(document.body).toHaveTextContent('Nothing is shipped to you, so there is nothing to return');
+    expect(document.body).toHaveTextContent('Return an item to the shop, not to Curios.');
+    expect(screen.getByRole('link', { name: 'Refund Policy' })).toHaveAttribute('href', '/refunds');
+    expect(screen.getByRole('link', { name: 'Bahasa Melayu' })).toHaveAttribute('href', '/ms/returns');
+  });
+
   it('gives each page a canonical address and its other-language alternate', () => {
     const meta = legalMetadata('terms', 'ms');
     expect(meta.title).toBe('Terma Perkhidmatan · Curios');

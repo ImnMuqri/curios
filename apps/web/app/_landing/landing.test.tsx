@@ -79,18 +79,20 @@ describe('the landing page', () => {
     expect(within(nav).getByRole('link', { name: 'Buat halaman anda' })).toHaveAttribute('href', '/signup');
   });
 
-  it('links the Terms, Privacy and Refund pages from the footer, in the page’s language', () => {
+  it('links the Terms, Privacy, Refund and Return pages from the footer, in the page’s language', () => {
     const { unmount } = render(<LandingPage locale="en" terms={TERMS} />);
     let foot = screen.getByRole('contentinfo');
     expect(within(foot).getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms');
     expect(within(foot).getByRole('link', { name: 'Privacy' })).toHaveAttribute('href', '/privacy');
     expect(within(foot).getByRole('link', { name: 'Refunds' })).toHaveAttribute('href', '/refunds');
+    expect(within(foot).getByRole('link', { name: 'Returns' })).toHaveAttribute('href', '/returns');
     unmount();
 
     render(<LandingPage locale="ms" terms={TERMS} />);
     foot = screen.getByRole('contentinfo');
     expect(within(foot).getByRole('link', { name: 'Terma' })).toHaveAttribute('href', '/ms/terms');
     expect(within(foot).getByRole('link', { name: 'Bayaran balik' })).toHaveAttribute('href', '/ms/refunds');
+    expect(within(foot).getByRole('link', { name: 'Pemulangan' })).toHaveAttribute('href', '/ms/returns');
   });
 
   it.each(LOCALES)('%s: the footer says who runs Curios, its SSM number in both formats, and where to write', (locale) => {
