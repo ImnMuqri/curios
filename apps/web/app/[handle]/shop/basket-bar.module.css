@@ -72,14 +72,17 @@
   font-weight: 400;
 }
 
-/* The Store editor's picture: the bar stays inside the phone, at the foot of what scrolls. */
+/*
+ * The Store editor's picture: held at the foot of the phone's screen. Still `fixed`, as on the live
+ * page: inside the preview's scaled phone (`.device`, transformed) fixed means fixed to the phone.
+ * Sticky in that scroller is what iOS Safari placed wrong, part way up the screen over the shelf.
+ */
 .bar[data-preview] {
-  position: sticky;
-  right: auto;
+  right: var(--phone-inset-x, 12px);
   bottom: var(--phone-inset-bottom, 12px);
-  left: auto;
+  left: var(--phone-inset-x, 12px);
   width: auto;
-  margin: 16px var(--phone-inset-x, 12px) 0;
+  margin: 0;
 }
 
 .empty {

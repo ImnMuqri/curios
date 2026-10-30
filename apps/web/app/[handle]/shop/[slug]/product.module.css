@@ -344,13 +344,18 @@
   box-shadow: 0 14px 30px -14px rgb(0 0 0 / 60%);
 }
 
-/* In the Store editor's phone, the bar stays inside the phone, and fits its narrower screen. */
+/*
+ * In the Store editor's phone, the bar is held at the foot of the phone's screen and fits it. Still
+ * `fixed`: inside the preview's scaled phone (transformed) that is fixed to the phone. Sticky in its
+ * scroller is what iOS Safari placed wrong, part way up the screen. The preview's shop
+ * (store.module.css, .previewShop) keeps the room under the last line for it.
+ */
 .view[data-inline] .bar {
-  position: sticky;
+  right: var(--phone-inset-x, 8px);
   bottom: var(--phone-inset-bottom, 12px);
-  /* The phone is the screen: the full width of its column, not a screen's width less a margin. */
+  left: var(--phone-inset-x, 8px);
   width: auto;
-  margin: 20px var(--phone-inset-x, 8px) 0;
+  margin: 0;
 }
 
 .view[data-inline] .qty button {

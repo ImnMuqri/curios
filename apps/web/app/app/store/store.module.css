@@ -1309,7 +1309,8 @@
   position: relative;
   box-sizing: border-box;
   min-height: 100%;
-  padding-bottom: 12px;
+  /* Room under the last line for the basket bar, held over the phone's foot (basket-bar, product). */
+  padding-bottom: 84px;
   background: var(--page-bg);
   color: var(--page-fg);
   font-family: var(--font-body);
