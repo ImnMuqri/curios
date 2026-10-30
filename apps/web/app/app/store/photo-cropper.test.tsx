@@ -51,7 +51,7 @@ describe('PhotoCropper', () => {
     const zoom = screen.getByLabelText<HTMLInputElement>('Zoom');
     fireEvent.change(zoom, { target: { value: zoom.max } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect(framePixels(onSave.mock.calls[0][0], 500, 333).side).toBe(MIN_FRAME_PX);
+    expect(framePixels(onSave.mock.calls[0]![0], 500, 333).side).toBe(MIN_FRAME_PX);
   });
 
   it('cancels on Escape', () => {
