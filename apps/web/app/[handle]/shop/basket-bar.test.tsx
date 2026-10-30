@@ -130,3 +130,25 @@ describe('BasketBar: the basket sheet', () => {
     expect(screen.getByText('3 items · RM145')).toBeInTheDocument();
   });
 });
+
+describe('BasketBar with an automatic voucher', () => {
+  const raya = { id: 'v1', mode: 'AUTO' as const, kind: 'PERCENT' as const, percent: 10, amountCents: null, itemId: null, minSpendCents: null, label: 'Raya promo' };
+
+  it('the sheet shows the voucher line and the discounted total; the bar shows the count and that total', () => {
+    writeBasket(defaultStorageKey('nadia'), [{ itemId: 'cake', optionId: 'k1', quantity: 1 }]);
+    render(<BasketBar {...base} vouchers={[raya]} />);
+    expect(screen.getByText('1 item · RM85.50')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /1 item/ }));
+    const sheet = screen.getByRole('dialog');
+    expect(within(sheet).getByText('Raya promo −RM9.50')).toBeInTheDocument();
+    expect(within(sheet).getByText('RM85.50')).toBeInTheDocument();
+  });
+
+  it('draws no voucher line when the voucher does not fit', () => {
+    writeBasket(defaultStorageKey('nadia'), [{ itemId: 'cookie', optionId: null, quantity: 1 }]);
+    render(<BasketBar {...base} vouchers={[{ ...raya, itemId: 'cake' }]} />);
+    expect(screen.getByText('1 item · RM25')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /1 item/ }));
+    expect(screen.queryByText(/Raya promo/)).toBeNull();
+  });
+});

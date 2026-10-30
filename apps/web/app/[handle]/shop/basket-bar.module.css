@@ -263,6 +263,13 @@
   text-align: right;
 }
 
+.voucher {
+  margin: 4px 0 0;
+  color: var(--accent);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
 .sheetFoot {
   display: flex;
   align-items: center;

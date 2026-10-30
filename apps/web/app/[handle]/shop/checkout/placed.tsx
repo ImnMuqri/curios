@@ -51,6 +51,8 @@ export function Placed(props: {
   paidDigital?: { what: string } | null;
   /** The order holds a code or a class seat until it is paid: says they are released after a day. */
   holds?: boolean;
+  /** The order came to RM0, so it was placed paid: nothing to pay, only the order to see. */
+  free?: boolean;
 }) {
   const { copy } = props;
   const [copied, setCopied] = useState(false);
@@ -62,8 +64,9 @@ export function Placed(props: {
 
   const path = `/${props.handle}/order/${props.token}`;
   const paid = props.onSeeOrder !== undefined;
+  const free = props.free === true;
   // Too many tries: the order page has the retry, so the link there stays even with no QR.
-  const noWayToPay = !paid && props.payByQr === false && props.onlineUnavailable !== 'tooMany';
+  const noWayToPay = !paid && !free && props.payByQr === false && props.onlineUnavailable !== 'tooMany';
   const total = formatRinggit(props.totalCents);
   const arrow = (
     <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -101,9 +104,15 @@ export function Placed(props: {
         {paid ? (props.paidDigital ? copy.paidPlacedDigital : copy.paidPlaced) : copy.orderPlaced}
       </h1>
       <p className={styles.placedSub}>
-        {paid ? (props.paidDigital ? copy.paidPlacedDigitalSub(total, props.paidDigital.what) : copy.paidPlacedSub(total, props.displayName)) : copy.placedSub(props.displayName)}
+        {free
+          ? copy.freeOrderPaid
+          : paid
+            ? props.paidDigital
+              ? copy.paidPlacedDigitalSub(total, props.paidDigital.what)
+              : copy.paidPlacedSub(total, props.displayName)
+            : copy.placedSub(props.displayName)}
       </p>
-      {props.onlineUnavailable ? (
+      {props.onlineUnavailable && !free ? (
         <p className={styles.placedNotice} role="status">
           {props.onlineUnavailable === 'tooMany'
             ? copy.payTooManyLater
@@ -146,12 +155,12 @@ export function Placed(props: {
         )
       ) : (
         <a className={styles.pay} href={path}>
-          {copy.payNow(total)}
+          {free ? copy.seeOrder : copy.payNow(total)}
           {arrow}
         </a>
       )}
       {props.digitalNote ? <p className={styles.digitalNote}>{props.digitalNote}</p> : null}
-      {props.holds && !paid ? <p className={styles.digitalNote}>{copy.holdNote}</p> : null}
+      {props.holds && !paid && !free ? <p className={styles.digitalNote}>{copy.holdNote}</p> : null}
       {props.phone ? (
         <a className={styles.sendLink} href={`https://wa.me/${waNumber(props.phone)}?text=${encodeURIComponent(link)}`} rel="noopener">
           {copy.sendLink}

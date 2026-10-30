@@ -182,6 +182,15 @@ export interface ShopCopy {
   tooLarge: (name: string) => string;
   deliveryOff: string;
   placeOrder: (total: string) => string;
+  /** A voucher's line in the summary and the basket sheet: its code or name, and what it takes off ("RM9.50"). */
+  voucherApplied: (label: string, saving: string) => string;
+  haveACode: string;
+  applyCode: string;
+  codeUnknown: string;
+  betterVoucherApplied: string;
+  removeCode: string;
+  /** The placed screen of an order that came to RM0: nothing to pay, so it is paid. */
+  freeOrderPaid: string;
   emptyBasket: string;
   emptyBasketBody: string;
   pricesChanged: string;
@@ -485,6 +494,13 @@ const EN: ShopCopy = {
   tooLarge: (name) => `This order is too big to place here. Send your basket to ${name} on WhatsApp instead.`,
   deliveryOff: 'Delivery isn’t offered any more, so this order is for pickup.',
   placeOrder: (total) => `Place order · ${total}`,
+  voucherApplied: (label, saving) => `${label} −${saving}`,
+  haveACode: 'Have a code?',
+  applyCode: 'Apply',
+  codeUnknown: 'That code doesn’t work here.',
+  betterVoucherApplied: 'A better voucher is already applied',
+  removeCode: 'Remove code',
+  freeOrderPaid: 'Nothing to pay. Your order is paid and placed.',
   emptyBasket: 'Your basket is empty',
   emptyBasketBody: 'Add something from the shop and it shows up here.',
   pricesChanged: 'Prices changed since you opened the shop. Check your basket and try again.',
@@ -763,6 +779,13 @@ const MS: ShopCopy = {
   tooLarge: (name) => `Tempahan ini terlalu besar untuk dibuat di sini. Hantar bakul anda kepada ${name} di WhatsApp.`,
   deliveryOff: 'Penghantaran tidak lagi ditawarkan, jadi tempahan ini untuk ambil sendiri.',
   placeOrder: (total) => `Buat tempahan · ${total}`,
+  voucherApplied: (label, saving) => `${label} −${saving}`,
+  haveACode: 'Ada kod?',
+  applyCode: 'Guna',
+  codeUnknown: 'Kod itu tidak sah di sini.',
+  betterVoucherApplied: 'Baucar yang lebih baik sudah digunakan',
+  removeCode: 'Buang kod',
+  freeOrderPaid: 'Tiada apa-apa untuk dibayar. Tempahan anda sudah dibayar dan dibuat.',
   emptyBasket: 'Bakul anda kosong',
   emptyBasketBody: 'Tambah sesuatu dari kedai dan ia akan muncul di sini.',
   pricesChanged: 'Harga berubah sejak anda buka kedai. Semak bakul anda dan cuba lagi.',

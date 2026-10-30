@@ -75,6 +75,7 @@ export default async function ShopPage({
             canTakeOrders={shop.canTakeOrders}
             whatsapp={whatsappNumber(shop.links)}
             note={barNote}
+            vouchers={shop.vouchers}
           />
         </div>
       </PageTheme>
