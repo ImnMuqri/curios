@@ -11,8 +11,9 @@
   }
 }
 
+/* Straight under the header (PageHead), whose own 20px foot is the gap above; the same 20px below, and its 40px sides, so the banner lines up with the title. */
 .slot {
-  padding: 24px 32px 0;
+  padding: 0 40px 20px;
 }
 
 .ban {
@@ -176,7 +177,7 @@
 
 @media (max-width: 760px) {
   .slot {
-    padding: 16px 16px 0;
+    padding: 0 16px 14px;
   }
 
   .ban {
