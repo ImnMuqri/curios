@@ -487,6 +487,34 @@ describe('PUT /store/items/:id/photos/order', () => {
 });
 
 describe('DELETE /store/items/:id with photos', () => {
+  it('a photo change committed while the delete waits for the item is read, so its files go too', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    const newCover = `items/${owner.pageId}/cover-${randomUUID()}.webp`;
+    const newSquare = `items/${owner.pageId}/${randomUUID()}.webp`;
+    const newOriginal = `item-photos/${owner.pageId}/${id}/${randomUUID()}.png`;
+    await files.put(newOriginal, await png(10, 10), 'image/png', 1);
+    store.remove.mockClear();
+    let del: ReturnType<typeof call> = Promise.resolve(null as never);
+    await app.prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${id} FOR UPDATE`;
+        del = call('DELETE', `/store/items/${id}`, owner.cookie);
+        await waitForLockWaiters(1);
+        // What a photo mutation commits while the delete is queued.
+        await tx.item.update({ where: { id }, data: { photoKey: newCover } });
+        await tx.itemPhoto.create({ data: { itemId: id, position: 1, originalKey: newOriginal, squareKey: newSquare, width: 10, height: 10, frameX: 0, frameY: 0, frameSize: 1 } });
+      },
+      { timeout: 15_000 },
+    );
+    expect((await del).statusCode).toBe(200);
+    const removed = store.remove.mock.calls.map((c) => c[0]);
+    expect(removed).toContain(newCover);
+    expect(removed).toContain(newSquare);
+    await gone(newOriginal);
+  });
+
   it('removes the cover and every square from the public store, and every original from the private one', async () => {
     const owner = await anOwner();
     const id = await anItem(owner);

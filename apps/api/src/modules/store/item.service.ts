@@ -207,6 +207,8 @@ export async function removeItem(prisma: PrismaClient, accountId: string, id: st
     // Checkout's lock: an order mid-way through taking this item's codes or seats is waited for, so
     // the counts below see it, and a checkout that comes after finds the item gone.
     await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${page.id} FOR UPDATE`;
+    // The photo mutations' lock, taken after the page's: a cover or photo committed while this waited is read, so its files go too.
+    await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "id" = ${id} AND "pageId" = ${page.id} FOR UPDATE`;
     const item = await tx.item.findFirst({ where: { id, pageId: page.id }, select: { position: true, photoKey: true, files: { select: { key: true } }, photos: { select: { originalKey: true, squareKey: true } } } });
     if (!item) throw new ItemNotFoundError();
     // The foreign key only objects at commit; refuse here, with a sentence.

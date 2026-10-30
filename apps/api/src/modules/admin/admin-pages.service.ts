@@ -210,6 +210,8 @@ export async function deleteAccount(
   const { keys, digitalKeys } = await deps.prisma.$transaction(async (tx) => {
     // Lock the row first: a second delete at the same moment waits, then finds no page.
     await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${id} FOR UPDATE`;
+    // Then its items' rows, the photo mutations' lock, so photos committed meanwhile are read below and their files removed.
+    await tx.$queryRaw`SELECT "id" FROM "Item" WHERE "pageId" = ${id} ORDER BY "id" FOR UPDATE`;
     const page = await loadPage(tx, id);
     if (handle.trim().toLowerCase() !== page.handle.toLowerCase()) throw new HandleMismatchError();
 
