@@ -237,7 +237,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         email: anyDigital ? email : null,
         address,
         note,
-        ...totals,
+        itemsCents: totals.itemsCents,
+        deliveryCents: totals.deliveryCents,
+        totalCents: totals.totalCents,
         lines: {
           create: lines.map((line, position) => ({
             itemId: line.itemId,

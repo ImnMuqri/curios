@@ -102,12 +102,18 @@ describe('orderTotals', () => {
   it('sums options times quantities, adding a flat fee only on delivery', () => {
     expect(orderTotals(lines, { method: 'DELIVERY', mode: 'FLAT', feeCents: 1000 })).toEqual({
       itemsCents: 3800,
+      discountCents: 0,
       deliveryCents: 1000,
       totalCents: 4800,
     });
     expect(
       orderTotals(lines, { method: 'PICKUP', mode: 'FLAT', feeCents: 1000 }).deliveryCents,
     ).toBe(0);
+  });
+  it('takes a discount off the items, not the delivery', () => {
+    const totals = orderTotals(lines, { method: 'DELIVERY', mode: 'FLAT', feeCents: 1000 }, 950);
+    expect(totals.discountCents).toBe(950);
+    expect(totals.totalCents).toBe(3800 - 950 + 1000);
   });
   it('adds nothing for a rider', () => {
     expect(

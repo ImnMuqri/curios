@@ -114,9 +114,10 @@ export function isRiderDelivery(order: { method: 'PICKUP' | 'DELIVERY'; delivery
 }
 
 /**
- * Items plus delivery, in integer sen. Only a flat fee on a delivery adds to
- * the total: a rider is paid by the customer directly, and pickup costs
- * nothing. The server computes this; a client total is only ever compared.
+ * Items less any voucher discount, plus delivery, in integer sen. Only a flat
+ * fee on a delivery adds to the total: a rider is paid by the customer
+ * directly, and pickup costs nothing. The server computes this; a client total
+ * is only ever compared.
  */
 export function orderTotals(
   lines: { unitCents: number; quantity: number }[],
@@ -125,11 +126,12 @@ export function orderTotals(
     mode: 'NONE' | 'FLAT' | 'RIDER';
     feeCents: number | null;
   },
-): { itemsCents: number; deliveryCents: number; totalCents: number } {
+  discountCents = 0,
+): { itemsCents: number; discountCents: number; deliveryCents: number; totalCents: number } {
   const itemsCents = lines.reduce((sum, l) => sum + l.unitCents * l.quantity, 0);
   const deliveryCents =
     delivery.method === 'DELIVERY' && delivery.mode === 'FLAT' ? (delivery.feeCents ?? 0) : 0;
-  return { itemsCents, deliveryCents, totalCents: itemsCents + deliveryCents };
+  return { itemsCents, discountCents, deliveryCents, totalCents: itemsCents - discountCents + deliveryCents };
 }
 
 export type OrderView =
