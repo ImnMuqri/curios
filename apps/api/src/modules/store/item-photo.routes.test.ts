@@ -530,6 +530,84 @@ describe('DELETE /store/items/:id with photos', () => {
   });
 });
 
+describe('a put that wrote and then threw', () => {
+  // Review: a key went on the cleanup list only after its put returned, so a put that wrote the
+  // object and then failed (a dropped connection after the upload) left it behind for good.
+  it("an add whose square put fails removes the square's key and the original", async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    const privatePut = vi.spyOn(files, 'put');
+    store.put.mockRejectedValueOnce(new Error('connection reset after upload'));
+    try {
+      const res = await add(owner, id, await png(800, 600));
+      expect(res.statusCode).toBe(500);
+      const [squareKey] = putKeys();
+      expect(squareKey).toMatch(/^items\/.+\.webp$/);
+      expect(store.remove).toHaveBeenCalledWith(squareKey);
+      const originalKey = privatePut.mock.calls[0]?.[0] as string;
+      await gone(originalKey);
+      expect(await app.prisma.itemPhoto.count({ where: { itemId: id } })).toBe(0);
+    } finally {
+      privatePut.mockRestore();
+    }
+  });
+
+  it("an original put that fails is removed again", async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    const privateRemove = vi.spyOn(files, 'remove');
+    const privatePut = vi.spyOn(files, 'put').mockRejectedValueOnce(new Error('connection reset after upload'));
+    try {
+      expect((await add(owner, id, await png(800, 600))).statusCode).toBe(500);
+      expect(privateRemove).toHaveBeenCalledWith(privatePut.mock.calls[0]?.[0]);
+      expect(store.put).not.toHaveBeenCalled();
+    } finally {
+      privatePut.mockRestore();
+      privateRemove.mockRestore();
+    }
+  });
+
+  it('removing the first photo, when the new cover put fails, removes that cover key', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    const before = (await add(owner, id, await png(600, 600), '0,0,1')).json<Result>();
+    store.put.mockClear();
+    store.put.mockRejectedValueOnce(new Error('connection reset after upload'));
+    const res = await call('DELETE', `/store/items/${id}/photos/${before.photos[0]!.id}`, owner.cookie);
+    expect(res.statusCode).toBe(500);
+    const [coverKey] = putKeys();
+    expect(coverKey).toMatch(/^items\/.+\/cover-.+\.webp$/);
+    expect(store.remove).toHaveBeenCalledWith(coverKey);
+    expect(await app.prisma.itemPhoto.count({ where: { itemId: id } })).toBe(2);
+  });
+});
+
+describe('re-crop after the original went', () => {
+  // Review: the original is read outside the item's lock; a replace that committed meanwhile has
+  // deleted it, and the failed read was a 500.
+  it('is PHOTO_NOT_FOUND, and puts nothing, when the original cannot be read', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    const photo = (await add(owner, id, await png(800, 600))).json<Result>().photos[0]!;
+    const [originalKey] = await originalsOf(id);
+    store.put.mockClear();
+    const read = vi.spyOn(files, 'read').mockImplementation(async (key) => {
+      if (key === originalKey) throw Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' });
+      return Buffer.alloc(0);
+    });
+    try {
+      const res = await call('PUT', `/store/items/${id}/photos/${photo.id}/frame`, owner.cookie, { x: 0, y: 0, size: 1 });
+      expect(res.statusCode).toBe(404);
+      expect(res.json().error.code).toBe('PHOTO_NOT_FOUND');
+      expect(read).toHaveBeenCalledWith(originalKey);
+      expect(store.put).not.toHaveBeenCalled();
+    } finally {
+      read.mockRestore();
+    }
+  });
+});
+
 describe("another owner's item", () => {
   it('add, re-crop and replace are all 404, and nothing is put', async () => {
     const owner = await anOwner();

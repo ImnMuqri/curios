@@ -33,6 +33,16 @@ describe('readPicture', () => {
     await expect(readPicture(body, 'image/png')).rejects.toBeInstanceOf(InvalidItemPhotoError);
   });
 
+  // A decompression bomb: one colour compresses to almost nothing, but decoding it would allocate
+  // 8000 x 8000 x 3 bytes. It is refused by the pixel limit, before any of that is allocated.
+  it('rejects a small PNG that declares more than 40 MP', async () => {
+    const bomb = await sharp({ create: { width: 8000, height: 8000, channels: 3, background: '#888' } })
+      .png({ compressionLevel: 9 })
+      .toBuffer();
+    expect(bomb.length).toBeLessThan(1024 * 1024);
+    await expect(readPicture(bomb, 'image/png')).rejects.toBeInstanceOf(InvalidItemPhotoError);
+  });
+
   it('rejects a signature-valid but undecodable body', async () => {
     const body = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(100)]);
     await expect(readPicture(body, 'image/png')).rejects.toBeInstanceOf(InvalidItemPhotoError);

@@ -88,11 +88,14 @@ async function commit(
   staged: { original: (Picture & { key: string }) | null; likelyFirst: boolean },
   write: (tx: Tx, fresh: Fresh) => Promise<Written>,
 ): Promise<PhotosResult> {
+  // Each key goes on `made` before its put: a put that wrote and then threw still leaves a file,
+  // and removing a key that was never written is a no-op on both stores.
   const made: Replaced = { public: [], private: [] };
   const putCover = async (): Promise<string> => {
     const key = `items/${pageId}/cover-${randomUUID()}.webp`;
-    await deps.store.put(key, await cutSquare(source, frame, ITEM_COVER_EDGE), 'image/webp');
+    const cover = await cutSquare(source, frame, ITEM_COVER_EDGE);
     made.public.push(key);
+    await deps.store.put(key, cover, 'image/webp');
     return key;
   };
 
@@ -100,12 +103,13 @@ async function commit(
   try {
     if (staged.original) {
       const { key, body, contentType } = staged.original;
-      await deps.privateFiles.put(key, body, contentType, body.length);
       made.private.push(key);
+      await deps.privateFiles.put(key, body, contentType, body.length);
     }
     const squareKey = `items/${pageId}/${randomUUID()}.webp`;
-    await deps.store.put(squareKey, await cutSquare(source, frame, ITEM_PHOTO_EDGE), 'image/webp');
+    const square = await cutSquare(source, frame, ITEM_PHOTO_EDGE);
     made.public.push(squareKey);
+    await deps.store.put(squareKey, square, 'image/webp');
     let coverKey = staged.likelyFirst ? await putCover() : null;
     const run = () => deps.prisma.$transaction((tx) => write(tx, { squareKey, coverKey }));
     try {
@@ -208,7 +212,11 @@ export async function recropItemPhoto(deps: PhotoDeps, accountId: string, itemId
   const { pageId } = await ownItem(deps.prisma, accountId, itemId);
   const known = await knownPhoto(deps.prisma, itemId, photoId);
   checkFrame(frame, known.width, known.height);
-  const source = await deps.privateFiles.read(known.originalKey);
+  // Read outside the item's lock: a replace that committed meanwhile has deleted this original.
+  // The photo as the owner saw it is gone, which is what PHOTO_NOT_FOUND says.
+  const source = await deps.privateFiles.read(known.originalKey).catch(() => {
+    throw new PhotoNotFoundError();
+  });
   return reframe(deps, pageId, itemId, photoId, known, source, frame, null);
 }
 
@@ -253,8 +261,15 @@ async function rearrange(deps: PhotoDeps, pageId: string, itemId: string, plan: 
     if (head && head.id !== rows[0]?.id) {
       const source = await deps.privateFiles.read(head.originalKey);
       const key = `items/${pageId}/cover-${randomUUID()}.webp`;
-      await deps.store.put(key, await cutSquare(source, { x: head.frameX, y: head.frameY, size: head.frameSize }, ITEM_COVER_EDGE), 'image/webp');
+      const square = await cutSquare(source, { x: head.frameX, y: head.frameY, size: head.frameSize }, ITEM_COVER_EDGE);
+      // Held before the put, so a put that wrote and then threw is cleaned up like any other failure.
       cover = { key, row: head };
+      try {
+        await deps.store.put(key, square, 'image/webp');
+      } catch (error) {
+        await discard(deps, { public: [key], private: [] });
+        throw error;
+      }
     }
     let written: Written;
     try {
