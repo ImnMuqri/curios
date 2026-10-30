@@ -4,7 +4,7 @@ import { frameProblem, ITEM_COVER_EDGE, ITEM_PHOTO_EDGE, MAX_ITEM_PHOTOS, type F
 import { cutSquare, readPicture } from '../../lib/item-photo-image.js';
 import type { AvatarStore } from '../pages/storage.js';
 import type { PrivateFiles } from './private-files.js';
-import { InvalidFrameError, ItemNotFoundError, PhotoLimitError, PhotoNotFoundError } from './store.errors.js';
+import { InvalidFrameError, ItemNotFoundError, ItemOrderStaleError, PhotoLimitError, PhotoNotFoundError } from './store.errors.js';
 import { storePageFor } from './store-page.js';
 
 /** A photo as its owner's editor sees it. The original's key is never in it: the original is fetched by id. */
@@ -229,4 +229,86 @@ export async function photoOriginal(prisma: PrismaClient, accountId: string, ite
   if (!photo) throw new PhotoNotFoundError();
   const ext = photo.originalKey.slice(photo.originalKey.lastIndexOf('.') + 1);
   return { key: photo.originalKey, fileName: `photo-${photoId}.${ext}` };
+}
+
+type Row = { id: string; position: number; originalKey: string; squareKey: string; frameX: number; frameY: number; frameSize: number };
+const ROW_SELECT = { id: true, position: true, originalKey: true, squareKey: true, frameX: true, frameY: true, frameSize: true } as const;
+/** A cover cut for a photo, and what it was cut from: if the photo's picture or frame moved since, it is stale. */
+type Cover = { key: string; row: Row };
+const sameBasis = (a: Row, b: Row) => a.id === b.id && a.originalKey === b.originalKey && a.frameX === b.frameX && a.frameY === b.frameY && a.frameSize === b.frameSize;
+
+/**
+ * Removes and reorders: the photos end up in the order `plan` returns (every id it leaves out is
+ * removed). When the first photo changes, the cover is cut anew from the new first; when it does
+ * not, photoKey stays as it was and nothing is put.
+ */
+async function rearrange(deps: PhotoDeps, pageId: string, itemId: string, plan: (rows: Row[]) => string[]): Promise<PhotosResult> {
+  const ordered = (db: Tx | PrismaClient) => db.itemPhoto.findMany({ where: { itemId }, orderBy: { position: 'asc' }, select: ROW_SELECT });
+  for (let attempt = 0; attempt < 3; attempt++) {
+    // The guess made outside the lock: if the first photo changes, its cover is cut now.
+    const rows = await ordered(deps.prisma);
+    const guess = plan(rows);
+    const head = rows.find((r) => r.id === guess[0]);
+    let cover: Cover | null = null;
+    if (head && head.id !== rows[0]?.id) {
+      const source = await deps.privateFiles.read(head.originalKey);
+      const key = `items/${pageId}/cover-${randomUUID()}.webp`;
+      await deps.store.put(key, await cutSquare(source, { x: head.frameX, y: head.frameY, size: head.frameSize }, ITEM_COVER_EDGE), 'image/webp');
+      cover = { key, row: head };
+    }
+    let written: Written;
+    try {
+      written = await deps.prisma.$transaction(async (tx): Promise<Written> => {
+        const { photoKey } = await lockItem(tx, pageId, itemId);
+        const now = await ordered(tx);
+        const finalIds = plan(now);
+        const changed = finalIds[0] !== now[0]?.id;
+        const newHead = now.find((r) => r.id === finalIds[0]);
+        if (changed && newHead && !(cover && sameBasis(cover.row, newHead))) throw new CoverNeeded();
+        const replaced: Replaced = { public: [], private: [] };
+        const keep = new Set(finalIds);
+        for (const row of now) {
+          if (keep.has(row.id)) continue;
+          replaced.public.push(row.squareKey);
+          replaced.private.push(row.originalKey);
+        }
+        await tx.itemPhoto.deleteMany({ where: { itemId, id: { notIn: finalIds } } });
+        for (const [position, id] of finalIds.entries()) {
+          if (now.find((r) => r.id === id)?.position !== position) await tx.itemPhoto.update({ where: { id }, data: { position } });
+        }
+        if (changed) {
+          await tx.item.update({ where: { id: itemId }, data: { photoKey: newHead ? (cover?.key ?? null) : null } });
+          if (photoKey) replaced.public.push(photoKey);
+        }
+        return { result: await resultOf(tx, itemId), replaced, coverUsed: changed && Boolean(newHead) };
+      });
+    } catch (error) {
+      if (cover) await discard(deps, { public: [cover.key], private: [] });
+      if (error instanceof CoverNeeded) continue;
+      throw error;
+    }
+    if (cover && !written.coverUsed) written.replaced.public.push(cover.key);
+    await discard(deps, written.replaced);
+    return written.result;
+  }
+  throw new PhotoNotFoundError();
+}
+
+/** The photo's files go; the photos after it close the gap; the cover follows the first. */
+export async function removeItemPhoto(deps: PhotoDeps, accountId: string, itemId: string, photoId: string): Promise<PhotosResult> {
+  const { pageId } = await ownItem(deps.prisma, accountId, itemId);
+  return rearrange(deps, pageId, itemId, (rows) => {
+    if (!rows.some((r) => r.id === photoId)) throw new PhotoNotFoundError();
+    return rows.filter((r) => r.id !== photoId).map((r) => r.id);
+  });
+}
+
+/** `ids` is exactly the item's photos, in their new order: anything else is stale (reorderItems' rule). */
+export async function reorderItemPhotos(deps: PhotoDeps, accountId: string, itemId: string, ids: string[]): Promise<PhotosResult> {
+  const { pageId } = await ownItem(deps.prisma, accountId, itemId);
+  return rearrange(deps, pageId, itemId, (rows) => {
+    const known = new Set(rows.map((r) => r.id));
+    if (new Set(ids).size !== ids.length || ids.length !== known.size || ids.some((id) => !known.has(id))) throw new ItemOrderStaleError();
+    return ids;
+  });
 }

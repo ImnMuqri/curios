@@ -201,13 +201,13 @@ export async function updateItem(
 }
 
 /** Returns the removed item's photo key and file keys, for the caller to delete from storage. */
-export async function removeItem(prisma: PrismaClient, accountId: string, id: string): Promise<{ photoKey: string | null; fileKeys: string[] }> {
+export async function removeItem(prisma: PrismaClient, accountId: string, id: string): Promise<{ photoKey: string | null; fileKeys: string[]; photoFiles: { originalKey: string; squareKey: string }[] }> {
   const page = await storePageFor(prisma, accountId);
   return prisma.$transaction(async (tx) => {
     // Checkout's lock: an order mid-way through taking this item's codes or seats is waited for, so
     // the counts below see it, and a checkout that comes after finds the item gone.
     await tx.$queryRaw`SELECT "id" FROM "Page" WHERE "id" = ${page.id} FOR UPDATE`;
-    const item = await tx.item.findFirst({ where: { id, pageId: page.id }, select: { position: true, photoKey: true, files: { select: { key: true } } } });
+    const item = await tx.item.findFirst({ where: { id, pageId: page.id }, select: { position: true, photoKey: true, files: { select: { key: true } }, photos: { select: { originalKey: true, squareKey: true } } } });
     if (!item) throw new ItemNotFoundError();
     // The foreign key only objects at commit; refuse here, with a sentence.
     if (await hasBookings(tx, id)) throw new ItemHasBookingsError();
@@ -215,7 +215,7 @@ export async function removeItem(prisma: PrismaClient, accountId: string, id: st
     if ((await tx.itemCode.count({ where: { itemId: id, orderLineId: { not: null } } })) > 0) throw new ItemHasSalesError();
     await tx.item.delete({ where: { id } });
     await tx.item.updateMany({ where: { pageId: page.id, position: { gt: item.position } }, data: { position: { decrement: 1 } } });
-    return { photoKey: item.photoKey, fileKeys: item.files.map((f) => f.key) };
+    return { photoKey: item.photoKey, fileKeys: item.files.map((f) => f.key), photoFiles: item.photos };
   });
 }
 

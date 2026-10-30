@@ -307,6 +307,24 @@ describe('DELETE /admin/pages/:id', () => {
     await expect(privateFiles.deliver(key, 'a.pdf')).rejects.toThrow();
   });
 
+  it('removes the squares and originals of the deleted page item photos', async () => {
+    const page = await aPage();
+    const item = await app.prisma.item.create({ data: { pageId: page.id, name: 'Tart', slug: 'tart-photos', position: 0, photoKey: 'items/p/cover-1.webp' } });
+    const original = `item-photos/${page.id}/${item.id}/o1.png`;
+    await privateFiles.put(original, Buffer.from('png'), 'image/png', 3);
+    await app.prisma.itemPhoto.createMany({
+      data: [
+        { itemId: item.id, position: 0, originalKey: original, squareKey: 'items/p/sq-1.webp', width: 800, height: 600, frameX: 0, frameY: 0, frameSize: 1 },
+        { itemId: item.id, position: 1, originalKey: `item-photos/${page.id}/${item.id}/o2.png`, squareKey: 'items/p/sq-2.webp', width: 800, height: 600, frameX: 0, frameY: 0, frameSize: 1 },
+      ],
+    });
+    const res = await call('DELETE', `/admin/pages/${page.id}`, { reason: 'Owner asked', handle: page.handle });
+    expect(res.statusCode).toBe(204);
+    const removed = store.remove.mock.calls.map((c) => c[0]);
+    expect(removed).toEqual(expect.arrayContaining(['items/p/cover-1.webp', 'items/p/sq-1.webp', 'items/p/sq-2.webp']));
+    await expect(privateFiles.read(original)).rejects.toThrow();
+  });
+
   it('two deletes at once: one 204, one 404, one audit row', async () => {
     const page = await aPage();
     const send = () => call('DELETE', `/admin/pages/${page.id}`, { reason: 'Owner asked', handle: page.handle });

@@ -51,7 +51,7 @@ async function anOwner() {
 }
 type Owner = Awaited<ReturnType<typeof anOwner>>;
 
-const call = (method: 'GET' | 'POST' | 'PUT', url: string, cookie?: string, payload?: object) =>
+const call = (method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, cookie?: string, payload?: object) =>
   app.inject({ method, url, remoteAddress: from(), ...(cookie ? { cookies: { [SESSION_COOKIE]: cookie } } : {}), ...(payload ? { payload } : {}) });
 
 async function anItem(owner: Owner): Promise<string> {
@@ -355,6 +355,150 @@ describe('GET /store/items/:id/photos/:photoId/original', () => {
     expect((await call('GET', url, other.cookie)).statusCode).toBe(404);
     expect((await call('GET', url)).statusCode).toBe(404);
     expect((await call('GET', `/store/items/${id}/photos/nope/original`, owner.cookie)).statusCode).toBe(404);
+  });
+});
+
+const originalsOf = async (itemId: string) => (await app.prisma.itemPhoto.findMany({ where: { itemId }, select: { originalKey: true } })).map((p) => p.originalKey);
+const gone = (key: string) => expect(files.read(key)).rejects.toThrow();
+const ids = (r: Result) => r.photos.map((p) => p.id);
+
+describe('DELETE /store/items/:id/photos/:photoId', () => {
+  it('removing the first of three closes the gap, makes a new cover from the new first, and deletes the old files', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    await add(owner, id, await png(600, 600), '0,0,1');
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    const [first, second] = before.photos as [Photo, Photo];
+    const [firstOriginal] = await originalsOf(id);
+    store.put.mockClear();
+    const res = await call('DELETE', `/store/items/${id}/photos/${first.id}`, owner.cookie);
+    expect(res.statusCode).toBe(200);
+    const after = res.json<Result>();
+    expect(ids(after)).toEqual([second.id, before.photos[2]!.id]);
+    expect((await app.prisma.itemPhoto.findMany({ where: { itemId: id }, orderBy: { position: 'asc' }, select: { position: true } })).map((p) => p.position)).toEqual([0, 1]);
+    expect(after.photoKey).not.toBe(before.photoKey);
+    expect(after.photoKey).toMatch(/^items\/.+\/cover-.+\.webp$/);
+    expect(putKeys()).toEqual([after.photoKey]);
+    expect(store.remove).toHaveBeenCalledWith(before.photoKey);
+    expect(store.remove).toHaveBeenCalledWith(first.squareKey);
+    await gone(firstOriginal!);
+  });
+
+  it('removing a later photo leaves photoKey alone and puts nothing', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    store.put.mockClear();
+    const after = (await call('DELETE', `/store/items/${id}/photos/${before.photos[1]!.id}`, owner.cookie)).json<Result>();
+    expect(after.photoKey).toBe(before.photoKey);
+    expect(after.photos).toHaveLength(1);
+    expect(store.put).not.toHaveBeenCalled();
+    expect(store.remove).not.toHaveBeenCalledWith(before.photoKey);
+  });
+
+  it('removing the only photo sets photoKey to null', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    const res = await call('DELETE', `/store/items/${id}/photos/${before.photos[0]!.id}`, owner.cookie);
+    expect(res.json<Result>()).toEqual({ photos: [], photoKey: null });
+    expect((await app.prisma.item.findUniqueOrThrow({ where: { id } })).photoKey).toBeNull();
+    expect(store.remove).toHaveBeenCalledWith(before.photoKey);
+  });
+
+  it('an unknown photo is 404, and another owner gets 404 and nothing changes', async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    const id = await anItem(owner);
+    const photo = (await add(owner, id, await png(800, 600))).json<Result>().photos[0]!;
+    store.remove.mockClear();
+    expect((await call('DELETE', `/store/items/${id}/photos/nope`, owner.cookie)).json().error.code).toBe('PHOTO_NOT_FOUND');
+    expect((await call('DELETE', `/store/items/${id}/photos/${photo.id}`, other.cookie)).statusCode).toBe(404);
+    expect(await app.prisma.itemPhoto.count({ where: { itemId: id } })).toBe(1);
+    expect(store.remove).not.toHaveBeenCalled();
+  });
+});
+
+describe('PUT /store/items/:id/photos/order', () => {
+  it('moving another photo first gives a new cover from it', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    await add(owner, id, await png(800, 600));
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    const [a, b, c] = ids(before) as [string, string, string];
+    store.put.mockClear();
+    const res = await call('PUT', `/store/items/${id}/photos/order`, owner.cookie, { ids: [c, a, b] });
+    expect(res.statusCode).toBe(200);
+    const after = res.json<Result>();
+    expect(ids(after)).toEqual([c, a, b]);
+    expect(after.photoKey).not.toBe(before.photoKey);
+    expect(after.photoKey).toMatch(/^items\/.+\/cover-.+\.webp$/);
+    expect(putKeys()).toEqual([after.photoKey]);
+    expect(store.remove).toHaveBeenCalledWith(before.photoKey);
+  });
+
+  it('a reorder that keeps the first leaves photoKey as it was and puts nothing', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    await add(owner, id, await png(800, 600));
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    const [a, b, c] = ids(before) as [string, string, string];
+    store.put.mockClear();
+    store.remove.mockClear();
+    const after = (await call('PUT', `/store/items/${id}/photos/order`, owner.cookie, { ids: [a, c, b] })).json<Result>();
+    expect(ids(after)).toEqual([a, c, b]);
+    expect(after.photoKey).toBe(before.photoKey);
+    expect(store.put).not.toHaveBeenCalled();
+    expect(store.remove).not.toHaveBeenCalled();
+  });
+
+  it('a missing, extra, repeated or foreign id is 409 and changes nothing', async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    const id = await anItem(owner);
+    const otherId = await anItem(other);
+    await add(owner, id, await png(800, 600));
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    const foreign = (await add(other, otherId, await png(800, 600))).json<Result>().photos[0]!.id;
+    const [a, b] = ids(before) as [string, string];
+    store.put.mockClear();
+    for (const bad of [[b], [b, a, a], [b, foreign], [b, a, foreign]]) {
+      const res = await call('PUT', `/store/items/${id}/photos/order`, owner.cookie, { ids: bad });
+      expect(res.statusCode).toBe(409);
+      expect(res.json().error.code).toBe('ITEM_ORDER_STALE');
+    }
+    const rows = await app.prisma.itemPhoto.findMany({ where: { itemId: id }, orderBy: { position: 'asc' }, select: { id: true } });
+    expect(rows.map((r) => r.id)).toEqual([a, b]);
+    expect(store.put).not.toHaveBeenCalled();
+    expect((await app.prisma.item.findUniqueOrThrow({ where: { id } })).photoKey).toBe(before.photoKey);
+  });
+
+  it("another owner's item is 404", async () => {
+    const owner = await anOwner();
+    const other = await anOwner();
+    const id = await anItem(owner);
+    const photo = (await add(owner, id, await png(800, 600))).json<Result>().photos[0]!;
+    expect((await call('PUT', `/store/items/${id}/photos/order`, other.cookie, { ids: [photo.id] })).statusCode).toBe(404);
+  });
+});
+
+describe('DELETE /store/items/:id with photos', () => {
+  it('removes the cover and every square from the public store, and every original from the private one', async () => {
+    const owner = await anOwner();
+    const id = await anItem(owner);
+    await add(owner, id, await png(800, 600));
+    const before = (await add(owner, id, await png(800, 600))).json<Result>();
+    const originals = await originalsOf(id);
+    expect(originals).toHaveLength(2);
+    store.remove.mockClear();
+    expect((await call('DELETE', `/store/items/${id}`, owner.cookie)).statusCode).toBe(200);
+    const removed = store.remove.mock.calls.map((c) => c[0] as string).sort();
+    expect(removed).toEqual([before.photoKey!, ...before.photos.map((p) => p.squareKey)].sort());
+    for (const key of originals) await gone(key);
   });
 });
 

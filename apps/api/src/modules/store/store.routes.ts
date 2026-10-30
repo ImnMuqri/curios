@@ -5,7 +5,7 @@ import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { TILE_SIZES } from '@curios/core/bento';
 import { MAX_DIGITAL_FILE_BYTES } from '@curios/core/digital';
-import { ITEM_PHOTO_ORIGINAL_MAX_BYTES, type Frame } from '@curios/core/item-photos';
+import { ITEM_PHOTO_ORIGINAL_MAX_BYTES, MAX_ITEM_PHOTOS, type Frame } from '@curios/core/item-photos';
 import { DELIVERY_MODES } from '@curios/core/store';
 import { UnauthenticatedError } from '../../plugins/session.js';
 import { AVATAR_MAX_BYTES, decodeImage } from '../pages/avatar.js';
@@ -14,7 +14,7 @@ import { resolveStore, type AvatarStore } from '../pages/storage.js';
 import { clearPaymentQr, getStoreSettings, setPaymentQr, updateStoreSettings } from './settings.service.js';
 import { redrawDuitNowQr, REDRAWN_PREFIX } from './payment-qr.js';
 import { addItem, listItems, removeItem, reorderItems, updateItem } from './item.service.js';
-import { addItemPhoto, photoOriginal, recropItemPhoto, replaceItemPhoto, type PhotoDeps } from './item-photo.service.js';
+import { addItemPhoto, photoOriginal, recropItemPhoto, removeItemPhoto, reorderItemPhotos, replaceItemPhoto, type PhotoDeps } from './item-photo.service.js';
 import {
   addCodes,
   addSession,
@@ -195,14 +195,20 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
 
   app.delete('/store/items/:id', { schema: { params } }, async (request) => {
     if (!request.account) throw new UnauthenticatedError();
-    const { photoKey: photo, fileKeys } = await removeItem(app.prisma, request.account.id, request.params.id);
+    const { photoKey: photo, fileKeys, photoFiles } = await removeItem(app.prisma, request.account.id, request.params.id);
     if (privateFiles) {
       for (const key of fileKeys) await removeStored(privateFiles, key, (err) => request.log.warn({ err }, 'removed item file could not be deleted'));
     }
-    if (photo && store) {
-      await store.remove(photo).catch((error: unknown) =>
-        request.log.warn({ err: error instanceof Error ? error.message : String(error) }, 'removed item photo could not be deleted'),
-      );
+    if (store) {
+      for (const key of [photo, ...photoFiles.map((f) => f.squareKey)]) {
+        if (!key) continue;
+        await store.remove(key).catch((error: unknown) =>
+          request.log.warn({ err: error instanceof Error ? error.message : String(error) }, 'removed item photo could not be deleted'),
+        );
+      }
+    }
+    if (privateFiles) {
+      for (const { originalKey } of photoFiles) await removeStored(privateFiles, originalKey, (err) => request.log.warn({ err }, 'removed item photo original could not be deleted'));
     }
     return { status: 'removed' };
   });
@@ -216,6 +222,16 @@ export const storeRoutes: FastifyPluginAsyncZod<StoreRouteOptions> = async (app,
   app.put('/store/items/:id/photos/:photoId/frame', { schema: { params: photoParams, body: z.object({ x: z.number(), y: z.number(), size: z.number() }) } }, async (request) => {
     if (!request.account) throw new UnauthenticatedError();
     return recropItemPhoto(photoDeps(request.log), request.account.id, request.params.id, request.params.photoId, request.body);
+  });
+
+  app.delete('/store/items/:id/photos/:photoId', { schema: { params: photoParams } }, async (request) => {
+    if (!request.account) throw new UnauthenticatedError();
+    return removeItemPhoto(photoDeps(request.log), request.account.id, request.params.id, request.params.photoId);
+  });
+
+  app.put('/store/items/:id/photos/order', { schema: { params, body: z.object({ ids: z.array(z.string().min(1).max(64)).max(MAX_ITEM_PHOTOS) }) } }, async (request) => {
+    if (!request.account) throw new UnauthenticatedError();
+    return reorderItemPhotos(photoDeps(request.log), request.account.id, request.params.id, request.body.ids);
   });
 
   // Digital items. The upload gets its own plugin scope so its parser, which passes the
