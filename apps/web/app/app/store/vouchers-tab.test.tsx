@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import type { OwnerVoucher } from '@curios/core/vouchers';
@@ -132,5 +132,41 @@ describe('VouchersTab', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Keep' }));
     expect(calls.remove).not.toHaveBeenCalled();
     expect(screen.getByRole('listitem', { name: /INSTA15/ })).toBeInTheDocument();
+  });
+
+  it('removes once on a double click of Yes, delete, and shows no error', async () => {
+    let finish = () => {};
+    const calls = show(list, api({ remove: vi.fn(() => new Promise<void>((resolve) => { finish = resolve; })) }));
+    await userEvent.click(within(row(/INSTA15/)).getByRole('button', { name: /^Delete/ }));
+    await userEvent.dblClick(screen.getByRole('button', { name: 'Yes, delete' }));
+    expect(calls.remove).toHaveBeenCalledTimes(1);
+    finish();
+    await waitFor(() => expect(screen.queryByRole('listitem', { name: /INSTA15/ })).not.toBeInTheDocument());
+    expect(screen.queryByText(/did not save/)).not.toBeInTheDocument();
+  });
+
+  it('updates once on a double click of the switch', async () => {
+    let finish = () => {};
+    const calls = show(list, api({ update: vi.fn((id) => new Promise<OwnerVoucher>((resolve) => { finish = () => resolve(voucher({ id, active: false, state: 'off' })); })) }));
+    await userEvent.dblClick(within(row(/Raya sale/)).getByRole('switch'));
+    expect(calls.update).toHaveBeenCalledTimes(1);
+    finish();
+    await waitFor(() => expect(within(row(/Raya sale/)).getByRole('switch')).toHaveAttribute('aria-checked', 'false'));
+  });
+
+  it('says a failed switch and leaves the list as it was', async () => {
+    show(list, api({ update: vi.fn(async () => { throw new Error('Nope.'); }) }));
+    await userEvent.click(within(row(/Raya sale/)).getByRole('switch'));
+    expect(await screen.findByText('Nope.')).toBeInTheDocument();
+    expect(within(row(/Raya sale/)).getByRole('switch')).toHaveAttribute('aria-checked', 'true');
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
+  });
+
+  it('says a failed delete and leaves the list as it was', async () => {
+    show(list, api({ remove: vi.fn(async () => { throw new Error('Could not delete.'); }) }));
+    await userEvent.click(within(row(/INSTA15/)).getByRole('button', { name: /^Delete/ }));
+    await userEvent.click(screen.getByRole('button', { name: 'Yes, delete' }));
+    expect(await screen.findByText('Could not delete.')).toBeInTheDocument();
+    expect(screen.getAllByRole('listitem')).toHaveLength(4);
   });
 });

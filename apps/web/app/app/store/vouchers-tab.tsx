@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { formatRinggit, parseRinggit } from '@curios/core/store';
 import { VOUCHER_NAME_MAX, checkVoucherInput, normalizeVoucherCode, type OwnerVoucher, type VoucherInput, type VoucherKind, type VoucherMode } from '@curios/core/vouchers';
 import { Callout } from '@curios/ui';
@@ -228,32 +228,48 @@ function VoucherForm({ items, api, onAdded, onCancel }: { items: { id: string; n
  * a switch turns one off or on, and deleting asks inside the page first.
  * Adding opens a form that refuses what the API would refuse, in its words.
  */
-export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: OwnerVoucher[]; items: { id: string; name: string }[]; api: VouchersApi; onChange: (next: OwnerVoucher[]) => void }) {
+export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: OwnerVoucher[]; items: { id: string; name: string }[]; api: VouchersApi; onChange: Dispatch<SetStateAction<OwnerVoucher[]>> }) {
   const [adding, setAdding] = useState(false);
   const [confirming, setConfirming] = useState<string | null>(null);
   const [error, setError] = useState('');
-
-  async function setActive(v: OwnerVoucher) {
-    setError('');
+  // Rows with a request in flight: the ref guards a second click before the next render, the state disables the buttons.
+  const inFlight = useRef(new Set<string>());
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
+  const guard = async (id: string, run: () => Promise<void>) => {
+    if (inFlight.current.has(id)) return;
+    inFlight.current.add(id);
+    setPending(new Set(inFlight.current));
     try {
-      const next = await api.update(v.id, { active: !v.active });
-      onChange(vouchers.map((other) => (other.id === v.id ? next : other)));
-    } catch (failure) {
-      setError(message(failure));
-    }
-  }
-
-  async function remove(v: OwnerVoucher) {
-    setError('');
-    try {
-      await api.remove(v.id);
-      onChange(vouchers.filter((other) => other.id !== v.id));
-    } catch (failure) {
-      setError(message(failure));
+      await run();
     } finally {
-      setConfirming(null);
+      inFlight.current.delete(id);
+      setPending(new Set(inFlight.current));
     }
-  }
+  };
+
+  const setActive = (v: OwnerVoucher) =>
+    guard(v.id, async () => {
+      setError('');
+      try {
+        const next = await api.update(v.id, { active: !v.active });
+        onChange((now) => now.map((other) => (other.id === v.id ? next : other)));
+      } catch (failure) {
+        setError(message(failure));
+      }
+    });
+
+  const remove = (v: OwnerVoucher) =>
+    guard(v.id, async () => {
+      setError('');
+      try {
+        await api.remove(v.id);
+        onChange((now) => now.filter((other) => other.id !== v.id));
+      } catch (failure) {
+        setError(message(failure));
+      } finally {
+        setConfirming(null);
+      }
+    });
 
   const live = vouchers.filter((v) => v.state === 'on').length;
 
@@ -267,7 +283,7 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
           api={api}
           onCancel={() => setAdding(false)}
           onAdded={(v) => {
-            onChange([v, ...vouchers]);
+            onChange((now) => [v, ...now]);
             setAdding(false);
           }}
         />
@@ -309,7 +325,7 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
                 {confirming === v.id ? (
                   <span className={ui.confirm} role="group" aria-label="Confirm delete">
                     Delete it? Past orders keep what it took off.
-                    <button type="button" className={ui.confirmRemove} onClick={() => void remove(v)}>
+                    <button type="button" className={ui.confirmRemove} disabled={pending.has(v.id)} onClick={() => void remove(v)}>
                       Yes, delete
                     </button>
                     <button type="button" onClick={() => setConfirming(null)}>
@@ -318,7 +334,7 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
                   </span>
                 ) : (
                   <>
-                    <button type="button" className={ui.switch} role="switch" aria-checked={v.active} aria-label={`Voucher on: ${v.label}`} onClick={() => void setActive(v)}>
+                    <button type="button" className={ui.switch} role="switch" aria-checked={v.active} aria-label={`Voucher on: ${v.label}`} disabled={pending.has(v.id)} onClick={() => void setActive(v)}>
                       <i />
                     </button>
                     <button type="button" className={styles.ghost} aria-label={`Delete ${v.label}`} onClick={() => setConfirming(v.id)}>
