@@ -9,6 +9,7 @@ import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
 import { nextOrderDay } from '../pill.js';
 import { ProductView } from './product-view.js';
 import styles from './product.module.css';
+import { coverTintOf } from '@curios/core/bento';
 
 // Read live, like the shop: an item turned off must stop opening on the next request.
 export const runtime = 'nodejs';
@@ -47,7 +48,7 @@ export default async function ProductPage({ params }: { params: Params }) {
 
   return (
     <main>
-      <PageTheme theme={shop} className={styles.stage} paintDocument>
+      <PageTheme theme={shop} className={styles.stage} paintDocument={{ tint: coverTintOf(shop) }}>
         <div className={styles.column}>
           <ProductView
             coverUrl={coverUrl(shop.coverKey)}

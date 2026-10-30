@@ -108,6 +108,9 @@ export interface PublicShop {
   headingFont: HeadingFont;
   avatarKey: string | null;
   coverKey: string | null;
+  /** An uploaded cover's colours at its top and foot (core's coverTintOf), for the phone's bars. */
+  coverTop: string | null;
+  coverBottom: string | null;
   background: PageBackground;
   backgroundColor: string | null;
   /** For the WhatsApp the basket is sent to. */
@@ -147,6 +150,8 @@ export async function getPublicShop(handle: string, now = new Date()): Promise<P
       headingFont: true,
       avatarKey: true,
       coverKey: true,
+      coverTop: true,
+      coverBottom: true,
       background: true,
       backgroundColor: true,
       links: { orderBy: { position: 'asc' }, select: { label: true, url: true } },

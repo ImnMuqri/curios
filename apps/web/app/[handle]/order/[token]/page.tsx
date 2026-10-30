@@ -8,6 +8,7 @@ import { whatsappNumber } from '../../shop/basket.js';
 import type { DigitalLineView } from './digital-section.js';
 import { OrderView } from './order-view.js';
 import styles from '../../shop/checkout/checkout.module.css';
+import { coverTintOf } from '@curios/core/bento';
 
 // Read live: the owner marking it paid must show on the customer's next reload.
 export const runtime = 'nodejs';
@@ -67,7 +68,7 @@ export default async function OrderPage({ params }: Params) {
   const { switches } = await getSettings();
 
   return (
-    <PageTheme theme={page} className={styles.stage} paintDocument>
+    <PageTheme theme={page} className={styles.stage} paintDocument={{ tint: coverTintOf(page) }}>
       <OrderView
         coverUrl={coverUrl(page.coverKey)}
         token={token}

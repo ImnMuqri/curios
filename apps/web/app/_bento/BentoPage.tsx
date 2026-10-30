@@ -3,6 +3,7 @@ import {
   isHexColor,
   accentShowsOn,
   readableOn,
+  type CoverTint,
   type HeadingFont,
   type PageBackground,
   type PageStyle,
@@ -123,13 +124,16 @@ export function PageTheme({
 }: {
   theme: Parameters<typeof themeAttrs>[0];
   className?: string;
-  /** A public page that is the whole screen: the document behind it takes its colour (DocumentColor). Never a preview inside the dashboard. */
-  paintDocument?: boolean;
+  /**
+   * A public page that is the whole screen: the document behind it takes its colour (DocumentColor),
+   * or, given the colours of the cover it wears blurred, follows the cover. Never a preview inside the dashboard.
+   */
+  paintDocument?: boolean | { tint: CoverTint | null };
   children: ReactNode;
 }) {
   return (
     <div className={`${styles.theme} ${className ?? ''}`} {...themeAttrs(theme)}>
-      {paintDocument ? <DocumentColor /> : null}
+      {paintDocument ? <DocumentColor tint={typeof paintDocument === 'object' ? paintDocument.tint : null} /> : null}
       {children}
     </div>
   );

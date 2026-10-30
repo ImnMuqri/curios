@@ -252,6 +252,11 @@ model Page {
   avatarKey           String?
   /// The cover photo: `stock/<name>` for one that ships with Curios, otherwise an object key in storage. Null is no cover.
   coverKey            String?
+  /// An uploaded cover's colours at its top and foot (six-digit hex), worked out when it was uploaded, for
+  /// the phone's bars on the shop's pages. Null for a stock cover (core's STOCK_COVER_TINTS has those) and
+  /// for a cover from before this was kept.
+  coverTop            String?
+  coverBottom         String?
   background          PageBackground @default(PAPER)
   /// Six-digit hex, used when background is CUSTOM. Kept when the owner picks a
   /// band, so switching back to Custom finds their colour again.

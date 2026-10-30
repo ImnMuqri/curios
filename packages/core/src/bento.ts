@@ -31,6 +31,22 @@ export type PageBackground = (typeof PAGE_BACKGROUNDS)[number];
 export const STOCK_COVERS = ['kedai', 'kopi', 'dapur', 'teh', 'bunga', 'manis'] as const;
 export type StockCover = (typeof STOCK_COVERS)[number];
 
+/** A cover's colours at its top and foot, six-digit hex (the API's cover-tint.ts works them out). */
+export interface CoverTint {
+  top: string;
+  bottom: string;
+}
+
+/** The stock covers' colours, measured once the way cover-tint.ts measures an upload. */
+export const STOCK_COVER_TINTS: Record<StockCover, CoverTint> = {
+  kedai: { top: '#434023', bottom: '#bda37f' },
+  kopi: { top: '#2e2316', bottom: '#431f0e' },
+  dapur: { top: '#577643', bottom: '#c1ac99' },
+  teh: { top: '#dad0b7', bottom: '#72675d' },
+  bunga: { top: '#e19877', bottom: '#ac434d' },
+  manis: { top: '#8f3b40', bottom: '#ada8a4' },
+};
+
 const STOCK_PREFIX = 'stock/';
 
 export function stockCoverKey(name: StockCover): string {
@@ -42,6 +58,13 @@ export function stockCoverName(key: string | null): StockCover | null {
   if (!key?.startsWith(STOCK_PREFIX)) return null;
   const name = key.slice(STOCK_PREFIX.length);
   return (STOCK_COVERS as readonly string[]).includes(name) ? (name as StockCover) : null;
+}
+
+/** The colours of the cover a page wears: a stock cover's from the table, an upload's as it was measured. Null with none. */
+export function coverTintOf(page: { coverKey: string | null; coverTop?: string | null; coverBottom?: string | null }): CoverTint | null {
+  const stock = stockCoverName(page.coverKey);
+  if (stock) return STOCK_COVER_TINTS[stock];
+  return page.coverKey && page.coverTop && page.coverBottom ? { top: page.coverTop, bottom: page.coverBottom } : null;
 }
 export type HeadingFont = (typeof HEADING_FONTS)[number];
 

@@ -8,6 +8,7 @@ import { updateAppearance } from './appearance.service.js';
 import { COVER_MAX_BYTES, decodeAvatar, decodeImage } from './avatar.js';
 import { claimHandle, handleAvailability, nearestPage, NoPageError, publishPage, setNotifications, setSearchIndexing, upgradeToBusiness } from './page.service.js';
 import { resolveStore, type AvatarStore } from './storage.js';
+import { coverTint } from '../../lib/cover-tint.js';
 
 export interface PageRouteOptions {
   /**
@@ -241,7 +242,9 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
       // Random, so a replaced cover is never served from a stale cache.
       const key = `covers/${page.id}/${randomUUID()}.${ext}`;
       await store.put(key, body, request.body.contentType);
-      await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: key } });
+      // Its colours at the top and foot, for the phone's bars on the shop's pages (cover-tint.ts).
+      const tint = await coverTint(body);
+      await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: key, coverTop: tint?.top ?? null, coverBottom: tint?.bottom ?? null } });
       // After the new key is recorded, never before: a failure leaves an orphaned object, not a page pointing at nothing.
       releaseCover(page.id, page.coverKey, request.log);
       return { coverKey: key };
@@ -256,7 +259,8 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
       if (!request.account) throw new UnauthenticatedError();
       const page = await coverOf(request.account.id);
       const key = stockCoverKey(request.body.name);
-      await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: key } });
+      // A stock cover's colours are core's table; none are kept for it.
+      await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: key, coverTop: null, coverBottom: null } });
       releaseCover(page.id, page.coverKey, request.log);
       return { coverKey: key };
     },
@@ -265,7 +269,7 @@ export const pageRoutes: FastifyPluginAsyncZod<PageRouteOptions> = async (app, o
   app.delete('/pages/cover', async (request) => {
     if (!request.account) throw new UnauthenticatedError();
     const page = await coverOf(request.account.id);
-    await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: null } });
+    await app.prisma.page.update({ where: { id: page.id }, data: { coverKey: null, coverTop: null, coverBottom: null } });
     releaseCover(page.id, page.coverKey, request.log);
     return { status: 'removed' };
   });

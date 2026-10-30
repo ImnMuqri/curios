@@ -28,7 +28,7 @@ const shop: Checkout = {
   accentColor: '#2340c8',
   headingFont: 'JAKARTA',
   avatarKey: null,
-  coverKey: null,
+  coverKey: null, coverTop: null, coverBottom: null,
   background: 'PAPER',
   backgroundColor: null,
   links: [

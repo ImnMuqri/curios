@@ -7,6 +7,7 @@ import { avatarUrl, coverUrl } from '../../../../lib/avatar-url.js';
 import { whatsappNumber } from '../basket.js';
 import { Checkout } from './checkout.js';
 import styles from './checkout.module.css';
+import { coverTintOf } from '@curios/core/bento';
 
 // Read live, like the shop: a price or a pause must show on the next request.
 export const runtime = 'nodejs';
@@ -35,7 +36,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ handl
   const { switches } = await getSettings();
 
   return (
-    <PageTheme theme={shop} className={styles.stage} paintDocument>
+    <PageTheme theme={shop} className={styles.stage} paintDocument={{ tint: coverTintOf(shop) }}>
       <Checkout
         coverUrl={coverUrl(shop.coverKey)}
         handle={shop.handle}

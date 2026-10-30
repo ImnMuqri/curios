@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   accentShowsOn,
+  coverTintOf,
+  STOCK_COVER_TINTS,
   arrangeTiles,
   charCount,
   isHexColor,
@@ -218,5 +220,18 @@ describe('accentShowsOn', () => {
     expect(accentShowsOn('#f69697', 'CUSTOM', '#f69697')).toBe(false);
     expect(accentShowsOn('#191f2c', 'CUSTOM', '#f69697')).toBe(true);
     expect(accentShowsOn('#191f2c', 'CUSTOM', null)).toBe(true);
+  });
+});
+
+describe('coverTintOf', () => {
+  it('takes a stock cover from the table, an upload as measured, and nothing without both colours or a cover', () => {
+    expect(coverTintOf({ coverKey: 'stock/kedai' })).toEqual(STOCK_COVER_TINTS.kedai);
+    expect(coverTintOf({ coverKey: 'covers/p1/x.webp', coverTop: '#111111', coverBottom: '#222222' })).toEqual({ top: '#111111', bottom: '#222222' });
+    expect(coverTintOf({ coverKey: 'covers/p1/x.webp', coverTop: null, coverBottom: null })).toBeNull();
+    expect(coverTintOf({ coverKey: null, coverTop: '#111111', coverBottom: '#222222' })).toBeNull();
+  });
+
+  it('has colours for every stock cover', () => {
+    for (const name of STOCK_COVERS) expect(STOCK_COVER_TINTS[name].top).toMatch(/^#[0-9a-f]{6}$/);
   });
 });

@@ -33,7 +33,7 @@ const shop: Checkout = {
   accentColor: '#b5294e',
   headingFont: 'JAKARTA',
   avatarKey: null,
-  coverKey: null,
+  coverKey: null, coverTop: null, coverBottom: null,
   background: 'PAPER',
   backgroundColor: null,
   links: [{ label: 'WA', url: 'https://wa.me/60123456789' }],

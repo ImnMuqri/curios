@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { FastifyInstance } from 'fastify';
+import sharp from 'sharp';
 import { buildApp } from '../../app.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 import type { AvatarStore } from './storage.js';
@@ -59,6 +60,26 @@ describe('the cover photo', () => {
     const key = await coverOf(owner.accountId);
     expect(key).toMatch(/^covers\/[^/]+\/[0-9a-f-]+\.png$/);
     expect(store.put).toHaveBeenLastCalledWith(key, expect.any(Buffer), 'image/png');
+  });
+
+  it('records an uploaded cover’s colours at its top and foot, and none for a picture it cannot read', async () => {
+    const owner = await anOwner();
+    // Red over the top half, blue under it: the bands are a fifth each, so each is all one colour.
+    const picture = await sharp({ create: { width: 200, height: 100, channels: 3, background: '#0000ff' } })
+      .composite([{ input: await sharp({ create: { width: 200, height: 50, channels: 3, background: '#ff0000' } }).png().toBuffer(), top: 0, left: 0 }])
+      .png()
+      .toBuffer();
+    await call(app, 'POST', '/pages/cover', owner.cookie, { contentType: 'image/png', data: picture.toString('base64') });
+    const tint = () => app.prisma.page.findUniqueOrThrow({ where: { accountId: owner.accountId }, select: { coverTop: true, coverBottom: true } });
+    expect(await tint()).toEqual({ coverTop: '#ff0000', coverBottom: '#0000ff' });
+
+    // Only the PNG's signature: stored as before, with no colours (the page keeps its own).
+    await call(app, 'POST', '/pages/cover', owner.cookie, { contentType: 'image/png', data: PNG });
+    expect(await tint()).toEqual({ coverTop: null, coverBottom: null });
+
+    await call(app, 'POST', '/pages/cover', owner.cookie, { contentType: 'image/png', data: picture.toString('base64') });
+    await call(app, 'PUT', '/pages/cover/stock', owner.cookie, { name: 'kedai' });
+    expect(await tint()).toEqual({ coverTop: null, coverBottom: null });
   });
 
   it('refuses a file that is not the picture it claims to be', async () => {
