@@ -251,6 +251,12 @@
   color: color-mix(in oklch, var(--biru) 70%, var(--ink));
 }
 
+/* Behind a photo the tint blended into its rounded corners as a pale fringe. */
+:is(.thumb, .photo):has(> img),
+:is(.thumb, .photo)[data-tint]:has(> img) {
+  background: none;
+}
+
 .item[data-hidden] .thumb {
   opacity: 0.5;
   filter: grayscale(0.8);

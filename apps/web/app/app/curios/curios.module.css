@@ -46,6 +46,11 @@
   outline-offset: 2px;
 }
 
+/* Behind a photo the fill blended into its rounded corners as a pale fringe. */
+.galleryTile:has(img) {
+  background: none;
+}
+
 .galleryTile img {
   position: absolute;
   inset: 0;
@@ -202,6 +207,11 @@
   background: var(--surface);
   color: var(--muted);
   cursor: pointer;
+}
+
+/* Behind a photo the fill blended into its round edge as a pale fringe. */
+.avatar:has(img) {
+  background: none;
 }
 
 .avatar img {

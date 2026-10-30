@@ -410,6 +410,11 @@
   font-weight: 800;
 }
 
+/* Behind a photo the fill blended into its round edge as a pale fringe. */
+.shopPhoto:has(img) {
+  background: none;
+}
+
 .shopPhoto img {
   position: absolute;
   inset: 0;
