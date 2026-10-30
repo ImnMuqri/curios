@@ -481,6 +481,12 @@
 }
 
 .smallPhoto,
+.addPhoto,
+.photo {
+  touch-action: none;
+}
+
+.smallPhoto,
 .addPhoto {
   position: relative;
   display: grid;
@@ -495,7 +501,6 @@
 
 .smallPhoto {
   border: 0;
-  background: var(--line);
 }
 
 .smallPhoto img {

@@ -9,6 +9,8 @@ import styles from './store.module.css';
 import type { EditorItem, Frame, ItemsApi, OwnerPhoto, PhotosResult } from './store-types.js';
 
 const MAX_PHOTOS = 8;
+/** How far a press travels before it is a drag and not a tap. */
+const DRAG_PX = 6;
 
 /** What the crop window is open on: a photo to add, a saved one to adjust, or a new file for a saved one. */
 type Session =
@@ -48,11 +50,12 @@ export function ItemPhotos({
   const file = useRef<HTMLInputElement>(null);
   const root = useRef<HTMLDivElement>(null);
   const opened = useRef(0);
-  const drag = useRef<string | null>(null);
+  const drag = useRef<{ id: string; x: number; y: number; moved: boolean } | null>(null);
   const dragged = useRef(false);
   const refocus = useRef<string | null>(null);
-  const live = useRef({ item, busy });
-  live.current = { item, busy };
+  // Window listeners and awaited calls read this, not the render they were made in.
+  const live = useRef({ item, busy, api, onChange, onError });
+  live.current = { item, busy, api, onChange, onError };
 
   const photos = item?.photos ?? [];
   const legacy = photos.length === 0 && Boolean(item?.photoUrl) && !coverFailed;
@@ -122,51 +125,65 @@ export function ItemPhotos({
   }
 
   async function move(photoId: string, to: number) {
-    const current = live.current.item;
-    if (!current || live.current.busy) return;
+    const { item: current, busy: working, api: calls, onChange: changed, onError: failed } = live.current;
+    if (!current || working) return;
     const ids = current.photos.map((photo) => photo.id);
     const from = ids.indexOf(photoId);
     if (from < 0 || to < 0 || to >= ids.length || to === from) return;
     ids.splice(to, 0, ids.splice(from, 1)[0]!);
     setBusy(true);
-    onError('');
+    failed('');
     try {
-      const result = await api.reorderPhotos(current.id, ids);
+      const result = await calls.reorderPhotos(current.id, ids);
       refocus.current = photoId;
-      onChange(result);
+      changed(result);
       setAnnounce(`Photo moved to position ${to + 1}`);
     } catch (failure) {
-      onError(message(failure));
+      failed(message(failure));
     } finally {
       setBusy(false);
     }
   }
 
-  // A drag ends wherever the pointer is let go, which may be over another square.
+  // A drag starts once the pointer has travelled a few pixels, and ends wherever it is let go.
   useEffect(() => {
+    function track(event: PointerEvent) {
+      const start = drag.current;
+      if (start && !start.moved && Math.hypot(event.clientX - start.x, event.clientY - start.y) > DRAG_PX) start.moved = true;
+    }
     function release(event: PointerEvent) {
-      const from = drag.current;
+      const start = drag.current;
       drag.current = null;
-      if (!from) return;
-      const over = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-photo-id]');
-      const target = over?.dataset.photoId;
-      if (!target || target === from) return;
-      // The click that follows this release is the end of the drag, not a tap on a photo.
+      if (!start?.moved) return;
+      // The click that follows this release ends the drag; it is not a tap on a photo.
       dragged.current = true;
       setTimeout(() => {
         dragged.current = false;
       }, 0);
-      void move(from, live.current.item?.photos.findIndex((photo) => photo.id === target) ?? -1);
+      const over = document.elementFromPoint(event.clientX, event.clientY)?.closest<HTMLElement>('[data-photo-id]');
+      const target = over?.dataset.photoId;
+      if (!target || target === start.id) return;
+      void move(start.id, live.current.item?.photos.findIndex((photo) => photo.id === target) ?? -1);
     }
+    function cancel() {
+      drag.current = null;
+    }
+    window.addEventListener('pointermove', track);
     window.addEventListener('pointerup', release);
-    return () => window.removeEventListener('pointerup', release);
+    window.addEventListener('pointercancel', cancel);
+    return () => {
+      window.removeEventListener('pointermove', track);
+      window.removeEventListener('pointerup', release);
+      window.removeEventListener('pointercancel', cancel);
+    };
   }, []);
 
   function handlers(photo: OwnerPhoto, index: number) {
     return {
       'data-photo-id': photo.id,
-      onPointerDown: () => {
-        drag.current = photo.id;
+      onPointerDown: (event: React.PointerEvent) => {
+        if (event.button !== 0 || !event.isPrimary) return;
+        drag.current = { id: photo.id, x: event.clientX, y: event.clientY, moved: false };
       },
       onKeyDown: (event: React.KeyboardEvent) => {
         if (!event.altKey || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;

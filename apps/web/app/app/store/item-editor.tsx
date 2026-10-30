@@ -249,8 +249,10 @@ export function ItemEditor({
 
   /** The photos changed on the API: the item the screen holds follows, so its thumbnail and the preview do. */
   function photosChanged(result: PhotosResult) {
-    if (!saved) return;
-    const next = { ...saved, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
+    // Read now, not from the render this was made in: the result may land after an await.
+    const current = savedRef.current;
+    if (!current) return;
+    const next = { ...current, photos: result.photos, photoKey: result.photoKey, photoUrl: result.photoKey ? api.photoUrl(result.photoKey) : null };
     setSaved(next);
     onSaved(next);
   }

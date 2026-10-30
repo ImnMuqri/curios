@@ -10,6 +10,17 @@ import { PHYSICAL_ITEM, type EditorItem, type ItemsApi, type OwnerPhoto } from '
 afterEach(cleanup);
 URL.createObjectURL = vi.fn(() => 'blob:x');
 URL.revokeObjectURL = vi.fn();
+class TestPointer extends MouseEvent {
+  isPrimary = true;
+}
+const point = (type: string, over: MouseEventInit = {}) => new TestPointer(type, { bubbles: true, button: 0, ...over });
+/** Presses on one square, moves, and lets go over another (elementFromPoint has no layout in jsdom). */
+function drag(from: HTMLElement, to: HTMLElement, travel = 30) {
+  document.elementFromPoint = vi.fn(() => to);
+  fireEvent(from, point('pointerdown', { clientX: 0, clientY: 0 }));
+  fireEvent(window, point('pointermove', { clientX: travel, clientY: 0 }));
+  fireEvent(window, point('pointerup', { clientX: travel, clientY: 0 }));
+}
 
 const photo = (id: string): OwnerPhoto => ({ id, squareKey: `items/a/${id}.webp`, width: 1000, height: 750, frame: { x: 0.1, y: 0, size: 0.8 } });
 const item = (photos: OwnerPhoto[], over: Partial<EditorItem> = {}): EditorItem => ({
@@ -144,5 +155,50 @@ describe('ItemPhotos', () => {
     show(item([photo('p1')]), {}, false);
     expect(screen.getByRole('button', { name: 'Add a photo' })).toHaveAttribute('title', 'Pictures are switched off here');
     expect(screen.queryByLabelText('Picture file')).toBeNull();
+  });
+
+  it('reorders on a drag from one square onto another, to the latest onChange', async () => {
+    const { api } = show(item([photo('p1'), photo('p2')]));
+    await act(async () => { drag(screen.getByRole('button', { name: 'Crop photo 2' }), screen.getByRole('button', { name: 'Crop cover photo' })); });
+    expect(api.reorderPhotos).toHaveBeenCalledWith('a', ['p2', 'p1']);
+  });
+
+  it('calls the onChange of the latest render, not the first', async () => {
+    const calls = { reorderPhotos: vi.fn(async () => result), photoUrl: (key: string) => key } as unknown as ItemsApi;
+    const first = vi.fn();
+    const latest = vi.fn();
+    const base = { tint: 0, uploadsEnabled: true, api: calls, onError: vi.fn() };
+    const view = render(<ItemPhotos {...base} item={null} onChange={first} />);
+    view.rerender(<ItemPhotos {...base} item={item([photo('p1'), photo('p2')])} onChange={latest} />);
+    await act(async () => { drag(screen.getByRole('button', { name: 'Crop photo 2' }), screen.getByRole('button', { name: 'Crop cover photo' })); });
+    expect(latest).toHaveBeenCalledWith(result);
+    expect(first).not.toHaveBeenCalled();
+  });
+
+  it('treats a press and release without movement as a tap, not a drag', async () => {
+    const { api } = show(item([photo('p1'), photo('p2')]));
+    await act(async () => { drag(screen.getByRole('button', { name: 'Crop photo 2' }), screen.getByRole('button', { name: 'Crop cover photo' }), 2); });
+    expect(api.reorderPhotos).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Crop photo 2' }));
+    expect(screen.getByRole('dialog')).toBeTruthy();
+  });
+
+  it('forgets a drag that the browser cancelled', async () => {
+    const { api } = show(item([photo('p1'), photo('p2')]));
+    document.elementFromPoint = vi.fn(() => screen.getByRole('button', { name: 'Crop cover photo' }));
+    fireEvent(screen.getByRole('button', { name: 'Crop photo 2' }), point('pointerdown'));
+    fireEvent(window, point('pointercancel'));
+    fireEvent(window, point('pointermove', { clientX: 40 }));
+    await act(async () => { fireEvent(window, point('pointerup', { clientX: 40 })); });
+    expect(api.reorderPhotos).not.toHaveBeenCalled();
+  });
+
+  it('starts a drag only from the primary button', async () => {
+    const { api } = show(item([photo('p1'), photo('p2')]));
+    document.elementFromPoint = vi.fn(() => screen.getByRole('button', { name: 'Crop cover photo' }));
+    fireEvent(screen.getByRole('button', { name: 'Crop photo 2' }), point('pointerdown', { button: 2 }));
+    fireEvent(window, point('pointermove', { clientX: 40 }));
+    await act(async () => { fireEvent(window, point('pointerup', { clientX: 40 })); });
+    expect(api.reorderPhotos).not.toHaveBeenCalled();
   });
 });
