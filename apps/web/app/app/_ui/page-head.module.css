@@ -1,10 +1,11 @@
-/* The boards' v2 .head: title in Bricolage 30px, a summary sentence under it, actions to the right,
-   centred on the title block (v3). */
+/* The boards' v2 .head: title in Bricolage 30px, a summary sentence under it, actions to the right.
+   The actions sit at the top, level with the title row: centred on the whole block (v3), a summary
+   that wrapped to two lines took them down to the middle of it (owner, 30 Oct 2026). */
 .head {
   position: relative;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 28px 40px 20px;
 }
