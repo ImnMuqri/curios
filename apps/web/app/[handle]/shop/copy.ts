@@ -188,6 +188,7 @@ export interface ShopCopy {
   applyCode: string;
   codeUnknown: string;
   betterVoucherApplied: string;
+  codeDoesNotFit: string;
   removeCode: string;
   /** The placed screen of an order that came to RM0: nothing to pay, so it is paid. */
   freeOrderPaid: string;
@@ -499,6 +500,7 @@ const EN: ShopCopy = {
   applyCode: 'Apply',
   codeUnknown: 'That code doesn’t work here.',
   betterVoucherApplied: 'A better voucher is already applied',
+  codeDoesNotFit: 'This code doesn’t apply to your basket.',
   removeCode: 'Remove code',
   freeOrderPaid: 'Nothing to pay. Your order is paid and placed.',
   emptyBasket: 'Your basket is empty',
@@ -784,6 +786,7 @@ const MS: ShopCopy = {
   applyCode: 'Guna',
   codeUnknown: 'Kod itu tidak sah di sini.',
   betterVoucherApplied: 'Baucar yang lebih baik sudah digunakan',
+  codeDoesNotFit: 'Kod ini tidak sesuai untuk bakul anda.',
   removeCode: 'Buang kod',
   freeOrderPaid: 'Tiada apa-apa untuk dibayar. Tempahan anda sudah dibayar dan dibuat.',
   emptyBasket: 'Bakul anda kosong',

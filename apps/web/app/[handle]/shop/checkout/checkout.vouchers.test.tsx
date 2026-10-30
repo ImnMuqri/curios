@@ -169,4 +169,59 @@ describe('Checkout vouchers', () => {
     expect(screen.queryByRole('link', { name: /Pay/ })).toBeNull();
     expect(screen.getByRole('link', { name: new RegExp(copy.seeOrder) })).toHaveAttribute('href', '/keklina/order/tok');
   });
+
+  it('a 409 re-checks the typed code: a refused one is cleared, said so, and not sent again', async () => {
+    const user = userEvent.setup();
+    let checks = 0;
+    let placeCalls = 0;
+    const spy = api((url) => {
+      if (url.endsWith('/vouchers/check')) {
+        checks += 1;
+        return checks === 1
+          ? { status: 200, body: { voucher: insta() } }
+          : { status: 404, body: { error: { code: 'VOUCHER_UNKNOWN', message: '' } } };
+      }
+      return placeCalls++ === 0
+        ? { status: 409, body: { error: { code: 'PRICES_CHANGED', message: '' }, items: items.map(({ photoUrl: _p, ...i }) => i), vouchers: [] } }
+        : { status: 201, body: { ...placed, totalCents: 9500 } };
+    });
+    render(<Checkout {...base} vouchers={[]} />);
+    await typeCode(user, 'insta15');
+    await screen.findByText('INSTA15 −RM14.25');
+    await fillDetails(user);
+    await user.click(placeButton('RM80.75'));
+    expect(await screen.findByText(copy.codeUnknown)).toBeInTheDocument();
+    expect(screen.queryByText(/INSTA15 −/)).toBeNull();
+    expect(placeButton('RM95')).toBeEnabled();
+    await user.click(placeButton('RM95'));
+    await screen.findByRole('heading', { name: copy.orderPlaced });
+    const body = JSON.parse((calls(spy, '/store/keklina/orders')[1]![1] as RequestInit).body as string) as Record<string, unknown>;
+    expect(body).toMatchObject({ seenTotalCents: 9500 });
+    expect(body).not.toHaveProperty('voucherCode');
+  });
+
+  it('a typed code that does not fit says so and is not sent; nothing is called better', async () => {
+    const user = userEvent.setup();
+    const spy = api((url) =>
+      url.endsWith('/vouchers/check') ? { status: 200, body: { voucher: insta({ minSpendCents: 50000 }) } } : { status: 201, body: { ...placed, totalCents: 9500 } },
+    );
+    render(<Checkout {...base} vouchers={[]} />);
+    await typeCode(user, 'insta15');
+    expect(await screen.findByText(copy.codeDoesNotFit)).toBeInTheDocument();
+    expect(screen.queryByText(copy.betterVoucherApplied)).toBeNull();
+    await fillDetails(user);
+    await user.click(placeButton('RM95'));
+    await screen.findByRole('heading', { name: copy.orderPlaced });
+    expect(sent(spy, '/store/keklina/orders')).not.toHaveProperty('voucherCode');
+  });
+
+  it('a typed code that does not fit beside an automatic voucher says it does not fit, not better', async () => {
+    const user = userEvent.setup();
+    api(() => ({ status: 200, body: { voucher: insta({ itemId: 'nothere' }) } }));
+    render(<Checkout {...base} vouchers={[raya]} />);
+    await typeCode(user, 'insta15');
+    expect(await screen.findByText(copy.codeDoesNotFit)).toBeInTheDocument();
+    expect(screen.queryByText(copy.betterVoucherApplied)).toBeNull();
+    expect(screen.getByText('Raya promo −RM9.50')).toBeInTheDocument();
+  });
 });

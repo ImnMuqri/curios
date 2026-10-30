@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ADDRESS_MAX, NAME_MAX, ORDER_NOTE_MAX, openDays, orderTotals } from '@curios/core/orders';
 import { formatRinggit, type DeliveryMode } from '@curios/core/store';
-import { normalizeVoucherCode, pickVoucher, type VoucherTerms } from '@curios/core/vouchers';
+import { normalizeVoucherCode, pickVoucher, voucherSaving, type VoucherTerms } from '@curios/core/vouchers';
 import { isDigitalOnly, type DigitalFacts } from '@curios/core/digital';
 import type { ShopItem } from '@curios/db-read';
 import { ApiError, apiFetch } from '../../../../lib/api.js';
@@ -226,6 +226,8 @@ export function Checkout(props: CheckoutProps) {
     },
     deal?.savingCents ?? 0,
   );
+  // A typed code that saves nothing on this basket (minimum spend unmet, its item absent) is not sent.
+  const typedFits = typed !== null && voucherSaving(typed, priced.lines) > 0;
   // Nothing to pay: the order is placed paid, so no way to pay is asked for.
   const free = priced.lines.length > 0 && totals.totalCents === 0;
   // What CHIP takes at this total, asked through the API once the basket settles.
@@ -268,6 +270,22 @@ export function Checkout(props: CheckoutProps) {
     }
   }
 
+  /** After a reload: is the typed code still good? Refused clears it and says so; accepted takes its fresh terms. */
+  async function recheckTyped(current: VoucherTerms) {
+    try {
+      const found = await apiFetch<{ voucher: VoucherTerms }>(`/store/${props.handle}/vouchers/check`, {
+        method: 'POST',
+        body: JSON.stringify({ code: current.label }),
+      });
+      setTyped(found.voucher);
+    } catch (error) {
+      if (error instanceof ApiError && error.code === 'VOUCHER_UNKNOWN') {
+        setTyped(null);
+        setCodeError(copy.codeUnknown);
+      }
+    }
+  }
+
   function removeCode() {
     setTyped(null);
     setCodeError(null);
@@ -297,7 +315,7 @@ export function Checkout(props: CheckoutProps) {
             note: note.trim() === '' ? null : note.trim(),
             // Placing the order under the line that says where the number goes is the consent, as on the lead card.
             consent: true,
-            ...(typed ? { voucherCode: typed.label } : {}),
+            ...(typed && typedFits ? { voucherCode: typed.label } : {}),
             seenTotalCents: totals.totalCents,
           }),
         },
@@ -361,6 +379,7 @@ export function Checkout(props: CheckoutProps) {
         const reload = (error.body ?? {}) as Reload;
         const shelf = reload.items;
         if (Array.isArray(reload.vouchers)) setVouchers(reload.vouchers);
+        if (typed) await recheckTyped(typed);
         if (reload.delivery) {
           setDelivery(reload.delivery);
           if (reload.delivery.mode === 'NONE' && method === 'DELIVERY') {
@@ -515,7 +534,11 @@ export function Checkout(props: CheckoutProps) {
             {typed ? (
               <>
                 <p className={styles.codeNote}>{typed.label}</p>
-                {deal?.voucher.id !== typed.id ? <p className={styles.codeNote}>{copy.betterVoucherApplied}</p> : null}
+                {!typedFits ? (
+                  <p className={styles.codeNote}>{copy.codeDoesNotFit}</p>
+                ) : deal && deal.voucher.id !== typed.id ? (
+                  <p className={styles.codeNote}>{copy.betterVoucherApplied}</p>
+                ) : null}
                 <button type="button" className={styles.codeLink} onClick={removeCode}>
                   {copy.removeCode}
                 </button>
