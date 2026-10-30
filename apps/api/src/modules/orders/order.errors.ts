@@ -1,4 +1,5 @@
 import type { DigitalFacts } from '@curios/core/digital';
+import type { VoucherTerms } from '@curios/core/vouchers';
 
 /** What PRICES_CHANGED hands back: the shelf, in getPublicShop's item shape. */
 interface ShelfBase {
@@ -40,10 +41,12 @@ export interface ShelfDelivery {
 }
 
 /**
- * The server's total is not the one the visitor saw. Carries the current shelf
- * and delivery so checkout can reload both (with only the shelf, a changed fee
- * would refuse every retry); the order route sends them beside the error
- * itself, because the errors plugin only ever sends `{ code, message }`.
+ * The server's total is not the one the visitor saw. Carries the current shelf,
+ * delivery and live automatic vouchers so checkout can reload all three (with
+ * only the shelf, a changed fee or a voucher that ended would refuse every
+ * retry); the order route sends them beside the error itself, because the
+ * errors plugin only ever sends `{ code, message }`. A typed code is not among
+ * the vouchers: it is secret, and checkout asks about it again on its own.
  */
 export class PricesChangedError extends Error {
   readonly statusCode = 409;
@@ -51,6 +54,7 @@ export class PricesChangedError extends Error {
   constructor(
     readonly items: ShelfItem[],
     readonly delivery: ShelfDelivery,
+    readonly vouchers: VoucherTerms[],
   ) {
     super('Prices changed since you opened the shop. Check your basket and try again.');
     this.name = 'PricesChangedError';

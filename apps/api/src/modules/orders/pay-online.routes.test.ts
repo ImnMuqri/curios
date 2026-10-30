@@ -1027,3 +1027,46 @@ describe('the CHIP payments switch', () => {
     expect((await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' })).statusCode).toBe(200);
   });
 });
+
+describe('an order with a voucher, paid online', () => {
+  /** The RM220 order with RAYA10 taking RM21 off its items: RM199 to pay. */
+  async function aDiscountedOrder() {
+    const shop = await aShopWithOrder(app);
+    await app.prisma.order.update({ where: { id: shop.orderId }, data: { discountCents: 2_100, voucherLabel: 'RAYA10', totalCents: 19_900 } });
+    return shop;
+  }
+
+  it("CHIP's purchase is the discounted total, and its products add up to it", async () => {
+    const shop = await aDiscountedOrder();
+    client.createPurchase.mockResolvedValueOnce(aPurchase({ totalCents: 19_900 }));
+
+    const res = await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().url).not.toBeNull();
+    expect(client.listPaymentMethods).toHaveBeenCalledWith(19_900);
+    const input = client.createPurchase.mock.calls[0]![0];
+    expect(input.amountCents).toBe(19_900);
+    expect((input.products ?? []).reduce((sum, p) => sum + p.priceCents * p.quantity, 0)).toBe(19_900);
+    // Delivery is never discounted, so it stays its own line.
+    expect(input.products).toContainEqual({ name: 'Delivery', priceCents: 1_000, quantity: 1 });
+    expect((input.products ?? []).some((p) => p.name.includes('RAYA10'))).toBe(true);
+  });
+
+  it('settling that purchase marks the order paid, and the owner sees the voucher', async () => {
+    const shop = await aDiscountedOrder();
+    const purchase = aPurchase({ totalCents: 19_900 });
+    client.createPurchase.mockResolvedValueOnce(purchase);
+    expect((await pay(app, shop.token, { method: 'fpx', bank: 'maybank', email: 'aisyah@example.com' })).statusCode).toBe(200);
+    client.getPurchase.mockResolvedValue({ ...purchase, status: 'paid', paymentMethod: 'fpx', notes: 'FPX · Maybank2u' });
+
+    const res = await callback(app, shop.orderId, purchase.id, ownerKey.privateKey);
+
+    expect(res.json()).toEqual({ status: 'paid' });
+    expect(await orderOf(app, shop.orderId)).toMatchObject({ status: 'PAID', paidVia: 'CHIP', totalCents: 19_900 });
+    await vi.waitFor(() => expect(mailQueue.add).toHaveBeenCalledTimes(1));
+    const mail = mailQueue.add.mock.calls[0]![1];
+    expect(mail.text).toContain('RAYA10: −RM21');
+    expect(mail.text).toContain('Paid: RM199');
+  });
+});

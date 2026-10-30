@@ -237,7 +237,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, orderPerIpLimit(app.rateLimitRedis));
     await scope.register(rateLimit, orderPerPageLimit(app.rateLimitRedis));
-    await scope.register(orderRoutes, { ...(overrides.orders ?? {}), secretsKey: payOnline.secretsKey });
+    await scope.register(orderRoutes, { ...(overrides.orders ?? {}), secretsKey: payOnline.secretsKey, payOnline });
   });
 
   // A customer's voucher code at checkout: anonymous, its own per-visitor and shop budget.

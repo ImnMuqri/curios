@@ -32,7 +32,22 @@ export interface NewOrderMailInput {
   url: string;
   /** The site's address, where the wordmark image is hosted. */
   appUrl?: string;
+  /** What the order's voucher took off, in sen; 0 or absent for none. `totalCents` is already less it. */
+  discountCents?: number;
+  /** The voucher's code or name, as the order keeps it. */
+  voucherLabel?: string | null;
+  /** A voucher took the total to RM0, so the order was paid as it was placed (and a digital one sent). */
+  paidWithVoucher?: boolean;
 }
+
+/** What a voucher took off, as one row above the total ("RAYA10 −RM9.50"); null with no discount. */
+export function voucherRow(o: { discountCents?: number; voucherLabel?: string | null }): { name: string; detail: string; amount: string } | null {
+  if (!o.discountCents) return null;
+  return { name: o.voucherLabel || 'Voucher', detail: 'Voucher', amount: `−${formatRinggit(o.discountCents)}` };
+}
+
+/** The voucher row in a plain-text email, under the lines: "RAYA10: −RM9.50". */
+export const voucherText = (row: ReturnType<typeof voucherRow>): string[] => (row ? [`${row.name}: ${row.amount}`] : []);
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const WEEKDAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -47,11 +62,16 @@ function shortDay(day: string): string {
 /** Sent to the owner when a customer places an order, unless they switched it off. */
 export function newOrderMail(o: NewOrderMailInput): Mail {
   const total = formatRinggit(o.totalCents);
-  const subject = `New order #${o.number} · ${total}`;
-  const heading = `${o.customerName} ordered ${total} from your shop`;
+  const free = o.paidWithVoucher === true;
+  const subject = free ? `New order #${o.number} · ${total} · Paid` : `New order #${o.number} · ${total}`;
+  const heading = free ? `${o.customerName} ordered from your shop with a voucher` : `${o.customerName} ordered ${total} from your shop`;
   // Not the board's "She’s paying by DuitNow QR": we know neither how they will
-  // pay nor who they are (DEVIATIONS 101).
-  const said = 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
+  // pay nor who they are (DEVIATIONS 101). A free order has nothing to pay at all.
+  const said = free
+    ? `A voucher covered the whole order, so there’s nothing to pay and no receipt to check. ${o.method === null || o.day === null ? 'Their digital items were sent to them straight away.' : 'Just get it ready.'}`
+    : 'They pay you directly, by your QR or bank transfer. We’ll email you again when their receipt comes in.';
+  const voucher = voucherRow(o);
+  const totalLabel = free ? 'Paid' : 'Total';
   const gettingIt =
     o.method === null || o.day === null
       ? 'By email'
@@ -72,7 +92,8 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
       said,
       '',
       ...o.lines.map((l) => `${[l.itemName, l.optionLabel].filter(Boolean).join(', ')}, ${l.quantity}×: ${formatRinggit(l.lineCents)}`),
-      `Total: ${total}`,
+      ...voucherText(voucher),
+      `${totalLabel}: ${total}`,
       '',
       ...facts.map(([label, value]) => `${label}: ${value}`),
       '',
@@ -81,18 +102,21 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
     html: renderMailHtml({
       subject,
       topRight: `Order #${o.number}`,
-      tag: { label: 'Waiting for payment', tone: 'amber' },
+      tag: free ? { label: 'Paid with a voucher', tone: 'hijau' } : { label: 'Waiting for payment', tone: 'amber' },
       heading,
       blocks: [
         { kind: 'p', text: said },
         {
           kind: 'lines',
-          rows: o.lines.map((l) => ({
-            name: l.itemName,
-            detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
-            amount: formatRinggit(l.lineCents),
-          })),
-          total: { label: 'Total', amount: total },
+          rows: [
+            ...o.lines.map((l) => ({
+              name: l.itemName,
+              detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
+              amount: formatRinggit(l.lineCents),
+            })),
+            ...(voucher ? [voucher] : []),
+          ],
+          total: { label: totalLabel, amount: total },
         },
         { kind: 'facts', rows: facts },
         { kind: 'buttons', primary: { label: button, href: o.url } },
@@ -103,7 +127,7 @@ export function newOrderMail(o: NewOrderMailInput): Mail {
   };
 }
 
-export interface PaidOrderMailInput extends Omit<NewOrderMailInput, 'note' | 'method' | 'day'> {
+export interface PaidOrderMailInput extends Omit<NewOrderMailInput, 'note' | 'method' | 'day' | 'paidWithVoucher'> {
   method: 'PICKUP' | 'DELIVERY';
   day: string;
   /** How CHIP says it was paid, as stored: "FPX · Maybank2u". */
@@ -131,6 +155,7 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
     ['Paid with', o.ref ? `${o.via} · Ref ${o.ref}` : o.via],
   ];
   const button = `Open order #${o.number}`;
+  const voucher = voucherRow(o);
 
   return {
     subject,
@@ -140,6 +165,7 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
       said,
       '',
       ...o.lines.map((l) => `${[l.itemName, l.optionLabel].filter(Boolean).join(', ')}, ${l.quantity}×: ${formatRinggit(l.lineCents)}`),
+      ...voucherText(voucher),
       `Paid: ${total}`,
       '',
       ...facts.map(([label, value]) => `${label}: ${value}`),
@@ -157,11 +183,14 @@ export function paidOrderMail(o: PaidOrderMailInput): Mail {
         { kind: 'p', text: said },
         {
           kind: 'lines',
-          rows: o.lines.map((l) => ({
-            name: l.itemName,
-            detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
-            amount: formatRinggit(l.lineCents),
-          })),
+          rows: [
+            ...o.lines.map((l) => ({
+              name: l.itemName,
+              detail: [l.optionLabel, `${l.quantity}×`].filter(Boolean).join(' · '),
+              amount: formatRinggit(l.lineCents),
+            })),
+            ...(voucher ? [voucher] : []),
+          ],
           total: { label: 'Paid', amount: total },
         },
         { kind: 'facts', rows: facts },

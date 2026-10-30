@@ -32,11 +32,14 @@ const SELECT = {
 
 type Row = Prisma.ShopVoucherGetPayload<{ select: typeof SELECT }>;
 
-/** How many orders each voucher is on: not those cancelled before they were paid, which give the use back. */
-async function usesOf(prisma: PrismaClient, ids: string[]): Promise<Map<string, number>> {
+/**
+ * How many orders each voucher is on: not those cancelled before they were paid, which give the use back.
+ * Takes a transaction too, so placing an order counts under the page lock it holds.
+ */
+async function usesOf(db: Pick<Prisma.TransactionClient, 'order'>, ids: string[]): Promise<Map<string, number>> {
   const uses = new Map(ids.map((id) => [id, 0]));
   if (ids.length === 0) return uses;
-  const groups = await prisma.order.groupBy({
+  const groups = await db.order.groupBy({
     by: ['voucherId'],
     where: { voucherId: { in: ids }, ...COUNTED_ORDER_WHERE },
     _count: { _all: true },
@@ -173,6 +176,41 @@ export async function removeVoucher(prisma: PrismaClient, accountId: string, id:
   const page = await storePageFor(prisma, accountId);
   const { count } = await prisma.shopVoucher.deleteMany({ where: { id, pageId: page.id } });
   if (count === 0) throw new VoucherNotFoundError();
+}
+
+/**
+ * The vouchers that can come off an order being placed now: every automatic voucher that is
+ * working (on, not ended, under its cap), oldest first as the shop lists them, and the code
+ * voucher the customer typed if it is working too. An unknown, ended or used-up code is simply
+ * absent. Called with the placement's transaction, under its page lock, so the uses counted
+ * here are the ones the order is numbered against.
+ */
+export async function liveVouchers(
+  db: Pick<Prisma.TransactionClient, 'shopVoucher' | 'order'>,
+  pageId: string,
+  now: Date,
+  typedCode?: string | null,
+): Promise<{ auto: VoucherTerms[]; typed: VoucherTerms | null }> {
+  const code = typedCode ? normalizeVoucherCode(typedCode) : '';
+  const rows = await db.shopVoucher.findMany({
+    where: {
+      pageId,
+      active: true,
+      AND: [
+        { OR: [{ endsAt: null }, { endsAt: { gt: now } }] },
+        { OR: [{ mode: 'AUTO' }, ...(code ? [{ mode: 'CODE' as const, code }] : [])] },
+      ],
+    },
+    orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
+    select: SELECT,
+  });
+  const uses = await usesOf(db, rows.map((r) => r.id));
+  const working = rows.filter((r) => voucherState(r, uses.get(r.id) ?? 0, now) === 'on');
+  const typed = working.find((r) => r.mode === 'CODE');
+  return {
+    auto: working.filter((r) => r.mode === 'AUTO').map((r) => termsOf(r, r.name ?? '')),
+    typed: typed ? termsOf(typed, code) : null,
+  };
 }
 
 /**

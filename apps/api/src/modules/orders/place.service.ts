@@ -3,12 +3,15 @@ import { canTakeOrders, hashSessionValue, MAIL_QUEUE, newOrderMail, normalizeMal
 import { digitalFacts, isDigitalOnly, seatsLeft } from '@curios/core/digital';
 import { sealSecret } from '@curios/core/secret-box';
 import { isOrderDay, ORDER_TOTAL_MAX_CENTS, orderCode, orderTotals } from '@curios/core/orders';
+import { pickVoucher } from '@curios/core/vouchers';
 import type { Prisma, PrismaClient } from '@curios/db';
 import type { Settings } from '@curios/core/settings';
 import { PageNotFoundError } from '../chat/chat.service.js';
 import { PageUnavailableError } from '../pages/page-unavailable.js';
 import { InvalidPhoneError } from '../leads/lead.service.js';
 import { StoreBusinessOnlyError } from '../store/store.errors.js';
+import { liveVouchers } from '../store/voucher.service.js';
+import { deliverOrder, queueDeliveryMail } from './deliver.service.js';
 import {
   AddressRequiredError,
   EmailRequiredError,
@@ -36,6 +39,8 @@ export interface PlaceDeps {
   log?: { warn?: (obj: object, msg: string) => void };
   /** Where the owner's order screen lives, for the email's button. */
   appUrl: string;
+  /** The API's public origin, for the links in a free digital order's delivery email. */
+  apiUrl: string;
   /** PAYMENT_SECRETS_KEY: seals the order token so later emails can carry the order link. Null leaves it unsealed. */
   secretsKey?: Buffer | null;
   /** The admin's settings, read per request: the free trial is `settings.freeOrders` orders long. */
@@ -58,6 +63,8 @@ export interface PlaceInput {
   note: string | null;
   /** The total the visitor was shown. Only compared, never stored. */
   seenTotalCents: number;
+  /** A code the visitor typed. Only a hint: the server picks the voucher, and one that does not work is ignored. */
+  voucherCode?: string | null;
 }
 
 export interface Placed {
@@ -180,9 +187,15 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
     }
     if (anyDigital && (email === null || email.length > 254 || !EMAIL.test(email))) throw new EmailRequiredError();
 
-    const totals = orderTotals(lines, { method: method ?? 'PICKUP', mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
-    // Before anything else reads the total: past this it would not fit the Int columns it is stored in.
-    if (totals.totalCents > ORDER_TOTAL_MAX_CENTS) throw new OrderTooLargeError();
+    // The voucher, decided here and nowhere else: what is working under this lock, counted
+    // against orders under this lock, so a cap can't be overrun by two customers at once. A
+    // typed code that does not work is no candidate, and the total check below says so.
+    const vouchers = await liveVouchers(tx, found.id, now, input.voucherCode);
+    const picked = pickVoucher(vouchers.typed ? [...vouchers.auto, vouchers.typed] : vouchers.auto, lines, vouchers.typed?.id);
+    const totals = orderTotals(lines, { method: method ?? 'PICKUP', mode: page.deliveryMode, feeCents: page.deliveryFeeCents }, picked?.savingCents ?? 0);
+    // Before anything else reads the total: past this it would not fit the Int columns it is
+    // stored in. Before the discount, since the items column holds the full price.
+    if (totals.itemsCents + totals.deliveryCents > ORDER_TOTAL_MAX_CENTS) throw new OrderTooLargeError();
     if (totals.totalCents !== input.seenTotalCents) {
       const rows = await tx.item.findMany({
         where: { pageId: found.id, available: true },
@@ -205,9 +218,12 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
           now,
         ),
       }));
-      throw new PricesChangedError(shelf, { mode: page.deliveryMode, feeCents: page.deliveryFeeCents });
+      throw new PricesChangedError(shelf, { mode: page.deliveryMode, feeCents: page.deliveryFeeCents }, vouchers.auto);
     }
 
+    // Only a voucher takes a total to RM0: every item is priced above it.
+    const free = totals.totalCents === 0;
+    // Counted like any other order, free or not: it is still an order the shop took.
     const number = page.ordersPlaced + 1;
     await tx.page.update({ where: { id: found.id }, data: { ordersPlaced: number } });
 
@@ -238,8 +254,14 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         address,
         note,
         itemsCents: totals.itemsCents,
+        discountCents: totals.discountCents,
         deliveryCents: totals.deliveryCents,
         totalCents: totals.totalCents,
+        // The snapshot: editing or deleting the voucher later never changes this order.
+        voucherId: picked?.voucher.id ?? null,
+        voucherLabel: picked?.voucher.label ?? null,
+        // Nothing to pay: paid as it is placed, by the voucher, with no CHIP, QR or receipt.
+        ...(free ? { status: 'PAID' as const, paidVia: 'VOUCHER' as const, paidAt: now } : {}),
         lines: {
           create: lines.map((line, position) => ({
             itemId: line.itemId,
@@ -264,8 +286,24 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
 
     // Last, so a refusal costs nothing: codes and seats are taken under their own locks, and a throw rolls the order back with them.
     await reserveStock(tx, lines, order.lines.map((l) => l.id), now);
+    // A free order is paid, so it is delivered as any paid order is, in the same transaction
+    // (after the codes and seats it delivers were taken above).
+    const sent = free ? await deliverOrder(tx, order.id, now) : false;
 
-    return { orderId: order.id, number, code, totals, lines, method, day, notify: page.notifyOrders, ownerEmail: page.account.email };
+    return {
+      orderId: order.id,
+      number,
+      code,
+      totals,
+      lines,
+      method,
+      day,
+      free,
+      sent,
+      voucherLabel: picked?.voucher.label ?? null,
+      notify: page.notifyOrders,
+      ownerEmail: page.account.email,
+    };
     // Above Prisma's 2s/5s defaults: a burst on one shop queues on the row
     // lock, one placement after another, and the last in line must not be
     // refused for waiting its turn.
@@ -274,6 +312,10 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   // After the commit, never inside it: the order is placed whether or not the
   // email can be queued, and a queued email must never announce an order a
   // rollback took away.
+  // A free digital order was delivered in the placement: the buyer's email goes now, as after any payment.
+  if (placed.sent) {
+    await queueDeliveryMail({ prisma: deps.prisma, mailQueue: deps.mailQueue, secretsKey: deps.secretsKey ?? null, appUrl: deps.appUrl, apiUrl: deps.apiUrl, log: deps.log }, placed.orderId);
+  }
   if (placed.notify) {
     const warn = (error: unknown) =>
       deps.log?.warn?.({ orderId: placed.orderId, err: error instanceof Error ? error.message : String(error) }, 'could not queue the new-order email');
@@ -285,6 +327,9 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         phone,
         method: placed.method,
         deliveryCents: placed.totals.deliveryCents,
+        discountCents: placed.totals.discountCents,
+        voucherLabel: placed.voucherLabel,
+        paidWithVoucher: placed.free,
         day: placed.day,
         note,
         lines: placed.lines.map((line) => ({

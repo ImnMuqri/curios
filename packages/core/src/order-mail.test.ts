@@ -272,3 +272,61 @@ describe('paidTwiceMail', () => {
     expect(paidTwiceMail({ ...twice, first: 'hand' }).text).toContain('on top of the hand-marked payment.');
   });
 });
+
+describe('a voucher on the order emails', () => {
+  const discounted = { ...order, totalCents: 18_050, discountCents: 950, voucherLabel: 'RAYA10' };
+
+  it('newOrderMail shows the voucher and what it took off above the discounted total', () => {
+    const mail = newOrderMail(discounted);
+    expect(mail.subject).toBe('New order #12 · RM180.50');
+    expect(mail.html).toContain('RAYA10');
+    expect(mail.html).toContain('−RM9.50');
+    expect(mail.html).toContain('>RM180.50<');
+    expect(mail.html.indexOf('−RM9.50')).toBeLessThan(mail.html.indexOf('>Total<'));
+    expect(mail.text).toContain('RAYA10: −RM9.50');
+    expect(mail.text.indexOf('RAYA10: −RM9.50')).toBeLessThan(mail.text.indexOf('Total: RM180.50'));
+  });
+
+  it('shows no voucher line without a discount', () => {
+    expect(newOrderMail({ ...order, discountCents: 0, voucherLabel: null }).text).not.toContain('−RM');
+    expect(newOrderMail(order).html).not.toContain('−RM');
+  });
+
+  it('a free order is already paid with a voucher: no receipt to wait for', () => {
+    const mail = newOrderMail({ ...order, totalCents: 0, discountCents: 19_000, voucherLabel: 'FREE100', paidWithVoucher: true });
+    expect(mail.subject).toBe('New order #12 · RM0 · Paid');
+    expect(mail.html).toContain('Paid with a voucher</span>');
+    expect(mail.text).toContain('nothing to pay and no receipt to check');
+    expect(mail.text).not.toContain('They pay you directly');
+    expect(mail.html).not.toContain('Waiting for payment');
+    expect(mail.text).toContain('FREE100: −RM190');
+    expect(mail.text).toContain('Paid: RM0');
+  });
+
+  it('a free digital order says it was sent', () => {
+    const mail = newOrderMail({ ...order, method: null, day: null, totalCents: 0, discountCents: 19_000, voucherLabel: 'FREE100', paidWithVoucher: true });
+    expect(mail.text).toContain('sent to them straight away');
+  });
+
+  it('paidOrderMail shows the voucher above what was paid', () => {
+    const mail = paidOrderMail({
+      number: 14,
+      totalCents: 20_550,
+      customerName: 'Nurul',
+      phone: '+60137782041',
+      method: 'PICKUP',
+      deliveryCents: 0,
+      day: '2026-10-17',
+      via: 'FPX · Maybank2u',
+      ref: null,
+      lines: [{ itemName: 'Kek coklat moist', optionLabel: '2kg', quantity: 1, lineCents: 21_500 }],
+      url: 'https://curios.my/app/orders?order=ord_14',
+      discountCents: 950,
+      voucherLabel: 'Raya promo',
+    });
+    expect(mail.html).toContain('Raya promo');
+    expect(mail.html).toContain('−RM9.50');
+    expect(mail.text).toContain('Raya promo: −RM9.50');
+    expect(mail.text).toContain('Paid: RM205.50');
+  });
+});
