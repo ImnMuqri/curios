@@ -34,6 +34,15 @@ export class InvalidItemError extends Error {
   }
 }
 
+export class InvalidItemPhotoError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'INVALID_PHOTO';
+  constructor() {
+    super('Use a JPEG, PNG or WebP picture, up to 8 MB.');
+    this.name = 'InvalidItemPhotoError';
+  }
+}
+
 export class ItemLimitError extends Error {
   readonly statusCode = 400;
   readonly code = 'ITEM_LIMIT';
