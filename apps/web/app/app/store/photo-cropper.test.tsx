@@ -38,10 +38,10 @@ describe('PhotoCropper', () => {
     expect(after.top).toBe(before.top);
   });
 
-  it('zooms to the minimum side', () => {
+  it('zooms in to the smallest square at the slider maximum', () => {
     const { onSave } = show({ frame: fullFrame(W, H) });
     const zoom = screen.getByLabelText<HTMLInputElement>('Zoom');
-    fireEvent.change(zoom, { target: { value: zoom.min } });
+    fireEvent.change(zoom, { target: { value: zoom.max } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     expect(framePixels(onSave.mock.calls[0]![0], W, H).side).toBe(MIN_FRAME_PX);
   });

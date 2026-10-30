@@ -51,7 +51,10 @@ export function PhotoCropper({
 
   const shorter = Math.min(width, height);
   const minSide = Math.min(MIN_FRAME_PX, shorter);
+  const maxLevel = shorter / minSide;
   const { left, top, side } = framePixels(frame, width, height);
+  // Higher is closer in: 1 is the whole picture, the top is the smallest allowed square.
+  const level = Math.min(Math.max(shorter / side, 1), maxLevel);
   const stageSize = stage > 0 ? stage : FALLBACK_STAGE;
   const frameSize = stageSize * FRAME_SHARE;
   const inset = (stageSize - frameSize) / 2;
@@ -206,12 +209,12 @@ export function PhotoCropper({
             type="range"
             className={styles.cropRange}
             aria-label="Zoom"
-            dir="rtl"
-            min={minSide}
-            max={shorter}
-            step={1}
-            value={side}
-            onChange={(event) => zoomTo(Number(event.target.value))}
+            aria-valuetext={`${Math.round(level * 100)}%`}
+            min={1}
+            max={maxLevel}
+            step={0.01}
+            value={level}
+            onChange={(event) => zoomTo(shorter / Number(event.target.value))}
           />
           <button type="button" className={styles.cropStep} aria-label="Zoom in" onClick={() => zoomTo(side / 1.1)}>
             +

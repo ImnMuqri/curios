@@ -1770,7 +1770,7 @@
 
 .cropRemove {
   border-color: transparent;
-  color: color-mix(in srgb, red 55%, var(--card));
+  color: color-mix(in srgb, var(--merah) 70%, var(--card));
 }
 
 .cropReplace {
