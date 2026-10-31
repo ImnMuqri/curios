@@ -70,6 +70,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   // Reading sources: a retry of a source that is not failed or cannot be read, or while reading is off.
   'SOURCE_STATE',
   'READING_OFF',
+  // Support inbox: a conversation or attachment that is not there, a retry of a reply that did not fail,
+  // and a reply stored but not queued (a 500 whose own sentence reaches the admin: OWN_MESSAGE_CODES below).
+  'SUPPORT_NOT_FOUND',
+  'NOT_FAILED',
+  'REPLY_NOT_QUEUED',
   // --- End of the admin codes. ---
   'WEAK_PASSWORD',
   'INVALID_TOKEN',
@@ -235,7 +240,7 @@ export const SWITCH_CODES = new Set(['SIGNUPS_CLOSED', 'READING_PAUSED', 'PAYMEN
  * 5xx codes whose own sentence is safe to show as written: it says what failed and that nothing was
  * changed, which the generic sentence would not. Still a fault, so still logged as an error.
  */
-export const OWN_MESSAGE_CODES = new Set(['QUEUE_UNAVAILABLE']);
+export const OWN_MESSAGE_CODES = new Set(['QUEUE_UNAVAILABLE', 'REPLY_NOT_QUEUED']);
 
 /**
  * The status an error is answered with: its own, when that is an error status (400-599), else 500.
