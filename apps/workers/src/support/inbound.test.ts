@@ -79,6 +79,35 @@ const deps = (resend: ResendClient): InboundDeps => ({ prisma, resend, files, su
 const messageOf = (resendEmailId: string) =>
   prisma.supportMessage.findUnique({ where: { resendEmailId }, include: { thread: true, attachments: true } });
 
+/** The rows mailOwner writes for an admin's email to an owner, last active at `at`. */
+async function adminMailThread(owner: string, adminId: string, at: Date) {
+  const thread = await prisma.supportThread.create({
+    data: {
+      address: owner,
+      subject: 'Your page has been suspended',
+      status: 'DONE',
+      unread: false,
+      lastMessageAt: at,
+      messages: {
+        create: {
+          direction: 'OUT',
+          messageId: `<${randomUUID()}@curios.my>`,
+          fromAddress: 'hello@curios.my',
+          fromName: 'Curios',
+          toAddresses: [owner],
+          subject: 'Your page has been suspended',
+          text: 'Reason',
+          sendStatus: 'SENT',
+          sentById: adminId,
+          createdAt: at,
+        },
+      },
+    },
+  });
+  threadIds.push(thread.id);
+  return thread;
+}
+
 describe('processInbound', () => {
   it("files a new email from an owner's address as an open, unread thread with its attachment", async () => {
     const owner = unique('Owner');
@@ -172,6 +201,70 @@ describe('processInbound', () => {
     expect(reply?.threadId).toBe(thread.id);
     expect(reply?.thread).toMatchObject({ status: 'OPEN', unread: true });
     expect(await prisma.supportThread.count({ where: { address: owner } })).toBe(1);
+  });
+
+  it("joins the admin email's thread by subject when the reply's client rewrote the Message-IDs", async () => {
+    const owner = unique('owner');
+    const admin = await prisma.adminUser.create({ data: { email: unique('admin'), name: 'Admin', passwordHash: 'x' } });
+    adminIds.push(admin.id);
+    const thread = await adminMailThread(owner, admin.id, new Date());
+    // Older, and with the same subject: the newest thread is the one joined.
+    const older = await adminMailThread(owner, admin.id, new Date(Date.now() - 86_400_000));
+
+    const emailId = newEmailId();
+    await processInbound(
+      deps(aResend(anEmail({ from: owner, subject: 'RE: Fwd: re: Your page has been suspended ', headers: { 'In-Reply-To': '<rewritten-by-outlook@example.com>' } }))),
+      emailId,
+    );
+
+    const reply = await messageOf(emailId);
+    expect(reply?.threadId).toBe(thread.id);
+    expect(reply?.threadId).not.toBe(older.id);
+    expect(reply?.thread).toMatchObject({ status: 'OPEN', unread: true });
+  });
+
+  it('does not join by subject a thread with another address, or one quiet for over 30 days', async () => {
+    const owner = unique('owner');
+    const stranger = unique('stranger');
+    const admin = await prisma.adminUser.create({ data: { email: unique('admin'), name: 'Admin', passwordHash: 'x' } });
+    adminIds.push(admin.id);
+    await adminMailThread(owner, admin.id, new Date());
+    const stale = unique('stale');
+    await adminMailThread(stale, admin.id, new Date(Date.now() - 31 * 86_400_000));
+
+    const fromStranger = newEmailId();
+    const fromStale = newEmailId();
+    await processInbound(deps(aResend(anEmail({ from: stranger, subject: 'Re: Your page has been suspended' }))), fromStranger);
+    await processInbound(deps(aResend(anEmail({ from: stale, subject: 'Re: Your page has been suspended' }))), fromStale);
+
+    expect((await messageOf(fromStranger))?.thread.address).toBe(stranger);
+    expect(await prisma.supportThread.count({ where: { address: stale } })).toBe(2);
+  });
+
+  it('matches the owner on From, never on a Reply-To naming them', async () => {
+    const owner = unique('owner');
+    const account = await prisma.account.create({ data: { email: owner } });
+    accountIds.push(account.id);
+    const stranger = unique('stranger');
+    const emailId = newEmailId();
+    await processInbound(deps(aResend(anEmail({ from: `Someone Else <${stranger}>`, reply_to: [`Owner <${owner}>`] }))), emailId);
+
+    const thread = (await messageOf(emailId))!.thread;
+    // Replies still go where Reply-To says; the name is the sender's.
+    expect(thread).toMatchObject({ accountId: null, address: owner, name: 'Someone Else' });
+  });
+
+  it('stores a bare Message-ID in its bracketed form, and a negative attachment size as 0', async () => {
+    const emailId = newEmailId();
+    const bare = `${randomUUID()}@mail.example.com`;
+    await processInbound(
+      deps(aResend(anEmail({ from: unique('bare'), message_id: bare, attachments: [{ id: 'neg', filename: 'a.txt', content_type: 'text/plain', content_disposition: null, content_id: null, size: -4 }] }))),
+      emailId,
+    );
+
+    const message = await messageOf(emailId);
+    expect(message?.messageId).toBe(`<${bare}>`);
+    expect(message?.attachments[0]?.sizeBytes).toBe(0);
   });
 
   it('opens a second thread for a new subject from the same address', async () => {

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  baseSubject,
   isForSupport,
+  normaliseMessageId,
   isSpam,
   newMessageId,
   parseAddress,
@@ -95,6 +97,38 @@ describe("threadingIds", () => {
       "<c@x>",
     ]);
     expect(threadingIds({})).toEqual([]);
+  });
+  it("brackets bare ids and splits ids written with no space between", () => {
+    expect(
+      threadingIds({ "in-reply-to": "a@x", references: "<b@x><c@x> a@x" }),
+    ).toEqual(["<a@x>", "<b@x>", "<c@x>"]);
+  });
+});
+
+describe("normaliseMessageId", () => {
+  it("wraps a bare id and keeps a bracketed one", () => {
+    expect(normaliseMessageId("abc@mail.example")).toBe("<abc@mail.example>");
+    expect(normaliseMessageId(" <abc@mail.example> ")).toBe(
+      "<abc@mail.example>",
+    );
+  });
+  it("returns an empty string for nothing", () => {
+    expect(normaliseMessageId("  ")).toBe("");
+    expect(normaliseMessageId("<>")).toBe("");
+  });
+});
+
+describe("baseSubject", () => {
+  it("drops any number of leading re/fwd/fw prefixes, case-insensitive", () => {
+    expect(baseSubject("Re: RE: Fwd: FW:  Your shop was suspended ")).toBe(
+      "your shop was suspended",
+    );
+    expect(baseSubject("re:fw:hello")).toBe("hello");
+  });
+  it("leaves a prefix that is not at the start", () => {
+    expect(baseSubject("Question about Re: billing")).toBe(
+      "question about re: billing",
+    );
   });
 });
 

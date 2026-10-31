@@ -1,8 +1,8 @@
 import { Worker } from 'bullmq';
 import type IORedis from 'ioredis';
 import { SUPPORT_INBOUND_QUEUE, type SupportInboundJobData } from '@curios/core';
-import { isForSupport, isSpam, newMessageId, parseAddress, threadingIds } from '@curios/core/support';
-import type { PrismaClient } from '@curios/db';
+import { baseSubject, isForSupport, isSpam, newMessageId, normaliseMessageId, parseAddress, threadingIds } from '@curios/core/support';
+import type { Prisma, PrismaClient, SupportStatus } from '@curios/db';
 import type { PrivateFiles } from '@curios/storage/private-files';
 import { QUEUE_CONCURRENCY } from '../queues.js';
 import type { ReceivedAttachment, ResendClient } from './resend-client.js';
@@ -17,6 +17,9 @@ export interface InboundDeps {
 }
 
 export type InboundOutcome = 'stored' | 'duplicate' | 'not-support';
+
+/** How long a thread stays joinable by subject alone, for a reply whose client dropped or rewrote its ids. */
+const SUBJECT_MATCH_MS = 30 * 86_400_000;
 
 /** Deterministic, so a retry overwrites the upload a failed attempt made rather than adding another. */
 const storageKey = (emailId: string, attachmentId: string) => `support/${emailId}/${attachmentId}`;
@@ -49,8 +52,9 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
   }
 
   const from = parseAddress(email.from);
-  // Replies go where Reply-To says, so that is who the thread is with.
-  const other = email.reply_to[0] ? parseAddress(email.reply_to[0]) : from;
+  // Replies go where Reply-To says, so that is the thread's address. The owner and the name come from
+  // From: anyone can set a Reply-To naming an owner, and must not be shown as that owner for it.
+  const replyAddress = email.reply_to[0] ? parseAddress(email.reply_to[0]).address : from.address;
   const subject = email.subject?.trim() || '(no subject)';
   const spam = isSpam(email.authentication);
   const ids = threadingIds(email.headers);
@@ -66,14 +70,18 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
           })
         : null;
 
-      let threadId = earlier?.thread.id;
+      // No id matched (some clients drop or rewrite them): the newest recent thread with this address
+      // and the same subject under its Re:/Fwd: prefixes is the one being answered.
+      const joined = earlier?.thread ?? (await bySubject(tx, replyAddress, subject, now));
+
+      let threadId = joined?.id;
       if (!threadId) {
         const owner = await tx.account.findFirst({
-          where: { email: { equals: other.address, mode: 'insensitive' } },
+          where: { email: { equals: from.address, mode: 'insensitive' } },
           select: { id: true },
         });
         const thread = await tx.supportThread.create({
-          data: { address: other.address, name: other.name, subject, accountId: owner?.id ?? null, lastMessageAt: now, status: spam ? 'SPAM' : 'OPEN' },
+          data: { address: replyAddress, name: from.name, subject, accountId: owner?.id ?? null, lastMessageAt: now, status: spam ? 'SPAM' : 'OPEN' },
         });
         threadId = thread.id;
       } else {
@@ -82,10 +90,10 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
           // Spam is judged only on the message that starts a thread: a reply in a thread that is
           // not spam reopens it whatever its authentication, and a spam thread stays spam.
           data: {
-            status: earlier?.thread.status === 'SPAM' ? 'SPAM' : 'OPEN',
+            status: joined?.status === 'SPAM' ? 'SPAM' : 'OPEN',
             unread: true,
             lastMessageAt: now,
-            ...(other.name ? { name: other.name } : {}),
+            ...(from.name ? { name: from.name } : {}),
           },
         });
       }
@@ -94,7 +102,7 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
         data: {
           threadId,
           direction: 'IN',
-          messageId: email.message_id || newMessageId(),
+          messageId: normaliseMessageId(email.message_id ?? '') || newMessageId(),
           resendEmailId: emailId,
           fromAddress: from.address,
           fromName: from.name,
@@ -134,8 +142,26 @@ function normaliseAttachment(a: ReceivedAttachment): ReceivedAttachment & { file
     ...a,
     filename: a.filename || 'attachment',
     content_type: a.content_type || 'application/octet-stream',
-    size: Number.isFinite(a.size) ? Math.trunc(a.size) : 0,
+    size: Number.isFinite(a.size) ? Math.max(0, Math.trunc(a.size)) : 0,
   };
+}
+
+/** The newest thread with this address, active in the last 30 days, whose subject matches under its prefixes. */
+async function bySubject(
+  tx: Prisma.TransactionClient,
+  address: string,
+  subject: string,
+  now: Date,
+): Promise<{ id: string; status: SupportStatus } | null> {
+  const want = baseSubject(subject);
+  const recent = await tx.supportThread.findMany({
+    where: { address, lastMessageAt: { gte: new Date(now.getTime() - SUBJECT_MATCH_MS) } },
+    orderBy: { lastMessageAt: 'desc' },
+    // Bounded: an address writing more than this in a month is not one conversation's worth.
+    take: 50,
+    select: { id: true, status: true, subject: true },
+  });
+  return recent.find((t) => baseSubject(t.subject) === want) ?? null;
 }
 
 /** P2002 on resendEmailId only; Prisma gives the target as the field names or the constraint's name. */

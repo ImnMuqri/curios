@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { MailJobData } from '@curios/core';
 import { defaultSettings } from '@curios/core/settings';
-import { processMailJob, sendMailJob } from './mail.worker.js';
+import { processMailJob, recordFinalFailure, sendMailJob } from './mail.worker.js';
 
 const on = defaultSettings();
 const ownerEmailsOff = defaultSettings();
@@ -86,6 +86,7 @@ describe('sendMailJob', () => {
 describe('processMailJob', () => {
   const data = { to: 'nadia@example.com', subject: 'Re: help', text: 't', from: 'support' as const, supportMessageId: 'sm1' };
   const job = (attemptsMade: number, attempts = 5, jobData: MailJobData = data) => ({ data: jobData, attemptsMade, opts: { attempts } });
+  const reader = { get: async () => on };
   const failing = {
     send: vi.fn(async () => {
       throw new Error('connection refused');
@@ -95,7 +96,7 @@ describe('processMailJob', () => {
   it('marks a support message SENT after it goes out', async () => {
     const onSupportStatus = vi.fn(async () => undefined);
 
-    await processMailJob({ send: async () => undefined }, job(0), on, { onSupportStatus });
+    await processMailJob({ send: async () => undefined }, job(0), reader, { onSupportStatus });
 
     expect(onSupportStatus.mock.calls).toEqual([['sm1', 'SENT']]);
   });
@@ -104,7 +105,7 @@ describe('processMailJob', () => {
     const onSupportStatus = vi.fn(async () => undefined);
 
     // attemptsMade counts the finished attempts, so the fifth try is 4.
-    await expect(processMailJob(failing, job(4), on, { onSupportStatus })).rejects.toThrow('connection refused');
+    await expect(processMailJob(failing, job(4), reader, { onSupportStatus })).rejects.toThrow('connection refused');
 
     expect(onSupportStatus.mock.calls).toEqual([['sm1', 'FAILED']]);
   });
@@ -112,7 +113,7 @@ describe('processMailJob', () => {
   it('writes nothing on a failure the queue will retry', async () => {
     const onSupportStatus = vi.fn(async () => undefined);
 
-    await expect(processMailJob(failing, job(3), on, { onSupportStatus })).rejects.toThrow('connection refused');
+    await expect(processMailJob(failing, job(3), reader, { onSupportStatus })).rejects.toThrow('connection refused');
 
     expect(onSupportStatus).not.toHaveBeenCalled();
   });
@@ -120,7 +121,7 @@ describe('processMailJob', () => {
   it('writes no status for a job that is not a support message', async () => {
     const onSupportStatus = vi.fn(async () => undefined);
 
-    await processMailJob({ send: async () => undefined }, job(0, 5, { to: 'a@b.c', subject: 's', text: 't' }), on, { onSupportStatus });
+    await processMailJob({ send: async () => undefined }, job(0, 5, { to: 'a@b.c', subject: 's', text: 't' }), reader, { onSupportStatus });
 
     expect(onSupportStatus).not.toHaveBeenCalled();
   });
@@ -133,9 +134,58 @@ describe('processMailJob', () => {
     const log = { info: vi.fn(), error: vi.fn() };
 
     // A throw here would retry the job and send the reply twice.
-    await expect(processMailJob({ send }, job(0), on, { onSupportStatus, log })).resolves.toBeUndefined();
+    await expect(processMailJob({ send }, job(0), reader, { onSupportStatus, log })).resolves.toBeUndefined();
 
     expect(send).toHaveBeenCalledTimes(1);
+    expect(log.error).toHaveBeenCalled();
+  });
+
+  it('marks it FAILED when reading the settings throws on the final attempt', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+    const send = vi.fn(async () => undefined);
+    const broken = {
+      get: async () => {
+        throw new Error('db down');
+      },
+    };
+
+    await expect(processMailJob({ send }, job(4), broken, { onSupportStatus })).rejects.toThrow('db down');
+
+    expect(send).not.toHaveBeenCalled();
+    expect(onSupportStatus.mock.calls).toEqual([['sm1', 'FAILED']]);
+  });
+});
+
+describe('recordFinalFailure', () => {
+  const data = { to: 'nadia@example.com', subject: 'Re: help', text: 't', from: 'support' as const, supportMessageId: 'sm1' };
+
+  it('records FAILED once the queue has run out of attempts', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+    // In the failed event attemptsMade already counts the attempt that just failed.
+    await recordFinalFailure({ data, attemptsMade: 5, opts: { attempts: 5 } }, onSupportStatus);
+    expect(onSupportStatus.mock.calls).toEqual([['sm1', 'FAILED']]);
+  });
+
+  it('records FAILED for a job failed for good before its attempts ran out, as a stalled one is', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+    await recordFinalFailure({ data, attemptsMade: 1, opts: { attempts: 5 }, finishedOn: Date.now() }, onSupportStatus);
+    expect(onSupportStatus.mock.calls).toEqual([['sm1', 'FAILED']]);
+  });
+
+  it('writes nothing for a failure the queue will retry, a job with no support message, or no job', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+    await recordFinalFailure({ data, attemptsMade: 2, opts: { attempts: 5 } }, onSupportStatus);
+    await recordFinalFailure({ data: { to: 'a@b.c', subject: 's', text: 't' }, attemptsMade: 5, opts: { attempts: 5 } }, onSupportStatus);
+    await recordFinalFailure(undefined, onSupportStatus);
+    expect(onSupportStatus).not.toHaveBeenCalled();
+  });
+
+  it('logs rather than throws when the write fails', async () => {
+    const log = { info: vi.fn(), error: vi.fn() };
+    const onSupportStatus = vi.fn(async () => {
+      throw new Error('db down');
+    });
+    await expect(recordFinalFailure({ data, attemptsMade: 5, opts: { attempts: 5 } }, onSupportStatus, log)).resolves.toBeUndefined();
     expect(log.error).toHaveBeenCalled();
   });
 });

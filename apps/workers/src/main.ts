@@ -12,7 +12,7 @@ import { flushErrorTracking, reportError, startErrorTracking } from './lib/error
 import { createRedis, type Redis } from './lib/redis.js';
 import { createObjectRemover } from './lib/storage.js';
 import { createIngestionWorker } from './ingestion/ingestion.worker.js';
-import { createMailWorker } from './mail/mail.worker.js';
+import { createMailWorker, recordFinalFailure } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
 import { createGroupWorker } from './grouping/group.worker.js';
 import { createSupportInboundWorker } from './support/inbound.js';
@@ -56,6 +56,10 @@ const resendApiKey = process.env.RESEND_API_KEY;
 if (!resendApiKey && process.env.NODE_ENV === 'production') {
   throw new Error('RESEND_API_KEY is not set: the support inbox cannot fetch inbound mail');
 }
+// Attachments go to the private bucket (the disk outside production), never the public one. Resolved
+// here, before any worker starts, so a production missing STORAGE_PRIVATE_BUCKET stops at boot.
+const supportFiles = resendApiKey ? resolvePrivateFiles() : null;
+if (resendApiKey && !supportFiles) throw new Error('No private file store for support attachments');
 
 const appUrl = process.env.APP_URL;
 if (!appUrl) throw new Error('APP_URL is not set');
@@ -93,12 +97,18 @@ const mailConnection = redis();
 const mailWorker = createMailWorker({
   connection: mailConnection,
   settings,
-  // updateMany, so a reply whose row was deleted meanwhile is a no-op rather than a throw.
-  onSupportStatus: async (id, status) => {
-    await prisma.supportMessage.updateMany({ where: { id, direction: 'OUT' }, data: { sendStatus: status } });
-  },
+  onSupportStatus: recordSupportStatus,
   log,
 });
+
+// updateMany, so a reply whose row was deleted meanwhile is a no-op rather than a throw. FAILED only
+// replaces SENDING: the processor and the failed listener below both write it, and neither may undo SENT.
+async function recordSupportStatus(id: string, status: 'SENT' | 'FAILED'): Promise<void> {
+  await prisma.supportMessage.updateMany({
+    where: { id, direction: 'OUT', ...(status === 'FAILED' ? { sendStatus: 'SENDING' as const } : {}) },
+    data: { sendStatus: status },
+  });
+}
 
 // Its own connection, for the reason above: BullMQ blocks on one per worker,
 // so a lead sharing the ingestion connection would wait behind a crawl.
@@ -120,9 +130,11 @@ const leadWorker = createLeadWorker({
 worker.on('completed', (job) => log.info({ jobId: job.id }, 'ingestion completed'));
 worker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'ingestion failed'));
 
-mailWorker.on('failed', (job, err) =>
-  log.error({ jobId: job?.id, err: err.message }, 'mail failed'),
-);
+mailWorker.on('failed', (job, err) => {
+  log.error({ jobId: job?.id, err: err.message }, 'mail failed');
+  // A stalled job is failed without its processor running again: this is the only place it is seen.
+  void recordFinalFailure(job, recordSupportStatus, log);
+});
 
 // A worker emits 'error' for trouble with the queue itself rather than with a
 // job -- a dropped Redis connection, most often. On an EventEmitter an 'error'
@@ -152,15 +164,12 @@ const housekeepingQueue = new Queue(HOUSEKEEPING_QUEUE, { connection: redis() })
 queues.push(housekeepingQueue);
 await scheduleHousekeepingJobs(housekeepingQueue);
 
-if (resendApiKey) {
-  // Attachments go to the private bucket (the disk outside production), never the public one.
-  const files = resolvePrivateFiles();
-  if (!files) throw new Error('No private file store for support attachments');
+if (resendApiKey && supportFiles) {
   const supportWorker = createSupportInboundWorker({
     connection: redis(),
     prisma,
     resend: createResendClient({ apiKey: resendApiKey }),
-    files,
+    files: supportFiles,
     support: supportAddress(),
     log,
   });

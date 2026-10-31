@@ -423,9 +423,18 @@ not verify is a 400, and a delivery whose queueing fails is a 500, which Resend 
 **The workers fetch each email** from Resend's API with `RESEND_API_KEY` (an API key with at least
 read access to received emails), store its attachments in the private bucket under
 `support/<email id>/`, and file it into a thread. In production the workers refuse to start without the
-key; in development, without it, the support worker is off and one warning is logged. Before running
+key, and without the private bucket: `STORAGE_PRIVATE_BUCKET` with `STORAGE_ENDPOINT`,
+`STORAGE_ACCESS_KEY_ID` and `STORAGE_SECRET_ACCESS_KEY`, checked before any worker starts. In
+development, without the key, the support worker is off and one warning is logged. Before running
 the support worker locally, unset `STORAGE_PRIVATE_BUCKET`: the `curios-dev-*` buckets are production's,
 and the worker would otherwise write attachments there.
+
+**If inbound mail failed.** Each email is tried 12 times over about 17 hours. A `support-inbound` job
+that still fails is kept 7 days under its email's id, and while it is there a replay of the same email
+from Resend's dashboard is ignored as a duplicate. Once the cause is fixed, either retry the failed
+job (BullMQ's `job.retry()`, e.g. `await (await Job.fromId(queue, '<email id>')).retry()` from a shell
+on the workers), or remove the failed job (`job.remove()`) and then replay the email from Resend's
+dashboard, which is then accepted.
 
 ## Shop CHIP keys
 
@@ -668,7 +677,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
 | `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |
 | `RESEND_WEBHOOK_SECRET` (the signing secret of Resend's `email.received` webhook; the API refuses to boot without it) | ✓ | | |
-| `RESEND_API_KEY` (fetches received support mail; the workers refuse to boot without it) | | ✓ | |
+| `RESEND_API_KEY` (fetches received support mail; the workers refuse to boot without it, and without the private bucket's `STORAGE_*` settings) | | ✓ | |
 | `SESSION_SECRET` (`openssl rand -hex 32`) | ✓ | | |
 | `REPORT_IP_SECRET` (`openssl rand -hex 32`): keys the hash of a reporter's address. **Required in production: the API refuses to boot without it, or with the `.env.example` placeholder, or with fewer than 32 characters** | ✓ | | |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI=https://api.curios.my/auth/google/callback` | ✓ | | |
@@ -682,7 +691,9 @@ in, like `web`'s `NEXT_PUBLIC_*`). It needs the API to have `ADMIN_ORIGIN=https:
 unset, the API registers no `/admin` routes and the admin app can sign nobody in.
 
 Production refuses to start without storage, the private bucket, the CHIP keys and
-`REPORT_IP_SECRET`: there is no local fallback for any of them, by design (outside production
+`REPORT_IP_SECRET`. That holds for the workers too: besides `RESEND_API_KEY` they need
+`STORAGE_PRIVATE_BUCKET` and the `STORAGE_ENDPOINT`, `STORAGE_ACCESS_KEY_ID` and
+`STORAGE_SECRET_ACCESS_KEY` it is reached with, for support attachments. There is no local fallback for any of them, by design (outside production
 `REPORT_IP_SECRET` falls back to a fixed development key with a warning). Changing it later breaks
 nothing: reports already stored keep their old hashes, so a repeat report from the same address
 stops matching and can add a second open report on a page already reported. `CHIP_WEBHOOK_PUBLIC_KEY` goes on one line with each

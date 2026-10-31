@@ -51,9 +51,33 @@ export function threadingIds(
   for (const name of ["in-reply-to", "references"]) {
     const v = byName.get(name);
     const text = Array.isArray(v) ? v.join(" ") : (v ?? "");
-    ids.push(...text.split(/\s+/).filter(Boolean));
+    // Some clients write "<a@x><b@x>" with no space between.
+    ids.push(
+      ...text
+        .split(/\s+|(?<=>)(?=<)/)
+        .map(normaliseMessageId)
+        .filter(Boolean),
+    );
   }
   return [...new Set(ids)];
+}
+
+// Message-IDs are stored and matched in their "<id@host>" form: a client that
+// quotes one without the brackets must still find the message it answers.
+export function normaliseMessageId(raw: string): string {
+  const id = raw.trim().replace(/^<+/, "").replace(/>+$/, "").trim();
+  return id ? `<${id}>` : "";
+}
+
+// The subject a reply or forward keeps under its prefixes, for threading mail
+// whose client dropped In-Reply-To and References.
+export function baseSubject(subject: string): string {
+  let s = subject.trim().toLowerCase();
+  for (;;) {
+    const next = s.replace(/^(re|fwd|fw)\s*:\s*/, "");
+    if (next === s) return s;
+    s = next;
+  }
 }
 
 // The References header keeps growing with a thread; mail clients only need the tail.

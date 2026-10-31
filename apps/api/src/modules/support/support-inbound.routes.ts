@@ -90,7 +90,9 @@ export const supportInboundRoutes: FastifyPluginAsync<SupportInboundRouteOptions
       { emailId },
       {
         jobId: emailId,
-        attempts: 8,
+        // About 17 hours of retries, doubling from 30 s: a Resend or database outage overnight is
+        // waited out. A job that still fails is kept 7 days (see OPERATIONS.md, Support inbox).
+        attempts: 12,
         backoff: { type: 'exponential', delay: 30_000 },
         removeOnComplete: true,
         removeOnFail: { age: 7 * 86_400 },

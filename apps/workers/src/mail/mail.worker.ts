@@ -37,6 +37,23 @@ export async function sendMailJob(
 type SupportStatusHook = (supportMessageId: string, status: 'SENT' | 'FAILED') => Promise<void>;
 type MailLog = { info: (details: object, message: string) => void; error?: (details: object, message: string) => void };
 
+type MailJobLike = { data: MailJobData; attemptsMade: number; opts: { attempts?: number } };
+
+/** A status write that never throws: see processMailJob for why. */
+async function recordStatus(
+  supportMessageId: string | undefined,
+  status: 'SENT' | 'FAILED',
+  hook: SupportStatusHook | undefined,
+  log: MailLog | undefined,
+): Promise<void> {
+  if (!supportMessageId || !hook) return;
+  try {
+    await hook(supportMessageId, status);
+  } catch (error) {
+    log?.error?.({ supportMessageId, status, err: error instanceof Error ? error.message : 'error' }, 'could not record the support send status');
+  }
+}
+
 /**
  * One attempt at a job, with the support inbox's send status around it.
  *
@@ -45,30 +62,40 @@ type MailLog = { info: (details: object, message: string) => void; error?: (deta
  * seeing "sending" until the queue gives up. Either write is best effort: a
  * throw after a successful send would fail the job and the retry would send
  * the reply twice, and a throw while recording FAILED would hide the real error.
+ * The settings are read inside, so a database that is down on the last attempt
+ * still ends in FAILED rather than a reply left sending.
  */
 export async function processMailJob(
   mailer: Mailer,
-  job: { data: MailJobData; attemptsMade: number; opts: { attempts?: number } },
-  settings: Settings,
+  job: MailJobLike,
+  settings: { get(): Promise<Settings> },
   deps: { onSupportStatus?: SupportStatusHook; log?: MailLog } = {},
 ): Promise<void> {
   const { supportMessageId } = job.data;
-  const record = async (status: 'SENT' | 'FAILED') => {
-    if (!supportMessageId || !deps.onSupportStatus) return;
-    try {
-      await deps.onSupportStatus(supportMessageId, status);
-    } catch (error) {
-      deps.log?.error?.({ supportMessageId, status, err: error instanceof Error ? error.message : 'error' }, 'could not record the support send status');
-    }
-  };
-
   try {
-    await sendMailJob(mailer, job.data, settings, deps.log);
+    await sendMailJob(mailer, job.data, await settings.get(), deps.log);
   } catch (error) {
-    if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await record('FAILED');
+    if (job.attemptsMade + 1 >= (job.opts.attempts ?? 1)) await recordStatus(supportMessageId, 'FAILED', deps.onSupportStatus, deps.log);
     throw error;
   }
-  await record('SENT');
+  await recordStatus(supportMessageId, 'SENT', deps.onSupportStatus, deps.log);
+}
+
+/**
+ * The worker's 'failed' listener: FAILED for a job the queue has given up on. The processor writes
+ * it too, but a job that stalled (its worker died mid-send) is failed by BullMQ without the processor
+ * running again, so only this sees it. That failure comes before the attempts run out, with
+ * finishedOn set, which a failure the queue will retry never has. The hook only turns SENDING into
+ * FAILED, so the two writes agree and a reply already SENT stays SENT.
+ */
+export async function recordFinalFailure(
+  job: (MailJobLike & { finishedOn?: number }) | undefined,
+  onSupportStatus: SupportStatusHook,
+  log?: MailLog,
+): Promise<void> {
+  if (!job) return;
+  const final = job.attemptsMade >= (job.opts.attempts ?? 1) || job.finishedOn !== undefined;
+  if (final) await recordStatus(job.data.supportMessageId, 'FAILED', onSupportStatus, log);
 }
 
 export function createMailWorker(deps: {
@@ -84,7 +111,7 @@ export function createMailWorker(deps: {
 
   return new Worker<MailJobData>(
     MAIL_QUEUE,
-    async (job) => processMailJob(mailer, job, await deps.settings.get(), { onSupportStatus: deps.onSupportStatus, log: deps.log }),
+    async (job) => processMailJob(mailer, job, deps.settings, { onSupportStatus: deps.onSupportStatus, log: deps.log }),
     { connection: deps.connection, concurrency: QUEUE_CONCURRENCY.mail },
   );
 }

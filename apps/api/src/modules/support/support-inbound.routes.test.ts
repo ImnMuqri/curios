@@ -101,7 +101,7 @@ describe('POST /support/inbound', () => {
     expect(queue.add).toHaveBeenCalledWith(
       SUPPORT_INBOUND_QUEUE,
       { emailId: 'email-42' },
-      expect.objectContaining({ jobId: 'email-42', attempts: 8, removeOnComplete: true }),
+      expect.objectContaining({ jobId: 'email-42', attempts: 12, removeOnComplete: true }),
     );
   });
 
