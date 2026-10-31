@@ -10,6 +10,7 @@ import type { AvatarStore } from '../pages/storage.js';
 import { hashPassword } from '../auth/password.service.js';
 import { createAdminSession } from './admin-session.service.js';
 import { createDiskPrivateFiles } from '../store/private-files.js';
+import { suspendPage } from './admin-pages.service.js';
 
 const mailQueue = { add: vi.fn(async (_name: string, _data: MailJobData, _opts?: unknown) => ({})) };
 const store: AvatarStore & { put: ReturnType<typeof vi.fn>; remove: ReturnType<typeof vi.fn> } = {
@@ -169,6 +170,36 @@ describe('suspend and unsuspend', () => {
     // The message that never went out says so, rather than staying SENDING.
     const message = await app.prisma.supportMessage.findFirstOrThrow({ where: { thread: { accountId: page.accountId } } });
     expect(message.sendStatus).toBe('FAILED');
+  });
+
+  it('logs no email text when the conversation cannot be written, and keeps the suspend', async () => {
+    const page = await aPage();
+    const secret = 'Selling fakes SECRET-REASON';
+    // A wrapper, not the shared client: the first transaction (the suspend) is real, the second (mailOwner's rows) fails
+    // the way Prisma does, with the create's data in the message.
+    let calls = 0;
+    const prisma = {
+      supportMessage: app.prisma.supportMessage,
+      $transaction: async (fn: (tx: unknown) => Promise<unknown>) => {
+        if (++calls === 1) return app.prisma.$transaction(fn as never);
+        return fn({
+          supportThread: {
+            create: async () => {
+              throw Object.assign(new Error(`Invalid create() invocation: data: { text: "${secret}" }`), { code: 'P2002' });
+            },
+          },
+        });
+      },
+    } as unknown as typeof app.prisma;
+    const warn = vi.fn();
+
+    await suspendPage({ prisma, mailQueue, store: null, log: { warn } }, { adminId, ip: '127.0.0.1' }, page.id, secret);
+
+    expect((await app.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).suspendedAt).not.toBeNull();
+    expect(mailQueue.add).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(warn.mock.calls[0])).not.toContain('SECRET-REASON');
+    expect(warn.mock.calls[0]![0]).toMatchObject({ pageId: page.id, err: 'Error', code: 'P2002' });
   });
 
   it('404s an unknown page', async () => {

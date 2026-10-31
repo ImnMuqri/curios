@@ -161,9 +161,15 @@ export async function mailOwner(
         .update({ where: { id: supportMessageId }, data: { sendStatus: 'FAILED' } })
         .catch(() => undefined);
     }
+    // Never the message: a Prisma error for a failed create embeds its data, the email's subject and text.
+    const code = (error as { code?: unknown } | null)?.code;
     deps.log?.warn?.(
-      { pageId: page.id, err: error instanceof Error ? error.message : String(error) },
-      'could not queue the admin email',
+      {
+        pageId: page.id,
+        err: error instanceof Error ? error.name : 'Error',
+        ...(typeof code === 'string' ? { code } : {}),
+      },
+      'could not send the admin email',
     );
   }
 }
