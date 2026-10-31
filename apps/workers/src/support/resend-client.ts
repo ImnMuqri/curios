@@ -11,8 +11,8 @@ import type { ReadableStream as WebReadableStream } from 'node:stream/web';
 
 export interface ReceivedAttachment {
   id: string;
-  filename: string;
-  content_type: string;
+  filename: string | null;
+  content_type: string | null;
   content_disposition: string | null;
   content_id: string | null;
   size: number;
@@ -64,9 +64,13 @@ export function createResendClient({
 
   return {
     // cid, so inline images stay references to their attachments rather than base64 inside the html.
-    getReceived: (id) => get<ReceivedEmail>(`/emails/receiving/${encodeURIComponent(id)}?html_format=cid`, 'email'),
+    async getReceived(id) {
+      const email = await get<ReceivedEmail>(`/emails/receiving/${encodeURIComponent(id)}?html_format=cid`, 'email');
+      // Lists Resend may send as null: read as empty, rather than a TypeError on every retry.
+      return { ...email, cc: email.cc ?? [], reply_to: email.reply_to ?? [], headers: email.headers ?? {}, attachments: email.attachments ?? [] };
+    },
     async attachmentStream(emailId, attachmentId) {
-      const meta = await get<{ content_type: string; size: number; download_url: string }>(
+      const meta = await get<{ content_type: string | null; size: number; download_url: string }>(
         `/emails/receiving/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`,
         'attachment',
       );
@@ -74,7 +78,7 @@ export function createResendClient({
       if (!download.body) throw new Error('Resend attachment download had no body');
       return {
         stream: Readable.fromWeb(download.body as WebReadableStream<Uint8Array>),
-        contentType: meta.content_type,
+        contentType: meta.content_type || 'application/octet-stream',
         size: meta.size,
       };
     },

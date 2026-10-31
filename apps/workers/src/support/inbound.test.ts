@@ -6,7 +6,7 @@ import { Readable } from 'node:stream';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { createDiskPrivateFiles, type PrivateFiles } from '@curios/storage/private-files';
-import { processInbound, type InboundDeps } from './inbound.js';
+import { isDuplicateEmail, processInbound, type InboundDeps } from './inbound.js';
 import { createResendClient, type ReceivedEmail, type ResendClient } from './resend-client.js';
 
 const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL_TEST } } });
@@ -63,7 +63,7 @@ function aResend(email: ReceivedEmail, bodies: Record<string, () => NodeJS.Reada
     attachmentStream: vi.fn(async (_emailId: string, attachmentId: string) => {
       const meta = email.attachments.find((a) => a.id === attachmentId)!;
       const body = bodies[attachmentId] ?? (() => Readable.from([Buffer.from(`bytes of ${attachmentId}`)]));
-      return { stream: body(), contentType: meta.content_type, size: meta.size };
+      return { stream: body(), contentType: meta.content_type ?? 'application/octet-stream', size: meta.size };
     }),
   };
 }
@@ -201,6 +201,59 @@ describe('processInbound', () => {
     expect(reply?.thread.status).toBe('SPAM');
   });
 
+  it('reopens a thread when a reply in it fails authentication: spam is judged on the first message only', async () => {
+    const address = unique('replyfail');
+    const first = newEmailId();
+    const firstEmail = anEmail({ from: address });
+    await processInbound(deps(aResend(firstEmail)), first);
+    const threadId = (await messageOf(first))!.threadId;
+    await prisma.supportThread.update({ where: { id: threadId }, data: { status: 'DONE' } });
+
+    const second = newEmailId();
+    await processInbound(
+      deps(aResend(anEmail({ from: address, headers: { 'In-Reply-To': firstEmail.message_id! }, authentication: { spf: 'pass', dkim: 'pass', dmarc: 'fail' } }))),
+      second,
+    );
+
+    const reply = await messageOf(second);
+    expect(reply?.threadId).toBe(threadId);
+    expect(reply?.thread.status).toBe('OPEN');
+  });
+
+  it('stores an attachment with no name or type under fallbacks', async () => {
+    const emailId = newEmailId();
+    const email = anEmail({
+      from: unique('noname'),
+      attachments: [{ id: 'x', filename: null, content_type: null, content_disposition: null, content_id: null, size: 12.7 }],
+    });
+
+    expect(await processInbound(deps(aResend(email)), emailId)).toBe('stored');
+    expect((await messageOf(emailId))?.attachments).toEqual([
+      expect.objectContaining({ fileName: 'attachment', contentType: 'application/octet-stream', sizeBytes: 12 }),
+    ]);
+  });
+
+  it('rethrows a database error without the email in its message', async () => {
+    const sender = unique('leak');
+    const subject = 'My secret subject line';
+    const emailId = newEmailId();
+    // A stand-in, not a patched client: Prisma's client is a proxy, and a property set through
+    // its prototype chain would land on the shared one.
+    const failing = {
+      supportMessage: prisma.supportMessage,
+      $transaction: async () => {
+        throw Object.assign(new Error(`Invalid create: { subject: "${subject}", fromAddress: "${sender}" }`), { code: 'P2000' });
+      },
+    } as unknown as PrismaClient;
+
+    const error = await processInbound({ ...deps(aResend(anEmail({ from: sender, subject }))), prisma: failing }, emailId).catch((e: Error) => e);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toContain('P2000');
+    expect((error as Error).message).not.toContain(subject);
+    expect((error as Error).message).not.toContain(sender);
+  });
+
   it('gives a message with no Message-ID one of its own', async () => {
     const emailId = newEmailId();
     await processInbound(deps(aResend(anEmail({ from: unique('noid'), message_id: null }))), emailId);
@@ -215,6 +268,21 @@ describe('processInbound', () => {
     expect(await processInbound(deps(resend), emailId)).toBe('not-support');
     expect(resend.attachmentStream).not.toHaveBeenCalled();
     expect(await prisma.supportMessage.count({ where: { resendEmailId: emailId } })).toBe(0);
+  });
+});
+
+describe('isDuplicateEmail', () => {
+  it('is a unique violation on resendEmailId, given as fields or as the constraint name', () => {
+    expect(isDuplicateEmail({ code: 'P2002', meta: { target: ['resendEmailId'] } })).toBe(true);
+    expect(isDuplicateEmail({ code: 'P2002', meta: { target: 'SupportMessage_resendEmailId_key' } })).toBe(true);
+  });
+
+  it('is not any other unique violation, or any other error', () => {
+    expect(isDuplicateEmail({ code: 'P2002', meta: { target: ['storageKey'] } })).toBe(false);
+    expect(isDuplicateEmail({ code: 'P2002', meta: { target: 'SupportAttachment_storageKey_key' } })).toBe(false);
+    expect(isDuplicateEmail({ code: 'P2002' })).toBe(false);
+    expect(isDuplicateEmail({ code: 'P2003', meta: { target: ['resendEmailId'] } })).toBe(false);
+    expect(isDuplicateEmail(new Error('boom'))).toBe(false);
   });
 });
 
@@ -249,6 +317,15 @@ describe('createResendClient', () => {
       headers: { Authorization: 'Bearer re_test' },
     });
     expect(fetch).toHaveBeenNthCalledWith(2, 'https://inbound-cdn.resend.com/x?sig=1');
+  });
+
+  it('reads lists Resend sends as null as empty', async () => {
+    const client = createResendClient({
+      apiKey: 're_test',
+      fetch: async () => json({ from: 'a@example.com', to: [SUPPORT], cc: null, reply_to: null, headers: null, attachments: null }),
+    });
+
+    expect(await client.getReceived('e1')).toMatchObject({ cc: [], reply_to: [], headers: {}, attachments: [] });
   });
 
   it('throws with the status on a non-2xx', async () => {

@@ -423,7 +423,9 @@ not verify is a 400, and a delivery whose queueing fails is a 500, which Resend 
 **The workers fetch each email** from Resend's API with `RESEND_API_KEY` (an API key with at least
 read access to received emails), store its attachments in the private bucket under
 `support/<email id>/`, and file it into a thread. In production the workers refuse to start without the
-key; in development, without it, the support worker is off and one warning is logged.
+key; in development, without it, the support worker is off and one warning is logged. Before running
+the support worker locally, unset `STORAGE_PRIVATE_BUCKET`: the `curios-dev-*` buckets are production's,
+and the worker would otherwise write attachments there.
 
 ## Shop CHIP keys
 

@@ -5,7 +5,7 @@ import { isForSupport, isSpam, newMessageId, parseAddress, threadingIds } from '
 import type { PrismaClient } from '@curios/db';
 import type { PrivateFiles } from '@curios/storage/private-files';
 import { QUEUE_CONCURRENCY } from '../queues.js';
-import type { ResendClient } from './resend-client.js';
+import type { ReceivedAttachment, ResendClient } from './resend-client.js';
 
 export interface InboundDeps {
   prisma: PrismaClient;
@@ -42,9 +42,10 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
   const email = await resend.getReceived(emailId);
   if (!isForSupport(email, deps.support)) return 'not-support';
 
-  for (const attachment of email.attachments) {
-    const { stream, contentType } = await resend.attachmentStream(emailId, attachment.id);
-    await files.put(storageKey(emailId, attachment.id), stream, contentType, attachment.size);
+  const attachments = email.attachments.map(normaliseAttachment);
+  for (const attachment of attachments) {
+    const { stream } = await resend.attachmentStream(emailId, attachment.id);
+    await files.put(storageKey(emailId, attachment.id), stream, attachment.content_type, attachment.size);
   }
 
   const from = parseAddress(email.from);
@@ -78,9 +79,10 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
       } else {
         await tx.supportThread.update({
           where: { id: threadId },
-          // Spam stays spam: one message that passes does not vouch for the thread. Done reopens.
+          // Spam is judged only on the message that starts a thread: a reply in a thread that is
+          // not spam reopens it whatever its authentication, and a spam thread stays spam.
           data: {
-            status: spam || earlier?.thread.status === 'SPAM' ? 'SPAM' : 'OPEN',
+            status: earlier?.thread.status === 'SPAM' ? 'SPAM' : 'OPEN',
             unread: true,
             lastMessageAt: now,
             ...(other.name ? { name: other.name } : {}),
@@ -102,7 +104,7 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
           html: email.html,
           createdAt: now,
           attachments: {
-            create: email.attachments.map((a) => ({
+            create: attachments.map((a) => ({
               resendAttachmentId: a.id,
               fileName: a.filename,
               contentType: a.content_type,
@@ -117,10 +119,44 @@ async function fileEmail(deps: InboundDeps, emailId: string): Promise<InboundOut
     });
   } catch (error) {
     // The same email filed by a run that got there first, between the check above and here.
-    if ((error as { code?: unknown }).code === 'P2002') return 'duplicate';
-    throw error;
+    if (isDuplicateEmail(error)) return 'duplicate';
+    throw sanitised(error);
   }
   return 'stored';
+}
+
+/**
+ * Resend's metadata as the columns need it: a missing name or type, or a size
+ * that is not a whole number, would otherwise fail every retry the same way.
+ */
+function normaliseAttachment(a: ReceivedAttachment): ReceivedAttachment & { filename: string; content_type: string } {
+  return {
+    ...a,
+    filename: a.filename || 'attachment',
+    content_type: a.content_type || 'application/octet-stream',
+    size: Number.isFinite(a.size) ? Math.trunc(a.size) : 0,
+  };
+}
+
+/** P2002 on resendEmailId only; Prisma gives the target as the field names or the constraint's name. */
+export function isDuplicateEmail(error: unknown): boolean {
+  const { code, meta } = (error ?? {}) as { code?: unknown; meta?: { target?: unknown } };
+  if (code !== 'P2002') return false;
+  const target = meta?.target;
+  if (Array.isArray(target)) return target.includes('resendEmailId');
+  return typeof target === 'string' && target.includes('resendEmailId');
+}
+
+/**
+ * A Prisma error's message quotes the whole failed call -- the body, the
+ * addresses, the subject -- and the job's error reaches the log, Sentry and
+ * BullMQ's failedReason. Only the code or the error's name goes on; the
+ * original stays on `cause` for a debugger.
+ */
+function sanitised(error: unknown): Error {
+  const { code, name } = (error ?? {}) as { code?: unknown; name?: unknown };
+  const label = typeof code === 'string' ? code : typeof name === 'string' ? name : 'unknown error';
+  return new Error(`Filing support mail failed (${label})`, { cause: error });
 }
 
 export function createSupportInboundWorker(deps: InboundDeps & { connection: IORedis }): Worker<SupportInboundJobData> {
