@@ -138,11 +138,12 @@ linked to that account and the owner card shows. Matching happens when the conve
    the attachment list. It then fetches each attachment (Resend's download URLs last an hour), stores
    it in private storage, and writes the message into its conversation. Retries with backoff on
    failure, so a Resend or database outage delays mail instead of losing it.
-5. The admin's reply goes out through **Resend's send API** (the same API key as receiving), not the
-   generic SMTP transport, so From support@ and the threading headers are under our control whatever
-   the SMTP sender is *(builder's call)*. **"Sent" means Resend accepted it**: the worker writes the
-   message's status back after the call, and a refused or failed call shows as failed. Later bounces
-   are out of scope for this version *(builder's call)*.
+5. The admin's reply goes out through the **existing mail queue and SMTP transport**, which gains
+   From support@, `Message-ID`, `In-Reply-To` and `References` *(builder's call: the API only ever
+   queues mail, a standing rule in `apps/api/src/lib/mailer.ts`, and the admin's own emails need a
+   Message-ID we choose over the same path anyway)*. **"Sent" means the SMTP server accepted it**: the
+   mail worker writes the message's status back, Sending until then, Failed once its retries run out.
+   Later bounces are out of scope for this version *(builder's call)*.
 
 **Who to reply to:** the incoming email's `Reply-To` if it has one, otherwise `From` *(builder's
 call)*.
@@ -173,9 +174,9 @@ people write to the wrong address. Nothing beyond that.)*
 ### Configuration
 
 New variables: Resend API key (receiving reads), the webhook signing secret, and the support address
-(default `support@curios.my`). They must be added to `.env.example`, OPERATIONS.md's variable table,
-and **turbo.json's pass-through list** (strict env mode drops anything not listed), and the API must
-refuse to start in production without them, like the other required secrets. The webhook URL is set
+(default `support@curios.my`). They must be added to `.env.example` and OPERATIONS.md's variable table (like `CHIP_*`, they are read
+from `.env`, so turbo.json needs nothing unless a host provides them in the shell), and production
+must refuse to start without them, like the other required secrets. The webhook URL is set
 in Resend's dashboard to the API's public origin.
 
 ---
