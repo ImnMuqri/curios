@@ -8,6 +8,9 @@ import { buildApp } from '../../app.js';
 import type { BillingRouteOptions } from './billing.routes.js';
 import { createSession, SESSION_COOKIE } from '../auth/session.service.js';
 
+/** Past the support webhook's own production check, so these tests reach CHIP's. */
+const TEST_RESEND_SECRET = `whsec_${Buffer.alloc(24, 1).toString('base64')}`;
+
 const client = {
   createPurchase: vi.fn<ChipClient['createPurchase']>(),
   getPurchase: vi.fn<ChipClient['getPurchase']>(),
@@ -1110,7 +1113,7 @@ describe('with billing switched off', () => {
       // production check (storage is unset throughout this suite -- see
       // vitest.setup.ts) so this test isolates the one setting it actually
       // means to prove: CHIP's.
-      await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null, supportInbound: { secret: 'whsec_x' } })).rejects.toThrow(/CHIP_SECRET_KEY is not set/);
+      await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null, supportInbound: { secret: TEST_RESEND_SECRET } })).rejects.toThrow(/CHIP_SECRET_KEY is not set/);
     } finally {
       process.env.NODE_ENV = savedNodeEnv;
     }
@@ -1135,7 +1138,7 @@ describe('in production', () => {
     for (const name of CHIP_ENV) process.env[name] = 'https://api.curios.invalid';
     delete process.env.CHIP_WEBHOOK_PUBLIC_KEY;
 
-    await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null, supportInbound: { secret: 'whsec_x' } })).rejects.toThrow(
+    await expect(buildApp({ pages: { store: null }, orders: { store: null }, privateFiles: null, supportInbound: { secret: TEST_RESEND_SECRET } })).rejects.toThrow(
       /CHIP_WEBHOOK_PUBLIC_KEY is not set/,
     );
   });

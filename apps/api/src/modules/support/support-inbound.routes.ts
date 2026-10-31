@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { SUPPORT_INBOUND_QUEUE, type SupportInboundJobData } from '@curios/core';
 import { isForSupport, supportAddress } from '@curios/core/support';
 import { rawJson } from '../../plugins/raw-json.js';
-import { verifyResendSignature } from './resend-signature.js';
+import { signingKey, verifyResendSignature } from './resend-signature.js';
 
 export interface SupportInboundRouteOptions {
   queue?: { add(name: string, data: SupportInboundJobData, opts?: object): Promise<unknown> };
@@ -37,12 +37,14 @@ const badRequest = (message: string) => ({ error: { code: 'BAD_REQUEST', message
  */
 export const supportInboundRoutes: FastifyPluginAsync<SupportInboundRouteOptions> = async (app, options) => {
   const secret = options.secret ?? process.env.RESEND_WEBHOOK_SECRET;
-  if (!secret) {
+  // A secret that decodes to an empty or tiny key is as good as none: anyone could sign with it.
+  if (!secret || !signingKey(secret)) {
+    const problem = secret ? 'is not a whsec_ signing secret' : 'is not set';
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('RESEND_WEBHOOK_SECRET is not set');
+      throw new Error(`RESEND_WEBHOOK_SECRET ${problem}`);
     }
     app.log.warn(
-      'No RESEND_WEBHOOK_SECRET: the support inbox webhook is off in development, so mail to ' +
+      `RESEND_WEBHOOK_SECRET ${problem}: the support inbox webhook is off in development, so mail to ` +
         'support is not received. Production refuses to start without it.',
     );
     return;
@@ -74,7 +76,10 @@ export const supportInboundRoutes: FastifyPluginAsync<SupportInboundRouteOptions
 
     if (!isForSupport({ to: data.to, cc: data.cc, received_for: data.received_for }, supportAddress())) {
       // The recipients only: the subject and body are someone's private mail.
-      request.log.info({ emailId, to: data.to ?? [] }, 'support inbound dropped: not addressed to support');
+      request.log.info(
+        { emailId, to: data.to ?? [], cc: data.cc ?? [], received_for: data.received_for ?? [] },
+        'support mail to another address',
+      );
       return reply.send({ ok: true });
     }
 

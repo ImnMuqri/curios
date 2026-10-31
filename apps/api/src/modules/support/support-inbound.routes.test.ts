@@ -47,6 +47,29 @@ const received = (to: string[], emailId = 'email-1') => ({
   data: { email_id: emailId, from: 'Ada <ada@example.com>', to, cc: [], bcc: [], subject: 'Help', attachments: [] },
 });
 
+describe('a secret with no usable key', () => {
+  it('leaves the route off outside production', async () => {
+    const off = await buildApp({ supportInbound: { queue, secret: 'whsec_' } });
+    try {
+      await off.ready();
+      const res = await off.inject({ method: 'POST', url: '/support/inbound', payload: {} });
+      expect(res.statusCode).toBe(404);
+    } finally {
+      await off.close();
+    }
+  });
+
+  it('stops a production boot, naming the variable', async () => {
+    const saved = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      await expect(buildApp({ supportInbound: { queue, secret: 'whsec_' } })).rejects.toThrow(/RESEND_WEBHOOK_SECRET/);
+    } finally {
+      process.env.NODE_ENV = saved;
+    }
+  });
+});
+
 describe('POST /support/inbound', () => {
   it('refuses a request without the signature headers', async () => {
     const res = await deliver(received(['support@curios.my']), { signed: false });

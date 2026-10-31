@@ -36,6 +36,13 @@ describe('verifyResendSignature', () => {
     expect(verifyResendSignature({ id, timestamp, signature, rawBody, secret, now })).toBe(true);
   });
 
+  it('fails for a secret with no usable key, even for a signature made with an empty key', () => {
+    const timestamp = stamp(now);
+    const forged = `v1,${createHmac('sha256', Buffer.alloc(0)).update(`${id}.${timestamp}.${rawBody}`).digest('base64')}`;
+    expect(verifyResendSignature({ id, timestamp, signature: forged, rawBody, secret: 'whsec_', now })).toBe(false);
+    expect(verifyResendSignature({ id, timestamp, signature: forged, rawBody, secret: '', now })).toBe(false);
+  });
+
   it('fails when a header is missing', () => {
     const timestamp = stamp(now);
     expect(verifyResendSignature({ timestamp, signature: sign(timestamp), rawBody, secret, now })).toBe(false);

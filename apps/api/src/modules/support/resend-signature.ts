@@ -3,6 +3,15 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 /** How far a delivery's timestamp may be from now, either way. Svix's own default. */
 const TOLERANCE_MS = 5 * 60 * 1000;
 
+/** Below this a key is a misconfiguration, not a secret: an empty one lets anyone compute the HMAC. */
+const MIN_KEY_BYTES = 16;
+
+/** The HMAC key inside a `whsec_<base64>` secret, or null when it is too short to be one. */
+export function signingKey(secret: string): Buffer | null {
+  const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+  return key.length >= MIN_KEY_BYTES ? key : null;
+}
+
 export interface ResendSignatureInput {
   /** The `svix-id` header. */
   id?: string;
@@ -30,7 +39,8 @@ export function verifyResendSignature(input: ResendSignatureInput): boolean {
   if (!Number.isFinite(seconds)) return false;
   if (Math.abs((input.now ?? new Date()).getTime() - seconds * 1000) > TOLERANCE_MS) return false;
 
-  const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
+  const key = signingKey(secret);
+  if (!key) return false;
   const expected = createHmac('sha256', key).update(`${id}.${timestamp}.${rawBody}`).digest();
 
   return signature.split(' ').some((entry) => {
