@@ -1,5 +1,5 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 const refresh = vi.fn();
@@ -62,7 +62,8 @@ function serve(overrides: Record<string, (init?: RequestInit) => unknown> = {}) 
     if (key === 'GET /admin/support/counts') return counts;
     if (key === 'GET /admin/support/threads') return { threads, next: null };
     const one = /^GET \/admin\/support\/threads\/(\w+)$/.exec(key);
-    if (one) return detail[one[1]!];
+    // A fresh object each time, as a real answer is: the same one again would not re-render.
+    if (one) return { ...detail[one[1]!]! };
     if (key.startsWith('POST ')) return null;
     throw new Error(`unexpected ${key}`);
   });
@@ -216,6 +217,9 @@ describe('SupportScreen', () => {
     expect(items[1]).toHaveTextContent('Which page is it?');
     expect(items[2]).toHaveTextContent('curios.my/kedaiaisyah');
 
+    // An OUT message says which address it went from: support@ for a reply.
+    expect(items[1]).toHaveTextContent('from support@');
+
     const file = within(items[0]!).getByRole('link', { name: /screenshot\.png/ });
     expect(file).toHaveAttribute('href', 'http://api.test/admin/support/attachments/a1');
     expect(file).toHaveAttribute('download');
@@ -256,7 +260,7 @@ describe('SupportScreen', () => {
           direction: 'OUT',
           fromAddress: 'support@curios.my',
           fromName: 'Curios Support',
-          createdAt: '2026-10-31T02:00:00.000Z',
+          createdAt: new Date().toISOString(),
           text: 'Fixed it for you.',
           html: null,
           sendStatus: 'SENDING',
@@ -311,6 +315,36 @@ describe('SupportScreen', () => {
     expect(within(failed).queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
   });
 
+  it('labels an admin email by the address it went from, not support@', async () => {
+    detail.t1!.messages[1] = { ...detail.t1!.messages[1]!, fromAddress: 'hello@curios.my', fromName: 'Curios' };
+    await openFirst();
+
+    expect(messages()[1]).toHaveTextContent('from hello@');
+    expect(messages()[1]).not.toHaveTextContent('from support@');
+  });
+
+  it('shows a reply Sending for over 15 minutes as Still sending, with Retry', async () => {
+    detail.t1!.messages[1] = { ...detail.t1!.messages[1]!, sendStatus: 'SENDING', createdAt: new Date(Date.now() - 16 * 60_000).toISOString() };
+    const user = await openFirst();
+
+    const stuck = messages()[1]!;
+    expect(stuck).toHaveTextContent('Still sending');
+    expect(stuck).not.toHaveTextContent('Sending…');
+    await user.click(within(stuck).getByRole('button', { name: 'Retry' }));
+
+    expect(calls('POST', '/admin/support/messages/m2/retry')).toHaveLength(1);
+    expect(stuck).toHaveTextContent('Sending…');
+    expect(within(stuck).queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+  });
+
+  it('shows a reply Sending for under 15 minutes as Sending…, with no Retry', async () => {
+    detail.t1!.messages[1] = { ...detail.t1!.messages[1]!, sendStatus: 'SENDING', createdAt: new Date(Date.now() - 14 * 60_000).toISOString() };
+    await openFirst();
+
+    expect(messages()[1]).toHaveTextContent('Sending…');
+    expect(within(messages()[1]!).queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument();
+  });
+
   it('marks a conversation done', async () => {
     const user = await openFirst();
 
@@ -347,5 +381,70 @@ describe('SupportScreen', () => {
 
     await user.click(screen.getByRole('button', { name: 'Back to conversations' }));
     expect(screen.queryByRole('heading', { name: 'Cannot publish my page', level: 2 })).not.toBeInTheDocument();
+  });
+});
+
+describe('reading a Sending reply again', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    detail.t1!.messages[1] = { ...detail.t1!.messages[1]!, sendStatus: 'SENDING', createdAt: new Date().toISOString() };
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const reads = () => calls('GET', '/admin/support/threads/t1').length;
+  // Then once more: a read's answer is rendered, and its next timer set, after the act it landed in.
+  const wait = async (ms: number) => {
+    await act(() => vi.advanceTimersByTimeAsync(ms));
+    await act(() => vi.advanceTimersByTimeAsync(0));
+  };
+
+  async function openSending() {
+    const view = render(<SupportScreen />);
+    await wait(0);
+    fireEvent.click(screen.getByRole('button', { name: /Kedai Aisyah/ }));
+    await wait(0);
+    expect(reads()).toBe(1);
+    return view;
+  }
+
+  it('backs off 5 s, 10 s, 20 s and so on, up to a minute', async () => {
+    await openSending();
+
+    const expected = [5_000, 10_000, 20_000, 40_000, 60_000, 60_000];
+    for (const [i, delay] of expected.entries()) {
+      await wait(delay - 1);
+      expect(reads()).toBe(1 + i);
+      await wait(1);
+      expect(reads()).toBe(2 + i);
+    }
+  });
+
+  it('stops once the reply is Sent', async () => {
+    await openSending();
+    detail.t1!.messages[1] = { ...detail.t1!.messages[1]!, sendStatus: 'SENT' };
+
+    await wait(5_000);
+    expect(reads()).toBe(2);
+    expect(messages()[1]).not.toHaveTextContent('Sending…');
+    for (let i = 0; i < 10; i++) await wait(60_000);
+    expect(reads()).toBe(2);
+  });
+
+  it('stops when the screen goes away', async () => {
+    const view = await openSending();
+    view.unmount();
+
+    await wait(10 * 60_000);
+    expect(reads()).toBe(1);
+  });
+
+  it('stops after 12 reads of the conversation', async () => {
+    await openSending();
+
+    for (let i = 0; i < 20; i++) await wait(60_000);
+    expect(reads()).toBe(1 + 12);
   });
 });

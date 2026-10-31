@@ -55,8 +55,20 @@ const FILTERS: { key: Filter; label: string }[] = [
   { key: 'spam', label: 'Spam' },
 ];
 
-/** While a reply is Sending, the thread is read again this often, so it turns Sent or Not sent on its own. */
+/**
+ * While a reply is Sending, the thread is read again so it turns Sent or Not sent on its own: after
+ * 5 s, then twice as long each time up to a minute, and 12 times at most per conversation opened.
+ */
 const SENDING_POLL_MS = 5000;
+const SENDING_POLL_MAX_MS = 60_000;
+const SENDING_POLLS = 12;
+/** The API's STUCK_SENDING_MS: a reply Sending this long is taken as lost, and may be sent again. */
+const STUCK_SENDING_MS = 15 * 60_000;
+
+const isStuck = (m: SupportMessage) => m.sendStatus === 'SENDING' && Date.now() - Date.parse(m.createdAt) > STUCK_SENDING_MS;
+
+/** The sending address's mailbox, "support@" or "hello@": an admin email does not go from support. */
+const fromMailbox = (address: string) => `from ${address.slice(0, address.indexOf('@') + 1) || address}`;
 
 function listPath(filter: Filter, q: string, before?: string): string {
   const qs = new URLSearchParams({ status: filter });
@@ -102,6 +114,8 @@ export function SupportScreen() {
   // Conversations whose read is being posted: a double click on an unread row posts it once. Once
   // it lands, the thread itself answers unread: false, so the id needs holding only until then.
   const marking = useRef(new Set<string>());
+  // Reads of the open conversation made for a Sending reply; starts again with each send.
+  const polls = useRef(0);
 
   function loadCounts() {
     apiFetch<Counts>('/admin/support/counts')
@@ -144,14 +158,19 @@ export function SupportScreen() {
 
   // A reply that is Sending turns Sent or Not sent when the mail worker is done with it.
   useEffect(() => {
-    if (!detail?.messages.some((m) => m.sendStatus === 'SENDING')) return;
+    if (!detail?.messages.some((m) => m.sendStatus === 'SENDING') || polls.current >= SENDING_POLLS) return;
     const id = detail.thread.id;
-    const t = setTimeout(() => void reload(id), SENDING_POLL_MS);
+    const delay = Math.min(SENDING_POLL_MS * 2 ** polls.current, SENDING_POLL_MAX_MS);
+    const t = setTimeout(() => {
+      polls.current += 1;
+      void reload(id);
+    }, delay);
     return () => clearTimeout(t);
   }, [detail]);
 
   async function open(id: string) {
     wanted.current = id;
+    polls.current = 0;
     setOpenId(id);
     setDetail(null);
     setThreadError(null);
@@ -211,6 +230,7 @@ export function SupportScreen() {
         body: JSON.stringify({ text: body }),
       });
       setDraft('');
+      polls.current = 0;
       setDetail((cur) => (cur?.thread.id === id ? { ...cur, messages: [...cur.messages, message] } : cur));
       setThreads((ts) => ts?.map((t) => (t.id === id ? { ...t, lastMessageAt: message.createdAt } : t)).sort(byLatest) ?? ts);
     } catch (err) {
@@ -240,9 +260,12 @@ export function SupportScreen() {
       else setReplyError(errorText(err));
       return;
     }
+    // The API restarts the message's clock when it sends it again, so it is not Still sending at once.
+    polls.current = 0;
+    const now = new Date().toISOString();
     setDetail((cur) =>
       cur?.thread.id === id
-        ? { ...cur, messages: cur.messages.map((m) => (m.id === messageId ? { ...m, sendStatus: 'SENDING' } : m)) }
+        ? { ...cur, messages: cur.messages.map((m) => (m.id === messageId ? { ...m, sendStatus: 'SENDING', createdAt: now } : m)) }
         : cur,
     );
   }
@@ -422,12 +445,12 @@ export function SupportScreen() {
                     <li key={m.id} className={styles.msg} data-dir={m.direction === 'OUT' ? 'out' : 'in'}>
                       <div className={styles.from}>
                         <b>{m.direction === 'OUT' ? (m.sentBy?.name ?? 'Curios Support') : (m.fromName ?? m.fromAddress)}</b>
-                        <span>{m.direction === 'OUT' ? 'from support@' : m.fromName ? m.fromAddress : ''}</span>
+                        <span>{m.direction === 'OUT' ? fromMailbox(m.fromAddress) : m.fromName ? m.fromAddress : ''}</span>
                         <time dateTime={m.createdAt}>{dayTime(new Date(m.createdAt))}</time>
-                        {m.sendStatus === 'SENDING' && <em className={styles.sending}>Sending…</em>}
-                        {m.sendStatus === 'FAILED' && (
+                        {m.sendStatus === 'SENDING' && !isStuck(m) && <em className={styles.sending}>Sending…</em>}
+                        {(m.sendStatus === 'FAILED' || isStuck(m)) && (
                           <>
-                            <em className={styles.failed}>Not sent</em>
+                            <em className={styles.failed}>{m.sendStatus === 'FAILED' ? 'Not sent' : 'Still sending'}</em>
                             <button type="button" className={styles.link} onClick={() => void retry(m.id)}>
                               Retry
                             </button>
