@@ -104,6 +104,29 @@ export interface MailJobData {
    * customers' emails and the admin's own, which always go.
    */
   audience?: 'owner';
+  /** Where the recipient's reply goes, when it is not the sender's address. */
+  replyTo?: string;
+  /** `'support'` sends from the support address, as the admin's reply to a support thread. */
+  from?: 'support';
+  /** The Message-ID header to send with, so the thread's later replies can be matched to it. */
+  messageId?: string;
+  /** The Message-ID this email answers. */
+  inReplyTo?: string;
+  /** The Message-IDs of the thread so far, oldest first. */
+  references?: string[];
+  /** The SupportMessage row this email is the send of: the worker marks it SENT or FAILED. */
+  supportMessageId?: string;
+}
+
+/**
+ * Mail to the support address, stored as threads and messages. The name lives here for the same
+ * reason as every other queue's: the api queues it and apps/workers consumes it.
+ */
+export const SUPPORT_INBOUND_QUEUE = 'support-inbound';
+
+export interface SupportInboundJobData {
+  /** Resend's id for the received email, to fetch its body and attachments. */
+  emailId: string;
 }
 
 /**

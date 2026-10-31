@@ -11,6 +11,7 @@ export {
   PENDING_CHECK_JOB,
   RENEWAL_REMINDER_JOB,
   RETENTION_JOB,
+  SUPPORT_INBOUND_QUEUE,
 } from './types.js';
 export type {
   FactCategory,
@@ -19,6 +20,7 @@ export type {
   IngestJobData,
   LeadJobData,
   MailJobData,
+  SupportInboundJobData,
 } from './types.js';
 export { parseFactBlocks } from './parse-facts.js';
 export type { ParseResult } from './parse-facts.js';

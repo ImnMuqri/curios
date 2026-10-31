@@ -185,6 +185,7 @@ model Account {
   sessions        Session[]
   password        PasswordCredential?
   authTokens      AuthToken[]
+  supportThreads  SupportThread[]
 }
 
 model AuthIdentity {
@@ -1071,6 +1072,7 @@ model AdminUser {
   actions         AdminAction[]
   reportsDecided  Report[]
   settingsChanged SystemSetting[]
+  supportReplies  SupportMessage[]
 }
 
 /// Like Session: id is the hashed cookie value. Absolute expiry only.
@@ -1215,4 +1217,85 @@ model ShopVoucher {
   @@unique([pageId, code])
   @@index([pageId])
   @@index([itemId])
+}
+
+enum SupportStatus {
+  OPEN
+  DONE
+  SPAM
+}
+
+enum SupportDirection {
+  IN
+  OUT
+}
+
+enum SupportSendStatus {
+  SENDING
+  SENT
+  FAILED
+}
+
+/// One conversation with someone who wrote to support@curios.my. Every column but `address`,
+/// `name` and `subject` is readable by the readonly role: those three name the other side, so the
+/// role cannot see them (the migration and readonly-role.sql narrow the grant).
+model SupportThread {
+  id            String           @id @default(cuid())
+  /// The other side, lower-cased.
+  address       String
+  /// Their display name, from the latest incoming message.
+  name          String?
+  subject       String
+  status        SupportStatus    @default(OPEN)
+  unread        Boolean          @default(true)
+  accountId     String?
+  account       Account?         @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  lastMessageAt DateTime
+  createdAt     DateTime         @default(now())
+  messages      SupportMessage[]
+
+  @@index([status, lastMessageAt])
+}
+
+/// One email in a thread, in either direction. The readonly role cannot read any column.
+model SupportMessage {
+  id            String              @id @default(cuid())
+  threadId      String
+  thread        SupportThread       @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  direction     SupportDirection
+  /// The RFC 5322 Message-ID, with angle brackets.
+  messageId     String
+  resendEmailId String?             @unique
+  fromAddress   String
+  fromName      String?
+  toAddresses   String[]
+  subject       String
+  text          String?
+  html          String?
+  /// OUT only.
+  sendStatus    SupportSendStatus?
+  sentById      String?
+  sentBy        AdminUser?          @relation(fields: [sentById], references: [id], onDelete: Restrict)
+  createdAt     DateTime            @default(now())
+  attachments   SupportAttachment[]
+
+  @@index([messageId])
+  @@index([threadId, createdAt])
+}
+
+/// A file on a message, stored under `storageKey`. The readonly role cannot read any column.
+model SupportAttachment {
+  id                 String         @id @default(cuid())
+  messageId          String
+  message            SupportMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  resendAttachmentId String
+  fileName           String
+  contentType        String
+  sizeBytes          Int
+  /// Without angle brackets, for cid: references.
+  contentId          String?
+  inline             Boolean
+  storageKey         String         @unique
+
+  @@unique([messageId, resendAttachmentId])
 }

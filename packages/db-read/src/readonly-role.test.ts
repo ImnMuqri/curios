@@ -19,3 +19,27 @@ describe('the read-only role', () => {
     await expect(prismaRead.$queryRawUnsafe(`SELECT "${hidden}" FROM "${table}" LIMIT 1`)).rejects.toThrow(/permission denied/i);
   });
 });
+
+// The support inbox holds other people's mail. The role sees a thread's status and counts but never
+// who wrote or what about, and no message or attachment at all.
+describe('the read-only role and the support inbox', () => {
+  const THREAD_VISIBLE = ['id', 'status', 'unread', 'accountId', 'lastMessageAt', 'createdAt'];
+  const THREAD_HIDDEN = ['address', 'name', 'subject'];
+
+  it.each(THREAD_VISIBLE)('can read SupportThread.%s', async (column) => {
+    await expect(prismaRead.$queryRawUnsafe(`SELECT "${column}" FROM "SupportThread" LIMIT 1`)).resolves.toBeDefined();
+  });
+
+  it.each(THREAD_HIDDEN)('cannot read SupportThread.%s', async (column) => {
+    await expect(prismaRead.$queryRawUnsafe(`SELECT "${column}" FROM "SupportThread" LIMIT 1`)).rejects.toThrow(/permission denied/i);
+  });
+
+  it.each([
+    ['SupportMessage', ['id', 'threadId', 'direction', 'messageId', 'resendEmailId', 'fromAddress', 'fromName', 'toAddresses', 'subject', 'text', 'html', 'sendStatus', 'sentById', 'createdAt']],
+    ['SupportAttachment', ['id', 'messageId', 'resendAttachmentId', 'fileName', 'contentType', 'sizeBytes', 'contentId', 'inline', 'storageKey']],
+  ] as const)('cannot read any column of %s', async (table, columns) => {
+    for (const column of columns) {
+      await expect(prismaRead.$queryRawUnsafe(`SELECT "${column}" FROM "${table}" LIMIT 1`)).rejects.toThrow(/permission denied/i);
+    }
+  });
+});

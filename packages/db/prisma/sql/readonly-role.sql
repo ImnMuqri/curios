@@ -68,3 +68,24 @@ BEGIN
       ON "ChipWebhookEvent" TO curios_readonly;
   END IF;
 END $$;
+
+-- A support thread's status, owner and times, but not who wrote it or what about.
+DO $$
+BEGIN
+  IF to_regclass('"SupportThread"') IS NOT NULL THEN
+    REVOKE SELECT ON "SupportThread" FROM curios_readonly;
+    GRANT SELECT ("id", "status", "unread", "accountId", "lastMessageAt", "createdAt")
+      ON "SupportThread" TO curios_readonly;
+  END IF;
+END $$;
+
+-- Support messages and their attachments are other people's mail: no column at all.
+DO $$
+BEGIN
+  IF to_regclass('"SupportMessage"') IS NOT NULL THEN
+    REVOKE SELECT ON "SupportMessage" FROM curios_readonly;
+  END IF;
+  IF to_regclass('"SupportAttachment"') IS NOT NULL THEN
+    REVOKE SELECT ON "SupportAttachment" FROM curios_readonly;
+  END IF;
+END $$;

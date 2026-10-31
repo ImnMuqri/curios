@@ -23,6 +23,7 @@ const LABELS: Record<string, string> = {
   [ADMIN_ACTIONS.REPLAYED_WEBHOOK]: 'Replayed a payment webhook',
   [ADMIN_ACTIONS.RETRIED_SOURCE]: 'Retried a source',
   [ADMIN_ACTIONS.RETRIED_FAILED_SOURCES]: 'Retried all failed sources',
+  [ADMIN_ACTIONS.REPLIED_SUPPORT]: 'Replied to support email',
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];

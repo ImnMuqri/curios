@@ -52,6 +52,10 @@ describe('AuditLog', () => {
     expect(within(r).getByText('everyone')).toBeTruthy();
   });
 
+  it('words a reply to a support email', () => {
+    expect(actionLabel('REPLIED_SUPPORT')).toBe('Replied to support email');
+  });
+
   it('words a source retry, and shows retrying all against everyone', () => {
     expect(actionLabel('RETRIED_SOURCE')).toBe('Retried a source');
     expect(actionLabel('RETRIED_FAILED_SOURCES')).toBe('Retried all failed sources');
