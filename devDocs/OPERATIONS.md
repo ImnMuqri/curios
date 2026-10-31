@@ -410,6 +410,16 @@ check still grant a payment. To exercise the webhook and callback themselves, ru
 
 ---
 
+## Support inbox
+
+Mail sent to the support address reaches the admin through Resend's inbound webhook.
+
+**Register the webhook** in Resend's dashboard (Webhooks, then Add Webhook). Subscribe to the event
+`email.received`, with the endpoint `<API origin>/support/inbound`. Copy the signing secret Resend shows
+for it (`whsec_...`) into `RESEND_WEBHOOK_SECRET`. In production the API refuses to start without it;
+in development, without it, the route is off and one warning is logged. A request whose signature does
+not verify is a 400, and a delivery whose queueing fails is a 500, which Resend retries.
+
 ## Shop CHIP keys
 
 A shop owner connects their own CHIP account in Store → Payment. Their secret key is stored only
@@ -650,6 +660,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `PAYMENT_SECRETS_KEY` | ✓ | ✓ | |
 | `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
 | `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |
+| `RESEND_WEBHOOK_SECRET` (the signing secret of Resend's `email.received` webhook; the API refuses to boot without it) | ✓ | | |
 | `SESSION_SECRET` (`openssl rand -hex 32`) | ✓ | | |
 | `REPORT_IP_SECRET` (`openssl rand -hex 32`): keys the hash of a reporter's address. **Required in production: the API refuses to boot without it, or with the `.env.example` placeholder, or with fewer than 32 characters** | ✓ | | |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI=https://api.curios.my/auth/google/callback` | ✓ | | |

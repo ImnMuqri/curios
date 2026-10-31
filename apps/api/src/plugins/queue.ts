@@ -8,10 +8,12 @@ import {
   INGEST_QUEUE,
   LEAD_QUEUE,
   MAIL_QUEUE,
+  SUPPORT_INBOUND_QUEUE,
   type GroupJobData,
   type IngestJobData,
   type LeadJobData,
   type MailJobData,
+  type SupportInboundJobData,
 } from '@curios/core';
 
 declare module 'fastify' {
@@ -20,6 +22,7 @@ declare module 'fastify' {
     mailQueue: Queue<MailJobData>;
     leadQueue: Queue<LeadJobData>;
     groupQueue: Queue<GroupJobData>;
+    supportInboundQueue: Queue<SupportInboundJobData>;
   }
 }
 
@@ -35,11 +38,13 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
   const mailQueue = new Queue<MailJobData>(MAIL_QUEUE, { connection });
   const leadQueue = new Queue<LeadJobData>(LEAD_QUEUE, { connection });
   const groupQueue = new Queue<GroupJobData>(GROUP_QUEUE, { connection });
+  const supportInboundQueue = new Queue<SupportInboundJobData>(SUPPORT_INBOUND_QUEUE, { connection });
 
   app.decorate('ingestQueue', queue);
   app.decorate('mailQueue', mailQueue);
   app.decorate('leadQueue', leadQueue);
   app.decorate('groupQueue', groupQueue);
+  app.decorate('supportInboundQueue', supportInboundQueue);
   app.addHook('onClose', async () => {
     // Each queue runs its own startup commands in the background, and nothing
     // awaits them. Closed before they finish, a queue goes on issuing them on
@@ -48,13 +53,14 @@ export const queuePlugin = fp(async (app: FastifyInstance) => {
     // booting. Bounded, because with maxRetriesPerRequest: null readiness
     // never arrives during a Redis outage, and a shutdown must not hang on it.
     await Promise.race([
-      Promise.allSettled([queue, mailQueue, leadQueue, groupQueue].map((q) => q.waitUntilReady())),
+      Promise.allSettled([queue, mailQueue, leadQueue, groupQueue, supportInboundQueue].map((q) => q.waitUntilReady())),
       sleep(QUEUE_READY_ON_CLOSE_MS, undefined, { ref: false }),
     ]);
     await queue.close();
     await mailQueue.close();
     await leadQueue.close();
     await groupQueue.close();
+    await supportInboundQueue.close();
     connection.disconnect();
   });
 });

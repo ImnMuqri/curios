@@ -56,6 +56,7 @@ import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pag
 import { photoOriginalRoutes, storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
 import { voucherCheckRoutes } from './modules/store/voucher.routes.js';
+import { supportInboundRoutes, type SupportInboundRouteOptions } from './modules/support/support-inbound.routes.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { downloadRoutes } from './modules/orders/download.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
@@ -108,6 +109,7 @@ export interface AppOverrides {
   pages?: PageRouteOptions;
   orders?: OrderRouteOptions;
   shopChip?: ShopChipRouteOptions;
+  supportInbound?: SupportInboundRouteOptions;
   admin?: AdminPagesRouteOptions;
   reports?: ReportRouteOptions;
   /** Private storage for digital files; tests pass a disk one rooted in a temp dir. */
@@ -281,6 +283,13 @@ export async function buildApp(overrides: AppOverrides = {}) {
   // CHIP's callback for a shop's order. No session and no limit, as billing's callback
   // below: verified with that shop's own key, and a forged one costs a lookup to refuse.
   await app.register(shopChipCallbackRoutes, { payOnline });
+
+  // Resend's webhook for mail to support. No session and no limit: the signature is the
+  // gate, and an unsigned request costs one HMAC to refuse.
+  await app.register(supportInboundRoutes, {
+    queue: overrides.supportInbound?.queue ?? app.supportInboundQueue,
+    secret: overrides.supportInbound?.secret ?? process.env.RESEND_WEBHOOK_SECRET,
+  });
 
   // Both limiters, because every route in here carries an email address to
   // key the second one on.
