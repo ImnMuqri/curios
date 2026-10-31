@@ -32,11 +32,12 @@ const listQuery = z.object({
 /** Every route here sits behind requireAdmin, added by the scope that registers this plugin. */
 export const adminSupportRoutes: FastifyPluginAsyncZod<AdminSupportRouteOptions> = async (app, options) => {
   const files = resolvePrivateFiles(options.privateFiles);
-  const deps = async (): Promise<AdminSupportDeps> => ({
+  const deps = async (log?: AdminSupportDeps['log']): Promise<AdminSupportDeps> => ({
     prisma: app.prisma,
     mailQueue: options.mailQueue ?? app.mailQueue,
     privateFiles: files,
     freeLeads: (await app.settings.get()).freeLeads,
+    log,
   });
 
   app.get('/admin/support/threads', { schema: { querystring: listQuery } }, async (request) => {
@@ -46,7 +47,7 @@ export const adminSupportRoutes: FastifyPluginAsyncZod<AdminSupportRouteOptions>
 
   app.get('/admin/support/counts', async () => countThreads(await deps()));
 
-  app.get('/admin/support/threads/:id', { schema: { params } }, async (request) => getThread(await deps(), request.params.id));
+  app.get('/admin/support/threads/:id', { schema: { params } }, async (request) => getThread(await deps(request.log), request.params.id));
 
   app.get('/admin/support/attachments/:id', { schema: { params }, exposeHeadRoute: false }, async (request, res) => {
     const d = await deps();
@@ -79,11 +80,11 @@ export const adminSupportRoutes: FastifyPluginAsyncZod<AdminSupportRouteOptions>
   app.post(
     '/admin/support/threads/:id/reply',
     { schema: { params, body: z.object({ text: z.string().trim().min(1).max(20000) }) } },
-    async (request) => reply(await deps(), adminActor(request), request.params.id, request.body.text),
+    async (request) => reply(await deps(request.log), adminActor(request), request.params.id, request.body.text),
   );
 
   app.post('/admin/support/messages/:id/retry', { schema: { params } }, async (request, res) => {
-    await retry(await deps(), request.params.id);
+    await retry(await deps(request.log), request.params.id);
     return res.status(204).send();
   });
 };

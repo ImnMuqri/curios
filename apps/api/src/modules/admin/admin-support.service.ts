@@ -1,4 +1,4 @@
-import { ADMIN_ACTIONS, MAIL_QUEUE, planState, type MailJobData } from '@curios/core';
+import { ADMIN_ACTIONS, adminPlanLabel, MAIL_QUEUE, planState, type AdminPlan, type MailJobData } from '@curios/core';
 import { newMessageId, referencesFor, replySubject, supportAddress } from '@curios/core/support';
 import type { Prisma, PrismaClient, SupportStatus } from '@curios/db';
 import type { PrivateFiles } from '../store/private-files.js';
@@ -11,6 +11,8 @@ export interface AdminSupportDeps {
   privateFiles: PrivateFiles | null;
   /** The trial's length in force (Settings.freeLeads), for the owner's plan. */
   freeLeads: number;
+  /** Where a failure that is otherwise answered or skipped is recorded; ids and error names only, never a body. */
+  log?: { warn: (obj: object, msg: string) => void };
 }
 
 export class SupportNotFoundError extends Error {
@@ -37,8 +39,8 @@ export class ReplyNotQueuedError extends Error {
   readonly statusCode = 500;
   readonly code = 'REPLY_NOT_QUEUED';
 
-  constructor() {
-    super('The reply could not be queued, so it was not sent. Send it again from the conversation.');
+  constructor(options?: { cause: unknown }) {
+    super('The reply could not be queued, so it was not sent. Send it again from the conversation.', options);
     this.name = 'ReplyNotQueuedError';
   }
 }
@@ -166,21 +168,8 @@ const MESSAGE_SELECT = {
 
 type MessageRow = Prisma.SupportMessageGetPayload<{ select: typeof MESSAGE_SELECT }>;
 
-/** Mirrors planOf in @curios/db-read/admin (the API does not read through that package). */
-function planLabel(page: NonNullable<ReturnType<typeof ownerPage>>, freeLeads: number): string {
-  const state = planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }, freeLeads);
-  switch (state.kind) {
-    case 'personal':
-      return 'Personal';
-    case 'paid':
-      return 'Business';
-    case 'trial':
-      return state.lapsedOn ? 'Lapsed' : 'Business trial';
-    case 'trialSpent':
-      return 'Business trial';
-    case 'lapsed':
-      return 'Lapsed';
-  }
+function planLabel(page: NonNullable<ReturnType<typeof ownerPage>>, freeLeads: number): AdminPlan {
+  return adminPlanLabel(planState({ mode: page.mode, paidUntil: page.paidUntil, leadsCaptured: page.leadsCaptured, now: new Date() }, freeLeads));
 }
 
 const CID = /cid:([^"'\s)>]+)/gi;
@@ -190,11 +179,11 @@ const CID = /cid:([^"'\s)>]+)/gi;
  * a second request. Only images within the size limits; the rest keep their cid: and are listed.
  * SVG is left out: it is a document, and it can still be opened from the attachment list.
  */
-async function inlineImages(files: PrivateFiles | null, row: MessageRow): Promise<string | null> {
+async function inlineImages(deps: Pick<AdminSupportDeps, 'log'>, files: PrivateFiles | null, row: MessageRow): Promise<string | null> {
   if (!files || !row.html) return row.html;
   const inlinable = new Map(
     row.attachments
-      .filter((a) => a.contentId && /^image\/(?!svg)/i.test(a.contentType) && a.sizeBytes <= INLINE_IMAGE_MAX_BYTES)
+      .filter((a) => a.contentId && /^image\/(?!svg)[\w.+-]+$/i.test(a.contentType) && a.sizeBytes <= INLINE_IMAGE_MAX_BYTES)
       .map((a) => [a.contentId!, a] as const),
   );
   if (inlinable.size === 0) return row.html;
@@ -208,11 +197,17 @@ async function inlineImages(files: PrivateFiles | null, row: MessageRow): Promis
       const bytes = await files.read(attachment.storageKey);
       total += bytes.length;
       uris.set(cid, `data:${attachment.contentType};base64,${bytes.toString('base64')}`);
-    } catch {
+    } catch (error) {
       // A file that cannot be read keeps its cid:; the rest of the thread still opens.
+      deps.log?.warn({ attachmentId: attachment.id, err: errName(error) }, 'could not read an inline image');
     }
   }
   return row.html.replace(CID, (whole, cid: string) => uris.get(cid) ?? whole);
+}
+
+/** An error's name only: its message can carry what was being sent. */
+function errName(error: unknown): string {
+  return error instanceof Error ? error.name : typeof error;
 }
 
 export interface SupportMessageItem {
@@ -228,7 +223,7 @@ export interface SupportMessageItem {
   attachments: { id: string; fileName: string; contentType: string; sizeBytes: number; inline: boolean }[];
 }
 
-async function toMessageItem(files: PrivateFiles | null, row: MessageRow): Promise<SupportMessageItem> {
+async function toMessageItem(deps: AdminSupportDeps, row: MessageRow): Promise<SupportMessageItem> {
   return {
     id: row.id,
     direction: row.direction,
@@ -236,7 +231,7 @@ async function toMessageItem(files: PrivateFiles | null, row: MessageRow): Promi
     fromName: row.fromName,
     createdAt: row.createdAt,
     text: row.text,
-    html: await inlineImages(files, row),
+    html: await inlineImages(deps, deps.privateFiles, row),
     sendStatus: row.sendStatus,
     sentBy: row.sentBy ? { name: row.sentBy.name } : null,
     attachments: row.attachments.map((a) => ({ id: a.id, fileName: a.fileName, contentType: a.contentType, sizeBytes: a.sizeBytes, inline: a.inline })),
@@ -256,7 +251,7 @@ export async function getThread(deps: AdminSupportDeps, id: string) {
     owner: page
       ? { pageId: page.id, handle: page.handle, displayName: page.displayName, plan: planLabel(page, deps.freeLeads), paidUntil: page.paidUntil }
       : null,
-    messages: await Promise.all(row.messages.map((m) => toMessageItem(deps.privateFiles, m))),
+    messages: await Promise.all(row.messages.map((m) => toMessageItem(deps, m))),
   };
 }
 
@@ -320,9 +315,15 @@ async function queueSend(
       },
       MAIL_OPTIONS,
     );
-  } catch {
-    await deps.prisma.supportMessage.updateMany({ where: { id: message.id }, data: { sendStatus: 'FAILED' } });
-    throw new ReplyNotQueuedError();
+  } catch (error) {
+    deps.log?.warn({ supportMessageId: message.id, err: errName(error) }, 'could not queue a support reply');
+    try {
+      await deps.prisma.supportMessage.updateMany({ where: { id: message.id }, data: { sendStatus: 'FAILED' } });
+    } catch (markError) {
+      // Still SENDING in the row, but the admin is told the truth: it was not queued.
+      deps.log?.warn({ supportMessageId: message.id, err: errName(markError) }, 'could not mark a support reply failed');
+    }
+    throw new ReplyNotQueuedError({ cause: error });
   }
 }
 
@@ -332,6 +333,7 @@ export async function reply(deps: AdminSupportDeps, actor: AdminActor, threadId:
     if (!thread) throw new SupportNotFoundError();
     const earlier = await threading(tx, threadId);
     const now = new Date();
+    const subject = replySubject(thread.subject);
     const created = await tx.supportMessage.create({
       data: {
         threadId,
@@ -340,7 +342,7 @@ export async function reply(deps: AdminSupportDeps, actor: AdminActor, threadId:
         fromAddress: supportAddress(),
         fromName: 'Curios Support',
         toAddresses: [thread.address],
-        subject: replySubject(thread.subject),
+        subject,
         text,
         sendStatus: 'SENDING',
         sentById: actor.adminId,
@@ -357,13 +359,13 @@ export async function reply(deps: AdminSupportDeps, actor: AdminActor, threadId:
       targetId: threadId,
       targetLabel: thread.address,
       reason: '',
-      metadata: { subject: thread.subject },
+      metadata: { subject },
       ip: actor.ip,
     });
     return { message: created, address: thread.address, prior: earlier };
   });
   await queueSend(deps, { id: message.id, messageId: message.messageId, subject: message.subject, text }, address, prior);
-  return { message: await toMessageItem(deps.privateFiles, message) };
+  return { message: await toMessageItem(deps, message) };
 }
 
 export async function retry(deps: AdminSupportDeps, id: string): Promise<void> {
@@ -371,9 +373,9 @@ export async function retry(deps: AdminSupportDeps, id: string): Promise<void> {
     where: { id },
     select: { id: true, direction: true, messageId: true, subject: true, text: true, createdAt: true, thread: { select: { id: true, address: true } } },
   });
-  if (!message || message.direction !== 'OUT') throw new SupportNotFoundError();
+  if (!message) throw new SupportNotFoundError();
   // Conditional, so two clicks queue one send.
-  const claimed = await deps.prisma.supportMessage.updateMany({ where: { id, sendStatus: 'FAILED' }, data: { sendStatus: 'SENDING' } });
+  const claimed = await deps.prisma.supportMessage.updateMany({ where: { id, direction: 'OUT', sendStatus: 'FAILED' }, data: { sendStatus: 'SENDING' } });
   if (claimed.count === 0) throw new NotFailedError();
   await queueSend(deps, message, message.thread.address, await threading(deps.prisma, message.thread.id, message.createdAt));
 }

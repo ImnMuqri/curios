@@ -238,6 +238,15 @@ describe('thread', () => {
     expect(res.json().messages[0].attachments[0]).not.toHaveProperty('storageKey');
   });
 
+  it('leaves cid: for a content type that is not a plain image type', async () => {
+    const thread = await aThread();
+    const message = await aMessage(thread.id, { html: '<img src="cid:odd"><img src="cid:vec">' });
+    await anAttachment(message.id, Buffer.from('x'), { contentType: 'image/png"><x', contentId: 'odd', inline: true });
+    await anAttachment(message.id, Buffer.from('<svg/>'), { contentType: 'image/svg+xml', contentId: 'vec', inline: true });
+    const html = (await send('GET', `/admin/support/threads/${thread.id}`)).json().messages[0].html as string;
+    expect(html).toBe('<img src="cid:odd"><img src="cid:vec">');
+  });
+
   it('stops inlining once a message holds 8 MB', async () => {
     const thread = await aThread();
     const message = await aMessage(thread.id, { html: '<img src="cid:a"><img src="cid:b"><img src="cid:c"><img src="cid:d"><img src="cid:e">' });
@@ -342,11 +351,13 @@ describe('reply', () => {
     expect(moved.status).toBe('OPEN');
   });
 
-  it('puts Re: on a subject that has none, once', async () => {
+  it('puts Re: on a subject that has none, in the job, the message and the audit row', async () => {
     const thread = await aThread({ subject: 'Where is my order' });
     await aMessage(thread.id);
     await send('POST', `/admin/support/threads/${thread.id}/reply`, { text: 'Hi' });
     expect(mailQueue.add.mock.calls[0]![1]).toMatchObject({ subject: 'Re: Where is my order' });
+    const audit = await app.prisma.adminAction.findMany({ where: { targetId: thread.id } });
+    expect(audit[0]!.metadata).toEqual({ subject: 'Re: Where is my order' });
   });
 
   it('rejects an empty reply and an unknown thread', async () => {
@@ -400,7 +411,7 @@ describe('retry', () => {
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
   });
 
-  it('answers 409 NOT_FAILED for a SENT message and 404 for an unknown or incoming one', async () => {
+  it('answers 409 NOT_FAILED for a SENT message and 409 for an incoming one, 404 for an unknown id', async () => {
     const thread = await aThread();
     const sent = await aMessage(thread.id, { direction: 'OUT', sendStatus: 'SENT' });
     const incoming = await aMessage(thread.id, { direction: 'IN' });
@@ -408,7 +419,7 @@ describe('retry', () => {
     const res = await send('POST', `/admin/support/messages/${sent.id}/retry`);
     expect(res.statusCode).toBe(409);
     expect(res.json().error.code).toBe('NOT_FAILED');
-    expect((await send('POST', `/admin/support/messages/${incoming.id}/retry`)).statusCode).toBe(404);
+    expect((await send('POST', `/admin/support/messages/${incoming.id}/retry`)).json().error.code).toBe('NOT_FAILED');
     expect((await send('POST', '/admin/support/messages/nope/retry')).json().error.code).toBe('SUPPORT_NOT_FOUND');
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
