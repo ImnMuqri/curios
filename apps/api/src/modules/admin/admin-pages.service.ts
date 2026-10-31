@@ -7,6 +7,7 @@ import {
   pageSuspendedMail,
   type MailJobData,
 } from '@curios/core';
+import { newMessageId, parseAddress } from '@curios/core/support';
 import { stockCoverName } from '@curios/core/bento';
 import type { Prisma, PrismaClient } from '@curios/db';
 import type { AvatarStore } from '../pages/storage.js';
@@ -62,6 +63,7 @@ const PAGE_SELECT = {
   language: true,
   paidUntil: true,
   suspendedAt: true,
+  accountId: true,
   account: { select: { email: true } },
 } satisfies Prisma.PageSelect;
 
@@ -93,13 +95,19 @@ export function audit(
   });
 }
 
-/** After the change has committed; a mail that cannot be queued never undoes it. */
+/**
+ * After the change has committed; a mail that cannot be queued never undoes it. The mail also opens
+ * a support conversation (a DONE thread holding the OUT message), so the owner's reply to it threads
+ * by In-Reply-To instead of arriving as a stranger.
+ */
 export async function mailOwner(
   deps: AdminPagesDeps,
   page: AdminPage,
   build: typeof pageSuspendedMail,
   reason: string,
+  actor: AdminActor,
 ): Promise<void> {
+  let supportMessageId: string | undefined;
   try {
     const mail = build({
       displayName: page.displayName,
@@ -107,12 +115,52 @@ export async function mailOwner(
       appUrl: process.env.APP_URL ?? 'http://localhost:3000',
       language: page.language,
     });
+    const to = page.account.email;
+    const messageId = newMessageId();
+    const now = new Date();
+    const message = await deps.prisma.$transaction(async (tx) => {
+      const thread = await tx.supportThread.create({
+        data: {
+          address: to.toLowerCase(),
+          name: page.displayName,
+          accountId: page.accountId,
+          subject: mail.subject,
+          status: 'DONE',
+          unread: false,
+          lastMessageAt: now,
+        },
+      });
+      return tx.supportMessage.create({
+        data: {
+          threadId: thread.id,
+          direction: 'OUT',
+          messageId,
+          // The address the mail worker sends from; same default as its transport.
+          fromAddress: parseAddress(process.env.MAIL_FROM ?? 'Curios <hello@curios.my>').address,
+          fromName: 'Curios',
+          toAddresses: [to],
+          subject: mail.subject,
+          text: mail.text,
+          html: null,
+          sendStatus: 'SENDING',
+          sentById: actor.adminId,
+        },
+        select: { id: true },
+      });
+    });
+    supportMessageId = message.id;
     await deps.mailQueue.add(
       MAIL_QUEUE,
-      { to: page.account.email, ...mail },
+      { to, ...mail, messageId, supportMessageId },
       { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true },
     );
   } catch (error) {
+    // Written but never queued: nothing will report back, so say so (best effort).
+    if (supportMessageId) {
+      await deps.prisma.supportMessage
+        .update({ where: { id: supportMessageId }, data: { sendStatus: 'FAILED' } })
+        .catch(() => undefined);
+    }
     deps.log?.warn?.(
       { pageId: page.id, err: error instanceof Error ? error.message : String(error) },
       'could not queue the admin email',
@@ -137,7 +185,7 @@ export async function suspendPage(deps: AdminPagesDeps, actor: AdminActor, id: s
     await audit(tx, actor, found, ADMIN_ACTIONS.SUSPENDED_PAGE, reason);
     return found;
   });
-  await mailOwner(deps, page, pageSuspendedMail, reason);
+  await mailOwner(deps, page, pageSuspendedMail, reason, actor);
 }
 
 export async function unsuspendPage(deps: AdminPagesDeps, actor: AdminActor, id: string, reason: string): Promise<void> {
@@ -151,7 +199,7 @@ export async function unsuspendPage(deps: AdminPagesDeps, actor: AdminActor, id:
     await audit(tx, actor, found, ADMIN_ACTIONS.UNSUSPENDED_PAGE, reason);
     return found;
   });
-  await mailOwner(deps, page, pageRestoredMail, reason);
+  await mailOwner(deps, page, pageRestoredMail, reason, actor);
 }
 
 export async function grantMonth(deps: AdminPagesDeps, actor: AdminActor, id: string, reason: string): Promise<void> {

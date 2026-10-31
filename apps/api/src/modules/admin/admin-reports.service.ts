@@ -48,5 +48,5 @@ export async function emailOwnerAboutReports(
     await audit(tx, actor, found, ADMIN_ACTIONS.EMAILED_OWNER, reason, { count });
     return found;
   });
-  await mailOwner(deps, page, reportWarningMail, reason);
+  await mailOwner(deps, page, reportWarningMail, reason, actor);
 }

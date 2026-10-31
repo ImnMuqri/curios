@@ -28,6 +28,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // SupportMessage restricts deletion of its sender; deleting the thread cascades its messages.
+  await app.prisma.supportThread.deleteMany({ where: { accountId: { in: madeAccounts } } });
   // AdminAction restricts deletion of its admin, so the audit rows go first (tests only).
   await app.prisma.adminAction.deleteMany({ where: { adminUserId: adminId } });
   await app.prisma.adminUser.deleteMany({ where: { id: adminId } });
@@ -56,7 +58,7 @@ async function aReportedPage(open = 3, extra: Record<string, unknown> = {}) {
   await app.prisma.report.createMany({
     data: Array.from({ length: open }, (_, i) => ({ pageId: id, reason: 'SCAM' as const, reporterIpHash: `h${i}` })),
   });
-  return { id, handle: slug, email };
+  return { id, handle: slug, email, accountId: account.id };
 }
 
 const call = (url: string, payload?: object, withCookie: string | null = cookie) =>
@@ -122,6 +124,21 @@ describe('email the owner', () => {
     expect(audit).toHaveLength(1);
     expect(audit[0]).toMatchObject({ action: 'EMAILED_OWNER', reason: 'Please fix your prices', metadata: { count: 2 } });
     expect(await app.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).toMatchObject({ suspendedAt: null });
+  });
+
+  it("opens a support conversation for the warning, so the owner's reply threads", async () => {
+    const page = await aReportedPage(1);
+    await call(`/admin/pages/${page.id}/reports/email-owner`, { reason: 'Please fix your prices' });
+
+    const threads = await app.prisma.supportThread.findMany({ where: { accountId: page.accountId }, include: { messages: true } });
+    expect(threads).toHaveLength(1);
+    expect(threads[0]).toMatchObject({ address: page.email, subject: 'About your page on Curios', status: 'DONE', unread: false });
+    const message = threads[0]!.messages[0]!;
+    expect(threads[0]!.messages).toHaveLength(1);
+    expect(message).toMatchObject({ direction: 'OUT', sendStatus: 'SENDING', sentById: adminId, html: null });
+    const data = mailQueue.add.mock.calls[0]![1];
+    expect(data.messageId).toBe(message.messageId);
+    expect(data.supportMessageId).toBe(message.id);
   });
 
   it('writes in Malay when the page is', async () => {

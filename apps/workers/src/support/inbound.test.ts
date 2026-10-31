@@ -15,6 +15,8 @@ const SUPPORT = 'support@curios.my';
 let root = '';
 let files: PrivateFiles;
 const accountIds: string[] = [];
+const adminIds: string[] = [];
+const threadIds: string[] = [];
 const emailIds: string[] = [];
 
 beforeAll(async () => {
@@ -26,6 +28,9 @@ beforeAll(async () => {
 // in beforeEach would leave the last test's rows behind anyway.
 afterAll(async () => {
   await prisma.supportThread.deleteMany({ where: { messages: { some: { resendEmailId: { in: emailIds } } } } });
+  // A message restricts deletion of its sender, so the threads go before the admins.
+  await prisma.supportThread.deleteMany({ where: { id: { in: threadIds } } });
+  await prisma.adminUser.deleteMany({ where: { id: { in: adminIds } } });
   await prisma.account.deleteMany({ where: { id: { in: accountIds } } });
   await prisma.$disconnect();
   await rm(root, { recursive: true, force: true });
@@ -125,6 +130,48 @@ describe('processInbound', () => {
     expect(reply?.threadId).toBe(thread.id);
     expect(reply?.thread).toMatchObject({ status: 'OPEN', unread: true });
     expect(reply!.thread.lastMessageAt.getTime()).toBeGreaterThan(before.getTime());
+  });
+
+  it("joins the thread of an admin's own email (suspend, report warning) when the owner replies", async () => {
+    const owner = unique('owner');
+    const admin = await prisma.adminUser.create({ data: { email: unique('admin'), name: 'Admin', passwordHash: 'x' } });
+    adminIds.push(admin.id);
+    const outId = `<${randomUUID()}@curios.my>`;
+    // The rows mailOwner writes before it queues the mail.
+    const thread = await prisma.supportThread.create({
+      data: {
+        address: owner,
+        subject: 'Your page has been suspended',
+        status: 'DONE',
+        unread: false,
+        lastMessageAt: new Date('2026-01-01T00:00:00Z'),
+        messages: {
+          create: {
+            direction: 'OUT',
+            messageId: outId,
+            fromAddress: 'hello@curios.my',
+            fromName: 'Curios',
+            toAddresses: [owner],
+            subject: 'Your page has been suspended',
+            text: 'Reason',
+            sendStatus: 'SENT',
+            sentById: admin.id,
+          },
+        },
+      },
+    });
+    threadIds.push(thread.id);
+
+    const emailId = newEmailId();
+    await processInbound(
+      deps(aResend(anEmail({ from: owner, subject: 'Re: Your page has been suspended', headers: { 'In-Reply-To': outId } }))),
+      emailId,
+    );
+
+    const reply = await messageOf(emailId);
+    expect(reply?.threadId).toBe(thread.id);
+    expect(reply?.thread).toMatchObject({ status: 'OPEN', unread: true });
+    expect(await prisma.supportThread.count({ where: { address: owner } })).toBe(1);
   });
 
   it('opens a second thread for a new subject from the same address', async () => {

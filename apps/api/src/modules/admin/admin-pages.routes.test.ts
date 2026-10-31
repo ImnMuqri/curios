@@ -41,6 +41,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  // SupportMessage restricts deletion of its sender; deleting the thread cascades its messages.
+  await app.prisma.supportThread.deleteMany({ where: { accountId: { in: madeAccounts } } });
   // AdminAction restricts deletion of its admin, so the audit rows go first (tests only).
   await app.prisma.adminAction.deleteMany({ where: { adminUserId: adminId } });
   await app.prisma.adminUser.deleteMany({ where: { id: adminId } });
@@ -117,6 +119,31 @@ describe('suspend and unsuspend', () => {
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
   });
 
+  it("opens a support conversation for the mail, so the owner's reply threads", async () => {
+    const page = await aPage();
+    await call('POST', `/admin/pages/${page.id}/suspend`, { reason: 'Selling fakes' });
+
+    const threads = await app.prisma.supportThread.findMany({ where: { accountId: page.accountId }, include: { messages: true } });
+    expect(threads).toHaveLength(1);
+    expect(threads[0]).toMatchObject({ address: page.email, name: 'Kek Lina', subject: 'Your page has been suspended', status: 'DONE', unread: false });
+    expect(threads[0]!.messages).toHaveLength(1);
+    const message = threads[0]!.messages[0]!;
+    expect(message).toMatchObject({
+      direction: 'OUT',
+      sendStatus: 'SENDING',
+      sentById: adminId,
+      toAddresses: [page.email],
+      html: null,
+      fromName: 'Curios',
+      subject: 'Your page has been suspended',
+    });
+    expect(message.text).toContain('Selling fakes');
+
+    const data = mailQueue.add.mock.calls[0]![1];
+    expect(data.messageId).toBe(message.messageId);
+    expect(data.supportMessageId).toBe(message.id);
+  });
+
   it('unsuspends a suspended page and mails the owner; refuses one that is live', async () => {
     const live = await aPage();
     const refused = await call('POST', `/admin/pages/${live.id}/unsuspend`, { reason: 'Mistake' });
@@ -139,6 +166,9 @@ describe('suspend and unsuspend', () => {
     const res = await call('POST', `/admin/pages/${page.id}/suspend`, { reason: 'Fakes' });
     expect(res.statusCode).toBe(204);
     expect((await app.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).suspendedAt).not.toBeNull();
+    // The message that never went out says so, rather than staying SENDING.
+    const message = await app.prisma.supportMessage.findFirstOrThrow({ where: { thread: { accountId: page.accountId } } });
+    expect(message.sendStatus).toBe('FAILED');
   });
 
   it('404s an unknown page', async () => {
