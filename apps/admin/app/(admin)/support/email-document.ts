@@ -8,8 +8,12 @@ export function hasRemoteImages(html: string | null): boolean {
   return html !== null && REMOTE_IMAGE.test(html);
 }
 
-/** Elements that fetch, navigate or re-point the document on their own, which a CSP does not all cover. */
-const STRIPPED = 'link, meta, base, script, iframe, object, embed, frame';
+/**
+ * Elements that fetch, navigate or re-point the document on their own, which a CSP does not all
+ * cover. `template` goes whole: its content is a separate fragment the strip cannot see, and the
+ * srcdoc parser would attach it as a live shadow root. `noscript` has no use in a scriptless frame.
+ */
+const STRIPPED = 'link, meta, base, script, iframe, object, embed, frame, template, noscript';
 
 /**
  * The email's HTML with every element that could reach out removed: a `<link rel=preconnect>` or

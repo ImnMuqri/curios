@@ -50,7 +50,12 @@ describe('buildEmailDocument, against an email that tries to reach out', () => {
       '<link rel=stylesheet href=https://t.example/s.css><meta http-equiv=refresh content="0;url=https://t.example">' +
       '<base href=https://t.example><style>p { color: red }</style></head>' +
       '<body><p>Hi</p><link rel=prefetch href=https://t.example/x><iframe src=https://t.example></iframe>' +
-      '<object data=https://t.example></object><embed src=https://t.example><script>fetch("https://t.example")</script></body></html>';
+      '<object data=https://t.example></object><embed src=https://t.example><script>fetch("https://t.example")</script>' +
+      // A template's content is its own fragment, out of querySelectorAll's reach; the srcdoc parser
+      // would attach a declarative shadow root and bring the <link> back to life.
+      '<template shadowrootmode=open><link rel=preconnect href=https://t.example></template>' +
+      '<div><template><template shadowrootmode=open><link rel=dns-prefetch href=//t.example></template></template></div>' +
+      '<noscript><link rel=preconnect href=https://t.example></noscript></body></html>';
     const doc = buildEmailDocument({ html, text: null, showRemoteImages: true });
 
     expect(doc).not.toContain('t.example');
