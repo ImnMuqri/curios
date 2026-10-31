@@ -9,6 +9,7 @@ import { buildApp } from '../../app.js';
 import { createDiskPrivateFiles, type PrivateFiles } from '../store/private-files.js';
 import { hashPassword } from '../auth/password.service.js';
 import { createAdminSession } from './admin-session.service.js';
+import { STUCK_SENDING_MS } from './admin-support.service.js';
 
 const mailQueue = { add: vi.fn(async (_name: string, _data: MailJobData, _opts?: unknown) => ({})) };
 
@@ -79,7 +80,7 @@ async function aThread(
 
 async function aMessage(
   threadId: string,
-  extra: { direction?: 'IN' | 'OUT'; html?: string; sendStatus?: 'SENDING' | 'SENT' | 'FAILED'; createdAt?: Date } = {},
+  extra: { direction?: 'IN' | 'OUT'; html?: string; sendStatus?: 'SENDING' | 'SENT' | 'FAILED'; createdAt?: Date; fromAddress?: string } = {},
 ) {
   const direction = extra.direction ?? 'IN';
   return app.prisma.supportMessage.create({
@@ -87,7 +88,7 @@ async function aMessage(
       threadId,
       direction,
       messageId: `<${randomUUID()}@mail.test>`,
-      fromAddress: direction === 'IN' ? 'sender@example.com' : 'support@curios.my',
+      fromAddress: extra.fromAddress ?? (direction === 'IN' ? 'sender@example.com' : 'support@curios.my'),
       toAddresses: ['x@example.com'],
       subject: 'Help',
       text: 'Hello there',
@@ -284,7 +285,9 @@ describe('attachment download', () => {
     const thread = await aThread();
     const message = await aMessage(thread.id);
     const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
-    const attachment = await anAttachment(message.id, svg, { contentType: 'image/svg+xml', fileName: 'logo.svg' });
+    const stored = await anAttachment(message.id, svg, { contentType: 'image/svg+xml', fileName: 'logo.svg' });
+    // A row whose size disagrees with the file: the download must not be cut to it.
+    const attachment = await app.prisma.supportAttachment.update({ where: { id: stored.id }, data: { sizeBytes: 10 } });
 
     const res = await send('GET', `/admin/support/attachments/${attachment.id}`);
     expect(res.statusCode).toBe(200);
@@ -292,6 +295,7 @@ describe('attachment download', () => {
     expect(res.headers['content-disposition']).toContain('logo.svg');
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.rawPayload.equals(svg)).toBe(true);
+    expect(res.headers['content-length']).not.toBe(String(attachment.sizeBytes));
 
     expect((await send('GET', '/admin/support/attachments/nope')).statusCode).toBe(404);
   });
@@ -324,12 +328,16 @@ describe('reply', () => {
     expect(audit[0]).toMatchObject({
       action: 'REPLIED_SUPPORT',
       targetType: 'SupportThread',
-      targetLabel: thread.address,
+      targetId: thread.id,
+      targetLabel: 'Support conversation',
       reason: '',
       adminUserId: adminId,
+      metadata: null,
     });
+    // The readonly role reads AdminAction whole: no body, subject or address there.
     expect(JSON.stringify(audit[0])).not.toContain('Sorry about that');
-    expect(audit[0]!.metadata).toEqual({ subject: 'Re: Where is my order' });
+    expect(JSON.stringify(audit[0])).not.toContain('Where is my order');
+    expect(JSON.stringify(audit[0])).not.toContain(thread.address);
 
     expect(mailQueue.add).toHaveBeenCalledTimes(1);
     const [name, job, opts] = mailQueue.add.mock.calls[0]!;
@@ -344,20 +352,20 @@ describe('reply', () => {
       references: [first.messageId, second.messageId, third.messageId],
       supportMessageId: out[0]!.id,
     });
-    expect(opts).toMatchObject({ attempts: 5, backoff: { type: 'exponential' } });
+    expect(opts).toMatchObject({ attempts: 5, backoff: { type: 'exponential' }, removeOnFail: { age: 3600 } });
 
     const moved = await app.prisma.supportThread.findUniqueOrThrow({ where: { id: thread.id } });
     expect(moved.lastMessageAt.getTime()).toBeGreaterThan(thread.lastMessageAt.getTime());
     expect(moved.status).toBe('OPEN');
   });
 
-  it('puts Re: on a subject that has none, in the job, the message and the audit row', async () => {
+  it('puts Re: on a subject that has none, in the job and the message', async () => {
     const thread = await aThread({ subject: 'Where is my order' });
     await aMessage(thread.id);
     await send('POST', `/admin/support/threads/${thread.id}/reply`, { text: 'Hi' });
     expect(mailQueue.add.mock.calls[0]![1]).toMatchObject({ subject: 'Re: Where is my order' });
-    const audit = await app.prisma.adminAction.findMany({ where: { targetId: thread.id } });
-    expect(audit[0]!.metadata).toEqual({ subject: 'Re: Where is my order' });
+    const out = await app.prisma.supportMessage.findFirstOrThrow({ where: { threadId: thread.id, direction: 'OUT', sendStatus: 'SENDING' } });
+    expect(out.subject).toBe('Re: Where is my order');
   });
 
   it('rejects an empty reply and an unknown thread', async () => {
@@ -424,6 +432,39 @@ describe('retry', () => {
     expect(mailQueue.add).not.toHaveBeenCalled();
   });
 
+  it('sends a stuck SENDING message again once it is 15 minutes old, once, and refuses a younger one', async () => {
+    const thread = await aThread();
+    const stuck = await aMessage(thread.id, { direction: 'OUT', sendStatus: 'SENDING', createdAt: new Date(Date.now() - STUCK_SENDING_MS - 60_000) });
+    const young = await aMessage(thread.id, { direction: 'OUT', sendStatus: 'SENDING', createdAt: new Date(Date.now() - STUCK_SENDING_MS + 60_000) });
+
+    expect((await send('POST', `/admin/support/messages/${stuck.id}/retry`)).statusCode).toBe(204);
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    expect(mailQueue.add.mock.calls[0]![1]).toMatchObject({ supportMessageId: stuck.id, messageId: stuck.messageId });
+    // The claim restarts its clock, so a second click is not a second send.
+    expect((await send('POST', `/admin/support/messages/${stuck.id}/retry`)).statusCode).toBe(409);
+
+    const res = await send('POST', `/admin/support/messages/${young.id}/retry`);
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('NOT_FAILED');
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+  });
+
+  it('sends a failed admin email again from the address it went from, with its html', async () => {
+    const thread = await aThread({ status: 'DONE' });
+    const failed = await aMessage(thread.id, {
+      direction: 'OUT',
+      sendStatus: 'FAILED',
+      fromAddress: 'hello@curios.my',
+      html: '<p>Your page has been suspended</p>',
+    });
+
+    expect((await send('POST', `/admin/support/messages/${failed.id}/retry`)).statusCode).toBe(204);
+    const job = mailQueue.add.mock.calls[0]![1];
+    expect(job).not.toHaveProperty('from');
+    expect(job).toMatchObject({ to: thread.address, html: '<p>Your page has been suspended</p>', messageId: failed.messageId, supportMessageId: failed.id });
+    expect(mailQueue.add.mock.calls[0]![2]).toMatchObject({ removeOnFail: { age: 3600 } });
+  });
+
   it('marks the message FAILED again when the queue is still down', async () => {
     const thread = await aThread();
     const failed = await aMessage(thread.id, { direction: 'OUT', sendStatus: 'FAILED' });
@@ -435,6 +476,29 @@ describe('retry', () => {
 });
 
 describe('status and read', () => {
+  it('writes an audit row for each status change, with the status and nothing about the sender', async () => {
+    const thread = await aThread({ status: 'OPEN' });
+    expect((await send('POST', `/admin/support/threads/${thread.id}/status`, { status: 'DONE' })).statusCode).toBe(204);
+    expect((await send('POST', `/admin/support/threads/${thread.id}/status`, { status: 'OPEN' })).statusCode).toBe(204);
+
+    const audit = await app.prisma.adminAction.findMany({ where: { targetId: thread.id }, orderBy: { createdAt: 'asc' } });
+    expect(audit.map((a) => a.metadata)).toEqual([{ status: 'DONE' }, { status: 'OPEN' }]);
+    expect(audit[0]).toMatchObject({
+      action: 'CHANGED_SUPPORT_STATUS',
+      targetType: 'SupportThread',
+      targetId: thread.id,
+      targetLabel: 'Support conversation',
+      reason: '',
+      adminUserId: adminId,
+    });
+    expect(JSON.stringify(audit)).not.toContain(thread.address);
+    expect(JSON.stringify(audit)).not.toContain(thread.subject);
+
+    const before = await app.prisma.adminAction.count({ where: { adminUserId: adminId } });
+    expect((await send('POST', '/admin/support/threads/nope/status', { status: 'DONE' })).statusCode).toBe(404);
+    expect(await app.prisma.adminAction.count({ where: { adminUserId: adminId } })).toBe(before);
+  });
+
   it('moves DONE to OPEN and SPAM to OPEN, and rejects SPAM as a target', async () => {
     const done = await aThread({ status: 'DONE' });
     const spam = await aThread({ status: 'SPAM' });

@@ -59,7 +59,7 @@ export const adminSupportRoutes: FastifyPluginAsyncZod<AdminSupportRouteOptions>
       .header('Content-Type', delivery.contentType)
       .header('Content-Disposition', delivery.disposition)
       .header('X-Content-Type-Options', 'nosniff')
-      .header('Content-Length', String(attachment.sizeBytes))
+      // No Content-Length: sizeBytes is Resend's word for it, and a wrong one cuts the file short.
       .send(delivery.stream);
   });
 
@@ -72,7 +72,7 @@ export const adminSupportRoutes: FastifyPluginAsyncZod<AdminSupportRouteOptions>
     '/admin/support/threads/:id/status',
     { schema: { params, body: z.object({ status: z.enum(['OPEN', 'DONE']) }) } },
     async (request, res) => {
-      await setStatus(await deps(), request.params.id, request.body.status);
+      await setStatus(await deps(), adminActor(request), request.params.id, request.body.status);
       return res.status(204).send();
     },
   );

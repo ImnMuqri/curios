@@ -52,8 +52,21 @@ describe('AuditLog', () => {
     expect(within(r).getByText('everyone')).toBeTruthy();
   });
 
-  it('words a reply to a support email', () => {
+  it('words a reply to a support email and a support status change', () => {
     expect(actionLabel('REPLIED_SUPPORT')).toBe('Replied to support email');
+    expect(actionLabel('CHANGED_SUPPORT_STATUS')).toBe("Changed a support conversation's status");
+  });
+
+  it('shows a support conversation as it is, not as a page address', () => {
+    render(
+      <AuditLog
+        paged={false}
+        rows={[row(1, { action: 'REPLIED_SUPPORT', targetType: 'SupportThread', targetId: 't1', targetLabel: 'Support conversation', reason: '' })]}
+      />,
+    );
+    const r = screen.getAllByRole('row')[1]!;
+    expect(within(r).getByText('Support conversation')).toBeTruthy();
+    expect(within(r).queryByText(/curios\.my\//)).toBeNull();
   });
 
   it('words a source retry, and shows retrying all against everyone', () => {

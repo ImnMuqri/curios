@@ -95,10 +95,20 @@ export function audit(
   });
 }
 
+/** Never the message: a Prisma error for a failed create embeds its data, the email's subject and text. */
+function safeError(error: unknown) {
+  const code = (error as { code?: unknown } | null)?.code;
+  return { err: error instanceof Error ? error.name : 'Error', ...(typeof code === 'string' ? { code } : {}) };
+}
+
+// Bounded as createQueueMailer's is: a failed job holds the whole email, and the message's row says FAILED.
+const OWNER_MAIL_OPTIONS = { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true, removeOnFail: { age: 3600 } };
+
 /**
  * After the change has committed; a mail that cannot be queued never undoes it. The mail also opens
  * a support conversation (a DONE thread holding the OUT message), so the owner's reply to it threads
- * by In-Reply-To instead of arriving as a stranger.
+ * by In-Reply-To instead of arriving as a stranger. A conversation that cannot be written still lets
+ * the mail go, without the ids that would report back to it: the owner is told either way.
  */
 export async function mailOwner(
   deps: AdminPagesDeps,
@@ -118,41 +128,48 @@ export async function mailOwner(
     const to = page.account.email;
     const messageId = newMessageId();
     const now = new Date();
-    const message = await deps.prisma.$transaction(async (tx) => {
-      const thread = await tx.supportThread.create({
-        data: {
-          address: to.toLowerCase(),
-          name: page.displayName,
-          accountId: page.accountId,
-          subject: mail.subject,
-          status: 'DONE',
-          unread: false,
-          lastMessageAt: now,
-        },
+    // Its own catch: a conversation that cannot be written must not stop the email.
+    const message = await deps.prisma
+      .$transaction(async (tx) => {
+        const thread = await tx.supportThread.create({
+          data: {
+            address: to.toLowerCase(),
+            name: page.displayName,
+            accountId: page.accountId,
+            subject: mail.subject,
+            status: 'DONE',
+            unread: false,
+            lastMessageAt: now,
+          },
+        });
+        return tx.supportMessage.create({
+          data: {
+            threadId: thread.id,
+            direction: 'OUT',
+            messageId,
+            // The address the mail worker sends from; same default as its transport.
+            fromAddress: parseAddress(process.env.MAIL_FROM ?? 'Curios <hello@curios.my>').address,
+            fromName: 'Curios',
+            toAddresses: [to],
+            subject: mail.subject,
+            text: mail.text,
+            // Kept, so a retry from the Support screen sends this email and not its text alone.
+            html: mail.html ?? null,
+            sendStatus: 'SENDING',
+            sentById: actor.adminId,
+          },
+          select: { id: true },
+        });
+      })
+      .catch((error: unknown) => {
+        deps.log?.warn?.({ pageId: page.id, ...safeError(error) }, 'could not open a support conversation for the admin email');
+        return null;
       });
-      return tx.supportMessage.create({
-        data: {
-          threadId: thread.id,
-          direction: 'OUT',
-          messageId,
-          // The address the mail worker sends from; same default as its transport.
-          fromAddress: parseAddress(process.env.MAIL_FROM ?? 'Curios <hello@curios.my>').address,
-          fromName: 'Curios',
-          toAddresses: [to],
-          subject: mail.subject,
-          text: mail.text,
-          html: null,
-          sendStatus: 'SENDING',
-          sentById: actor.adminId,
-        },
-        select: { id: true },
-      });
-    });
-    supportMessageId = message.id;
+    supportMessageId = message?.id;
     await deps.mailQueue.add(
       MAIL_QUEUE,
-      { to, ...mail, messageId, supportMessageId },
-      { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true },
+      { to, ...mail, ...(supportMessageId ? { messageId, supportMessageId } : {}) },
+      OWNER_MAIL_OPTIONS,
     );
   } catch (error) {
     // Written but never queued: nothing will report back, so say so (best effort).
@@ -161,16 +178,7 @@ export async function mailOwner(
         .update({ where: { id: supportMessageId }, data: { sendStatus: 'FAILED' } })
         .catch(() => undefined);
     }
-    // Never the message: a Prisma error for a failed create embeds its data, the email's subject and text.
-    const code = (error as { code?: unknown } | null)?.code;
-    deps.log?.warn?.(
-      {
-        pageId: page.id,
-        err: error instanceof Error ? error.name : 'Error',
-        ...(typeof code === 'string' ? { code } : {}),
-      },
-      'could not send the admin email',
-    );
+    deps.log?.warn?.({ pageId: page.id, ...safeError(error) }, 'could not send the admin email');
   }
 }
 

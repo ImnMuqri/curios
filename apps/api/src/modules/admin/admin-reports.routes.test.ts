@@ -135,8 +135,9 @@ describe('email the owner', () => {
     expect(threads[0]).toMatchObject({ address: page.email, subject: 'About your page on Curios', status: 'DONE', unread: false });
     const message = threads[0]!.messages[0]!;
     expect(threads[0]!.messages).toHaveLength(1);
-    expect(message).toMatchObject({ direction: 'OUT', sendStatus: 'SENDING', sentById: adminId, html: null });
+    expect(message).toMatchObject({ direction: 'OUT', sendStatus: 'SENDING', sentById: adminId });
     const data = mailQueue.add.mock.calls[0]![1];
+    expect(message.html).toBe(data.html);
     expect(data.messageId).toBe(message.messageId);
     expect(data.supportMessageId).toBe(message.id);
   });

@@ -134,7 +134,6 @@ describe('suspend and unsuspend', () => {
       sendStatus: 'SENDING',
       sentById: adminId,
       toAddresses: [page.email],
-      html: null,
       fromName: 'Curios',
       subject: 'Your page has been suspended',
     });
@@ -143,6 +142,10 @@ describe('suspend and unsuspend', () => {
     const data = mailQueue.add.mock.calls[0]![1];
     expect(data.messageId).toBe(message.messageId);
     expect(data.supportMessageId).toBe(message.id);
+    // Kept, so a retry from the Support screen sends the same email rather than its text alone.
+    expect(message.html).toBe(data.html);
+    expect(message.html).toContain('Selling fakes');
+    expect(mailQueue.add.mock.calls[0]![2]).toMatchObject({ attempts: 5, removeOnFail: { age: 3600 } });
   });
 
   it('unsuspends a suspended page and mails the owner; refuses one that is live', async () => {
@@ -172,7 +175,7 @@ describe('suspend and unsuspend', () => {
     expect(message.sendStatus).toBe('FAILED');
   });
 
-  it('logs no email text when the conversation cannot be written, and keeps the suspend', async () => {
+  it('still sends the email when the conversation cannot be written, and logs no email text', async () => {
     const page = await aPage();
     const secret = 'Selling fakes SECRET-REASON';
     // A wrapper, not the shared client: the first transaction (the suspend) is real, the second (mailOwner's rows) fails
@@ -196,7 +199,12 @@ describe('suspend and unsuspend', () => {
     await suspendPage({ prisma, mailQueue, store: null, log: { warn } }, { adminId, ip: '127.0.0.1' }, page.id, secret);
 
     expect((await app.prisma.page.findUniqueOrThrow({ where: { id: page.id } })).suspendedAt).not.toBeNull();
-    expect(mailQueue.add).not.toHaveBeenCalled();
+    // The owner is still told; only the threading is lost, as there is no row to report back to.
+    expect(mailQueue.add).toHaveBeenCalledTimes(1);
+    const data = mailQueue.add.mock.calls[0]![1];
+    expect(data).toMatchObject({ to: page.email, subject: 'Your page has been suspended' });
+    expect(data).not.toHaveProperty('messageId');
+    expect(data).not.toHaveProperty('supportMessageId');
     expect(warn).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(warn.mock.calls[0])).not.toContain('SECRET-REASON');
     expect(warn.mock.calls[0]![0]).toMatchObject({ pageId: page.id, err: 'Error', code: 'P2002' });

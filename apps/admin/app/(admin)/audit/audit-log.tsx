@@ -24,6 +24,7 @@ const LABELS: Record<string, string> = {
   [ADMIN_ACTIONS.RETRIED_SOURCE]: 'Retried a source',
   [ADMIN_ACTIONS.RETRIED_FAILED_SOURCES]: 'Retried all failed sources',
   [ADMIN_ACTIONS.REPLIED_SUPPORT]: 'Replied to support email',
+  [ADMIN_ACTIONS.CHANGED_SUPPORT_STATUS]: "Changed a support conversation's status",
 };
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -74,6 +75,8 @@ const everyone = (action: string) => EVERYONE.has(action);
  */
 function pageLabel(r: AuditRow): string {
   if (everyone(r.action)) return 'everyone';
+  // A support conversation is labelled as one, never by who wrote it: no page address to show.
+  if (r.targetType === 'SupportThread') return r.targetLabel;
   const notAHandle = r.targetType === 'Payment' && (r.targetLabel === r.targetId || r.targetLabel.length > HANDLE_MAX);
   return notAHandle ? r.targetLabel : `curios.my/${r.targetLabel}`;
 }

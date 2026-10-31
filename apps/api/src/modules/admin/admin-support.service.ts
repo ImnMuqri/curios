@@ -270,12 +270,34 @@ export async function markRead(deps: AdminSupportDeps, id: string): Promise<void
   if (done.count === 0) throw new SupportNotFoundError();
 }
 
-export async function setStatus(deps: AdminSupportDeps, id: string, status: 'OPEN' | 'DONE'): Promise<void> {
-  const done = await deps.prisma.supportThread.updateMany({ where: { id }, data: { status } });
-  if (done.count === 0) throw new SupportNotFoundError();
+/**
+ * What the audit row names a conversation by. The readonly role reads AdminAction whole, and the
+ * support tables are withheld from it, so neither the sender's address nor the subject goes there.
+ */
+const SUPPORT_AUDIT_TARGET = { targetType: 'SupportThread', targetLabel: 'Support conversation' } as const;
+
+export async function setStatus(deps: AdminSupportDeps, actor: AdminActor, id: string, status: 'OPEN' | 'DONE'): Promise<void> {
+  await deps.prisma.$transaction(async (tx) => {
+    const done = await tx.supportThread.updateMany({ where: { id }, data: { status } });
+    if (done.count === 0) throw new SupportNotFoundError();
+    await writeAudit(tx, {
+      adminUserId: actor.adminId,
+      action: ADMIN_ACTIONS.CHANGED_SUPPORT_STATUS,
+      ...SUPPORT_AUDIT_TARGET,
+      targetId: id,
+      reason: '',
+      metadata: { status },
+      ip: actor.ip,
+    });
+  });
 }
 
-const MAIL_OPTIONS = { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true };
+/** A SENDING message older than this is taken as lost (its job gone with no outcome), and may be sent again. */
+export const STUCK_SENDING_MS = 15 * 60_000;
+
+// removeOnFail bounded as createQueueMailer's is: a failed job holds the recipient and the whole
+// email, and the message's own row says FAILED, so there is nothing to read off it after an hour.
+const MAIL_OPTIONS = { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true, removeOnFail: { age: 3600 } };
 
 interface Threading {
   inReplyTo: string | undefined;
@@ -293,10 +315,14 @@ async function threading(prisma: PrismaClient | Prisma.TransactionClient, thread
   return { inReplyTo: lastIn?.messageId, references: referencesFor(earlier.map((m) => m.messageId)) };
 }
 
-/** After the message is stored; a queue that is down marks it FAILED so the admin can send it again. */
+/**
+ * After the message is stored; a queue that is down marks it FAILED so the admin can send it again.
+ * It goes as it first went: from support for the admin's reply, from Curios' own address (with its
+ * html) for an admin email such as a suspension.
+ */
 async function queueSend(
   deps: AdminSupportDeps,
-  message: { id: string; messageId: string; subject: string; text: string | null },
+  message: { id: string; messageId: string; subject: string; text: string | null; html: string | null; fromAddress: string },
   to: string,
   threads: Threading,
 ): Promise<void> {
@@ -305,9 +331,10 @@ async function queueSend(
       MAIL_QUEUE,
       {
         to,
-        from: 'support',
+        ...(message.fromAddress === supportAddress() ? { from: 'support' as const } : {}),
         subject: message.subject,
         text: message.text ?? '',
+        ...(message.html ? { html: message.html } : {}),
         messageId: message.messageId,
         ...(threads.inReplyTo ? { inReplyTo: threads.inReplyTo } : {}),
         references: threads.references,
@@ -351,31 +378,49 @@ export async function reply(deps: AdminSupportDeps, actor: AdminActor, threadId:
       select: MESSAGE_SELECT,
     });
     await tx.supportThread.update({ where: { id: threadId }, data: { lastMessageAt: now } });
-    // No body: the audit table records that a reply went, never what it said.
+    // The audit table records that a reply went, never what it said, its subject or to whom.
     await writeAudit(tx, {
       adminUserId: actor.adminId,
       action: ADMIN_ACTIONS.REPLIED_SUPPORT,
-      targetType: 'SupportThread',
+      ...SUPPORT_AUDIT_TARGET,
       targetId: threadId,
-      targetLabel: thread.address,
       reason: '',
-      metadata: { subject },
       ip: actor.ip,
     });
     return { message: created, address: thread.address, prior: earlier };
   });
-  await queueSend(deps, { id: message.id, messageId: message.messageId, subject: message.subject, text }, address, prior);
+  await queueSend(deps, { id: message.id, messageId: message.messageId, subject: message.subject, text, html: null, fromAddress: message.fromAddress }, address, prior);
   return { message: await toMessageItem(deps, message) };
 }
 
 export async function retry(deps: AdminSupportDeps, id: string): Promise<void> {
   const message = await deps.prisma.supportMessage.findUnique({
     where: { id },
-    select: { id: true, direction: true, messageId: true, subject: true, text: true, createdAt: true, thread: { select: { id: true, address: true } } },
+    select: {
+      id: true,
+      direction: true,
+      messageId: true,
+      subject: true,
+      text: true,
+      html: true,
+      fromAddress: true,
+      createdAt: true,
+      thread: { select: { id: true, address: true } },
+    },
   });
   if (!message) throw new SupportNotFoundError();
-  // Conditional, so two clicks queue one send.
-  const claimed = await deps.prisma.supportMessage.updateMany({ where: { id, direction: 'OUT', sendStatus: 'FAILED' }, data: { sendStatus: 'SENDING' } });
+  // FAILED, or SENDING for so long its job is gone (a worker that died mid-send). Conditional, and the
+  // claim restarts createdAt, so two clicks queue one send: the second finds it SENDING and new.
+  // The message moves to the end of the conversation, where the email now goes out.
+  const now = new Date();
+  const claimed = await deps.prisma.supportMessage.updateMany({
+    where: {
+      id,
+      direction: 'OUT',
+      OR: [{ sendStatus: 'FAILED' }, { sendStatus: 'SENDING', createdAt: { lt: new Date(now.getTime() - STUCK_SENDING_MS) } }],
+    },
+    data: { sendStatus: 'SENDING', createdAt: now },
+  });
   if (claimed.count === 0) throw new NotFailedError();
   await queueSend(deps, message, message.thread.address, await threading(deps.prisma, message.thread.id, message.createdAt));
 }
