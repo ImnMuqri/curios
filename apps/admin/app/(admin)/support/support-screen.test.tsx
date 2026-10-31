@@ -180,6 +180,22 @@ describe('SupportScreen', () => {
     expect(within(row).queryByText('Unread')).not.toBeInTheDocument();
   });
 
+  it('posts read once when an unread row is clicked twice', async () => {
+    // Each open reads the thread first; the read lands only after both have.
+    let landRead!: () => void;
+    serve({ 'POST /admin/support/threads/t1/read': () => new Promise<null>((resolve) => (landRead = () => resolve(null))) });
+    const user = userEvent.setup();
+    render(<SupportScreen />);
+    const row = await screen.findByRole('button', { name: /Kedai Aisyah/ });
+
+    await user.dblClick(row);
+    await waitFor(() => expect(calls('GET', '/admin/support/threads/t1')).toHaveLength(2));
+    await waitFor(() => expect(calls('POST', '/admin/support/threads/t1/read')).toHaveLength(1));
+    landRead();
+    await waitFor(() => expect(within(row).queryByText('Unread')).not.toBeInTheDocument());
+    expect(calls('POST', '/admin/support/threads/t1/read')).toHaveLength(1);
+  });
+
   it('does not post read for a conversation already read', async () => {
     const user = userEvent.setup();
     render(<SupportScreen />);

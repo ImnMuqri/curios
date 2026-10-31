@@ -7,14 +7,14 @@ describe('buildEmailDocument', () => {
   it('lets only data: images load by default', () => {
     const doc = buildEmailDocument({ html: '<p>Hi</p><img src="https://track.example/p.gif">', text: null, showRemoteImages: false });
 
-    expect(csp(doc)).toBe("default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:");
+    expect(csp(doc)).toBe("default-src 'none'; base-uri 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:");
     expect(csp(doc)).not.toContain('https:');
   });
 
   it('adds https: images, and nothing else, once Show images is pressed', () => {
     const doc = buildEmailDocument({ html: '<p>Hi</p>', text: null, showRemoteImages: true });
 
-    expect(csp(doc)).toBe("default-src 'none'; style-src 'unsafe-inline'; font-src data:; img-src data: https:");
+    expect(csp(doc)).toBe("default-src 'none'; base-uri 'none'; style-src 'unsafe-inline'; font-src data:; img-src data: https:");
   });
 
   it('never allows script, and always starts from default-src none', () => {
@@ -40,6 +40,47 @@ describe('buildEmailDocument', () => {
 
     expect(doc).toContain('<pre style="white-space:pre-wrap">&lt;b&gt;hi&lt;/b&gt;\n&amp; bye</pre>');
     expect(doc).not.toContain('<b>hi</b>');
+  });
+});
+
+describe('buildEmailDocument, against an email that tries to reach out', () => {
+  it('drops link, meta and base tags, so nothing contacts the sender on open', () => {
+    const html =
+      '<html><head><link rel=preconnect href=https://t.example><link rel="dns-prefetch" href="//t.example">' +
+      '<link rel=stylesheet href=https://t.example/s.css><meta http-equiv=refresh content="0;url=https://t.example">' +
+      '<base href=https://t.example><style>p { color: red }</style></head>' +
+      '<body><p>Hi</p><link rel=prefetch href=https://t.example/x><iframe src=https://t.example></iframe>' +
+      '<object data=https://t.example></object><embed src=https://t.example><script>fetch("https://t.example")</script></body></html>';
+    const doc = buildEmailDocument({ html, text: null, showRemoteImages: true });
+
+    expect(doc).not.toContain('t.example');
+    expect(doc).toContain('<style>p { color: red }</style>');
+    expect(doc).toContain('<p>Hi</p>');
+    expect(doc).toContain('<meta http-equiv="x-dns-prefetch-control" content="off">');
+  });
+
+  it('keeps only our policy and our base when the email brings its own', () => {
+    const html =
+      '<html><head><meta http-equiv="Content-Security-Policy" content="img-src *"><base target="_self"></head><body><p>Hi</p></body></html>';
+    const doc = buildEmailDocument({ html, text: null, showRemoteImages: false });
+
+    expect(doc.match(/Content-Security-Policy/g)).toHaveLength(1);
+    expect(csp(doc)).toBe("default-src 'none'; base-uri 'none'; style-src 'unsafe-inline'; font-src data:; img-src data:");
+    expect(doc.match(/<base\b[^>]*>/g)).toEqual(['<base target="_blank">']);
+    expect(doc).not.toContain('img-src *');
+  });
+
+  it('shows the text, not the HTML, where there is no DOMParser', () => {
+    const parser = globalThis.DOMParser;
+    // @ts-expect-error -- a server render has none
+    delete globalThis.DOMParser;
+    try {
+      const doc = buildEmailDocument({ html: '<p>Hi</p>', text: 'Hi <there>', showRemoteImages: false });
+      expect(doc).toContain('<pre style="white-space:pre-wrap">Hi &lt;there&gt;</pre>');
+      expect(doc).not.toContain('<p>Hi</p>');
+    } finally {
+      globalThis.DOMParser = parser;
+    }
   });
 });
 

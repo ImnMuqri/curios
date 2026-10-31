@@ -99,6 +99,9 @@ export function SupportScreen() {
   const [toast, setToast] = useState<string | null>(null);
   // The conversation the admin wants now: a slow answer for an earlier click is dropped.
   const wanted = useRef<string | null>(null);
+  // Conversations whose read is being posted: a double click on an unread row posts it once. Once
+  // it lands, the thread itself answers unread: false, so the id needs holding only until then.
+  const marking = useRef(new Set<string>());
 
   function loadCounts() {
     apiFetch<Counts>('/admin/support/counts')
@@ -163,12 +166,15 @@ export function SupportScreen() {
     }
     if (wanted.current !== id) return;
     setDetail(d);
-    if (!d.thread.unread) return;
+    if (!d.thread.unread || marking.current.has(id)) return;
+    marking.current.add(id);
     try {
       await apiFetch(`${threadPath(id)}/read`, { method: 'POST' });
     } catch {
       // Still shown unread; opening it again tries again.
       return;
+    } finally {
+      marking.current.delete(id);
     }
     setThreads((ts) => ts?.map((t) => (t.id === id ? { ...t, unread: false } : t)) ?? ts);
     setDetail((cur) => (cur?.thread.id === id ? { ...cur, thread: { ...cur.thread, unread: false } } : cur));
