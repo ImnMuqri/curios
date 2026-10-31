@@ -646,6 +646,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `STORAGE_PRIVATE_BUCKET` (digital products' files) | ✓ | | |
 | `STORAGE_PUBLIC_URL` | ✓ | ✓ | ✓ |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | ✓ | ✓ | |
+| `SUPPORT_EMAIL` | ✓ | ✓ | |
 | `PAYMENT_SECRETS_KEY` | ✓ | ✓ | |
 | `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
 | `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |

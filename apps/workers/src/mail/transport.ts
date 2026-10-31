@@ -1,5 +1,6 @@
 import { createTransport } from 'nodemailer';
 import type { MailJobData } from '@curios/core';
+import { supportAddress } from '@curios/core/support';
 
 export type MailMessage = MailJobData;
 
@@ -8,7 +9,17 @@ export interface Mailer {
 }
 
 export type Transport = {
-  sendMail(options: { from: string; to: string; subject: string; text: string; html?: string }): Promise<unknown>;
+  sendMail(options: {
+    from: string;
+    to: string;
+    subject: string;
+    text: string;
+    html?: string;
+    replyTo?: string;
+    messageId?: string;
+    inReplyTo?: string;
+    references?: string[];
+  }): Promise<unknown>;
 };
 
 /** Mailpit's SMTP port in docker-compose.yml, offset from the default for the
@@ -79,6 +90,11 @@ export function senderFor(fromName: string | undefined, configured: string): str
  * Plain text always, and HTML alongside when the sender laid the email out
  * (renderMailHtml in @curios/core, the design handoff's Emails board). The
  * text is the whole message, so a client that shows only text loses nothing.
+ *
+ * Every email carries a Reply-To: the job's own (a customer's email names the
+ * shop's owner) or else support, so a reply never lands in a mailbox nobody
+ * reads. A `from: 'support'` job is the admin answering from the inbox: it goes
+ * out as Curios Support whatever fromName says, with its threading headers.
  */
 export function createMailer(transport?: Transport): Mailer {
   const resolved: Transport = transport ?? createTransport(smtpOptions());
@@ -86,11 +102,18 @@ export function createMailer(transport?: Transport): Mailer {
   return {
     async send(message: MailMessage): Promise<void> {
       await resolved.sendMail({
-        from: senderFor(message.fromName, process.env.MAIL_FROM ?? 'Curios <hello@curios.my>'),
+        from:
+          message.from === 'support'
+            ? `Curios Support <${supportAddress()}>`
+            : senderFor(message.fromName, process.env.MAIL_FROM ?? 'Curios <hello@curios.my>'),
         to: message.to,
         subject: message.subject,
         text: message.text,
+        replyTo: message.replyTo ?? supportAddress(),
         ...(message.html ? { html: message.html } : {}),
+        ...(message.messageId ? { messageId: message.messageId } : {}),
+        ...(message.inReplyTo ? { inReplyTo: message.inReplyTo } : {}),
+        ...(message.references?.length ? { references: message.references } : {}),
       });
     },
   };

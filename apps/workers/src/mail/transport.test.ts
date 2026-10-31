@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMailer, senderFor, smtpOptions } from './transport.js';
 
 function recordingTransport() {
-  const sent: Array<Record<string, string>> = [];
+  const sent: Array<Record<string, unknown>> = [];
   return {
     sent,
     transport: {
@@ -14,7 +14,7 @@ function recordingTransport() {
   };
 }
 
-const MAIL_KEYS = ['MAIL_FROM', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD'] as const;
+const MAIL_KEYS = ['MAIL_FROM', 'SUPPORT_EMAIL', 'SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASSWORD'] as const;
 let saved: Partial<Record<(typeof MAIL_KEYS)[number], string | undefined>> = {};
 
 beforeEach(() => {
@@ -62,6 +62,45 @@ describe('createMailer', () => {
 
     expect(sent[0]).toMatchObject({ text: 'plain', html: '<p>laid out</p>' });
     expect(sent[1]).not.toHaveProperty('html');
+  });
+
+  it('sets Reply-To to support on a plain job, and keeps the one a job names', async () => {
+    const { sent, transport } = recordingTransport();
+    const mailer = createMailer(transport);
+
+    await mailer.send({ to: 'nadia@example.com', subject: 's', text: 't' });
+    await mailer.send({ to: 'mira@example.com', subject: 's', text: 't', replyTo: 'owner@x.test' });
+
+    expect(sent[0]).toMatchObject({ replyTo: 'support@curios.my' });
+    expect(sent[1]).toMatchObject({ replyTo: 'owner@x.test' });
+  });
+
+  it('sends a support job from Curios Support and ignores fromName', async () => {
+    const { sent, transport } = recordingTransport();
+
+    await createMailer(transport).send({ to: 'nadia@example.com', subject: 's', text: 't', from: 'support', fromName: 'Kek Lina' });
+
+    expect(sent[0]).toMatchObject({ from: 'Curios Support <support@curios.my>' });
+  });
+
+  it('passes the threading headers through, and sets none when absent', async () => {
+    const { sent, transport } = recordingTransport();
+    const mailer = createMailer(transport);
+
+    await mailer.send({
+      to: 'nadia@example.com',
+      subject: 's',
+      text: 't',
+      messageId: '<new@curios.my>',
+      inReplyTo: '<old@x.test>',
+      references: ['<first@x.test>', '<old@x.test>'],
+    });
+    await mailer.send({ to: 'nadia@example.com', subject: 's', text: 't' });
+
+    expect(sent[0]).toMatchObject({ messageId: '<new@curios.my>', inReplyTo: '<old@x.test>', references: ['<first@x.test>', '<old@x.test>'] });
+    expect(sent[1]).not.toHaveProperty('messageId');
+    expect(sent[1]).not.toHaveProperty('inReplyTo');
+    expect(sent[1]).not.toHaveProperty('references');
   });
 
   it('surfaces a transport failure rather than swallowing it', async () => {

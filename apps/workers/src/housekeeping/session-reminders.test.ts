@@ -18,17 +18,19 @@ let classItem = '';
 let fileItem = '';
 let fileId = '';
 let n = 0;
+let ownerEmail: string;
 
 function mailbox() {
-  const added: { to: string; subject: string; text: string; html?: string; fromName?: string }[] = [];
+  const added: { to: string; subject: string; text: string; html?: string; fromName?: string; replyTo?: string }[] = [];
   return { added, mailQueue: { add: vi.fn(async (_name: string, data: (typeof added)[number]) => void added.push(data)) } };
 }
 
 beforeAll(async () => {
   const slug = `sr${randomUUID().slice(0, 8)}`;
+  ownerEmail = `sr-${randomUUID()}@example.com`;
   const account = await prisma.account.create({
     data: {
-      email: `sr-${randomUUID()}@example.com`,
+      email: ownerEmail,
       pages: {
         create: {
           handle: slug,
@@ -115,6 +117,8 @@ describe('sendSessionReminders', () => {
     const mail = mine[0]!;
     expect(mail.to).toBe('a@example.com');
     expect(mail.fromName).toBe('Kek <b>Lina</b>');
+    // A reply to it reaches the shop's owner, not Curios.
+    expect(mail.replyTo).toBe(ownerEmail);
     expect(mail.subject).toBe('Kelas <i>batik</i> anda esok, 8:00 malam');
     expect(mail.text).toContain('https://meet.example/abc');
     expect(mail.text).toContain('/order/tok123');

@@ -96,7 +96,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
         customerName: true,
         email: true,
         tokenSealed: true,
-        page: { select: { handle: true, displayName: true, language: true, accentColor: true } },
+        page: { select: { handle: true, displayName: true, language: true, accentColor: true, account: { select: { email: true } } } },
         lines: {
           where: { kind: 'DIGITAL' },
           orderBy: { position: 'asc' },
@@ -169,7 +169,7 @@ export async function queueDeliveryMail(deps: DeliveryMailDeps, orderId: string)
       appUrl: deps.appUrl,
     });
     void deps.mailQueue
-      .add(MAIL_QUEUE, { to: order.email, ...mail, fromName: order.page.displayName }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
+      .add(MAIL_QUEUE, { to: order.email, ...mail, fromName: order.page.displayName, replyTo: order.page.account.email }, { attempts: 5, backoff: { type: 'exponential', delay: 5000 }, removeOnComplete: true })
       .catch((error: unknown) => deps.log?.warn?.({ orderId, err: error instanceof Error ? error.name : 'error' }, 'could not queue the delivery email'));
   } catch (error) {
     deps.log?.warn?.({ orderId, err: error instanceof Error ? error.name : 'error' }, 'could not queue the delivery email');

@@ -79,7 +79,15 @@ const worker = createIngestionWorker({ connection, prisma, gateway, embedder, lo
 // slow extraction stall every outgoing verification and reset link. Held rather
 // than discarded, so it can be closed on the way out.
 const mailConnection = redis();
-const mailWorker = createMailWorker({ connection: mailConnection, settings, log });
+const mailWorker = createMailWorker({
+  connection: mailConnection,
+  settings,
+  // updateMany, so a reply whose row was deleted meanwhile is a no-op rather than a throw.
+  onSupportStatus: async (id, status) => {
+    await prisma.supportMessage.updateMany({ where: { id, direction: 'OUT' }, data: { sendStatus: status } });
+  },
+  log,
+});
 
 // Its own connection, for the reason above: BullMQ blocks on one per worker,
 // so a lead sharing the ingestion connection would wait behind a crawl.

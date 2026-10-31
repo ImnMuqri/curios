@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { MailJobData } from '@curios/core';
 import { defaultSettings } from '@curios/core/settings';
-import { sendMailJob } from './mail.worker.js';
+import { processMailJob, sendMailJob } from './mail.worker.js';
 
 const on = defaultSettings();
 const ownerEmailsOff = defaultSettings();
@@ -71,5 +72,70 @@ describe('sendMailJob', () => {
     await sendMailJob({ send }, { to: 'nadia@example.com', subject: 'New order #12', text: 't', audience: 'owner' }, on);
 
     expect(send).toHaveBeenCalledWith({ to: 'nadia@example.com', subject: 'New order #12', text: 't', audience: 'owner' });
+  });
+
+  it('never holds back a support email, whatever its audience', async () => {
+    const send = vi.fn(async () => undefined);
+
+    await sendMailJob({ send }, { to: 'nadia@example.com', subject: 'Re: help', text: 't', audience: 'owner', from: 'support' }, ownerEmailsOff);
+
+    expect(send).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('processMailJob', () => {
+  const data = { to: 'nadia@example.com', subject: 'Re: help', text: 't', from: 'support' as const, supportMessageId: 'sm1' };
+  const job = (attemptsMade: number, attempts = 5, jobData: MailJobData = data) => ({ data: jobData, attemptsMade, opts: { attempts } });
+  const failing = {
+    send: vi.fn(async () => {
+      throw new Error('connection refused');
+    }),
+  };
+
+  it('marks a support message SENT after it goes out', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+
+    await processMailJob({ send: async () => undefined }, job(0), on, { onSupportStatus });
+
+    expect(onSupportStatus.mock.calls).toEqual([['sm1', 'SENT']]);
+  });
+
+  it('marks it FAILED on the final attempt, and still throws', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+
+    // attemptsMade counts the finished attempts, so the fifth try is 4.
+    await expect(processMailJob(failing, job(4), on, { onSupportStatus })).rejects.toThrow('connection refused');
+
+    expect(onSupportStatus.mock.calls).toEqual([['sm1', 'FAILED']]);
+  });
+
+  it('writes nothing on a failure the queue will retry', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+
+    await expect(processMailJob(failing, job(3), on, { onSupportStatus })).rejects.toThrow('connection refused');
+
+    expect(onSupportStatus).not.toHaveBeenCalled();
+  });
+
+  it('writes no status for a job that is not a support message', async () => {
+    const onSupportStatus = vi.fn(async () => undefined);
+
+    await processMailJob({ send: async () => undefined }, job(0, 5, { to: 'a@b.c', subject: 's', text: 't' }), on, { onSupportStatus });
+
+    expect(onSupportStatus).not.toHaveBeenCalled();
+  });
+
+  it('does not turn a sent email into a failed job when the status write fails', async () => {
+    const send = vi.fn(async () => undefined);
+    const onSupportStatus = vi.fn(async () => {
+      throw new Error('db down');
+    });
+    const log = { info: vi.fn(), error: vi.fn() };
+
+    // A throw here would retry the job and send the reply twice.
+    await expect(processMailJob({ send }, job(0), on, { onSupportStatus, log })).resolves.toBeUndefined();
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(log.error).toHaveBeenCalled();
   });
 });
