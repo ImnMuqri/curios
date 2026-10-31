@@ -20,6 +20,7 @@
     "@aws-sdk/lib-storage": "3.1141.0",
     "@aws-sdk/s3-request-presigner": "3.1141.0",
     "@curios/billing": "workspace:*",
+    "@curios/storage": "workspace:*",
     "@curios/core": "workspace:*",
     "@curios/db": "workspace:*",
     "@curios/embeddings": "workspace:*",

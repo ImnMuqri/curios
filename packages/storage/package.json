@@ -1,0 +1,14 @@
+{
+  "name": "@curios/storage",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": { "./private-files": "./src/private-files.ts" },
+  "scripts": { "lint": "eslint .", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1141.0",
+    "@aws-sdk/lib-storage": "3.1141.0",
+    "@aws-sdk/s3-request-presigner": "3.1141.0"
+  },
+  "devDependencies": { "typescript": "^5.7.3", "vitest": "^2.1.8" }
+}
