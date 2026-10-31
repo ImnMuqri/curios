@@ -14,7 +14,8 @@ export class ApiError extends Error {
   }
 }
 
-const BASE = process.env.NEXT_PUBLIC_ADMIN_API_URL ?? 'http://localhost:3001';
+/** The API's origin. Also used as a plain link where a fetch will not do (a support attachment's download). */
+export const API_BASE = process.env.NEXT_PUBLIC_ADMIN_API_URL ?? 'http://localhost:3001';
 
 /**
  * The only way this app talks to `apps/api`. `credentials: 'include'` because
@@ -27,7 +28,7 @@ export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}
   const method = (init.method ?? 'GET').toUpperCase();
   const requestBody = init.body === undefined && method !== 'GET' && method !== 'HEAD' ? '{}' : init.body;
 
-  const response = await fetch(`${BASE}${path}`, {
+  const response = await fetch(`${API_BASE}${path}`, {
     ...init,
     body: requestBody,
     credentials: 'include',

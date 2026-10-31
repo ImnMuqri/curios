@@ -18,6 +18,7 @@ async function aPage(): Promise<string> {
 beforeAll(async () => {
   await write.$executeRawUnsafe('TRUNCATE "Account" CASCADE');
   await write.$executeRawUnsafe('TRUNCATE "ChipWebhookEvent"');
+  await write.$executeRawUnsafe('TRUNCATE "SupportThread" CASCADE');
 });
 
 afterAll(async () => {
@@ -27,7 +28,18 @@ afterAll(async () => {
 
 describe('getNavCounts', () => {
   it('is zero with nothing reported', async () => {
-    expect(await getNavCounts(NOW)).toEqual({ failedSources: 0, failedWebhooks: 0, openReports: 0 });
+    expect(await getNavCounts(NOW)).toEqual({ failedSources: 0, failedWebhooks: 0, openReports: 0, openSupport: 0 });
+  });
+
+  it('counts open support conversations, not done or spam ones', async () => {
+    const thread = (status: 'OPEN' | 'DONE' | 'SPAM') =>
+      write.supportThread.create({ data: { address: `nv-${randomUUID().slice(0, 8)}@example.com`, subject: 'Help', status, lastMessageAt: NOW }, select: { id: true } });
+    const made = [await thread('OPEN'), await thread('OPEN'), await thread('DONE'), await thread('SPAM')];
+    try {
+      expect((await getNavCounts(NOW)).openSupport).toBe(2);
+    } finally {
+      await write.supportThread.deleteMany({ where: { id: { in: made.map((t) => t.id) } } });
+    }
   });
 
   it('counts pages with open reports, not reports, and not closed ones', async () => {

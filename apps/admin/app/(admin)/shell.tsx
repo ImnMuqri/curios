@@ -7,7 +7,7 @@ import type { NavCounts } from '@curios/db-read/admin';
 import { SignOut } from './sign-out.js';
 import styles from './shell.module.css';
 
-export type NavKey = 'overview' | 'pages' | 'ai' | 'sources' | 'payments' | 'reports' | 'controls' | 'audit';
+export type NavKey = 'overview' | 'pages' | 'ai' | 'sources' | 'payments' | 'reports' | 'support' | 'controls' | 'audit';
 
 // The board's groups.
 const GROUPS: {
@@ -51,6 +51,13 @@ const GROUPS: {
         icon: 'M5 21V4M5 4h11l-2 4 2 4H5',
         count: 'openReports',
       },
+      {
+        key: 'support',
+        label: 'Support',
+        href: '/support',
+        icon: 'M3 6h18v12H3zM3 6l9 7 9-7',
+        count: 'openSupport',
+      },
     ],
   },
   {
@@ -74,6 +81,7 @@ function keyOf(pathname: string | null): NavKey | null {
   if (pathname.startsWith('/sources')) return 'sources';
   if (pathname.startsWith('/payments')) return 'payments';
   if (pathname.startsWith('/reports')) return 'reports';
+  if (pathname.startsWith('/support')) return 'support';
   if (pathname.startsWith('/controls')) return 'controls';
   if (pathname.startsWith('/audit')) return 'audit';
   return null;

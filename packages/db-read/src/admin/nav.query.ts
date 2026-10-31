@@ -8,14 +8,17 @@ export interface NavCounts {
   failedWebhooks: number;
   /** Pages with an open report (not reports: a page counts once). */
   openReports: number;
+  /** Support conversations still Open (status only: the read-only role sees nothing else of them). */
+  openSupport: number;
 }
 
 /** The sidebar's counts, each hidden at 0. */
 export async function getNavCounts(now: Date): Promise<NavCounts> {
-  const [failedSources, failedWebhooks, pages] = await Promise.all([
+  const [failedSources, failedWebhooks, pages, openSupport] = await Promise.all([
     prismaRead.ingestion.count({ where: { status: 'FAILED', updatedAt: { gte: malaysiaMidnight(now), lte: now } } }),
     prismaRead.chipWebhookEvent.count({ where: { outcome: 'failed', lastAttemptAt: { gte: new Date(now.getTime() - DAY_MS), lte: now } } }),
     prismaRead.report.groupBy({ by: ['pageId'], where: { status: 'OPEN' } }),
+    prismaRead.supportThread.count({ where: { status: 'OPEN' } }),
   ]);
-  return { failedSources, failedWebhooks, openReports: pages.length };
+  return { failedSources, failedWebhooks, openReports: pages.length, openSupport };
 }

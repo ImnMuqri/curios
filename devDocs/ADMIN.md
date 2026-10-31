@@ -148,6 +148,7 @@ Look     Overview        the figures, what needs you, new pages
 Run      Reading sources what was read, what failed, retry, pause
          Payments        plan payments, and the CHIP webhook log
          Reports         pages visitors reported
+         Support         mail to support@curios.my, read and answered
 Change   Controls        the five switches, limits and prices, the banner
          Audit log       the record. read only.
 ```
@@ -297,6 +298,27 @@ read-only role must not read follows one rule:** its migration revokes and grant
 the other columns inline, guarded by whether the role exists, because the role's
 default privileges hand it every new table whole until `readonly-role.sql` runs
 after `migrate deploy` (see OPERATIONS.md, "The read-only role after a deploy").
+
+**Support** shows mail sent to support@curios.my as conversations, the list
+and the open conversation side by side (stacked on a narrow screen). The list
+searches sender and subject and filters Open (the default, with its count),
+Done, All and Spam; each row has the sender (the owner's page when the address
+matches an owner account), the subject, the time of the latest message, a
+paperclip with the attachment count and an unread dot. The conversation has the
+owner card (plan, paid until, a link to the page on Pages), every message in
+order with who sent it and when, its attachments as downloads, and the reply
+box with Send reply and Mark done (Not spam on a spam conversation, Reopen on a
+done one). Opening a conversation marks it read. Email HTML is shown only in a
+sandboxed frame with no scripts and no same origin, under a policy that blocks
+everything remote; remote images load only after Show images, for that message.
+**Support content is withheld from the read-only role** (only a thread's id,
+status, unread flag, account, and times are granted, for the sidebar's Open
+count), so this screen reads and acts through the `/admin/support/*` API routes
+from the browser, not through the admin's own database reads. A reply goes from
+`Curios Support <support@curios.my>` through the mail queue like every other
+email: it shows Sending until the mail worker hands it to SMTP, then Sent, or
+Not sent with Retry once the queue's attempts run out. Each reply writes a
+`REPLIED_SUPPORT` audit row with the address and subject, never the body.
 
 The SSM verification and trademark-handle queues this document once described
 are not part of this design. If the badge or the trademark gate comes back it

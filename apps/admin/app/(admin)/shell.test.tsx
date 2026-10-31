@@ -24,42 +24,53 @@ describe('Shell', () => {
     phone.mockRestore();
   });
 
-  it('shows all eight sections in the board’s groups', () => {
+  it('shows all nine sections in the board’s groups', () => {
     render(<Shell adminName="Iman" current="pages" />);
 
     const nav = screen.getByRole('navigation');
     const labels = Array.from(nav.querySelectorAll('a')).map((a) => a.textContent);
-    expect(labels).toEqual(['Overview', 'Pages', 'AI & usage', 'Reading sources', 'Payments', 'Reports', 'Controls', 'Audit log']);
+    expect(labels).toEqual(['Overview', 'Pages', 'AI & usage', 'Reading sources', 'Payments', 'Reports', 'Support', 'Controls', 'Audit log']);
     const groups = Array.from(nav.querySelectorAll('p')).map((p) => p.textContent);
     expect(groups).toEqual(['Look', 'Run', 'Change']);
     expect(screen.getByRole('link', { name: 'AI & usage' })).toHaveAttribute('href', '/ai');
     expect(screen.getByRole('link', { name: 'Reading sources' })).toHaveAttribute('href', '/sources');
     expect(screen.getByRole('link', { name: 'Payments' })).toHaveAttribute('href', '/payments');
+    expect(screen.getByRole('link', { name: 'Support' })).toHaveAttribute('href', '/support');
   });
 
   it('puts each count beside its section, and hides it at 0', () => {
     const { rerender } = render(
-      <Shell adminName="Iman" current="pages" counts={{ failedSources: 4, failedWebhooks: 2, openReports: 0 }} />,
+      <Shell adminName="Iman" current="pages" counts={{ failedSources: 4, failedWebhooks: 2, openReports: 0, openSupport: 0 }} />,
     );
     expect(screen.getByRole('link', { name: 'Reading sources 4' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Payments 2' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Reports' })).toBeInTheDocument();
 
-    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0 }} />);
+    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0, openSupport: 0 }} />);
     expect(screen.getByRole('link', { name: 'Reading sources' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Payments' })).toBeInTheDocument();
   });
 
   it('shows the open reports count beside Reports, and hides it at 0', () => {
     const { rerender } = render(
-      <Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 3 }} />,
+      <Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 3, openSupport: 0 }} />,
     );
     expect(screen.getByRole('link', { name: 'Reports 3' })).toHaveAttribute('href', '/reports');
 
-    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0 }} />);
+    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0, openSupport: 0 }} />);
     expect(screen.getByRole('link', { name: 'Reports' })).toBeInTheDocument();
     rerender(<Shell adminName="Iman" current="pages" />);
     expect(screen.getByRole('link', { name: 'Reports' })).toBeInTheDocument();
+  });
+
+  it('shows the open support conversations beside Support, and hides it at 0', () => {
+    const { rerender } = render(
+      <Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0, openSupport: 5 }} />,
+    );
+    expect(screen.getByRole('link', { name: 'Support 5' })).toHaveAttribute('href', '/support');
+
+    rerender(<Shell adminName="Iman" current="pages" counts={{ failedSources: 0, failedWebhooks: 0, openReports: 0, openSupport: 0 }} />);
+    expect(screen.getByRole('link', { name: 'Support' })).toBeInTheDocument();
   });
 
   it('marks the current section', () => {
