@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client';
-import { currentPeriod, planState } from '@curios/core';
+import { adminPlanLabel, currentPeriod, planState, type AdminPlan } from '@curios/core';
 import type { Settings } from '@curios/core/settings';
 import { FLAG_OVER, isFlagged } from '@curios/core/report';
 import { prismaRead } from '../client.js';
@@ -7,7 +7,7 @@ import { getSettings } from '../settings.query.js';
 
 export type PageFilter = 'all' | 'business' | 'personal' | 'lapsed' | 'flagged';
 export type AdminPageStatus = 'Live' | 'Draft' | 'Lapsed' | 'Suspended' | 'Flagged';
-export type AdminPlan = 'Personal' | 'Business' | 'Business trial' | 'Lapsed';
+export type { AdminPlan };
 
 export interface AdminPageRow {
   id: string;
@@ -202,23 +202,7 @@ export async function getAdminPage(id: string, now = new Date()): Promise<AdminP
   };
 }
 
-/**
- * The admin's plan label from `planState`. A plan that ran out is Lapsed even
- * while free leads remain (as the owner's own label has it); a business page
- * that never paid is a trial, spent or not. `freeLeads` is the allowance in force.
- */
+/** The admin's plan label for a page; `freeLeads` is the allowance in force (the rules are adminPlanLabel's, in core). */
 export function planOf(mode: 'PERSONAL' | 'BUSINESS', paidUntil: Date | null, leadsCaptured: number, now: Date, freeLeads: number): AdminPlan {
-  const state = planState({ mode, paidUntil, leadsCaptured, now }, freeLeads);
-  switch (state.kind) {
-    case 'personal':
-      return 'Personal';
-    case 'paid':
-      return 'Business';
-    case 'trial':
-      return state.lapsedOn ? 'Lapsed' : 'Business trial';
-    case 'trialSpent':
-      return 'Business trial';
-    case 'lapsed':
-      return 'Lapsed';
-  }
+  return adminPlanLabel(planState({ mode, paidUntil, leadsCaptured, now }, freeLeads));
 }

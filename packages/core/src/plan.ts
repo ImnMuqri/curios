@@ -82,6 +82,28 @@ export function planState(input: PlanInput, freeLeads: number = FREE_LEADS): Pla
     : { kind: 'lapsed', paidUntil: input.paidUntil };
 }
 
+/** The admin's plan labels: what the Pages table and the support inbox call a page's plan. */
+export type AdminPlan = 'Personal' | 'Business' | 'Business trial' | 'Lapsed';
+
+/**
+ * The admin's label for a `planState`. A plan that ran out is Lapsed even while free leads
+ * remain (as the owner's own label has it); a business page that never paid is a trial, spent or not.
+ */
+export function adminPlanLabel(state: PlanState): AdminPlan {
+  switch (state.kind) {
+    case 'personal':
+      return 'Personal';
+    case 'paid':
+      return 'Business';
+    case 'trial':
+      return state.lapsedOn ? 'Lapsed' : 'Business trial';
+    case 'trialSpent':
+      return 'Business trial';
+    case 'lapsed':
+      return 'Lapsed';
+  }
+}
+
 /**
  * Whether this page may take a phone number.
  *

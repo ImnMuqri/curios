@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adminPlanLabel,
   canCapture,
   canTakeOrders,
   FREE_LEADS,
   FREE_ORDERS,
   orderState,
   planState,
+  type PlanInput,
 } from './plan.js';
 
 const NOW = new Date('2026-09-12T00:00:00Z');
@@ -229,5 +231,23 @@ describe('the allowances the admin sets', () => {
   it('defaults to the constants, so a caller with no settings behaves as before', () => {
     expect(planState(trial)).toEqual(planState(trial, FREE_LEADS));
     expect(orderState(orders)).toEqual(orderState(orders, FREE_ORDERS));
+  });
+});
+
+describe('adminPlanLabel', () => {
+  const now = new Date('2026-06-01T00:00:00Z');
+  const label = (input: Partial<PlanInput>) => adminPlanLabel(planState({ mode: 'BUSINESS', paidUntil: null, leadsCaptured: 0, now, ...input }));
+
+  it('names every state the admin sees', () => {
+    expect(label({ mode: 'PERSONAL' })).toBe('Personal');
+    expect(label({ paidUntil: new Date('2026-07-01T00:00:00Z') })).toBe('Business');
+    expect(label({})).toBe('Business trial');
+    expect(label({ leadsCaptured: 3 })).toBe('Business trial');
+  });
+
+  it('calls a plan that ran out Lapsed, even while free leads remain', () => {
+    const paidUntil = new Date('2026-05-01T00:00:00Z');
+    expect(label({ paidUntil, leadsCaptured: 1 })).toBe('Lapsed');
+    expect(label({ paidUntil, leadsCaptured: 3 })).toBe('Lapsed');
   });
 });
