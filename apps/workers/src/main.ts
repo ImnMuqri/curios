@@ -15,6 +15,10 @@ import { createIngestionWorker } from './ingestion/ingestion.worker.js';
 import { createMailWorker } from './mail/mail.worker.js';
 import { createLeadWorker } from './leads/lead.worker.js';
 import { createGroupWorker } from './grouping/group.worker.js';
+import { createSupportInboundWorker } from './support/inbound.js';
+import { createResendClient } from './support/resend-client.js';
+import { supportAddress } from '@curios/core/support';
+import { resolvePrivateFiles } from '@curios/storage/private-files';
 import { billingDisabled, CHIP_DEFAULT_BASE_URL, createChipClient } from '@curios/billing';
 import { createBillingWorker, scheduleBillingJobs } from './billing/pending-check.js';
 import { createHousekeepingWorker, scheduleHousekeepingJobs } from './housekeeping/retention.js';
@@ -44,6 +48,13 @@ function required(name: string): string {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not set`);
   return value;
+}
+
+// Fetches mail sent to support. Off in development without it; production refuses to start, since
+// the API would keep queueing mail that nothing ever files.
+const resendApiKey = process.env.RESEND_API_KEY;
+if (!resendApiKey && process.env.NODE_ENV === 'production') {
+  throw new Error('RESEND_API_KEY is not set: the support inbox cannot fetch inbound mail');
 }
 
 const appUrl = process.env.APP_URL;
@@ -140,6 +151,25 @@ workers.push(worker, mailWorker, leadWorker, groupWorker, housekeepingWorker);
 const housekeepingQueue = new Queue(HOUSEKEEPING_QUEUE, { connection: redis() });
 queues.push(housekeepingQueue);
 await scheduleHousekeepingJobs(housekeepingQueue);
+
+if (resendApiKey) {
+  // Attachments go to the private bucket (the disk outside production), never the public one.
+  const files = resolvePrivateFiles();
+  if (!files) throw new Error('No private file store for support attachments');
+  const supportWorker = createSupportInboundWorker({
+    connection: redis(),
+    prisma,
+    resend: createResendClient({ apiKey: resendApiKey }),
+    files,
+    support: supportAddress(),
+    log,
+  });
+  supportWorker.on('failed', (job, err) => log.error({ jobId: job?.id, err: err.message }, 'support inbound failed'));
+  supportWorker.on('error', (err) => log.error({ err: err.message }, 'support inbound worker error'));
+  workers.push(supportWorker);
+} else {
+  log.warn('No RESEND_API_KEY: the support inbound worker is off in development.');
+}
 
 if (billing) {
   // Its own connection, for the reason every worker above has one.

@@ -420,6 +420,11 @@ for it (`whsec_...`) into `RESEND_WEBHOOK_SECRET`. In production the API refuses
 in development, without it, the route is off and one warning is logged. A request whose signature does
 not verify is a 400, and a delivery whose queueing fails is a 500, which Resend retries.
 
+**The workers fetch each email** from Resend's API with `RESEND_API_KEY` (an API key with at least
+read access to received emails), store its attachments in the private bucket under
+`support/<email id>/`, and file it into a thread. In production the workers refuse to start without the
+key; in development, without it, the support worker is off and one warning is logged.
+
 ## Shop CHIP keys
 
 A shop owner connects their own CHIP account in Store → Payment. Their secret key is stored only
@@ -653,7 +658,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `APP_URL`, `NEXT_PUBLIC_API_URL`, `SENTRY_DSN`, `SENTRY_ENVIRONMENT` | ✓ | ✓ | ✓ |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` | ✓ | ✓ | |
 | `STORAGE_ENDPOINT`, `STORAGE_BUCKET`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY` | ✓ | ✓ | |
-| `STORAGE_PRIVATE_BUCKET` (digital products' files) | ✓ | | |
+| `STORAGE_PRIVATE_BUCKET` (digital products' files, support attachments) | ✓ | ✓ | |
 | `STORAGE_PUBLIC_URL` | ✓ | ✓ | ✓ |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` | ✓ | ✓ | |
 | `SUPPORT_EMAIL` | ✓ | ✓ | |
@@ -661,6 +666,7 @@ The pre-deploy sets the role to this password and refuses the development one.
 | `CHIP_SECRET_KEY`, `CHIP_BRAND_ID`, `CHIP_BASE_URL`, `CHIP_PUBLIC_KEY`, `CHIP_WEBHOOK_PUBLIC_KEY` | ✓ | ✓ | |
 | `CHIP_CALLBACK_BASE_URL=https://api.curios.my` | ✓ | ✓ | |
 | `RESEND_WEBHOOK_SECRET` (the signing secret of Resend's `email.received` webhook; the API refuses to boot without it) | ✓ | | |
+| `RESEND_API_KEY` (fetches received support mail; the workers refuse to boot without it) | | ✓ | |
 | `SESSION_SECRET` (`openssl rand -hex 32`) | ✓ | | |
 | `REPORT_IP_SECRET` (`openssl rand -hex 32`): keys the hash of a reporter's address. **Required in production: the API refuses to boot without it, or with the `.env.example` placeholder, or with fewer than 32 characters** | ✓ | | |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI=https://api.curios.my/auth/google/callback` | ✓ | | |
