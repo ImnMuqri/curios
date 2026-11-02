@@ -54,6 +54,7 @@ import { chatRoutes, chatTestRoutes, type ChatRouteOptions } from './modules/cha
 import { leadRoutes, ownerLeadRoutes } from './modules/leads/lead.routes.js';
 import { reportRoutes, type ReportRouteOptions } from './modules/reports/report.routes.js';
 import { nearPageRoutes, pageRoutes, type PageRouteOptions } from './modules/pages/page.routes.js';
+import { pickupRoutes } from './modules/store/pickup.routes.js';
 import { photoOriginalRoutes, storeRoutes } from './modules/store/store.routes.js';
 import type { PrivateFiles } from './modules/store/private-files.js';
 import { voucherCheckRoutes } from './modules/store/voucher.routes.js';
@@ -329,6 +330,7 @@ export async function buildApp(overrides: AppOverrides = {}) {
     await scope.register(topicRoutes);
     await scope.register(ownerLeadRoutes);
     await scope.register(storeRoutes, { ...(overrides.pages ?? {}), privateFiles: overrides.privateFiles });
+    await scope.register(pickupRoutes);
     await scope.register(ownerOrderRoutes, { ...(overrides.orders ?? {}), payOnline });
   });
   // An item photo's original: the owner's, checked in the handler. Outside the scope above only so

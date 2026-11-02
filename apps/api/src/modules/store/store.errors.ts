@@ -393,3 +393,41 @@ export class VoucherUnknownError extends Error {
     this.name = 'VoucherUnknownError';
   }
 }
+
+/** A pickup place the owner may not save: a field fails its check, or its windows fail `windowProblem`. The message says which. */
+export class PickupPlaceInvalidError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_PLACE_INVALID';
+  constructor(message: string) {
+    super(message);
+    this.name = 'PickupPlaceInvalidError';
+  }
+}
+
+export class PickupPlacesFullError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_PLACES_FULL';
+  constructor() {
+    super('A shop has up to 10 pickup places.');
+    this.name = 'PickupPlacesFullError';
+  }
+}
+
+/** Removing the only place while pickup is on would leave customers a pickup with nowhere to go. */
+export class PickupLastPlaceError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_LAST_PLACE';
+  constructor() {
+    super('Pickup needs at least one place. Turn pickup off instead.');
+    this.name = 'PickupLastPlaceError';
+  }
+}
+
+export class PickupPlaceNotFoundError extends Error {
+  readonly statusCode = 404;
+  readonly code = 'NOT_FOUND';
+  constructor() {
+    super('No such pickup place.');
+    this.name = 'PickupPlaceNotFoundError';
+  }
+}
