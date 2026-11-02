@@ -331,6 +331,11 @@ export function VouchersTab({ vouchers, items, api, onChange }: { vouchers: Owne
         adding ? null : (
           <div className={ui.empty}>
             <div className={ui.emptyArt} aria-hidden="true">
+              <span className={ui.ghostRows}>
+                <span data-tone="amber"><i /><b /><em /></span>
+                <span data-tone="rose"><i /><b /><em /></span>
+                <span data-tone="hijau"><i /><b /><em /></span>
+              </span>
               <span className={ui.emptyBadge} data-tone="amber">
                 <svg viewBox="0 0 24 24" width="21" height="21">
                   <path d="M4 8a2 2 0 0 0 0 4v4h16v-4a2 2 0 0 1 0-4V6H4zM14 6v12" />
