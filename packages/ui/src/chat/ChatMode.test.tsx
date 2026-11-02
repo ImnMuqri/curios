@@ -702,6 +702,15 @@ describe('ChatMode, orders', () => {
     expect(order.querySelectorAll('[aria-current]')).toHaveLength(1);
   });
 
+  it('draws a digital order as Placed, Paid, Sent, all lit once its files went out', async () => {
+    const digital = { ...card, status: 'Paid. It was sent to your email', pill: 'Paid · Sent to your email', tone: 'ok', steps: { placed: true, paid: true, ready: true, done: false }, when: '', sent: true };
+    await askOnce([`data: ${JSON.stringify({ type: 'order', card: digital })}\n\n`, 'data: {"type":"done","conversationId":"c1","intent":{"qualified":false}}\n\n']);
+
+    const order = await screen.findByRole('group', { name: 'Order #14 · 7Q4M' });
+    expect([...order.querySelectorAll('li')].map((li) => li.textContent)).toEqual(['Placed, done', 'Paid, done', 'Sent, done']);
+    expect(order.querySelector('[aria-current]')).toBeNull();
+  });
+
   it('drops a malformed card rather than half-drawing it', async () => {
     await askOnce(
       [

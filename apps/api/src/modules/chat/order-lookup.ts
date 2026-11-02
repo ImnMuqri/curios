@@ -25,6 +25,11 @@ export interface OrderCard {
   /** The pill's colour, as the order page names it. */
   tone: 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
   steps: { placed: boolean; paid: boolean; ready: boolean; done: boolean };
+  /**
+   * Only on a digital-only order, which has nothing to get ready: whether its files
+   * were emailed. The card then draws the board's Placed, Paid, Sent.
+   */
+  sent?: boolean;
   /** "1× Kek coklat moist 2kg, 1× Kek batik". */
   summary: string;
   /** "Pickup · Sat 17 Oct". */
@@ -156,6 +161,7 @@ export function orderCard(order: CardOrder, name: string, now: Date): OrderCard 
     pill,
     tone,
     steps,
+    ...(order.method === null ? { sent: Boolean(order.sentAt) } : {}),
     summary: order.lines
       .map((line) => `${line.quantity}× ${line.itemName}${line.optionLabel ? ` ${line.optionLabel}` : ''}`)
       .join(', '),

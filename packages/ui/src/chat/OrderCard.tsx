@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import styles from './ChatMode.module.css';
 
 /**
@@ -11,6 +12,8 @@ export interface OrderCardData {
   pill: string;
   tone: 'wait' | 'check' | 'ok' | 'stop' | 'quiet';
   steps: { placed: boolean; paid: boolean; ready: boolean; done: boolean };
+  /** Only on a digital-only order: its files were emailed. Its steps are then Placed, Paid, Sent. */
+  sent?: boolean;
   summary: string;
   when: string;
   totalCents: number;
@@ -83,11 +86,24 @@ const STEPS = [
   ['done', 'Done'],
 ] as const;
 
+/** The board's steps for this card: a digital-only order has nothing to get ready, so it is paid and then sent. */
+function stepsOf(card: OrderCardData): { key: string; label: string; done: boolean }[] {
+  if (typeof card.sent === 'boolean') {
+    return [
+      { key: 'placed', label: 'Placed', done: card.steps.placed },
+      { key: 'paid', label: 'Paid', done: card.steps.paid },
+      { key: 'sent', label: 'Sent', done: card.sent },
+    ];
+  }
+  return STEPS.map(([key, label]) => ({ key, label, done: card.steps[key] }));
+}
+
 export function OrderCard({ card }: { card: OrderCardData }) {
   const title = `Order #${card.number} · ${card.code}`;
   // A cancelled order has no progress to show, as on the order page.
   const stopped = card.tone === 'stop' || card.tone === 'quiet';
-  const nowAt = STEPS.findIndex(([key]) => !card.steps[key]);
+  const steps = stepsOf(card);
+  const nowAt = steps.findIndex((step) => !step.done);
 
   return (
     <div role="group" aria-label={title} className={styles.orderCard}>
@@ -101,9 +117,8 @@ export function OrderCard({ card }: { card: OrderCardData }) {
         </span>
       </div>
       {stopped ? null : (
-        <ol className={styles.orderSteps} aria-label="Order progress">
-          {STEPS.map(([key, label], i) => {
-            const done = card.steps[key];
+        <ol className={styles.orderSteps} aria-label="Order progress" style={{ '--steps': steps.length } as CSSProperties}>
+          {steps.map(({ key, label, done }, i) => {
             const state = done ? 'done' : i === nowAt ? 'now' : undefined;
             return (
               <li key={key} className={styles.orderStep} data-state={state} aria-current={state === 'now' ? 'step' : undefined}>

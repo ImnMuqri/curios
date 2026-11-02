@@ -223,7 +223,7 @@
   }
 }
 
-/* The order card in the chat: the Public board's `ocard`. */
+/* The order card in the chat: the Public board's `ocard`, whose colours are its own, not the shop's theme. */
 .orderCard {
   align-self: stretch;
   padding: 14px;
@@ -286,7 +286,7 @@
 
 .orderSteps {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(var(--steps, 4), 1fr);
   margin: 12px 0 4px;
   padding: 0;
   list-style: none;
@@ -349,8 +349,8 @@
 
 .orderStep[data-state='now'] i {
   box-shadow:
-    0 0 0 2px var(--accent, var(--rose)),
-    0 0 0 6px color-mix(in srgb, var(--accent, var(--rose)) 18%, transparent);
+    0 0 0 2px var(--rose),
+    0 0 0 6px color-mix(in srgb, var(--rose) 18%, transparent);
 }
 
 .orderSummary {
