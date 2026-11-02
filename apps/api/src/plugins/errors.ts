@@ -190,6 +190,11 @@ export const DOMAIN_ERROR_CODES = new Set([
   'TIME_REQUIRED',
   'EMAIL_REQUIRED',
   'INVALID_ORDER',
+  // Pickup at a place and time: pick a place, pick a time, or pick another time.
+  'PICKUP_PLACE_REQUIRED',
+  'PICKUP_TIME_REQUIRED',
+  'PICKUP_TIME_FULL',
+  'PICKUP_TIME_GONE',
   // Downloading what was bought (slice 19): the order is not paid, or the grant is spent or old.
   'ORDER_NOT_PAID',
   'DOWNLOAD_USED_UP',

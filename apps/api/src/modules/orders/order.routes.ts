@@ -96,6 +96,9 @@ export const orderRoutes: FastifyPluginAsyncZod<OrderRouteOptions> = async (app,
           seenTotalCents: z.number().int().min(0),
           // A code the visitor typed; placeOrder decides whether it applies.
           voucherCode: z.string().trim().max(64).nullable().optional(),
+          // Where and when to collect, on a pickup order; placeOrder says which a shop needs.
+          pickupPlaceId: z.string().min(1).max(64).nullable().optional(),
+          pickupWindowId: z.string().min(1).max(64).nullable().optional(),
         }),
         response: {
           201: z.object({ number: z.number(), code: z.string(), token: z.string(), totalCents: z.number() }),

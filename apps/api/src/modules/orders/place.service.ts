@@ -21,6 +21,10 @@ import {
   OrdersPausedError,
   OrderShapeError,
   OrderTooLargeError,
+  PickupPlaceRequiredError,
+  PickupTimeFullError,
+  PickupTimeGoneError,
+  PickupTimeRequiredError,
   PricesChangedError,
   SoldOutError,
   StoreClosedError,
@@ -65,6 +69,10 @@ export interface PlaceInput {
   seenTotalCents: number;
   /** A code the visitor typed. Only a hint: the server picks the voucher, and one that does not work is ignored. */
   voucherCode?: string | null;
+  /** One of the shop's pickup places, on a pickup order at a shop that has places. Ignored on delivery. */
+  pickupPlaceId?: string | null;
+  /** One of that place's times, when it has set times. Ignored at an any-time place and on delivery. */
+  pickupWindowId?: string | null;
 }
 
 export interface Placed {
@@ -185,6 +193,7 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
       if (!isOrderDay(day, { now, minNoticeDays: page.minNoticeDays, closedDays: page.closedDays })) throw new OrderDateError();
       if (method === 'DELIVERY' && address === null) throw new AddressRequiredError();
     }
+    const pickup = method === 'PICKUP' && day !== null ? await pickupAt(tx, found.id, day, input) : null;
     if (anyDigital && (email === null || email.length > 254 || !EMAIL.test(email))) throw new EmailRequiredError();
 
     // The voucher, decided here and nowhere else: what is working under this lock, counted
@@ -260,6 +269,13 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
         // The snapshot: editing or deleting the voucher later never changes this order.
         voucherId: picked?.voucher.id ?? null,
         voucherLabel: picked?.voucher.label ?? null,
+        // The same kind of snapshot: an owner editing or removing the place or time later never changes this order.
+        pickupPlaceId: pickup?.place.id ?? null,
+        pickupPlaceName: pickup?.place.name ?? null,
+        pickupPlaceAddress: pickup?.place.address ?? null,
+        pickupWindowId: pickup?.window?.id ?? null,
+        pickupFrom: pickup?.window?.fromMinute ?? null,
+        pickupTo: pickup?.window?.toMinute ?? null,
         // Nothing to pay: paid as it is placed, by the voucher, with no CHIP, QR or receipt.
         ...(free ? { status: 'PAID' as const, paidVia: 'VOUCHER' as const, paidAt: now } : {}),
         lines: {
@@ -354,6 +370,36 @@ export async function placeOrder(deps: PlaceDeps, input: PlaceInput, now: Date):
   }
 
   return { number: placed.number, code: placed.code, token, totalCents: placed.totals.totalCents };
+}
+
+/**
+ * The pickup place and time a pickup order picked, judged under the page lock
+ * placeOrder holds. That lock is what keeps a capped time to its limit: every
+ * placement on this page waits for it, so two customers on a time's last spot
+ * queue, and the second counts the order the first wrote. Cancelled orders
+ * give their spot back.
+ *
+ * A page with no places yet (pickup turned on before places existed) takes
+ * pickup as it always did, at any time and with no place.
+ */
+async function pickupAt(tx: Prisma.TransactionClient, pageId: string, day: string, input: PlaceInput) {
+  const places = await tx.pickupPlace.findMany({
+    where: { pageId },
+    select: { id: true, name: true, address: true, anyTime: true, windows: { select: { id: true, fromMinute: true, toMinute: true, limit: true } } },
+  });
+  if (places.length === 0) return null;
+  const place = places.find((p) => p.id === input.pickupPlaceId);
+  if (!place) throw new PickupPlaceRequiredError();
+  if (place.anyTime) return { place, window: null };
+
+  if (!input.pickupWindowId) throw new PickupTimeRequiredError();
+  const window = place.windows.find((w) => w.id === input.pickupWindowId);
+  if (!window) throw new PickupTimeGoneError();
+  if (window.limit !== null) {
+    const taken = await tx.order.count({ where: { pickupWindowId: window.id, day: new Date(`${day}T00:00:00Z`), status: { not: 'CANCELLED' } } });
+    if (taken >= window.limit) throw new PickupTimeFullError();
+  }
+  return { place, window };
 }
 
 interface PricedLine {

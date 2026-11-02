@@ -525,6 +525,9 @@ shop takes has `RATE_LIMIT_SHOP_PAY_METHODS_PER_IP` (per visitor and shop); star
 order page's checks have their own per-order budget (`RATE_LIMIT_SHOP_PAY_STATUS_PER_ORDER`), and
 CHIP is asked about one order at most every 5 seconds.
 
+Checkout asking which of a place's pickup times are full on a day (`GET /store/:handle/pickup-times`)
+has `RATE_LIMIT_SHOP_PICKUP_TIMES_PER_IP`: 120 an hour per visitor and shop by default.
+
 A customer typing a voucher code at checkout (`POST /store/:handle/vouchers/check`) has
 `RATE_LIMIT_VOUCHER_CHECK_PER_IP`: 30 tries an hour per visitor and shop by default. A code is a
 guessable word, so one address must not walk a shop's codes; a real customer tries a handful. Like the

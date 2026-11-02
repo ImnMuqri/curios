@@ -247,3 +247,43 @@ export class DownloadExpiredError extends Error {
     this.name = 'DownloadExpiredError';
   }
 }
+
+/** A pickup order at a shop with pickup places, and none of its own places picked. */
+export class PickupPlaceRequiredError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_PLACE_REQUIRED';
+  constructor() {
+    super('Pick where to collect it.');
+    this.name = 'PickupPlaceRequiredError';
+  }
+}
+
+/** A place with set times, and none of them picked. */
+export class PickupTimeRequiredError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_TIME_REQUIRED';
+  constructor() {
+    super('Pick a pickup time.');
+    this.name = 'PickupTimeRequiredError';
+  }
+}
+
+/** The time's limit for that day was reached, often by another customer a moment before. */
+export class PickupTimeFullError extends Error {
+  readonly statusCode = 409;
+  readonly code = 'PICKUP_TIME_FULL';
+  constructor() {
+    super('That pickup time just filled up. Pick another.');
+    this.name = 'PickupTimeFullError';
+  }
+}
+
+/** A time that is not one of the place's own: removed by the owner since checkout opened, or another place's. */
+export class PickupTimeGoneError extends Error {
+  readonly statusCode = 400;
+  readonly code = 'PICKUP_TIME_GONE';
+  constructor() {
+    super("That pickup time isn't offered any more. Pick another.");
+    this.name = 'PickupTimeGoneError';
+  }
+}

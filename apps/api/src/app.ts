@@ -44,6 +44,7 @@ import {
   reportPerIpLimit,
   shopChipPerAccountLimit,
   shopPayMethodsPerIpLimit,
+  shopPickupTimesPerIpLimit,
   shopPayPerIpLimit,
   shopPayPerOrderLimit,
   shopPayStatusPerOrderLimit,
@@ -61,6 +62,7 @@ import { voucherCheckRoutes } from './modules/store/voucher.routes.js';
 import { supportInboundRoutes, type SupportInboundRouteOptions } from './modules/support/support-inbound.routes.js';
 import { shopChipRoutes, type ShopChipRouteOptions } from './modules/store/chip.routes.js';
 import { downloadRoutes } from './modules/orders/download.routes.js';
+import { pickupTimesRoutes } from './modules/orders/pickup-times.routes.js';
 import { orderRoutes, ownerOrderRoutes, receiptRoutes, type OrderRouteOptions } from './modules/orders/order.routes.js';
 import {
   createPayOnline,
@@ -248,6 +250,12 @@ export async function buildApp(overrides: AppOverrides = {}) {
   await app.register(async (scope) => {
     await scope.register(rateLimit, voucherCheckPerIpLimit(app.rateLimitRedis));
     await scope.register(voucherCheckRoutes);
+  });
+
+  // Checkout asking which pickup times are full: anonymous, its own per-visitor and shop budget.
+  await app.register(async (scope) => {
+    await scope.register(rateLimit, shopPickupTimesPerIpLimit(app.rateLimitRedis));
+    await scope.register(pickupTimesRoutes);
   });
 
   // The receipt on an order's link: anonymous too, with its own per-IP budget

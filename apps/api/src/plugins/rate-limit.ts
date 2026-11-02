@@ -499,6 +499,24 @@ export function shopPayMethodsPerIpLimit(redis: IORedis): RateLimitPluginOptions
 }
 
 /**
+ * Checkout asking which of a shop's pickup times are full, per visitor and shop: it asks
+ * again for each place and day picked, so it has its own budget, and one shop's checkouts
+ * never spend another's. Keyed on the `handle`, lowercased as the page is looked up.
+ */
+export function shopPickupTimesPerIpLimit(redis: IORedis): RateLimitPluginOptions {
+  return {
+    ...FAIL_CLOSED,
+    global: true,
+    redis,
+    nameSpace: namespace('shop-pickup-times-ip:'),
+    max: limit('RATE_LIMIT_SHOP_PICKUP_TIMES_PER_IP', 120),
+    timeWindow: '1 hour',
+    keyGenerator: (request) => `${caller(request)}:${((request.params as { handle?: string }).handle ?? '-').toLowerCase()}`,
+    errorResponseBuilder: tooMany((after) => `Too many tries just now. Try again in ${after}.`),
+  };
+}
+
+/**
  * A customer typing a voucher code, per visitor and shop. A code is a guessable word, so a
  * loop from one address must not walk a shop's codes; a real customer tries a handful.
  * Keyed on the `handle`, lowercased as the page is looked up.
